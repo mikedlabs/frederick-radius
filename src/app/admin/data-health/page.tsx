@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Copy, PenLine } from "lucide-react";
 import { PLACES } from "@/data/places";
-import { getNeedsReviewPlaces, getHiddenFromDiscovery } from "@/lib/loaders/places";
+import {
+  getNeedsReviewPlaces,
+  getHiddenFromDiscovery,
+  hoursRefreshForAcceptedIdentity,
+} from "@/lib/loaders/places";
 import { computePlaceTrustReport } from "@/lib/quality/trust-report";
 import { getNeedsReviewEvents } from "@/lib/loaders/events";
 import SCORES_RAW from "@/data/copy-scores.json" with { type: "json" };
@@ -16,13 +20,14 @@ import {
   getSnapshots,
 } from "@/lib/integrations/feed-snapshot";
 import { getDriftStats, getDrift } from "@/lib/drift-review";
-import { feedStatuses, darkFeedCount } from "@/lib/integrations/feed-registry";
+import { feedStatuses, feedAttentionCount } from "@/lib/integrations/feed-registry";
 import { curatedFreshnessAnomalies } from "@/lib/quality/curated-freshness";
 import {
   summarizeHoursRefreshArtifact,
   withheldHoursReviewQueue,
 } from "@/lib/quality/operator-coverage";
 import { isGooglePlaceId } from "@/lib/provenance";
+import { googleMapsPlatformRuntimeEnabled } from "@/lib/google-maps-policy";
 import {
   sourceLedgerNeedsAction,
   type SourceManifestEntry,
@@ -113,6 +118,29 @@ function sweepAgeDays(lastSweepAt: string | null | undefined): number | null {
   return Math.floor((Date.now() - ms) / 86_400_000);
 }
 
+function FeedSetupBadge({
+  state,
+}: {
+  state: "ready" | "off" | "policy_hold" | "setup_needed" | "needs_attention";
+}) {
+  const label = {
+    ready: "Ready",
+    off: "Off by choice",
+    policy_hold: "Policy hold",
+    setup_needed: "Not set up",
+    needs_attention: "Needs attention",
+  }[state];
+  const tone = state === "ready" ? "positive" : state === "needs_attention" ? "warning" : "muted";
+  return (
+    <span
+      className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold"
+      style={{ background: toneTint(tone, 14), color: toneInkOnTint(tone) }}
+    >
+      {label}
+    </span>
+  );
+}
+
 async function Board() {
   const folded = Object.entries(DEDUP).filter(([s, v]) => v.canonical !== s).length;
   const clusters = new Set(Object.values(DEDUP).map((v) => v.canonical)).size;
@@ -136,6 +164,12 @@ async function Board() {
   );
   const snapshots = getSnapshots();
   const drift = getDriftStats(getDrift(), driftDecisions);
+  const googleRuntimeEnabled = googleMapsPlatformRuntimeEnabled();
+  const googlePlacesCredentialReady = Boolean(
+    process.env.GOOGLE_PLACES_API_KEY?.trim(),
+  );
+  const googlePlaceMaintenanceReady =
+    googleRuntimeEnabled && googlePlacesCredentialReady;
   // Placement validation — coordinates flagged needs_review because
   // they are missing or fall outside the county bbox. The public
   // surfaces never render these, so this view is the only place an
@@ -160,7 +194,10 @@ async function Board() {
   // need no credential but can still be unavailable upstream. Runtime
   // availability and content drift live in the tripwire/snapshot sections.
   const feeds = feedStatuses();
-  const dark = darkFeedCount();
+  const feedAttention = feedAttentionCount();
+  const feedSetupNeeded = feeds.keyed.filter((feed) => feed.configurationState === "setup_needed").length;
+  const feedPolicyHolds = feeds.keyed.filter((feed) => feed.configurationState === "policy_hold").length;
+  const feedsOff = feeds.keyed.filter((feed) => feed.configurationState === "off").length;
 
   const sourceCoverage = buildSourceCoverageReport(
     SOURCE_REGISTRY,
@@ -178,13 +215,51 @@ async function Board() {
   // the stale open-assertion count that the freshness flip would blank.
   const trust = computePlaceTrustReport();
   const conf = trust.confidence;
+  const clientPlaces = PLACES_CLIENT_RAW as Array<{
+    slug: string;
+    name: string;
+    category?: string;
+    municipality?: string;
+    source?: string;
+    google_photo_url?: string;
+    google_rating?: number;
+    hours?: unknown;
+    hours_verified?: boolean;
+    google_place_id?: string;
+  }>;
+  const historicalHoursRows = HOURS_REFRESH_RAW as Record<
+    string,
+    { place_id?: string } | undefined
+  >;
+  const historicalGoogleHoursSlugs = new Set(
+    clientPlaces
+      .filter((place) =>
+        Boolean(
+          hoursRefreshForAcceptedIdentity(
+            historicalHoursRows[place.slug],
+            place.google_place_id,
+          ),
+        ),
+      )
+      .map((place) => place.slug),
+  );
+  const googleDiscoveredRows = clientPlaces.filter(
+    (place) => place.source === "discovered",
+  ).length;
+  const googleDisplayRows = clientPlaces.filter(
+    (place) =>
+      typeof place.google_photo_url === "string" ||
+      typeof place.google_rating === "number",
+  ).length;
+  const historicalGoogleContentRows = clientPlaces.filter(
+    (place) =>
+      place.source === "discovered" ||
+      typeof place.google_photo_url === "string" ||
+      typeof place.google_rating === "number" ||
+      historicalGoogleHoursSlugs.has(place.slug),
+  ).length;
   const googleBackedSlugs = new Set(
-    (
-      PLACES_CLIENT_RAW as Array<{
-        slug: string;
-        google_place_id?: string;
-      }>
-    )
+    clientPlaces
       .filter((place) => isGooglePlaceId(place.google_place_id))
       .map((place) => place.slug),
   );
@@ -195,14 +270,7 @@ async function Board() {
   const hoursCycle = hoursArtifact.cycle;
   const hoursReviewQueue = withheldHoursReviewQueue(
     HOURS_REFRESH_RAW as Record<string, unknown>,
-    PLACES_CLIENT_RAW as Array<{
-      slug: string;
-      name: string;
-      category?: string;
-      municipality?: string;
-      hours?: unknown;
-      hours_verified?: boolean;
-    }>,
+    clientPlaces,
   );
 
   // THE ONE NUMBER — the nightly cron collapses every gate (catalog gates +
@@ -229,6 +297,11 @@ async function Board() {
       `${hoursCycle.state}; ${hoursArtifact.freshRefreshRows} of ${hoursArtifact.expectedGoogleBackedPlaces} Google-backed places refreshed within policy`,
     ],
     ["Scraped copy", `${SCORES.counts.scraped}`, `${((SCORES.counts.scraped / PLACES.length) * 100).toFixed(1)}% of records`],
+    [
+      "Known historical Google content (lower bound)",
+      `${historicalGoogleContentRows} / ${clientPlaces.length}`,
+      `${googleDiscoveredRows} Google-discovered rows; ${googleDisplayRows} rows with Google rating/photo fields; this row-level count does not yet inventory every derived artifact`,
+    ],
     ["Clean copy", `${SCORES.counts.auto_clean}`, "auto_clean, not yet editor-reviewed"],
     ["RADIUS_DEDUPE", process.env.RADIUS_DEDUPE !== "0" ? "on" : "off", "default on; set 0 only for rollback"],
     ["HOURS_GATE", process.env.HOURS_GATE !== "0" ? "on" : "off", "default on"],
@@ -256,10 +329,10 @@ async function Board() {
       fix: "The data-health cron itself may have stopped firing. Check /api/cron/data-health.",
     });
   }
-  if (dark > 0) {
+  if (feedAttention > 0) {
     actions.push({
-      label: `${dark} keyed feed${dark === 1 ? " is" : "s are"} dark`,
-      fix: "Set the missing keys listed under Live feed connectivity in the Vercel project env.",
+      label: `${feedAttention} enabled feed${feedAttention === 1 ? " has" : "s have"} incomplete setup`,
+      fix: "See Feed setup. These are the only configuration rows where an attempted activation cannot run.",
     });
   }
   if (badRuns.length > 0) {
@@ -349,7 +422,11 @@ async function Board() {
   if (sweepDays !== null && sweepDays >= 14) {
     actions.push({
       label: `The vetting sweep is ${sweepDays} days old`,
-      fix: "Run npm run vet to re-pull Google and refresh the drift diff.",
+      fix: googlePlaceMaintenanceReady
+        ? "Google runtime is explicitly authorized. Run npm run vet with its bounded live confirmation to refresh the drift diff."
+        : googleRuntimeEnabled
+          ? "Google runtime authorization is recorded, but the dedicated Places credential is missing. Do not run vet until GOOGLE_PLACES_API_KEY is restored; use independent sources meanwhile."
+          : "Google runtime is on policy hold. Do not re-pull it from this alert; review first-party, owner, Overture, OSM, and official sources while the historical-content migration is open.",
     });
   }
   if (unparseableTotal > 0) {
@@ -432,21 +509,18 @@ async function Board() {
         )}
       </Section>
 
-      {/* ── Feed configuration. This intentionally does not call a keyless
-          source "live": no credential required and upstream health are
-          different facts. Runtime health lives in tripwires/snapshots. ── */}
+      {/* Configuration is not health. Off and policy-held sources are safe;
+          only an incomplete activation belongs in the action queue. */}
       <Section
-        title="Live feed connectivity"
+        title="Feed setup"
         aside={
-          <StatusPill tone={dark === 0 ? "positive" : "warning"}>
-            {dark === 0 ? "All required settings present" : `${dark} keyed feed${dark === 1 ? "" : "s"} dark`}
+          <StatusPill tone={feedAttention === 0 ? "positive" : "warning"}>
+            {feedAttention === 0
+              ? "No broken activations"
+              : `${feedAttention} activation${feedAttention === 1 ? "" : "s"} need attention`}
           </StatusPill>
         }
-        description={
-          dark === 0
-            ? "Every keyed adapter has its required deployment settings. Runtime checks below determine whether each source is actually answering."
-            : "Dark feeds fail soft to empty, nothing breaks, but those layers stay blank until the key is set in the Vercel project env."
-        }
+        description={`Configuration only: ${feedPolicyHolds} held by policy, ${feedsOff} intentionally off, and ${feedSetupNeeded} not set up. Those are not runtime failures. Collection and publication evidence appear in the source ledger.`}
       >
         <div className="mt-3">
           <HairlineList>
@@ -454,27 +528,16 @@ async function Board() {
               <HairlineRow
                 key={f.name}
                 index={i}
-                dot={f.configured ? "positive" : "warning"}
+                dot={f.configurationState === "ready" ? "positive" : f.configurationState === "needs_attention" ? "warning" : "neutral"}
                 title={f.name}
-                subtitle={f.powers}
-                badge={
-                  f.configured ? (
-                    <span className="shrink-0 text-[11px] font-semibold" style={{ color: "var(--app-positive)" }}>Configured</span>
-                  ) : (
-                    <code
-                      className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                      style={{ background: toneTint("warning", 14), color: toneInkOnTint("warning") }}
-                    >
-                      set {f.missingEnvs.join(" + ")}
-                    </code>
-                  )
-                }
+                subtitle={`${f.powers} ${f.configurationNote}`}
+                badge={<FeedSetupBadge state={f.configurationState} />}
               />
             ))}
           </HairlineList>
         </div>
 
-        <Disclosure summary={`${feeds.keyless.length} feeds need no credential`}>
+        <Disclosure summary={`${feeds.keyless.length} public feeds need no deployment credential`}>
           <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
             {feeds.keyless.map((f) => (
               <div key={f.name} className="flex items-center gap-2 text-[12px]">
@@ -710,10 +773,13 @@ async function Board() {
         title="Place drift (last vetting sweep)"
         description={
           <>
-            Periodic Google re-pull diffs business_status / hours / website /
-            phone / rating / address against the stored enrichment so the
-            editor can keep the catalog honest. Run <code>npm run vet</code>
-            to refresh; review changes at <code>/admin/drift-review</code>.
+            The last provider sweep compared business status, hours, website,
+            phone, rating, and address against stored enrichment. New details,
+            hours, status, and search refreshes stay blocked while the
+            maintenance policy hold is active. Existing attributed photo
+            delivery is a separate path. Use independent sources for current
+            review, and inspect recorded changes at{" "}
+            <code>/admin/drift-review</code>.
           </>
         }
       >

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   darkFeedCount,
+  feedAttentionCount,
   feedStatuses,
 } from "@/lib/integrations/feed-registry";
 
@@ -15,6 +16,13 @@ const ORIGINAL = {
   FCPS_FEED_URL: process.env.FCPS_FEED_URL,
   PARKING_OCCUPANCY_ENABLED: process.env.PARKING_OCCUPANCY_ENABLED,
   PARKING_OCCUPANCY_URL: process.env.PARKING_OCCUPANCY_URL,
+  GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY,
+  GOOGLE_ROUTES_API_KEY: process.env.GOOGLE_ROUTES_API_KEY,
+  GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL:
+    process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL,
+  GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED:
+    process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED,
+  GOOGLE_ROUTES_ENABLED: process.env.GOOGLE_ROUTES_ENABLED,
 };
 
 function restore(name: keyof typeof ORIGINAL) {
@@ -30,6 +38,72 @@ afterEach(() => {
 });
 
 describe("feed configuration registry", () => {
+  it("does not report Google feeds configured from credentials alone", () => {
+    process.env.GOOGLE_PLACES_API_KEY = "places-key";
+    process.env.GOOGLE_ROUTES_API_KEY = "routes-key";
+    process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED = "1";
+    process.env.GOOGLE_ROUTES_ENABLED = "1";
+    delete process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL;
+
+    const feeds = feedStatuses().keyed;
+    expect(feeds.find((feed) => feed.name === "Google Places maintenance")).toMatchObject({
+      configured: false,
+      missingEnvs: ["GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL"],
+    });
+    expect(feeds.find((feed) => feed.name === "Google Routes")).toMatchObject({
+      configured: false,
+      missingEnvs: ["GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL"],
+    });
+  });
+
+  it("tracks Places and Routes as separate, explicitly authorized feeds", () => {
+    process.env.GOOGLE_PLACES_API_KEY = "places-key";
+    process.env.GOOGLE_ROUTES_API_KEY = "routes-key";
+    process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL =
+      "written-google-authorization-confirmed";
+    process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED = "1";
+    process.env.GOOGLE_ROUTES_ENABLED = "1";
+
+    const feeds = feedStatuses().keyed;
+    expect(feeds.find((feed) => feed.name === "Google Places maintenance")).toMatchObject({
+      configured: true,
+      sourceIds: ["google_places"],
+    });
+    expect(feeds.find((feed) => feed.name === "Google Routes")).toMatchObject({
+      configured: true,
+      sourceIds: ["google_routes"],
+    });
+  });
+
+  it("treats an optional feed without a switch as not set up, not broken", () => {
+    delete process.env.TICKETMASTER_API_KEY;
+
+    const ticketmaster = feedStatuses().keyed.find(
+      (feed) => feed.name === "Ticketmaster",
+    );
+
+    expect(ticketmaster).toMatchObject({
+      configured: false,
+      configurationState: "setup_needed",
+    });
+    expect(feedAttentionCount()).toBe(0);
+  });
+
+  it("flags a partially enabled multi-switch feed for attention", () => {
+    process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL =
+      "written-google-authorization-confirmed";
+    process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED = "1";
+    process.env.GOOGLE_ROUTES_ENABLED = "0";
+    process.env.GOOGLE_ROUTES_API_KEY = "routes-key";
+
+    expect(
+      feedStatuses().keyed.find((feed) => feed.name === "Google Routes"),
+    ).toMatchObject({
+      configured: false,
+      configurationState: "needs_attention",
+    });
+  });
+
   it("requires both policy approval and an agency id for PulsePoint", () => {
     process.env.PULSEPOINT_AGENCY_ID = "test-agency";
     delete process.env.PULSEPOINT_ENABLED;
