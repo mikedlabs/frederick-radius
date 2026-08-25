@@ -6,8 +6,9 @@
  *   2. We only have name + address          → Text Search to resolve the id,
  *                                              then Place Details
  *
- * Everything is gated on GOOGLE_PLACES_API_KEY. Without it, every function
- * returns null and callers fall back to the existing seed/DFP data.
+ * Everything is gated on reviewed written authorization, the explicit Maps
+ * Platform runtime switch, and GOOGLE_PLACES_API_KEY. Without all three,
+ * every function returns null and callers use their non-Google fallback.
  *
  * Pricing-aware: we request only the field masks we use. Place Details with
  * the "Pro + Enterprise" fields (hours, rating) is billed per the field mask,
@@ -21,6 +22,7 @@
 
 import type { OperationalStatus } from "@/data/places";
 import { hasIdentitySubfacilityConflict } from "@/lib/quality/enrichmentBinding";
+import { googleMapsPlatformRuntimeEnabled } from "@/lib/google-maps-policy";
 
 const BASE = "https://places.googleapis.com/v1";
 
@@ -143,12 +145,13 @@ export type GooglePhotoAttribution = {
   authors: GoogleAuthorAttribution[];
 };
 
-function key(): string | null {
-  return process.env.GOOGLE_PLACES_API_KEY || null;
+function maintenanceKey(): string | null {
+  if (!googleMapsPlatformRuntimeEnabled()) return null;
+  return process.env.GOOGLE_PLACES_API_KEY?.trim() || null;
 }
 
 export function googlePlacesConfigured(): boolean {
-  return Boolean(key());
+  return Boolean(maintenanceKey());
 }
 
 /**
@@ -456,7 +459,7 @@ export async function getPlaceDetailsResult(
   placeId: string,
   fields: GoogleFieldSet = "lean",
 ): Promise<GooglePlaceLookupResult> {
-  const k = key();
+  const k = maintenanceKey();
   if (!k) return { status: "provider_error", reason: "missing_api_key" };
   const id = placeId.startsWith("places/") ? placeId : `places/${placeId}`;
   try {
@@ -545,7 +548,7 @@ export async function resolveAndEnrichResult(opts: {
   lat?: number;
   lng?: number;
 }, fields: GoogleFieldSet = "lean"): Promise<GooglePlaceLookupResult> {
-  const k = key();
+  const k = maintenanceKey();
   if (!k) return { status: "provider_error", reason: "missing_api_key" };
   const textQuery = [opts.name, opts.address].filter(Boolean).join(", ");
   try {
@@ -608,11 +611,17 @@ export async function resolveAndEnrich(opts: {
 
 /**
  * Build a usable photo URL from a photo resource name.
- * `maxWidthPx` keeps cost down and matches our card sizes.
+ * `maxWidthPx` matches our card sizes and reduces transferred bytes. Google
+ * bills successful photo requests, so a smaller width does not reduce the
+ * number of billable requests.
  * NOTE: this URL embeds the API key, so only use it server-side or proxy it.
  */
 export function photoUrl(photoName: string, maxWidthPx = 800): string | null {
-  const k = key();
+  // Photo delivery is intentionally unchanged in this policy-only release.
+  // It already has a separate attribution, proxy, rate-limit, and daily-cap
+  // system. Moving it behind the maintenance hold would remove imagery from
+  // the live product, so that visual/product decision remains isolated.
+  const k = process.env.GOOGLE_PLACES_API_KEY?.trim() || null;
   if (!k) return null;
   return `${BASE}/${photoName}/media?maxWidthPx=${maxWidthPx}&key=${k}`;
 }

@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   decisionFeatures,
   getPlaceDetailsResult,
+  googlePlacesConfigured,
   normalizeGooglePhotoAttributions,
   normalizeGooglePlaceSummary,
+  photoUrl,
   pickReview,
   resolveAndEnrichResult,
 } from "./google-places";
@@ -103,7 +105,26 @@ describe("decisionFeatures", () => {
 });
 
 describe("maintenance lookup results", () => {
+  it("stays disabled when a key and runtime switch exist without written approval", async () => {
+    vi.stubEnv("GOOGLE_PLACES_API_KEY", "test-key");
+    vi.stubEnv("GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED", "1");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(googlePlacesConfigured()).toBe(false);
+    await expect(getPlaceDetailsResult("ChIJtest", "full")).resolves.toEqual({
+      status: "provider_error",
+      reason: "missing_api_key",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("does not turn a Place Details provider failure into a no-match", async () => {
+    vi.stubEnv(
+      "GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL",
+      "written-google-authorization-confirmed",
+    );
+    vi.stubEnv("GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED", "1");
     vi.stubEnv("GOOGLE_PLACES_API_KEY", "test-key");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("quota", { status: 429 })));
 
@@ -114,6 +135,11 @@ describe("maintenance lookup results", () => {
   });
 
   it("distinguishes a valid empty search from a provider outage", async () => {
+    vi.stubEnv(
+      "GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL",
+      "written-google-authorization-confirmed",
+    );
+    vi.stubEnv("GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED", "1");
     vi.stubEnv("GOOGLE_PLACES_API_KEY", "test-key");
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ places: [] }), {
@@ -127,5 +153,17 @@ describe("maintenance lookup results", () => {
       .resolves.toEqual({ status: "no_match" });
     await expect(resolveAndEnrichResult({ name: "Retry Later" }, "full"))
       .resolves.toEqual({ status: "provider_error", reason: "request_failed" });
+  });
+});
+
+describe("photo delivery isolation", () => {
+  it("does not remove existing photo delivery when maintenance is held", () => {
+    vi.stubEnv("GOOGLE_PLACES_API_KEY", "test-photo-key");
+    vi.stubEnv("GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED", "0");
+
+    expect(googlePlacesConfigured()).toBe(false);
+    expect(photoUrl("places/ChIJtest/photos/photo-one", 640)).toContain(
+      "places/ChIJtest/photos/photo-one/media?maxWidthPx=640&key=test-photo-key",
+    );
   });
 });
