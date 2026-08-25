@@ -42,6 +42,7 @@ type GeocodeRouteResult = GeocodeStats & { error?: string };
 function deferredGeocode(reason: "route-budget" | "upstream", error?: string): GeocodeRouteResult {
   return {
     fromCache: 0,
+    fromOfficial: 0,
     fromApi: 0,
     failed: reason === "upstream" ? 1 : 0,
     seeded: 0,
