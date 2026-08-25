@@ -28,4 +28,13 @@ describe("BreweryStrip", () => {
     expect(html).toContain("/images/beer/logos/olde-mother-brewing-frederick.jpg");
     expect(html).not.toContain("bg-[var(--app-ink)]");
   });
+
+  it("opts its lazy photo rail into the page-quality horizontal sweep", () => {
+    const html = renderToStaticMarkup(
+      createElement(BreweryStrip, { photos: {} }),
+    );
+
+    expect(html).toContain('id="brewery-strip-results"');
+    expect(html).toContain('data-page-quality-horizontal-rail="true"');
+  });
 });

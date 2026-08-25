@@ -194,14 +194,15 @@ test.describe("safe interaction crawler", () => {
         await gotoReadySurface(page, surface);
         sameOriginMutations.length = 0;
 
-        // Keep the exact ElementHandle that was inspected. Streamed sections
-        // and Mapbox can reorder the DOM between two locator queries; a handle
-        // guarantees the crawler clicks the control whose policy it evaluated.
+        // Inspect a concrete handle first. Streamed sections and the map may
+        // replace that node after scrolling, so the crawler re-inspects the
+        // live DOM below before it clicks the same semantic control.
         const safe = await safeControlHandles(page);
         const selected = safe.find(
           ({ candidate }) => !exercisedKeys.has(candidateKey(candidate)),
         );
         if (!selected) continue;
+        const selectedKey = candidateKey(selected.candidate);
 
         if (!(await selected.handle.isVisible())) continue;
         // Sticky page controls can cover the browser's minimal automatic
@@ -215,7 +216,21 @@ test.describe("safe interaction crawler", () => {
           });
         });
         await page.waitForTimeout(100);
-        await selected.handle.click({ timeout: 15_000 });
+        const refreshed = (await safeControlHandles(page)).find(
+          ({ candidate }) => candidateKey(candidate) === selectedKey,
+        );
+        if (!refreshed || !(await refreshed.handle.isVisible())) continue;
+        try {
+          await refreshed.handle.click({ timeout: 15_000 });
+        } catch (error) {
+          // A live map can replace a valid control between the final policy
+          // check and the pointer action. Retry the whole inspect-and-click
+          // transaction; never click an uninspected replacement node.
+          if (String(error).includes("Element is not attached to the DOM")) {
+            continue;
+          }
+          throw error;
+        }
         await page.waitForTimeout(350);
 
         expect(
@@ -230,7 +245,7 @@ test.describe("safe interaction crawler", () => {
           errorMarker,
           `${surface}: ${selected.candidate.text} opened an error boundary`,
         ).toBeNull();
-        exercisedKeys.add(candidateKey(selected.candidate));
+        exercisedKeys.add(selectedKey);
         exercised += 1;
       }
 
