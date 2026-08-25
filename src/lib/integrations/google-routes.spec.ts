@@ -3,21 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
   reserveDailyUsage: vi.fn(),
-  routeCache: new Map<string, unknown>(),
-}));
-
-vi.mock("next/cache", () => ({
-  unstable_cache:
-    (fn: (...args: unknown[]) => Promise<unknown>) =>
-    async (...args: unknown[]) => {
-      const cacheKey = JSON.stringify(args);
-      if (mocks.routeCache.has(cacheKey)) {
-        return mocks.routeCache.get(cacheKey);
-      }
-      const value = await fn(...args);
-      mocks.routeCache.set(cacheKey, value);
-      return value;
-    },
 }));
 
 vi.mock("@/lib/usage-meter", () => ({
@@ -27,6 +12,8 @@ vi.mock("@/lib/usage-meter", () => ({
 import {
   computeMatrix,
   computePrivateMatrix,
+  googleRoutesCredentialSource,
+  routesConfigured,
   travelTimes,
 } from "./google-routes";
 
@@ -46,8 +33,14 @@ function matrixResponse(
 describe("Google Routes usage metering", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.routeCache.clear();
+    vi.stubEnv(
+      "GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL",
+      "written-google-authorization-confirmed",
+    );
+    vi.stubEnv("GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED", "1");
+    vi.stubEnv("GOOGLE_ROUTES_ENABLED", "1");
     vi.stubEnv("GOOGLE_PLACES_API_KEY", "test-google-key");
+    vi.stubEnv("GOOGLE_ROUTES_API_KEY", "test-routes-key");
     vi.stubEnv("GOOGLE_ROUTES_DAILY_ELEMENT_CAP", "");
     vi.stubGlobal("fetch", mocks.fetch);
     mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
@@ -59,13 +52,61 @@ describe("Google Routes usage metering", () => {
   });
 
   it("skips both Google and the meter when configuration is missing", async () => {
-    vi.stubEnv("GOOGLE_PLACES_API_KEY", "");
+    vi.stubEnv("GOOGLE_ROUTES_API_KEY", "");
 
     await expect(
       computeMatrix(ORIGIN, [DESTINATION], "WALK"),
     ).resolves.toEqual([]);
+    expect(googleRoutesCredentialSource()).toBe("missing");
+    expect(routesConfigured()).toBe(false);
     expect(mocks.fetch).not.toHaveBeenCalled();
     expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
+  });
+
+  it("treats whitespace-only credentials as missing", async () => {
+    vi.stubEnv("GOOGLE_ROUTES_API_KEY", "\t");
+
+    await expect(
+      computeMatrix(ORIGIN, [DESTINATION], "WALK"),
+    ).resolves.toEqual([]);
+    expect(googleRoutesCredentialSource()).toBe("missing");
+    expect(routesConfigured()).toBe(false);
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
+  });
+
+  it("never falls back to the broader Places credential", async () => {
+    vi.stubEnv("GOOGLE_ROUTES_API_KEY", "");
+    vi.stubEnv("GOOGLE_PLACES_API_KEY", "test-google-key");
+
+    await expect(computeMatrix(ORIGIN, [DESTINATION], "WALK")).resolves.toEqual([]);
+    expect(googleRoutesCredentialSource()).toBe("missing");
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it("stays on policy hold unless all explicit switches are present", async () => {
+    vi.stubEnv("GOOGLE_ROUTES_ENABLED", "0");
+
+    await expect(computeMatrix(ORIGIN, [DESTINATION], "WALK")).resolves.toEqual([]);
+    expect(googleRoutesCredentialSource()).toBe("policy-hold");
+    expect(routesConfigured()).toBe(false);
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it("prefers the dedicated Routes key and never retries with the broader key", async () => {
+    vi.stubEnv("GOOGLE_ROUTES_API_KEY", "test-routes-key");
+    mocks.fetch.mockResolvedValue(matrixResponse([], 403));
+
+    await expect(
+      computeMatrix(ORIGIN, [DESTINATION], "WALK"),
+    ).resolves.toEqual([]);
+
+    expect(googleRoutesCredentialSource()).toBe("dedicated-routes");
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+    const [, init] = mocks.fetch.mock.calls[0] as [string, RequestInit];
+    expect(new Headers(init.headers).get("X-Goog-Api-Key")).toBe(
+      "test-routes-key",
+    );
   });
 
   it("skips both Google and the meter when there are no destinations", async () => {
@@ -165,7 +206,7 @@ describe("Google Routes usage metering", () => {
     );
   });
 
-  it("does not remeter a matrix served from the one-hour cache", async () => {
+  it("does not persist a shared matrix result", async () => {
     mocks.fetch.mockResolvedValue(
       matrixResponse([
         {
@@ -180,9 +221,16 @@ describe("Google Routes usage metering", () => {
     await computeMatrix(ORIGIN, [DESTINATION], "WALK");
     await computeMatrix(ORIGIN, [DESTINATION], "WALK");
 
-    expect(mocks.fetch).toHaveBeenCalledOnce();
-    expect(mocks.reserveDailyUsage).toHaveBeenCalledOnce();
-    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledTimes(2);
+    expect(mocks.reserveDailyUsage).toHaveBeenNthCalledWith(
+      1,
+      "google_routes_matrix",
+      100,
+      1,
+    );
+    expect(mocks.reserveDailyUsage).toHaveBeenNthCalledWith(
+      2,
       "google_routes_matrix",
       100,
       1,
@@ -237,6 +285,5 @@ describe("Google Routes usage metering", () => {
 
     expect(mocks.fetch).toHaveBeenCalledTimes(2);
     expect(mocks.reserveDailyUsage).toHaveBeenCalledTimes(2);
-    expect(mocks.routeCache.size).toBe(0);
   });
 });

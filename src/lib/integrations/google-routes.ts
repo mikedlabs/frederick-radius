@@ -2,17 +2,17 @@
  * Google Routes API (computeRouteMatrix) — real walk / drive / transit times.
  *
  * Replaces straight-line haversine for the cases users actually feel:
- * "is it walkable", "how long to drive there". Gated on GOOGLE_PLACES_API_KEY
- * (same key — Routes API just needs enabling in the GCP console).
+ * "is it walkable", "how long to drive there". This path requires its own
+ * least-privilege GOOGLE_ROUTES_API_KEY and explicit policy/runtime switches.
+ * The broader Places key is never a fallback.
  *
  * Cost: Route Matrix is billed per element (origins × destinations). We
- * keep matrices tiny (1 origin × ≤25 destinations). Shared planning calls
- * are cached; consented device-origin calls deliberately are not.
+ * keep matrices tiny (1 origin × ≤25 destinations). Results are not persisted.
  */
 
-import { unstable_cache } from "next/cache";
 import { googleRoutesDailyElementCap } from "@/lib/google-routes-budget";
 import { reserveDailyUsage } from "@/lib/usage-meter";
+import { googleRoutesRuntimeEnabled } from "@/lib/google-maps-policy";
 
 const URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix";
 const ROUTES_REQUEST_TIMEOUT_MS = 6_000;
@@ -27,8 +27,29 @@ export type TravelLeg = {
   meters: number;
 };
 
+export type GoogleRoutesCredentialSource =
+  | "dedicated-routes"
+  | "policy-hold"
+  | "missing";
+
+function configuredCredential(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed || null;
+}
+
+export function googleRoutesCredentialSource(): GoogleRoutesCredentialSource {
+  if (!googleRoutesRuntimeEnabled()) return "policy-hold";
+  if (configuredCredential(process.env.GOOGLE_ROUTES_API_KEY)) {
+    return "dedicated-routes";
+  }
+  return "missing";
+}
+
 function key(): string | null {
-  return process.env.GOOGLE_PLACES_API_KEY || null;
+  if (googleRoutesCredentialSource() === "dedicated-routes") {
+    return configuredCredential(process.env.GOOGLE_ROUTES_API_KEY);
+  }
+  return null;
 }
 
 export function routesConfigured(): boolean {
@@ -43,7 +64,11 @@ async function computeMatrixUncached(
   mode: TravelMode,
 ): Promise<TravelLeg[]> {
   const k = key();
-  if (!k) throw new Error("Google Routes is not configured");
+  if (!k) {
+    throw new Error(
+      "Google Routes is not configured; callers must use their local distance fallback",
+    );
+  }
 
   // Google bills a matrix by origin × destination elements, not by HTTP
   // request. Reserve the full element count atomically at the actual upstream
@@ -104,12 +129,6 @@ async function computeMatrixUncached(
     .sort((a, b) => a.destinationIndex - b.destinationIndex);
 }
 
-const computeMatrixCached = unstable_cache(
-  computeMatrixUncached,
-  ["google-routes-matrix-v1"],
-  { revalidate: 3600 },
-);
-
 /**
  * One origin → many destinations, single mode. Returns legs sorted by
  * destinationIndex. Empty array if not configured or on error (callers
@@ -125,7 +144,7 @@ export async function computeMatrix(
   // Routes API caps matrix elements; 1×25 is safe and cheap.
   const dests = destinations.slice(0, 25);
   try {
-    return await computeMatrixCached(origin, dests, mode);
+    return await computeMatrixUncached(origin, dests, mode);
   } catch (err) {
      
     console.error("[routes] failed:", err);
