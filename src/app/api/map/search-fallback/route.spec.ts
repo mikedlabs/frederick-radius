@@ -29,7 +29,6 @@ const BODY = {
   action: "suggest",
   q: "coffee and bikes",
   sessionToken: "2d9f68fb-5d4c-4b28-9d8e-cc2e2bc6e99e",
-  sessionStart: true,
   proximity: { lng: -77.41049, lat: 39.41437 },
 };
 
@@ -84,7 +83,6 @@ describe("POST /api/map/search-fallback", () => {
       action: "suggest",
       q: "coffee and bikes",
       sessionToken: BODY.sessionToken,
-      sessionStart: true,
       proximity: { lng: -77.41, lat: 39.414 },
       limit: 4,
     });

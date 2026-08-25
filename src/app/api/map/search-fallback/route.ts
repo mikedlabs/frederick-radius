@@ -24,6 +24,10 @@
  *   sessionToken: the same UUIDv4 used for suggest,
  *   proximity: { lng, lat }
  * }
+ *
+ * The UUID is not a day-long idempotency key. The server opens it on the first
+ * suggest and closes it after retrieve, 180 seconds, or 50 suggestions. A
+ * closed token is never sent upstream again.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import {

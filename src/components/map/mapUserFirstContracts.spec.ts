@@ -20,9 +20,20 @@ describe("user-first map contracts", () => {
   });
 
   it("keeps the first-use location choice from blocking a deliberate map task", () => {
-    expect(dock).toContain("dismissLocationIntro();\n              setSearchPanelOpen(true);");
-    expect(dock).toContain("dismissLocationIntro();\n              togglePane(\"contents\");");
+    expect(dock).toMatch(/dismissLocationIntro\(\);\s+setSearchPanelOpen\(true\);/);
+    expect(dock).toMatch(/dismissLocationIntro\(\);\s+togglePane\("contents"\);/);
     expect(dock).not.toContain('setPane((current) => current ?? "location")');
+  });
+
+  it("keeps Radius search usable when the interactive renderer is unavailable", () => {
+    expect(appMap).toContain("useState(() => !MAP_RENDERER_CONFIGURED)");
+    expect(appMap).toMatch(/\{dock && \(\s*<div\s+className="map-dock-slot"/);
+    expect(appMap).toContain("mapAvailable={!mapError}");
+    expect(appMap).toContain("searchMatches={searchMatchesForSurface}");
+    expect(dock).toContain('data-map-available={mapAvailable ? "true" : "false"}');
+    expect(dock).toContain(
+      'aria-label={mapAvailable ? "Search this map" : "Search Frederick Radius"}',
+    );
   });
 
   it("keeps the first chooser focused and preserves access to detailed map controls", () => {
@@ -87,6 +98,29 @@ describe("user-first map contracts", () => {
       /smoothFocus\(|\.flyTo\(|\.easeTo\(|\.fitBounds\(|\.jumpTo\(/,
     );
     expect(explicitPick).toMatch(/smoothFocus\(|\.easeTo\(/);
+  });
+
+  it("rotates a terminal Search Box session and reopens from bounded tab memory", () => {
+    expect(appMap).toContain("searchSessionStartedAtRef");
+    expect(appMap).toContain("now - searchSessionStartedAtRef.current > 150_000");
+    expect(appMap).not.toContain("searchSessionLastUsedRef");
+    expect(appMap).not.toContain("sessionStart:");
+    expect(appMap).toContain("readTemporaryMapboxResult(");
+    expect(appMap).toContain("writeTemporaryMapboxResult(");
+    const reset = appMap.indexOf("resetSearchBoxSession(sessionToken);");
+    const retrieve = appMap.indexOf('fetch("/api/map/search-fallback"', reset);
+    const staleGuard = appMap.indexOf(
+      "temporaryMapboxRetrieveIsCurrent(",
+      retrieve,
+    );
+    const clearOpening = appMap.indexOf(
+      "setSearchOpeningId((current)",
+      staleGuard,
+    );
+    expect(reset).toBeGreaterThan(-1);
+    expect(retrieve).toBeGreaterThan(reset);
+    expect(staleGuard).toBeGreaterThan(retrieve);
+    expect(clearOpening).toBeGreaterThan(staleGuard);
   });
 
   it("gives the first selected entity one Back-close history entry", () => {

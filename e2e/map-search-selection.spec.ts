@@ -565,6 +565,7 @@ test.describe("map search selection", () => {
   });
 
   test("falls back to a temporary county map result without pretending Radius verified it", async ({ page }) => {
+    let retrieveCalls = 0;
     await page.route("**/api/search?**", async (route) => {
       await route.fulfill({
         status: 200,
@@ -582,6 +583,7 @@ test.describe("map search selection", () => {
         /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
       );
       if (body.action === "retrieve") {
+        retrieveCalls += 1;
         await new Promise((resolve) => setTimeout(resolve, 150));
       }
       await route.fulfill({
@@ -686,6 +688,106 @@ test.describe("map search selection", () => {
     await expect
       .poll(() => new URL(page.url()).searchParams.get("selection"))
       .toBe(selectedUrl.searchParams.get("selection"));
+
+    // Closing and reopening the same temporary result is a tab-memory action,
+    // not a second provider retrieve with an already closed billing session.
+    await page.goBack();
+    await expect(fallback).toBeVisible();
+    await fallback.click();
+    await expect(spot).toBeVisible();
+    expect(retrieveCalls).toBe(1);
+  });
+
+  test("closes sibling temporary suggestions and serializes rapid retrieve taps", async ({ page }) => {
+    let retrieveCalls = 0;
+    await page.route("**/api/search?**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ results: [] }),
+      });
+    });
+    await page.route("**/api/map/search-fallback", async (route) => {
+      const body = route.request().postDataJSON() as {
+        action: "suggest" | "retrieve";
+        mapboxId?: string;
+      };
+      if (body.action === "suggest") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            ok: true,
+            action: "suggest",
+            temporary: true,
+            provider: "Mapbox",
+            attribution: "Map data © Mapbox",
+            suggestions: [
+              {
+                mapboxId: "test-first",
+                name: "First temporary result",
+                featureType: "address",
+                fullAddress: "1 North Market Street, Frederick, Maryland 21701",
+              },
+              {
+                mapboxId: "test-second",
+                name: "Second temporary result",
+                featureType: "address",
+                fullAddress: "2 North Market Street, Frederick, Maryland 21701",
+              },
+            ],
+          }),
+        });
+        return;
+      }
+
+      retrieveCalls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          action: "retrieve",
+          temporary: true,
+          provider: "Mapbox",
+          attribution: "Map data © Mapbox",
+          result: {
+            mapboxId: body.mapboxId,
+            name: "First temporary result",
+            featureType: "address",
+            coordinates: { lng: -77.4101, lat: 39.4159 },
+          },
+        }),
+      });
+    });
+
+    await page.goto("/map?q=temporary%20address", {
+      waitUntil: "domcontentloaded",
+    });
+    const search = page.getByRole("combobox", { name: "Search this map" });
+    await expect(search).toHaveValue("temporary address", { timeout: 20_000 });
+    await search.evaluate((element) => (element as HTMLInputElement).focus());
+
+    const first = page.locator('[data-map-search-result="mapbox:test-first"]');
+    const second = page.locator('[data-map-search-result="mapbox:test-second"]');
+    await expect(first).toBeVisible();
+    await expect(second).toBeVisible();
+
+    // Dispatch directly so a normal list rerender cannot turn this regression
+    // into a Playwright actionability test. The product contract under test is
+    // the same-frame double activation that React state alone cannot guard.
+    await first.evaluate((element) => (element as HTMLElement).click());
+    await expect(first).toHaveAttribute("aria-busy", "true");
+    await expect(second).toHaveAttribute("aria-disabled", "true");
+    await second.evaluate((element) => (element as HTMLElement).click());
+
+    await expect(
+      page.getByRole("region", { name: "First temporary result" }),
+    ).toBeVisible();
+    await expect(first).toHaveCount(1);
+    await expect(second).toHaveCount(0);
+    expect(retrieveCalls).toBe(1);
   });
 
   test("fails closed when a temporary result token is copied or expired", async ({ page }) => {

@@ -543,6 +543,53 @@ export const usage_counters = pgTable(
   }),
 );
 
+/**
+ * mapbox_search_sessions — hashed, server-owned Search Box lifecycle rows.
+ * No query, coordinate, suggestion, or retrieved place data is persisted.
+ * Closed rows are durable tombstones so a browser UUID cannot be reused after
+ * retrieve, the 180-second deadline, or the 50-suggestion ceiling.
+ */
+export const mapbox_search_sessions = pgTable(
+  "mapbox_search_sessions",
+  {
+    session_token_hash: text("session_token_hash").primaryKey(),
+    state: text("state").notNull().default("active"),
+    suggestion_count: integer("suggestion_count").notNull().default(0),
+    started_at: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+    closed_at: timestamp("closed_at", { withTimezone: true }),
+    retrieved_mapbox_id_hash: text("retrieved_mapbox_id_hash"),
+  },
+  (t) => ({
+    tokenHashCheck: check(
+      "mapbox_search_sessions_token_hash_check",
+      sql`${t.session_token_hash} ~ '^[0-9a-f]{64}$'`,
+    ),
+    retrievedHashCheck: check(
+      "mapbox_search_sessions_retrieved_hash_check",
+      sql`${t.retrieved_mapbox_id_hash} is null or ${t.retrieved_mapbox_id_hash} ~ '^[0-9a-f]{64}$'`,
+    ),
+    stateCheck: check(
+      "mapbox_search_sessions_state_check",
+      sql`${t.state} in ('active', 'retrieved', 'expired', 'suggestion_limit')`,
+    ),
+    suggestionCountCheck: check(
+      "mapbox_search_sessions_suggestion_count_check",
+      sql`${t.suggestion_count} between 0 and 50`,
+    ),
+    expiryCheck: check(
+      "mapbox_search_sessions_expiry_check",
+      sql`${t.expires_at} > ${t.started_at}`,
+    ),
+    closedStateCheck: check(
+      "mapbox_search_sessions_closed_state_check",
+      sql`(${t.state} = 'active' and ${t.closed_at} is null) or (${t.state} <> 'active' and ${t.closed_at} is not null)`,
+    ),
+  }),
+);
+
 export const beta_codes = pgTable(
   "beta_codes",
   {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import StaticMapPreview from "@/components/map/StaticMapPreview";
 
 /**
  * VenueMiniMap — a static map thumbnail of the venue on the event page.
@@ -32,16 +33,12 @@ export default function VenueMiniMap({
       className="tactile tactile-interactive block overflow-hidden rounded-[var(--app-radius-md)] border"
       style={{ borderColor: "var(--app-border)" }}
     >
-      {/* Plain <img>: the proxy already serves a right-sized @2x PNG. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <StaticMapPreview
         src={src}
         alt={`Map showing ${name}`}
         width={1280}
         height={560}
-        loading="lazy"
-        decoding="async"
-        className="field-map-image h-[140px] w-full object-cover"
+        className="h-[140px] w-full"
       />
     </Link>
   );
