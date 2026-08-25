@@ -6,7 +6,8 @@ const mocks = vi.hoisted(() => ({
   getPlaceDetails: vi.fn(),
   googlePlacesConfigured: vi.fn(),
   googleStatusToOperational: vi.fn(),
-  reserveDailyUsage: vi.fn(),
+  finalizeIdempotentDailyUsage: vi.fn(),
+  reserveIdempotentDailyUsage: vi.fn(),
 }));
 
 vi.mock("@/lib/loaders/places", () => ({
@@ -20,7 +21,8 @@ vi.mock("@/lib/integrations/google-places", () => ({
   googleStatusToOperational: mocks.googleStatusToOperational,
 }));
 vi.mock("@/lib/usage-meter", () => ({
-  reserveDailyUsage: mocks.reserveDailyUsage,
+  finalizeIdempotentDailyUsage: mocks.finalizeIdempotentDailyUsage,
+  reserveIdempotentDailyUsage: mocks.reserveIdempotentDailyUsage,
 }));
 
 import { GET } from "./route";
@@ -51,7 +53,15 @@ describe("GET /api/cron/business-status", () => {
     process.env.CRON_SECRET = "test-cron-secret";
     process.env.BUSINESS_STATUS_CRON = "1";
     mocks.googlePlacesConfigured.mockReturnValue(true);
-    mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
+    mocks.reserveIdempotentDailyUsage.mockResolvedValue({
+      reserved: true,
+      count: 1,
+      duplicate: false,
+    });
+    mocks.finalizeIdempotentDailyUsage.mockResolvedValue({
+      finalized: true,
+      state: "succeeded",
+    });
     mocks.decoratePlace.mockImplementation((value) => value);
     mocks.googleStatusToOperational.mockImplementation((status: string) =>
       status === "CLOSED_PERMANENTLY"
@@ -96,16 +106,24 @@ describe("GET /api/cron/business-status", () => {
       "ChIJCanonicalCafe123",
       "status",
     );
-    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+    expect(mocks.reserveIdempotentDailyUsage).toHaveBeenCalledWith(
       "budget_google_business_status",
       40,
+      "ChIJCanonicalCafe123",
     );
-    expect(mocks.reserveDailyUsage.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.getPlaceDetails.mock.invocationCallOrder[0],
+    expect(
+      mocks.reserveIdempotentDailyUsage.mock.invocationCallOrder[0],
+    ).toBeLessThan(mocks.getPlaceDetails.mock.invocationCallOrder[0]);
+    expect(mocks.finalizeIdempotentDailyUsage).toHaveBeenCalledWith(
+      "budget_google_business_status",
+      "ChIJCanonicalCafe123",
+      "succeeded",
     );
     expect(body).toMatchObject({
+      healthy: true,
       catalog: 1,
       checked: 1,
+      alreadyClaimed: 0,
       budgetExhausted: false,
       mismatches: [
         {
@@ -121,15 +139,21 @@ describe("GET /api/cron/business-status", () => {
     mocks.canonicalBusinessStatusRefreshCandidates.mockReturnValue([
       place("daily-cap", "ChIJDailyStatusCap123"),
     ]);
-    mocks.reserveDailyUsage.mockResolvedValue({ reserved: false, count: 40 });
+    mocks.reserveIdempotentDailyUsage.mockResolvedValue({
+      reserved: false,
+      count: 40,
+      duplicate: false,
+    });
 
     const response = await GET(request());
     const body = await response.json();
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(503);
     expect(body).toMatchObject({
+      healthy: false,
       catalog: 1,
       checked: 0,
+      alreadyClaimed: 0,
       budgetExhausted: true,
       usageMeterUnavailable: false,
       mismatches: [],
@@ -141,7 +165,7 @@ describe("GET /api/cron/business-status", () => {
     mocks.canonicalBusinessStatusRefreshCandidates.mockReturnValue([
       place("meter-unavailable", "ChIJStatusMeterUnavailable123"),
     ]);
-    mocks.reserveDailyUsage.mockResolvedValue(null);
+    mocks.reserveIdempotentDailyUsage.mockResolvedValue(null);
 
     const response = await GET(request());
     const body = await response.json();
@@ -152,12 +176,128 @@ describe("GET /api/cron/business-status", () => {
       healthy: false,
       catalog: 1,
       checked: 0,
+      alreadyClaimed: 0,
       budgetExhausted: false,
       usageMeterUnavailable: true,
       mismatches: [],
     });
     expect(body.error).toContain("usage counter is unavailable");
     expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+  });
+
+  it("reuses a completed same-target/day outcome without buying the call again", async () => {
+    mocks.canonicalBusinessStatusRefreshCandidates.mockReturnValue([
+      place("already-claimed", "ChIJStatusAlreadyClaimed123"),
+    ]);
+    mocks.reserveIdempotentDailyUsage.mockResolvedValue({
+      reserved: false,
+      count: 1,
+      duplicate: true,
+      duplicateState: "succeeded",
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      healthy: true,
+      catalog: 1,
+      checked: 0,
+      alreadyClaimed: 1,
+      alreadyCompleted: 1,
+      providerFailures: 0,
+      budgetExhausted: false,
+      usageMeterUnavailable: false,
+      mismatches: [],
+    });
+    expect(mocks.reserveIdempotentDailyUsage).toHaveBeenCalledWith(
+      "budget_google_business_status",
+      40,
+      "ChIJStatusAlreadyClaimed123",
+    );
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+  });
+
+  it("reports a null provider result as unhealthy without counting it checked", async () => {
+    mocks.canonicalBusinessStatusRefreshCandidates.mockReturnValue([
+      place("provider-null", "ChIJStatusProviderNull123"),
+    ]);
+    mocks.getPlaceDetails.mockResolvedValue(null);
+    mocks.finalizeIdempotentDailyUsage.mockResolvedValue({
+      finalized: true,
+      state: "failed",
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      healthy: false,
+      checked: 0,
+      providerFailures: 1,
+      claimStateFailures: 0,
+      failures: ["provider-null"],
+    });
+    expect(mocks.finalizeIdempotentDailyUsage).toHaveBeenCalledWith(
+      "budget_google_business_status",
+      "ChIJStatusProviderNull123",
+      "failed",
+    );
+  });
+
+  it("does not repurchase an earlier failed or uncertain daily claim", async () => {
+    mocks.canonicalBusinessStatusRefreshCandidates.mockReturnValue([
+      place("previous-failure", "ChIJStatusPreviousFailure123"),
+    ]);
+    mocks.reserveIdempotentDailyUsage.mockResolvedValue({
+      reserved: false,
+      count: 1,
+      duplicate: true,
+      duplicateState: "failed",
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      healthy: false,
+      checked: 0,
+      alreadyClaimed: 1,
+      alreadyCompleted: 0,
+      providerFailures: 1,
+      failures: ["previous-failure"],
+    });
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+    expect(mocks.finalizeIdempotentDailyUsage).not.toHaveBeenCalled();
+  });
+
+  it("reports a thrown provider request and keeps its paid claim closed", async () => {
+    mocks.canonicalBusinessStatusRefreshCandidates.mockReturnValue([
+      place("provider-error", "ChIJStatusProviderError123"),
+    ]);
+    mocks.getPlaceDetails.mockRejectedValue(new Error("timeout"));
+    mocks.finalizeIdempotentDailyUsage.mockResolvedValue({
+      finalized: true,
+      state: "failed",
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      healthy: false,
+      checked: 0,
+      providerFailures: 1,
+    });
+    expect(mocks.finalizeIdempotentDailyUsage).toHaveBeenCalledWith(
+      "budget_google_business_status",
+      "ChIJStatusProviderError123",
+      "failed",
+    );
   });
 
   it("fails before a paid call when two public slugs share a provider identity", async () => {
