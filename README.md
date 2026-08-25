@@ -130,15 +130,23 @@ Activate live features by setting these on Vercel (or `.env.local`):
 | `DELAPLAINE_CALENDAR_URL` | Delaplaine live feed — inert by default |
 | `TICKETMASTER_API_KEY` | Real ticketed shows via Discovery API |
 | `BANDSINTOWN_APP_ID` | Live music shows (also needs a curated artist list) |
-| `GOOGLE_PLACES_API_KEY` | Place photos, enrichment, and the bounded hours refresh |
-| `NWS_USER_AGENT` | Required identifier for the NWS API |
+| `GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL` + `GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED=1` | Code-level hold for Google maintenance, Routes, and event-address geocoding. The approval value must be exactly `written-google-authorization-confirmed` and should be recorded only after reviewed written authorization covers Radius's actual use; credentials alone never activate those paths. |
+| `GOOGLE_PLACES_API_KEY` | Dedicated Places credential. It preserves the existing attributed, key-safe photo proxy; enrichment and hours remain off unless the platform approval and runtime switch above are also valid. |
+| `GOOGLE_PHOTO_DAILY_CAP` | Eastern-day spike ceiling for the existing no-store place-photo proxy. The 1,500 default preserves normal visual coverage while bounding bots, retries, and accidental eager loads; code will not accept more than 2,000. |
+| `GOOGLE_ROUTES_API_KEY` + `GOOGLE_ROUTES_ENABLED=1` | Dedicated Routes credential and feature switch. There is no Places-key fallback and route results are not persisted. |
+| `GOOGLE_GEOCODING_API_KEY` + `GOOGLE_GEOCODING_ENABLED=1` | Optional Google event-address fallback. It also requires the platform approval/runtime settings; the Places key is never used, and official County address data is tried first. |
 | `SENTRY_DSN` | Runtime error capture |
 | `NEXT_PUBLIC_PLAUSIBLE_SRC` | Optional override for the checked-in Frederick Radius `pa-….js` URL, mainly for a future first-party proxy |
 | `DATABASE_URL` | Server-side Postgres for saved data, submissions, hours, telemetry, and hybrid search |
 | `ADMIN_USER` / `ADMIN_PASSWORD` | Gate `/admin/*` (fail-closed by default) |
-| `BUSINESS_STATUS_CRON=1` | Nightly Google Place Details refresh (PAID — off by default) |
-| `HOURS_REFRESH_CRON=1` | Daily bounded refresh of Google-backed place hours |
+| `BUSINESS_STATUS_CRON=1` | Manual legacy status diagnostic. It is not scheduled because `hours-refresh` already collects the same status in its paid request. |
+| `HOURS_REFRESH_CRON=1` | Daily bounded Google-backed hours refresh. Paid and still blocked unless the Google policy/runtime gate is valid. |
 | `RADIUS_SEARCH_CRON=1` | Daily bounded refresh of the private Ask Radius search index |
+| `RADIUS_SEARCH_SEMANTIC_ENABLED=1` + `RADIUS_SEARCH_EMBEDDING_DAILY_DOCUMENT_LIMIT` | Optional scheduled direct-OpenAI vectors behind an atomic Eastern-day document cap. A key alone never enables them; Postgres FTS remains required. |
+| `ASK_AI_RUNTIME_ENABLED=1` + `ASK_AI_DAILY_CALL_LIMIT` | Public Ask model turns, each reserved atomically under a code-bounded Eastern-day cap. Deterministic/local answers remain available when off. |
+| `ASK_AI_PROVIDER` | Chooses exactly one Ask text provider (`gateway`, `anthropic`, or `openai`); provider failures never waterfall into a second bill. |
+| `ASK_RADIUS_AGENT=1` | Explicitly opts complex Gateway requests into the multi-step tool agent. Each step reserves from the same daily model-call cap; default is off. |
+| `ASK_AI_RUNTIME_EMBEDDINGS_ENABLED=1` + `ASK_AI_EMBEDDING_DAILY_LIMIT` | Optional visitor-time semantic recall. Postgres FTS remains the default and fallback. |
 
 The Starter-plan goal list and installation check are in [docs/PLAUSIBLE_STARTER.md](docs/PLAUSIBLE_STARTER.md).
 The complete value-free setup template is [`.env.example`](./.env.example).
@@ -146,10 +154,14 @@ The complete value-free setup template is [`.env.example`](./.env.example).
 Mapbox uses separate browser and server paths. `NEXT_PUBLIC_MAPBOX_TOKEN`
 controls map rendering and `MAPBOX_SERVER_TOKEN` handles Static Images,
 Directions, and Isochrone without entering the client bundle. The validated
-publishable fallback in `src/lib/mapbox.ts` keeps the map available during the
-environment migration. Event-address geocoding is a fail-closed enrichment:
+publishable browser token must be supplied at build time and URL-restricted to
+Radius; source control contains no live fallback. Event-address geocoding is a fail-closed enrichment:
 it runs only when `MAPBOX_GEOCODING_ENABLED=1`, and every upstream call is
-recorded in the admin cost view.
+recorded in the admin cost view. `MAPBOX_MATRIX_ENABLED=1` is the global Matrix
+breaker for Ask, map search, and the Within reach route; a
+`MAPBOX_MATRIX_DAILY_ELEMENT_CAP=0` setting keeps every Matrix path off without
+removing the server token. Disabled Matrix enrichment always leaves the local
+distance ranking in place, and Matrix responses are not persisted.
 
 ## Closed-business handling
 
@@ -157,7 +169,11 @@ Closed places never surface. Three guards:
 
 1. `isOperational` in `src/lib/loaders/places.ts` is the canonical predicate.
 2. `src/data/closures.json` is the audit log of suppressed places. Regenerate with `npm run closures:report`.
-3. The nightly `/api/cron/business-status` job (gated `BUSINESS_STATUS_CRON=1`) refreshes from Google Place Details, capped at 40 calls per run.
+3. The nightly `/api/cron/hours-refresh` job refreshes hours and business status
+   in the same cost-capped Google Place Details call, then Data Steward pulls
+   the reviewed snapshot from Supabase. The older status-only route remains a
+   manual diagnostic and is not scheduled because it would buy the same fact
+   twice.
 
 ## License
 

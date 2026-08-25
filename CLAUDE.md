@@ -151,13 +151,12 @@ Back behavior when adding or changing tools.
   `/api/cron/radius-search` job and can be bootstrapped immediately with
   `npm run build:radius-search` (both need `DATABASE_URL`; `OPENAI_API_KEY`
   optionally adds semantic vectors). Full-text search is the required
-  baseline. The old claim here, that AI Gateway does not support embeddings,
-  was WRONG when written and is corrected as of 2026-08-19: the live gateway
-  advertises 26 embedding models including `openai/text-embedding-3-small`,
-  and it authenticates with the same `AI_GATEWAY_API_KEY || VERCEL_OIDC_TOKEN`
-  expression already used in `src/lib/ask/intelligence.ts`. So semantic search
-  needs no separate OpenAI account. The reason not to rush it is the CORPUS,
-  not the credential: the indexed documents average 89 characters and 1,302 of
+  baseline. AI Gateway offers embedding models, but the current scheduled
+  writer imports the direct OpenAI provider and requires `OPENAI_API_KEY` when
+  vectors are deliberately enabled. Do not infer transport support from the
+  provider catalog or from Ask's text-generation credentials. The larger
+  reason not to rush vectors is still the corpus: the indexed documents average
+  89 characters and 1,302 of
   1,568 are under 100, so embedding them yields ~1,400 near-identical
   "restaurant in Frederick" vectors and cosine ranking among those is close to
   arbitrary. Enrich the documents first (`search_aliases` is scored by the
@@ -208,6 +207,10 @@ Back behavior when adding or changing tools.
   ON PROD (`scripts/prod-audit.mjs` with `EXPECTED_SHA`, plus a check
   specific to the change). Stale ISR entries persist briefly
   (stale-while-revalidate) — test never-seen URLs for fresh behavior.
+- Do not run `vercel --prod` or redeploy the same SHA after a normal merge.
+  GitHub verifies the PR and Vercel owns the one production build. Manual
+  promotion or rollback is only for recovery and must identify the immutable
+  deployment being promoted.
 - Tap targets: ≥44px effective. Small controls use the invisible
   extender — `.tap-44` (globals.css) or a `before:` overlay (Pill).
 
