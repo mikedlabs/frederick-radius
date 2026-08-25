@@ -119,6 +119,48 @@ describe("manual place status overrides", () => {
     ).toBe("unknown");
   });
 
+  it("uses the Frederick calendar day for review and effective dates", () => {
+    const reviewedThroughAugust24: ManualPlaceStatusOverride = {
+      status: "operational",
+      effective_at: "2026-08-24",
+      review_after: "2026-08-24",
+      source: "https://example.com/official-status",
+      note: "Test-only Eastern calendar boundary.",
+    };
+
+    expect(
+      isManualPlaceStatusReviewCurrent(
+        reviewedThroughAugust24,
+        new Date("2026-08-25T00:30:00Z"),
+      ),
+    ).toBe(true);
+    expect(
+      isManualPlaceStatusReviewCurrent(
+        reviewedThroughAugust24,
+        new Date("2026-08-25T04:01:00Z"),
+      ),
+    ).toBe(false);
+
+    const slug = "eastern-boundary-test-correction";
+    MANUAL_PLACE_STATUS_OVERRIDES[slug] = reviewedThroughAugust24;
+    try {
+      expect(
+        activeManualPlaceStatusOverride(
+          slug,
+          new Date("2026-08-24T03:59:00Z"),
+        ),
+      ).toBeUndefined();
+      expect(
+        activeManualPlaceStatusOverride(
+          slug,
+          new Date("2026-08-24T04:01:00Z"),
+        ),
+      ).toEqual(reviewedThroughAugust24);
+    } finally {
+      delete MANUAL_PLACE_STATUS_OVERRIDES[slug];
+    }
+  });
+
   it("keeps reviewed permanent closures suppressed with source evidence", () => {
     const closures = [
       {
