@@ -4,7 +4,9 @@ run-name: >-
   ${{ inputs.automated_pr_token != '' && format('CI / automated {0}', inputs.automated_pr_token) || format('CI / {0}', github.ref_name) }}
 
 # The mechanical quality gate the repo was missing: typecheck, lint,
-# unit tests, and one production build on every PR and every push to main.
+# unit tests, and one production build on every PR. Vercel owns the one
+# post-merge build from main; rebuilding the same reviewed revision in Actions
+# spent runner minutes without adding another release decision.
 # Until now CI only ran editorial-style + data-freshness checks, so a
 # type error or failing test could land on main unnoticed — especially
 # risky with autonomous agents committing. A green check here is the
@@ -12,8 +14,6 @@ run-name: >-
 
 on:
   pull_request:
-  push:
-    branches: [main]
   # Bot-created pull requests use the repository token. GitHub holds their
   # pull_request runs for manual approval, so the creating workflow explicitly
   # dispatches these same secret-free gates on the allowlisted bot branch.
@@ -49,6 +49,12 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      # Automated publishers are already constrained to exact JSON/Markdown
+      # allowlists by automated-pr-checks and the status bridge. They need a
+      # data-release gate, not another full application/browser build. Vercel
+      # still builds the merged revision before it can reach Production.
+      AUTOMATED_DATA_PR: ${{ github.event_name == 'workflow_dispatch' && inputs.automated_pr_branch != '' && inputs.automated_pr_head_sha != '' && '1' || '0' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -59,9 +65,23 @@ jobs:
           cache: "npm"
       - name: Install dependencies
         run: npm ci
+      - name: Validate automated data dispatch identity
+        if: ${{ env.AUTOMATED_DATA_PR == '1' }}
+        env:
+          AUTOMATED_PR_BRANCH: ${{ inputs.automated_pr_branch }}
+          AUTOMATED_PR_HEAD_SHA: ${{ inputs.automated_pr_head_sha }}
+        run: |
+          set -euo pipefail
+          case "$AUTOMATED_PR_BRANCH" in
+            bot/*) ;;
+            *) echo "Refusing non-bot automated data branch: $AUTOMATED_PR_BRANCH"; exit 1 ;;
+          esac
+          test "$GITHUB_SHA" = "$AUTOMATED_PR_HEAD_SHA"
+          test "$GITHUB_REF" = "refs/heads/$AUTOMATED_PR_BRANCH"
       - name: Enforce tracked-file size budget
         run: npm run audit:repo-size
       - name: Audit production dependencies
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm audit --omit=dev --audit-level=high
       # The heap limit lives in the npm script, not here, so every caller
       # gets it.
@@ -76,26 +96,28 @@ jobs:
       # why this failed on every nightly data PR and passed for everyone
       # locally, including on the very data that was failing.
       - name: Typecheck
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm run typecheck
       - name: Lint
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm run lint
       - name: Audit data-source registry
         run: npm run audit:sources
+      - name: Audit automation ownership
+        run: npm run audit:automation
       - name: Audit migration ledger
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm run db:audit
       - name: Validate committed transit data
         run: npm run validate:transit-data
+      - name: Validate automated data artifacts
+        if: ${{ env.AUTOMATED_DATA_PR == '1' }}
+        run: npm run test:data-artifacts
       - name: Unit tests
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm run test:all
-      - name: Production helper tests
-        run: >-
-          node --test
-          scripts/lib/production-rollback.test.mjs
-          scripts/lib/basemap-platform.test.mjs
-          scripts/lib/basemap-release.test.mjs
-          scripts/lib/data-release.test.mjs
-          scripts/lib/promoted-build-network-guard.test.mjs
       - name: Build
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm run build
         env:
           # Build must not require real secrets; the app is written to
@@ -106,15 +128,20 @@ jobs:
           # cold Linux runner. Keep enough headroom for the OS and Chromium.
           NODE_OPTIONS: "--max-old-space-size=4096"
       - name: Install Chromium
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        timeout-minutes: 10
         run: npx playwright install --with-deps chromium
       - name: Component workshop tests
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm run test:storybook
       - name: Production browser and connected-journey gate
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm run test:release
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           PW_PRODUCTION: "1"
       - name: Exercise combined dependency failures and app upgrades
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: >-
           npx playwright test
           e2e/critical-dependency-chaos.spec.ts

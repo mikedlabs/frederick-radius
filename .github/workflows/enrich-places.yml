@@ -18,13 +18,9 @@ name: Enrich places (Google)
 # enriched on demand elsewhere.
 
 on:
-  # Monthly, scoped to places that have never been resolved against Google at
-  # all. That scope is what makes a schedule safe: it is exactly the hole a
-  # newly curated record falls into, it drains, and once drained the run exits
-  # early having spent nothing. The ceiling keeps newly accumulated backlog
-  # in reviewed batches instead of turning one schedule into an open sweep.
-  schedule:
-    - cron: "0 7 1 * *" # 1st of the month, 07:00 UTC
+  # The former monthly schedule is intentionally paused while Google Maps
+  # Platform reuse is under policy review. Keeping this manual avoids both an
+  # unattended paid call and a GitHub Actions run that can only fail the hold.
   workflow_dispatch:
     inputs:
       scope:
@@ -119,7 +115,13 @@ jobs:
       - name: Require Google enrichment configuration
         env:
           GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL: ${{ vars.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL }}
+          GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED: ${{ vars.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED }}
         run: |
+          if [ "$GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL" != "written-google-authorization-confirmed" ] || [ "$GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED" != "1" ]; then
+            echo "::error title=Google policy hold::Record reviewed written authorization in the exact repository variables before running paid enrichment."
+            exit 1
+          fi
           if [ -z "$GOOGLE_PLACES_API_KEY" ]; then
             echo "::error title=Missing GOOGLE_PLACES_API_KEY::Add the repository secret before running curated-place enrichment."
             exit 1
@@ -147,6 +149,8 @@ jobs:
         id: enrich_places
         env:
           GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL: ${{ vars.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL }}
+          GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED: ${{ vars.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED }}
           SCOPE: ${{ inputs.scope }}
           SLUGS: ${{ inputs.slugs }}
           REQUEST_LIMIT: ${{ inputs.limit || '100' }}
