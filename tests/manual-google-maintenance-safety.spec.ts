@@ -29,26 +29,76 @@ describe("manual Google maintenance safety", () => {
   });
 
   it("requires live, confirmation, and an explicit finite ceiling together", () => {
-    expect(
-      parseManualGoogleRun(
-        ["--live", "--confirm", "--limit", "25"],
-        config,
-      ),
-    ).toMatchObject({ live: true, confirmed: true, dryRun: false, limit: 25 });
+    const previousApproval =
+      process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL;
+    const previousRuntime =
+      process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED;
+    process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL =
+      "written-google-authorization-confirmed";
+    process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED = "1";
 
-    for (const args of [
-      ["--live"],
-      ["--confirm"],
-      ["--live", "--confirm"],
-      ["--live", "--confirm", "--dry-run", "--limit", "1"],
-      ["--run", "--limit", "1"],
-      ["--limit"],
-      ["--limit", "0"],
-      ["--limit", "1.5"],
-      ["--limit", "501"],
-      ["--limit", "1", "--limit", "2"],
-    ]) {
-      expect(() => parseManualGoogleRun(args, config)).toThrow();
+    try {
+      expect(
+        parseManualGoogleRun(
+          ["--live", "--confirm", "--limit", "25"],
+          config,
+        ),
+      ).toMatchObject({ live: true, confirmed: true, dryRun: false, limit: 25 });
+
+      for (const args of [
+        ["--live"],
+        ["--confirm"],
+        ["--live", "--confirm"],
+        ["--live", "--confirm", "--dry-run", "--limit", "1"],
+        ["--run", "--limit", "1"],
+        ["--limit"],
+        ["--limit", "0"],
+        ["--limit", "1.5"],
+        ["--limit", "501"],
+        ["--limit", "1", "--limit", "2"],
+      ]) {
+        expect(() => parseManualGoogleRun(args, config)).toThrow();
+      }
+    } finally {
+      if (previousApproval === undefined) {
+        delete process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL;
+      } else {
+        process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL = previousApproval;
+      }
+      if (previousRuntime === undefined) {
+        delete process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED;
+      } else {
+        process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED = previousRuntime;
+      }
+    }
+  });
+
+  it("keeps live maintenance on hold without reviewed written authorization", () => {
+    const previousApproval =
+      process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL;
+    const previousRuntime =
+      process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED;
+    delete process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL;
+    delete process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED;
+
+    try {
+      expect(() =>
+        parseManualGoogleRun(
+          ["--live", "--confirm", "--limit", "25"],
+          config,
+        ),
+      ).toThrow("Paid Google execution is on policy hold");
+    } finally {
+      if (previousApproval === undefined) {
+        delete process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL;
+      } else {
+        process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL = previousApproval;
+      }
+      if (previousRuntime === undefined) {
+        delete process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED;
+      } else {
+        process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED = previousRuntime;
+      }
     }
   });
 
