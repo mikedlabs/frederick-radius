@@ -19,8 +19,11 @@ describe("data-health cron phases", () => {
       .toBe("5 */2 * * *");
     expect(schedules.get("/api/cron/runtime-source-health"))
       .toBe("43 */2 * * *");
-    expect(schedules.get("/api/cron/data-health-retention"))
-      .toBe("10 9 * * *");
+    // Retention is destructive maintenance, not a freshness prerequisite.
+    // Its route remains available for a deliberate operator run after a
+    // current backup is confirmed, but it must not consume a daily no-op cron
+    // while DATA_RETENTION_PRUNE is disabled in Production.
+    expect(schedules.has("/api/cron/data-health-retention")).toBe(false);
     expect(schedules.get("/api/cron/data-health"))
       .toBe("30 9 * * *");
   });

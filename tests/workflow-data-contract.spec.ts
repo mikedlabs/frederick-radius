@@ -142,16 +142,13 @@ describe("scheduled data workflow contracts", () => {
     );
   });
 
-  it("schedules the explicitly gated paid business-status reporter", () => {
+  it("does not schedule the duplicate paid business-status reporter", () => {
     const vercel = JSON.parse(
       readFileSync(resolve(process.cwd(), "vercel.json"), "utf8"),
     ) as { crons?: Array<{ path?: string; schedule?: string }> };
 
-    expect(vercel.crons ?? []).toContainEqual(
-      expect.objectContaining({
-        path: "/api/cron/business-status",
-        schedule: "0 7 * * *",
-      }),
+    expect(vercel.crons ?? []).not.toContainEqual(
+      expect.objectContaining({ path: "/api/cron/business-status" }),
     );
     expect(vercel.crons ?? []).toContainEqual(
       expect.objectContaining({ path: "/api/cron/hours-refresh" }),
@@ -334,6 +331,22 @@ describe("scheduled data workflow contracts", () => {
     expect(workflow).toContain("INGEST_LIMIT: ${{ inputs.limit || '60' }}");
     expect(workflow).toContain('--limit="$INGEST_LIMIT"');
     expect(workflow).not.toContain("--limit=${{");
+  });
+
+  it.each([
+    ["ingest-business-info.yml", "bot/business-info-refresh"],
+    ["ingest-civic.yml", "bot/municipal-civic-refresh"],
+    ["ingest-venues.yml", "bot/venue-event-refresh"],
+  ])("pauses paid extraction in %s while its review PR is open", (name, branch) => {
+    const workflow = workflowText(name);
+
+    expect(workflow).toContain("refresh_open_review:");
+    expect(workflow).toContain("Pause paid extraction while its review is open");
+    expect(workflow).toContain(`const branch = '${branch}';`);
+    expect(workflow).toContain("pull-requests: read");
+    expect(workflow).toContain(
+      "if: ${{ needs.review-gate.outputs.should_run == 'true' }}",
+    );
   });
 
   it("caps normal business runs at 60 and reviewed backfills at 100", () => {
@@ -611,7 +624,7 @@ describe("scheduled data workflow contracts", () => {
     expect(ciText).toContain("automated_pr_style_run_id:");
     expect(ciText).toContain("automated_pr_token:");
     expect(ciText).toContain("ci_run_id: String(context.runId)");
-    expect(ciText).toContain("\n  push:");
+    expect(ciText).not.toContain("\n  push:");
     expect(ciText).toContain("e2e/critical-dependency-chaos.spec.ts");
     expect(ciText).toContain("e2e/service-worker-upgrade-contract.spec.ts");
     expect(ciText).not.toContain("\n  browser-chaos:");
@@ -620,7 +633,7 @@ describe("scheduled data workflow contracts", () => {
       "workflow_id: 'automated-pr-status-bridge.yml'",
     );
     const uxText = workflowText("ux-audit.yml");
-    expect(uxText).toContain('cron: "17 8 * * *"');
+    expect(uxText).toContain('cron: "17 8 * * 0"');
     expect(uxText).toContain("--workers=2");
     expect(uxText).not.toContain("matrix:");
     expect(uxText).not.toContain("--shard=");

@@ -2,9 +2,9 @@ name: UX browser audit
 
 on:
   schedule:
-    # 4:17 AM Eastern during daylight-saving time. The uneven minute avoids
-    # GitHub Actions' crowded top-of-hour scheduler window.
-    - cron: "17 8 * * *"
+    # The release gate covers core journeys on every PR. This broader crawler
+    # is a weekly regression sweep, kept off the crowded top of the hour.
+    - cron: "17 8 * * 0"
   workflow_dispatch:
 
 concurrency:
@@ -38,6 +38,7 @@ jobs:
           # build steps. The axe gate remains pinned at zero violations.
           NODE_OPTIONS: "--max-old-space-size=4096"
       - name: Install Chromium
+        timeout-minutes: 10
         run: npx playwright install --with-deps chromium
       - name: Run mobile UX and safe-interaction audit
         # Leave enough of the job budget for Playwright to flush traces and for

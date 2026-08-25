@@ -25,6 +25,11 @@ on:
 permissions:
   contents: read
 
+# A new PR commit makes the prior voice scan obsolete. Do not pay for both.
+concurrency:
+  group: style-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   style-lint:
     runs-on: ubuntu-latest
