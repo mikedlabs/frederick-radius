@@ -130,7 +130,20 @@ test.describe("critical surfaces under combined dependency failure", () => {
     });
     expect(response?.status()).toBe(200);
     await expectHealthyShell(page, "/today");
-    await expect(page.getByRole("link", { name: "Open Ask Radius" })).toBeVisible();
+    const primaryFind = page.getByRole("button", {
+      name: "Ask or find across Frederick County",
+    });
+    await expect(primaryFind).toBeVisible();
+    await primaryFind.click();
+    await expect(
+      page.getByRole("dialog", { name: "What do you need?" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("searchbox", {
+        name: "Ask or find across Frederick County",
+      }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Close Find" }).click();
     const moreForToday = page.getByRole("region", {
       name: "More for today",
       exact: true,
@@ -170,7 +183,18 @@ test.describe("critical surfaces under combined dependency failure", () => {
     });
     expect(response?.status()).toBe(200);
     await expectHealthyShell(page, "/map");
-    const mapSearch = page.getByRole("combobox", { name: "Search this map" });
+    const mapDock = page.locator("[data-map-dock]");
+    const mapAvailable =
+      (await mapDock.getAttribute("data-map-available")) === "true";
+    const mapSearch = page.getByRole("combobox", {
+      name: mapAvailable ? "Search this map" : "Search Frederick Radius",
+    });
+    const searchFailureText = mapAvailable
+      ? "Map search didn’t finish."
+      : "Search didn’t finish.";
+    const confidentEmpty = page.getByText(
+      /Nothing (?:on this map|in Radius) matches/,
+    );
     // The production map deliberately allows its deferred renderer up to
     // 15 seconds on a cold start before it swaps to the readable fallback.
     // Required CI runners are also building and serving the production app,
@@ -182,33 +206,50 @@ test.describe("critical surfaces under combined dependency failure", () => {
     await expect
       .poll(() => hits.hanging.includes("/api/search"))
       .toBe(true);
-    await expect(page.getByText("Map search didn’t finish.")).toBeVisible();
+    await expect(page.getByText(searchFailureText)).toBeVisible();
     await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
-    await expect(page.getByText(/Nothing on this map matches/)).toHaveCount(0);
+    await expect(confidentEmpty).toHaveCount(0);
     const searchAttempts = hits.hanging.filter(
       (path) => path === "/api/search",
     ).length;
     await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByText("Searching Radius…")).toBeVisible();
-    await expect(page.getByText(/Nothing on this map matches/)).toHaveCount(0);
+    await expect(confidentEmpty).toHaveCount(0);
     await expect
       .poll(
         () =>
           hits.hanging.filter((path) => path === "/api/search").length,
       )
       .toBeGreaterThan(searchAttempts);
-    await expect(page.getByText("Map search didn’t finish.")).toBeVisible();
+    await expect(page.getByText(searchFailureText)).toBeVisible();
 
     await mapSearch.fill("zzzxqv map fallback");
     await expect(mapSearch).toHaveValue("zzzxqv map fallback");
-    await expect
-      .poll(() => hits.malformed.includes("/api/map/search-fallback"), {
-        timeout: 15_000,
-      })
-      .toBe(true);
-    await expect(page.getByText("Map search didn’t finish.")).toBeVisible();
+    if (mapAvailable) {
+      await expect
+        .poll(() => hits.malformed.includes("/api/map/search-fallback"), {
+          timeout: 15_000,
+        })
+        .toBe(true);
+      await expect(page.getByText(searchFailureText)).toBeVisible();
+      await expect(confidentEmpty).toHaveCount(0);
+    } else {
+      // A secret-free build deliberately serves the complete local catalog
+      // without the renderer. That path does not need the map-only backup
+      // endpoint, so an exact local miss is a supported answer rather than an
+      // upstream outage. Its recovery actions must still remain available.
+      expect(hits.malformed).not.toContain("/api/map/search-fallback");
+      await expect(
+        page.getByText(/Nothing in Radius matches/),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Search all Radius" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Ask Radius" }),
+      ).toBeVisible();
+    }
     await expect(mapSearch).toHaveValue("zzzxqv map fallback");
-    await expect(page.getByText(/Nothing on this map matches/)).toHaveCount(0);
 
     // EVENTS: choosing an interest requests the complete calendar. A 503 must
     // be named as an outage while the already-rendered board and retry remain.
@@ -224,9 +265,17 @@ test.describe("critical surfaces under combined dependency failure", () => {
       "true",
       { timeout: 30_000 },
     );
-    await page
-      .getByRole("tablist", { name: "Browse events by what you want to do" })
-      .getByRole("tab", { name: /Music/i })
+    const eventFilters = page.getByRole("button", { name: /^Filters/ });
+    if ((await eventFilters.getAttribute("aria-expanded")) !== "true") {
+      await eventFilters.click();
+    }
+    const eventFilterDialog = page.getByRole("dialog", {
+      name: "Event filters",
+    });
+    await expect(eventFilterDialog).toBeVisible();
+    await eventFilterDialog
+      .getByRole("group", { name: "Event interests" })
+      .getByRole("button", { name: "Music", exact: true })
       .click();
     const eventsWereComplete =
       await eventsExplorer.getAttribute("data-events-complete") === "true";
