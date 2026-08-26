@@ -6,21 +6,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.65674,
-          39.3324
+          -77.40915,
+          39.39416
         ]
       },
       "properties": {
-        "external_id": "840048934f1a0088006ad32ec4235c0a",
-        "incident_type": "incident",
-        "description": "US 340 WEST AT MM 3.0",
+        "external_id": "4700190d4993018c006ad32ec4235c0a",
+        "incident_type": "special",
+        "description": "MD 85 (BUCKEYSTOWN PIKE) @ GUILFORD DR [Traffic Control Signal]",
         "county": "Frederick",
-        "road": "US 340",
-        "direction": "West",
-        "location": "US 340 WEST AT MM 3.0",
-        "severity": "high",
-        "lanes_affected": "Westbound-right Shoulder closed",
-        "started_at": "2026-08-21T09:29:55.000Z",
+        "road": "MD 85",
+        "direction": "North",
+        "location": "MD 85 (BUCKEYSTOWN PIKE) @ GUILFORD DR [Traffic Control Signal]",
+        "severity": "low",
+        "started_at": "2026-08-24T18:53:01.000Z",
         "expected_end": null,
         "source": "mdot_chart"
       }

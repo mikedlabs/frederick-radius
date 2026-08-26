@@ -6,20 +6,42 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.352217751417,
-          39.324068182714896
+          -77.55065522042601,
+          39.43378491819159
         ]
       },
       "properties": {
-        "external_id": "22569246",
+        "external_id": "22611189",
+        "summary": "Animal Carcass in Public Ways",
+        "description": "Dead deer near mailbox of 7303 Countryside Drive",
+        "address": "7303 Countryside Dr Middletown, Maryland, 21769",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Animal Carcass in Public Ways",
+        "reported_at": "2026-08-26T01:35:58.000Z",
+        "url": "https://seeclickfix.com/issues/22611189",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4639310373306,
+          39.4336292158612
+        ]
+      },
+      "properties": {
+        "external_id": "22610368",
         "summary": "Roadway General Request",
-        "description": "I have witnessed several near misses in this intersection. I have had to stop suddenly a couple of times as trucks crossed from 7 eleven to make a left without notice! A light would be beneficial here",
-        "address": "Fingerboard Rd Frederick, Maryland, 21704",
+        "description": "Horrible to cross from kemp ln to bowers rd. Should seriously consider a traffic circle or a light to avoid someone getting killed.",
+        "address": "7301-7307 Kemp Ln Frederick, Maryland, 21702",
         "status": "acknowledged",
         "status_raw": "Acknowledged",
         "category": "Roadway General Request",
-        "reported_at": "2026-08-21T00:01:48.000Z",
-        "url": "https://seeclickfix.com/issues/22569246",
+        "reported_at": "2026-08-25T23:19:15.000Z",
+        "url": "https://seeclickfix.com/issues/22610368",
         "source": "seeclickfix"
       }
     },
@@ -28,108 +50,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.63897863728947,
-          39.40615247492016
+          -77.45295257189,
+          39.396569127867
         ]
       },
       "properties": {
-        "external_id": "22567659",
-        "summary": "Roadway Sign Maintenance",
-        "description": "Stop sign graffiti",
-        "address": "39.40615 -77.63898",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Sign Maintenance",
-        "reported_at": "2026-08-20T20:47:35.000Z",
-        "url": "https://seeclickfix.com/issues/22567659",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.64571346232934,
-          39.318744966139896
-        ]
-      },
-      "properties": {
-        "external_id": "22567018",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "Resident called about flooding and drainage issues in area.",
-        "address": "712 Tritapoe Dr Knoxville, Maryland, 21758",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-08-20T19:49:55.000Z",
-        "url": "https://seeclickfix.com/issues/22567018",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.64455147909214,
-          39.31833513298405
-        ]
-      },
-      "properties": {
-        "external_id": "22566950",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "Resident called with drainage concerns \"flooding the inlet\" in his home/street area.",
-        "address": "802 Tritapoe Dr Knoxville, Maryland, 21758",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-08-20T19:44:00.000Z",
-        "url": "https://seeclickfix.com/issues/22566950",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.6656,
-          39.3282
-        ]
-      },
-      "properties": {
-        "external_id": "22566480",
-        "summary": "Roadway Drainage Maintenance",
-        "description": "During the last two severe thunderstorm events, water has begun to top the asphalt road curb and has created ruts in our driveway and washed gravel into our yard. I was unable to upload the video of t",
-        "address": "3510 Cemetery Cir Knoxville, Maryland, 21758",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Drainage Maintenance",
-        "reported_at": "2026-08-20T19:07:04.000Z",
-        "url": "https://seeclickfix.com/issues/22566480",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.33970010996475,
-          39.433645776922475
-        ]
-      },
-      "properties": {
-        "external_id": "22566443",
+        "external_id": "22610286",
         "summary": "Roadway General Request",
-        "description": "Constituent reports that Gas House Pike near Linganore Rd seems to be completely closed although there are no signs indicating such. Traffic hasn't moved in nearly 20 minutes.",
-        "address": "Gas House Pike & Linganore Rd Frederick, MD, 21701, USA",
+        "description": "cap needs to be reset and sealed with tar",
+        "address": "5984 Forum Sq Frederick, Maryland, 21703",
         "status": "acknowledged",
         "status_raw": "Acknowledged",
         "category": "Roadway General Request",
-        "reported_at": "2026-08-20T19:03:59.000Z",
-        "url": "https://seeclickfix.com/issues/22566443",
+        "reported_at": "2026-08-25T23:11:35.000Z",
+        "url": "https://seeclickfix.com/issues/22610286",
         "source": "seeclickfix"
       }
     },
@@ -138,20 +72,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.34446544954643,
-          39.434648727351956
+          -77.43499270986533,
+          39.37797851383657
         ]
       },
       "properties": {
-        "external_id": "22566359",
+        "external_id": "22608551",
         "summary": "Roadway General Request",
-        "description": "The construction crew has blocked all traffic in both directions on Gas House Pike for 10+ minutes since we got here. No signs at all indicating road closure.",
-        "address": "9270-9314 Gas House Pike Frederick, Maryland, 21701",
+        "description": "Does the HOA own this street or does the City own Serviceberry Dr.  This is in reference to parking on the street I live on",
+        "address": "Serviceberry Dr Frederick, Maryland, 21703",
         "status": "acknowledged",
         "status_raw": "Acknowledged",
         "category": "Roadway General Request",
-        "reported_at": "2026-08-20T18:57:03.000Z",
-        "url": "https://seeclickfix.com/issues/22566359",
+        "reported_at": "2026-08-25T20:21:54.000Z",
+        "url": "https://seeclickfix.com/issues/22608551",
         "source": "seeclickfix"
       }
     },
@@ -160,108 +94,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.42345615170126,
-          39.476851758040716
+          -77.3382871,
+          39.3459679
         ]
       },
       "properties": {
-        "external_id": "22565752",
-        "summary": "Roadway Tree Maintenance",
-        "description": "Bushes have overgrown such that vehicles have to drive out into the road to view if oncoming traffic is approaching. Constituent is requesting that bushes at 8900 Opossumtown Pike be trimmed as to not",
-        "address": "8900 Opossumtown Pike Frederick, Maryland, 21702",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-08-20T18:12:21.000Z",
-        "url": "https://seeclickfix.com/issues/22565752",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.31260620938521,
-          39.49156603240345
-        ]
-      },
-      "properties": {
-        "external_id": "22565483",
-        "summary": "Roadway Tree Maintenance",
-        "description": "Low hanging branches from a large tree is hanging over the roadway. Truck driver just struck it with his mirror. Branch is causing major damage to higher standing vehicles.",
-        "address": "10802 Daysville Rd Walkersville, Maryland, 21793",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
-        "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-08-20T17:53:34.000Z",
-        "url": "https://seeclickfix.com/issues/22565483",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.35903630491643,
-          39.61357394202211
-        ]
-      },
-      "properties": {
-        "external_id": "22565211",
-        "summary": "Roadway Mowing Request",
-        "description": "The grass along the guardrails at the intersection of frushour and 77 make it hard to see traffic coming",
-        "address": "13801-14013 Frushour Rd Rocky Ridge, Maryland, 21778",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Roadway Mowing Request",
-        "reported_at": "2026-08-20T17:32:04.000Z",
-        "url": "https://seeclickfix.com/issues/22565211",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.2321,
-          39.3713
-        ]
-      },
-      "properties": {
-        "external_id": "22564656",
-        "summary": "Roadway General Request",
-        "description": "large amount of glass in roadway due to a previous auto accident",
-        "address": "12401-12407 Lee Hill Dr Green Valley, Maryland, 21770",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Roadway General Request",
-        "reported_at": "2026-08-20T16:50:06.000Z",
-        "url": "https://seeclickfix.com/issues/22564656",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.3507,
-          39.3357
-        ]
-      },
-      "properties": {
-        "external_id": "22564390",
+        "external_id": "22606559",
         "summary": "Roadway Pavement Maintenance",
-        "description": "Travener Circle has many cracks and budding holes in the pavement, and the crosswalks have faded extensively.",
-        "address": "Travener Cir Urbana, Maryland, 21704",
+        "description": "sidewalk lift it sure whatever",
+        "address": "4107 Brushfield Dr Urbana, Maryland, 21704",
         "status": "acknowledged",
         "status_raw": "Acknowledged",
         "category": "Roadway Pavement Maintenance",
-        "reported_at": "2026-08-20T16:27:57.000Z",
-        "url": "https://seeclickfix.com/issues/22564390",
+        "reported_at": "2026-08-25T17:58:01.000Z",
+        "url": "https://seeclickfix.com/issues/22606559",
         "source": "seeclickfix"
       }
     },
@@ -270,20 +116,130 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.1653082860472,
-          39.47026018747234
+          -77.56512175666408,
+          39.449683809592564
         ]
       },
       "properties": {
-        "external_id": "22561152",
+        "external_id": "22606460",
+        "summary": "Animal Carcass in Public Ways",
+        "description": "Constituent Don Smith reported a deceased deer on Marker Rd before you get to Picnic Woods Rd. 301.676.0635",
+        "address": "Marker Rd Middletown, Maryland, 21769",
+        "status": "closed",
+        "status_raw": "Closed",
+        "category": "Animal Carcass in Public Ways",
+        "reported_at": "2026-08-25T17:52:08.000Z",
+        "url": "https://seeclickfix.com/issues/22606460",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.33106511520793,
+          39.45434619611908
+        ]
+      },
+      "properties": {
+        "external_id": "22605932",
+        "summary": "Roadway Sign Maintenance",
+        "description": "Constituent at 9535 Liberty Road found a county street sign in the stream behind his home. He removed the sign from the stream and placed it on his porch for us to pick up. Please call before stopping",
+        "address": "8001-8031 Crum Rd Walkersville, MD, 21793, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Sign Maintenance",
+        "reported_at": "2026-08-25T17:17:18.000Z",
+        "url": "https://seeclickfix.com/issues/22605932",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.513590276946,
+          39.474730458797
+        ]
+      },
+      "properties": {
+        "external_id": "22605477",
+        "summary": "Roadway Tree Maintenance",
+        "description": "A large tree limb is hanging on the phone/cable tv over head lines in front of 8833 Hawbottom Road.  This limb is over the travel lane of Hawbottom Road.",
+        "address": "8833 Hawbottom Road 21769 Middletown, Maryland",
+        "status": "closed",
+        "status_raw": "Closed",
+        "category": "Roadway Tree Maintenance",
+        "reported_at": "2026-08-25T16:42:07.000Z",
+        "url": "https://seeclickfix.com/issues/22605477",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.31128227306108,
+          39.448910591665886
+        ]
+      },
+      "properties": {
+        "external_id": "22604262",
+        "summary": "Roadway Sign Maintenance",
+        "description": "People turning left onto Kelly Road from McKaig Road do NOT yield at the yield sign. I am almost hit at least three times a month and have to slam on my brakes. This triangle intersection needs to cha",
+        "address": "Mckaig Rd Frederick, Maryland, 21701",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Sign Maintenance",
+        "reported_at": "2026-08-25T15:23:48.000Z",
+        "url": "https://seeclickfix.com/issues/22604262",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.55236085390317,
+          39.36014356311961
+        ]
+      },
+      "properties": {
+        "external_id": "22603792",
+        "summary": "Roadway Drainage Maintenance",
+        "description": "Ever since work was done on behalf of the \"Save the Bay\" campaign, drainage has been poor. The rainwater pools in the culvert and the growth of algae have increased. Constituent would like the to be t",
+        "address": "3325 Brockton Dr Jefferson, Maryland, 21755",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Drainage Maintenance",
+        "reported_at": "2026-08-25T14:55:13.000Z",
+        "url": "https://seeclickfix.com/issues/22603792",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.49287666635949,
+          39.39046106559206
+        ]
+      },
+      "properties": {
+        "external_id": "22602792",
         "summary": "Roadway Mowing Request",
-        "description": "Across the street from 14244 Unionville Rd there's a bank of grass near their mailbox. Constituent would like county to mow area, which would allow older residents to access the mailbox.",
-        "address": "14244 Unionville Rd Mount Airy, Maryland, 21771",
+        "description": "High grass is obstructing view of oncoming traffic at the intersection of Mt. Zion Rd and Stone Rd. The grass is on Mt. Zion Rd.",
+        "address": "5666-5698 Stone Rd Braddock Heights, MD, 21703, USA",
         "status": "acknowledged",
         "status_raw": "Acknowledged",
         "category": "Roadway Mowing Request",
-        "reported_at": "2026-08-20T12:24:08.000Z",
-        "url": "https://seeclickfix.com/issues/22561152",
+        "reported_at": "2026-08-25T13:51:52.000Z",
+        "url": "https://seeclickfix.com/issues/22602792",
         "source": "seeclickfix"
       }
     },
@@ -292,20 +248,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.26067627365195,
-          39.40914141432525
+          -77.4162166181096,
+          39.53909543576135
         ]
       },
       "properties": {
-        "external_id": "22561076",
-        "summary": "Roadway Tree Maintenance",
-        "description": "There is a traffic safety/sight distance issue when looking from our driveway North on New London Rd. You cannot see any traffic coming from that direction until they reach the neighbor's driveway. At",
-        "address": "11616 New London Rd New Market, MD, 21774, USA",
+        "external_id": "22602130",
+        "summary": "Roadway Drainage Maintenance",
+        "description": "Two drainage collection areas on the side of the driveway are clogged and filled with debris need to be cleaned out.",
+        "address": "11118 Hessong Bridge Rd Thurmont, Maryland, 21788",
         "status": "acknowledged",
         "status_raw": "Acknowledged",
-        "category": "Roadway Tree Maintenance",
-        "reported_at": "2026-08-20T12:14:09.000Z",
-        "url": "https://seeclickfix.com/issues/22561076",
+        "category": "Roadway Drainage Maintenance",
+        "reported_at": "2026-08-25T13:07:15.000Z",
+        "url": "https://seeclickfix.com/issues/22602130",
         "source": "seeclickfix"
       }
     },
@@ -314,20 +270,42 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.2539,
-          39.3454
+          -77.60871076173746,
+          39.386549819428
         ]
       },
       "properties": {
-        "external_id": "22560865",
+        "external_id": "22602080",
+        "summary": "Animal Carcass in Public Ways",
+        "description": "Deer in ditch",
+        "address": "39.38655 -77.60871",
+        "status": "closed",
+        "status_raw": "Closed",
+        "category": "Animal Carcass in Public Ways",
+        "reported_at": "2026-08-25T13:01:42.000Z",
+        "url": "https://seeclickfix.com/issues/22602080",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.466258741649,
+          39.359018210349
+        ]
+      },
+      "properties": {
+        "external_id": "22599304",
         "summary": "Roadway General Request",
-        "description": "excessive speeding on Lynn Burke, want speed dampeners or bumps for safety issues regarding children",
-        "address": "4016 Lynn Burke Rd Monrovia, Maryland, 21770",
-        "status": "acknowledged",
-        "status_raw": "Acknowledged",
+        "description": "The vegetation on the corner of Renn Road and Ballenger Creek is high, making people turning left onto Ballenger Creek from Renn road take a risk for an accident to happen.",
+        "address": "5798 S Renn Rd Frederick, Maryland, 21703",
+        "status": "closed",
+        "status_raw": "Closed",
         "category": "Roadway General Request",
-        "reported_at": "2026-08-20T11:41:59.000Z",
-        "url": "https://seeclickfix.com/issues/22560865",
+        "reported_at": "2026-08-24T23:09:12.000Z",
+        "url": "https://seeclickfix.com/issues/22599304",
         "source": "seeclickfix"
       }
     },
@@ -336,20 +314,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.2259,
-          39.5831
+          -77.54285753134681,
+          39.56240150613884
         ]
       },
       "properties": {
-        "external_id": "22559587",
-        "summary": "Roadway General Request",
-        "description": "When driving on Simpsons Mill Road and  approaching Johnsville Road bridge, view of oncoming traffic over the bridge is blocked due to vegetation growth along the riverbank.",
-        "address": "12725-12799 Simpsons Mill Rd Keymar, Maryland, 21757",
+        "external_id": "22599135",
+        "summary": "Gravel Road Maintenance",
+        "description": "Ditch is clogged with trees and debris.",
+        "address": "11820-12014 Wildcat Rd Myersville, Maryland, 21773",
         "status": "acknowledged",
         "status_raw": "Acknowledged",
-        "category": "Roadway General Request",
-        "reported_at": "2026-08-20T01:29:43.000Z",
-        "url": "https://seeclickfix.com/issues/22559587",
+        "category": "Gravel Road Maintenance",
+        "reported_at": "2026-08-24T22:46:46.000Z",
+        "url": "https://seeclickfix.com/issues/22599135",
         "source": "seeclickfix"
       }
     },
@@ -358,20 +336,64 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.43910185407805,
-          39.37784304132647
+          -77.4011892506874,
+          39.50041570085905
         ]
       },
       "properties": {
-        "external_id": "22557640",
+        "external_id": "22598962",
+        "summary": "Animal Carcass in Public Ways",
+        "description": "A sheep carcass has been left on the edge of Hansonville ct.",
+        "address": "9620-9748 Old Frederick Rd Frederick, Maryland, 21702",
+        "status": "closed",
+        "status_raw": "Closed",
+        "category": "Animal Carcass in Public Ways",
+        "reported_at": "2026-08-24T22:24:24.000Z",
+        "url": "https://seeclickfix.com/issues/22598962",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.46198725768458,
+          39.3785376496428
+        ]
+      },
+      "properties": {
+        "external_id": "22596916",
+        "summary": "Roadway Mowing Request",
+        "description": "It’s becoming very difficult to pull out of driveway at location 5805 Elmer derr rd due to overgrown brush .. not much of a clear site to right . Requesting for it too be cleared out . We would try it",
+        "address": "5805 Elmer Derr Rd Frederick, Maryland, 21703",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
+        "category": "Roadway Mowing Request",
+        "reported_at": "2026-08-24T19:42:07.000Z",
+        "url": "https://seeclickfix.com/issues/22596916",
+        "source": "seeclickfix"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.36240642374574,
+          39.3943607592022
+        ]
+      },
+      "properties": {
+        "external_id": "22596798",
         "summary": "Roadway Sign Maintenance",
-        "description": "𝐍𝐨 𝐏𝐚𝐫𝐤𝐢𝐧𝐠 𝐬𝐢𝐠𝐧𝐬 𝐫𝐞𝐦𝐨𝐯𝐞𝐝 𝐨𝐧 𝐅𝐫𝐞𝐝𝐞𝐫𝐢𝐜𝐤 𝐂𝐨𝐮𝐧𝐭𝐲 𝐬𝐭𝐫𝐞𝐞𝐭. Parking is allowed on only one side of 𝐑𝐢𝐯𝐞𝐫 𝐁𝐢𝐫𝐜𝐡 𝐑𝐨𝐚𝐝.  No Parking signs were originall",
-        "address": "River Birch Rd Frederick, Maryland, 21703",
-        "status": "closed",
-        "status_raw": "Closed",
+        "description": "The sign at Riverwood and River Oaks has fallen down, needs to be reinstalled",
+        "address": "River Oaks Ter & Riverwood Ct Bartonsville, MD, 21704, USA",
+        "status": "acknowledged",
+        "status_raw": "Acknowledged",
         "category": "Roadway Sign Maintenance",
-        "reported_at": "2026-08-19T21:02:34.000Z",
-        "url": "https://seeclickfix.com/issues/22557640",
+        "reported_at": "2026-08-24T19:34:44.000Z",
+        "url": "https://seeclickfix.com/issues/22596798",
         "source": "seeclickfix"
       }
     },
@@ -380,42 +402,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.4555929157966,
-          39.449617379645005
+          -77.17751305899964,
+          39.54228394814995
         ]
       },
       "properties": {
-        "external_id": "22557557",
-        "summary": "Roadway General Request",
-        "description": "The new Yellow Springs Elementary School is causing massive traffic and chaos in the Tuscarora and Clover Ridge neighborhoods.  The new traffic circle to access the school entrance on Spring Run, is c",
-        "address": "31 Rocky Springs Rd Frederick, MD, 21702, USA",
-        "status": "closed",
-        "status_raw": "Closed",
-        "category": "Roadway General Request",
-        "reported_at": "2026-08-19T20:54:56.000Z",
-        "url": "https://seeclickfix.com/issues/22557557",
-        "source": "seeclickfix"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -77.48855080805579,
-          39.32132708136194
-        ]
-      },
-      "properties": {
-        "external_id": "22556719",
+        "external_id": "22596539",
         "summary": "Noxious Weed",
-        "description": "Johnson grass growing wild at Mountville Rd and Ballenger Creek Pike near a transformer.",
-        "address": "Mountville Rd Frederick, MD, 21703, USA",
+        "description": "Johnson grass both sides of road (Clemsonville) north of Fountain School Rd.",
+        "address": "39.54228 -77.17751",
         "status": "acknowledged",
         "status_raw": "Acknowledged",
         "category": "Noxious Weed",
-        "reported_at": "2026-08-19T19:39:11.000Z",
-        "url": "https://seeclickfix.com/issues/22556719",
+        "reported_at": "2026-08-24T19:15:40.000Z",
+        "url": "https://seeclickfix.com/issues/22596539",
         "source": "seeclickfix"
       }
     },
@@ -424,20 +424,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -77.37815850292247,
-          39.45331700838916
+          -77.26326255931671,
+          39.4764906237423
         ]
       },
       "properties": {
-        "external_id": "22556681",
-        "summary": "General Inquiries- Animal Control",
-        "description": "Address of concern is 8207 Blue Heron Dr Apt 1C. Animal Nuisance and possible neglect. Two small Shih Tzu type dogs (one small, one slightly larger with 3 legs) that a neighbor lets outside their pati",
-        "address": "Blue Heron Dr Frederick, Maryland, 21701",
+        "external_id": "22596531",
+        "summary": "Animal Carcass in Public Ways",
+        "description": "Deceased deer on the side of the road 11523 Liberty Rd at Artie Kemp Rd.",
+        "address": "11523 Liberty Rd Frederick, Maryland, 21701",
         "status": "closed",
         "status_raw": "Closed",
-        "category": "General Inquiries- Animal Control",
-        "reported_at": "2026-08-19T19:35:44.000Z",
-        "url": "https://seeclickfix.com/issues/22556681",
+        "category": "Animal Carcass in Public Ways",
+        "reported_at": "2026-08-24T19:15:14.000Z",
+        "url": "https://seeclickfix.com/issues/22596531",
         "source": "seeclickfix"
       }
     }

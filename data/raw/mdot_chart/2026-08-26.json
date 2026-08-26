@@ -2,32 +2,72 @@
   "data": [
     {
       "additionalData": {
-        "actionTypes": []
+        "actionTypes": [
+          {
+            "actionDescription": "",
+            "actionType": "Signal Red Bulb Out"
+          }
+        ]
       },
       "closed": false,
-      "county": "Montgomery",
-      "createTime": 1787307054000,
-      "description": "Disabled Vehicle Event @ MD 200 EAST AT OLDE MILL RUN (DECKOVER) (MM 7.7)",
-      "direction": "East",
-      "id": "1201ee75501f0088006ad32ec4235c0a",
+      "county": "Howard",
+      "createTime": 1787733995000,
+      "description": "Action Event @ MD 32 (SYKESVILLE RD) @ MD 99 (OLD FREDERICK RD) [Fire Pre-Emption Signal]",
+      "direction": "North",
+      "id": "edffac853146018c006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787307059187,
-      "lat": 39.120857,
-      "lon": -77.08365,
-      "name": "Disabled Vehicle Event @ MD 200 EAST AT OLDE MILL RUN (DECKOVER) (MM 7.7)",
-      "opCenter": "AOC South",
-      "other": "i15",
-      "participantOnScene": true,
+      "lastCachedDataUpdateTime": 1787737420517,
+      "lat": 39.320393,
+      "lon": -76.949234,
+      "name": "Action Event @ MD 32 (SYKESVILLE RD) @ MD 99 (OLD FREDERICK RD) [Fire Pre-Emption Signal]",
+      "opCenter": "SOC",
+      "other": "",
+      "participantOnScene": false,
       "participants": [
-        "MDTA Police"
+        "SHA Signal Ops Unit - SG27157 no AVL"
       ],
-      "source": "Maryland Transportation Authority",
-      "startDateTime": 1787305845000,
+      "source": "Local Police",
+      "startDateTime": 1787577989000,
       "trafficAlert": false,
       "trafficAlertTextMsg": "",
-      "type": 255,
+      "type": 249,
+      "vehicles": "0 vehicles involved."
+    },
+    {
+      "additionalData": {
+        "actionTypes": [
+          {
+            "actionDescription": "SEE NOTES",
+            "actionType": "Other"
+          }
+        ]
+      },
+      "closed": false,
+      "county": "Prince George's",
+      "createTime": 1787733993000,
+      "description": "Action Event @ MD 202 (LANDOVER RD) @ FIRE HOUSE RD [Fire Pre-Emption Signal]",
+      "direction": "North",
+      "id": "39011d1367620088006ad32ec4235c0a",
+      "incidentType": "Other",
+      "lanes": [],
+      "lanesStatus": "",
+      "lastCachedDataUpdateTime": 1787737420517,
+      "lat": 38.927402,
+      "lon": -76.881035,
+      "name": "Action Event @ MD 202 (LANDOVER RD) @ FIRE HOUSE RD [Fire Pre-Emption Signal]",
+      "opCenter": "SOC",
+      "other": "PG FIRE",
+      "participantOnScene": false,
+      "participants": [
+        "SHA Signal Ops Unit - SG04823"
+      ],
+      "source": "Other",
+      "startDateTime": 1787322899000,
+      "trafficAlert": false,
+      "trafficAlertTextMsg": "",
+      "type": 249,
       "vehicles": "0 vehicles involved."
     },
     {
@@ -41,14 +81,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301810000,
+      "createTime": 1787733890000,
       "description": "Action Event @ MD 214 (CENTRAL AVE) @ KETTERING DR [Traffic Control Signal]",
       "direction": "East",
       "id": "a501dc7b1416026a006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389646,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 38.897697,
       "lon": -76.8075,
       "name": "Action Event @ MD 214 (CENTRAL AVE) @ KETTERING DR [Traffic Control Signal]",
@@ -70,20 +110,55 @@
         "actionTypes": [
           {
             "actionDescription": "",
+            "actionType": "Signal Stuck"
+          }
+        ]
+      },
+      "closed": false,
+      "county": "Washington",
+      "createTime": 1787733993000,
+      "description": "Action Event @ MD 63 AT HALFWAY BLVD",
+      "direction": "None",
+      "id": "fd00f9ee696d0088006ad32ec4235c0a",
+      "incidentType": "Other",
+      "lanes": [],
+      "lanesStatus": "",
+      "lastCachedDataUpdateTime": 1787737420519,
+      "lat": 39.636906,
+      "lon": -77.807365,
+      "name": "Action Event @ MD 63 AT HALFWAY BLVD",
+      "opCenter": "SOC",
+      "other": "",
+      "participantOnScene": false,
+      "participants": [
+        "SHA Signal Ops Unit - 06554SG"
+      ],
+      "source": "Local Police",
+      "startDateTime": 1787325934000,
+      "trafficAlert": false,
+      "trafficAlertTextMsg": "",
+      "type": 249,
+      "vehicles": "0 vehicles involved."
+    },
+    {
+      "additionalData": {
+        "actionTypes": [
+          {
+            "actionDescription": "",
             "actionType": "Signal Out Complete"
           }
         ]
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301721000,
+      "createTime": 1787740449000,
       "description": "Action Event @ MD 202 (LANDOVER RD) @ MD 450 (ANNAPOLIS RD) [Traffic Control Signal]",
       "direction": "North",
       "id": "27ffa5b198f70882006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389648,
+      "lastCachedDataUpdateTime": 1787740453857,
       "lat": 38.93869,
       "lon": -76.92532,
       "name": "Action Event @ MD 202 (LANDOVER RD) @ MD 450 (ANNAPOLIS RD) [Traffic Control Signal]",
@@ -105,6 +180,41 @@
         "actionTypes": [
           {
             "actionDescription": "",
+            "actionType": "Signal Green Bulb Out"
+          }
+        ]
+      },
+      "closed": false,
+      "county": "Prince George's",
+      "createTime": 1787733994000,
+      "description": "Action Event @ MD 193 (GREENBELT RD) @ RAMP 3 FR MD 193 EB TO MD 295 NB [Traffic Control Signal]",
+      "direction": "East",
+      "id": "42ffe68c0587018b006ad32ec4235c0a",
+      "incidentType": "Other",
+      "lanes": [],
+      "lanesStatus": "",
+      "lastCachedDataUpdateTime": 1787737420517,
+      "lat": 38.99405,
+      "lon": -76.87632,
+      "name": "Action Event @ MD 193 (GREENBELT RD) @ RAMP 3 FR MD 193 EB TO MD 295 NB [Traffic Control Signal]",
+      "opCenter": "SOC",
+      "other": "",
+      "participantOnScene": false,
+      "participants": [
+        "SHA Signal Ops Unit - 06555SG"
+      ],
+      "source": "Citizen",
+      "startDateTime": 1787529100000,
+      "trafficAlert": false,
+      "trafficAlertTextMsg": "",
+      "type": 249,
+      "vehicles": "0 vehicles involved."
+    },
+    {
+      "additionalData": {
+        "actionTypes": [
+          {
+            "actionDescription": "",
             "actionType": "Signal Timing Off"
           },
           {
@@ -115,14 +225,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301719000,
+      "createTime": 1787733728000,
       "description": "Action Event @ MD 704 (MARTIN LUTHER KING JR HWY) @ ARDWICK ARDMORE RD [Traffic Control Signal]",
       "direction": "East",
       "id": "2401fca03d13067a006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389645,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 38.937416,
       "lon": -76.85907,
       "name": "Action Event @ MD 704 (MARTIN LUTHER KING JR HWY) @ ARDWICK ARDMORE RD [Traffic Control Signal]",
@@ -150,14 +260,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301792000,
+      "createTime": 1787733848000,
       "description": "Action Event @ MD 210 (INDIAN HEAD HWY) @ LIVINGSTON RD (MB) [Bus & Opticom Fire Pre-Emption Sgnl]",
       "direction": "North",
       "id": "8801552dbe22026c006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389646,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 38.780334,
       "lon": -76.99728,
       "name": "Action Event @ MD 210 (INDIAN HEAD HWY) @ LIVINGSTON RD (MB) [Bus & Opticom Fire Pre-Emption Sgnl]",
@@ -179,20 +289,90 @@
         "actionTypes": [
           {
             "actionDescription": "",
+            "actionType": "Signal Out Complete"
+          }
+        ]
+      },
+      "closed": false,
+      "county": "Prince George's",
+      "createTime": 1787733994000,
+      "description": "Action Event @ MD 337 (ALLENTOWN RD) @ ALLENTOWN RD [Traffic Control Signal]",
+      "direction": "North",
+      "id": "f00031122c3c018c006ad32ec4235c0a",
+      "incidentType": "Other",
+      "lanes": [],
+      "lanesStatus": "",
+      "lastCachedDataUpdateTime": 1787737420519,
+      "lat": 38.804855,
+      "lon": -76.90585,
+      "name": "Action Event @ MD 337 (ALLENTOWN RD) @ ALLENTOWN RD [Traffic Control Signal]",
+      "opCenter": "SOC",
+      "other": "PG COUNTY",
+      "participantOnScene": false,
+      "participants": [
+        "SHA Signal Ops Unit - 06555SG"
+      ],
+      "source": "Local Police",
+      "startDateTime": 1787575314000,
+      "trafficAlert": false,
+      "trafficAlertTextMsg": "",
+      "type": 249,
+      "vehicles": "0 vehicles involved."
+    },
+    {
+      "additionalData": {
+        "actionTypes": [
+          {
+            "actionDescription": "",
+            "actionType": "Signal Timing Off"
+          }
+        ]
+      },
+      "closed": false,
+      "county": "Anne Arundel",
+      "createTime": 1787733993000,
+      "description": "Action Event @ MD 3 (ROBERT CRAIN HWY) @ JOHNS HOPKINS RD [Traffic Control Signal] (MM 6.0)",
+      "direction": "North",
+      "id": "f7ffced7a1700089006ad32ec4235c0a",
+      "incidentType": "Other",
+      "lanes": [],
+      "lanesStatus": "",
+      "lastCachedDataUpdateTime": 1787737420517,
+      "lat": 39.029835,
+      "lon": -76.68515,
+      "name": "Action Event @ MD 3 (ROBERT CRAIN HWY) @ JOHNS HOPKINS RD [Traffic Control Signal] (MM 6.0)",
+      "opCenter": "SOC",
+      "other": "",
+      "participantOnScene": false,
+      "participants": [
+        "SHA Signal Ops Unit - 03709SG no AVL"
+      ],
+      "source": "Citizen",
+      "startDateTime": 1787392215000,
+      "trafficAlert": false,
+      "trafficAlertTextMsg": "",
+      "type": 249,
+      "vehicles": "0 vehicles involved."
+    },
+    {
+      "additionalData": {
+        "actionTypes": [
+          {
+            "actionDescription": "",
             "actionType": "Signal On Flash"
           }
         ]
       },
       "closed": false,
       "county": "Allegany",
-      "createTime": 1787306139000,
+      "createTime": 1787739978000,
       "description": "Action Event @ MD 36 (NEW GEORGES CREEK RD) @ MD 743 (OLD NATIONAL PIKE) [Traffic Control Signal]",
       "direction": "North",
       "id": "0100159b69a20985006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787306142893,
+      "lastCachedDataUpdateTime": 1787739982216,
       "lat": 39.651257,
       "lon": -78.911255,
       "name": "Action Event @ MD 36 (NEW GEORGES CREEK RD) @ MD 743 (OLD NATIONAL PIKE) [Traffic Control Signal]",
@@ -215,7 +395,7 @@
       },
       "closed": false,
       "county": "Anne Arundel",
-      "createTime": 1787306574000,
+      "createTime": 1787740398000,
       "description": "Incident @ MD 2 SOUTH BETWEEN 6TH AVE NE AND GEORGIA AVE NE",
       "direction": "South",
       "id": "f2008b13cc7f0051006ad32ec4235c0a",
@@ -303,7 +483,7 @@
         }
       ],
       "lanesStatus": "1/2 Southbound-right Traffic Lane, Right Turn Lane, Shoulder closed",
-      "lastCachedDataUpdateTime": 1787306577430,
+      "lastCachedDataUpdateTime": 1787740402667,
       "lat": 39.171825,
       "lon": -76.61942,
       "name": "Incident @ MD 2 SOUTH BETWEEN 6TH AVE NE AND GEORGIA AVE NE",
@@ -323,20 +503,55 @@
         "actionTypes": [
           {
             "actionDescription": "",
+            "actionType": "Signal Stuck"
+          }
+        ]
+      },
+      "closed": false,
+      "county": "Baltimore",
+      "createTime": 1787733997000,
+      "description": "Action Event @ MD 157 (MERRITT BLVD) @ NORTH POINT RD [Traffic Control Signal]",
+      "direction": "North",
+      "id": "d700437cb819018e006ad32ec4235c0a",
+      "incidentType": "Other",
+      "lanes": [],
+      "lanesStatus": "",
+      "lastCachedDataUpdateTime": 1787737420519,
+      "lat": 39.288048,
+      "lon": -76.505165,
+      "name": "Action Event @ MD 157 (MERRITT BLVD) @ NORTH POINT RD [Traffic Control Signal]",
+      "opCenter": "SOC",
+      "other": "BCoPD",
+      "participantOnScene": false,
+      "participants": [
+        "SHA Signal Ops Unit - SG17325 no AVL"
+      ],
+      "source": "Local Police",
+      "startDateTime": 1787697532000,
+      "trafficAlert": false,
+      "trafficAlertTextMsg": "",
+      "type": 249,
+      "vehicles": "0 vehicles involved."
+    },
+    {
+      "additionalData": {
+        "actionTypes": [
+          {
+            "actionDescription": "",
             "actionType": "Signal Out Complete"
           }
         ]
       },
       "closed": false,
       "county": "Anne Arundel",
-      "createTime": 1787301779000,
+      "createTime": 1787733826000,
       "description": "Action Event @ MD 198 (LAUREL FT MEADE RD) @ OLD LINE AVE (NB/L) [Traffic Control Signal]",
       "direction": "East",
       "id": "770153e924dc077c006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389647,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 39.10081,
       "lon": -76.8214,
       "name": "Action Event @ MD 198 (LAUREL FT MEADE RD) @ OLD LINE AVE (NB/L) [Traffic Control Signal]",
@@ -358,31 +573,31 @@
         "actionTypes": [
           {
             "actionDescription": "",
-            "actionType": "Signal Stuck"
+            "actionType": "Signal On Flash"
           }
         ]
       },
       "closed": false,
-      "county": "Carroll",
-      "createTime": 1787302313000,
-      "description": "Action Event @ MD 91 (EMORY RD) @ MD 140 (BALTIMORE BLVD) [Traffic Control Signal]",
-      "direction": "North",
-      "id": "8e00ac2b1f590087006ad32ec4235c0a",
+      "county": "Prince George's",
+      "createTime": 1787733993000,
+      "description": "Action Event @ KONTERRA DR AT VAN DUSEN RD",
+      "direction": "None",
+      "id": "f4ff1aa970810088006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389649,
-      "lat": 39.495556,
-      "lon": -76.89156,
-      "name": "Action Event @ MD 91 (EMORY RD) @ MD 140 (BALTIMORE BLVD) [Traffic Control Signal]",
+      "lastCachedDataUpdateTime": 1787737420519,
+      "lat": 39.081676,
+      "lon": -76.890495,
+      "name": "Action Event @ KONTERRA DR AT VAN DUSEN RD",
       "opCenter": "SOC",
-      "other": "CARRIE WESTMINSTER SHOP",
+      "other": "911",
       "participantOnScene": false,
       "participants": [
-        "SHA Signal Ops Unit - SG17325 no AVL"
+        "SHA Signal Ops Unit - 06555SG"
       ],
-      "source": "State Highway Administration",
-      "startDateTime": 1787255083000,
+      "source": "Local Police",
+      "startDateTime": 1787330985000,
       "trafficAlert": false,
       "trafficAlertTextMsg": "",
       "type": 249,
@@ -399,14 +614,14 @@
       },
       "closed": false,
       "county": "Saint Mary's",
-      "createTime": 1787301728000,
+      "createTime": 1787733734000,
       "description": "Action Event @ MD 235 (THREE NOTCH RD) @ TOWN CREEK DR [Opticom Fire Pre-Emption Signal]",
       "direction": "North",
       "id": "2f006b8264980985006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389646,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 38.294407,
       "lon": -76.50014,
       "name": "Action Event @ MD 235 (THREE NOTCH RD) @ TOWN CREEK DR [Opticom Fire Pre-Emption Signal]",
@@ -425,30 +640,72 @@
     },
     {
       "additionalData": {
-        "actionTypes": []
+        "actionTypes": [
+          {
+            "actionDescription": "",
+            "actionType": "Signal Red Arrow Out"
+          }
+        ]
       },
       "closed": false,
-      "county": "Anne Arundel",
-      "createTime": 1787307700000,
-      "description": "Safety Message Event @ I-695 OUTER LOOP AT EXIT 2 MD 10 ARUNDEL EXPWY (OL) (MM 1.5)",
-      "direction": "Outer Loop",
-      "id": "5c01f4587f4f0882006ad32ec4235c0a",
+      "county": "Somerset",
+      "createTime": 1787733994000,
+      "description": "Action Event @ US 13 (OCEAN HWY) @ MD 362 (MT VERNON RD) [Opticom Fire Pre-Emption Signal]",
+      "direction": "North",
+      "id": "d5000e0e0372018b006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787307702996,
-      "lat": 39.20663,
-      "lon": -76.60997,
-      "name": "Safety Message Event @ I-695 OUTER LOOP AT EXIT 2 MD 10 ARUNDEL EXPWY (OL) (MM 1.5)",
-      "opCenter": "AOC Central",
-      "other": "SHANEKA 410-537-8056",
+      "lastCachedDataUpdateTime": 1787737420519,
+      "lat": 38.213684,
+      "lon": -75.69979,
+      "name": "Action Event @ US 13 (OCEAN HWY) @ MD 362 (MT VERNON RD) [Opticom Fire Pre-Emption Signal]",
+      "opCenter": "SOC",
+      "other": "SOMERSET",
       "participantOnScene": false,
-      "participants": [],
-      "source": "Maryland Transportation Authority",
-      "startDateTime": 1786924888000,
+      "participants": [
+        "SHA Signal Ops Unit - 05787SG"
+      ],
+      "source": "Local Police",
+      "startDateTime": 1787523598000,
       "trafficAlert": false,
       "trafficAlertTextMsg": "",
-      "type": 254,
+      "type": 249,
+      "vehicles": "0 vehicles involved."
+    },
+    {
+      "additionalData": {
+        "actionTypes": [
+          {
+            "actionDescription": "",
+            "actionType": "Signal Green Bulb Out"
+          }
+        ]
+      },
+      "closed": false,
+      "county": "Charles",
+      "createTime": 1787733995000,
+      "description": "Action Event @ ST CHARLES PKWY @ ST MARKS DR [Traffic Control Signal]",
+      "direction": "South",
+      "id": "48010f693853018c006ad32ec4235c0a",
+      "incidentType": "Other",
+      "lanes": [],
+      "lanesStatus": "",
+      "lastCachedDataUpdateTime": 1787737420519,
+      "lat": 38.607513,
+      "lon": -76.88899,
+      "name": "Action Event @ ST CHARLES PKWY @ ST MARKS DR [Traffic Control Signal]",
+      "opCenter": "SOC",
+      "other": "",
+      "participantOnScene": false,
+      "participants": [
+        "SHA Signal Ops Unit - SG27158 no AVL"
+      ],
+      "source": "Other",
+      "startDateTime": 1787581289000,
+      "trafficAlert": false,
+      "trafficAlertTextMsg": "",
+      "type": 249,
       "vehicles": "0 vehicles involved."
     },
     {
@@ -462,14 +719,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301770000,
+      "createTime": 1787733807000,
       "description": "Action Event @ MD 704 (MARTIN LUTHER KING JR HWY) @ BARLOWE DR [Opticom Fire Pre-Emption Signal]",
       "direction": "East",
       "id": "6b016a6499da036f006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389646,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 38.929737,
       "lon": -76.870926,
       "name": "Action Event @ MD 704 (MARTIN LUTHER KING JR HWY) @ BARLOWE DR [Opticom Fire Pre-Emption Signal]",
@@ -501,14 +758,14 @@
       },
       "closed": false,
       "county": "Anne Arundel",
-      "createTime": 1787301858000,
+      "createTime": 1787733954000,
       "description": "Action Event @ 811 Oceanic Dr POLICE AND MAINTENANCE BUILDING",
       "direction": "N/A",
       "id": "db005a8456660881006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389649,
+      "lastCachedDataUpdateTime": 1787737420519,
       "lat": 39.00752,
       "lon": -76.40582,
       "name": "Action Event @ 811 Oceanic Dr POLICE AND MAINTENANCE BUILDING",
@@ -540,14 +797,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301810000,
+      "createTime": 1787733889000,
       "description": "Action Event @ MD 210 (INDIAN HEAD HWY) @ FARMINGTON RD [Opticom Fire Pre-Emption Signal]",
       "direction": "North",
       "id": "a40162b42644026a006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389648,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 38.685272,
       "lon": -76.994896,
       "name": "Action Event @ MD 210 (INDIAN HEAD HWY) @ FARMINGTON RD [Opticom Fire Pre-Emption Signal]",
@@ -577,14 +834,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787305732000,
+      "createTime": 1787734938000,
       "description": "Action Event @ MD 410 (VETERANS PKWY) @ MD 433 (ELLIN RD) [Traffic Control Signal]",
       "direction": "East",
       "id": "b700ec51cd87026c006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305737977,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 38.947247,
       "lon": -76.881905,
       "name": "Action Event @ MD 410 (VETERANS PKWY) @ MD 433 (ELLIN RD) [Traffic Control Signal]",
@@ -612,14 +869,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301866000,
+      "createTime": 1787733965000,
       "description": "Action Event @ MD 218 (SUITLAND RD) @ SUITLAND RD [Traffic Control Signal]",
       "direction": "East",
       "id": "e500a4438c430473006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389649,
+      "lastCachedDataUpdateTime": 1787737420519,
       "lat": 38.84878,
       "lon": -76.92466,
       "name": "Action Event @ MD 218 (SUITLAND RD) @ SUITLAND RD [Traffic Control Signal]",
@@ -641,20 +898,160 @@
         "actionTypes": [
           {
             "actionDescription": "",
+            "actionType": "Signal Out Complete"
+          }
+        ]
+      },
+      "closed": false,
+      "county": "Baltimore",
+      "createTime": 1787733995000,
+      "description": "Action Event @ MD 45 (YORK RD) @ STEVENSON LA [Opticom Fire Pre-Emption Signal]",
+      "direction": "North",
+      "id": "f8ff99fc5ac4018c006ad32ec4235c0a",
+      "incidentType": "Other",
+      "lanes": [],
+      "lanesStatus": "",
+      "lastCachedDataUpdateTime": 1787737420517,
+      "lat": 39.38388,
+      "lon": -76.607025,
+      "name": "Action Event @ MD 45 (YORK RD) @ STEVENSON LA [Opticom Fire Pre-Emption Signal]",
+      "opCenter": "SOC",
+      "other": "",
+      "participantOnScene": true,
+      "participants": [
+        "SHA Signal Ops Unit - SG04823",
+        "SHA Signal Ops Unit - SG17325 no AVL"
+      ],
+      "source": "Local Police",
+      "startDateTime": 1787610364000,
+      "trafficAlert": false,
+      "trafficAlertTextMsg": "",
+      "type": 249,
+      "vehicles": "0 vehicles involved."
+    },
+    {
+      "additionalData": {
+        "actionTypes": []
+      },
+      "closed": false,
+      "county": "Prince George's",
+      "createTime": 1787738402000,
+      "description": "Incident @ MD 193 EAST AT RHODE ISLAND AVE",
+      "direction": "East",
+      "id": "ec00d7576b0d018d006ad32ec4235c0a",
+      "incidentType": "Utility Problem",
+      "lanes": [
+        {
+          "laneDescription": "RS",
+          "laneDirection": "west",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 0,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Shoulder"
+        },
+        {
+          "laneDescription": "Rt OffRamp",
+          "laneDirection": "west",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 0,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Right Off Ramp"
+        },
+        {
+          "laneDescription": "L2",
+          "laneDirection": "west",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 0,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Traffic Lane"
+        },
+        {
+          "laneDescription": "L1",
+          "laneDirection": "west",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 0,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Traffic Lane"
+        },
+        {
+          "laneDescription": "Lf Turn",
+          "laneDirection": "west",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 0,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Left Turn Lane"
+        },
+        {
+          "laneDescription": "Median",
+          "laneDirection": "west",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 0,
+          "laneTrafficFlowDirection": "none",
+          "laneType": "Median"
+        },
+        {
+          "laneDescription": "L1",
+          "laneDirection": "east",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 0,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Traffic Lane"
+        },
+        {
+          "laneDescription": "L2",
+          "laneDirection": "east",
+          "laneStatus": "closed",
+          "laneStatusTimestamp": 1787731274000,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Traffic Lane"
+        },
+        {
+          "laneDescription": "RS",
+          "laneDirection": "east",
+          "laneStatus": "closed",
+          "laneStatusTimestamp": 1787731274000,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Shoulder"
+        }
+      ],
+      "lanesStatus": "1/2 Eastbound-right Traffic Lane, Shoulder closed",
+      "lastCachedDataUpdateTime": 1787738405697,
+      "lat": 38.999153,
+      "lon": -76.92536,
+      "name": "Incident @ MD 193 EAST AT RHODE ISLAND AVE",
+      "opCenter": "SOC",
+      "other": "JAMES FRANK 443-863-0181",
+      "participantOnScene": true,
+      "participants": [
+        "CHART Unit - 11430SG",
+        "Traffic Control Contractor (Flagger Force)"
+      ],
+      "source": "State Highway Administration",
+      "startDateTime": 1787628887000,
+      "trafficAlert": true,
+      "trafficAlertTextMsg": "",
+      "type": 2,
+      "vehicles": "0 vehicles involved."
+    },
+    {
+      "additionalData": {
+        "actionTypes": [
+          {
+            "actionDescription": "",
             "actionType": "Signal Involved In Crash"
           }
         ]
       },
       "closed": false,
       "county": "Anne Arundel",
-      "createTime": 1787301795000,
+      "createTime": 1787734578000,
       "description": "Action Event @ MD 162 (AVIATION BLVD) @ MD 762 (ANDOVER RD) [Traffic Control Signal]",
       "direction": "North",
       "id": "8d00f4665f8e0985006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389646,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 39.190212,
       "lon": -76.65381,
       "name": "Action Event @ MD 162 (AVIATION BLVD) @ MD 762 (ANDOVER RD) [Traffic Control Signal]",
@@ -677,14 +1074,14 @@
       },
       "closed": false,
       "county": "Baltimore City",
-      "createTime": 1787301788000,
+      "createTime": 1787733844000,
       "description": "Safety Message Event @ I-395 SOUTH AT I-95 NORTH",
       "direction": "South",
       "id": "840145072cd50679006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787301789447,
+      "lastCachedDataUpdateTime": 1787733845286,
       "lat": 39.27424,
       "lon": -76.62116,
       "name": "Safety Message Event @ I-395 SOUTH AT I-95 NORTH",
@@ -710,14 +1107,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301758000,
+      "createTime": 1787733791000,
       "description": "Action Event @ MD 458 (SILVER HILL RD) @ MARLBORO PIKE [Fire Pre-Emption Signal]",
       "direction": "North",
       "id": "5c00ae8869a2045f006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389646,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 38.857075,
       "lon": -76.90435,
       "name": "Action Event @ MD 458 (SILVER HILL RD) @ MARLBORO PIKE [Fire Pre-Emption Signal]",
@@ -749,14 +1146,14 @@
       },
       "closed": false,
       "county": "Saint Mary's",
-      "createTime": 1787301750000,
+      "createTime": 1787733780000,
       "description": "Action Event @ MD 5 (THREE NOTCH RD) @ MOUNT WOLF RD [Bus & Opticom Fire Pre-Emption Sgnl]",
       "direction": "North",
       "id": "4e00bc6082a8054b006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389646,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 38.50054,
       "lon": -76.774796,
       "name": "Action Event @ MD 5 (THREE NOTCH RD) @ MOUNT WOLF RD [Bus & Opticom Fire Pre-Emption Sgnl]",
@@ -779,20 +1176,63 @@
         "actionTypes": [
           {
             "actionDescription": "",
+            "actionType": "Signal Out Complete"
+          },
+          {
+            "actionDescription": "SEE NOTES",
+            "actionType": "Other"
+          },
+          {
+            "actionDescription": "",
+            "actionType": "Signal Involved In Crash"
+          }
+        ]
+      },
+      "closed": false,
+      "county": "Baltimore",
+      "createTime": 1787733994000,
+      "description": "Action Event @ MD 150 (EASTERN AVE) @ CARROLL ISLAND RD [Opticom Fire Pre-Emption Signal]",
+      "direction": "East",
+      "id": "4100e4680da4018b006ad32ec4235c0a",
+      "incidentType": "Other",
+      "lanes": [],
+      "lanesStatus": "",
+      "lastCachedDataUpdateTime": 1787737420517,
+      "lat": 39.33858,
+      "lon": -76.40256,
+      "name": "Action Event @ MD 150 (EASTERN AVE) @ CARROLL ISLAND RD [Opticom Fire Pre-Emption Signal]",
+      "opCenter": "SOC",
+      "other": "410-307-2014",
+      "participantOnScene": true,
+      "participants": [
+        "SHA Signal Ops Unit - 03709SG no AVL"
+      ],
+      "source": "Local Police",
+      "startDateTime": 1787536488000,
+      "trafficAlert": false,
+      "trafficAlertTextMsg": "",
+      "type": 249,
+      "vehicles": "0 vehicles involved."
+    },
+    {
+      "additionalData": {
+        "actionTypes": [
+          {
+            "actionDescription": "",
             "actionType": "Signal Red Bulb Out"
           }
         ]
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787306694000,
+      "createTime": 1787739609000,
       "description": "Action Event @ MD 450 (ANNAPOLIS RD (WB/L)) @ Traffic Control Signal [Traffic Control Signal]",
       "direction": "West",
       "id": "4601b6042543026a006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787306698814,
+      "lastCachedDataUpdateTime": 1787739612110,
       "lat": 38.962463,
       "lon": -76.861916,
       "name": "Action Event @ MD 450 (ANNAPOLIS RD (WB/L)) @ Traffic Control Signal [Traffic Control Signal]",
@@ -824,14 +1264,14 @@
       },
       "closed": false,
       "county": "Anne Arundel",
-      "createTime": 1787302793000,
+      "createTime": 1787733859000,
       "description": "Action Event @ MD 198 (LAUREL FT MEADE RD) @ AIRFIELD RD (MB) [Traffic Control Signal]",
       "direction": "East",
       "id": "9700e7b59929067b006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389648,
+      "lastCachedDataUpdateTime": 1787737420519,
       "lat": 39.090298,
       "lon": -76.75943,
       "name": "Action Event @ MD 198 (LAUREL FT MEADE RD) @ AIRFIELD RD (MB) [Traffic Control Signal]",
@@ -859,14 +1299,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787304712000,
+      "createTime": 1787738058000,
       "description": "Action Event @ MD 202 (LARGO RD) @ PG COMM COLL RD [Traffic Control Signal]",
       "direction": "North",
       "id": "e800ebab1519026a006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389648,
+      "lastCachedDataUpdateTime": 1787738060007,
       "lat": 38.888607,
       "lon": -76.82034,
       "name": "Action Event @ MD 202 (LARGO RD) @ PG COMM COLL RD [Traffic Control Signal]",
@@ -885,18 +1325,57 @@
     },
     {
       "additionalData": {
+        "actionTypes": [
+          {
+            "actionDescription": "",
+            "actionType": "Signal Timing Off"
+          },
+          {
+            "actionDescription": "SEE NOTES",
+            "actionType": "Other"
+          }
+        ]
+      },
+      "closed": false,
+      "county": "Anne Arundel",
+      "createTime": 1787733996000,
+      "description": "Action Event @ MD 214 (CENTRAL AVE) @ MD 253 (MAYO RD) [Opticom Fire Pre-Emption Signal]",
+      "direction": "East",
+      "id": "b8feb6938e9b018d006ad32ec4235c0a",
+      "incidentType": "Other",
+      "lanes": [],
+      "lanesStatus": "",
+      "lastCachedDataUpdateTime": 1787737420517,
+      "lat": 38.923683,
+      "lon": -76.55873,
+      "name": "Action Event @ MD 214 (CENTRAL AVE) @ MD 253 (MAYO RD) [Opticom Fire Pre-Emption Signal]",
+      "opCenter": "SOC",
+      "other": "AA CO PD",
+      "participantOnScene": false,
+      "participants": [
+        "SHA Signal Ops Unit - SG80616"
+      ],
+      "source": "Local Police",
+      "startDateTime": 1787665299000,
+      "trafficAlert": false,
+      "trafficAlertTextMsg": "",
+      "type": 249,
+      "vehicles": "0 vehicles involved."
+    },
+    {
+      "additionalData": {
         "actionTypes": []
       },
       "closed": false,
       "county": "Baltimore City",
-      "createTime": 1787301823000,
+      "createTime": 1787733904000,
       "description": "Safety Message Event @ I-695 OUTER LOOP TO FORT ARMISTEAD PARK New",
       "direction": "Outer Loop",
       "id": "b4ff92aea95f04b10069d32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787301826039,
+      "lastCachedDataUpdateTime": 1787733907367,
       "lat": 39.207424,
       "lon": -76.54434,
       "name": "Safety Message Event @ I-695 OUTER LOOP TO FORT ARMISTEAD PARK New",
@@ -915,36 +1394,36 @@
       "additionalData": {
         "actionTypes": [
           {
-            "actionDescription": "",
-            "actionType": "Signal Out Complete"
+            "actionDescription": "NORTHERN AVE WB",
+            "actionType": "Other"
           },
           {
-            "actionDescription": "POWER FAILURE",
-            "actionType": "Other"
+            "actionDescription": "",
+            "actionType": "Signal Green Arrow Out"
           }
         ]
       },
       "closed": false,
-      "county": "Anne Arundel",
-      "createTime": 1787305614000,
-      "description": "Action Event @ MD 170 (TELEGRAPH RD) @ RAMP 5 FR MD 170 TO RAMP 4 (TO MD 32 EB) [Traffic Control Signal]",
+      "county": "Washington",
+      "createTime": 1787733993000,
+      "description": "Action Event @ US 11 (MIDDLEBURG PIKE) @ NORTHERN AVE [Traffic Control Signal]",
       "direction": "North",
-      "id": "9d009a3c23650087006ad32ec4235c0a",
+      "id": "3c006596738e0088006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305616529,
-      "lat": 39.099586,
-      "lon": -76.6941,
-      "name": "Action Event @ MD 170 (TELEGRAPH RD) @ RAMP 5 FR MD 170 TO RAMP 4 (TO MD 32 EB) [Traffic Control Signal]",
+      "lastCachedDataUpdateTime": 1787737420517,
+      "lat": 39.669888,
+      "lon": -77.719345,
+      "name": "Action Event @ US 11 (MIDDLEBURG PIKE) @ NORTHERN AVE [Traffic Control Signal]",
       "opCenter": "SOC",
-      "other": "ANNE ARUNDEL CO",
-      "participantOnScene": true,
+      "other": "",
+      "participantOnScene": false,
       "participants": [
-        "SHA Signal Ops Unit - 05786SG"
+        "SHA Signal Ops Unit - 06554SG"
       ],
-      "source": "Local Police",
-      "startDateTime": 1787258172000,
+      "source": "Citizen",
+      "startDateTime": 1787334294000,
       "trafficAlert": false,
       "trafficAlertTextMsg": "",
       "type": 249,
@@ -961,14 +1440,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787303572000,
+      "createTime": 1787733854000,
       "description": "Action Event @ MD 223 (PISCATAWAY RD) @ BRANDYWINE RD [Traffic Control Signal]",
       "direction": "North",
       "id": "9101b4ba6d7e067a006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389646,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 38.765247,
       "lon": -76.898094,
       "name": "Action Event @ MD 223 (PISCATAWAY RD) @ BRANDYWINE RD [Traffic Control Signal]",
@@ -989,14 +1468,14 @@
       },
       "closed": false,
       "county": "Baltimore City",
-      "createTime": 1787306865000,
+      "createTime": 1787733851000,
       "description": "Safety Message Event @ FMT / BHT HARBOR TUNNEL HAZMAT RESTRICTIONS",
       "direction": "Inner/Outer Loops",
       "id": "8e0088a74c5402090066d32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787306865832,
+      "lastCachedDataUpdateTime": 1787733855640,
       "lat": 39.218384,
       "lon": -76.52657,
       "name": "Safety Message Event @ FMT / BHT HARBOR TUNNEL HAZMAT RESTRICTIONS",
@@ -1016,106 +1495,28 @@
         "actionTypes": []
       },
       "closed": false,
-      "county": "Frederick",
-      "createTime": 1787308132000,
-      "description": "Incident @ US 340 WEST AT MM 3.0",
-      "direction": "West",
-      "id": "840048934f1a0088006ad32ec4235c0a",
-      "incidentType": "Personal Injury",
-      "lanes": [
-        {
-          "laneDescription": "RS",
-          "laneDirection": "west",
-          "laneStatus": "closed",
-          "laneStatusTimestamp": 1787305378000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "L2",
-          "laneDirection": "west",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 1787307449000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L1",
-          "laneDirection": "west",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "LS",
-          "laneDirection": "west",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "Median",
-          "laneDirection": "west",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "none",
-          "laneType": "Median"
-        },
-        {
-          "laneDescription": "LS",
-          "laneDirection": "east",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "L1",
-          "laneDirection": "east",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L2",
-          "laneDirection": "east",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "RS",
-          "laneDirection": "east",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        }
-      ],
-      "lanesStatus": "Westbound-right Shoulder closed",
-      "lastCachedDataUpdateTime": 1787308138017,
-      "lat": 39.3324,
-      "lon": -77.65674,
-      "name": "Incident @ US 340 WEST AT MM 3.0",
-      "opCenter": "TOC7",
-      "other": "CAD",
-      "participantOnScene": true,
-      "participants": [
-        "Barrels",
-        "Priv. Tow Light Duty",
-        "Fireboard",
-        "CHART Unit - 11442SG"
-      ],
+      "county": "Baltimore City",
+      "createTime": 1787733997000,
+      "description": "Safety Message Event @ BROENING HW EAST/WEST AT NORTH SERVICE RD (PORT OF BALTIMORE - MARYLAND PORT ADMINISTRATION)",
+      "direction": "East/West",
+      "id": "edff91eac764018e006ad32ec4235c0a",
+      "incidentType": "Other",
+      "lanes": [],
+      "lanesStatus": "",
+      "lastCachedDataUpdateTime": 1787734000526,
+      "lat": 39.256924,
+      "lon": -76.53259,
+      "name": "Safety Message Event @ BROENING HW EAST/WEST AT NORTH SERVICE RD (PORT OF BALTIMORE - MARYLAND PORT ADMINISTRATION)",
+      "opCenter": "SOC",
+      "other": "",
+      "participantOnScene": false,
+      "participants": [],
       "source": "Other",
-      "startDateTime": 1787304595000,
-      "trafficAlert": true,
-      "trafficAlertTextMsg": "",
-      "type": 2,
-      "vehicles": "2 vehicles involved."
+      "startDateTime": 1787716842000,
+      "trafficAlert": false,
+      "trafficAlertTextMsg": "SAFETY MESSAGE:BROENING HW EAST/WEST AT NORTH SERVICE RD (PORT OF BALTIMORE - MARYLAND PORT ADMINISTRATION)",
+      "type": 254,
+      "vehicles": "0 vehicles involved."
     },
     {
       "additionalData": {
@@ -1132,14 +1533,14 @@
       },
       "closed": false,
       "county": "Anne Arundel",
-      "createTime": 1787301855000,
+      "createTime": 1787740458000,
       "description": "Action Event @ MD 2 (GOV RITCHIE HWY) @ CEDAR HILL LA [Traffic Control Signal]",
       "direction": "North",
       "id": "d801127e2af10471006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389646,
+      "lastCachedDataUpdateTime": 1787740459044,
       "lat": 39.21093,
       "lon": -76.614845,
       "name": "Action Event @ MD 2 (GOV RITCHIE HWY) @ CEDAR HILL LA [Traffic Control Signal]",
@@ -1167,14 +1568,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301793000,
+      "createTime": 1787733849000,
       "description": "Action Event @ MD 414 (OXON HILL RD) @ RIVERTOWN MALL E ENT [Traffic Control Signal]",
       "direction": "East",
       "id": "8901003e02120679006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389646,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 38.804512,
       "lon": -76.97927,
       "name": "Action Event @ MD 414 (OXON HILL RD) @ RIVERTOWN MALL E ENT [Traffic Control Signal]",
@@ -1201,175 +1602,15 @@
         ]
       },
       "closed": false,
-      "county": "Baltimore",
-      "createTime": 1787301889000,
-      "description": "Action Event @ MD 45 (YORK RD) @ STEVENSON LA [Opticom Fire Pre-Emption Signal]",
-      "direction": "North",
-      "id": "5700f3db103a0087006ad32ec4235c0a",
-      "incidentType": "Other",
-      "lanes": [],
-      "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389648,
-      "lat": 39.38388,
-      "lon": -76.607025,
-      "name": "Action Event @ MD 45 (YORK RD) @ STEVENSON LA [Opticom Fire Pre-Emption Signal]",
-      "opCenter": "SOC",
-      "other": "",
-      "participantOnScene": false,
-      "participants": [
-        "SHA Signal Ops Unit - 04455SG"
-      ],
-      "source": "Local Police",
-      "startDateTime": 1787247323000,
-      "trafficAlert": false,
-      "trafficAlertTextMsg": "",
-      "type": 249,
-      "vehicles": "0 vehicles involved."
-    },
-    {
-      "additionalData": {
-        "actionTypes": []
-      },
-      "closed": false,
-      "county": "Howard",
-      "createTime": 1787308182000,
-      "description": "Incident @ I-70 EAST PAST ROGERS AVE (MM 88.0)",
-      "direction": "East",
-      "id": "8600e31649040088006ad32ec4235c0a",
-      "incidentType": "Property Damage",
-      "lanes": [
-        {
-          "laneDescription": "RS",
-          "laneDirection": "west",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "L2",
-          "laneDirection": "west",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L1",
-          "laneDirection": "west",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "LS",
-          "laneDirection": "west",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "Median",
-          "laneDirection": "west",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "none",
-          "laneType": "Median"
-        },
-        {
-          "laneDescription": "LS",
-          "laneDirection": "east",
-          "laneStatus": "closed",
-          "laneStatusTimestamp": 1787300423000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "L1",
-          "laneDirection": "east",
-          "laneStatus": "closed",
-          "laneStatusTimestamp": 1787300423000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L2",
-          "laneDirection": "east",
-          "laneStatus": "closed",
-          "laneStatusTimestamp": 1787304535000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L3",
-          "laneDirection": "east",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "Rt OffRamp",
-          "laneDirection": "east",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Right Off Ramp"
-        },
-        {
-          "laneDescription": "RS",
-          "laneDirection": "east",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        }
-      ],
-      "lanesStatus": "2/3 Eastbound-2 left Traffic Lanes, left Shoulder closed",
-      "lastCachedDataUpdateTime": 1787308183631,
-      "lat": 39.29669,
-      "lon": -76.81173,
-      "name": "Incident @ I-70 EAST PAST ROGERS AVE (MM 88.0)",
-      "opCenter": "TOC4",
-      "other": "(9413) Kelly, D'juan",
-      "participantOnScene": true,
-      "participants": [
-        "CHART Unit - 07740SG",
-        "Arrow Board",
-        "CHART Unit - 04450SG",
-        "CHART Unit - 04125SG",
-        "Fireboard",
-        "CHART Unit - 04443SG",
-        "SHA Contract Tow - Chart_HeavyDuty10"
-      ],
-      "source": "CHART Unit",
-      "startDateTime": 1787298838000,
-      "trafficAlert": true,
-      "trafficAlertTextMsg": "",
-      "type": 2,
-      "vehicles": "1 vehicle involved."
-    },
-    {
-      "additionalData": {
-        "actionTypes": [
-          {
-            "actionDescription": "",
-            "actionType": "Signal On Flash"
-          }
-        ]
-      },
-      "closed": false,
       "county": "Anne Arundel",
-      "createTime": 1787301808000,
+      "createTime": 1787736378000,
       "description": "Action Event @ MD 178 (GENERALS HWY) @ INDIAN LANDING RD [Traffic Control Signal]",
       "direction": "North",
       "id": "a2017c6b4d2d0881006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389646,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 39.059628,
       "lon": -76.62775,
       "name": "Action Event @ MD 178 (GENERALS HWY) @ INDIAN LANDING RD [Traffic Control Signal]",
@@ -1392,7 +1633,7 @@
       },
       "closed": false,
       "county": "Anne Arundel",
-      "createTime": 1787306450000,
+      "createTime": 1787738450000,
       "description": "Incident @ MD 3 NORTH/SOUTH BETWEEN 6TH AVE NE AND VIRGINIA AVE NW",
       "direction": "North/South",
       "id": "4501fafa52f8004f006ad32ec4235c0a",
@@ -1440,7 +1681,7 @@
         }
       ],
       "lanesStatus": "1/1 Southbound-Traffic Lane, Shoulder, 1/1 Northbound-Traffic Lane, Shoulder closed",
-      "lastCachedDataUpdateTime": 1787306451253,
+      "lastCachedDataUpdateTime": 1787738451384,
       "lat": 39.17222,
       "lon": -76.62054,
       "name": "Incident @ MD 3 NORTH/SOUTH BETWEEN 6TH AVE NE AND VIRGINIA AVE NW",
@@ -1471,14 +1712,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787307940000,
+      "createTime": 1787740218000,
       "description": "Action Event @ MD 201 (KENILWORTH AVE) @ WESTCHESTER PARK DR [Traffic Control Signal]",
       "direction": "North",
       "id": "8701ffed126f045e006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787307940781,
+      "lastCachedDataUpdateTime": 1787740220281,
       "lat": 38.990166,
       "lon": -76.90576,
       "name": "Action Event @ MD 201 (KENILWORTH AVE) @ WESTCHESTER PARK DR [Traffic Control Signal]",
@@ -1510,14 +1751,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301760000,
+      "createTime": 1787733792000,
       "description": "Action Event @ MD 228 (BERRY RD) @ MD 228 (BEALLE HILL RD) [Opticom Bus Pre-Emption Signal]",
       "direction": "East",
       "id": "5e009d676ca80985006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389648,
+      "lastCachedDataUpdateTime": 1787737420519,
       "lat": 38.655136,
       "lon": -76.99924,
       "name": "Action Event @ MD 228 (BERRY RD) @ MD 228 (BEALLE HILL RD) [Opticom Bus Pre-Emption Signal]",
@@ -1536,30 +1777,37 @@
     },
     {
       "additionalData": {
-        "actionTypes": []
+        "actionTypes": [
+          {
+            "actionDescription": "",
+            "actionType": "Signal On Flash"
+          }
+        ]
       },
       "closed": false,
-      "county": "Baltimore City",
-      "createTime": 1787301899000,
-      "description": "Safety Message Event @ BROENING HW EAST/WEST AT NORTH SERVICE RD (PORT OF BALTIMORE - MARYLAND PORT ADMINISTRATION)",
-      "direction": "East/West",
-      "id": "8d00ed5143cd0087006ad32ec4235c0a",
+      "county": "Prince George's",
+      "createTime": 1787733994000,
+      "description": "Action Event @ US 301 AT CALM RETREAT BLVD",
+      "direction": "None",
+      "id": "8100638e2229018c006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787301903506,
-      "lat": 39.256924,
-      "lon": -76.53259,
-      "name": "Safety Message Event @ BROENING HW EAST/WEST AT NORTH SERVICE RD (PORT OF BALTIMORE - MARYLAND PORT ADMINISTRATION)",
+      "lastCachedDataUpdateTime": 1787737420517,
+      "lat": 38.68042,
+      "lon": -76.87429,
+      "name": "Action Event @ US 301 AT CALM RETREAT BLVD",
       "opCenter": "SOC",
-      "other": "",
+      "other": "PG 911",
       "participantOnScene": false,
-      "participants": [],
-      "source": "Other",
-      "startDateTime": 1787284817000,
+      "participants": [
+        "SHA Signal Ops Unit - 06555SG"
+      ],
+      "source": "Local Police",
+      "startDateTime": 1787570574000,
       "trafficAlert": false,
-      "trafficAlertTextMsg": "SAFETY MESSAGE:BROENING HW EAST/WEST AT NORTH SERVICE RD (PORT OF BALTIMORE - MARYLAND PORT ADMINISTRATION)",
-      "type": 254,
+      "trafficAlertTextMsg": "",
+      "type": 249,
       "vehicles": "0 vehicles involved."
     },
     {
@@ -1573,14 +1821,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301809000,
+      "createTime": 1787733889000,
       "description": "Action Event @ MD 5 (BRANCH AVE (SB/L)) @ NO NAME [Opticom Fire Pre-Emption Signal]",
       "direction": "South",
       "id": "a400b03dac0b0345006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389648,
+      "lastCachedDataUpdateTime": 1787737420519,
       "lat": 38.835766,
       "lon": -76.94381,
       "name": "Action Event @ MD 5 (BRANCH AVE (SB/L)) @ NO NAME [Opticom Fire Pre-Emption Signal]",
@@ -1612,14 +1860,14 @@
       },
       "closed": false,
       "county": "Calvert",
-      "createTime": 1787301720000,
+      "createTime": 1787733729000,
       "description": "Action Event @ MD 4 (SOUTHERN MD BLVD) @ CHANEYVILLE RD [Traffic Control Signal]",
       "direction": "North",
       "id": "2700a9258fc2054b006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389648,
+      "lastCachedDataUpdateTime": 1787737420519,
       "lat": 38.69059,
       "lon": -76.63889,
       "name": "Action Event @ MD 4 (SOUTHERN MD BLVD) @ CHANEYVILLE RD [Traffic Control Signal]",
@@ -1647,25 +1895,25 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301778000,
-      "description": "Action Event @ MD 193 (UNIVERSITY BLVD) @ MD 212 (RIGGS RD) [Opticom Fire Pre-Emption Signal]",
+      "createTime": 1787738664000,
+      "description": "Action Event @ MD 193 (GREENBELT RD) @ 60TH AVE [Fire Pre-Emption Signal]",
       "direction": "East",
-      "id": "760050da679f0985006ad32ec4235c0a",
+      "id": "6100721ea8e3018d006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389649,
-      "lat": 38.983837,
-      "lon": -76.979294,
-      "name": "Action Event @ MD 193 (UNIVERSITY BLVD) @ MD 212 (RIGGS RD) [Opticom Fire Pre-Emption Signal]",
+      "lastCachedDataUpdateTime": 1787738664617,
+      "lat": 38.997875,
+      "lon": -76.91206,
+      "name": "Action Event @ MD 193 (GREENBELT RD) @ 60TH AVE [Fire Pre-Emption Signal]",
       "opCenter": "SOC",
-      "other": "PG 911",
+      "other": "PG",
       "participantOnScene": false,
       "participants": [
-        "SHA Signal Ops Unit - 06555SG"
+        "SHA Signal Ops Unit - SG80789"
       ],
-      "source": "Local Police",
-      "startDateTime": 1787142106000,
+      "source": "Other",
+      "startDateTime": 1787683614000,
       "trafficAlert": false,
       "trafficAlertTextMsg": "",
       "type": 249,
@@ -1673,281 +1921,39 @@
     },
     {
       "additionalData": {
-        "actionTypes": []
-      },
-      "closed": false,
-      "county": "Baltimore",
-      "createTime": 1787307914000,
-      "description": "Incident @ I-95 SOUTH PRIOR TO EXIT 67 MD 43 WHITE MARSH BLVD (SB) (MM 70.9)",
-      "direction": "South",
-      "id": "d600e6524b130088006ad32ec4235c0a",
-      "incidentType": "Debris In Roadway",
-      "lanes": [
-        {
-          "laneDescription": "RS",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "Rt Decel",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Right Deceleration Lane"
-        },
-        {
-          "laneDescription": "L4",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 1787305912000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L3",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 1787305912000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L2",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 1787305769000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L1",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 1787305769000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "LS",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 1787305769000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "Median",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "none",
-          "laneType": "Median"
-        },
-        {
-          "laneDescription": "RS",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "Express2",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Express Lane"
-        },
-        {
-          "laneDescription": "Express1",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Express Lane"
-        },
-        {
-          "laneDescription": "LS",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "Median",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "none",
-          "laneType": "Median"
-        },
-        {
-          "laneDescription": "LS",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "Express1",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Express Lane"
-        },
-        {
-          "laneDescription": "Express2",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Express Lane"
-        },
-        {
-          "laneDescription": "RS",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "Median",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "none",
-          "laneType": "Median"
-        },
-        {
-          "laneDescription": "LS",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "L1",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L2",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L3",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L4",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L5",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "Shoulder",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "Rt OnRamp",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Right On Ramp"
-        },
-        {
-          "laneDescription": "RS",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        }
-      ],
-      "lanesStatus": "All lanes open",
-      "lastCachedDataUpdateTime": 1787307915537,
-      "lat": 39.42193,
-      "lon": -76.40095,
-      "name": "Incident @ I-95 SOUTH PRIOR TO EXIT 67 MD 43 WHITE MARSH BLVD (SB) (MM 70.9)",
-      "opCenter": "AOC Central",
-      "other": "JFK DISP",
-      "participantOnScene": true,
-      "participants": [
-        "MDTA JFK CP - 1"
-      ],
-      "source": "Maryland Transportation Authority",
-      "startDateTime": 1787302738000,
-      "trafficAlert": false,
-      "trafficAlertTextMsg": "",
-      "type": 2,
-      "vehicles": "0 vehicles involved."
-    },
-    {
-      "additionalData": {
         "actionTypes": [
           {
             "actionDescription": "",
-            "actionType": "Signal Red Arrow Out"
+            "actionType": "Signal Out Complete"
+          },
+          {
+            "actionDescription": "OUT DUE TO A POWER OUTAGE",
+            "actionType": "Other"
           }
         ]
       },
       "closed": false,
-      "county": "Harford",
-      "createTime": 1787301851000,
-      "description": "Action Event @ MD 543 (RIVERSIDE PKWY) @ CHURCH CREEK RD [Traffic Control Signal]",
-      "direction": "North",
-      "id": "d5007b870193087f006ad32ec4235c0a",
+      "county": "Washington",
+      "createTime": 1787733993000,
+      "description": "Action Event @ MD 144 (MAIN ST) @ RAMP 6 FR IS 70 EB TO MD 144WB SB [Intersection Control Beacon (ICB)]",
+      "direction": "East",
+      "id": "200020e7c710008a006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389646,
-      "lat": 39.478027,
-      "lon": -76.247406,
-      "name": "Action Event @ MD 543 (RIVERSIDE PKWY) @ CHURCH CREEK RD [Traffic Control Signal]",
+      "lastCachedDataUpdateTime": 1787737420517,
+      "lat": 39.694763,
+      "lon": -78.15037,
+      "name": "Action Event @ MD 144 (MAIN ST) @ RAMP 6 FR IS 70 EB TO MD 144WB SB [Intersection Control Beacon (ICB)]",
       "opCenter": "SOC",
       "other": "",
       "participantOnScene": false,
       "participants": [
-        "SHA Signal Ops Unit - 06556SG"
+        "SHA Signal Ops Unit - SG27157 no AVL",
+        "SHA Signal Ops Unit - 03709SG no AVL"
       ],
       "source": "Citizen",
-      "startDateTime": 1786745735000,
+      "startDateTime": 1787433191000,
       "trafficAlert": false,
       "trafficAlertTextMsg": "",
       "type": 249,
@@ -1959,14 +1965,14 @@
       },
       "closed": false,
       "county": "Allegany",
-      "createTime": 1787301871000,
+      "createTime": 1787733969000,
       "description": "Safety Message Event @ I-68 Truck Speeds",
       "direction": "None",
       "id": "eb0001957b0a051a0063d32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787301872542,
+      "lastCachedDataUpdateTime": 1787733974569,
       "lat": 39.63527,
       "lon": -78.83035,
       "name": "Safety Message Event @ I-68 Truck Speeds",
@@ -1992,14 +1998,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787307653000,
+      "createTime": 1787740338000,
       "description": "Action Event @ MD 202 (LARGO RD) @ ST JOSEPHS DR [Traffic Control Signal]",
       "direction": "North",
       "id": "bd015ac75a0f0576006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787307657216,
+      "lastCachedDataUpdateTime": 1787740341651,
       "lat": 38.916206,
       "lon": -76.84479,
       "name": "Action Event @ MD 202 (LARGO RD) @ ST JOSEPHS DR [Traffic Control Signal]",
@@ -2031,14 +2037,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301895000,
+      "createTime": 1787733993000,
       "description": "Action Event @ MD 3 (BELAIR DR) @ MELFORD BLVD",
       "direction": "East",
       "id": "12010b19307f0087006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389646,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 38.962955,
       "lon": -76.71577,
       "name": "Action Event @ MD 3 (BELAIR DR) @ MELFORD BLVD",
@@ -2048,6 +2054,39 @@
       "participants": [],
       "source": "Local Police",
       "startDateTime": 1787264793000,
+      "trafficAlert": false,
+      "trafficAlertTextMsg": "",
+      "type": 249,
+      "vehicles": "0 vehicles involved."
+    },
+    {
+      "additionalData": {
+        "actionTypes": [
+          {
+            "actionDescription": "",
+            "actionType": "Signal Stuck"
+          }
+        ]
+      },
+      "closed": false,
+      "county": "Prince George's",
+      "createTime": 1787733995000,
+      "description": "Action Event @ MD 433 EAST/WEST AT HARKINS RD",
+      "direction": "East/West",
+      "id": "c30047854072018c006ad32ec4235c0a",
+      "incidentType": "Other",
+      "lanes": [],
+      "lanesStatus": "",
+      "lastCachedDataUpdateTime": 1787737420519,
+      "lat": 38.949806,
+      "lon": -76.87186,
+      "name": "Action Event @ MD 433 EAST/WEST AT HARKINS RD",
+      "opCenter": "SOC",
+      "other": "",
+      "participantOnScene": false,
+      "participants": [],
+      "source": "CCTV",
+      "startDateTime": 1787589254000,
       "trafficAlert": false,
       "trafficAlertTextMsg": "",
       "type": 249,
@@ -2068,14 +2107,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301830000,
+      "createTime": 1787733910000,
       "description": "Action Event @ MD 414 (OXON HILL RD) @ OXON HILL RD (NB/L) [Traffic Control Signal]",
       "direction": "East",
       "id": "bd007fb301450984006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389648,
+      "lastCachedDataUpdateTime": 1787737420519,
       "lat": 38.79584,
       "lon": -77.003235,
       "name": "Action Event @ MD 414 (OXON HILL RD) @ OXON HILL RD (NB/L) [Traffic Control Signal]",
@@ -2098,14 +2137,14 @@
       },
       "closed": false,
       "county": "Washington",
-      "createTime": 1787307619000,
+      "createTime": 1787733801000,
       "description": "Safety Message Event @ SLOWER TRAFFIC KEEP RIGHT (HB 222)",
       "direction": "West",
       "id": "6701225d0dc6075b0065d32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787307621881,
+      "lastCachedDataUpdateTime": 1787733804059,
       "lat": 39.69961,
       "lon": -78.24134,
       "name": "Safety Message Event @ SLOWER TRAFFIC KEEP RIGHT (HB 222)",
@@ -2122,34 +2161,6 @@
     },
     {
       "additionalData": {
-        "actionTypes": []
-      },
-      "closed": false,
-      "county": "Kent",
-      "createTime": 1787301896000,
-      "description": "Weather Service Event @ MD 291 SOUTH AT BRICKYARD RD",
-      "direction": "South",
-      "id": "7affb9c933860087006ad32ec4235c0a",
-      "incidentType": "Other",
-      "lanes": [],
-      "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787301898408,
-      "lat": 39.226536,
-      "lon": -76.05759,
-      "name": "Weather Service Event @ MD 291 SOUTH AT BRICKYARD RD",
-      "opCenter": "SOC",
-      "other": "",
-      "participantOnScene": false,
-      "participants": [],
-      "source": "Citizen",
-      "startDateTime": 1787266761000,
-      "trafficAlert": false,
-      "trafficAlertTextMsg": "",
-      "type": 253,
-      "vehicles": "0 vehicles involved."
-    },
-    {
-      "additionalData": {
         "actionTypes": [
           {
             "actionDescription": "PED SIGNAL BUTTON IS NOT WORKING",
@@ -2159,14 +2170,14 @@
       },
       "closed": false,
       "county": "Charles",
-      "createTime": 1787301868000,
+      "createTime": 1787734098000,
       "description": "Action Event @ MD 6 (CHARLES ST) @ WASHINGTON AVE [Traffic Control Signal]",
       "direction": "East",
       "id": "e700b9990f670166006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389646,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 38.529667,
       "lon": -76.97805,
       "name": "Action Event @ MD 6 (CHARLES ST) @ WASHINGTON AVE [Traffic Control Signal]",
@@ -2190,14 +2201,14 @@
       },
       "closed": false,
       "county": "Cecil",
-      "createTime": 1787301767000,
+      "createTime": 1787733801000,
       "description": "Action Event @ MD 222 TRUCK RESTRICTIONS",
       "direction": "N/A",
       "id": "670171a97706051a0063d32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389649,
+      "lastCachedDataUpdateTime": 1787737420519,
       "lat": 39.69006,
       "lon": -76.13271,
       "name": "Action Event @ MD 222 TRUCK RESTRICTIONS",
@@ -2214,198 +2225,37 @@
     },
     {
       "additionalData": {
-        "actionTypes": []
-      },
-      "closed": false,
-      "county": "Dorchester",
-      "createTime": 1787308074000,
-      "description": "Incident @ MD 392 EAST/WEST AT NORTH TARA RD",
-      "direction": "East/West",
-      "id": "3e00835646e00087006ad32ec4235c0a",
-      "incidentType": "Property Damage",
-      "lanes": [
-        {
-          "laneDescription": "RS",
-          "laneDirection": "west",
-          "laneStatus": "closed",
-          "laneStatusTimestamp": 1787289896000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "L1",
-          "laneDirection": "west",
-          "laneStatus": "closed",
-          "laneStatusTimestamp": 1787289896000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L1",
-          "laneDirection": "east",
-          "laneStatus": "closed",
-          "laneStatusTimestamp": 1787289896000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "RS",
-          "laneDirection": "east",
-          "laneStatus": "closed",
-          "laneStatusTimestamp": 1787289896000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        }
-      ],
-      "lanesStatus": "1/1 Westbound-Traffic Lane, Shoulder, 1/1 Eastbound-Traffic Lane, Shoulder closed",
-      "lastCachedDataUpdateTime": 1787308077223,
-      "lat": 38.63208,
-      "lon": -75.80605,
-      "name": "Incident @ MD 392 EAST/WEST AT NORTH TARA RD",
-      "opCenter": "SOC",
-      "other": "EASTON",
-      "participantOnScene": true,
-      "participants": [
-        "Priv. Tow Heavy Duty"
-      ],
-      "source": "State Police",
-      "startDateTime": 1787289686000,
-      "trafficAlert": true,
-      "trafficAlertTextMsg": "",
-      "type": 2,
-      "vehicles": "1 vehicle involved."
-    },
-    {
-      "additionalData": {
-        "actionTypes": []
+        "actionTypes": [
+          {
+            "actionDescription": "",
+            "actionType": "Signal Involved In Crash"
+          }
+        ]
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787306408000,
-      "description": "Incident @ US 301 SOUTH AT TRADE ZONE AVE",
-      "direction": "South",
-      "id": "1f0018a846da0087006ad32ec4235c0a",
-      "incidentType": "Debris In Roadway",
-      "lanes": [
-        {
-          "laneDescription": "RS",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 1787288390000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "L4",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 1787288390000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L3",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L2",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L1",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 1787288390000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "LS",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 1787288390000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "Median",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "none",
-          "laneType": "Median"
-        },
-        {
-          "laneDescription": "LS",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        },
-        {
-          "laneDescription": "L1",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L2",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L3",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L4",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "RS",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Shoulder"
-        }
-      ],
-      "lanesStatus": "All lanes open",
-      "lastCachedDataUpdateTime": 1787306410906,
-      "lat": 38.88024,
-      "lon": -76.72035,
-      "name": "Incident @ US 301 SOUTH AT TRADE ZONE AVE",
+      "createTime": 1787733996000,
+      "description": "Action Event @ MD 704 (MARTIN LUTHER KING JR HWY) @ FORBES BLVD [Traffic Control Signal]",
+      "direction": "East",
+      "id": "0fffc9cb93a2018d006ad32ec4235c0a",
+      "incidentType": "Other",
+      "lanes": [],
+      "lanesStatus": "",
+      "lastCachedDataUpdateTime": 1787737420517,
+      "lat": 38.952316,
+      "lon": -76.83451,
+      "name": "Action Event @ MD 704 (MARTIN LUTHER KING JR HWY) @ FORBES BLVD [Traffic Control Signal]",
       "opCenter": "SOC",
-      "other": "PG CO DISPATCH",
+      "other": "",
       "participantOnScene": false,
-      "participants": [],
-      "source": "Local Police",
-      "startDateTime": 1787288232000,
+      "participants": [
+        "SHA Signal Ops Unit - 05789SG"
+      ],
+      "source": "Citizen",
+      "startDateTime": 1787667147000,
       "trafficAlert": false,
       "trafficAlertTextMsg": "",
-      "type": 2,
+      "type": 249,
       "vehicles": "0 vehicles involved."
     },
     {
@@ -2423,14 +2273,14 @@
       },
       "closed": false,
       "county": "Cecil",
-      "createTime": 1787306814000,
+      "createTime": 1787739370000,
       "description": "Action Event @ US 40 (PULASKI HWY) @ MD 272 (MAULDIN AVE) [Traffic Control Signal]",
       "direction": "East",
       "id": "7100f23fb8450883006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787306815087,
+      "lastCachedDataUpdateTime": 1787739373970,
       "lat": 39.60845,
       "lon": -75.94785,
       "name": "Action Event @ US 40 (PULASKI HWY) @ MD 272 (MAULDIN AVE) [Traffic Control Signal]",
@@ -2451,6 +2301,41 @@
       "additionalData": {
         "actionTypes": [
           {
+            "actionDescription": "STREET LIGHT ON SIGNAL POLE OUT",
+            "actionType": "Other"
+          }
+        ]
+      },
+      "closed": false,
+      "county": "Anne Arundel",
+      "createTime": 1787739378000,
+      "description": "Action Event @ MD 2 (GOV RITCHIE HWY) @ AMERICANA CIR [Traffic Control Signal]",
+      "direction": "North",
+      "id": "0bffee819bbb018d006ad32ec4235c0a",
+      "incidentType": "Other",
+      "lanes": [],
+      "lanesStatus": "",
+      "lastCachedDataUpdateTime": 1787739379134,
+      "lat": 39.13834,
+      "lon": -76.600525,
+      "name": "Action Event @ MD 2 (GOV RITCHIE HWY) @ AMERICANA CIR [Traffic Control Signal]",
+      "opCenter": "SOC",
+      "other": "",
+      "participantOnScene": false,
+      "participants": [
+        "SHA Signal Ops Unit - 04452SG"
+      ],
+      "source": "Citizen",
+      "startDateTime": 1787673473000,
+      "trafficAlert": false,
+      "trafficAlertTextMsg": "",
+      "type": 249,
+      "vehicles": "0 vehicles involved."
+    },
+    {
+      "additionalData": {
+        "actionTypes": [
+          {
             "actionDescription": "",
             "actionType": "Parking Info"
           }
@@ -2458,14 +2343,14 @@
       },
       "closed": false,
       "county": "Anne Arundel",
-      "createTime": 1787301724000,
+      "createTime": 1787733730000,
       "description": "Action Event @ I-195 EAST/WEST PAST MD 170 (BALTIMORE WASHINGTON INTL AIRPORT)",
       "direction": "East/West",
       "id": "2b00309ecf4c018d0066d32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389648,
+      "lastCachedDataUpdateTime": 1787737420519,
       "lat": 39.184433,
       "lon": -76.67453,
       "name": "Action Event @ I-195 EAST/WEST PAST MD 170 (BALTIMORE WASHINGTON INTL AIRPORT)",
@@ -2497,14 +2382,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301820000,
+      "createTime": 1787733901000,
       "description": "Action Event @ MD 410 (EAST WEST HWY) @ 58TH AVE [Traffic Control Signal]",
       "direction": "East",
       "id": "b101e8322260035a006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389646,
+      "lastCachedDataUpdateTime": 1787737420517,
       "lat": 38.960014,
       "lon": -76.91768,
       "name": "Action Event @ MD 410 (EAST WEST HWY) @ 58TH AVE [Traffic Control Signal]",
@@ -2523,33 +2408,37 @@
     },
     {
       "additionalData": {
-        "actionTypes": []
+        "actionTypes": [
+          {
+            "actionDescription": "",
+            "actionType": "Signal Stuck"
+          }
+        ]
       },
       "closed": false,
-      "county": "Baltimore",
-      "createTime": 1787308090000,
-      "description": "Disabled Vehicle Event @ I-95 SOUTH PRIOR TO EXIT 67 MD 43 WHITE MARSH BLVD (SB) (MM 68.3)",
-      "direction": "South",
-      "id": "3600bfbe52270088006ad32ec4235c0a",
+      "county": "Prince George's",
+      "createTime": 1787734218000,
+      "description": "Action Event @ US 1 (RHODE ISLAND AVE) @ MD 208 (38TH ST) [Traffic Control Signal]",
+      "direction": "North",
+      "id": "9dff81812531018c006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787308092514,
-      "lat": 39.39439,
-      "lon": -76.433815,
-      "name": "Disabled Vehicle Event @ I-95 SOUTH PRIOR TO EXIT 67 MD 43 WHITE MARSH BLVD (SB) (MM 68.3)",
-      "opCenter": "AOC Central",
-      "other": "CP 1",
-      "participantOnScene": true,
+      "lastCachedDataUpdateTime": 1787737420519,
+      "lat": 38.93886,
+      "lon": -76.955795,
+      "name": "Action Event @ US 1 (RHODE ISLAND AVE) @ MD 208 (38TH ST) [Traffic Control Signal]",
+      "opCenter": "SOC",
+      "other": "PG 911",
+      "participantOnScene": false,
       "participants": [
-        "Priv. Tow Light Duty",
-        "MDTA JFK CP - 1"
+        "SHA Signal Ops Unit - 06555SG"
       ],
-      "source": "Maryland Transportation Authority",
-      "startDateTime": 1787307966000,
+      "source": "Local Police",
+      "startDateTime": 1787572609000,
       "trafficAlert": false,
       "trafficAlertTextMsg": "",
-      "type": 255,
+      "type": 249,
       "vehicles": "0 vehicles involved."
     },
     {
@@ -2567,20 +2456,20 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301886000,
+      "createTime": 1787733982000,
       "description": "Action Event @ MD 4 (PENNSYLVANIA AVE) @ FORESTVILLE RD (SB/L) [Opticom Fire Pre-Emption Signal]",
       "direction": "North",
       "id": "fd00aa2b1ff90256006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389648,
+      "lastCachedDataUpdateTime": 1787737420519,
       "lat": 38.841183,
       "lon": -76.87424,
       "name": "Action Event @ MD 4 (PENNSYLVANIA AVE) @ FORESTVILLE RD (SB/L) [Opticom Fire Pre-Emption Signal]",
       "opCenter": "SOC",
       "other": "PG",
-      "participantOnScene": true,
+      "participantOnScene": false,
       "participants": [
         "SHA Signal Ops Unit - SG80789"
       ],
@@ -2601,26 +2490,26 @@
         ]
       },
       "closed": false,
-      "county": "Baltimore",
-      "createTime": 1787301894000,
-      "description": "Action Event @ MD 372 (WILKENS AVE) @ RAMP 10 FR RAMP 1 (FR IS695) TO MD 372 [Traffic Control Signal]",
-      "direction": "East",
-      "id": "3d0088d62c740087006ad32ec4235c0a",
+      "county": "Frederick",
+      "createTime": 1787733995000,
+      "description": "Action Event @ MD 85 (BUCKEYSTOWN PIKE) @ GUILFORD DR [Traffic Control Signal]",
+      "direction": "North",
+      "id": "4700190d4993018c006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389647,
-      "lat": 39.262497,
-      "lon": -76.70554,
-      "name": "Action Event @ MD 372 (WILKENS AVE) @ RAMP 10 FR RAMP 1 (FR IS695) TO MD 372 [Traffic Control Signal]",
+      "lastCachedDataUpdateTime": 1787737420517,
+      "lat": 39.39416,
+      "lon": -77.40915,
+      "name": "Action Event @ MD 85 (BUCKEYSTOWN PIKE) @ GUILFORD DR [Traffic Control Signal]",
       "opCenter": "SOC",
       "other": "",
       "participantOnScene": false,
       "participants": [
-        "SHA Signal Ops Unit - 03709SG no AVL"
+        "SHA Signal Ops Unit - SG17325 no AVL"
       ],
       "source": "Citizen",
-      "startDateTime": 1787262166000,
+      "startDateTime": 1787597581000,
       "trafficAlert": false,
       "trafficAlertTextMsg": "",
       "type": 249,
@@ -2637,14 +2526,14 @@
       },
       "closed": false,
       "county": "Washington",
-      "createTime": 1787301692000,
+      "createTime": 1787733693000,
       "description": "Action Event @ MD 63 AT BUSINESS PKWY",
       "direction": "None",
       "id": "0001aa14a560077e006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389649,
+      "lastCachedDataUpdateTime": 1787737420519,
       "lat": 39.63691,
       "lon": -77.807365,
       "name": "Action Event @ MD 63 AT BUSINESS PKWY",
@@ -2670,14 +2559,14 @@
       },
       "closed": false,
       "county": "Washington",
-      "createTime": 1787305193000,
+      "createTime": 1787736078000,
       "description": "Action Event @ US 40 (CUMBERLAND ST) @ MARTIN ST [Traffic Control Signal]",
       "direction": "East",
       "id": "4300ddcf6aec0881006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389649,
+      "lastCachedDataUpdateTime": 1787737420519,
       "lat": 39.656143,
       "lon": -77.93182,
       "name": "Action Event @ US 40 (CUMBERLAND ST) @ MARTIN ST [Traffic Control Signal]",
@@ -2696,6 +2585,157 @@
     },
     {
       "additionalData": {
+        "actionTypes": []
+      },
+      "closed": false,
+      "county": "Prince George's",
+      "createTime": 1787740388000,
+      "description": "Incident @ I-95 INNER LOOP AT EXIT 15A MD 214 CENTRAL AVE (IL) (MM 14.5)",
+      "direction": "Inner Loop",
+      "id": "c5007b76d1bc018e006ad32ec4235c0a",
+      "incidentType": "Property Damage",
+      "lanes": [
+        {
+          "laneDescription": "RS",
+          "laneDirection": "innerLoop",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 1787740311000,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Shoulder"
+        },
+        {
+          "laneDescription": "Rt OffRamp",
+          "laneDirection": "innerLoop",
+          "laneStatus": "unknown",
+          "laneStatusTimestamp": 1787740315000,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Right Off Ramp"
+        },
+        {
+          "laneDescription": "Shoulder",
+          "laneDirection": "innerLoop",
+          "laneStatus": "closed",
+          "laneStatusTimestamp": 1787740313000,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Shoulder"
+        },
+        {
+          "laneDescription": "L4",
+          "laneDirection": "innerLoop",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 1787739286000,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Traffic Lane"
+        },
+        {
+          "laneDescription": "L3",
+          "laneDirection": "innerLoop",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 1787739286000,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Traffic Lane"
+        },
+        {
+          "laneDescription": "L2",
+          "laneDirection": "innerLoop",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 1787739286000,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Traffic Lane"
+        },
+        {
+          "laneDescription": "L1",
+          "laneDirection": "innerLoop",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 1787739286000,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Traffic Lane"
+        },
+        {
+          "laneDescription": "LS",
+          "laneDirection": "innerLoop",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 0,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Shoulder"
+        },
+        {
+          "laneDescription": "Median",
+          "laneDirection": "innerLoop",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 0,
+          "laneTrafficFlowDirection": "none",
+          "laneType": "Median"
+        },
+        {
+          "laneDescription": "LS",
+          "laneDirection": "outerLoop",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 0,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Shoulder"
+        },
+        {
+          "laneDescription": "L1",
+          "laneDirection": "outerLoop",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 0,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Traffic Lane"
+        },
+        {
+          "laneDescription": "L2",
+          "laneDirection": "outerLoop",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 0,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Traffic Lane"
+        },
+        {
+          "laneDescription": "L3",
+          "laneDirection": "outerLoop",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 0,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Traffic Lane"
+        },
+        {
+          "laneDescription": "L4",
+          "laneDirection": "outerLoop",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 0,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Traffic Lane"
+        },
+        {
+          "laneDescription": "RS",
+          "laneDirection": "outerLoop",
+          "laneStatus": "open",
+          "laneStatusTimestamp": 0,
+          "laneTrafficFlowDirection": "primary",
+          "laneType": "Shoulder"
+        }
+      ],
+      "lanesStatus": "Inner Loop-1 of 3 Shoulders closed",
+      "lastCachedDataUpdateTime": 1787740392410,
+      "lat": 38.8908,
+      "lon": -76.847046,
+      "name": "Incident @ I-95 INNER LOOP AT EXIT 15A MD 214 CENTRAL AVE (IL) (MM 14.5)",
+      "opCenter": "TOC3",
+      "other": "(9316) Golden, William",
+      "participantOnScene": true,
+      "participants": [
+        "CHART Unit - 04122SG"
+      ],
+      "source": "CHART Unit",
+      "startDateTime": 1787739254000,
+      "trafficAlert": false,
+      "trafficAlertTextMsg": "",
+      "type": 2,
+      "vehicles": "1 vehicle involved."
+    },
+    {
+      "additionalData": {
         "actionTypes": [
           {
             "actionDescription": "",
@@ -2705,14 +2745,14 @@
       },
       "closed": false,
       "county": "Prince George's",
-      "createTime": 1787301758000,
+      "createTime": 1787733790000,
       "description": "Action Event @ MD 212 AT TROLLEY LA",
       "direction": "None",
       "id": "5b01f9f46bc7077d006ad32ec4235c0a",
       "incidentType": "Other",
       "lanes": [],
       "lanesStatus": "",
-      "lastCachedDataUpdateTime": 1787305389648,
+      "lastCachedDataUpdateTime": 1787737420519,
       "lat": 39.056095,
       "lon": -76.90812,
       "name": "Action Event @ MD 212 AT TROLLEY LA",
@@ -2728,111 +2768,10 @@
       "trafficAlertTextMsg": "",
       "type": 249,
       "vehicles": "0 vehicles involved."
-    },
-    {
-      "additionalData": {
-        "actionTypes": []
-      },
-      "closed": false,
-      "county": "Baltimore",
-      "createTime": 1787306408000,
-      "description": "Incident @ MD 146 SOUTH BETWEEN FAIRMOUNT AVE AND MD 45",
-      "direction": "South",
-      "id": "53004a04378f0087006ad32ec4235c0a",
-      "incidentType": "Utility Problem",
-      "lanes": [
-        {
-          "laneDescription": "Rt Turn",
-          "laneDirection": "south",
-          "laneStatus": "closed",
-          "laneStatusTimestamp": 1787279058000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Right Turn Lane"
-        },
-        {
-          "laneDescription": "L2",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 1787278918000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L1",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 1787278918000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "Lf Turn",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Left Turn Lane"
-        },
-        {
-          "laneDescription": "Lf Turn",
-          "laneDirection": "south",
-          "laneStatus": "closed",
-          "laneStatusTimestamp": 1787279101000,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Left Turn Lane"
-        },
-        {
-          "laneDescription": "Median",
-          "laneDirection": "south",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "none",
-          "laneType": "Median"
-        },
-        {
-          "laneDescription": "L1",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L2",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        },
-        {
-          "laneDescription": "L3",
-          "laneDirection": "north",
-          "laneStatus": "open",
-          "laneStatusTimestamp": 0,
-          "laneTrafficFlowDirection": "primary",
-          "laneType": "Traffic Lane"
-        }
-      ],
-      "lanesStatus": "Southbound-left Left Turn Lane, Right Turn Lane closed",
-      "lastCachedDataUpdateTime": 1787306410906,
-      "lat": 39.406033,
-      "lon": -76.601326,
-      "name": "Incident @ MD 146 SOUTH BETWEEN FAIRMOUNT AVE AND MD 45",
-      "opCenter": "SOC",
-      "other": "RAY 410-588-7893",
-      "participantOnScene": true,
-      "participants": [],
-      "source": "State Highway Administration",
-      "startDateTime": 1787268868000,
-      "trafficAlert": false,
-      "trafficAlertTextMsg": "",
-      "type": 2,
-      "vehicles": "0 vehicles involved."
     }
   ],
   "error": null,
   "success": true,
-  "totalCount": 62,
+  "totalCount": 70,
   "warnings": []
 }
