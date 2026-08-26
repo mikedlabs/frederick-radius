@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { Activity } from "lucide-react";
 import { usePathname } from "next/navigation";
+import AppTransitionLink from "./AppTransitionLink";
 
 /**
  * PulseIndicator — header dot that lights up when something is
@@ -88,7 +88,7 @@ export default function PulseIndicator() {
   const mobileVisible = current || active || unknown;
 
   return (
-    <Link
+    <AppTransitionLink
       data-pulse-indicator
       href="/pulse"
       prefetch={false}
@@ -134,6 +134,6 @@ export default function PulseIndicator() {
       <span className="hidden text-[14px] font-semibold leading-none sm:inline">
         Pulse
       </span>
-    </Link>
+    </AppTransitionLink>
   );
 }

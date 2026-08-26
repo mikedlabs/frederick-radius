@@ -31,8 +31,8 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import BottomDrawer from "@/components/ui/BottomDrawer";
 import Link from "next/link";
+import Sheet from "@/components/ui/Sheet";
 import PulseFreshness, {
   PulseStatusLabel,
 } from "@/components/pulse/PulseFreshness";
@@ -193,9 +193,6 @@ export type PulseTile = {
    * degraded fallback never claims to be a reading.
    */
   reading?: boolean;
-  /** Important context such as air quality remains visible when unavailable,
-   * with its unavailable state written plainly. */
-  keepVisibleWhenUnavailable?: boolean;
   kind: "feature" | "gauge" | "status";
   peek?: string;
   /** A direct measurement. Do not add a visual fill unless the provider
@@ -297,12 +294,10 @@ export function pulseDisplayGroups(
     const state = pulseTileState(tile);
     if (state === "Attention") attention.push(tile);
     else if (state === "Active") actionable.push(tile);
-    // Current readings earn the open board. A small set of essential readings
-    // can stay there while unavailable, but only with the missing state named.
-    else if (
-      tile.reading &&
-      (state === "Current" || tile.keepVisibleWhenUnavailable)
-    ) readings.push(tile);
+    // Only actual current measurements earn the open board. An unavailable
+    // source remains reachable once in the source-status disclosure instead
+    // of taking a full visual card and repeating the same failure state.
+    else if (tile.reading && state === "Current") readings.push(tile);
     else quiet.push(tile);
   }
 
@@ -557,6 +552,7 @@ function PulseSmartBlock({
     ? "Latest reading unavailable"
     : pulseTileReading(tile);
   const gaugeValue = formatGaugeValue(tile);
+  const seatsOnArrival = index < 4;
 
   return (
     <li
@@ -569,13 +565,14 @@ function PulseSmartBlock({
         data-pulse-key={tile.key}
         aria-haspopup="dialog"
         aria-label={`${tile.label}: ${accessibleReading}. ${state}. Source: ${tile.sourceLabel}`}
-        className="fr-pulse-key fr-pulse-seat group relative flex min-h-[104px] w-full min-w-0 flex-col overflow-hidden rounded-[var(--app-radius-md)] border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 sm:min-h-[120px]"
+        className={`fr-pulse-key${seatsOnArrival ? " fr-pulse-seat" : ""} group relative flex min-h-[104px] w-full min-w-0 flex-col overflow-hidden rounded-[var(--app-radius-md)] border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 sm:min-h-[120px]`}
         style={{
           borderColor: unavailable
             ? "color-mix(in srgb, var(--app-warning) 38%, var(--app-border))"
             : "var(--app-border)",
           background: `linear-gradient(160deg, color-mix(in srgb, ${keyColor} 7%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 48%, color-mix(in srgb, var(--app-bg-sunken) 52%, var(--app-bg-elevated-solid)) 100%)`,
-          animationDelay: `${Math.min(index, 8) * 38}ms`,
+          animationDelay: seatsOnArrival ? `${index * 34}ms` : undefined,
+          viewTransitionName: tile.key === "weather" ? "radius-weather" : undefined,
         }}
       >
         <span
@@ -787,6 +784,77 @@ export function pulseWideReadingKeys(tiles: readonly PulseTile[]): Set<string> {
   return new Set([compactTiles[compactTiles.length - 1].key]);
 }
 
+/** Quiet and unavailable feeds remain inspectable without turning source
+ * health into another card grid. One compact row says what the check found,
+ * who supplied it, and opens the existing detail sheet. */
+function SecondarySignalRow({
+  tile,
+  onOpen,
+}: {
+  tile: PulseTile;
+  onOpen: () => void;
+}) {
+  const state = pulseTileState(tile);
+  const needsContext =
+    state === "Partial data" ||
+    state === "Feed unavailable" ||
+    state === "Not connected";
+  const color = needsContext ? "var(--app-warning)" : "var(--app-ink-3)";
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="group flex min-h-[58px] w-full min-w-0 items-center gap-2.5 border-t px-1 py-2 text-left first:border-t-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+        style={{ borderColor: "var(--app-border)" }}
+        aria-label={`${tile.label}: ${needsContext ? state : tile.countLabel}. Source: ${tile.sourceLabel}`}
+      >
+        <span
+          aria-hidden
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+          style={{
+            color,
+            background: `color-mix(in srgb, ${color} 9%, transparent)`,
+          }}
+        >
+          {createElement(iconFor(tile), {
+            className: "h-4 w-4",
+            strokeWidth: 2,
+          })}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-baseline justify-between gap-2">
+            <span className="min-w-0 truncate text-[12.5px] font-semibold text-[var(--app-ink)]">
+              {tile.label}
+            </span>
+            {needsContext ? (
+              <span
+                className="shrink-0 text-[9px] font-bold uppercase tracking-[0.08em]"
+                style={{ color }}
+              >
+                {state}
+              </span>
+            ) : null}
+          </span>
+          <span className="mt-0.5 block truncate text-[10.5px] text-[var(--app-ink-3)]">
+            {needsContext ? tile.countLabel : `${tile.countLabel} · ${tile.sourceLabel}`}
+          </span>
+          {needsContext ? (
+            <span className="mt-0.5 block truncate text-[9.5px] text-[var(--app-ink-3)]">
+              Source · {tile.sourceLabel}
+            </span>
+          ) : null}
+        </span>
+        <ArrowRight
+          aria-hidden
+          className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5"
+        />
+      </button>
+    </li>
+  );
+}
+
 function SecondarySignals({
   updates,
   onOpen,
@@ -842,14 +910,10 @@ function SecondarySignals({
           )}
           <span id="pulse-secondary-heading" className="min-w-0 flex-1">
             <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              {secondarySignalsHeadline(
-                partial.length,
-                unavailable.length,
-                notConnected.length,
-              )}
+              Source status
             </span>
             <span className="mt-0.5 block text-[10.5px] leading-snug" style={{ color: degraded.length > 0 ? "var(--app-warning)" : "var(--app-ink-3)" }}>
-              {degradedSummary || `${updates.length} supporting ${updates.length === 1 ? "check" : "checks"}`}
+              {degradedSummary || `${updates.length} supporting ${updates.length === 1 ? "check is" : "checks are"} current`}
             </span>
           </span>
           <ChevronDown
@@ -858,18 +922,20 @@ function SecondarySignals({
           />
         </summary>
 
-        <div className="border-t p-3" style={{ borderColor: "var(--app-border)" }}>
-          <ul
-            id="pulse-local-updates"
-            data-pulse-bank="local-pulse"
-            className="grid min-w-0 grid-flow-dense grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
-          >
-            {updates.map((tile, index) => (
-              <PulseSmartBlock
+        <div className="border-t px-3 pb-2 pt-2.5" style={{ borderColor: "var(--app-border)" }}>
+          <p className="pb-2 text-[10.5px] leading-relaxed text-[var(--app-ink-3)]">
+            {secondarySignalsSummary(
+              updates.length,
+              partial.length,
+              unavailable.length,
+              notConnected.length,
+            )}
+          </p>
+          <ul id="pulse-local-updates" data-pulse-bank="local-pulse">
+            {updates.map((tile) => (
+              <SecondarySignalRow
                 key={tile.key}
                 tile={tile}
-                bankKey="local-pulse"
-                index={index}
                 onOpen={() => onOpen(tile.key)}
               />
             ))}
@@ -952,6 +1018,15 @@ export default function PulseBoard({
   };
 
   const closeDrawer = () => {
+    // Back already removed the query parameter when it initiated the close.
+    // In that path, do not traverse history a second time after the shared
+    // sheet finishes its exit animation.
+    const hasOpenParam = new URL(window.location.href).searchParams.has("open");
+    if (!hasOpenParam) {
+      pushedOpen.current = false;
+      setOpen(null);
+      return;
+    }
     if (pushedOpen.current) {
       pushedOpen.current = false;
       window.history.back();
@@ -1037,15 +1112,6 @@ export default function PulseBoard({
             {hero.line}
           </h1>
           <p className="mt-2 max-w-[38rem] text-[12.5px] leading-relaxed text-[var(--app-ink-2)]">{hero.sub}</p>
-          {degraded && (lead || hero.operational) ? (
-            <p
-              className="mt-2 inline-flex items-center gap-1.5 text-[10.5px] font-semibold"
-              style={{ color: "var(--app-warning)" }}
-            >
-              <AlertTriangle aria-hidden className="h-3.5 w-3.5" />
-              Some other live checks are unavailable. The update above comes from a current source.
-            </p>
-          ) : null}
           {(hero.leadMeta || lead) && (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
               {hero.leadMeta && (
@@ -1172,10 +1238,10 @@ export default function PulseBoard({
           }
         }
         .fr-pulse-seat {
-          animation: fr-pulse-seat 420ms cubic-bezier(.2,.8,.3,1) both;
+          animation: fr-pulse-seat 240ms cubic-bezier(.2,.8,.3,1) both;
         }
         @keyframes fr-pulse-seat {
-          from { opacity: 0; transform: translateY(7px) scale(0.975); }
+          from { opacity: 0; transform: translateY(4px); }
           to { opacity: 1; transform: none; }
         }
         @media (prefers-reduced-motion: reduce) {
@@ -1191,13 +1257,14 @@ export default function PulseBoard({
         }
       `}</style>
 
-      <BottomDrawer
+      <Sheet
         open={open !== null}
-        onOpenChange={(nextOpen) => { if (!nextOpen) closeDrawer(); }}
+        onClose={closeDrawer}
         title={current?.label ?? ""}
         subtitle={current ? `Source: ${current.sourceLabel}` : undefined}
+        maxHeight="85dvh"
       >
-        <div className="space-y-2 px-4 pb-2">
+        <div className="space-y-2 pb-2">
           {current?.body}
           {current?.action ? (
             <Link
@@ -1214,7 +1281,7 @@ export default function PulseBoard({
             </Link>
           ) : null}
         </div>
-      </BottomDrawer>
+      </Sheet>
     </>
   );
 }

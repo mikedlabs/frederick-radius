@@ -81,6 +81,19 @@ export const FREDERICK_COUNTY_BBOX = {
   east: -77.150,
 };
 
+/**
+ * Fetch/build envelope for Radius's full guide area. The guide intentionally
+ * includes the incorporated Town of Mount Airy, which straddles the
+ * Frederick/Carroll line and reaches east of the county-only bbox. Callers
+ * must still pass returned points through `isInFrederickCountyArea` (or the
+ * municipality resolver); this larger rectangle is a collection envelope,
+ * not permission to publish arbitrary Carroll County records.
+ */
+export const FREDERICK_GUIDE_BBOX = {
+  ...FREDERICK_COUNTY_BBOX,
+  east: -77.130,
+} as const;
+
 export function isInsideFrederickCounty(lat: number, lng: number): boolean {
   return (
     Number.isFinite(lat) &&

@@ -635,7 +635,7 @@ test.describe("Ask Radius deterministic workspace", () => {
       .toBe("town:urbana");
   });
 
-  test("lets a fresh device fix outrank the saved home town", async ({ page }) => {
+  test("lets a fresh device fix outrank the saved home without sending exact coordinates", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("fr:home-muni:v1", "brunswick");
       window.sessionStorage.setItem(
@@ -667,11 +667,16 @@ test.describe("Ask Radius deterministic workspace", () => {
     ).toBeVisible();
     await submit(page, "Where should I eat tonight?");
     await expect(page.getByText("Downtown-first answer.")).toBeVisible();
+    // The fresh browser-approved fix must select Near me instead of the saved
+    // Brunswick home. Ask intentionally rounds the coordinates to its roughly
+    // 100-meter privacy grid before they leave the device.
     expect(requestBody).toMatchObject({
       scope: "nearme",
-      lat: 39.4143,
-      lng: -77.4105,
+      lat: 39.414,
+      lng: -77.41,
     });
+    expect(requestBody.lat).not.toBe(39.4143);
+    expect(requestBody.lng).not.toBe(-77.4105);
   });
 
   test("keeps the latest self-contained question through share, refresh, and Back", async ({ page }) => {

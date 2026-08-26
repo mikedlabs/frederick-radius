@@ -3,6 +3,12 @@ import { expect, test } from "@playwright/test";
 test.describe("map search selection", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("fr_map_location_intro_v1", "dismissed");
+    });
+  });
+
   test("opens the same place slug the user selected", async ({ page }) => {
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
@@ -38,15 +44,109 @@ test.describe("map search selection", () => {
     ).toHaveCount(0);
   });
 
+  test("Back closes a place, restores its opener, and Forward reopens the same URL selection", async ({ page }) => {
+    await page.goto("/map?c=-77.4100,39.4150,12.4", {
+      waitUntil: "domcontentloaded",
+    });
+
+    const search = page.getByRole("combobox", { name: "Search this map" });
+    await expect(search).toBeVisible({ timeout: 20_000 });
+    await search.fill("Market Street Boba Beans");
+    const selectedResult = page.locator(
+      '[data-map-search-result="place:market-street-boba-beans"]',
+    );
+    await expect(selectedResult).toBeVisible({ timeout: 10_000 });
+    // Pick through the combobox contract. The result list may rerank once as
+    // travel context settles; keyboard selection stays attached to the input
+    // and gives Back one deterministic focus target.
+    await search.press("ArrowDown");
+    await search.press("Enter");
+
+    const selectedPlace = page.locator(
+      '[data-map-place-slug="market-street-boba-beans"]',
+    );
+    await expect(selectedPlace).toBeVisible();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("place"))
+      .toBe("market-street-boba-beans");
+    await page.goBack();
+    await expect(selectedPlace).toHaveCount(0);
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has("place"))
+      .toBe(false);
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("q"))
+      .toBe("Market Street Boba Beans");
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("c"))
+      .not.toBeNull();
+    await expect(search).toBeFocused();
+
+    await page.goForward();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("place"))
+      .toBe("market-street-boba-beans");
+    await expect(selectedPlace).toBeVisible();
+
+    await page.goBack();
+    await expect(selectedPlace).toHaveCount(0);
+    await expect(search).toBeFocused();
+  });
+
+  test("Back closes and Forward restores a parking result without a place URL", async ({ page }) => {
+    await page.goto(
+      "/map?show=parking&c=-77.4096,39.4134,15.5",
+      { waitUntil: "domcontentloaded" },
+    );
+
+    const marker = page.getByRole("button", {
+      name: /^Carroll Creek Garage parking garage/,
+    });
+    await expect(marker).toBeVisible({ timeout: 20_000 });
+    await marker.click();
+
+    const result = page
+      .locator("[data-map-result-surface]")
+      .filter({ hasText: "Carroll Creek Garage" });
+    await expect(result).toBeVisible();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has("place"))
+      .toBe(false);
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("result"))
+      .toBe("parking");
+
+    await page.goBack();
+    await expect(result).toHaveCount(0);
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has("result"))
+      .toBe(false);
+
+    await page.goForward();
+    await expect(result).toBeVisible();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has("place"))
+      .toBe(false);
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("result"))
+      .toBe("parking");
+  });
+
   test("selection choreography becomes static for reduced motion", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
     const search = page.getByRole("combobox", { name: "Search this map" });
     await search.fill("Market Street Boba Beans");
-    await page
-      .locator('[data-map-search-result="place:market-street-boba-beans"]')
-      .click();
+    await expect(
+      page.locator(
+        '[data-map-search-result="place:market-street-boba-beans"]',
+      ),
+    ).toBeVisible({ timeout: 10_000 });
+    // Keep the interaction attached to the combobox while travel context can
+    // still rerank and replace result nodes underneath a pointer click.
+    await search.press("ArrowDown");
+    await search.press("Enter");
 
     await expect(page.locator("[data-map-result-surface]")).toBeVisible();
     await expect(page.locator("[data-map-result-surface]")).toHaveCSS(
@@ -539,6 +639,74 @@ test.describe("map search selection", () => {
     );
     await expect(spot).toContainText("Map data © Mapbox");
     await expect(spot).toBeFocused();
+
+    const selectedUrl = new URL(page.url());
+    expect(selectedUrl.searchParams.get("result")).toBe("spot");
+    expect(selectedUrl.searchParams.get("selection")).toMatch(
+      /^[0-9a-f]{32}$/,
+    );
+    expect(selectedUrl.searchParams.has("lat")).toBe(false);
+    expect(selectedUrl.searchParams.has("lng")).toBe(false);
+    expect(selectedUrl.searchParams.has("label")).toBe(false);
+    expect(decodeURIComponent(selectedUrl.href)).not.toContain("39.4159");
+    expect(decodeURIComponent(selectedUrl.href)).not.toContain("-77.4101");
+    expect(decodeURIComponent(selectedUrl.href)).not.toContain("Map data © Mapbox");
+    const selectionHistoryState = await page.evaluate(() =>
+      JSON.stringify(window.history.state),
+    );
+    expect(selectionHistoryState).not.toContain(
+      "__frederickRadiusMapSelectionSnapshotV1",
+    );
+    expect(selectionHistoryState).not.toContain("39.4159");
+    expect(selectionHistoryState).not.toContain("Map data © Mapbox");
+
+    await page.goBack();
+    await expect(spot).toHaveCount(0);
+    await expect(search).toHaveValue("12 East Church Street");
+    await expect(fallback).toBeVisible();
+    // The result list uses the combobox/aria-activedescendant pattern, so DOM
+    // focus belongs on the input while the restored option remains selected.
+    await expect(search).toBeFocused();
+    await expect(fallback).toHaveAttribute("aria-selected", "true");
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has("result"))
+      .toBe(false);
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has("selection"))
+      .toBe(false);
+
+    await page.goForward();
+    await expect(spot).toBeVisible();
+    await expect(spot).toContainText(
+      "Radius has not verified it as a local listing.",
+    );
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("result"))
+      .toBe("spot");
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("selection"))
+      .toBe(selectedUrl.searchParams.get("selection"));
+  });
+
+  test("fails closed when a temporary result token is copied or expired", async ({ page }) => {
+    await page.goto(
+      "/map?result=spot&selection=00000000000000000000000000000000",
+      { waitUntil: "domcontentloaded" },
+    );
+
+    await expect(page.locator("[data-map-result-surface]")).toHaveCount(0);
+    await expect(
+      page.getByText(
+        "That temporary map result is no longer available. Search for it again.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has("result"))
+      .toBe(false);
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has("selection"))
+      .toBe(false);
   });
 
   test("groups live road context behind one honest control", async ({ page }) => {

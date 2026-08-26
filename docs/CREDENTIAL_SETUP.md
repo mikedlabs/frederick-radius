@@ -83,9 +83,16 @@ turn into noise.
 
 ## 4. `GITHUB_ALERTS_TOKEN` — Production only
 
-**Why:** opens and updates the nightly `[data-health] Red checks on the
-nightly board` issue and the weekly digest. It is independent of Slack, and it
-is the channel that leaves a durable record in the repo.
+**Why:** creates the weekly digest. The nightly production-health issue does
+not depend on this personal token anymore. The `Production health alert`
+workflow reads `/api/health` with GitHub's automatic `GITHUB_TOKEN`, which does
+not need to be copied into Vercel and does not expire like a personal token.
+
+The richer Vercel-side health report remains available as an optional second
+channel. Do not enable it until the probe below accepts the token. After a
+successful probe, set `VERCEL_GITHUB_ALERTS_ENABLED=1`. If the token is absent,
+revoked, or unprobed, leave that flag unset and the Actions health channel
+continues to operate.
 
 1. **github.com/settings/personal-access-tokens** — new **fine-grained** token.
 2. Repository access: **only** `mikedlabs/frederick-radius`.
@@ -100,7 +107,8 @@ is the channel that leaves a durable record in the repo.
 
 1. Redeploy production.
 2. Run `npm run verify:credentials -- --probe` against the production
-   environment values to confirm all four pass.
+   environment values to confirm every required credential and any configured
+   optional channel.
 3. Tell the agent to delete the bundled fallback. It is a two-line change in
    `src/lib/mapbox.ts` plus the now-dead branch in `src/lib/mapbox-server.ts`,
    and it is deliberately NOT done yet: production currently depends on that

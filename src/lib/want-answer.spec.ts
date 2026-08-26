@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { freshHoursInstant } from "../../tests/utils/freshHoursInstant";
+import { chainBrandKey } from "./category-ranking";
 import {
   buildWantAnswer,
   partitionWant,
@@ -547,5 +548,59 @@ describe("approxHeroIndex", () => {
   it("handles empty and single-item lists", () => {
     expect(approxHeroIndex([])).toBe(0);
     expect(approxHeroIndex([openAt("only", 100, 0.1)])).toBe(0);
+  });
+});
+
+// ── One location per chain in the short row ──────────────────────────
+//
+// Measured against the live catalog on 2026-08-21. The rule changes nothing
+// during the day, because the open set is already local and varied. It earns
+// its place in the thin hours, when chains are most of what is open:
+//
+//   coffee, 5:30am
+//     before  Starbucks | Starbucks | Dunkin' | Starbucks Coffee Company | Dunkin'
+//     after   Starbucks | Dunkin'
+//
+//   breakfast, 5:30am
+//     before  Starbucks | Starbucks | Dunkin' | Starbucks Coffee Company | Penny's Diner
+//     after   Starbucks | Dunkin' | Penny's Diner | McDonald's
+//
+// The breakfast case is the point: the duplicate Starbucks rows were not
+// adding options, they were consuming the slots two other places needed.
+describe("buildWantAnswer — one location per chain", () => {
+  const origin = { lng: -77.4109, lat: 39.4137 };
+  const at = (iso: string) => new Date(iso);
+
+  it("does not spend the short row on repeats of one brand", () => {
+    const answer = buildWantAnswer("coffee", null, origin, at("2026-08-21T09:30:00.000Z"));
+    expect(answer).not.toBeNull();
+    const brands = [answer!.hero, ...answer!.also]
+      .filter((row) => row != null)
+      .map((row) => chainBrandKey(row.name))
+      .filter((brand): brand is string => brand != null);
+
+    expect(new Set(brands).size).toBe(brands.length);
+  });
+
+  it("claims the hero's brand too, so no alternative repeats it", () => {
+    const answer = buildWantAnswer("breakfast", null, origin, at("2026-08-21T09:30:00.000Z"));
+    const heroBrand = answer?.hero ? chainBrandKey(answer.hero.name) : null;
+    if (!heroBrand || !answer) return;
+
+    expect(answer.also.map((row) => chainBrandKey(row.name))).not.toContain(heroBrand);
+  });
+
+  it("leaves independents alone, however many share a row", () => {
+    // Two genuinely different local places must both survive; only chain
+    // BRANDS collapse. A rule that deduped by anything looser would quietly
+    // delete real answers.
+    const answer = buildWantAnswer("coffee", null, origin, at("2026-08-21T14:00:00.000Z"));
+    expect(answer).not.toBeNull();
+    const names = [answer!.hero, ...answer!.also]
+      .filter((row) => row != null)
+      .map((row) => row.name);
+
+    expect(names.length).toBeGreaterThan(2);
+    expect(new Set(names).size).toBe(names.length);
   });
 });

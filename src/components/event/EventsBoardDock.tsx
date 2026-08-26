@@ -1,15 +1,12 @@
 "use client";
 
 import {
-  Fragment,
   useEffect,
   useRef,
   useState,
   useTransition,
   type ReactNode,
 } from "react";
-import { easternDayKey } from "@/lib/tz";
-import { LENS_WORDS } from "@/lib/timeLens";
 import {
   List as ListIcon,
   Rows3,
@@ -19,14 +16,17 @@ import {
   ChevronDown,
   Search,
   SlidersHorizontal,
-  X,
 } from "lucide-react";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import EventWeekRibbon from "@/components/event/EventWeekRibbon";
 import { haptic } from "@/lib/haptics";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { INTENT_BY_ID, type IntentId } from "@/lib/events/intents";
+import {
+  EVENT_INTENTS,
+  INTENT_BY_ID,
+  type IntentId,
+} from "@/lib/events/intents";
 import type { Daypart } from "@/lib/daypart";
 import {
   WHEN_PRESETS,
@@ -64,6 +64,15 @@ const DAYPARTS: ReadonlyArray<{ key: Daypart; label: string }> = [
   { key: "evening", label: "Evening" },
   { key: "late", label: "Late" },
 ];
+
+/** The questions most people arrive with stay visible. Longer-range and
+ * exact-date planning remain available in the single Filters sheet. */
+export const EVENTS_PRIMARY_WHEN_PRESETS = WHEN_PRESETS.filter(
+  (preset) =>
+    preset.key === "today" ||
+    preset.key === "tonight" ||
+    preset.key === "weekend",
+);
 
 type Pane = "what" | "when" | "where";
 
@@ -176,18 +185,23 @@ function EventDisplayControls({
   setView,
   sort,
   setSort,
+  onSelect,
 }: {
   view: ViewKey;
   setView: (value: ViewKey) => void;
   sort: EventSortKey;
   setSort: (value: EventSortKey) => void;
+  onSelect?: () => void;
 }) {
   return (
     <>
       <SortDropdown
         options={SORT_OPTIONS}
         value={sort}
-        onChange={setSort}
+        onChange={(value) => {
+          setSort(value);
+          onSelect?.();
+        }}
         align="right"
         label="Order"
       />
@@ -202,6 +216,7 @@ function EventDisplayControls({
             onClick={() => {
               haptic("light");
               setView(key);
+              onSelect?.();
             }}
           >
             <Icon className="h-[15px] w-[15px]" strokeWidth={2} aria-hidden />
@@ -265,6 +280,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   const [collapsed, setCollapsed] = useState(false);
   const paneRef = useRef<HTMLDivElement>(null);
   const whenRibbonRef = useRef<HTMLDivElement>(null);
+  const mobileDisplayRef = useRef<HTMLDetailsElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
 
   // ── Collapse the nameplate on scroll (window scroll). Under
@@ -424,10 +440,6 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     ? activePreset
     : pendingWhenPreset;
   const [, startWhenTransition] = useTransition();
-  // "Tomorrow" is a day pick, not a lens — the ?d= plumbing already
-  // exists, so the ribbon chip just targets tomorrow's Eastern day key.
-  const tomorrowKey = easternDayKey(new Date(Date.parse(nowISO) + 86_400_000));
-
   // A deep link such as /weekend can select a chip beyond the narrow phone
   // viewport. Keep the active choice in view without moving the page itself.
   useEffect(() => {
@@ -445,7 +457,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
       0,
       activeStart - (ribbon.clientWidth - active.offsetWidth) / 2,
     );
-  }, [activePreset, day, tomorrowKey]);
+  }, [activePreset, day]);
 
   // ── Pane control handlers ──
   const pickEverything = () => {
@@ -453,6 +465,23 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     setIntent(null);
     setSub(null);
     setCat(null);
+  };
+  const pickIntent = (nextIntent: IntentId) => {
+    haptic("light");
+    setCat(null);
+    setSub(null);
+    setIntent(intent === nextIntent ? null : nextIntent);
+  };
+  const pickSub = (nextSub: string) => {
+    haptic("light");
+    setCat(null);
+    setSub(sub === nextSub ? null : nextSub);
+  };
+  const pickCategory = (nextCategory: string | null) => {
+    haptic("light");
+    setIntent(null);
+    setSub(null);
+    setCat(cat === nextCategory ? null : nextCategory);
   };
   const pickPreset = (p: (typeof WHEN_PRESETS)[number]) => {
     haptic("light");
@@ -493,6 +522,11 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     setTod(null);
     setDay(null);
   };
+  const closeMobileDisplay = () => {
+    if (mobileDisplayRef.current) mobileDisplayRef.current.open = false;
+  };
+  const viewLabel = VIEW_ITEMS.find((item) => item.key === view)?.label ?? "List";
+  const sortLabel = SORT_OPTIONS.find((item) => item.key === sort)?.label ?? "Recommended";
 
   return (
     <div className={`eb-dock${collapsed ? " eb-collapsed" : ""}${pane ? " eb-open" : ""}`}>
@@ -508,11 +542,9 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           </h2>
         </div>
 
-        {/* The when-ribbon — the date questions one tap from the default
-            view (July 2026 review: the presets lived a tap deep in the
-            When pane). Same lens/tod/day state the pane edits; Tomorrow
-            is a day pick riding the existing ?d= plumbing. Rides with
-            the masthead so the collapsed dock keeps its footprint. */}
+        {/* The three date questions people use most stay one tap away.
+            Tomorrow, later this week, dayparts, and exact dates remain in
+            the one canonical Filters sheet. */}
         <div
           className="eb-whenribbon"
           role="group"
@@ -521,28 +553,15 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           inert={collapsed}
           ref={whenRibbonRef}
         >
-          {WHEN_PRESETS.map((p, i) => (
-            <Fragment key={p.key}>
-              <EbChip
-                on={visibleWhenPreset === p.key}
-                color="var(--app-brand)"
-                onClick={() => pickPreset(p)}
-              >
-                {p.label}
-              </EbChip>
-              {i === 1 && (
-                <EbChip
-                  on={day === tomorrowKey}
-                  color="var(--app-brand)"
-                  onClick={() => {
-                    haptic("light");
-                    pickDay(day === tomorrowKey ? null : tomorrowKey);
-                  }}
-                >
-                  {LENS_WORDS.tomorrow}
-                </EbChip>
-              )}
-            </Fragment>
+          {EVENTS_PRIMARY_WHEN_PRESETS.map((p) => (
+            <EbChip
+              key={p.key}
+              on={visibleWhenPreset === p.key}
+              color="var(--app-brand)"
+              onClick={() => pickPreset(p)}
+            >
+              {p.label}
+            </EbChip>
           ))}
         </div>
 
@@ -589,16 +608,20 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           )}
         </div>
 
-        {/* The sub bar keeps the result count visible. Sorting and alternate
-            layouts are secondary decisions, so mobile gets one "Display"
-            disclosure instead of five more controls before the first event.
-            Desktop keeps the same controls inline inside the disclosure. */}
+        {/* The sub bar keeps the result count visible. Mobile gets one native
+            disclosure for view and order; desktop retains the same controls
+            inline. Neither surface puts a control wall in front of the first
+            event. */}
         <div className="eb-subbar">
           <span className="eb-countline" aria-live="polite">
             {line}
           </span>
-          <details className="eb-display-options">
-            <summary className="tap-44" style={{ minHeight: 44 }}>
+          <details ref={mobileDisplayRef} className="eb-display-options">
+            <summary
+              className="tap-44"
+              style={{ minHeight: 44 }}
+              aria-label={`Change event display. ${viewLabel} view, ${sortLabel} order.`}
+            >
               <span>Display</span>
               <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </summary>
@@ -608,6 +631,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                 setView={setView}
                 sort={sort}
                 setSort={setSort}
+                onSelect={closeMobileDisplay}
               />
             </div>
           </details>
@@ -678,28 +702,41 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                 />
               </label>
 
-              {intent || cat ? (
+              <Sect>Interest</Sect>
+              <div className="eb-chips" role="group" aria-label="Event interests">
+                <EbChip
+                  on={!intent && !cat && !sub}
+                  onClick={pickEverything}
+                >
+                  Any interest
+                </EbChip>
+                {EVENT_INTENTS.map((item) => (
+                  <EbChip
+                    key={item.id}
+                    on={intent === item.id}
+                    color={item.tucked ? "var(--app-civic)" : "var(--app-brand)"}
+                    onClick={() => pickIntent(item.id)}
+                  >
+                    {item.label}
+                  </EbChip>
+                ))}
+              </div>
+
+              {intentDef?.subs?.length ? (
                 <>
-                  <Sect>Current interest</Sect>
-                  <button
-                    type="button"
-                    onClick={pickEverything}
-                    className="tap-44-y inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[12px] font-semibold"
-                    style={{
-                      borderColor: "var(--app-border)",
-                      background: "var(--app-bg-elevated)",
-                      color: "var(--app-ink-2)",
-                    }}
-                  >
-                    {subLabel ?? (civicOn ? "Government & notices" : intentDef?.label) ?? "Selected interest"}
-                    <X className="h-3.5 w-3.5" strokeWidth={2.4} aria-hidden />
-                  </button>
-                  <p
-                    className="mt-1.5 px-1 text-[11px] leading-relaxed"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    Change the main interest from the visual rail below.
-                  </p>
+                  <Sect>Narrow {intentDef.label}</Sect>
+                  <div className="eb-chips" role="group" aria-label={`${intentDef.label} categories`}>
+                    {intentDef.subs.map((item) => (
+                      <EbChip
+                        key={item.slug}
+                        on={sub === item.slug}
+                        color="var(--app-cool)"
+                        onClick={() => pickSub(item.slug)}
+                      >
+                        {item.label}
+                      </EbChip>
+                    ))}
+                  </div>
                 </>
               ) : null}
 
@@ -739,10 +776,21 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
               </div>
 
               {categories.length > 0 && (
-                <>
-                  <Sect>Category</Sect>
-                  <div className="eb-chips" role="group" aria-label="Event categories">
-                    <EbChip on={!cat} onClick={() => { haptic("light"); setCat(null); }}>
+                <details className="group mt-4 rounded-[var(--app-radius-md)] border px-3" style={{ borderColor: "var(--app-border)" }}>
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-[12px] font-semibold text-[var(--app-ink-2)]">
+                    <span>
+                      {cat
+                        ? `Category · ${categories.find((item) => item.slug === cat)?.name ?? cat}`
+                        : "More specific categories"}
+                    </span>
+                    <ChevronDown
+                      className="h-4 w-4 shrink-0 opacity-50 transition-transform group-open:rotate-180"
+                      strokeWidth={2.2}
+                      aria-hidden
+                    />
+                  </summary>
+                  <div className="eb-chips border-t py-3" role="group" aria-label="Event categories" style={{ borderColor: "var(--app-border)" }}>
+                    <EbChip on={!cat && !intent && !sub} onClick={() => pickCategory(null)}>
                       Any category
                     </EbChip>
                     {categories.map((c) => (
@@ -750,13 +798,13 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                         key={c.slug}
                         on={cat === c.slug}
                         color={CATEGORY_BY_SLUG[c.slug]?.color}
-                        onClick={() => { haptic("light"); setCat(cat === c.slug ? null : c.slug); }}
+                        onClick={() => pickCategory(c.slug)}
                       >
                         {c.name}
                       </EbChip>
                     ))}
                   </div>
-                </>
+                </details>
               )}
             </div>
           )}

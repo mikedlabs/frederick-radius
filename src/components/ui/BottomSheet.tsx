@@ -13,6 +13,7 @@ import {
   type RefObject,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   motion,
   AnimatePresence,
@@ -288,7 +289,9 @@ export default function BottomSheet({
     }
   };
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence
       onExitComplete={() => {
         restoreLastFocus();
@@ -326,6 +329,7 @@ export default function BottomSheet({
 
           {/* Sheet */}
           <motion.div
+            data-bottom-sheet-panel
             ref={sheetRef}
             onClickCapture={onLinkCapture}
             tabIndex={-1}
@@ -340,7 +344,7 @@ export default function BottomSheet({
             dragElastic={{ top: 0, bottom: 0.55 }}
             onDragEnd={handleDragEnd}
             style={{ y, maxHeight }}
-            className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated)] pb-[env(safe-area-inset-bottom,0px)] shadow-[var(--app-shadow-3)]"
+            className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated-solid)] pb-[env(safe-area-inset-bottom,0px)] shadow-[var(--app-shadow-3)] sm:bottom-4 sm:left-1/2 sm:right-auto sm:w-[min(760px,calc(100vw-2rem))] sm:rounded-[var(--app-radius-lg)] sm:border sm:[translate:-50%_0]"
           >
             <SheetDragContext.Provider
               value={(event) => dragControls.start(event)}
@@ -350,7 +354,8 @@ export default function BottomSheet({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
 

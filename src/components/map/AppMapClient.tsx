@@ -141,7 +141,10 @@ import {
   type SnowRouteFC,
 } from "./types";
 import type { OsmPlace } from "@/lib/integrations/overpass";
-import type { MapLayerGroup } from "./deferredBrowseLayers";
+import type {
+  MapLayerGroup,
+  MapLayerSourceHealth,
+} from "./deferredBrowseLayers";
 
 const EMPTY_FC: MapLineFC = { type: "FeatureCollection", features: [] };
 
@@ -244,6 +247,7 @@ export default function AppMapClient({
   dock,
   activeSlugs = null,
   showSearchControls = true,
+  mapLayerSourceHealth,
   onLayerDemand,
   children,
 }: {
@@ -343,6 +347,9 @@ export default function AppMapClient({
    *  (for example, breweries or trails). Locate and camera controls remain. */
   showSearchControls?: boolean;
   /** Browse-only request path for optional provider-backed layer groups. */
+  mapLayerSourceHealth?: Partial<
+    Record<MapLayerGroup, MapLayerSourceHealth>
+  >;
   onLayerDemand?: (groups: readonly MapLayerGroup[]) => void;
   /** Overlay content for the map column. (Historically the intent-chip
    *  strip; the dock replaced it — the slot stays for future overlays.) */
@@ -450,6 +457,7 @@ export default function AppMapClient({
             onVisualReady={handleMapVisualReady}
             smartDefault={smartDefault}
             sceneContext={sceneContext}
+            mapLayerSourceHealth={mapLayerSourceHealth}
             onLayerDemand={onLayerDemand}
           />
         </MapChunkBoundary>

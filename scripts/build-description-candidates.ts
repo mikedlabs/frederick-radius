@@ -147,4 +147,7 @@ function main(): void {
   console.log(`skipped: ${JSON.stringify(skipped)}`);
 }
 
-main();
+// This module also exports the name matcher used by the read-only review
+// pre-flight. Importing that helper must never run the generator or rewrite
+// the registry as a side effect.
+if (process.argv[1]?.endsWith("build-description-candidates.ts")) main();

@@ -8,7 +8,36 @@ vi.mock("@/lib/db/client", () => ({
   getSql: mocks.getSql,
 }));
 
-import { evaluateDbHealth, getRecentIngestRuns } from "./db-health";
+import {
+  evaluateDbHealth,
+  getLatestHoursRefreshAt,
+  getRecentIngestRuns,
+} from "./db-health";
+
+describe("getLatestHoursRefreshAt", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns the Supabase collection watermark without treating it as publication", async () => {
+    const sql = vi.fn().mockResolvedValue([
+      { latest_refreshed_at: "2026-08-22T08:00:00.000Z" },
+    ]);
+    mocks.getSql.mockReturnValue(sql);
+
+    await expect(getLatestHoursRefreshAt()).resolves.toBe(
+      "2026-08-22T08:00:00.000Z",
+    );
+  });
+
+  it("fails instead of reporting a false watermark when the database is unavailable", async () => {
+    mocks.getSql.mockReturnValue(null);
+
+    await expect(getLatestHoursRefreshAt()).rejects.toThrow(
+      "Database is not configured",
+    );
+  });
+});
 
 describe("evaluateDbHealth", () => {
   beforeEach(() => {

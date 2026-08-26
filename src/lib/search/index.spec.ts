@@ -49,6 +49,14 @@ describe("deterministic map search actions", () => {
     });
   });
 
+  it.each(["hiking trail", "playground", "park"])(
+    "keeps an actual place within the first two Radius results for %s",
+    (query) => {
+      const results = qualifiedSearchIndex(query, 8, []).results;
+      expect(results.slice(0, 2).some((result) => result.type === "place")).toBe(true);
+    },
+  );
+
   it("keeps service and utility problems out of amenity actions", () => {
     expect(searchIndex("trash pickup schedule", 8, []).some((result) => result.href === "/map?amenity=trash")).toBe(false);
     expect(searchIndex("river water levels", 8, []).some((result) => result.href === "/map?amenity=water")).toBe(false);

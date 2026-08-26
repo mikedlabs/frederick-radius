@@ -24,7 +24,11 @@ type HoursWindow = { open: string; close: string };
 
 type Place = {
   slug: string;
+  name?: string;
   category?: string;
+  address?: string;
+  website?: string;
+  tags?: string[];
   municipality?: string;
   state?: string;
   google_rating?: number;
@@ -115,6 +119,68 @@ describe("places-client data health", () => {
       }
     }
     expect(bad).toEqual([]);
+  });
+
+  it("keeps reviewed high-impact destinations in their decision category", () => {
+    const categoryBySlug = new Map(
+      PLACES.map((place) => [place.slug, place.category]),
+    );
+    expect(categoryBySlug.get("frederick-health-hospital")).toBe("wellness");
+    expect(categoryBySlug.get("frederick-county-public-defender")).toBe(
+      "government",
+    );
+    expect(categoryBySlug.get("fifty-fifty-smash-burger")).toBe("restaurant");
+    expect(categoryBySlug.get("appalachian-bodywork")).toBe("massage");
+    expect(categoryBySlug.get("sonus-center")).toBe("wellness");
+    expect(categoryBySlug.get("william-r-talley-recreation-center")).toBe(
+      "yoga",
+    );
+    expect(
+      categoryBySlug.get(
+        "frederick-county-department-of-planning-development-review",
+      ),
+    ).toBe("government");
+  });
+
+  it("quarantines wrong-business enrichment and withholds unsupported locations", () => {
+    const bySlug = new Map(PLACES.map((place) => [place.slug, place]));
+    const fcps = bySlug.get("frederick-county-public-school");
+    const outreach = bySlug.get("outreach-healthcare-frederick");
+    const grow = bySlug.get("growwith-abi");
+
+    expect(fcps).toMatchObject({
+      name: "Frederick County Public Schools",
+      category: "government",
+      address: "191 S East St",
+      website: "https://www.fcps.org/connect_with_fcps",
+    });
+    expect(fcps?.google_rating).toBeUndefined();
+
+    expect(outreach).toMatchObject({
+      name: "Outreach Recovery",
+      category: "wellness",
+      address: "196 Thomas Johnson Dr, Ste 201",
+      website: "https://outreachrecovery.com/locations/",
+    });
+    expect(outreach?.google_rating).toBeUndefined();
+
+    // The operator's site confirms the service but publishes no Frederick
+    // street address. Keep the source record for review without presenting
+    // its inherited DFP point as a confirmed downtown location.
+    expect(grow).toBeUndefined();
+  });
+
+  it("withholds a temporarily closed child-care location from discovery", () => {
+    expect(
+      slugs.has(
+        "clubhouse-kids-at-monocacy-valley-montessori-public-school",
+      ),
+    ).toBe(false);
+  });
+
+  it("does not publish a former occupant after a verified replacement takes the address", () => {
+    expect(slugs.has("k-town-takeout")).toBe(true);
+    expect(slugs.has("mackies-southern-bbq")).toBe(false);
   });
 });
 

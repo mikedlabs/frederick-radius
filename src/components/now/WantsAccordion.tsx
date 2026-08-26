@@ -112,6 +112,19 @@ function labelForWant(c: string): string {
   return c.charAt(0).toUpperCase() + c.slice(1);
 }
 
+/** Keep a URL-restored answer inside the category that owns it. Without this,
+ *  `?want=coffee` can reveal a Coffee answer beneath the Drink controls when
+ *  the time-of-day default happens to be Drink. */
+export function categoryKeyForWant(c: string, mealKey?: string): string | null {
+  for (const category of WANTS) {
+    if (category.mealLead && mealKey === c) return category.key;
+    if (category.subs.some((sub) => inlineWantFor(sub.href)?.c === c)) {
+      return category.key;
+    }
+  }
+  return null;
+}
+
 /** Reflect the open answer in the URL (?want=&facet=) without a history
  *  entry or an RSC round-trip — refresh restores it, share carries it. */
 function reflectWantInUrl(want: { c: string; facet: string | null } | null) {
@@ -125,6 +138,60 @@ function reflectWantInUrl(want: { c: string; facet: string | null } | null) {
     url.searchParams.delete("facet");
   }
   window.history.replaceState(window.history.state, "", url);
+}
+
+type AnswerFocusKey = { c: string; facet: string | null } | null;
+
+function canReceiveRestoredFocus(element: HTMLElement | null): element is HTMLElement {
+  if (!element?.isConnected) return false;
+  if (element.closest("[hidden], [inert], [aria-hidden='true']")) return false;
+  if ("disabled" in element && element.disabled === true) return false;
+  return true;
+}
+
+/**
+ * Find the control that should receive focus after an inline answer closes.
+ * A directly tapped chip always wins. Shared `?want=` URLs do not have an
+ * opener, so they fall back to the matching answer chip and then to the active
+ * category control. This keeps keyboard focus in the choice that supplied the
+ * answer instead of dropping it on the document body.
+ */
+export function wantAnswerFocusTarget(
+  opener: HTMLElement | null,
+  root: HTMLElement | null,
+  answer: AnswerFocusKey,
+): HTMLElement | null {
+  if (canReceiveRestoredFocus(opener)) return opener;
+  if (!root) return null;
+
+  const matchingTrigger = answer
+    ? Array.from(
+        root.querySelectorAll<HTMLElement>("[data-want-answer-trigger]"),
+      ).find(
+        (element) =>
+          element.dataset.wantKey === answer.c
+          && (element.dataset.wantFacet || null) === answer.facet,
+      ) ?? null
+    : null;
+  if (canReceiveRestoredFocus(matchingTrigger)) return matchingTrigger;
+
+  const categoryTrigger = root.querySelector<HTMLElement>(
+    "[data-want-category-trigger][aria-pressed='true']",
+  );
+  return canReceiveRestoredFocus(categoryTrigger) ? categoryTrigger : null;
+}
+
+/** Restore after React has removed the answer panel and its close button. */
+export function restoreWantAnswerFocus(
+  opener: HTMLElement | null,
+  root: HTMLElement | null,
+  answer: AnswerFocusKey,
+): void {
+  const target = wantAnswerFocusTarget(opener, root, answer);
+  if (!target) return;
+  queueMicrotask(() => {
+    if (canReceiveRestoredFocus(target)) target.focus({ preventScroll: true });
+  });
 }
 
 const ICONS: Record<string, LucideIcon> = {
@@ -182,9 +249,13 @@ export default function WantsAccordion({
     const params = new URLSearchParams(window.location.search);
     const c = params.get("want");
     if (!c) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot post-mount URL restore; SSR can't read the query for this client island
+    const restoredCategory = categoryKeyForWant(c, meal.key);
+    if (restoredCategory) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot post-mount URL restore; SSR cannot inspect the client query
+      setOpenKey(restoredCategory);
+    }
     setAnswer({ c, facet: params.get("facet"), label: labelForWant(c) });
-  }, []);
+  }, [meal.key]);
   // Saved-taste default: once the user's saves show a dominant craving, promote
   // THAT main to the hero instead of the time-of-day guess. Additive; resolves
   // post-mount, never overrides a tile the user has already tapped (touchedRef).
@@ -218,6 +289,7 @@ export default function WantsAccordion({
     : openCat.subs;
 
   const answerOpenerRef = useRef<HTMLElement | null>(null);
+  const accordionRef = useRef<HTMLDivElement>(null);
   const openAnswer = (
     want: { c: string; facet: string | null },
     label: string,
@@ -231,10 +303,13 @@ export default function WantsAccordion({
   };
   const dismissAnswer = (restoreFocus: boolean) => {
     const opener = answerOpenerRef.current;
+    const closingAnswer = answer;
+    answerOpenerRef.current = null;
     setAnswer(null);
     reflectWantInUrl(null);
-    if (restoreFocus) queueMicrotask(() => opener?.focus());
-    else answerOpenerRef.current = null;
+    if (restoreFocus) {
+      restoreWantAnswerFocus(opener, accordionRef.current, closingAnswer);
+    }
   };
   const closeAnswer = () => dismissAnswer(true);
 
@@ -281,7 +356,7 @@ export default function WantsAccordion({
   };
 
   return (
-    <div className="space-y-2.5">
+    <div ref={accordionRef} className="space-y-2.5">
       <div className="pb-0.5">
         <div className="flex flex-wrap gap-x-1.5 gap-y-2" role="group" aria-label="Quick actions">
           {WANTS.map((cat) => {
@@ -290,6 +365,7 @@ export default function WantsAccordion({
               <button
                 key={cat.key}
                 type="button"
+                data-want-category-trigger
                 aria-pressed={active}
                 onClick={() => promote(cat.key)}
                 className="tap-44 tap-pop tactile-interactive inline-flex shrink-0 items-center gap-2 rounded-full border px-3 text-[13px] font-semibold"
@@ -333,6 +409,9 @@ export default function WantsAccordion({
               onFocus={prefetchOnIntent(sub.href)}
               onPointerDown={prefetchOnIntent(sub.href)}
               onClick={interceptWant(sub.href, sub.label)}
+              data-want-answer-trigger={w ? "" : undefined}
+              data-want-key={w?.c}
+              data-want-facet={w?.facet ?? undefined}
               aria-expanded={w ? active : undefined}
               className="tap-44 tap-pop tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold"
               style={{

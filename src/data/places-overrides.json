@@ -65,7 +65,8 @@
     "tabu-frederick",
     "el-rancho-frederick",
     "shekinah-glory-deliverance-ministry",
-    "francis-scott-key-memorial-foundation"
+    "francis-scott-key-memorial-foundation",
+    "mackies-southern-bbq"
   ],
   "keepApart": [
     "clarity-psychotherapy",
@@ -153,6 +154,33 @@
       "address": "101 Clarke Pl",
       "city": "Frederick",
       "postal_code": "21701"
+    },
+    "currys-kitchen-brunswick": {
+      "name": "Adele's Tex Mex",
+      "category": "restaurant",
+      "subcategories": [
+        "mexican",
+        "latin"
+      ],
+      "tags": [
+        "tacos",
+        "pupusas",
+        "tex-mex",
+        "salvadoran"
+      ],
+      "address": "640 Souder Rd",
+      "city": "Brunswick",
+      "postal_code": "21716",
+      "phone": "301-834-3400",
+      "website": "https://www.facebook.com/adelestexmex/",
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "clearPhoto": true
+    },
+    "mackies-southern-bbq": {
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "clearPhoto": true
     },
     "eagles-aeire-1067": {
       "category": "civic"
@@ -670,6 +698,7 @@
       "clearGoogle": true
     },
     "the-healing-temple": {
+      "clearEnrichment": true,
       "clearGoogle": true
     },
     "frederick-county-coalition-for-the-homeless": {
@@ -677,6 +706,7 @@
       "clearGoogle": true
     },
     "new-hope-cafe": {
+      "clearEnrichment": true,
       "clearGoogle": true
     },
     "hydro-designs": {
@@ -1215,8 +1245,18 @@
         "coffee"
       ]
     },
+    "frederick-health-hospital": {
+      "category": "wellness",
+      "website": "https://www.frederickhealth.org/locations/frederick-health-hospital-hospital/"
+    },
+    "frederick-county-public-defender": {
+      "category": "government"
+    },
     "fifty-fifty-smash-burger": {
-      "name": "BackSlash Burger"
+      "name": "BackSlash Burger",
+      "category": "restaurant",
+      "website": "https://www.backslashburger.com/",
+      "phone": "301-300-2562"
     },
     "trailhead-myersville": {
       "name": "Appalachian Trail at Turners Gap"
@@ -1356,6 +1396,107 @@
           "notes": "The business publishes this link on its official website."
         }
       ]
+    },
+    "c-and-o-canal-brunswick": {
+      "category": "trail"
+    },
+    "appalachian-bodywork": {
+      "category": "massage"
+    },
+    "growwith-abi": {
+      "category": "services",
+      "website": "https://growwithabi.com/",
+      "phone": "+1 (301) 732-9191",
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "clearPhoto": true
+    },
+    "sho-lung-dojo-martial-arts": {
+      "category": "yoga"
+    },
+    "sonus-center": {
+      "name": "Sonus Hearing Care Professionals",
+      "category": "wellness",
+      "website": "https://sonusfrederick.com/",
+      "phone": "301-663-0553"
+    },
+    "frederick-county-public-school": {
+      "name": "Frederick County Public Schools",
+      "category": "government",
+      "address": "191 S East St",
+      "city": "Frederick",
+      "postal_code": "21701",
+      "phone": "227-203-3277",
+      "website": "https://www.fcps.org/connect_with_fcps",
+      "geom": {
+        "lng": -77.4063916,
+        "lat": 39.4106025
+      },
+      "includeWithoutMedia": true,
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "clearPhoto": true
+    },
+    "outreach-healthcare-frederick": {
+      "name": "Outreach Recovery",
+      "category": "wellness",
+      "address": "196 Thomas Johnson Dr, Ste 201",
+      "city": "Frederick",
+      "postal_code": "21702",
+      "phone": "410-800-4466",
+      "website": "https://outreachrecovery.com/locations/",
+      "geom": {
+        "lng": -77.4086981,
+        "lat": 39.4393257
+      },
+      "includeWithoutMedia": true,
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "clearPhoto": true
+    },
+    "the-frederick-center": {
+      "category": "civic"
+    },
+    "care-of-self-center": {
+      "category": "wellness",
+      "website": "https://www.careofselfcenter.com/",
+      "phone": "301-818-8100"
+    },
+    "william-r-talley-recreation-center": {
+      "category": "yoga",
+      "website": "https://www.cityoffrederickmd.gov/Facilities/Facility/Details/William-R-Talley-Recreation-Center-143",
+      "phone": "301-600-1492",
+      "tags": [
+        "indoor",
+        "fitness",
+        "basketball",
+        "volleyball",
+        "public-restroom",
+        "water-fountain"
+      ]
+    },
+    "bank-of-america-13": {
+      "category": "services"
+    },
+    "brow-studio-by-les": {
+      "category": "salon"
+    },
+    "clubhouse-kids-at-monocacy-valley-montessori-public-school": {
+      "category": "family",
+      "website": "https://www.clubhousekidsonline.com/contact.html",
+      "phone": "301-685-5100",
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "clearPhoto": true
+    },
+    "aveda": {
+      "category": "salon"
+    },
+    "frederick-county-department-of-planning-development-review": {
+      "name": "Frederick County Department of Development Review and Planning",
+      "category": "government",
+      "website": "https://www.frederickcountymd.gov/7969/Development-Review",
+      "phone": "301-600-1138"
     },
     "the-original-popcorn-house": {
       "subcategories": []

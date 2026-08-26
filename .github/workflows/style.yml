@@ -36,3 +36,9 @@ jobs:
 
       - name: Voice lint
         run: npm run style:lint
+
+      - name: Brand color lint
+        run: npm run lint:colors
+
+      - name: Layer scale lint
+        run: npm run lint:zindex

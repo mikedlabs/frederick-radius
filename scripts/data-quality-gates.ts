@@ -349,7 +349,11 @@ const GATES: Gate[] = [
       });
       return {
         pass: invalid.length === 0,
-        observed: `${invalid.length} invalid of ${approved.length} approved descriptions`,
+        observed:
+          `${invalid.length} invalid of ${approved.length} approved descriptions` +
+          (invalid.length > 0
+            ? ` (${invalid.slice(0, 5).map(([slug]) => slug).join(", ")}${invalid.length > 5 ? ", …" : ""})`
+            : ""),
         expect: "0 invalid, unreviewed, undocumented, unsourced, or orphaned approvals",
       };
     },

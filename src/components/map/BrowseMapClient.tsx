@@ -201,6 +201,7 @@ export default function BrowseMapClient({
     floodContext,
     snowRoutes,
     smartSignals,
+    sourceHealth,
   } = deferredLayers;
   const intentParam = sp.get("intent") ?? undefined;
   const subParam = sp.get("sub") ?? undefined;
@@ -555,6 +556,7 @@ export default function BrowseMapClient({
         outdoorSafetyHold: smartSignals?.outdoorSafetyHold ?? null,
         conditions: smartSignals?.conditionsStatus ?? "unavailable",
       }}
+      mapLayerSourceHealth={sourceHealth}
       onLayerDemand={requestLayerGroups}
       fullBleed
       // Center on the user's known location and measure from there when

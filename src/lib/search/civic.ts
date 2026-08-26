@@ -39,6 +39,11 @@ function wordsOf(s: string): string[] {
   return s.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
 }
 
+function containsWholePhrase(value: string, phrase: string): boolean {
+  const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`, "i").test(value);
+}
+
 type Entry = {
   actionId: string;
   id: string;
@@ -98,7 +103,10 @@ export function searchCivicActions(query: string, limit = 3): CivicActionResult[
       else if (e.titleLower.includes(t)) score += 1;
     }
     if (score === 0) continue;
-    if (e.titleLower.includes(q)) score += 4;
+    // A substring is not an exact phrase: bare "park" previously gave the
+    // registration page an extra four points merely because its title said
+    // "parks," placing two government doors above every actual park.
+    if (containsWholePhrase(e.titleLower, q)) score += 4;
     // A multi-term question must hit twice: "marriage license" should
     // never also drag in "food license" on the shared token.
     if (score < (terms.length >= 2 ? 8 : 4)) continue;

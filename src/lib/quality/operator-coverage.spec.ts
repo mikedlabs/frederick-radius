@@ -8,6 +8,7 @@ import {
   summarizeAmenityCoverage,
   summarizeEventQuality,
   summarizeHoursRefreshArtifact,
+  withheldHoursReviewQueue,
 } from "./operator-coverage";
 
 function slugForCycleDay(cycleDay: number): string {
@@ -123,6 +124,48 @@ describe("operator data coverage", () => {
       staleRows: 0,
       coveragePct: 0,
     });
+  });
+
+  it("turns fresh but unsafe provider schedules into a review queue", () => {
+    const now = new Date("2026-07-26T12:00:00Z");
+    const queue = withheldHoursReviewQueue(
+      {
+        all_day: {
+          weekday_hours: [
+            "Monday: Open 24 hours",
+            "Tuesday: Open 24 hours",
+            "Wednesday: Open 24 hours",
+            "Thursday: Open 24 hours",
+            "Friday: Open 24 hours",
+            "Saturday: Open 24 hours",
+            "Sunday: Open 24 hours",
+          ],
+          refreshed_at: "2026-07-26T11:00:00Z",
+        },
+        ordinary: {
+          weekday_hours: ["Monday: 9:00 AM – 5:00 PM"],
+          refreshed_at: "2026-07-26T11:00:00Z",
+        },
+        stale: {
+          weekday_hours: ["Monday: 9:30 AM – 5:30 AM"],
+          refreshed_at: "2026-06-01T11:00:00Z",
+        },
+      },
+      [
+        { slug: "all_day", name: "All Day Place", municipality: "frederick" },
+        { slug: "ordinary", name: "Ordinary Place" },
+        { slug: "stale", name: "Stale Place" },
+      ],
+      now,
+    );
+
+    expect(queue).toEqual([
+      expect.objectContaining({
+        slug: "all_day",
+        reason: "all-week-24h",
+        review: "missing",
+      }),
+    ]);
   });
 
   it("shows whether the deterministic hours cycle is warming, healthy, or stalled", () => {

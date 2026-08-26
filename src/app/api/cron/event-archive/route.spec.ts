@@ -473,6 +473,9 @@ describe("GET /api/cron/event-archive", () => {
       degraded: true,
       retryable: false,
       failures: ["unified-partial"],
+      sources: {
+        unified_unavailable: ["one publisher"],
+      },
       archive: {
         accepted: 1,
         upserted: 1,

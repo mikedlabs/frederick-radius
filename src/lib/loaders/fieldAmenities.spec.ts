@@ -65,6 +65,35 @@ describe("getFieldAmenities", () => {
     ]);
   });
 
+  it("derives a town slug from coordinates when an older field row has none", async () => {
+    mocks.getDb.mockReturnValue(
+      databaseReturning(
+        Promise.resolve([
+          {
+            id: "bench-legacy",
+            kind: "bench",
+            name: null,
+            detail: null,
+            note: null,
+            municipality: null,
+            lng: -77.4102,
+            lat: 39.4143,
+            photo_url: null,
+            created_at: new Date("2026-08-13T14:30:00.000Z"),
+          },
+        ]),
+      ),
+    );
+
+    await expect(getFieldAmenities()).resolves.toEqual([
+      expect.objectContaining({
+        id: "field:bench-legacy",
+        name: "Bench",
+        municipality: "frederick",
+      }),
+    ]);
+  });
+
   it("returns the static fallback deadline instead of holding the page open", async () => {
     vi.useFakeTimers();
     mocks.getDb.mockReturnValue(

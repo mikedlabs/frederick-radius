@@ -37,6 +37,10 @@ export default function FloodContext({
   const { current: map } = useMap();
   const [popup, setPopup] = useState<ContextPopup | null>(null);
   useLiveLayerGate(gate, () => setPopup(null));
+  const closePopup = () => {
+    setPopup(null);
+    gate?.onDidClose();
+  };
 
   useEffect(() => {
     const instance = map?.getMap();
@@ -169,7 +173,7 @@ export default function FloodContext({
           closeButton={false}
           closeOnClick={false}
           className="radius-map-popup"
-          onClose={() => setPopup(null)}
+          onClose={closePopup}
         >
           <article className="w-[min(78vw,19rem)] p-1 text-left">
             <div className="flex items-start gap-2.5">
@@ -198,7 +202,7 @@ export default function FloodContext({
               </div>
               <button
                 type="button"
-                onClick={() => setPopup(null)}
+                onClick={closePopup}
                 className="grid min-h-11 min-w-11 place-items-center rounded-full"
                 aria-label="Close flood-context details"
               >

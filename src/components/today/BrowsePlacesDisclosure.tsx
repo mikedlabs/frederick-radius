@@ -1,18 +1,25 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { LayoutGrid, ChevronDown } from "lucide-react";
+import { ArrowRight, LayoutGrid, ChevronDown } from "lucide-react";
 import { haptic } from "@/lib/haptics";
+import MotionDisclosure from "@/components/ui/MotionDisclosure";
 
 /**
- * BrowsePlacesDisclosure — an OBVIOUS tap target for the "I want…" category
- * browse on /today. It is set as the next index row beneath Ask Radius, rather
- * than another floating card competing with it.
+ * The full category index is the deeper route inside Today's one Find surface.
+ * It is intentionally quiet and closed unless the URL restores a selected
+ * answer. The everyday search doorway and two urgent shortcuts should answer
+ * most visits without exposing the product's entire taxonomy.
  *
- * Keeps the tap-to-open contract: children (the CravingStrip) ship in the HTML
- * and are display:none until opened, so there is zero fetch and the panel opens
- * instantly. Open state persists per device.
+ * Children ship in the HTML and open without a fetch. The reveal stays
+ * visually attached to the row and the closed controls remain inert.
  */
+export function shouldOpenBrowseFromSearch(search: string): boolean {
+  const want = new URLSearchParams(search).get("want");
+  return Boolean(want?.trim());
+}
+
 export default function BrowsePlacesDisclosure({
   children,
   embedded = false,
@@ -20,34 +27,49 @@ export default function BrowsePlacesDisclosure({
   children: ReactNode;
   embedded?: boolean;
 }) {
-  const KEY = "fr.today.want";
-  const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [{ open, mounted }, setDisclosure] = useState({
+    open: false,
+    mounted: false,
+  });
 
   useEffect(() => {
-    try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- post-mount localStorage hydration; SSR can't read it
-      if (window.localStorage.getItem(KEY) === "true") setOpen(true);
-    } catch {
-      /* localStorage unavailable — stay closed */
-    }
-    setMounted(true);
+    // The server cannot inspect this client-owned query state. Restore it once
+    // after hydration so a shared /today?want= link reveals its answer.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot URL restore plus honest hydration readiness
+    setDisclosure({
+      open: shouldOpenBrowseFromSearch(window.location.search),
+      mounted: true,
+    });
   }, []);
 
   const toggle = () => {
     haptic("light");
-    setOpen((v) => {
-      const next = !v;
-      try {
-        window.localStorage.setItem(KEY, String(next));
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
+    setDisclosure((value) => ({ ...value, open: !value.open }));
   };
 
   const panelId = "browse-places-panel";
+  const triggerClass = `tap-pop flex min-h-11 w-full items-center gap-2.5 border-t px-3 py-2 text-left transition hover:bg-[var(--app-bg-sunken)] ${
+    embedded ? "" : "border-b"
+  }`;
+  const triggerStyle = {
+    borderColor: "var(--app-border)",
+    // Full-width row: a gentle push-out, not the chip-scale 1.06.
+    "--pop": "1.015",
+  } as CSSProperties;
+  const triggerLabel = (
+    <>
+      <span
+        aria-hidden
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
+        style={{ color: "var(--app-brand-press)", background: "var(--app-brand-tint-6)" }}
+      >
+        <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
+      </span>
+      <span className="min-w-0 flex-1 text-[12.5px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+        {mounted ? "Browse all categories" : "Browse all places"}
+      </span>
+    </>
+  );
 
   return (
     <section
@@ -55,48 +77,48 @@ export default function BrowsePlacesDisclosure({
       data-surface-row={embedded ? "browse" : undefined}
       className={embedded ? "" : "mt-3"}
     >
-      <button
-        type="button"
-        onClick={toggle}
-        disabled={!mounted}
-        aria-busy={!mounted || undefined}
-        data-ready={mounted || undefined}
-        aria-expanded={mounted ? open : false}
-        aria-controls={panelId}
-        className={`tap-pop flex min-h-[52px] w-full items-center gap-3 px-2 py-2 text-left transition hover:bg-[var(--app-bg-elevated)] ${
-          embedded ? "" : "border-b"
-        }`}
-        style={{
-          borderColor: "var(--app-border)",
-          // Full-width row: a gentle push-out, not the chip-scale 1.06.
-          "--pop": "1.015",
-        } as CSSProperties}
-      >
-        <span
-          aria-hidden
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
-          style={{ boxShadow: "inset 2px 0 0 var(--app-brand)", color: "var(--app-brand)" }}
+      {mounted ? (
+        <button
+          type="button"
+          onClick={toggle}
+          data-ready="true"
+          aria-expanded={open}
+          aria-controls={panelId}
+          className={triggerClass}
+          style={triggerStyle}
         >
-          <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
-        </span>
-        <span className="min-w-0 flex-1 text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
-          Browse by category
-        </span>
-        <ChevronDown
-          className="h-5 w-5 shrink-0 transition-transform duration-200"
-          strokeWidth={2.25}
-          aria-hidden
-          style={{ color: "var(--app-ink-3)", transform: open ? "rotate(180deg)" : "none" }}
-        />
-      </button>
-      <div
+          {triggerLabel}
+          <ChevronDown
+            className="h-5 w-5 shrink-0 transition-transform duration-200"
+            strokeWidth={2.25}
+            aria-hidden
+            style={{ color: "var(--app-ink-3)", transform: open ? "rotate(180deg)" : "none" }}
+          />
+        </button>
+      ) : (
+        <Link
+          href="/places"
+          prefetch={false}
+          className={triggerClass}
+          style={triggerStyle}
+        >
+          {triggerLabel}
+          <ArrowRight
+            className="h-4 w-4 shrink-0"
+            strokeWidth={2.25}
+            aria-hidden
+            style={{ color: "var(--app-brand-press)" }}
+          />
+        </Link>
+      )}
+      <MotionDisclosure
         id={panelId}
-        hidden={!open}
-        className={embedded ? "border-t px-3 pb-3 pt-3" : "mt-3"}
-        style={embedded ? { borderColor: "var(--app-border)" } : undefined}
+        open={open}
+        className={embedded ? "border-t border-[var(--app-border)]" : ""}
+        innerClassName={embedded ? "px-3 pb-3 pt-3" : "mt-3"}
       >
         {children}
-      </div>
+      </MotionDisclosure>
     </section>
   );
 }

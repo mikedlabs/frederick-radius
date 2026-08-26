@@ -10,7 +10,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import Link from "next/link";
-import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, MessageCircleQuestion, Phone, Train, Activity } from "lucide-react";
+import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Phone, Train, Activity } from "lucide-react";
 import type {
   QualifiedSearchIndexResult,
   SearchResult,
@@ -44,6 +44,7 @@ const QUICK_ICON: Record<IntentIcon, typeof Clock> = {
 // result. Trust signals are populated server-side on each result so
 // the overlay doesn't need clientPlaceBySlug / EVENT_BY_SLUG either.
 import TrustChip from "@/components/ui/TrustChip";
+import { TRUST_COLOR, type TrustSignal } from "@/lib/trust";
 import { useRecentSearches, usePushRecentSearch, useClearRecentSearches } from "@/hooks/useRecentSearches";
 import { frederickHour } from "@/lib/search-suggestions";
 
@@ -54,6 +55,25 @@ const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
   municipality: Building2,
   action: ArrowRight,
 };
+
+function SearchTrustLine({ signal }: { signal: TrustSignal }) {
+  const label = signal.checked ?? signal.label;
+  return (
+    <span
+      className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-medium"
+      style={{ color: "var(--app-ink-3)" }}
+      title={signal.basis}
+      aria-label={`Source ${signal.label}. ${signal.basis}${signal.checked ? `. ${signal.checked}` : ""}`}
+    >
+      <span
+        aria-hidden
+        className="h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{ background: TRUST_COLOR[signal.level] }}
+      />
+      {label}
+    </span>
+  );
+}
 
 const LABEL_BY_TYPE: Record<SearchResultType, string> = {
   place: "Place",
@@ -76,6 +96,135 @@ export function splitBestMatch(results: SearchResult[]): {
     best: results[0] ?? null,
     rest: results.slice(1).map((r, index) => ({ r, idx: index + 1 })),
   };
+}
+
+/**
+ * A person should not have to decide whether their words belong in Search or
+ * Ask. Short names and categories stay in the fast index. An actual question
+ * or an open-ended request goes to the reasoning workspace, where time,
+ * location, conditions, and multiple constraints can be considered together.
+ *
+ * Keep imperative lookup language ("find coffee", "show parking") out of this
+ * bucket: those requests are still best served by the deterministic index.
+ */
+export function isNaturalLanguageRequest(value: string): boolean {
+  const query = value
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[’]/g, "'")
+    .replace(/\s+/g, " ");
+
+  if (!query) return false;
+  if (/[?]\s*$/.test(query)) return true;
+
+  if (
+    /^(?:who|what|when|where|why|how|which|can|could|should|would|will|is|are|am|do|does|did|has|have)\b/.test(
+      query,
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    /^(?:help me|i(?:'m| am) looking for|i(?:'m| am) trying to|i need|i want|recommend|suggest|give me (?:an?|some)|plan (?:me|a|my))\b/.test(
+      query,
+    )
+  ) {
+    return true;
+  }
+
+  const words = query.match(/[a-z0-9]+/g) ?? [];
+  return words.length >= 3 && /\b(?:anything|something|somewhere)\b/.test(query);
+}
+
+const DIRECT_NATURAL_LANGUAGE_INTENTS = new Set([
+  "open-now",
+  "transit",
+  "parking",
+  "restrooms",
+  "drinking-water",
+  "trash",
+  "dog-bags",
+  "seating",
+  "power",
+  "shipping",
+  "food-trucks",
+]);
+
+export function isCompoundLookup(value: string): boolean {
+  const normalized = value.trim().toLocaleLowerCase();
+  return /\b(?:and|with|under|within|for)\b/.test(normalized);
+}
+
+/** Only authoritative HTTPS destinations may bypass Radius navigation. */
+export function safeOfficialAnswerHref(value?: string | null): string | null {
+  const candidate = value?.trim();
+  if (!candidate) return null;
+  try {
+    const parsed = new URL(candidate);
+    return parsed.protocol === "https:" ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Mirrors the visible Direct answer order: department before civic action. */
+export function firstSafeOfficialAnswerHref(
+  ...candidates: Array<string | null | undefined>
+): string | null {
+  for (const candidate of candidates) {
+    const safe = safeOfficialAnswerHref(candidate);
+    if (safe) return safe;
+  }
+  return null;
+}
+
+export function unifiedRequestDestination({
+  query,
+  quickHref,
+  quickKey,
+  officialHref,
+  bestHref,
+  status,
+}: {
+  query: string;
+  quickHref?: string | null;
+  quickKey?: string | null;
+  officialHref?: string | null;
+  bestHref?: string | null;
+  status: "idle" | "loading" | "done" | "error";
+}): string | null {
+  const normalized = query.trim();
+  if (!normalized) return null;
+  const safeOfficialHref = safeOfficialAnswerHref(officialHref);
+  if (isNaturalLanguageRequest(normalized)) {
+    // Some plain-language requests are still exact utility lookups. Sending
+    // "Where is the nearest trash can?" through a reasoning round trip only
+    // adds delay. Cravings and broad discovery requests are intentionally not
+    // in this set: "I want coffee and bikes" must keep both constraints.
+    if (
+      quickHref &&
+      quickKey &&
+      DIRECT_NATURAL_LANGUAGE_INTENTS.has(quickKey)
+    ) {
+      return quickHref;
+    }
+    // Official civic and department matches render above the index. Enter on
+    // the field must choose that same first card instead of ignoring what is
+    // on screen and sending the words to Ask.
+    if (safeOfficialHref) return safeOfficialHref;
+    return `/ask?q=${encodeURIComponent(normalized)}`;
+  }
+  // A compound lookup can still have a strong deterministic match, such as
+  // Gravel & Grind for "coffee and bikes." Prefer that ranked entity over a
+  // broad single-keyword shortcut. If the index has no credible candidate,
+  // preserve the full request for Radius instead of dropping half of it.
+  if (isCompoundLookup(normalized) && quickKey?.startsWith("craving:")) {
+    return bestHref ?? `/ask?q=${encodeURIComponent(normalized)}`;
+  }
+  if (quickHref) return quickHref;
+  if (safeOfficialHref) return safeOfficialHref;
+  return commandDestination({ query: normalized, bestHref, status });
 }
 
 /**
@@ -128,13 +277,21 @@ function isPlainNavigationClick(
   event: ReactMouseEvent<HTMLAnchorElement>,
 ): boolean {
   return (
+    isUnmodifiedPrimaryClick(event) &&
+    (!event.currentTarget.target ||
+      event.currentTarget.target === "_self")
+  );
+}
+
+function isUnmodifiedPrimaryClick(
+  event: ReactMouseEvent<HTMLAnchorElement>,
+): boolean {
+  return (
     event.button === 0 &&
     !event.metaKey &&
     !event.ctrlKey &&
     !event.shiftKey &&
-    !event.altKey &&
-    (!event.currentTarget.target ||
-      event.currentTarget.target === "_self")
+    !event.altKey
   );
 }
 
@@ -214,6 +371,18 @@ export default function SearchOverlay({
     },
     [historyLayer],
   );
+  const openOfficialAnswer = useCallback((href: string) => {
+    const safeHref = safeOfficialAnswerHref(href);
+    if (!safeHref) return;
+    // Match the cards' target/rel behavior for Enter on the input. Creating a
+    // real anchor inside the same trusted keyboard or pointer event preserves
+    // the browser's new-tab behavior without exposing window.opener.
+    const anchor = document.createElement("a");
+    anchor.href = safeHref;
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
+    anchor.click();
+  }, []);
 
   const updateQuery = (next: string) => {
     setQuery(next);
@@ -238,6 +407,16 @@ export default function SearchOverlay({
       setResults([]);
       setSearchMeta(null);
       setStatus("idle");
+      return;
+    }
+    // A complete question does not need a noisy list of weak text matches
+    // before it reaches the reasoning layer. Mark it ready immediately; the
+    // synchronous direct-answer matchers below can still intercept civic and
+    // urgent needs without paying for a search request.
+    if (isNaturalLanguageRequest(q)) {
+      setResults([]);
+      setSearchMeta(null);
+      setStatus("done");
       return;
     }
     const ctrl = new AbortController();
@@ -286,7 +465,12 @@ export default function SearchOverlay({
   const emptyReportedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const q = query.trim().toLowerCase();
-    if (status !== "done" || results.length !== 0 || q.length < 3) return;
+    if (
+      status !== "done" ||
+      results.length !== 0 ||
+      q.length < 3 ||
+      isNaturalLanguageRequest(q)
+    ) return;
     if (emptyReportedRef.current.has(q)) return;
     const t = setTimeout(() => {
       emptyReportedRef.current.add(q);
@@ -393,6 +577,13 @@ export default function SearchOverlay({
   // the county's own How-Do-I actions (voter registration, FixIT,
   // marriage licenses, burn permits…). Cheap synchronous lookups; no fetch.
   const quickAnswers = findQuickAnswers(query);
+  const reasoningRequest = isNaturalLanguageRequest(query);
+  const compoundLookup = isCompoundLookup(query);
+  const visibleQuickAnswers = reasoningRequest || compoundLookup
+    ? quickAnswers.filter((answer) =>
+        DIRECT_NATURAL_LANGUAGE_INTENTS.has(answer.key),
+      )
+    : quickAnswers;
   const civicCandidates = searchCivicActions(query, 2);
   const govAnswers = shouldShowDepartmentAnswers(query, civicCandidates)
     ? findDepartments(query)
@@ -402,13 +593,21 @@ export default function SearchOverlay({
     // don't double up when an action points at the same page.
     (c) => !govAnswers.some((d) => d.website === c.href),
   );
-  const hasAnswer = quickAnswers.length > 0 || govAnswers.length > 0 || civicAnswers.length > 0;
+  const hasAnswer = visibleQuickAnswers.length > 0 || govAnswers.length > 0 || civicAnswers.length > 0;
+  const officialAnswerHref = firstSafeOfficialAnswerHref(
+    govAnswers[0]?.website,
+    civicAnswers[0]?.href,
+  );
   const { best, rest } = splitBestMatch(results);
   const rankedResults = best ? [{ r: best, idx: 0 }, ...rest] : [];
   const submitCommand = () => {
-    const destination = commandDestination({
+    const destination = unifiedRequestDestination({
       query,
-      quickHref: quickAnswers[0]?.href,
+      // Enter follows the same first direct answer that is actually visible.
+      // A filtered-out craving must never silently win over the card on screen.
+      quickHref: visibleQuickAnswers[0]?.href,
+      quickKey: visibleQuickAnswers[0]?.key,
+      officialHref: officialAnswerHref,
       bestHref: best?.href,
       status,
     });
@@ -422,6 +621,10 @@ export default function SearchOverlay({
           ? "search"
           : "direct",
     });
+    if (destination === officialAnswerHref) {
+      openOfficialAnswer(destination);
+      return;
+    }
     navigateFromSearch(destination);
   };
 
@@ -481,13 +684,16 @@ export default function SearchOverlay({
 
         {/* Input */}
         <div
-          className="mx-4 mb-3 flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] px-3 shadow-[var(--app-shadow-1)] transition focus-within:border-[var(--app-brand)] focus-within:ring-2 focus-within:ring-[color-mix(in_srgb,var(--app-brand)_18%,transparent)] sm:mx-5"
+          className="search-field-shell mx-4 mb-3 flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] px-3 shadow-[var(--app-shadow-1)] transition focus-within:border-[var(--app-brand)] focus-within:ring-2 focus-within:ring-[color-mix(in_srgb,var(--app-brand)_18%,transparent)] sm:mx-5"
           style={{ borderColor: "var(--app-border-strong)" }}
         >
           <Search className="h-5 w-5 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand-press)" }} aria-hidden />
           <input
             ref={inputRef}
-            type="search"
+            type="text"
+            role="searchbox"
+            inputMode="search"
+            enterKeyHint="search"
             value={query}
             onChange={(e) => updateQuery(e.target.value)}
             onKeyDown={(event) => {
@@ -531,9 +737,9 @@ export default function SearchOverlay({
           {hasAnswer && (
             <div className="border-b px-3 py-2.5" style={{ borderColor: "var(--app-border)", background: "color-mix(in srgb, var(--app-brand) 5%, transparent)" }}>
               <p className="eyebrow mb-1.5 px-1" style={{ color: "var(--app-brand-press)" }}>Direct answer</p>
-              {quickAnswers.length > 0 && (
+              {visibleQuickAnswers.length > 0 && (
                 <ul className="mb-1.5 space-y-1.5">
-                  {quickAnswers.map((qa) => {
+                  {visibleQuickAnswers.map((qa) => {
                     const Icon = QUICK_ICON[qa.icon];
                     return (
                       <li key={qa.href}>
@@ -562,7 +768,9 @@ export default function SearchOverlay({
                 </ul>
               )}
               <ul className="space-y-1.5">
-                {govAnswers.map((d) => (
+                {govAnswers.map((d) => {
+                  const website = safeOfficialAnswerHref(d.website);
+                  return (
                   <li key={d.slug}>
                     <div
                       className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5"
@@ -581,9 +789,22 @@ export default function SearchOverlay({
                                 <Phone className="h-3 w-3" strokeWidth={2.5} aria-hidden /> {formatPhone(d.phone)}
                               </a>
                             )}
-                            <a href={d.website} target="_blank" rel="noopener noreferrer" className="tactile-interactive inline-flex min-h-11 items-center gap-1 rounded-full border px-2.5 py-1 text-meta font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
-                              Open site <ArrowRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-                            </a>
+                            {website ? (
+                              <a
+                                href={website}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(event) => {
+                                  if (!isUnmodifiedPrimaryClick(event)) return;
+                                  event.preventDefault();
+                                  openOfficialAnswer(website);
+                                }}
+                                className="tactile-interactive inline-flex min-h-11 items-center gap-1 rounded-full border px-2.5 py-1 text-meta font-semibold"
+                                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+                              >
+                                Open site <ArrowRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+                              </a>
+                            ) : null}
                             <span className="ml-auto text-caption uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
                               {jurisdictionLabel(d.jurisdiction)}
                             </span>
@@ -592,16 +813,25 @@ export default function SearchOverlay({
                       </div>
                     </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
               {civicAnswers.length > 0 && (
                 <ul className="mt-1.5 space-y-1.5">
-                  {civicAnswers.map((c) => (
+                  {civicAnswers.map((c) => {
+                    const officialHref = safeOfficialAnswerHref(c.href);
+                    if (!officialHref) return null;
+                    return (
                     <li key={c.id}>
                       <a
-                        href={c.href}
+                        href={officialHref}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={(event) => {
+                          if (!isUnmodifiedPrimaryClick(event)) return;
+                          event.preventDefault();
+                          openOfficialAnswer(officialHref);
+                        }}
                         className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5 transition active:scale-[0.99]"
                         style={{ borderColor: "var(--app-border)" }}
                       >
@@ -615,7 +845,8 @@ export default function SearchOverlay({
                         <ArrowRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
                       </a>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -683,20 +914,38 @@ export default function SearchOverlay({
                     >
                       Open the full search page
                     </a>
-                    <span aria-hidden> · </span>
-                    <a
-                      href={`/ask?q=${encodeURIComponent(query.trim())}`}
-                      className="font-semibold underline"
-                      style={{ color: "var(--app-brand-press)" }}
-                    >
-                      Ask Radius instead
-                    </a>
                   </p>
                 )}
               </div>
             ) : status === "loading" ? (
               <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
                 <p>Searching&hellip;</p>
+              </div>
+            ) : reasoningRequest && !hasAnswer ? (
+              <div className="px-4 py-5 sm:px-5">
+                <button
+                  type="button"
+                  onClick={submitCommand}
+                  className="tactile-interactive flex min-h-[72px] w-full items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] p-3 text-left shadow-[var(--app-shadow-1)] transition active:scale-[0.99]"
+                  style={{ borderColor: "color-mix(in srgb, var(--app-brand) 28%, var(--app-border))" }}
+                >
+                  <span
+                    aria-hidden
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+                    style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}
+                  >
+                    <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                      Get an answer
+                    </span>
+                    <span className="mt-0.5 block text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                      Radius will check current places, events, conditions, and local services.
+                    </span>
+                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+                </button>
               </div>
             ) : hasAnswer ? null : (
             <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
@@ -785,7 +1034,7 @@ export default function SearchOverlay({
                           {trust && <TrustChip signal={trust} className="mt-1.5" />}
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 border-t" style={{ borderColor: "var(--app-border)" }}>
+                      <div className={`grid border-t ${mapHref ? "grid-cols-2" : "grid-cols-1"}`} style={{ borderColor: "var(--app-border)" }}>
                         <Link
                           href={r.href}
                           onClick={pick}
@@ -813,23 +1062,7 @@ export default function SearchOverlay({
                             <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
                             Map
                           </Link>
-                        ) : (
-                          <Link
-                            href={`/ask?q=${encodeURIComponent(query.trim())}`}
-                            onClick={(event) => {
-                              if (!isPlainNavigationClick(event)) return;
-                              event.preventDefault();
-                              track("ask_open");
-                              navigateFromSearch(
-                                `/ask?q=${encodeURIComponent(query.trim())}`,
-                              );
-                            }}
-                            className="flex min-h-11 items-center justify-center gap-1.5 border-l px-3 text-[12px] font-semibold"
-                            style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
-                          >
-                            Ask Radius
-                          </Link>
-                        )}
+                        ) : null}
                       </div>
                     </li>
                   );
@@ -859,7 +1092,7 @@ export default function SearchOverlay({
                         <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
                           {r.subtitle}{distance ? ` · ${distance}` : ""}
                         </span>
-                        {trust && <TrustChip signal={trust} className="mt-1" />}
+                        {trust && <SearchTrustLine signal={trust} />}
                       </span>
                       <ArrowRight className="mt-4 h-3.5 w-3.5 shrink-0 opacity-35" strokeWidth={2.25} aria-hidden />
                     </Link>
@@ -869,7 +1102,7 @@ export default function SearchOverlay({
             </ul>
           )}
 
-          {query.trim() && results.length === 0 && !hasAnswer && status === "done" ? (
+          {query.trim() && results.length === 0 && !hasAnswer && status === "done" && !reasoningRequest ? (
             <div className="border-t px-4 py-4" style={{ borderColor: "var(--app-border)" }}>
               <Link
                 href={`/ask?q=${encodeURIComponent(query.trim())}`}
@@ -894,14 +1127,14 @@ export default function SearchOverlay({
                     color: "var(--app-on-brand, #fff)",
                   }}
                 >
-                  <MessageCircleQuestion className="h-4 w-4" strokeWidth={2.25} />
+                  <ArrowRight className="h-4 w-4" strokeWidth={2.25} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                    Ask Radius
+                    Get an answer
                   </span>
                   <span className="mt-0.5 block text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                    Add details such as time, budget, or who is coming.
+                    No exact listing matched. Radius can still work from this request.
                   </span>
                 </span>
                 <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
@@ -944,6 +1177,8 @@ export default function SearchOverlay({
                 ? ""
                 : hasAnswer
                   ? "Direct answer available"
+                : reasoningRequest
+                  ? "Ready for an answer"
                 : status === "error"
                   ? "Search unavailable"
                   : status === "loading"
@@ -1066,24 +1301,9 @@ function EmptyHint({
         </ul>
       </div>
 
-      <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
-        <Link
-          href="/ask"
-          onClick={(event) => {
-            if (!isPlainNavigationClick(event)) return;
-            event.preventDefault();
-            onNavigate("/ask");
-          }}
-          className="group flex min-h-12 items-center gap-3 px-1"
-        >
-          <MessageCircleQuestion className="h-4 w-4 shrink-0" strokeWidth={2.1} style={{ color: "var(--app-brand)" }} aria-hidden />
-          <span className="min-w-0 flex-1">
-            <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Ask Radius</span>
-            <span className="block text-[11px]" style={{ color: "var(--app-ink-3)" }}>Use a question when a name or category is not enough.</span>
-          </span>
-          <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} aria-hidden />
-        </Link>
-      </div>
+      <p className="mt-4 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+        Type a name, category, need, or question. Radius will choose the right path.
+      </p>
     </div>
   );
 }

@@ -174,18 +174,40 @@ export type EventPin = {
   verification_expires_at?: string;
 };
 
-/** Operator-confirmed, self-expiring food-truck location. */
-export type FoodTruckMapPin = {
+type FoodTruckMapPinBase = {
+  /** Unique availability record. A truck can have more than one future stop. */
+  id: string;
   slug: string;
   name: string;
   cuisine: string;
   lat: number;
   lng: number;
-  spot?: string;
-  note?: string;
-  startedAt: string;
-  expiresAt: string;
+  href: string;
 };
+
+/** Food-truck map truth. Only `operator-live` may be styled or described as
+ * live; a published stop remains a plan until an operator confirms arrival. */
+export type FoodTruckMapPin = FoodTruckMapPinBase & (
+  | {
+      availability: "operator-live";
+      spot?: string;
+      note?: string;
+      startedAt: string;
+      expiresAt: string;
+      sourceName: "Operator live beacon";
+      sourceUrl: string;
+    }
+  | {
+      availability: "published-stop";
+      venueName: string;
+      municipality?: string;
+      startedAt: string;
+      expiresAt?: string;
+      sourceName: string;
+      sourceUrl: string;
+      sourceConfidence: "vendor" | "venue" | "organizer";
+    }
+);
 
 import type { TimeMode } from "./dockCaption";
 

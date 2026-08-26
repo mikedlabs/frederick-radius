@@ -1258,10 +1258,6 @@
       "google_place_id": "ChIJBS3XiarAyYkRMxScQSb4epE"
     },
     {
-      "slug": "currys-kitchen-brunswick",
-      "google_place_id": "ChIJBf8CewAftokRXwtBwnnRE7M"
-    },
-    {
       "slug": "cvs-pharmacy-95",
       "google_place_id": "ChIJJVlEsvvayYkRzQryMXjV-QI"
     },
@@ -4760,6 +4756,10 @@
     {
       "slug": "soldierfit-frederick-frederick",
       "google_place_id": "ChIJAV7yTXPQyYkRmeKkJ_WY55U"
+    },
+    {
+      "slug": "sonus-center",
+      "google_place_id": "ChIJsd2VnvLayYkRGyH-_flKGMc"
     },
     {
       "slug": "sophie-madigans-playground-frederick",

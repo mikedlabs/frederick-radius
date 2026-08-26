@@ -68,6 +68,10 @@ export function BreweryLogo({
         alt={decorative ? "" : accessibleLabel}
         fill
         sizes={sizes}
+        // These are already-normalized local marks (100–600px), not large
+        // photographs. Serving the static asset avoids asking the image
+        // optimizer for a wasteful 3840px derivative on card rails.
+        unoptimized
         loading={loading}
         className="object-contain"
         onError={() => setFailedSrc(logoSrc)}

@@ -33,6 +33,54 @@ const DAY = 86_400_000;
  * at 6.0, which is the day of daylight this alarm exists to provide.
  */
 export const HOURS_SNAPSHOT_MAX_AGE_DAYS = HOURS_MAX_AGE_DAYS - 2;
+export const VENUE_SNAPSHOT_MAX_AGE_DAYS = 10;
+
+type VenueFreshnessRow = {
+  venue_slug?: string;
+  source?: { fetchedAt?: string };
+};
+
+/**
+ * Check each represented venue independently. A single newly refreshed venue
+ * must not make another venue's frozen calendar look current.
+ */
+export function venueEventFreshnessAnomalies(
+  rows: readonly VenueFreshnessRow[],
+  now: Date,
+  maxAgeDays = VENUE_SNAPSHOT_MAX_AGE_DAYS,
+): Anomaly[] {
+  const byVenue = new Map<string, string[]>();
+  for (const row of rows) {
+    const venue = row.venue_slug?.trim();
+    if (!venue) continue;
+    const stamps = byVenue.get(venue) ?? [];
+    if (typeof row.source?.fetchedAt === "string") {
+      stamps.push(row.source.fetchedAt);
+    }
+    byVenue.set(venue, stamps);
+  }
+
+  return [...byVenue.entries()].flatMap(([venue, stamps]) => {
+    const valid = stamps
+      .map((stamp) => Date.parse(stamp))
+      .filter(Number.isFinite);
+    if (valid.length === 0) {
+      return [{
+        source: `venue-events:${venue}`,
+        kind: "snapshot_expired" as const,
+        detail: `No valid collection timestamp exists for ${venue}. Run the venue ingest and review its source result.`,
+      }];
+    }
+    const age = Math.floor((now.getTime() - Math.max(...valid)) / DAY);
+    return age > maxAgeDays
+      ? [{
+          source: `venue-events:${venue}`,
+          kind: "snapshot_expired" as const,
+          detail: `${venue} was last collected ${age} days ago; the limit is ${maxAgeDays} days. Run the venue ingest and merge its reviewed data PR.`,
+        }]
+      : [];
+  });
+}
 
 /** last_verified strings are "YYYY-MM" or "YYYY-MM-DD"; parse leniently. */
 function ageDays(verified: string | undefined, now: Date): number | null {
@@ -75,7 +123,11 @@ export function curatedFreshnessAnomalies(now: Date = new Date()): Anomaly[] {
 
   // 1. Venue-events snapshot must contain FUTURE events. When every row has
   //    passed, the source contributes zero and nobody can tell from the UI.
-  const venueRows = VENUE_EVENTS as Array<{ starts_at: string }>;
+  const venueRows = VENUE_EVENTS as Array<{
+    starts_at: string;
+    venue_slug?: string;
+    source?: { fetchedAt?: string };
+  }>;
   const future = venueRows.filter((e) => Date.parse(e.starts_at) > now.getTime()).length;
   if (venueRows.length === 0 || future === 0) {
     out.push({
@@ -84,6 +136,7 @@ export function curatedFreshnessAnomalies(now: Date = new Date()): Anomaly[] {
       detail: `${venueRows.length} rows, ${future} in the future — run \`npm run ingest:venues\` (ANTHROPIC_API_KEY for the render/image venues).`,
     });
   }
+  out.push(...venueEventFreshnessAnomalies(venueRows, now));
 
   // 2. The app's trustworthy open/closed state depends on the materialized
   // rolling Google refresh, which carries both hours and business status.

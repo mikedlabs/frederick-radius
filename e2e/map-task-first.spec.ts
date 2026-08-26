@@ -52,7 +52,7 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
   await conditions.getByRole("button", { name: "Done" }).click();
 
   await browse.click();
-  await expect(chooser.getByRole("button", { name: /^Near me/ })).toBeVisible();
+  await expect(chooser.getByRole("button", { name: /^Nearby/ })).toBeVisible();
   await expect(
     chooser.getByRole("button", { name: /^Happening/ }),
   ).toBeVisible();
@@ -70,11 +70,8 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
     fullPage: true,
   });
 
-  await chooser.getByRole("button", { name: /^Near me/ }).click();
-  const find = page.getByRole("region", { name: "Find nearby" });
-  await expect(find.getByRole("button", { name: /^Compare travel reach/ })).toBeVisible();
-  await expect(find.getByRole("button", { name: /^Nearby essentials/ })).toBeVisible();
-  await expect(find.getByText("All place categories")).toBeVisible();
+  await chooser.getByRole("button", { name: /^Nearby/ }).click();
+  await expect(chooser).toBeHidden();
   await expect
     .poll(() => page.evaluate(() => window.sessionStorage.getItem("fr_geo_v1")), {
       timeout: 10_000,
@@ -89,6 +86,32 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
     path: "output/playwright/map-polish-find-390x844.png",
     fullPage: true,
   });
+});
+
+test("touching the map dismisses Browse without stranding focus in the inert pane", async ({
+  page,
+}) => {
+  await page.goto("/map", { waitUntil: "domcontentloaded" });
+  await expect(page.locator(".dock-host")).toHaveAttribute("data-map-loaded", "true", {
+    timeout: 20_000,
+  });
+
+  await page
+    .getByRole("button", { name: "Choose what to see on this map" })
+    .click();
+  const chooser = page.locator("#dock-pane");
+  await expect(chooser).toBeFocused();
+
+  const canvas = page.locator(".mapboxgl-canvas, .maplibregl-canvas").first();
+  await canvas.dispatchEvent("pointerdown", {
+    bubbles: true,
+    button: 0,
+    pointerType: "touch",
+  });
+
+  await expect(chooser).toHaveAttribute("aria-hidden", "true");
+  await expect(chooser).toHaveAttribute("inert", "");
+  await expect(canvas).toBeFocused();
 });
 
 test("the same command model fits the narrowest supported phone", async ({ page }) => {
@@ -212,29 +235,35 @@ test("revealed map choices clear the fixed navigation and the area picker keeps 
   await expect(scopeTrigger).toBeFocused();
 });
 
-test("expanded Compass actions remain above the fixed mobile navigation", async ({ page }) => {
+test("expanded Compass actions open as a focused mobile task", async ({ page }) => {
   await page.goto("/compass", { waitUntil: "domcontentloaded" });
   await expect(page.locator("[data-compass-ready]")).toHaveAttribute("data-compass-ready", "true");
 
-  await page.getByRole("button", { name: /^Essentials & local help/i }).click();
-  const region = page.locator("#compass-intent-local-help");
-  await expect(region).toBeVisible();
-  const finalAction = region.getByRole("button", { name: /More essentials & local help/i });
-  await finalAction.evaluate((action) => {
-    action.scrollIntoView({ block: "center", behavior: "instant" });
+  const trigger = page.getByRole("button", {
+    name: /^Essentials & local help/i,
   });
+  await trigger.click();
+
+  const dialog = page.getByRole("dialog", {
+    name: "Essentials & local help",
+  });
+  await expect(dialog).toBeVisible();
+  await expect(
+    dialog.getByRole("button", {
+      name: "Close Essentials & local help",
+    }),
+  ).toBeFocused();
+
+  const finalAction = dialog.getByRole("link").last();
+  await finalAction.scrollIntoViewIfNeeded();
   await expect(finalAction).toBeVisible();
-  const actionBox = await finalAction.boundingBox();
-  const navBox = await page.locator("[data-bottom-nav-shell]").boundingBox();
-  expect(actionBox).not.toBeNull();
-  expect(navBox).not.toBeNull();
-  if (!actionBox || !navBox) throw new Error("Expected visible Compass action and navigation boxes");
-  expect(actionBox.height).toBeGreaterThanOrEqual(44);
-  expect(actionBox.y + actionBox.height).toBeLessThanOrEqual(navBox.y);
   await page.screenshot({
-    path: "output/playwright/compass-mobile-revealed-actions-clear-nav-390x844.png",
+    path: "output/playwright/compass-mobile-task-sheet-390x844.png",
     fullPage: false,
   });
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(trigger).toBeFocused();
 });
 
 test("an active query uses the full mobile command width without stacking overlays", async ({
@@ -246,6 +275,7 @@ test("an active query uses the full mobile command width without stacking overla
   });
 
   const search = page.getByRole("combobox", { name: "Search this map" });
+  const cameraBeforeTyping = new URL(page.url()).searchParams.get("c");
   await search.fill("Gravel and Grind");
   const results = page.locator(".dock-search-results");
   await expect(results).toBeVisible({ timeout: 10_000 });
@@ -253,16 +283,16 @@ test("an active query uses the full mobile command width without stacking overla
   await expect(results.getByText(/Grindstone/i)).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Choose what to see" })).toBeHidden();
 
-  // A decisive local business name should move the map to that place without
-  // requiring a second tap. The camera URL is the same state used by sharing
-  // and return navigation, so this proves both the visible move and its
-  // continuity contract.
+  // Typing narrows the choices without moving the map or choosing on the
+  // user's behalf. Camera movement belongs to an explicit result selection.
   await expect
     .poll(() => {
-      const camera = new URL(page.url()).searchParams.get("c");
-      return Number(camera?.split(",")[2] ?? 0);
+      return new URL(page.url()).searchParams.get("c");
     }, { timeout: 5_000 })
-    .toBeGreaterThanOrEqual(15.3);
+    .toBe(cameraBeforeTyping);
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("place"))
+    .toBeNull();
 
   const geometry = await page.evaluate(() => {
     const dock = document.querySelector<HTMLElement>("[data-map-dock]");
@@ -401,22 +431,15 @@ test("a nearby-essential choice opens one named nearest result with directions",
   await expect(page.locator(".dock-host")).toHaveAttribute("data-map-loaded", "true", {
     timeout: 20_000,
   });
-  const locate = page.locator(".dock-locate");
-  await expect(locate).toBeVisible();
-  if ((await locate.getAttribute("aria-label")) === "Use my location") {
-    await locate.click();
-  }
-  await expect(page.getByRole("button", { name: "Center on my location" })).toBeVisible({
+  // The location marker owns the shortest route to urgent public essentials;
+  // it should not require opening the general map chooser first.
+  const essentialsShortcut = page.getByRole("button", {
+    name: "Open nearby essentials from my location",
+  });
+  await expect(essentialsShortcut).toBeVisible({
     timeout: 10_000,
   });
-
-  await page.getByRole("button", { name: "Choose what to see on this map" }).click();
-  const chooser = page.getByRole("region", { name: "Choose what to see" });
-  await chooser.getByRole("button", { name: /^Near me/ }).click();
-  await page
-    .getByRole("region", { name: "Find nearby" })
-    .getByRole("button", { name: /^Nearby essentials/ })
-    .click();
+  await essentialsShortcut.click();
   const essentials = page.getByRole("region", { name: "Nearby essentials" });
   await expect(essentials.getByText("Using your location")).toBeVisible();
   await essentials.getByRole("button", { name: /Restrooms/ }).click();

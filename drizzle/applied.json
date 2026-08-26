@@ -247,6 +247,13 @@
       "production_state": "migration_recorded",
       "migration_record": "decision_daily_aggregates",
       "note": "Supabase migration history records decision_daily_aggregates at version 20260812200141. Live verification confirmed the composite primary key and categorical constraints, RLS enabled, no PUBLIC/anon/authenticated grants, service_role SELECT and INSERT, and column-only UPDATE on count and updated_at."
+    },
+    {
+      "file": "0044_data_truth_fk_indexes.sql",
+      "sha256": "6ea77fa7081e72ed67ab1b3f90c7ccefe298bc526e7d5358e205a927dabc6a55",
+      "production_state": "migration_recorded",
+      "migration_record": "data_truth_fk_indexes",
+      "note": "Supabase migration history records data_truth_fk_indexes at version 20260823001324. Live verification confirmed all three partial/composite foreign-key support indexes with the expected definitions."
     }
   ]
 }

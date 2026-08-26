@@ -349,6 +349,48 @@ describe("scheduled data workflow contracts", () => {
     );
   });
 
+  it("does not repeat paid business extraction while its review PR is open", () => {
+    const workflow = workflowText("ingest-business-info.yml");
+
+    expect(workflow).toContain("refresh_open_review:");
+    expect(workflow).toContain("pull-requests: read");
+    expect(workflow).toContain("github.rest.pulls.list");
+    expect(workflow).toContain("pull.head?.ref === branch");
+    expect(workflow).toContain(
+      "pull.head?.repo?.full_name === `${context.repo.owner}/${context.repo.repo}`",
+    );
+    expect(workflow).toContain("if (review && !override)");
+    expect(workflow).toContain("core.setOutput('should_run', 'false')");
+    expect(workflow).toContain("needs: review-gate");
+    expect(workflow).toContain(
+      "if: ${{ needs.review-gate.outputs.should_run == 'true' }}",
+    );
+
+    const reviewGate = workflow.indexOf("Pause paid extraction while its review is open");
+    const paidExtraction = workflow.indexOf("npm run ingest:business");
+    expect(reviewGate).toBeGreaterThan(-1);
+    expect(paidExtraction).toBeGreaterThan(reviewGate);
+  });
+
+  it("does not repeat paid Google enrichment while its review PR is open", () => {
+    const workflow = workflowText("enrich-places.yml");
+
+    expect(workflow).toContain("refresh_open_review:");
+    expect(workflow).toContain("pull-requests: read");
+    expect(workflow).toContain("const branch = 'bot/curated-place-enrichment'");
+    expect(workflow).toContain("if (review && !override)");
+    expect(workflow).toContain("core.setOutput('should_run', 'false')");
+    expect(workflow).toContain("needs: review-gate");
+    expect(workflow).toContain(
+      "if: ${{ needs.review-gate.outputs.should_run == 'true' }}",
+    );
+
+    const reviewGate = workflow.indexOf("Pause paid enrichment while its review is open");
+    const paidEnrichment = workflow.indexOf("npm run enrich --");
+    expect(reviewGate).toBeGreaterThan(-1);
+    expect(paidEnrichment).toBeGreaterThan(reviewGate);
+  });
+
   it("bounds manual official commerce scans to the workflow runtime budget", () => {
     const workflow = workflowText("refresh-commerce-links.yml");
 
@@ -575,7 +617,57 @@ describe("scheduled data workflow contracts", () => {
     expect(dispatcher).toContain("compareCommitsWithBasehead");
     expect(dispatcher).toContain("comparison.data.behind_by !== 0");
     expect(dispatcher).toContain("allowedByBranch");
+    expect(dispatcher).toContain(
+      "workflow_id: 'automated-pr-status-bridge.yml'",
+    );
+    expect(dispatcher).toContain("ref: 'main'");
+    expect(dispatcher).toContain("dispatched_after: dispatchedAfter");
     expect(dispatcher).not.toContain("actions/checkout");
+
+    // GITHUB_TOKEN can start workflow_dispatch runs, but their completion does
+    // not reliably create another workflow_run hop. The bridge must therefore
+    // be explicitly dispatched on trusted main, then poll only the exact bot
+    // head and post-dispatch run window before writing required statuses.
+    const bridgeText = workflowText("automated-pr-status-bridge.yml");
+    const bridge = parse(bridgeText) as WorkflowDocument;
+    expect(bridge.permissions).toEqual({
+      actions: "read",
+      contents: "read",
+      "pull-requests": "read",
+      statuses: "write",
+    });
+    expect(bridgeText).toContain("workflow_dispatch:");
+    expect(bridgeText).not.toContain("workflow_run:");
+    expect(bridgeText).toContain("context.ref !== 'refs/heads/main'");
+    expect(bridgeText).toContain("run.head_sha === headSha");
+    expect(bridgeText).toContain("run.head_branch === branch");
+    expect(bridgeText).toContain(
+      "Date.parse(run.created_at || '') >= acceptedAfter",
+    );
+    expect(bridgeText).toContain("comparison.data.behind_by !== 0");
+    expect(bridgeText).toContain("latestMain.data.object.sha !== mainSha");
+    expect(bridgeText).toContain("latestBot.data.object.sha !== headSha");
+    expect(bridgeText).toContain("writeAllStatuses('pending'");
+    expect(bridgeText).toContain("['verify', 'Required browser chaos']");
+    expect(bridgeText).toContain("contexts: ['style-lint']");
+    expect(bridge.jobs?.attach?.["timeout-minutes"]).toBe(43);
+    expect(bridgeText).toContain(
+      "const discoveryDeadline = Date.now() + 3 * 60_000",
+    );
+    expect(bridgeText).toContain(
+      "const completionDeadline = Date.now() + 40 * 60_000",
+    );
+    expect(bridgeText).toContain("candidate.conclusion !== 'success'");
+    expect(bridgeText).toContain(
+      "concluded before the other gates",
+    );
+    expect(bridgeText).not.toContain("actions/checkout");
+
+    // Validation attachment does not broaden the publication policy: only a
+    // caller that deliberately passes auto_merge may queue a reviewed-safe PR.
+    expect(publisherText).toContain(
+      "if: ${{ inputs.auto_merge && steps.review_pr.outputs.pull-request-number != '' }}",
+    );
   });
 
   it("keeps source fetching separate from snapshot publication and issue writes", () => {

@@ -137,6 +137,7 @@ export default function SkyHero({
           "--sky-mid": sky.mid,
           "--sky-bottom": sky.bottom,
           color: sky.tone === "dark" ? "#FCFBF8" : "#11100C",
+          viewTransitionName: "radius-weather",
         } as React.CSSProperties
       }
       data-sky-tone={sky.tone}

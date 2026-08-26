@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   lazy,
   Suspense,
@@ -14,6 +13,7 @@ import { Search, Compass, ChevronLeft, X } from "lucide-react";
 import RippleMark from "@/components/brand/RippleMark";
 import LocationChip from "./LocationChip";
 import PulseIndicator from "./PulseIndicator";
+import AppTransitionLink from "./AppTransitionLink";
 import { usePathname, useRouter } from "next/navigation";
 import { tabIndexForPath } from "./tabs";
 import {
@@ -255,7 +255,7 @@ export default function TopBar() {
               <span className="hidden text-[15px] min-[390px]:inline">Back</span>
             </button>
           ) : (
-            <Link
+            <AppTransitionLink
               href="/"
               prefetch={false}
               onMouseEnter={() => router.prefetch("/")}
@@ -294,7 +294,7 @@ export default function TopBar() {
                   Beta
                 </span>
               ) : null}
-            </Link>
+            </AppTransitionLink>
           )}
 
           {/* Search trigger — full-width input-styled pill so the
@@ -401,7 +401,7 @@ export default function TopBar() {
           {/* Compass is the field-guide index. Keep the destination visible on
               its own page so the top navigation does not change shape. */}
           <div className="contents">
-            <Link
+            <AppTransitionLink
               href="/compass"
               prefetch={false}
               onMouseEnter={() => router.prefetch("/compass")}
@@ -418,9 +418,20 @@ export default function TopBar() {
               }}
             >
               <Compass className="h-[17px] w-[17px] shrink-0" strokeWidth={2} aria-hidden />
-              <span className="hidden text-[12px] font-semibold leading-none min-[390px]:inline sm:hidden">Tools</span>
+              {/* 400, not 390. Three things used to appear at exactly 390px:
+                  this label, the LocationChip's scope text, and its chevron.
+                  Their sum needs 396px, so on a 390px viewport - iPhone
+                  12/13/14/15/16, the single most common width there is - the
+                  header overflowed by 5px and this chip's right border was
+                  sliced off by the clip.
+
+                  Delaying THIS label rather than the location text is the
+                  trade worth making: "Frederick, MD" tells you something, and
+                  "Tools" only repeats an icon that already carries both an
+                  aria-label and a title. Nothing is lost but a duplicate. */}
+              <span className="hidden text-[12px] font-semibold leading-none min-[400px]:inline sm:hidden">Tools</span>
               <span className="hidden text-[14px] font-semibold leading-none sm:inline">Compass</span>
-            </Link>
+            </AppTransitionLink>
           </div>
         </div>
       </header>

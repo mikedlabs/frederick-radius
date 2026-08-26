@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
 import { Layer, Marker, Popup, Source } from "react-map-gl/mapbox";
 import { exposeMarkerChild } from "./markerA11y";
@@ -18,6 +18,7 @@ import {
   type LiveLayerHealth,
 } from "@/lib/live-layer-health";
 import { haptic } from "@/lib/haptics";
+import { shouldLimitLiveEffects } from "@/lib/motion";
 
 /**
  * Privacy-reduced live rotorcraft layer for AppMap.
@@ -126,8 +127,21 @@ export default function LiveRotorcraft({
     emptyFmhActivity(),
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  useLiveLayerGate(gate, () => setSelectedId(null));
   const [fmhOpen, setFmhOpen] = useState(false);
+  const selectedIdRef = useRef<string | null>(null);
+  const fmhOpenRef = useRef(false);
+  const closePopup = useCallback(
+    (dismissHistory: boolean) => {
+      const wasOpen = selectedIdRef.current !== null || fmhOpenRef.current;
+      selectedIdRef.current = null;
+      fmhOpenRef.current = false;
+      setSelectedId(null);
+      setFmhOpen(false);
+      if (wasOpen && dismissHistory) gate?.onDidClose();
+    },
+    [gate],
+  );
+  useLiveLayerGate(gate, () => closePopup(false));
   const [receivedAt, setReceivedAt] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(0);
   const [fmhSweep, setFmhSweep] = useState<
@@ -144,14 +158,39 @@ export default function LiveRotorcraft({
   }, [onHealth, onStatus]);
 
   useEffect(() => {
+    if (!selectedId && !fmhOpen) return;
+    const closeFromEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.isComposing) return;
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      closePopup(true);
+    };
+    window.addEventListener("keydown", closeFromEscape, true);
+    return () => window.removeEventListener("keydown", closeFromEscape, true);
+  }, [closePopup, fmhOpen, selectedId]);
+
+  // The layer can stay mounted as an off-state probe. Closing its visual
+  // surface must also consume the one synthetic selection-history entry.
+  useEffect(() => {
+    if (
+      show ||
+      (selectedIdRef.current === null && !fmhOpenRef.current)
+    ) {
+      return;
+    }
+    const timer = window.setTimeout(() => closePopup(true), 0);
+    return () => window.clearTimeout(timer);
+  }, [closePopup, show]);
+
+  useEffect(() => {
     if (!show && !probe) return;
     let alive = true;
 
     const clearActivity = () => {
       setSignals([]);
       setFmhActivity(emptyFmhActivity());
-      setSelectedId(null);
-      setFmhOpen(false);
+      closePopup(true);
       setReceivedAt(null);
       setNowMs(Date.now());
       previousFmhStateRef.current = null;
@@ -207,27 +246,39 @@ export default function LiveRotorcraft({
           (nextFmhState === "arrival" || nextFmhState === "departure") &&
           document.visibilityState === "visible"
         ) {
-          setFmhSweep(nextFmhState);
           haptic("warning");
           if (fmhSweepTimerRef.current) {
             window.clearTimeout(fmhSweepTimerRef.current);
+            fmhSweepTimerRef.current = null;
           }
-          fmhSweepTimerRef.current = window.setTimeout(
-            () => setFmhSweep(null),
-            2_000,
-          );
+          // The count, label, static attention ring, and popup copy carry the
+          // useful status. The expanding sweep is only a visual cue, so honor
+          // both reduced-motion and Save-Data without suppressing the update.
+          if (shouldLimitLiveEffects()) {
+            setFmhSweep(null);
+          } else {
+            setFmhSweep(nextFmhState);
+            fmhSweepTimerRef.current = window.setTimeout(
+              () => {
+                setFmhSweep(null);
+                fmhSweepTimerRef.current = null;
+              },
+              2_000,
+            );
+          }
         }
         previousFmhStateRef.current = nextFmhState;
         setSignals(nextSignals);
         setFmhActivity(nextFmhActivity);
         setReceivedAt(data.receivedAt);
         setNowMs(Date.now());
-        setSelectedId((selected) =>
-          selected &&
-          nextSignals.some((signal) => signal.id === selected)
-            ? selected
-            : null,
-        );
+        const openSignalId = selectedIdRef.current;
+        if (
+          openSignalId &&
+          !nextSignals.some((signal) => signal.id === openSignalId)
+        ) {
+          closePopup(true);
+        }
 
         const nextFmhCount = fmhActivityCount(nextFmhActivity);
         onHealthRef.current?.(
@@ -272,7 +323,7 @@ export default function LiveRotorcraft({
       }
       document.removeEventListener("visibilitychange", loadWhileVisible);
     };
-  }, [probe, show]);
+  }, [closePopup, probe, show]);
 
   const selected = useMemo(
     () => signals.find((signal) => signal.id === selectedId) ?? null,
@@ -289,7 +340,8 @@ export default function LiveRotorcraft({
       <style>
         {
           "@keyframes fr-fmh-arrival{0%{opacity:0;transform:scale(2.2)}24%{opacity:.72}100%{opacity:0;transform:scale(.72)}}" +
-            "@keyframes fr-fmh-departure{0%{opacity:.72;transform:scale(.72)}100%{opacity:0;transform:scale(2.2)}}"
+            "@keyframes fr-fmh-departure{0%{opacity:.72;transform:scale(.72)}100%{opacity:0;transform:scale(2.2)}}" +
+            "@media (prefers-reduced-motion:reduce){.fr-fmh-sweep{animation:none!important;opacity:.24!important;transform:none!important}}"
         }
       </style>
 
@@ -305,8 +357,15 @@ export default function LiveRotorcraft({
           onClick={(event) => {
             event.stopPropagation();
             haptic(fmhAttention ? "medium" : "light");
-            setFmhOpen((open) => !open);
+            if (fmhOpen) {
+              closePopup(true);
+              return;
+            }
+            gate?.onWillOpen();
+            selectedIdRef.current = null;
+            fmhOpenRef.current = true;
             setSelectedId(null);
+            setFmhOpen(true);
           }}
           className="relative grid h-11 w-11 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2"
           style={{
@@ -328,7 +387,8 @@ export default function LiveRotorcraft({
             <span
               key={fmhSweep}
               aria-hidden
-              className="absolute inset-0 rounded-full"
+              data-fmh-sweep={fmhSweep}
+              className="fr-fmh-sweep absolute inset-0 rounded-full"
               style={{
                 border: "3px solid var(--app-brand-press)",
                 animation: `fr-fmh-${fmhSweep} 1.8s ease-out both`,
@@ -374,13 +434,17 @@ export default function LiveRotorcraft({
             onClick={(event) => {
               event.stopPropagation();
               haptic("light");
-              setFmhOpen(false);
               // A toggle-closed tap must not clear the rest of the map, so
               // the gate only runs on the OPEN half.
-              if (selectedId !== signal.id) gate?.onWillOpen();
-              setSelectedId((current) =>
-                current === signal.id ? null : signal.id,
-              );
+              if (selectedId === signal.id) {
+                closePopup(true);
+                return;
+              }
+              gate?.onWillOpen();
+              fmhOpenRef.current = false;
+              selectedIdRef.current = signal.id;
+              setFmhOpen(false);
+              setSelectedId(signal.id);
             }}
             className="grid h-11 w-11 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2"
             style={{
@@ -410,7 +474,7 @@ export default function LiveRotorcraft({
           anchor="bottom"
           offset={24}
           closeOnClick={false}
-          onClose={() => setFmhOpen(false)}
+          onClose={() => closePopup(true)}
           maxWidth="290px"
         >
           <div className="min-w-[230px] p-1">
@@ -475,7 +539,7 @@ export default function LiveRotorcraft({
           anchor="bottom"
           offset={22}
           closeOnClick={false}
-          onClose={() => setSelectedId(null)}
+          onClose={() => closePopup(true)}
           maxWidth="280px"
         >
           <div className="min-w-[220px] p-1">

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MapPin, Navigation, Loader2, AlertCircle, Check, ChevronDown, ArrowUpRight, Globe, X } from "lucide-react";
+import { MapPin, Navigation, Loader2, AlertCircle, Check, ChevronDown, ChevronLeft, ArrowUpRight, Globe, X } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { haptic } from "@/lib/haptics";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -33,12 +33,14 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
   const router = useRouter();
   const { state, request } = useGeolocation();
   const [open, setOpen] = useState(false);
+  const [showTowns, setShowTowns] = useState(false);
   const [scope, setScopeState] = useState<Scope | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const closePicker = useCallback((restoreFocus = true) => {
     setOpen(false);
+    setShowTowns(false);
     if (restoreFocus) {
       // Wait for React to remove the picker before returning focus to the
       // control that opened it. Otherwise a focused Done/town button vanishes
@@ -245,12 +247,52 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
 
           <div className="border-t" style={{ borderColor: "var(--app-border)" }} />
 
-          {/* Towns — each SETS the scope in place. Once the reader has shared a
-              location the list is ordered by distance and states it, so the
-              menu answers "which of these am I near" instead of making a person
-              read thirteen names in file order. Without a location it keeps
-              file order and says nothing it cannot support. */}
-          <ul className="py-1">
+          {!showTowns && scopeTown && MUNICIPALITY_BY_SLUG[scopeTown] ? (
+            <div
+              className="flex min-h-[44px] items-center gap-2 px-3 py-2 text-[12px] font-medium"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
+              {MUNICIPALITY_BY_SLUG[scopeTown].name}
+            </div>
+          ) : null}
+
+          {/* This disclosure trigger stays mounted in both states. Keyboard
+              focus therefore stays on the same control when the town list
+              opens or closes, and aria-expanded always describes the visible
+              list instead of disappearing at the moment it becomes true. */}
+          <button
+            type="button"
+            data-town-disclosure
+            onClick={() => setShowTowns((visible) => !visible)}
+            aria-expanded={showTowns}
+            aria-controls="location-town-choices"
+            aria-label={showTowns ? "Hide town choices and return to area choices" : "Show town choices"}
+            className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            {showTowns ? (
+              <ChevronLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+            ) : (
+              <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+            )}
+            {showTowns
+              ? "Back to area choices"
+              : scopeTown
+                ? "Choose another town"
+                : "Choose a town"}
+            <ChevronDown
+              className={`ml-auto h-3.5 w-3.5 transition-transform ${showTowns ? "rotate-180" : "-rotate-90"}`}
+              strokeWidth={2}
+              aria-hidden
+            />
+          </button>
+
+          {/* Towns remain a deliberate second step instead of covering the
+              map with thirteen choices every time someone only needs Near me
+              or Whole county. Keeping the controlled list mounted also gives
+              aria-controls a stable target. */}
+          <ul id="location-town-choices" hidden={!showTowns} className="py-1">
             {(townsByDistance ?? MUNICIPALITIES).map((m) => {
               const isActive = scopeTown === m.slug;
               const distance =
@@ -272,8 +314,6 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
                       <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
                     )}
                     <span className="font-medium">{m.name}</span>
-                    {/* No "Nearest" tag: position one in a distance-sorted list
-                        already says it, and the number says it better. */}
                     {distance && (
                       <span
                         className="ml-auto text-[11px] tabular-nums"
@@ -291,7 +331,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
           {/* Secondary escape hatch: the town guide, the old primary
               destination. Shown only when a town scope is active, so the jump
               is always to the town you're browsing. */}
-          {scopeTown && MUNICIPALITY_BY_SLUG[scopeTown] && (
+          {!showTowns && scopeTown && MUNICIPALITY_BY_SLUG[scopeTown] && (
             <>
               <div className="border-t" style={{ borderColor: "var(--app-border)" }} />
               <Link

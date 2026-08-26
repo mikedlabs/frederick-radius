@@ -179,6 +179,7 @@ function routeName(value: unknown): string {
   const name = cleanText(value).toUpperCase();
   return name
     .replace(/^I-?(\d+)/, "I-$1")
+    .replace(/^US-?(\d+)\s*(?:BU|BUS|BUSINESS)\b/, "US $1 Business")
     .replace(/^US-?(\d+)/, "US $1")
     .replace(/^MD-?(\d+)/, "MD $1");
 }
@@ -187,6 +188,9 @@ function cleanDescription(value: unknown): string {
   return cleanText(value)
     .replace(/^Active Closure\s*@\s*/i, "")
     .replace(/\bCTY MP\b/gi, "county mile ")
+    // WZDx sometimes repeats a cardinal direction at the boundary between
+    // the route and its location phrase: “US 15 SOUTH SOUTH OF MM 1.0”.
+    .replace(/\b(NORTH|SOUTH|EAST|WEST)\s+\1\s+OF\b/gi, "$1 OF")
     .replace(/\s+/g, " ")
     .trim();
 }

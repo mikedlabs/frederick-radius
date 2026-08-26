@@ -66,6 +66,7 @@ vi.mock("./markerA11y", () => ({
 import LiveBuses, {
   AMBIENT_BUS_AGGREGATE_OFFSET,
   LIVE_BUS_GLIDE_VISUAL_UPDATE_MS,
+  liveBusFeedAnnouncement,
   shouldCommitLiveBusGlideFrame,
 } from "./LiveBuses";
 
@@ -139,6 +140,21 @@ afterEach(() => {
 });
 
 describe("LiveBuses feed sessions", () => {
+  it("announces semantic feed changes instead of ticking age copy", () => {
+    expect(liveBusFeedAnnouncement("loading", 0)).toBe(
+      "Checking live bus positions.",
+    );
+    expect(liveBusFeedAnnouncement("ready", 1)).toBe(
+      "One live bus is reporting.",
+    );
+    expect(liveBusFeedAnnouncement("degraded", 2)).toBe(
+      "2 buses are reporting. Arrival estimates are unavailable.",
+    );
+    expect(liveBusFeedAnnouncement("stale", 2)).toBe(
+      "2 bus positions are delayed.",
+    );
+  });
+
   it("does not reuse buses from the previous Transit activation", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -345,9 +361,69 @@ describe("LiveBuses feed sessions", () => {
     act(() => vi.advanceTimersByTime(41_000));
     expect(container.textContent).toContain("Bus feed delayed");
   });
+
+  it("does not publish a new health event for every age tick", async () => {
+    vi.useFakeTimers();
+    const onHealthChange = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(() => response(currentFeed())),
+    );
+
+    await act(async () => {
+      root.render(
+        createElement(LiveBuses, { show: true, onHealthChange }),
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const semanticUpdates = onHealthChange.mock.calls.length;
+
+    act(() => vi.advanceTimersByTime(3_000));
+
+    expect(onHealthChange).toHaveBeenCalledTimes(semanticUpdates);
+    expect(
+      container.querySelector("[data-live-bus-announcement]")?.textContent,
+    ).toBe("One live bus is reporting.");
+  });
 });
 
 describe("LiveBuses visual glide", () => {
+  it("reserves the fresh-report ripple and badge pop for the selected bus", async () => {
+    motionState.reduced = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(() =>
+        response(
+          currentFeed({
+            vehicles: [
+              VEHICLE,
+              { ...VEHICLE, vehicleId: "bus-2", routeId: "6155", lat: 39.43 },
+            ],
+          }),
+        ),
+      ),
+    );
+
+    await act(async () => {
+      root.render(createElement(LiveBuses, { show: true }));
+    });
+    await settle();
+
+    expect(container.querySelectorAll("[data-live-bus-fresh-cue]")).toHaveLength(0);
+    const markers = container.querySelectorAll<HTMLButtonElement>(
+      "[data-live-bus-marker]",
+    );
+    expect(markers).toHaveLength(2);
+
+    act(() => markers[0].click());
+
+    expect(container.querySelectorAll("[data-live-bus-fresh-cue]")).toHaveLength(1);
+    const badges = container.querySelectorAll<HTMLElement>("[data-live-bus-badge]");
+    expect(badges[0].style.animation).toContain("fr-bus-pop");
+    expect(badges[1].style.animation).toBe("");
+  });
+
   it("caps intermediate React commits while always allowing the final frame", () => {
     const duration = 14_000;
     const displayFrameMs = 1_000 / 60;

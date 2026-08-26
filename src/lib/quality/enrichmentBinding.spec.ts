@@ -255,8 +255,6 @@ describe("Google identity promotion", () => {
   );
 
   it.each([
-    "new-hope-cafe",
-    "the-healing-temple",
     "marianne-riley-psychotherapy",
     "om-chakra-holistic-healing-and-massage-center",
     "outreach-healthcare-frederick",
@@ -303,6 +301,14 @@ describe("Google identity promotion", () => {
         reviewAuthor: undefined,
         googleVerified: undefined,
       });
+    },
+  );
+
+  it.each(["new-hope-cafe", "the-healing-temple"])(
+    "withholds %s until its local identity can be verified",
+    (slug) => {
+      expect(PLACES.some((place) => place.slug === slug)).toBe(true);
+      expect(publicPlaceBySlug(slug)).toBeUndefined();
     },
   );
 });

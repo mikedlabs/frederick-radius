@@ -42,10 +42,28 @@ t("venue only, no address (still usable, not dropped)", () => {
   assert.equal(r.unparseable, false);
 });
 
-t("state+zip without street keyword still parses as address", () => {
+t("town+zip without a street stays approximate instead of becoming an exact pin", () => {
   const r = parseLocation("Downtown Frederick MD 21701");
-  assert.ok(r.address);
+  assert.equal(r.venueName, "Downtown Frederick MD 21701");
+  assert.equal(r.address, undefined);
   assert.equal(r.unparseable, false);
+});
+
+t("inline venue text is separated from a geocodable street address", () => {
+  const r = parseLocation(
+    "Hood College - Whitaker Campus Center, Commons 530 Hodson Dr Frederick MD 21701",
+  );
+  assert.equal(r.venueName, "Hood College, Whitaker Campus Center, Commons");
+  assert.equal(r.address, "530 Hodson Dr Frederick MD 21701");
+  assert.equal(r.unparseable, false);
+});
+
+t("an unseparated venue and address keep both useful fields", () => {
+  const r = parseLocation(
+    "Warehouse Cinema 1301 W Patrick Street Frederick MD 21702",
+  );
+  assert.equal(r.venueName, "Warehouse Cinema");
+  assert.equal(r.address, "1301 W Patrick Street Frederick MD 21702");
 });
 
 t("empty / null → unparseable", () => {

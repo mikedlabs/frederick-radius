@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Marker, Popup } from "react-map-gl/mapbox";
+import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
 import { exposeMarkerChild } from "./markerA11y";
 import { Video, ExternalLink } from "lucide-react";
 import type { TrafficCamera } from "@/lib/integrations/chartCameras";
@@ -24,13 +25,27 @@ export default function TrafficCameras({
   show,
   onHealth,
   onBounds,
+  gate,
 }: {
   show: boolean;
   onHealth?: (health: LiveLayerHealth) => void;
   onBounds?: (bounds: TrafficCameraBounds | null) => void;
+  /** Puts this internally-owned popup under AppMap's one-foreground gate. */
+  gate?: LiveLayerGate;
 }) {
   const [cameras, setCameras] = useState<TrafficCamera[]>([]);
   const [selected, setSelected] = useState<TrafficCamera | null>(null);
+  const selectedRef = useRef<TrafficCamera | null>(null);
+  const closePopup = useCallback(
+    (dismissHistory: boolean) => {
+      const wasOpen = selectedRef.current !== null;
+      selectedRef.current = null;
+      setSelected(null);
+      if (wasOpen && dismissHistory) gate?.onDidClose();
+    },
+    [gate],
+  );
+  useLiveLayerGate(gate, () => closePopup(false));
   const onHealthRef = useRef(onHealth);
   useEffect(() => { onHealthRef.current = onHealth; }, [onHealth]);
   const onBoundsRef = useRef(onBounds);
@@ -98,6 +113,28 @@ export default function TrafficCameras({
     };
   }, [show, cameras.length]);
 
+  useEffect(() => {
+    if (!selected) return;
+    const closeFromEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.isComposing) return;
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      closePopup(true);
+    };
+    window.addEventListener("keydown", closeFromEscape, true);
+    return () => window.removeEventListener("keydown", closeFromEscape, true);
+  }, [closePopup, selected]);
+
+  // A hidden layer cannot leave its now-invisible popup represented by a
+  // synthetic Back entry. Registry-driven selection swaps clear the ref first,
+  // so this only dismisses history when visibility itself closes the popup.
+  useEffect(() => {
+    if (show || selectedRef.current === null) return;
+    const timer = window.setTimeout(() => closePopup(true), 0);
+    return () => window.clearTimeout(timer);
+  }, [closePopup, show]);
+
   if (!show) return null;
 
   return (
@@ -108,6 +145,8 @@ export default function TrafficCameras({
             type="button"
             onClick={(ev) => {
               ev.stopPropagation();
+              gate?.onWillOpen();
+              selectedRef.current = cam;
               setSelected(cam);
             }}
             aria-label={`Traffic camera: ${cam.name}`}
@@ -125,7 +164,7 @@ export default function TrafficCameras({
           anchor="bottom"
           offset={16}
           closeOnClick={false}
-          onClose={() => setSelected(null)}
+          onClose={() => closePopup(true)}
         >
           <div className="min-w-[180px] p-1">
             <p className="text-[10px] font-mono font-bold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
@@ -138,8 +177,8 @@ export default function TrafficCameras({
               href={selected.videoUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 inline-flex items-center gap-1.5 rounded-[var(--app-radius-md)] px-3 py-2 text-[13px] font-semibold text-white"
-              style={{ background: "var(--app-brand-press)", minHeight: 40 }}
+              className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-md)] px-3 py-2 text-[13px] font-semibold text-white"
+              style={{ background: "var(--app-brand-press)" }}
             >
               <Video className="h-4 w-4" strokeWidth={2.25} aria-hidden />
               Watch live
@@ -147,7 +186,7 @@ export default function TrafficCameras({
             </a>
             <a
               href={`/cameras?camera=${encodeURIComponent(selected.id)}`}
-              className="mt-1.5 flex min-h-10 items-center text-[11px] font-semibold"
+              className="mt-1.5 flex min-h-11 items-center text-[11px] font-semibold"
               style={{ color: "var(--app-cool)" }}
             >
               Open in the Frederick camera wall

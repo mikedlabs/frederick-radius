@@ -52,10 +52,24 @@ const CRON_REQUIREMENT: EnvironmentRequirement = { env: "CRON_SECRET" };
  */
 export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
   {
+    id: "warm-events",
+    label: "Public event cache warm",
+    scope: "vercel",
+    vercelPath: "/api/cron/warm-events",
+    requirements: [CRON_REQUIREMENT],
+  },
+  {
     id: "event-archive",
     label: "Durable event archive",
     scope: "vercel",
     vercelPath: "/api/cron/event-archive",
+    requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT],
+  },
+  {
+    id: "warm-map",
+    label: "Map data cache warm",
+    scope: "vercel",
+    vercelPath: "/api/cron/warm-map",
     requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT],
   },
   {
@@ -115,6 +129,27 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
     requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT],
   },
   {
+    id: "notify-civic-alerts",
+    label: "Severe civic alert delivery",
+    scope: "vercel",
+    vercelPath: "/api/cron/notify-civic-alerts",
+    requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT, ...PUSH_REQUIREMENTS],
+  },
+  {
+    id: "notify-traffic-alerts",
+    label: "Major traffic alert delivery",
+    scope: "vercel",
+    vercelPath: "/api/cron/notify-traffic-alerts",
+    requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT, ...PUSH_REQUIREMENTS],
+  },
+  {
+    id: "daily-briefing",
+    label: "Daily local briefing delivery",
+    scope: "vercel",
+    vercelPath: "/api/cron/daily-briefing",
+    requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT, ...PUSH_REQUIREMENTS],
+  },
+  {
     id: "hours-refresh",
     label: "Google Places hours refresh",
     scope: "vercel",
@@ -143,6 +178,14 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
     requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT],
   },
   {
+    id: "radius-search-semantic",
+    label: "Optional Radius semantic recall",
+    note: "direct OpenAI embeddings; full-text search remains the required baseline",
+    scope: "runtime",
+    requirements: [{ env: "OPENAI_API_KEY" }],
+    optionalWhenUnconfigured: true,
+  },
+  {
     id: "postgis-place-sync",
     label: "PostGIS place mirror sync",
     scope: "vercel",
@@ -165,6 +208,58 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
     vercelPath: "/api/cron/link-health",
     gate: { env: "LINK_HEALTH_CRON" },
     requirements: [CRON_REQUIREMENT],
+  },
+  {
+    id: "parking-alerts",
+    label: "Live parking occupancy alerts",
+    scope: "vercel",
+    vercelPath: "/api/cron/parking-alerts",
+    gate: { env: "PARKING_OCCUPANCY_ENABLED" },
+    requirements: [
+      CRON_REQUIREMENT,
+      DATABASE_REQUIREMENT,
+      { env: "PARKING_OCCUPANCY_URL" },
+      ...PUSH_REQUIREMENTS,
+    ],
+  },
+  {
+    id: "parking-forecast",
+    label: "Event-aware parking forecast",
+    scope: "vercel",
+    vercelPath: "/api/cron/parking-forecast",
+    requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT, ...PUSH_REQUIREMENTS],
+  },
+  {
+    id: "golden-hour",
+    label: "Golden-hour notification",
+    scope: "vercel",
+    vercelPath: "/api/cron/golden-hour",
+    requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT, ...PUSH_REQUIREMENTS],
+  },
+  {
+    id: "weekly-digest",
+    label: "Weekly owner digest",
+    scope: "vercel",
+    vercelPath: "/api/cron/weekly-digest",
+    requirements: [
+      CRON_REQUIREMENT,
+      { env: "PLAUSIBLE_API_KEY" },
+      { env: "PLAUSIBLE_SITE_ID" },
+      { env: "GITHUB_ALERTS_TOKEN" },
+    ],
+  },
+  {
+    id: "visit-frederick-refresh",
+    label: "Visit Frederick snapshot refresh",
+    note: "native feed is primary; optional Firecrawl recovery is reported separately",
+    scope: "vercel",
+    vercelPath: "/api/cron/visit-frederick",
+    gate: { env: "VISIT_FREDERICK_FACTS_REUSE_APPROVED" },
+    requirements: [
+      CRON_REQUIREMENT,
+      DATABASE_REQUIREMENT,
+      { env: "BLOB_READ_WRITE_TOKEN" },
+    ],
   },
   {
     id: "saved-reminders",
@@ -284,6 +379,13 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
     requirements: [{ env: "APIFY_TOKEN" }],
     optionalWhenUnconfigured: true,
   },
+  {
+    id: "native-menu-review",
+    label: "Native menu review intake",
+    note: "manual, restaurant-authorized intake; stages draft/unverified records and has no publication command",
+    scope: "operator",
+    requirements: [DATABASE_REQUIREMENT],
+  },
 ] as const;
 
 function configured(value: string | undefined): boolean {
@@ -299,7 +401,11 @@ function requirementMissing(
       ? null
       : `one of ${requirement.anyOf.join(", ")}`;
   }
-  if (!configured(env[requirement.env])) return requirement.env;
+  if (!configured(env[requirement.env])) {
+    return requirement.equals === undefined
+      ? requirement.env
+      : `${requirement.env}=${requirement.equals}`;
+  }
   if (
     requirement.equals !== undefined &&
     env[requirement.env]?.trim() !== requirement.equals

@@ -1,0 +1,88 @@
+/* Storybook does not execute the Next root layout, so reproduce only its
+   next/font CSS-variable contract with the exact self-hosted Radius files.
+   Production continues to use src/app/fonts.ts and its metric fallbacks. */
+@font-face {
+  font-family: "Radius Story Public Sans";
+  src: url("/brand/fonts/public-sans-variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Radius Story Public Sans";
+  src: url("/brand/fonts/public-sans-variable-italic.woff2") format("woff2");
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Radius Story Libre Caslon Display";
+  src: url("/brand/fonts/libre-caslon-display-400.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  --font-public-sans: "Radius Story Public Sans";
+  --font-libre-caslon: "Radius Story Libre Caslon Display";
+}
+
+html,
+body,
+#storybook-root,
+[data-radius-app-root] {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-ink);
+}
+
+[data-radius-app-root] {
+  min-width: 0;
+}
+
+[data-radius-overlay-root] {
+  position: relative;
+  z-index: var(--z-overlay);
+}
+
+/* A deterministic toolbar-controlled companion to the operating-system media
+   query. This lets a reviewer inspect reduced motion without changing their
+   whole device preference. The production motion-reduce utilities remain the
+   source of truth. */
+html[data-storybook-motion="reduce"] *,
+html[data-storybook-motion="reduce"] *::before,
+html[data-storybook-motion="reduce"] *::after {
+  scroll-behavior: auto !important;
+  animation-delay: 0ms !important;
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-delay: 0ms !important;
+  transition-duration: 1ms !important;
+}
+
+html[data-season="spring"] {
+  --season-accent: var(--app-positive);
+  --season-depth: var(--app-positive);
+}
+
+html[data-season="summer"] {
+  --season-accent: var(--app-accent);
+  --season-depth: var(--app-accent);
+}
+
+html[data-season="autumn"] {
+  --season-accent: var(--app-warning);
+  --season-depth: var(--app-warning);
+}
+
+html[data-season="winter"] {
+  --season-accent: var(--app-cool);
+  --season-depth: var(--app-cool);
+}

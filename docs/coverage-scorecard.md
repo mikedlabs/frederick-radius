@@ -7,16 +7,16 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-08-20 — 1568 places._
+_Generated 2026-08-22 — 1567 places._
 
 | Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Frederick | 852 | 678 (80%) | 632 (74%) | 709 (83%) | 709 (83%) | 50 | 295 |
+| Frederick | 851 | 677 (80%) | 634 (75%) | 709 (83%) | 709 (83%) | 50 | 295 |
 | Thurmont | 110 | 75 (68%) | 66 (60%) | 100 (91%) | 99 (90%) | 3 | 30 |
-| Brunswick | 97 | 65 (67%) | 57 (59%) | 85 (88%) | 78 (80%) | 2 | 24 |
+| Brunswick | 97 | 65 (67%) | 56 (58%) | 84 (87%) | 77 (79%) | 2 | 24 |
 | Walkersville | 86 | 66 (77%) | 64 (74%) | 81 (94%) | 78 (91%) | 2 | 29 |
 | Middletown | 85 | 52 (61%) | 51 (60%) | 72 (85%) | 74 (87%) | 4 | 27 |
-| New Market | 75 | 51 (68%) | 47 (63%) | 62 (83%) | 59 (79%) | 4 | 13 |
+| New Market | 75 | 51 (68%) | 46 (61%) | 62 (83%) | 59 (79%) | 4 | 13 |
 | Mount Airy | 63 | 48 (76%) | 45 (71%) | 58 (92%) | 58 (92%) | 5 | 27 |
 | Emmitsburg | 57 | 39 (68%) | 37 (65%) | 52 (91%) | 51 (89%) | 2 | 18 |
 | Myersville | 46 | 33 (72%) | 31 (67%) | 40 (87%) | 40 (87%) | 2 | 9 |
@@ -24,7 +24,7 @@ _Generated 2026-08-20 — 1568 places._
 | Burkittsville | 30 | 15 (50%) | 14 (47%) | 28 (93%) | 30 (100%) | 2 | 8 |
 | Urbana | 29 | 20 (69%) | 22 (76%) | 23 (79%) | 25 (86%) | 2 | 9 |
 | Rosemont | 2 | 0 (0%) | 0 (0%) | 1 (50%) | 1 (50%) | 0 | 1 |
-| **Total** | **1568** | 1162 (74%) | 1085 (69%) | 1341 (86%) | 1328 (85%) | **79** | **500** |
+| **Total** | **1567** | 1161 (74%) | 1085 (69%) | 1340 (86%) | 1327 (85%) | **79** | **500** |
 
 ## Coverage by category
 
@@ -34,7 +34,6 @@ hours, imagery, decision-useful copy, or direct actions are still thin.
 
 | Category | Places | Fresh hours | Publishable photo | Useful copy | Direct action |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Shopping | 191 | 159 (83.2%) | 161 (84.3%) | 0 (0%) | 180 (94.2%) |
 | Churches & worship | 161 | 82 (50.9%) | 129 (80.1%) | 0 (0%) | 148 (91.9%) |
 | Services | 52 | 39 (75%) | 38 (73.1%) | 0 (0%) | 48 (92.3%) |
 | Yoga & fitness | 41 | 27 (65.9%) | 40 (97.6%) | 0 (0%) | 39 (95.1%) |
@@ -45,20 +44,21 @@ hours, imagery, decision-useful copy, or direct actions are still thin.
 | Spas | 12 | 9 (75%) | 11 (91.7%) | 0 (0%) | 11 (91.7%) |
 | Parking | 10 | 0 (0%) | 7 (70%) | 2 (20%) | 10 (100%) |
 | Distilleries | 8 | 6 (75%) | 7 (87.5%) | 0 (0%) | 8 (100%) |
-| Government | 7 | 6 (85.7%) | 5 (71.4%) | 0 (0%) | 7 (100%) |
+| Government | 8 | 6 (75%) | 5 (62.5%) | 0 (0%) | 8 (100%) |
 | Public safety | 5 | 0 (0%) | 4 (80%) | 0 (0%) | 5 (100%) |
 | Pharmacies | 3 | 3 (100%) | 3 (100%) | 0 (0%) | 3 (100%) |
 | Community | 2 | 0 (0%) | 0 (0%) | 2 (100%) | 2 (100%) |
 | Transit | 1 | 0 (0%) | 0 (0%) | 0 (0%) | 0 (0%) |
-| Wellness | 133 | 105 (78.9%) | 107 (80.5%) | 3 (2.3%) | 131 (98.5%) |
+| Shopping | 188 | 158 (84%) | 161 (85.6%) | 2 (1.1%) | 178 (94.7%) |
+| Wellness | 134 | 106 (79.1%) | 107 (79.9%) | 3 (2.2%) | 132 (98.5%) |
 | Civic & public | 75 | 39 (52%) | 62 (82.7%) | 2 (2.7%) | 66 (88%) |
 | Galleries | 27 | 14 (51.9%) | 23 (85.2%) | 1 (3.7%) | 26 (96.3%) |
-| Live music | 23 | 6 (26.1%) | 20 (87%) | 1 (4.3%) | 21 (91.3%) |
+| Live music | 23 | 7 (30.4%) | 20 (87%) | 1 (4.3%) | 21 (91.3%) |
 | Farms & pick-your-own | 22 | 9 (40.9%) | 19 (86.4%) | 1 (4.5%) | 21 (95.5%) |
 | Lodging | 34 | 2 (5.9%) | 31 (91.2%) | 2 (5.9%) | 34 (100%) |
 | Libraries | 14 | 11 (78.6%) | 12 (85.7%) | 1 (7.1%) | 13 (92.9%) |
 | Bakeries | 36 | 29 (80.6%) | 33 (91.7%) | 3 (8.3%) | 33 (91.7%) |
-| Bars | 24 | 22 (91.7%) | 23 (95.8%) | 2 (8.3%) | 23 (95.8%) |
+| Bars | 24 | 21 (87.5%) | 23 (95.8%) | 2 (8.3%) | 23 (95.8%) |
 | Book stores | 12 | 10 (83.3%) | 11 (91.7%) | 1 (8.3%) | 12 (100%) |
 | Theaters | 12 | 9 (75%) | 11 (91.7%) | 1 (8.3%) | 10 (83.3%) |
 | Golf | 7 | 3 (42.9%) | 3 (42.9%) | 6 (85.7%) | 1 (14.3%) |
@@ -68,7 +68,7 @@ hours, imagery, decision-useful copy, or direct actions are still thin.
 | Trails | 22 | 4 (18.2%) | 17 (77.3%) | 4 (18.2%) | 11 (50%) |
 | Family | 39 | 31 (79.5%) | 32 (82.1%) | 6 (15.4%) | 39 (100%) |
 | Pizza | 18 | 17 (94.4%) | 18 (100%) | 3 (16.7%) | 16 (88.9%) |
-| Restaurants | 175 | 164 (93.7%) | 160 (91.4%) | 34 (19.4%) | 168 (96%) |
+| Restaurants | 175 | 164 (93.7%) | 159 (90.9%) | 35 (20%) | 168 (96%) |
 | Museums | 18 | 8 (44.4%) | 14 (77.8%) | 4 (22.2%) | 16 (88.9%) |
 | Markets | 57 | 53 (93%) | 53 (93%) | 20 (35.1%) | 56 (98.2%) |
 | Breweries | 16 | 13 (81.3%) | 12 (75%) | 6 (37.5%) | 16 (100%) |
@@ -84,28 +84,28 @@ artifact current.
 
 | Check | Count |
 | --- | ---: |
-| Public Google-backed places expected in the 6-day cycle | 1482 |
+| Public Google-backed places expected in the 6-day cycle | 1481 |
 | Snapshot rows | 1522 |
-| Rows matched to the public set | 1481 |
+| Rows matched to the public set | 1480 |
 | Rows carrying a schedule | 1159 |
-| Rows refreshed within policy, including status-only results | 1480 (99.9%) |
-| Rows fresh within policy | 1159 (78.2%) |
+| Rows refreshed within policy, including status-only results | 1478 (99.8%) |
+| Rows fresh within policy | 1158 (78.2%) |
 | 6-day cycle state | healthy |
 | Cycle buckets meeting the minimum write ratio | 6 / 6 |
-| Stale rows | 0 |
+| Stale rows | 1 |
 | Invalid verification timestamps | 0 |
-| Unmatched rows | 41 |
+| Unmatched rows | 42 |
 
-Oldest refresh: 2026-08-13T08:01:03.490Z. Newest refresh: 2026-08-20T08:00:37.009Z.
+Oldest refresh: 2026-08-13T08:01:03.490Z. Newest refresh: 2026-08-22T08:01:01.244Z.
 
 | Cycle day | Expected places | Refreshed within policy | Fresh schedules | Minimum met |
 | ---: | ---: | ---: | ---: | --- |
 | 0 | 273 | 273 | 221 | yes |
 | 1 | 208 | 208 | 169 | yes |
 | 2 | 273 | 271 | 203 | yes |
-| 3 | 259 | 259 | 210 | yes |
+| 3 | 259 | 258 | 209 | yes |
 | 4 | 243 | 243 | 184 | yes |
-| 5 | 226 | 226 | 172 | yes |
+| 5 | 225 | 225 | 172 | yes |
 
 Every cycle bucket meets the writer's minimum persistence ratio.
 

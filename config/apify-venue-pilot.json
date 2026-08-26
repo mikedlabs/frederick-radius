@@ -15,7 +15,7 @@
       "venueSlug": "weinberg-center",
       "name": "Weinberg Center performances",
       "town": "Frederick",
-      "url": "https://weinbergcenter.org/performances/",
+      "url": "https://weinbergcenter.org/performances/?venue=weinberg-center",
       "purpose": "Measure whether Apify returns usable event text when the first-party page rejects a normal request.",
       "rightsPosture": "Private retrieval-quality review only; retain the Weinberg URL as the source and do not republish descriptions or artwork."
     },

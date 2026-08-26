@@ -54,15 +54,47 @@ export function parseLocation(raw: string | undefined | null): ParsedLocation {
     addressPart = clean.slice(dashIdx + 3).trim();
   }
 
-  const hasStreet = STREET_RE.test(addressPart);
+  const streetMatch = STREET_RE.exec(addressPart);
+  const hasStreet = Boolean(streetMatch);
   const hasStateZip = STATE_ZIP_RE.test(addressPart);
 
-  if (hasStreet || hasStateZip) {
-    const address = addressPart.replace(/\s+,/g, ",").replace(/\s+/g, " ").trim();
+  if (hasStreet && streetMatch) {
+    // CivicEngage often puts a building or room name directly before the
+    // street with no separator: "Warehouse Cinema 1301 W Patrick Street…".
+    // Sending that entire string to Google creates avoidable ZERO_RESULTS.
+    // Preserve the useful prefix as the venue, but geocode from the exact
+    // street number onward.
+    const inlineVenue = addressPart
+      .slice(0, streetMatch.index)
+      .replace(/^[\s,–—-]+|[\s,–—-]+$/g, "")
+      .trim();
+    if (inlineVenue) {
+      venueName = venueName
+        ? `${venueName}, ${inlineVenue}`
+        : inlineVenue;
+    }
+    const address = addressPart
+      .slice(streetMatch.index)
+      .replace(/\s+,/g, ",")
+      .replace(/\s+/g, " ")
+      .trim();
     return {
       venueName,
       address,
       normAddress: normalizeForCache(address),
+      unparseable: false,
+    };
+  }
+
+  // A town plus ZIP is useful display context, but it is not a street-level
+  // location. Geocoding it and later displaying the returned town centroid as
+  // an exact event pin breaks Radius's location contract. Keep the text as a
+  // venue/area label and let downstream surfaces mark location as approximate.
+  if (hasStateZip) {
+    return {
+      venueName: venueName ?? clean.replace(/^[\s,–—-]+/, ""),
+      address: undefined,
+      normAddress: undefined,
       unparseable: false,
     };
   }
