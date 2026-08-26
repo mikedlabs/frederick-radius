@@ -4,7 +4,7 @@
     "bentztown": {
       "inputs": {
         "https://www.bandsintown.com/v/10444653-bentztown": {
-          "contentHash": "fbabfa0ac1efeb228b6993f398634208c60af58003144619b053e799db655ec2",
+          "contentHash": "84a7d424b36947c70b6b6b81c5fc71dc68705798ff3d66c92384760d73b57679",
           "finalUrl": "https://www.bandsintown.com/v/10444653-bentztown",
           "method": "render",
           "extractorVersion": "venue-events-text-v1",
@@ -66,7 +66,7 @@
     "the-frederick-center": {
       "inputs": {
         "https://www.thefrederickcenter.org/events": {
-          "contentHash": "59b3891be99bd406d44a89aca34808f4fe4e5c952a54dcd5e2bc47b6defccc32",
+          "contentHash": "aee0c5a2381fde2d00555d45a4b651464661aad06039557116bcd6fea50cee7a",
           "finalUrl": "https://thefrederickcenter.org/events/",
           "method": "fetch",
           "extractorVersion": "venue-events-text-v1",
