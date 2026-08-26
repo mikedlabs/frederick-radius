@@ -62,6 +62,12 @@ describe("searchCivicActions", () => {
   it("does not mistake a health-food search for a Food Control task", () => {
     expect(searchCivicActions("health food")).toEqual([]);
   });
+
+  it("does not let a plural government title outrank actual parks", () => {
+    expect(searchCivicActions("park")).toEqual([
+      expect.objectContaining({ id: "civic:parks-rec-centers" }),
+    ]);
+  });
 });
 
 describe("isHighConfidenceCivicIntent", () => {

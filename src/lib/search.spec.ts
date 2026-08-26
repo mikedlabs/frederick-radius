@@ -442,11 +442,13 @@ describe("qualifiedSearch — Ask uses place context by default", () => {
     const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
 
     expect(meta.qualifiers.cleanedQuery).toBe("a steak dinner");
-    // Real Japanese steakhouses (hibachi) now sit in the catalog alongside
-    // Avery's grille; all three are genuine steak matches, which is the
-    // opposite of the invented match this guards against.
+    // The Japanese steakhouses, Oscar's wood-fired steak menu, and Avery's
+    // grille all carry explicit steak evidence in reviewed place data. The
+    // cleaned request must return only those real matches, never a nearby
+    // restaurant promoted by the reservation wording alone.
     expect(places.map((place) => place.slug)).toEqual([
       "miyako-japanese-steak-and-seafood-frederick",
+      "oscars-alehouse",
       "matsutake-sushi-and-steak-frederick",
       "averys-maryland-grille-frederick",
     ]);
@@ -549,6 +551,80 @@ describe("search — word boundaries protect meaning", () => {
     expect(leadCategory("i want a date.")).toBe("restaurant");
     expect(leadCategory("oil change")).toBe("auto-care");
     expect(leadCategory("hotel")).toBe("lodging");
+  });
+});
+
+describe("search — recurring local decision misses", () => {
+  it("treats a place to read as a library intent, not the word Place in a business name", () => {
+    const places = qualifiedSearch(
+      "quiet place to read",
+      12,
+      undefined,
+      { origin: { lng: -77.4105, lat: 39.4143 } },
+    ).hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(places.length).toBeGreaterThan(0);
+    expect(places[0]?.category).toBe("library");
+    expect(places.every((place) => place.category === "library")).toBe(true);
+    expect(places.some((place) => /antiques|happy place/i.test(place.name))).toBe(false);
+  });
+
+  it("honors a named town before the current-location context", () => {
+    const result = qualifiedSearch(
+      "Where can I get tacos in Brunswick?",
+      12,
+      undefined,
+      {
+        origin: { lng: -77.4105, lat: 39.4143 },
+        municipality: "frederick",
+        contextLabel: "Downtown Frederick",
+      },
+    );
+    const places = result.hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(result.meta.contextLabel).toBe("Brunswick");
+    expect(places[0]?.name).toBe("Adele's Tex Mex");
+    expect(places.every((place) => place.municipality === "brunswick")).toBe(true);
+  });
+
+  it("keeps a broad food-in-town request broad after applying the town scope", () => {
+    const places = qualifiedSearch("food in Brunswick", 12).hits.flatMap((hit) =>
+      hit.type === "place" ? [hit.place] : [],
+    );
+
+    expect(places.length).toBeGreaterThan(3);
+    expect(places.every((place) => place.municipality === "brunswick")).toBe(true);
+    expect(places.some((place) => place.category === "restaurant")).toBe(true);
+    expect(places.some((place) => ["auto-care", "services"].includes(place.category))).toBe(false);
+  });
+
+  it("requires both dog-friendly and patio evidence instead of combining partial matches", () => {
+    const places = search("dog-friendly patio", 12).flatMap((hit) =>
+      hit.type === "place" ? [hit.place] : [],
+    );
+
+    expect(places.map((place) => place.slug)).toContain("smoketown-brewing-brunswick");
+    expect(places.map((place) => place.slug)).not.toContain("carroll-creek-linear-park-frederick");
+    expect(places.map((place) => place.slug)).not.toContain("the-wine-kitchen-on-the-creek-frederick");
+  });
+
+  it("routes phone charging to mapped power without presenting an EV charger", () => {
+    const hits = search("phone charging", 12);
+
+    expect(hits[0]).toMatchObject({
+      type: "page",
+      page: { href: "/amenities" },
+    });
+    expect(hits.some((hit) => hit.type === "place" && /\bev\b/i.test(hit.place.name))).toBe(false);
+  });
+
+  it("keeps a movie request on actual cinemas", () => {
+    const places = search("movies", 12).flatMap((hit) =>
+      hit.type === "place" ? [hit.place] : [],
+    );
+
+    expect(places.length).toBeGreaterThan(0);
+    expect(places.every((place) => place.category === "theater")).toBe(true);
   });
 });
 

@@ -26,14 +26,27 @@ export function normalizeQueryKey(q: string): string {
     .trim();
 }
 
-/** Queries worth banking: real words, not a stray keystroke or a paste-bomb. */
-function worthLogging(q: string): boolean {
-  return q.length >= 2 && q.length <= 80;
+const SEARCH_MISS_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "for",
+  "of",
+  "or",
+  "the",
+  "to",
+]);
+
+/** Queries worth banking: real intent, not a stray keystroke or a paste-bomb. */
+export function worthLoggingSearchMiss(q: string): boolean {
+  if (q.length < 3 || q.length > 80) return false;
+  const key = normalizeQueryKey(q);
+  return Boolean(key) && !SEARCH_MISS_STOP_WORDS.has(key);
 }
 
 export async function recordSearchMiss(query: string, kind: MissKind): Promise<void> {
   const q = query.trim();
-  if (!worthLogging(q)) return;
+  if (!worthLoggingSearchMiss(q)) return;
   const key = normalizeQueryKey(q);
   if (!key) return;
 

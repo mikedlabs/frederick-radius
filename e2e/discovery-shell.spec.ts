@@ -100,11 +100,12 @@ test.describe("mobile discovery shell", () => {
     const contentsButton = page.getByRole("button", { name: "Choose what to see on this map" });
     await expect(contentsButton).toBeVisible();
     await expect(page.locator(".map-edge-tool-locate")).toBeHidden();
-    const locate = page.getByRole("button", { name: "Locate me on the map" });
-    await expect(locate).toBeVisible();
-    await expect(locate).toContainText("Locate");
-    await expect(locate).not.toHaveAttribute("aria-pressed");
-    await expect(locate).not.toHaveAttribute("data-on");
+    // Starting Search retires first-use guidance instead of replacing the
+    // active task with a second location control.
+    await expect(page.locator(".map-location-offer")).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Locate me on the map" }),
+    ).toHaveCount(0);
     await expect(page.locator(".map-edge-tool-essential")).toBeHidden();
     const focusedDockBox = await page.locator("[data-map-dock] .dock-head").boundingBox();
     // A focus event alone does not prove that a software keyboard opened.
@@ -114,7 +115,9 @@ test.describe("mobile discovery shell", () => {
     expect(
       Math.abs((focusedDockBox?.y ?? 0) - (coldDockBox?.y ?? 0)),
     ).toBeLessThanOrEqual(2);
-    await expect(page.locator("[data-map-dock] .dock-head > button")).toHaveCount(2);
+    // Search plus one explicit choices door; location no longer adds a third
+    // command beside the map's primary tasks.
+    await expect(page.locator("[data-map-dock] .dock-head > button")).toHaveCount(1);
     await expect(
       page.getByRole("button", { name: /Open map tools|Map tools,/ }),
     ).toHaveCount(0);
@@ -132,7 +135,7 @@ test.describe("mobile discovery shell", () => {
     await expect(contentsPane).toBeVisible();
     await expect(contentsPane).toBeFocused();
     await expect(
-      contentsPane.getByRole("button", { name: /^Near me/ }),
+      contentsPane.getByRole("button", { name: /^Nearby/ }),
     ).toBeVisible();
     await expect(contentsPane.getByRole("button", { name: /^Happening/ })).toBeVisible();
     await expect(contentsPane.getByRole("button", { name: /^Get around/ })).toBeVisible();
@@ -202,7 +205,10 @@ test.describe("mobile discovery shell", () => {
     expect(contextBox?.height ?? 0).toBeGreaterThanOrEqual(44);
     expect(activeDockBox?.y ?? 0).toBeGreaterThan(contextBox?.y ?? 9999);
     const contextActions = contextRail.getByRole("button");
-    await expect(contextActions).toHaveCount(2);
+    // The rail is a status readout with one Reset action. Editing stays behind
+    // the consistent What to see control instead of making the readout itself
+    // behave like a second unlabeled door.
+    await expect(contextActions).toHaveCount(1);
     for (const action of await contextActions.all()) {
       const box = await action.boundingBox();
       expect(Math.round(box?.height ?? 0)).toBeGreaterThanOrEqual(44);
@@ -226,7 +232,7 @@ test.describe("mobile discovery shell", () => {
     });
     expect(topFurnitureOverlaps).toBe(false);
 
-    await contextRail.getByRole("button", { name: /Change map view/ }).click();
+    await contentsButton.click();
     await expect(
       page.getByRole("region", { name: "Choose what to see" }),
     ).toBeVisible();
@@ -257,7 +263,7 @@ test.describe("mobile discovery shell", () => {
       name: "Choose what to see",
     });
     await finalContentsPane
-      .getByRole("button", { name: /^Near me/ })
+      .getByRole("button", { name: /^Nearby/ })
       .click();
     const placesPane = page.getByRole("region", { name: "Find nearby" });
     await expect(placesPane).toBeVisible();
@@ -286,7 +292,7 @@ test.describe("mobile discovery shell", () => {
 
     await page.goto("/compass", { waitUntil: "domcontentloaded" });
     await expect(
-      page.getByRole("searchbox", { name: "Search all Radius tools" }),
+      page.getByRole("searchbox", { name: /Search Radius tools/ }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", {
@@ -482,9 +488,14 @@ test.describe("mobile discovery shell", () => {
 
   test("the county reset appears after a same-zoom pan clips the overview", async ({ page }) => {
     await page.goto("/map?c=-77.6196,39.4705,8.63", { waitUntil: "domcontentloaded" });
+    await expect(page.locator(".dock-host")).toHaveAttribute(
+      "data-map-loaded",
+      "true",
+      { timeout: 20_000 },
+    );
 
     const reset = page.getByRole("button", { name: "Show the whole county" });
-    await expect(reset).toBeVisible();
+    await expect(reset).toBeVisible({ timeout: 20_000 });
     await reset.click();
     await expect(reset).toBeHidden();
   });
@@ -632,7 +643,7 @@ test.describe("mobile discovery shell", () => {
       page.getByRole("heading", { level: 1, name: "What do you need?" }),
     ).toBeVisible();
     const toolSearch = page.getByRole("searchbox", {
-      name: "Search all Radius tools",
+      name: /Search Radius tools/,
     });
     await expect(toolSearch).toBeVisible();
     await expect(page.locator("[data-compass-ready]")).toHaveAttribute(
@@ -725,6 +736,13 @@ test.describe("mobile discovery shell", () => {
       ),
     ).toBe(true);
     await quietDisclosure.locator("summary").click();
-    await expect(quietDisclosure.locator("[data-pulse-key]").first()).toBeVisible();
+    const firstSource = quietDisclosure
+      .locator("#pulse-local-updates")
+      .getByRole("button")
+      .first();
+    await expect(firstSource).toBeVisible();
+    await expect(firstSource).toHaveAttribute("aria-label", /Source:/);
+    await firstSource.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
   });
 });

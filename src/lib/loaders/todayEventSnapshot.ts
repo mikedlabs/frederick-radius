@@ -8,7 +8,10 @@ import {
   allUpcoming,
   type EventWithMeta,
 } from "@/lib/loaders/events";
-import type { UnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import type {
+  EventSourceHealth,
+  UnifiedEvents,
+} from "@/lib/loaders/unifiedEvents";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 
 type CancellablePromiseLike<T> = PromiseLike<T> & {
@@ -45,12 +48,109 @@ const TODAY_EVENT_SNAPSHOT_LIMIT = 1_000;
 export const EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS = 2_500;
 export const EVENT_BROWSE_HORIZON_DAYS = 90;
 export const EVENT_BROWSE_SNAPSHOT_LIMIT = 1_500;
+// Callers may deliberately allow a little more headroom for a cold pooled
+// connection, but no public request can turn this bounded archive read into a
+// long-running database wait.
+const EVENT_ARCHIVE_MAX_TIMEOUT_MS = 5_000;
 
 type EventArchiveSnapshotOptions = {
   horizonDays?: number;
   limit?: number;
   timeoutMs?: number;
 };
+
+export type EventArchivePublicReasonCode =
+  | "event_archive_timeout"
+  | "event_archive_unavailable"
+  | "event_archive_status_unavailable"
+  | "event_archive_refresh_failed"
+  | "event_archive_stale"
+  | "event_archive_validation";
+
+export type EventArchivePublicIssue = {
+  code: EventArchivePublicReasonCode;
+  message: string;
+};
+
+export type EventArchiveSourceHealth = EventSourceHealth & {
+  issues: EventArchivePublicIssue[];
+};
+
+export type EventArchiveSnapshot = Omit<UnifiedEvents, "sourceHealth"> & {
+  sourceHealth: EventArchiveSourceHealth;
+};
+
+const EVENT_ARCHIVE_PUBLIC_MESSAGES: Record<
+  EventArchivePublicReasonCode,
+  string
+> = {
+  event_archive_timeout:
+    "The event schedule is taking longer than expected to load.",
+  event_archive_unavailable:
+    "The event schedule is temporarily unavailable.",
+  event_archive_status_unavailable:
+    "The event schedule's freshness could not be confirmed.",
+  event_archive_refresh_failed:
+    "The latest event schedule refresh did not finish.",
+  event_archive_stale:
+    "The event schedule has not been refreshed recently.",
+  event_archive_validation:
+    "Some event records could not be verified.",
+};
+
+const EVENT_ARCHIVE_PUBLIC_CODES = new Set<EventArchivePublicReasonCode>(
+  Object.keys(EVENT_ARCHIVE_PUBLIC_MESSAGES) as EventArchivePublicReasonCode[],
+);
+
+function issueForCode(
+  code: EventArchivePublicReasonCode,
+): EventArchivePublicIssue {
+  return { code, message: EVENT_ARCHIVE_PUBLIC_MESSAGES[code] };
+}
+
+function eventArchiveSourceHealth(
+  codes: readonly EventArchivePublicReasonCode[],
+): EventArchiveSourceHealth {
+  const uniqueCodes = [...new Set(codes)];
+  const issues = uniqueCodes.map(issueForCode);
+  return {
+    degraded: issues.length > 0,
+    unavailable: issues.map((issue) => issue.message),
+    issues,
+  };
+}
+
+/**
+ * The public boundary never trusts diagnostic strings carried by a loader or
+ * a test double. Only allowlisted reason codes survive, and their messages are
+ * rebuilt here. A degraded payload with no valid code fails closed to one
+ * generic, stable reason instead of echoing its `unavailable` strings.
+ */
+export function publicEventArchiveSourceHealth(
+  value: unknown,
+): EventArchiveSourceHealth {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return eventArchiveSourceHealth(["event_archive_unavailable"]);
+  }
+  const candidate = value as Record<string, unknown>;
+  if (candidate.degraded === false) return eventArchiveSourceHealth([]);
+  if (candidate.degraded !== true) {
+    return eventArchiveSourceHealth(["event_archive_unavailable"]);
+  }
+
+  const rawIssues = Array.isArray(candidate.issues) ? candidate.issues : [];
+  const codes = rawIssues.flatMap((issue) => {
+    if (!issue || typeof issue !== "object" || Array.isArray(issue)) return [];
+    const code = (issue as Record<string, unknown>).code;
+    return typeof code === "string" &&
+      EVENT_ARCHIVE_PUBLIC_CODES.has(code as EventArchivePublicReasonCode)
+      ? [code as EventArchivePublicReasonCode]
+      : [];
+  });
+  return eventArchiveSourceHealth(
+    codes.length > 0 ? codes : ["event_archive_unavailable"],
+  );
+}
 
 function snapshotBounds(
   now: Date,
@@ -83,32 +183,53 @@ function snapshotBounds(
   };
 }
 
-/**
- * A rejected read and a slow read are different problems and must not share
- * an answer.
- *
- * This used to return `null` for both, and the caller labelled every null
- * "read timeout". So when production stopped serving live events, the only
- * thing any surface could say was that the read was slow. It was not slow:
- * `/api/health` reports `SELECT 1` on this very connection at 3ms. Something
- * rejected the archive query specifically, and the app had no way to say so,
- * which turned a one-line Postgres error into a multi-day investigation.
- *
- * `postgres` raises a real error for a missing table grant ("permission
- * denied for table ..."), and that sentence is the entire diagnosis. Carry it.
- */
 type DeadlineOutcome<T> =
   | { ok: true; value: T }
-  | { ok: false; reason: string };
+  | { ok: false; code: "event_archive_timeout" }
+  | {
+      ok: false;
+      code: "event_archive_unavailable";
+      diagnostic: Record<string, unknown>;
+    };
 
-/** Postgres error text is safe to surface: it names relations and privileges,
- *  never the connection string. Bounded and flattened anyway, because this
- *  string reaches an operator-facing health payload. */
-function readFailureReason(error: unknown): string {
+/**
+ * Keep useful database diagnostics in server logs without making an arbitrary
+ * Error.message part of a public response contract. Driver errors can include
+ * SQL fragments, host details, or values supplied by a provider, so even a
+ * bounded string is not safe to echo through Today, Events, or the map.
+ */
+function readFailureDiagnostic(error: unknown): Record<string, unknown> {
   const message = error instanceof Error ? error.message : String(error);
-  const flattened = message.replace(/\s+/gu, " ").trim();
-  if (!flattened) return "read rejected";
-  return `read rejected: ${flattened.slice(0, 120)}`;
+  const flattened = message
+    .replace(/\s+/gu, " ")
+    // URI user-info is the common way a postgres connection string reaches a
+    // driver error. Preserve the scheme and host while removing credentials.
+    .replace(
+      /\b([a-z][a-z0-9+.-]*:\/\/)[^@\s/]+@/giu,
+      "$1[redacted]@",
+    )
+    // Also cover key/value fragments emitted by SDKs and connection parsers.
+    .replace(
+      /\b(password|passwd|pwd|token|api[_-]?key|secret)\s*[:=]\s*[^\s,;]+/giu,
+      "$1=[redacted]",
+    )
+    .trim();
+  const record =
+    error && typeof error === "object" && !Array.isArray(error)
+      ? (error as Record<string, unknown>)
+      : null;
+  return {
+    name: error instanceof Error ? error.name : typeof error,
+    ...(typeof record?.code === "string" ? { code: record.code } : {}),
+    message: flattened ? flattened.slice(0, 500) : "Read rejected",
+  };
+}
+
+export function logEventArchiveFailure(
+  context: string,
+  error: unknown,
+): void {
+  console.error(`[events] ${context}.`, readFailureDiagnostic(error));
 }
 
 async function beforeDeadline<T>(
@@ -136,10 +257,12 @@ async function beforeDeadline<T>(
       }
       return {
         ok: false,
-        reason:
-          result.status === "timeout"
-            ? "read timeout"
-            : readFailureReason(result.error),
+        ...(result.status === "timeout"
+          ? { code: "event_archive_timeout" as const }
+          : {
+              code: "event_archive_unavailable" as const,
+              diagnostic: readFailureDiagnostic(result.error),
+            }),
       };
     }
     return { ok: true, value: result.value };
@@ -148,20 +271,15 @@ async function beforeDeadline<T>(
   }
 }
 
-function curatedFallback(now: Date, reason: string): UnifiedEvents {
+function curatedFallback(
+  now: Date,
+  code: EventArchivePublicReasonCode,
+): EventArchiveSnapshot {
   const unified = applyEventNotices(allUpcoming(now), now);
   return {
     unified,
     publicEvents: unified.filter(isPublicEvent),
-    sourceHealth: {
-      degraded: true,
-      // Name WHICH failure produced the fallback. All three paths (no
-      // database, read timeout, unusable archive) used to emit the same
-      // "event archive" string, which made the production outage — cold
-      // reads timing out while the archive itself was healthy — invisible
-      // in every health surface (events-outage diagnosis, 2026-08-18).
-      unavailable: [`event archive (${reason})`],
-    },
+    sourceHealth: eventArchiveSourceHealth([code]),
   };
 }
 
@@ -179,7 +297,7 @@ function candidateRows(value: unknown): ArchiveCandidate[] {
 export function hydrateTodayEventSnapshot(
   envelope: ArchiveEnvelope,
   now: Date,
-): UnifiedEvents {
+): EventArchiveSnapshot {
   const curated = allUpcoming(now);
   const bySlug = new Map<string, EventWithMeta>(
     curated.map((event) => [event.slug, event]),
@@ -200,7 +318,7 @@ export function hydrateTodayEventSnapshot(
   const finishedAt = envelope.archive_finished_at
     ? new Date(envelope.archive_finished_at).getTime()
     : Number.NaN;
-  const unavailable: string[] = [];
+  const issues: EventArchivePublicReasonCode[] = [];
   // The old gate rejected the archive whenever the last run was not "ok" or
   // ANY record failed — but the collector aggregates ~28 upstream sources and
   // marks itself "partial" if one of them hiccuped, which is the steady
@@ -225,17 +343,17 @@ export function hydrateTodayEventSnapshot(
   //
   // A null status means the archive's own ledger was unreadable. Say that.
   if (envelope.archive_status == null) {
-    unavailable.push("event archive (unreadable)");
+    issues.push("event_archive_status_unavailable");
   } else if (envelope.archive_status === "error") {
-    unavailable.push("event archive (last run failed)");
+    issues.push("event_archive_refresh_failed");
   } else if (
     !Number.isFinite(finishedAt) ||
     now.getTime() - finishedAt > TODAY_EVENT_SNAPSHOT_MAX_AGE_MS ||
     now.getTime() < finishedAt - 5 * 60_000
   ) {
-    unavailable.push("event archive (stale)");
+    issues.push("event_archive_stale");
   }
-  if (invalidSnapshots > 0) unavailable.push("event archive validation");
+  if (invalidSnapshots > 0) issues.push("event_archive_validation");
 
   const unified = applyEventNotices(
     [...bySlug.values()].sort(
@@ -246,10 +364,7 @@ export function hydrateTodayEventSnapshot(
   return {
     unified,
     publicEvents: unified.filter(isPublicEvent),
-    sourceHealth: {
-      degraded: unavailable.length > 0,
-      unavailable,
-    },
+    sourceHealth: eventArchiveSourceHealth(issues),
   };
 }
 
@@ -263,7 +378,7 @@ export function hydrateTodayEventSnapshot(
  */
 export async function loadTodayEventSnapshot(
   now = new Date(),
-): Promise<UnifiedEvents> {
+): Promise<EventArchiveSnapshot> {
   return loadEventArchiveSnapshot(now, {
     horizonDays: TODAY_EVENT_HORIZON_DAYS,
     limit: TODAY_EVENT_SNAPSHOT_LIMIT,
@@ -282,7 +397,7 @@ export async function loadTodayEventSnapshot(
 export async function loadEventArchiveSnapshot(
   now = new Date(),
   options: EventArchiveSnapshotOptions = {},
-): Promise<UnifiedEvents> {
+): Promise<EventArchiveSnapshot> {
   const horizonDays = Math.max(
     1,
     Math.min(120, Math.floor(options.horizonDays ?? EVENT_BROWSE_HORIZON_DAYS)),
@@ -293,10 +408,13 @@ export async function loadEventArchiveSnapshot(
   );
   const timeoutMs = Math.max(
     100,
-    Math.min(1_500, Math.floor(options.timeoutMs ?? EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS)),
+    Math.min(
+      EVENT_ARCHIVE_MAX_TIMEOUT_MS,
+      Math.floor(options.timeoutMs ?? EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS),
+    ),
   );
   const sql = getSql();
-  if (!sql) return curatedFallback(now, "no database");
+  if (!sql) return curatedFallback(now, "event_archive_unavailable");
   // Bounds cross the wire as ISO text with an explicit cast, never as Date
   // objects.
   //
@@ -364,12 +482,17 @@ export async function loadEventArchiveSnapshot(
     left join latest_archive on true
   `;
   const outcome = await beforeDeadline(pending, timeoutMs);
-  if (!outcome.ok) return curatedFallback(now, outcome.reason);
+  if (!outcome.ok) {
+    if ("diagnostic" in outcome) {
+      console.error("[events] Archive read rejected.", outcome.diagnostic);
+    }
+    return curatedFallback(now, outcome.code);
+  }
   const envelope = outcome.value?.[0];
   // A missing row here is NOT an empty archive: the query anchors on
   // `(values (1))`, so a completed read always returns exactly one row.
   // Getting none back means the shape changed, which is its own bug.
   return envelope
     ? hydrateTodayEventSnapshot(envelope, now)
-    : curatedFallback(now, "read returned no anchor row");
+    : curatedFallback(now, "event_archive_unavailable");
 }

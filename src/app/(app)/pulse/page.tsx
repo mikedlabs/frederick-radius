@@ -1179,8 +1179,8 @@ export default async function PulsePage() {
       : []),
     // ── Numeric feeds → direct, source-backed readings ──
     // Air quality: an ambient environmental reading. A missing fresh reading
-    // stays visible as an exact degraded tile, so the hero does not need a
-    // generic "some feeds" warning with no source or next step.
+    // moves into the source-status disclosure rather than occupying a full
+    // current-condition card with no measurement to show.
     ...(aqiWorst
       ? [{
           key: "air",
@@ -1210,7 +1210,6 @@ export default async function PulsePage() {
           attention: false,
           degraded: true,
           reading: true,
-          keepVisibleWhenUnavailable: true,
           kind: "status",
           sourceLabel: "AirNow · EPA",
           peek: "No fresh Frederick reading",
@@ -2090,7 +2089,6 @@ export default async function PulsePage() {
       accent: "var(--app-cool)",
       active: Boolean(breakingPolice),
       degraded: !civicAvailable,
-      keepVisibleWhenUnavailable: true,
       // The dedicated breaking strip already keeps this release prominent.
       // Do not duplicate it in the board's "Happening now" row when another
       // higher-priority signal owns the masthead.
@@ -2121,7 +2119,6 @@ export default async function PulsePage() {
           active: false,
           attention: false,
           degraded: !civicAvailable,
-          keepVisibleWhenUnavailable: true,
           kind: "status",
           sourceLabel: "City + County advisories",
           peek:

@@ -87,6 +87,8 @@ jobs:
           NODE_OPTIONS: "--max-old-space-size=4096"
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Component workshop tests
+        run: npm run test:storybook
       - name: Production browser and connected-journey gate
         run: npm run test:release
         env:

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dedupeAmenities, type Amenity } from "@/lib/loaders/amenities";
+import { allAmenities, dedupeAmenities, type Amenity } from "@/lib/loaders/amenities";
 
 describe("amenity evidence dedupe", () => {
   it("prefers a field-mapped point over overlapping OSM data", () => {
@@ -76,5 +76,24 @@ describe("amenity evidence dedupe", () => {
       category: "park",
       geom: { lng: -77.41001, lat: 39.41401 },
     }])).toEqual([]);
+  });
+});
+
+describe("published amenity coverage", () => {
+  it("keeps reviewed Mount Airy points east of the county-only envelope", () => {
+    const rows = allAmenities().filter((amenity) =>
+      amenity.municipality === "mount-airy" && amenity.lng > -77.15,
+    );
+    expect(rows.length).toBeGreaterThanOrEqual(8);
+    expect(rows.some((amenity) => amenity.kind === "ev_charging")).toBe(true);
+    expect(rows.some((amenity) => amenity.kind === "playground")).toBe(true);
+  });
+
+  it("preserves every supported role on a multi-purpose public fixture", () => {
+    const roles = allAmenities()
+      .filter((amenity) => amenity.id.endsWith("-w-489105304"))
+      .map((amenity) => amenity.kind)
+      .sort();
+    expect(roles).toEqual(["restroom", "water"]);
   });
 });

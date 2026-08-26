@@ -817,7 +817,7 @@ export function buildWantAnswer(
         // that no hours were ever posted.
         open_status: mayAssertHours
           ? getOpenStatus(p.hours, { verified: true }, now)
-          : p.hours
+          : p.hours || p.hours_updated_at
             ? { state: "unverified" as const }
             : { state: "unknown" as const },
         distance_m: origin ? haversineMeters(origin, p.geom) : undefined,

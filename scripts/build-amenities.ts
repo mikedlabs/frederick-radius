@@ -9,11 +9,19 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolveFrederickMunicipality } from "@/lib/location";
+import { FREDERICK_GUIDE_BBOX } from "@/lib/geo";
 
 const DIR = new URL("../src/data/osm-amenities/", import.meta.url).pathname;
 const OUT = new URL("../src/data/amenities.json", import.meta.url).pathname;
-// Frederick County bbox [south, west, north, east].
-const BBOX: [number, number, number, number] = [39.265, -77.7, 39.745, -77.15];
+// Full Radius guide envelope [south, west, north, east], including the
+// reviewed Carroll-side portion of incorporated Mount Airy. Every point is
+// still filtered through resolveFrederickMunicipality below.
+const BBOX: [number, number, number, number] = [
+  FREDERICK_GUIDE_BBOX.south,
+  FREDERICK_GUIDE_BBOX.west,
+  FREDERICK_GUIDE_BBOX.north,
+  FREDERICK_GUIDE_BBOX.east,
+];
 
 type AmenityKind =
   | "restroom" | "ev_charging" | "wifi" | "bike_parking" | "picnic" | "playground"
@@ -147,16 +155,20 @@ for (const kind of Object.keys(FILES) as AmenityKind[]) {
   }
 }
 
-function publicUtilityKind(p: Props): AmenityKind | null {
+function publicUtilityKinds(p: Props): AmenityKind[] {
+  const kinds = new Set<AmenityKind>();
   const amenity = p.amenity;
-  if (amenity === "waste_basket" && p.waste === "dog_excrement") return "dog_waste";
-  if (amenity === "dog_waste_bin") return "dog_waste";
-  if (amenity === "drinking_water" || amenity === "water_point" || p.drinking_water === "yes") return "water";
-  if (amenity === "waste_basket") return "trash";
-  if (amenity === "recycling") return "recycling";
-  if (amenity === "bench") return "bench";
-  if (amenity === "bicycle_repair_station") return "bike_repair";
-  return null;
+  if (amenity === "toilets") kinds.add("restroom");
+  if (amenity === "waste_basket" && p.waste === "dog_excrement") kinds.add("dog_waste");
+  else if (amenity === "waste_basket") kinds.add("trash");
+  if (amenity === "dog_waste_bin") kinds.add("dog_waste");
+  if (amenity === "recycling") kinds.add("recycling");
+  if (amenity === "bench") kinds.add("bench");
+  if (amenity === "bicycle_repair_station") kinds.add("bike_repair");
+  if (amenity === "drinking_water" || amenity === "water_point" || p.drinking_water === "yes") {
+    kinds.add("water");
+  }
+  return [...kinds];
 }
 
 function isSafePublicUtility(p: Props): boolean {
@@ -177,26 +189,32 @@ try {
   for (const feature of publicUtilities.features ?? []) {
     const properties = feature.properties ?? {};
     if (!isSafePublicUtility(properties)) continue;
-    const kind = publicUtilityKind(properties);
+    const kinds = publicUtilityKinds(properties);
     const point = centroid(feature.geometry);
-    if (!kind || !point) continue;
+    if (kinds.length === 0 || !point) continue;
     const [lng, lat] = point;
     if (lat < s || lat > n || lng < w || lng > e) continue;
     const municipality = resolveFrederickMunicipality({ lng, lat });
     if (!municipality) continue;
-    const id = `${kind}-${properties._osm_type ?? "n"}-${properties._osm_id ?? `${lng.toFixed(6)},${lat.toFixed(6)}`}`;
-    if (seen.has(id)) continue;
-    seen.add(id);
-    out.push({
-      id,
-      kind,
-      name: properties.name?.trim() || KIND_LABEL[kind],
-      detail: detailFor(kind, properties),
-      municipality: municipality.municipality.slug,
-      lng,
-      lat,
-    });
-    counts[kind] = (counts[kind] ?? 0) + 1;
+    // One real fixture may serve more than one job. A Myersville facility is
+    // explicitly tagged both toilets and drinking_water=yes; reducing it to a
+    // single kind made the restroom disappear from the map. Emit one stable
+    // typed row per supported role so either user intent can find it.
+    for (const kind of kinds) {
+      const id = `${kind}-${properties._osm_type ?? "n"}-${properties._osm_id ?? `${lng.toFixed(6)},${lat.toFixed(6)}`}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      out.push({
+        id,
+        kind,
+        name: properties.name?.trim() || KIND_LABEL[kind],
+        detail: detailFor(kind, properties),
+        municipality: municipality.municipality.slug,
+        lng,
+        lat,
+      });
+      counts[kind] = (counts[kind] ?? 0) + 1;
+    }
   }
 } catch {
   // A fresh checkout can still build from the six original static layers.

@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Armchair, Baby, Beer, Bike, BusFront, Check, ChevronDown, ChevronLeft, ChevronRight, Church, Clock, CloudSun, Coffee, Construction, Dog, Droplets, Gauge, Heart, History, Hotel, Landmark, Layers3, LayoutGrid, LoaderCircle, LocateFixed, MapPin, MoreHorizontal, Music, NotebookPen, Palette, PlugZap, Search as SearchIcon, Share2, ShieldPlus, ShoppingBag, Tag, TimerReset, Trash2, Trees, Utensils, Waves, Waypoints, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
+import { Armchair, Baby, Beer, Bike, BusFront, Check, ChevronDown, ChevronLeft, ChevronRight, Church, Clock, CloudSun, Coffee, Construction, Dog, Droplets, Gauge, Heart, History, Hotel, Landmark, Layers3, LoaderCircle, LocateFixed, MapPin, MoreHorizontal, Music, NotebookPen, Palette, PlugZap, Search as SearchIcon, Share2, ShieldPlus, ShoppingBag, Tag, TimerReset, Trash2, Trees, Utensils, Waves, Waypoints, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
 import RestroomMark from "@/components/icons/RestroomMark";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -51,6 +51,12 @@ import {
   type ResolvedRadiusScene,
 } from "./radiusScenes";
 import type { LiveBusLayerSnapshot } from "./LiveBuses";
+import { shouldOfferMapLocationForUrl } from "./mapLocationIntro";
+import { focusMapBeforeDockDismiss } from "./mapDockFocus";
+import type {
+  MapLayerGroup,
+  MapLayerSourceHealth,
+} from "./deferredBrowseLayers";
 
 export type TransitAlertSnapshot = {
   status: "loading" | "ready" | "empty" | "stale" | "error";
@@ -106,6 +112,27 @@ const PUBLIC_AMENITY_GROUPS = AMENITY_GROUPS.filter(
 type Pane = "contents" | "what" | "amenities" | "when" | "where" | "discover" | "layers" | "conditions" | "localLayers";
 type PlaceReveal = "categories";
 
+function sourceGroupsForPane(pane: Pane | null): readonly MapLayerGroup[] {
+  switch (pane) {
+    case "what":
+    case "where":
+    case "discover":
+      return ["context"];
+    case "amenities":
+      return ["amenities", "context"];
+    case "when":
+      return ["events"];
+    case "layers":
+      return ["transit", "parking"];
+    case "conditions":
+      return ["signals", "roads"];
+    case "localLayers":
+      return ["outdoors", "boundaries"];
+    default:
+      return [];
+  }
+}
+
 /** Where the camera is pointed, per the user's own choice in the Where
  *  pane. Camera moves only — Where NEVER filters what's on the map. */
 type WhereSel =
@@ -123,10 +150,9 @@ function searchOptionId(index: number): string {
 
 function whereSelectionForScope(
   nextScope: Scope | null,
-  userLoc: LngLat | null,
 ): WhereSel {
   if (nextScope === "nearme") {
-    return userLoc ? { kind: "nearme" } : { kind: "county" };
+    return { kind: "nearme" };
   }
   const slug = scopeTownSlug(nextScope);
   const town = slug ? MUNICIPALITIES.find((m) => m.slug === slug) : null;
@@ -228,6 +254,12 @@ export type MapDockProps = {
   /** The browse map can request currently-unloaded provider layers on tap.
    * Keeps the controls discoverable without prefetching every provider. */
   providerLayersAvailable?: boolean;
+  /** Provider health attached to deferred data. A missing provider must not
+   * be presented as proof that Frederick has no matching features. */
+  mapLayerSourceHealth?: Partial<
+    Record<MapLayerGroup, MapLayerSourceHealth>
+  >;
+  retryMapLayerGroups?: (groups: readonly MapLayerGroup[]) => void;
   showParking: boolean;
   setShowParking: SetState<boolean>;
   showRadar: boolean;
@@ -267,6 +299,8 @@ export type MapDockProps = {
 
   // ── Where pane ──
   userLoc: LngLat | null;
+  showLocationIntro: boolean;
+  dismissLocationIntro: () => void;
   locating: boolean;
   geoMsg: string | null;
   goNearMe: () => void;
@@ -405,12 +439,15 @@ function formatLayerUpdate(timestamp: string | null): string | null {
 }
 
 export default function MapDock(props: MapDockProps) {
+  const { dismissLocationIntro, showLocationIntro } = props;
   const { browse, onPaneOpenChange } = props;
   const publicAmenityGroups = PUBLIC_AMENITY_GROUPS.filter(
     (group) => (props.amenityGroupCounts[group.key] ?? 0) > 0,
   );
   const router = useRouter();
   const sp = useSearchParams();
+  const locationOfferVisible =
+    showLocationIntro && shouldOfferMapLocationForUrl(sp);
   const initialScope = parseScope(sp.get(SCOPE_PARAM)) ?? getScope() ?? "county";
 
   const [pane, setPane] = useState<Pane | null>(null);
@@ -425,7 +462,7 @@ export default function MapDock(props: MapDockProps) {
   const [searchResultLimit, setSearchResultLimit] = useState<3 | 4>(4);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
   const [whereSel, setWhereSel] = useState<WhereSel>(() =>
-    whereSelectionForScope(initialScope, props.userLoc),
+    whereSelectionForScope(initialScope),
   );
   const [nearMeRequested, setNearMeRequested] = useState(
     initialScope === "nearme",
@@ -461,6 +498,26 @@ export default function MapDock(props: MapDockProps) {
     setSearchPanelOpen(false);
     setSearchSelection({ query: "", index: -1 });
   }, []);
+
+  const clearPaneState = useCallback(() => {
+    setPane(null);
+    setPlaceReveal(null);
+    setEssentialsQuick(false);
+    closeSearchPanel();
+  }, [closeSearchPanel, setEssentialsQuick, setPane, setPlaceReveal]);
+
+  const closePane = useCallback(() => {
+    const restoreTarget = restoreRef.current;
+    if (showLocationIntro) dismissLocationIntro();
+    clearPaneState();
+    // The trigger stays inert until React commits the closed state. Restore
+    // focus on the following frame so browsers do not discard the focus call.
+    window.requestAnimationFrame(() => restoreTarget?.focus?.());
+  }, [
+    clearPaneState,
+    dismissLocationIntro,
+    showLocationIntro,
+  ]);
 
   // Size the one explicit control sheet against the map canvas. On a phone it
   // may use a little more than half the map while it is being operated; the
@@ -535,9 +592,12 @@ export default function MapDock(props: MapDockProps) {
     return subscribeScopeChange((nextScope) => {
       const actions = scopeActionsRef.current;
       setNearMeRequested(nextScope === "nearme");
-      setWhereSel(whereSelectionForScope(nextScope, actions.userLoc));
+      setWhereSel(whereSelectionForScope(nextScope));
       if (nextScope === "nearme") {
-        actions.goNearMe();
+        // The shared header owns its own explicit permission request. If a fix
+        // already exists, recenter immediately; otherwise useMapLocation will
+        // fit the map when that one shared request lands.
+        if (actions.userLoc) actions.goNearMe();
         return;
       }
       const slug = scopeTownSlug(nextScope);
@@ -561,13 +621,16 @@ export default function MapDock(props: MapDockProps) {
   // separate close step between the person and the map.
   useEffect(() => {
     const dismissForMapGesture = () => {
-      setPane(null);
-      setPlaceReveal(null);
-      closeSearchPanel();
+      // Do this synchronously, before the state update makes the focused pane
+      // hidden/inert. A map gesture owns focus now; unlike Done or Escape it
+      // must not bounce focus back to the Browse trigger on the next frame.
+      focusMapBeforeDockDismiss(dockRef.current);
+      if (showLocationIntro) dismissLocationIntro();
+      clearPaneState();
     };
     window.addEventListener("fr:map-gesture", dismissForMapGesture);
     return () => window.removeEventListener("fr:map-gesture", dismissForMapGesture);
-  }, [closeSearchPanel]);
+  }, [clearPaneState, dismissLocationIntro, showLocationIntro]);
   useEffect(() => {
     if (!searchPanelOpen) return;
     const dismissSearchOutside = (event: PointerEvent | WheelEvent) => {
@@ -591,17 +654,6 @@ export default function MapDock(props: MapDockProps) {
     window.requestAnimationFrame(() => paneRef.current?.focus());
   }, [pane]);
 
-  const closePane = useCallback(() => {
-    const restoreTarget = restoreRef.current;
-    setPane(null);
-    setPlaceReveal(null);
-    setEssentialsQuick(false);
-    closeSearchPanel();
-    // The trigger stays inert until React commits the closed state. Restore
-    // focus on the following frame so browsers do not discard the focus call.
-    window.requestAnimationFrame(() => restoreTarget?.focus?.());
-  }, [closeSearchPanel, setEssentialsQuick, setPane, setPlaceReveal]);
-
   useEffect(() => {
     if (pane === null) return;
     const closeFromAnywhere = (event: KeyboardEvent) => {
@@ -617,6 +669,10 @@ export default function MapDock(props: MapDockProps) {
   useEffect(() => {
     const focusMapSearch = () => {
       consumeFindRequest("map");
+      // A person who deliberately starts a search has already chosen their
+      // task. Retire the first-use location offer before it can arrive late
+      // from the asynchronous permission check and interrupt that task.
+      dismissLocationIntro();
       setPane(null);
       setPlaceReveal(null);
       setSearchSelection({ query: "", index: -1 });
@@ -643,7 +699,7 @@ export default function MapDock(props: MapDockProps) {
       window.removeEventListener("fr:focus-map-search", focusMapSearch);
       window.removeEventListener("hashchange", focusMapSearchHash);
     };
-  }, []);
+  }, [dismissLocationIntro]);
 
   // The location dot is more useful as an immediate need control than as a
   // passive marker. AppMap dispatches this event from the dot's 44px target;
@@ -850,8 +906,24 @@ export default function MapDock(props: MapDockProps) {
     props.onExitRadiusScene();
     setNearMeRequested(true);
     setWhereSel({ kind: "nearme" });
-    setScope("nearme");
-    setParams((q) => q.set(SCOPE_PARAM, "nearme"));
+    props.goNearMe();
+  };
+
+  const applyNearbyOutcome = () => {
+    haptic("light");
+    track("map_dock", { pane: "contents", pick: "nearby" });
+    props.onExitRadiusScene();
+    clearMapLayersForOutcome();
+    props.setScrubHour(null);
+    setParams((params) => {
+      for (const key of ["intent", "sub", "open", "deals", "music", "t", "scene"]) {
+        params.delete(key);
+      }
+    });
+    props.goNearMe();
+    setPlaceReveal(null);
+    setEssentialsQuick(false);
+    setPane("what");
   };
 
   // A successful location update naturally re-renders this component. Derive
@@ -951,6 +1023,10 @@ export default function MapDock(props: MapDockProps) {
   const firstAmenityLabel = [...props.amenityGroups]
     .map((key) => PUBLIC_AMENITY_GROUPS.find((group) => group.key === key)?.label)
     .find((label): label is string => Boolean(label));
+  const firstAmenityKey = [...props.amenityGroups].find((key) => key !== "community");
+  const firstAmenityCount = firstAmenityKey
+    ? props.amenityGroupCounts[firstAmenityKey] ?? 0
+    : 0;
   const contentsSummary = activeRadiusScene
     ? activeRadiusScene.definition.label
     : mapContentsSummary({
@@ -964,6 +1040,12 @@ export default function MapDock(props: MapDockProps) {
     activeRadiusScene?.availability.status === "caution"
       ? activeRadiusScene.availability.reason
       : null;
+  const activeContextDetail = activeSceneCaution
+    ?? (firstAmenityLabel
+      ? props.userLoc
+        ? `${firstAmenityCount.toLocaleString("en-US")} mapped. The closest result opens first.`
+        : `${firstAmenityCount.toLocaleString("en-US")} mapped. Use Near me for the closest result.`
+      : null);
   const refinementCount =
     (intent ? 1 : 0) +
     (browse.openNow ? 1 : 0) +
@@ -997,11 +1079,7 @@ export default function MapDock(props: MapDockProps) {
         scrubHour: props.scrubHour,
       });
 
-  const clearAll = () => {
-    haptic("light");
-    track("map_dock", { pane: "clear", pick: "all" });
-    updateMapSearch("");
-    props.onExitRadiusScene();
+  const clearMapLayersForOutcome = () => {
     clearLayerParamsImmediately();
     props.setAmenityGroups(new Set());
     props.setShowCivic(false);
@@ -1019,8 +1097,16 @@ export default function MapDock(props: MapDockProps) {
     props.setShowSavedOnly(false);
     props.setFieldNotesOnly(false);
     props.onAerialSeason("all");
+    for (const key of [...props.activeOverlays]) props.toggleOverlay(key);
+  };
+
+  const clearAll = () => {
+    haptic("light");
+    track("map_dock", { pane: "clear", pick: "all" });
+    updateMapSearch("");
+    props.onExitRadiusScene();
+    clearMapLayersForOutcome();
     props.setScrubHour(null);
-    for (const k of [...props.activeOverlays]) props.toggleOverlay(k);
     setNearMeRequested(false);
     setWhereSel({ kind: "county" });
     setScope("county");
@@ -1040,24 +1126,7 @@ export default function MapDock(props: MapDockProps) {
     haptic("light");
     track("map_dock", { pane: "layers", pick: "clear" });
     props.onExitRadiusScene();
-    clearLayerParamsImmediately();
-    props.setAmenityGroups(new Set());
-    props.setShowCivic(false);
-    props.setShowTransit(false);
-    props.setShowTrails(false);
-    props.setShowAerial(false);
-    props.setShowCemeteries(false);
-    props.setShowParking(false);
-    props.setShowTraffic(false);
-    props.setShowRadar(false);
-    props.setShowRoadsNow(false);
-    props.setShowIncidents(false);
-    props.setShowRotorcraft(false);
-    props.setShowCameras(false);
-    props.setShowSavedOnly(false);
-    props.setFieldNotesOnly(false);
-    props.onAerialSeason("all");
-    for (const key of [...props.activeOverlays]) props.toggleOverlay(key);
+    clearMapLayersForOutcome();
     setParams((q) => {
       q.delete("amenity");
       q.delete("show");
@@ -1317,6 +1386,24 @@ export default function MapDock(props: MapDockProps) {
     activeSearchIndex >= 0
       ? visibleSearchMatches[activeSearchIndex]
       : undefined;
+  const paneSourceGroups = sourceGroupsForPane(pane);
+  const degradedPaneSourceGroups = paneSourceGroups.filter((group) => {
+    const health = props.mapLayerSourceHealth?.[group];
+    return health && health.status !== "current";
+  });
+  const paneSourceLabels = [
+    ...new Set(
+      degradedPaneSourceGroups.flatMap(
+        (group) => props.mapLayerSourceHealth?.[group]?.unavailable ?? [],
+      ),
+    ),
+  ];
+  const paneSourcesUnavailable =
+    degradedPaneSourceGroups.length > 0 &&
+    degradedPaneSourceGroups.every(
+      (group) =>
+        props.mapLayerSourceHealth?.[group]?.status === "unavailable",
+    );
 
   const chooseSearchResult = (result: SearchResult) => {
     flushMapSearchUrl();
@@ -1381,11 +1468,15 @@ export default function MapDock(props: MapDockProps) {
             >
               {`${activeContextKicker}: ${contentsSummary}`}
             </span>
-            <button
-              type="button"
-              className="map-context-rail-open tap-44"
-              onClick={() => togglePane("contents")}
-              aria-label={`Change map view: ${contentsSummary}${activeSceneCaution ? `. ${activeSceneCaution}` : ""}`}
+            <div
+              className="map-context-rail-open"
+              role="status"
+              aria-live="polite"
+              style={{
+                gridTemplateColumns: "30px minmax(0, 1fr)",
+                cursor: "default",
+              }}
+              aria-label={`Current map view: ${contentsSummary}${activeContextDetail ? `. ${activeContextDetail}` : ""}`}
             >
               <span className="map-context-rail-icon" aria-hidden>
                 {props.showTransit ? (
@@ -1397,14 +1488,13 @@ export default function MapDock(props: MapDockProps) {
               <span className="map-context-rail-copy">
                 <span className="map-context-rail-kicker">{activeContextKicker}</span>
                 <span className="map-context-rail-summary">{contentsSummary}</span>
-                {activeSceneCaution && (
+                {activeContextDetail && (
                   <span className="map-context-rail-detail">
-                    {activeSceneCaution}
+                    {activeContextDetail}
                   </span>
                 )}
               </span>
-              <ChevronRight className="map-context-rail-arrow h-3.5 w-3.5" strokeWidth={2.3} aria-hidden />
-            </button>
+            </div>
             <button
               type="button"
               className="map-context-rail-clear tap-44"
@@ -1425,17 +1515,73 @@ export default function MapDock(props: MapDockProps) {
         data-search-keyboard={searchKeyboardOpen ? "true" : undefined}
         ref={dockRef}
       >
-        {/* The persistent phone command stays intentionally small: search,
-            current location, and one door into every map view. Live transit
-            remains a clear task in Browse without taking permanent space
-            from every other map journey. */}
-        <div className="dock-head">
+        {locationOfferVisible && pane === null && !searchPanelOpen && (
+          <section
+            className="map-location-offer"
+            aria-labelledby="map-location-offer-title"
+            aria-describedby="map-location-offer-copy"
+          >
+            <div className="map-location-offer-copy">
+              <strong id="map-location-offer-title">
+                Start with nearby results.
+              </strong>
+              <span id="map-location-offer-copy">
+                Use your location for honest distances, or keep browsing the county.
+              </span>
+            </div>
+            <div
+              className="map-location-offer-actions"
+              role="group"
+              aria-label="Choose how to begin on the map"
+            >
+              <button
+                type="button"
+                onClick={props.goNearMe}
+                aria-busy={props.locating || undefined}
+              >
+                {props.locating ? (
+                  <LoaderCircle
+                    className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                    strokeWidth={2.2}
+                    aria-hidden
+                  />
+                ) : (
+                  <LocateFixed className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                )}
+                Use my location
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  goCounty();
+                  dismissLocationIntro();
+                }}
+              >
+                <Waypoints className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                Browse county
+              </button>
+            </div>
+          </section>
+        )}
+        {/* The top-bar scope chip already owns Near me. Keep one map search and
+            one outcome menu here instead of repeating the same location action. */}
+        <div
+          className="dock-head"
+          style={{
+            gridTemplateColumns: `minmax(0, 1fr) ${props.q.trim() ? "52px" : "80px"}`,
+          }}
+        >
           {/* Search, folded in as the top row — the map's ONE search. */}
           <div
             ref={searchWrapRef}
             className="dock-search-wrap"
             inert={pane !== null}
-            onFocusCapture={() => setSearchPanelOpen(true)}
+            onFocusCapture={() => {
+              // Searching is a valid first move. Do not force a location
+              // decision or let the delayed consent offer replace the field.
+              dismissLocationIntro();
+              setSearchPanelOpen(true);
+            }}
             onBlurCapture={(event) => {
               flushMapSearchUrl();
               const next = event.relatedTarget;
@@ -1475,14 +1621,12 @@ export default function MapDock(props: MapDockProps) {
                     moveSearchSelection(-1);
                     return;
                   }
-                  if (
-                    event.key === "Enter" &&
-                    searchResultsVisible &&
-                    activeSearchResult
-                  ) {
+                  if (event.key === "Enter" && searchResultsVisible) {
                     event.preventDefault();
                     event.stopPropagation();
-                    chooseSearchResult(activeSearchResult);
+                    chooseSearchResult(
+                      activeSearchResult ?? visibleSearchMatches[0],
+                    );
                     return;
                   }
                   if (event.key === "Escape") {
@@ -1753,34 +1897,6 @@ export default function MapDock(props: MapDockProps) {
           </div>
 
           <button
-            type="button"
-            className="dock-locate tap-44"
-            onClick={props.goNearMe}
-            aria-label={
-              props.locating
-                ? "Locating you"
-                : props.userLoc
-                  ? "Recenter on my location"
-                  : "Locate me on the map"
-            }
-            aria-busy={props.locating || undefined}
-            title={props.userLoc ? "Recenter on my location" : "Locate me on the map"}
-          >
-            {props.locating ? (
-              <LoaderCircle
-                className="h-[18px] w-[18px] animate-spin motion-reduce:animate-none"
-                strokeWidth={2.2}
-                aria-hidden
-              />
-            ) : (
-              <LocateFixed className="h-[18px] w-[18px]" strokeWidth={2.2} aria-hidden />
-            )}
-            <span className="dock-locate-label">
-              {props.locating ? "Locating" : props.userLoc ? "Recenter" : "Locate"}
-            </span>
-          </button>
-
-          <button
             ref={optionsButtonRef}
             type="button"
             className="dock-contents tap-44"
@@ -1790,7 +1906,12 @@ export default function MapDock(props: MapDockProps) {
             aria-controls="dock-pane"
             aria-label="Choose what to see on this map"
             title={`Choose what to see on this map. ${contentsSummary}`}
-            onClick={() => togglePane("contents")}
+            onClick={() => {
+              // What to see is another valid first move. The location offer is
+              // guidance, not a gate in front of the map's actual controls.
+              dismissLocationIntro();
+              togglePane("contents");
+            }}
           >
             <Layers3 className="h-[18px] w-[18px]" strokeWidth={2.15} aria-hidden />
             <span className="dock-contents-label">
@@ -1883,36 +2004,41 @@ export default function MapDock(props: MapDockProps) {
               </div>
             ) : null}
 
+            {degradedPaneSourceGroups.length > 0 && (
+              <div
+                className="dock-source-health"
+                role="status"
+                aria-label={
+                  paneSourceLabels.length > 0
+                    ? `Unavailable map sources: ${paneSourceLabels.join(", ")}`
+                    : "Some map sources are unavailable"
+                }
+              >
+                <span>
+                  {paneSourcesUnavailable
+                    ? "These live map sources are unavailable. An empty layer does not mean there are no results."
+                    : "Some live map sources are unavailable. Available results are still shown."}
+                </span>
+                {props.retryMapLayerGroups && (
+                  <button
+                    type="button"
+                    className="tap-44"
+                    onClick={() =>
+                      props.retryMapLayerGroups?.(degradedPaneSourceGroups)
+                    }
+                  >
+                    Check again
+                  </button>
+                )}
+              </div>
+            )}
+
             {pane === "contents" && (
               <div className="dock-content-list" role="group" aria-label="Choose what you need from the map">
                 <div className="dock-content-heading" aria-hidden>
                   What do you need?
                 </div>
                 <div className="dock-content-primary">
-                <button
-                  type="button"
-                  className="dock-content-row dock-content-row-primary"
-                  onClick={() => {
-                    // "Nearby" should actually start nearby. Preserve a town
-                    // the person deliberately chose, but use the map's normal
-                    // location permission flow from the county default.
-                    if (activeWhereSel.kind === "county") pickNearMe();
-                    // Arrive with the category grid OPEN. "Near me" promises
-                    // food/coffee/parks; hiding them behind a collapsed
-                    // "All place categories" disclosure made the app's top
-                    // map job a 4-tap trip (mobile audit 2026-08-18).
-                    openContentsPane("what", "categories");
-                  }}
-                >
-                  <span className="dock-content-icon" aria-hidden>
-                    <LayoutGrid className="h-[18px] w-[18px]" strokeWidth={2.1} />
-                  </span>
-                  <span className="dock-content-copy">
-                    <strong>Near me</strong>
-                    <small>Food, coffee, parks, and public essentials</small>
-                  </span>
-                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                </button>
                 {/* The 2-tap route to a restroom existed only as an unlabeled
                     tap on the user-location dot — invisible, and present only
                     once location was already granted. The discoverable route
@@ -1937,6 +2063,26 @@ export default function MapDock(props: MapDockProps) {
                   <span className="dock-content-copy">
                     <strong>Public essentials</strong>
                     <small>Restrooms, water, trash, and dog needs</small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
+                </div>
+                <div className="dock-content-heading" aria-hidden>
+                  Start a map view
+                </div>
+                <div className="dock-content-primary">
+                <button
+                  type="button"
+                  className="dock-content-row dock-content-row-primary"
+                  data-on={activeWhereSel.kind === "nearme" || undefined}
+                  onClick={applyNearbyOutcome}
+                >
+                  <span className="dock-content-icon" aria-hidden>
+                    <LocateFixed className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                  </span>
+                  <span className="dock-content-copy">
+                    <strong>Nearby</strong>
+                    <small>Show what is closest to you</small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
@@ -1987,13 +2133,12 @@ export default function MapDock(props: MapDockProps) {
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
+                {whatChangedScene && !whatChangedUnavailable && (
                 <button
                   type="button"
                   className="dock-content-row dock-content-row-primary"
                   data-on={props.activeRadiusSceneId === "what-changed" || undefined}
-                  disabled={whatChangedUnavailable}
                   onClick={() => {
-                    if (!whatChangedScene || whatChangedUnavailable) return;
                     if (props.activeRadiusSceneId === "what-changed") props.onExitRadiusScene();
                     else props.onRadiusScene("what-changed");
                     closePane();
@@ -2012,23 +2157,9 @@ export default function MapDock(props: MapDockProps) {
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
+                )}
                 </div>
                 <div className="dock-content-secondary" aria-label="More map choices">
-                  <button
-                    type="button"
-                    className="dock-content-row dock-content-row-secondary"
-                    data-on={activeWhereSel.kind !== "county" || undefined}
-                    onClick={() => openContentsPane("where")}
-                  >
-                    <span className="dock-content-icon" aria-hidden>
-                      <LocateFixed className="h-[18px] w-[18px]" strokeWidth={2.1} />
-                    </span>
-                    <span className="dock-content-copy">
-                      <strong>Area</strong>
-                      <small>{whereText}</small>
-                    </span>
-                    <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                  </button>
                   <button
                     type="button"
                     className="dock-content-row dock-content-row-secondary"

@@ -16,7 +16,7 @@ describe("BreweryPhoto", () => {
 
     expect(html).toContain('data-brewery-media="mark"');
     expect(html).toContain(
-      "%2Fimages%2Fbeer%2Flogos%2Folde-mother-brewing-frederick.jpg",
+      "/images/beer/logos/olde-mother-brewing-frederick.jpg",
     );
     expect(html).toContain("Olde Mother Brewing");
     expect(html).not.toContain(">OM<");
@@ -49,7 +49,7 @@ describe("BreweryPhoto", () => {
     expect(html).toContain("Local photographer");
     expect(html).toContain("Attaboy Beer");
     expect(html).not.toContain(
-      "%2Fimages%2Fbeer%2Flogos%2Fattaboy-beer-frederick.jpg",
+      "/images/beer/logos/attaboy-beer-frederick.jpg",
     );
   });
 });

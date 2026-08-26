@@ -20,18 +20,25 @@ export default function PullToRefresh() {
   const pathname = usePathname();
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
   const startY = useRef<number | null>(null);
   const triggered = useRef(false);
   const pullRef = useRef(0);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduceMotion(media.matches);
+    update();
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, []);
 
   useEffect(() => {
     // This gesture belongs to the daily dashboard only. Mounting its
     // window-level listeners on Map and sheet-heavy workspaces made a map pan
     // or drawer dismissal refresh the entire route.
     if (typeof window === "undefined" || pathname !== "/today") return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) return;
-
     const onTouchStart = (e: TouchEvent) => {
       if (window.scrollY > 0) return;
       const target = e.target instanceof Element ? e.target : null;
@@ -59,7 +66,7 @@ export default function PullToRefresh() {
       // Rubber band — decay past threshold so it feels resistive
       const decayed = Math.min(MAX_PULL, dy * 0.55);
       pullRef.current = decayed;
-      setPull(decayed);
+      if (!reduceMotion) setPull(decayed);
       if (decayed >= PULL_THRESHOLD && !triggered.current) {
         triggered.current = true;
         haptic("medium");
@@ -72,6 +79,7 @@ export default function PullToRefresh() {
       startY.current = null;
       if (fired) {
         setRefreshing(true);
+        setAnnouncement("Refreshing today.");
         haptic("success");
         // Soft in-place refresh: router.refresh() re-runs the server
         // components and revalidates, so the pulse/weather update without a
@@ -79,8 +87,9 @@ export default function PullToRefresh() {
         // moment in the daily loop). Keep the spinner up briefly so the
         // gesture reads as deliberate, then settle.
         router.refresh();
-        await new Promise((r) => setTimeout(r, 650));
+        await new Promise((r) => setTimeout(r, reduceMotion ? 120 : 650));
         setRefreshing(false);
+        setAnnouncement("Today is up to date.");
         pullRef.current = 0;
         setPull(0);
         triggered.current = false;
@@ -98,42 +107,55 @@ export default function PullToRefresh() {
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);
     };
-  }, [pathname, router]);
+  }, [pathname, reduceMotion, router]);
 
   if (pathname !== "/today") return null;
 
   const progress = Math.min(1, pull / PULL_THRESHOLD);
-  const showSpinner = refreshing || pull > 0;
+  const showSpinner = refreshing || (!reduceMotion && pull > 0);
 
   return (
-    <div
-      aria-hidden={!showSpinner}
-      className="pointer-events-none fixed left-0 right-0 z-[var(--z-prompt)] flex justify-center"
-      style={{
-        top: "calc(56px + env(safe-area-inset-top, 0px))",
-        height: 0,
-      }}
-    >
+    <>
+      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </span>
       <div
-        className="flex h-9 w-9 items-center justify-center rounded-full border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-2)]"
+        aria-hidden={!showSpinner}
+        className="pointer-events-none fixed left-0 right-0 z-[var(--z-prompt)] flex justify-center"
         style={{
-          borderColor: "var(--app-border)",
-          transform: `translateY(${Math.min(pull * 0.6, 60)}px) scale(${0.6 + progress * 0.4})`,
-          opacity: showSpinner ? 1 : 0,
-          transition: refreshing ? "none" : pull === 0 ? "transform 200ms ease, opacity 200ms ease" : "none",
+          top: "calc(56px + env(safe-area-inset-top, 0px))",
+          height: 0,
         }}
       >
-        <Loader2
-          className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+        <div
+          className="flex h-9 w-9 items-center justify-center rounded-full border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-2)]"
           style={{
-            color: progress >= 1 || refreshing ? "var(--app-brand)" : "var(--app-ink-3)",
-            transform: refreshing ? undefined : `rotate(${progress * 270}deg)`,
-            transition: "color 200ms ease",
+            borderColor: "var(--app-border)",
+            transform: reduceMotion
+              ? "translateY(12px) scale(1)"
+              : `translateY(${Math.min(pull * 0.6, 60)}px) scale(${0.6 + progress * 0.4})`,
+            opacity: showSpinner ? 1 : 0,
+            transition:
+              reduceMotion || refreshing
+                ? "none"
+                : pull === 0
+                  ? "transform 200ms ease, opacity 200ms ease"
+                  : "none",
           }}
-          strokeWidth={2}
-          aria-hidden
-        />
+        >
+          <Loader2
+            className={`h-4 w-4 ${refreshing && !reduceMotion ? "animate-spin" : ""}`}
+            style={{
+              color: progress >= 1 || refreshing ? "var(--app-brand)" : "var(--app-ink-3)",
+              transform:
+                refreshing || reduceMotion ? undefined : `rotate(${progress * 270}deg)`,
+              transition: reduceMotion ? "none" : "color 200ms ease",
+            }}
+            strokeWidth={2}
+            aria-hidden
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

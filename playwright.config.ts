@@ -12,6 +12,7 @@ import { defineConfig, devices } from "@playwright/test";
  */
 const PORT = Number(process.env.PW_PORT) || 3010;
 const PRODUCTION_SERVER = process.env.PW_PRODUCTION === "1";
+const SKIP_PREDEV = process.env.PW_SKIP_PREDEV === "1";
 
 export default defineConfig({
   testDir: "e2e",
@@ -60,9 +61,16 @@ export default defineConfig({
   webServer: {
     command: PRODUCTION_SERVER
       ? `npm run start -- -p ${PORT}`
-      : `npm run dev -- -p ${PORT}`,
+      : SKIP_PREDEV
+        // Visual review must use the committed data release. `npm run dev`
+        // executes predev, which regenerates tracked, date-sensitive place
+        // artifacts and turns a read-only UI check into a data change.
+        ? `node node_modules/next/dist/bin/next dev -p ${PORT}`
+        : `npm run dev -- -p ${PORT}`,
     url: `http://localhost:${PORT}`,
-    reuseExistingServer: !process.env.CI && !PRODUCTION_SERVER,
+    // A visual reference must come from this checkout, never an unrelated
+    // server that happens to own the usual local port.
+    reuseExistingServer: !process.env.CI && !PRODUCTION_SERVER && !SKIP_PREDEV,
     timeout: 120_000,
   },
 });

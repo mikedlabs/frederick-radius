@@ -1,4 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const foodTruckAvailabilityMocks = vi.hoisted(() => ({
+  getFoodTruckAvailability: vi.fn(),
+}));
+
+vi.mock("@/lib/food-trucks/availability", () => ({
+  getFoodTruckAvailability: foodTruckAvailabilityMocks.getFoodTruckAvailability,
+}));
 import {
   askFrederick,
   sourceHasVerifiedOpenStatus,
@@ -36,6 +44,15 @@ function easternWallClock(d: Date): string {
 }
 
 describe("askFrederick structured answers", () => {
+  beforeEach(() => {
+    foodTruckAvailabilityMocks.getFoodTruckAvailability.mockReset();
+    foodTruckAvailabilityMocks.getFoodTruckAvailability.mockResolvedValue({
+      checkedAt: "2026-08-22T18:00:00.000Z",
+      scheduleState: "unavailable",
+      items: [],
+    });
+  });
+
   it("preserves a fresh verified-open state after adding a requested-time label", () => {
     expect(sourceHasVerifiedOpenStatus({
       slug: "timed-dinner",
@@ -90,6 +107,25 @@ describe("askFrederick structured answers", () => {
       name: "Gravel & Grind",
     });
     expect(result.answer).not.toContain("Starbucks");
+  });
+
+  it("answers the recurring Brunswick taco request from the corrected local catalog", async () => {
+    const result = await askFrederick("Where can I get tacos in Brunswick?", {
+      origin: { lng: -77.6278, lat: 39.3143 },
+      municipality: "brunswick",
+      contextLabel: "Brunswick",
+      canShowDistance: true,
+    });
+
+    expect(result.status).toBe("matches");
+    expect(result.sources).toContainEqual(
+      expect.objectContaining({
+        slug: "currys-kitchen-brunswick",
+        name: "Adele's Tex Mex",
+      }),
+    );
+    expect(result.answer).toContain("Adele's Tex Mex");
+    expect(result.answer).not.toContain("Curry’s Kitchen");
   });
 
   it("returns evidence and proximity for a local place answer", async () => {
@@ -882,7 +918,9 @@ describe("askFrederick structured answers", () => {
   it("is honest about roaming food trucks and links to current sources", async () => {
     const result = await askFrederick("Where are the food trucks today?", downtown);
     expect(result.intelligence?.tools).toEqual(["food-trucks"]);
-    expect(result.answer).toContain("does not have live truck locations yet");
+    expect(result.answer).toContain("no operator-confirmed live pin is available right now");
+    expect(result.answer).toContain("Publisher schedules are unavailable");
+    expect(result.answer).toContain("cannot confirm that no stops are listed");
     expect(result.sources.length).toBeGreaterThan(0);
     expect(result.sources.every((source) => source.category === "food-truck")).toBe(true);
     expect(
@@ -894,6 +932,219 @@ describe("askFrederick structured answers", () => {
       href: "/places/monocacy-brewing-frederick",
     });
     expect(result.actions?.some((action) => action.href === "/food-trucks")).toBe(true);
+  });
+
+  it("puts an operator-confirmed truck ahead of a separately labeled published stop", async () => {
+    foodTruckAvailabilityMocks.getFoodTruckAvailability.mockResolvedValue({
+      checkedAt: "2026-08-22T18:00:00.000Z",
+      scheduleState: "current",
+      items: [
+        {
+          id: "beacon:in10se-bbq",
+          kind: "operator-live",
+          truckSlug: "in10se-bbq",
+          name: "In10se BBQ",
+          cuisine: "Barbecue",
+          lat: 39.414,
+          lng: -77.41,
+          municipality: "Frederick",
+          spot: "Baker Park",
+          note: "Brisket until sold out",
+          startsAt: "2026-08-22T17:00:00.000Z",
+          endsAt: "2026-08-22T21:00:00.000Z",
+          sourceName: "Operator live beacon",
+          sourceUrl: "/food-trucks#truck-in10se-bbq",
+          sourceConfidence: "operator",
+          href: "/food-trucks#truck-in10se-bbq",
+        },
+        {
+          id: "schedule:stop-1:grilled-cheese-please",
+          kind: "published-stop",
+          truckSlug: "grilled-cheese-please",
+          name: "Grilled Cheese Please!",
+          cuisine: "Grilled cheese",
+          lat: 39.416,
+          lng: -77.412,
+          venueName: "Test Venue",
+          municipality: "Frederick",
+          startsAt: "2026-08-22T19:00:00.000Z",
+          endsAt: "2026-08-22T22:00:00.000Z",
+          sourceName: "Test Venue",
+          sourceUrl: "https://example.com/schedule",
+          sourceConfidence: "venue",
+          href: "/food-trucks#truck-grilled-cheese-please",
+        },
+      ],
+    });
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-22T18:00:00.000Z"));
+    try {
+      const result = await askFrederick("Where are the food trucks today?", downtown);
+      expect(result.status).toBe("matches");
+      expect(result.sources[0]).toMatchObject({
+        name: "In10se BBQ",
+        eyebrow: "Operator confirmed live",
+        status: "Out now until 5pm",
+      });
+      expect(result.sources[1]).toMatchObject({
+        name: "Grilled Cheese Please!",
+        eyebrow: "Published stop",
+        status: "Published for today at 3pm",
+      });
+      expect(result.sources[1]?.detail).toContain("not confirmation");
+      expect(result.answer).toContain("operator-confirmed live pin");
+      expect(result.answer).toContain("published stop");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("warns that a partial publisher schedule may omit other stops", async () => {
+    foodTruckAvailabilityMocks.getFoodTruckAvailability.mockResolvedValue({
+      checkedAt: "2026-08-22T18:00:00.000Z",
+      scheduleState: "partial",
+      items: [{
+        id: "schedule:stop-1:in10se-bbq",
+        kind: "published-stop",
+        truckSlug: "in10se-bbq",
+        name: "In10se BBQ",
+        cuisine: "Barbecue",
+        lat: 39.414,
+        lng: -77.41,
+        venueName: "Test Venue",
+        municipality: "Frederick City",
+        startsAt: "2026-08-22T19:00:00.000Z",
+        endsAt: "2026-08-22T22:00:00.000Z",
+        sourceName: "Test Venue",
+        sourceUrl: "https://example.com/schedule",
+        sourceConfidence: "venue",
+        href: "/food-trucks#truck-in10se-bbq",
+      }],
+    });
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-22T18:00:00.000Z"));
+    try {
+      const result = await askFrederick("Where are the food trucks today?", downtown);
+      expect(result.status).toBe("matches");
+      expect(result.answer).toContain("Some publisher schedules did not answer");
+      expect(result.answer).toContain("other stops may be missing");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not describe a complete publisher failure as an empty current schedule", async () => {
+    foodTruckAvailabilityMocks.getFoodTruckAvailability.mockResolvedValue({
+      checkedAt: "2026-08-22T18:00:00.000Z",
+      scheduleState: "unavailable",
+      items: [],
+    });
+
+    const result = await askFrederick("Where are the food trucks today?", downtown);
+
+    expect(result.answer).toContain("Publisher schedules are unavailable");
+    expect(result.answer).toContain("cannot confirm that no stops are listed");
+    expect(result.answer).not.toContain("No current published stop");
+  });
+
+  it("does not leak a live pin from another town into a town-scoped answer", async () => {
+    foodTruckAvailabilityMocks.getFoodTruckAvailability.mockResolvedValue({
+      checkedAt: "2026-08-22T18:00:00.000Z",
+      scheduleState: "current",
+      items: [{
+        id: "beacon:in10se-bbq",
+        kind: "operator-live",
+        truckSlug: "in10se-bbq",
+        name: "In10se BBQ",
+        cuisine: "Barbecue",
+        lat: 39.62,
+        lng: -77.41,
+        municipality: "Thurmont",
+        startsAt: "2026-08-22T17:00:00.000Z",
+        endsAt: "2026-08-22T21:00:00.000Z",
+        sourceName: "Operator live beacon",
+        sourceUrl: "/food-trucks#truck-in10se-bbq",
+        sourceConfidence: "operator",
+        href: "/food-trucks#truck-in10se-bbq",
+      }],
+    });
+
+    const result = await askFrederick("Where are the food trucks today?", {
+      origin: { lng: -77.3523, lat: 39.3276 },
+      municipality: "urbana",
+      contextLabel: "Urbana",
+      canShowDistance: false,
+    });
+    expect(result.sources.some((source) => source.slug === "beacon:in10se-bbq"))
+      .toBe(false);
+    expect(result.answer).toContain("no operator-confirmed live pin");
+  });
+
+  it("does not treat an unknown-location published stop as being in every town", async () => {
+    foodTruckAvailabilityMocks.getFoodTruckAvailability.mockResolvedValue({
+      checkedAt: "2026-08-22T18:00:00.000Z",
+      scheduleState: "current",
+      items: [{
+        id: "schedule:unknown-town:in10se-bbq",
+        kind: "published-stop",
+        truckSlug: "in10se-bbq",
+        name: "In10se BBQ",
+        cuisine: "Barbecue",
+        venueName: "Community event",
+        startsAt: "2026-08-22T19:00:00.000Z",
+        endsAt: "2026-08-22T21:00:00.000Z",
+        sourceName: "Event organizer",
+        sourceUrl: "https://example.com/schedule",
+        sourceConfidence: "organizer",
+        href: "/food-trucks#truck-in10se-bbq",
+      }],
+    });
+
+    const result = await askFrederick("Where are the food trucks today?", {
+      origin: { lng: -77.3523, lat: 39.3276 },
+      municipality: "urbana",
+      contextLabel: "Urbana",
+      canShowDistance: false,
+    });
+
+    expect(result.sources.some((source) =>
+      source.slug === "schedule:unknown-town:in10se-bbq"
+    )).toBe(false);
+    expect(result.answer).toContain("no operator-confirmed live pin");
+  });
+
+  it("does not count a later weekly stop as current for a today request", async () => {
+    foodTruckAvailabilityMocks.getFoodTruckAvailability.mockResolvedValue({
+      checkedAt: "2026-08-22T18:00:00.000Z",
+      scheduleState: "current",
+      items: [{
+        id: "schedule:next-week:in10se-bbq",
+        kind: "published-stop",
+        truckSlug: "in10se-bbq",
+        name: "In10se BBQ",
+        cuisine: "Barbecue",
+        venueName: "Test Venue",
+        municipality: "Frederick City",
+        startsAt: "2026-08-27T19:00:00.000Z",
+        endsAt: "2026-08-27T22:00:00.000Z",
+        sourceName: "Test Venue",
+        sourceUrl: "https://example.com/schedule",
+        sourceConfidence: "venue",
+        href: "/food-trucks#truck-in10se-bbq",
+      }],
+    });
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-22T18:00:00.000Z"));
+    try {
+      const result = await askFrederick("Where are the food trucks today?", downtown);
+      expect(result.sources.some((source) =>
+        source.slug === "schedule:next-week:in10se-bbq"
+      )).toBe(false);
+      expect(result.answer).toContain("No published stop is listed for that time");
+      expect(result.answer).not.toMatch(/Radius found \d+ current published stop/);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("uses the postal layer for the nearest blue mailbox", async () => {

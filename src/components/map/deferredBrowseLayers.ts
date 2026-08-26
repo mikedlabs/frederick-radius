@@ -34,6 +34,12 @@ export const MAP_LAYER_GROUPS = [
 
 export type MapLayerGroup = (typeof MAP_LAYER_GROUPS)[number];
 
+export type MapLayerSourceHealth = {
+  status: "current" | "partial" | "unavailable";
+  /** Plain provider labels only. Never expose upstream error text. */
+  unavailable: string[];
+};
+
 /**
  * Return the one group represented by a canonical public endpoint query.
  *
@@ -95,6 +101,9 @@ export type DeferredBrowseLayers = {
   floodContext: FloodContextFC;
   snowRoutes: SnowRouteFC;
   smartSignals: BrowseMapSmartSignals | null;
+  /** Health travels with the data so an upstream miss cannot look like a
+   * genuine zero-result map. Only explicitly requested groups are present. */
+  sourceHealth: Partial<Record<MapLayerGroup, MapLayerSourceHealth>>;
 };
 
 export const EMPTY_DEFERRED_BROWSE_LAYERS: DeferredBrowseLayers = {
@@ -112,12 +121,89 @@ export const EMPTY_DEFERRED_BROWSE_LAYERS: DeferredBrowseLayers = {
   floodContext: EMPTY_FLOOD_CONTEXT_FC,
   snowRoutes: EMPTY_SNOW_ROUTE_FC,
   smartSignals: null,
+  sourceHealth: {},
 };
+
+/**
+ * A summarized signal object can exist even when every live source behind it
+ * is unavailable. Keep this predicate shared by the route and client so that
+ * an all-zero unavailable summary is never mistaken for partial live data.
+ */
+export function mapLayerGroupHasVisibleData(
+  group: MapLayerGroup,
+  payload: DeferredBrowseLayers,
+): boolean {
+  switch (group) {
+    case "context":
+      return payload.amenities.length > 0 || payload.parking.length > 0;
+    case "signals":
+      return Boolean(
+        payload.smartSignals &&
+          (payload.smartSignals.conditionsStatus !== "unavailable" ||
+            payload.smartSignals.activeWeatherAlert ||
+            payload.smartSignals.marketsOpenTodayCount > 0 ||
+            payload.smartSignals.roadsTrendingLongerCount > 0),
+      );
+    case "amenities":
+      return payload.amenities.length > 0 || payload.extraAmenities.length > 0;
+    case "events":
+      return payload.weekEvents.length > 0;
+    case "outdoors":
+      return (
+        payload.trailLines.features.length > 0 || payload.cemeteries.length > 0
+      );
+    case "transit":
+      return payload.transitLines.features.length > 0;
+    case "roads":
+      return (
+        payload.civic.length > 0 ||
+        payload.roadWorkZones.features.length > 0 ||
+        payload.floodContext.features.length > 0 ||
+        payload.snowRoutes.features.length > 0 ||
+        mapLayerGroupHasVisibleData("signals", payload)
+      );
+    case "boundaries":
+      return payload.municipalBoundaries.features.length > 0;
+    case "parking":
+      return payload.parking.length > 0;
+  }
+}
 
 function isFeatureCollection(value: unknown): value is MapLineFC {
   if (!value || typeof value !== "object") return false;
   const candidate = value as { type?: unknown; features?: unknown };
   return candidate.type === "FeatureCollection" && Array.isArray(candidate.features);
+}
+
+function parseSourceHealth(
+  value: unknown,
+): Partial<Record<MapLayerGroup, MapLayerSourceHealth>> {
+  if (!value || typeof value !== "object") return {};
+  const health = value as Record<string, unknown>;
+  const parsed: Partial<Record<MapLayerGroup, MapLayerSourceHealth>> = {};
+  for (const group of MAP_LAYER_GROUPS) {
+    const raw = health[group];
+    if (!raw || typeof raw !== "object") continue;
+    const candidate = raw as { status?: unknown; unavailable?: unknown };
+    if (
+      candidate.status !== "current" &&
+      candidate.status !== "partial" &&
+      candidate.status !== "unavailable"
+    ) {
+      continue;
+    }
+    parsed[group] = {
+      status: candidate.status,
+      unavailable: Array.isArray(candidate.unavailable)
+        ? candidate.unavailable
+            .filter((label): label is string => typeof label === "string")
+            .map((label) => label.trim())
+            .filter(Boolean)
+            .slice(0, 8)
+        : [],
+    };
+  }
+  return parsed;
 }
 
 /**
@@ -167,6 +253,7 @@ export function parseDeferredBrowseLayers(value: unknown): DeferredBrowseLayers 
         candidate.smartSignals.conditionsStatus === "unavailable")
         ? candidate.smartSignals
         : null,
+    sourceHealth: parseSourceHealth(candidate.sourceHealth),
   };
 }
 
@@ -176,48 +263,139 @@ export function mergeDeferredBrowseLayerGroup(
   incoming: DeferredBrowseLayers,
   group: MapLayerGroup,
 ): DeferredBrowseLayers {
+  const incomingHealth = incoming.sourceHealth[group];
+  const sourceHealth = incomingHealth
+    ? { ...current.sourceHealth, [group]: incoming.sourceHealth[group] }
+    : current.sourceHealth;
+  const degraded = incomingHealth?.status === "partial";
+  const unavailable = incomingHealth?.status === "unavailable";
+
+  // An unavailable retry carries fallback empties, not evidence that the last
+  // known features disappeared. Keep the last useful group data and update
+  // only its health label so the UI can be honest and retryable.
+  if (unavailable) return { ...current, sourceHealth };
+
+  const arrayIdentity = (value: unknown): string => {
+    if (!value || typeof value !== "object") return String(value);
+    const item = value as Record<string, unknown>;
+    const id = item.id ?? item.slug ?? item.osm_id;
+    if (typeof id === "string" || typeof id === "number") {
+      return `id:${String(id)}`;
+    }
+    const lat = item.lat;
+    const lng = item.lng;
+    const label = item.label ?? item.name ?? item.title ?? "";
+    if (
+      (typeof lat === "number" || typeof lng === "number") &&
+      typeof label === "string"
+    ) {
+      return `point:${String(item.kind ?? "")}:${label}:${String(lat)}:${String(lng)}`;
+    }
+    return JSON.stringify(value);
+  };
+  const mergeArrays = <T,>(prior: T[], next: T[]): T[] => {
+    if (!degraded) return next;
+    const seen = new Set(next.map(arrayIdentity));
+    return [
+      ...next,
+      ...prior.filter((item) => {
+        const identity = arrayIdentity(item);
+        if (seen.has(identity)) return false;
+        seen.add(identity);
+        return true;
+      }),
+    ];
+  };
+  const mergeFeatures = <T extends { features: unknown[] }>(
+    prior: T,
+    next: T,
+  ): T => {
+    if (!degraded) return next;
+    return {
+      ...next,
+      features: mergeArrays(prior.features, next.features),
+    };
+  };
+  const mergeSignals = () => {
+    if (!degraded) return incoming.smartSignals;
+    return mapLayerGroupHasVisibleData("signals", incoming)
+      ? incoming.smartSignals
+      : current.smartSignals;
+  };
   if (group === "context") {
     return {
       ...current,
-      amenities: incoming.amenities,
-      parking: incoming.parking,
+      amenities: mergeArrays(current.amenities, incoming.amenities),
+      parking: mergeArrays(current.parking, incoming.parking),
+      sourceHealth,
     };
   }
   if (group === "signals") {
-    return { ...current, smartSignals: incoming.smartSignals };
+    return { ...current, smartSignals: mergeSignals(), sourceHealth };
   }
   if (group === "amenities") {
     return {
       ...current,
-      amenities: incoming.amenities,
-      extraAmenities: incoming.extraAmenities,
+      amenities: mergeArrays(current.amenities, incoming.amenities),
+      extraAmenities: mergeArrays(
+        current.extraAmenities,
+        incoming.extraAmenities,
+      ),
+      sourceHealth,
     };
   }
   if (group === "events") {
-    return { ...current, weekEvents: incoming.weekEvents };
+    return {
+      ...current,
+      weekEvents: mergeArrays(current.weekEvents, incoming.weekEvents),
+      sourceHealth,
+    };
   }
   if (group === "outdoors") {
     return {
       ...current,
-      trailLines: incoming.trailLines,
-      cemeteries: incoming.cemeteries,
+      trailLines: mergeFeatures(current.trailLines, incoming.trailLines),
+      cemeteries: mergeArrays(current.cemeteries, incoming.cemeteries),
+      sourceHealth,
     };
   }
   if (group === "transit") {
-    return { ...current, transitLines: incoming.transitLines };
+    return {
+      ...current,
+      transitLines: mergeFeatures(current.transitLines, incoming.transitLines),
+      sourceHealth,
+    };
   }
   if (group === "roads") {
     return {
       ...current,
-      civic: incoming.civic,
-      roadWorkZones: incoming.roadWorkZones,
-      floodContext: incoming.floodContext,
-      snowRoutes: incoming.snowRoutes,
-      smartSignals: incoming.smartSignals,
+      civic: mergeArrays(current.civic, incoming.civic),
+      roadWorkZones: mergeFeatures(
+        current.roadWorkZones,
+        incoming.roadWorkZones,
+      ),
+      floodContext: mergeFeatures(
+        current.floodContext,
+        incoming.floodContext,
+      ),
+      snowRoutes: mergeFeatures(current.snowRoutes, incoming.snowRoutes),
+      smartSignals: mergeSignals(),
+      sourceHealth,
     };
   }
   if (group === "boundaries") {
-    return { ...current, municipalBoundaries: incoming.municipalBoundaries };
+    return {
+      ...current,
+      municipalBoundaries: mergeFeatures(
+        current.municipalBoundaries,
+        incoming.municipalBoundaries,
+      ),
+      sourceHealth,
+    };
   }
-  return { ...current, parking: incoming.parking };
+  return {
+    ...current,
+    parking: mergeArrays(current.parking, incoming.parking),
+    sourceHealth,
+  };
 }

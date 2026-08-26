@@ -158,7 +158,7 @@ export default function TonightHeadline({
                   sizes="(max-width: 640px) 100vw, 720px"
                   placeholder="blur"
                   blurDataURL={PAPER_CREAM_BLUR}
-                  className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-[1.015]"
+                  className="ken-burns object-cover"
                 />
                 <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: accent, opacity: 0.9 }} />
               </figure>

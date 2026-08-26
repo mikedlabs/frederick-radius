@@ -1,10 +1,9 @@
-import { NextResponse, after, type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import {
   isLiveEventIndependentMapActionQuery,
   qualifiedSearchIndex,
 } from "@/lib/search/index";
 import { isEventSearchIntent } from "@/lib/search";
-import { recordSearchMiss } from "@/lib/telemetry/searchMiss";
 import {
   loadEventArchiveSnapshot,
   TODAY_EVENT_SNAPSHOT_TIMEOUT_MS,
@@ -160,7 +159,6 @@ export async function GET(request: NextRequest) {
   // the request is already coming from Map, returning that same action would
   // route back to /map?q=ATM and prevent AppMap's zero-result fallback from
   // ever running.
-  const mapAtmHandoff = mapRequest && baseHasAtmHandoff;
   const results = mapRequest
     ? searchResult.results.filter((result) => result.id !== "action:map-atm")
     : searchResult.results;
@@ -181,11 +179,11 @@ export async function GET(request: NextRequest) {
   // client now reads, so the person gets the results we do have plus a plain
   // note that live events are missing from them.
   //
-  // Search-miss telemetry stays gated on the archive being healthy: a miss
-  // recorded while events are unavailable is not evidence of a data gap.
-  if (results.length === 0 && !mapAtmHandoff && !liveEventsUnavailable) {
-    after(() => recordSearchMiss(q, "search"));
-  }
+  // Do not bank misses from this debounced typeahead request. A person can
+  // pause briefly on "piz" while typing "pizza", and treating that network
+  // response as an unmet need poisons the owner backlog with partial words.
+  // SearchOverlay reports `search_empty` only after the query and zero-result
+  // state have remained settled; /api/track records that one deliberate signal.
 
   return NextResponse.json(
     { results, meta: responseMeta },

@@ -99,7 +99,11 @@ import { clampLocationAccuracy } from "./mapLocationAccuracy";
 import { mapPaintTransitionDuration } from "./mapVisualState";
 import { curatedPlacesForMapSource } from "./mapSourceFilter";
 import { collapseInitialMapAttribution } from "./mapAttribution";
-import type { MapLayerGroup } from "./deferredBrowseLayers";
+import type {
+  MapLayerGroup,
+  MapLayerSourceHealth,
+} from "./deferredBrowseLayers";
+import { mapCameraDuration } from "@/lib/motion";
 
 // The readable result face is loaded only when WebGL fails. Keeping it out of
 // the healthy-map path preserves the interactive map payload while ensuring a
@@ -199,7 +203,6 @@ import {
   type TransitStopPin,
 } from "./types";
 import {
-  confidentLocalMapPlaceResult,
   immediateMapPlaceResults,
   reconcileMapSearchResults,
 } from "./mapLocalPlaceSearch";
@@ -288,7 +291,20 @@ import { resolveMapLocationSeed } from "./mapLocationSeed";
 import type { LiveIncidentSignal } from "@/lib/live/incidentSnapshot";
 import { buildMapSpotContext } from "./mapSpotContext";
 import { encodePolyline } from "./polyline";
-import { rememberMapSelectionOpener } from "./mapSelectionFocus";
+import {
+  rememberMapSelectionOpener,
+  restoreMapSelectionOpenerFocus,
+} from "./mapSelectionFocus";
+import {
+  isMapSelectionHistoryState,
+  markMapSelectionHistoryState,
+  readMapSelectionHistorySnapshot,
+} from "./mapSelectionHistory";
+import {
+  MAP_SELECTION_TOKEN_PARAM,
+  readMapSelectionSession,
+  writeMapSelectionSession,
+} from "./mapSelectionSession";
 import {
   mapCameraParam,
   mapResultCountAnnouncement,
@@ -588,6 +604,9 @@ type Props = {
   sceneContext?: MapSceneContext;
   /** Browse-only demand signal for provider-backed layers. The map can expose
    * every tool without fetching its data until someone turns it on. */
+  mapLayerSourceHealth?: Partial<
+    Record<MapLayerGroup, MapLayerSourceHealth>
+  >;
   onLayerDemand?: (groups: readonly MapLayerGroup[]) => void;
 };
 
@@ -628,6 +647,7 @@ export default function AppMap({
   onVisualReady,
   smartDefault = null,
   sceneContext = { conditions: "unavailable", outdoorSafetyHold: null },
+  mapLayerSourceHealth,
   onLayerDemand,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
@@ -788,7 +808,7 @@ export default function AppMap({
       map.resize();
       map.fitBounds(FREDERICK_COUNTY_BOUNDS, {
         padding: countyFitPadding(),
-        duration: prefersReducedMotion() ? 0 : 450,
+        duration: mapCameraDuration("nudge"),
         easing: CAM_EASE,
         essential: true,
       });
@@ -1063,6 +1083,12 @@ export default function AppMap({
   // AppMap is mounted with `ssr: false`, so the first client render can safely
   // seed this from the exact URL carried through `returnTo`.
   const routeQuery = (routeSearchParams.get("q") ?? "").slice(0, 160);
+  const routePlaceSelection = routeSearchParams.get("place");
+  const routeEventSelection = routeSearchParams.get("event");
+  const routeResultSelection = routeSearchParams.get("result");
+  const routeSelectionToken = routeSearchParams.get(
+    MAP_SELECTION_TOKEN_PARAM,
+  );
   const [q, setQ] = useState(() => {
     if (typeof window === "undefined") return "";
     return (new URLSearchParams(window.location.search).get("q") ?? "").slice(0, 160);
@@ -1137,7 +1163,6 @@ export default function AppMap({
   const searchSessionLastUsedRef = useRef(0);
   const searchSessionSuggestCountRef = useRef(0);
   const searchRouteRef = useRef<string | null>(null);
-  const autoFocusedSearchResultRef = useRef<string | null>(null);
   // A global Find result can hand the map both a camera point and a place slug.
   // The camera is seeded by BrowseMapClient; this slug opens the same compact
   // peek a direct pin tap would once the map style is ready.
@@ -1149,12 +1174,26 @@ export default function AppMap({
     if (typeof window === "undefined") return null;
     return new URLSearchParams(window.location.search).get("event");
   }, []);
+  const entitySelectionUrlIntentRef = useRef({
+    place: initialPlaceSlug,
+    event: initialPlaceSlug ? null : initialEventSlug,
+  });
+  const historySelectionUrlIntentRef = useRef<string | null>(null);
   const deepLinkPlaceAppliedRef = useRef(false);
   const deepLinkEventAppliedRef = useRef(false);
   const deepLinkAmenityAppliedRef = useRef(false);
   const [selectionUrlReady, setSelectionUrlReady] = useState(false);
   useEffect(() => {
     if (!isBrowseMap || !selectionUrlReady) return;
+    const intent = entitySelectionUrlIntentRef.current;
+    if (
+      selectedSlug !== intent.place ||
+      (selectedEvent?.slug ?? null) !== intent.event
+    ) {
+      // A newer direct interaction has already written the URL while React is
+      // still flushing the previous selection's passive effect.
+      return;
+    }
     replaceMapUrlSilently((params) => {
       if (selectedSlug) params.set("place", selectedSlug);
       else params.delete("place");
@@ -1176,6 +1215,8 @@ export default function AppMap({
     userAccuracyM,
     locationFixTimestamp,
     locationAvailability,
+    showLocationIntro,
+    dismissLocationIntro,
     locating,
     goNearMe,
   } =
@@ -1207,7 +1248,7 @@ export default function AppMap({
       fitCountyCamera: () => {
         mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
           padding: countyFitPadding(),
-          duration: prefersReducedMotion() ? 0 : 900,
+          duration: mapCameraDuration("reframe"),
           easing: CAM_EASE,
           essential: true,
         });
@@ -1340,6 +1381,7 @@ export default function AppMap({
   // toggled live layers, preserve any explicit place task so a person can
   // still compare the condition with the place they asked to see.
   const operationalLayerActive =
+    amenityLayerActive ||
     Boolean(activeSceneId) ||
     (operationalLayerRequested && !explicitPlaceTaskActive);
   // At the untouched county overview, raw catalog totals do not help someone
@@ -1582,8 +1624,8 @@ export default function AppMap({
   const [spotSelection, setSpotSelection] = useState<MapSpotSelection | null>(null);
 
   /** Closers for the live layers that own their popup state internally
-   * (buses, MARC, incidents, rotorcraft, work zones, snow routes, flood
-   * context). Registered through the LiveLayerGate so the one-foreground
+   * (buses, MARC, incidents, rotorcraft, traffic cameras, work zones, snow
+   * routes, flood context). Registered through the LiveLayerGate so the one-foreground
    * promise below actually covers them; before this seam existed a bus
    * popup and a place card could sit open at once, in either order. */
   const liveLayerClosersRef = useRef(createLiveLayerCloserRegistry());
@@ -1593,6 +1635,8 @@ export default function AppMap({
    * coordinating every transition through one gate so stale cards can never
    * reappear under the next selection. */
   const clearMapSelection = useCallback(() => {
+    entitySelectionUrlIntentRef.current = { place: null, event: null };
+    historySelectionUrlIntentRef.current = null;
     liveLayerClosersRef.current.closeAll();
     setSelected(null);
     setRawSelectionContext(null);
@@ -1612,64 +1656,419 @@ export default function AppMap({
     setHover(null);
   }, []);
 
+  const applyMapSelection = useCallback((next: MapSelectionRequest) => {
+    switch (next.kind) {
+      case "place":
+        setSelectedSlug(next.value.slug);
+        setPeekPlace(next.value);
+        break;
+      case "raw":
+        setSelected(next.value);
+        setRawSelectionContext(next.contextLabel ?? null);
+        break;
+      case "event":
+        setSelectedEvent(next.value);
+        break;
+      case "event-group":
+        setEventGroup(next.value);
+        break;
+      case "town":
+        setCivicTown(next.value);
+        break;
+      case "transit":
+        setSelectedTransitStop(next.value);
+        break;
+      case "marc":
+        setMarcPeek(next.value);
+        break;
+      case "aerial":
+        setSelectedAerial(next.value);
+        break;
+      case "cemetery":
+        setSelectedCemetery(next.value);
+        break;
+      case "parking":
+        setParkingPeek(next.value);
+        break;
+      case "food-truck":
+        setFoodTruckPeek(next.value);
+        break;
+      case "discovery":
+        setSelectedDiscovery(next.value);
+        break;
+      case "spot":
+        setSpotSelection(next.value);
+        break;
+    }
+  }, []);
+
+  // A foreground result behaves like a native sheet: the first user selection
+  // adds one closeable history entry, while switching between pins reuses it.
+  // Query and camera state stay on the map URL underneath that entry.
+  const selectionHistoryEntryRef = useRef(false);
+  const selectionHistoryDismissRequestedRef = useRef(false);
+  const preserveCurrentMapCameraInUrl = useCallback(() => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    const center = map.getCenter();
+    replaceMapUrlSilently((params) => {
+      params.set(
+        "c",
+        mapCameraParam({
+          center: { lng: center.lng, lat: center.lat },
+          zoom: map.getZoom(),
+        }),
+      );
+    });
+  }, []);
+  const beginMapSelectionHistory = useCallback((selection?: MapSelectionRequest) => {
+    if (!isBrowseMap) return;
+    preserveCurrentMapCameraInUrl();
+    const state = markMapSelectionHistoryState(
+      window.history.state,
+      selection,
+    );
+    if (
+      selectionHistoryEntryRef.current ||
+      isMapSelectionHistoryState(window.history.state)
+    ) {
+      // Pin-to-pin switches reuse the one closeable entry, but Forward must
+      // restore the latest result rather than the first one opened there.
+      window.history.replaceState(state, "", window.location.href);
+      selectionHistoryEntryRef.current = true;
+      return;
+    }
+    window.history.pushState(
+      state,
+      "",
+      window.location.href,
+    );
+    selectionHistoryEntryRef.current = true;
+  }, [isBrowseMap, preserveCurrentMapCameraInUrl]);
+
+  const dismissMapSelection = useCallback(() => {
+    if (selectionHistoryDismissRequestedRef.current) return;
+    const shouldCloseHistory =
+      selectionHistoryEntryRef.current ||
+      isMapSelectionHistoryState(window.history.state);
+    if (shouldCloseHistory) {
+      selectionHistoryEntryRef.current = false;
+      selectionHistoryDismissRequestedRef.current = true;
+      window.history.back();
+      return;
+    }
+    clearMapSelection();
+    replaceMapUrlSilently((params) => {
+      params.delete("place");
+      params.delete("event");
+      params.delete("result");
+      params.delete(MAP_SELECTION_TOKEN_PARAM);
+    });
+    restoreMapSelectionOpenerFocus();
+  }, [clearMapSelection]);
+
+  useEffect(() => {
+    if (!isBrowseMap) return;
+    const syncSelectionFromHistory = (event: PopStateEvent) => {
+      if (isMapSelectionHistoryState(event.state)) {
+        const params = new URLSearchParams(window.location.search);
+        const placeSlug = params.get("place");
+        const eventSlug = params.get("event");
+        const resultKind = params.get("result");
+        const selectionToken = params.get(MAP_SELECTION_TOKEN_PARAM);
+        const place = placeSlug
+          ? places.find((candidate) => candidate.slug === placeSlug) ?? null
+          : null;
+        const eventPin = !place && eventSlug
+          ? events.find((candidate) => candidate.slug === eventSlug) ?? null
+          : null;
+
+        selectionHistoryDismissRequestedRef.current = false;
+        clearMapSelection();
+        if (place) {
+          entitySelectionUrlIntentRef.current = {
+            place: place.slug,
+            event: null,
+          };
+          rememberMapSelectionOpener();
+          selectionHistoryEntryRef.current = true;
+          setSelectedSlug(place.slug);
+          setPeekPlace(place);
+          return;
+        }
+        if (eventPin) {
+          entitySelectionUrlIntentRef.current = {
+            place: null,
+            event: eventPin.slug,
+          };
+          rememberMapSelectionOpener();
+          selectionHistoryEntryRef.current = true;
+          setSelectedEvent(eventPin);
+          return;
+        }
+
+        const historySnapshot = readMapSelectionHistorySnapshot(event.state);
+        const historySelection = (historySnapshot?.kind === resultKind
+          ? historySnapshot
+          : readMapSelectionSession(selectionToken)) as MapSelectionRequest | null;
+        if (historySelection && historySelection.kind === resultKind) {
+          historySelectionUrlIntentRef.current = `${historySelection.kind}:${selectionToken ?? "history"}`;
+          rememberMapSelectionOpener();
+          selectionHistoryEntryRef.current = true;
+          applyMapSelection(historySelection);
+          return;
+        }
+
+        // A stale or provider-owned result cannot be reconstructed from this
+        // history entry. Keep the browser and canvas honest instead of leaving
+        // a ghost selection query with no visible result.
+        selectionHistoryEntryRef.current = false;
+        replaceMapUrlSilently((next) => {
+          next.delete("place");
+          next.delete("event");
+          next.delete("result");
+          next.delete(MAP_SELECTION_TOKEN_PARAM);
+        });
+        setGeoMsg(
+          "That temporary map result is no longer available. Search for it again.",
+        );
+        return;
+      }
+
+      if (
+        !selectionHistoryEntryRef.current &&
+        !selectionHistoryDismissRequestedRef.current &&
+        !entitySelectionUrlIntentRef.current.place &&
+        !entitySelectionUrlIntentRef.current.event &&
+        !historySelectionUrlIntentRef.current
+      ) {
+        return;
+      }
+      selectionHistoryEntryRef.current = false;
+      selectionHistoryDismissRequestedRef.current = false;
+      // Browser Back has restored the map entry. Keep the live camera rather
+      // than letting the old URL snap the canvas away from the result area.
+      preserveCurrentMapCameraInUrl();
+      clearMapSelection();
+      restoreMapSelectionOpenerFocus();
+    };
+    window.addEventListener("popstate", syncSelectionFromHistory);
+    return () =>
+      window.removeEventListener("popstate", syncSelectionFromHistory);
+  }, [
+    applyMapSelection,
+    clearMapSelection,
+    events,
+    isBrowseMap,
+    places,
+    preserveCurrentMapCameraInUrl,
+  ]);
+
+  // Next's App Router can temporarily disconnect client effects while it
+  // reconciles a native history traversal. Mirror the selection portion of its
+  // authoritative search-param snapshot as a second, idempotent seam: Back
+  // closes the sheet even if the native listener was between effect lifetimes,
+  // and Forward reconstructs URL-backed entities or the validated snapshot.
+  useEffect(() => {
+    if (!isBrowseMap) return;
+
+    // `replaceState` reaches the address bar before Next refreshes the
+    // `useSearchParams` snapshot. Do not interpret that brief disagreement as
+    // browser Back and erase a result that was just selected. The native
+    // popstate listener owns the immediate traversal; this effect is only the
+    // idempotent App Router seam once both views of the URL agree.
+    const liveParams = new URLSearchParams(window.location.search);
+    if (
+      liveParams.get("place") !== routePlaceSelection ||
+      liveParams.get("event") !== routeEventSelection ||
+      liveParams.get("result") !== routeResultSelection ||
+      liveParams.get(MAP_SELECTION_TOKEN_PARAM) !== routeSelectionToken
+    ) {
+      return;
+    }
+
+    const place = routePlaceSelection
+      ? places.find((candidate) => candidate.slug === routePlaceSelection) ?? null
+      : null;
+    const eventPin = !place && routeEventSelection
+      ? events.find((candidate) => candidate.slug === routeEventSelection) ?? null
+      : null;
+
+    if (place) {
+      if (entitySelectionUrlIntentRef.current.place === place.slug) return;
+      clearMapSelection();
+      entitySelectionUrlIntentRef.current = { place: place.slug, event: null };
+      rememberMapSelectionOpener();
+      selectionHistoryEntryRef.current = isMapSelectionHistoryState(
+        window.history.state,
+      );
+      setSelectedSlug(place.slug);
+      setPeekPlace(place);
+      return;
+    }
+    if (eventPin) {
+      if (entitySelectionUrlIntentRef.current.event === eventPin.slug) return;
+      clearMapSelection();
+      entitySelectionUrlIntentRef.current = {
+        place: null,
+        event: eventPin.slug,
+      };
+      rememberMapSelectionOpener();
+      selectionHistoryEntryRef.current = isMapSelectionHistoryState(
+        window.history.state,
+      );
+      setSelectedEvent(eventPin);
+      return;
+    }
+
+    const historySnapshot = routeResultSelection
+      ? readMapSelectionHistorySnapshot(window.history.state)
+      : null;
+    const historySelection = routeResultSelection
+      ? ((historySnapshot?.kind === routeResultSelection
+          ? historySnapshot
+          : readMapSelectionSession(routeSelectionToken)) as MapSelectionRequest | null)
+      : null;
+    if (
+      historySelection &&
+      historySelection.kind === routeResultSelection
+    ) {
+      const selectionIntent = `${historySelection.kind}:${routeSelectionToken ?? "history"}`;
+      if (historySelectionUrlIntentRef.current === selectionIntent) {
+        return;
+      }
+      clearMapSelection();
+      historySelectionUrlIntentRef.current = selectionIntent;
+      rememberMapSelectionOpener();
+      selectionHistoryEntryRef.current = Boolean(routeSelectionToken);
+      applyMapSelection(historySelection);
+      return;
+    }
+
+    if (routeResultSelection) {
+      // Forward can outlive the short-lived provider payload, and a copied
+      // opaque token belongs to a different tab. In either case, fail closed:
+      // no reconstructed card and no URL that implies Radius can still open it.
+      replaceMapUrlSilently((params) => {
+        params.delete("result");
+        params.delete(MAP_SELECTION_TOKEN_PARAM);
+      });
+      setGeoMsg(
+        "That temporary map result is no longer available. Search for it again.",
+      );
+    }
+
+    const hadSelection = Boolean(
+      entitySelectionUrlIntentRef.current.place ||
+        entitySelectionUrlIntentRef.current.event ||
+        historySelectionUrlIntentRef.current,
+    );
+    if (!hadSelection) {
+      return;
+    }
+    selectionHistoryEntryRef.current = false;
+    selectionHistoryDismissRequestedRef.current = false;
+    clearMapSelection();
+    restoreMapSelectionOpenerFocus();
+  }, [
+    applyMapSelection,
+    clearMapSelection,
+    events,
+    isBrowseMap,
+    places,
+    routeEventSelection,
+    routePlaceSelection,
+    routeResultSelection,
+    routeSelectionToken,
+  ]);
+
   /** One stable object per mount, so layers don't re-register every render. */
   const liveLayerGate = useMemo<LiveLayerGate>(
     () => ({
       register: liveLayerClosersRef.current.register,
-      onWillOpen: clearMapSelection,
+      onWillOpen: () => {
+        rememberMapSelectionOpener();
+        beginMapSelectionHistory();
+        clearMapSelection();
+        replaceMapUrlSilently((params) => {
+          params.delete("place");
+          params.delete("event");
+          params.delete("result");
+          params.delete(MAP_SELECTION_TOKEN_PARAM);
+        });
+      },
+      onDidClose: dismissMapSelection,
     }),
-    [clearMapSelection],
+    [beginMapSelectionHistory, clearMapSelection, dismissMapSelection],
   );
 
   const openMapSelection = useCallback(
-    (next: MapSelectionRequest) => {
-      rememberMapSelectionOpener();
-      clearMapSelection();
-      switch (next.kind) {
-        case "place":
-          setSelectedSlug(next.value.slug);
-          setPeekPlace(next.value);
-          break;
-        case "raw":
-          setSelected(next.value);
-          setRawSelectionContext(next.contextLabel ?? null);
-          break;
-        case "event":
-          setSelectedEvent(next.value);
-          break;
-        case "event-group":
-          setEventGroup(next.value);
-          break;
-        case "town":
-          setCivicTown(next.value);
-          break;
-        case "transit":
-          setSelectedTransitStop(next.value);
-          break;
-        case "marc":
-          setMarcPeek(next.value);
-          break;
-        case "aerial":
-          setSelectedAerial(next.value);
-          break;
-        case "cemetery":
-          setSelectedCemetery(next.value);
-          break;
-        case "parking":
-          setParkingPeek(next.value);
-          break;
-        case "food-truck":
-          setFoodTruckPeek(next.value);
-          break;
-        case "discovery":
-          setSelectedDiscovery(next.value);
-          break;
-        case "spot":
-          setSpotSelection(next.value);
-          break;
+    (
+      next: MapSelectionRequest,
+      { addHistory = true }: { addHistory?: boolean } = {},
+    ) => {
+      const resultKind =
+        next.kind === "place" || next.kind === "event" ? null : next.kind;
+      const selectionToken =
+        isBrowseMap && resultKind ? writeMapSelectionSession(next) : null;
+      if (isBrowseMap && resultKind && !selectionToken) {
+        setGeoMsg(
+          "That temporary map result could not be opened. Search for it again.",
+        );
+        return;
       }
+      rememberMapSelectionOpener();
+      if (addHistory) {
+        // Non-entity data lives only in the bounded session store. Browser
+        // history carries the opaque token in its URL, never the provider
+        // label, coordinates, attribution, or full result object.
+        beginMapSelectionHistory(resultKind ? undefined : next);
+      }
+      clearMapSelection();
+      // A search result can be chosen before the heavyweight map style emits
+      // its first load event. Reflect the entity synchronously so even that
+      // fast path has a complete Back/Forward URL instead of waiting for the
+      // later selectionUrlReady effect.
+      if (isBrowseMap) {
+        entitySelectionUrlIntentRef.current = {
+          place: next.kind === "place" ? next.value.slug : null,
+          event: next.kind === "event" ? next.value.slug : null,
+        };
+        historySelectionUrlIntentRef.current = resultKind
+          ? `${resultKind}:${selectionToken}`
+          : null;
+        const selectionUrl = replaceMapUrl((params) => {
+          if (next.kind === "place") params.set("place", next.value.slug);
+          else params.delete("place");
+          if (next.kind === "event") params.set("event", next.value.slug);
+          else params.delete("event");
+          if (resultKind && selectionToken) {
+            params.set("result", resultKind);
+            params.set(MAP_SELECTION_TOKEN_PARAM, selectionToken);
+          } else {
+            params.delete("result");
+            params.delete(MAP_SELECTION_TOKEN_PARAM);
+          }
+        });
+        if (addHistory) {
+          // The external History write above makes this selection canonical to
+          // Next, but Next deliberately replaces custom history fields while
+          // it copies its router tree. Restore Radius' validated snapshot on
+          // that now-current tree so Back can close the result and Forward can
+          // reconstruct every non-URL selection kind.
+          window.history.replaceState(
+            markMapSelectionHistoryState(
+              window.history.state,
+              resultKind ? undefined : next,
+            ),
+            "",
+            selectionUrl ?? window.location.href,
+          );
+        }
+      }
+      applyMapSelection(next);
     },
-    [clearMapSelection],
+    [applyMapSelection, beginMapSelectionHistory, clearMapSelection, isBrowseMap],
   );
 
   const selectionOpen = Boolean(
@@ -1691,18 +2090,18 @@ export default function AppMap({
   const handleDockPaneOpenChange = useCallback(
     (open: boolean) => {
       setDockPaneOpen(open);
-      if (open) clearMapSelection();
+      if (open) dismissMapSelection();
     },
-    [clearMapSelection],
+    [dismissMapSelection],
   );
 
   useEffect(() => {
     if (!isBrowseMap) return;
-    const clearForSearch = () => clearMapSelection();
+    const clearForSearch = () => dismissMapSelection();
     window.addEventListener("fr:focus-map-search", clearForSearch);
     return () =>
       window.removeEventListener("fr:focus-map-search", clearForSearch);
-  }, [clearMapSelection, isBrowseMap]);
+  }, [dismissMapSelection, isBrowseMap]);
 
   // Aerial is the one deliberate 3D scene. The default map remains an
   // effortless north-up plan, while the archive can rise over real terrain.
@@ -2355,7 +2754,7 @@ export default function AppMap({
         center: [nearest.point.lng, nearest.point.lat],
         zoom: Math.max(map.getZoom(), 15.5),
         offset: [0, -110],
-        duration: prefersReducedMotion() ? 0 : 600,
+        duration: mapCameraDuration("focus"),
         easing: CAM_EASE,
         essential: true,
       });
@@ -2449,8 +2848,8 @@ export default function AppMap({
     [selectedSlug, visiblePlaces],
   );
   useEffect(() => {
-    if (selectedSlug && !selectedPlace) clearMapSelection();
-  }, [clearMapSelection, selectedPlace, selectedSlug]);
+    if (selectedSlug && !selectedPlace) dismissMapSelection();
+  }, [dismissMapSelection, selectedPlace, selectedSlug]);
 
   // The single selected place uses the Radius brick regardless of category.
   // Category remains visible on the result card; the map itself gains one
@@ -2475,16 +2874,19 @@ export default function AppMap({
     // A map gesture dismisses transient panels through `fr:map-gesture`, but
     // it does not erase the person's search or shareable query. Clearing text
     // merely because someone adjusted the map made the search feel unreliable.
-    clearMapSelection();
     const feature = e.features?.[0];
     if (!feature) {
       // Empty map space is for panning, orientation, and dismissing a result.
       // Do not invent a new "At this spot" task from every stray tap. The spot
       // card remains available for an explicit temporary search result.
+      dismissMapSelection();
       return;
     }
     const layer = feature.layer?.id;
-    if (!layer) { setSelectedSlug(null); return; }
+    if (!layer) {
+      dismissMapSelection();
+      return;
+    }
     if (layer === "muni-label") {
       const name = String(feature.properties?.name ?? "");
       const slug = String(feature.properties?.slug ?? "");
@@ -2530,8 +2932,7 @@ export default function AppMap({
     // clusters. Tapping one reveals the next level without making the user
     // guess where overlapping downtown pins went.
     if (layer === "curated-clusters" && map) {
-      setSelectedSlug(null);
-      setPeekPlace(null);
+      dismissMapSelection();
       const clusterId = feature.properties?.cluster_id as number | undefined;
       const source = map.getSource("curated-places") as
         | GeoJSONSource
@@ -2564,6 +2965,7 @@ export default function AppMap({
     }
 
     if (layer === "amenity-clusters" && map) {
+      dismissMapSelection();
       const clusterId = feature.properties?.cluster_id as number | undefined;
       const source = map.getSource("amenities") as GeoJSONSource | undefined;
       if (
@@ -2595,7 +2997,7 @@ export default function AppMap({
 
     // OSM cluster expansion.
     if (layer === "clusters" && map) {
-      setSelectedSlug(null);
+      dismissMapSelection();
       track("map_cluster");
       const clusterId = feature.properties?.cluster_id as number | undefined;
       const source = map.getSource("osm-businesses") as GeoJSONSource | undefined;
@@ -2638,7 +3040,7 @@ export default function AppMap({
           center: [place.geom.lng, place.geom.lat],
           zoom: Math.max(m.getZoom(), 14),
           offset: [0, -120],
-          duration: prefersReducedMotion() ? 0 : 500,
+          duration: mapCameraDuration("nudge"),
           essential: true,
         });
       }
@@ -2825,52 +3227,10 @@ export default function AppMap({
       origin,
       6,
     );
-    const confidentImmediate = confidentLocalMapPlaceResult(
-      immediateMatches,
-      term,
-    );
-    if (!confidentImmediate) autoFocusedSearchResultRef.current = null;
-    const focusConfidentImmediate = () => {
-      if (
-        !confidentImmediate ||
-        requestId !== searchRequestRef.current ||
-        autoFocusedSearchResultRef.current === confidentImmediate.id
-      ) {
-        return;
-      }
-      const place = places.find(
-        (candidate) =>
-          candidate.slug === confidentImmediate.id.replace(/^place:/, ""),
-      );
-      const map = mapRef.current?.getMap();
-      if (!place || !map) return;
-
-      autoFocusedSearchResultRef.current = confidentImmediate.id;
-      if (
-        resultScope === "nearme" &&
-        userLoc &&
-        haversineMeters(userLoc, place.geom) > RADIUS_M
-      ) {
-        setResultScope("county");
-        if (getScope() !== "county") setScope("county");
-        replaceMapUrl((params) => params.delete(SCOPE_PARAM));
-      }
-      cameraIntentRef.current = true;
-      smoothFocus(map, [place.geom.lng, place.geom.lat], {
-        // County clusters stop at z15. An exact business search must resolve
-        // to the actual branded pin, not leave the answer buried inside a
-        // neighborhood count bubble.
-        minZoom: 15.5,
-        maxStep: 7.5,
-      });
-      setResultAreaAnnouncement((current) => ({
-        message: `Showing ${place.name} on the map.`,
-        nonce: current.nonce + 1,
-      }));
-    };
     // A result from the previous phrase must never remain tappable while this
-    // phrase waits for its debounce or network response. A strong name match
-    // from the already-loaded Radius pin set may replace it immediately.
+    // phrase waits for its debounce or network response. Typing only updates
+    // this suggestion list; the camera remains entirely still until the
+    // person selects a result or presses Enter.
     setSearchMatches(immediateMatches);
     setSearchUnavailableQuery("");
     // A retry uses the same phrase, so the prior settled marker would otherwise
@@ -2879,7 +3239,6 @@ export default function AppMap({
       setSearchSettledQuery(immediateMatches.length > 0 ? term : "");
     }
     if (term.length < 2) {
-      autoFocusedSearchResultRef.current = null;
       setSearchSettledQuery(term);
       searchSessionRef.current = null;
       searchSessionStartedRef.current = false;
@@ -2889,9 +3248,6 @@ export default function AppMap({
     }
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
-      // A decisive local name should move the map and result deck together,
-      // without waiting for network enrichment or opening a modal card.
-      focusConfidentImmediate();
       const params = new URLSearchParams({ q: term, limit: "6", origin: "map" });
       // About 11m precision is plenty for nearest-first ranking and avoids
       // sending an unnecessarily exact coordinate.
@@ -2919,7 +3275,6 @@ export default function AppMap({
         if (local.length > 0) {
           setSearchMatches(local);
           setSearchSettledQuery(term);
-          focusConfidentImmediate();
           const routedCandidates = userLoc
             ? local
                 .filter(
@@ -3108,7 +3463,7 @@ export default function AppMap({
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [isBrowseMap, places, q, resultScope, searchAttempt, userLoc]);
+  }, [isBrowseMap, places, q, searchAttempt, userLoc]);
 
   const placesBySlug = useMemo(() => {
     // globalThis.Map: the bare `Map` is react-map-gl's component here.
@@ -3159,12 +3514,10 @@ export default function AppMap({
           return;
         }
         const { lng, lat } = body.result.coordinates;
-        setMapQuery("");
-        setSearchMatches([]);
-        searchSessionRef.current = null;
-        searchSessionStartedRef.current = false;
-        searchSessionLastUsedRef.current = 0;
-        searchSessionSuggestCountRef.current = 0;
+        // Keep the query and suggestion session underneath the temporary
+        // result. Back should return to the exact search the person made, and
+        // selecting the same suggestion again must not require a second paid
+        // provider request merely because they inspected then closed it.
         openMapSelection({
           kind: "spot",
           value: {
@@ -3180,7 +3533,7 @@ export default function AppMap({
           center: [lng, lat],
           zoom: 15,
           offset: [0, -100],
-          duration: prefersReducedMotion() ? 0 : 700,
+          duration: mapCameraDuration("focus"),
           easing: CAM_EASE,
           essential: true,
         });
@@ -3286,7 +3639,7 @@ export default function AppMap({
             mapRef.current?.getMap().flyTo({
               center: [userLoc.lng, userLoc.lat],
               zoom: 15,
-              duration: prefersReducedMotion() ? 0 : 800,
+              duration: mapCameraDuration("journey"),
               curve: 1.2,
               easing: CAM_EASE,
               essential: true,
@@ -3302,9 +3655,11 @@ export default function AppMap({
     // Selecting a place or event dismisses the search tray, but the query
     // remains part of the exact map state carried into its detail. Reassert it
     // only after handling in-place map commands, whose final URL deliberately
-    // clears the query.
+    // clears the query. Keep this presentation-only: starting a Next route
+    // synchronization here can settle after the selection write and erase its
+    // `place`/`event` parameter from the address bar.
     if (q.trim()) {
-      replaceMapUrl((params) => params.set("q", q.trim()));
+      replaceMapUrlSilently((params) => params.set("q", q.trim()));
     }
     // A place that's on this map focuses it; anything else (events,
     // towns, categories, places outside the loaded set) navigates.
@@ -3363,7 +3718,7 @@ export default function AppMap({
           mapRef.current?.getMap().flyTo({
             center: [town.centroid.lng, town.centroid.lat],
             zoom: 13.4,
-            duration: prefersReducedMotion() ? 0 : 900,
+            duration: mapCameraDuration("journey"),
             curve: 1.25,
             easing: CAM_EASE,
             essential: true,
@@ -3511,7 +3866,7 @@ export default function AppMap({
     setOffOverview(false);
     mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
       padding: countyFitPadding(),
-      duration: prefersReducedMotion() ? 0 : 900,
+      duration: mapCameraDuration("reframe"),
       easing: CAM_EASE,
       essential: true,
     });
@@ -3591,7 +3946,7 @@ export default function AppMap({
       map.fitBounds(evidenceBounds, {
         padding: countyFitPadding(),
         maxZoom: scene.definition.camera.maxZoom,
-        duration: prefersReducedMotion() ? 0 : 850,
+        duration: mapCameraDuration("reframe"),
         easing: CAM_EASE,
         essential: true,
       });
@@ -3603,7 +3958,7 @@ export default function AppMap({
       pending.fallbackApplied = true;
       map.fitBounds(FREDERICK_COUNTY_BOUNDS, {
         padding: countyFitPadding(),
-        duration: prefersReducedMotion() ? 0 : 700,
+        duration: mapCameraDuration("reframe"),
         easing: CAM_EASE,
         essential: true,
       });
@@ -3698,7 +4053,7 @@ export default function AppMap({
       map.easeTo({
         center: discovery.center,
         zoom: Math.max(map.getZoom(), discovery.zoom),
-        duration: prefersReducedMotion() ? 0 : 950,
+        duration: mapCameraDuration("journey"),
         easing: CAM_EASE,
         essential: true,
       });
@@ -3838,7 +4193,7 @@ export default function AppMap({
     mapRef.current?.getMap().easeTo({
       center: [incident.coordinate.lng, incident.coordinate.lat],
       zoom: 14.5,
-      duration: prefersReducedMotion() ? 0 : 800,
+      duration: mapCameraDuration("journey"),
       easing: CAM_EASE,
       essential: true,
     });
@@ -4375,7 +4730,10 @@ export default function AppMap({
               deepLinkPlaceAppliedRef.current = true;
               const place = places.find((candidate) => candidate.slug === initialPlaceSlug);
               if (place) {
-                openMapSelection({ kind: "place", value: place });
+                openMapSelection(
+                  { kind: "place", value: place },
+                  { addHistory: false },
+                );
               }
             }
             if (
@@ -4388,7 +4746,10 @@ export default function AppMap({
                 (candidate) => candidate.slug === initialEventSlug,
               );
               if (event) {
-                openMapSelection({ kind: "event", value: event });
+                openMapSelection(
+                  { kind: "event", value: event },
+                  { addHistory: false },
+                );
                 if (!urlCamera) {
                   cameraIntentRef.current = true;
                   smoothFocus(e.target, [event.lng, event.lat], {
@@ -4735,6 +5096,7 @@ export default function AppMap({
             show={showCameras}
             onHealth={setCameraHealth}
             onBounds={setCameraFeatureBounds}
+            gate={liveLayerGate}
           />
 
           {/* #3 toggleable line overlays — rendered BEFORE the point
@@ -4888,7 +5250,7 @@ export default function AppMap({
               map.fitBounds(bounds, {
                 padding: countyFitPadding(),
                 maxZoom: 13,
-                duration: prefersReducedMotion() ? 0 : 700,
+                duration: mapCameraDuration("reframe"),
                 easing: CAM_EASE,
                 essential: true,
               });
@@ -5014,7 +5376,7 @@ export default function AppMap({
                 latitude={civicTown.lat}
                 offset={14}
                 closeOnClick={false}
-                onClose={clearMapSelection}
+                onClose={dismissMapSelection}
                 maxWidth="250px"
               >
                 <div style={{ padding: "2px 2px 4px", minWidth: 198 }}>
@@ -5996,8 +6358,8 @@ export default function AppMap({
               latitude={selectedAerial.lat}
               anchor="bottom"
               offset={20}
-              closeOnClick={true}
-              onClose={clearMapSelection}
+              closeOnClick={false}
+              onClose={dismissMapSelection}
               maxWidth="320px"
             >
               <div className="space-y-2">
@@ -6085,8 +6447,8 @@ export default function AppMap({
               latitude={selectedCemetery.lat}
               anchor="bottom"
               offset={12}
-              closeOnClick={true}
-              onClose={clearMapSelection}
+              closeOnClick={false}
+              onClose={dismissMapSelection}
               maxWidth="240px"
             >
               <div style={{ padding: "2px 2px 4px", minWidth: 170 }}>
@@ -6198,13 +6560,12 @@ export default function AppMap({
             );
           })}
 
-          {/* Live food trucks are high-signal and scarce, so a valid operator
-              beacon appears without another layer toggle. Every pin carries
-              its own expiry and disappears on the client when that time
-              passes; venue hours never create one. */}
+          {/* Food-truck availability is high-signal and scarce, so current
+              operator beacons and near-term published stops appear without a
+              second toggle. Only a beacon pulses or uses live language. */}
           {liveFoodTruckPins.map((pin) => (
             <Marker
-              key={`food-truck:${pin.slug}`}
+              key={`food-truck:${pin.id}`}
               ref={exposeMarkerChild}
               longitude={pin.lng}
               latitude={pin.lat}
@@ -6213,15 +6574,22 @@ export default function AppMap({
               <button
                 type="button"
                 className="fr-food-truck-marker"
+                data-availability={pin.availability}
                 tabIndex={isPointInView(pin.lng, pin.lat) ? 0 : -1}
-                aria-label={`${pin.name}, operator-confirmed live location`}
+                aria-label={
+                  pin.availability === "operator-live"
+                    ? `${pin.name}, operator-confirmed live location`
+                    : `${pin.name}, published stop at ${pin.venueName}`
+                }
                 onClick={(event) => {
                   event.stopPropagation();
                   haptic("light");
                   openMapSelection({ kind: "food-truck", value: pin });
                 }}
               >
-                <span aria-hidden className="fr-food-truck-pulse" />
+                {pin.availability === "operator-live" ? (
+                  <span aria-hidden className="fr-food-truck-pulse" />
+                ) : null}
                 <span aria-hidden className="fr-food-truck-glyph">
                   <Truck className="h-[17px] w-[17px]" strokeWidth={2.1} />
                 </span>
@@ -6270,8 +6638,8 @@ export default function AppMap({
               latitude={selectedEvent.lat}
               anchor="bottom"
               offset={28}
-              closeOnClick={true}
-              onClose={clearMapSelection}
+              closeOnClick={false}
+              onClose={dismissMapSelection}
               maxWidth="280px"
             >
               <EventPopup e={selectedEvent} />
@@ -6305,8 +6673,8 @@ export default function AppMap({
               latitude={selected._kind === "place" ? selected.geom.lat : selected.lat}
               anchor="bottom"
               offset={14}
-              closeOnClick={true}
-              onClose={clearMapSelection}
+              closeOnClick={false}
+              onClose={dismissMapSelection}
               maxWidth="300px"
             >
               {selected._kind === "place" ? (
@@ -6488,6 +6856,8 @@ export default function AppMap({
             }}
             parkingCount={parking.length}
             providerLayersAvailable={Boolean(onLayerDemand)}
+            mapLayerSourceHealth={mapLayerSourceHealth}
+            retryMapLayerGroups={onLayerDemand}
             showParking={showParking}
             setShowParking={(value) => {
               exitRadiusScene();
@@ -6543,6 +6913,8 @@ export default function AppMap({
               setScrubHour(hour);
             }}
             userLoc={userLoc}
+            showLocationIntro={showLocationIntro}
+            dismissLocationIntro={dismissLocationIntro}
             locating={locating}
             geoMsg={geoMsg}
             goNearMe={goNearMe}
@@ -6551,7 +6923,7 @@ export default function AppMap({
               mapRef.current?.getMap().flyTo({
                 center,
                 zoom,
-                duration: prefersReducedMotion() ? 0 : 1100,
+                duration: mapCameraDuration("journey"),
                 curve: 1.25,
                 easing: CAM_EASE,
                 essential: true,
@@ -6631,7 +7003,7 @@ export default function AppMap({
           places={places}
           events={events}
           parking={parking}
-          clearMapSelection={clearMapSelection}
+          clearMapSelection={dismissMapSelection}
           openPlaceSheet={openPlaceSheet}
           focusPlaceFromSpot={(place) => {
             openMapSelection({ kind: "place", value: place });
@@ -6642,7 +7014,7 @@ export default function AppMap({
                 center: [place.geom.lng, place.geom.lat],
                 zoom: Math.max(map.getZoom(), 14),
                 offset: [0, -120],
-                duration: prefersReducedMotion() ? 0 : 500,
+                duration: mapCameraDuration("nudge"),
                 essential: true,
               });
             }

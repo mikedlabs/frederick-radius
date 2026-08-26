@@ -87,6 +87,7 @@ describe("Today durable event snapshot", () => {
     expect(result.sourceHealth).toEqual({
       degraded: false,
       unavailable: [],
+      issues: [],
     });
   });
 
@@ -119,7 +120,8 @@ describe("Today durable event snapshot", () => {
     // failure "read timeout", so when production stopped serving live events
     // the only thing any surface could say was that the read was slow. It was
     // not: /api/health had `SELECT 1` on the same connection at 3ms. The
-    // Postgres error sentence IS the diagnosis, so it has to survive.
+    // The Postgres error sentence is still needed in server logs, but it must
+    // not become public API copy.
     // A null status is the reader being locked OUT of `ingest_runs`, not the
     // collector failing. RLS denial returns zero rows rather than an error, so
     // these two states arrive looking identical and used to share a label —
@@ -134,18 +136,31 @@ describe("Today durable event snapshot", () => {
     expect(partial.sourceHealth).toEqual({
       degraded: false,
       unavailable: [],
+      issues: [],
     });
     expect(stale.sourceHealth).toEqual({
       degraded: true,
-      unavailable: ["event archive (stale)"],
+      unavailable: ["The event schedule has not been refreshed recently."],
+      issues: [{
+        code: "event_archive_stale",
+        message: "The event schedule has not been refreshed recently.",
+      }],
     });
     expect(unreadable.sourceHealth).toEqual({
       degraded: true,
-      unavailable: ["event archive (unreadable)"],
+      unavailable: ["The event schedule's freshness could not be confirmed."],
+      issues: [{
+        code: "event_archive_status_unavailable",
+        message: "The event schedule's freshness could not be confirmed.",
+      }],
     });
     expect(failed.sourceHealth).toEqual({
       degraded: true,
-      unavailable: ["event archive (last run failed)"],
+      unavailable: ["The latest event schedule refresh did not finish."],
+      issues: [{
+        code: "event_archive_refresh_failed",
+        message: "The latest event schedule refresh did not finish.",
+      }],
     });
   });
 
@@ -163,7 +178,10 @@ describe("Today durable event snapshot", () => {
     );
 
     expect(result.publicEvents.some((row) => row.slug === "bad-event")).toBe(false);
-    expect(result.sourceHealth.unavailable).toContain("event archive validation");
+    expect(result.sourceHealth).toMatchObject({
+      unavailable: ["Some event records could not be verified."],
+      issues: [{ code: "event_archive_validation" }],
+    });
   });
 
   it("cancels a slow database read and returns curated fail-soft data", async () => {
@@ -184,7 +202,11 @@ describe("Today durable event snapshot", () => {
     // masquerades as a data outage (which is exactly what happened).
     expect(result.sourceHealth).toEqual({
       degraded: true,
-      unavailable: ["event archive (read timeout)"],
+      unavailable: ["The event schedule is taking longer than expected to load."],
+      issues: [{
+        code: "event_archive_timeout",
+        message: "The event schedule is taking longer than expected to load.",
+      }],
     });
   });
 
@@ -242,14 +264,23 @@ describe("Today durable event snapshot", () => {
   it("lets a cold archive connection finish without collapsing discovery to curated rows", async () => {
     vi.useFakeTimers();
     mocks.getSql.mockReturnValue(vi.fn(() => new Promise((resolve) => {
-      setTimeout(() => resolve([envelope()]), 900);
+      // This deliberately resolves after the old hidden 1.5 second clamp.
+      // Discovery advertises a 2.5 second budget, so a 2 second cold pooled
+      // connection must still return the archive rather than curated seeds.
+      setTimeout(() => resolve([envelope()]), 2_000);
     })));
 
-    const pending = loadEventArchiveSnapshot(NOW);
-    await vi.advanceTimersByTimeAsync(900);
+    let settled = false;
+    const pending = loadEventArchiveSnapshot(NOW).then((result) => {
+      settled = true;
+      return result;
+    });
+    await vi.advanceTimersByTimeAsync(1_501);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(499);
     const result = await pending;
 
-    expect(EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS).toBeGreaterThan(900);
+    expect(EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS).toBeGreaterThan(2_000);
     expect(result.publicEvents).toContainEqual(
       expect.objectContaining({
         slug: "archive-event-2026-07-31",
@@ -259,13 +290,29 @@ describe("Today durable event snapshot", () => {
     expect(result.sourceHealth).toEqual({
       degraded: false,
       unavailable: [],
+      issues: [],
     });
+  });
+
+  it("keeps both public event endpoints on runtime rendering", () => {
+    const todayEndpoint = readFileSync(
+      new URL("../../app/api/today/events/route.ts", import.meta.url),
+      "utf8",
+    );
+    const browseEndpoint = readFileSync(
+      new URL("../../app/api/events/browse/route.ts", import.meta.url),
+      "utf8",
+    );
+
+    expect(todayEndpoint).toContain('export const dynamic = "force-dynamic"');
+    expect(browseEndpoint).toContain('export const dynamic = "force-dynamic"');
   });
 });
 
-describe("a rejected archive read says why", () => {
+describe("archive read failures stay diagnostic without becoming public copy", () => {
   afterEach(() => {
     mocks.getSql.mockReset();
+    vi.restoreAllMocks();
   });
 
   function rejectingSql(error: unknown) {
@@ -278,7 +325,8 @@ describe("a rejected archive read says why", () => {
     return sql as unknown as ReturnType<typeof mocks.getSql>;
   }
 
-  it("carries the Postgres error instead of calling it a timeout", async () => {
+  it("logs a rejected Postgres read server-side and returns a stable public reason", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     mocks.getSql.mockReturnValue(
       rejectingSql(new Error("permission denied for table event_canonical_records")),
     );
@@ -286,23 +334,40 @@ describe("a rejected archive read says why", () => {
     const result = await loadEventArchiveSnapshot(NOW);
 
     expect(result.sourceHealth.degraded).toBe(true);
-    expect(result.sourceHealth.unavailable).toEqual([
-      "event archive (read rejected: permission denied for table event_canonical_records)",
-    ]);
-    // The distinction is the whole point: this must NOT read as slowness.
-    expect(result.sourceHealth.unavailable[0]).not.toContain("timeout");
+    expect(result.sourceHealth).toEqual({
+      degraded: true,
+      unavailable: ["The event schedule is temporarily unavailable."],
+      issues: [{
+        code: "event_archive_unavailable",
+        message: "The event schedule is temporarily unavailable.",
+      }],
+    });
+    expect(JSON.stringify(result)).not.toContain("permission denied");
+    expect(log).toHaveBeenCalledWith(
+      "[events] Archive read rejected.",
+      expect.objectContaining({
+        message: "permission denied for table event_canonical_records",
+      }),
+    );
   });
 
-  it("flattens and bounds the message, because it reaches a health payload", async () => {
+  it("bounds the server diagnostic and never exposes arbitrary error text", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const privateText = `postgres://user:secret@example.test/database\n${"x".repeat(800)}`;
     mocks.getSql.mockReturnValue(
-      rejectingSql(new Error(`line one\n  line two${"x".repeat(400)}`)),
+      rejectingSql(new Error(privateText)),
     );
 
-    const [reason] = (await loadEventArchiveSnapshot(NOW)).sourceHealth.unavailable;
+    const result = await loadEventArchiveSnapshot(NOW);
+    const diagnostic = log.mock.calls[0]?.[1] as { message?: string };
 
-    expect(reason).not.toContain("\n");
-    expect(reason.length).toBeLessThan(160);
-    expect(reason.startsWith("event archive (read rejected: line one line two")).toBe(true);
+    expect(JSON.stringify(result)).not.toContain("secret");
+    expect(result.sourceHealth.issues[0]?.code).toBe("event_archive_unavailable");
+    expect(diagnostic.message).not.toContain("\n");
+    expect(diagnostic.message).not.toContain("user:secret");
+    expect(diagnostic.message).not.toContain("secret");
+    expect(diagnostic.message).toContain("postgres://[redacted]@example.test/database");
+    expect(diagnostic.message?.length).toBeLessThanOrEqual(500);
   });
 
   it("still reports a genuine absence of database as its own reason", async () => {
@@ -310,7 +375,14 @@ describe("a rejected archive read says why", () => {
 
     const result = await loadEventArchiveSnapshot(NOW);
 
-    expect(result.sourceHealth.unavailable).toEqual(["event archive (no database)"]);
+    expect(result.sourceHealth).toEqual({
+      degraded: true,
+      unavailable: ["The event schedule is temporarily unavailable."],
+      issues: [{
+        code: "event_archive_unavailable",
+        message: "The event schedule is temporarily unavailable.",
+      }],
+    });
   });
 });
 

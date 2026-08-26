@@ -52,6 +52,11 @@ const STOP = new Set([
   "me", "my", "we", "you", "your", "i'm", "im",
   "need", "want", "wanna", "looking", "look", "find", "show", "get", "give", "browse", "browsing",
   "some", "any", "please", "near", "nearby", "around", "where", "what", "how", "can", "do",
+  // These words describe the shape or feel of a request, not the destination.
+  // Keeping `place` made "quiet place to read" prefer businesses with Place
+  // in their name over public libraries. The intent profile below carries the
+  // useful meaning while these generic words stay out of literal scoring.
+  "place", "places", "somewhere", "quiet", "quieter",
   // Generic conversational fragments are not discovery evidence. Keeping
   // these terms made a nonsense sentence such as "no such thing" rank a
   // business whose blurb happened to say "such as" and a name ending in
@@ -185,7 +190,23 @@ function hasExplicitQueryEvidence(
     ...(place.tags ?? []),
     ...(place.search_aliases ?? []),
   ].join(" ");
-  return terms.every((term) => fieldScore(evidence, [term]) > 0);
+  // This is the strict guard used when a request narrows a broad umbrella
+  // (for example, "antique shopping" inside Shops). Singularize the evidence
+  // words as well as the query words. `fieldScore` deliberately normalizes
+  // only the query side, which meant singular "antique" could not prove a
+  // record filed under the canonical category `antiques`; all 15 real antique
+  // destinations were filtered out and only a generic door survived.
+  const evidenceWords = new Set(
+    evidence
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}'-]+/gu)
+      .filter(Boolean)
+      .flatMap((word) => [word, singularTerm(word)]),
+  );
+  return terms.every((term) =>
+    termVariants(term).some((variant) => evidenceWords.has(variant)) ||
+    fieldScore(evidence, [term]) > 0,
+  );
 }
 
 /**
@@ -387,6 +408,8 @@ type Intent = {
   downCats: Set<string>;
   downTags: Set<string>;
   downName?: RegExp;
+  /** This job is looking for a destination, not an event with coincidental words. */
+  placesOnly?: boolean;
   /** Multi-part evidence required by a compound request. A breakfast
    * sandwich needs BOTH morning-food evidence and sandwich/bagel evidence;
    * matching only one half must not beat a place that answers the full job. */
@@ -428,6 +451,17 @@ const INTENTS: Intent[] = [
       SANDWICH_EVIDENCE_RE,
     ],
     chainPenalty: 3,
+  },
+  {
+    // Radius has no measured noise-level field, so this intent must not label
+    // a cafe or park "quiet" by inference. Public libraries are the one
+    // catalog role that directly and defensibly answers a place-to-read job.
+    triggers: ["place to read", "somewhere to read", "quiet place to read", "read a book", "reading spot"],
+    boostCats: new Set(["library"]),
+    boostTags: new Set<string>(),
+    downCats: new Set(["antiques", "shopping", "services", "auto-care", "bar", "brewery", "distillery", "winery"]),
+    downTags: new Set(["nightlife"]),
+    placesOnly: true,
   },
   {
     triggers: ["kid", "kids", "family", "children", "child", "kid-friendly", "toddler"],
@@ -689,6 +723,10 @@ export function search(
   const expansion = expandQuery(query);
   const shortIntent = recognizedShortIntent(query);
   const genericCoffeeIntent = isGenericCoffeeIntent(query);
+  const phoneChargingIntent = /\b(?:phone|mobile|device)\s+charg(?:e|er|ers|ing)\b/i.test(query);
+  const dogFriendlyPatioIntent =
+    /\b(?:dog|pet)[ -]?friendly\b/i.test(query) &&
+    /\b(?:patio|outdoor seating|terrace)\b/i.test(query);
   const now = options.now ?? new Date();
 
   for (const p of clientPlaces()) {
@@ -719,6 +757,31 @@ export function search(
       ...(p.tags ?? []),
       ...(p.search_aliases ?? []),
     ].join(" ");
+    const reviewedDecisionEvidence = [
+      evidenceText,
+      p.field_note_tip ?? "",
+      ...(p.known_for ?? []),
+    ].join(" ");
+    // A phone-charging request is not an EV-charging request. Only a record
+    // with explicit device/USB/outlet evidence may survive; otherwise the
+    // Nearby essentials tool below is the honest route into mapped power.
+    if (
+      phoneChargingIntent &&
+      !/\b(?:phone|mobile|device|usb|power outlet|electrical outlet)\b/i.test(evidenceText)
+    ) {
+      continue;
+    }
+    // "Dog-friendly patio" is a compound evidence request. A dog-friendly
+    // park or a restaurant with a patio answers only half of it. Keep only
+    // hospitality records whose own reviewed fields support both claims.
+    if (dogFriendlyPatioIntent) {
+      const isHospitality = new Set([
+        "restaurant", "bar", "brewery", "distillery", "winery", "cafe", "coffee",
+      ]).has(p.category);
+      const hasDogEvidence = /\b(?:dog|pet)[ -]?friendly\b/i.test(reviewedDecisionEvidence);
+      const hasPatioEvidence = /\b(?:patio|outdoor seating|terrace)\b/i.test(reviewedDecisionEvidence);
+      if (!isHospitality || !hasDogEvidence || !hasPatioEvidence) continue;
+    }
     const iv = intent
       ? intentScore(
           p.category,
@@ -765,7 +828,7 @@ export function search(
     }
   }
 
-  if (!options.onlyPlaces && !shortIntent) for (const e of eventPool) {
+  if (!options.onlyPlaces && !shortIntent && !intent?.placesOnly && !dogFriendlyPatioIntent && !phoneChargingIntent) for (const e of eventPool) {
     if (options.eventMunicipality && e.municipality !== options.eventMunicipality) continue;
     if (options.eventFilter && !options.eventFilter(e)) continue;
     const s =
@@ -854,6 +917,8 @@ export function search(
   // substring pass already handles.
   if (
     !shortIntent &&
+    !phoneChargingIntent &&
+    !dogFriendlyPatioIntent &&
     !options.onlyPlaces &&
     !options.placeFilter &&
     query.trim().length >= 4
@@ -972,6 +1037,49 @@ export type QualifiedSearchMeta = {
   fallbackReason: "outside-county" | "location-unavailable" | null;
 };
 
+/** A town named in the query is an explicit destination, not a weak keyword.
+ * Bare Frederick stays ambiguous unless the reader says Frederick City. A
+ * town name by itself remains a normal municipality search rather than being
+ * consumed as an empty scope. */
+function namedMunicipalityScope(query: string): Municipality | null {
+  for (const municipality of MUNICIPALITIES) {
+    const names = municipality.slug === "frederick"
+      ? ["frederick city"]
+      : [municipality.name, municipality.slug.replace(/-/g, " ")];
+    for (const name of names) {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const pattern = new RegExp(`\\b${escaped}\\b`, "i");
+      if (!pattern.test(query)) continue;
+      const remainder = query
+        .replace(pattern, " ")
+        .replace(/\b(?:in|near|around|by)\b/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (normalize(remainder).length === 0 && !detectEventIntent(remainder)) {
+        return null;
+      }
+      return municipality;
+    }
+  }
+  return null;
+}
+
+function withoutMunicipalityScope(query: string, municipality: Municipality | null): string {
+  if (!municipality) return query;
+  const names = municipality.slug === "frederick"
+    ? ["frederick city"]
+    : [municipality.name, municipality.slug.replace(/-/g, " ")];
+  let result = query;
+  for (const name of new Set(names)) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    result = result.replace(new RegExp(`\\b${escaped}\\b`, "ig"), " ");
+  }
+  return result
+    .replace(/\b(?:in|near|around|by)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function balanceRegionalHits(hits: SearchHit[], regions: readonly CountyRegion[], limit: number): SearchHit[] {
   if (regions.length < 2) return hits.slice(0, limit);
   const queues = new Map(regions.map((region) => [region, [] as SearchHit[]]));
@@ -1005,11 +1113,13 @@ export function qualifiedSearch(
   context: QualifiedSearchContext = {},
 ): { hits: SearchHit[]; meta: QualifiedSearchMeta } {
   const qualifiers = parseSearchQualifiers(query);
+  const namedMunicipality = namedMunicipalityScope(query);
+  const scopedQuery = withoutMunicipalityScope(query, namedMunicipality);
   if (!qualifiers.constrained) {
-    const rankingOrigin = context.origin ?? null;
-    const municipality = context.municipality ?? null;
+    const rankingOrigin = namedMunicipality ? null : context.origin ?? null;
+    const municipality = namedMunicipality?.slug ?? context.municipality ?? null;
     return {
-      hits: search(query, limit, eventPool, {
+      hits: search(scopedQuery, limit, eventPool, {
         origin: rankingOrigin,
         rankPlacesByDistance: Boolean(rankingOrigin),
         rankEventsByDistance: Boolean(rankingOrigin),
@@ -1021,7 +1131,7 @@ export function qualifiedSearch(
       }),
       meta: {
         qualifiers,
-        contextLabel: rankingOrigin ? context.contextLabel ?? null : null,
+        contextLabel: namedMunicipality?.name ?? (rankingOrigin ? context.contextLabel ?? null : null),
         nearMeApplied: false,
         fallbackReason: context.fallbackReason ?? null,
       },
@@ -1033,22 +1143,50 @@ export function qualifiedSearch(
   const regionalScope = qualifiers.regions.length > 0;
   const rankingOrigin = downtownApplied
     ? FREDERICK_CENTER
-    : context.origin ?? null;
-  const municipality = regionalScope ? null : downtownApplied ? "frederick" : context.municipality;
+    : namedMunicipality
+      ? null
+      : context.origin ?? null;
+  const municipality = regionalScope
+    ? null
+    : namedMunicipality?.slug ?? (downtownApplied ? "frederick" : context.municipality);
   const downtownRadiusMeters = 1_600;
-  const effectiveQuery = qualifiers.cleanedQuery;
+  const effectiveQuery = withoutMunicipalityScope(qualifiers.cleanedQuery, namedMunicipality);
   // Location language alone must not turn an event-intent query into a
   // place-only search. "Live music near me" should still return concerts;
   // the origin may rank genuine venue places without suppressing events.
   const preserveMixedEventResults = Boolean(
     detectEventIntent(query) && !qualifiers.categoryKey && !qualifiers.openNow,
   );
+  const semanticIntent = detectIntent(query);
+  const broadUmbrellaQuery =
+    (qualifiers.categoryKey === "food" && /^\s*(?:food|eat|dining|restaurants?)\s*$/i.test(effectiveQuery)) ||
+    (qualifiers.categoryKey === "drinks" && /^\s*(?:drinks?|beverages?)\s*$/i.test(effectiveQuery)) ||
+    (qualifiers.categoryKey === "shops" && /^\s*(?:shops?|shopping|stores?)\s*$/i.test(effectiveQuery));
+  const umbrellaEvidenceQuery = (() => {
+    if (qualifiers.categoryKey === "food") {
+      return effectiveQuery.replace(/\b(?:food|eat|dining|restaurants?)\b/gi, " ").replace(/\s+/g, " ").trim();
+    }
+    if (qualifiers.categoryKey === "drinks") {
+      return effectiveQuery.replace(/\b(?:drinks?|beverages?)\b/gi, " ").replace(/\s+/g, " ").trim();
+    }
+    if (qualifiers.categoryKey === "shops") {
+      return effectiveQuery.replace(/\b(?:shops?|shopping|stores?)\b/gi, " ").replace(/\s+/g, " ").trim();
+    }
+    return effectiveQuery;
+  })();
+  const requiresSpecificUmbrellaEvidence = Boolean(
+    !regionalScope &&
+    !semanticIntent &&
+    ["food", "drinks", "shops"].includes(qualifiers.categoryKey ?? "") &&
+    !broadUmbrellaQuery &&
+    umbrellaEvidenceQuery.length > 0,
+  );
   const includeMatchingPlaces = qualifiers.compoundIntent
     ? true
     : qualifiers.strictPlaceKind
       ? true
     : qualifiers.categoryKey
-    ? qualifiers.includeAllCategoryMatches || regionalScope || effectiveQuery.length === 0
+    ? qualifiers.includeAllCategoryMatches || regionalScope || broadUmbrellaQuery || effectiveQuery.length === 0
     : qualifiers.openNow ||
       // "Near me" ranks relevant records; it is not permission to fill the
       // list with every nearby business. Utility queries such as "trash can
@@ -1061,13 +1199,18 @@ export function qualifiedSearch(
         effectiveQuery.length === 0) ||
       effectiveQuery.length === 0;
   const requiresExplicitPlaceEvidence =
-    qualifiers.nearMe &&
-    !qualifiers.compoundIntent &&
-    !qualifiers.strictPlaceKind &&
-    !qualifiers.categoryKey &&
-    !qualifiers.openNow &&
-    effectiveQuery.length > 0 &&
-    !preserveMixedEventResults;
+    (
+      qualifiers.nearMe &&
+      !qualifiers.compoundIntent &&
+      !qualifiers.strictPlaceKind &&
+      !qualifiers.categoryKey &&
+      !qualifiers.openNow &&
+      effectiveQuery.length > 0 &&
+      !preserveMixedEventResults
+    ) || requiresSpecificUmbrellaEvidence;
+  const explicitEvidenceQuery = requiresSpecificUmbrellaEvidence
+    ? umbrellaEvidenceQuery
+    : effectiveQuery;
   // Pull a wider candidate set for multi-region requests, then interleave the
   // requested regions. Otherwise a data-rich town can consume the result cap
   // before a smaller town gets a fair chance to appear.
@@ -1090,7 +1233,7 @@ export function qualifiedSearch(
     placeFilter: (place) =>
       matchesSearchQualifiers(place, qualifiers, municipality) &&
       (!requiresExplicitPlaceEvidence ||
-        hasExplicitQueryEvidence(place, effectiveQuery)) &&
+        hasExplicitQueryEvidence(place, explicitEvidenceQuery)) &&
       (!downtownApplied || haversineMeters(FREDERICK_CENTER, place.geom) <= downtownRadiusMeters),
     now: context.now,
   });
@@ -1104,6 +1247,8 @@ export function qualifiedSearch(
       qualifiers,
       contextLabel: regionalScope
         ? countyRegionSummary(qualifiers.regions)
+        : namedMunicipality
+          ? namedMunicipality.name
         : downtownApplied
           ? "Downtown Frederick"
           : context.contextLabel ?? null,

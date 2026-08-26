@@ -45,6 +45,7 @@ import type {
   AskSource,
 } from "@/lib/ask/answer";
 import { haptic } from "@/lib/haptics";
+import { prefersReducedMotion } from "@/lib/motion";
 import { getHomeMuni, getInterests } from "@/lib/personalize";
 import {
   getScope,
@@ -1168,6 +1169,49 @@ function WorkspaceComposer({
   );
 }
 
+function AskWorkingPanel({ contextLabel }: { contextLabel: string }) {
+  return (
+    <div
+      data-ask-working-panel
+      className="ask-lock-on min-h-[168px] overflow-hidden rounded-[var(--app-radius-lg)] border"
+      style={{
+        borderColor: "var(--app-border-strong)",
+        background: "var(--app-bg-elevated-solid)",
+        boxShadow: "var(--app-edge), var(--app-hi)",
+      }}
+      aria-hidden
+    >
+      <div
+        className="ask-lock-on__field relative grid min-h-[112px] place-items-center overflow-hidden border-b px-4 py-5"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <span className="ask-lock-on__ring ask-lock-on__ring--outer" />
+        <span className="ask-lock-on__ring ask-lock-on__ring--inner" />
+        <AskComposerMark />
+        <span
+          className="absolute left-3 top-3 font-mono text-[9px] font-semibold uppercase tracking-[0.12em]"
+          style={{ color: "var(--app-brand-press)" }}
+        >
+          Local check
+        </span>
+        <span
+          className="absolute right-3 top-3 max-w-[45%] truncate text-right font-mono text-[9px]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          {contextLabel}
+        </span>
+      </div>
+      <div className="flex min-h-14 items-center gap-2.5 px-3.5 py-3 text-[12px] font-semibold">
+        <span
+          className="ask-lock-on__beacon h-2 w-2 shrink-0 rounded-full"
+          style={{ background: "var(--app-brand)" }}
+        />
+        <span style={{ color: "var(--app-ink-2)" }}>{LOADING_MESSAGE}</span>
+      </div>
+    </div>
+  );
+}
+
 type AskFrederickProps = {
   hideLabel?: boolean;
   initialQuery?: string;
@@ -1279,7 +1323,7 @@ export default function AskFrederick({
     const frame = window.requestAnimationFrame(() => {
       areaChooserRef.current?.focus({ preventScroll: true });
       areaChooserRef.current?.scrollIntoView({
-        behavior: "smooth",
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
         block: "nearest",
       });
     });
@@ -1311,7 +1355,7 @@ export default function AskFrederick({
     if (!(node instanceof HTMLTextAreaElement)) return;
     node.style.height = "auto";
     const minHeight = 44;
-    const maxHeight = res ? 96 : 120;
+    const maxHeight = 120;
     const nextHeight = Math.min(Math.max(node.scrollHeight, minHeight), maxHeight);
     node.style.height = `${nextHeight}px`;
     node.style.overflowY = node.scrollHeight > maxHeight ? "auto" : "hidden";
@@ -1349,7 +1393,7 @@ export default function AskFrederick({
     const frame = window.requestAnimationFrame(() => {
       answerHeadingRef.current?.focus({ preventScroll: true });
       answerHeadingRef.current?.scrollIntoView({
-        behavior: "smooth",
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
         block: "nearest",
       });
     });
@@ -1886,7 +1930,7 @@ export default function AskFrederick({
         <header className="mb-3 max-w-[660px]">
           <h1
             id="ask-radius-heading"
-            className={`${res ? "text-[25px] sm:text-[28px]" : "text-[28px] sm:text-[32px]"} font-editorial leading-none tracking-[-0.025em]`}
+            className="font-editorial text-[28px] leading-none tracking-[-0.025em] sm:text-[32px]"
             style={{ color: "var(--app-ink)" }}
           >
             Ask Radius.
@@ -1945,7 +1989,7 @@ export default function AskFrederick({
                 contextLabel={contextLabel}
                 expanded={showAreaChooser}
                 loading={loading}
-                compact={Boolean(res)}
+                compact={false}
                 query={q}
                 onQueryChange={setQ}
                 onSubmit={() => void ask(q)}
@@ -2056,7 +2100,7 @@ export default function AskFrederick({
         />
       </Sheet>
 
-      {workspace && !res && !loading && !nearbyGateQuery ? (
+      {workspace && !res && !nearbyGateQuery ? (
         <section
           aria-labelledby="ask-start-heading"
           className="mt-3"
@@ -2068,41 +2112,54 @@ export default function AskFrederick({
               className="text-[11px] font-semibold uppercase tracking-[0.08em]"
               style={{ color: "var(--app-ink-3)" }}
             >
-              Questions to try
+              {loading ? "Checking Frederick" : "Questions to try"}
             </h2>
-            <Link
-              href="/compass"
-              className="tap-44 inline-flex min-h-11 items-center gap-1 px-1 text-[10.5px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
-            >
-              Browse tools
-              <ArrowRight className="h-3 w-3" aria-hidden />
-            </Link>
-          </div>
-          <div
-            className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] sm:grid sm:grid-cols-3"
-            style={{ borderColor: "var(--app-border)" }}
-            role="group"
-            aria-label="Questions to try"
-          >
-            {WORKSPACE_ASKS.map((prompt, index) => (
-              <button
-                key={prompt.label}
-                type="button"
-                onClick={() => runIntent(prompt.query)}
-                className="tap-44 flex min-h-14 w-full items-center justify-between gap-3 border-b px-3.5 text-left text-[12px] font-semibold transition last:border-b-0 hover:bg-[var(--app-bg-sunken)] active:bg-[var(--app-bg-sunken)] sm:min-h-[60px] sm:border-b-0 sm:border-r sm:last:border-r-0"
-                style={{
-                  borderColor: "var(--app-border)",
-                  background:
-                    index === 0 ? "var(--app-bg-sunken)" : "transparent",
-                  color: "var(--app-ink-2)",
-                }}
+            {!loading ? (
+              <Link
+                href="/compass"
+                className="tap-44 inline-flex min-h-11 items-center gap-1 px-1 text-[10.5px] font-semibold"
+                style={{ color: "var(--app-brand-press)" }}
               >
-                <span>{prompt.label}</span>
-                <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              </button>
-            ))}
+                Browse tools
+                <ArrowRight className="h-3 w-3" aria-hidden />
+              </Link>
+            ) : (
+              <span
+                className="max-w-[45%] truncate text-right font-mono text-[9.5px]"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                {contextLabel}
+              </span>
+            )}
           </div>
+          {loading ? (
+            <AskWorkingPanel contextLabel={contextLabel} />
+          ) : (
+            <div
+              className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] sm:grid sm:grid-cols-3"
+              style={{ borderColor: "var(--app-border)" }}
+              role="group"
+              aria-label="Questions to try"
+            >
+              {WORKSPACE_ASKS.map((prompt, index) => (
+                <button
+                  key={prompt.label}
+                  type="button"
+                  onClick={() => runIntent(prompt.query)}
+                  className="tap-44 flex min-h-14 w-full items-center justify-between gap-3 border-b px-3.5 text-left text-[12px] font-semibold transition last:border-b-0 hover:bg-[var(--app-bg-sunken)] active:bg-[var(--app-bg-sunken)] sm:min-h-[60px] sm:border-b-0 sm:border-r sm:last:border-r-0"
+                  style={{
+                    borderColor: "var(--app-border)",
+                    background:
+                      index === 0 ? "var(--app-bg-sunken)" : "transparent",
+                    color: "var(--app-ink-2)",
+                  }}
+                >
+                  <span>{prompt.label}</span>
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                </button>
+              ))}
+            </div>
+          )}
         </section>
       ) : null}
 
@@ -2110,7 +2167,7 @@ export default function AskFrederick({
         <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
           {loading ? "Radius is working on your question." : ""}
         </span>
-        {loading ? (
+        {loading && !workspace ? (
           <div
             className={
               workspace
@@ -2137,8 +2194,9 @@ export default function AskFrederick({
 
       {res && responsePresentation ? (
         <div
+          key={`${res.status}:${res.answer?.slice(0, 80) ?? "answer"}`}
           inert={loading ? true : undefined}
-          className={`${workspace ? "mt-4" : "mt-3 border-t pt-3"} transition-opacity ${loading ? "opacity-55" : ""}`}
+          className={`ask-answer-arrival ${workspace ? "mt-4" : "mt-3 border-t pt-3"} transition-opacity ${loading ? "opacity-80" : ""}`}
           style={!workspace ? { borderColor: "var(--app-border)" } : undefined}
         >
           <section

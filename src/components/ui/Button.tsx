@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type {
+  AriaAttributes,
   CSSProperties,
   MouseEventHandler,
   ReactNode,
@@ -74,6 +75,7 @@ type ButtonAsButton = Common & {
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
   loading?: boolean;
+  "aria-pressed"?: AriaAttributes["aria-pressed"];
   onClick?: MouseEventHandler<HTMLButtonElement>;
 };
 
@@ -124,6 +126,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
       disabled={(props.disabled ?? false) || loading}
       aria-busy={loading || undefined}
       aria-label={props["aria-label"]}
+      aria-pressed={props["aria-pressed"]}
       data-decision-action={props["data-decision-action"]}
       onClick={props.onClick}
       className={`${cls} disabled:pointer-events-none disabled:opacity-50`}

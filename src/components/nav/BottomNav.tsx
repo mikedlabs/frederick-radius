@@ -6,6 +6,19 @@ import { useEffect, useState } from "react";
 import { haptic } from "@/lib/haptics";
 import { TABS, tabIndexForPath } from "./tabs";
 
+type NavigationGesture = Pick<
+  MouseEvent,
+  "altKey" | "button" | "ctrlKey" | "metaKey" | "shiftKey"
+>;
+
+export function isPlainPrimaryNavigation(event: NavigationGesture): boolean {
+  return event.button === 0
+    && !event.altKey
+    && !event.ctrlKey
+    && !event.metaKey
+    && !event.shiftKey;
+}
+
 export function shouldShowBottomNav(
   _pathname: string,
   contextualActionBarPresent = false,
@@ -74,7 +87,10 @@ export default function BottomNav() {
               const active = isRealActive || pendingIdx === idx;
 
               const handleActivate = (event: React.MouseEvent<HTMLAnchorElement>) => {
-                if (isAtDestination) return;
+                if (isAtDestination || !isPlainPrimaryNavigation(event.nativeEvent)) {
+                  setPendingIdx(null);
+                  return;
+                }
                 setPendingIdx(idx);
                 haptic("light");
                 if (typeof document !== "undefined" && "startViewTransition" in document) {
@@ -91,8 +107,20 @@ export default function BottomNav() {
                   <Link
                     href={href}
                     prefetch={prefetch}
-                    onPointerDown={() => {
-                      if (!isAtDestination) setPendingIdx(idx);
+                    onPointerDown={(event) => {
+                      if (
+                        !isAtDestination
+                        && isPlainPrimaryNavigation(event.nativeEvent)
+                      ) {
+                        setPendingIdx(idx);
+                      }
+                    }}
+                    onPointerCancel={() => setPendingIdx(null)}
+                    onPointerLeave={(event) => {
+                      // Pointer cancellation is not guaranteed for a mouse
+                      // drag that leaves the link. Clear the optimistic mark
+                      // without affecting an ordinary post-click hover exit.
+                      if (event.buttons !== 0) setPendingIdx(null);
                     }}
                     onClick={handleActivate}
                     aria-current={isAtDestination ? "page" : undefined}

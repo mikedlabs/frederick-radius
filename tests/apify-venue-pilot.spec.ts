@@ -142,7 +142,7 @@ describe("Apify venue pilot runs", () => {
 
     expect(fetchPage).toHaveBeenCalledOnce();
     expect(fetchPage).toHaveBeenCalledWith(
-      "https://weinbergcenter.org/performances/",
+      "https://weinbergcenter.org/performances/?venue=weinberg-center",
       expect.objectContaining({
         timeoutMs: 240_000,
         maxTotalChargeUsd: 0.25,

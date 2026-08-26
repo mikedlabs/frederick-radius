@@ -12,6 +12,41 @@ const places = publicPlaces();
 const bySlug = new Map(places.map((place) => [place.slug, place]));
 
 describe("curated place inventory regressions", () => {
+  const officialHardwareStores = [
+    "home-depot-west-frederick",
+    "home-depot-frederick",
+    "lowes-frederick-buckeystown-pike",
+    "lowes-north-frederick",
+    "tractor-supply-frederick",
+    "tractor-supply-jefferson",
+  ] as const;
+
+  it("publishes recently checked official hardware-store hours without bypassing freshness", () => {
+    const insideWindow = new Date("2026-08-22T20:00:00.000Z");
+    const outsideWindow = new Date("2026-08-30T00:00:01.000Z");
+
+    for (const slug of officialHardwareStores) {
+      const source = bySlug.get(slug);
+      expect(source, slug).toMatchObject({
+        category: "services",
+        subcategories: expect.arrayContaining(["hardware"]),
+        source: "manual",
+        hours_verified: true,
+        hours_updated_at: "2026-08-22T00:00:00.000Z",
+      });
+      expect(source?.source_url, slug).toMatch(/^https:\/\//);
+
+      const fresh = getPlaceBySlug(slug, undefined, insideWindow);
+      expect(fresh?.hours, slug).toBeDefined();
+      expect(fresh?.hours_verified, slug).toBe(true);
+
+      const stale = getPlaceBySlug(slug, undefined, outsideWindow);
+      expect(stale?.hours, slug).toBeUndefined();
+      expect(stale?.hours_verified, slug).toBe(false);
+      expect(stale?.open_status.state, slug).toBe("unknown");
+    }
+  });
+
   it("includes both current Frederick Giant Eagle grocery stores", () => {
     expect(bySlug.get("giant-eagle-west-patrick-frederick")).toMatchObject({
       name: "Giant Eagle - West Patrick Street",

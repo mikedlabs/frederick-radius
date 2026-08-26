@@ -18,6 +18,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { field_amenities } from "@/lib/db/schema";
 import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
+import { resolveFrederickMunicipality } from "@/lib/location";
 import { withDeadlineFallback } from "@/lib/promise-deadline";
 
 export const FIELD_AMENITIES_READ_DEADLINE_MS = 1_500;
@@ -77,13 +78,21 @@ export async function getFieldAmenities(): Promise<Amenity[]> {
       // The note (collector's free-text, e.g. what an "Other" point is)
       // is the most useful detail; fall back to the stored detail.
       const detail = (r.note ?? r.detail ?? undefined) || undefined;
+      // Early field walks predate the municipality column, so production has
+      // approved points with coordinates but no town slug. Resolve those rows
+      // at read time rather than mislabelling every one as generic County data;
+      // this keeps Ask's town filter and the map's place context useful without
+      // mutating the original field observation.
+      const municipality = r.municipality?.trim()
+        || resolveFrederickMunicipality({ lng: r.lng, lat: r.lat })?.municipality.slug
+        || "frederick-county";
       out.push({
         // Prefix so a field id can never collide with an OSM/curated id.
         id: `field:${r.id}`,
         kind,
         name: r.name?.trim() || defaultName(kind),
         detail,
-        municipality: r.municipality ?? "Frederick County",
+        municipality,
         lng: r.lng,
         lat: r.lat,
         photo: r.photo_url ?? undefined,

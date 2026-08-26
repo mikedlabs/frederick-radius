@@ -10,6 +10,7 @@ import type { Map as GLMap } from "mapbox-gl";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import type { Amenity } from "@/lib/loaders/amenities";
 import type { LngLat } from "@/lib/geo";
+import { mapCameraDuration } from "@/lib/motion";
 
 export const OSM_CACHE_KEY = "fr:osm-frederick:v1";
 export const OSM_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -187,11 +188,13 @@ export function smoothFocus(
   const cur = map.getZoom();
   const want = Math.max(cur, opts?.minZoom ?? 14.5);
   const zoom = Math.min(want, cur + (opts?.maxStep ?? 2.2));
-  // The CSS reduced-motion gate can't reach the map's JS camera — honor it here
-  // so the glide becomes an instant jump for viewers who asked for less motion.
-  const reduce = typeof window !== "undefined"
-    && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-  map.easeTo({ center, zoom, duration: reduce ? 0 : 900, easing: CAM_EASE, essential: true });
+  map.easeTo({
+    center,
+    zoom,
+    duration: mapCameraDuration("focus"),
+    easing: CAM_EASE,
+    essential: true,
+  });
 }
 
 export function isTrustedOsm(p: OsmPlace): boolean {
@@ -216,7 +219,7 @@ export function loadCachedOsm(): OsmPlace[] | null {
 }
 
 export function saveCachedOsm(data: OsmPlace[]) {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || data.length === 0) return;
   try {
     window.sessionStorage.setItem(
       OSM_CACHE_KEY,

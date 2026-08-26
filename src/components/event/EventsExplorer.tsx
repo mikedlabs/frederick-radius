@@ -9,7 +9,6 @@ import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
 import EventsBoardDock, { type ViewKey, type EventSortKey } from "@/components/event/EventsBoardDock";
-import EventsIntentRail from "@/components/event/EventsIntentRail";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
@@ -20,9 +19,7 @@ import {
 } from "@/lib/events/browsePayload";
 import {
   eventIntentOf,
-  countByIntent,
   eventDaypart,
-  intentForCategory,
   isForKids,
   isRecurringEvent,
   INTENT_BY_ID,
@@ -284,6 +281,22 @@ export function eventsForDefaultList({
     : events;
 }
 
+export function eventsBrowseRequest(forceRefresh = false): {
+  url: string;
+  init: RequestInit;
+} {
+  return {
+    // The explicit refresh URL has its own cache key, so it cannot receive a
+    // degraded response still resident under the normal browse URL. The API
+    // marks this response no-store as the second half of the contract.
+    url: forceRefresh ? "/api/events/browse?refresh=1" : "/api/events/browse",
+    init: {
+      headers: { Accept: "application/json" },
+      ...(forceRefresh ? { cache: "no-store" as const } : {}),
+    },
+  };
+}
+
 // Facet <-> shared ViewState. Search text is intentionally excluded: a
 // lens is a structural view, not an ephemeral query, and the confirmed
 // ViewState shape has no free-text field. "all" and the forward-compat
@@ -529,15 +542,14 @@ export default function EventsExplorer({
     if (urlReady) setEventsTown(town);
   }, [town, urlReady]);
 
-  const ensureAllEvents = useCallback((): Promise<void> => {
+  const ensureAllEvents = useCallback((forceRefresh = false): Promise<void> => {
     if (dataComplete) return Promise.resolve();
     if (requestRef.current) return requestRef.current;
 
     setLoadingAll(true);
     setLoadError(null);
-    const request = fetch("/api/events/browse", {
-      headers: { Accept: "application/json" },
-    })
+    const browseRequest = eventsBrowseRequest(forceRefresh);
+    const request = fetch(browseRequest.url, browseRequest.init)
       .then(async (response) => {
         if (!response.ok) throw new Error(`Events request failed (${response.status})`);
         const payload = await response.json() as BrowseResponse;
@@ -595,9 +607,8 @@ export default function EventsExplorer({
   );
 
   // Stage 1 — everything EXCEPT the category dimension (intent / sub /
-  // exact cat). The intent rail's badges count against THIS set, so a
-  // glance reads "how many music events match my current time + town +
-  // free filters," not a static all-time tally.
+  // exact cat). The canonical filter sheet applies those choices in stage 2
+  // so they compose cleanly with time, town, access, and search.
   const baseFiltered = useMemo(() => {
     const term = q.trim().toLowerCase();
     return decisionEventPool.filter((e) => {
@@ -642,22 +653,6 @@ export default function EventsExplorer({
       return true;
     });
   }, [decisionEventPool, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
-
-  // Rail badges — per-intent counts over the base set (post time/town/free,
-  // pre intent/sub) so picking an intent doesn't zero out the other badges.
-  const intentCounts = useMemo(
-    () => !dataComplete && !contentFilterActive ? summary.intentCounts : countByIntent(baseFiltered),
-    [baseFiltered, contentFilterActive, dataComplete, summary.intentCounts],
-  );
-  // Exact-category deep links predate the intent rail. Reflect that narrower
-  // selection in the rail, then clear it when the user chooses a different
-  // interest so the two taxonomies never intersect into a false empty state.
-  const railIntent = intent ?? (cat ? intentForCategory(cat) : null);
-  const railSub =
-    sub ??
-    (cat && INTENT_BY_ID[intentForCategory(cat)].subs?.some((item) => item.slug === cat)
-      ? cat
-      : null);
 
   // Stage 2 — the category dimension (intent roll-up + sub + the legacy
   // exact-cat from the Type drawer / deep-links), then the chosen sort.
@@ -1058,82 +1053,41 @@ export default function EventsExplorer({
         </div>
       )}
 
-      {/* The intent taxonomy used to live one tap deep in the What pane,
-          which made a smart filter system look like another text form. This
-          compact visual rail exposes the useful first choice — what sounds
-          good — while granular categories stay tucked in Filters. */}
-      <section
-        aria-labelledby="events-intent-heading"
-        className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-sunken)] p-3"
-        style={{
-          borderColor: "var(--app-border)",
-          boxShadow: "var(--app-edge), var(--app-hi)",
-        }}
-      >
-        <div className="mb-2 flex items-baseline justify-between gap-3">
-          <h2
-            id="events-intent-heading"
-            className="font-serif text-[18px] font-semibold tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            Browse by interest
-          </h2>
-          {(intent || cat) && (
-            <button
-              type="button"
-              onClick={() => {
-                setCat(null);
-                setIntent(null);
-                setSub(null);
-              }}
-              className="tap-44-y text-[11px] font-semibold underline"
-              style={{ color: "var(--app-cool)" }}
-            >
-              Show everything
-            </button>
-          )}
-        </div>
-        <EventsIntentRail
-          activeIntent={railIntent}
-          activeSub={railSub}
-          counts={intentCounts}
-          onIntent={(nextIntent) => {
-            setCat(null);
-            setIntent(nextIntent);
-          }}
-          onSub={(nextSub) => {
-            setCat(null);
-            setSub(nextSub);
-          }}
-        />
-      </section>
-
       {currentSourceHealth.degraded && (
-        <div
-          role="status"
-          className="flex items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-3 py-2 text-[12px] leading-relaxed"
+        <details
+          className="group rounded-[var(--app-radius-md)] border px-3 text-[12px] leading-relaxed"
           style={{
             borderColor: "color-mix(in srgb, var(--app-warning) 35%, var(--app-border))",
             background: "color-mix(in srgb, var(--app-warning) 7%, var(--app-bg-elevated))",
             color: "var(--app-ink-2)",
           }}
         >
-          <span>
-            {!dataComplete
-              ? "Some live calendars didn’t answer. Radius kept the last available events instead of treating missing feeds as empty."
-              : "Some live calendars didn’t answer. This board only includes events Radius could confirm."}
-          </span>
-          {!dataComplete && (
-            <button
-              type="button"
-              onClick={() => void ensureAllEvents()}
-              className="tap-44-y inline-flex min-h-11 shrink-0 items-center font-semibold underline"
-              style={{ color: "var(--app-cool)" }}
-            >
-              Check again
-            </button>
-          )}
-        </div>
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 font-semibold">
+            <span>Why these results are partial</span>
+            <ChevronDown
+              className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
+              strokeWidth={2.2}
+              aria-hidden
+            />
+          </summary>
+          <div className="flex items-start justify-between gap-3 border-t py-3" style={{ borderColor: "var(--app-border)" }}>
+            <span>
+              {!dataComplete
+                ? "Some live calendars did not answer. Radius kept the last available events instead of treating missing feeds as empty."
+                : "Some live calendars did not answer. This board only includes events Radius could confirm."}
+            </span>
+            {!dataComplete && (
+              <button
+                type="button"
+                onClick={() => void ensureAllEvents(true)}
+                className="tap-44-y inline-flex min-h-11 shrink-0 items-center font-semibold underline"
+                style={{ color: "var(--app-cool)" }}
+              >
+                Check again
+              </button>
+            )}
+          </div>
+        </details>
       )}
 
       {loadingAll && (
@@ -1154,7 +1108,7 @@ export default function EventsExplorer({
           <span>{loadError}</span>
           <button
             type="button"
-            onClick={() => void ensureAllEvents()}
+            onClick={() => void ensureAllEvents(true)}
             className="tap-44-y inline-flex min-h-11 shrink-0 items-center font-semibold underline"
             style={{ color: "var(--app-cool)" }}
           >

@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   getAirQuality: vi.fn(),
   getFrederickOutagesResult: vi.fn(),
   getCurrentSituationSnapshot: vi.fn(),
+  getRoadIntelligenceSnapshot: vi.fn(),
   selectChartIncidentsResult: vi.fn(),
   getFcpsAlertsResult: vi.fn(),
   getCivicPressReleasesResult: vi.fn(),
@@ -37,6 +38,9 @@ vi.mock("@/lib/integrations/firstenergy", async (importOriginal) => {
 });
 vi.mock("@/lib/live/currentSituation", () => ({
   getCurrentSituationSnapshot: mocks.getCurrentSituationSnapshot,
+}));
+vi.mock("@/lib/live/roadIntelligence", () => ({
+  getRoadIntelligenceSnapshot: mocks.getRoadIntelligenceSnapshot,
 }));
 vi.mock("@/lib/live/currentSituationModel", async (importOriginal) => {
   const actual =
@@ -113,6 +117,7 @@ describe("/api/ask location policy", () => {
       },
     });
     mocks.getCurrentSituationSnapshot.mockResolvedValue({});
+    mocks.getRoadIntelligenceSnapshot.mockResolvedValue(null);
     mocks.selectChartIncidentsResult.mockReturnValue({
       available: true,
       data: [],
@@ -324,6 +329,99 @@ describe("/api/ask location policy", () => {
       eyebrow: "MDOT CHART · Live traffic",
     });
     expect(body.sources[0].href).not.toContain("/places/");
+  });
+
+  it("routes a natural road-problems question through live road intelligence", async () => {
+    const observedAt = new Date().toISOString();
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        query: "Are there any road problems right now?",
+        lat: 39.41437,
+        lng: -77.41062,
+      },
+    });
+    mocks.selectChartIncidentsResult.mockReturnValue({
+      available: true,
+      data: [],
+    });
+    mocks.getRoadIntelligenceSnapshot.mockResolvedValue({
+      schemaVersion: 1,
+      generatedAt: observedAt,
+      sources: {
+        workZones: {
+          data: [],
+          available: true,
+          asOf: observedAt,
+          sourceUrl: "https://example.com/wzdx",
+        },
+        speeds: { data: [], available: true, asOf: observedAt },
+        travelTimes: { data: [], available: true, asOf: observedAt },
+        messages: { data: [], available: true, asOf: observedAt },
+        weatherStations: { data: [], available: true, asOf: observedAt },
+        roadConditions: { data: [], available: true, asOf: observedAt },
+        snowEmergency: { data: [], available: true, asOf: observedAt },
+      },
+      attention: [{
+        id: "highway-message:us-15-crash",
+        kind: "highway-message",
+        priority: 80,
+        severity: "warning",
+        title: "Crash ahead on US 15",
+        detail: "An official highway sign is warning drivers about the crash.",
+        scope: "US 15 near Frederick",
+        sourceLabel: "MDOT CHART message sign",
+        sourceUrl: "https://chart.maryland.gov/",
+        observedAt,
+      }],
+      summary: {
+        status: "active",
+        coverage: "complete",
+        activeCount: 1,
+        unavailable: [],
+      },
+    });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(mocks.getCurrentSituationSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.getRoadIntelligenceSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
+    expect(body.answer).toContain("Crash ahead on US 15");
+    expect(body.sources[0]).toMatchObject({
+      slug: "road-signal-highway-message:us-15-crash",
+      category: "traffic",
+      confidence: "high",
+    });
+    expect(body.intent).toMatchObject({ kind: "civic" });
+    expect(body.presentation.layout).toBe("civic");
+  });
+
+  it.each([
+    "What road construction projects are planned?",
+    "Is the Route 15 interchange plan open for public comment?",
+    "What are the problems with the Route 15 interchange design?",
+  ])("does not send a road planning question to live traffic: %s", async (query) => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: { query },
+    });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(mocks.getCurrentSituationSnapshot).not.toHaveBeenCalled();
+    expect(mocks.getRoadIntelligenceSnapshot).not.toHaveBeenCalled();
+    expect(mocks.selectChartIncidentsResult).not.toHaveBeenCalled();
+    expect(mocks.askFrederick).toHaveBeenCalledWith(
+      query,
+      expect.objectContaining({
+        contextLabel: "Whole county",
+        canShowDistance: false,
+      }),
+      { taste: undefined },
+    );
   });
 
   it("answers an FCPS status question from the official operations feed", async () => {
