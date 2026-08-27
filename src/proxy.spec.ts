@@ -66,4 +66,132 @@ describe("public access proxy", () => {
     expect(response.headers.get("www-authenticate")).toContain("Basic");
     expect(mocks.updateSession).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ["Origin", { origin: "https://attacker.example" }],
+    ["Fetch Metadata", { "sec-fetch-site": "cross-site" }],
+    [
+      "both browser signals",
+      {
+        origin: "https://attacker.example",
+        "sec-fetch-site": "cross-site",
+      },
+    ],
+  ])(
+    "rejects a cross-origin simple POST identified by %s after valid Basic authentication",
+    async (_signal, browserHeaders) => {
+      process.env.ADMIN_USER = "owner";
+      process.env.ADMIN_PASSWORD = "correct horse";
+      const response = await proxy(
+        new NextRequest("https://frederickradius.app/admin/api/owner-alerts", {
+          method: "POST",
+          headers: {
+            authorization: `Basic ${btoa("owner:correct horse")}`,
+            "content-type": "text/plain",
+            ...browserHeaders,
+          },
+          body: JSON.stringify({ enable: true }),
+        }),
+      );
+
+      expect(response.status).toBe(403);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(mocks.updateSession).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps authentication failure ahead of the admin origin check", async () => {
+    process.env.ADMIN_USER = "owner";
+    process.env.ADMIN_PASSWORD = "correct horse";
+    const response = await proxy(
+      new NextRequest("https://frederickradius.app/admin/api/owner-alerts", {
+        method: "POST",
+        headers: {
+          origin: "https://attacker.example",
+          "sec-fetch-site": "cross-site",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toContain("Basic");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("allows a same-origin authenticated admin POST", async () => {
+    process.env.ADMIN_USER = "owner";
+    process.env.ADMIN_PASSWORD = "correct horse";
+    const response = await proxy(
+      new NextRequest("https://frederickradius.app/admin/api/owner-alerts", {
+        method: "POST",
+        headers: {
+          authorization: `Basic ${btoa("owner:correct horse")}`,
+          "content-type": "application/json",
+          origin: "https://frederickradius.app",
+          "sec-fetch-site": "same-origin",
+        },
+        body: JSON.stringify({ enable: true }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(mocks.updateSession).not.toHaveBeenCalled();
+  });
+
+  it("rejects an authenticated unsafe request without origin evidence", async () => {
+    process.env.ADMIN_USER = "owner";
+    process.env.ADMIN_PASSWORD = "correct horse";
+    const response = await proxy(
+      new NextRequest("https://frederickradius.app/admin/api/send-invites", {
+        method: "POST",
+        headers: {
+          authorization: `Basic ${btoa("owner:correct horse")}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ probe: "canary@example.com" }),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("allows authenticated tooling that declares the canonical Origin", async () => {
+    process.env.ADMIN_USER = "owner";
+    process.env.ADMIN_PASSWORD = "correct horse";
+    const response = await proxy(
+      new NextRequest("https://frederickradius.app/admin/api/send-invites", {
+        method: "POST",
+        headers: {
+          authorization: `Basic ${btoa("owner:correct horse")}`,
+          "content-type": "application/json",
+          origin: "https://frederickradius.app",
+        },
+        body: JSON.stringify({ probe: "canary@example.com" }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("accepts a same-origin Referer when Origin is unavailable", async () => {
+    process.env.ADMIN_USER = "owner";
+    process.env.ADMIN_PASSWORD = "correct horse";
+    const response = await proxy(
+      new NextRequest("https://frederickradius.app/admin/api/send-invites", {
+        method: "POST",
+        headers: {
+          authorization: `Basic ${btoa("owner:correct horse")}`,
+          "content-type": "application/json",
+          referer: "https://frederickradius.app/admin/beta-emails",
+        },
+        body: JSON.stringify({ probe: "canary@example.com" }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
 });
