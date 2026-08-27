@@ -257,6 +257,52 @@ async function run() {
     bad(`/api/health readiness check failed: ${error.message}`);
   }
 
+  // Today and Events read the same durable archive, but Today keeps a shorter
+  // server-rendering deadline. Prove that the compact recovery endpoint still
+  // has a valid contract and that a non-empty shortlist cannot disappear from
+  // the page without either a rendered link or the explicit recovery mount.
+  try {
+    const result = await request("/api/today/events", {
+      accept: "application/json",
+    });
+    assertNoBetaRedirect("/api/today/events", result);
+    check(
+      result.status === 200,
+      "/api/today/events is available",
+      `/api/today/events returned ${result.status}`,
+    );
+    let payload = null;
+    try {
+      payload = JSON.parse(result.body);
+    } catch {
+      bad("/api/today/events did not return valid JSON");
+    }
+    if (payload) {
+      const events = Array.isArray(payload.events) ? payload.events : null;
+      check(
+        events !== null && typeof payload.partial === "boolean",
+        "Today event recovery returns its documented JSON shape",
+        "Today event recovery returned an invalid JSON shape",
+      );
+      if (events?.length > 0) {
+        const todayHtml = checkedPages.get("/today")?.body || "";
+        const rendered = new Set(eventDetailPathsFromHtml(todayHtml, BASE));
+        const hasRecovery = todayHtml.includes(
+          'data-today-event-recovery="true"',
+        );
+        check(
+          rendered.size > 0 || hasRecovery,
+          rendered.size > 0
+            ? "Today server-renders an event pick"
+            : "Today mounts its runtime event recovery",
+          "Today dropped every current event pick and has no runtime recovery",
+        );
+      }
+    }
+  } catch (error) {
+    bad(`/api/today/events contract check failed: ${error.message}`);
+  }
+
   // Installed-app contract: discover the linked manifest, verify its launch
   // target, then prove that target is the same healthy public Today route.
   try {
