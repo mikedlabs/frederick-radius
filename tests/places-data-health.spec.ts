@@ -1,5 +1,8 @@
+import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
 import places from "@/data/places-client.json" with { type: "json" };
+import clientHours from "@/data/places-client-hours.json" with { type: "json" };
+import hoursRefresh from "@/data/places-hours-refresh.json" with { type: "json" };
 import { PLACES as SOURCE_PLACES } from "@/data/places";
 import overrides from "@/data/places-overrides.json" with { type: "json" };
 import fieldNotes from "@/data/field-notes.json" with { type: "json" };
@@ -38,8 +41,27 @@ type Place = {
 };
 
 const PLACES = places as unknown as Place[];
+const CLIENT_HOURS = clientHours as unknown[];
+const HOURS_REFRESH = hoursRefresh as unknown as {
+  _meta?: { fresh_schedule_rows?: number };
+  [slug: string]: unknown;
+};
 const slugs = new Set(PLACES.map((p) => p.slug));
 const sourceSlugs = new Set(SOURCE_PLACES.map((p) => p.slug));
+const coverageScorecard = readFileSync(
+  new URL("../docs/coverage-scorecard.md", import.meta.url),
+  "utf8",
+);
+const hoursRefreshReview = readFileSync(
+  new URL("../docs/hours-refresh-review.md", import.meta.url),
+  "utf8",
+);
+
+function capturedNumber(source: string, pattern: RegExp): number {
+  const match = source.match(pattern);
+  expect(match, `Missing generated-report metric: ${pattern}`).not.toBeNull();
+  return Number(match?.[1]);
+}
 
 // The 12 incorporated municipalities + Urbana (the canonical vocab). Anything
 // else silently drops from every municipality-keyed filter and town page.
@@ -181,6 +203,58 @@ describe("places-client data health", () => {
   it("does not publish a former occupant after a verified replacement takes the address", () => {
     expect(slugs.has("k-town-takeout")).toBe(true);
     expect(slugs.has("mackies-southern-bbq")).toBe(false);
+  });
+});
+
+describe("generated place report parity", () => {
+  it("keeps the coverage scorecard on the promoted client snapshot", () => {
+    const totalRow = coverageScorecard.match(
+      /\| \*\*Total\*\* \| \*\*(\d+)\*\* \| [^|]+ \| (\d+) \(/,
+    );
+    expect(totalRow, "Missing coverage scorecard total row").not.toBeNull();
+    expect(Number(totalRow?.[1])).toBe(PLACES.length);
+    expect(Number(totalRow?.[2])).toBe(CLIENT_HOURS.length);
+
+    const snapshotRows = Object.keys(HOURS_REFRESH).filter(
+      (key) => !key.startsWith("_"),
+    ).length;
+    expect(
+      capturedNumber(
+        coverageScorecard,
+        /\| Snapshot rows \| (\d+) \|/,
+      ),
+    ).toBe(snapshotRows);
+  });
+
+  it("keeps the hours review's after-column on the promoted artifacts", () => {
+    expect(
+      capturedNumber(
+        hoursRefreshReview,
+        /\| Public places \| \d+ \| (\d+) \|/,
+      ),
+    ).toBe(PLACES.length);
+    expect(
+      capturedNumber(
+        hoursRefreshReview,
+        /\| Public places with publishable verified hours \| \d+ \| (\d+) \|/,
+      ),
+    ).toBe(CLIENT_HOURS.length);
+
+    const snapshotRows = Object.keys(HOURS_REFRESH).filter(
+      (key) => !key.startsWith("_"),
+    ).length;
+    expect(
+      capturedNumber(
+        hoursRefreshReview,
+        /\| Hours snapshot rows \| \d+ \| (\d+) \|/,
+      ),
+    ).toBe(snapshotRows);
+    expect(
+      capturedNumber(
+        hoursRefreshReview,
+        /\| Fresh schedule rows in snapshot \| \d+ \| (\d+) \|/,
+      ),
+    ).toBe(HOURS_REFRESH._meta?.fresh_schedule_rows);
   });
 });
 
