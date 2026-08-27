@@ -192,6 +192,12 @@ describe("cleanVenueName", () => {
     expect(cleanVenueName("Brewer's Alley")).toBe("Brewer's Alley");
   });
 
+  it("repairs a civic address and room concatenated into the locality", () => {
+    expect(
+      cleanVenueName("140 W Patrick Street Conference Room CFrederick"),
+    ).toBe("140 W Patrick Street, Conference Room C, Frederick");
+  });
+
   it("nulls empty / missing", () => {
     expect(cleanVenueName("")).toBeNull();
     expect(cleanVenueName(null)).toBeNull();

@@ -76,6 +76,7 @@ import { loadRelatedEventSections } from "@/lib/loaders/eventRelated";
 import { eventHasTrustworthyEnd } from "@/lib/events/format";
 import { isEventEnded } from "@/lib/eventWhenLabel";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { nearestEventParking } from "@/lib/events/parking";
 
 function splitDescription(text: string, limit = 300): { preview: string; rest: string } {
   if (text.length <= limit) return { preview: text, rest: "" };
@@ -364,6 +365,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const moreUpcoming = related.moreUpcoming;
   const nearbyFood = nearby.food;
   const nearbyParking = nearby.parking;
+  const parkingDecision =
+    physicalAttendance && hasPreciseLocation
+      ? nearestEventParking(pinGeom)
+      : null;
   const firstLineupDates = lineup.slice(0, 4);
   const moreLineupDates = lineup.slice(4, 30);
   const firstUpcoming = moreUpcoming.items.slice(0, 3);
@@ -667,7 +672,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         <EventSmartPairings
           event={event}
           nearbyFood={nearbyFood}
-          nearbyParking={nearbyParking}
+          parkingDecision={parkingDecision}
         />
       )}
 
@@ -831,6 +836,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             geom={pinGeom}
             venuePlaceSlug={event.venue_place_slug ?? undefined}
             geoPrecise
+            parkingDecision={parkingDecision}
           />
         </>
       )}

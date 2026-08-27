@@ -81,4 +81,52 @@ describe("buildRelatedEventSections", () => {
       "author-talk",
     ]);
   });
+
+  it("keeps a publisher-labeled season finale in the stated recurring series", () => {
+    const now = new Date("2030-08-27T14:00:00.000Z");
+    const recurrence = "Every Thursday, May 7 - September 24, 2030";
+    const publisher = "https://publisher.example/riverfront-thursdays";
+    const current = {
+      ...event(
+        "riverfront-thursdays-2030-08-27",
+        "2030-08-27T21:00:00.000Z",
+        "Riverfront Stage",
+      ),
+      title: "Riverfront Thursdays · Current Artist",
+      recurrence_text: recurrence,
+      source_url: publisher,
+    };
+    const next = {
+      ...event(
+        "riverfront-thursdays-2030-09-03",
+        "2030-09-03T21:00:00.000Z",
+        "Riverfront Stage",
+      ),
+      title: "Riverfront Thursdays · Next Artist",
+      recurrence_text: recurrence,
+      source_url: publisher,
+    };
+    const finale = {
+      ...event(
+        "riverfront-thursdays-2030-09-24",
+        "2030-09-24T21:00:00.000Z",
+        "Riverfront Stage",
+      ),
+      title: "Riverfront Thursdays: Season Finale · Final Artist",
+      recurrence_text: recurrence,
+      source_url: publisher,
+    };
+
+    const result = buildRelatedEventSections(current, now, [next, finale]);
+
+    expect(result.lineup.map((row) => row.slug)).toEqual([
+      "riverfront-thursdays-2030-09-03",
+      "riverfront-thursdays-2030-09-24",
+    ]);
+    expect(result.lineup.at(-1)).toMatchObject({
+      starts_at: "2030-09-24T21:00:00.000Z",
+      recurrence_text: recurrence,
+      source_url: publisher,
+    });
+  });
 });
