@@ -57,6 +57,7 @@ import { getStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
 import { shouldPromoteTodayHeadliner } from "@/components/today/headlinerTiming";
 import TodayScopeStatus from "@/components/today/TodayScopeStatus";
+import TodayEventsRecovery from "@/components/today/TodayEventsRecovery";
 import {
   shouldRenderTodayEventSection,
   todayEventPicksMeta,
@@ -687,7 +688,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
     programCount: program.length,
     earlierCount: remainingEarlierToday.length,
   })) {
-    return null;
+    return <TodayEventsRecovery />;
   }
 
   return (
