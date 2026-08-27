@@ -1,8 +1,7 @@
 import "server-only";
 
 import { getSql } from "@/lib/db/client";
-import { buildRadiusSearchDocument } from "@/lib/ask/search-index-builder";
-import { publicPlaces } from "@/lib/loaders/places";
+import { radiusSearchDocuments } from "@/lib/ask/search-index-document";
 
 export type RadiusSearchIndexHealthStatus =
   | "current"
@@ -105,7 +104,7 @@ export async function getRadiusSearchIndexHealth(): Promise<RadiusSearchIndexHea
   const sql = getSql();
   if (!sql) return UNKNOWN_RADIUS_SEARCH_INDEX_HEALTH;
 
-  const expectedDocuments = publicPlaces().map(buildRadiusSearchDocument).map((document) => ({
+  const expectedDocuments = radiusSearchDocuments().map((document) => ({
     source_id: document.id,
     content_hash: document.contentHash,
   }));
