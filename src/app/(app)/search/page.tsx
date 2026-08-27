@@ -19,6 +19,9 @@ import {
   withMapSearchQuery,
 } from "@/lib/map-return";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { browseSafePhotoUrl } from "@/lib/google-photo-policy";
+
+const PAID_SUBMITTED_SEARCH_PHOTO_LIMIT = 4;
 
 export const metadata: Metadata = {
   alternates: { canonical: "/search" },
@@ -138,19 +141,27 @@ function SearchResultRow({
   divided,
   showBranchAddress,
   mapReturnTo,
+  allowPaidPhoto = false,
 }: {
   hit: SearchHit;
   dominantType?: string;
   divided: boolean;
   showBranchAddress?: boolean;
   mapReturnTo?: string;
+  /** A submitted search is deliberate, but dozens of paid photos are not.
+   * Only the first few ranked rows opt in; typeahead and the long tail keep
+   * owned imagery or their category marks. */
+  allowPaidPhoto?: boolean;
 }) {
   const d = displayFor(hit, showBranchAddress);
   const Icon = d.Icon;
   const href =
     hit.type === "place" ? withMapReturnTo(d.href, mapReturnTo) : d.href;
   const placePhoto =
-    hit.type === "place" ? hit.place.google_photo_url : undefined;
+    hit.type === "place"
+      ? browseSafePhotoUrl(hit.place.hero_image, hit.place.google_photo_url) ??
+        (allowPaidPhoto ? hit.place.google_photo_url : undefined)
+      : undefined;
   return (
     <li style={divided ? { borderTop: "1px solid var(--app-border)" } : undefined}>
       <Link
@@ -499,6 +510,7 @@ export default async function SearchPage({
                 hit={hit}
                 dominantType={dominantType}
                 divided={index > 0}
+                allowPaidPhoto={index < PAID_SUBMITTED_SEARCH_PHOTO_LIMIT}
                 showBranchAddress={hit.type === "place" && duplicateBranches.has(branchKey(hit))}
                 mapReturnTo={mapReturnHref ?? undefined}
               />
@@ -517,6 +529,7 @@ export default async function SearchPage({
                     hit={hit}
                     dominantType={dominantType}
                     divided={index > 0}
+                    allowPaidPhoto={false}
                     showBranchAddress={hit.type === "place" && duplicateBranches.has(branchKey(hit))}
                     mapReturnTo={mapReturnHref ?? undefined}
                   />

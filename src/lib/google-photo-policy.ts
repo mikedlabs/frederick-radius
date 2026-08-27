@@ -50,3 +50,32 @@ export function publishableGooglePhotoNames(
     Boolean(publishableGooglePhotoAttribution(photoName, attributions)),
   );
 }
+
+/**
+ * Paid Google Places imagery belongs behind a deliberate detail action, not
+ * in live search or collapsed browse lists. Publisher, owner, and
+ * Radius-owned images remain eligible for those fast discovery surfaces.
+ */
+export function isPaidGooglePhotoUrl(value?: string | null): boolean {
+  if (!value) return false;
+  try {
+    const url = new URL(value, "https://frederickradius.app");
+    return (
+      url.pathname === "/api/place-photo" ||
+      /(^|\.)places\.googleapis\.com$/i.test(url.hostname) ||
+      /(^|\.)googleusercontent\.com$/i.test(url.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Return the first image candidate that cannot fan out to paid Google media. */
+export function browseSafePhotoUrl(
+  ...candidates: Array<string | null | undefined>
+): string | undefined {
+  return candidates.find(
+    (candidate): candidate is string =>
+      Boolean(candidate?.trim()) && !isPaidGooglePhotoUrl(candidate),
+  );
+}
