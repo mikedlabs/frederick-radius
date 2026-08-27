@@ -41,14 +41,16 @@ import { evaluateHoursPromotionHealth } from "@/lib/quality/hours-promotion-heal
 import { runTripwires } from "@/lib/quality/tripwires";
 import { deliverDataHealthReport } from "@/lib/integrations/github-alerts";
 import {
-  startIngestRunStrict,
-  finishIngestRunStrict,
+  recordCompletedIngestRunStrict,
 } from "@/lib/ingest/run-log";
 import { readStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-store";
 import { evaluateFoodTruckScheduleHealth } from "@/lib/quality/food-truck-schedule-health";
 import { summarizeHoursRefreshArtifact } from "@/lib/quality/operator-coverage";
 import { isGooglePlaceId } from "@/lib/provenance";
-import { withDeadlineOutcome } from "@/lib/promise-deadline";
+import {
+  createAbortDeadline,
+  withDeadlineOutcome,
+} from "@/lib/promise-deadline";
 import {
   DATA_HEALTH_FEEDS_RUN,
   DATA_HEALTH_RETENTION_RUN,
@@ -56,6 +58,10 @@ import {
   evaluateDataHealthPhase,
 } from "@/lib/quality/data-health-phases";
 import { monitorCronResponse } from "@/lib/observability/cron-monitor";
+import {
+  getRadiusSearchIndexHealth,
+  UNKNOWN_RADIUS_SEARCH_INDEX_HEALTH,
+} from "@/lib/quality/search-index-health";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -67,6 +73,7 @@ const HOURS_PROMOTION_DEADLINE_MS = 8_000;
 const PHASE_HEARTBEAT_DEADLINE_MS = 8_000;
 const FOOD_TRUCK_DEADLINE_MS = 8_000;
 const TRIPWIRE_OUTER_DEADLINE_MS = 25_000;
+const SEARCH_INDEX_DEADLINE_MS = 8_000;
 const DELIVERY_DEADLINE_MS = 32_000;
 const REPORT_HEARTBEAT_DEADLINE_MS = 8_000;
 
@@ -81,12 +88,13 @@ export async function GET(request: Request) {
       checkinMarginMinutes: 15,
       maxRuntimeMinutes: 3,
     },
-    runDataHealthReport,
+    () => runDataHealthReport(request.signal),
   );
 }
 
-async function runDataHealthReport() {
+async function runDataHealthReport(requestSignal?: AbortSignal) {
   const startedAt = Date.now();
+  const reportStartedAt = new Date(startedAt).toISOString();
 
   const dedup = buildDedup(PLACES);
   const folded = Object.entries(dedup).filter(([s, v]) => v.canonical !== s).length;
@@ -206,6 +214,13 @@ async function runDataHealthReport() {
     runTripwires(),
     TRIPWIRE_OUTER_DEADLINE_MS,
   );
+  // Exact local-search coverage is a required, provider-free baseline. Keep it
+  // outside the broad tripwire group so this aggregate survives PR #1633's
+  // paid-service guards unchanged and a 1/1,570 gap cannot round to green.
+  const searchIndexOutcome = await withDeadlineOutcome(
+    getRadiusSearchIndexHealth(),
+    SEARCH_INDEX_DEADLINE_MS,
+  );
   const dbHealth: DbHealthEvaluation =
     dbOutcome.status === "fulfilled"
       ? dbOutcome.value
@@ -228,6 +243,24 @@ async function runDataHealthReport() {
             detail: "The tripwire group did not finish inside the reporter deadline.",
           }],
           checks: [{ name: "tripwire-execution", green: false }],
+        };
+  const searchIndex =
+    searchIndexOutcome.status === "fulfilled"
+      ? searchIndexOutcome.value
+      : UNKNOWN_RADIUS_SEARCH_INDEX_HEALTH;
+  const searchIndexAnomaly =
+    searchIndex.status === "current"
+      ? null
+      : {
+          source: "radius-search-index",
+          kind:
+            searchIndex.status === "unknown"
+              ? "infrastructure_unavailable" as const
+              : "index_stale" as const,
+          detail:
+            searchIndex.status === "unknown"
+              ? "Local search coverage could not be compared with the promoted catalog inside the reporter deadline."
+              : `Local search has ${searchIndex.current ?? 0}/${searchIndex.expected ?? 0} current catalog documents: ${searchIndex.missing ?? 0} missing, ${searchIndex.stale ?? 0} stale, and ${searchIndex.retired ?? 0} retired. Run the bounded radius-search refresh.`,
         };
   const storedFoodTruckSchedule =
     foodTruckOutcome.status === "fulfilled"
@@ -284,6 +317,7 @@ async function runDataHealthReport() {
     ...freshnessAnomalies,
     ...foodTruckScheduleHealth.anomalies,
     ...tripwires.anomalies,
+    ...(searchIndexAnomaly ? [searchIndexAnomaly] : []),
     ...phaseAnomalies,
   ];
   if (allAnomalies.length > 0) {
@@ -318,6 +352,10 @@ async function runDataHealthReport() {
       name: "hours-publication",
       green: hoursPromotionHealth.green,
     },
+    {
+      name: "search-index-coverage",
+      green: searchIndex.status === "current",
+    },
     ...(retentionPruneEnabled
       ? [{
           name: "data-retention",
@@ -340,6 +378,10 @@ async function runDataHealthReport() {
   const directGitHubDeliveryEnabled =
     process.env.VERCEL_GITHUB_ALERTS_ENABLED === "1";
   const deliveryStartedAt = Date.now();
+  const reporterHeartbeatDeadline = createAbortDeadline(
+    REPORT_HEARTBEAT_DEADLINE_MS,
+    requestSignal,
+  );
   const [deliveryOutcome, reporterHeartbeatOutcome] = await Promise.all([
     directGitHubDeliveryEnabled
       ? withDeadlineOutcome(
@@ -350,24 +392,24 @@ async function runDataHealthReport() {
           status: "fulfilled" as const,
           value: "delegated_to_actions" as const,
         }),
-    withDeadlineOutcome((async () => {
-      const runId = await startIngestRunStrict("tripwires");
-      if (!runId) throw new Error("Reporter heartbeat could not start.");
-      await finishIngestRunStrict(runId, {
+    withDeadlineOutcome(
+      recordCompletedIngestRunStrict("tripwires", reportStartedAt, {
         status: red.length === 0 ? "ok" : "error",
         records_in: gates.length,
         records_upserted: gates.length - red.length,
         records_failed: red.length,
         error: red.length > 0 ? headline : null,
-      });
-    })(), REPORT_HEARTBEAT_DEADLINE_MS),
+      }, { signal: reporterHeartbeatDeadline.signal }),
+      REPORT_HEARTBEAT_DEADLINE_MS + 500,
+    ).finally(() => reporterHeartbeatDeadline.dispose()),
   ]);
   const githubDelivery =
     deliveryOutcome.status === "fulfilled"
       ? deliveryOutcome.value
       : "skipped";
   const reporterHeartbeatRecorded =
-    reporterHeartbeatOutcome.status === "fulfilled";
+    reporterHeartbeatOutcome.status === "fulfilled" &&
+    reporterHeartbeatOutcome.value;
   const deliveryMs = Date.now() - deliveryStartedAt;
   const requiredPhaseUnavailable =
     !feedPhase.green
@@ -384,6 +426,7 @@ async function runDataHealthReport() {
       required_phase_unavailable: requiredPhaseUnavailable,
       github_delivery: githubDelivery,
       reporter_heartbeat_recorded: reporterHeartbeatRecorded,
+      reporter_heartbeat_outcome: reporterHeartbeatOutcome.status,
     },
     computed_at: new Date().toISOString(),
     timing_ms: {
@@ -398,6 +441,7 @@ async function runDataHealthReport() {
         phase_heartbeats: PHASE_HEARTBEAT_DEADLINE_MS,
         food_truck_schedule: FOOD_TRUCK_DEADLINE_MS,
         tripwires: TRIPWIRE_OUTER_DEADLINE_MS,
+        search_index: SEARCH_INDEX_DEADLINE_MS,
         github_delivery: DELIVERY_DEADLINE_MS,
         reporter_heartbeat: REPORT_HEARTBEAT_DEADLINE_MS,
       },
@@ -427,6 +471,7 @@ async function runDataHealthReport() {
       publication: {
         green: hoursPromotionHealth.green,
         state: hoursPromotionHealth.state,
+        source_evidence_outcome: hoursPromotionOutcome.status,
         source_latest_at: hoursPromotionHealth.sourceLatestAt,
         artifact_latest_at: hoursPromotionHealth.artifactLatestAt,
         lag_hours: hoursPromotionHealth.lagHours,
@@ -502,6 +547,7 @@ async function runDataHealthReport() {
     },
     db_health: {
       status: dbHealth.status,
+      evaluation_outcome: dbOutcome.status,
       unavailable_reason: dbHealth.reason,
       anomalies: dbAnomalies,
       rls_unprotected: dbAnomalies.filter((a) => a.kind === "rls_unprotected").map((a) => a.source),
@@ -510,6 +556,10 @@ async function runDataHealthReport() {
     tripwires: {
       checks: tripwires.checks,
       anomalies: tripwires.anomalies,
+    },
+    search_index: {
+      ...searchIndex,
+      evaluation_outcome: searchIndexOutcome.status,
     },
     note: "This final reporter is read-mostly. Feed snapshot writes and optional retention run in separately scheduled, bounded workers.",
   }, {

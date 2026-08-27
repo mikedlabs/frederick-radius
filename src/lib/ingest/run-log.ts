@@ -85,6 +85,61 @@ export type IngestRunResult = {
   error?: string | null;
 };
 
+function safeRunError(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const clean = value
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!clean) return null;
+  return clean.length > 240 ? `${clean.slice(0, 237)}...` : clean;
+}
+
+/**
+ * Persist a completed heartbeat in one cancelable INSERT.
+ *
+ * Reporter jobs do not need a public `running` phase. A start INSERT followed
+ * by a finish UPDATE doubles pressure on the max:1 production pool and can
+ * leave an orphan running row when the route deadline lands between them.
+ */
+export async function recordCompletedIngestRunStrict(
+  sourceSlug: string,
+  startedAt: string,
+  result: IngestRunResult,
+  options: StrictRunLogOptions = {},
+): Promise<boolean> {
+  const source = sourceSlug.trim();
+  if (!source) throw new Error("Completed ingest evidence needs a source.");
+  if (!Number.isFinite(Date.parse(startedAt))) {
+    throw new Error("Completed ingest evidence needs a valid timestamp.");
+  }
+  const sql = getSql();
+  if (!sql) return false;
+  const query = sql`
+    INSERT INTO ingest_runs (
+      source_slug,
+      started_at,
+      ended_at,
+      status,
+      records_in,
+      records_upserted,
+      records_failed,
+      error
+    ) VALUES (
+      ${source},
+      ${startedAt}::timestamptz,
+      now(),
+      ${result.status},
+      ${result.records_in ?? 0},
+      ${result.records_upserted ?? 0},
+      ${result.records_failed ?? 0},
+      ${safeRunError(result.error)}
+    )
+  ` as unknown as CancelableQuery<unknown>;
+  await waitForRunLogQuery(query, options.signal);
+  return true;
+}
+
 /** Stamp a run's completion (status + counts + error). No-op without a runId. */
 async function updateIngestRun(
   runId: string | null,
@@ -134,16 +189,6 @@ export type SourceProbeRunResult = {
   error?: string | null;
 };
 
-function safeProbeError(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const clean = value
-    .replace(/[\u0000-\u001f\u007f]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!clean) return null;
-  return clean.length > 240 ? `${clean.slice(0, 237)}...` : clean;
-}
-
 /**
  * Persist one completed row per runtime source in one bounded database write.
  * A failure wins if duplicate inputs disagree. Successful probes deliberately
@@ -170,7 +215,7 @@ export async function recordSourceProbeResultsStrict(
         outcome: result.outcome,
         error:
           result.outcome === "failure"
-            ? safeProbeError(result.error) ??
+            ? safeRunError(result.error) ??
               "The fresh runtime source health probe failed."
             : null,
       });

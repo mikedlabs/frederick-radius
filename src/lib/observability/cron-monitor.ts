@@ -7,6 +7,20 @@ export type CronMonitorSchedule = {
 };
 
 /**
+ * A completed cron can return HTTP 200 while reporting a persisted upstream
+ * degradation. This header keeps that dependency alarm red in Sentry without
+ * misclassifying the serverless invocation itself as an execution failure.
+ */
+export const CRON_MONITOR_STATUS_HEADER = "x-radius-cron-monitor-status";
+
+function responseMonitorStatus(response: Response): "ok" | "error" {
+  const explicit = response.headers.get(CRON_MONITOR_STATUS_HEADER);
+  if (explicit === "error") return "error";
+  if (explicit === "ok") return "ok";
+  return response.ok ? "ok" : "error";
+}
+
+/**
  * Report a complete scheduled-route lifecycle to Sentry Cron Monitors.
  *
  * Vercel considers any completed invocation delivered, including a 5xx
@@ -45,7 +59,7 @@ export async function monitorCronResponse<T extends Response>(
     await finishCheckIn(
       monitorSlug,
       checkInId,
-      response.ok ? "ok" : "error",
+      responseMonitorStatus(response),
       startedAt,
     );
     return response;
