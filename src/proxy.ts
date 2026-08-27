@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { verifyAdminRequestOrigin } from "@/lib/security/admin-request";
 
 /**
  * Request proxy: admin protection plus public-session refresh.
@@ -90,6 +91,8 @@ export async function proxy(req: NextRequest) {
   if (isAdminPath(pathname)) {
     const block = await adminBasicAuth(req);
     if (block) return block;
+    const crossOrigin = verifyAdminRequestOrigin(req);
+    if (crossOrigin) return crossOrigin;
     // Admin paths skip Supabase session refresh — the admin surface
     // is its own world.
     return NextResponse.next();

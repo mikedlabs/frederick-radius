@@ -17,6 +17,7 @@ import { desc } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { beta_codes, beta_emails } from "@/lib/db/schema";
 import { mintCodeForEmail, sendBetaCodeEmail } from "@/lib/beta-invite";
+import { requireJsonRequest } from "@/lib/security/admin-request";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,6 +58,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const contentType = requireJsonRequest(req);
+  if (contentType) return contentType;
+
   const db = getDb();
   if (!db) return NextResponse.json({ error: "no-db" }, { status: 503, headers: noStore });
 
