@@ -32,6 +32,9 @@ jobs:
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+          # Match the regular CI build. The generated 2,748-page app can
+          # exceed Node's default 2 GB heap while TypeScript finalizes.
+          NODE_OPTIONS: "--max-old-space-size=4096"
 
       - name: Start the production app
         run: |
