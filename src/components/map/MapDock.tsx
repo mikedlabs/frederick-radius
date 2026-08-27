@@ -53,6 +53,7 @@ import {
 import type { LiveBusLayerSnapshot } from "./LiveBuses";
 import { shouldOfferMapLocationForUrl } from "./mapLocationIntro";
 import { focusMapBeforeDockDismiss } from "./mapDockFocus";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import type {
   MapLayerGroup,
   MapLayerSourceHealth,
@@ -488,6 +489,11 @@ export default function MapDock(props: MapDockProps) {
     flyTo: props.flyTo,
     fitCounty: props.fitCounty,
   });
+
+  // The map stays visible and pointer-operable, but keyboard focus belongs to
+  // the open control sheet until Done or Escape closes it. Without this trap,
+  // Shift+Tab from Done landed on Mapbox attribution behind the sheet.
+  useFocusTrap(paneRef, pane !== null);
 
   useEffect(() => {
     scopeActionsRef.current = {
@@ -1160,9 +1166,9 @@ export default function MapDock(props: MapDockProps) {
     setPlaceReveal(reveal);
     setPane(next);
   };
-  // This is a non-modal disclosure over the map. Escape closes it, while Tab
-  // follows the ordinary page order instead of being trapped in a hybrid
-  // pseudo-dialog.
+  // Escape closes the sheet and closePane restores the initiating control.
+  // Tab containment is shared with the app's other overlay surfaces through
+  // useFocusTrap above.
   const onPaneKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       e.stopPropagation();

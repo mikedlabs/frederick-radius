@@ -233,9 +233,25 @@ test.describe("mobile discovery shell", () => {
     expect(topFurnitureOverlaps).toBe(false);
 
     await contentsButton.click();
+    const focusContainedPane = page.getByRole("region", {
+      name: "Choose what to see",
+    });
+    await expect(focusContainedPane).toBeVisible();
+    await expect(focusContainedPane).toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(
-      page.getByRole("region", { name: "Choose what to see" }),
-    ).toBeVisible();
+      focusContainedPane.getByRole("button", { name: "Done" }),
+    ).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect.poll(() =>
+      page.evaluate(() =>
+        Boolean(
+          document
+            .querySelector("#dock-pane")
+            ?.contains(document.activeElement),
+        ),
+      ),
+    ).toBe(true);
     await page.keyboard.press("Escape");
     await expect(contentsButton).toBeFocused();
 

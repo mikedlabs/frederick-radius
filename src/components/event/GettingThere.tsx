@@ -1,8 +1,11 @@
 import { CarFront, TrainFront } from "lucide-react";
-import { PARKING_GARAGES } from "@/data/parking-garages";
 import { MARC_STATIONS } from "@/data/marc-stations";
 import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
-import { haversineMeters, formatDistance, metersToMinutes } from "@/lib/geo";
+import { haversineMeters, metersToMinutes } from "@/lib/geo";
+import {
+  eventParkingDirections,
+  type EventParkingDecision,
+} from "@/lib/events/parking";
 import Link from "next/link";
 
 /**
@@ -26,30 +29,22 @@ export default function GettingThere({
   geom,
   venuePlaceSlug,
   geoPrecise,
+  parkingDecision,
 }: {
   geom: { lng: number; lat: number };
   venuePlaceSlug?: string;
   geoPrecise: boolean;
+  parkingDecision: EventParkingDecision | null;
 }) {
   // 1. Verified parking intel for the venue itself.
   const parkingNote = venuePlaceSlug ? fieldNotesFor(venuePlaceSlug)?.parking?.text : undefined;
 
-  // 2. Nearest city garage — only for precisely-located events within a
-  //    downtown-ish walk (1.1km) of one, so a Thurmont carnival never gets
-  //    urged into a Frederick garage.
-  let garageLine: string | null = null;
-  if (!parkingNote && geoPrecise) {
-    let best: { name: string; m: number } | null = null;
-    for (const g of PARKING_GARAGES) {
-      if (!g.geom) continue;
-      const m = haversineMeters(geom, g.geom);
-      if (m <= 1100 && (!best || m < best.m)) best = { name: g.name, m };
-    }
-    if (best) {
-      const min = Math.max(1, Math.round(metersToMinutes("walk", best.m)));
-      garageLine = `${best.name} garage is a ${min} min walk (${formatDistance(best.m)}) · $1/hr, $5 max evenings`;
-    }
-  }
+  // 2. The canonical city-garage decision computed once by the event page.
+  //    Smart pairings uses this exact value too. A venue-specific verified
+  //    note remains more useful than repeating the generic garage line here.
+  const garageLine = parkingNote
+    ? null
+    : eventParkingDirections(parkingDecision);
 
   // 3. MARC within a ~12 minute walk.
   let marcLine: string | null = null;

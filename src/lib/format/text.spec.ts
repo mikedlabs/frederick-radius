@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { cleanBlurbFragment } from "./text";
+import { describe, expect, it } from "vitest";
+import { cleanBlurbFragment, formatAddress } from "./text";
 
 // The three real fragment classes the 2026-07 UX audit found in the DFP
 // blurbs (QW-14) — each case below is a shipped offender, verbatim.
@@ -30,5 +30,20 @@ describe("cleanBlurbFragment", () => {
     expect(cleanBlurbFragment("Island vibes on Market Street.")).toBe(
       "Island vibes on Market Street.",
     );
+  });
+});
+
+describe("formatAddress", () => {
+  it("repairs a civic room identifier concatenated into the locality", () => {
+    expect(
+      formatAddress("140 W Patrick Street Conference Room CFrederick"),
+    ).toBe("140 W Patrick Street, Conference Room C, Frederick");
+    expect(formatAddress("12 E Church St.Frederick, MD21701")).toBe(
+      "12 E Church St., Frederick, MD 21701",
+    );
+  });
+
+  it("does not split an ordinary venue phrase", () => {
+    expect(formatAddress("Market Street Stage")).toBe("Market Street Stage");
   });
 });
