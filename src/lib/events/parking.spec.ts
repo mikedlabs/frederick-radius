@@ -20,7 +20,10 @@ describe("event parking decision", () => {
       `${parking?.distanceLabel} away at Carroll Creek Garage`,
     );
     expect(eventParkingDirections(parking)).toContain(
-      `Carroll Creek Garage is a ${parking?.walkMinutes} min walk (${parking?.distanceLabel})`,
+      `Carroll Creek Garage is a ${parking?.walkMinutes}-minute walk (${parking?.distanceLabel}).`,
+    );
+    expect(eventParkingDirections(parking)).toContain(
+      "Garage parking is $1 / hour; the overnight maximum is $5.",
     );
     expect(eventParkingDirections(parking)).not.toContain("Garage garage");
   });

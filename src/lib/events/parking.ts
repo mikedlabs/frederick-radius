@@ -59,5 +59,9 @@ export function eventParkingDirections(
   parking: EventParkingDecision | null,
 ): string | null {
   if (!parking) return null;
-  return `${parking.name} is a ${parking.walkMinutes} min walk (${parking.distanceLabel}) · ${PARKING_RATE_SCHEDULE.hourly} · ${PARKING_RATE_SCHEDULE.nighttimeMax}`;
+  const overnightMaximum = PARKING_RATE_SCHEDULE.nighttimeMax.replace(
+    /\s+max$/,
+    "",
+  );
+  return `${parking.name} is a ${parking.walkMinutes}-minute walk (${parking.distanceLabel}). Garage parking is ${PARKING_RATE_SCHEDULE.hourly}; the overnight maximum is ${overnightMaximum}.`;
 }
