@@ -3,7 +3,7 @@ name: Mobile performance budget
 on:
   schedule:
     # Weekly, off the top of the hour. PRs keep the small resilience browser
-    # gate; this heavier five-route Lighthouse pass runs independently.
+    # gate; this heavier six-route Lighthouse pass runs independently.
     - cron: "43 9 * * 1"
   workflow_dispatch:
 
@@ -56,6 +56,7 @@ jobs:
           npm run perf --
           --url=http://127.0.0.1:3000
           --label=ci-${GITHUB_SHA::12}
+          --runs=3
           --enforce
 
       - name: Upload Lighthouse evidence
@@ -64,6 +65,7 @@ jobs:
         with:
           name: mobile-performance-reports
           path: .perf
+          include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 14
 

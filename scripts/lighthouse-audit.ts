@@ -13,6 +13,9 @@
  *   npm run perf -- --label=release --enforce
  *     exits non-zero when a key route breaches the release budgets
  *
+ *   npm run perf -- --label=release --runs=3 --enforce
+ *     enforces the median of three runs per route to reduce lab variance
+ *
  * Assumes a server is already running at the base URL. The script
  * does not start npm start itself because that is flaky to manage
  * from a child process. Run the build + start in another shell,
@@ -44,6 +47,7 @@ type Args = {
   urls: string[];
   label: string;
   enforce: boolean;
+  runs: number;
 };
 
 function parseArgs(): Args {
@@ -56,6 +60,11 @@ function parseArgs(): Args {
   const label = labelFlag ? labelFlag.slice("--label=".length) : "snapshot";
   const enforce =
     argv.includes("--enforce") || process.env.PERF_ENFORCE === "1";
+  const runsFlag = argv.find((a) => a.startsWith("--runs="));
+  const runs = runsFlag ? Number(runsFlag.slice("--runs=".length)) : 1;
+  if (!Number.isInteger(runs) || runs < 1 || runs > 5) {
+    throw new Error("--runs must be an integer from 1 through 5");
+  }
 
   // The set is intentionally narrow: the primary decision surfaces, the
   // computationally distinct transit and Ask experiences, and one dynamic
@@ -72,7 +81,7 @@ function parseArgs(): Args {
     "/transit",
     "/places/carroll-creek-linear-park-frederick",
   ];
-  return { base, urls, label, enforce };
+  return { base, urls, label, enforce, runs };
 }
 
 type Score = {
@@ -127,12 +136,21 @@ function emoji(score: number | null): string {
   return "🔴";
 }
 
-function runOne(base: string, path: string, outDir: string): Score {
+function runOne(
+  base: string,
+  path: string,
+  outDir: string,
+  runNumber: number,
+  runCount: number,
+): Score {
   const url = base + path;
   const slug = path.replace(/\//g, "_").replace(/^_/, "") || "root";
-  const jsonPath = join(outDir, `${slug}.report.json`);
+  const suffix = runCount > 1 ? `.run-${runNumber}` : "";
+  const jsonPath = join(outDir, `${slug}${suffix}.report.json`);
 
-  console.log(`\n→ ${url}`);
+  console.log(
+    `\n→ ${url}${runCount > 1 ? ` (run ${runNumber}/${runCount})` : ""}`,
+  );
   const result = spawnSync(
     "npx",
     [
@@ -183,6 +201,56 @@ function runOne(base: string, path: string, outDir: string): Score {
   }
 }
 
+const SCORE_FIELDS = [
+  "perf",
+  "a11y",
+  "bp",
+  "seo",
+  "fcp_ms",
+  "lcp_ms",
+  "cls",
+  "tbt_ms",
+  "si_ms",
+  "ttfb_ms",
+] as const satisfies readonly (keyof Score)[];
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1
+    ? sorted[middle]
+    : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+function medianScore(url: string, runs: Score[]): Score {
+  const error = runs.find((score) => score.error)?.error;
+  if (error) {
+    return {
+      url,
+      perf: null,
+      a11y: null,
+      bp: null,
+      seo: null,
+      fcp_ms: null,
+      lcp_ms: null,
+      cls: null,
+      tbt_ms: null,
+      si_ms: null,
+      ttfb_ms: null,
+      error,
+    };
+  }
+
+  const score = { url } as Score;
+  for (const field of SCORE_FIELDS) {
+    const values = runs
+      .map((run) => run[field])
+      .filter((value): value is number => value != null);
+    score[field] = values.length === runs.length ? median(values) : null;
+  }
+  return score;
+}
+
 function budgetFailures(scores: Score[]): string[] {
   const failures: string[] = [];
   for (const score of scores) {
@@ -227,12 +295,16 @@ function summarize(
   label: string,
   base: string,
   violations: string[],
+  runs: number,
 ): string {
   const lines: string[] = [];
   lines.push(`# Lighthouse audit: ${label}`);
   lines.push("");
   lines.push(`Run at ${new Date().toISOString()}`);
   lines.push(`Base: ${base}`);
+  lines.push(
+    `Runs per page: ${runs}${runs > 1 ? " (median shown and enforced)" : ""}`,
+  );
   lines.push("");
   lines.push(`| Page | Perf | A11y | Best | SEO | TTFB | LCP | CLS | TBT | FCP |`);
   lines.push(`|---|---|---|---|---|---|---|---|---|---|`);
@@ -278,7 +350,7 @@ function summarize(
   return lines.join("\n");
 }
 
-const { base, urls, label, enforce } = parseArgs();
+const { base, urls, label, enforce, runs } = parseArgs();
 // Snapshots write to .perf/<isoDate>-<label>/ at the repo root so
 // before/after runs do not overwrite each other and so the script
 // agrees with the gitignore entry in repo root (`.perf/`).
@@ -290,11 +362,15 @@ console.log(`Lighthouse audit "${label}" against ${base}`);
 console.log(`Reports -> ${outDir}`);
 const scores: Score[] = [];
 for (const path of urls) {
-  scores.push(runOne(base, path, outDir));
+  const routeRuns: Score[] = [];
+  for (let runNumber = 1; runNumber <= runs; runNumber += 1) {
+    routeRuns.push(runOne(base, path, outDir, runNumber, runs));
+  }
+  scores.push(medianScore(base + path, routeRuns));
 }
 
 const violations = budgetFailures(scores);
-const md = summarize(scores, label, base, violations);
+const md = summarize(scores, label, base, violations, runs);
 const summaryPath = join(outDir, "summary.md");
 writeFileSync(summaryPath, md);
 
