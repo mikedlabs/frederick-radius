@@ -68,7 +68,10 @@ function isBetaDestination(value) {
   }
 }
 
-async function request(path, { follow = true, accept = "*/*" } = {}) {
+async function request(
+  path,
+  { follow = true, accept = "*/*", requestHeaders = {} } = {},
+) {
   const hops = [];
   let url = new URL(path, BASE);
 
@@ -82,6 +85,7 @@ async function request(path, { follow = true, accept = "*/*" } = {}) {
         Accept: accept,
         "Cache-Control": "no-cache",
         "User-Agent": USER_AGENT,
+        ...requestHeaders,
       },
     });
     const ttfbMs = Date.now() - requestStartedAt;
@@ -262,14 +266,25 @@ async function run() {
   // has a valid contract and that a non-empty shortlist cannot disappear from
   // the page without either a rendered link or the explicit recovery mount.
   try {
-    const result = await request("/api/today/events", {
+    const result = await request("/api/today/events?refresh=1", {
       accept: "application/json",
+      // Match the browser recovery request instead of exercising only the
+      // public cached branch. The explicit refresh path has its own origin,
+      // rate-limit, and no-store safeguards.
+      requestHeaders: {
+        Referer: new URL("/today", BASE).href,
+      },
     });
-    assertNoBetaRedirect("/api/today/events", result);
+    assertNoBetaRedirect("/api/today/events?refresh=1", result);
     check(
       result.status === 200,
-      "/api/today/events is available",
-      `/api/today/events returned ${result.status}`,
+      "/api/today/events?refresh=1 is available to the Today page",
+      `/api/today/events?refresh=1 returned ${result.status}`,
+    );
+    check(
+      (result.headers.get("cache-control") || "").includes("no-store"),
+      "Today event recovery cannot enter a shared cache",
+      `Today event recovery returned cache-control ${JSON.stringify(result.headers.get("cache-control"))}`,
     );
     let payload = null;
     try {
@@ -300,7 +315,7 @@ async function run() {
       }
     }
   } catch (error) {
-    bad(`/api/today/events contract check failed: ${error.message}`);
+    bad(`/api/today/events?refresh=1 contract check failed: ${error.message}`);
   }
 
   // Installed-app contract: discover the linked manifest, verify its launch
