@@ -354,6 +354,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           countLabel="places"
           storageKey={`fr.category.${slug}.browse`}
           defaultOpen={false}
+          mountOnOpen
         >
           <PlaceList
             places={places}

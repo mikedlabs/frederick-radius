@@ -159,6 +159,7 @@ export default function CategoryView({
           countLabel="towns"
           storageKey={`fr.category.${category.slug}.county`}
           defaultOpen={false}
+          mountOnOpen
         >
           <ul className="space-y-2.5">
             {county.map((g) => {
@@ -186,6 +187,7 @@ export default function CategoryView({
         countLabel="places"
         storageKey={`fr.category.${category.slug}.full`}
         defaultOpen={false}
+        mountOnOpen
       >
         <PlaceList
           places={all}
