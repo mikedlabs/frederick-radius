@@ -5,6 +5,7 @@ vi.mock("@/data/places", () => ({ PLACES: [] }));
 import {
   reconcilePublishedGeocodes,
   VERIFIED_CATALOG_CACHE_SOURCE,
+  VERIFIED_FREDERICK_COUNTY_CACHE_SOURCE,
   VERIFIED_GOOGLE_CACHE_SOURCE,
 } from "@/lib/ingest/geocode";
 
@@ -13,7 +14,7 @@ function queryText(strings: TemplateStringsArray): string {
 }
 
 describe("reconcilePublishedGeocodes", () => {
-  it("anchors current pins to trusted cache provenance and clears everything else", async () => {
+  it("anchors every published pin to unexpired cache provenance", async () => {
     const sql = vi.fn().mockResolvedValue([
       { revalidated: "27", repaired: "2", cleared: "11" },
     ]);
@@ -24,8 +25,10 @@ describe("reconcilePublishedGeocodes", () => {
     const [strings, ...values] = sql.mock.calls[0];
     const text = queryText(strings as TemplateStringsArray);
     expect(text).toContain("cache.source in");
+    expect(text).toContain("cache.cached_at >= now() - interval '30 days'");
+    expect(text).toContain("cache.cached_at <= now() + interval '5 minutes'");
     expect(text).toContain("update public.ingested_events");
-    expect(text).toContain(
+    expect(text).not.toContain(
       "coalesce(e.ends_at_utc, e.starts_at_utc) >= now() - interval '6 hours'",
     );
     expect(text).toContain(
@@ -34,11 +37,12 @@ describe("reconcilePublishedGeocodes", () => {
     expect(text).toContain("or e.lat is distinct from published.cache_lat");
     expect(values).toEqual([
       VERIFIED_CATALOG_CACHE_SOURCE,
+      VERIFIED_FREDERICK_COUNTY_CACHE_SOURCE,
       VERIFIED_GOOGLE_CACHE_SOURCE,
     ]);
   });
 
-  it("reports zeroes when no current event pins exist", async () => {
+  it("reports zeroes when no published event pins exist", async () => {
     const sql = vi.fn().mockResolvedValue([]);
 
     await expect(reconcilePublishedGeocodes(sql as never)).resolves.toEqual({

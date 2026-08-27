@@ -182,6 +182,9 @@ function whereSelectionForScope(
  */
 export type MapDockProps = {
   browse: BrowseDockInfo;
+  /** False keeps the local search instrument available while hiding controls
+   * that can only change an interactive renderer. */
+  mapAvailable?: boolean;
 
   /** What's actually drawn (drives the living count line). */
   placeCount: number;
@@ -203,7 +206,7 @@ export type MapDockProps = {
   searchOpeningId: string | null;
   pickSearch: (r: SearchResult) => void;
   /** Honest origin attached to map-search distances. */
-  searchDistanceOriginLabel: "from you" | "from map center";
+  searchDistanceOriginLabel: "from you" | "from map center" | null;
 
   /** Hook point for the server-side verified-hours coverage gate. */
   openNowAvailable?: boolean;
@@ -441,13 +444,14 @@ function formatLayerUpdate(timestamp: string | null): string | null {
 export default function MapDock(props: MapDockProps) {
   const { dismissLocationIntro, showLocationIntro } = props;
   const { browse, onPaneOpenChange } = props;
+  const mapAvailable = props.mapAvailable !== false;
   const publicAmenityGroups = PUBLIC_AMENITY_GROUPS.filter(
     (group) => (props.amenityGroupCounts[group.key] ?? 0) > 0,
   );
   const router = useRouter();
   const sp = useSearchParams();
   const locationOfferVisible =
-    showLocationIntro && shouldOfferMapLocationForUrl(sp);
+    mapAvailable && showLocationIntro && shouldOfferMapLocationForUrl(sp);
   const initialScope = parseScope(sp.get(SCOPE_PARAM)) ?? getScope() ?? "county";
 
   const [pane, setPane] = useState<Pane | null>(null);
@@ -608,14 +612,16 @@ export default function MapDock(props: MapDockProps) {
   }, []);
 
   const searchOverlayOpen =
-    pane === null && searchPanelOpen && props.q.trim().length >= 2;
+    (!mapAvailable || pane === null) &&
+    searchPanelOpen &&
+    props.q.trim().length >= 2;
 
   useEffect(() => {
     // AppMap owns the other bottom surfaces (selected results, map tools, and
     // the result-area action). Treat search results and Browse as one shared
     // control layer so only one bottom overlay can be active at a time.
-    onPaneOpenChange(pane !== null || searchOverlayOpen);
-  }, [onPaneOpenChange, pane, searchOverlayOpen]);
+    onPaneOpenChange(mapAvailable ? pane !== null || searchOverlayOpen : searchOverlayOpen);
+  }, [mapAvailable, onPaneOpenChange, pane, searchOverlayOpen]);
   // A panel should never make the map feel captured. Touching the uncovered
   // canvas dismisses the panel before the pan continues; there is no scrim or
   // separate close step between the person and the map.
@@ -707,6 +713,7 @@ export default function MapDock(props: MapDockProps) {
   // behavior instead of introducing another map menu.
   useEffect(() => {
     const openEssentialsFromLocation = () => {
+      if (!mapAvailable) return;
       const active = document.activeElement;
       restoreRef.current = active instanceof HTMLElement
         ? active
@@ -726,7 +733,7 @@ export default function MapDock(props: MapDockProps) {
         "fr:open-map-essentials",
         openEssentialsFromLocation,
       );
-  }, [closeSearchPanel]);
+  }, [closeSearchPanel, mapAvailable]);
 
   // URL state written by the map is more current than this component's last
   // render. Mutate the live address bar so a time/category tap cannot drop a
@@ -1338,26 +1345,26 @@ export default function MapDock(props: MapDockProps) {
 
   const visibleSearchMatches = props.searchMatches.slice(0, searchResultLimit);
   const searchResultsVisible =
-    pane === null &&
+    (!mapAvailable || pane === null) &&
     searchPanelOpen &&
     props.q.trim().length >= 2 &&
     !props.searchPending &&
     visibleSearchMatches.length > 0;
   const searchLoadingVisible =
-    pane === null &&
+    (!mapAvailable || pane === null) &&
     searchPanelOpen &&
     props.q.trim().length >= 2 &&
     !props.searchUnavailable &&
     props.searchPending &&
     visibleSearchMatches.length === 0;
   const searchUnavailableVisible =
-    pane === null &&
+    (!mapAvailable || pane === null) &&
     searchPanelOpen &&
     props.q.trim().length >= 2 &&
     props.searchUnavailable &&
     visibleSearchMatches.length === 0;
   const searchEmptyVisible =
-    pane === null &&
+    (!mapAvailable || pane === null) &&
     searchPanelOpen &&
     props.q.trim().length >= 2 &&
     !props.searchUnavailable &&
@@ -1404,8 +1411,10 @@ export default function MapDock(props: MapDockProps) {
       (group) =>
         props.mapLayerSourceHealth?.[group]?.status === "unavailable",
     );
+  const searchResultBusy = props.searchOpeningId !== null;
 
   const chooseSearchResult = (result: SearchResult) => {
+    if (searchResultBusy) return;
     flushMapSearchUrl();
     setSearchSelection({ query: "", index: -1 });
     if (!result.temporary) closeSearchPanel();
@@ -1446,7 +1455,8 @@ export default function MapDock(props: MapDockProps) {
 
   return (
     <>
-      {chosenOptionCount > 0 &&
+      {mapAvailable &&
+        chosenOptionCount > 0 &&
         pane === null &&
         !searchPanelOpen &&
         !searchKeyboardOpen &&
@@ -1507,11 +1517,14 @@ export default function MapDock(props: MapDockProps) {
           </div>
         )}
       <div
-        className={`dock${pane ? " dock-open" : ""}`}
+        className={`dock${mapAvailable && pane ? " dock-open" : ""}`}
         data-map-dock
-        data-pane={pane ?? undefined}
+        data-map-available={mapAvailable ? "true" : "false"}
+        data-pane={mapAvailable ? pane ?? undefined : undefined}
         data-query-active={props.q.trim().length > 0 ? "true" : undefined}
-        data-search-open={pane === null && searchPanelOpen ? "true" : undefined}
+        data-search-open={
+          (!mapAvailable || pane === null) && searchPanelOpen ? "true" : undefined
+        }
         data-search-keyboard={searchKeyboardOpen ? "true" : undefined}
         ref={dockRef}
       >
@@ -1568,14 +1581,16 @@ export default function MapDock(props: MapDockProps) {
         <div
           className="dock-head"
           style={{
-            gridTemplateColumns: `minmax(0, 1fr) ${props.q.trim() ? "52px" : "80px"}`,
+            gridTemplateColumns: mapAvailable
+              ? `minmax(0, 1fr) ${props.q.trim() ? "52px" : "80px"}`
+              : "minmax(0, 1fr)",
           }}
         >
           {/* Search, folded in as the top row — the map's ONE search. */}
           <div
             ref={searchWrapRef}
             className="dock-search-wrap"
-            inert={pane !== null}
+            inert={mapAvailable && pane !== null}
             onFocusCapture={() => {
               // Searching is a valid first move. Do not force a location
               // decision or let the delayed consent offer replace the field.
@@ -1641,7 +1656,7 @@ export default function MapDock(props: MapDockProps) {
                 // Ask handoff isn't wired to this box, and a signifier must
                 // not overpromise.
                 placeholder="Coffee, events, restrooms…"
-                aria-label="Search this map"
+                aria-label={mapAvailable ? "Search this map" : "Search Frederick Radius"}
                 role="combobox"
                 aria-autocomplete="list"
                 aria-haspopup="listbox"
@@ -1685,7 +1700,7 @@ export default function MapDock(props: MapDockProps) {
                 <ul
                   id={SEARCH_RESULTS_ID}
                   role="listbox"
-                  aria-label="Map search results"
+                  aria-label={mapAvailable ? "Map search results" : "Search results"}
                 >
                   {visibleSearchMatches.map((r, index) => {
                     const dot =
@@ -1699,7 +1714,7 @@ export default function MapDock(props: MapDockProps) {
                         id={searchOptionId(index)}
                         role="option"
                         aria-selected={activeSearchIndex === index}
-                        aria-disabled={props.searchOpeningId === r.id || undefined}
+                        aria-disabled={searchResultBusy || undefined}
                         aria-busy={props.searchOpeningId === r.id || undefined}
                         tabIndex={-1}
                         className="dock-search-result-item dock-search-result"
@@ -1717,7 +1732,7 @@ export default function MapDock(props: MapDockProps) {
                         }}
                         onClick={(event) => {
                           event.stopPropagation();
-                          if (props.searchOpeningId === r.id) return;
+                          if (searchResultBusy) return;
                           chooseSearchResult(r);
                         }}
                         style={
@@ -1741,9 +1756,9 @@ export default function MapDock(props: MapDockProps) {
                               ? "Opening this map result…"
                               : r.type === "place"
                               ? [
-                                  r.travel_minutes != null
+                                  r.travel_minutes != null && props.searchDistanceOriginLabel
                                     ? `${r.travel_minutes} min walk ${props.searchDistanceOriginLabel}`
-                                    : r.distance_m != null
+                                    : r.distance_m != null && props.searchDistanceOriginLabel
                                     ? `${formatDistance(r.distance_m)} ${props.searchDistanceOriginLabel}`
                                     : null,
                                   r.address?.trim() || r.subtitle,
@@ -1817,7 +1832,7 @@ export default function MapDock(props: MapDockProps) {
                   aria-atomic="true"
                 >
                   <p className="dock-search-empty-title">
-                    Map search didn’t finish.
+                    {mapAvailable ? "Map search didn’t finish." : "Search didn’t finish."}
                   </p>
                   <p className="dock-search-empty-copy">
                     Your query is still here. Try it again, or ask Radius.
@@ -1857,7 +1872,9 @@ export default function MapDock(props: MapDockProps) {
                   aria-atomic="true"
                 >
                   <p className="dock-search-empty-title">
-                    Nothing on this map matches “{props.q.trim()}.”
+                    {mapAvailable
+                      ? `Nothing on this map matches “${props.q.trim()}.”`
+                      : `Nothing in Radius matches “${props.q.trim()}.”`}
                   </p>
                   <p className="dock-search-empty-copy">
                     Search every Radius listing, or ask for a local answer.
@@ -1896,6 +1913,7 @@ export default function MapDock(props: MapDockProps) {
             )}
           </div>
 
+          {mapAvailable && (
           <button
             ref={optionsButtonRef}
             type="button"
@@ -1923,10 +1941,12 @@ export default function MapDock(props: MapDockProps) {
                 is not a quantity anyone can act on — counts are supporting
                 detail, never the headline. */}
           </button>
+          )}
         </div>
 
         {/* The deeper controls are a bottom sheet on phones and a side tray on
             desktop. They never replace or dim the map. */}
+        {mapAvailable && (
         <div
           className="dock-pane"
           id="dock-pane"
@@ -2934,6 +2954,7 @@ export default function MapDock(props: MapDockProps) {
             )}
           </div>
         </div>
+        )}
       </div>
     </>
   );

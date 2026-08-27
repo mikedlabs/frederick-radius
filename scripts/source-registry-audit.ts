@@ -25,6 +25,8 @@ type SourceRow = {
   snapshot_cadence?: string;
   change_cadence?: string;
   transform_file?: string | null;
+  policy_basis?: string;
+  policy_reviewed_at?: string;
 };
 
 const MONITORED_CADENCE =
@@ -32,7 +34,6 @@ const MONITORED_CADENCE =
 
 export const REQUIRED_ACTIVE: Record<string, Collection> = {
   // Business/place spine.
-  google_places: "workflow",
   business_info_extraction: "workflow",
   osm_overpass: "runtime",
   // Event spine and high-value direct ingests.
@@ -65,6 +66,19 @@ const REQUIRED_POLICY_GATED = [
   "fc_parks_trails",
   "visit_frederick",
 ] as const;
+
+/**
+ * These adapters stay pending today, but unlike a permanent deny-list the
+ * ledger must be able to represent a future reviewed authorization. Moving one
+ * to active requires a non-secret approval record in the manifest as well as
+ * the ordinary collection owner and real code pointer enforced above.
+ */
+const REVIEWABLE_GOOGLE_POLICY_GATED = [
+  "google_places",
+  "google_geocode",
+  "google_routes",
+] as const;
+const GOOGLE_WRITTEN_AUTHORIZATION_BASIS = "written_authorization";
 
 const VISIT_FREDERICK_PENDING_ID = "visit_frederick";
 
@@ -122,6 +136,34 @@ export function auditSourceRows(
       issues.push(`${id}: policy-gated adapter is missing from the manifest`);
     } else if (!["pending_approval", "pending_review"].includes(row.status)) {
       issues.push(`${id}: policy-gated adapter must stay pending, found ${row.status}`);
+    }
+  }
+  for (const id of REVIEWABLE_GOOGLE_POLICY_GATED) {
+    const row = byId.get(id);
+    if (!row) {
+      issues.push(`${id}: reviewable Google adapter is missing from the manifest`);
+      continue;
+    }
+    if (["pending_approval", "pending_review"].includes(row.status)) continue;
+    if (row.status !== "active") {
+      issues.push(
+        `${id}: reviewable Google adapter must be pending or active, found ${row.status}`,
+      );
+      continue;
+    }
+    if (row.policy_basis !== GOOGLE_WRITTEN_AUTHORIZATION_BASIS) {
+      issues.push(
+        `${id}: active Google adapter requires policy_basis=${GOOGLE_WRITTEN_AUTHORIZATION_BASIS}`,
+      );
+    }
+    if (
+      !row.policy_reviewed_at ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(row.policy_reviewed_at) ||
+      Number.isNaN(Date.parse(`${row.policy_reviewed_at}T00:00:00Z`))
+    ) {
+      issues.push(
+        `${id}: active Google adapter requires a valid policy_reviewed_at date`,
+      );
     }
   }
   const visitFrederick = byId.get(VISIT_FREDERICK_PENDING_ID);

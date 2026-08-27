@@ -241,6 +241,9 @@ async function loadDesk(): Promise<{
     const rows = (await raw`
       select upstream, day, count from usage_counters
       where day > (now() at time zone 'America/New_York')::date - 8
+        and upstream not like 'idempotency:%'
+        and upstream not like 'lease:%'
+        and upstream not like 'daily-cap:%'
     `) as unknown as { upstream: string; day: string; count: number }[];
     const today = easternDayKey(new Date());
     const byUpstream = new Map<string, { today: number; prior: number[] }>();

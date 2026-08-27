@@ -16,6 +16,8 @@ type SourceRow = {
   snapshot_cadence?: string;
   change_cadence?: string;
   transform_file?: string | null;
+  policy_basis?: string;
+  policy_reviewed_at?: string;
 };
 
 function manifestRows(): SourceRow[] {
@@ -64,6 +66,49 @@ describe("source registry audit", () => {
     expect(visitFrederick?.collection).toBeUndefined();
     expect(visitFrederick?.evidence_aliases).toBeUndefined();
     expect(visitFrederick?.rows_required).toBeUndefined();
+  });
+
+  it.each(["google_places", "google_geocode", "google_routes"])(
+    "keeps %s pending today but permits a fully documented future activation",
+    (id) => {
+      const pending = manifestRows().find((row) => row.id === id);
+      expect(pending?.status).toBe("pending_review");
+
+      const rows = manifestRows().map((row) =>
+        row.id === id
+          ? {
+              ...row,
+              status: "active",
+              collection: "runtime" as const,
+              transform_file: "src/lib/google-maps-policy.ts",
+              policy_basis: "written_authorization",
+              policy_reviewed_at: "2026-08-23",
+            }
+          : row,
+      );
+
+      expect(auditSourceRows(rows)).toEqual([]);
+    },
+  );
+
+  it("rejects an active Google adapter without the recorded policy basis and review date", () => {
+    const rows = manifestRows().map((row) =>
+      row.id === "google_places"
+        ? {
+            ...row,
+            status: "active",
+            collection: "runtime" as const,
+            transform_file: "src/lib/integrations/google-places.ts",
+          }
+        : row,
+    );
+
+    expect(auditSourceRows(rows)).toEqual(
+      expect.arrayContaining([
+        "google_places: active Google adapter requires policy_basis=written_authorization",
+        "google_places: active Google adapter requires a valid policy_reviewed_at date",
+      ]),
+    );
   });
 
   it("rejects Visit Frederick evidence requirements while approval is pending", () => {

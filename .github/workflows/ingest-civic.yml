@@ -12,7 +12,13 @@ run-name: Ingest municipal civic data (firecrawl=${{ vars.CIVIC_FIRECRAWL_FETCH_
 on:
   schedule:
     - cron: "30 8 * * *" # daily 08:30 UTC, after business extraction
-  workflow_dispatch: {} # run on demand from the Actions tab
+  workflow_dispatch:
+    inputs:
+      refresh_open_review:
+        description: "I want to replace the currently open civic-data review with a fresh paid run"
+        required: false
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -21,8 +27,55 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  ingest:
+  review-gate:
     if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      should_run: ${{ steps.review.outputs.should_run }}
+    steps:
+      - name: Pause paid extraction while its review is open
+        id: review
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          REFRESH_OPEN_REVIEW: ${{ inputs.refresh_open_review || 'false' }}
+        with:
+          script: |
+            const branch = 'bot/municipal-civic-refresh';
+            const override = process.env.REFRESH_OPEN_REVIEW === 'true';
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              base: 'main',
+              per_page: 100,
+            });
+            const review = pulls.find((pull) =>
+              pull.head?.ref === branch &&
+              pull.head?.repo?.full_name === `${context.repo.owner}/${context.repo.repo}`
+            );
+
+            if (review && !override) {
+              core.notice(`Skipping paid extraction while review PR #${review.number} is open: ${review.html_url}`);
+              core.summary
+                .addHeading('Civic extraction paused')
+                .addRaw(`Review PR [#${review.number}](${review.html_url}) before spending on another run.\n`)
+                .addRaw('Use the manual refresh_open_review override only when replacing that review is intentional.\n');
+              await core.summary.write();
+              core.setOutput('should_run', 'false');
+              return;
+            }
+
+            if (review && override) {
+              core.notice(`Manual override accepted; paid extraction may update review PR #${review.number}.`);
+            }
+            core.setOutput('should_run', 'true');
+
+  ingest:
+    needs: review-gate
+    if: ${{ needs.review-gate.outputs.should_run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:

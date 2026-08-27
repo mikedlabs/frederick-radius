@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => ({
@@ -6,25 +6,7 @@ const mocks = vi.hoisted(() => ({
   getMapboxTravelMatrix: vi.fn(),
   isRateLimited: vi.fn(),
   isSameOriginRequest: vi.fn(),
-  meterUsage: vi.fn(),
-  stableCache: new Map<string, unknown>(),
-  trafficCache: new Map<string, unknown>(),
-  cacheCall: 0,
-}));
-
-vi.mock("next/cache", () => ({
-  unstable_cache:
-    (fn: (...args: unknown[]) => Promise<unknown>) => {
-      const call = mocks.cacheCall++;
-      const cache = call === 0 ? mocks.stableCache : mocks.trafficCache;
-      return async (...args: unknown[]) => {
-        const key = JSON.stringify(args);
-        if (cache.has(key)) return cache.get(key);
-        const value = await fn(...args);
-        cache.set(key, value);
-        return value;
-      };
-    },
+  reserveDailyUsage: vi.fn(),
 }));
 
 vi.mock("@/lib/mapbox-server", () => ({
@@ -62,7 +44,7 @@ vi.mock("@/lib/origin-check", async () => {
 });
 
 vi.mock("@/lib/usage-meter", () => ({
-  meterUsage: mocks.meterUsage,
+  reserveDailyUsage: mocks.reserveDailyUsage,
 }));
 
 import { GET, POST } from "./route";
@@ -98,11 +80,17 @@ function matrixResponse(durations: Array<number | null>) {
 describe("/api/travel-matrix", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.stableCache.clear();
-    mocks.trafficCache.clear();
     vi.stubGlobal("fetch", mocks.fetch);
     mocks.isSameOriginRequest.mockReturnValue(true);
     mocks.isRateLimited.mockResolvedValue(false);
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 2 });
+    process.env.MAPBOX_MATRIX_ENABLED = "1";
+    delete process.env.MAPBOX_MATRIX_DAILY_ELEMENT_CAP;
+  });
+
+  afterEach(() => {
+    delete process.env.MAPBOX_MATRIX_ENABLED;
+    delete process.env.MAPBOX_MATRIX_DAILY_ELEMENT_CAP;
   });
 
   it("returns routed walking minutes and meters by Matrix element", async () => {
@@ -122,12 +110,16 @@ describe("/api/travel-matrix", () => {
     expect(upstream).toContain("destinations=1;2");
     expect(upstream).toContain("annotations=duration");
     expect(response.headers.get("cache-control")).toBe(
-      "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800",
+      "private, no-store, max-age=0",
     );
-    expect(mocks.meterUsage).toHaveBeenCalledWith("mapbox_matrix", 2);
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "mapbox_matrix",
+      1_000,
+      2,
+    );
   });
 
-  it("uses driving-traffic and a five-minute cache", async () => {
+  it("uses driving-traffic without exposing a browser or CDN cache", async () => {
     mocks.fetch.mockResolvedValue(matrixResponse([540, 660]));
 
     const response = await GET(getRequest({ mode: "drive" }));
@@ -136,7 +128,7 @@ describe("/api/travel-matrix", () => {
       "/driving-traffic/",
     );
     expect(response.headers.get("cache-control")).toBe(
-      "public, max-age=300, s-maxage=300, stale-while-revalidate=300",
+      "private, no-store, max-age=0",
     );
   });
 
@@ -150,7 +142,7 @@ describe("/api/travel-matrix", () => {
     expect(response.headers.get("location")).toContain("olat=39.414");
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(mocks.fetch).not.toHaveBeenCalled();
-    expect(mocks.meterUsage).not.toHaveBeenCalled();
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -184,20 +176,58 @@ describe("/api/travel-matrix", () => {
       expect(response.status).toBe(400);
       expect(await response.json()).toEqual({ ok: false, reason });
       expect(mocks.fetch).not.toHaveBeenCalled();
-      expect(mocks.meterUsage).not.toHaveBeenCalled();
+      expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
     },
   );
 
-  it("does not re-fetch or re-meter a stable shortlist served from cache", async () => {
+  it("does not persist Matrix responses between requests", async () => {
     mocks.fetch.mockResolvedValue(matrixResponse([301, 420]));
 
     await GET(getRequest());
     await GET(getRequest());
 
-    expect(mocks.fetch).toHaveBeenCalledOnce();
-    expect(mocks.meterUsage).toHaveBeenCalledOnce();
-    expect(mocks.meterUsage).toHaveBeenCalledWith("mapbox_matrix", 2);
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledTimes(2);
+    expect(mocks.reserveDailyUsage).toHaveBeenNthCalledWith(
+      1,
+      "mapbox_matrix",
+      1_000,
+      2,
+    );
+    expect(mocks.reserveDailyUsage).toHaveBeenNthCalledWith(
+      2,
+      "mapbox_matrix",
+      1_000,
+      2,
+    );
   });
+
+  it.each([
+    ["the global switch is off", undefined],
+    ["the configured element allowance is zero", "0"],
+  ])(
+    "does not reserve or call Mapbox when %s",
+    async (_label, cap) => {
+      mocks.fetch.mockResolvedValue(matrixResponse([301, 420]));
+      await GET(getRequest());
+      expect(mocks.fetch).toHaveBeenCalledOnce();
+
+      mocks.fetch.mockClear();
+      mocks.reserveDailyUsage.mockClear();
+      if (cap === undefined) delete process.env.MAPBOX_MATRIX_ENABLED;
+      else process.env.MAPBOX_MATRIX_DAILY_ELEMENT_CAP = cap;
+
+      const response = await GET(getRequest());
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ ok: false, reason: "disabled" });
+      expect(response.headers.get("cache-control")).toBe(
+        "private, no-store, max-age=0",
+      );
+      expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
+      expect(mocks.fetch).not.toHaveBeenCalled();
+    },
+  );
 
   it("blocks foreign and rate-limited requests before Mapbox", async () => {
     mocks.isSameOriginRequest.mockReturnValue(false);
@@ -217,7 +247,30 @@ describe("/api/travel-matrix", () => {
       ok: false,
       reason: "upstream-429",
     });
-    expect(mocks.meterUsage).toHaveBeenCalledWith("mapbox_matrix", 2);
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "mapbox_matrix",
+      1_000,
+      2,
+    );
+  });
+
+  it.each([
+    [null, "cost-control-unavailable"],
+    [{ reserved: false, count: 6 }, "daily-cap-reached"],
+  ])("does not call Mapbox when its atomic element reservation is unavailable", async (reservation, reason) => {
+    process.env.MAPBOX_MATRIX_DAILY_ELEMENT_CAP = "6";
+    mocks.reserveDailyUsage.mockResolvedValue(reservation);
+
+    const response = await GET(getRequest());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: false, reason });
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "mapbox_matrix",
+      6,
+      2,
+    );
+    expect(mocks.fetch).not.toHaveBeenCalled();
   });
 });
 
@@ -256,6 +309,8 @@ describe("POST /api/travel-matrix", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.isRateLimited.mockResolvedValue(false);
+    process.env.MAPBOX_MATRIX_ENABLED = "1";
+    delete process.env.MAPBOX_MATRIX_DAILY_ELEMENT_CAP;
     mocks.getMapboxTravelMatrix.mockResolvedValue({
       ok: true,
       profile: "walking",
@@ -341,6 +396,18 @@ describe("POST /api/travel-matrix", () => {
       reason: "rate-limited",
     });
     expect(mocks.getMapboxTravelMatrix).not.toHaveBeenCalled();
+  });
+
+  it("keeps the local fallback when the global Matrix breaker is off", async () => {
+    delete process.env.MAPBOX_MATRIX_ENABLED;
+
+    const response = await POST(postRequest());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: false, reason: "disabled" });
+    expect(mocks.getMapboxTravelMatrix).not.toHaveBeenCalled();
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
+    expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
   it("keeps an upstream failure fail-soft and structured", async () => {

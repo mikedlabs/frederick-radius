@@ -1,5 +1,8 @@
 name: style
 
+run-name: >-
+  ${{ inputs.automated_pr_token != '' && format('style / automated {0}', inputs.automated_pr_token) || format('style / {0}', github.ref_name) }}
+
 # Voice guard. The prior external audit found em dashes shipped on
 # /plan because nothing mechanical enforced the editorial rules. This
 # job runs the rule-based lint on every pull request and fails the PR
@@ -8,12 +11,24 @@ name: style
 
 on:
   pull_request: {}
-  push:
-    branches: [main]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      automated_pr_head_sha:
+        description: Exact trusted bot head validated by automated-pr-checks
+        required: false
+        type: string
+      automated_pr_token:
+        description: One-time correlation token for an automated PR gate pair
+        required: false
+        type: string
 
 permissions:
   contents: read
+
+# A new PR commit makes the prior voice scan obsolete. Do not pay for both.
+concurrency:
+  group: style-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   style-lint:

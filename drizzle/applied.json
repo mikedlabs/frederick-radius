@@ -254,6 +254,12 @@
       "production_state": "migration_recorded",
       "migration_record": "data_truth_fk_indexes",
       "note": "Supabase migration history records data_truth_fk_indexes at version 20260823001324. Live verification confirmed all three partial/composite foreign-key support indexes with the expected definitions."
+    },
+    {
+      "file": "0045_mapbox_search_sessions.sql",
+      "sha256": "f846910df2644224aba1e0875496981a56b1ce12191112cb6b9506ff0a72876f",
+      "production_state": "unverified",
+      "note": "Recorded from the repository; production has not been checked."
     }
   ]
 }

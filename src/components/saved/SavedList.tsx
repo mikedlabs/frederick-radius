@@ -1490,10 +1490,6 @@ export default function SavedList({
               <span className="v link">Magic link <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} /></span>
             </Link>
           )}
-          <Link className="sv-colophon-row" href="/settings/notifications">
-            <span className="k">A nudge before a saved place closes</span>
-            <span className="v link">Turn on <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} /></span>
-          </Link>
         </div>
         <p className="sv-colophon-fin">
           {userEmail ? `Saved places synced as ${userEmail}` : "Saved on this device"}

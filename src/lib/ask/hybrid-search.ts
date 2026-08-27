@@ -2,6 +2,10 @@ import "server-only";
 import { embed } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { getSql } from "@/lib/db/client";
+import {
+  askRuntimeEmbeddingsConfigured,
+  reserveAskEmbeddingCall,
+} from "@/lib/ask/runtime-budget";
 
 export type HybridSearchRow = {
   sourceId: string;
@@ -21,8 +25,9 @@ const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
 export const SEMANTIC_SQL_TIMEOUT_MS = 1_500;
 
 export function hybridSearchConfigured(): boolean {
-  // The database-backed FTS path needs no AI credentials. OPENAI_API_KEY adds
-  // semantic recall, but its absence must never disable exact local retrieval.
+  // The database-backed FTS path needs no AI credentials. Runtime semantic
+  // recall has a separate explicit switch and budget below; neither can
+  // disable exact local retrieval.
   return Boolean(process.env.RADIUS_HYBRID_SEARCH !== "0" && getSql());
 }
 
@@ -133,16 +138,21 @@ export async function hybridPlaceSearch(query: string, limit = 12): Promise<Hybr
     return [];
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!askRuntimeEmbeddingsConfigured()) {
     return keywordRows.slice(0, bounded);
   }
 
   try {
+    // Runtime vectors are optional recall. Counter uncertainty or an exhausted
+    // allowance keeps the already-completed FTS result and never reaches
+    // OpenAI. SDK retries stay at zero so one reservation means one attempt.
+    const reservation = await reserveAskEmbeddingCall();
+    if (!reservation?.reserved) return keywordRows.slice(0, bounded);
     const { embedding } = await embed({
       model: openai.embedding(embeddingModelName()),
       value: clean,
       abortSignal: AbortSignal.timeout(2_500),
-      maxRetries: 1,
+      maxRetries: 0,
     });
     if (embedding.length !== 1536) return keywordRows.slice(0, bounded);
     const vector = `[${embedding.join(",")}]`;

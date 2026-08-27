@@ -4,7 +4,23 @@ import { NextRequest } from "next/server";
 const mocks = vi.hoisted(() => ({
   isSameOriginRequest: vi.fn(),
   isRateLimited: vi.fn(),
-  meterUsage: vi.fn(),
+  reserveDailyUsage: vi.fn(),
+  runtimeEnabled: vi.fn(),
+  routeCache: new Map<string, unknown>(),
+}));
+
+vi.mock("next/cache", () => ({
+  unstable_cache:
+    (fn: (...args: unknown[]) => Promise<unknown>, keys: string[]) =>
+    async (...args: unknown[]) => {
+      const cacheKey = JSON.stringify([keys, args]);
+      if (mocks.routeCache.has(cacheKey)) {
+        return mocks.routeCache.get(cacheKey);
+      }
+      const value = await fn(...args);
+      mocks.routeCache.set(cacheKey, value);
+      return value;
+    },
 }));
 
 vi.mock("@/lib/origin-check", () => ({
@@ -20,9 +36,15 @@ vi.mock("@/lib/origin-check", () => ({
     windowSeconds: number,
   ) => mocks.isRateLimited(req, key, limit, windowSeconds),
 }));
-vi.mock("@/lib/usage-meter", () => ({ meterUsage: mocks.meterUsage }));
-vi.mock("@/lib/mapbox", () => ({
-  MAPBOX_TOKEN: "test-mapbox-token",
+vi.mock("@/lib/usage-meter", () => ({
+  reserveDailyUsage: mocks.reserveDailyUsage,
+}));
+vi.mock("@/lib/mapbox-budget", () => ({
+  mapboxDailyUsageCap: () => 500,
+  mapboxRequestRuntimeEnabled: mocks.runtimeEnabled,
+}));
+vi.mock("@/lib/mapbox-server", () => ({
+  MAPBOX_SERVER_TOKEN: "test-mapbox-token",
   MAPBOX_SERVER_HEADERS: { Referer: "https://frederickradius.app/" },
 }));
 
@@ -38,8 +60,11 @@ function request(pin = "e14328", size = "640x352") {
 describe("paid static-map proxy", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.routeCache.clear();
     mocks.isSameOriginRequest.mockReturnValue(true);
     mocks.isRateLimited.mockResolvedValue(false);
+    mocks.runtimeEnabled.mockReturnValue(true);
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
   });
 
   it("rejects a foreign embed before doing paid work", async () => {
@@ -79,6 +104,7 @@ describe("paid static-map proxy", () => {
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
       "pin-s+e14328(-77.4106,39.4144)/-77.4106,39.4144,14.6,0/640x352@2x",
     );
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith("mapbox_static", 500);
     expect(response.headers.get("cache-control")).toContain("s-maxage=2592000");
     fetchMock.mockRestore();
   });

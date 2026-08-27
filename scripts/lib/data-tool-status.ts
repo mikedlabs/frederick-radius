@@ -41,6 +41,13 @@ const PUSH_REQUIREMENTS: readonly EnvironmentRequirement[] = [
 ];
 
 const CRON_REQUIREMENT: EnvironmentRequirement = { env: "CRON_SECRET" };
+const GOOGLE_POLICY_REQUIREMENTS: readonly EnvironmentRequirement[] = [
+  {
+    env: "GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL",
+    equals: "written-google-authorization-confirmed",
+  },
+  { env: "GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED", equals: "1" },
+];
 
 /**
  * Scheduled and explicitly gated data capabilities whose activation state is
@@ -158,16 +165,21 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
     requirements: [
       CRON_REQUIREMENT,
       DATABASE_REQUIREMENT,
+      ...GOOGLE_POLICY_REQUIREMENTS,
       { env: "GOOGLE_PLACES_API_KEY" },
     ],
   },
   {
     id: "business-status",
-    label: "Google business-status audit",
-    scope: "vercel",
-    vercelPath: "/api/cron/business-status",
+    label: "Google business-status diagnostic",
+    note: "manual only; the scheduled hours refresh already collects the same provider status in its paid Place Details request",
+    scope: "operator",
     gate: { env: "BUSINESS_STATUS_CRON" },
-    requirements: [CRON_REQUIREMENT, { env: "GOOGLE_PLACES_API_KEY" }],
+    requirements: [
+      CRON_REQUIREMENT,
+      ...GOOGLE_POLICY_REQUIREMENTS,
+      { env: "GOOGLE_PLACES_API_KEY" },
+    ],
   },
   {
     id: "radius-search",
@@ -180,9 +192,13 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
   {
     id: "radius-search-semantic",
     label: "Optional Radius semantic recall",
-    note: "direct OpenAI embeddings; full-text search remains the required baseline",
+    note: "scheduled direct OpenAI embeddings behind a separate switch and daily document cap; full-text search remains the required baseline",
     scope: "runtime",
-    requirements: [{ env: "OPENAI_API_KEY" }],
+    gate: { env: "RADIUS_SEARCH_SEMANTIC_ENABLED" },
+    requirements: [
+      { env: "OPENAI_API_KEY" },
+      { env: "RADIUS_SEARCH_EMBEDDING_DAILY_DOCUMENT_LIMIT" },
+    ],
     optionalWhenUnconfigured: true,
   },
   {
@@ -196,27 +212,25 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
   {
     id: "data-retention",
     label: "Bounded data retention",
-    scope: "vercel",
-    vercelPath: "/api/cron/data-health-retention",
+    note: "route is ready but deliberately unscheduled until a current database backup is confirmed",
+    scope: "operator",
     gate: { env: "DATA_RETENTION_PRUNE" },
-    requirements: [CRON_REQUIREMENT, DATABASE_REQUIREMENT],
+    requirements: [DATABASE_REQUIREMENT],
   },
   {
     id: "link-health",
     label: "Outbound link health",
-    scope: "vercel",
-    vercelPath: "/api/cron/link-health",
+    note: "route is ready but deliberately unscheduled until recurring link checks are enabled",
+    scope: "operator",
     gate: { env: "LINK_HEALTH_CRON" },
-    requirements: [CRON_REQUIREMENT],
   },
   {
     id: "parking-alerts",
     label: "Live parking occupancy alerts",
-    scope: "vercel",
-    vercelPath: "/api/cron/parking-alerts",
+    note: "route is ready but deliberately unscheduled until a licensed live occupancy feed is configured",
+    scope: "operator",
     gate: { env: "PARKING_OCCUPANCY_ENABLED" },
     requirements: [
-      CRON_REQUIREMENT,
       DATABASE_REQUIREMENT,
       { env: "PARKING_OCCUPANCY_URL" },
       ...PUSH_REQUIREMENTS,
@@ -251,12 +265,10 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
   {
     id: "visit-frederick-refresh",
     label: "Visit Frederick snapshot refresh",
-    note: "native feed is primary; optional Firecrawl recovery is reported separately",
-    scope: "vercel",
-    vercelPath: "/api/cron/visit-frederick",
+    note: "manual native refresh; optional Firecrawl recovery is reported separately",
+    scope: "operator",
     gate: { env: "VISIT_FREDERICK_FACTS_REUSE_APPROVED" },
     requirements: [
-      CRON_REQUIREMENT,
       DATABASE_REQUIREMENT,
       { env: "BLOB_READ_WRITE_TOKEN" },
     ],
@@ -264,11 +276,10 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
   {
     id: "saved-reminders",
     label: "Saved-event reminders",
-    scope: "vercel",
-    vercelPath: "/api/cron/saved-reminders",
+    note: "route is ready but deliberately unscheduled until the owner enables and verifies device-scoped reminders",
+    scope: "operator",
     gate: { env: "SAVED_REMINDERS_ENABLED" },
     requirements: [
-      CRON_REQUIREMENT,
       DATABASE_REQUIREMENT,
       ...PUSH_REQUIREMENTS,
     ],
@@ -276,11 +287,10 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
   {
     id: "rain-tomorrow",
     label: "Rain-tomorrow notifications",
-    scope: "vercel",
-    vercelPath: "/api/cron/rain-tomorrow",
+    note: "route is ready but deliberately unscheduled until this push product is enabled",
+    scope: "operator",
     gate: { env: "RAIN_TOMORROW_ENABLED" },
     requirements: [
-      CRON_REQUIREMENT,
       DATABASE_REQUIREMENT,
       ...PUSH_REQUIREMENTS,
     ],
@@ -288,11 +298,10 @@ export const DATA_TOOL_DEFINITIONS: readonly DataToolDefinition[] = [
   {
     id: "first-saturday",
     label: "First Saturday notifications",
-    scope: "vercel",
-    vercelPath: "/api/cron/first-saturday",
+    note: "route is ready but deliberately unscheduled until this push product is enabled",
+    scope: "operator",
     gate: { env: "FIRST_SATURDAY_ENABLED" },
     requirements: [
-      CRON_REQUIREMENT,
       DATABASE_REQUIREMENT,
       ...PUSH_REQUIREMENTS,
     ],

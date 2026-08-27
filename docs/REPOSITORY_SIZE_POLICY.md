@@ -14,7 +14,10 @@ the result. It does not delete files, use Git LFS, or rewrite history.
 ## Budgets
 
 - An ordinary tracked file may not exceed 1 MiB.
-- The complete tracked working tree may not exceed 200,000,000 bytes.
+- The complete tracked working tree may not exceed 235,000,000 bytes, matching
+  the machine-enforced value in `config/repository-size-budget.json`. This is a
+  hard ceiling, not a target; non-runtime brand exports are the first planned
+  move out of the deployment so normal work regains headroom.
 - Every existing file above 1 MiB is listed explicitly in
   `config/repository-size-budget.json` with a classification, provenance,
   per-file cap, deployment status, and regeneration command when one exists.

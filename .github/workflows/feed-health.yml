@@ -8,8 +8,9 @@ name: Feed health
 # alert (Slack/email) on this workflow's failure if you want a page.
 
 on:
-  schedule:
-    - cron: "0 12 * * *" # 12:00 UTC daily (~7-8 AM Eastern)
+  # The deployed collectors persist source health in Supabase and the nightly
+  # data-health reporter owns the alert. Keep this deeper all-source probe as
+  # an operator diagnostic instead of paying GitHub to re-probe the same URLs.
   workflow_dispatch: {}
 
 concurrency:

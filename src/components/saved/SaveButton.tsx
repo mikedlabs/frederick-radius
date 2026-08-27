@@ -5,7 +5,6 @@ import { useIsSaved, useToggleSave, useMounted, useSavedList } from "@/hooks/use
 import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { Bookmark } from "lucide-react";
 import { haptic } from "@/lib/haptics";
-import { subscribeDevicePush } from "@/lib/pushSubscribe";
 import {
   isInstallPromptSuppressedPath,
   isStandalone,
@@ -20,77 +19,6 @@ import {
   trackDecision,
 } from "@/lib/decision/telemetry";
 import { toast } from "sonner";
-
-/**
- * critic-1: mirror an EVENT save into the device's server-side reminder
- * registry (/api/saved), so the "one hour before something you saved" cron can
- * reach this device. Only runs when the device already has a push subscription
- * (getSubscription() non-null) — no consent, no record, and we never force a
- * permission prompt. Best-effort + fire-and-forget: the localStorage save is
- * the source of truth; a failed sync must never block or surface. Mirrors
- * syncFollowPushTopic in useFollows.
- */
-async function syncSavedEventReminder(slug: string, save: boolean): Promise<void> {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
-  try {
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
-    if (!sub) return; // no push consent on this device → no reminder possible
-    await fetch("/api/saved", {
-      method: save ? "POST" : "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug, endpoint: sub.endpoint }),
-    });
-  } catch {
-    /* best-effort side channel; never surface or block the save */
-  }
-}
-
-const PUSH_NUDGE_KEY = "fr:push-nudge:v1";
-
-/** One-shot, contextual push opt-in at the moment it earns its keep: the user
- *  just saved an EVENT, reminders exist (the /api/saved registry + hourly
- *  cron), but the machinery silently no-ops without a push subscription — and
- *  the only place to create one was three taps deep in Settings. Offered ONCE
- *  ever per device, only when permission is still undecided; a dismissal is
- *  final (Settings remains the deliberate path). Never the browser prompt
- *  cold: the toast asks first, in our voice, and the browser prompt appears
- *  only after an explicit "Remind me". Acquisition comes first: in a normal
- *  browser tab the Return Bridge owns this save moment, and notifications stay
- *  available from Settings after the user has installed Radius. */
-async function maybeOfferEventReminders(slug: string): Promise<void> {
-  try {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-    if (!isStandalone()) return;
-    if (Notification.permission !== "default") return; // already granted or blocked
-    if (window.localStorage.getItem(PUSH_NUDGE_KEY)) return; // offered before
-    window.localStorage.setItem(PUSH_NUDGE_KEY, "1");
-    const reg = await navigator.serviceWorker?.ready;
-    if (await reg?.pushManager.getSubscription()) return; // already wired
-    toast("Want a nudge an hour before it starts?", {
-      description: "Radius sends one reminder for each saved event.",
-      duration: 8000,
-      action: {
-        label: "Remind me",
-        onClick: () => {
-          void subscribeDevicePush().then((r) => {
-            if (r === "subscribed") {
-              track("push_optin", { source: "event_save" });
-              // The subscription now exists, so the reminder registry write
-              // that no-opped during the save can succeed — re-run it.
-              void syncSavedEventReminder(slug, true);
-              toast.success("You'll get a nudge an hour before.");
-            } else if (r === "denied" || r === "dismissed") {
-              toast("Reminders are off for now. You can change this in Settings.");
-            }
-          });
-        },
-      },
-    });
-  } catch {
-    /* the nudge must never break a save */
-  }
-}
 
 export default function SaveButton({
   refType,
@@ -202,12 +130,6 @@ export default function SaveButton({
             action: "save",
           });
         }
-        // Event saves also register a device-scoped reminder (critic-1).
-        // isSaved is the PRE-toggle state, so the new state is !isSaved.
-        if (refType === "event") void syncSavedEventReminder(refId, !wasSaved);
-        // First event save on a device with undecided notification permission:
-        // offer the reminder loop right where it pays off (one-shot ever).
-        if (refType === "event" && !wasSaved) void maybeOfferEventReminders(refId);
         // Sonner toast — quiet, brand-aligned acknowledgement so the
         // user sees something happen even if the bookmark animation
         // is missed at a glance. Undo action mirrors the toggle so

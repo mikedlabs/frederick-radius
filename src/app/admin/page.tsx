@@ -9,6 +9,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { easternDayKey } from "@/lib/tz";
+import {
+  googleMapsPlatformRuntimeEnabled,
+  googleRoutesRuntimeEnabled,
+} from "@/lib/google-maps-policy";
 import { DeskSections, DeskSkeleton, TrafficGlance, GlanceSkeleton } from "./desk";
 
 /**
@@ -118,7 +122,29 @@ export default function AdminDesk() {
         <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
           <KeyChip label="Database" on={Boolean(process.env.DATABASE_URL || process.env.POSTGRES_URL)} />
           <KeyChip label="Rate limits (KV)" on={Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN)} />
-          <KeyChip label="Google Places" on={Boolean(process.env.GOOGLE_PLACES_API_KEY)} />
+          <KeyChip label="Google policy hold" on={!googleMapsPlatformRuntimeEnabled()} />
+          <KeyChip
+            label="Google Places runtime"
+            on={Boolean(
+              googleMapsPlatformRuntimeEnabled() &&
+                envConfigured(process.env.GOOGLE_PLACES_API_KEY),
+            )}
+          />
+          <KeyChip
+            label="Google Routes runtime"
+            on={Boolean(
+              googleRoutesRuntimeEnabled() &&
+                envConfigured(process.env.GOOGLE_ROUTES_API_KEY),
+            )}
+          />
+          <KeyChip
+            label="Google geocoding"
+            on={Boolean(
+              googleMapsPlatformRuntimeEnabled() &&
+                process.env.GOOGLE_GEOCODING_ENABLED === "1" &&
+                envConfigured(process.env.GOOGLE_GEOCODING_API_KEY),
+            )}
+          />
           <KeyChip label="Anthropic" on={Boolean(process.env.ANTHROPIC_API_KEY)} />
           <KeyChip label="Eventbrite" on={Boolean(process.env.EVENTBRITE_TOKEN)} />
           <KeyChip label="Ticketmaster" on={Boolean(process.env.TICKETMASTER_API_KEY)} />
@@ -175,6 +201,10 @@ function KeyChip({ label, on }: { label: string; on: boolean }) {
       />
     </span>
   );
+}
+
+function envConfigured(value: string | undefined): boolean {
+  return Boolean(value?.trim());
 }
 
 /**

@@ -51,6 +51,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install Chromium for JS-only official sites
+        timeout-minutes: 10
         run: npx playwright install --with-deps chromium
       - name: Verify deterministic commerce-link logic
         run: >-

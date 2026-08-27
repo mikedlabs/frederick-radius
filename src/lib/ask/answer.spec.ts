@@ -521,18 +521,10 @@ describe("askFrederick structured answers", () => {
     }
   });
 
-  it("keeps a stale-hours exact match only as an unconfirmed alternative", async () => {
-    // Data-coupled premise: the named place must carry a verified schedule
-    // in the current snapshot, and the target date must sit beyond the
-    // 7-day freshness window so the schedule reads as unconfirmed. Monocacy
-    // filled this role until the 2026-08-05 refresh, when Google stopped
-    // returning hours for it; Dutch's Daughter is a stable schedule-carrier.
-    // BOTH halves are derived from the SUBJECT's own verification stamp: a
-    // hard-coded clock plus a hard-coded target date meant every hours refresh
-    // moved the data past the clock and broke this test on data that was
-    // working correctly. The clock sits one day after this place was verified
-    // (so its schedule is present and fresh) and the question asks about a
-    // date nine days on (so that schedule cannot vouch for the answer).
+  it("keeps an exact match with safely withheld hours as an unconfirmed alternative", async () => {
+    // The generated client artifact intentionally removes schedules older
+    // than the seven-day policy window. Keep the exact place visible, but do
+    // not turn its retained verification timestamp into a current-hours claim.
     const carrier = clientPlaceBySlug("dutchs-daughter-frederick");
     expect(carrier?.hours_updated_at).toBeTruthy();
     const verifiedAt = Date.parse(carrier?.hours_updated_at ?? "");
@@ -556,7 +548,7 @@ describe("askFrederick structured answers", () => {
       expect(result.sources).toContainEqual(
         expect.objectContaining({
           slug: "dutchs-daughter-frederick",
-          status: "At 10:00 PM · Hours not confirmed",
+          status: "At 10:00 PM · Hours not posted",
         }),
       );
       expect(result.answer).toContain("couldn’t verify");

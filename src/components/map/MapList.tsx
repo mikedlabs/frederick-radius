@@ -298,7 +298,12 @@ export default function MapList({
                         <span className="map-list-main">
                           <span className="map-list-name">{p.name}</span>
                           <span className="map-list-sub">
-                            <span style={{ color }}>{cat?.name ?? p.category}</span>
+                            {/* The category hue already lives in the visual.
+                                Raw category colors are not guaranteed to meet
+                                text contrast on the paper background. */}
+                            <span className="map-list-category">
+                              {cat?.name ?? p.category}
+                            </span>
                             {town && (
                               <>
                                 <span aria-hidden className="map-list-mid">·</span>

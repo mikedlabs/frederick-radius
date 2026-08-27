@@ -9,8 +9,15 @@ import {
   repositoryRootFromModule,
   validateDataRelease,
 } from "./lib/data-release.mjs";
+import { hostedBuildCredentialErrors } from "./lib/hosted-build-credentials.mjs";
 
 const root = repositoryRootFromModule();
+const credentialErrors = hostedBuildCredentialErrors();
+if (credentialErrors.length > 0) {
+  console.error("build-application: hosted release credentials are invalid");
+  for (const error of credentialErrors) console.error(`  - ${error}`);
+  process.exit(1);
+}
 const manifest = loadDataRelease(root);
 const result = validateDataRelease(manifest, root);
 

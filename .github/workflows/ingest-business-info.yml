@@ -123,6 +123,7 @@ jobs:
       - name: Verify business copy boundary before paid extraction
         run: npm test -- tests/business-info-copy.spec.ts tests/style-lint.spec.ts
       - name: Install Chromium (for the render fallback on JS-only sites)
+        timeout-minutes: 10
         run: npx playwright install --with-deps chromium
       - name: Validate optional Firecrawl fallback
         env:

@@ -881,6 +881,20 @@ export function buildWantAnswer(
       requestedRankingMode === "best-fit"
         ? rankBestFit(candidates, preciseOrigin)
         : availability.current;
+    // Thin hours coverage can move an ordinary right-now request into this
+    // best-fit branch. Keep the same short-answer diversity rule used by the
+    // open-now branch so one chain cannot take the hero and repeat in the
+    // alternatives merely because fewer schedules are currently verifiable.
+    const bestHeroBrand = best[0] ? chainBrandKey(best[0].name) : null;
+    const diverseBest = best[0]
+      ? [
+          best[0],
+          ...keepOneLocationPerChain(
+            best.slice(1),
+            bestHeroBrand ? [bestHeroBrand] : undefined,
+          ),
+        ]
+      : [];
     const rowForBestFit = (candidate: WantCandidate) =>
       toRow(
         candidate,
@@ -918,8 +932,8 @@ export function buildWantAnswer(
       key: cKey,
       label: want.label,
       rankingMode,
-      hero: best[0] ? rowForBestFit(best[0]) : null,
-      also: best.slice(1, ALSO_MAX + 1).map(rowForBestFit),
+      hero: diverseBest[0] ? rowForBestFit(diverseBest[0]) : null,
+      also: diverseBest.slice(1, ALSO_MAX + 1).map(rowForBestFit),
       open: breweryCurrent,
       later:
         requestedRankingMode === "best-fit"
@@ -933,7 +947,7 @@ export function buildWantAnswer(
           : Math.max(0, later.length - LATER_PREVIEW),
       notable:
         requestedRankingMode === "best-fit" ||
-        best.length > 0 ||
+        diverseBest.length > 0 ||
         later.length > 0
           ? []
           : other

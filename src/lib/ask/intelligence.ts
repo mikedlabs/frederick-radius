@@ -55,8 +55,15 @@ import {
   communicationAccessLabels,
   hasDeafCommunityOrCommunicationAccess,
 } from "@/lib/events/communication-access";
+import {
+  askAgentRuntimeConfigured,
+  askAiMaxOutputTokens,
+  reserveAskModelCall,
+} from "@/lib/ask/runtime-budget";
 
-const AGENT_MODEL = process.env.ASK_RADIUS_AGENT_MODEL || "openai/gpt-5.4-mini";
+// Keep the public agent on one reviewed low-cost model. An environment typo or
+// dashboard edit must not silently route the daily allowance to a premium SKU.
+const AGENT_MODEL = "openai/gpt-5.4-mini";
 // This is an enhancement path, never the only path to an answer. Keep one
 // bounded budget for the full tool loop so a slow model or optional live feed
 // cannot hold the decision UI behind the function's 30-second ceiling.
@@ -76,15 +83,10 @@ export type RadiusAgentAnswer = {
 };
 
 export function radiusAgentConfigured(): boolean {
-  // The agent's ToolLoopAgent makes multiple model calls per query through the
-  // Vercel AI Gateway. Kept ON even when ASK_AI_PROVIDER pins TEXT generation to
-  // direct Anthropic: the July 2026 bill showed AI Gateway spend is negligible
-  // (the real cost was Vercel Agent + build minutes), so the agent's richer
-  // answers are worth keeping. Set ASK_RADIUS_AGENT=0 to force it off.
-  return Boolean(
-    process.env.ASK_RADIUS_AGENT !== "0" &&
-      (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN),
-  );
+  // The agent is an optional enhancement over the deterministic answer. Its
+  // global switch, code-bounded daily ceiling, and Gateway credential must all
+  // be present before a request even constructs the tool loop.
+  return askAgentRuntimeConfigured();
 }
 
 export function shouldUseRadiusAgent(query: string, intent: AskIntent): boolean {
@@ -686,8 +688,18 @@ export async function runRadiusAgent(
     tools: { searchPlaces, searchEvents, checkWeather, checkParking, civicHelp, buildLocalPlan },
     output: Output.object({ schema: outputSchema }),
     stopWhen: stepCountIs(5),
-    prepareStep: ({ stepNumber }) => ({ toolChoice: stepNumber === 0 ? "required" : "auto" }),
-    maxRetries: 1,
+    // prepareStep runs immediately before every provider turn. Each turn must
+    // own one durable Eastern-day allowance; counter uncertainty or exhaustion
+    // throws out of the optional agent and leaves the local answer intact.
+    prepareStep: async ({ stepNumber }) => {
+      const reservation = await reserveAskModelCall();
+      if (!reservation?.reserved) throw new Error("ask:budget-unavailable");
+      return { toolChoice: stepNumber === 0 ? "required" : "auto" };
+    },
+    maxOutputTokens: askAiMaxOutputTokens(),
+    // A provider retry is another provider call. Keep SDK retries at zero so
+    // there is never an unreserved billable attempt hidden inside one step.
+    maxRetries: 0,
   });
 
   try {

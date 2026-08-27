@@ -59,7 +59,19 @@ export default defineConfig({
               browser: {
                 enabled: true,
                 headless: true,
-                provider: playwright({}),
+                provider: playwright({
+                  // Keep the component gate usable on hosts that provide a
+                  // managed Chromium binary instead of Playwright's cache.
+                  // The release E2E config already honors this same variable.
+                  ...(process.env.PW_CHROMIUM_PATH
+                    ? {
+                        launchOptions: {
+                          executablePath: process.env.PW_CHROMIUM_PATH,
+                          args: ["--no-sandbox"],
+                        },
+                      }
+                    : {}),
+                }),
                 instances: [{ browser: "chromium" }],
               },
             },

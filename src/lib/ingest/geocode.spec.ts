@@ -1,18 +1,28 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const usageMocks = vi.hoisted(() => ({
+  finalizeIdempotentDailyUsage: vi.fn(),
+  reserveIdempotentDailyUsage: vi.fn(),
+}));
+
+vi.mock("@/lib/usage-meter", () => usageMocks);
+
 import {
   geocodeLimitForRemaining,
   googleGeocode,
   parseGoogleGeocodeResponse,
   trustedCachedCoordinate,
   VERIFIED_CATALOG_CACHE_SOURCE,
+  VERIFIED_FREDERICK_COUNTY_CACHE_SOURCE,
   VERIFIED_GOOGLE_CACHE_SOURCE,
 } from "@/lib/ingest/geocode";
 
 describe("geocodeLimitForRemaining", () => {
   it("turns remaining route time into a bounded worst-case batch", () => {
     expect(geocodeLimitForRemaining(4_999, 800)).toBe(0);
-    expect(geocodeLimitForRemaining(13_620, 800)).toBe(1);
-    expect(geocodeLimitForRemaining(45_000, 800)).toBe(4);
+    expect(geocodeLimitForRemaining(13_620, 800)).toBe(0);
+    expect(geocodeLimitForRemaining(16_620, 800)).toBe(1);
+    expect(geocodeLimitForRemaining(45_000, 800)).toBe(3);
     expect(geocodeLimitForRemaining(1_000_000, 3)).toBe(3);
   });
 
@@ -189,8 +199,9 @@ describe("parseGoogleGeocodeResponse", () => {
 });
 
 describe("trustedCachedCoordinate", () => {
-  it("accepts county-valid verified catalog and Google rows", () => {
+  it("keeps catalog rows durable and revalidates official County rows", () => {
     const coordinate = { lat: 39.4137, lng: -77.4109 };
+    const now = Date.parse("2026-08-23T18:00:00.000Z");
     expect(
       trustedCachedCoordinate({
         ...coordinate,
@@ -200,9 +211,65 @@ describe("trustedCachedCoordinate", () => {
     expect(
       trustedCachedCoordinate({
         ...coordinate,
-        source: VERIFIED_GOOGLE_CACHE_SOURCE,
-      }),
+        source: VERIFIED_FREDERICK_COUNTY_CACHE_SOURCE,
+        cached_at: "2026-08-01T18:00:00.000Z",
+      }, now),
     ).toEqual(coordinate);
+    expect(
+      trustedCachedCoordinate({
+        ...coordinate,
+        source: VERIFIED_FREDERICK_COUNTY_CACHE_SOURCE,
+        cached_at: "2026-07-01T18:00:00.000Z",
+      }, now),
+    ).toBeNull();
+    expect(
+      trustedCachedCoordinate({
+        ...coordinate,
+        source: VERIFIED_FREDERICK_COUNTY_CACHE_SOURCE,
+      }, now),
+    ).toBeNull();
+  });
+
+  it("accepts only current Google rows with a plausible cache timestamp", () => {
+    const coordinate = { lat: 39.4137, lng: -77.4109 };
+    const now = Date.parse("2026-08-23T18:00:00.000Z");
+
+    expect(
+      trustedCachedCoordinate(
+        {
+          ...coordinate,
+          source: VERIFIED_GOOGLE_CACHE_SOURCE,
+          cached_at: "2026-08-01T18:00:00.000Z",
+        },
+        now,
+      ),
+    ).toEqual(coordinate);
+    expect(
+      trustedCachedCoordinate(
+        {
+          ...coordinate,
+          source: VERIFIED_GOOGLE_CACHE_SOURCE,
+          cached_at: "2026-07-01T18:00:00.000Z",
+        },
+        now,
+      ),
+    ).toBeNull();
+    expect(
+      trustedCachedCoordinate(
+        {
+          ...coordinate,
+          source: VERIFIED_GOOGLE_CACHE_SOURCE,
+          cached_at: "2026-08-23T18:06:00.000Z",
+        },
+        now,
+      ),
+    ).toBeNull();
+    expect(
+      trustedCachedCoordinate(
+        { ...coordinate, source: VERIFIED_GOOGLE_CACHE_SOURCE },
+        now,
+      ),
+    ).toBeNull();
   });
 
   it("forces legacy Google and curated rows through a current trust path", () => {
@@ -229,13 +296,35 @@ describe("trustedCachedCoordinate", () => {
 });
 
 describe("googleGeocode network boundary", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL =
+      "written-google-authorization-confirmed";
+    process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED = "1";
+    usageMocks.reserveIdempotentDailyUsage.mockResolvedValue({
+      reserved: true,
+      count: 1,
+      duplicate: false,
+    });
+    usageMocks.finalizeIdempotentDailyUsage.mockResolvedValue({
+      finalized: true,
+      state: "succeeded",
+    });
+  });
+
   afterEach(() => {
     delete process.env.GOOGLE_PLACES_API_KEY;
+    delete process.env.GOOGLE_GEOCODING_API_KEY;
+    delete process.env.GOOGLE_GEOCODING_ENABLED;
+    delete process.env.GOOGLE_EVENT_GEOCODE_DAILY_LIMIT;
+    delete process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL;
+    delete process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED;
     vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
-  it("returns disabled without a key or network request", async () => {
+  it("returns disabled when a Places key exists but geocoding was not enabled", async () => {
+    process.env.GOOGLE_PLACES_API_KEY = "test-key";
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
@@ -245,8 +334,122 @@ describe("googleGeocode network boundary", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("stays disabled when the switch is on but only the broad Places key exists", async () => {
+    process.env.GOOGLE_PLACES_API_KEY = "test-places-key";
+    process.env.GOOGLE_GEOCODING_ENABLED = "1";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(googleGeocode("1 N Market St, Frederick, MD")).resolves.toEqual({
+      kind: "disabled",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("stays disabled when the dedicated Geocoding credential is blank", async () => {
+    process.env.GOOGLE_GEOCODING_API_KEY = "   ";
+    process.env.GOOGLE_GEOCODING_ENABLED = "1";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(googleGeocode("1 N Market St, Frederick, MD")).resolves.toEqual({
+      kind: "disabled",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("stays disabled with a dedicated key and switch but no written approval", async () => {
+    delete process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL;
+    process.env.GOOGLE_GEOCODING_API_KEY = "test-geocoding-key";
+    process.env.GOOGLE_GEOCODING_ENABLED = "1";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(googleGeocode("1 N Market St, Frederick, MD")).resolves.toEqual({
+      kind: "disabled",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("uses only the dedicated Geocoding credential", async () => {
+    process.env.GOOGLE_PLACES_API_KEY = "test-places-key";
+    process.env.GOOGLE_GEOCODING_API_KEY = "test-geocoding-key";
+    process.env.GOOGLE_GEOCODING_ENABLED = "1";
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: "ZERO_RESULTS", results: [] })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(googleGeocode("1 N Market St, Frederick, MD")).resolves.toEqual({
+      kind: "reject",
+      reason: "zero-results",
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [requestUrl] = fetchMock.mock.calls[0] as [string];
+    expect(requestUrl).toContain("key=test-geocoding-key");
+    expect(requestUrl).not.toContain("test-places-key");
+    expect(usageMocks.reserveIdempotentDailyUsage).toHaveBeenCalledWith(
+      "google_event_geocode",
+      25,
+      "1 n market st frederick md",
+    );
+    expect(
+      usageMocks.reserveIdempotentDailyUsage.mock.invocationCallOrder[0],
+    ).toBeLessThan(fetchMock.mock.invocationCallOrder[0]);
+    expect(usageMocks.finalizeIdempotentDailyUsage).toHaveBeenCalledWith(
+      "google_event_geocode",
+      "1 n market st frederick md",
+      "succeeded",
+    );
+    expect(fetchMock.mock.invocationCallOrder[0]).toBeLessThan(
+      usageMocks.finalizeIdempotentDailyUsage.mock.invocationCallOrder[0],
+    );
+  });
+
+  it.each([
+    { reservation: null, reason: "budget-unavailable" },
+    {
+      reservation: { reserved: false, count: 25, duplicate: false },
+      reason: "daily-cap",
+    },
+    {
+      reservation: { reserved: false, count: 1, duplicate: true },
+      reason: "already-reserved",
+    },
+  ] as const)(
+    "fails closed as $reason without calling Google",
+    async ({ reservation, reason }) => {
+      process.env.GOOGLE_GEOCODING_API_KEY = "test-geocoding-key";
+      process.env.GOOGLE_GEOCODING_ENABLED = "1";
+      usageMocks.reserveIdempotentDailyUsage.mockResolvedValueOnce(reservation);
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(
+        googleGeocode("1 N Market St, Frederick, MD"),
+      ).resolves.toEqual({ kind: "budget", reason });
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(usageMocks.finalizeIdempotentDailyUsage).not.toHaveBeenCalled();
+    },
+  );
+
+  it("allows an explicit zero to disable paid geocoding before reservation", async () => {
+    process.env.GOOGLE_GEOCODING_API_KEY = "test-geocoding-key";
+    process.env.GOOGLE_GEOCODING_ENABLED = "1";
+    process.env.GOOGLE_EVENT_GEOCODE_DAILY_LIMIT = "0";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      googleGeocode("1 N Market St, Frederick, MD"),
+    ).resolves.toEqual({ kind: "budget", reason: "budget-disabled" });
+    expect(usageMocks.reserveIdempotentDailyUsage).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("classifies HTTP quota failures as system outcomes", async () => {
-    process.env.GOOGLE_PLACES_API_KEY = "test-key";
+    process.env.GOOGLE_GEOCODING_API_KEY = "test-key";
+    process.env.GOOGLE_GEOCODING_ENABLED = "1";
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -261,6 +464,11 @@ describe("googleGeocode network boundary", () => {
       reason: "quota",
       status: 429,
     });
+    expect(usageMocks.finalizeIdempotentDailyUsage).toHaveBeenCalledWith(
+      "google_event_geocode",
+      "1 n market st frederick md",
+      "failed",
+    );
   });
 
   it.each([
@@ -277,7 +485,8 @@ describe("googleGeocode network boundary", () => {
   ] as const)(
     "classifies $reason provider failures as system outcomes",
     async ({ httpStatus, apiStatus, reason }) => {
-      process.env.GOOGLE_PLACES_API_KEY = "test-key";
+      process.env.GOOGLE_GEOCODING_API_KEY = "test-key";
+      process.env.GOOGLE_GEOCODING_ENABLED = "1";
       vi.stubGlobal(
         "fetch",
         vi.fn().mockResolvedValue(
@@ -298,7 +507,8 @@ describe("googleGeocode network boundary", () => {
   );
 
   it("classifies a network rejection without turning it into an address miss", async () => {
-    process.env.GOOGLE_PLACES_API_KEY = "test-key";
+    process.env.GOOGLE_GEOCODING_API_KEY = "test-key";
+    process.env.GOOGLE_GEOCODING_ENABLED = "1";
     vi.stubGlobal(
       "fetch",
       vi.fn().mockRejectedValue(new TypeError("network unavailable")),
@@ -311,7 +521,8 @@ describe("googleGeocode network boundary", () => {
   });
 
   it("aborts an upstream request after eight seconds", async () => {
-    process.env.GOOGLE_PLACES_API_KEY = "test-key";
+    process.env.GOOGLE_GEOCODING_API_KEY = "test-key";
+    process.env.GOOGLE_GEOCODING_ENABLED = "1";
     vi.useFakeTimers();
     vi.stubGlobal(
       "fetch",
