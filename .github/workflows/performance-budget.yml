@@ -33,7 +33,9 @@ jobs:
         run: >-
           npm run perf --
           --url=https://frederickradius.app
-          --label=production-${GITHUB_SHA::12}
+          --label=production-monitor-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}
+          --audit-code-revision=${GITHUB_SHA}
+          --require-stable-deployment
           --runs=3
           --enforce
 
@@ -44,5 +46,5 @@ jobs:
           name: mobile-performance-reports
           path: .perf
           include-hidden-files: true
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 14
