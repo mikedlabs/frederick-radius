@@ -11,7 +11,7 @@ afterEach(() => {
 });
 
 describe("NPS request deadline", () => {
-  it("aborts a stalled park-alert request and fails soft", async () => {
+  it("aborts a stalled visitor-facing park-alert request after 1.5 seconds and fails soft", async () => {
     vi.useFakeTimers();
     process.env.NPS_API_KEY = "test-key";
     let signal: AbortSignal | undefined;
@@ -23,9 +23,43 @@ describe("NPS request deadline", () => {
     }));
 
     const pending = getNpsAlerts();
-    await vi.advanceTimersByTimeAsync(5_000);
+    let settled = false;
+    void pending.then(() => { settled = true; });
+
+    await vi.advanceTimersByTimeAsync(1_499);
+    expect(signal?.aborted).toBe(false);
+    expect(settled).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
 
     await expect(pending).resolves.toEqual([]);
     expect(signal?.aborted).toBe(true);
+  });
+
+  it("keeps a valid park alert that arrives inside the visitor deadline", async () => {
+    process.env.NPS_API_KEY = "test-key";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      data: [{
+        id: "alert-1",
+        parkCode: "cato",
+        title: "Trail closure",
+        description: "The west trail is temporarily closed.",
+        category: "Park Closure",
+        url: "https://www.nps.gov/cato/planyourvisit/conditions.htm",
+      }],
+    }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    })));
+
+    await expect(getNpsAlerts()).resolves.toEqual([{
+      id: "alert-1",
+      parkCode: "cato",
+      parkName: "Catoctin Mountain Park",
+      title: "Trail closure",
+      description: "The west trail is temporarily closed.",
+      category: "Park Closure",
+      url: "https://www.nps.gov/cato/planyourvisit/conditions.htm",
+    }]);
   });
 });
