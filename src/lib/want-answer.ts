@@ -883,7 +883,7 @@ export function buildWantAnswer(
         : availability.current;
     // Thin hours coverage can move an ordinary right-now request into this
     // best-fit branch. Keep the same short-answer diversity rule used by the
-    // open-now branch so a chain cannot take the hero and then repeat in the
+    // open-now branch so one chain cannot take the hero and repeat in the
     // alternatives merely because fewer schedules are currently verifiable.
     const bestHeroBrand = best[0] ? chainBrandKey(best[0].name) : null;
     const diverseBest = best[0]

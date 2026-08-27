@@ -141,6 +141,24 @@ describe("manual place status overrides", () => {
       ),
     ).toBe(false);
 
+    const reviewedThroughDecember15: ManualPlaceStatusOverride = {
+      ...reviewedThroughAugust24,
+      effective_at: "2026-12-15",
+      review_after: "2026-12-15",
+    };
+    expect(
+      isManualPlaceStatusReviewCurrent(
+        reviewedThroughDecember15,
+        new Date("2026-12-16T04:30:00Z"),
+      ),
+    ).toBe(true);
+    expect(
+      isManualPlaceStatusReviewCurrent(
+        reviewedThroughDecember15,
+        new Date("2026-12-16T05:01:00Z"),
+      ),
+    ).toBe(false);
+
     const slug = "eastern-boundary-test-correction";
     MANUAL_PLACE_STATUS_OVERRIDES[slug] = reviewedThroughAugust24;
     try {

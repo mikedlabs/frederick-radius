@@ -590,7 +590,7 @@ describe("buildWantAnswer — one location per chain", () => {
     expect(answer.also.map((row) => chainBrandKey(row.name))).not.toContain(heroBrand);
   });
 
-  it("keeps the same chain diversity when the answer uses best-fit ranking", () => {
+  it("keeps the same chain diversity when thin hours use best-fit ranking", () => {
     const answer = buildWantAnswer(
       "coffee",
       null,
