@@ -58,6 +58,35 @@ describe("server source ledger evidence", () => {
     });
   });
 
+  it("clears only the bounded on-demand false positive and preserves real publication gaps", async () => {
+    const ledger = await getSourceHealthLedger({
+      now: new Date("2026-08-27T12:00:00.000Z"),
+    });
+    const byId = new Map(ledger.map((row) => [row.id, row]));
+
+    expect(byId.get("fc_address_points_complete")).toMatchObject({
+      state: "healthy",
+      publicationApplicability: "not_applicable",
+      reasonCode: "publication_not_applicable",
+      lastPublishedAt: null,
+    });
+    for (const sourceId of [
+      "census_tiger_county_boundary",
+      "mdot_chart",
+      "nws_alerts",
+      "nws_forecast",
+      "open_brewery_db",
+      "seeclickfix",
+    ]) {
+      expect(byId.get(sourceId), sourceId).toMatchObject({
+        state: "awaiting_publish",
+        publicationApplicability: "required",
+        reasonCode: "publication_missing",
+        lastPublishedAt: null,
+      });
+    }
+  });
+
   it("reads current feed evidence from the compact projection, not full history", async () => {
     const queries: string[] = [];
     const sql = vi.fn((parts: TemplateStringsArray) => {

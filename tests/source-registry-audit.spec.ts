@@ -15,6 +15,8 @@ type SourceRow = {
   rows_required?: boolean;
   snapshot_cadence?: string;
   change_cadence?: string;
+  refresh_cadence?: string;
+  publication_applicability?: string;
   transform_file?: string | null;
   policy_basis?: string;
   policy_reviewed_at?: string;
@@ -42,6 +44,31 @@ describe("source registry audit", () => {
       expect.arrayContaining([
         `${rows[0]?.id}: unsupported snapshot_cadence=daily (best effort)`,
         `${rows[0]?.id}: unsupported change_cadence=on_demand`,
+      ]),
+    );
+  });
+
+  it("fails closed when non-publication applicability is broadened", () => {
+    const rows = manifestRows();
+    const addressIndex = rows.findIndex(
+      (row) => row.id === "fc_address_points_complete",
+    );
+    expect(addressIndex).toBeGreaterThanOrEqual(0);
+
+    rows[addressIndex] = {
+      ...rows[addressIndex],
+      refresh_cadence: "daily",
+      publication_applicability: "not_applicable",
+    };
+    rows[0] = {
+      ...rows[0],
+      publication_applicability: "sometimes",
+    };
+
+    expect(auditSourceRows(rows)).toEqual(
+      expect.arrayContaining([
+        "fc_address_points_complete: publication_applicability=not_applicable requires active/runtime/on_demand with rows_required=false and no snapshot or change cadence",
+        `${rows[0]?.id}: unsupported publication_applicability=sometimes`,
       ]),
     );
   });

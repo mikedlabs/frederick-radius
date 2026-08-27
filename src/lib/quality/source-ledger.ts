@@ -7,6 +7,7 @@
  */
 
 export type SourceCollection = "pipeline" | "runtime" | "workflow";
+export type SourcePublicationApplicability = "required" | "not_applicable";
 
 export type SourceManifestEntry = {
   id: string;
@@ -24,6 +25,8 @@ export type SourceManifestEntry = {
   transformFile: string | null;
   evidenceAliases: string[];
   rowsRequired: boolean;
+  /** Whether this source is expected to produce publication evidence. */
+  publicationApplicability: SourcePublicationApplicability;
 };
 
 export type SourceEvidenceKind =
@@ -96,6 +99,7 @@ export type SourceLedgerReasonCode =
   | "source_not_observed"
   | "publication_empty_valid"
   | "publication_current"
+  | "publication_not_applicable"
   | "source_inactive";
 
 export type SourceLedgerRecommendedAction =
@@ -123,6 +127,7 @@ export type SourceLedgerRow = {
   owner: string | null;
   manifestStatus: string;
   collection: SourceCollection | null;
+  publicationApplicability: SourcePublicationApplicability;
   configured: boolean | null;
   keyless: boolean | null;
   missingSettings: string[];
@@ -294,9 +299,13 @@ function sourceReason(
         ? "The upstream answered a reachability check, but no validated collection or publication evidence is recorded."
         : "No source observation, validated collection, or publication evidence is recorded.";
     case "healthy_empty":
-      return "The source answered successfully with no rows. An empty result is valid for this source.";
+      return options.reasonCode === "publication_not_applicable"
+        ? "The bounded on-demand adapter completed with no matching row. An empty exact lookup is valid and no durable publication applies."
+        : "The source answered successfully with no rows. An empty result is valid for this source.";
     case "healthy":
-      return "The source has current published evidence.";
+      return options.reasonCode === "publication_not_applicable"
+        ? "The bounded on-demand adapter has validation evidence. It returns exact results directly and does not create a durable publication."
+        : "The source has current published evidence.";
     case "inactive":
       return `The manifest keeps this source ${options.manifestStatus.replace(/_/g, " ")}.`;
   }
@@ -307,6 +316,8 @@ function sourceDiagnosis(
   options: {
     latestAttemptKind: SourceEvidenceKind | null;
     latestReachabilityOutcome: SourceEvidenceOutcome | null;
+    publicationApplicability: SourcePublicationApplicability;
+    hasPublicationEvidence: boolean;
   },
 ): {
   reasonCode: SourceLedgerReasonCode;
@@ -364,15 +375,27 @@ function sourceDiagnosis(
             recommendedAction: "run_collection",
           };
     case "healthy_empty":
-      return {
-        reasonCode: "publication_empty_valid",
-        recommendedAction: "none",
-      };
+      return options.publicationApplicability === "not_applicable" &&
+        !options.hasPublicationEvidence
+        ? {
+            reasonCode: "publication_not_applicable",
+            recommendedAction: "none",
+          }
+        : {
+            reasonCode: "publication_empty_valid",
+            recommendedAction: "none",
+          };
     case "healthy":
-      return {
-        reasonCode: "publication_current",
-        recommendedAction: "none",
-      };
+      return options.publicationApplicability === "not_applicable" &&
+        !options.hasPublicationEvidence
+        ? {
+            reasonCode: "publication_not_applicable",
+            recommendedAction: "none",
+          }
+        : {
+            reasonCode: "publication_current",
+            recommendedAction: "none",
+          };
     case "inactive":
       return {
         reasonCode: "source_inactive",
@@ -515,6 +538,8 @@ export function buildSourceLedger(
         source.refreshCadence,
         now.getTime(),
       );
+      const publicationRequired =
+        source.publicationApplicability === "required";
 
       let state: SourceLedgerState;
       const hasFutureEvidence = [attemptMs, successMs, publishedMs].some(
@@ -542,6 +567,7 @@ export function buildSourceLedger(
       ) {
         state = "running";
       } else if (
+        publicationRequired &&
         lastSuccessAt &&
         (publishedMs === null ||
           (successMs !== null && publishedMs < successMs))
@@ -556,7 +582,10 @@ export function buildSourceLedger(
         state = "required_empty";
       } else if (!latestAttempt && !lastSuccessAt && !lastPublishedAt) {
         state = "unknown";
-      } else if (latestPublished?.recordCount === 0) {
+      } else if (
+        latestPublished?.recordCount === 0 ||
+        (!publicationRequired && latestSuccess?.recordCount === 0)
+      ) {
         state = "healthy_empty";
       } else {
         state = "healthy";
@@ -565,6 +594,8 @@ export function buildSourceLedger(
       const diagnosis = sourceDiagnosis(state, {
         latestAttemptKind: latestAttempt?.kind ?? null,
         latestReachabilityOutcome: latestReachability?.outcome ?? null,
+        publicationApplicability: source.publicationApplicability,
+        hasPublicationEvidence: latestPublished !== null,
       });
 
       return {
@@ -573,6 +604,7 @@ export function buildSourceLedger(
         owner: source.owner,
         manifestStatus: source.status,
         collection: source.collection,
+        publicationApplicability: source.publicationApplicability,
         configured: config?.configured ?? null,
         keyless: config?.keyless ?? null,
         missingSettings: config?.missingSettings ?? [],

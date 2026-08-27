@@ -26,6 +26,12 @@ export type SourceRegistryArtifactRow = {
   transformFile: string | null;
   evidenceAliases: string[];
   rowsRequired: boolean;
+  /**
+   * Whether a separate published artifact or runtime result is expected.
+   * `not_applicable` is deliberately narrow: it is reserved for bounded,
+   * request-time adapters that never create a durable publication.
+   */
+  publicationApplicability: "required" | "not_applicable";
 };
 
 type ManifestRow = {
@@ -44,6 +50,7 @@ type ManifestRow = {
   transform_file?: unknown;
   evidence_aliases?: unknown;
   rows_required?: unknown;
+  publication_applicability?: unknown;
 };
 
 const SOURCE_STATUSES = new Set([
@@ -134,6 +141,36 @@ export function buildSourceRegistryArtifact(text: string): SourceRegistryArtifac
     ) {
       throw new Error(`${id}: rows_required must be true or false.`);
     }
+    const publicationApplicability =
+      row.publication_applicability === undefined
+        ? "required"
+        : scalar(row.publication_applicability);
+    if (
+      publicationApplicability === null ||
+      (
+        publicationApplicability !== "required" &&
+        publicationApplicability !== "not_applicable"
+      )
+    ) {
+      throw new Error(
+        `${id}: unsupported publication_applicability "${String(row.publication_applicability)}".`,
+      );
+    }
+    if (
+      publicationApplicability === "not_applicable" &&
+      (
+        status !== "active" ||
+        collection !== "runtime" ||
+        !refreshCadence.startsWith("on_demand") ||
+        row.rows_required === true ||
+        scalar(row.snapshot_cadence) !== null ||
+        scalar(row.change_cadence) !== null
+      )
+    ) {
+      throw new Error(
+        `${id}: publication_applicability=not_applicable requires an active runtime source with on_demand cadence, rows_required=false, and no snapshot or change cadence.`,
+      );
+    }
     const evidenceAliases = Array.isArray(row.evidence_aliases)
       ? row.evidence_aliases.map((value) => (value as string).trim())
       : [];
@@ -160,6 +197,7 @@ export function buildSourceRegistryArtifact(text: string): SourceRegistryArtifac
       transformFile: scalar(row.transform_file),
       evidenceAliases: [...new Set(evidenceAliases)].sort(),
       rowsRequired: row.rows_required === true,
+      publicationApplicability,
     };
   });
 

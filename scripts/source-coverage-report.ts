@@ -14,9 +14,10 @@ import {
   SOURCE_COVERAGE_STAGE_LABELS,
   buildSourceCoverageReport,
   sourceCoverageObservationsFromEvidence,
-  sourceSurfaceDeclarationsFromFeeds,
+  sourceSurfaceDeclarationsFromConsumers,
   type SourceCoverageStage,
 } from "@/lib/quality/source-coverage";
+import { SOURCE_ARTIFACT_CONSUMERS } from "@/lib/quality/source-consumers";
 import type {
   SourceConfigurationEvidence,
   SourceEvidence,
@@ -69,7 +70,11 @@ export function buildLocalSourceCoverageReport() {
   return buildSourceCoverageReport(
     sources,
     observations,
-    sourceSurfaceDeclarationsFromFeeds([...KEYED_FEEDS, ...KEYLESS_FEEDS]),
+    sourceSurfaceDeclarationsFromConsumers([
+      ...KEYED_FEEDS,
+      ...KEYLESS_FEEDS,
+      ...SOURCE_ARTIFACT_CONSUMERS,
+    ]),
   );
 }
 

@@ -46,6 +46,7 @@ function source(
     owner: null,
     manifestStatus,
     collection: "runtime",
+    publicationApplicability: "required",
     configured: true,
     keyless: true,
     missingSettings: [],

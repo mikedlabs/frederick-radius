@@ -23,6 +23,8 @@ const ORIGINAL = {
   GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED:
     process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED,
   GOOGLE_ROUTES_ENABLED: process.env.GOOGLE_ROUTES_ENABLED,
+  FREDERICK_COUNTY_GIS_ENABLED:
+    process.env.FREDERICK_COUNTY_GIS_ENABLED,
 };
 
 function restore(name: keyof typeof ORIGINAL) {
@@ -195,6 +197,28 @@ describe("feed configuration registry", () => {
     ).toMatchObject({
       configured: false,
       missingEnvs: ["FREDERICK_COUNTY_GIS_APPROVED_SOURCES"],
+    });
+  });
+
+  it("tracks the bounded address lookup and its explicit opt-out", () => {
+    delete process.env.FREDERICK_COUNTY_GIS_ENABLED;
+    let address = feedStatuses().keyless.find(
+      (feed) => feed.name === "Frederick County exact-address lookup",
+    );
+    expect(address).toMatchObject({
+      configured: true,
+      configurationState: "ready",
+      sourceIds: ["fc_address_points_complete"],
+    });
+
+    process.env.FREDERICK_COUNTY_GIS_ENABLED = "0";
+    address = feedStatuses().keyless.find(
+      (feed) => feed.name === "Frederick County exact-address lookup",
+    );
+    expect(address).toMatchObject({
+      configured: false,
+      configurationState: "off",
+      missingEnvs: [],
     });
   });
 

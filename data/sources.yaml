@@ -21,6 +21,11 @@
 # rows_required is reserved for baseline datasets whose successful normalized
 # output cannot validly be empty. Do not use it for alerts, incidents, events,
 # seasonal schedules, or on-demand work where zero rows can be an honest result.
+# publication_applicability defaults to required. The only supported exception,
+# not_applicable, is for a bounded runtime lookup with on_demand cadence that
+# returns one validated response directly and intentionally creates no durable
+# artifact or bulk mirror. It must never be used to hide a stale, restricted,
+# empty, or unused snapshot.
 # Pipeline rows may set snapshot_cadence when the stored backup is refreshed at
 # a different rate from the upstream or request-time adapter.
 # change_cadence is reserved for feeds whose normalized payload is expected to
@@ -1167,6 +1172,7 @@ sources:
     contact: https://www.frederickcountymd.gov
     status: active
     collection: runtime
+    publication_applicability: not_applicable
     last_validated: 2026-08-23
     last_success: 2026-08-23
     schema_file: null

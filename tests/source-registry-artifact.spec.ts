@@ -37,6 +37,14 @@ describe("generated source registry", () => {
     ]);
   });
 
+  it("allows non-publication only for the bounded on-demand address lookup", () => {
+    expect(
+      GENERATED.filter(
+        (source) => source.publicationApplicability === "not_applicable",
+      ).map((source) => source.id),
+    ).toEqual(["fc_address_points_complete"]);
+  });
+
   it("maps cron-ingest run slugs to their manifest sources", () => {
     const byId = new Map(GENERATED.map((source) => [source.id, source]));
 
@@ -78,6 +86,41 @@ sources:
     expect(() =>
       buildSourceRegistryArtifact(`${base}    rows_required: "true"\n`),
     ).toThrow("county: rows_required must be true or false.");
+    expect(() =>
+      buildSourceRegistryArtifact(
+        `${base}    publication_applicability: sometimes\n`,
+      ),
+    ).toThrow(
+      'county: unsupported publication_applicability "sometimes".',
+    );
+    expect(() =>
+      buildSourceRegistryArtifact(
+        `${base}    publication_applicability: true\n`,
+      ),
+    ).toThrow(
+      'county: unsupported publication_applicability "true".',
+    );
+    expect(() =>
+      buildSourceRegistryArtifact(
+        `${base}    publication_applicability: not_applicable\n`,
+      ),
+    ).toThrow(
+      "county: publication_applicability=not_applicable requires an active runtime source with on_demand cadence, rows_required=false, and no snapshot or change cadence.",
+    );
+    expect(() =>
+      buildSourceRegistryArtifact(
+        `${base.replace("refresh_cadence: hourly", "refresh_cadence: on_demand")}    publication_applicability: not_applicable\n    rows_required: true\n`,
+      ),
+    ).toThrow(
+      "county: publication_applicability=not_applicable requires an active runtime source with on_demand cadence, rows_required=false, and no snapshot or change cadence.",
+    );
+    expect(() =>
+      buildSourceRegistryArtifact(
+        `${base.replace("refresh_cadence: hourly", "refresh_cadence: on_demand")}    publication_applicability: not_applicable\n    snapshot_cadence: daily\n`,
+      ),
+    ).toThrow(
+      "county: publication_applicability=not_applicable requires an active runtime source with on_demand cadence, rows_required=false, and no snapshot or change cadence.",
+    );
     expect(() =>
       buildSourceRegistryArtifact(`${base}    evidence_aliases: county\n`),
     ).toThrow("county: evidence_aliases must contain non-empty strings.");

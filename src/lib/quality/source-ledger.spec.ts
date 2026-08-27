@@ -29,6 +29,7 @@ function source(
     transformFile: "src/lib/integrations/ical-live.ts",
     evidenceAliases: ["county"],
     rowsRequired: false,
+    publicationApplicability: "required",
     ...overrides,
   };
 }
@@ -381,6 +382,60 @@ describe("source health ledger", () => {
     expect(row.state).toBe("awaiting_publish");
     expect(row.lastSuccessAt).not.toBeNull();
     expect(row.lastPublishedAt).toBeNull();
+  });
+
+  it("does not demand a durable publication from a bounded on-demand adapter", () => {
+    const [row] = buildSourceLedger(
+      [
+        source({
+          id: "fc_address_points_complete",
+          evidenceAliases: [],
+          refreshCadence: "on_demand",
+          publicationApplicability: "not_applicable",
+        }),
+      ],
+      [
+        success({
+          sourceKey: "fc_address_points_complete",
+          kind: "manifest",
+          attemptedAt: "2026-07-28T11:00:00.000Z",
+          succeededAt: "2026-07-28T11:00:00.000Z",
+          publishedAt: null,
+          recordCount: null,
+        }),
+      ],
+      [configured({ sourceId: "fc_address_points_complete" })],
+      NOW,
+    );
+
+    expect(row).toMatchObject({
+      state: "healthy",
+      available: true,
+      publicationApplicability: "not_applicable",
+      reasonCode: "publication_not_applicable",
+      recommendedAction: "none",
+      lastSuccessAt: "2026-07-28T11:00:00.000Z",
+      lastPublishedAt: null,
+      freshness: { state: "not_applicable" },
+    });
+    expect(row.reason).toContain("does not create a durable publication");
+  });
+
+  it("keeps ordinary collected sources awaiting real publication evidence", () => {
+    const [row] = buildSourceLedger(
+      [source({ publicationApplicability: "required" })],
+      [success({ publishedAt: null, recordCount: 19 })],
+      [configured()],
+      NOW,
+    );
+
+    expect(row).toMatchObject({
+      state: "awaiting_publish",
+      reasonCode: "publication_missing",
+      recommendedAction: "publish_collected_data",
+      lastPublishedAt: null,
+      recordCount: 19,
+    });
   });
 
   it("marks published evidence stale against the declared cadence", () => {

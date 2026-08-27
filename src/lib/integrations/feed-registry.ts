@@ -27,6 +27,8 @@ export type FeedDef = {
   activationEnvs?: readonly string[];
   /** Reviewed policy value that must exist before activation is allowed. */
   policyApproval?: { env: string; value: string };
+  /** An explicit opt-out for a keyless adapter that is otherwise on. */
+  disabledWhen?: { env: string; value: string };
   /** What this feed powers in the product. */
   powers: string;
   /**
@@ -121,6 +123,13 @@ export const KEYED_FEEDS: FeedDef[] = [
 
 // KEYLESS — public endpoints; live wherever outbound network is allowed.
 export const KEYLESS_FEEDS: FeedDef[] = [
+  {
+    name: "Frederick County exact-address lookup",
+    sourceIds: ["fc_address_points_complete"],
+    powers:
+      "Bounded exact-address checks for event and map geocoding, with no bulk mirror",
+    disabledWhen: { env: "FREDERICK_COUNTY_GIS_ENABLED", value: "0" },
+  },
   { name: "USGS Water", sourceIds: ["usgs_water"], powers: "River + creek gauge levels" },
   { name: "National Weather Service", sourceIds: ["nws_forecast", "nws_alerts"], powers: "Forecast + weather alerts" },
   {
@@ -199,7 +208,7 @@ export const KEYLESS_FEEDS: FeedDef[] = [
   { name: "MD Farmers Markets", sourceIds: ["md_farmers_markets"], powers: "Seasonal market listings" },
   { name: "FredScanner", sourceIds: ["fredscanner"], powers: "Live public 911 dispatch incidents (public page; a Slack bot token is an optional realtime upgrade)" },
   { name: "r/frederickmd", sourceIds: ["reddit_frederick"], powers: "Reddit radar for the admin desk (public RSS; Reddit API creds are an optional depth upgrade)" },
-  { name: "TransIT Frederick", sourceIds: ["transit_gtfs"], powers: "Bus route shapes" },
+  { name: "TransIT Frederick", sourceIds: ["transit_gtfs"], powers: "Bus routes, stops, schedules, map geometry, and Ask answers" },
   { name: "MARC / rail", sourceIds: ["mta_marc_rt"], powers: "Brunswick-line rail schedule" },
   { name: "Venue live-music calendars", powers: "Live music at breweries, wineries, distilleries & bars (per-venue iCal — see live-music-venues.ts)" },
 ];
@@ -305,14 +314,22 @@ export function feedStatuses(): { keyed: FeedStatus[]; keyless: FeedStatus[] } {
         configurationNote,
       };
     }),
-    keyless: KEYLESS_FEEDS.map((f) => ({
-      ...f,
-      keyless: true,
-      configured: true,
-      missingEnvs: [],
-      configurationState: "ready",
-      configurationNote: "No deployment credential is required. Runtime evidence still determines whether the source is answering.",
-    })),
+    keyless: KEYLESS_FEEDS.map((f) => {
+      const disabled = Boolean(
+        f.disabledWhen &&
+          process.env[f.disabledWhen.env] === f.disabledWhen.value,
+      );
+      return {
+        ...f,
+        keyless: true,
+        configured: !disabled,
+        missingEnvs: [],
+        configurationState: disabled ? "off" : "ready",
+        configurationNote: disabled
+          ? `Intentionally off because ${f.disabledWhen!.env}=${f.disabledWhen!.value}.`
+          : "No deployment credential is required. Runtime evidence still determines whether the source is answering.",
+      };
+    }),
   };
 }
 
