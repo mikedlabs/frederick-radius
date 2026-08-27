@@ -17,7 +17,8 @@
       "adsb-lol",
       "rotorcraft"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "airnow",
@@ -34,7 +35,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/airnow.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "bandsintown",
@@ -51,7 +53,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/bandsintown.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "business_info_extraction",
@@ -68,7 +71,8 @@
     "schemaFile": null,
     "transformFile": "scripts/ingest-business-info.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "catoctin_land_trust_events",
@@ -87,7 +91,8 @@
     "evidenceAliases": [
       "catoctin"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "celebrate_frederick",
@@ -107,7 +112,8 @@
       "celebrate",
       "celebrate_frederick"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_geocoder",
@@ -124,7 +130,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_addresses",
@@ -141,7 +148,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_aerial_imagery",
@@ -158,7 +166,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_bike_paths",
@@ -175,7 +184,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "city_frederick_calendar",
@@ -194,7 +204,8 @@
     "evidenceAliases": [
       "city-frederick"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_capital_improvement",
@@ -211,7 +222,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/cityFrederickChanges.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_council_districts",
@@ -228,7 +240,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_cultural_assets",
@@ -245,7 +258,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_development_review",
@@ -262,7 +276,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/cityFrederickChanges.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "city_emergency_rss",
@@ -279,7 +294,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/official-alert-feeds.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_floodplain",
@@ -296,7 +312,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_historic_district",
@@ -313,7 +330,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_hpc_properties",
@@ -330,7 +348,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_lead_service_lines",
@@ -347,7 +366,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_parking_occupancy",
@@ -364,7 +384,8 @@
     "schemaFile": "pipeline/schemas_ts/cof_parking_occupancy.ts",
     "transformFile": "transforms/cof_parking_occupancy.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_path_plan",
@@ -381,7 +402,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/frederickCityMobility.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_places",
@@ -398,7 +420,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_trash_receptacles",
@@ -415,7 +438,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_sidewalks",
@@ -432,7 +456,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/frederickCityMobility.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_snow_removal",
@@ -449,7 +474,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_parcels",
@@ -466,7 +492,8 @@
     "schemaFile": "schemas/cof_parcels.json",
     "transformFile": "transforms/cof_parcels.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "cof_zoning",
@@ -483,7 +510,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "delaplaine_calendar",
@@ -502,7 +530,8 @@
     "evidenceAliases": [
       "delaplaine"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "dfp_events",
@@ -522,7 +551,8 @@
       "dfp",
       "dfp_ical"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "evangelical_lutheran_calendar",
@@ -541,7 +571,8 @@
     "evidenceAliases": [
       "elc"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "eventbrite_frederick",
@@ -558,7 +589,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/eventbrite.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "firstenergy_outages",
@@ -575,7 +607,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/firstenergy.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fcc_athletics",
@@ -592,7 +625,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/local-sports.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fcc_calendar",
@@ -611,7 +645,8 @@
     "evidenceAliases": [
       "fcc"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_meeting_agendas",
@@ -628,7 +663,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_address_points_complete",
@@ -645,7 +681,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/ingest/fc-address-lookup.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "not_applicable"
   },
   {
     "id": "frederick_county_arcgis",
@@ -662,7 +699,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "frederick_county_calendar",
@@ -682,7 +720,8 @@
       "county",
       "frederick_county_calendar"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_county_facilities",
@@ -699,7 +738,8 @@
     "schemaFile": null,
     "transformFile": "src/app/api/ingest/arcgis/route.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_restaurant_inspections",
@@ -716,7 +756,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "county_health_alerts",
@@ -733,7 +774,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/official-alert-feeds.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_high_water",
@@ -750,7 +792,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/fcFloodRisk.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_food_truck_roster",
@@ -767,7 +810,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/fcFoodTruckRoster.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_municipal_boundaries",
@@ -784,7 +828,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/fcGis.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_open_data_hub",
@@ -801,7 +846,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_planning_projects",
@@ -818,7 +864,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/fcPlanningProjects.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_county_parks",
@@ -835,7 +882,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/fcGis.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_park_trails",
@@ -852,7 +900,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/fcTrails.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_parks_rec",
@@ -871,7 +920,8 @@
     "evidenceAliases": [
       "parks"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_recreation_locations",
@@ -888,7 +938,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/fcRecLocations.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fcpl_libraries",
@@ -907,7 +958,8 @@
     "evidenceAliases": [
       "frederick.librarycalendar.com"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_parks_assets",
@@ -924,7 +976,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/fcParkAssetsPublic.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fcps_news",
@@ -941,7 +994,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/fcps.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_snow_command",
@@ -958,7 +1012,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/fcSnowCommand.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "transit_gtfs",
@@ -975,7 +1030,8 @@
     "schemaFile": null,
     "transformFile": "scripts/build-transit-gtfs.ts",
     "evidenceAliases": [],
-    "rowsRequired": true
+    "rowsRequired": true,
+    "publicationApplicability": "required"
   },
   {
     "id": "fcvfra_events",
@@ -994,7 +1050,8 @@
     "evidenceAliases": [
       "fcvfra.com"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "frederick_keys",
@@ -1011,7 +1068,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/frederickKeys.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "kfdk_metars",
@@ -1028,7 +1086,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "frederick_news_post",
@@ -1045,7 +1104,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "business_specials",
@@ -1062,7 +1122,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fredscanner",
@@ -1082,7 +1143,8 @@
       "frederick-scanner",
       "fredscanner"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "gasbuddy_frederick",
@@ -1099,7 +1161,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "google_civic",
@@ -1116,7 +1179,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "google_geocode",
@@ -1133,7 +1197,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "google_news_rss",
@@ -1150,7 +1215,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/news.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "google_places",
@@ -1167,7 +1233,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "google_routes",
@@ -1184,7 +1251,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "great_frederick_fair_calendar",
@@ -1203,7 +1271,8 @@
     "evidenceAliases": [
       "fair"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "heritage_frederick_calendar",
@@ -1222,7 +1291,8 @@
     "evidenceAliases": [
       "heritage-frederick"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_historic_cemeteries",
@@ -1239,7 +1309,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/fcCemeteries.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "hood_athletics",
@@ -1256,7 +1327,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/local-sports.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "hood_college",
@@ -1275,7 +1347,8 @@
     "evidenceAliases": [
       "hood"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "islamic_society_frederick_calendar",
@@ -1294,7 +1367,8 @@
     "evidenceAliases": [
       "isf"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "mapillary_objects",
@@ -1311,7 +1385,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/mapillary.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "md_211",
@@ -1328,7 +1403,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "mdot_chart_dms",
@@ -1345,7 +1421,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/mdot-road-feeds.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "mdot_chart_ips",
@@ -1362,7 +1439,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/mdot-road-feeds.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "mdot_chart_rwis",
@@ -1379,7 +1457,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/mdot-road-feeds.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "mdot_chart_sep",
@@ -1396,7 +1475,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/mdot-road-feeds.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "mdot_chart",
@@ -1413,7 +1493,8 @@
     "schemaFile": "schemas/mdot_chart.json",
     "transformFile": "transforms/mdot_chart.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "mdot_chart_tss",
@@ -1430,7 +1511,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/mdot-road-feeds.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "mdot_chart_travel",
@@ -1447,7 +1529,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/mdot-road-feeds.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "maryland_deaf_community_center_calendar",
@@ -1466,7 +1549,8 @@
     "evidenceAliases": [
       "mdcc"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "md_farmers_markets",
@@ -1483,7 +1567,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "md_dnr_trails",
@@ -1500,7 +1585,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "maryland_ensemble_events",
@@ -1519,7 +1605,8 @@
     "evidenceAliases": [
       "maryland-ensemble"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "md_imap_arcgis",
@@ -1536,7 +1623,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "md_socrata_open_data",
@@ -1553,7 +1641,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "maryland_school_deaf_calendar",
@@ -1572,7 +1661,8 @@
     "evidenceAliases": [
       "msd"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "md_sha_road_closures",
@@ -1589,7 +1679,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/md-road-closures.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "md_wzdx",
@@ -1606,7 +1697,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/mdot-wzdx.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "monocacy_brewing_calendar",
@@ -1625,7 +1717,8 @@
     "evidenceAliases": [
       "monocacy"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "mount_athletics",
@@ -1642,7 +1735,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/local-sports.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "mount_st_marys_calendar",
@@ -1661,7 +1755,8 @@
     "evidenceAliases": [
       "mount-st-marys"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "mta_marc_rt",
@@ -1678,7 +1773,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/marcTrains.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "municipal_civic_extraction",
@@ -1695,7 +1791,8 @@
     "schemaFile": null,
     "transformFile": "scripts/ingest-municipal-civic.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "civil_war_medicine_events",
@@ -1714,7 +1811,8 @@
     "evidenceAliases": [
       "civil-war-med"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "nps",
@@ -1731,7 +1829,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/nps.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "nws_alerts",
@@ -1748,7 +1847,8 @@
     "schemaFile": "schemas/nws_alerts.json",
     "transformFile": "transforms/nws_alerts.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "nws_forecast",
@@ -1765,7 +1865,8 @@
     "schemaFile": "schemas/nws_forecast.json",
     "transformFile": "transforms/nws_forecast.ts",
     "evidenceAliases": [],
-    "rowsRequired": true
+    "rowsRequired": true,
+    "publicationApplicability": "required"
   },
   {
     "id": "nowcoast_lightning",
@@ -1782,7 +1883,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/nowcoast-lightning.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "nws_lsr",
@@ -1799,7 +1901,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/nws-local-storm-reports.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "open_brewery_db",
@@ -1816,7 +1919,8 @@
     "schemaFile": "schemas/open_brewery_db.json",
     "transformFile": "transforms/open_brewery_db.ts",
     "evidenceAliases": [],
-    "rowsRequired": true
+    "rowsRequired": true,
+    "publicationApplicability": "required"
   },
   {
     "id": "osm_overpass",
@@ -1833,7 +1937,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/overpass.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "pulsepoint",
@@ -1850,7 +1955,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "reddit_frederick",
@@ -1867,7 +1973,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/redditRadar.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_bridges_overlay",
@@ -1884,7 +1991,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_markets_overlay",
@@ -1901,7 +2009,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "fc_parks_trails",
@@ -1918,7 +2027,8 @@
     "schemaFile": "schemas/fc_parks_trails.json",
     "transformFile": "transforms/fc_parks_trails.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "seatgeek",
@@ -1935,7 +2045,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/seatgeek.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "seeclickfix",
@@ -1952,7 +2063,8 @@
     "schemaFile": "schemas/seeclickfix.json",
     "transformFile": "transforms/seeclickfix.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "songkick",
@@ -1969,7 +2081,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "ticketmaster",
@@ -1986,7 +2099,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/ticketmaster.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "mount_airy_calendar",
@@ -2005,7 +2119,8 @@
     "evidenceAliases": [
       "mount-airy"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "thurmont_calendar",
@@ -2024,7 +2139,8 @@
     "evidenceAliases": [
       "thurmont"
     ],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "census_tiger_county_boundary",
@@ -2041,7 +2157,8 @@
     "schemaFile": null,
     "transformFile": "scripts/refresh-census-county-boundary.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "census_acs",
@@ -2058,7 +2175,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "usda_farmers_markets",
@@ -2075,7 +2193,8 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "usgs_water",
@@ -2092,7 +2211,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/usgsWater.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "venue_event_extraction",
@@ -2109,7 +2229,8 @@
     "schemaFile": null,
     "transformFile": "scripts/ingest-venue-events.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "squarespace_venue_events",
@@ -2126,7 +2247,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/squarespace-live.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "visit_frederick",
@@ -2143,7 +2265,8 @@
     "schemaFile": null,
     "transformFile": "src/lib/integrations/visitfrederick.ts",
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   },
   {
     "id": "wikimedia_commons",
@@ -2160,6 +2283,7 @@
     "schemaFile": null,
     "transformFile": null,
     "evidenceAliases": [],
-    "rowsRequired": false
+    "rowsRequired": false,
+    "publicationApplicability": "required"
   }
 ]

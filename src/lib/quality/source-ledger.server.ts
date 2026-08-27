@@ -302,6 +302,11 @@ async function ingestEvidence(
 export async function getSourceHealthLedger(
   options: {
     now?: Date;
+    /**
+     * Ephemeral evidence produced during this same health request. It is never
+     * loaded from the manifest, database, or bundled artifacts; runtime probes
+     * therefore cannot become a permanent health lease.
+     */
     currentEvidence?: readonly SourceEvidence[];
     /**
      * Monitoring callers need evidence-query failures to remain failures.

@@ -24,6 +24,8 @@ type SourceRow = {
   rows_required?: boolean;
   snapshot_cadence?: string;
   change_cadence?: string;
+  refresh_cadence?: string;
+  publication_applicability?: string;
   transform_file?: string | null;
   policy_basis?: string;
   policy_reviewed_at?: string;
@@ -106,6 +108,31 @@ export function auditSourceRows(
       if (cadence !== undefined && !MONITORED_CADENCE.test(cadence)) {
         issues.push(`${row.id}: unsupported ${field}=${cadence}`);
       }
+    }
+    const publicationApplicability =
+      row.publication_applicability ?? "required";
+    if (
+      publicationApplicability !== "required" &&
+      publicationApplicability !== "not_applicable"
+    ) {
+      issues.push(
+        `${row.id}: unsupported publication_applicability=${publicationApplicability}`,
+      );
+    }
+    if (
+      publicationApplicability === "not_applicable" &&
+      (
+        row.status !== "active" ||
+        row.collection !== "runtime" ||
+        !row.refresh_cadence?.startsWith("on_demand") ||
+        row.rows_required === true ||
+        row.snapshot_cadence !== undefined ||
+        row.change_cadence !== undefined
+      )
+    ) {
+      issues.push(
+        `${row.id}: publication_applicability=not_applicable requires active/runtime/on_demand with rows_required=false and no snapshot or change cadence`,
+      );
     }
     if (row.status !== "active") {
       if (row.collection) issues.push(`${row.id}: non-active row declares collection=${row.collection}`);

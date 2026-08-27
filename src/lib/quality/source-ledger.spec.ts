@@ -29,6 +29,7 @@ function source(
     transformFile: "src/lib/integrations/ical-live.ts",
     evidenceAliases: ["county"],
     rowsRequired: false,
+    publicationApplicability: "required",
     ...overrides,
   };
 }
@@ -381,6 +382,139 @@ describe("source health ledger", () => {
     expect(row.state).toBe("awaiting_publish");
     expect(row.lastSuccessAt).not.toBeNull();
     expect(row.lastPublishedAt).toBeNull();
+  });
+
+  it("does not treat static manifest success as live on-demand validation", () => {
+    const [row] = buildSourceLedger(
+      [
+        source({
+          id: "fc_address_points_complete",
+          evidenceAliases: [],
+          refreshCadence: "on_demand",
+          publicationApplicability: "not_applicable",
+        }),
+      ],
+      [
+        success({
+          sourceKey: "fc_address_points_complete",
+          kind: "manifest",
+          attemptedAt: "2026-07-28T11:00:00.000Z",
+          succeededAt: "2026-07-28T11:00:00.000Z",
+          publishedAt: null,
+          recordCount: null,
+        }),
+      ],
+      [configured({ sourceId: "fc_address_points_complete" })],
+      NOW,
+    );
+
+    expect(row).toMatchObject({
+      state: "unknown",
+      available: false,
+      publicationApplicability: "not_applicable",
+      reasonCode: "runtime_validation_missing",
+      recommendedAction: "record_runtime_validation",
+      lastAttemptAt: null,
+      lastSuccessAt: "2026-07-28T11:00:00.000Z",
+      lastPublishedAt: null,
+      recordCount: null,
+      freshness: { state: "not_applicable" },
+      evidenceKinds: ["manifest"],
+    });
+    expect(row.reason).toContain("no bounded request-time validation evidence");
+  });
+
+  it("accepts bounded request-time validation without demanding publication", () => {
+    const [row] = buildSourceLedger(
+      [
+        source({
+          id: "fc_address_points_complete",
+          evidenceAliases: [],
+          refreshCadence: "on_demand",
+          publicationApplicability: "not_applicable",
+        }),
+      ],
+      [
+        success({
+          sourceKey: "fc_address_points_complete",
+          kind: "runtime_probe",
+          attemptedAt: "2026-07-28T11:59:00.000Z",
+          succeededAt: "2026-07-28T11:59:00.000Z",
+          publishedAt: null,
+          recordCount: 1,
+        }),
+      ],
+      [configured({ sourceId: "fc_address_points_complete" })],
+      NOW,
+    );
+
+    expect(row).toMatchObject({
+      state: "healthy",
+      available: true,
+      publicationApplicability: "not_applicable",
+      reasonCode: "publication_not_applicable",
+      recommendedAction: "none",
+      lastAttemptAt: "2026-07-28T11:59:00.000Z",
+      lastSuccessAt: "2026-07-28T11:59:00.000Z",
+      lastPublishedAt: null,
+      recordCount: 1,
+      freshness: { state: "not_applicable" },
+      evidenceKinds: ["runtime_probe"],
+    });
+    expect(row.reason).toContain("bounded on-demand adapter has validation evidence");
+  });
+
+  it("lets explicit configuration opt-out outrank on-demand validation", () => {
+    const [row] = buildSourceLedger(
+      [
+        source({
+          id: "fc_address_points_complete",
+          evidenceAliases: [],
+          refreshCadence: "on_demand",
+          publicationApplicability: "not_applicable",
+        }),
+      ],
+      [
+        success({
+          sourceKey: "fc_address_points_complete",
+          kind: "runtime_probe",
+          publishedAt: null,
+        }),
+      ],
+      [
+        configured({
+          sourceId: "fc_address_points_complete",
+          configured: false,
+          missingSettings: ["FREDERICK_COUNTY_GIS_ENABLED=0"],
+        }),
+      ],
+      NOW,
+    );
+
+    expect(row).toMatchObject({
+      state: "unconfigured",
+      available: false,
+      reasonCode: "configuration_missing",
+      recommendedAction: "configure_source",
+      missingSettings: ["FREDERICK_COUNTY_GIS_ENABLED=0"],
+    });
+  });
+
+  it("keeps ordinary collected sources awaiting real publication evidence", () => {
+    const [row] = buildSourceLedger(
+      [source({ publicationApplicability: "required" })],
+      [success({ publishedAt: null, recordCount: 19 })],
+      [configured()],
+      NOW,
+    );
+
+    expect(row).toMatchObject({
+      state: "awaiting_publish",
+      reasonCode: "publication_missing",
+      recommendedAction: "publish_collected_data",
+      lastPublishedAt: null,
+      recordCount: 19,
+    });
   });
 
   it("marks published evidence stale against the declared cadence", () => {

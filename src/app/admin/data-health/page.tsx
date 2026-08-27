@@ -35,8 +35,9 @@ import {
 import {
   buildSourceCoverageReport,
   sourceCoverageObservationsFromLedger,
-  sourceSurfaceDeclarationsFromFeeds,
+  sourceSurfaceDeclarationsFromConsumers,
 } from "@/lib/quality/source-coverage";
+import { SOURCE_ARTIFACT_CONSUMERS } from "@/lib/quality/source-consumers";
 import { loadDataHealthPageRuntime } from "@/lib/loaders/dataHealthPage";
 import {
   FeedSnapshotStorage,
@@ -202,9 +203,10 @@ async function Board() {
   const sourceCoverage = buildSourceCoverageReport(
     SOURCE_REGISTRY,
     sourceCoverageObservationsFromLedger(sourceLedger),
-    sourceSurfaceDeclarationsFromFeeds([
+    sourceSurfaceDeclarationsFromConsumers([
       ...feeds.keyed,
       ...feeds.keyless,
+      ...SOURCE_ARTIFACT_CONSUMERS,
     ]),
   );
 
