@@ -10,6 +10,7 @@ import {
   hasUsefulPhoto,
   type CoveragePlace,
 } from "@/lib/quality/coverage";
+import { OPEN_NOW_MINIMUM_COVERAGE } from "@/lib/hours-availability";
 
 export const PUBLIC_DATA_SNAPSHOT_SCHEMA_VERSION = 1;
 
@@ -53,6 +54,56 @@ export type PublicDataSnapshot = {
     degradedSources: UnavailablePublicDataCount;
   };
 };
+
+export type PublicHoursProductHealth = {
+  status: "current" | "degraded" | "unknown";
+  current: number | null;
+  expected: number | null;
+  coveragePct: number | null;
+  target: number | null;
+  targetPct: number;
+  checkedAt: string | null;
+};
+
+/**
+ * Public Open Now coverage from the exact promoted catalog.
+ *
+ * This is deliberately separate from collection health: a fresh database row
+ * is not public until the reviewed artifact is deployed. The count therefore
+ * catches a stalled nightly publication even while the writer is healthy.
+ */
+export function publicHoursProductHealth(
+  snapshot: PublicDataSnapshot,
+): PublicHoursProductHealth {
+  const total = snapshot.counts.activePublicPlaces;
+  const current = snapshot.counts.placesWithCurrentHours;
+  if (total.status !== "available" || current.status !== "available") {
+    return {
+      status: "unknown",
+      current: null,
+      expected: null,
+      coveragePct: null,
+      target: null,
+      targetPct: OPEN_NOW_MINIMUM_COVERAGE * 100,
+      checkedAt: null,
+    };
+  }
+
+  const coverage = total.value > 0 ? current.value / total.value : 0;
+  const target = Math.ceil(total.value * OPEN_NOW_MINIMUM_COVERAGE);
+  return {
+    status:
+      current.value > 0 && coverage >= OPEN_NOW_MINIMUM_COVERAGE
+        ? "current"
+        : "degraded",
+    current: current.value,
+    expected: total.value,
+    coveragePct: Number((coverage * 100).toFixed(1)),
+    target,
+    targetPct: OPEN_NOW_MINIMUM_COVERAGE * 100,
+    checkedAt: current.asOf,
+  };
+}
 
 function validIso(value: string): boolean {
   return Number.isFinite(Date.parse(value));

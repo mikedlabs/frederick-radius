@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, ExternalLink, Video } from "lucide-react";
-import { getScannerIncidents, type ScannerIncident } from "@/lib/integrations/scannerIncidents";
+import {
+  getScannerIncidentsResult,
+  type ScannerIncidentsResult,
+} from "@/lib/integrations/scannerIncidents";
 import { getScannerPatterns } from "@/lib/scanner/scannerPatterns";
 import ScannerBoard from "@/components/scanner/ScannerBoard";
 import ScannerPatterns from "@/components/scanner/ScannerPatterns";
@@ -29,8 +32,12 @@ export const metadata: Metadata = {
 };
 
 export default async function ScannerPage() {
-  const [incidents, patterns] = await Promise.all([
-    getScannerIncidents().catch(() => [] as ScannerIncident[]),
+  const [scanner, patterns] = await Promise.all([
+    getScannerIncidentsResult().catch((): ScannerIncidentsResult => ({
+      data: [],
+      available: false,
+      reason: "internal_error",
+    })),
     getScannerPatterns().catch(() => null),
   ]);
 
@@ -55,7 +62,10 @@ export default async function ScannerPage() {
         </p>
       </header>
 
-      <ScannerBoard initial={incidents} />
+      <ScannerBoard
+        initial={scanner.data}
+        initialAvailable={scanner.available}
+      />
 
       <div className="grid gap-2 sm:grid-cols-2">
         <Link

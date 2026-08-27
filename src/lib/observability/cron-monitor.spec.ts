@@ -9,7 +9,10 @@ const sentry = vi.hoisted(() => ({
 
 vi.mock("@sentry/nextjs", () => sentry);
 
-import { monitorCronResponse } from "./cron-monitor";
+import {
+  CRON_MONITOR_STATUS_HEADER,
+  monitorCronResponse,
+} from "./cron-monitor";
 
 const schedule = {
   schedule: "*/15 * * * *",
@@ -61,6 +64,22 @@ describe("monitorCronResponse", () => {
     );
 
     expect(response.status).toBe(503);
+    expect(sentry.captureCheckIn).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "error" }),
+    );
+  });
+
+  it("keeps a persisted dependency degradation red without requiring HTTP 503", async () => {
+    const response = await monitorCronResponse(
+      "runtime-source-health",
+      schedule,
+      async () => Response.json(
+        { status: "degraded", execution: { status: "complete" } },
+        { headers: { [CRON_MONITOR_STATUS_HEADER]: "error" } },
+      ),
+    );
+
+    expect(response.status).toBe(200);
     expect(sentry.captureCheckIn).toHaveBeenLastCalledWith(
       expect.objectContaining({ status: "error" }),
     );

@@ -20,6 +20,18 @@ const operationalReady: OperationalReadinessEvidence = {
     feeds: "current",
     eventArchive: "current",
   },
+  searchIndex: {
+    status: "current",
+    expected: 1_570,
+    indexed: 1_570,
+    current: 1_570,
+    missing: 0,
+    stale: 0,
+    retired: 0,
+    embedded: 0,
+    lastDocumentChangeAt: "2026-08-24T12:00:00.000Z",
+    freshnessBasis: "catalog_content_hash",
+  },
 };
 
 function source(
@@ -102,6 +114,7 @@ function snapshot(generatedAt: string): PublicHealthSnapshot {
       status: "ready",
       migrations: { status: "ready", ...operationalReady.migrations },
       heartbeats: { status: "current", ...operationalReady.heartbeats },
+      searchIndex: operationalReady.searchIndex,
       surfaces: {
         today: { status: "ready", reasons: [] },
         ask: { status: "ready", reasons: [] },

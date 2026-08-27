@@ -38,6 +38,15 @@ type WorkflowDocument = {
 };
 
 describe("scheduled data workflow contracts", () => {
+  it("closes the production health issue on the endpoint's real recovery status", () => {
+    const workflow = workflowText("production-health-alert.yml");
+
+    expect(workflow).toContain('if [ "$STATUS" = "operational" ]');
+    expect(workflow).not.toContain('if [ "$STATUS" = "ok" ]');
+    expect(workflow).toContain("h.products?.hours");
+    expect(workflow).toContain("readiness.searchIndex");
+  });
+
   it("pins every external workflow action to an immutable commit", () => {
     const workflowNames = readdirSync(WORKFLOW_DIR).filter((name) =>
       /\.ya?ml$/.test(name),

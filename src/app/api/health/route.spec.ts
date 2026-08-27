@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getCachedPublicHealthSnapshot: vi.fn(),
   publicDataSnapshot: vi.fn(),
+  publicHoursProductHealth: vi.fn(),
 }));
 
 vi.mock("@/lib/public-health", () => ({
@@ -11,6 +12,7 @@ vi.mock("@/lib/public-health", () => ({
 
 vi.mock("@/lib/public-data-snapshot", () => ({
   publicDataSnapshot: mocks.publicDataSnapshot,
+  publicHoursProductHealth: mocks.publicHoursProductHealth,
 }));
 
 import { GET } from "./route";
@@ -23,6 +25,15 @@ describe("GET /api/health", () => {
       dataVersion: `sha256:${"a".repeat(64)}`,
       lastSuccessfulDataPromotion: "2026-08-12T12:00:00Z",
       counts: {},
+    });
+    mocks.publicHoursProductHealth.mockReturnValue({
+      status: "current",
+      current: 1_000,
+      expected: 1_570,
+      coveragePct: 63.7,
+      target: 942,
+      targetPct: 60,
+      checkedAt: "2026-08-27T14:00:00.000Z",
     });
   });
 
@@ -89,7 +100,43 @@ describe("GET /api/health", () => {
       status: "operational",
       database: { status: "reachable" },
       readiness: { status: "ready" },
+      products: { hours: { status: "current", current: 1_000 } },
       release: { dataVersion: `sha256:${"a".repeat(64)}` },
+    });
+  });
+
+  it("marks liveness degraded when deployed current-hours coverage is below its gate", async () => {
+    mocks.publicHoursProductHealth.mockReturnValue({
+      status: "degraded",
+      current: 346,
+      expected: 1_570,
+      coveragePct: 22,
+      target: 942,
+      targetPct: 60,
+      checkedAt: "2026-08-27T14:10:00.000Z",
+    });
+    mocks.getCachedPublicHealthSnapshot.mockResolvedValue({
+      service: "frederick-radius",
+      status: "operational",
+      generatedAt: "2026-08-27T14:10:00.000Z",
+      deployment: { environment: "production", revision: "abcdef012345" },
+      database: { status: "reachable", latencyMs: 18 },
+      data: { status: "current" },
+      readiness: { status: "ready" },
+    });
+
+    const response = await GET();
+
+    await expect(response.json()).resolves.toMatchObject({
+      status: "degraded",
+      products: {
+        hours: {
+          status: "degraded",
+          current: 346,
+          expected: 1_570,
+          coveragePct: 22,
+        },
+      },
     });
   });
 
