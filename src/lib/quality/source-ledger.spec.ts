@@ -384,7 +384,7 @@ describe("source health ledger", () => {
     expect(row.lastPublishedAt).toBeNull();
   });
 
-  it("does not demand a durable publication from a bounded on-demand adapter", () => {
+  it("does not treat static manifest success as live on-demand validation", () => {
     const [row] = buildSourceLedger(
       [
         source({
@@ -409,16 +409,95 @@ describe("source health ledger", () => {
     );
 
     expect(row).toMatchObject({
+      state: "unknown",
+      available: false,
+      publicationApplicability: "not_applicable",
+      reasonCode: "runtime_validation_missing",
+      recommendedAction: "record_runtime_validation",
+      lastAttemptAt: null,
+      lastSuccessAt: "2026-07-28T11:00:00.000Z",
+      lastPublishedAt: null,
+      recordCount: null,
+      freshness: { state: "not_applicable" },
+      evidenceKinds: ["manifest"],
+    });
+    expect(row.reason).toContain("no bounded request-time validation evidence");
+  });
+
+  it("accepts bounded request-time validation without demanding publication", () => {
+    const [row] = buildSourceLedger(
+      [
+        source({
+          id: "fc_address_points_complete",
+          evidenceAliases: [],
+          refreshCadence: "on_demand",
+          publicationApplicability: "not_applicable",
+        }),
+      ],
+      [
+        success({
+          sourceKey: "fc_address_points_complete",
+          kind: "runtime_probe",
+          attemptedAt: "2026-07-28T11:59:00.000Z",
+          succeededAt: "2026-07-28T11:59:00.000Z",
+          publishedAt: null,
+          recordCount: 1,
+        }),
+      ],
+      [configured({ sourceId: "fc_address_points_complete" })],
+      NOW,
+    );
+
+    expect(row).toMatchObject({
       state: "healthy",
       available: true,
       publicationApplicability: "not_applicable",
       reasonCode: "publication_not_applicable",
       recommendedAction: "none",
-      lastSuccessAt: "2026-07-28T11:00:00.000Z",
+      lastAttemptAt: "2026-07-28T11:59:00.000Z",
+      lastSuccessAt: "2026-07-28T11:59:00.000Z",
       lastPublishedAt: null,
+      recordCount: 1,
       freshness: { state: "not_applicable" },
+      evidenceKinds: ["runtime_probe"],
     });
-    expect(row.reason).toContain("does not create a durable publication");
+    expect(row.reason).toContain("bounded on-demand adapter has validation evidence");
+  });
+
+  it("lets explicit configuration opt-out outrank on-demand validation", () => {
+    const [row] = buildSourceLedger(
+      [
+        source({
+          id: "fc_address_points_complete",
+          evidenceAliases: [],
+          refreshCadence: "on_demand",
+          publicationApplicability: "not_applicable",
+        }),
+      ],
+      [
+        success({
+          sourceKey: "fc_address_points_complete",
+          kind: "runtime_probe",
+          publishedAt: null,
+        }),
+      ],
+      [
+        configured({
+          sourceId: "fc_address_points_complete",
+          configured: false,
+          missingSettings: ["FREDERICK_COUNTY_GIS_ENABLED=0"],
+        }),
+      ],
+      NOW,
+    );
+
+    expect(row).toMatchObject({
+      state: "unconfigured",
+      available: false,
+      reasonCode: "configuration_missing",
+      recommendedAction: "configure_source",
+      missingSettings: ["FREDERICK_COUNTY_GIS_ENABLED=0"],
+    });
   });
 
   it("keeps ordinary collected sources awaiting real publication evidence", () => {

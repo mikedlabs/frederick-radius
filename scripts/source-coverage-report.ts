@@ -4,7 +4,9 @@
  * This command performs no network requests. It combines the generated source
  * catalog, deployment configuration visible to this process, timestamps stored
  * in checked-in artifacts, and explicit feed-to-product declarations. Missing
- * evidence stays missing.
+ * evidence stays missing. "Complete" here means every lifecycle stage has
+ * recorded evidence or an explicit non-applicability declaration; it is not a
+ * live-availability claim. Current runtime truth belongs to the health ledger.
  */
 import { pathToFileURL } from "node:url";
 import SOURCE_REGISTRY_RAW from "@/data/source-registry.generated.json" with { type: "json" };
@@ -86,7 +88,7 @@ function main(): void {
   }
 
   console.log(
-    `Source lifecycle evidence: ${report.cataloged} cataloged, ${report.active} active, ${report.complete} complete.`,
+    `Source lifecycle evidence: ${report.cataloged} cataloged, ${report.active} active, ${report.complete} evidence-complete (not a live-availability claim).`,
   );
   for (const stage of STAGES) {
     console.log(

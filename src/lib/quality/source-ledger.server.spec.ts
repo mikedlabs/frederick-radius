@@ -58,17 +58,22 @@ describe("server source ledger evidence", () => {
     });
   });
 
-  it("clears only the bounded on-demand false positive and preserves real publication gaps", async () => {
+  it("keeps bounded on-demand availability unverified and preserves real publication gaps", async () => {
     const ledger = await getSourceHealthLedger({
       now: new Date("2026-08-27T12:00:00.000Z"),
     });
     const byId = new Map(ledger.map((row) => [row.id, row]));
 
     expect(byId.get("fc_address_points_complete")).toMatchObject({
-      state: "healthy",
+      state: "unknown",
+      available: false,
       publicationApplicability: "not_applicable",
-      reasonCode: "publication_not_applicable",
+      reasonCode: "runtime_validation_missing",
+      recommendedAction: "record_runtime_validation",
+      lastAttemptAt: null,
+      lastSuccessAt: "2026-08-23",
       lastPublishedAt: null,
+      evidenceKinds: ["manifest"],
     });
     for (const sourceId of [
       "census_tiger_county_boundary",
@@ -85,6 +90,37 @@ describe("server source ledger evidence", () => {
         lastPublishedAt: null,
       });
     }
+  });
+
+  it("accepts only current bounded runtime evidence for the on-demand adapter", async () => {
+    const ledger = await getSourceHealthLedger({
+      now: new Date("2026-08-27T12:00:00.000Z"),
+      currentEvidence: [
+        {
+          sourceKey: "fc_address_points_complete",
+          kind: "runtime_probe",
+          attemptedAt: "2026-08-27T11:59:00.000Z",
+          outcome: "success",
+          succeededAt: "2026-08-27T11:59:00.000Z",
+          publishedAt: null,
+          recordCount: 1,
+        },
+      ],
+    });
+
+    expect(
+      ledger.find((row) => row.id === "fc_address_points_complete"),
+    ).toMatchObject({
+      state: "healthy",
+      available: true,
+      publicationApplicability: "not_applicable",
+      reasonCode: "publication_not_applicable",
+      lastAttemptAt: "2026-08-27T11:59:00.000Z",
+      lastSuccessAt: "2026-08-27T11:59:00.000Z",
+      lastPublishedAt: null,
+      recordCount: 1,
+      evidenceKinds: ["manifest", "runtime_probe"],
+    });
   });
 
   it("reads current feed evidence from the compact projection, not full history", async () => {

@@ -185,7 +185,7 @@ describe("source coverage control plane", () => {
       proved: true,
       at: null,
       detail:
-        "A separate publication is not applicable to this bounded on-demand adapter.",
+        "A separate publication is not applicable to this bounded on-demand adapter. This stage does not prove current runtime availability.",
     });
     expect(row?.stages.surface.proved).toBe(true);
     expect(row?.firstGap).toBeNull();

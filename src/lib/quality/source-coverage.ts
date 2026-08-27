@@ -176,10 +176,11 @@ function recorded(
 }
 
 /**
- * Build the five-step coverage report. Stage counts are independent evidence
- * counts, not a manufactured funnel: a product use may be declared even when
- * publication proof is missing, and that mismatch is exactly what operators
- * need to see.
+ * Build the five-step coverage report. Stage counts are independent historical
+ * evidence counts, not a manufactured funnel or a live-health assertion: a
+ * product use may be declared even when publication proof is missing, and an
+ * evidence-complete on-demand adapter may still require request-time validation
+ * before the health ledger marks it available.
  */
 export function buildSourceCoverageReport(
   sources: readonly SourceManifestEntry[],
@@ -251,7 +252,7 @@ export function buildSourceCoverageReport(
           proved: true,
           at: null,
           detail:
-            "A separate publication is not applicable to this bounded on-demand adapter.",
+            "A separate publication is not applicable to this bounded on-demand adapter. This stage does not prove current runtime availability.",
         }
       : recorded(
           observation?.lastPublishedAt ?? null,
