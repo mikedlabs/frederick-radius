@@ -61,7 +61,14 @@ const nextConfig: NextConfig = {
   // Browser QA commonly opens the local app through 127.0.0.1 while Next
   // advertises localhost. Treat both as the same trusted development origin
   // so HMR and client hydration are testable without weakening production.
-  allowedDevOrigins: ["127.0.0.1", "localhost"],
+  allowedDevOrigins: [
+    "127.0.0.1",
+    "localhost",
+    // Accept the Base44 preview proxy origin so dev assets / HMR load through it.
+    ...(process.env.BASE44_PUBLIC_HOST_SUFFIX
+      ? [`3000-${process.env.BASE44_PUBLIC_HOST_SUFFIX}`]
+      : []),
+  ],
   turbopack: {
     root: path.resolve(__dirname),
   },

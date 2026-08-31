@@ -15,3 +15,11 @@ defined in `src/app/fonts.ts`. Any agent that trusted this file was designing
 against a typeface stack that no longer exists.
 
 If you are about to add a rule here, add it to `CLAUDE.md` instead.
+
+## Base44 dev environment
+
+- **Run:** `docker compose -f docker-compose.base44.yml up -d` (Node 22, bind-mounted source, `next dev` on port 3000).
+- **No external secrets required to boot.** Core pages (Today, Map, Events, Saved, places, categories, towns) render from committed JSON/TS data in `src/data/`. Supabase, Mapbox, and DATABASE_URL are only needed for auth/saved/follows, interactive maps, and hybrid search — all fail closed when unset.
+- **Preview origin:** `next.config.ts` appends `3000-$BASE44_PUBLIC_HOST_SUFFIX` to `allowedDevOrigins` so the preview proxy hostname is accepted for dev assets/HMR.
+- **Env precedence:** `.env.base44-defaults` (placeholders, first) → `/run/base44/app.env` (platform secrets, last, always wins).
+- **Dev-only streaming error:** `controller[kState].transformAlgorithm is not a function` appears in dev logs but does not affect rendered pages (200 + correct HTML).
