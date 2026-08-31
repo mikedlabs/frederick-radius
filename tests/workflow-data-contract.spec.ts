@@ -25,8 +25,9 @@ type WorkflowDocument = {
   jobs?: Record<
     string,
     {
+      if?: string;
       "timeout-minutes"?: number;
-      "runs-on"?: string;
+      "runs-on"?: string | string[];
       permissions?: {
         actions?: string;
         contents?: string;
@@ -67,6 +68,57 @@ describe("scheduled data workflow contracts", () => {
     }
 
     expect(checkedActions).toBeGreaterThan(0);
+  });
+
+  it("routes only trusted-main MARC generation to the repository NAS runner", () => {
+    const workflowNames = readdirSync(WORKFLOW_DIR).filter((name) =>
+      /\.ya?ml$/.test(name),
+    );
+    const radiusDataJobs: string[] = [];
+
+    for (const name of workflowNames) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
+        const labels = Array.isArray(job["runs-on"])
+          ? job["runs-on"]
+          : [job["runs-on"]];
+        if (labels.includes("radius-data")) {
+          radiusDataJobs.push(`${name}:${jobName}`);
+        }
+      }
+    }
+
+    expect(radiusDataJobs).toEqual(["build-marc-schedule.yml:build"]);
+
+    const marcText = workflowText("build-marc-schedule.yml");
+    const marc = parse(marcText) as WorkflowDocument;
+    expect(marcText).toContain("workflow_dispatch:");
+    expect(marcText).toContain("schedule:");
+    expect(marcText).not.toContain("pull_request:");
+    expect(marcText).not.toContain("\n  push:");
+    expect(marc.jobs?.build?.["runs-on"]).toEqual([
+      "self-hosted",
+      "radius-data",
+    ]);
+    expect(marc.jobs?.build?.if).toBe(
+      "${{ github.ref == 'refs/heads/main' }}",
+    );
+    expect(marc.jobs?.build?.permissions).toEqual({ contents: "read" });
+
+    const hostedJobs = [
+      ["publish-automated-pr.yml", "publish"],
+      ["automated-pr-checks.yml", "dispatch"],
+      ["ci.yml", "verify"],
+      ["ci.yml", "attach-automated-pr-checks"],
+      ["style.yml", "style-lint"],
+    ] as const;
+    for (const [name, jobName] of hostedJobs) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      expect(
+        workflow.jobs?.[jobName]?.["runs-on"],
+        `${name}:${jobName} must stay on an isolated hosted runner`,
+      ).toBe("ubuntu-latest");
+    }
   });
 
   it("uses the read-only Supabase Data API handoff for the hours snapshot", () => {
@@ -642,7 +694,8 @@ describe("scheduled data workflow contracts", () => {
       "workflow_id: 'automated-pr-status-bridge.yml'",
     );
     const uxText = workflowText("ux-audit.yml");
-    expect(uxText).toContain('cron: "17 8 * * 0"');
+    expect(uxText).toContain("workflow_dispatch:");
+    expect(uxText).not.toContain("\n  schedule:");
     expect(uxText).toContain("--workers=2");
     expect(uxText).not.toContain("matrix:");
     expect(uxText).not.toContain("--shard=");

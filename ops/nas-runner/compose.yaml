@@ -1,0 +1,56 @@
+name: frederick-radius-runner
+
+services:
+  radius-data-runner:
+    platform: linux/amd64
+    build:
+      context: .
+      args:
+        RUNNER_VERSION: "2.337.0"
+        RUNNER_SHA256: "70920811a4f8ad4328818682bca5c6469c1c942fab52448868071d0063816613"
+    image: frederick-radius/actions-runner:2.337.0
+    container_name: radius-data-nas
+    hostname: radius-data-nas
+    restart: unless-stopped
+    stop_grace_period: 2m
+    environment:
+      HOME: /runner/home
+      XDG_CACHE_HOME: /runner/cache
+      npm_config_cache: /runner/cache/npm
+      RUNNER_URL: https://github.com/mikedlabs/frederick-radius
+      RUNNER_NAME: radius-data-nas
+      RUNNER_LABELS: radius-data
+      RUNNER_WORKDIR: _work
+      RUNNER_TOKEN: "${RUNNER_TOKEN:-}"
+    volumes:
+      - type: bind
+        source: "${RUNNER_STATE_PATH:-/volume1/docker/frederick-radius-runner/state}"
+        target: /runner
+    networks:
+      - runner-egress
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=2g
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    pids_limit: 512
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  runner-egress:
+    driver: bridge
