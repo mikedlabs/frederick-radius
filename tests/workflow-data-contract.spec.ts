@@ -4,11 +4,16 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 const WORKFLOW_DIR = resolve(process.cwd(), ".github/workflows");
+const NAS_RUNNER_DIR = resolve(process.cwd(), "ops/nas-runner");
 const PINNED_CREATE_PR =
   "peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1";
 
 function workflowText(name: string): string {
   return readFileSync(resolve(WORKFLOW_DIR, name), "utf8");
+}
+
+function nasRunnerText(name: string): string {
+  return readFileSync(resolve(NAS_RUNNER_DIR, name), "utf8");
 }
 
 type WorkflowDocument = {
@@ -25,8 +30,9 @@ type WorkflowDocument = {
   jobs?: Record<
     string,
     {
+      if?: string;
       "timeout-minutes"?: number;
-      "runs-on"?: string;
+      "runs-on"?: string | string[];
       permissions?: {
         actions?: string;
         contents?: string;
@@ -67,6 +73,73 @@ describe("scheduled data workflow contracts", () => {
     }
 
     expect(checkedActions).toBeGreaterThan(0);
+  });
+
+  it("routes only trusted-main MARC generation to the repository NAS runner", () => {
+    const workflowNames = readdirSync(WORKFLOW_DIR).filter((name) =>
+      /\.ya?ml$/.test(name),
+    );
+    const radiusDataJobs: string[] = [];
+
+    for (const name of workflowNames) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
+        const labels = Array.isArray(job["runs-on"])
+          ? job["runs-on"]
+          : [job["runs-on"]];
+        if (labels.includes("radius-data")) {
+          radiusDataJobs.push(`${name}:${jobName}`);
+        }
+      }
+    }
+
+    expect(radiusDataJobs).toEqual(["build-marc-schedule.yml:build"]);
+
+    const marcText = workflowText("build-marc-schedule.yml");
+    const marc = parse(marcText) as WorkflowDocument;
+    expect(marcText).toContain("workflow_dispatch:");
+    expect(marcText).toContain("schedule:");
+    expect(marcText).not.toContain("pull_request:");
+    expect(marcText).not.toContain("\n  push:");
+    expect(marc.jobs?.build?.["runs-on"]).toEqual([
+      "self-hosted",
+      "radius-data",
+    ]);
+    expect(marc.jobs?.build?.if).toBe(
+      "${{ github.ref == 'refs/heads/main' }}",
+    );
+    expect(marc.jobs?.build?.permissions).toEqual({ contents: "read" });
+
+    const hostedJobs = [
+      ["publish-automated-pr.yml", "publish"],
+      ["automated-pr-checks.yml", "dispatch"],
+      ["ci.yml", "verify"],
+      ["ci.yml", "attach-automated-pr-checks"],
+      ["style.yml", "style-lint"],
+    ] as const;
+    for (const [name, jobName] of hostedJobs) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      expect(
+        workflow.jobs?.[jobName]?.["runs-on"],
+        `${name}:${jobName} must stay on an isolated hosted runner`,
+      ).toBe("ubuntu-latest");
+    }
+  });
+
+  it("caps the persistent NAS data runner so it cannot take over the appliance", () => {
+    const compose = parse(nasRunnerText("compose.yaml")) as {
+      services?: Record<
+        string,
+        {
+          cpus?: number;
+          mem_limit?: string;
+        }
+      >;
+    };
+    const dataRunner = compose.services?.["radius-data-runner"];
+
+    expect(dataRunner?.mem_limit).toBe("4g");
+    expect(dataRunner?.cpus).toBe(2);
   });
 
   it("uses the read-only Supabase Data API handoff for the hours snapshot", () => {
@@ -643,7 +716,8 @@ describe("scheduled data workflow contracts", () => {
       "workflow_id: 'automated-pr-status-bridge.yml'",
     );
     const uxText = workflowText("ux-audit.yml");
-    expect(uxText).toContain('cron: "17 8 * * 0"');
+    expect(uxText).toContain("workflow_dispatch:");
+    expect(uxText).not.toContain("\n  schedule:");
     expect(uxText).toContain("--workers=2");
     expect(uxText).not.toContain("matrix:");
     expect(uxText).not.toContain("--shard=");

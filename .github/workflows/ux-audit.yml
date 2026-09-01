@@ -1,10 +1,6 @@
 name: UX browser audit
 
 on:
-  schedule:
-    # The release gate covers core journeys on every PR. This broader crawler
-    # is a weekly regression sweep, kept off the crowded top of the hour.
-    - cron: "17 8 * * 0"
   workflow_dispatch:
 
 concurrency:
