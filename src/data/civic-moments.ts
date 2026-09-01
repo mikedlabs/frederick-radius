@@ -65,6 +65,8 @@ export type CivicMoment = {
   icon: string;
   /** Editorial intro paragraph for the hub. */
   intro: string;
+  /** Optional trust boundary shown prominently in the hub hero. */
+  disclosure?: string;
   /** True for outdoor moments — the hub shows a weather-check line. */
   weatherSensitive?: boolean;
   sections: MomentSection[];
@@ -326,7 +328,9 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
     icon: "Tent",
     intro:
       "The county's biggest agricultural gathering takes over the East Patrick Street fairgrounds for nine days every September, and 2026 runs Friday the 18th through Saturday the 26th. Expect the full county-fair sweep: livestock barns and 4-H judging, a carnival midway, fair food, and a grandstand that swings from touring concerts to demolition derbies. Gate admission is modest and kids ten and under get in free.",
-    note: "Times and prices are from the fair's official pages. Parking fees differed between two of those pages, so confirm at the gate.",
+    disclosure:
+      "Radius is an independent local guide. Fair details come from official Fair sources linked below.",
+    note: "Times and prices are from the fair's official pages, checked September 1. The schedule can change without notice, so confirm the day's details before you go.",
     sections: [
       {
         heading: "The nine days",
@@ -353,9 +357,9 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
             kind: "tip",
             title: "Parking",
             where: "On-site fairgrounds lots",
-            note: "Lots open 9 AM daily. Expect roughly $10 to $15 for the infield and $5 to $10 for the outer lots; the fair's two pages list different figures, so confirm the price at the gate.",
+            note: "Lots open 9 AM daily. Infield parking is $15 by cash or card. Lots A through D are $10, cash only. The fair is not selling advance parking for 2026.",
             source_url: "https://thegreatfrederickfair.com/come-to-the-fair/",
-            confidence: "pattern",
+            confidence: "confirmed",
           },
         ],
       },
@@ -394,6 +398,68 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
             source_url: "https://thegreatfrederickfair.com/the-carnival/",
             confidence: "confirmed",
           },
+          {
+            kind: "tip",
+            title: "2026 vendor map and search",
+            where: "Official EventHub guide",
+            note: "The fair's current mobile guide lists 2026 exhibitors and booth locations across three floorplan sections.",
+            source_url: "https://thegreatfrederickfair.com/vendors/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "activity",
+            title: "Sensory-friendly carnival hours",
+            where: "Carnival midway",
+            when: "Sun, Sept 20 · noon to 2 PM",
+            note: "The carnival turns down its lights and music for two lower-sensory hours. Regular ride prices apply.",
+            source_url: "https://thegreatfrederickfair.com/the-carnival/",
+            confidence: "confirmed",
+          },
+        ],
+      },
+      {
+        heading: "Help on the grounds",
+        items: [
+          {
+            kind: "tip",
+            title: "Mobility rentals",
+            where: "Between the Youth Building (12) and Homegrown Building (13)",
+            note: "Mobility scooters are $10 an hour and manual wheelchairs are $25 a day. Rentals are first come, first served and require a driver's license.",
+            source_url: "https://thegreatfrederickfair.com/guest-services/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "tip",
+            title: "Accessible parking and Lot D shuttle",
+            where: "Lots A through D and Gate 4A",
+            note: "Accessible parking is available in Lots A through D and on the fairgrounds. A free ADA-compliant shuttle runs from Lot D to Gate 4A. Regular parking fees apply.",
+            source_url: "https://thegreatfrederickfair.com/faq/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "tip",
+            title: "Drop-off and rideshare",
+            where: "Gate 1, Gate 4A, or Building 15",
+            note: "The Gate 4A pull-off is the rideshare and general drop-off point. Visitors with special needs may also be unloaded at Gate 1 or Building 15.",
+            source_url: "https://thegreatfrederickfair.com/faq/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "tip",
+            title: "Family rest area",
+            where: "Fairgrounds",
+            note: "A semi-private rest tent has nursing and changing spaces, a small children's play area, and limited complimentary care items.",
+            source_url: "https://thegreatfrederickfair.com/guest-services/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "tip",
+            title: "Visitor help, restrooms, and ATMs",
+            where: "Across the fairgrounds",
+            note: "Volunteer visitor centers have schedules and directions. Restrooms and ATMs are located around the grounds.",
+            source_url: "https://thegreatfrederickfair.com/guest-services/",
+            confidence: "confirmed",
+          },
         ],
       },
     ],
@@ -411,8 +477,20 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
         a: "Yes. Children 10 and under get in free, and much of the daytime activity centers on the midway and livestock barns. A Jack Pass bundles admission with a ride-all-day wristband.",
       },
       {
+        q: "Are there sensory-friendly hours?",
+        a: "Yes. The carnival lowers its lights and music on Sunday, September 20 from noon to 2 PM. Regular ride prices apply during those hours.",
+      },
+      {
+        q: "Can I rent a wheelchair or mobility scooter?",
+        a: "Yes. First-come rentals are between Buildings 12 and 13. Mobility scooters are $10 an hour and manual wheelchairs are $25 a day, with a driver's license required.",
+      },
+      {
+        q: "Is accessible parking or a shuttle available?",
+        a: "Yes. Accessible parking is available in Lots A through D and on the fairgrounds, with regular parking fees. A free ADA-compliant shuttle runs from Lot D to Gate 4A.",
+      },
+      {
         q: "Where do I park?",
-        a: "On-site lots open at 9 AM. Bring cash to be safe: the fair's pages quote different parking figures, so confirm the price at the gate.",
+        a: "On-site lots open at 9 AM. Infield parking is $15 by cash or card. Lots A through D are $10 and cash only. There are no advance parking tickets in 2026.",
       },
     ],
   },
