@@ -41,6 +41,12 @@ describe("Ask Radius navigation context", () => {
     expect(tabIndexForPath("/live-music")).toBe(2);
   });
 
+  it("keeps both Fair Day entrances owned by Today without adding a tab", () => {
+    expect(tabIndexForPath("/fair")).toBe(0);
+    expect(tabIndexForPath("/moments/great-frederick-fair-2026")).toBe(0);
+    expect(TABS).toHaveLength(4);
+  });
+
   it("keeps registered secondary tools inside their parent journey", () => {
     expect(tabIndexForPath("/beer")).toBe(0);
     expect(tabIndexForPath("/pulse")).toBe(0);

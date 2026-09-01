@@ -1,6 +1,6 @@
 import { parseFairManifest } from "@/lib/fair/domain";
 
-const VERIFIED_AT = "2026-09-01T18:40:08Z";
+const VERIFIED_AT = "2026-09-01T20:58:08Z";
 
 const fairHomeSource = {
   publisher: "The Great Frederick Fair",

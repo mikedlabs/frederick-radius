@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { parseRadarEntries, catalogMentions } from "./redditRadar";
+import {
+  catalogMentions,
+  fairFrictionTopics,
+  parseRadarEntries,
+} from "./redditRadar";
 
 const NOW = Date.parse("2026-07-21T16:00:00Z");
 
@@ -42,5 +46,19 @@ describe("catalogMentions", () => {
   it("does not fire on generic words or empty titles", () => {
     expect(catalogMentions("Frederick traffic is wild on Market Street")).toEqual([]);
     expect(catalogMentions("")).toEqual([]);
+  });
+});
+
+describe("fairFrictionTopics", () => {
+  it("turns Fair questions into private review labels without treating them as facts", () => {
+    expect(
+      fairFrictionTopics("Great Frederick Fair parking and re-entry question"),
+    ).toEqual(["arrival", "policy"]);
+    expect(
+      fairFrictionTopics("The Grandstand at the Great Frederick Fair"),
+    ).toEqual(["tickets"]);
+    expect(fairFrictionTopics("Great Frederick Fair 2025 photos")).toEqual([
+      "other",
+    ]);
   });
 });

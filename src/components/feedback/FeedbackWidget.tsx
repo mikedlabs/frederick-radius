@@ -44,6 +44,14 @@ function hasBetaCookie(): boolean {
   return new RegExp(`(?:^|;\\s*)${BETA_ID_COOKIE}=`).test(document.cookie);
 }
 
+export function publicFeedbackSurface(
+  pathname: string | null,
+): "fair" | "food-trucks" | null {
+  if (pathname === "/food-trucks") return "food-trucks";
+  if (pathname === "/moments/great-frederick-fair-2026") return "fair";
+  return null;
+}
+
 export default function FeedbackWidget() {
   const pathname = usePathname();
   const [show, setShow] = useState(false);
@@ -53,14 +61,16 @@ export default function FeedbackWidget() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorText, setErrorText] = useState("");
 
-  const isPublicFoodTruckBoard = pathname === "/food-trucks";
+  const publicSurface = publicFeedbackSurface(pathname);
+  const isPublicFoodTruckBoard = publicSurface === "food-trucks";
+  const isPublicFairDay = publicSurface === "fair";
 
   // Reads document.cookie after mount; both the server and first client render
   // return null, so there is no hydration mismatch.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing from document.cookie, which only exists client-side
-    setShow(hasBetaCookie() || isPublicFoodTruckBoard);
-  }, [isPublicFoodTruckBoard]);
+    setShow(hasBetaCookie() || publicSurface !== null);
+  }, [publicSurface]);
 
   useEffect(() => {
     const openFeedback = () => {
@@ -177,7 +187,13 @@ export default function FeedbackWidget() {
         open={open}
         onClose={close}
         title={succeeded ? "Thanks. We have your note." : "Send feedback"}
-        subtitle={succeeded ? undefined : "What would you keep or change?"}
+        subtitle={
+          succeeded
+            ? undefined
+            : isPublicFairDay
+              ? "What did you wish you knew before arriving?"
+              : "What would you keep or change?"
+        }
         maxHeight="80dvh"
         footer={
           succeeded ? (
@@ -206,6 +222,8 @@ export default function FeedbackWidget() {
           <p className="pb-1 text-[14px]" style={{ color: "var(--app-ink-2)" }}>
             {isPublicFoodTruckBoard
               ? "We use these notes to correct the board. If you left an email, we may write back."
+              : isPublicFairDay
+                ? "We use these notes to make Fair Day more useful. If you left an email, we may write back."
               : "We read every note during the beta. If you left an email, we may write back."}
           </p>
         ) : (
@@ -220,7 +238,11 @@ export default function FeedbackWidget() {
               maxLength={FEEDBACK_MAX_MESSAGE}
               rows={4}
               autoComplete="off"
-              placeholder="A bug, a rough edge, something you liked…"
+              placeholder={
+                isPublicFairDay
+                  ? "Parking, entry, finding something, getting home…"
+                  : "A bug, a rough edge, something you liked…"
+              }
               className="w-full resize-y rounded-[var(--app-radius-md)] border px-3 py-2.5 text-[15px] outline-none"
               style={{
                 borderColor: "var(--app-border)",

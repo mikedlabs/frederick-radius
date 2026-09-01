@@ -6,6 +6,8 @@
  * may be present but cannot complete the Home Screen permission flow.
  */
 
+import { isFairDayPath } from "@/lib/fair/route-policy";
+
 /** Running as an installed PWA (standalone), not in a browser tab. */
 export function isStandalone(): boolean {
   if (typeof window === "undefined") return false;
@@ -53,7 +55,8 @@ export function isInstallPromptSuppressedPath(pathname: string): boolean {
   // while the person is reading the thing they came for. The manual doors in
   // Saved, Compass and Settings are untouched, so this removes an interruption
   // rather than the ability to install.
-  return pathname === "/map"
+  return isFairDayPath(pathname)
+    || pathname === "/map"
     || pathname === "/today"
     || pathname.startsWith("/ask")
     || /^\/(places|events)\/[^/]+$/.test(pathname);

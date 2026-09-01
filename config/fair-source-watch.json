@@ -1,0 +1,41 @@
+{
+  "_doc": "Zero-provider-cost Fair source change detection for the NAS. The job fetches only these exact first-party pages, stores hashes and compact status metadata in the ignored reports directory, and never publishes a change.",
+  "version": 1,
+  "limits": {
+    "maxSources": 6,
+    "timeoutMs": 12000,
+    "maxResponseBytes": 2097152
+  },
+  "sources": [
+    {
+      "id": "fair-visit",
+      "name": "2026 visitor information",
+      "url": "https://thegreatfrederickfair.com/come-to-the-fair/"
+    },
+    {
+      "id": "fair-faq",
+      "name": "Visitor FAQ",
+      "url": "https://thegreatfrederickfair.com/faq/"
+    },
+    {
+      "id": "fair-carnival",
+      "name": "Carnival prices and promotions",
+      "url": "https://thegreatfrederickfair.com/the-carnival/"
+    },
+    {
+      "id": "fair-arrival",
+      "name": "Parking and arrival information",
+      "url": "https://thegreatfrederickfair.com/plan-your-visit/"
+    },
+    {
+      "id": "fair-concert",
+      "name": "Concert arrival and entry guide",
+      "url": "https://thegreatfrederickfair.com/know-before-you-go/"
+    },
+    {
+      "id": "fair-schedule",
+      "name": "Official Fair schedule",
+      "url": "https://thegreatfrederickfair.com/schedule/"
+    }
+  ]
+}

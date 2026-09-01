@@ -15,8 +15,16 @@
  * Fail-soft: any fetch/parse trouble returns [] and the page says so quietly.
  */
 import { unstable_cache } from "next/cache";
+import {
+  fairFrictionTopics,
+  type FairFrictionTopic,
+} from "@/lib/fair/community-intelligence";
+
+export { fairFrictionTopics, type FairFrictionTopic } from "@/lib/fair/community-intelligence";
 
 const FEED_URL = "https://www.reddit.com/r/frederickmd/.rss";
+const FAIR_FEED_URL =
+  'https://www.reddit.com/r/frederickmd/search.rss?q=%22Great%20Frederick%20Fair%22&restrict_sr=on&sort=new&t=all';
 const UA = "frederick-radius:community-radar:v1.0 (local guide; contact hello@frederickradius.app)";
 
 export type RadarPost = {
@@ -35,6 +43,11 @@ export type RadarPost = {
   /** Catalog places the title mentions (matched against places-client names),
    *  so chatter about a place we already list is visible at a glance. */
   about: string[];
+};
+
+export type FairRadarPost = RadarPost & {
+  /** Topic hints are triage labels only. The linked post remains unverified. */
+  topics: FairFrictionTopic[];
 };
 
 /** Titles that likely mean a place opened/closed/changed — the catalog leads. */
@@ -143,7 +156,33 @@ async function fetchRedditRadar(): Promise<RadarPost[]> {
   }
 }
 
+async function fetchFairRedditRadar(): Promise<FairRadarPost[]> {
+  try {
+    const res = await fetch(FAIR_FEED_URL, {
+      headers: { "User-Agent": UA },
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return [];
+    return parseRadarEntries(await res.text(), Date.now()).map((post) => ({
+      ...post,
+      topics: fairFrictionTopics(post.title),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /** r/frederickmd's current front page (titles + links), cached ~15 min. */
 export const getRedditRadar = unstable_cache(fetchRedditRadar, ["reddit-radar-v1"], {
   revalidate: 900,
 });
+
+/**
+ * Exact public RSS search for Fair posts. Titles and Reddit permalinks only;
+ * no author names, post bodies, comments, or public auto-publishing.
+ */
+export const getFairRedditRadar = unstable_cache(
+  fetchFairRedditRadar,
+  ["reddit-fair-radar-v1"],
+  { revalidate: 3600 },
+);

@@ -6,6 +6,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { radiusJourneyForPath, type RadiusJourney } from "@/data/radius-tools";
+import { isFairDayPath } from "@/lib/fair/route-policy";
 
 /**
  * Shared primary-tab definition for BottomNav (mobile) + SideRail
@@ -84,6 +85,7 @@ const SECTION_PREFIXES: ReadonlyArray<readonly [string, number]> = [
 
 /** Resolve a pathname to its tab index (or -1 if it isn't under a tab). */
 export function tabIndexForPath(pathname: string): number {
+  if (isFairDayPath(pathname)) return 0;
   const direct = TABS.findIndex(
     (t) => pathname === t.href || pathname.startsWith(t.href + "/"),
   );
