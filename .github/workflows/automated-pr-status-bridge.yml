@@ -271,7 +271,7 @@ jobs:
                 const candidate = response.data;
                 if (
                   candidate.id !== spec.runId ||
-                  candidate.name !== spec.workflowName ||
+                  candidate.path?.split('@')[0] !== `.github/workflows/${spec.workflowId}` ||
                   candidate.display_title !== spec.displayTitle ||
                   candidate.event !== 'workflow_dispatch' ||
                   candidate.head_sha !== headSha ||

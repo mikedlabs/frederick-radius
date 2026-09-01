@@ -214,6 +214,7 @@
   },
   "overrides": {
     "aria-query": "5.3.2",
+    "browserslist": "4.28.7",
     "fast-uri": "3.1.5",
     "linkify-it": "5.0.2",
     "postcss": "8.5.23",
