@@ -262,6 +262,7 @@ describe("public live-event source circuit integration", () => {
 
   it("does not let a cancellable public caller cancel an ordinary visitor", async () => {
     vi.useRealTimers();
+    vi.setSystemTime(new Date("2026-07-29T12:00:00.000Z"));
     const callerController = new AbortController();
     const requests: Array<{
       resolve: (response: Response) => void;
