@@ -58,6 +58,40 @@ describe("Fair transit evidence", () => {
     });
   });
 
+  it("orders stops by unrounded distance before exposing rounded meters", () => {
+    const result = buildFairTransitEvidence({
+      venue: { lat: 0, lng: 0 },
+      fairDateRange: FAIR_DATES,
+      transit: {
+        routes: [],
+        stops: [
+          {
+            id: "farther",
+            name: "Alpha Stop",
+            lat: 0.000093,
+            lng: 0,
+          },
+          {
+            id: "nearer",
+            name: "Zulu Stop",
+            lat: 0.000091,
+            lng: 0,
+          },
+        ],
+      },
+      network: { stopRoutes: {} },
+      nearestStopLimit: 2,
+    });
+
+    expect(result.nearestStops.map((stop) => stop.id)).toEqual([
+      "nearer",
+      "farther",
+    ]);
+    expect(
+      result.nearestStops.map((stop) => stop.approachDistance.meters),
+    ).toEqual([10, 10]);
+  });
+
   it("joins published route records without converting membership into service evidence", () => {
     const result = buildFairTransitEvidence({
       venue: { lat: 39.41, lng: -77.4 },

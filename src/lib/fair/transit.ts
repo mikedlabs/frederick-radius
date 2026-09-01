@@ -173,7 +173,7 @@ export function describeFairTransitFeedCoverage(
 
 function joinStopEvidence(
   stop: FairTransitStop,
-  venue: LngLat,
+  approachDistanceMeters: number,
   routeById: ReadonlyMap<string, FairTransitRoute>,
   stopRoutes: Readonly<Record<string, string[]>>,
 ): FairTransitStopEvidence {
@@ -212,7 +212,7 @@ function joinStopEvidence(
     name: stop.name,
     coordinate: { lat: stop.lat, lng: stop.lng },
     approachDistance: {
-      meters: Math.round(haversineMeters(venue, stop)),
+      meters: Math.round(approachDistanceMeters),
       method: "straight_line_geometric",
       isWalkingRoute: false,
       label: "Straight-line distance, not a walking route",
@@ -257,27 +257,47 @@ export function buildFairTransitEvidence(
       stop.lng <= 180,
   );
   const evidenceById = new Map(
-    validStops.map((stop) => [
-      String(stop.id),
-      joinStopEvidence(stop, input.venue, routeById, stopRoutes),
-    ]),
+    validStops.map((stop) => {
+      const unroundedDistanceMeters = haversineMeters(input.venue, stop);
+      return [
+        String(stop.id),
+        {
+          evidence: joinStopEvidence(
+            stop,
+            unroundedDistanceMeters,
+            routeById,
+            stopRoutes,
+          ),
+          unroundedDistanceMeters,
+        },
+      ] as const;
+    }),
   );
 
   const nearestStops = Array.from(evidenceById.values())
     .sort(
       (left, right) =>
-        left.approachDistance.meters - right.approachDistance.meters ||
-        (left.name < right.name ? -1 : left.name > right.name ? 1 : 0) ||
-        (left.id < right.id ? -1 : left.id > right.id ? 1 : 0),
+        left.unroundedDistanceMeters - right.unroundedDistanceMeters ||
+        (left.evidence.name < right.evidence.name
+          ? -1
+          : left.evidence.name > right.evidence.name
+            ? 1
+            : 0) ||
+        (left.evidence.id < right.evidence.id
+          ? -1
+          : left.evidence.id > right.evidence.id
+            ? 1
+            : 0),
     )
-    .slice(0, nearestStopLimit);
+    .slice(0, nearestStopLimit)
+    .map(({ evidence }) => evidence);
 
   return {
     venue: { ...input.venue },
     fairDateRange: { ...input.fairDateRange },
     nearestStops,
     featuredStop: input.featuredStopId
-      ? evidenceById.get(String(input.featuredStopId)) ?? null
+      ? evidenceById.get(String(input.featuredStopId))?.evidence ?? null
       : null,
     feedCoverage: describeFairTransitFeedCoverage(
       input.fairDateRange,

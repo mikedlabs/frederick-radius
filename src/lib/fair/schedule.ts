@@ -463,6 +463,31 @@ function expectedRecurrenceDates(master: FairVEvent): string[] | null {
   );
 }
 
+function expectedRecurrenceId(master: FairVEvent, fairDate: string): string | null {
+  if (!master.start) return null;
+  const [year, month, day] = fairDate.split("-").map(Number);
+  const clock = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: GREAT_FREDERICK_FAIR_TIME_ZONE,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(new Date(master.start.iso))
+      .map((part) => [part.type, part.value]),
+  ) as Record<string, string>;
+
+  return easternWallToUtcISO(
+    year,
+    month,
+    day,
+    Number(clock.hour),
+    Number(clock.minute),
+    Number(clock.second),
+  );
+}
+
 function validatePublishedEvent(
   event: FairVEvent,
   fairDate: string,
@@ -874,18 +899,33 @@ export function parseGreatFrederickFair2026Schedule(
     );
   }
 
-  const overridesByDate = new Map<string, FairVEvent[]>();
+  const expectedOverrideDateByRecurrenceId = new Map(
+    recurrenceDates.map((date) => [expectedRecurrenceId(master, date), date]),
+  );
+  const overridesByRecurrenceId = new Map<string, FairVEvent[]>();
   for (const event of selected) {
     if (event.uid !== master.uid || !event.recurrenceId) continue;
-    const date = event.recurrenceId.fairDate;
-    const group = overridesByDate.get(date) ?? [];
+    const recurrenceId = event.recurrenceId.iso;
+    if (!expectedOverrideDateByRecurrenceId.has(recurrenceId)) {
+      diagnostics.push({
+        level: "error",
+        code: "unsupported_recurrence_override",
+        fairDate: event.recurrenceId.fairDate,
+        message: `The Fair override RECURRENCE-ID ${recurrenceId} does not identify an occurrence in the reviewed daily recurrence.`,
+      });
+      continue;
+    }
+    const group = overridesByRecurrenceId.get(recurrenceId) ?? [];
     group.push(event);
-    overridesByDate.set(date, group);
+    overridesByRecurrenceId.set(recurrenceId, group);
   }
 
   const resolvedOverrides = new Map<string, FairVEvent>();
   for (const date of recurrenceDates) {
-    const candidates = overridesByDate.get(date) ?? [];
+    const recurrenceId = expectedRecurrenceId(master, date);
+    const candidates = recurrenceId
+      ? overridesByRecurrenceId.get(recurrenceId) ?? []
+      : [];
     if (candidates.length === 0) {
       diagnostics.push({
         level: "error",

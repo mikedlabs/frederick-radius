@@ -128,6 +128,25 @@ describe("Great Frederick Fair 2026 schedule adapter", () => {
     );
   });
 
+  it("fails closed when an override changes the RECURRENCE-ID time", () => {
+    const changed = OFFICIAL_2026_FIXTURE.replace(
+      "RECURRENCE-ID;TZID=America/New_York:20260925T090000",
+      "RECURRENCE-ID;TZID=America/New_York:20260925T100000",
+    );
+    const result = parseGreatFrederickFair2026Schedule(changed);
+
+    expect(result.ok).toBe(false);
+    expect(result.days).toEqual([]);
+    expect(result.items).toEqual([]);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        level: "error",
+        code: "unsupported_recurrence_override",
+        fairDate: "2026-09-25",
+      }),
+    );
+  });
+
   it.each([
     "RRULE:FREQ=DAILY;UNTIL=20260927T035959Z;INTERVAL=2",
     "RRULE:FREQ=DAILY;UNTIL=20260927T035959Z;BYDAY=MO",

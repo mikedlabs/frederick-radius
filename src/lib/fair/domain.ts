@@ -27,13 +27,44 @@ const localDateSchema = z
     );
   }, "must be a real calendar date");
 
+const OFFSET_TIMESTAMP_PATTERN =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{3}))?(?:Z|[+-]\d{2}:\d{2})$/;
+
+function hasRealTimestampFields(value: string): boolean {
+  const match = OFFSET_TIMESTAMP_PATTERN.exec(value);
+  if (!match) return true;
+
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, msText] =
+    match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const second = Number(secondText);
+  const millisecond = Number(msText ?? "0");
+  const normalized = new Date(0);
+  normalized.setUTCFullYear(year, month - 1, day);
+  normalized.setUTCHours(hour, minute, second, millisecond);
+
+  return (
+    !Number.isNaN(Date.parse(value)) &&
+    normalized.getUTCFullYear() === year &&
+    normalized.getUTCMonth() === month - 1 &&
+    normalized.getUTCDate() === day &&
+    normalized.getUTCHours() === hour &&
+    normalized.getUTCMinutes() === minute &&
+    normalized.getUTCSeconds() === second &&
+    normalized.getUTCMilliseconds() === millisecond
+  );
+}
+
 const offsetTimestampSchema = z
   .string()
-  .regex(
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{2}:\d{2})$/,
-    { message: "must be an ISO 8601 timestamp with an explicit offset" },
-  )
-  .refine((value) => !Number.isNaN(Date.parse(value)), {
+  .regex(OFFSET_TIMESTAMP_PATTERN, {
+    message: "must be an ISO 8601 timestamp with an explicit offset",
+  })
+  .refine(hasRealTimestampFields, {
     message: "must be a real timestamp",
   });
 
@@ -357,6 +388,12 @@ function enumerateDates(start: string, end: string): string[] {
   return dates;
 }
 
+function followingDate(date: string): string {
+  const next = new Date(`${date}T00:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return next.toISOString().slice(0, 10);
+}
+
 function localDateAt(timestamp: string, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -435,10 +472,15 @@ export const fairManifestSchema = z
             path: ["days", index, "gateHours", "opensAt"],
           });
         }
-        if (localDateAt(day.gateHours.closesAt, manifest.timezone) !== day.date) {
+        const closesOn = localDateAt(
+          day.gateHours.closesAt,
+          manifest.timezone,
+        );
+        if (closesOn !== day.date && closesOn !== followingDate(day.date)) {
           ctx.addIssue({
             code: "custom",
-            message: "closesAt must fall on the Fair day in America/New_York",
+            message:
+              "closesAt must fall on the Fair day or the immediately following local date in America/New_York",
             path: ["days", index, "gateHours", "closesAt"],
           });
         }
@@ -523,6 +565,13 @@ export const fairManifestSchema = z
         item.timing.kind === "exact"
           ? localDateAt(item.timing.endsAt, manifest.timezone)
           : null;
+      if (day && endDate && endDate !== day.date) {
+        ctx.addIssue({
+          code: "custom",
+          message: "exact schedule item must end on its referenced Fair day",
+          path: ["scheduleItems", index, "timing", "endsAt"],
+        });
+      }
       if (
         endDate &&
         (endDate < manifest.startsOn || endDate > manifest.endsOn)

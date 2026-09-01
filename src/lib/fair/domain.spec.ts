@@ -165,6 +165,28 @@ describe("Great Frederick Fair domain", () => {
     expect(fairManifestSchema.safeParse(newerThanManifest).success).toBe(false);
   });
 
+  it("rejects malformed offset timestamps that Date.parse normalizes", () => {
+    for (const value of [
+      "2026-09-31T18:40:08-04:00",
+      "2026-09-01T24:00:00-04:00",
+    ]) {
+      expect(Number.isNaN(Date.parse(value))).toBe(false);
+      const manifest = cloneManifest();
+      manifest.updatedAt = value;
+      const result = fairManifestSchema.safeParse(manifest);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(
+          result.error.issues.some(
+            (issue) =>
+              issue.path.join(".") === "updatedAt" &&
+              issue.message === "must be a real timestamp",
+          ),
+        ).toBe(true);
+      }
+    }
+  });
+
   it("requires a complete chronological Fair-day range", () => {
     const missingDay = cloneManifest();
     missingDay.days.splice(4, 1);
@@ -176,6 +198,24 @@ describe("Great Frederick Fair domain", () => {
       wrongOrder.days[0],
     ];
     expect(fairManifestSchema.safeParse(wrongOrder).success).toBe(false);
+  });
+
+  it("allows gate closing on the immediately following local date only", () => {
+    const overnight = cloneManifest();
+    const firstDayGateHours = overnight.days[0].gateHours;
+    if (firstDayGateHours.status !== "known") {
+      throw new Error("expected known gate hours in the test fixture");
+    }
+    firstDayGateHours.closesAt = "2026-09-19T00:30:00-04:00";
+    expect(fairManifestSchema.safeParse(overnight).success).toBe(true);
+
+    const twoDatesLater = cloneManifest();
+    const tooLateGateHours = twoDatesLater.days[0].gateHours;
+    if (tooLateGateHours.status !== "known") {
+      throw new Error("expected known gate hours in the test fixture");
+    }
+    tooLateGateHours.closesAt = "2026-09-20T00:30:00-04:00";
+    expect(fairManifestSchema.safeParse(twoDatesLater).success).toBe(false);
   });
 
   it("validates schedule items against New York day boundaries and zone ids", () => {
@@ -224,6 +264,40 @@ describe("Great Frederick Fair domain", () => {
       value: "zone-not-reviewed",
     };
     expect(fairManifestSchema.safeParse(unknownZone).success).toBe(false);
+  });
+
+  it("requires an exact schedule item to end on its referenced Fair day", () => {
+    const manifest = cloneManifest();
+    manifest.scheduleItems.push({
+      id: "schedule-cross-date-example",
+      title: "Cross-date schedule example",
+      dayId: "day-2026-09-18",
+      timing: {
+        kind: "exact",
+        startsAt: "2026-09-18T23:30:00-04:00",
+        endsAt: "2026-09-19T00:30:00-04:00",
+      },
+      kind: "other",
+      status: "scheduled",
+      zoneId: {
+        status: "unknown",
+        reason: "A stable, sourced Fair zone identifier has not been reviewed yet.",
+      },
+      provenance: [manifest.provenance[0]],
+    });
+
+    const result = fairManifestSchema.safeParse(manifest);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some(
+          (issue) =>
+            issue.path.join(".") === "scheduleItems.0.timing.endsAt" &&
+            issue.message ===
+              "exact schedule item must end on its referenced Fair day",
+        ),
+      ).toBe(true);
+    }
   });
 
   it("keeps incomplete source times explicit instead of inventing endpoints", () => {
