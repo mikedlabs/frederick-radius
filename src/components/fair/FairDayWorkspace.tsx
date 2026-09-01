@@ -1280,7 +1280,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               style={{ background: "linear-gradient(var(--app-cool), var(--app-brand-press), var(--app-cool))" }}
             />
             <li className="relative grid grid-cols-[36px_minmax(0,1fr)] gap-3 border-b pb-5" style={{ borderColor: "var(--app-border)" }}>
-              <span className="relative z-[1] grid h-9 w-9 place-items-center rounded-full text-[12px] font-bold tabular-nums" style={{ background: "var(--app-cool)", color: "var(--app-on-brand)" }}>1</span>
+              <span className="relative z-10 grid h-9 w-9 place-items-center rounded-full text-[12px] font-bold tabular-nums" style={{ background: "var(--app-cool)", color: "var(--app-on-brand)" }}>1</span>
               <div className="min-w-0 pt-0.5">
                 <p className="text-[11px] font-bold uppercase tracking-[0.08em] tabular-nums" style={{ color: "var(--app-cool)" }}>Arrival time not set</p>
                 <p className="mt-1 text-[16px] font-semibold leading-tight">{selectedArrival?.label ?? "Arrival option not chosen"}</p>
@@ -1302,7 +1302,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 : "var(--app-warning-press)";
               return (
                 <li key={step.scheduleItemId} className="relative grid grid-cols-[36px_minmax(0,1fr)] gap-3 border-b py-5" style={{ borderColor: "var(--app-border)" }}>
-                  <span className="relative z-[1] grid h-9 w-9 place-items-center rounded-full text-[12px] font-bold tabular-nums" style={{ background: accent, color: "var(--app-on-brand)" }}>{number}</span>
+                  <span className="relative z-10 grid h-9 w-9 place-items-center rounded-full text-[12px] font-bold tabular-nums" style={{ background: accent, color: "var(--app-on-brand)" }}>{number}</span>
                   <div className="min-w-0">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -1388,7 +1388,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             })}
 
             <li className="relative grid grid-cols-[36px_minmax(0,1fr)] gap-3 pt-5">
-              <span className="relative z-[1] grid h-9 w-9 place-items-center rounded-full text-[12px] font-bold tabular-nums" style={{ background: "var(--app-cool)", color: "var(--app-on-brand)" }}>{plannedRows.length + 2}</span>
+              <span className="relative z-10 grid h-9 w-9 place-items-center rounded-full text-[12px] font-bold tabular-nums" style={{ background: "var(--app-cool)", color: "var(--app-on-brand)" }}>{plannedRows.length + 2}</span>
               <div className="min-w-0 pt-0.5">
                 <p className="text-[11px] font-bold uppercase tracking-[0.08em] tabular-nums" style={{ color: "var(--app-cool)" }}>Leave time not set</p>
                 <p className="mt-1 text-[16px] font-semibold leading-tight">{selectedArrival?.returnLabel ?? "Return point not chosen"}</p>
