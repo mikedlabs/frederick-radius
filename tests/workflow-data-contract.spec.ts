@@ -629,6 +629,7 @@ describe("scheduled data workflow contracts", () => {
 
     const ciText = workflowText("ci.yml");
     expect(ciText).toContain("workflow_dispatch:");
+    expect(ciText).toContain("CI / automated {0}");
     expect(ciText).toContain("automated_pr_head_sha:");
     expect(ciText).toContain("automated_pr_style_run_id:");
     expect(ciText).toContain("automated_pr_token:");
@@ -688,6 +689,10 @@ describe("scheduled data workflow contracts", () => {
     expect(bridgeText).toContain("candidate.head_sha !== headSha");
     expect(bridgeText).toContain("candidate.head_branch !== branch");
     expect(bridgeText).toContain("candidate.id !== spec.runId");
+    expect(bridgeText).toContain(
+      "candidate.path?.split('@')[0] !== `.github/workflows/${spec.workflowId}`",
+    );
+    expect(bridgeText).not.toContain("candidate.name !== spec.workflowName");
     expect(bridgeText).toContain("candidate.display_title !== spec.displayTitle");
     expect(bridgeText).toContain("github.rest.actions.getWorkflowRun");
     expect(bridgeText).not.toContain("acceptedAfter");
