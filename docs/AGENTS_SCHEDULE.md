@@ -8,7 +8,7 @@
 > runs on GitHub Actions; if it's a safe, idempotent refresh of a known
 > source, it runs on Vercel cron.
 
-**Last updated:** 2026-08-24
+**Last updated:** 2026-09-01
 
 ---
 
@@ -43,6 +43,7 @@ food-truck jobs.
 | Nightly 09:00 UTC                                                          | **data-steward**              | Pulls the business-status and hours snapshots, rebuilds public data, blocks critical safety failures, reports high-severity debt, and opens a review PR for incremental improvements.                                                                       | GitHub Actions (`.github/workflows/data-steward.yml`)                    |
 | Manual                                                                     | **feed-health**               | Runs the deeper all-source diagnostic on demand. Scheduled Vercel collectors own source heartbeats, and the nightly health reporter owns the recurring signal, so GitHub does not pay to probe the same endpoints again.                                   | Manual `workflow_dispatch` (`.github/workflows/feed-health.yml`)         |
 | Manual                                                                     | **legacy data snapshot**      | Fetches the isolated `data-snapshots` branch for pipeline development. Production does not read this branch, so refresh and freshness verification remain manual until a production consumer is approved.                                                 | Manual `workflow_dispatch` (`data-refresh.yml`, `freshness-check.yml`)   |
+| Monthly on the 1st at 08:00 UTC; runner activation pending                 | **Build MARC schedule**       | Rebuilds the reviewed MARC GTFS snapshot, validates the exact output, and sends any change through a pull request. Before the capped `radius-data-nas` runner completes its accepted handoff and pilot, a scheduled or manual build can queue but cannot run. | Capped NAS build with GitHub-hosted publish and checks (`.github/workflows/build-marc-schedule.yml`) |
 | Dispatch-only                                                              | **discovery**                 | `npm run discover` dry run ($0, no API call). Publishes the candidate count + cost projection to the job summary and an artifact. Run only with an owner ready to review the result.                                                                          | Manual `workflow_dispatch` (`.github/workflows/discovery.yml`)          |
 | Dispatch-only                                                              | **UX audit, performance budget** | The broader browser and Lighthouse sweeps remain available for a release review or an observed regression, without reserving recurring hosted-runner minutes.                                                                                               | Manual `workflow_dispatch`                                               |
 | Dispatch-only                                                              | **Google enrichment, commerce links** | Existing enrichment and commerce checks remain available for a named review decision; they do not run simply because a calendar ticked.                                                                                                                      | Manual `workflow_dispatch`                                               |
