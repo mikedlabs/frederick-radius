@@ -76,6 +76,7 @@ export type FairScheduleDiagnostic = {
     | "unsupported_event_status"
     | "invalid_event_window"
     | "moved_occurrence"
+    | "invalid_event_properties"
     | "missing_last_modified"
     | "missing_day_table"
     | "unexpected_table_shape"
@@ -131,6 +132,7 @@ type FairVEvent = {
   lastModified: string | null;
   sequence: number;
   status: string;
+  invalidProperties: string[];
 };
 
 const EMPTY_STATS: FairScheduleParseStats = {
@@ -370,12 +372,34 @@ function parseEvent(event: RawVEvent): FairVEvent | null {
   ).trim();
   if (!uid || !summary) return null;
 
-  const exdates = properties(event, "EXDATE").flatMap((property) =>
-    property.value
-      .split(",")
-      .map((value) => parseDateTime({ ...property, value })?.fairDate)
-      .filter((value): value is string => Boolean(value)),
+  const singletonKeys = [
+    "UID",
+    "SUMMARY",
+    "DESCRIPTION",
+    "DTSTART",
+    "DTEND",
+    "RECURRENCE-ID",
+    "RRULE",
+    "STATUS",
+    "SEQUENCE",
+    "LAST-MODIFIED",
+  ];
+  const invalidProperties = singletonKeys.filter(
+    (key) => properties(event, key).length > 1,
   );
+  const exdates: string[] = [];
+  for (const property of properties(event, "EXDATE")) {
+    for (const value of property.value.split(",")) {
+      const parsed = parseDateTime({ ...property, value });
+      if (!parsed) {
+        if (!invalidProperties.includes("EXDATE")) {
+          invalidProperties.push("EXDATE");
+        }
+        continue;
+      }
+      exdates.push(parsed.fairDate);
+    }
+  }
 
   const recurrenceProperty = firstProperty(event, "RECURRENCE-ID");
   return {
@@ -393,6 +417,7 @@ function parseEvent(event: RawVEvent): FairVEvent | null {
     lastModified: parseDateTime(firstProperty(event, "LAST-MODIFIED"))?.iso ?? null,
     sequence: Number(firstProperty(event, "SEQUENCE")?.value ?? 0) || 0,
     status: firstProperty(event, "STATUS")?.value.trim().toUpperCase() ?? "CONFIRMED",
+    invalidProperties,
   };
 }
 
@@ -730,6 +755,25 @@ export function parseGreatFrederickFair2026Schedule(
     calendarEventCount: rawEvents.length,
     selectedEventCount: selected.length,
   };
+
+  const invalidSelected = selected.find(
+    (event) => event.invalidProperties.length > 0,
+  );
+  if (invalidSelected) {
+    return emptyResult(
+      [
+        {
+          level: "error",
+          code: "invalid_event_properties",
+          fairDate:
+            invalidSelected.recurrenceId?.fairDate ??
+            invalidSelected.start?.fairDate,
+          message: `The Fair source event ${invalidSelected.uid} has invalid or duplicate ${invalidSelected.invalidProperties.join(", ")} properties.`,
+        },
+      ],
+      baseStats,
+    );
+  }
 
   const rangedOverride = selected.find((event) => event.recurrenceRange);
   if (rangedOverride) {

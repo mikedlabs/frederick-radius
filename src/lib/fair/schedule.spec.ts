@@ -426,6 +426,57 @@ describe("Great Frederick Fair 2026 schedule adapter", () => {
     );
   });
 
+  it("fails closed when an EXDATE cannot be parsed", () => {
+    const changed = changeEventContaining(
+      OFFICIAL_2026_FIXTURE,
+      "RRULE:FREQ=DAILY;UNTIL=20260927T035959Z",
+      (block) =>
+        block.replace(
+          "RRULE:FREQ=DAILY;UNTIL=20260927T035959Z",
+          [
+            "RRULE:FREQ=DAILY;UNTIL=20260927T035959Z",
+            "EXDATE;TZID=America/Chicago:20260923T090000",
+          ].join("\n"),
+        ),
+    );
+    const result = parseGreatFrederickFair2026Schedule(changed);
+
+    expect(result.ok).toBe(false);
+    expect(result.days).toEqual([]);
+    expect(result.items).toEqual([]);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        level: "error",
+        code: "invalid_event_properties",
+        fairDate: "2026-09-19",
+      }),
+    );
+  });
+
+  it("fails closed when a critical singleton property is duplicated", () => {
+    const changed = changeEventContaining(
+      OFFICIAL_2026_FIXTURE,
+      "RRULE:FREQ=DAILY;UNTIL=20260927T035959Z",
+      (block) =>
+        block.replace(
+          "STATUS:CONFIRMED",
+          "STATUS:CONFIRMED\nSTATUS:CANCELLED",
+        ),
+    );
+    const result = parseGreatFrederickFair2026Schedule(changed);
+
+    expect(result.ok).toBe(false);
+    expect(result.days).toEqual([]);
+    expect(result.items).toEqual([]);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        level: "error",
+        code: "invalid_event_properties",
+        fairDate: "2026-09-19",
+      }),
+    );
+  });
+
   it("fails closed on a THISANDFUTURE recurrence override", () => {
     const changed = OFFICIAL_2026_FIXTURE.replace(
       "RECURRENCE-ID;TZID=America/New_York:20260925T090000",

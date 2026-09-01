@@ -69,7 +69,7 @@ Radius should win on decision support and movement, not on the number of menu it
 
 ## Product shape
 
-Fair Mode lives inside the existing Radius product. It does not add a fifth primary navigation tab. The existing canonical Fair moment remains the parent:
+`Fair Mode` is the internal project name. The public experience is **Fair Day by Frederick Radius**. It lives inside the existing Radius product and does not add a fifth primary navigation tab. The existing canonical Fair moment remains the parent:
 
 `/moments/great-frederick-fair-2026`
 
@@ -97,7 +97,7 @@ Fair Mode should feel like a live field program, not a dashboard and not a Fair-
 - the Time Ribbon answers what is happening now, what starts next, and what is still worth doing;
 - the Route Thread carries the visitor from an arrival choice to a gate, through the grounds, and back to the same departure mode;
 - a one-time Gate Ripple can resolve a scanned gate or lot context without requesting GPS;
-- My Fair Plan keeps the chosen stops, meeting point, return point, and offline pack on the device.
+- My Fair Day turns the choices into one numbered plan: the same stop numbers appear in the list, route, and map; the meeting point, return point, and offline pack stay on the device.
 
 The stable in-page rail is `Now · Find · Plan · Leave`. Fair Mode stays owned by the existing Today surface and does not become a fifth global tab. A selected event, vendor, or facility may use the existing detail-sheet action pattern, but the Fair workspace must not replace the global navigation.
 
@@ -148,6 +148,23 @@ No confetti, looping bounce, parallax, autoplay, or animated background is neede
 2. Lead to what is happening today in Frederick.
 3. Continue only canonical saved businesses, performers, farms, and places into regular Radius.
 4. Let the visitor keep, export, or clear the Fair plan and offline data.
+
+### Ready to Go and My Fair Day
+
+The easiest Fair trip begins before someone leaves home. `Ready to Go` asks only for the selected day, party needs, and arrival mode, then builds a concise entry card:
+
+1. the best matching official admission or ride offer, with eligibility and deadline;
+2. a direct handoff to the official Etix purchase page, never Radius ticket custody;
+3. the chosen lot, drop-off point, shuttle, or transit stop;
+4. the exact published price and payment method, including a cash reminder;
+5. the entrance or return point to save on the device;
+6. one action to begin My Fair Day.
+
+The September 1 official offer set includes $10 online adult admission versus $15 at the gate, a $80 online Blue Ribbon Bundle for 10 admissions, and a $35 Jack Pass with one admission and one ride-all-day wristband whose sales end September 18 at 5 PM. The September 22 carload offer is $60 for Lot D parking, admission, and ride wristbands for everyone buckled in the vehicle, up to eight people. The page also publishes Lunch Bunch, senior, canned-food, military, and Kids Day admission windows. The planner may compare these source-backed choices locally, but it must not promise inventory, refunds, re-entry, or eligibility beyond the official wording. Apple Pay is not accepted at the gate. Lots A through D cost $10 cash only, infield parking costs $15 cash or credit card, no advance parking is sold in 2026, and the official driving guidance uses I-70 Exit 56.
+
+Source: https://thegreatfrederickfair.com/come-to-the-fair/ and https://thegreatfrederickfair.com/plan-your-visit/
+
+My Fair Day then expresses the visit as a numbered route thread rather than a loose collection of saves. Each step carries the published start time or countdown, building or gate number, cost or payment warning, source age, and access state. A walking time appears only after the path has been field-verified. The planner warns about schedule conflicts, gaps that are too tight, closing times, and a missing return plan; it never silently rearranges a ticketed event. The same numbers on the route, list, and optional map make directions explainable by voice: `Meet at stop 4, Building 14, at 3:30.`
 
 ### Accessibility and family lenses
 
@@ -529,7 +546,7 @@ Do not store continuous location history by default. Group planning and passport
 
 - Expand the existing Fair moment with Fair today, day filtering, source times, official ticket handoff, and saved event actions.
 - Add verified facilities, parking, access facts, and a list-first grounds model.
-- Add the short `/fair` redirect.
+- Upgrade the short `/fair` doorway into the dedicated Fair Day workspace.
 - Add Fair analytics events with low-cardinality values.
 - Produce the first static offline pack.
 
@@ -589,4 +606,4 @@ If the structured map or vendor rights are not settled in time, ship the trustwo
 
 The first repository slice is the typed Fair manifest, its validation contract, a Fair-only source adapter that recovers the nine official 2026 day tables and all 190 schedule rows without inventing missing times, and a static transit-evidence helper that keeps a published stop-to-route association separate from a service or arrival claim. It creates a safe place for schedule, map, vendor, parking, accessibility, and transit facts without claiming those datasets are complete.
 
-The next slice is a dedicated Fair workspace rendered at the canonical moment and short `/fair` route. It should implement the pre-arrival state, Time Ribbon, source-stamped Fair Now rows, device-local plan shell, and transit or parking choice before map or group features. Reviewed schedule rows can then promote into the existing event model only where the generic model can preserve their time certainty. The 51 rows with no source time and every approximate or open-ended row remain Fair-native until the shared model represents them honestly.
+The next slice upgrades the existing `/fair` doorway into a dedicated Fair Day workspace rendered at the canonical moment. It should implement Ready to Go, the numbered My Fair Day thread, pre-arrival state, Time Ribbon, source-stamped Fair Now rows, and transit or parking choice before map or group features. Reviewed schedule rows can then promote into the existing event model only where the generic model can preserve their time certainty. The 51 rows with no source time and every approximate or open-ended row remain Fair-native until the shared model represents them honestly.
