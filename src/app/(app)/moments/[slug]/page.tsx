@@ -126,6 +126,19 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
         <h1 className="relative mt-2 font-serif font-semibold leading-[1.02] tracking-tight" style={{ color: "var(--app-ink)", fontSize: "clamp(28px, 7vw, 40px)" }}>
           {m.title}
         </h1>
+        {m.disclosure && (
+          <p
+            className="relative mt-3 flex items-start gap-2 rounded-[var(--app-radius-md)] border px-3 py-2.5 text-[12.5px] font-semibold leading-relaxed"
+            style={{
+              borderColor: `color-mix(in srgb, ${m.accent} 38%, var(--app-border))`,
+              background: "var(--app-bg-elevated-solid)",
+              color: "var(--app-ink)",
+            }}
+          >
+            <Info className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: m.accent }} aria-hidden />
+            <span>{m.disclosure}</span>
+          </p>
+        )}
         <p className="relative mt-2 max-w-[40ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           {m.intro}
         </p>
