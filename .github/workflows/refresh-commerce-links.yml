@@ -6,8 +6,6 @@ name: Refresh official commerce links
 # data. Changes open as a review PR before they can affect the app.
 
 on:
-  schedule:
-    - cron: "17 9 * * 1" # Monday 09:17 UTC; 80/week covers the catalog monthly
   workflow_dispatch:
     inputs:
       limit:

@@ -20,6 +20,16 @@ describe("automation ownership", () => {
     },
   );
 
+  it("keeps the broader UX audit dispatch-only", () => {
+    const workflows = {
+      "ux-audit.yml": `on:\n  schedule:\n    - cron: "17 8 * * 0"`,
+    };
+
+    expect(auditAutomationOwnership({ workflows }).failures).toContain(
+      "ux-audit.yml must remain dispatch-only until its runner budget is re-reviewed",
+    );
+  });
+
   it("rejects a second paid business-status schedule", () => {
     const vercel = JSON.parse(readFileSync("vercel.json", "utf8"));
     vercel.crons.push({

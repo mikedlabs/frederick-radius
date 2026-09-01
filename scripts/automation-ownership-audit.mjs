@@ -45,8 +45,8 @@ export function auditAutomationOwnership({
   if (!hasScheduledTrigger(workflows["production-health-alert.yml"] ?? "")) {
     failures.push("production-health-alert.yml must remain the external uptime backstop");
   }
-  if (!(workflows["ux-audit.yml"] ?? "").includes('cron: "17 8 * * 0"')) {
-    failures.push("ux-audit.yml must remain weekly unless its runner budget is re-reviewed");
+  if (hasScheduledTrigger(workflows["ux-audit.yml"] ?? "")) {
+    failures.push("ux-audit.yml must remain dispatch-only until its runner budget is re-reviewed");
   }
   if (scheduledGithub.length > 16) {
     failures.push(`scheduled GitHub workflows ${scheduledGithub.length} > 16`);
