@@ -26,11 +26,14 @@ their existing safety checks.
 ## NAS handoff status
 
 The NAS is intended to take the routine, review-gated proposal jobs off hosted
-GitHub runners. It is **not configured yet**: the currently mounted share is
-guest-only and cannot run an authenticated runner. Until a dedicated DSM
-account and runner are set up, do not move or re-enable scheduled jobs merely
-to claim the handoff is complete. Vercel remains the owner of live database
-refreshes throughout this transition.
+GitHub runners. Its protected storage, staged source, pinned runner image, and
+pre-live checks are prepared, but the handoff is **not live yet**: Container
+Manager has no runner project and GitHub has no registered self-hosted runner.
+Create the project only from the exact reviewed merge, register it with a
+one-hour repository runner token, clear that token after the first start, and
+accept the handoff only after the capped runner completes one manual MARC
+pilot and returns online after a restart. Vercel remains the owner of live
+database refreshes throughout this transition.
 
 ## One exception stream
 
@@ -56,8 +59,9 @@ source of visitor and acquisition totals until a deliberate paid API upgrade.
 
 ## Re-enable rule for GitHub Actions
 
-When Actions billing is available again, re-enable only the required release
-gates first. Review runner-minute and artifact usage after one billing cycle
-before adding a scheduled workflow back. A workflow must document the visitor
-or data-trust consequence of being absent, its maximum provider spend, and
-the person who will review its output.
+Keep the required hosted release gates enabled until the separate just-in-time
+CI controller passes its security and one-job cleanup proof. Review runner
+minutes and artifact usage after one billing cycle before adding a scheduled
+workflow back. A workflow must document the visitor or data-trust consequence
+of being absent, its maximum provider spend, and the person who will review
+its output.
