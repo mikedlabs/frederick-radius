@@ -4,11 +4,16 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 const WORKFLOW_DIR = resolve(process.cwd(), ".github/workflows");
+const NAS_RUNNER_DIR = resolve(process.cwd(), "ops/nas-runner");
 const PINNED_CREATE_PR =
   "peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1";
 
 function workflowText(name: string): string {
   return readFileSync(resolve(WORKFLOW_DIR, name), "utf8");
+}
+
+function nasRunnerText(name: string): string {
+  return readFileSync(resolve(NAS_RUNNER_DIR, name), "utf8");
 }
 
 type WorkflowDocument = {
@@ -119,6 +124,22 @@ describe("scheduled data workflow contracts", () => {
         `${name}:${jobName} must stay on an isolated hosted runner`,
       ).toBe("ubuntu-latest");
     }
+  });
+
+  it("caps the persistent NAS data runner so it cannot take over the appliance", () => {
+    const compose = parse(nasRunnerText("compose.yaml")) as {
+      services?: Record<
+        string,
+        {
+          cpus?: number;
+          mem_limit?: string;
+        }
+      >;
+    };
+    const dataRunner = compose.services?.["radius-data-runner"];
+
+    expect(dataRunner?.mem_limit).toBe("4g");
+    expect(dataRunner?.cpus).toBe(2);
   });
 
   it("uses the read-only Supabase Data API handoff for the hours snapshot", () => {

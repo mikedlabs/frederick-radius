@@ -13,6 +13,8 @@ services:
     hostname: radius-data-nas
     restart: unless-stopped
     stop_grace_period: 2m
+    mem_limit: 4g
+    cpus: 2.0
     environment:
       HOME: /runner/home
       XDG_CACHE_HOME: /runner/cache

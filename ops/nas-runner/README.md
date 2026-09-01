@@ -5,6 +5,11 @@ NAS. Its label is `radius-data`. Only explicitly allowlisted generators running
 the trusted `main` revision may target it. Publishing, pull-request code,
 required checks, deployments, and provider credentials stay on GitHub/Vercel.
 
+The NAS also serves storage and media workloads. Compose caps this runner at
+4 GiB of memory and 2 CPUs so a data build cannot take over the appliance.
+Treat an out-of-memory failure as a capacity signal; do not remove the limits
+while Plex, storage, or another NAS service is active.
+
 ## Security boundary
 
 - No ports are published and no router change is needed.
