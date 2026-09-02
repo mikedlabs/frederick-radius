@@ -369,7 +369,7 @@ export default async function HomePage() {
       <PageChapter
         label="Plan the rest"
         variant="plain"
-        className="mt-8"
+        className="today-plan-rest mt-8"
       >
         <div role="group" aria-label="Useful today">
           {availableToday}

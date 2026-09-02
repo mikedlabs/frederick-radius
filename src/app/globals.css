@@ -836,6 +836,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   display: none;
 }
 
+/* Every child in this chapter is time- or data-gated. Remove the chapter
+   itself when none of those children rendered so an empty heading never
+   interrupts the briefing. */
+.today-plan-rest:not(:has([data-today-plan-rest-content])) {
+  display: none;
+}
+
 .today-sports-stack__heading {
   margin-bottom: 0.5rem;
   padding-inline: 0.125rem;

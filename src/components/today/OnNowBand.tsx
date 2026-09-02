@@ -130,7 +130,7 @@ export default async function OnNowBand({
   const [lead, ...additional] = ordered;
 
   return (
-    <section className="mt-5" aria-label={label}>
+    <section data-today-plan-rest-content className="mt-5" aria-label={label}>
       <TodaySectionHeading
         title={label}
         live={currentCount > 0}

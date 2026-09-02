@@ -42,7 +42,7 @@ export default async function TomorrowPreview({ now, eventsPromise }: { now: Dat
     : null;
 
   return (
-    <section aria-label="Tomorrow" className="mt-4">
+    <section data-today-plan-rest-content aria-label="Tomorrow" className="mt-4">
       <div
         className="rounded-[var(--app-radius-lg)] border px-4 py-3"
         style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-edge), var(--app-hi)" }}

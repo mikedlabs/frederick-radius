@@ -259,7 +259,7 @@ export default function KeysScore({
   const action = keysScoreAction(score);
 
   return (
-    <div data-today-sports-card>
+    <div data-today-sports-card data-today-plan-rest-content>
       <div
         className="relative overflow-hidden rounded-[var(--app-radius-lg)] p-3.5 transition active:scale-[0.99]"
         style={{

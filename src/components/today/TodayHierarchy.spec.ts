@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const todayPage = readFileSync("src/app/(app)/today/page.tsx", "utf8");
+const globalCss = readFileSync("src/app/globals.css", "utf8");
 
 describe("Today decision hierarchy", () => {
   const renderedPage = todayPage.slice(todayPage.indexOf("<EventSheetBoundary"));
@@ -106,6 +107,15 @@ describe("Today decision hierarchy", () => {
     expect(available.indexOf("<KeysScore")).toBeGreaterThan(
       available.indexOf("<OnNowBand"),
     );
+  });
+
+  it("hides the optional plan chapter when every time-gated child is empty", () => {
+    expect(todayPage).toContain('className="today-plan-rest mt-8"');
+    expect(globalCss).toContain(
+      ".today-plan-rest:not(:has([data-today-plan-rest-content]))",
+    );
+    expect(todayPage).toContain("<WeatherSafeGoldenHour");
+    expect(todayPage).toContain("<TomorrowPreview");
   });
 
   it("renders the location-aware DaypartNeeds implementation once and removes its lower duplicate", () => {

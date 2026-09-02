@@ -950,6 +950,15 @@ export function buildWantAnswer(
         reasonsFor(openingSoonMatch.candidate),
       )
     : null;
+  // An opening-soon place is already a complete answer. Keep it out of every
+  // generic fallback lane so the same business cannot appear twice in one
+  // short decision merely because its hours came from the curated fallback.
+  const laterWithoutOpeningSoon = later.filter(
+    (candidate) => candidate.slug !== openingSoon?.slug,
+  );
+  const otherWithoutOpeningSoon = other.filter(
+    (candidate) => candidate.slug !== openingSoon?.slug,
+  );
 
   // "Movies" is not an open-now storefront question. Cinema hours do not
   // answer which films are playing, and most theaters do not publish useful
@@ -1025,7 +1034,7 @@ export function buildWantAnswer(
                 reasonsFor(candidate, true),
               ),
             )
-          : other
+          : otherWithoutOpeningSoon
               .filter(
                 (candidate) =>
                   mayUseLikelyOpenFallback(candidate.open_status) &&
@@ -1050,19 +1059,19 @@ export function buildWantAnswer(
       later:
         requestedRankingMode === "best-fit"
           ? []
-          : later.slice(0, LATER_PREVIEW).map((candidate) =>
+          : laterWithoutOpeningSoon.slice(0, LATER_PREVIEW).map((candidate) =>
               toRow(candidate, true),
             ),
       laterMore:
         requestedRankingMode === "best-fit"
           ? 0
-          : Math.max(0, later.length - LATER_PREVIEW),
+          : Math.max(0, laterWithoutOpeningSoon.length - LATER_PREVIEW),
       notable:
         requestedRankingMode === "best-fit" ||
         diverseBest.length > 0 ||
-        later.length > 0
+        laterWithoutOpeningSoon.length > 0
           ? []
-          : other
+          : otherWithoutOpeningSoon
               .filter(
                 (candidate) =>
                   !isOpenNow(candidate.open_status) &&
@@ -1085,7 +1094,7 @@ export function buildWantAnswer(
   // real places instead of a dead "nothing's open" line.
   const likely =
     open.length === 0
-      ? other.filter(
+      ? otherWithoutOpeningSoon.filter(
           (candidate) =>
             mayUseLikelyOpenFallback(candidate.open_status) &&
             isLikelyOpenNow(candidate.slug, now),
@@ -1095,8 +1104,8 @@ export function buildWantAnswer(
   const currentConfidence: WantRow["confidence"] =
     open.length > 0 ? "confirmed" : "likely";
 
-  const notable = current.length === 0 && later.length === 0
-    ? other
+  const notable = current.length === 0 && laterWithoutOpeningSoon.length === 0
+    ? otherWithoutOpeningSoon
         .slice(0, NOTABLE_MAX)
         .map((candidate) =>
           toRow(candidate, false, undefined, reasonsFor(candidate)),
@@ -1157,8 +1166,8 @@ export function buildWantAnswer(
           )
         : undefined,
     soon: openingSoon,
-    later: later.slice(0, LATER_PREVIEW).map((c) => toRow(c, true)),
-    laterMore: Math.max(0, later.length - LATER_PREVIEW),
+    later: laterWithoutOpeningSoon.slice(0, LATER_PREVIEW).map((c) => toRow(c, true)),
+    laterMore: Math.max(0, laterWithoutOpeningSoon.length - LATER_PREVIEW),
     notable,
     total,
     mayAssertNoneOpen: noneOpenIsSayable,

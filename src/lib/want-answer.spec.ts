@@ -132,7 +132,7 @@ describe("selectOpeningSoonCandidate", () => {
           slug: "verified-cafe",
           open_status: {
             state: "closed",
-            opensAt: "07:55",
+            opensAt: "08:05",
             opensDay: "wed",
             opensToday: true,
           },
@@ -144,8 +144,8 @@ describe("selectOpeningSoonCandidate", () => {
     expect(selected).toMatchObject({
       candidate: { slug: "verified-cafe" },
       confidence: "confirmed",
-      opensAt: "07:55",
-      minutesUntil: 42,
+      opensAt: "08:05",
+      minutesUntil: 52,
     });
   });
 
@@ -498,9 +498,12 @@ describe("buildWantAnswer context", () => {
       fact: "Likely opens at 8am · check hours",
       opensInMinutes: 47,
     });
-    expect([answer?.hero, ...(answer?.also ?? [])].map((row) => row?.slug)).not.toContain(
-      "gravel-and-grind-frederick",
-    );
+    expect([
+      answer?.hero,
+      ...(answer?.also ?? []),
+      ...(answer?.later ?? []),
+      ...(answer?.notable ?? []),
+    ].map((row) => row?.slug)).not.toContain("gravel-and-grind-frederick");
   });
 
   it("does not let an approximate centroid crown the fluke nearest place", () => {
