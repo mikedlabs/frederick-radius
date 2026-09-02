@@ -1,7 +1,9 @@
 name: Mobile performance budget
 
 on:
-  workflow_dispatch:
+  schedule:
+    - cron: "15 17 * * *"
+  workflow_dispatch: {}
 
 concurrency:
   group: mobile-performance-budget
@@ -12,17 +14,30 @@ permissions:
 
 jobs:
   lighthouse:
-    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'mikedlabs/frederick-radius' && github.ref == 'refs/heads/main' }}
+    runs-on: [self-hosted, Linux, X64, radius-browser]
     timeout-minutes: 25
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          clean: true
+          fetch-depth: 1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: ".nvmrc"
-          cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify browser image contract
+        run: |
+          set -euo pipefail
+          test -x "$CHROME_PATH"
+          node -e 'const lock = require("./package-lock.json"); const expected = process.env.PLAYWRIGHT_IMAGE_VERSION; for (const name of ["node_modules/@playwright/test", "node_modules/playwright-core"]) { const actual = lock.packages?.[name]?.version; if (!expected || actual !== expected) throw new Error(`${name} ${actual ?? "missing"} does not match browser image ${expected ?? "missing"}`); }'
+          npx playwright --version
 
       - name: Enforce key-route mobile budgets
         run: >-
@@ -42,4 +57,4 @@ jobs:
           path: .perf
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7

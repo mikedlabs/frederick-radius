@@ -1,0 +1,66 @@
+name: frederick-radius-browser-runner
+
+services:
+  radius-browser-runner:
+    platform: linux/amd64
+    build:
+      context: .
+      args:
+        RUNNER_VERSION: "2.337.0"
+        RUNNER_SHA256: "70920811a4f8ad4328818682bca5c6469c1c942fab52448868071d0063816613"
+    image: frederick-radius/actions-browser-runner:2.337.0-pw1.60.0-r1
+    pull_policy: build
+    container_name: radius-browser-nas
+    hostname: radius-browser-nas
+    restart: unless-stopped
+    stop_grace_period: 2m
+    mem_limit: 8g
+    cpuset: "2,3"
+    shm_size: 1g
+    environment:
+      HOME: /runner/home
+      XDG_CACHE_HOME: /runner/cache
+      npm_config_cache: /runner/cache/npm
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      PLAYWRIGHT_IMAGE_VERSION: "1.60.0"
+      CHROME_PATH: /usr/local/bin/chromium
+      RUNNER_URL: https://github.com/mikedlabs/frederick-radius
+      RUNNER_NAME: radius-browser-nas
+      RUNNER_LABELS: radius-browser
+      RUNNER_WORKDIR: _work
+      RUNNER_TOKEN: "${RUNNER_TOKEN:-}"
+    volumes:
+      - browser-runner-state:/runner
+    networks:
+      - browser-egress
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=2g
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    pids_limit: 1024
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  browser-egress:
+    driver: bridge
+
+volumes:
+  browser-runner-state:
+    name: frederick-radius-browser-runner-state

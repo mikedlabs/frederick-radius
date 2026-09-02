@@ -45,8 +45,23 @@ export function auditAutomationOwnership({
   if (!hasScheduledTrigger(workflows["production-health-alert.yml"] ?? "")) {
     failures.push("production-health-alert.yml must remain the external uptime backstop");
   }
-  if (hasScheduledTrigger(workflows["ux-audit.yml"] ?? "")) {
-    failures.push("ux-audit.yml must remain dispatch-only until its runner budget is re-reviewed");
+
+  // These audits own distinct, secret-free browser questions on the bounded
+  // NAS browser runner. Exact times keep them away from each other and from
+  // the morning data-generator lane on the same appliance.
+  for (const [name, cron] of [
+    ["ux-audit.yml", 'cron: "15 5 * * *"'],
+    ["performance-budget.yml", 'cron: "15 17 * * *"'],
+  ]) {
+    const source = workflows[name] ?? "";
+    if (!hasScheduledTrigger(source) || !source.includes(cron)) {
+      failures.push(`${name} must keep its reviewed NAS browser schedule (${cron})`);
+    }
+  }
+  if (hasScheduledTrigger(workflows["visual-contract.yml"] ?? "")) {
+    failures.push(
+      "visual-contract.yml must remain dispatch-only until reviewed Linux baselines are committed",
+    );
   }
   if (scheduledGithub.length > 16) {
     failures.push(`scheduled GitHub workflows ${scheduledGithub.length} > 16`);

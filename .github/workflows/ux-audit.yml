@@ -1,7 +1,9 @@
 name: UX browser audit
 
 on:
-  workflow_dispatch:
+  schedule:
+    - cron: "15 5 * * *"
+  workflow_dispatch: {}
 
 concurrency:
   group: ux-browser-audit
@@ -13,18 +15,28 @@ permissions:
 jobs:
   mobile-ux:
     name: Mobile UX
-    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'mikedlabs/frederick-radius' && github.ref == 'refs/heads/main' }}
+    runs-on: [self-hosted, Linux, X64, radius-browser]
     timeout-minutes: 45
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          clean: true
+          fetch-depth: 1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: ".nvmrc"
-          cache: "npm"
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
+      - name: Verify browser image contract
+        run: |
+          set -euo pipefail
+          test -x "$CHROME_PATH"
+          node -e 'const lock = require("./package-lock.json"); const expected = process.env.PLAYWRIGHT_IMAGE_VERSION; for (const name of ["node_modules/@playwright/test", "node_modules/playwright-core"]) { const actual = lock.packages?.[name]?.version; if (!expected || actual !== expected) throw new Error(`${name} ${actual ?? "missing"} does not match browser image ${expected ?? "missing"}`); }'
+          npx playwright --version
       - name: Build the production app once
         run: npm run build
         env:
@@ -33,14 +45,11 @@ jobs:
           # cold Linux runner, exactly as ci.yml already documents at its own
           # build steps. The axe gate remains pinned at zero violations.
           NODE_OPTIONS: "--max-old-space-size=4096"
-      - name: Install Chromium
-        timeout-minutes: 10
-        run: npx playwright install --with-deps chromium
       - name: Run mobile UX and safe-interaction audit
         # Leave enough of the job budget for Playwright to flush traces and for
         # the artifact step below to upload them when the audit times out.
         run: >-
-          timeout --signal=TERM 30m
+          timeout --signal=TERM --kill-after=1m 30m
           npx playwright test
           e2e/ux-audit.spec.ts
           e2e/safe-interaction-crawler.spec.ts
