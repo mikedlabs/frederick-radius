@@ -177,6 +177,7 @@ describe("scheduled data workflow contracts", () => {
     }
 
     const trustedAudits = [
+      ["fair-surge.yml", "surge", null],
       ["performance-budget.yml", "lighthouse", 'cron: "15 17 * * *"'],
       ["ux-audit.yml", "mobile-ux", 'cron: "15 5 * * *"'],
       ["visual-contract.yml", "chromium", null],
@@ -219,6 +220,15 @@ describe("scheduled data workflow contracts", () => {
     expect(visual).toContain('case "$VISUAL_MODE" in');
     expect(visual).toContain("capture|compare");
     expect(visual).not.toContain("npm run test:visual:${{ inputs.mode }}");
+
+    const fairSurge = workflowText("fair-surge.yml");
+    expect(fairSurge).not.toContain("\n  schedule:");
+    expect(fairSurge).toContain("npm run build");
+    expect(fairSurge).toContain(
+      "npm run perf:fair:surge -- --target=http://127.0.0.1:3000",
+    );
+    expect(fairSurge).toContain(".perf/fair-surge");
+    expect(fairSurge).not.toContain("https://frederickradius.app");
   });
 
   it("keeps the NAS browser runner bounded and separate from NAS storage", () => {

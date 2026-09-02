@@ -54,6 +54,12 @@ JSON and Markdown evidence is written under
 `.perf/fair-surge/<timestamp>/`. The folder is ignored by Git. Preserve the
 evidence outside the runner before an ephemeral job is removed.
 
+After the isolated `radius-browser` NAS runner is accepted, an owner can run
+the manual **Fair loopback surge gate** workflow from `main`. It builds and
+serves the same revision inside one job, targets only `127.0.0.1`, uploads the
+bounded evidence for seven days, and always stops the local server. It has no
+schedule, secrets, pull-request trigger, or public load-test target.
+
 ## Read the result
 
 The result proves that one local application instance returned stable reviewed

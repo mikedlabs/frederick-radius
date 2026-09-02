@@ -5,8 +5,9 @@ Synology NAS. Its label is `radius-browser`. It is separate from the
 `radius-data` runner because a Next.js build and two Chromium workers need a
 larger memory allowance and a different software image.
 
-Only three reviewed, secret-free workflows may target this runner:
+Only four reviewed, secret-free workflows may target this runner:
 
+- `fair-surge.yml` manually builds and exercises the Fair workspace on loopback only.
 - `ux-audit.yml` runs nightly at 05:15 UTC and can be started manually.
 - `performance-budget.yml` runs daily at 17:15 UTC and can be started manually.
 - `visual-contract.yml` remains manual until reviewed Linux baselines exist.
@@ -88,10 +89,11 @@ Do not enable a recurring job until all of these are true:
 2. A manual UX audit from `main` builds once and completes on
    `radius-browser-nas` without a stored secret or write permission.
 3. A manual performance audit produces stable-deployment Lighthouse evidence.
-4. A manual visual `capture` run produces 12 Linux/Chromium review images.
-5. Cancelling an audit leaves no Next.js or Chromium process running.
-6. Restarting the Project brings the same runner identity back online.
-7. The container has no Docker socket and cannot see NAS personal shares.
+4. A manual Fair surge run builds and passes all three fixed loopback stages.
+5. A manual visual `capture` run produces 12 Linux/Chromium review images.
+6. Cancelling an audit leaves no Next.js or Chromium process running.
+7. Restarting the Project brings the same runner identity back online.
+8. The container has no Docker socket and cannot see NAS personal shares.
 
 The visual workflow must stay manual after this acceptance check. Review and
 commit all 12 Linux baselines, then prove a manual `compare` run before a later
