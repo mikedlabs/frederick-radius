@@ -8,13 +8,14 @@ services:
       args:
         RUNNER_VERSION: "2.337.0"
         RUNNER_SHA256: "70920811a4f8ad4328818682bca5c6469c1c942fab52448868071d0063816613"
-    image: frederick-radius/actions-runner:2.337.0
+    image: frederick-radius/actions-runner:2.337.0-r4
+    pull_policy: build
     container_name: radius-data-nas
     hostname: radius-data-nas
     restart: unless-stopped
     stop_grace_period: 2m
     mem_limit: 4g
-    cpus: 2.0
+    cpuset: "0,1"
     environment:
       HOME: /runner/home
       XDG_CACHE_HOME: /runner/cache
@@ -25,9 +26,7 @@ services:
       RUNNER_WORKDIR: _work
       RUNNER_TOKEN: "${RUNNER_TOKEN:-}"
     volumes:
-      - type: bind
-        source: "${RUNNER_STATE_PATH:-/volume1/docker/frederick-radius-runner/state}"
-        target: /runner
+      - runner-state:/runner
     networks:
       - runner-egress
     read_only: true
@@ -56,3 +55,7 @@ services:
 networks:
   runner-egress:
     driver: bridge
+
+volumes:
+  runner-state:
+    name: frederick-radius-runner-state
