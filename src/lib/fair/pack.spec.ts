@@ -22,6 +22,14 @@ const releasePath = resolve(
   `public${greatFrederickFair2026PackPointer.assetPath}`,
 );
 const releaseText = readFileSync(releasePath, "utf8");
+const vercelConfig = JSON.parse(
+  readFileSync(resolve(process.cwd(), "vercel.json"), "utf8"),
+) as {
+  headers?: Array<{
+    source?: string;
+    headers?: Array<{ key?: string; value?: string }>;
+  }>;
+};
 const fixture = readFileSync(
   resolve(
     process.cwd(),
@@ -93,6 +101,20 @@ describe("Great Frederick Fair static pack", () => {
     const byteLength = new TextEncoder().encode(releaseText).byteLength;
     expect(byteLength).toBe(greatFrederickFair2026PackPointer.byteLength);
     expect(byteLength).toBeLessThan(MAX_FAIR_PACK_BYTES);
+  });
+
+  it("serves the mutable pointer briefly and the hashed release immutably", () => {
+    const cacheControlFor = (source: string) =>
+      vercelConfig.headers
+        ?.find((rule) => rule.source === source)
+        ?.headers?.find((header) => header.key === "Cache-Control")?.value;
+
+    expect(cacheControlFor("/fair/2026/current.json")).toBe(
+      "public, max-age=60, s-maxage=300, stale-while-revalidate=3600",
+    );
+    expect(cacheControlFor("/fair/2026/releases/(.*)")).toBe(
+      "public, max-age=31536000, immutable",
+    );
   });
 
   it("rejects duplicated, flattened, partial, and internally inconsistent data", () => {

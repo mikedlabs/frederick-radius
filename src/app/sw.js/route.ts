@@ -45,11 +45,11 @@ const SW_SOURCE = (version: string) => `/**
  * Served dynamically by app/sw.js/route.ts so CACHE_VERSION bumps
  * on every deploy.
  *
- * Safety-first by design: navigations are NETWORK-FIRST. The cache
- * and the offline page are only ever a fallback when the network
- * actually fails. A bad deploy or a stale cache can therefore never
- * trap a user on a broken page: the worst case offline is the
- * explicit /offline screen, and online always shows live content.
+ * Safety-first by design: navigations are NETWORK-FIRST. Cached HTML
+ * is only ever a fallback when the network actually fails. The two
+ * exact Fair routes may use one explicitly warmed public Fair page;
+ * everything else receives /offline. A stale cache can therefore
+ * never replace live content while the visitor is online.
  *
  * CACHE_VERSION is the build's deployment id, embedded at response
  * time. When a new deploy lands, this string changes → the SW file's
@@ -61,6 +61,9 @@ const CACHE_VERSION = "fr-${version}";
 const STATIC_CACHE = CACHE_VERSION + "-static";
 const IMAGE_CACHE = CACHE_VERSION + "-img";
 const OFFLINE_URL = "/offline";
+const FAIR_CANONICAL_URL = "/moments/great-frederick-fair-2026";
+const FAIR_FALLBACK_PATHS = new Set(["/fair", FAIR_CANONICAL_URL]);
+const MAX_PAGE_STATIC_ASSETS = 40;
 
 function cacheControlForbidsStorage(response) {
   const value = (response.headers.get("cache-control") || "").toLowerCase();
@@ -74,6 +77,44 @@ function isCacheableResponse(response) {
       response.type === "basic" &&
       !response.redirected &&
       !cacheControlForbidsStorage(response),
+  );
+}
+
+async function cachePageStaticAssets(assetSource, cache, credentials) {
+  if (typeof assetSource.text !== "function") return;
+  let html = "";
+  try {
+    html = await assetSource.text();
+  } catch {
+    return;
+  }
+  const paths = [];
+  const seen = new Set();
+  const pattern = /(?:src|href)=["']([^"']*\\/_next\\/static\\/[^"']+)["']/g;
+  let match;
+  while ((match = pattern.exec(html)) && paths.length < MAX_PAGE_STATIC_ASSETS) {
+    try {
+      const assetUrl = new URL(match[1], self.location.origin);
+      if (
+        assetUrl.origin === self.location.origin &&
+        assetUrl.pathname.startsWith("/_next/static/") &&
+        !seen.has(assetUrl.href)
+      ) {
+        seen.add(assetUrl.href);
+        paths.push(assetUrl.href);
+      }
+    } catch {}
+  }
+  await Promise.all(
+    paths.map(async (assetUrl) => {
+      try {
+        const asset = await fetch(assetUrl, {
+          cache: "reload",
+          credentials,
+        });
+        if (isCacheableResponse(asset)) await cache.put(assetUrl, asset);
+      } catch {}
+    }),
   );
 }
 
@@ -96,41 +137,27 @@ async function cacheOfflineFallback() {
   // button need the offline route's content-hashed JS/CSS. Cache only the
   // same-origin immutable assets named by this generic page, with a hard cap.
   // This does not cache another navigation or any personalized response.
-  if (typeof assetSource.text !== "function") return;
-  let html = "";
-  try {
-    html = await assetSource.text();
-  } catch {
-    return;
-  }
-  const paths = [];
-  const seen = new Set();
-  const pattern = /(?:src|href)=["']([^"']*\\/_next\\/static\\/[^"']+)["']/g;
-  let match;
-  while ((match = pattern.exec(html)) && paths.length < 40) {
-    try {
-      const assetUrl = new URL(match[1], self.location.origin);
-      if (
-        assetUrl.origin === self.location.origin &&
-        assetUrl.pathname.startsWith("/_next/static/") &&
-        !seen.has(assetUrl.href)
-      ) {
-        seen.add(assetUrl.href);
-        paths.push(assetUrl.href);
-      }
-    } catch {}
-  }
-  await Promise.all(
-    paths.map(async (assetUrl) => {
-      try {
-        const asset = await fetch(assetUrl, {
-          cache: "reload",
-          credentials: "same-origin",
-        });
-        if (isCacheableResponse(asset)) await cache.put(assetUrl, asset);
-      } catch {}
-    }),
-  );
+  await cachePageStaticAssets(assetSource, cache, "same-origin");
+}
+
+async function cacheFairFallback() {
+  // Fair is a public, static event workspace. Warm it only on an explicit
+  // request from a visitor already on one of the two exact Fair routes, and
+  // omit cookies so a personalized or beta response can never enter storage.
+  const response = await fetch(FAIR_CANONICAL_URL, {
+    cache: "reload",
+    credentials: "omit",
+  });
+  if (!isCacheableResponse(response)) return;
+
+  const finalUrl = new URL(response.url);
+  const canonicalUrl = new URL(FAIR_CANONICAL_URL, self.location.origin);
+  if (finalUrl.href !== canonicalUrl.href) return;
+
+  const cache = await caches.open(STATIC_CACHE);
+  const assetSource = response.clone();
+  await cache.put(FAIR_CANONICAL_URL, response);
+  await cachePageStaticAssets(assetSource, cache, "omit");
 }
 
 self.addEventListener("install", (event) => {
@@ -148,13 +175,17 @@ self.addEventListener("install", (event) => {
 
 async function purgeLegacyRuntimeEntries() {
   // A same-version worker may inherit HTML cached by an older version of this
-  // file. Keep only the explicit offline fallback and immutable build assets.
+  // file. Keep only the explicit offline fallbacks and immutable build assets.
   const cache = await caches.open(STATIC_CACHE);
   const keys = await cache.keys();
   await Promise.all([
     ...keys.map((request) => {
       const pathname = new URL(request.url).pathname;
-      if (pathname === OFFLINE_URL || pathname.startsWith("/_next/static/")) return undefined;
+      if (
+        pathname === OFFLINE_URL ||
+        pathname === FAIR_CANONICAL_URL ||
+        pathname.startsWith("/_next/static/")
+      ) return undefined;
       return cache.delete(request);
     }),
     // Clear any same-version image cache created by the older worker. Public
@@ -183,6 +214,9 @@ self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
   if (event.data && event.data.type === "CLEAR_CACHES") {
     caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
+  }
+  if (event.data && event.data.type === "CACHE_FAIR") {
+    event.waitUntil(cacheFairFallback().catch(() => {}));
   }
 });
 
@@ -269,13 +303,30 @@ self.addEventListener("fetch", (event) => {
   // /admin request natively; the admin surface needs no offline support.
   if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) return;
 
-  // 1. Navigations: network-only with one generic offline fallback. Never
-  // persist HTML: a page can vary by login, beta access, cookies, location,
-  // or a capability URL even when its pathname looks public.
+  // 1. Navigations stay network-only. The two exact, query-free Fair routes
+  // may fall back to the deliberately warmed public Fair HTML; every other
+  // route gets only the generic offline page. No navigation response is ever
+  // written here because it may vary by login, cookies, location, or a
+  // capability URL even when its pathname looks public.
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
-        .catch(async () => (await caches.match(OFFLINE_URL)) || Response.error()),
+        .catch(async () => {
+          if (url.search === "" && FAIR_FALLBACK_PATHS.has(url.pathname)) {
+            const fair = await caches.match(FAIR_CANONICAL_URL);
+            if (fair) {
+              // Preserve the online route contract. Serving canonical App
+              // Router HTML under /fair can hydrate against the wrong URL;
+              // redirect first, then the canonical offline request receives
+              // the cached page on its own path.
+              if (url.pathname === "/fair") {
+                return Response.redirect(FAIR_CANONICAL_URL, 302);
+              }
+              return fair;
+            }
+          }
+          return (await caches.match(OFFLINE_URL)) || Response.error();
+        }),
     );
     return;
   }
