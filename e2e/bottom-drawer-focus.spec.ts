@@ -10,6 +10,9 @@ test.describe("BottomDrawer keyboard focus", () => {
     await page.goto("/moments/great-frederick-fair-2026#find", {
       waitUntil: "domcontentloaded",
     });
+    await page
+      .getByRole("button", { name: "Browse full program", exact: true })
+      .click();
 
     const opener = page
       .getByRole("button", { name: /^Open details for / })

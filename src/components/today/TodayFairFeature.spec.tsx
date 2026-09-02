@@ -28,6 +28,11 @@ describe("TodayFairFeature", () => {
     expect(html).toContain("fairgrounds-night-mike-d-1920.jpg");
     expect(html).toContain('alt=""');
     expect(html).toContain("Photo: Mike D");
+    expect(html).toContain('data-fair-feature-tone="light"');
+    expect(html).toContain("data-fair-feature-art");
+    expect(html).toContain("data-fair-feature-icon");
+    expect(html).toContain('aria-hidden="true"');
+    expect(html).not.toContain("bg-[var(--app-bedrock)]");
     expect(html.match(/<a\b/g)).toHaveLength(1);
     expect(html).not.toContain(String.fromCharCode(8212));
   });

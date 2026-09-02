@@ -82,25 +82,12 @@ export default function FairDiscoveryChoices({
   })).filter(({ matches }) => matches.length > 0);
 
   return (
-    <section className="mt-5" aria-labelledby="fair-discovery-heading">
-      <p
-        className="text-[11px] font-bold uppercase tracking-[0.12em]"
-        style={{ color: "var(--app-brand-press)" }}
-      >
-        Explore by mood
-      </p>
-      <h2
-        id="fair-discovery-heading"
-        className="mt-1 text-[24px] font-extrabold leading-tight tracking-[-0.035em]"
-      >
-        What sounds good?
-      </h2>
-
-      <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        Choose one path. You can change it without losing your day.
-      </p>
-
-      <div className="scrollbar-none -mx-4 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0">
+    <section
+      className="mt-4"
+      aria-label="Fair activity paths"
+      data-fair-discovery-choices
+    >
+      <div className="scrollbar-none -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0">
         {availableChoices.map(({ choice, matches }) => {
           const active = selected === choice.id;
           const Icon = choice.Icon;
@@ -112,15 +99,13 @@ export default function FairDiscoveryChoices({
               type="button"
               aria-pressed={active}
               onClick={() => onSelect(choice.id)}
-              className={`tap-44 relative min-h-[158px] w-[78vw] max-w-[18.5rem] shrink-0 snap-start overflow-hidden rounded-[var(--app-radius-lg)] border p-4 text-left transition-[transform,border-color] active:scale-[0.985] motion-reduce:transition-none lg:w-auto ${
-                choice.featured ? "text-[var(--app-ink-inverse)]" : ""
-              }`}
+              className="tap-44 relative min-h-[158px] w-[78vw] max-w-[18.5rem] shrink-0 snap-start overflow-hidden rounded-[var(--app-radius-lg)] border p-4 text-left transition-[transform,border-color] active:scale-[0.985] motion-reduce:transition-none lg:w-auto"
               style={{
                 borderColor: active
                   ? choice.accent
                   : "var(--app-border-strong)",
                 background: choice.featured
-                  ? "linear-gradient(90deg, color-mix(in srgb, var(--app-ink) 92%, transparent), color-mix(in srgb, var(--app-ink) 28%, transparent)), url('/images/fair/fairgrounds-night-mike-d-960.jpg') 70% 57% / cover"
+                  ? "linear-gradient(90deg, var(--app-bg-elevated-solid) 0%, color-mix(in srgb, var(--app-bg-elevated-solid) 97%, transparent) 48%, color-mix(in srgb, var(--app-bg-elevated-solid) 78%, transparent) 72%, color-mix(in srgb, var(--app-bg-elevated-solid) 18%, transparent) 100%), url('/images/fair/fairgrounds-night-mike-d-960.jpg') 70% 57% / cover"
                   : choice.wash,
                 boxShadow: active
                   ? `inset 0 0 0 1px ${choice.accent}`
@@ -130,25 +115,15 @@ export default function FairDiscoveryChoices({
               <span className="relative flex items-start justify-between gap-3">
                 <Icon
                   className="h-6 w-6"
-                  style={{
-                    color: choice.featured
-                      ? "var(--app-ink-inverse)"
-                      : choice.accent,
-                  }}
+                  style={{ color: choice.accent }}
                   aria-hidden
                 />
                 <span
                   className="rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] tabular-nums"
                   style={{
-                    borderColor: choice.featured
-                      ? "color-mix(in srgb, var(--app-ink-inverse) 42%, transparent)"
-                      : "var(--app-border-strong)",
-                    color: choice.featured
-                      ? "var(--app-ink-inverse)"
-                      : choice.accent,
-                    background: choice.featured
-                      ? "color-mix(in srgb, var(--app-ink) 38%, transparent)"
-                      : "var(--app-bg-elevated-solid)",
+                    borderColor: "var(--app-border-strong)",
+                    color: choice.accent,
+                    background: "var(--app-bg-elevated-solid)",
                   }}
                 >
                   {matches.length} {matches.length === 1 ? "option" : "options"}
@@ -159,21 +134,13 @@ export default function FairDiscoveryChoices({
               </span>
               <span
                 className="relative mt-1 block text-[12px] font-medium leading-snug"
-                style={{
-                  color: choice.featured
-                    ? "color-mix(in srgb, var(--app-ink-inverse) 80%, transparent)"
-                    : "var(--app-ink-2)",
-                }}
+                style={{ color: "var(--app-ink-2)" }}
               >
                 {choice.detail}
               </span>
               <span
                 className="relative mt-3 block line-clamp-2 text-[12px] font-bold leading-snug tabular-nums"
-                style={{
-                  color: choice.featured
-                    ? "var(--app-ink-inverse)"
-                    : choice.accent,
-                }}
+                style={{ color: choice.accent }}
               >
                 {preview.timeLabel} · {preview.title}
               </span>

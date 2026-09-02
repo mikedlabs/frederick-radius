@@ -54,6 +54,9 @@ describe("FairDiscoveryChoices", () => {
     expect(html).toContain("Carnival &amp; rides");
     expect(html).not.toContain("Food-related program");
     expect(html).not.toMatch(/listing/i);
+    expect(html).toContain('aria-label="Fair activity paths"');
+    expect(html).toContain("data-fair-discovery-choices");
+    expect(html).not.toContain("What sounds good?");
     expect(html).toContain("snap-mandatory");
     expect(html).toContain("1 option");
     expect(html).toContain("4 p.m. - 9 p.m. · Kid Zone");

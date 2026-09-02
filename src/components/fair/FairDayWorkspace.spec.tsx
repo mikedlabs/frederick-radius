@@ -39,7 +39,8 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).toContain("fairgrounds-night-mike-d-960.jpg");
     expect(html).toContain("fairgrounds-night-mike-d-1920.jpg");
     expect(html).toContain('href="/today"');
-    expect(html).toContain("instead of hunting across separate sites");
+    expect(html).toContain('<h1 id="fair-now-heading"');
+    expect(html).toContain(data.eventName);
   });
 
   it("renders one app panel instead of the old long scrolling document", () => {
@@ -99,8 +100,11 @@ describe("FairDayWorkspace server-rendered contract", () => {
       createElement(FairDayWorkspace, { data }),
     );
 
-    expect(html).toContain("Plan Friday at the Fair.");
-    expect(html).toContain("Your plan stays on this device.");
+    expect(html).not.toContain("Plan Friday at the Fair.");
+    expect(html).not.toContain("Before the Fair · Fri, Sep 18");
+    expect(html.indexOf("Your next best step")).toBeLessThan(
+      html.indexOf("About this independent guide"),
+    );
     expect(html).not.toContain(data.externalGuide.url);
     expect(html).not.toContain("Open Radius Transit");
     expect(html).not.toContain("Compare tickets for your party");

@@ -10,6 +10,7 @@ import DaypartNeeds, {
   daypartPickScopeLabel,
   daypartShelfHeading,
   daypartShelfTier,
+  daypartUsablePickCount,
   initialDaypartCategory,
   isPhotoFailureSignal,
   isDaypartCountywideContext,
@@ -130,6 +131,54 @@ describe("DaypartNeeds", () => {
     expect(
       nextUnresolvedDaypartCategory(rows, "museum", { museum: true }),
     ).toBe("coffee");
+  });
+
+  it("lets brief Today skip an unconfirmed shelf for a confirmed answer", () => {
+    const rows = [
+      {
+        category: "coffee",
+        label: "Coffee",
+        href: "/category/coffee",
+        picks: [
+          {
+            slug: "hours-unknown-coffee",
+            name: "Hours Unknown Coffee",
+            rating: 4.7,
+            confidence: "unconfirmed" as const,
+          },
+        ],
+      },
+      {
+        category: "bakery",
+        label: "Bakeries",
+        href: "/category/bakery",
+        picks: [
+          {
+            slug: "confirmed-bakery",
+            name: "Confirmed Bakery",
+            rating: 4.8,
+            confidence: "confirmed" as const,
+          },
+        ],
+      },
+    ];
+
+    expect(daypartUsablePickCount(rows[0], "brief")).toBe(0);
+    expect(initialDaypartCategory(rows, "brief")).toBe("bakery");
+    expect(
+      nextUnresolvedDaypartCategory(
+        rows,
+        "coffee",
+        { coffee: true },
+        "brief",
+      ),
+    ).toBe("bakery");
+
+    const html = renderToStaticMarkup(
+      createElement(DaypartNeeds, { rows, variant: "brief" }),
+    );
+    expect(html).toContain("Confirmed Bakery");
+    expect(html).not.toContain("Hours Unknown Coffee");
   });
 
   it("checks another category after a live zero instead of treating one zero as global", () => {
@@ -703,6 +752,118 @@ describe("DaypartNeeds", () => {
     expect(html).toContain("Second");
     expect(html).toContain("Third");
     expect(html).not.toContain("Fourth");
+  });
+
+  it("keeps the briefing variant to one useful lead with a route to every choice", () => {
+    const html = renderToStaticMarkup(
+      createElement(DaypartNeeds, {
+        variant: "brief",
+        rows: [
+          {
+            category: "coffee",
+            label: "Coffee",
+            href: "/category/coffee",
+            picks: ["Lead", "Second", "Third"].map((name, index) => ({
+              slug: `pick-${index}`,
+              name,
+              rating: 4.8 - index / 10,
+              where: "Frederick",
+              confidence: "confirmed" as const,
+            })),
+            openingSoon: {
+              slug: "opening-next",
+              name: "Opening Next",
+              rating: null,
+              where: "Frederick",
+              confidence: "likely" as const,
+              fact: "Likely opens at 8am · check hours",
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('data-today-decision-density="brief"');
+    expect(html).toContain('aria-label="Open places right now"');
+    expect(html).not.toContain("Open now and soon");
+    expect(html).toContain("Lead");
+    expect(html).not.toContain("Second");
+    expect(html).not.toContain("Third");
+    expect(html).not.toContain("Opening Next");
+    expect(html).not.toContain('role="tablist"');
+    expect(html).toContain('href="/category/coffee"');
+    expect(html).toContain("Browse places");
+  });
+
+  it("lets an opening-soon transition replace an uncertain briefing pick", () => {
+    const html = renderToStaticMarkup(
+      createElement(DaypartNeeds, {
+        variant: "brief",
+        rows: [
+          {
+            category: "coffee",
+            label: "Coffee",
+            href: "/category/coffee",
+            picks: [
+              {
+                slug: "hours-unknown",
+                name: "Hours Unknown",
+                rating: 4.8,
+                where: "Frederick",
+                confidence: "unconfirmed" as const,
+              },
+            ],
+            openingSoon: {
+              slug: "gravel-and-grind-frederick",
+              name: "Gravel & Grind",
+              rating: 4.8,
+              where: "Frederick",
+              confidence: "likely" as const,
+              fact: "Likely opens at 8am · check hours",
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain("Gravel &amp; Grind");
+    expect(html).toContain('aria-label="Place opening soon"');
+    expect(html).toContain('data-today-opening-soon="true"');
+    expect(html).not.toContain("Hours Unknown");
+    expect(html).not.toContain('data-today-place-lead="true"');
+  });
+
+  it("does not fill the briefing with an hours-unconfirmed recommendation", () => {
+    const html = renderToStaticMarkup(
+      createElement(DaypartNeeds, {
+        variant: "brief",
+        rows: [
+          {
+            category: "museum",
+            label: "Museums & indoors",
+            href: "/category/museum",
+            picks: [
+              {
+                slug: "hours-unknown",
+                name: "Hours Unknown",
+                rating: 4.8,
+                where: "Frederick",
+                confidence: "unconfirmed" as const,
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(html).not.toContain("Hours Unknown");
+    expect(html).not.toContain('data-today-place-lead="true"');
+    expect(html).toContain(
+      "Current hours do not confirm an open match for museums &amp; indoors across Frederick County.",
+    );
+    expect(html).toContain('href="/category/museum"');
+    expect(html.match(/href="\/category\/museum"/g)).toHaveLength(1);
+    expect(html).toContain("Browse places");
   });
 
   it("counts opening soon inside the three-choice decision set", () => {

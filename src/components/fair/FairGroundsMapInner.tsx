@@ -1034,7 +1034,7 @@ export default function FairGroundsMapInner({
             <div
               id="fair-map-selection-mobile"
               data-fair-map-selection
-              className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[70] mx-auto max-h-[calc(100dvh-5.25rem-env(safe-area-inset-bottom))] max-w-[30rem] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-4 lg:hidden"
+              className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[var(--z-map-drawer)] mx-auto max-h-[calc(100dvh-5.25rem-env(safe-area-inset-bottom))] max-w-[30rem] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-4 lg:hidden"
               style={{
                 borderColor: "var(--app-control-border)",
                 borderTopColor: selectedTone,

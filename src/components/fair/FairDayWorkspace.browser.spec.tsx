@@ -250,6 +250,10 @@ describe("FairDayWorkspace app journey", () => {
 
     expect(container.querySelector('[aria-label="Back to Fair Today"]')).not.toBeNull();
     expect(container.querySelector('[aria-label="Fair day to explore"]')).not.toBeNull();
+    expect(
+      container.querySelector('[aria-label="Fair program results"]'),
+    ).toBeNull();
+    expect(container.textContent).toContain("Browse full program");
     const kidZone = buttonWithText(container, "Kid Zone");
     const search = container.querySelector("#fair-unified-search");
     expect(
@@ -274,26 +278,26 @@ describe("FairDayWorkspace app journey", () => {
       expect(results.textContent).not.toContain(item.title);
     }
     expect(container.textContent).toContain("Back to Explore");
-    expect(container.textContent).not.toContain("What sounds good?");
+    expect(container.querySelector("[data-fair-discovery-choices]")).toBeNull();
 
     await openMode("Explore");
-    expect(container.textContent).toContain("What sounds good?");
+    expect(container.querySelector("[data-fair-discovery-choices]")).not.toBeNull();
   });
 
   it("switches between visual discovery and the grounds map without leaving the Fair plan", async () => {
     await renderFair();
     await openMode("Explore");
 
-    expect(container.textContent).toContain("What sounds good?");
+    expect(container.querySelector("[data-fair-discovery-choices]")).not.toBeNull();
     await openMode("Map");
 
     expect(window.location.hash).toBe("#fair-map");
-    expect(container.textContent).not.toContain("What sounds good?");
+    expect(container.querySelector("[data-fair-discovery-choices]")).toBeNull();
     expect(container.textContent).toContain("The grounds map could not open.");
 
     await openMode("Explore");
     expect(window.location.hash).toBe("#find");
-    expect(container.textContent).toContain("What sounds good?");
+    expect(container.querySelector("[data-fair-discovery-choices]")).not.toBeNull();
   });
 
   it("keeps program details honest and allows only one Fair drawer", async () => {
@@ -514,7 +518,8 @@ describe("FairDayWorkspace app journey", () => {
     await chooseDate("2026-09-20");
     await openMode("My Day");
     expect(container.textContent).not.toContain("Daughtry");
-    expect(container.textContent).toContain("Your timeline starts with one choice.");
+    expect(container.textContent).not.toContain("Your timeline starts with one choice.");
+    expect(container.querySelector("[data-fair-journey]")).not.toBeNull();
     expect(
       container.querySelector(
         '[data-mobile-action-bar] button[aria-label="My Day"]',

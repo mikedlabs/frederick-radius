@@ -34,7 +34,7 @@ test.describe("Fair Day production release journey", () => {
     await expect(
       page.getByRole("heading", {
         level: 1,
-        name: "Plan Friday at the Fair.",
+        name: "The Great Frederick Fair",
       }),
     ).toBeVisible();
     await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
@@ -46,6 +46,12 @@ test.describe("Fair Day production release journey", () => {
       page.getByRole("navigation", { name: "Primary" }),
     ).toHaveCount(0);
     await expect(page.getByLabel("Send feedback")).toHaveCount(0);
+    const mobileActionBar = page.locator("[data-mobile-action-bar]");
+    await expect(mobileActionBar).toBeVisible();
+    await expect(mobileActionBar).toHaveAttribute(
+      "style",
+      /--app-bg-elevated-solid/,
+    );
 
     const datePicker = page.getByRole("combobox", {
       name: "Fair day in your plan",
@@ -53,7 +59,7 @@ test.describe("Fair Day production release journey", () => {
     await datePicker.selectOption("2026-09-20");
     await expect(datePicker).toHaveValue("2026-09-20");
     await expect(
-      page.getByRole("heading", { level: 1, name: "Plan Sunday at the Fair." }),
+      page.getByRole("heading", { level: 1, name: "The Great Frederick Fair" }),
     ).toBeVisible();
     const accessHighlight = page.locator("[data-fair-access-highlight]");
     await expect(accessHighlight).toContainText(
@@ -183,6 +189,18 @@ test.describe("Fair Day production release journey", () => {
       (selectedPosition?.y ?? 0) + (selectedPosition?.height ?? 0),
     ).toBeLessThanOrEqual(actionBarPosition?.y ?? Number.POSITIVE_INFINITY);
     await page.getByRole("button", { name: "Explore", exact: true }).click();
+    await expect(
+      page.getByRole("region", { name: "Fair activity paths" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("list", { name: "Fair program results" }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Browse full program", exact: true })
+      .click();
+    await expect(
+      page.getByRole("list", { name: "Fair program results" }),
+    ).toBeVisible();
 
     const addProgramItem = page
       .getByRole("button", { name: /^Add .+ to My Day$/ })
