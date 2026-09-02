@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { logActivity } from "@/lib/track";
+import { shouldPostAutomaticActivity } from "@/lib/fair/route-policy";
 
 /**
  * PageViewTracker — logs a `page_view` on each client route change to the
@@ -21,7 +22,13 @@ export default function PageViewTracker() {
   const lastPath = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!pathname || pathname === lastPath.current) return;
+    if (
+      !pathname ||
+      pathname === lastPath.current ||
+      !shouldPostAutomaticActivity(pathname)
+    ) {
+      return;
+    }
     lastPath.current = pathname;
     logActivity("page_view");
   }, [pathname]);

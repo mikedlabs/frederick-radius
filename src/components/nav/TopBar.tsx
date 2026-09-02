@@ -53,6 +53,7 @@ export function topBarFindTarget(pathname: string): FindTarget {
 
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [findInteractionReady, setFindInteractionReady] = useState(false);
   const searchOpenerRef = useRef<HTMLElement | null>(null);
   const searchLayerIdRef = useRef("");
   const searchPathRef = useRef<string | null>(null);
@@ -62,6 +63,15 @@ export default function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
   const closeSearch = useCallback(() => setSearchOpen(false), []);
+
+  // The app bar is server-rendered before this client component hydrates. An
+  // enabled button in that brief window looks actionable but has no click
+  // handler yet, so a fast first tap can be lost on a cold device. Match the
+  // readiness contract used by other client-owned controls: expose the button
+  // immediately, but enable it only after React can honor the interaction.
+  useEffect(() => {
+    queueMicrotask(() => setFindInteractionReady(true));
+  }, []);
 
   // Sticky-header activation can make a browser reposition the document just
   // before it dispatches pointerdown (automation and mobile focus handling
@@ -330,6 +340,8 @@ export default function TopBar() {
               <div aria-hidden className="min-w-0 flex-1 lg:hidden" />
               <button
                 type="button"
+                disabled={!findInteractionReady}
+                data-find-interaction-ready={findInteractionReady ? "true" : "false"}
                 onPointerDown={capturePointerScroll}
                 onClick={(event) => {
                   const returnScrollY = pointerScrollYRef.current ?? window.scrollY;
@@ -337,7 +349,7 @@ export default function TopBar() {
                   openPrimaryFind(event.currentTarget, returnScrollY);
                 }}
                 aria-label="Ask or find across Frederick County"
-                className="tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] lg:flex"
+                className="tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] disabled:cursor-wait disabled:opacity-60 lg:flex"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
               >
                 <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
@@ -355,6 +367,8 @@ export default function TopBar() {
           {showMobileSearch && (
             <button
               type="button"
+              disabled={!findInteractionReady}
+              data-find-interaction-ready={findInteractionReady ? "true" : "false"}
               aria-label={findTarget === "map" ? "Search this map" : "Ask or find across Frederick County"}
               aria-haspopup={findTarget === "map" ? undefined : "dialog"}
               aria-controls={findTarget === "map" ? "map-search-input" : searchOpen ? "radius-find-dialog" : undefined}
@@ -367,7 +381,7 @@ export default function TopBar() {
                 pointerScrollYRef.current = null;
                 openPrimaryFind(event.currentTarget, returnScrollY);
               }}
-              className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 lg:hidden"
+              className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 disabled:cursor-wait disabled:opacity-60 lg:hidden"
               style={{
                 borderColor: searchOpen ? "var(--app-brand)" : "var(--app-border)",
                 color: searchOpen ? "var(--app-brand-press)" : "var(--app-ink-2)",

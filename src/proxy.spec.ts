@@ -57,6 +57,24 @@ describe("public access proxy", () => {
     expect(mocks.updateSession).toHaveBeenCalledWith(request);
   });
 
+  it.each([
+    "/fair",
+    "/moments/great-frederick-fair-2026",
+  ])("keeps the Fair surge route %s session-independent even with cookies", async (path) => {
+    const request = new NextRequest(`https://frederickradius.app${path}`, {
+      headers: {
+        cookie: "sb-project-auth-token=carried-session-cookie",
+      },
+    });
+    const response = await proxy(request);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(mocks.updateSession).not.toHaveBeenCalled();
+  });
+
   it("continues to fail closed on admin routes", async () => {
     const response = await proxy(
       new NextRequest("https://frederickradius.app/admin"),

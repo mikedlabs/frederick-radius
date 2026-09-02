@@ -3,8 +3,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Flag, TriangleAlert, Star, Info, ExternalLink, CloudSun } from "lucide-react";
 import { CIVIC_MOMENTS, momentBySlug, type MomentItem, type MomentItemKind } from "@/data/civic-moments";
+import FairDayPage from "@/components/fair/FairDayPage";
 import PageBloom from "@/components/ui/PageBloom";
 import { jsonLdScript } from "@/lib/seo/jsonld";
+
+const FAIR_DAY_SLUG = "great-frederick-fair-2026";
 
 /**
  * /moments/[slug] — a curated hub for a big county occasion (the Fourth, the
@@ -24,12 +27,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const m = momentBySlug(slug);
   if (!m) notFound();
   const ogImage = { url: `/api/og?type=moment&slug=${slug}`, width: 1200, height: 630 };
+  const title = slug === FAIR_DAY_SLUG ? "Fair Day | The Great Frederick Fair 2026" : m.title;
+  const description =
+    slug === FAIR_DAY_SLUG
+      ? "An independent Frederick Radius guide to tickets, arrival, the official schedule, and your plan for the 2026 Great Frederick Fair."
+      : m.subtitle;
   return {
-    title: m.title,
-    description: m.subtitle,
+    title,
+    description,
     alternates: { canonical: `/moments/${slug}` },
-    openGraph: { title: m.title, description: m.subtitle, images: [ogImage] },
-    twitter: { card: "summary_large_image", title: m.title, description: m.subtitle, images: [ogImage.url] },
+    openGraph: { title, description, images: [ogImage] },
+    twitter: { card: "summary_large_image", title, description, images: [ogImage.url] },
   };
 }
 
@@ -99,6 +107,10 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const m = momentBySlug(slug);
   if (!m) notFound();
+
+  if (slug === FAIR_DAY_SLUG) {
+    return <FairDayPage />;
+  }
 
   return (
     <div className="relative mx-auto max-w-screen-sm space-y-6 pb-10">

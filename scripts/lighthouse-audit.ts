@@ -92,8 +92,9 @@ function parseArgs(): Args {
   );
 
   // The set is intentionally narrow: the primary decision surfaces, the
-  // computationally distinct transit and Ask experiences, and one dynamic
-  // place route. Add more URLs sparingly so the weekly pass stays useful.
+  // computationally distinct transit, Ask, and Fair experiences, and one
+  // dynamic place route. Add more URLs sparingly so the weekly pass stays
+  // useful.
   //
   // Canonical routes only. Measuring redirects hides the destination's
   // real navigation cost and can make a retired alias look like a supported
@@ -104,6 +105,7 @@ function parseArgs(): Args {
     "/events",
     "/ask",
     "/transit",
+    "/moments/great-frederick-fair-2026",
     "/places/carroll-creek-linear-park-frederick",
   ];
   return {

@@ -9,6 +9,7 @@ const SURFACES = [
   "/today",
   "/map",
   "/events",
+  "/fair",
   "/ask",
   "/access",
   "/pulse",
