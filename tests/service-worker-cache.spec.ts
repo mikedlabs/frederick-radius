@@ -177,7 +177,7 @@ describe("service worker cache boundaries", () => {
     expect(worker.puts).toHaveLength(0);
   });
 
-  it("warms only canonical Fair HTML and same-origin static assets without credentials", async () => {
+  it("reloads canonical Fair HTML but reuses HTTP-cached same-origin static assets", async () => {
     const worker = await workerHarness();
     worker.fetch
       .mockResolvedValueOnce(
@@ -215,7 +215,12 @@ describe("service worker cache boundaries", () => {
     expect(worker.fetch).toHaveBeenNthCalledWith(
       2,
       "https://frederick.example/_next/static/chunks/fair-a1.js",
-      { cache: "reload", credentials: "omit" },
+      { cache: "default", credentials: "omit" },
+    );
+    expect(worker.fetch).toHaveBeenNthCalledWith(
+      3,
+      "https://frederick.example/_next/static/css/fair-b2.css",
+      { cache: "default", credentials: "omit" },
     );
     expect(worker.puts.map((entry) => entry.request)).toEqual([
       "/moments/great-frederick-fair-2026",

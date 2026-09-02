@@ -109,7 +109,10 @@ async function cachePageStaticAssets(assetSource, cache, credentials) {
     paths.map(async (assetUrl) => {
       try {
         const asset = await fetch(assetUrl, {
-          cache: "reload",
+          // Next build assets are content-hashed and immutable. Let the
+          // browser's HTTP cache satisfy a warm request when it already has
+          // the exact file instead of forcing another network download.
+          cache: "default",
           credentials,
         });
         if (isCacheableResponse(asset)) await cache.put(assetUrl, asset);
