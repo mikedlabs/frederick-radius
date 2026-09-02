@@ -1,11 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import {
   Accessibility,
   Baby,
   CheckCircle2,
   ChevronDown,
-  CircleParking,
   ExternalLink,
   Search,
   ShieldAlert,
@@ -27,16 +27,16 @@ const STAGES: Array<{ id: AnswerStage; label: string }> = [
 
 const QUICK_ANSWERS = [
   {
-    id: "fair-answer-family-care",
-    label: "Family Care + changing",
-    detail: "Nursing and diaper changes",
-    Icon: Baby,
+    category: "accessibility",
+    label: "Access guide",
+    detail: "ASL, sensory, mobility, and service animals",
+    Icon: Accessibility,
   },
   {
-    id: "fair-answer-parking-cash",
-    label: "Parking payment",
-    detail: "Know where cash is required",
-    Icon: CircleParking,
+    id: "fair-answer-easy-to-miss",
+    label: "Easy to miss",
+    detail: "Parking, payment, tickets, and re-entry",
+    Icon: ShieldAlert,
   },
   {
     id: "fair-answer-lost-person-item",
@@ -45,10 +45,10 @@ const QUICK_ANSWERS = [
     Icon: ShieldAlert,
   },
   {
-    id: "fair-answer-mobility-help",
-    label: "Mobility help",
-    detail: "Parking, shuttle, and rentals",
-    Icon: Accessibility,
+    id: "fair-answer-family-care",
+    label: "Family Care + changing",
+    detail: "Nursing and diaper changes",
+    Icon: Baby,
   },
 ] as const;
 
@@ -79,9 +79,11 @@ function checkedDate(answer: FairPracticalAnswer): string {
 export default function FairPracticalAnswers({
   answers,
   focusAnswerId = null,
+  focusCategory = null,
 }: {
   answers: FairPracticalAnswer[];
   focusAnswerId?: string | null;
+  focusCategory?: FairPracticalAnswer["category"] | null;
 }) {
   const [stage, setStage] = useState<AnswerStage>("all");
   const [query, setQuery] = useState("");
@@ -89,23 +91,47 @@ export default function FairPracticalAnswers({
   const [focusedAnswerId, setFocusedAnswerId] = useState<string | null>(
     focusAnswerId,
   );
+  const [focusedCategory, setFocusedCategory] = useState<
+    FairPracticalAnswer["category"] | null
+  >(focusCategory);
   const publicAnswers = useMemo(
     () => answers.filter((answer) => answer.evidence !== "community-pattern"),
     [answers],
   );
   const quickAnswers = QUICK_ANSWERS.filter((choice) =>
-    publicAnswers.some((answer) => answer.id === choice.id),
+    publicAnswers.some((answer) =>
+      "id" in choice
+        ? answer.id === choice.id
+        : answer.category === choice.category,
+    ),
   );
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(
-    () => new Set(focusAnswerId ? [focusAnswerId] : []),
+    () =>
+      new Set(
+        focusAnswerId
+          ? [focusAnswerId]
+          : focusCategory
+            ? [
+                answers.find(
+                  (answer) =>
+                    answer.category === focusCategory &&
+                    answer.evidence !== "community-pattern",
+                )?.id,
+              ].filter((id): id is string => Boolean(id))
+            : [],
+      ),
   );
 
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const showingResults =
-    focusedAnswerId !== null || browseAll || normalizedQuery.length > 0;
+    focusedAnswerId !== null ||
+    focusedCategory !== null ||
+    browseAll ||
+    normalizedQuery.length > 0;
   const matches = showingResults
     ? publicAnswers.filter((answer) => {
         if (focusedAnswerId && answer.id !== focusedAnswerId) return false;
+        if (focusedCategory && answer.category !== focusedCategory) return false;
         if (stage !== "all" && !answer.usefulBefore.includes(stage)) return false;
         if (!normalizedQuery) return true;
         return `${answer.question} ${answer.answer} ${answer.category}`
@@ -127,15 +153,29 @@ export default function FairPracticalAnswers({
         ? `${matches.length} ${answerNoun} match "${query.trim()}".`
         : focusedAnswerId
           ? `${matches.length} ${answerNoun} shown.`
+          : focusedCategory
+            ? `${matches.length} reviewed access answers shown.`
           : stage === "all"
             ? `${matches.length} ${answerNoun} shown.`
             : `${matches.length} ${answerNoun} shown for the ${activeStageLabel} filter.`;
 
   const chooseQuickAnswer = (answerId: string) => {
     setFocusedAnswerId(answerId);
+    setFocusedCategory(null);
     setQuery("");
     setStage("all");
     setOpenIds(new Set([answerId]));
+  };
+
+  const chooseQuickCategory = (category: FairPracticalAnswer["category"]) => {
+    const firstMatch = publicAnswers.find(
+      (answer) => answer.category === category,
+    );
+    setFocusedAnswerId(null);
+    setFocusedCategory(category);
+    setQuery("");
+    setStage("all");
+    setOpenIds(new Set(firstMatch ? [firstMatch.id] : []));
   };
 
   return (
@@ -155,7 +195,7 @@ export default function FairPracticalAnswers({
           What do you need right now?
         </h2>
         <p
-          className="mt-2 max-w-[34rem] text-[13px] leading-relaxed"
+          className="mt-2 max-w-[34rem] text-[14px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
           Start with a common need. Radius will show the reviewed answer and its source.
@@ -164,42 +204,49 @@ export default function FairPracticalAnswers({
 
       {quickAnswers.length > 0 ? (
         <div className="mt-4 grid grid-cols-2 gap-2" aria-label="Common Fair help">
-        {quickAnswers.map((choice) => {
-          const active = focusedAnswerId === choice.id;
-          const Icon = choice.Icon;
-          return (
-            <button
-              key={choice.id}
-              type="button"
-              aria-pressed={active}
-              onClick={() => chooseQuickAnswer(choice.id)}
-              className="tap-44 min-h-[92px] rounded-[var(--app-radius-md)] border p-3 text-left"
-              style={{
-                borderColor: active
-                  ? "var(--app-brand-press)"
-                  : "var(--app-border-strong)",
-                background: active
-                  ? "var(--app-brand-tint-6)"
-                  : "var(--app-bg-elevated)",
-              }}
-            >
-              <Icon
-                className="h-5 w-5"
-                style={{ color: "var(--app-brand-press)" }}
-                aria-hidden
-              />
-              <span className="mt-2 block text-[13px] font-bold leading-snug">
-                {choice.label}
-              </span>
-              <span
-                className="mt-0.5 block text-[12px] leading-snug"
-                style={{ color: "var(--app-ink-3)" }}
+          {quickAnswers.map((choice) => {
+            const active =
+              "id" in choice
+                ? focusedAnswerId === choice.id
+                : focusedCategory === choice.category;
+            const Icon = choice.Icon;
+            return (
+              <button
+                key={"id" in choice ? choice.id : choice.category}
+                type="button"
+                aria-pressed={active}
+                onClick={() =>
+                  "id" in choice
+                    ? chooseQuickAnswer(choice.id)
+                    : chooseQuickCategory(choice.category)
+                }
+                className="tap-44 min-h-[100px] rounded-[var(--app-radius-md)] border p-3 text-left"
+                style={{
+                  borderColor: active
+                    ? "var(--app-brand-press)"
+                    : "var(--app-border-strong)",
+                  background: active
+                    ? "var(--app-brand-tint-6)"
+                    : "var(--app-bg-elevated)",
+                }}
               >
-                {choice.detail}
-              </span>
-            </button>
-          );
-        })}
+                <Icon
+                  className="h-5 w-5"
+                  style={{ color: "var(--app-brand-press)" }}
+                  aria-hidden
+                />
+                <span className="mt-2 block text-[14px] font-bold leading-snug">
+                  {choice.label}
+                </span>
+                <span
+                  className="mt-0.5 block text-[13px] leading-snug"
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  {choice.detail}
+                </span>
+              </button>
+            );
+          })}
         </div>
       ) : (
         <p className="mt-4 text-[13px] font-semibold">
@@ -207,35 +254,68 @@ export default function FairPracticalAnswers({
         </p>
       )}
 
+      {focusedCategory === "accessibility" ? (
+        <div
+          className="mt-4 rounded-[var(--app-radius-md)] border-l-4 p-4"
+          style={{
+            borderColor: "var(--app-cool)",
+            background:
+              "color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated))",
+          }}
+        >
+          <p className="text-[15px] font-bold">Access at the Fair</p>
+          <p
+            className="mt-1 text-[14px] leading-relaxed"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            Official Fair information, checked September 2, 2026. Confirm
+            limited seating or requested arrangements with the Fair before you
+            go. Radius also names what the current official pages do not confirm.
+          </p>
+          <Link
+            href="/access"
+            className="tap-44 mt-2 inline-flex min-h-11 items-center font-semibold underline underline-offset-4"
+            style={{ color: "var(--app-cool)" }}
+          >
+            Communication access around Frederick
+          </Link>
+        </div>
+      ) : null}
+
       {publicAnswers.length > 0 ? (
         <label className="mt-4 block" htmlFor="fair-practical-search">
-        <span className="sr-only">Search practical Fair answers</span>
-        <span className="relative block">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
-            style={{ color: "var(--app-ink-3)" }}
-            aria-hidden
-          />
-          <input
-            id="fair-practical-search"
-            type="search"
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setFocusedAnswerId(null);
-            }}
-            placeholder="Search parking, bags, children, rides…"
-            className="h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] pl-10 pr-3 text-[13px] outline-none placeholder:text-[var(--app-ink-3)] focus:border-[var(--app-brand)] focus:ring-2 focus:ring-[color:color-mix(in_srgb,var(--app-brand)_20%,transparent)]"
-            style={{
-              borderColor: "var(--app-border-strong)",
-              color: "var(--app-ink)",
-            }}
-          />
-        </span>
+          <span className="sr-only">Search practical Fair answers</span>
+          <span className="relative block">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+              style={{ color: "var(--app-ink-3)" }}
+              aria-hidden
+            />
+            <input
+              id="fair-practical-search"
+              type="search"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setFocusedAnswerId(null);
+                setFocusedCategory(null);
+              }}
+              placeholder="Search ASL, parking, bags, rides…"
+              className="h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] pl-10 pr-3 text-base outline-none placeholder:text-[var(--app-ink-3)] focus:border-[var(--app-brand)] focus:ring-2 focus:ring-[color:color-mix(in_srgb,var(--app-brand)_20%,transparent)]"
+              style={{
+                borderColor: "var(--app-border-strong)",
+                color: "var(--app-ink)",
+              }}
+            />
+          </span>
         </label>
       ) : null}
 
-      {publicAnswers.length > 0 && !browseAll && !normalizedQuery && !focusedAnswerId ? (
+      {publicAnswers.length > 0 &&
+      !browseAll &&
+      !normalizedQuery &&
+      !focusedAnswerId &&
+      !focusedCategory ? (
         <button
           type="button"
           onClick={() => setBrowseAll(true)}
@@ -246,7 +326,22 @@ export default function FairPracticalAnswers({
         </button>
       ) : null}
 
-      {browseAll && !focusedAnswerId ? (
+      {focusedCategory ? (
+        <button
+          type="button"
+          onClick={() => {
+            setFocusedCategory(null);
+            setBrowseAll(true);
+            setOpenIds(new Set());
+          }}
+          className="tap-44 mt-2 inline-flex min-h-11 items-center text-[13px] font-semibold"
+          style={{ color: "var(--app-brand-press)" }}
+        >
+          See all Fair help
+        </button>
+      ) : null}
+
+      {browseAll && !focusedAnswerId && !focusedCategory ? (
         <div
           role="group"
           className="scrollbar-none -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6"
@@ -306,11 +401,11 @@ export default function FairPracticalAnswers({
               >
                 <summary className="flex min-h-[64px] cursor-pointer list-none items-center justify-between gap-3 py-3 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--app-bg)]">
                   <span className="min-w-0">
-                    <span className="block text-[14px] font-semibold leading-snug">
+                    <span className="block text-[15px] font-semibold leading-snug">
                       {answer.question}
                     </span>
                     <span
-                      className="mt-1 flex items-center gap-1.5 text-[12px] font-semibold leading-snug"
+                      className="mt-1 flex items-center gap-1.5 text-[13px] font-semibold leading-snug"
                       style={{
                         color: unconfirmed
                           ? "var(--app-warning-press)"
@@ -336,12 +431,12 @@ export default function FairPracticalAnswers({
                   }}
                 >
                   <p
-                    className="text-[13px] leading-relaxed"
+                    className="text-[15px] leading-relaxed"
                     style={{ color: "var(--app-ink-2)" }}
                   >
                     {answer.answer}
                   </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] leading-relaxed">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] leading-relaxed">
                     <span className="font-semibold" style={{ color: "var(--app-ink-3)" }}>
                       Sources:
                     </span>
@@ -359,7 +454,7 @@ export default function FairPracticalAnswers({
                     ))}
                   </div>
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                    <span className="text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
+                    <span className="text-[13px] font-medium" style={{ color: "var(--app-ink-3)" }}>
                       Sources checked {checkedDate(answer)}.
                     </span>
                     {answer.action ? (
@@ -367,7 +462,7 @@ export default function FairPracticalAnswers({
                         href={answer.action.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[12px] font-semibold"
+                        className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold"
                         style={{ color: "var(--app-brand-press)" }}
                       >
                         {answer.action.label}

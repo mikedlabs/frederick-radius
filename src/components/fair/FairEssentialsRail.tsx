@@ -6,7 +6,24 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
+import type { FairPracticalAnswer } from "@/lib/fair/practical-answers";
+
+export type FairHelpTarget = {
+  answerId?: string;
+  category?: FairPracticalAnswer["category"];
+};
+
 const HELP_ITEMS = [
+  {
+    label: "Access guide",
+    category: "accessibility",
+    Icon: Accessibility,
+  },
+  {
+    label: "Easy to miss",
+    answerId: "fair-answer-easy-to-miss",
+    Icon: ShieldAlert,
+  },
   {
     label: "Family Care + changing",
     answerId: "fair-answer-family-care",
@@ -17,18 +34,13 @@ const HELP_ITEMS = [
     answerId: "fair-answer-lost-person-item",
     Icon: ShieldAlert,
   },
-  {
-    label: "Mobility help",
-    answerId: "fair-answer-mobility-help",
-    Icon: Accessibility,
-  },
 ] as const;
 
 export default function FairEssentialsRail({
   onOpenHelp,
   onOpenTravel,
 }: {
-  onOpenHelp: (answerId: string | null) => void;
+  onOpenHelp: (target: FairHelpTarget) => void;
   onOpenTravel: () => void;
 }) {
   return (
@@ -38,15 +50,15 @@ export default function FairEssentialsRail({
         borderColor: "var(--app-border)",
         background: "var(--app-bg-elevated)",
       }}
-      aria-label="Family essentials"
+      aria-label="Visitor essentials"
     >
       <div className="mx-auto max-w-[48rem] px-4 sm:px-6">
         <div className="flex items-center justify-between gap-3">
-          <p className="shrink-0 text-[12px] font-bold">Family essentials</p>
+          <p className="shrink-0 text-[13px] font-bold">Visitor essentials</p>
           <button
             type="button"
-            onClick={() => onOpenHelp(null)}
-            className="tap-44 -my-2 inline-flex min-h-11 items-center gap-1.5 text-[12px] font-semibold"
+            onClick={() => onOpenHelp({})}
+            className="tap-44 -my-2 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold"
             style={{ color: "var(--app-brand-press)" }}
           >
             Fair help
@@ -61,8 +73,14 @@ export default function FairEssentialsRail({
               <button
                 key={item.label}
                 type="button"
-                onClick={() => onOpenHelp(item.answerId)}
-                className="tap-44 inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-3 text-[12px] font-semibold"
+                onClick={() =>
+                  onOpenHelp(
+                    "category" in item
+                      ? { category: item.category }
+                      : { answerId: item.answerId },
+                  )
+                }
+                className="tap-44 inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-3 text-[13px] font-semibold"
                 style={{
                   borderColor: "var(--app-border-strong)",
                   color: "var(--app-ink-2)",
@@ -81,7 +99,7 @@ export default function FairEssentialsRail({
           <button
             type="button"
             onClick={onOpenTravel}
-            className="tap-44 inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-3 text-[12px] font-semibold"
+            className="tap-44 inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-3 text-[13px] font-semibold"
             style={{
               borderColor: "var(--app-border-strong)",
               color: "var(--app-ink-2)",

@@ -56,6 +56,33 @@ test.describe("Fair Day production release journey", () => {
       page.getByRole("heading", { level: 1, name: "Plan Sunday at the Fair." }),
     ).toBeVisible();
 
+    await page.getByRole("button", { name: "Access guide", exact: true }).click();
+    const accessGuide = page.getByRole("dialog", { name: "Fair help" });
+    await expect(accessGuide).toContainText(
+      "Where can I see the ASL interpreter at Grandstand shows?",
+    );
+    await expect(accessGuide).toContainText(
+      "When is the sensory-friendly carnival period?",
+    );
+    await expect(accessGuide).toContainText(
+      "Is there a permanent quiet or sensory room?",
+    );
+    await expect(
+      accessGuide.getByRole("link", {
+        name: "Communication access around Frederick",
+      }),
+    ).toHaveAttribute("href", "/access");
+    await page.getByRole("button", { name: "Close Fair help" }).click();
+
+    await page.getByRole("button", { name: "Easy to miss", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Fair help" })).toContainText(
+      "Parking is separate",
+    );
+    await expect(page.getByRole("dialog", { name: "Fair help" })).toContainText(
+      "Apple Pay is not accepted",
+    );
+    await page.getByRole("button", { name: "Close Fair help" }).click();
+
     await page.getByRole("button", { name: "Review tickets" }).click();
     await page.getByRole("button", { name: "Compare tickets" }).click();
     await page.getByRole("spinbutton", { name: "Adults 11+" }).fill("2");
@@ -130,7 +157,10 @@ test.describe("Fair Day production release journey", () => {
         name: "Find a place or program event on the Fair grounds map",
       })
       .fill("Homegrown Wineries");
-    await page.getByRole("option", { name: /Commercial Building/ }).click();
+    await page
+      .locator("#fair-map-search-results")
+      .getByRole("button", { name: /Commercial Building/ })
+      .click();
     const selectedPlace = page.getByRole("region", {
       name: "Selected map place: Commercial Building",
     });
@@ -146,7 +176,7 @@ test.describe("Fair Day production release journey", () => {
     expect(
       (selectedPosition?.y ?? 0) + (selectedPosition?.height ?? 0),
     ).toBeLessThanOrEqual(actionBarPosition?.y ?? Number.POSITIVE_INFINITY);
-    await page.getByRole("button", { name: "Program" }).click();
+    await page.getByRole("button", { name: "Program", exact: true }).click();
 
     const addProgramItem = page
       .getByRole("button", { name: /^Add .+ to My Day$/ })
@@ -213,7 +243,7 @@ test.describe("Fair Day production release journey", () => {
     await page.goto(`${FAIR_CANONICAL_PATH}#fair-map`, {
       waitUntil: "domcontentloaded",
     });
-    await expect(page.getByRole("button", { name: "Show me" })).toBeVisible({
+    await expect(page.getByRole("button", { name: "Show my location" })).toBeVisible({
       timeout: 15_000,
     });
     expect(
@@ -224,7 +254,7 @@ test.describe("Fair Day production release journey", () => {
       ),
     ).toBe(0);
 
-    await page.getByRole("button", { name: "Show me" }).click();
+    await page.getByRole("button", { name: "Show my location" }).click();
     await expect(page.locator("#fair-map")).toContainText(
       "Your location reading is too broad to place safely",
     );
@@ -241,10 +271,10 @@ test.describe("Fair Day production release journey", () => {
       longitude: -77.3943,
       accuracy: 12,
     });
-    await page.getByRole("button", { name: "Show me" }).click();
+    await page.getByRole("button", { name: "Show my location" }).click();
     await expect(page.locator("#fair-map")).toContainText(
       "Your position is shown within about 40 feet for this visit only.",
     );
-    await expect(page.locator('[title="Your approximate location"]')).toBeVisible();
+    await expect(page.locator("[data-fair-visitor-location]")).toBeVisible();
   });
 });

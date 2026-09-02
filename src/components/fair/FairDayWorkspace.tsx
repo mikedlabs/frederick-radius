@@ -22,6 +22,7 @@ import {
   Search,
   TicketCheck,
   Trash2,
+  TriangleAlert,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -43,6 +44,7 @@ import {
   type FairPlanReadyKey,
 } from "@/lib/fair/plan";
 import type { FairPlanStatus } from "@/lib/fair/plan-status";
+import type { FairPracticalAnswer } from "@/lib/fair/practical-answers";
 import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback-ui";
 
 import FairPlanStatusRibbon from "./FairPlanStatusRibbon";
@@ -359,6 +361,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
     useState<PreparationKey | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpAnswerId, setHelpAnswerId] = useState<string | null>(null);
+  const [helpCategory, setHelpCategory] = useState<
+    FairPracticalAnswer["category"] | null
+  >(null);
   const [selectedDate, setSelectedDate] = useState(
     data.initialPlan.selectedDayId?.replace(/^day-/, "") ??
       (validDates.has(data.initialDate) ? data.initialDate : (data.dates[0]?.date ?? "")),
@@ -764,6 +769,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               type="button"
               onClick={() => {
                 setHelpAnswerId(null);
+                setHelpCategory(null);
                 setHelpOpen(true);
               }}
               className="fair-hero-control tap-44 inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[13px] font-semibold text-[var(--app-ink-inverse)] [text-shadow:0_1px_3px_rgba(0,0,0,0.72)]"
@@ -843,8 +849,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       />
 
       <FairEssentialsRail
-        onOpenHelp={(answerId) => {
-          setHelpAnswerId(answerId);
+        onOpenHelp={(target) => {
+          setHelpAnswerId(target.answerId ?? null);
+          setHelpCategory(target.category ?? null);
           setHelpOpen(true);
         }}
         onOpenTravel={() => chooseMode("travel")}
@@ -948,6 +955,26 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                       </span>
                     </span>
                     {plan.readyKeys.includes("entry") ? <Check className="h-5 w-5" style={{ color: "var(--app-amber)" }} aria-hidden /> : <ChevronRight className="h-5 w-5" aria-hidden />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHelpAnswerId("fair-answer-easy-to-miss");
+                      setHelpCategory(null);
+                      setHelpOpen(true);
+                    }}
+                    className="tap-44 flex min-h-[58px] w-full items-center justify-between gap-3 py-2 text-left"
+                  >
+                    <span className="flex items-center gap-3">
+                      <TriangleAlert className="h-5 w-5" style={{ color: "var(--app-amber)" }} aria-hidden />
+                      <span>
+                        <span className="block text-[15px] font-semibold">Easy to miss</span>
+                        <span className="block text-[13px]" style={{ color: "color-mix(in srgb, var(--app-ink-inverse) 68%, transparent)" }}>
+                          Cash-only lots, parking, tickets, and re-entry
+                        </span>
+                      </span>
+                    </span>
+                    <ChevronRight className="h-5 w-5" aria-hidden />
                   </button>
                 </div>
 
@@ -1499,16 +1526,20 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         open={helpOpen}
         onOpenChange={(open) => {
           setHelpOpen(open);
-          if (!open) setHelpAnswerId(null);
+          if (!open) {
+            setHelpAnswerId(null);
+            setHelpCategory(null);
+          }
         }}
         title="Fair help"
-        subtitle="Parking, bags, children, rides, weather, and re-entry"
+        subtitle="Access, parking, family needs, rides, weather, and re-entry"
       >
         <div className="px-4 pb-6 sm:px-6">
           <FairPracticalAnswers
-            key={helpAnswerId ?? "fair-help"}
+            key={`${helpAnswerId ?? "fair-help"}:${helpCategory ?? "all"}`}
             answers={data.practicalAnswers}
             focusAnswerId={helpAnswerId}
+            focusCategory={helpCategory}
           />
           <div className="mt-8 border-t pt-5" style={{ borderColor: "var(--app-border)" }}>
             <p className="text-[14px] font-semibold">{data.source.label}</p>

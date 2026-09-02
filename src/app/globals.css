@@ -1820,6 +1820,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   width: 44px !important;
   height: 44px !important;
 }
+/* Fairgrounds pins sit over an unpredictable basemap. A light inner outline
+ * plus dark outer halo keeps keyboard focus visible over roads, grass, roofs,
+ * and either map theme instead of relying on one brand color. */
+.fair-grounds-map-marker:focus-visible {
+  outline: 3px solid var(--app-ink-inverse);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px var(--app-ink);
+}
 .maplibregl-map .maplibregl-ctrl-attrib-button {
   min-width: 44px !important;
   min-height: 44px !important;

@@ -192,6 +192,11 @@ export default function FairGroundsMapInner({
   onBrowseProgram,
 }: FairGroundsMapProps) {
   const mapRef = useRef<MapRef | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const mobileSelectionHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const desktopSelectionHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const lastSelectionTriggerRef = useRef<HTMLElement | null>(null);
+  const focusedDeepLinkRef = useRef(false);
   const mapStyle = useFrederickFlavorStyle();
   const [mapData, setMapData] = useState<FairGroundsMap | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -200,6 +205,7 @@ export default function FairGroundsMapInner({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
+  const [mapAnnouncement, setMapAnnouncement] = useState("");
   const [visitorLocation, setVisitorLocation] = useState<{
     longitude: number;
     latitude: number;
@@ -226,6 +232,23 @@ export default function FairGroundsMapInner({
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (
+      !mapData ||
+      focusedDeepLinkRef.current ||
+      window.location.hash !== "#fair-map"
+    ) {
+      return;
+    }
+    focusedDeepLinkRef.current = true;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("fair-grounds-map-heading")?.focus({
+        preventScroll: true,
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [mapData]);
 
   const savedStopMatches = useMemo(() => {
     if (!mapData) return new Map<string, FairGroundsMapSavedStop[]>();
@@ -272,6 +295,19 @@ export default function FairGroundsMapInner({
     }),
     [visibleFeatures],
   );
+  const accessibleFeatures = useMemo(
+    () =>
+      visibleFeatures
+        .filter((feature) => feature.properties.kind !== "fairgrounds")
+        .slice()
+        .sort(
+          (left, right) =>
+            fairGroundsMapKindLabel(left.properties.kind).localeCompare(
+              fairGroundsMapKindLabel(right.properties.kind),
+            ) || left.properties.name.localeCompare(right.properties.name),
+        ),
+    [visibleFeatures],
+  );
   const selected =
     mapData?.features.find((feature) => feature.properties.id === selectedId) ??
     null;
@@ -298,6 +334,13 @@ export default function FairGroundsMapInner({
       )
       .slice(0, 6);
   }, [mapData, programMatches, query]);
+  const normalizedQuery = query.trim();
+  const searchAnnouncement =
+    normalizedQuery.length >= 2
+      ? searchMatches.length > 0
+        ? `${searchMatches.length} map ${searchMatches.length === 1 ? "result" : "results"} available. Tab to review them.`
+        : "No reviewed map places match that search."
+      : "";
   const selectedStops = selected
     ? (savedStopMatches.get(selected.properties.id) ?? [])
     : [];
@@ -321,13 +364,53 @@ export default function FairGroundsMapInner({
     return next;
   }, [mapData]);
 
-  const chooseFeature = (feature: FairGroundsMapFeature) => {
+  const focusSelectedDetails = () => {
+    const desktop = window.matchMedia("(min-width: 1024px)").matches;
+    const heading = desktop
+      ? desktopSelectionHeadingRef.current
+      : mobileSelectionHeadingRef.current;
+    heading?.focus({ preventScroll: true });
+  };
+
+  const chooseFeature = (
+    feature: FairGroundsMapFeature,
+    trigger?: HTMLElement,
+  ) => {
+    if (trigger) lastSelectionTriggerRef.current = trigger;
     setSelectedId(feature.properties.id);
+    const selectedName = mapData
+      ? mappedFeatureName(feature, mapData)
+      : feature.properties.name;
+    setMapAnnouncement(
+      `${selectedName} selected. Details are open.`,
+    );
     mapRef.current?.getMap().easeTo({
       center: feature.properties.anchor,
       zoom: Math.max(mapRef.current?.getZoom() ?? FAIR_VIEW.zoom, 17),
       duration: mapCameraDuration("focus"),
       padding: { top: 44, right: 44, bottom: 84, left: 44 },
+    });
+    window.requestAnimationFrame(focusSelectedDetails);
+  };
+
+  const closeSelection = () => {
+    const returnTarget = lastSelectionTriggerRef.current;
+    setSelectedId(null);
+    setMapAnnouncement("Map place details closed.");
+    window.requestAnimationFrame(() => {
+      if (returnTarget?.isConnected) {
+        returnTarget.focus({ preventScroll: true });
+        return;
+      }
+      searchInputRef.current?.focus({ preventScroll: true });
+    });
+  };
+
+  const browseProgram = () => {
+    setSelectedId(null);
+    onBrowseProgram();
+    window.requestAnimationFrame(() => {
+      document.getElementById("fair-find-heading")?.focus({ preventScroll: true });
     });
   };
 
@@ -383,7 +466,18 @@ export default function FairGroundsMapInner({
     );
   };
 
-  const chooseSearchResult = (feature: FairGroundsMapFeature) => {
+  const handleMapLoad = () => {
+    showWholeGrounds();
+    const canvas = mapRef.current?.getMap().getCanvas();
+    canvas?.setAttribute("role", "region");
+    canvas?.setAttribute("aria-label", "Interactive Fairgrounds map");
+    canvas?.setAttribute("aria-describedby", "fair-map-instructions");
+  };
+
+  const chooseSearchResult = (
+    feature: FairGroundsMapFeature,
+    trigger: HTMLElement,
+  ) => {
     const nextFilter: FairGroundsMapFilter =
       feature.properties.kind === "animal"
         ? "animals"
@@ -394,12 +488,39 @@ export default function FairGroundsMapInner({
             : "essentials";
     setFilter(nextFilter);
     setQuery("");
-    chooseFeature(feature);
+    chooseFeature(feature, trigger);
+  };
+
+  const showSavedCar = (trigger: HTMLElement) => {
+    if (
+      !savedCar ||
+      savedCar.longitude === null ||
+      savedCar.latitude === null
+    ) {
+      return;
+    }
+    lastSelectionTriggerRef.current = trigger;
+    setSelectedId(null);
+    const label = savedCar.lotLabel
+      ? `Saved car in ${savedCar.lotLabel}`
+      : "Saved car location";
+    setLocationStatus(`${label} is centered on the map.`);
+    setMapAnnouncement(`${label} is centered on the map.`);
+    mapRef.current?.getMap().easeTo({
+      center: [savedCar.longitude, savedCar.latitude],
+      zoom: 17.4,
+      duration: mapCameraDuration("focus"),
+    });
+  };
+
+  const updateLocationStatus = (message: string) => {
+    setLocationStatus(message);
+    setMapAnnouncement(message);
   };
 
   const locate = () => {
     if (!("geolocation" in navigator)) {
-      setLocationStatus("Location is not available on this device.");
+      updateLocationStatus("Location is not available on this device.");
       return;
     }
     setLocating(true);
@@ -411,7 +532,7 @@ export default function FairGroundsMapInner({
         const latitude = position.coords.latitude;
         if (!isNearFair(longitude, latitude)) {
           setVisitorLocation(null);
-          setLocationStatus(
+          updateLocationStatus(
             "You appear to be outside the mapped Fair area. The map stayed centered on the grounds.",
           );
           return;
@@ -422,13 +543,13 @@ export default function FairGroundsMapInner({
         );
         if (position.coords.accuracy > 60) {
           setVisitorLocation(null);
-          setLocationStatus(
+          updateLocationStatus(
             `Your location reading is too broad to place safely on this map (within about ${approximateFeet} feet). Try again in a more open area.`,
           );
           return;
         }
         setVisitorLocation({ longitude, latitude });
-        setLocationStatus(
+        updateLocationStatus(
           `Your position is shown within about ${approximateFeet} feet for this visit only.`,
         );
         mapRef.current?.getMap().easeTo({
@@ -439,7 +560,7 @@ export default function FairGroundsMapInner({
       },
       () => {
         setLocating(false);
-        setLocationStatus(
+        updateLocationStatus(
           "Radius could not get your position. You can still use gates and landmarks.",
         );
       },
@@ -483,6 +604,23 @@ export default function FairGroundsMapInner({
         checkedOn={mapData.reviewedOn}
         headingId="fair-grounds-map-heading"
       />
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {mapAnnouncement}
+      </p>
+      <p
+        id="fair-map-search-status"
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {searchAnnouncement}
+      </p>
+      <p id="fair-map-instructions" className="sr-only">
+        Use the map controls to zoom, or browse the mapped places as a list
+        below. Marker positions come from reviewed OpenStreetMap geometry.
+        Follow current signs on the grounds.
+      </p>
 
       <div className="relative mt-3">
         <label htmlFor="fair-map-search" className="sr-only">
@@ -494,12 +632,25 @@ export default function FairGroundsMapInner({
           aria-hidden
         />
         <input
+          ref={searchInputRef}
           id="fair-map-search"
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Find a place or program event"
           autoComplete="off"
+          aria-controls={
+            normalizedQuery.length >= 2
+              ? "fair-map-search-results"
+              : undefined
+          }
+          aria-describedby="fair-map-search-status"
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && query) {
+              event.preventDefault();
+              setQuery("");
+            }
+          }}
           className="tap-44 min-h-12 w-full rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] py-3 pl-11 pr-11 text-[14px] font-semibold outline-none placeholder:font-medium focus-visible:border-[var(--app-brand-press)] focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--app-brand)_22%,transparent)]"
           style={{
             borderColor: "var(--app-control-border)",
@@ -510,7 +661,10 @@ export default function FairGroundsMapInner({
         {query ? (
           <button
             type="button"
-            onClick={() => setQuery("")}
+            onClick={() => {
+              setQuery("");
+              window.requestAnimationFrame(() => searchInputRef.current?.focus());
+            }}
             className="tap-44 absolute right-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full"
             aria-label="Clear map search"
           >
@@ -519,43 +673,45 @@ export default function FairGroundsMapInner({
         ) : null}
         {query.trim().length >= 2 ? (
           <div
-            className="absolute left-0 right-0 top-[calc(100%+0.4rem)] z-30 overflow-hidden rounded-[var(--app-radius-lg)] border p-1"
+            id="fair-map-search-results"
+            className="absolute left-0 right-0 top-[calc(100%+0.4rem)] z-30 max-h-[min(18rem,50dvh)] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-1"
             style={{
               borderColor: "var(--app-border-strong)",
               background: "var(--app-bg-elevated-solid)",
               boxShadow: "var(--app-elev-3)",
             }}
-            role="listbox"
-            aria-label="Fair map search results"
           >
             {searchMatches.length > 0 ? (
-              searchMatches.map((feature) => (
-                <button
-                  key={feature.properties.id}
-                  type="button"
-                  role="option"
-                  aria-selected={selectedId === feature.properties.id}
-                  onClick={() => chooseSearchResult(feature)}
-                  className="tap-44 flex min-h-12 w-full items-center justify-between gap-3 rounded-[calc(var(--app-radius-lg)-5px)] px-3 py-2 text-left hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-[14px] font-bold">
-                      {mappedFeatureName(feature, mapData)}
-                    </span>
-                    <span
-                      className="block text-[11px] font-semibold"
-                      style={{ color: "var(--app-ink-3)" }}
+              <ul aria-label="Fair map search results">
+                {searchMatches.map((feature) => (
+                  <li key={feature.properties.id}>
+                    <button
+                      type="button"
+                      onClick={(event) =>
+                        chooseSearchResult(feature, event.currentTarget)
+                      }
+                      className="tap-44 flex min-h-12 w-full items-center justify-between gap-3 rounded-[calc(var(--app-radius-lg)-5px)] px-3 py-2 text-left hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
                     >
-                      {fairGroundsMapKindLabel(feature.properties.kind)}
-                    </span>
-                  </span>
-                  <MapPin
-                    className="h-4 w-4 shrink-0"
-                    style={{ color: markerTone(feature.properties.kind) }}
-                    aria-hidden
-                  />
-                </button>
-              ))
+                      <span className="min-w-0">
+                        <span className="block truncate text-[14px] font-bold">
+                          {mappedFeatureName(feature, mapData)}
+                        </span>
+                        <span
+                          className="block text-[12px] font-semibold"
+                          style={{ color: "var(--app-ink-3)" }}
+                        >
+                          {fairGroundsMapKindLabel(feature.properties.kind)}
+                        </span>
+                      </span>
+                      <MapPin
+                        className="h-4 w-4 shrink-0"
+                        style={{ color: markerTone(feature.properties.kind) }}
+                        aria-hidden
+                      />
+                    </button>
+                  </li>
+                ))}
+              </ul>
             ) : (
               <p
                 className="px-3 py-3 text-[13px] font-semibold"
@@ -588,9 +744,12 @@ export default function FairGroundsMapInner({
                 onClick={() => {
                   setFilter(option.id);
                   setSelectedId(null);
+                  setMapAnnouncement(
+                    `${option.label} map layer selected. ${count} ${count === 1 ? "place" : "places"} shown.`,
+                  );
                   fitFilter(option.id);
                 }}
-                className="tap-44 min-h-11 shrink-0 rounded-full border px-3 text-[12px] font-semibold"
+                className="tap-44 min-h-11 shrink-0 rounded-full border px-3 text-[13px] font-semibold"
                 style={{
                   borderColor: active ? option.tone : "var(--app-control-border)",
                   color: active ? "var(--app-ink-inverse)" : "var(--app-ink-2)",
@@ -632,7 +791,8 @@ export default function FairGroundsMapInner({
             attributionControl={false}
             dragRotate={false}
             touchPitch={false}
-            onLoad={showWholeGrounds}
+            cooperativeGestures
+            onLoad={handleMapLoad}
             onClick={() => setSelectedId(null)}
           >
             <AttributionControl compact position="bottom-right" />
@@ -702,6 +862,15 @@ export default function FairGroundsMapInner({
                 const savedMatches = savedStopMatches.get(feature.properties.id) ?? [];
                 const scheduledHere = programMatches.get(feature.properties.id) ?? [];
                 const selectedMarker = selectedId === feature.properties.id;
+                const mappedName = mappedFeatureName(feature, mapData);
+                const savedDescription =
+                  savedMatches.length > 0
+                    ? `Saved in My Day as ${savedMatches.map((stop) => stop.title).join(", ")}.`
+                    : "";
+                const scheduleDescription =
+                  scheduledHere.length > 0
+                    ? `${scheduledHere.length} ${scheduledHere.length === 1 ? "program item" : "program items"} here on your selected day.`
+                    : "";
                 const gateLabel =
                   kind === "gate"
                     ? (feature.properties.name.match(/\b\d+A?\b/)?.[0] ?? "LM")
@@ -712,15 +881,21 @@ export default function FairGroundsMapInner({
                     longitude={feature.properties.anchor[0]}
                     latitude={feature.properties.anchor[1]}
                     anchor="center"
-                    onClick={(event) => {
-                      event.originalEvent.stopPropagation();
-                      chooseFeature(feature);
-                    }}
                   >
                     <button
                       type="button"
-                      className="tap-44 relative grid h-11 w-11 place-items-center rounded-full"
-                      aria-label={`Open ${mappedFeatureName(feature, mapData)}, ${fairGroundsMapKindLabel(kind)}`}
+                      className="fair-grounds-map-marker tap-44 relative grid h-11 w-11 place-items-center rounded-full"
+                      aria-label={`${mappedName}. ${fairGroundsMapKindLabel(kind)}. ${savedDescription} ${scheduleDescription}`.trim()}
+                      aria-expanded={selectedMarker}
+                      aria-controls={
+                        selectedMarker
+                          ? "fair-map-selection-mobile fair-map-selection-desktop"
+                          : undefined
+                      }
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        chooseFeature(feature, event.currentTarget);
+                      }}
                     >
                       <span
                         className="grid h-9 w-9 place-items-center rounded-full border-2"
@@ -746,7 +921,7 @@ export default function FairGroundsMapInner({
                       </span>
                       {savedMatches.length > 0 ? (
                         <span
-                          className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full border px-1 text-[11px] font-bold tabular-nums"
+                          className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full border px-1 text-[12px] font-bold tabular-nums"
                           style={{
                             color: "var(--app-on-brand)",
                             background: "var(--app-brand-press)",
@@ -759,7 +934,7 @@ export default function FairGroundsMapInner({
                       ) : null}
                       {scheduledHere.length > 0 ? (
                         <span
-                          className="absolute bottom-0 left-0 grid h-5 min-w-5 place-items-center rounded-full border px-1 text-[11px] font-bold tabular-nums"
+                          className="absolute bottom-0 left-0 grid h-5 min-w-5 place-items-center rounded-full border px-1 text-[12px] font-bold tabular-nums"
                           style={{
                             color: "var(--app-ink)",
                             background: "var(--app-amber)",
@@ -779,31 +954,43 @@ export default function FairGroundsMapInner({
             savedCar.longitude !== null &&
             savedCar.latitude !== null ? (
               <Marker longitude={savedCar.longitude} latitude={savedCar.latitude} anchor="bottom">
-                <span
-                  className="grid h-10 w-10 place-items-center rounded-full border-2"
-                  style={{
-                    color: "var(--app-ink-inverse)",
-                    background: "var(--app-cool)",
-                    borderColor: "var(--app-ink-inverse)",
-                    boxShadow: "0 3px 12px rgba(34, 28, 21, 0.3)",
+                <button
+                  type="button"
+                  data-fair-saved-car
+                  className="fair-grounds-map-marker tap-44 grid h-11 w-11 place-items-center rounded-full"
+                  aria-label={`Show saved car location${savedCar.lotLabel ? `, ${savedCar.lotLabel}` : ""}${savedCar.note ? `, note: ${savedCar.note}` : ""}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    showSavedCar(event.currentTarget);
                   }}
-                  title="Saved car location"
                 >
-                  <CircleParking className="h-5 w-5" aria-hidden />
-                </span>
+                  <span
+                    className="grid h-10 w-10 place-items-center rounded-full border-2"
+                    style={{
+                      color: "var(--app-ink-inverse)",
+                      background: "var(--app-cool)",
+                      borderColor: "var(--app-ink-inverse)",
+                      boxShadow: "0 3px 12px rgba(34, 28, 21, 0.3)",
+                    }}
+                    aria-hidden
+                  >
+                    <CircleParking className="h-5 w-5" aria-hidden />
+                  </span>
+                </button>
               </Marker>
             ) : null}
 
             {visitorLocation ? (
               <Marker longitude={visitorLocation.longitude} latitude={visitorLocation.latitude} anchor="center">
                 <span
+                  data-fair-visitor-location
                   className="block h-4 w-4 rounded-full border-[3px]"
                   style={{
                     background: "var(--app-cool)",
                     borderColor: "var(--app-ink-inverse)",
                     boxShadow: "0 0 0 5px color-mix(in srgb, var(--app-cool) 22%, transparent)",
                   }}
-                  title="Your approximate location"
+                  aria-hidden
                 />
               </Marker>
             ) : null}
@@ -813,7 +1000,7 @@ export default function FairGroundsMapInner({
             type="button"
             onClick={locate}
             disabled={locating}
-            className="tap-44 absolute left-3 top-3 z-10 inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[12px] font-bold disabled:opacity-60"
+            className="tap-44 absolute left-3 top-3 z-10 inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[13px] font-bold disabled:opacity-60"
             style={{
               color: "var(--app-ink)",
               background: "var(--app-bg-elevated-solid)",
@@ -822,13 +1009,13 @@ export default function FairGroundsMapInner({
             }}
           >
             <LocateFixed className="h-4 w-4" aria-hidden />
-            {locating ? "Locating…" : "Show me"}
+            {locating ? "Finding location…" : "Show my location"}
           </button>
 
           <button
             type="button"
             onClick={showWholeGrounds}
-            className="tap-44 absolute left-3 top-[4.25rem] z-10 inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[12px] font-bold"
+            className="tap-44 absolute left-3 top-[4.25rem] z-10 inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[13px] font-bold"
             style={{
               color: "var(--app-ink)",
               background: "var(--app-bg-elevated-solid)",
@@ -842,7 +1029,9 @@ export default function FairGroundsMapInner({
 
           {selected ? (
             <div
-              className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[70] mx-auto max-w-[30rem] rounded-[var(--app-radius-lg)] border p-4 lg:hidden"
+              id="fair-map-selection-mobile"
+              data-fair-map-selection
+              className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[70] mx-auto max-h-[calc(100dvh-5.25rem-env(safe-area-inset-bottom))] max-w-[30rem] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-4 lg:hidden"
               style={{
                 borderColor: "var(--app-control-border)",
                 borderTopColor: selectedTone,
@@ -852,29 +1041,39 @@ export default function FairGroundsMapInner({
                   "var(--app-elev-3), var(--app-edge), var(--app-hi)",
               }}
               role="region"
-              aria-live="polite"
-              aria-label={`Selected map place: ${mappedFeatureName(selected, mapData)}`}
+              aria-labelledby="fair-map-selection-mobile-heading"
+              onKeyDown={(event) => {
+                if (event.key !== "Escape") return;
+                event.preventDefault();
+                closeSelection();
+              }}
             >
               <button
                 type="button"
-                onClick={() => setSelectedId(null)}
+                onClick={closeSelection}
                 className="tap-44 absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full"
                 aria-label="Close selected map place"
               >
                 <X className="h-4 w-4" aria-hidden />
               </button>
               <p
-                className="pr-10 text-[11px] font-bold uppercase tracking-[0.11em]"
+                className="pr-10 text-[12px] font-bold uppercase tracking-[0.1em]"
                 style={{ color: selectedTone }}
               >
                 {fairGroundsMapKindLabel(selected.properties.kind)}
               </p>
-              <h3 className="mt-1 pr-10 text-[20px] font-extrabold leading-tight tracking-[-0.03em]">
+              <h3
+                id="fair-map-selection-mobile-heading"
+                ref={mobileSelectionHeadingRef}
+                tabIndex={-1}
+                className="mt-1 pr-10 text-[22px] font-extrabold leading-tight tracking-[-0.03em] outline-none"
+              >
+                <span className="sr-only">Selected map place: </span>
                 {mappedFeatureName(selected, mapData)}
               </h3>
               {selectedStops.length > 0 ? (
                 <p
-                  className="mt-2 text-[12px] font-semibold"
+                  className="mt-2 text-[14px] font-semibold"
                   style={{ color: "var(--app-ink-2)" }}
                 >
                   Saved in My Day: {selectedStops.map((stop) => stop.title).join(", ")}
@@ -886,13 +1085,13 @@ export default function FairGroundsMapInner({
                   style={{ borderColor: "var(--app-amber)" }}
                 >
                   <p
-                    className="text-[12px] font-bold uppercase tracking-[0.1em]"
+                    className="text-[13px] font-bold uppercase tracking-[0.09em]"
                     style={{ color: "var(--app-warning-press)" }}
                   >
                     On your selected day
                   </p>
                   {selectedProgramItems.slice(0, 2).map((item) => (
-                    <p key={item.id} className="mt-1 text-[12px] font-semibold leading-snug">
+                    <p key={item.id} className="mt-1 text-[14px] font-semibold leading-snug">
                       <span className="tabular-nums" style={{ color: "var(--app-brand-press)" }}>
                         {item.timeLabel}
                       </span>{" "}
@@ -902,8 +1101,8 @@ export default function FairGroundsMapInner({
                   {selectedProgramItems.length > 2 ? (
                     <button
                       type="button"
-                      onClick={onBrowseProgram}
-                      className="tap-44 mt-1 inline-flex min-h-11 items-center text-[11px] font-bold"
+                      onClick={browseProgram}
+                      className="tap-44 mt-1 inline-flex min-h-11 items-center text-[13px] font-bold"
                       style={{ color: "var(--app-cool)" }}
                     >
                       See {selectedProgramItems.length - 2} more in Program
@@ -918,7 +1117,7 @@ export default function FairGroundsMapInner({
                 <button
                   type="button"
                   onClick={() => reportMapIssue(selected)}
-                  className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[12px] font-bold"
+                  className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-bold"
                   style={{ color: "var(--app-brand-press)" }}
                 >
                   <MessageSquareWarning className="h-4 w-4" aria-hidden />
@@ -928,7 +1127,7 @@ export default function FairGroundsMapInner({
                   href={selected.properties.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[12px] font-semibold"
+                  className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold"
                   style={{ color: "var(--app-cool)" }}
                 >
                   Mapped source
@@ -940,6 +1139,8 @@ export default function FairGroundsMapInner({
         </div>
 
         <aside
+          id={selected ? "fair-map-selection-desktop" : undefined}
+          data-fair-map-selection={selected ? "" : undefined}
           className={`relative z-10 -mt-4 mx-2 rounded-[var(--app-radius-xl)] border p-4 lg:mx-0 lg:mt-0 lg:min-h-[620px] lg:flex-col lg:p-5 ${
             selected ? "hidden lg:flex" : "lg:flex"
           }`}
@@ -950,29 +1151,52 @@ export default function FairGroundsMapInner({
             background: "var(--app-bg-elevated-solid)",
             boxShadow: "var(--app-elev-2), var(--app-edge), var(--app-hi)",
           }}
-          aria-live="polite"
+          aria-labelledby={
+            selected
+              ? "fair-map-selection-desktop-heading"
+              : "fair-map-guidance-heading"
+          }
+          onKeyDown={(event) => {
+            if (!selected || event.key !== "Escape") return;
+            event.preventDefault();
+            closeSelection();
+          }}
         >
           {selected ? (
             <>
-              <p className="text-[12px] font-bold uppercase tracking-[0.12em]" style={{ color: selectedTone }}>
+              <button
+                type="button"
+                onClick={closeSelection}
+                className="tap-44 absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full"
+                aria-label="Close selected map place"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+              <p className="pr-11 text-[13px] font-bold uppercase tracking-[0.1em]" style={{ color: selectedTone }}>
                 {fairGroundsMapKindLabel(selected.properties.kind)}
               </p>
-              <h3 className="mt-1 text-[22px] font-extrabold leading-tight tracking-[-0.035em]">
+              <h3
+                id="fair-map-selection-desktop-heading"
+                ref={desktopSelectionHeadingRef}
+                tabIndex={-1}
+                className="mt-1 pr-11 text-[22px] font-extrabold leading-tight tracking-[-0.035em] outline-none"
+              >
+                <span className="sr-only">Selected map place: </span>
                 {mappedFeatureName(selected, mapData)}
               </h3>
               {selectedStops.length > 0 ? (
                 <div className="mt-4 border-l-2 pl-3" style={{ borderColor: "var(--app-brand)" }}>
-                  <p className="text-[12px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--app-brand-press)" }}>
+                  <p className="text-[13px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--app-brand-press)" }}>
                     In My Day
                   </p>
                   {selectedStops.map((stop) => (
-                    <p key={stop.id} className="mt-1 text-[13px] font-semibold leading-snug">
+                    <p key={stop.id} className="mt-1 text-[14px] font-semibold leading-snug">
                       {stop.title}
                     </p>
                   ))}
                 </div>
               ) : (
-                <p className="mt-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                <p className="mt-3 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                   Use this mapped landmark to orient yourself. Radius does not infer an indoor entrance or walking route.
                 </p>
               )}
@@ -982,13 +1206,13 @@ export default function FairGroundsMapInner({
                   style={{ borderColor: "var(--app-amber)" }}
                 >
                   <p
-                    className="text-[12px] font-bold uppercase tracking-[0.1em]"
+                    className="text-[13px] font-bold uppercase tracking-[0.09em]"
                     style={{ color: "var(--app-warning-press)" }}
                   >
                     On your selected day
                   </p>
                   {selectedProgramItems.slice(0, 3).map((item) => (
-                    <p key={item.id} className="mt-2 text-[12px] font-semibold leading-snug">
+                    <p key={item.id} className="mt-2 text-[14px] font-semibold leading-snug">
                       <span className="tabular-nums" style={{ color: "var(--app-brand-press)" }}>
                         {item.timeLabel}
                       </span>{" "}
@@ -998,8 +1222,8 @@ export default function FairGroundsMapInner({
                   {selectedProgramItems.length > 3 ? (
                     <button
                       type="button"
-                      onClick={onBrowseProgram}
-                      className="tap-44 mt-2 inline-flex min-h-11 items-center text-[11px] font-bold"
+                      onClick={browseProgram}
+                      className="tap-44 mt-2 inline-flex min-h-11 items-center text-[13px] font-bold"
                       style={{ color: "var(--app-cool)" }}
                     >
                       See {selectedProgramItems.length - 3} more in Program
@@ -1011,7 +1235,7 @@ export default function FairGroundsMapInner({
                 href={selected.properties.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="tap-44 mt-3 inline-flex min-h-11 items-center gap-1.5 text-[12px] font-semibold"
+                className="tap-44 mt-3 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold"
                 style={{ color: "var(--app-cool)" }}
               >
                 View mapped source
@@ -1020,13 +1244,13 @@ export default function FairGroundsMapInner({
             </>
           ) : (
             <>
-              <p className="text-[12px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-brand-press)" }}>
+              <p className="text-[13px] font-bold uppercase tracking-[0.1em]" style={{ color: "var(--app-brand-press)" }}>
                 Your bearings
               </p>
-              <h3 className="mt-1 text-[22px] font-extrabold leading-tight tracking-[-0.035em]">
+              <h3 id="fair-map-guidance-heading" className="mt-1 text-[22px] font-extrabold leading-tight tracking-[-0.035em]">
                 Tap a marker, not a directory.
               </h3>
-              <p className="mt-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              <p className="mt-3 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 Start with gates, restrooms, and show areas. Switch the layer when you want animals, buildings, or parking.
               </p>
               <div className="mt-4 grid grid-cols-2 gap-2">
@@ -1043,20 +1267,14 @@ export default function FairGroundsMapInner({
           )}
 
           {savedStops.length > 0 ? (
-            <p className="mt-4 text-[12px] font-semibold leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            <p className="mt-4 text-[14px] font-semibold leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               {mappedSavedStopIds.size} of {savedStops.length} saved {savedStops.length === 1 ? "stop has" : "stops have"} reviewed map geometry. Radius leaves the rest unpinned rather than guessing.
             </p>
           ) : null}
 
           {savedCar && savedCar.latitude === null ? (
-            <p className="mt-3 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            <p className="mt-3 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               Saved car: {savedCar.lotLabel ?? "note only"}. Save a precise location in Travel to place it on this map.
-            </p>
-          ) : null}
-
-          {locationStatus ? (
-            <p className="mt-3 text-[12px] leading-relaxed" role="status" style={{ color: "var(--app-cool)" }}>
-              {locationStatus}
             </p>
           ) : null}
 
@@ -1064,14 +1282,14 @@ export default function FairGroundsMapInner({
             <button
               type="button"
               onClick={() => reportMapIssue(selected)}
-              className="tap-44 inline-flex min-h-11 items-center gap-2 text-[12px] font-bold"
+              className="tap-44 inline-flex min-h-11 items-center gap-2 text-[13px] font-bold"
               style={{ color: "var(--app-brand-press)" }}
             >
               <MessageSquareWarning className="h-4 w-4" aria-hidden />
               Report a map issue
             </button>
             <p
-              className="mt-2 text-[11px] leading-relaxed"
+              className="mt-2 text-[12px] leading-relaxed"
               style={{ color: "var(--app-ink-3)" }}
             >
               Map features: {" "}
@@ -1088,6 +1306,111 @@ export default function FairGroundsMapInner({
           </div>
         </aside>
       </div>
+
+      {locationStatus ? (
+        <p
+          className="mt-3 border-l-2 py-1 pl-3 text-[14px] font-semibold leading-relaxed"
+          style={{ borderColor: "var(--app-cool)", color: "var(--app-ink-2)" }}
+        >
+          {locationStatus}
+        </p>
+      ) : null}
+
+      <details
+        className="mt-4 overflow-hidden rounded-[var(--app-radius-lg)] border"
+        style={{
+          borderColor: "var(--app-control-border)",
+          background: "var(--app-bg-elevated-solid)",
+        }}
+      >
+        <summary className="tap-44 flex min-h-12 cursor-pointer items-center justify-between gap-3 px-4 py-2 text-[14px] font-bold">
+          <span>Browse mapped places as a list</span>
+          <span
+            className="tabular-nums"
+            style={{ color: "var(--app-ink-3)" }}
+            aria-label={`${accessibleFeatures.length + (savedCar !== null && savedCar.latitude !== null && savedCar.longitude !== null ? 1 : 0)} places`}
+          >
+            {accessibleFeatures.length +
+              (savedCar !== null &&
+              savedCar.latitude !== null &&
+              savedCar.longitude !== null
+                ? 1
+                : 0)}
+          </span>
+        </summary>
+        <ul
+          className="grid gap-1 border-t p-2 sm:grid-cols-2"
+          style={{ borderColor: "var(--app-border)" }}
+          aria-label="Mapped places shown"
+        >
+          {savedCar &&
+          savedCar.longitude !== null &&
+          savedCar.latitude !== null ? (
+            <li>
+              <button
+                type="button"
+                onClick={(event) => showSavedCar(event.currentTarget)}
+                className="tap-44 flex min-h-12 w-full items-center gap-3 rounded-[var(--app-radius-md)] px-3 py-2 text-left hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
+              >
+                <CircleParking
+                  className="h-5 w-5 shrink-0"
+                  style={{ color: "var(--app-cool)" }}
+                  aria-hidden
+                />
+                <span>
+                  <span className="block text-[14px] font-bold">Saved car</span>
+                  <span className="block text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
+                    {savedCar.lotLabel ?? "Saved location"}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ) : null}
+          {accessibleFeatures.map((feature) => {
+            const savedHere = savedStopMatches.get(feature.properties.id) ?? [];
+            const scheduledHere = programMatches.get(feature.properties.id) ?? [];
+            const selectedHere = selectedId === feature.properties.id;
+            return (
+              <li key={`list-${feature.properties.id}`}>
+                <button
+                  type="button"
+                  aria-pressed={selectedHere}
+                  aria-controls={
+                    selectedHere
+                      ? "fair-map-selection-mobile fair-map-selection-desktop"
+                      : undefined
+                  }
+                  onClick={(event) =>
+                    chooseFeature(feature, event.currentTarget)
+                  }
+                  className="tap-44 min-h-12 w-full rounded-[var(--app-radius-md)] px-3 py-2 text-left hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
+                  style={{
+                    background: selectedHere
+                      ? "var(--app-brand-tint-6)"
+                      : "transparent",
+                  }}
+                >
+                  <span className="block text-[14px] font-bold">
+                    {mappedFeatureName(feature, mapData)}
+                  </span>
+                  <span
+                    className="block text-[12px] font-semibold leading-snug"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {fairGroundsMapKindLabel(feature.properties.kind)}
+                    {savedHere.length > 0
+                      ? ` · ${savedHere.length} saved ${savedHere.length === 1 ? "stop" : "stops"}`
+                      : ""}
+                    {scheduledHere.length > 0
+                      ? ` · ${scheduledHere.length} ${scheduledHere.length === 1 ? "program item" : "program items"}`
+                      : ""}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </details>
     </section>
   );
 }

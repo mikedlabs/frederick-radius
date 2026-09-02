@@ -14,9 +14,10 @@ describe("FairPracticalAnswers", () => {
 
     expect(html).toContain("What do you need right now?");
     expect(html).toContain("Family Care + changing");
-    expect(html).toContain("Parking payment");
+    expect(html).toContain("Easy to miss");
     expect(html).toContain("Lost person or item");
-    expect(html).toContain("Mobility help");
+    expect(html).toContain("Access guide");
+    expect(html).toContain("ASL, sensory, mobility, and service animals");
     expect(html).toContain("Browse all official answers");
     expect(html).not.toContain("Do any parking lots require cash?");
     expect(html).not.toContain(
@@ -26,6 +27,24 @@ describe("FairPracticalAnswers", () => {
     expect(html).toContain(
       "Choose a common need or search all practical answers.",
     );
+  });
+
+  it("opens a source-checked access guide without overstating Fair services", () => {
+    const html = renderToStaticMarkup(
+      <FairPracticalAnswers
+        answers={greatFrederickFair2026PracticalAnswers}
+        focusCategory="accessibility"
+      />,
+    );
+
+    expect(html).toContain("Access at the Fair");
+    expect(html).toContain("Where can I see the ASL interpreter");
+    expect(html).toContain("When is the sensory-friendly carnival period?");
+    expect(html).toContain("Can I bring a service animal?");
+    expect(html).toContain("Is there a permanent quiet or sensory room?");
+    expect(html).toContain("do not identify a permanent quiet room");
+    expect(html).toContain('href="/access"');
+    expect(html).not.toContain("Do any parking lots require cash?");
   });
 
   it("opens a source-backed answer when an essential sends a focus target", () => {

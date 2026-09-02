@@ -25,6 +25,37 @@ describe("Fair practical answers", () => {
     ).toBe(true);
   });
 
+  it("keeps the official Fair access limits explicit", () => {
+    const answers = parseFairPracticalAnswers(
+      greatFrederickFair2026PracticalAnswers,
+    );
+    const accessAnswers = answers.filter(
+      (answer) => answer.category === "accessibility",
+    );
+
+    expect(accessAnswers.map((answer) => answer.id)).toEqual([
+      "fair-answer-asl-grandstand",
+      "fair-answer-access-contact",
+      "fair-answer-mobility-help",
+      "fair-answer-sensory-friendly-carnival",
+      "fair-answer-service-animal",
+      "fair-answer-sensory-space",
+    ]);
+    expect(
+      accessAnswers.find((answer) => answer.id === "fair-answer-asl-grandstand")
+        ?.answer,
+    ).toContain("evening musical Grandstand performance");
+    expect(
+      accessAnswers.find(
+        (answer) => answer.id === "fair-answer-sensory-friendly-carnival",
+      )?.answer,
+    ).toContain("not a promise that the full fairground will be low-sensory");
+    expect(
+      accessAnswers.find((answer) => answer.id === "fair-answer-sensory-space")
+        ?.evidence,
+    ).toBe("not-confirmed");
+  });
+
   it("will not promote one anecdote into a community pattern", () => {
     const result = fairPracticalAnswersSchema.safeParse([
       {

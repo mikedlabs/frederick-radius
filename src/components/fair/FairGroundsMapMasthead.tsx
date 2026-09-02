@@ -39,13 +39,14 @@ export default function FairGroundsMapMasthead({
       <div className="flex flex-wrap items-end justify-between gap-3 px-4 pb-4 pt-3.5 sm:px-5 sm:pb-5 sm:pt-4">
         <div>
           <p
-            className="text-[11px] font-extrabold uppercase tracking-[0.16em]"
+            className="text-[12px] font-extrabold uppercase tracking-[0.14em]"
             style={{ color: "var(--app-brand-press)" }}
           >
             Source-checked grounds map
           </p>
           <h2
             id={headingId}
+            tabIndex={headingId ? -1 : undefined}
             className="mt-1 text-[30px] font-normal leading-[1.02] tracking-[-0.025em] sm:text-[34px]"
             style={{
               fontFamily: "var(--font-editorial)",
@@ -63,7 +64,7 @@ export default function FairGroundsMapMasthead({
         </div>
         {checkedOn ? (
           <span
-            className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-bold tabular-nums"
+            className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-bold tabular-nums"
             style={{
               borderColor:
                 "color-mix(in srgb, var(--app-brand-2) 30%, var(--app-border))",
