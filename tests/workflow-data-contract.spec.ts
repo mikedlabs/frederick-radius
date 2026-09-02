@@ -131,7 +131,7 @@ describe("scheduled data workflow contracts", () => {
       services?: Record<
         string,
         {
-          cpus?: number;
+          cpuset?: string;
           mem_limit?: string;
         }
       >;
@@ -139,7 +139,7 @@ describe("scheduled data workflow contracts", () => {
     const dataRunner = compose.services?.["radius-data-runner"];
 
     expect(dataRunner?.mem_limit).toBe("4g");
-    expect(dataRunner?.cpus).toBe(2);
+    expect(dataRunner?.cpuset).toBe("0,1");
   });
 
   it("uses the read-only Supabase Data API handoff for the hours snapshot", () => {
