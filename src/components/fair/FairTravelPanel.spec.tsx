@@ -49,6 +49,7 @@ function render(
     createElement(FairTravelPanel, {
       options,
       selected,
+      selectedDate: "2026-09-18",
       eventPhase,
       ready,
       onSelect: vi.fn(),

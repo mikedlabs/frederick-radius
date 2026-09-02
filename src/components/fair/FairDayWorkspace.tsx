@@ -1583,6 +1583,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             <FairTravelPanel
               options={data.arrivalOptions}
               selected={selectedArrival}
+              selectedDate={selectedDate}
               eventPhase={data.eventPhase}
               ready={plan.readyKeys.includes("travel")}
               onSelect={chooseArrival}

@@ -47,6 +47,7 @@ describe("FairDayWorkspace app journey", () => {
   let container: HTMLDivElement;
   let root: Root;
   let storedValues: Map<string, string>;
+  let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -68,6 +69,28 @@ describe("FairDayWorkspace app journey", () => {
       configurable: true,
       value: vi.fn(),
     });
+    fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          schemaVersion: 1,
+          generatedAt: "2026-09-18T20:59:00.000Z",
+          state: "no-current-update",
+          coverage: "configured-sources-current",
+          headline:
+            "No major arrival update is published in the feeds Radius checked.",
+          summary:
+            "This describes only the official feeds Radius checked. It is not an all-clear.",
+          signals: [],
+          hiddenSignalCount: 0,
+          sources: [],
+          transit: null,
+          limitsLabel:
+            "Official feeds do not measure Fair attendance, parking-space availability, or gate waits.",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
     window.history.replaceState(
       {},
       "",
@@ -82,6 +105,7 @@ describe("FairDayWorkspace app journey", () => {
     await act(async () => root.unmount());
     container.remove();
     document.body.querySelectorAll("[data-vaul-drawer]").forEach((node) => node.remove());
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
@@ -142,6 +166,30 @@ describe("FairDayWorkspace app journey", () => {
     await openMode("Travel");
     expect(container.querySelector("#fair-my-day-heading")).toBeNull();
     expect(document.activeElement?.id).toBe("fair-travel-heading");
+  });
+
+  it("waits for Travel before checking live sources and defers transit until selected", async () => {
+    await renderFair();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    await openMode("Travel");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/fair/arrival-status?date=2026-09-18&mode=overview",
+      expect.objectContaining({ cache: "no-store" }),
+    );
+
+    fetchMock.mockClear();
+    const transit = container.querySelector<HTMLInputElement>(
+      'input[value="arrival-transit-context"]',
+    );
+    if (!transit) throw new Error("Missing County Transit option.");
+    await act(async () => transit.click());
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/fair/arrival-status?date=2026-09-18&mode=transit",
+      expect.objectContaining({ cache: "no-store" }),
+    );
   });
 
   it("opens an original #plan link in My Day and replaces it with the canonical hash", async () => {

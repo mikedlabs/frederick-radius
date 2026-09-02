@@ -17,12 +17,14 @@ import { useId, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/Button";
 
+import FairArrivalStatus from "./FairArrivalStatus";
 import FairCarMemoryPanel from "./FairCarMemoryPanel";
 import type { FairDayArrivalView, FairDayWorkspaceData } from "./types";
 
 export type FairTravelPanelProps = {
   options: FairDayArrivalView[];
   selected: FairDayArrivalView | null;
+  selectedDate: string;
   eventPhase: FairDayWorkspaceData["eventPhase"];
   ready: boolean;
   onSelect: (option: FairDayArrivalView) => void;
@@ -338,6 +340,7 @@ function TravelReadinessControl({
 export default function FairTravelPanel({
   options,
   selected,
+  selectedDate,
   eventPhase,
   ready,
   onSelect,
@@ -351,6 +354,10 @@ export default function FairTravelPanel({
       : null;
   return (
     <div aria-label="Fair travel choices">
+      <FairArrivalStatus
+        selectedDate={selectedDate}
+        transitSelected={activeOption?.planChoice === "transit"}
+      />
       {supportedOptions.length > 0 ? (
         <fieldset className="mt-5">
           <legend className="sr-only">Choose a travel mode</legend>
