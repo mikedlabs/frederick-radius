@@ -2,6 +2,7 @@
 
 import {
   Building2,
+  ChevronDown,
   CircleParking,
   DoorOpen,
   ExternalLink,
@@ -203,6 +204,7 @@ export default function FairGroundsMapInner({
   const [filter, setFilter] = useState<FairGroundsMapFilter>("essentials");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectionExpanded, setSelectionExpanded] = useState(false);
   const [locating, setLocating] = useState(false);
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
   const [mapAnnouncement, setMapAnnouncement] = useState("");
@@ -377,6 +379,7 @@ export default function FairGroundsMapInner({
     trigger?: HTMLElement,
   ) => {
     if (trigger) lastSelectionTriggerRef.current = trigger;
+    setSelectionExpanded(false);
     setSelectedId(feature.properties.id);
     const selectedName = mapData
       ? mappedFeatureName(feature, mapData)
@@ -395,6 +398,7 @@ export default function FairGroundsMapInner({
 
   const closeSelection = () => {
     const returnTarget = lastSelectionTriggerRef.current;
+    setSelectionExpanded(false);
     setSelectedId(null);
     setMapAnnouncement("Map place details closed.");
     window.requestAnimationFrame(() => {
@@ -599,11 +603,10 @@ export default function FairGroundsMapInner({
   }
 
   return (
-    <section className="mt-5" aria-labelledby="fair-grounds-map-heading" data-fair-grounds-map>
-      <FairGroundsMapMasthead
-        checkedOn={mapData.reviewedOn}
-        headingId="fair-grounds-map-heading"
-      />
+    <section className="relative lg:mt-5" aria-labelledby="fair-grounds-map-heading" data-fair-grounds-map>
+      <div className="hidden lg:block">
+        <FairGroundsMapMasthead checkedOn={mapData.reviewedOn} />
+      </div>
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {mapAnnouncement}
       </p>
@@ -622,7 +625,7 @@ export default function FairGroundsMapInner({
         Follow current signs on the grounds.
       </p>
 
-      <div className="relative mt-3">
+      <div className="absolute inset-x-3 top-3 z-30 lg:relative lg:inset-auto lg:top-auto lg:z-auto lg:mt-3">
         <label htmlFor="fair-map-search" className="sr-only">
           Find a place or program event on the Fair grounds map
         </label>
@@ -724,9 +727,9 @@ export default function FairGroundsMapInner({
         ) : null}
       </div>
 
-      <div className="relative">
+      <div className="absolute inset-x-0 top-[4.15rem] z-20 lg:relative lg:inset-auto lg:top-auto lg:z-auto">
         <div
-          className="scrollbar-none -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 pr-10 sm:-mx-6 sm:px-6"
+          className="scrollbar-none flex gap-2 overflow-x-auto px-3 pb-1 pr-10 lg:-mx-6 lg:mt-4 lg:px-6"
           role="group"
           aria-label="Choose what the Fair map shows"
         >
@@ -770,9 +773,9 @@ export default function FairGroundsMapInner({
         />
       </div>
 
-      <div className="mt-3 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-4">
+      <div className="mt-0 lg:mt-3 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-4">
         <div
-          className="fair-grounds-map-canvas relative h-[52dvh] min-h-[430px] max-h-[560px] overflow-hidden rounded-[var(--app-radius-xl)] border lg:h-[620px] lg:max-h-none"
+          className="fair-grounds-map-canvas relative h-[calc(100dvh-8rem)] min-h-[520px] overflow-hidden border-y lg:h-[620px] lg:min-h-0 lg:rounded-[var(--app-radius-xl)] lg:border"
           style={{
             borderColor: "var(--app-control-border)",
             background: "var(--app-bg-sunken)",
@@ -1000,7 +1003,7 @@ export default function FairGroundsMapInner({
             type="button"
             onClick={locate}
             disabled={locating}
-            className="tap-44 absolute left-3 top-3 z-10 inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[13px] font-bold disabled:opacity-60"
+            className="tap-44 absolute left-3 top-[7.75rem] z-10 inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[13px] font-bold disabled:opacity-60 lg:top-3"
             style={{
               color: "var(--app-ink)",
               background: "var(--app-bg-elevated-solid)",
@@ -1015,7 +1018,7 @@ export default function FairGroundsMapInner({
           <button
             type="button"
             onClick={showWholeGrounds}
-            className="tap-44 absolute left-3 top-[4.25rem] z-10 inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[13px] font-bold"
+            className="tap-44 absolute left-3 top-[11rem] z-10 inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[13px] font-bold lg:top-[4.25rem]"
             style={{
               color: "var(--app-ink)",
               background: "var(--app-bg-elevated-solid)",
@@ -1071,6 +1074,29 @@ export default function FairGroundsMapInner({
                 <span className="sr-only">Selected map place: </span>
                 {mappedFeatureName(selected, mapData)}
               </h3>
+              <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
+                {selectedProgramItems.length > 0
+                  ? `${selectedProgramItems.length} ${selectedProgramItems.length === 1 ? "event" : "events"} here on your day`
+                  : "Reviewed Fair map place"}
+              </p>
+              <button
+                type="button"
+                aria-expanded={selectionExpanded}
+                aria-controls="fair-map-selection-mobile-details"
+                onClick={() => setSelectionExpanded((current) => !current)}
+                className="tap-44 mt-1 inline-flex min-h-11 items-center gap-1 text-[13px] font-bold"
+                style={{ color: selectedTone }}
+              >
+                {selectionExpanded ? "Show less" : "More details"}
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform motion-reduce:transition-none ${selectionExpanded ? "rotate-180" : ""}`}
+                  aria-hidden
+                />
+              </button>
+              <div
+                id="fair-map-selection-mobile-details"
+                className={selectionExpanded ? "block" : "hidden"}
+              >
               {selectedStops.length > 0 ? (
                 <p
                   className="mt-2 text-[14px] font-semibold"
@@ -1134,6 +1160,7 @@ export default function FairGroundsMapInner({
                   <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                 </a>
               </div>
+              </div>
             </div>
           ) : null}
         </div>
@@ -1141,9 +1168,7 @@ export default function FairGroundsMapInner({
         <aside
           id={selected ? "fair-map-selection-desktop" : undefined}
           data-fair-map-selection={selected ? "" : undefined}
-          className={`relative z-10 -mt-4 mx-2 rounded-[var(--app-radius-xl)] border p-4 lg:mx-0 lg:mt-0 lg:min-h-[620px] lg:flex-col lg:p-5 ${
-            selected ? "hidden lg:flex" : "lg:flex"
-          }`}
+          className="relative z-10 mx-2 -mt-4 hidden rounded-[var(--app-radius-xl)] border p-4 lg:mx-0 lg:mt-0 lg:flex lg:min-h-[620px] lg:flex-col lg:p-5"
           style={{
             borderColor: "var(--app-control-border)",
             borderTopColor: selected ? selectedTone : "var(--app-brand-press)",

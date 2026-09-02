@@ -13,6 +13,9 @@ const FairGroundsMapCanvas = dynamic(() => import("./FairGroundsMapInner"), {
 export default function FairGroundsMap(props: FairGroundsMapProps) {
   return (
     <div id="fair-map" className="scroll-mt-4">
+      <h1 id="fair-grounds-map-heading" tabIndex={-1} className="sr-only">
+        Fairgrounds map
+      </h1>
       <FairGroundsMapCanvas {...props} />
     </div>
   );

@@ -39,7 +39,7 @@ describe("FairDiscoveryChoices", () => {
     expect(fairDiscoveryIntentMatches(kidZone!, "kid-zone")).toBe(true);
   });
 
-  it("shows an asymmetric, day-specific set without dead choices or directory copy", () => {
+  it("shows a compact, day-specific path rail without dead choices or directory copy", () => {
     const html = renderToStaticMarkup(
       <FairDiscoveryChoices
         items={fridayItems}
@@ -54,6 +54,8 @@ describe("FairDiscoveryChoices", () => {
     expect(html).toContain("Carnival &amp; rides");
     expect(html).not.toContain("Food-related program");
     expect(html).not.toMatch(/listing/i);
-    expect(html).toContain("col-span-2 min-h-[138px]");
+    expect(html).toContain("snap-mandatory");
+    expect(html).toContain("1 option");
+    expect(html).toContain("4 p.m. - 9 p.m. · Kid Zone");
   });
 });

@@ -68,7 +68,7 @@ test.describe("Fairgrounds map accessibility", () => {
   }) => {
     const map = await openFairMap(page);
     const mapHeading = page.getByRole("heading", {
-      level: 2,
+      level: 1,
       name: "Fairgrounds map",
     });
     await expect(mapHeading).toBeFocused();
@@ -155,6 +155,63 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(gate).toBeFocused();
   });
 
+  test("keeps the direct-to-map load visually stable", async ({ page }) => {
+    await page.addInitScript(() => {
+      const trackedWindow = window as typeof window & {
+        __fairLayoutShift: number;
+        __fairLayoutShiftEntries: Array<{
+          value: number;
+          sources: string[];
+        }>;
+      };
+      trackedWindow.__fairLayoutShift = 0;
+      trackedWindow.__fairLayoutShiftEntries = [];
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          const shift = entry as PerformanceEntry & {
+            hadRecentInput?: boolean;
+            value?: number;
+            sources?: Array<{ node?: Node | null }>;
+          };
+          if (!shift.hadRecentInput) {
+            trackedWindow.__fairLayoutShift += shift.value ?? 0;
+            trackedWindow.__fairLayoutShiftEntries.push({
+              value: shift.value ?? 0,
+              sources: (shift.sources ?? []).map(({ node }) => {
+                if (!(node instanceof HTMLElement)) return node?.nodeName ?? "unknown";
+                const id = node.id ? `#${node.id}` : "";
+                const classes = Array.from(node.classList)
+                  .slice(0, 3)
+                  .map((name) => `.${name}`)
+                  .join("");
+                return `${node.tagName.toLowerCase()}${id}${classes}`;
+              }),
+            });
+          }
+        }
+      }).observe({ type: "layout-shift", buffered: true });
+    });
+
+    await openFairMap(page);
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(500);
+
+    const layoutShift = await page.evaluate(() => {
+      const trackedWindow = window as typeof window & {
+        __fairLayoutShift: number;
+        __fairLayoutShiftEntries: Array<{ value: number; sources: string[] }>;
+      };
+      return {
+        score: trackedWindow.__fairLayoutShift,
+        entries: trackedWindow.__fairLayoutShiftEntries,
+      };
+    });
+    expect(
+      layoutShift.score,
+      JSON.stringify(layoutShift.entries, null, 2),
+    ).toBeLessThan(0.1);
+  });
+
   test("keeps the selected sheet usable at a 320px reflow width", async ({
     page,
   }) => {
@@ -173,6 +230,12 @@ test.describe("Fairgrounds map accessibility", () => {
       name: "Selected map place: Commercial Building",
     });
     await expect(sheet).toHaveCSS("overflow-y", "auto");
+    const details = sheet.getByRole("button", { name: "More details" });
+    await expect(details).toHaveAttribute("aria-expanded", "false");
+    await details.click();
+    await expect(
+      sheet.getByRole("button", { name: "Show less" }),
+    ).toHaveAttribute("aria-expanded", "true");
     const source = sheet.getByRole("link", { name: "Mapped source" });
     await source.focus();
     await expect(source).toBeInViewport();

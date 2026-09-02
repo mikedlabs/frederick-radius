@@ -1,6 +1,5 @@
 type FairGroundsMapMastheadProps = {
   checkedOn?: string;
-  headingId?: string;
 };
 
 function checkedLabel(date: string): string {
@@ -14,7 +13,6 @@ function checkedLabel(date: string): string {
 
 export default function FairGroundsMapMasthead({
   checkedOn,
-  headingId,
 }: FairGroundsMapMastheadProps) {
   return (
     <div
@@ -45,8 +43,6 @@ export default function FairGroundsMapMasthead({
             Source-checked grounds map
           </p>
           <h2
-            id={headingId}
-            tabIndex={headingId ? -1 : undefined}
             className="mt-1 text-[30px] font-normal leading-[1.02] tracking-[-0.025em] sm:text-[34px]"
             style={{
               fontFamily: "var(--font-editorial)",

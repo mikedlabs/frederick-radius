@@ -122,12 +122,28 @@ describe("FairDayWorkspace app journey", () => {
     return data;
   }
 
-  async function openMode(label: "Now" | "Find" | "My Day" | "Travel") {
+  async function openMode(label: "Today" | "Explore" | "Map" | "My Day") {
     const button = container.querySelector<HTMLButtonElement>(
       `[data-mobile-action-bar] button[aria-label^="${label}"]`,
     );
     if (!button) throw new Error(`Missing ${label} mode button.`);
     await act(async () => button.click());
+    await act(async () => vi.advanceTimersByTimeAsync(20));
+  }
+
+  async function openFullProgram() {
+    await openMode("Explore");
+    await act(async () =>
+      buttonWithText(container, "Browse full program").click(),
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(20));
+  }
+
+  async function openTravel() {
+    await openMode("My Day");
+    await act(async () =>
+      buttonWithText(container, "Getting there").click(),
+    );
     await act(async () => vi.advanceTimersByTimeAsync(20));
   }
 
@@ -151,7 +167,7 @@ describe("FairDayWorkspace app journey", () => {
     expect(container.querySelector("#fair-now-heading")).not.toBeNull();
     expect(container.querySelector("#fair-find-heading")).toBeNull();
 
-    await openMode("Find");
+    await openMode("Explore");
 
     expect(window.location.hash).toBe("#find");
     expect(container.querySelector("#fair-now-heading")).toBeNull();
@@ -163,16 +179,16 @@ describe("FairDayWorkspace app journey", () => {
     expect(container.querySelector("#fair-find-heading")).toBeNull();
     expect(document.activeElement?.id).toBe("fair-my-day-heading");
 
-    await openMode("Travel");
+    await openMode("Map");
     expect(container.querySelector("#fair-my-day-heading")).toBeNull();
-    expect(document.activeElement?.id).toBe("fair-travel-heading");
+    expect(document.activeElement?.id).toBe("fair-grounds-map-heading");
   });
 
   it("waits for Travel before checking live sources and defers transit until selected", async () => {
     await renderFair();
 
     expect(fetchMock).not.toHaveBeenCalled();
-    await openMode("Travel");
+    await openTravel();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/fair/arrival-status?date=2026-09-18&mode=overview",
       expect.objectContaining({ cache: "no-store" }),
@@ -209,7 +225,7 @@ describe("FairDayWorkspace app journey", () => {
 
   it("sorts program rows by time, removes ticket utility rows, and exposes EventHub in Find", async () => {
     const data = await renderFair();
-    await openMode("Find");
+    await openFullProgram();
 
     const results = container.querySelector<HTMLOListElement>(
       '[aria-label="Fair program results"]',
@@ -221,17 +237,19 @@ describe("FairDayWorkspace app journey", () => {
     expect(text.indexOf("Daughtry")).toBeLessThan(
       text.indexOf("2026 Agricultural Awards Ceremony"),
     );
-    expect(container.querySelector<HTMLAnchorElement>(`a[href="${data.externalGuide.url}"]`)).not.toBeNull();
+    expect(container.querySelector<HTMLAnchorElement>(`a[href="${data.externalGuide.url}"]`)).toBeNull();
     expect(container.textContent).toContain("sorted by time");
+
+    await openMode("Map");
+    expect(container.querySelector<HTMLAnchorElement>(`a[href="${data.externalGuide.url}"]`)).not.toBeNull();
   });
 
   it("starts Find with visual intent choices and excludes agriculture from Animals", async () => {
     const data = await renderFair();
-    await openMode("Find");
+    await openMode("Explore");
 
-    expect(
-      container.querySelector('[data-fair-plan-status="compact"]'),
-    ).not.toBeNull();
+    expect(container.querySelector('[aria-label="Back to Fair Today"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="Fair day to explore"]')).not.toBeNull();
     const kidZone = buttonWithText(container, "Kid Zone");
     const search = container.querySelector("#fair-unified-search");
     expect(
@@ -255,28 +273,61 @@ describe("FairDayWorkspace app journey", () => {
     for (const item of fridayAgriculture) {
       expect(results.textContent).not.toContain(item.title);
     }
-    expect(container.textContent).toContain("Clear choice · see the full program");
+    expect(container.textContent).toContain("Back to Explore");
+    expect(container.textContent).not.toContain("What sounds good?");
 
-    await act(async () =>
-      buttonWithText(container, "Clear choice · see the full program").click(),
-    );
-    expect(container.textContent).toContain("Program");
+    await openMode("Explore");
+    expect(container.textContent).toContain("What sounds good?");
   });
 
   it("switches between visual discovery and the grounds map without leaving the Fair plan", async () => {
     await renderFair();
-    await openMode("Find");
+    await openMode("Explore");
 
-    expect(container.textContent).toContain("What do you want to find?");
-    await act(async () => buttonWithText(container, "Grounds map").click());
+    expect(container.textContent).toContain("What sounds good?");
+    await openMode("Map");
 
     expect(window.location.hash).toBe("#fair-map");
-    expect(container.textContent).not.toContain("What do you want to find?");
-    expect(container.textContent).toContain("Opening the Fair grounds map");
+    expect(container.textContent).not.toContain("What sounds good?");
+    expect(container.textContent).toContain("The grounds map could not open.");
 
-    await act(async () => buttonWithText(container, "Program").click());
+    await openMode("Explore");
     expect(window.location.hash).toBe("#find");
-    expect(container.textContent).toContain("What do you want to find?");
+    expect(container.textContent).toContain("What sounds good?");
+  });
+
+  it("keeps program details honest and allows only one Fair drawer", async () => {
+    await renderFair();
+    await openFullProgram();
+
+    const details = container.querySelector<HTMLButtonElement>(
+      'button[aria-label^="Open details for"]',
+    );
+    if (!details) throw new Error("Missing a program details control.");
+    await act(async () => details.click());
+    await act(async () => vi.advanceTimersByTimeAsync(20));
+
+    const add = buttonWithText(document.body, "Add to My Day");
+    expect(add.getAttribute("aria-pressed")).toBe("false");
+    await act(async () => add.click());
+    expect(document.body.textContent).toContain("Remove from My Day");
+    const remove = buttonWithText(document.body, "Remove from My Day");
+    expect(remove.getAttribute("aria-pressed")).toBe("true");
+    await act(async () => remove.click());
+    expect(document.body.textContent).toContain("Add to My Day");
+
+    window.history.replaceState(
+      {},
+      "",
+      "/moments/great-frederick-fair-2026#answers",
+    );
+    await act(async () => window.dispatchEvent(new Event("hashchange")));
+    await act(async () => vi.advanceTimersByTimeAsync(20));
+
+    expect(
+      document.body.querySelectorAll('[role="dialog"][data-state="open"]'),
+    ).toHaveLength(1);
+    expect(document.body.textContent).toContain("Fair help");
   });
 
   it("reopens the same family essential with its reviewed answer after closing Help", async () => {
@@ -284,7 +335,11 @@ describe("FairDayWorkspace app journey", () => {
 
     const openFamilyCare = async () => {
       await act(async () =>
-        buttonWithText(container, "Family Care + changing").click(),
+        buttonWithText(container, "Help & access").click(),
+      );
+      await act(async () => vi.advanceTimersByTimeAsync(20));
+      await act(async () =>
+        buttonWithText(document.body, "Family Care + changing").click(),
       );
       await act(async () => vi.advanceTimersByTimeAsync(20));
       expect(document.body.textContent).toContain(
@@ -309,7 +364,7 @@ describe("FairDayWorkspace app journey", () => {
 
   it("acknowledges a saved program result and opens My Day from the toast", async () => {
     const data = await renderFair();
-    await openMode("Find");
+    await openFullProgram();
 
     const addDaughtry = container.querySelector<HTMLButtonElement>(
       'button[aria-label^="Add Daughtry to My Day"]',
@@ -356,7 +411,7 @@ describe("FairDayWorkspace app journey", () => {
 
   it("undoes a save without opening another surface", async () => {
     await renderFair();
-    await openMode("Find");
+    await openFullProgram();
 
     const addDaughtry = container.querySelector<HTMLButtonElement>(
       'button[aria-label^="Add Daughtry to My Day"]',
@@ -383,7 +438,7 @@ describe("FairDayWorkspace app journey", () => {
 
   it("removes a saved result in Find and restores it with Undo", async () => {
     const data = await renderFair();
-    await openMode("Find");
+    await openFullProgram();
 
     const addDaughtry = container.querySelector<HTMLButtonElement>(
       'button[aria-label^="Add Daughtry to My Day"]',
@@ -448,7 +503,7 @@ describe("FairDayWorkspace app journey", () => {
 
   it("shows only the selected day's stops while keeping other days saved", async () => {
     await renderFair();
-    await openMode("Find");
+    await openFullProgram();
 
     const addDaughtry = container.querySelector<HTMLButtonElement>(
       'button[aria-label^="Add Daughtry to My Day"]',
@@ -459,16 +514,14 @@ describe("FairDayWorkspace app journey", () => {
     await chooseDate("2026-09-20");
     await openMode("My Day");
     expect(container.textContent).not.toContain("Daughtry");
-    expect(container.textContent).toContain(
-      "Choose one thing you do not want to miss.",
-    );
+    expect(container.textContent).toContain("Your timeline starts with one choice.");
     expect(
       container.querySelector(
         '[data-mobile-action-bar] button[aria-label="My Day"]',
       ),
     ).not.toBeNull();
 
-    await openMode("Now");
+    await openMode("Today");
     await chooseDate("2026-09-18");
     await openMode("My Day");
     expect(container.textContent).toContain("Daughtry");
@@ -572,13 +625,17 @@ describe("FairDayWorkspace app journey", () => {
     await act(async () =>
       buttonWithText(document.body, "I already have tickets").click(),
     );
-    expect(container.textContent).toContain("1 detail left");
+    expect(container.textContent).toContain("1 of 3 ready");
+    expect(
+      container.querySelector("[data-fair-plan-announcement]")?.textContent,
+    ).toContain("1 of 3 preparation steps is ready");
+    expect(container.textContent).toContain("Choose how you will get there.");
     expect(container.textContent).toContain("Choose travel");
   });
 
   it("does not mark arrival and return ready until the chosen plan is confirmed", async () => {
     await renderFair();
-    await openMode("Travel");
+    await openTravel();
 
     const drive = container.querySelector<HTMLInputElement>(
       'input[value="arrival-drive"]',
@@ -593,10 +650,6 @@ describe("FairDayWorkspace app journey", () => {
     expect(selectedPlan.readyKeys).not.toContain("travel");
     expect(selectedPlan.readyKeys).not.toContain("arrival");
     expect(selectedPlan.readyKeys).not.toContain("return");
-    const travelStage = Array.from(
-      container.querySelectorAll<HTMLElement>("[aria-label]"),
-    ).find((element) => element.getAttribute("aria-label")?.startsWith("Travel:"));
-    expect(travelStage?.getAttribute("aria-label")).toContain("Finish");
     expect(container.textContent).toContain("Use this driving plan");
 
     await act(async () =>

@@ -63,7 +63,8 @@ test.describe("Fair Day production release journey", () => {
       "does not describe this as a whole-ground low-sensory period",
     );
 
-    await page.getByRole("button", { name: "Access guide", exact: true }).click();
+    await page.getByRole("button", { name: "Help & access", exact: true }).click();
+    await page.getByRole("button", { name: /^Access guide/ }).click();
     const accessGuide = page.getByRole("dialog", { name: "Fair help" });
     await expect(accessGuide).toContainText(
       "Where can I see the ASL interpreter at Grandstand shows?",
@@ -81,7 +82,8 @@ test.describe("Fair Day production release journey", () => {
     ).toHaveAttribute("href", "/access");
     await page.getByRole("button", { name: "Close Fair help" }).click();
 
-    await page.getByRole("button", { name: "Easy to miss", exact: true }).click();
+    await page.getByRole("button", { name: "Help & access", exact: true }).click();
+    await page.getByRole("button", { name: /^Easy to miss/ }).click();
     await expect(page.getByRole("dialog", { name: "Fair help" })).toContainText(
       "Parking is separate",
     );
@@ -108,11 +110,10 @@ test.describe("Fair Day production release journey", () => {
     await expect(etixLink).toHaveAttribute("href", ETIX_ADMISSION_URL);
     await expect(etixLink).toHaveAttribute("target", "_blank");
     await expect(etixLink).toHaveAttribute("rel", "noopener noreferrer");
+    await page.getByRole("button", { name: "I already have tickets" }).click();
     await page.getByRole("button", { name: "Close Tickets" }).click();
 
-    await page
-      .getByRole("button", { name: "Travel", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Choose travel", exact: true }).click();
     const transitChoice = page.getByRole("radio", { name: /County Transit/ });
     await transitChoice.locator("..").click();
     await expect(transitChoice).toBeChecked();
@@ -131,14 +132,12 @@ test.describe("Fair Day production release journey", () => {
     await expect(transitSource).toHaveAttribute("target", "_blank");
     await expect(transitSource).toHaveAttribute("rel", "noopener noreferrer");
 
-    await page.getByRole("button", { name: "Find", exact: true }).click();
-    const eventHubLink = page.getByRole("link", { name: "Vendor map" });
+    await page.getByRole("button", { name: "Map", exact: true }).click();
+    await expect(page).toHaveURL(/#fair-map$/);
+    const eventHubLink = page.getByRole("link", { name: "Official vendor booths" });
     await expect(eventHubLink).toHaveAttribute("href", EVENTHUB_URL);
     await expect(eventHubLink).toHaveAttribute("target", "_blank");
     await expect(eventHubLink).toHaveAttribute("rel", "noopener noreferrer");
-
-    await page.getByRole("button", { name: "Grounds map" }).click();
-    await expect(page).toHaveURL(/#fair-map$/);
     const fairMap = page.locator("#fair-map");
     await expect(fairMap).toBeVisible();
     await expect(
@@ -183,7 +182,7 @@ test.describe("Fair Day production release journey", () => {
     expect(
       (selectedPosition?.y ?? 0) + (selectedPosition?.height ?? 0),
     ).toBeLessThanOrEqual(actionBarPosition?.y ?? Number.POSITIVE_INFINITY);
-    await page.getByRole("button", { name: "Program", exact: true }).click();
+    await page.getByRole("button", { name: "Explore", exact: true }).click();
 
     const addProgramItem = page
       .getByRole("button", { name: /^Add .+ to My Day$/ })
@@ -203,7 +202,7 @@ test.describe("Fair Day production release journey", () => {
     await expect(timeline).toContainText(programTitle ?? "");
     await expect(timeline.locator("li")).toHaveCount(3);
 
-    await page.getByRole("button", { name: "Help", exact: true }).click();
+    await page.getByRole("button", { name: "Help & access", exact: true }).click();
     await page.getByRole("button", { name: "Send Fair feedback" }).click();
     const fairReport = page.getByRole("dialog", {
       name: "Report a Fair issue",
@@ -298,5 +297,42 @@ test.describe("Fair Day production release journey", () => {
       "Your position is shown within about 40 feet for this visit only.",
     );
     await expect(page.locator("[data-fair-visitor-location]")).toBeVisible();
+  });
+
+  test("keeps every Fair tool inside common phone widths", async ({ page }) => {
+    test.setTimeout(60_000);
+
+    for (const width of [320, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto(`${FAIR_CANONICAL_PATH}#now`, {
+        waitUntil: "domcontentloaded",
+      });
+      await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
+        "data-fair-interaction-ready",
+        "true",
+      );
+
+      for (const label of ["Today", "Explore", "Map", "My Day"] as const) {
+        const destination = page
+          .getByRole("navigation", { name: "Fair Day" })
+          .getByRole("button", { name: label, exact: true });
+        await destination.focus();
+        await destination.press("Enter");
+        if (label === "Map") {
+          await expect(page.locator("[data-fair-grounds-map] canvas")).toBeVisible({
+            timeout: 15_000,
+          });
+        }
+        const geometry = await page.evaluate(() => ({
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth,
+          scrollX: window.scrollX,
+        }));
+        expect(geometry.scrollWidth).toBeLessThanOrEqual(
+          geometry.clientWidth + 1,
+        );
+        expect(geometry.scrollX).toBe(0);
+      }
+    }
   });
 });

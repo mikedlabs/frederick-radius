@@ -76,30 +76,35 @@ export default function FairDiscoveryChoices({
 }) {
   const availableChoices = CHOICES.map((choice) => ({
     choice,
-    count: items.filter((item) =>
+    matches: items.filter((item) =>
       fairDiscoveryIntentMatches(item, choice.id),
-    ).length,
-  })).filter(({ count }) => count > 0);
+    ),
+  })).filter(({ matches }) => matches.length > 0);
 
   return (
     <section className="mt-5" aria-labelledby="fair-discovery-heading">
       <p
-        className="text-[12px] font-bold uppercase tracking-[0.12em]"
+        className="text-[11px] font-bold uppercase tracking-[0.12em]"
         style={{ color: "var(--app-brand-press)" }}
       >
-        Start with what sounds good
+        Explore by mood
       </p>
       <h2
         id="fair-discovery-heading"
         className="mt-1 text-[24px] font-extrabold leading-tight tracking-[-0.035em]"
       >
-        What do you want to find?
+        What sounds good?
       </h2>
 
-      <div className="mt-3 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
-        {availableChoices.map(({ choice, count }) => {
+      <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+        Choose one path. You can change it without losing your day.
+      </p>
+
+      <div className="scrollbar-none -mx-4 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0">
+        {availableChoices.map(({ choice, matches }) => {
           const active = selected === choice.id;
           const Icon = choice.Icon;
+          const preview = matches[0];
 
           return (
             <button
@@ -107,12 +112,8 @@ export default function FairDiscoveryChoices({
               type="button"
               aria-pressed={active}
               onClick={() => onSelect(choice.id)}
-              className={`tap-44 relative overflow-hidden rounded-[var(--app-radius-lg)] border p-3 text-left transition-[transform,border-color] active:scale-[0.985] motion-reduce:transition-none sm:p-4 ${
-                choice.featured
-                  ? "col-span-2 min-h-[138px] text-[var(--app-ink-inverse)] sm:min-h-[160px] lg:row-span-2 lg:min-h-[286px]"
-                  : choice.id === "food-program" || availableChoices.length === 3
-                    ? "col-span-2 min-h-[104px] sm:min-h-[118px] lg:col-span-2"
-                    : "min-h-[126px] sm:min-h-[142px]"
+              className={`tap-44 relative min-h-[158px] w-[78vw] max-w-[18.5rem] shrink-0 snap-start overflow-hidden rounded-[var(--app-radius-lg)] border p-4 text-left transition-[transform,border-color] active:scale-[0.985] motion-reduce:transition-none lg:w-auto ${
+                choice.featured ? "text-[var(--app-ink-inverse)]" : ""
               }`}
               style={{
                 borderColor: active
@@ -126,21 +127,34 @@ export default function FairDiscoveryChoices({
                   : "var(--app-elev-1)",
               }}
             >
-              <span
-                className="absolute -right-4 -top-4 h-[78px] w-[78px] rounded-full opacity-25"
-                style={{ background: choice.accent }}
-                aria-hidden
-              />
-              <Icon
-                className="relative h-6 w-6"
-                style={{
-                  color: choice.featured
-                    ? "var(--app-ink-inverse)"
-                    : choice.accent,
-                }}
-                aria-hidden
-              />
-              <span className="relative mt-4 block text-[15px] font-bold leading-tight sm:text-[17px]">
+              <span className="relative flex items-start justify-between gap-3">
+                <Icon
+                  className="h-6 w-6"
+                  style={{
+                    color: choice.featured
+                      ? "var(--app-ink-inverse)"
+                      : choice.accent,
+                  }}
+                  aria-hidden
+                />
+                <span
+                  className="rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] tabular-nums"
+                  style={{
+                    borderColor: choice.featured
+                      ? "color-mix(in srgb, var(--app-ink-inverse) 42%, transparent)"
+                      : "var(--app-border-strong)",
+                    color: choice.featured
+                      ? "var(--app-ink-inverse)"
+                      : choice.accent,
+                    background: choice.featured
+                      ? "color-mix(in srgb, var(--app-ink) 38%, transparent)"
+                      : "var(--app-bg-elevated-solid)",
+                  }}
+                >
+                  {matches.length} {matches.length === 1 ? "option" : "options"}
+                </span>
+              </span>
+              <span className="relative mt-4 block text-[17px] font-bold leading-tight">
                 {choice.title}
               </span>
               <span
@@ -154,30 +168,19 @@ export default function FairDiscoveryChoices({
                 {choice.detail}
               </span>
               <span
-                className="relative mt-2 block text-[12px] font-bold tabular-nums"
+                className="relative mt-3 block line-clamp-2 text-[12px] font-bold leading-snug tabular-nums"
                 style={{
                   color: choice.featured
                     ? "var(--app-ink-inverse)"
                     : choice.accent,
                 }}
               >
-                {count} {count === 1 ? "thing" : "things"} today
+                {preview.timeLabel} · {preview.title}
               </span>
             </button>
           );
         })}
       </div>
-
-      {selected ? (
-        <button
-          type="button"
-          onClick={() => onSelect(selected)}
-          className="tap-44 mt-2 inline-flex min-h-11 items-center text-[12px] font-semibold"
-          style={{ color: "var(--app-brand-press)" }}
-        >
-          Clear choice · see the full program
-        </button>
-      ) : null}
     </section>
   );
 }
