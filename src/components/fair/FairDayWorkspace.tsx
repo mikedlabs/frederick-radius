@@ -54,6 +54,7 @@ import FairDiscoveryChoices, {
   type FairDiscoveryIntentId,
 } from "./FairDiscoveryChoices";
 import FairEssentialsRail from "./FairEssentialsRail";
+import FairGroundsMap from "./FairGroundsMap";
 import FairTravelPanel from "./FairTravelPanel";
 import type {
   FairDayArrivalView,
@@ -63,6 +64,7 @@ import type {
 } from "./types";
 
 type FairMode = "now" | "find" | "my-day" | "travel";
+type FairFindView = "explore" | "map";
 type PreparationKey = Extract<FairPlanReadyKey, "ticket" | "entry">;
 type ScheduleFilter =
   | "all"
@@ -112,6 +114,7 @@ export function fairModeFromHash(hash: string): FairMode | null {
   if (FAIR_MODES.some((mode) => mode.id === normalized)) {
     return normalized as FairMode;
   }
+  if (normalized === "fair-map") return "find";
   if (normalized === "plan") return "my-day";
   if (
     normalized === "leave" ||
@@ -351,6 +354,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
     [data.scheduleItems],
   );
   const [activeMode, setActiveMode] = useState<FairMode>("now");
+  const [findView, setFindView] = useState<FairFindView>("explore");
   const [activePreparation, setActivePreparation] =
     useState<PreparationKey | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -442,23 +446,44 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       if (!requestedMode) return;
 
       setActiveMode(requestedMode);
+      if (requested === "fair-map") setFindView("map");
       if (requested === "answers") setHelpOpen(true);
       if (requested === "fair-ready-ticket") setActivePreparation("ticket");
       if (requested === "fair-ready-entry") setActivePreparation("entry");
 
-      const canonicalHash = `#${requestedMode}`;
+      const canonicalHash =
+        requested === "fair-map" ? "#fair-map" : `#${requestedMode}`;
       if (window.location.hash !== canonicalHash) {
         window.history.replaceState(window.history.state, "", canonicalHash);
       }
-      window.requestAnimationFrame(() =>
-        window.scrollTo({ top: 0, behavior: "auto" }),
-      );
+      if (requested !== "fair-map") {
+        window.requestAnimationFrame(() =>
+          window.scrollTo({ top: 0, behavior: "auto" }),
+        );
+      }
     };
 
     syncModeFromHash();
     window.addEventListener("hashchange", syncModeFromHash);
     return () => window.removeEventListener("hashchange", syncModeFromHash);
   }, []);
+
+  useEffect(() => {
+    if (
+      activeMode !== "find" ||
+      findView !== "map" ||
+      window.location.hash !== "#fair-map"
+    ) {
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("fair-map")?.scrollIntoView({
+        behavior: "auto",
+        block: "start",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeMode, findView]);
 
   useEffect(() => {
     let deadlineTimer: number | undefined;
@@ -496,11 +521,24 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
 
   const chooseMode = (mode: FairMode) => {
     setActiveMode(mode);
-    window.history.replaceState(window.history.state, "", `#${mode}`);
+    window.history.replaceState(
+      window.history.state,
+      "",
+      mode === "find" && findView === "map" ? "#fair-map" : `#${mode}`,
+    );
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: "auto" });
       document.getElementById(MODE_HEADING_IDS[mode])?.focus({ preventScroll: true });
     });
+  };
+
+  const chooseFindView = (view: FairFindView) => {
+    setFindView(view);
+    window.history.replaceState(
+      window.history.state,
+      "",
+      view === "map" ? "#fair-map" : "#find",
+    );
   };
 
   const chooseFairDate = (date: string) => {
@@ -640,6 +678,17 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       step,
       item: scheduleById.get(step.scheduleItemId) ?? null,
     }));
+  const mappedPlanStops = plannedRows.flatMap(({ step, item }) =>
+    item
+      ? [
+          {
+            id: step.scheduleItemId,
+            title: item.title,
+            placeLabel: item.placeLabel,
+          },
+        ]
+      : [],
+  );
   const selectedDay = data.dates.find((day) => day.date === selectedDate);
 
   const titleCopy =
@@ -953,9 +1002,67 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               Find your Fair
             </h1>
             <p className="mt-2 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              Pick a feeling first, then save what you do not want to miss.
+              {findView === "map"
+                ? "Find gates, restrooms, animal areas, saved stops, and your parked car without losing your day plan."
+                : "Pick a feeling first, then save what you do not want to miss."}
             </p>
 
+            <div
+              className="mt-5 grid grid-cols-2 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-sunken)] p-1"
+              role="group"
+              aria-label="Choose how to find things at the Fair"
+            >
+              <button
+                type="button"
+                aria-pressed={findView === "explore"}
+                onClick={() => chooseFindView("explore")}
+                className="tap-44 inline-flex min-h-11 items-center justify-center gap-2 rounded-[calc(var(--app-radius-lg)-4px)] text-[13px] font-bold"
+                style={{
+                  color:
+                    findView === "explore"
+                      ? "var(--app-ink)"
+                      : "var(--app-ink-3)",
+                  background:
+                    findView === "explore"
+                      ? "var(--app-bg-elevated-solid)"
+                      : "transparent",
+                  boxShadow:
+                    findView === "explore" ? "var(--app-elev-1)" : "none",
+                }}
+              >
+                <Search className="h-4 w-4" aria-hidden />
+                Program
+              </button>
+              <button
+                type="button"
+                aria-pressed={findView === "map"}
+                onClick={() => chooseFindView("map")}
+                className="tap-44 inline-flex min-h-11 items-center justify-center gap-2 rounded-[calc(var(--app-radius-lg)-4px)] text-[13px] font-bold"
+                style={{
+                  color:
+                    findView === "map"
+                      ? "var(--app-ink)"
+                      : "var(--app-ink-3)",
+                  background:
+                    findView === "map"
+                      ? "var(--app-bg-elevated-solid)"
+                      : "transparent",
+                  boxShadow:
+                    findView === "map" ? "var(--app-elev-1)" : "none",
+                }}
+              >
+                <MapPinned className="h-4 w-4" aria-hidden />
+                Grounds map
+              </button>
+            </div>
+
+            {findView === "map" ? (
+              <FairGroundsMap
+                savedStops={mappedPlanStops}
+                onBrowseProgram={() => chooseFindView("explore")}
+              />
+            ) : (
+              <>
             <FairDiscoveryChoices
               items={discoveryItems}
               selected={discoveryIntent}
@@ -1119,6 +1226,8 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 Show all {matchingSchedule.length} program items
               </Button>
             ) : null}
+              </>
+            )}
           </section>
         ) : null}
 

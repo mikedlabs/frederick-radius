@@ -20,6 +20,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
   it("keeps original Fair links connected to the redesigned task views", () => {
     expect(fairModeFromHash("#now")).toBe("now");
     expect(fairModeFromHash("find")).toBe("find");
+    expect(fairModeFromHash("#fair-map")).toBe("find");
     expect(fairModeFromHash("#plan")).toBe("my-day");
     expect(fairModeFromHash("#leave")).toBe("travel");
     expect(fairModeFromHash("#answers")).toBe("now");

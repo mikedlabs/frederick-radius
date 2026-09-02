@@ -47,8 +47,8 @@ test.describe("Fair Day production release journey", () => {
     ).toHaveCount(0);
     await expect(page.getByLabel("Send feedback")).toHaveCount(0);
 
-    const datePicker = page.getByLabel("Choose your Fair day", {
-      exact: false,
+    const datePicker = page.getByRole("combobox", {
+      name: "Fair day in your plan",
     });
     await datePicker.selectOption("2026-09-20");
     await expect(datePicker).toHaveValue("2026-09-20");
@@ -103,6 +103,48 @@ test.describe("Fair Day production release journey", () => {
     await expect(eventHubLink).toHaveAttribute("target", "_blank");
     await expect(eventHubLink).toHaveAttribute("rel", "noopener noreferrer");
 
+    await page.getByRole("button", { name: "Grounds map" }).click();
+    await expect(page).toHaveURL(/#fair-map$/);
+    const fairMap = page.locator("#fair-map");
+    await expect(fairMap).toBeVisible();
+    await expect(
+      page.getByRole("searchbox", {
+        name: "Find a place on the Fair grounds map",
+      }),
+    ).toBeVisible();
+    await expect(fairMap.locator("canvas")).toBeVisible({ timeout: 15_000 });
+    const mapCanvasPosition = await fairMap.locator("canvas").boundingBox();
+    expect(mapCanvasPosition?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(520);
+    expect(mapCanvasPosition?.height ?? 0).toBeGreaterThanOrEqual(430);
+    const attribution = fairMap.locator(".maplibregl-ctrl-attrib");
+    const zoomControls = fairMap.locator(".maplibregl-ctrl-group").first();
+    await expect(attribution).toBeVisible();
+    const attributionPosition = await attribution.boundingBox();
+    const zoomPosition = await zoomControls.boundingBox();
+    expect(attributionPosition?.y ?? 0).toBeGreaterThanOrEqual(
+      (zoomPosition?.y ?? 0) + (zoomPosition?.height ?? 0),
+    );
+
+    await page
+      .getByRole("searchbox", { name: "Find a place on the Fair grounds map" })
+      .fill("4-H");
+    await page.getByRole("option", { name: /4-H Building/ }).click();
+    const selectedPlace = page.getByRole("region", {
+      name: "Selected map place: 4-H Building",
+    });
+    await expect(selectedPlace).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Close selected map place" }),
+    ).toBeVisible();
+    const selectedPosition = await selectedPlace.boundingBox();
+    const actionBarPosition = await page
+      .locator("[data-mobile-action-bar]")
+      .boundingBox();
+    expect(
+      (selectedPosition?.y ?? 0) + (selectedPosition?.height ?? 0),
+    ).toBeLessThanOrEqual(actionBarPosition?.y ?? Number.POSITIVE_INFINITY);
+    await page.getByRole("button", { name: "Program" }).click();
+
     const addProgramItem = page
       .getByRole("button", { name: /^Add .+ to My Day$/ })
       .first();
@@ -121,10 +163,85 @@ test.describe("Fair Day production release journey", () => {
     await expect(timeline).toContainText(programTitle ?? "");
     await expect(timeline.locator("li")).toHaveCount(3);
 
-    await page.getByRole("button", { name: "Help" }).click();
+    await page.getByRole("button", { name: "Help", exact: true }).click();
     await page.getByRole("button", { name: "Send Fair feedback" }).click();
     await expect(
       page.getByRole("dialog", { name: "Send feedback" }),
     ).toBeVisible();
+  });
+
+  test("uses location only after a tap and refuses a misleadingly broad fix", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    test.setTimeout(60_000);
+    const origin = new URL(baseURL ?? "http://localhost:3010").origin;
+    await context.grantPermissions(["geolocation"], { origin });
+    await context.setGeolocation({
+      latitude: 39.4125,
+      longitude: -77.3943,
+      accuracy: 250,
+    });
+    await page.addInitScript(() => {
+      const geolocation = navigator.geolocation;
+      const original = geolocation.getCurrentPosition.bind(geolocation);
+      Object.defineProperty(window, "__radiusGeoRequests", {
+        configurable: true,
+        value: 0,
+        writable: true,
+      });
+      Object.defineProperty(geolocation, "getCurrentPosition", {
+        configurable: true,
+        value: (
+          success: PositionCallback,
+          failure?: PositionErrorCallback | null,
+          options?: PositionOptions,
+        ) => {
+          const trackedWindow = window as typeof window & {
+            __radiusGeoRequests: number;
+          };
+          trackedWindow.__radiusGeoRequests += 1;
+          return original(success, failure, options);
+        },
+      });
+    });
+
+    await page.goto(`${FAIR_CANONICAL_PATH}#fair-map`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.getByRole("button", { name: "Show me" })).toBeVisible({
+      timeout: 15_000,
+    });
+    expect(
+      await page.evaluate(
+        () =>
+          (window as typeof window & { __radiusGeoRequests: number })
+            .__radiusGeoRequests,
+      ),
+    ).toBe(0);
+
+    await page.getByRole("button", { name: "Show me" }).click();
+    await expect(page.locator("#fair-map")).toContainText(
+      "Your location reading is too broad to place safely",
+    );
+    expect(
+      await page.evaluate(
+        () =>
+          (window as typeof window & { __radiusGeoRequests: number })
+            .__radiusGeoRequests,
+      ),
+    ).toBe(1);
+
+    await context.setGeolocation({
+      latitude: 39.4125,
+      longitude: -77.3943,
+      accuracy: 12,
+    });
+    await page.getByRole("button", { name: "Show me" }).click();
+    await expect(page.locator("#fair-map")).toContainText(
+      "Your position is shown within about 40 feet for this visit only.",
+    );
+    await expect(page.locator('[title="Your approximate location"]')).toBeVisible();
   });
 });

@@ -199,6 +199,22 @@ describe("FairDayWorkspace app journey", () => {
     expect(container.textContent).toContain("Program");
   });
 
+  it("switches between visual discovery and the grounds map without leaving the Fair plan", async () => {
+    await renderFair();
+    await openMode("Find");
+
+    expect(container.textContent).toContain("What do you want to find?");
+    await act(async () => buttonWithText(container, "Grounds map").click());
+
+    expect(window.location.hash).toBe("#fair-map");
+    expect(container.textContent).not.toContain("What do you want to find?");
+    expect(container.textContent).toContain("Opening the Fair grounds map");
+
+    await act(async () => buttonWithText(container, "Program").click());
+    expect(window.location.hash).toBe("#find");
+    expect(container.textContent).toContain("What do you want to find?");
+  });
+
   it("reopens the same family essential with its reviewed answer after closing Help", async () => {
     await renderFair();
 

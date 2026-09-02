@@ -1121,6 +1121,15 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     top: 10px !important;
   }
 
+  /* The Fair map is a bounded in-page canvas with its own mobile result sheet.
+     Give attribution a dedicated shelf below zoom instead of letting the
+     full-screen /map override stack both controls in the same corner. */
+  .fair-grounds-map-canvas .maplibregl-ctrl-bottom-right {
+    bottom: auto !important;
+    top: 112px !important;
+    right: 10px !important;
+  }
+
   /* /radius is an embedded planning canvas, not the full-screen browse map.
      Its lower sheet covers both conventional bottom corners, while the reach
      readout and camera rail occupy the first upper shelf. Give Mapbox's legal
