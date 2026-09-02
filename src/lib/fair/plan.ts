@@ -28,6 +28,7 @@ const scheduleItemIdSchema = z
 const offerIdSchema = z.string().regex(/^offer-[a-z0-9]+(?:-[a-z0-9]+)*$/);
 export const fairPlanReadyKeySchema = z.enum([
   "ticket",
+  "travel",
   "arrival",
   "entry",
   "return",
@@ -58,7 +59,7 @@ export const fairPlanSchema = z
       "bike",
     ]),
     party: fairPartySchema,
-    readyKeys: z.array(fairPlanReadyKeySchema).max(4),
+    readyKeys: z.array(fairPlanReadyKeySchema).max(5),
     consideredOfferIds: z.array(offerIdSchema).max(40),
     steps: z.array(fairPlanStepSchema).max(MAX_FAIR_PLAN_STEPS),
     updatedAt: offsetTimestampSchema,

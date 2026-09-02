@@ -93,6 +93,7 @@
     "closures:detect": "tsx --tsconfig tsconfig.json scripts/detect-closures.ts",
     "source:watch": "tsx --tsconfig tsconfig.json scripts/source-watch.ts",
     "fair:source-watch": "tsx --tsconfig tsconfig.json scripts/fair-source-watch.ts",
+    "fair:map:materialize": "tsx --tsconfig tsconfig.json scripts/materialize-fair-grounds-map.ts",
     "fair:community-watch": "tsx --tsconfig tsconfig.json scripts/fair-community-watch.ts",
     "source:scout": "tsx --tsconfig tsconfig.json scripts/source-scout.ts",
     "pilot:apify-venues": "tsx --tsconfig tsconfig.json scripts/apify-venue-pilot.ts",
@@ -219,7 +220,7 @@
   "overrides": {
     "aria-query": "5.3.2",
     "browserslist": "4.28.7",
-    "fast-uri": "3.1.5",
+    "fast-uri": "3.1.6",
     "linkify-it": "5.0.2",
     "postcss": "8.5.23",
     "sharp": "$sharp"

@@ -1121,6 +1121,15 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     top: 10px !important;
   }
 
+  /* The Fair map is a bounded in-page canvas with its own mobile result sheet.
+     Give attribution a dedicated shelf below zoom instead of letting the
+     full-screen /map override stack both controls in the same corner. */
+  .fair-grounds-map-canvas .maplibregl-ctrl-bottom-right {
+    bottom: auto !important;
+    top: 112px !important;
+    right: 10px !important;
+  }
+
   /* /radius is an embedded planning canvas, not the full-screen browse map.
      Its lower sheet covers both conventional bottom corners, while the reach
      readout and camera rail occupy the first upper shelf. Give Mapbox's legal
@@ -1810,6 +1819,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .maplibregl-map .maplibregl-ctrl-group button {
   width: 44px !important;
   height: 44px !important;
+}
+/* Fairgrounds pins sit over an unpredictable basemap. A light inner outline
+ * plus dark outer halo keeps keyboard focus visible over roads, grass, roofs,
+ * and either map theme instead of relying on one brand color. */
+.fair-grounds-map-marker:focus-visible {
+  outline: 3px solid var(--app-ink-inverse);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px var(--app-ink);
 }
 .maplibregl-map .maplibregl-ctrl-attrib-button {
   min-width: 44px !important;

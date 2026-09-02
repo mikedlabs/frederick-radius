@@ -4,6 +4,19 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const feedbackMocks = vi.hoisted(() => ({
+  haptic: vi.fn(),
+  toast: vi.fn(),
+  toastSuccess: vi.fn(),
+}));
+
+vi.mock("@/lib/haptics", () => ({ haptic: feedbackMocks.haptic }));
+vi.mock("sonner", () => ({
+  toast: Object.assign(feedbackMocks.toast, {
+    success: feedbackMocks.toastSuccess,
+  }),
+}));
+
 import {
   greatFrederickFair2026Pack,
   greatFrederickFair2026PackPointer,
@@ -34,10 +47,14 @@ describe("FairDayWorkspace app journey", () => {
   let container: HTMLDivElement;
   let root: Root;
   let storedValues: Map<string, string>;
+  let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-18T20:59:00Z"));
+    feedbackMocks.haptic.mockReset();
+    feedbackMocks.toast.mockReset();
+    feedbackMocks.toastSuccess.mockReset();
     storedValues = new Map<string, string>();
     Object.defineProperty(window, "localStorage", {
       configurable: true,
@@ -52,6 +69,28 @@ describe("FairDayWorkspace app journey", () => {
       configurable: true,
       value: vi.fn(),
     });
+    fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          schemaVersion: 1,
+          generatedAt: "2026-09-18T20:59:00.000Z",
+          state: "no-current-update",
+          coverage: "configured-sources-current",
+          headline:
+            "No major arrival update is published in the feeds Radius checked.",
+          summary:
+            "This describes only the official feeds Radius checked. It is not an all-clear.",
+          signals: [],
+          hiddenSignalCount: 0,
+          sources: [],
+          transit: null,
+          limitsLabel:
+            "Official feeds do not measure Fair attendance, parking-space availability, or gate waits.",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
     window.history.replaceState(
       {},
       "",
@@ -66,6 +105,7 @@ describe("FairDayWorkspace app journey", () => {
     await act(async () => root.unmount());
     container.remove();
     document.body.querySelectorAll("[data-vaul-drawer]").forEach((node) => node.remove());
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
@@ -82,12 +122,28 @@ describe("FairDayWorkspace app journey", () => {
     return data;
   }
 
-  async function openMode(label: "Now" | "Find" | "My Day" | "Travel") {
+  async function openMode(label: "Today" | "Explore" | "Map" | "My Day") {
     const button = container.querySelector<HTMLButtonElement>(
       `[data-mobile-action-bar] button[aria-label^="${label}"]`,
     );
     if (!button) throw new Error(`Missing ${label} mode button.`);
     await act(async () => button.click());
+    await act(async () => vi.advanceTimersByTimeAsync(20));
+  }
+
+  async function openFullProgram() {
+    await openMode("Explore");
+    await act(async () =>
+      buttonWithText(container, "Browse full program").click(),
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(20));
+  }
+
+  async function openTravel() {
+    await openMode("My Day");
+    await act(async () =>
+      buttonWithText(container, "Getting there").click(),
+    );
     await act(async () => vi.advanceTimersByTimeAsync(20));
   }
 
@@ -111,7 +167,7 @@ describe("FairDayWorkspace app journey", () => {
     expect(container.querySelector("#fair-now-heading")).not.toBeNull();
     expect(container.querySelector("#fair-find-heading")).toBeNull();
 
-    await openMode("Find");
+    await openMode("Explore");
 
     expect(window.location.hash).toBe("#find");
     expect(container.querySelector("#fair-now-heading")).toBeNull();
@@ -123,9 +179,33 @@ describe("FairDayWorkspace app journey", () => {
     expect(container.querySelector("#fair-find-heading")).toBeNull();
     expect(document.activeElement?.id).toBe("fair-my-day-heading");
 
-    await openMode("Travel");
+    await openMode("Map");
     expect(container.querySelector("#fair-my-day-heading")).toBeNull();
-    expect(document.activeElement?.id).toBe("fair-travel-heading");
+    expect(document.activeElement?.id).toBe("fair-grounds-map-heading");
+  });
+
+  it("waits for Travel before checking live sources and defers transit until selected", async () => {
+    await renderFair();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    await openTravel();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/fair/arrival-status?date=2026-09-18&mode=overview",
+      expect.objectContaining({ cache: "no-store" }),
+    );
+
+    fetchMock.mockClear();
+    const transit = container.querySelector<HTMLInputElement>(
+      'input[value="arrival-transit-context"]',
+    );
+    if (!transit) throw new Error("Missing County Transit option.");
+    await act(async () => transit.click());
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/fair/arrival-status?date=2026-09-18&mode=transit",
+      expect.objectContaining({ cache: "no-store" }),
+    );
   });
 
   it("opens an original #plan link in My Day and replaces it with the canonical hash", async () => {
@@ -145,7 +225,7 @@ describe("FairDayWorkspace app journey", () => {
 
   it("sorts program rows by time, removes ticket utility rows, and exposes EventHub in Find", async () => {
     const data = await renderFair();
-    await openMode("Find");
+    await openFullProgram();
 
     const results = container.querySelector<HTMLOListElement>(
       '[aria-label="Fair program results"]',
@@ -157,21 +237,173 @@ describe("FairDayWorkspace app journey", () => {
     expect(text.indexOf("Daughtry")).toBeLessThan(
       text.indexOf("2026 Agricultural Awards Ceremony"),
     );
-    expect(container.querySelector<HTMLAnchorElement>(`a[href="${data.externalGuide.url}"]`)).not.toBeNull();
+    expect(container.querySelector<HTMLAnchorElement>(`a[href="${data.externalGuide.url}"]`)).toBeNull();
     expect(container.textContent).toContain("sorted by time");
+
+    await openMode("Map");
+    expect(container.querySelector<HTMLAnchorElement>(`a[href="${data.externalGuide.url}"]`)).not.toBeNull();
   });
 
-  it("adds a program result and carries it into My Day without a page scroll", async () => {
+  it("starts Find with visual intent choices and excludes agriculture from Animals", async () => {
+    const data = await renderFair();
+    await openMode("Explore");
+
+    expect(container.querySelector('[aria-label="Back to Fair Today"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="Fair day to explore"]')).not.toBeNull();
+    expect(
+      container.querySelector('[aria-label="Fair program results"]'),
+    ).toBeNull();
+    expect(container.textContent).toContain("Browse full program");
+    const kidZone = buttonWithText(container, "Kid Zone");
+    const search = container.querySelector("#fair-unified-search");
+    expect(
+      kidZone.compareDocumentPosition(search!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    await act(async () => buttonWithText(container, "Animals & livestock").click());
+    const results = container.querySelector<HTMLOListElement>(
+      '[aria-label="Fair program results"]',
+    );
+    if (!results) throw new Error("Missing animal program results.");
+    const fridayAnimals = data.scheduleItems.filter(
+      (item) => item.date === "2026-09-18" && item.kind === "animal",
+    );
+    const fridayAgriculture = data.scheduleItems.filter(
+      (item) => item.date === "2026-09-18" && item.kind === "agriculture",
+    );
+    for (const item of fridayAnimals) {
+      expect(results.textContent).toContain(item.title);
+    }
+    for (const item of fridayAgriculture) {
+      expect(results.textContent).not.toContain(item.title);
+    }
+    expect(container.textContent).toContain("Back to Explore");
+    expect(container.querySelector("[data-fair-discovery-choices]")).toBeNull();
+
+    await openMode("Explore");
+    expect(container.querySelector("[data-fair-discovery-choices]")).not.toBeNull();
+  });
+
+  it("switches between visual discovery and the grounds map without leaving the Fair plan", async () => {
     await renderFair();
-    await openMode("Find");
+    await openMode("Explore");
+
+    expect(container.querySelector("[data-fair-discovery-choices]")).not.toBeNull();
+    await openMode("Map");
+
+    expect(window.location.hash).toBe("#fair-map");
+    expect(container.querySelector("[data-fair-discovery-choices]")).toBeNull();
+    expect(container.textContent).toContain("The grounds map could not open.");
+
+    await openMode("Explore");
+    expect(window.location.hash).toBe("#find");
+    expect(container.querySelector("[data-fair-discovery-choices]")).not.toBeNull();
+  });
+
+  it("keeps program details honest and allows only one Fair drawer", async () => {
+    await renderFair();
+    await openFullProgram();
+
+    const details = container.querySelector<HTMLButtonElement>(
+      'button[aria-label^="Open details for"]',
+    );
+    if (!details) throw new Error("Missing a program details control.");
+    await act(async () => details.click());
+    await act(async () => vi.advanceTimersByTimeAsync(20));
+
+    const add = buttonWithText(document.body, "Add to My Day");
+    expect(add.getAttribute("aria-pressed")).toBe("false");
+    await act(async () => add.click());
+    expect(document.body.textContent).toContain("Remove from My Day");
+    const remove = buttonWithText(document.body, "Remove from My Day");
+    expect(remove.getAttribute("aria-pressed")).toBe("true");
+    await act(async () => remove.click());
+    expect(document.body.textContent).toContain("Add to My Day");
+
+    window.history.replaceState(
+      {},
+      "",
+      "/moments/great-frederick-fair-2026#answers",
+    );
+    await act(async () => window.dispatchEvent(new Event("hashchange")));
+    await act(async () => vi.advanceTimersByTimeAsync(20));
+
+    expect(
+      document.body.querySelectorAll('[role="dialog"][data-state="open"]'),
+    ).toHaveLength(1);
+    expect(document.body.textContent).toContain("Fair help");
+  });
+
+  it("reopens the same family essential with its reviewed answer after closing Help", async () => {
+    await renderFair();
+
+    const openFamilyCare = async () => {
+      await act(async () =>
+        buttonWithText(container, "Help & access").click(),
+      );
+      await act(async () => vi.advanceTimersByTimeAsync(20));
+      await act(async () =>
+        buttonWithText(document.body, "Family Care + changing").click(),
+      );
+      await act(async () => vi.advanceTimersByTimeAsync(20));
+      expect(document.body.textContent).toContain(
+        "Where can a family handle nursing or diaper changes?",
+      );
+      expect(document.body.textContent).toContain(
+        "every restroom also has a diaper-changing station",
+      );
+    };
+
+    await openFamilyCare();
+    const close = document.body.querySelector<HTMLButtonElement>(
+      'button[aria-label="Close Fair help"]',
+    );
+    if (!close) throw new Error("Missing Fair help close button.");
+    await act(async () => close.click());
+    await act(async () => vi.advanceTimersByTimeAsync(400));
+
+    await openFamilyCare();
+    expect(document.body.textContent).not.toMatch(/first aid/i);
+  });
+
+  it("acknowledges a saved program result and opens My Day from the toast", async () => {
+    const data = await renderFair();
+    await openFullProgram();
 
     const addDaughtry = container.querySelector<HTMLButtonElement>(
       'button[aria-label^="Add Daughtry to My Day"]',
     );
     if (!addDaughtry) throw new Error("Missing Add Daughtry control.");
+    const daughtry = data.scheduleItems.find((item) =>
+      item.title.startsWith("Daughtry"),
+    );
+    if (!daughtry) throw new Error("Missing Daughtry schedule item.");
+    expect(addDaughtry.getAttribute("aria-pressed")).toBe("false");
     await act(async () => addDaughtry.click());
 
-    await openMode("My Day");
+    const removeDaughtry = container.querySelector<HTMLButtonElement>(
+      'button[aria-label^="Remove Daughtry from My Day"]',
+    );
+    expect(removeDaughtry?.getAttribute("aria-pressed")).toBe("true");
+    expect(feedbackMocks.haptic).toHaveBeenLastCalledWith("medium");
+    expect(feedbackMocks.toastSuccess).toHaveBeenCalledWith(
+      "Added to My Day",
+      expect.objectContaining({
+        id: "fair-plan-feedback",
+        description: daughtry.title,
+        duration: 5_000,
+        action: expect.objectContaining({ label: "My Day" }),
+        cancel: expect.objectContaining({ label: "Undo" }),
+      }),
+    );
+
+    const saveOptions = feedbackMocks.toastSuccess.mock.calls[0]?.[1] as {
+      action: { onClick: () => void };
+    };
+    await act(async () => saveOptions.action.onClick());
+    await act(async () => vi.advanceTimersByTimeAsync(20));
+
+    expect(window.location.hash).toBe("#my-day");
     expect(container.textContent).toContain("Daughtry");
     expect(
       container.querySelector('[data-mobile-action-bar] button[aria-label="My Day, 1 saved"]'),
@@ -181,9 +413,141 @@ describe("FairDayWorkspace app journey", () => {
     ).toHaveLength(1);
   });
 
+  it("keeps a blocked-storage plan usable without claiming it is saved", async () => {
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: () => null,
+        setItem: () => {
+          throw new DOMException("Storage is blocked", "SecurityError");
+        },
+        removeItem: () => undefined,
+      },
+    });
+
+    await renderFair();
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+
+    expect(
+      container.querySelector('[data-fair-plan-storage="unavailable"]'),
+    ).not.toBeNull();
+    expect(container.querySelector("[data-fair-storage-warning]")?.textContent).toContain(
+      "This plan is not being saved.",
+    );
+    expect(container.textContent).toContain(
+      "reloading or closing it will clear My Day",
+    );
+
+    await openFullProgram();
+    const addDaughtry = container.querySelector<HTMLButtonElement>(
+      'button[aria-label^="Add Daughtry to My Day"]',
+    );
+    if (!addDaughtry) throw new Error("Missing Add Daughtry control.");
+    await act(async () => addDaughtry.click());
+    await openMode("My Day");
+
+    expect(container.textContent).toContain("Daughtry");
+    expect(container.textContent).toContain(
+      "Temporary plan · keep this page open",
+    );
+    expect(container.textContent).not.toContain("kept on this device");
+  });
+
+  it("undoes a save without opening another surface", async () => {
+    await renderFair();
+    await openFullProgram();
+
+    const addDaughtry = container.querySelector<HTMLButtonElement>(
+      'button[aria-label^="Add Daughtry to My Day"]',
+    );
+    if (!addDaughtry) throw new Error("Missing Add Daughtry control.");
+    await act(async () => addDaughtry.click());
+
+    const saveOptions = feedbackMocks.toastSuccess.mock.calls[0]?.[1] as {
+      cancel: { onClick: () => void };
+    };
+    await act(async () => saveOptions.cancel.onClick());
+
+    expect(window.location.hash).toBe("#find");
+    expect(
+      container.querySelector(
+        'button[aria-label^="Add Daughtry to My Day"][aria-pressed="false"]',
+      ),
+    ).not.toBeNull();
+    expect(feedbackMocks.haptic).toHaveBeenLastCalledWith("light");
+    expect(
+      JSON.parse(storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}").steps,
+    ).toHaveLength(0);
+  });
+
+  it("removes a saved result in Find and restores it with Undo", async () => {
+    const data = await renderFair();
+    await openFullProgram();
+
+    const addDaughtry = container.querySelector<HTMLButtonElement>(
+      'button[aria-label^="Add Daughtry to My Day"]',
+    );
+    if (!addDaughtry) throw new Error("Missing Add Daughtry control.");
+    const daughtry = data.scheduleItems.find((item) =>
+      item.title.startsWith("Daughtry"),
+    );
+    if (!daughtry) throw new Error("Missing Daughtry schedule item.");
+    await act(async () => addDaughtry.click());
+
+    const addAwards = container.querySelector<HTMLButtonElement>(
+      'button[aria-label^="Add 2026 Agricultural Awards Ceremony to My Day"]',
+    );
+    if (!addAwards) throw new Error("Missing Add agricultural awards control.");
+    await act(async () => addAwards.click());
+    const originalOrder = JSON.parse(
+      storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}",
+    ).steps.map((step: { scheduleItemId: string }) => step.scheduleItemId);
+    feedbackMocks.toast.mockClear();
+
+    const removeDaughtry = container.querySelector<HTMLButtonElement>(
+      'button[aria-label^="Remove Daughtry from My Day"]',
+    );
+    if (!removeDaughtry) throw new Error("Missing Remove Daughtry control.");
+    await act(async () => removeDaughtry.click());
+
+    expect(feedbackMocks.toast).toHaveBeenCalledWith(
+      "Removed from My Day",
+      expect.objectContaining({
+        id: "fair-plan-feedback",
+        description: daughtry.title,
+        duration: 5_000,
+        action: expect.objectContaining({ label: "Undo" }),
+      }),
+    );
+    expect(
+      container.querySelector(
+        'button[aria-label^="Add Daughtry to My Day"][aria-pressed="false"]',
+      ),
+    ).not.toBeNull();
+
+    const removeOptions = feedbackMocks.toast.mock.calls[0]?.[1] as {
+      action: { onClick: () => void };
+    };
+    await act(async () => removeOptions.action.onClick());
+
+    expect(
+      container.querySelector(
+        'button[aria-label^="Remove Daughtry from My Day"][aria-pressed="true"]',
+      ),
+    ).not.toBeNull();
+    expect(feedbackMocks.haptic).toHaveBeenLastCalledWith("light");
+    const restoredSteps = JSON.parse(
+      storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}",
+    ).steps as Array<{ scheduleItemId: string }>;
+    expect(restoredSteps).toHaveLength(2);
+    expect(restoredSteps.map((step) => step.scheduleItemId)).toEqual(
+      originalOrder,
+    );
+  });
+
   it("shows only the selected day's stops while keeping other days saved", async () => {
     await renderFair();
-    await openMode("Find");
+    await openFullProgram();
 
     const addDaughtry = container.querySelector<HTMLButtonElement>(
       'button[aria-label^="Add Daughtry to My Day"]',
@@ -194,22 +558,46 @@ describe("FairDayWorkspace app journey", () => {
     await chooseDate("2026-09-20");
     await openMode("My Day");
     expect(container.textContent).not.toContain("Daughtry");
-    expect(container.textContent).toContain(
-      "Choose one thing you do not want to miss.",
-    );
+    expect(container.textContent).not.toContain("Your timeline starts with one choice.");
+    expect(container.querySelector("[data-fair-journey]")).not.toBeNull();
     expect(
       container.querySelector(
         '[data-mobile-action-bar] button[aria-label="My Day"]',
       ),
     ).not.toBeNull();
 
-    await openMode("Now");
+    await openMode("Today");
     await chooseDate("2026-09-18");
     await openMode("My Day");
     expect(container.textContent).toContain("Daughtry");
     expect(
       JSON.parse(storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}").steps,
     ).toHaveLength(1);
+  });
+
+  it("promotes the Sunday sensory window into the selected-day journey", async () => {
+    await renderFair();
+
+    expect(container.querySelector("[data-fair-access-highlight]")).toBeNull();
+    await chooseDate("2026-09-20");
+
+    const highlight = container.querySelector<HTMLElement>(
+      "[data-fair-access-highlight]",
+    );
+    expect(highlight?.textContent).toContain(
+      "Sensory-friendly carnival · noon–2 p.m.",
+    );
+    expect(highlight?.textContent).toContain(
+      "whole-ground low-sensory period",
+    );
+
+    await act(async () =>
+      buttonWithText(container, "Open sensory-friendly details").click(),
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(20));
+    expect(document.body.textContent).toContain(
+      "When is the sensory-friendly carnival period?",
+    );
   });
 
   it("keeps the live ticket recommendation current when an open drawer crosses a known cutoff", async () => {
@@ -282,13 +670,17 @@ describe("FairDayWorkspace app journey", () => {
     await act(async () =>
       buttonWithText(document.body, "I already have tickets").click(),
     );
-    expect(container.textContent).toContain("1 of 3 handled");
-    expect(container.textContent).toContain("Choose how to get there");
+    expect(container.textContent).toContain("1 of 3 ready");
+    expect(
+      container.querySelector("[data-fair-plan-announcement]")?.textContent,
+    ).toContain("1 of 3 preparation steps is ready");
+    expect(container.textContent).toContain("Choose how you will get there.");
+    expect(container.textContent).toContain("Choose travel");
   });
 
-  it("derives the return plan from a travel choice instead of asking twice", async () => {
+  it("does not mark arrival and return ready until the chosen plan is confirmed", async () => {
     await renderFair();
-    await openMode("Travel");
+    await openTravel();
 
     const drive = container.querySelector<HTMLInputElement>(
       'input[value="arrival-drive"]',
@@ -296,16 +688,44 @@ describe("FairDayWorkspace app journey", () => {
     if (!drive) throw new Error("Missing Drive / Park option.");
     await act(async () => drive.click());
 
-    const stored = JSON.parse(
+    const selectedPlan = JSON.parse(
       storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}",
     );
-    expect(stored.arrivalChoice).toBe("drive");
-    expect(stored.readyKeys).toEqual(
-      expect.arrayContaining(["arrival", "return"]),
+    expect(selectedPlan.arrivalChoice).toBe("drive");
+    expect(selectedPlan.readyKeys).not.toContain("travel");
+    expect(selectedPlan.readyKeys).not.toContain("arrival");
+    expect(selectedPlan.readyKeys).not.toContain("return");
+    expect(container.textContent).toContain("Use this driving plan");
+
+    await act(async () =>
+      buttonWithText(container, "Use this driving plan").click(),
     );
+
+    const confirmedPlan = JSON.parse(
+      storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}",
+    );
+    expect(confirmedPlan.readyKeys).toContain("travel");
+    expect(confirmedPlan.readyKeys).not.toContain("arrival");
+    expect(confirmedPlan.readyKeys).not.toContain("return");
+
+    await chooseDate("2026-09-18");
+    expect(
+      JSON.parse(storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}").readyKeys,
+    ).toContain("travel");
+
+    await chooseDate("2026-09-19");
+    const nextDayPlan = JSON.parse(
+      storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}",
+    );
+    expect(nextDayPlan.selectedDayId).toBe("day-2026-09-19");
+    expect(nextDayPlan.readyKeys).not.toContain("travel");
+    expect(container.textContent).toContain("Use this driving plan");
 
     await openMode("My Day");
     expect(container.textContent).toContain("Drive and park");
+    expect(container.textContent).toContain(
+      "Give the middle of your day a place to start.",
+    );
     expect(container.textContent).toContain("Head back");
     expect(container.textContent).toContain("Return to your saved parking lot");
     expect(container.textContent).not.toContain("Return plan set");

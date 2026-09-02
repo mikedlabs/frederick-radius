@@ -40,13 +40,20 @@ const options: FairDayArrivalView[] = [
   },
 ];
 
-function render(selected: FairDayArrivalView | null, eventPhase: "pre-fair" | "fair-day" = "pre-fair") {
+function render(
+  selected: FairDayArrivalView | null,
+  eventPhase: "pre-fair" | "fair-day" = "pre-fair",
+  ready = false,
+) {
   return renderToStaticMarkup(
     createElement(FairTravelPanel, {
       options,
       selected,
+      selectedDate: "2026-09-18",
       eventPhase,
+      ready,
       onSelect: vi.fn(),
+      onReadyChange: vi.fn(),
     }),
   );
 }
@@ -74,6 +81,10 @@ describe("FairTravelPanel", () => {
     );
     expect(html).toContain('href="/transit"');
     expect(html).toContain('href="https://example.com/county-transit"');
+    expect(html).toContain("I checked Fair-date service");
+    expect(html).toContain(
+      "Radius is not confirming Fair-date service or arrival times.",
+    );
     expect(html).not.toContain("$15 infield");
     expect(html).not.toContain("Meet your driver at Gate 4A");
   });
@@ -97,5 +108,19 @@ describe("FairTravelPanel", () => {
     expect(html).toContain("Confirm the return point with your driver before entering.");
     expect(html).toContain("Confirm official drop-off details");
     expect(html).not.toContain("Fair-date service and arrival times are not confirmed");
+  });
+
+  it("shows a reversible local ready state only after explicit confirmation", () => {
+    const notReady = render(options[0]);
+    const ready = render(options[0], "pre-fair", true);
+
+    expect(notReady).toContain("Use this driving plan");
+    expect(notReady).not.toContain(
+      "This travel and return plan is marked ready on this device.",
+    );
+    expect(ready).toContain(
+      "This travel and return plan is marked ready on this device.",
+    );
+    expect(ready).toContain("Mark travel plan not ready");
   });
 });

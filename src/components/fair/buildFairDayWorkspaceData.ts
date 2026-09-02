@@ -5,6 +5,7 @@ import type { FairScheduleSourceItem } from "@/lib/fair/schedule";
 import { greatFrederickFair2026PracticalAnswers } from "@/data/fair/great-frederick-fair-2026-practical-answers";
 
 import type {
+  FairDayAccessHighlight,
   FairDayArrivalView,
   FairDayScheduleItemView,
   FairDayWorkspaceData,
@@ -298,6 +299,30 @@ function entryCopy(pack: FairPack): {
   };
 }
 
+function accessHighlights(pack: FairPack): FairDayAccessHighlight[] {
+  const sensoryWindow = pack.manifest.accessFacts.find(
+    (fact) =>
+      fact.id === "access-sensory-friendly-carnival" &&
+      fact.kind === "sensory-friendly-hours" &&
+      fact.state.status === "known",
+  );
+  if (!sensoryWindow || sensoryWindow.state.status !== "known") return [];
+  const sensoryDetail = sensoryWindow.state.value;
+
+  return sensoryWindow.relatedEntityIds.flatMap((entityId) => {
+    if (!entityId.startsWith("day-")) return [];
+    return [
+      {
+        id: sensoryWindow.id,
+        date: entityId.slice("day-".length),
+        title: "Sensory-friendly carnival · noon–2 p.m.",
+        detail: sensoryDetail,
+        answerId: "fair-answer-sensory-friendly-carnival",
+      },
+    ];
+  });
+}
+
 export function buildFairDayWorkspaceData(
   pack: FairPack,
   pointer: FairPackPointer,
@@ -386,6 +411,7 @@ export function buildFairDayWorkspaceData(
     })),
     partyOffers,
     practicalAnswers: greatFrederickFair2026PracticalAnswers,
+    accessHighlights: accessHighlights(pack),
     arrivalOptions: arrivalViews(pack),
     ...entry,
     ticketWalletHelpUrl: ETIX_WALLET_HELP_URL,

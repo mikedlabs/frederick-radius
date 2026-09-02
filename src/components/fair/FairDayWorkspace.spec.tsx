@@ -20,6 +20,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
   it("keeps original Fair links connected to the redesigned task views", () => {
     expect(fairModeFromHash("#now")).toBe("now");
     expect(fairModeFromHash("find")).toBe("find");
+    expect(fairModeFromHash("#fair-map")).toBe("map");
     expect(fairModeFromHash("#plan")).toBe("my-day");
     expect(fairModeFromHash("#leave")).toBe("travel");
     expect(fairModeFromHash("#answers")).toBe("now");
@@ -38,7 +39,8 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).toContain("fairgrounds-night-mike-d-960.jpg");
     expect(html).toContain("fairgrounds-night-mike-d-1920.jpg");
     expect(html).toContain('href="/today"');
-    expect(html).toContain("instead of hunting across separate sites");
+    expect(html).toContain('<h1 id="fair-now-heading"');
+    expect(html).toContain(data.eventName);
   });
 
   it("renders one app panel instead of the old long scrolling document", () => {
@@ -60,14 +62,14 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).not.toContain("Things people miss");
   });
 
-  it("exposes four real task modes with a contextual mobile action bar", () => {
+  it("exposes four direct task destinations with a contextual mobile action bar", () => {
     const html = renderToStaticMarkup(
       createElement(FairDayWorkspace, { data }),
     );
 
     expect(html).toContain('data-mobile-action-bar="true"');
     expect(html).toContain('aria-label="Fair Day"');
-    for (const label of ["Now", "Find", "My Day", "Travel"]) {
+    for (const label of ["Today", "Explore", "Map", "My Day"]) {
       expect(html).toContain(`aria-label="${label}"`);
     }
     expect(html).not.toContain('href="#now"');
@@ -76,16 +78,19 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).not.toContain('href="#travel"');
   });
 
-  it("reduces preparation to tickets, travel, and entry with one next action", () => {
+  it("shows one next action without repeating a preparation dashboard", () => {
     const html = renderToStaticMarkup(
       createElement(FairDayWorkspace, { data }),
     );
 
-    expect(html).toContain("0 of 3 handled");
-    expect(html).toContain("Compare or mark ready");
-    expect(html).toContain("Choose drive, transit, or drop-off");
-    expect(html).toContain("Payment, gate, and ticket access");
+    expect(html).toContain("Your next best step");
+    expect(html).toContain("Tickets still need review.");
     expect(html).toContain("Review tickets");
+    expect(html.match(/0 of 3 ready/g)).toHaveLength(1);
+    expect(html).toContain("No saved stops");
+    expect(html).not.toContain('aria-label="Fair trip at a glance"');
+    expect(html).not.toContain("Visitor essentials");
+    expect(html).not.toContain("Check the details that can slow you down.");
     expect(html).not.toContain("Return plan set");
     expect(html).not.toContain("Ready to Go checks");
   });
@@ -95,11 +100,14 @@ describe("FairDayWorkspace server-rendered contract", () => {
       createElement(FairDayWorkspace, { data }),
     );
 
-    expect(html).toContain("Plan Friday at the Fair.");
-    expect(html).toContain("Your plan stays on this device.");
+    expect(html).not.toContain("Plan Friday at the Fair.");
+    expect(html).not.toContain("Before the Fair · Fri, Sep 18");
+    expect(html.indexOf("Your next best step")).toBeLessThan(
+      html.indexOf("About this independent guide"),
+    );
     expect(html).not.toContain(data.externalGuide.url);
     expect(html).not.toContain("Open Radius Transit");
     expect(html).not.toContain("Compare tickets for your party");
-    expect(html.match(/font-editorial/g)).toBeNull();
+    expect(html.match(/font-editorial/g)).toHaveLength(1);
   });
 });

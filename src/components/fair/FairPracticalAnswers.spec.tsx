@@ -7,25 +7,59 @@ import type { FairPracticalAnswer } from "@/lib/fair/practical-answers";
 import FairPracticalAnswers from "./FairPracticalAnswers";
 
 describe("FairPracticalAnswers", () => {
-  it("publishes sourced official answers and labels an unresolved rule", () => {
+  it("starts with intent-led help instead of publishing the full answer directory", () => {
     const html = renderToStaticMarkup(
       <FairPracticalAnswers answers={greatFrederickFair2026PracticalAnswers} />,
     );
-    const publicAnswerCount = greatFrederickFair2026PracticalAnswers.filter(
-      (answer) => answer.evidence !== "community-pattern",
-    ).length;
 
-    expect(html).toContain("Do any parking lots require cash?");
-    expect(html).toContain("Verified from official Fair sources");
-    expect(html).toContain("Can I leave the Fair and come back on the same ticket?");
-    expect(html).toContain("Not confirmed in the current official pages");
-    expect(html).toContain("https://thegreatfrederickfair.com/faq/");
-    expect(html).toContain('role="group"');
-    expect(html).toContain(
-      'aria-label="Filter practical answers by part of the visit"',
+    expect(html).toContain("What do you need right now?");
+    expect(html).toContain("Family Care + changing");
+    expect(html).toContain("Easy to miss");
+    expect(html).toContain("Lost person or item");
+    expect(html).toContain("Access guide");
+    expect(html).toContain("ASL, sensory, mobility, and service animals");
+    expect(html).toContain("Browse all official answers");
+    expect(html).not.toContain("Do any parking lots require cash?");
+    expect(html).not.toContain(
+      "Can I leave the Fair and come back on the same ticket?",
     );
     expect(html).toContain('role="status" aria-live="polite" aria-atomic="true"');
-    expect(html).toContain(`${publicAnswerCount} practical answers shown.`);
+    expect(html).toContain(
+      "Choose a common need or search all practical answers.",
+    );
+  });
+
+  it("opens a source-checked access guide without overstating Fair services", () => {
+    const html = renderToStaticMarkup(
+      <FairPracticalAnswers
+        answers={greatFrederickFair2026PracticalAnswers}
+        focusCategory="accessibility"
+      />,
+    );
+
+    expect(html).toContain("Access at the Fair");
+    expect(html).toContain("Where can I see the ASL interpreter");
+    expect(html).toContain("When is the sensory-friendly carnival period?");
+    expect(html).toContain("Can I bring a service animal?");
+    expect(html).toContain("Is there a permanent quiet or sensory room?");
+    expect(html).toContain("do not identify a permanent quiet room");
+    expect(html).toContain('href="/access"');
+    expect(html).not.toContain("Do any parking lots require cash?");
+  });
+
+  it("opens a source-backed answer when an essential sends a focus target", () => {
+    const html = renderToStaticMarkup(
+      <FairPracticalAnswers
+        answers={greatFrederickFair2026PracticalAnswers}
+        focusAnswerId="fair-answer-family-care"
+      />,
+    );
+
+    expect(html).toContain("Where can a family handle nursing or diaper changes?");
+    expect(html).toContain("every restroom also has a diaper-changing station");
+    expect(html).toContain("Verified from official Fair sources");
+    expect(html).toContain("https://thegreatfrederickfair.com/faq/");
+    expect(html).not.toContain("Can I leave the Fair and come back on the same ticket?");
   });
 
   it("keeps community leads off the public visitor surface", () => {

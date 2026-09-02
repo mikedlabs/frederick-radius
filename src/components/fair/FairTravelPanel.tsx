@@ -17,14 +17,18 @@ import { useId, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/Button";
 
+import FairArrivalStatus from "./FairArrivalStatus";
 import FairCarMemoryPanel from "./FairCarMemoryPanel";
 import type { FairDayArrivalView, FairDayWorkspaceData } from "./types";
 
 export type FairTravelPanelProps = {
   options: FairDayArrivalView[];
   selected: FairDayArrivalView | null;
+  selectedDate: string;
   eventPhase: FairDayWorkspaceData["eventPhase"];
+  ready: boolean;
   onSelect: (option: FairDayArrivalView) => void;
+  onReadyChange: (ready: boolean) => void;
 };
 
 type SupportedArrivalChoice = "drive" | "transit" | "drop-off";
@@ -282,11 +286,65 @@ function DropOffFlow({ option }: { option: FairDayArrivalView }) {
   );
 }
 
+const READY_ACTION: Record<SupportedArrivalChoice, string> = {
+  drive: "Use this driving plan",
+  transit: "I checked Fair-date service",
+  "drop-off": "Use this drop-off plan",
+};
+
+function TravelReadinessControl({
+  choice,
+  ready,
+  onReadyChange,
+}: {
+  choice: SupportedArrivalChoice;
+  ready: boolean;
+  onReadyChange: (ready: boolean) => void;
+}) {
+  return (
+    <div
+      className="mt-5 border-y py-4"
+      style={{ borderColor: "var(--app-border-strong)" }}
+    >
+      <p
+        className="text-[11px] font-bold uppercase tracking-[0.11em]"
+        style={{ color: "var(--app-cool)" }}
+      >
+        Travel and return
+      </p>
+      <p
+        className="mt-1 max-w-[34rem] text-[13px] leading-relaxed"
+        style={{ color: "var(--app-ink-2)" }}
+      >
+        {ready
+          ? "This travel and return plan is marked ready on this device."
+          : choice === "transit"
+            ? "This records only your check. Radius is not confirming Fair-date service or arrival times."
+            : "Mark this ready after you have checked the official details you need."}
+      </p>
+      <Button
+        className="mt-3 w-full sm:w-auto"
+        variant="secondary"
+        aria-pressed={ready}
+        onClick={() => onReadyChange(!ready)}
+        iconLeft={
+          ready ? <Check className="h-4 w-4" aria-hidden /> : undefined
+        }
+      >
+        {ready ? "Mark travel plan not ready" : READY_ACTION[choice]}
+      </Button>
+    </div>
+  );
+}
+
 export default function FairTravelPanel({
   options,
   selected,
+  selectedDate,
   eventPhase,
+  ready,
   onSelect,
+  onReadyChange,
 }: FairTravelPanelProps) {
   const groupName = useId();
   const supportedOptions = options.filter(isSupportedOption);
@@ -296,6 +354,10 @@ export default function FairTravelPanel({
       : null;
   return (
     <div aria-label="Fair travel choices">
+      <FairArrivalStatus
+        selectedDate={selectedDate}
+        transitSelected={activeOption?.planChoice === "transit"}
+      />
       {supportedOptions.length > 0 ? (
         <fieldset className="mt-5">
           <legend className="sr-only">Choose a travel mode</legend>
@@ -379,6 +441,11 @@ export default function FairTravelPanel({
           {activeOption.planChoice === "drop-off" ? (
             <DropOffFlow option={activeOption} />
           ) : null}
+          <TravelReadinessControl
+            choice={activeOption.planChoice}
+            ready={ready}
+            onReadyChange={onReadyChange}
+          />
         </div>
       ) : supportedOptions.length > 0 ? (
         <div

@@ -366,10 +366,12 @@ export default async function HomePage() {
         {whatsOn}
       </PageChapter>
 
-      <PageChapter
-        label="Plan the rest"
-        variant="plain"
-        className="today-plan-rest mt-8"
+      <CollapsibleSection
+        title="Plan the rest"
+        storageKey="fr.today.plan-rest"
+        defaultOpen={false}
+        headingLevel={2}
+        className="today-plan-rest today-disclosure mt-8 border-t pt-2 [&>h2>button]:min-h-11"
       >
         <div role="group" aria-label="Useful today">
           {availableToday}
@@ -386,7 +388,7 @@ export default async function HomePage() {
             <TomorrowPreview now={now} eventsPromise={eventsPromise} />
           </Suspense>
         </div>
-      </PageChapter>
+      </CollapsibleSection>
 
       {/* Secondary doors share one deliberate reveal. The old lower page also
           repeated generated collections, a rotating place list, and a taste
@@ -440,7 +442,7 @@ function OpenPlaceLead({
   rows: DaypartRows;
   note: string | null;
 }) {
-  return <DaypartNeeds rows={rows} note={note} />;
+  return <DaypartNeeds rows={rows} note={note} variant="brief" />;
 }
 
 /** Weather-aware ordering is a progressive enhancement. The ordinary local

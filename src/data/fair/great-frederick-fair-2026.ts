@@ -1,6 +1,7 @@
 import { parseFairManifest } from "@/lib/fair/domain";
 
 const VERIFIED_AT = "2026-09-01T20:58:08Z";
+const ACCESS_VERIFIED_AT = "2026-09-02T13:21:52-04:00";
 
 const fairHomeSource = {
   publisher: "The Great Frederick Fair",
@@ -35,6 +36,27 @@ const guestServicesSource = {
   sourceTitle: "Guest Services",
   sourceUrl: "https://thegreatfrederickfair.com/guest-services/",
   verifiedAt: VERIFIED_AT,
+};
+
+const grandstandSource = {
+  publisher: "The Great Frederick Fair",
+  sourceTitle: "Grandstand",
+  sourceUrl: "https://thegreatfrederickfair.com/grandstand/",
+  verifiedAt: ACCESS_VERIFIED_AT,
+};
+
+const carnivalAccessSource = {
+  publisher: "The Great Frederick Fair",
+  sourceTitle: "The Carnival",
+  sourceUrl: "https://thegreatfrederickfair.com/the-carnival/",
+  verifiedAt: ACCESS_VERIFIED_AT,
+};
+
+const admissionPolicySource = {
+  publisher: "The Great Frederick Fair",
+  sourceTitle: "General Admission Policies",
+  sourceUrl: "https://thegreatfrederickfair.com/general-admission-policies/",
+  verifiedAt: ACCESS_VERIFIED_AT,
 };
 
 const unknownCoordinates = {
@@ -111,7 +133,7 @@ export const greatFrederickFair2026 = parseFairManifest({
   timezone: "America/New_York",
   startsOn: "2026-09-18",
   endsOn: "2026-09-26",
-  updatedAt: VERIFIED_AT,
+  updatedAt: ACCESS_VERIFIED_AT,
   provenance: [fairHomeSource, visitorSource],
   days: [
     fairDay("2026-09-18", "16:00"),
@@ -164,6 +186,28 @@ export const greatFrederickFair2026 = parseFairManifest({
   ],
   accessFacts: [
     {
+      id: "access-asl-grandstand",
+      kind: "asl-interpretation",
+      state: {
+        status: "known",
+        value:
+          "The Fair provides an ASL interpreter for every evening musical Grandstand performance. The interpreter is audience-left; the Fair identifies Track Right and Grandstand sections C through F as the best-view areas.",
+      },
+      relatedEntityIds: [],
+      provenance: [faqSource, grandstandSource],
+    },
+    {
+      id: "access-hearing-grandstand-help",
+      kind: "hearing-accommodation",
+      state: {
+        status: "known",
+        value:
+          "The Fair directs blind and hard-of-hearing guests to the Ticket Office at 301-695-3928 for Grandstand accommodations. ASL seating is limited and should be confirmed before purchase.",
+      },
+      relatedEntityIds: [],
+      provenance: [faqSource, grandstandSource],
+    },
+    {
       id: "access-accessible-parking",
       kind: "accessible-parking",
       state: {
@@ -207,6 +251,17 @@ export const greatFrederickFair2026 = parseFairManifest({
       provenance: [guestServicesSource],
     },
     {
+      id: "access-sensory-friendly-carnival",
+      kind: "sensory-friendly-hours",
+      state: {
+        status: "known",
+        value:
+          "The carnival lowers its lights and music on Sunday, September 20, 2026, from noon to 2 p.m. The Fair does not describe this as a whole-ground low-sensory period.",
+      },
+      relatedEntityIds: ["day-2026-09-20"],
+      provenance: [carnivalAccessSource],
+    },
+    {
       id: "access-sensory-space",
       kind: "sensory-space",
       state: {
@@ -216,6 +271,17 @@ export const greatFrederickFair2026 = parseFairManifest({
       },
       relatedEntityIds: [],
       provenance: [faqSource],
+    },
+    {
+      id: "access-service-animals",
+      kind: "service-animal",
+      state: {
+        status: "known",
+        value:
+          "The Fair permits service animals that are trained to perform work or tasks for a person with a disability. Pets are otherwise prohibited.",
+      },
+      relatedEntityIds: [],
+      provenance: [admissionPolicySource],
     },
   ],
   lots: [

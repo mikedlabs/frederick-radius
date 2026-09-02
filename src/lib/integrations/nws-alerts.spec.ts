@@ -25,4 +25,27 @@ describe("NWS alert response freshness", () => {
       checkedAt: "2026-08-13T21:58:00.000Z",
     });
   });
+
+  it("passes a caller abort through to the provider request", async () => {
+    const parent = new AbortController();
+    parent.abort();
+    const fetchMock = vi.fn<typeof fetch>(async (_input, init) => {
+      if (init?.signal?.aborted) {
+        throw new DOMException("Aborted", "AbortError");
+      }
+      return new Response(JSON.stringify({ features: [] }), { status: 200 });
+    });
+    vi.stubGlobal(
+      "fetch",
+      fetchMock,
+    );
+
+    await expect(getNwsAlertsResult(parent.signal)).resolves.toEqual({
+      alerts: [],
+      available: false,
+    });
+    const requestSignal = fetchMock.mock.calls[0]?.[1]?.signal;
+    expect(requestSignal).toBeInstanceOf(AbortSignal);
+    expect(requestSignal?.aborted).toBe(true);
+  });
 });

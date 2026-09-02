@@ -54,7 +54,7 @@ describe("Today decision hierarchy", () => {
   it("gives each part of the briefing one purpose and preserves an overlapping civic moment", () => {
     const decide = renderedPage.indexOf('label="Decide now"');
     const follow = renderedPage.indexOf('label="Follow the day"');
-    const plan = renderedPage.indexOf('label="Plan the rest"');
+    const plan = renderedPage.indexOf('title="Plan the rest"');
     const more = renderedPage.indexOf('title="Local guides and saved places"');
 
     expect(decide).toBeGreaterThan(-1);
@@ -110,7 +110,11 @@ describe("Today decision hierarchy", () => {
   });
 
   it("hides the optional plan chapter when every time-gated child is empty", () => {
-    expect(todayPage).toContain('className="today-plan-rest mt-8"');
+    expect(todayPage).toContain('title="Plan the rest"');
+    expect(todayPage).toContain('storageKey="fr.today.plan-rest"');
+    expect(todayPage).toContain(
+      'className="today-plan-rest today-disclosure mt-8 border-t pt-2',
+    );
     expect(globalCss).toContain(
       ".today-plan-rest:not(:has([data-today-plan-rest-content]))",
     );
@@ -120,6 +124,9 @@ describe("Today decision hierarchy", () => {
 
   it("renders the location-aware DaypartNeeds implementation once and removes its lower duplicate", () => {
     expect(todayPage.match(/<DaypartNeeds\b/g)).toHaveLength(1);
+    expect(todayPage).toContain(
+      '<DaypartNeeds rows={rows} note={note} variant="brief" />',
+    );
     expect(todayPage).not.toContain('label="Right now"');
   });
 

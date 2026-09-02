@@ -305,6 +305,16 @@ export const fairDayStoryData: FairDayWorkspaceData = {
   ],
   partyOffers: storyPartyOffers,
   practicalAnswers: greatFrederickFair2026PracticalAnswers,
+  accessHighlights: [
+    {
+      id: "access-sensory-friendly-carnival",
+      date: "2026-09-20",
+      title: "Sensory-friendly carnival · noon–2 p.m.",
+      detail:
+        "The carnival lowers its lights and music during this window. The Fair does not describe this as a whole-ground low-sensory period.",
+      answerId: "fair-answer-sensory-friendly-carnival",
+    },
+  ],
   arrivalOptions: [
     {
       id: "arrival-drive",

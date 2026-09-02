@@ -1,4 +1,5 @@
 import { prioritizeAlerts } from "@/lib/alert-priority";
+import { createAbortDeadline } from "@/lib/promise-deadline";
 import { cache } from "react";
 
 const NWS = "https://api.weather.gov";
@@ -124,18 +125,19 @@ function isForFrederickMD(p: AlertProperties): boolean {
   return false;
 }
 
-async function loadNwsAlertsResult(): Promise<NwsAlertsResult> {
+async function loadNwsAlertsResult(
+  parentSignal?: AbortSignal,
+): Promise<NwsAlertsResult> {
   // Hard 8s ceiling: api.weather.gov intermittently hangs on connect
   // (prod runtime errors: connect ETIMEDOUT). The .catch below already
   // fail-softs to [], but without an abort the request can tie up the
   // notify-civic-alerts cron for the platform's full connect timeout. Fail
   // fast instead so a slow NWS degrades to "no alerts this run", not a stall.
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 8_000);
+  const deadline = createAbortDeadline(8_000, parentSignal);
   try {
     const res = await fetch(`${NWS}/alerts/active?area=MD`, {
       headers: { "User-Agent": UA, Accept: "application/geo+json" },
-      signal: ctrl.signal,
+      signal: deadline.signal,
       next: { revalidate: 600 },
     });
     if (!res.ok) return { alerts: [], available: false };
@@ -164,7 +166,7 @@ async function loadNwsAlertsResult(): Promise<NwsAlertsResult> {
   } catch {
     return { alerts: [], available: false };
   } finally {
-    clearTimeout(timer);
+    deadline.dispose();
   }
 }
 
@@ -177,8 +179,10 @@ async function loadNwsAlertsResult(): Promise<NwsAlertsResult> {
  */
 const getNwsAlertsResultForRequest = cache(loadNwsAlertsResult);
 
-export function getNwsAlertsResult(): Promise<NwsAlertsResult> {
-  return getNwsAlertsResultForRequest();
+export function getNwsAlertsResult(
+  signal?: AbortSignal,
+): Promise<NwsAlertsResult> {
+  return getNwsAlertsResultForRequest(signal);
 }
 
 export async function getNwsAlerts(): Promise<NwsAlert[]> {

@@ -46,16 +46,36 @@ export type LiveShelf = {
   mayAssertNoneOpen: boolean;
 };
 
+export type DaypartNeedsVariant = "full" | "brief";
+
+export function daypartUsablePickCount(
+  shelf: {
+    picks: readonly Pick<DaypartPick, "confidence">[];
+    openingSoon?: DaypartPick | null;
+  },
+  variant: DaypartNeedsVariant = "full",
+): number {
+  const picks =
+    variant === "brief"
+      ? shelf.picks.filter((place) => place.confidence !== "unconfirmed")
+      : shelf.picks;
+  return picks.length + (shelf.openingSoon ? 1 : 0);
+}
+
 /**
  * Weather can add a useful but sparse category (for example museums on a wet
  * evening) ahead of the daypart's core need. Do not let that empty first row
  * become the whole shelf: start with the first category that already has a
  * trustworthy server result, while keeping every category available as a tab.
  */
-export function initialDaypartCategory(rows: DaypartRow[]): string {
+export function initialDaypartCategory(
+  rows: DaypartRow[],
+  variant: DaypartNeedsVariant = "full",
+): string {
   return (
-    rows.find((row) => row.picks.length > 0 || Boolean(row.openingSoon))
-      ?.category ?? rows[0]?.category ?? ""
+    rows.find((row) => daypartUsablePickCount(row, variant) > 0)?.category ??
+    rows[0]?.category ??
+    ""
   );
 }
 
@@ -69,6 +89,7 @@ export function nextUnresolvedDaypartCategory(
   rows: DaypartRow[],
   currentCategory: string,
   resolvedCategories: Record<string, boolean>,
+  variant: DaypartNeedsVariant = "full",
 ): string | null {
   const unresolved = rows.filter(
     (row) =>
@@ -76,9 +97,8 @@ export function nextUnresolvedDaypartCategory(
       resolvedCategories[row.category] !== true,
   );
   return (
-    unresolved.find(
-      (row) => row.picks.length > 0 || Boolean(row.openingSoon),
-    )?.category ??
+    unresolved.find((row) => daypartUsablePickCount(row, variant) > 0)
+      ?.category ??
     unresolved[0]?.category ??
     null
   );
@@ -663,12 +683,14 @@ function OpeningSoonPick({
 export default function DaypartNeeds({
   rows,
   note,
+  variant = "full",
 }: {
   rows: DaypartRow[];
   note?: string | null;
+  variant?: DaypartNeedsVariant;
 }) {
   const [selectedCategory, setSelectedCategory] = useState(() =>
-    initialDaypartCategory(rows),
+    initialDaypartCategory(rows, variant),
   );
   const [liveShelves, setLiveShelves] = useState<Record<string, LiveShelf>>({});
   const [resolvedCategories, setResolvedCategories] = useState<Record<string, boolean>>({});
@@ -736,6 +758,7 @@ export default function DaypartNeeds({
         rows,
         baseActive.category,
         resolvedAfter,
+        variant,
       );
       if (next) setSelectedCategory(next);
     };
@@ -748,22 +771,18 @@ export default function DaypartNeeds({
           ...previous,
           [baseActive.category]: shelf,
         }));
-        settleCategory(
-          shelf.picks.length + (shelf.openingSoon ? 1 : 0),
-        );
+        settleCategory(daypartUsablePickCount(shelf, variant));
       })
       .catch(() => {
         if (!current) return;
         // Keep the already-rendered countywide shelf. A live refresh is an
         // enhancement, never a reason to replace useful content with an error.
-        settleCategory(
-          baseActive.picks.length + (baseActive.openingSoon ? 1 : 0),
-        );
+        settleCategory(daypartUsablePickCount(baseActive, variant));
       });
     return () => {
       current = false;
     };
-  }, [activeCategory, activeHref, baseActive, contextRevision, rows]);
+  }, [activeCategory, activeHref, baseActive, contextRevision, rows, variant]);
 
   // A visitor can grant location from the header after this component mounts.
   // Same-tab storage changes are otherwise invisible, so listen to the
@@ -773,7 +792,7 @@ export default function DaypartNeeds({
       setLiveShelves({});
       setResolvedCategories({});
       resolvedCategoriesRef.current = {};
-      setSelectedCategory(initialDaypartCategory(rows));
+      setSelectedCategory(initialDaypartCategory(rows, variant));
       mayAutoAdvanceRef.current = true;
       setContextRevision((revision) => revision + 1);
     };
@@ -783,7 +802,7 @@ export default function DaypartNeeds({
       window.removeEventListener(GEOLOCATION_CHANGE_EVENT, refresh);
       window.removeEventListener(SCOPE_CHANGE_EVENT, refresh);
     };
-  }, [rows]);
+  }, [rows, variant]);
 
   // Keep one public, actionable place as the offline Today handoff. This never
   // stores the user's coordinates or distance; the offline page labels the
@@ -830,29 +849,60 @@ export default function DaypartNeeds({
   }
 
   const shelfTier = daypartShelfTier(active.picks);
-  const shelfHeading = daypartShelfHeading(
-    active.picks,
-    active.openingSoon,
-  );
   const pickScopeLabel = daypartPickScopeLabel(contextSource, contextLabel);
-  // Today edits the answer to one lead and two alternatives. The deeper route
-  // remains in See all; a fourth card created a second mobile row that pushed
-  // the universal Find doorway well below the first viewport.
-  const visiblePicks = active.picks.slice(0, active.openingSoon ? 2 : 3);
   const openingSoonFirst =
     Boolean(active.openingSoon) && shelfTier !== "confirmed";
+  const decisionPicks =
+    variant === "brief"
+      ? active.picks.filter((place) => place.confidence !== "unconfirmed")
+      : active.picks;
+  const briefUsesOpeningSoon =
+    variant === "brief" &&
+    Boolean(active.openingSoon) &&
+    (openingSoonFirst || decisionPicks.length === 0);
+  // The heading describes what is actually visible. A brief answer may know
+  // about both a current place and an opening-soon transition, but it presents
+  // only the stronger of those two rather than promising both in its label.
+  const shelfHeading =
+    variant === "brief"
+      ? daypartShelfHeading(
+          briefUsesOpeningSoon ? [] : decisionPicks.slice(0, 1),
+          briefUsesOpeningSoon ? active.openingSoon : null,
+        )
+      : daypartShelfHeading(active.picks, active.openingSoon);
+  // The default Today briefing asks this component for one concise answer.
+  // Its full mode remains available for contexts that need comparison. When
+  // opening soon is the more useful transition, it replaces the current-place
+  // card instead of becoming a second recommendation.
+  const visiblePicks = decisionPicks.slice(
+    0,
+    variant === "brief"
+      ? briefUsesOpeningSoon
+        ? 0
+        : 1
+      : active.openingSoon
+        ? 2
+        : 3,
+  );
+  const showCategoryTabs = variant === "full" && rows.length > 1;
   // When the transition leads visually, a reason about picks[0] would explain
   // the wrong card. The opening-soon card already carries its actionable hours
   // evidence, so reserve "Why it leads" for a current place that truly leads.
-  const leadReason = openingSoonFirst ? null : daypartLeadReason(active.picks);
+  const leadReason = openingSoonFirst ? null : daypartLeadReason(decisionPicks);
+  const hasVisibleRecommendation =
+    visiblePicks.length > 0 || Boolean(active.openingSoon);
 
   return (
-    <section aria-label={shelfHeading.aria} className="mt-6">
+    <section
+      aria-label={shelfHeading.aria}
+      className="mt-6"
+      data-today-decision-density={variant}
+    >
       <TodaySectionHeading
         title={shelfHeading.title}
         meta={contextLabel}
         href={active.href}
-        cta="See all"
+        cta={variant === "brief" ? "Browse places" : "See all"}
       />
       {note ? (
         <p className="-mt-1 px-0.5 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
@@ -860,7 +910,7 @@ export default function DaypartNeeds({
         </p>
       ) : null}
 
-      {rows.length > 1 ? (
+      {showCategoryTabs ? (
         <div
           role="tablist"
           aria-label="Open places by need"
@@ -914,20 +964,21 @@ export default function DaypartNeeds({
             );
           })}
         </div>
-      ) : (
+      ) : variant === "full" ? (
         <h3 className="mt-3 text-[13px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
           {active.label}
         </h3>
-      )}
+      ) : null}
 
       <div
         key={active.category}
         id="daypart-active-panel"
-        role={rows.length > 1 ? "tabpanel" : undefined}
-        aria-labelledby={rows.length > 1 ? `daypart-tab-${active.category}` : undefined}
-        className={`${rows.length > 1 ? "mt-2" : "mt-1"} today-decision-swap`}
+        role={showCategoryTabs ? "tabpanel" : undefined}
+        aria-labelledby={showCategoryTabs ? `daypart-tab-${active.category}` : undefined}
+        className={`${showCategoryTabs ? "mt-2" : "mt-1"} today-decision-swap`}
       >
-        {awaitingLive || shelfTier !== "confirmed" ? <div className="px-0.5">
+        {awaitingLive ||
+        (visiblePicks.length > 0 && shelfTier !== "confirmed") ? <div className="px-0.5">
           <p className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
             {awaitingLive
               ? "Checking nearby"
@@ -945,7 +996,7 @@ export default function DaypartNeeds({
           >
             {/* Mirrors the loaded shape (grid on phones, rail from sm) so the
                 answer does not jump from a row to a grid when it arrives. */}
-            {[0, 1, 2].map((slot) => (
+            {(variant === "brief" ? [0] : [0, 1, 2]).map((slot) => (
               <div
                 key={slot}
                 className="w-full shrink-0 sm:w-auto"
@@ -960,7 +1011,7 @@ export default function DaypartNeeds({
               </div>
             ))}
           </div>
-        ) : active.picks.length > 0 || active.openingSoon ? (
+        ) : hasVisibleRecommendation ? (
           <div>
             {openingSoonFirst && active.openingSoon ? (
               <OpeningSoonPick
@@ -999,7 +1050,9 @@ export default function DaypartNeeds({
                 ))}
               </ul>
             ) : null}
-            {!openingSoonFirst && active.openingSoon ? (
+            {!openingSoonFirst &&
+            active.openingSoon &&
+            (variant === "full" || visiblePicks.length === 0) ? (
               <OpeningSoonPick
                 place={active.openingSoon}
                 category={active.category}
@@ -1039,14 +1092,16 @@ export default function DaypartNeeds({
                 active.label,
               )}
             </p>
-            <Link
-              href={active.href}
-              prefetch={false}
-              className="tap-44 shrink-0 text-[12px] font-semibold underline decoration-1 underline-offset-4"
-              style={{ color: "var(--app-brand-press)" }}
-            >
-              Browse
-            </Link>
+            {variant === "full" ? (
+              <Link
+                href={active.href}
+                prefetch={false}
+                className="tap-44 shrink-0 text-[12px] font-semibold underline decoration-1 underline-offset-4"
+                style={{ color: "var(--app-brand-press)" }}
+              >
+                Browse
+              </Link>
+            ) : null}
           </div>
         )}
       </div>

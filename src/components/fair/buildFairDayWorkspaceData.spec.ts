@@ -179,6 +179,17 @@ describe("buildFairDayWorkspaceData", () => {
         answer.sources.every((source) => source.url.startsWith("https://")),
       ),
     ).toBe(true);
+    expect(data.accessHighlights).toEqual([
+      expect.objectContaining({
+        id: "access-sensory-friendly-carnival",
+        date: "2026-09-20",
+        title: "Sensory-friendly carnival · noon–2 p.m.",
+        answerId: "fair-answer-sensory-friendly-carnival",
+      }),
+    ]);
+    expect(data.accessHighlights[0]?.detail).toContain(
+      "does not describe this as a whole-ground low-sensory period",
+    );
   });
 
   it("starts on the current Fair day when the server date is inside the run", () => {

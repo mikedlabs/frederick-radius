@@ -1,7 +1,12 @@
 "use client";
 
 import { Drawer } from "vaul";
-import type { ReactNode } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import { X } from "lucide-react";
 
 /**
@@ -54,8 +59,97 @@ export default function BottomDrawer({
   onOpenChange,
   bareHeader = false,
 }: BottomDrawerProps) {
+  // Most controlled drawers are opened by a button outside Drawer.Root, so
+  // Radix has no registered trigger to restore. Remember that real opener
+  // before Vaul moves focus into the modal.
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const restoreFrameRef = useRef<number | null>(null);
+  const restoreTimerRef = useRef<number | null>(null);
+  const drawerOpenRef = useRef(Boolean(open));
+  const previousControlledOpenRef = useRef(false);
+
+  const rememberCurrentFocus = useCallback(() => {
+    const activeElement = document.activeElement;
+    returnFocusRef.current =
+      activeElement instanceof HTMLElement && activeElement !== document.body
+        ? activeElement
+        : null;
+  }, []);
+
+  const restoreRememberedFocus = useCallback(() => {
+    if (restoreFrameRef.current !== null) {
+      window.cancelAnimationFrame(restoreFrameRef.current);
+    }
+    if (restoreTimerRef.current !== null) {
+      window.clearTimeout(restoreTimerRef.current);
+      restoreTimerRef.current = null;
+    }
+    const restoreWhenSafe = () => {
+      restoreFrameRef.current = null;
+      if (drawerOpenRef.current) return;
+      const returnTarget = returnFocusRef.current;
+      if (!returnTarget?.isConnected) return;
+      if (returnTarget.closest('[aria-hidden="true"]')) {
+        // Vaul keeps the background hidden during its 500ms exit animation.
+        // This fallback also covers test environments where animation-end never
+        // fires; onCloseAutoFocus replaces it as soon as the real exit finishes.
+        restoreTimerRef.current = window.setTimeout(() => {
+          restoreTimerRef.current = null;
+          if (!drawerOpenRef.current && returnTarget.isConnected) {
+            returnTarget.focus({ preventScroll: true });
+          }
+        }, 550);
+        return;
+      }
+      if (returnTarget.isConnected) {
+        returnTarget.focus({ preventScroll: true });
+      }
+    };
+    restoreFrameRef.current = window.requestAnimationFrame(restoreWhenSafe);
+  }, []);
+
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (nextOpen) rememberCurrentFocus();
+      // In controlled mode, the prop is the source of truth. A parent may
+      // delay or reject a close request, so do not mark the drawer closed or
+      // restore focus until the controlled `open` value actually changes.
+      if (open === undefined) drawerOpenRef.current = nextOpen;
+      onOpenChange?.(nextOpen);
+      if (!nextOpen && open === undefined) restoreRememberedFocus();
+    },
+    [onOpenChange, open, rememberCurrentFocus, restoreRememberedFocus],
+  );
+
+  useLayoutEffect(() => {
+    if (open === undefined) return;
+
+    const wasOpen = previousControlledOpenRef.current;
+    if (open && !wasOpen) rememberCurrentFocus();
+    drawerOpenRef.current = open;
+    previousControlledOpenRef.current = open;
+    if (!open && wasOpen) restoreRememberedFocus();
+  }, [open, rememberCurrentFocus, restoreRememberedFocus]);
+
+  useLayoutEffect(
+    () => () => {
+      if (restoreFrameRef.current !== null) {
+        window.cancelAnimationFrame(restoreFrameRef.current);
+      }
+      if (restoreTimerRef.current !== null) {
+        window.clearTimeout(restoreTimerRef.current);
+      }
+    },
+    [],
+  );
+
   return (
-    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+    <Drawer.Root
+      open={open}
+      onOpenChange={handleOpenChange}
+      modal
+      autoFocus
+    >
       {trigger ? <Drawer.Trigger asChild>{trigger}</Drawer.Trigger> : null}
       <Drawer.Portal>
         <Drawer.Overlay
@@ -63,6 +157,13 @@ export default function BottomDrawer({
           style={{ background: "rgba(10, 8, 4, 0.45)" }}
         />
         <Drawer.Content
+          aria-modal="true"
+          {...(subtitle ? {} : { "aria-describedby": undefined })}
+          onCloseAutoFocus={(event) => {
+            if (!returnFocusRef.current?.isConnected) return;
+            event.preventDefault();
+            restoreRememberedFocus();
+          }}
           className="fixed bottom-0 left-0 right-0 z-[var(--z-overlay)] mt-24 flex max-h-[90dvh] flex-col rounded-t-[24px] border-t outline-none"
           style={{
             background: "var(--app-bg-elevated)",
@@ -109,7 +210,7 @@ export default function BottomDrawer({
               }}
             >
               <Drawer.Title
-                className="font-serif text-[18px] font-semibold tracking-tight"
+                className="font-sans text-[18px] font-extrabold tracking-[-0.02em]"
                 style={{ color: "var(--app-ink)" }}
               >
                 {title}
