@@ -23,9 +23,9 @@
   "green-health-docs": {
     "status": "operational",
     "effective_at": "2026-07-31",
-    "review_after": "2026-09-01",
+    "review_after": "2026-12-01",
     "source": "https://greenhealthdocs.com/maryland-medical-marijuana-doctors/",
-    "note": "The official Maryland locations page lists the Frederick clinic at 304 Delaware Road and offers appointment scheduling. Reconfirmed against that page on 2026-08-18; it still lists Frederick at 304 Delaware Rd with a Schedule Now action."
+    "note": "The official Maryland locations page lists the Frederick clinic at 304 Delaware Road and offers appointment scheduling. Reconfirmed against that page on 2026-09-02; it still lists Frederick at 304 Delaware Rd with a Schedule Now action."
   },
   "mazako": {
     "status": "closed_permanently",
@@ -37,9 +37,9 @@
   "quince-orchard-psychotherapy": {
     "status": "operational",
     "effective_at": "2026-08-01",
-    "review_after": "2026-09-01",
+    "review_after": "2026-12-01",
     "source": "https://orchardmentalhealth.com/contact/",
-    "note": "The official contact page lists the Frederick office at 10 North Jefferson Street, regular weekday hours, and active appointment and referral options. Reconfirmed against that page on 2026-08-18; it still lists Suite #202 at 10 North Jefferson Street and offers an In-Office: Frederick booking option."
+    "note": "The official contact page lists the Frederick office at 10 North Jefferson Street, regular weekday hours, and active appointment and referral options. Reconfirmed against that page on 2026-09-02; it still lists Suite #202 at 10 North Jefferson Street, Monday through Friday business hours, and an appointment request."
   },
   "saxbys-at-mount-st-marys-university-emmitsburg": {
     "status": "operational",
