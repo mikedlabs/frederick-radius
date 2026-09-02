@@ -66,10 +66,14 @@ Use a fresh registration instead of improvising a partial state copy:
    same new runner returns online. Keep the old state archive until the
    acceptance check passes, then remove it deliberately.
 
-An administrator who must preserve an existing identity can copy the complete
-state into the stopped named volume with Docker volume tooling, preserving all
-hidden files and UID/GID 1001. That path is intentionally not a File Station
-procedure; do not expose the private volume as a general NAS share.
+As an alternative to the fresh-registration flow above, an administrator who
+must preserve an existing identity can copy the complete state into the
+stopped named volume with Docker volume tooling, preserving all hidden files
+and UID/GID 1001. **Do not remove that runner in GitHub first**: removal
+invalidates the credentials being preserved. Keep both the old and new
+containers stopped during the copy, then start exactly one of them. That path
+is intentionally not a File Station procedure; do not expose the private
+volume as a general NAS share.
 
 The image pins GitHub Actions runner 2.337.0 and verifies its published Linux
 x64 SHA-256 before extracting it. Before rebuilding after a future release,
