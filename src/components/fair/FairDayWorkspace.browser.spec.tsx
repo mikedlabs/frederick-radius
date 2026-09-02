@@ -4,6 +4,19 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const feedbackMocks = vi.hoisted(() => ({
+  haptic: vi.fn(),
+  toast: vi.fn(),
+  toastSuccess: vi.fn(),
+}));
+
+vi.mock("@/lib/haptics", () => ({ haptic: feedbackMocks.haptic }));
+vi.mock("sonner", () => ({
+  toast: Object.assign(feedbackMocks.toast, {
+    success: feedbackMocks.toastSuccess,
+  }),
+}));
+
 import {
   greatFrederickFair2026Pack,
   greatFrederickFair2026PackPointer,
@@ -38,6 +51,9 @@ describe("FairDayWorkspace app journey", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-18T20:59:00Z"));
+    feedbackMocks.haptic.mockReset();
+    feedbackMocks.toast.mockReset();
+    feedbackMocks.toastSuccess.mockReset();
     storedValues = new Map<string, string>();
     Object.defineProperty(window, "localStorage", {
       configurable: true,
@@ -243,7 +259,54 @@ describe("FairDayWorkspace app journey", () => {
     expect(document.body.textContent).not.toMatch(/first aid/i);
   });
 
-  it("adds a program result and carries it into My Day without a page scroll", async () => {
+  it("acknowledges a saved program result and opens My Day from the toast", async () => {
+    const data = await renderFair();
+    await openMode("Find");
+
+    const addDaughtry = container.querySelector<HTMLButtonElement>(
+      'button[aria-label^="Add Daughtry to My Day"]',
+    );
+    if (!addDaughtry) throw new Error("Missing Add Daughtry control.");
+    const daughtry = data.scheduleItems.find((item) =>
+      item.title.startsWith("Daughtry"),
+    );
+    if (!daughtry) throw new Error("Missing Daughtry schedule item.");
+    expect(addDaughtry.getAttribute("aria-pressed")).toBe("false");
+    await act(async () => addDaughtry.click());
+
+    const removeDaughtry = container.querySelector<HTMLButtonElement>(
+      'button[aria-label^="Remove Daughtry from My Day"]',
+    );
+    expect(removeDaughtry?.getAttribute("aria-pressed")).toBe("true");
+    expect(feedbackMocks.haptic).toHaveBeenLastCalledWith("medium");
+    expect(feedbackMocks.toastSuccess).toHaveBeenCalledWith(
+      "Added to My Day",
+      expect.objectContaining({
+        id: "fair-plan-feedback",
+        description: daughtry.title,
+        duration: 5_000,
+        action: expect.objectContaining({ label: "My Day" }),
+        cancel: expect.objectContaining({ label: "Undo" }),
+      }),
+    );
+
+    const saveOptions = feedbackMocks.toastSuccess.mock.calls[0]?.[1] as {
+      action: { onClick: () => void };
+    };
+    await act(async () => saveOptions.action.onClick());
+    await act(async () => vi.advanceTimersByTimeAsync(20));
+
+    expect(window.location.hash).toBe("#my-day");
+    expect(container.textContent).toContain("Daughtry");
+    expect(
+      container.querySelector('[data-mobile-action-bar] button[aria-label="My Day, 1 saved"]'),
+    ).not.toBeNull();
+    expect(
+      JSON.parse(storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}").steps,
+    ).toHaveLength(1);
+  });
+
+  it("undoes a save without opening another surface", async () => {
     await renderFair();
     await openMode("Find");
 
@@ -253,14 +316,86 @@ describe("FairDayWorkspace app journey", () => {
     if (!addDaughtry) throw new Error("Missing Add Daughtry control.");
     await act(async () => addDaughtry.click());
 
-    await openMode("My Day");
-    expect(container.textContent).toContain("Daughtry");
+    const saveOptions = feedbackMocks.toastSuccess.mock.calls[0]?.[1] as {
+      cancel: { onClick: () => void };
+    };
+    await act(async () => saveOptions.cancel.onClick());
+
+    expect(window.location.hash).toBe("#find");
     expect(
-      container.querySelector('[data-mobile-action-bar] button[aria-label="My Day, 1 saved"]'),
+      container.querySelector(
+        'button[aria-label^="Add Daughtry to My Day"][aria-pressed="false"]',
+      ),
     ).not.toBeNull();
+    expect(feedbackMocks.haptic).toHaveBeenLastCalledWith("light");
     expect(
       JSON.parse(storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}").steps,
-    ).toHaveLength(1);
+    ).toHaveLength(0);
+  });
+
+  it("removes a saved result in Find and restores it with Undo", async () => {
+    const data = await renderFair();
+    await openMode("Find");
+
+    const addDaughtry = container.querySelector<HTMLButtonElement>(
+      'button[aria-label^="Add Daughtry to My Day"]',
+    );
+    if (!addDaughtry) throw new Error("Missing Add Daughtry control.");
+    const daughtry = data.scheduleItems.find((item) =>
+      item.title.startsWith("Daughtry"),
+    );
+    if (!daughtry) throw new Error("Missing Daughtry schedule item.");
+    await act(async () => addDaughtry.click());
+
+    const addAwards = container.querySelector<HTMLButtonElement>(
+      'button[aria-label^="Add 2026 Agricultural Awards Ceremony to My Day"]',
+    );
+    if (!addAwards) throw new Error("Missing Add agricultural awards control.");
+    await act(async () => addAwards.click());
+    const originalOrder = JSON.parse(
+      storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}",
+    ).steps.map((step: { scheduleItemId: string }) => step.scheduleItemId);
+    feedbackMocks.toast.mockClear();
+
+    const removeDaughtry = container.querySelector<HTMLButtonElement>(
+      'button[aria-label^="Remove Daughtry from My Day"]',
+    );
+    if (!removeDaughtry) throw new Error("Missing Remove Daughtry control.");
+    await act(async () => removeDaughtry.click());
+
+    expect(feedbackMocks.toast).toHaveBeenCalledWith(
+      "Removed from My Day",
+      expect.objectContaining({
+        id: "fair-plan-feedback",
+        description: daughtry.title,
+        duration: 5_000,
+        action: expect.objectContaining({ label: "Undo" }),
+      }),
+    );
+    expect(
+      container.querySelector(
+        'button[aria-label^="Add Daughtry to My Day"][aria-pressed="false"]',
+      ),
+    ).not.toBeNull();
+
+    const removeOptions = feedbackMocks.toast.mock.calls[0]?.[1] as {
+      action: { onClick: () => void };
+    };
+    await act(async () => removeOptions.action.onClick());
+
+    expect(
+      container.querySelector(
+        'button[aria-label^="Remove Daughtry from My Day"][aria-pressed="true"]',
+      ),
+    ).not.toBeNull();
+    expect(feedbackMocks.haptic).toHaveBeenLastCalledWith("light");
+    const restoredSteps = JSON.parse(
+      storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}",
+    ).steps as Array<{ scheduleItemId: string }>;
+    expect(restoredSteps).toHaveLength(2);
+    expect(restoredSteps.map((step) => step.scheduleItemId)).toEqual(
+      originalOrder,
+    );
   });
 
   it("shows only the selected day's stops while keeping other days saved", async () => {

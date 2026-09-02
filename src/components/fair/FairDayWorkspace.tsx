@@ -26,6 +26,7 @@ import {
   Volume1,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import RippleMark from "@/components/brand/RippleMark";
 import { Button } from "@/components/ui/Button";
@@ -47,6 +48,7 @@ import {
 import type { FairPlanStatus } from "@/lib/fair/plan-status";
 import type { FairPracticalAnswer } from "@/lib/fair/practical-answers";
 import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback-ui";
+import { haptic } from "@/lib/haptics";
 
 import FairPlanStatusRibbon from "./FairPlanStatusRibbon";
 import FairPartyPlanner from "./FairPartyPlanner";
@@ -110,6 +112,8 @@ const MODE_PANEL_IDS: Record<FairMode, string> = {
   "my-day": "fair-my-day-panel",
   travel: "fair-travel-panel",
 };
+
+const FAIR_PLAN_TOAST_ID = "fair-plan-feedback";
 
 /** Keep shared links from the original Fair guide useful after the app redesign. */
 export function fairModeFromHash(hash: string): FairMode | null {
@@ -202,6 +206,31 @@ function compactPlaceLabel(placeLabel: string): string | null {
     .replace(/^Published place:\s*/i, "")
     .replace(/\.$/, "")
     .trim();
+}
+
+function restoreFairPlanItemAtDayPosition(
+  plan: FairPlan,
+  item: FairDayScheduleItemView["sourceItem"],
+  dayPosition: number,
+  now: string,
+): FairPlan {
+  if (plan.steps.some((step) => step.scheduleItemId === item.id)) return plan;
+
+  let restored = addFairPlanItem(plan, item, now);
+  const currentDayPosition = restored.steps
+    .filter((step) => step.dayId === item.dayId)
+    .findIndex((step) => step.scheduleItemId === item.id);
+  const targetDayPosition = Math.max(0, dayPosition);
+
+  for (
+    let position = currentDayPosition;
+    position > targetDayPosition;
+    position -= 1
+  ) {
+    restored = moveFairPlanItemWithinDay(restored, item.id, -1, now);
+  }
+
+  return restored;
 }
 
 function TicketPreparation({
@@ -557,6 +586,64 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
     setPlan((current) =>
       setFairPlanDay(current, `day-${date}`, updateTimestamp()),
     );
+  };
+
+  const toggleFairScheduleItem = (
+    item: FairDayScheduleItemView,
+    planned: boolean,
+  ) => {
+    const changedAt = updateTimestamp();
+
+    if (planned) {
+      const dayPosition = plan.steps
+        .filter((step) => step.dayId === item.sourceItem.dayId)
+        .findIndex((step) => step.scheduleItemId === item.id);
+      haptic("light");
+      setPlan((current) => removeFairPlanItem(current, item.id, changedAt));
+      toast("Removed from My Day", {
+        id: FAIR_PLAN_TOAST_ID,
+        description: item.title,
+        duration: 5_000,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            haptic("light");
+            setPlan((current) =>
+              restoreFairPlanItemAtDayPosition(
+                current,
+                item.sourceItem,
+                dayPosition,
+                updateTimestamp(),
+              ),
+            );
+          },
+        },
+      });
+      return;
+    }
+
+    haptic("medium");
+    setPlan((current) =>
+      addFairPlanItem(current, item.sourceItem, changedAt),
+    );
+    toast.success("Added to My Day", {
+      id: FAIR_PLAN_TOAST_ID,
+      description: item.title,
+      duration: 5_000,
+      action: {
+        label: "My Day",
+        onClick: () => chooseMode("my-day"),
+      },
+      cancel: {
+        label: "Undo",
+        onClick: () => {
+          haptic("light");
+          setPlan((current) =>
+            removeFairPlanItem(current, item.id, updateTimestamp()),
+          );
+        },
+      },
+    });
   };
 
   const chooseArrival = (option: FairDayArrivalView) => {
@@ -1294,14 +1381,15 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                       </div>
                       <button
                         type="button"
-                        disabled={planned}
-                        onClick={() => setPlan((current) => addFairPlanItem(current, item.sourceItem, updateTimestamp()))}
-                        className="tap-44 grid h-11 w-11 place-items-center rounded-full disabled:opacity-55"
+                        data-fair-plan-toggle={item.id}
+                        aria-pressed={planned}
+                        onClick={() => toggleFairScheduleItem(item, planned)}
+                        className="tap-44 tactile tactile-interactive grid h-11 w-11 place-items-center rounded-full transition active:scale-[0.94]"
                         style={{
                           background: planned ? "var(--app-bg-sunken)" : "var(--app-brand-tint-6)",
                           color: planned ? "var(--app-ink-3)" : "var(--app-brand-press)",
                         }}
-                        aria-label={planned ? `${item.title} is in My Day` : `Add ${item.title} to My Day`}
+                        aria-label={planned ? `Remove ${item.title} from My Day` : `Add ${item.title} to My Day`}
                       >
                         {planned ? <Check className="h-4 w-4" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
                       </button>
