@@ -19,7 +19,7 @@ describe("FeedbackWidget bottom-chrome clearance", () => {
 describe("FeedbackWidget public surfaces", () => {
   it("tells a visitor that an unsaved report remains available to retry", () => {
     expect(feedbackSendErrorMessage("feedback-storage-unavailable")).toBe(
-      "We couldn't save your report. Your message is still here. Try again in a moment.",
+      "We couldn't save your report, so your message is still here for you to try again in a moment.",
     );
   });
 
