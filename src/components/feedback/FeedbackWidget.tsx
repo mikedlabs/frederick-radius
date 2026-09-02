@@ -461,7 +461,7 @@ export default function FeedbackWidget() {
                     : "Choose a topic, then tell us what happened."
                   : "A bug, a rough edge, something you liked…"
               }
-              className="w-full resize-y rounded-[var(--app-radius-md)] border px-3 py-2.5 text-[15px] outline-none"
+              className="w-full resize-y rounded-[var(--app-radius-md)] border px-3 py-2.5 text-base outline-none"
               style={{
                 borderColor: "var(--app-border)",
                 background: "var(--app-bg)",
@@ -491,7 +491,7 @@ export default function FeedbackWidget() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="h-11 w-full rounded-[var(--app-radius-md)] border px-3 text-[15px] outline-none"
+                className="h-11 w-full rounded-[var(--app-radius-md)] border px-3 text-base outline-none"
                 style={{
                   borderColor: "var(--app-border)",
                   background: "var(--app-bg)",
