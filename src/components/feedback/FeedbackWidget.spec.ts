@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildFeedbackRequestBody,
+  feedbackSendErrorMessage,
   FEEDBACK_TRIGGER_BOTTOM,
   publicFeedbackSurface,
   shouldShowFeedbackTrigger,
@@ -16,6 +17,12 @@ describe("FeedbackWidget bottom-chrome clearance", () => {
 });
 
 describe("FeedbackWidget public surfaces", () => {
+  it("tells a visitor that an unsaved report remains available to retry", () => {
+    expect(feedbackSendErrorMessage("feedback-storage-unavailable")).toBe(
+      "We couldn't save your report. Your message is still here. Try again in a moment.",
+    );
+  });
+
   it("opens feedback to Fair Day without exposing unrelated app pages", () => {
     expect(publicFeedbackSurface("/moments/great-frederick-fair-2026")).toBe(
       "fair",

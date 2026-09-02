@@ -9,11 +9,12 @@
  * intake queue place/event/claim submissions use), so /admin already has a
  * place to read it and no new migration is required.
  *
- * Fail-soft like /api/beta/email: a missing or unmigrated DB never turns a
- * visitor's note into a hard error — it degrades to a server log and STILL
- * returns ok, because a lost note is worse than a logged one. Rate-limited
- * per IP; empty-guarded + length-capped in parseFeedback so the open endpoint
- * can't be used to bulk-insert junk.
+ * A receipt is only returned after the note is durably stored. If storage is
+ * unavailable, the client gets a retryable response and keeps the visitor's
+ * draft. Operational logs never include the note or optional email.
+ *
+ * Owner push is deliberately a second, best-effort step. A push failure is
+ * recorded without visitor content and never rolls back a stored report.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
@@ -36,6 +37,17 @@ export const dynamic = "force-dynamic";
 
 const noStore = { "Cache-Control": "no-store" };
 const MAX_FEEDBACK_BODY_BYTES = 32 * 1024;
+const storageUnavailableHeaders = {
+  ...noStore,
+  "Retry-After": "30",
+};
+
+function storageUnavailableResponse() {
+  return NextResponse.json(
+    { ok: false, error: "feedback-storage-unavailable" },
+    { status: 503, headers: storageUnavailableHeaders },
+  );
+}
 
 export async function POST(req: NextRequest) {
   if (!isSameOriginMutationRequest(req)) {
@@ -61,43 +73,71 @@ export async function POST(req: NextRequest) {
 
   const row = buildFeedbackRow(parsed.value, process.env.VERCEL_GIT_COMMIT_SHA ?? null);
 
-  const db = getDb();
-  if (db) {
+  let db: ReturnType<typeof getDb>;
+  try {
+    db = getDb();
+  } catch {
+    console.error("[feedback] durable storage unavailable", {
+      stage: "initialization",
+    });
+    return storageUnavailableResponse();
+  }
+  if (!db) {
+    console.error("[feedback] durable storage unavailable", {
+      stage: "configuration",
+    });
+    return storageUnavailableResponse();
+  }
+
+  let id: string | undefined;
+  try {
+    const inserted = await db
+      .insert(submissions)
+      .values(row)
+      .returning({ id: submissions.id });
+    id = inserted[0]?.id;
+  } catch {
+    // Do not log the thrown DB error. Driver errors can include bound values,
+    // which would expose the visitor's note or optional email.
+    console.error("[feedback] durable storage failed", { stage: "insert" });
+    return storageUnavailableResponse();
+  }
+
+  // Owner alert: the note is on the owner's phone when push is configured.
+  // The submission is already durable, so alert trouble is observable but
+  // cannot turn a saved report into a visitor-facing failure.
+  if (id) {
     try {
-      const inserted = await db
-        .insert(submissions)
-        .values(row)
-        .returning({ id: submissions.id });
-      // Owner alert: the note is on your phone the moment a tester sends it.
-      // Fire-and-forget shape — a push failure must never fail the intake.
-      const id = inserted[0]?.id;
-      if (id) {
-        try {
-          const alert = buildFeedbackOwnerAlert(parsed.value);
-          await fanoutToTopic(OWNER_ALERTS_TOPIC, `feedback:${id}`, {
-            title: alert.title,
-            body: alert.body,
-            url: "/admin/beta",
-          });
-        } catch (err) {
-          console.error(
-            "[feedback] owner alert failed:",
-            err instanceof Error ? err.message : err,
-          );
-        }
-      }
-    } catch (err) {
-      // Table not migrated yet, or a transient DB blip — never lose the note.
-      // The log line IS the fallback sink; the endpoint still succeeds.
-      console.error(
-        "[feedback] DB write failed, kept log fallback:",
-        err instanceof Error ? err.message : err,
+      const alert = buildFeedbackOwnerAlert(parsed.value);
+      const delivery = await fanoutToTopic(
+        OWNER_ALERTS_TOPIC,
+        `feedback:${id}`,
+        {
+          title: alert.title,
+          body: alert.body,
+          url: "/admin/beta",
+        },
       );
-      console.info("[feedback:fallback]", JSON.stringify(row.payload));
+      if (!delivery.claimed || delivery.sent === 0) {
+        console.warn("[feedback] owner alert not delivered", {
+          submissionId: id,
+          claimed: delivery.claimed,
+          attempted: delivery.attempted,
+          sent: delivery.sent,
+          gone: delivery.gone,
+          held: delivery.held,
+        });
+      }
+    } catch {
+      console.error("[feedback] owner alert failed", {
+        submissionId: id,
+        stage: "fanout",
+      });
     }
   } else {
-    // No DATABASE_URL configured (local dev / preview) — the log is the sink.
-    console.info("[feedback:log]", JSON.stringify(row.payload));
+    console.warn("[feedback] owner alert skipped", {
+      reason: "missing-submission-id",
+    });
   }
 
   return NextResponse.json({ ok: true }, { headers: noStore });

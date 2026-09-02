@@ -113,6 +113,26 @@ export function buildFeedbackRequestBody({
   };
 }
 
+export function feedbackSendErrorMessage(error?: string): string {
+  switch (error) {
+    case "bad-email":
+      return "That email doesn't look right. Fix it, or leave it blank.";
+    case "too-long":
+      return "That's a lot. Trim it a little and send.";
+    case "bad-fair-issue":
+    case "bad-fair-surface":
+    case "bad-fair-context":
+    case "fair-context-too-long":
+      return "That Fair report could not be verified. Close it and try again.";
+    case "rate-limited":
+      return "That's plenty for now. Try again in a bit.";
+    case "feedback-storage-unavailable":
+      return "We couldn't save your report, so your message is still here for you to try again in a moment.";
+    default:
+      return "That didn't send. Give it another try.";
+  }
+}
+
 /** Fair Day exposes feedback inside its Help drawer so it does not compete with
  * the Fair's four primary controls. Other surfaces keep the floating trigger. */
 export function shouldShowFeedbackTrigger(
@@ -227,20 +247,7 @@ export default function FeedbackWidget() {
       });
       if (!res.ok) {
         const d = (await res.json().catch(() => ({}))) as { error?: string };
-        const msg =
-          d.error === "bad-email"
-              ? "That email doesn't look right. Fix it, or leave it blank."
-              : d.error === "too-long"
-                ? "That's a lot. Trim it a little and send."
-                : d.error === "bad-fair-issue" ||
-                    d.error === "bad-fair-surface" ||
-                    d.error === "bad-fair-context" ||
-                    d.error === "fair-context-too-long"
-                  ? "That Fair report could not be verified. Close it and try again."
-              : d.error === "rate-limited"
-                ? "That's plenty for now. Try again in a bit."
-                : "That didn't send. Give it another try.";
-        setErrorText(msg);
+        setErrorText(feedbackSendErrorMessage(d.error));
         setPhase("error");
         return;
       }
