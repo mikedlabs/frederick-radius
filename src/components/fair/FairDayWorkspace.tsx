@@ -68,6 +68,7 @@ import type {
 
 type FairMode = "now" | "find" | "map" | "my-day" | "travel";
 type PreparationKey = Extract<FairPlanReadyKey, "ticket" | "entry">;
+type FairPlanStorageState = "checking" | "available" | "unavailable";
 type ScheduleFilter =
   | "all"
   | "animals"
@@ -155,7 +156,10 @@ function fairDateShortLabel(date: string): string {
   }).format(new Date(`${date}T12:00:00Z`));
 }
 
-function fairNextActionDetail(action: FairPlanStatus["nextAction"]): string {
+function fairNextActionDetail(
+  action: FairPlanStatus["nextAction"],
+  storageState: FairPlanStorageState,
+): string {
   if (action === "tickets") {
     return "Compare the reviewed ticket choices before the handoff to Etix.";
   }
@@ -167,6 +171,12 @@ function fairNextActionDetail(action: FairPlanStatus["nextAction"]): string {
   }
   if (action === "find") {
     return "Choose one thing you do not want to miss and Radius will start your timeline.";
+  }
+  if (storageState === "unavailable") {
+    return "Your stops are arranged for this visit, but this browser is not storing them.";
+  }
+  if (storageState === "checking") {
+    return "Your saved stops are arranged in one timeline.";
   }
   return "Your saved stops are arranged in one timeline on this device.";
 }
@@ -270,7 +280,7 @@ function TicketPreparation({
   return (
     <div className="px-4 pb-6 pt-2 sm:px-6">
       <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-        Tell Radius who is going only if you want a reviewed subtotal. Your counts stay on this device.
+        Tell Radius who is going only if you want a reviewed subtotal. Radius uses your counts only in this browser.
       </p>
       <div className="mt-4 grid gap-2 min-[380px]:grid-cols-2">
         <Button
@@ -462,6 +472,8 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   const [showAllSchedule, setShowAllSchedule] = useState(false);
   const [editPlan, setEditPlan] = useState(false);
   const [storageReady, setStorageReady] = useState(false);
+  const [planStorageState, setPlanStorageState] =
+    useState<FairPlanStorageState>("checking");
   const [partyAsOf, setPartyAsOf] = useState(data.reviewedAt);
 
   const closeProgramDetail = () => {
@@ -566,7 +578,13 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
 
   useEffect(() => {
     if (!storageReady) return;
-    writeFairPlan(window.localStorage, plan);
+    let wrotePlan = false;
+    try {
+      wrotePlan = writeFairPlan(window.localStorage, plan);
+    } catch {
+      // Some privacy modes block access to the Storage object itself.
+    }
+    setPlanStorageState(wrotePlan ? "available" : "unavailable");
   }, [plan, storageReady]);
 
   useLayoutEffect(() => {
@@ -901,6 +919,10 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
     plan.readyKeys.includes("ticket") && plan.readyKeys.includes("entry");
   const travelReady = plan.readyKeys.includes("travel");
   const firstStopReady = plannedRows.length > 0;
+  const planStateLabel =
+    planStatus.nextAction === "my-day" && planStorageState !== "available"
+      ? "Your preparation and Fair plan are ready for this visit."
+      : planStatus.stateLabel;
 
   const activePrimaryLabel =
     activeMode === "travel"
@@ -912,6 +934,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
     <article
       data-fair-app
       data-fair-interaction-ready={storageReady ? "true" : "false"}
+      data-fair-plan-storage={planStorageState}
       aria-busy={!routeReady || !storageReady}
       className="fair-day-workspace min-h-dvh w-full font-sans"
       style={{
@@ -1111,6 +1134,25 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         </nav>
       </header>
 
+      {planStorageState === "unavailable" ? (
+        <aside
+          data-fair-storage-warning
+          role="status"
+          className="mx-4 mt-4 rounded-[var(--app-radius-md)] border-l-4 px-4 py-3 sm:mx-6 lg:mx-auto lg:w-[min(100%-3rem,68rem)]"
+          style={{
+            borderColor: "var(--app-warning-press)",
+            background:
+              "color-mix(in srgb, var(--app-warning) 9%, var(--app-bg-elevated-solid))",
+            color: "var(--app-ink)",
+          }}
+        >
+          <p className="text-[14px] font-bold">This plan is not being saved.</p>
+          <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            Your browser blocked on-device storage. Keep this page open, because reloading or closing it will clear My Day.
+          </p>
+        </aside>
+      ) : null}
+
       {activeMode === "now" ? (
         <FairPlanStatusRibbon
           plan={plan}
@@ -1162,13 +1204,16 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                   id="fair-next-action-heading"
                   className="mt-1 text-[21px] font-bold leading-tight tracking-[-0.025em]"
                 >
-                  {planStatus.stateLabel}
+                  {planStateLabel}
                 </h2>
                 <p
                   className="mt-1.5 text-[13px] leading-relaxed"
                   style={{ color: "var(--app-ink-2)" }}
                 >
-                  {fairNextActionDetail(planStatus.nextAction)}
+                  {fairNextActionDetail(
+                    planStatus.nextAction,
+                    planStorageState,
+                  )}
                 </p>
               </div>
               <Button
@@ -1541,7 +1586,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
           <section id={MODE_PANEL_IDS["my-day"]} aria-labelledby="fair-my-day-heading">
             <div className="flex items-center justify-between gap-3">
               <p className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-brand-press)" }}>
-                One plan · kept on this device
+                {planStorageState === "available"
+                  ? "One plan · kept on this device"
+                  : planStorageState === "unavailable"
+                    ? "Temporary plan · keep this page open"
+                    : "One plan for this visit"}
               </p>
               <FairDayPicker
                 dates={data.dates}

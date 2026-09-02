@@ -413,6 +413,46 @@ describe("FairDayWorkspace app journey", () => {
     ).toHaveLength(1);
   });
 
+  it("keeps a blocked-storage plan usable without claiming it is saved", async () => {
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: () => null,
+        setItem: () => {
+          throw new DOMException("Storage is blocked", "SecurityError");
+        },
+        removeItem: () => undefined,
+      },
+    });
+
+    await renderFair();
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+
+    expect(
+      container.querySelector('[data-fair-plan-storage="unavailable"]'),
+    ).not.toBeNull();
+    expect(container.querySelector("[data-fair-storage-warning]")?.textContent).toContain(
+      "This plan is not being saved.",
+    );
+    expect(container.textContent).toContain(
+      "reloading or closing it will clear My Day",
+    );
+
+    await openFullProgram();
+    const addDaughtry = container.querySelector<HTMLButtonElement>(
+      'button[aria-label^="Add Daughtry to My Day"]',
+    );
+    if (!addDaughtry) throw new Error("Missing Add Daughtry control.");
+    await act(async () => addDaughtry.click());
+    await openMode("My Day");
+
+    expect(container.textContent).toContain("Daughtry");
+    expect(container.textContent).toContain(
+      "Temporary plan · keep this page open",
+    );
+    expect(container.textContent).not.toContain("kept on this device");
+  });
+
   it("undoes a save without opening another surface", async () => {
     await renderFair();
     await openFullProgram();
