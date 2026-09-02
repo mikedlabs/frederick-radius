@@ -75,7 +75,7 @@ describe("scheduled data workflow contracts", () => {
     expect(checkedActions).toBeGreaterThan(0);
   });
 
-  it("routes only trusted-main MARC generation to the repository NAS runner", () => {
+  it("routes only reviewed trusted-main generators to the repository NAS runner", () => {
     const workflowNames = readdirSync(WORKFLOW_DIR).filter((name) =>
       /\.ya?ml$/.test(name),
     );
@@ -93,22 +93,31 @@ describe("scheduled data workflow contracts", () => {
       }
     }
 
-    expect(radiusDataJobs).toEqual(["build-marc-schedule.yml:build"]);
-
-    const marcText = workflowText("build-marc-schedule.yml");
-    const marc = parse(marcText) as WorkflowDocument;
-    expect(marcText).toContain("workflow_dispatch:");
-    expect(marcText).toContain("schedule:");
-    expect(marcText).not.toContain("pull_request:");
-    expect(marcText).not.toContain("\n  push:");
-    expect(marc.jobs?.build?.["runs-on"]).toEqual([
-      "self-hosted",
-      "radius-data",
-    ]);
-    expect(marc.jobs?.build?.if).toBe(
-      "${{ github.ref == 'refs/heads/main' }}",
+    const trustedGenerators = [
+      ["build-marc-schedule.yml", "build"],
+      ["data-steward.yml", "steward"],
+      ["transit-steward.yml", "transit"],
+    ] as const;
+    expect(radiusDataJobs.sort()).toEqual(
+      trustedGenerators.map(([name, jobName]) => `${name}:${jobName}`).sort(),
     );
-    expect(marc.jobs?.build?.permissions).toEqual({ contents: "read" });
+
+    for (const [name, jobName] of trustedGenerators) {
+      const workflowTextValue = workflowText(name);
+      const workflow = parse(workflowTextValue) as WorkflowDocument;
+      expect(workflowTextValue).toContain("workflow_dispatch:");
+      expect(workflowTextValue).toContain("schedule:");
+      expect(workflowTextValue).not.toContain("pull_request:");
+      expect(workflowTextValue).not.toContain("\n  push:");
+      expect(workflow.jobs?.[jobName]?.["runs-on"]).toEqual([
+        "self-hosted",
+        "radius-data",
+      ]);
+      expect(workflow.jobs?.[jobName]?.if).toBe(
+        "${{ github.ref == 'refs/heads/main' }}",
+      );
+      expect(workflow.jobs?.[jobName]?.permissions).toEqual({ contents: "read" });
+    }
 
     const hostedJobs = [
       ["publish-automated-pr.yml", "publish"],
