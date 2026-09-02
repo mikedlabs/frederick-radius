@@ -43,7 +43,9 @@ describe("FairPracticalAnswers result announcements", () => {
 
     expect(status.getAttribute("aria-live")).toBe("polite");
     expect(status.getAttribute("aria-atomic")).toBe("true");
-    expect(status.textContent).toMatch(/^\d+ practical answers shown\.$/);
+    expect(status.textContent).toBe(
+      "Choose a common need or search all practical answers.",
+    );
 
     const valueSetter = Object.getOwnPropertyDescriptor(
       window.HTMLInputElement.prototype,
