@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildFeedbackRequestBody,
   FEEDBACK_TRIGGER_BOTTOM,
   publicFeedbackSurface,
   shouldShowFeedbackTrigger,
@@ -27,5 +28,36 @@ describe("FeedbackWidget public surfaces", () => {
     expect(shouldShowFeedbackTrigger("fair")).toBe(false);
     expect(shouldShowFeedbackTrigger("food-trucks")).toBe(true);
     expect(shouldShowFeedbackTrigger(null)).toBe(true);
+  });
+
+  it("adds structured metadata only to a Fair request", () => {
+    expect(
+      buildFeedbackRequestBody({
+        message: "The entrance moved.",
+        email: "",
+        pathname: "/moments/great-frederick-fair-2026",
+        fairIssue: "map_wrong",
+        fairContext: "Gate 3",
+      }),
+    ).toEqual({
+      message: "The entrance moved.",
+      pathname: "/moments/great-frederick-fair-2026",
+      fairIssue: "map_wrong",
+      fairContext: "Gate 3",
+    });
+
+    expect(
+      buildFeedbackRequestBody({
+        message: "The stop moved.",
+        email: "visitor@example.com",
+        pathname: "/food-trucks",
+        fairIssue: "map_wrong",
+        fairContext: "Vendor row",
+      }),
+    ).toEqual({
+      message: "The stop moved.",
+      email: "visitor@example.com",
+      pathname: "/food-trucks",
+    });
   });
 });

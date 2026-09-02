@@ -2,6 +2,7 @@
  * /api/feedback — visitor feedback intake.
  *
  *   POST { message, email?, pathname?, version? }
+ *   POST { message, pathname: FairDay, fairIssue, fairContext?, email? }
  *   POST { source: "ask-correction", reason, resultRef?, pathname? }
  *
  * Writes to the existing `submissions` table with kind="feedback" (the same
@@ -22,7 +23,11 @@ import {
   isSameOriginMutationRequest,
   readJsonBodyWithLimit,
 } from "@/lib/origin-check";
-import { parseFeedback, buildFeedbackRow } from "@/lib/feedback";
+import {
+  buildFeedbackOwnerAlert,
+  buildFeedbackRow,
+  parseFeedback,
+} from "@/lib/feedback";
 import { fanoutToTopic } from "@/lib/push-fanout";
 import { OWNER_ALERTS_TOPIC } from "@/lib/push-topics";
 
@@ -68,13 +73,10 @@ export async function POST(req: NextRequest) {
       const id = inserted[0]?.id;
       if (id) {
         try {
-          const where = parsed.value.pathname ? ` · ${parsed.value.pathname}` : "";
+          const alert = buildFeedbackOwnerAlert(parsed.value);
           await fanoutToTopic(OWNER_ALERTS_TOPIC, `feedback:${id}`, {
-            title:
-              parsed.value.source === "ask-correction"
-                ? "Ask correction"
-                : "Site feedback",
-            body: parsed.value.message.slice(0, 140) + where,
+            title: alert.title,
+            body: alert.body,
             url: "/admin/beta",
           });
         } catch (err) {
