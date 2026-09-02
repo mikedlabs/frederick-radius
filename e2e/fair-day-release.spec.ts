@@ -198,9 +198,24 @@ test.describe("Fair Day production release journey", () => {
 
     await page.getByRole("button", { name: "Help", exact: true }).click();
     await page.getByRole("button", { name: "Send Fair feedback" }).click();
+    const fairReport = page.getByRole("dialog", {
+      name: "Report a Fair issue",
+    });
+    await expect(fairReport).toBeVisible();
+    await expect(fairReport).toContainText("What should we fix?");
+    const accessBarrier = fairReport.getByRole("button", {
+      name: "Accessibility barrier",
+    });
+    await accessBarrier.click();
+    await expect(accessBarrier).toHaveAttribute("aria-pressed", "true");
     await expect(
-      page.getByRole("dialog", { name: "Send feedback" }),
-    ).toBeVisible();
+      fairReport.getByRole("textbox", {
+        name: "What changed or went wrong?",
+      }),
+    ).toHaveAttribute(
+      "placeholder",
+      "Tell us what made the Fair harder to access or use.",
+    );
   });
 
   test("uses location only after a tap and refuses a misleadingly broad fix", async ({
