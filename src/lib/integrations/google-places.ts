@@ -6,8 +6,9 @@
  *   2. We only have name + address          → Text Search to resolve the id,
  *                                              then Place Details
  *
- * Everything is gated on GOOGLE_PLACES_API_KEY. Without it, every function
- * returns null and callers fall back to the existing seed/DFP data.
+ * Everything is gated on reviewed written authorization, the explicit Maps
+ * Platform runtime switch, and GOOGLE_PLACES_API_KEY. Without all three,
+ * every function returns null and callers use their non-Google fallback.
  *
  * Pricing-aware: we request only the field masks we use. Place Details with
  * the "Pro + Enterprise" fields (hours, rating) is billed per the field mask,
@@ -21,6 +22,7 @@
 
 import type { OperationalStatus } from "@/data/places";
 import { hasIdentitySubfacilityConflict } from "@/lib/quality/enrichmentBinding";
+import { googleMapsPlatformRuntimeEnabled } from "@/lib/google-maps-policy";
 
 const BASE = "https://places.googleapis.com/v1";
 
@@ -95,6 +97,17 @@ export type PlaceEnrichment = {
   decision_features?: GooglePlaceFeature[];
 };
 
+/**
+ * A maintenance caller must be able to tell a trustworthy empty result from
+ * an upstream failure. Public request paths keep their existing null fallback,
+ * while paid batch jobs use this result to avoid recording outages as a
+ * durable no-match.
+ */
+export type GooglePlaceLookupResult =
+  | { status: "found"; data: PlaceEnrichment }
+  | { status: "no_match" }
+  | { status: "provider_error"; reason: string };
+
 export type GooglePlaceSummary = {
   text: string;
   disclosure: string;
@@ -132,12 +145,13 @@ export type GooglePhotoAttribution = {
   authors: GoogleAuthorAttribution[];
 };
 
-function key(): string | null {
-  return process.env.GOOGLE_PLACES_API_KEY || null;
+function maintenanceKey(): string | null {
+  if (!googleMapsPlatformRuntimeEnabled()) return null;
+  return process.env.GOOGLE_PLACES_API_KEY?.trim() || null;
 }
 
 export function googlePlacesConfigured(): boolean {
-  return Boolean(key());
+  return Boolean(maintenanceKey());
 }
 
 /**
@@ -441,12 +455,12 @@ function normalize(p: GApiPlace): PlaceEnrichment | null {
 
 /** Fetch Place Details by a known place id ("ChIJ…" or "places/ChIJ…").
  *  `fields` controls the billing SKU — defaults to "lean" (no reviews). */
-export async function getPlaceDetails(
+export async function getPlaceDetailsResult(
   placeId: string,
   fields: GoogleFieldSet = "lean",
-): Promise<PlaceEnrichment | null> {
-  const k = key();
-  if (!k) return null;
+): Promise<GooglePlaceLookupResult> {
+  const k = maintenanceKey();
+  if (!k) return { status: "provider_error", reason: "missing_api_key" };
   const id = placeId.startsWith("places/") ? placeId : `places/${placeId}`;
   try {
     const res = await fetch(`${BASE}/${id}`, {
@@ -461,16 +475,26 @@ export async function getPlaceDetails(
       signal: AbortSignal.timeout(5_000),
     });
     if (!res.ok) {
-       
       console.error(`[google-places] details HTTP ${res.status} for ${id}`);
-      return null;
+      return res.status === 404
+        ? { status: "no_match" }
+        : { status: "provider_error", reason: `http_${res.status}` };
     }
-    return normalize((await res.json()) as GApiPlace);
+    const data = normalize((await res.json()) as GApiPlace);
+    return data ? { status: "found", data } : { status: "no_match" };
   } catch (err) {
-     
     console.error("[google-places] details failed:", err);
-    return null;
+    return { status: "provider_error", reason: "request_failed" };
   }
+}
+
+/** Public/request-time compatibility wrapper: failures remain a null fallback. */
+export async function getPlaceDetails(
+  placeId: string,
+  fields: GoogleFieldSet = "lean",
+): Promise<PlaceEnrichment | null> {
+  const result = await getPlaceDetailsResult(placeId, fields);
+  return result.status === "found" ? result.data : null;
 }
 
 /**
@@ -518,14 +542,14 @@ function namesPlausible(ours: string, theirs?: string): boolean {
  */
 const MAX_MATCH_METERS = 250;
 
-export async function resolveAndEnrich(opts: {
+export async function resolveAndEnrichResult(opts: {
   name: string;
   address?: string;
   lat?: number;
   lng?: number;
-}, fields: GoogleFieldSet = "lean"): Promise<PlaceEnrichment | null> {
-  const k = key();
-  if (!k) return null;
+}, fields: GoogleFieldSet = "lean"): Promise<GooglePlaceLookupResult> {
+  const k = maintenanceKey();
+  if (!k) return { status: "provider_error", reason: "missing_api_key" };
   const textQuery = [opts.name, opts.address].filter(Boolean).join(", ");
   try {
     // Pull a few candidates so we can take the first that PASSES the gate,
@@ -551,9 +575,8 @@ export async function resolveAndEnrich(opts: {
       signal: AbortSignal.timeout(5_000),
     });
     if (!res.ok) {
-       
       console.error(`[google-places] searchText HTTP ${res.status} for "${textQuery}"`);
-      return null;
+      return { status: "provider_error", reason: `http_${res.status}` };
     }
     const data = (await res.json()) as { places?: GApiPlace[] };
     for (const cand of data.places ?? []) {
@@ -566,23 +589,39 @@ export async function resolveAndEnrich(opts: {
       }
       // Name gate (catches same-building wrong tenant).
       if (!namesPlausible(opts.name, r.display_name)) continue;
-      return r; // first candidate that passes
+      return { status: "found", data: r }; // first candidate that passes
     }
-    return null; // nothing trustworthy — no photo beats a wrong photo
+    return { status: "no_match" }; // nothing trustworthy — no photo beats a wrong photo
   } catch (err) {
-
     console.error("[google-places] searchText failed:", err);
-    return null;
+    return { status: "provider_error", reason: "request_failed" };
   }
+}
+
+/** Public/request-time compatibility wrapper: failures remain a null fallback. */
+export async function resolveAndEnrich(opts: {
+  name: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+}, fields: GoogleFieldSet = "lean"): Promise<PlaceEnrichment | null> {
+  const result = await resolveAndEnrichResult(opts, fields);
+  return result.status === "found" ? result.data : null;
 }
 
 /**
  * Build a usable photo URL from a photo resource name.
- * `maxWidthPx` keeps cost down and matches our card sizes.
+ * `maxWidthPx` matches our card sizes and reduces transferred bytes. Google
+ * bills successful photo requests, so a smaller width does not reduce the
+ * number of billable requests.
  * NOTE: this URL embeds the API key, so only use it server-side or proxy it.
  */
 export function photoUrl(photoName: string, maxWidthPx = 800): string | null {
-  const k = key();
+  // Photo delivery is intentionally unchanged in this policy-only release.
+  // It already has a separate attribution, proxy, rate-limit, and daily-cap
+  // system. Moving it behind the maintenance hold would remove imagery from
+  // the live product, so that visual/product decision remains isolated.
+  const k = process.env.GOOGLE_PLACES_API_KEY?.trim() || null;
   if (!k) return null;
   return `${BASE}/${photoName}/media?maxWidthPx=${maxWidthPx}&key=${k}`;
 }

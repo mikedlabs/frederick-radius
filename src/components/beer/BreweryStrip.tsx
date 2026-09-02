@@ -110,7 +110,11 @@ export default function BreweryStrip({ photos }: { photos: BreweryPhotoMap }) {
 
       {/* Photo card rail */}
       {cards.length > 0 ? (
-        <ul id="brewery-strip-results" className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none]">
+        <ul
+          id="brewery-strip-results"
+          data-page-quality-horizontal-rail
+          className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none]"
+        >
           {cards.map((c) => (
             <li key={c.slug} className="shrink-0 snap-start">
               <article

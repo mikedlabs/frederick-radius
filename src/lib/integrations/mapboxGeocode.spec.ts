@@ -1,10 +1,19 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  reserveDailyUsage: vi.fn(),
+}));
+
+vi.mock("@/lib/usage-meter", () => ({
+  reserveDailyUsage: mocks.reserveDailyUsage,
+}));
 import {
   buildGeocodeQuery,
   geocodeForwardUncached,
   looksLikeStreetAddress,
   normalizeAddressKey,
   parseGeocodeResponse,
+  resolveAddressCoordinate,
   upgradeEventGeoms,
 } from "@/lib/integrations/mapboxGeocode";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
@@ -94,6 +103,151 @@ describe("normalizeAddressKey", () => {
     expect(a).toBe(b);
     expect(a).toBe("123 main st frederick md 21701");
   });
+
+  it("preserves unit and street-name meaning while normalizing punctuation", () => {
+    expect(normalizeAddressKey("4 E Church St #4, Frederick, MD")).toBe(
+      "4 e church st unit 4 frederick md",
+    );
+    expect(normalizeAddressKey("12 O'Possumtown Pike")).toBe(
+      "12 o'possumtown pike",
+    );
+  });
+});
+
+describe("resolveAddressCoordinate provider order", () => {
+  const countyMatch = {
+    status: "match" as const,
+    source: "frederick_county_address_points" as const,
+    normalizedAddress: "101 CLARKE PL, FREDERICK, MD",
+    officialAddress: "101 CLARKE PL",
+    coordinate: { lng: -77.4145, lat: 39.4157 },
+    objectId: 101,
+    sourceRecords: 1,
+  };
+
+  it("uses an exact official County match and skips paid Mapbox", async () => {
+    const officialLookup = vi.fn().mockResolvedValue(countyMatch);
+    const paidLookup = vi.fn();
+
+    await expect(
+      resolveAddressCoordinate("101 Clarke Pl, Frederick, MD", {
+        officialLookup,
+        paidLookup,
+        paidEnabled: true,
+      }),
+    ).resolves.toEqual(countyMatch.coordinate);
+    expect(officialLookup).toHaveBeenCalledOnce();
+    expect(officialLookup).toHaveBeenCalledWith(
+      "101 clarke pl frederick md",
+    );
+    expect(paidLookup).not.toHaveBeenCalled();
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
+  });
+
+  it("returns no pin after an official miss when paid fallback is disabled", async () => {
+    const paidLookup = vi.fn();
+    await expect(
+      resolveAddressCoordinate("101 Clarke Pl, Frederick, MD", {
+        officialLookup: vi.fn().mockResolvedValue({
+          status: "not_found",
+          reason: "no_exact_match",
+          normalizedAddress: "101 CLARKE PL, FREDERICK, MD",
+        }),
+        paidLookup,
+        paidEnabled: false,
+      }),
+    ).resolves.toBeNull();
+    expect(paidLookup).not.toHaveBeenCalled();
+  });
+
+  it("falls through a strict official miss to the explicitly enabled paid provider", async () => {
+    const paidLookup = vi.fn().mockResolvedValue({
+      lng: -77.4145,
+      lat: 39.4157,
+    });
+    await expect(
+      resolveAddressCoordinate("101 Clarke Pl, Frederick, MD", {
+        officialLookup: vi.fn().mockResolvedValue({
+          status: "not_found",
+          reason: "no_exact_match",
+          normalizedAddress: "101 CLARKE PL, FREDERICK, MD",
+        }),
+        paidLookup,
+        paidEnabled: true,
+      }),
+    ).resolves.toEqual({ lng: -77.4145, lat: 39.4157 });
+    expect(paidLookup).toHaveBeenCalledOnce();
+    expect(paidLookup).toHaveBeenCalledWith("101 clarke pl frederick md");
+  });
+
+  it("never passes raw case or punctuation into either provider cache", async () => {
+    const officialLookup = vi.fn().mockResolvedValue({
+      status: "not_found",
+      reason: "no_exact_match",
+      normalizedAddress: "101 CLARKE PL, FREDERICK, MD",
+    });
+    const paidLookup = vi.fn().mockResolvedValue(null);
+
+    await resolveAddressCoordinate(
+      "  4  O’Connell St. #4, Frederick, MD!!!  ",
+      { officialLookup, paidLookup, paidEnabled: true },
+    );
+
+    expect(officialLookup).toHaveBeenCalledWith(
+      "4 o'connell st unit 4 frederick md",
+    );
+    expect(paidLookup).toHaveBeenCalledWith(
+      "4 o'connell st unit 4 frederick md",
+    );
+  });
+
+  it("falls through a temporary official outage without caching it as a miss", async () => {
+    const paidLookup = vi.fn().mockResolvedValue({
+      lng: -77.4145,
+      lat: 39.4157,
+    });
+    await expect(
+      resolveAddressCoordinate("101 Clarke Pl, Frederick, MD", {
+        officialLookup: vi.fn().mockRejectedValue(new Error("timeout")),
+        paidLookup,
+        paidEnabled: true,
+      }),
+    ).resolves.toEqual({ lng: -77.4145, lat: 39.4157 });
+    expect(paidLookup).toHaveBeenCalledOnce();
+  });
+
+  it("allows an explicitly enabled paid fallback while County GIS is disabled", async () => {
+    const paidLookup = vi.fn().mockResolvedValue({
+      lng: -77.4145,
+      lat: 39.4157,
+    });
+    await expect(
+      resolveAddressCoordinate("101 Clarke Pl, Frederick, MD", {
+        officialLookup: vi.fn().mockResolvedValue({
+          status: "disabled",
+          reason: "county_gis_disabled",
+        }),
+        paidLookup,
+        paidEnabled: true,
+      }),
+    ).resolves.toEqual({ lng: -77.4145, lat: 39.4157 });
+    expect(paidLookup).toHaveBeenCalledOnce();
+  });
+
+  it("never turns an ambiguous official result into a guessed pin without fallback", async () => {
+    await expect(
+      resolveAddressCoordinate("101 Main St, Frederick, MD", {
+        officialLookup: vi.fn().mockResolvedValue({
+          status: "ambiguous",
+          reason: "multiple_exact_matches",
+          normalizedAddress: "101 MAIN ST, FREDERICK, MD",
+          candidateCount: 2,
+        }),
+        paidLookup: vi.fn(),
+        paidEnabled: false,
+      }),
+    ).resolves.toBeNull();
+  });
 });
 
 describe("upgradeEventGeoms reviewed venue anchor", () => {
@@ -153,8 +307,15 @@ describe("parseGeocodeResponse (county-bounds + precision gates)", () => {
 });
 
 describe("geocodeForwardUncached (mocked fetch — never hits the network)", () => {
+  beforeEach(() => {
+    mocks.reserveDailyUsage.mockReset();
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
+    delete process.env.MAPBOX_PERMANENT_GEOCODING_DAILY_CAP;
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
+    delete process.env.MAPBOX_PERMANENT_GEOCODING_DAILY_CAP;
   });
 
   it("geocodes via the v6 forward endpoint and returns an in-county hit", async () => {
@@ -164,6 +325,11 @@ describe("geocodeForwardUncached (mocked fetch — never hits the network)", () 
     vi.stubGlobal("fetch", fetchMock);
     const coord = await geocodeForwardUncached("101 Clarke Pl, Frederick, MD");
     expect(coord).toEqual({ lng: -77.4145, lat: 39.4157 });
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "mapbox_geocode",
+      20,
+      1,
+    );
     const url = String(fetchMock.mock.calls[0][0]);
     expect(url).toContain("https://api.mapbox.com/search/geocode/v6/forward");
     expect(url).toContain("q=101%20Clarke%20Pl%2C%20Frederick%2C%20MD");
@@ -200,5 +366,33 @@ describe("geocodeForwardUncached (mocked fetch — never hits the network)", () 
     await expect(geocodeForwardUncached("123 Main St, Frederick, MD")).rejects.toThrow(
       "mapbox-geocode HTTP 429",
     );
+  });
+
+  it("uses the configured permanent-result count and never calls Mapbox after cap exhaustion", async () => {
+    process.env.MAPBOX_PERMANENT_GEOCODING_DAILY_CAP = "7";
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: false, count: 7 });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      geocodeForwardUncached("123 Main St, Frederick, MD"),
+    ).rejects.toThrow("mapbox-geocode daily cap reached");
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "mapbox_geocode",
+      7,
+      1,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("fails closed before Mapbox when the shared counter is unavailable", async () => {
+    mocks.reserveDailyUsage.mockResolvedValue(null);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      geocodeForwardUncached("123 Main St, Frederick, MD"),
+    ).rejects.toThrow("mapbox-geocode cost control unavailable");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

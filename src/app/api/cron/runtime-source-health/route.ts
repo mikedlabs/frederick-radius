@@ -12,7 +12,10 @@ import {
   createAbortDeadline,
   withDeadlineOutcome,
 } from "@/lib/promise-deadline";
-import { monitorCronResponse } from "@/lib/observability/cron-monitor";
+import {
+  CRON_MONITOR_STATUS_HEADER,
+  monitorCronResponse,
+} from "@/lib/observability/cron-monitor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -107,16 +110,22 @@ async function runRuntimeSourceHealth(request: Request) {
     persistence.status === "fulfilled" ? persistence.value : 0;
   const persistenceComplete =
     persistence.status === "fulfilled" && persisted === persistable.length;
-  const status = !persistenceComplete || readiness.blocking
+  const status = !persistenceComplete
     ? "error"
-    : failed.length > 0 || skipped.length > 0
-      ? "partial"
-      : "ok";
+    : readiness.blocking
+      ? "degraded"
+      : failed.length > 0 || skipped.length > 0
+        ? "partial"
+        : "ok";
 
   return NextResponse.json(
     {
       phase: "runtime-source-health",
       status,
+      execution: {
+        status: persistenceComplete ? "complete" : "failed",
+        reason: persistenceComplete ? null : "evidence_persistence_incomplete",
+      },
       sources: {
         checked: aggregated.length,
         healthy: persistable.length - failed.length,
@@ -136,6 +145,16 @@ async function runRuntimeSourceHealth(request: Request) {
         persistenceDeadlineMs: PERSIST_DEADLINE_MS,
       },
     },
-    { status: persistenceComplete && !readiness.blocking ? 200 : 503 },
+    {
+      // A completed, durably persisted probe run is valid operational
+      // evidence even when the evidence says an upstream is down. Reserve 503
+      // for failure to execute or persist the check. The explicit monitor
+      // header keeps a blocking dependency outage red in Sentry.
+      status: persistenceComplete ? 200 : 503,
+      headers: {
+        [CRON_MONITOR_STATUS_HEADER]:
+          persistenceComplete && !readiness.blocking ? "ok" : "error",
+      },
+    },
   );
 }

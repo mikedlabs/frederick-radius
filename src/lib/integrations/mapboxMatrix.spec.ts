@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
-  meterUsage: vi.fn(),
+  reserveDailyUsage: vi.fn(),
 }));
 
 vi.mock("@/lib/mapbox-server", () => ({
@@ -11,7 +11,7 @@ vi.mock("@/lib/mapbox-server", () => ({
 }));
 
 vi.mock("@/lib/usage-meter", () => ({
-  meterUsage: mocks.meterUsage,
+  reserveDailyUsage: mocks.reserveDailyUsage,
 }));
 
 import {
@@ -106,11 +106,14 @@ describe("getMapboxTravelMatrix", () => {
     vi.clearAllMocks();
     vi.stubGlobal("fetch", mocks.fetch);
     process.env.MAPBOX_MATRIX_ENABLED = "1";
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 3 });
+    delete process.env.MAPBOX_MATRIX_DAILY_ELEMENT_CAP;
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     delete process.env.MAPBOX_MATRIX_ENABLED;
+    delete process.env.MAPBOX_MATRIX_DAILY_ELEMENT_CAP;
   });
 
   it("requests only a one-to-many matrix and maps reachable and null legs", async () => {
@@ -173,7 +176,11 @@ describe("getMapboxTravelMatrix", () => {
         signal: expect.any(AbortSignal),
       }),
     );
-    expect(mocks.meterUsage).toHaveBeenCalledWith("mapbox_matrix", 3);
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "mapbox_matrix",
+      1_000,
+      3,
+    );
   });
 
   it.each([
@@ -261,7 +268,51 @@ describe("getMapboxTravelMatrix", () => {
       retryable: false,
     });
     expect(mocks.fetch).not.toHaveBeenCalled();
-    expect(mocks.meterUsage).not.toHaveBeenCalled();
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
+  });
+
+  it("treats a zero Matrix allowance as a token-preserving breaker", async () => {
+    process.env.MAPBOX_MATRIX_DAILY_ELEMENT_CAP = "0";
+
+    await expect(
+      getMapboxTravelMatrix({
+        profile: "walking",
+        origin: ORIGIN,
+        destinations: DESTINATIONS.slice(0, 2),
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "disabled",
+      retryable: false,
+    });
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [null, { ok: false, reason: "cost-control-unavailable", retryable: true }],
+    [
+      { reserved: false, count: 8 },
+      { ok: false, reason: "daily-cap-reached", retryable: false },
+    ],
+  ])("does not call Mapbox when its atomic element reservation is unavailable", async (reservation, expected) => {
+    process.env.MAPBOX_MATRIX_DAILY_ELEMENT_CAP = "8";
+    mocks.reserveDailyUsage.mockResolvedValue(reservation);
+
+    await expect(
+      getMapboxTravelMatrix({
+        profile: "walking",
+        origin: ORIGIN,
+        destinations: DESTINATIONS,
+      }),
+    ).resolves.toEqual(expected);
+
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "mapbox_matrix",
+      8,
+      3,
+    );
+    expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
   it("reports a non-JSON upstream body as an invalid response", async () => {

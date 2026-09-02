@@ -1,10 +1,6 @@
 name: UX browser audit
 
 on:
-  schedule:
-    # 4:17 AM Eastern during daylight-saving time. The uneven minute avoids
-    # GitHub Actions' crowded top-of-hour scheduler window.
-    - cron: "17 8 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -16,13 +12,9 @@ permissions:
 
 jobs:
   mobile-ux:
-    name: Mobile UX shard ${{ matrix.shard }}/4
+    name: Mobile UX
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -33,22 +25,20 @@ jobs:
           cache: "npm"
       - name: Install dependencies
         run: npm ci
-      - name: Build the production app once per shard
+      - name: Build the production app once
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           # Next's route/type analysis crosses Node's ~2 GB default heap on a
           # cold Linux runner, exactly as ci.yml already documents at its own
-          # build steps. This job never had the setting, so all four shards
-          # died in the build with FatalProcessOutOfMemory and SIGABRT before
-          # a single accessibility check ran. The axe gate is pinned at zero
-          # violations and had not actually run since 2026-08-18.
+          # build steps. The axe gate remains pinned at zero violations.
           NODE_OPTIONS: "--max-old-space-size=4096"
       - name: Install Chromium
+        timeout-minutes: 10
         run: npx playwright install --with-deps chromium
       - name: Run mobile UX and safe-interaction audit
         # Leave enough of the job budget for Playwright to flush traces and for
-        # the artifact step below to upload them when a shard times out.
+        # the artifact step below to upload them when the audit times out.
         run: >-
           timeout --signal=TERM 30m
           npx playwright test
@@ -57,7 +47,6 @@ jobs:
           --project=chromium
           --workers=2
           --retries=1
-          --shard=${{ matrix.shard }}/4
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           PW_PRODUCTION: "1"
@@ -65,7 +54,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ux-browser-failure-traces-${{ matrix.shard }}
+          name: ux-browser-failure-traces
           path: test-results
           if-no-files-found: ignore
           retention-days: 7

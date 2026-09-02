@@ -12,12 +12,14 @@
  * The `name` MUST be a Google "places/.../photos/..." resource path — we
  * validate the shape to prevent the route being used as an open proxy.
  */
-import { meterUsage } from "@/lib/usage-meter";
+import { reserveDailyUsage } from "@/lib/usage-meter";
 import { NextRequest } from "next/server";
 import { photoUrl } from "@/lib/integrations/google-places";
+import { googlePhotoDailyCap } from "@/lib/google-photo-budget";
 import {
   isOverPaidRequestBudget,
   isSameOriginRequest,
+  isUnattributedRequest,
 } from "@/lib/origin-check";
 import { PLACE_BY_SLUG } from "@/data/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -161,8 +163,14 @@ export async function GET(req: NextRequest) {
   // Abuse guard: this route hits Google Places API on every miss. A
   // foreign Referer / Origin almost certainly means scraping or
   // hotlinking, both of which directly cost us money. Block early.
-  // Server-to-server fetches (no headers) are still allowed.
+  // This image route is always loaded as a same-origin browser subresource;
+  // every app-owned use is deliberately `unoptimized`, so Next never needs to
+  // fetch it server-to-server. A headerless request therefore has no valid
+  // paid-media use here and is the cheapest way to drain the shared allowance.
   if (!isSameOriginRequest(req)) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  if (isUnattributedRequest(req)) {
     return new Response("Forbidden", { status: 403 });
   }
   const name = req.nextUrl.searchParams.get("name");
@@ -190,13 +198,9 @@ export async function GET(req: NextRequest) {
   // route's normal artwork fallback instead of a 429, though: a long browsing
   // session or a shared NAT must never turn valid <img> elements into broken
   // icons. No-op when KV is not configured (see isRateLimited docs).
-  // The second, much tighter bucket inside this helper bounds callers that
-  // sent neither Referer nor Origin. They are admitted at all only so Next's
-  // image optimizer and genuine server-to-server renders keep working, and
-  // that admission is also the cheapest way for anyone to turn this route
-  // into a free Google Places Photo proxy billed to us: a cache-busted name
-  // is a guaranteed paid miss every time. Soft failure either way, so a
-  // legitimate render burst degrades to artwork rather than a broken image.
+  // The helper still retains its unattributed bucket as defense in depth if
+  // this route's strict guard is ever loosened. Same-origin callers use the
+  // normal per-IP bucket and degrade to artwork instead of a broken image.
   if (await isOverPaidRequestBudget(req, "place-photo", 120, 60, 15)) {
     return placeholderResponse(name, w, "rate-limited", slug, signalFallback);
   }
@@ -208,8 +212,32 @@ export async function GET(req: NextRequest) {
     return placeholderResponse(name, w, "no-key", slug, signalFallback);
   }
 
+  // A reservation is both the aggregate daily gate and this attempt's usage
+  // record. Database uncertainty fails closed so a broken counter cannot turn
+  // into unbounded Google spend.
+  let reservation: Awaited<ReturnType<typeof reserveDailyUsage>> = null;
   try {
-    meterUsage("google_photo");
+    reservation = await reserveDailyUsage(
+      "google_photo",
+      googlePhotoDailyCap(),
+    );
+  } catch {
+    // Keep the route safe if the helper's fail-closed contract ever regresses.
+  }
+  if (!reservation) {
+    return placeholderResponse(
+      name,
+      w,
+      "budget-unavailable",
+      slug,
+      signalFallback,
+    );
+  }
+  if (!reservation.reserved) {
+    return placeholderResponse(name, w, "daily-cap", slug, signalFallback);
+  }
+
+  try {
     const upstream = await fetch(url, {
       // Google redirects to the actual CDN object; follow it.
       redirect: "follow",

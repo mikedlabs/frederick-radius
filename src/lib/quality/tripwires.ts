@@ -26,6 +26,10 @@ import VENUE_EVENTS from "@/data/venue-events.json" with { type: "json" };
 import HOURS_REFRESH from "@/data/places-hours-refresh.json" with { type: "json" };
 import { HOURS_SNAPSHOT_MAX_AGE_DAYS } from "@/lib/quality/curated-freshness";
 import { HOURS_MAX_AGE_DAYS, isHoursFresh } from "@/lib/hours-freshness";
+import { reserveDailyUsage } from "@/lib/usage-meter";
+import { googlePhotoDailyCap } from "@/lib/google-photo-budget";
+import { googleMapsPlatformRuntimeEnabled } from "@/lib/google-maps-policy";
+import { radiusSearchSemanticConfigured } from "@/lib/ask/search-index-budget";
 
 /**
  * End-to-end tripwires — the daily checks for the failure classes that
@@ -96,40 +100,57 @@ export async function photoTripwire(sample = 6): Promise<Anomaly[]> {
   if (metadataAnomaly) return [metadataAnomaly];
   const step = Math.max(1, Math.floor(rows.length / sample));
   const picks = Array.from({ length: sample }, (_, i) => rows[Math.min(i * step, rows.length - 1)]);
+  if (picks.length === 0) return [];
 
-  const probes = await Promise.all(
-    picks.map(async ([slug, v]) => {
-      const url = photoUrl(v.photo_names![0], 80);
-      if (!url) return { configured: false, failure: null };
-      try {
-        const res = await fetch(url, {
-          redirect: "follow",
-          cache: "no-store",
-          signal: AbortSignal.timeout(8_000),
-        });
-        return {
-          configured: true,
-          failure: res.ok ? null : `${slug}:${res.status}`,
-        };
-      } catch {
-        return { configured: true, failure: `${slug}:fetch-error` };
-      }
-    }),
+  // Probe one deterministic sample per day, rotating across the catalog. A
+  // health check is billable and must not spend six user-facing requests just
+  // to prove the route works. One rotating probe is enough to detect drift.
+  const pick = picks[Math.floor(Date.now() / 86_400_000) % picks.length];
+  const [slug, row] = pick;
+  const url = photoUrl(row.photo_names![0], 80);
+  // No Google key in this environment means there is nothing to measure.
+  if (!url) return [];
+
+  const reservation = await reserveDailyUsage(
+    "google_photo",
+    googlePhotoDailyCap(),
   );
-  // No Google key in this environment — there is nothing to measure.
-  if (probes.some((probe) => !probe.configured)) return [];
-  const failures = probes
-    .map((probe) => probe.failure)
-    .filter((failure): failure is string => Boolean(failure));
-  const failed = failures.length;
-  if (failed * 2 < picks.length) return [];
-  return [
-    {
+  if (!reservation) {
+    return [{
+      source: "google-photo-budget",
+      kind: "infrastructure_unavailable",
+      detail:
+        "The photo watchdog could not reserve its one-call allowance. The photo proxy is failing closed to Radius artwork until the usage-counter database is reachable.",
+    }];
+  }
+  if (!reservation.reserved) {
+    return [{
+      source: "google-photos",
+      kind: "provider_budget_exhausted",
+      detail:
+        "The shared Google photo allowance is exhausted for today. Google-backed thumbnails are using Radius artwork until the Eastern-day counter resets.",
+    }];
+  }
+
+  try {
+    const response = await fetch(url, {
+      redirect: "follow",
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (response.ok) return [];
+    return [{
       source: "google-photos",
       kind: "photo_rot",
-      detail: `${failed}/${picks.length} sampled photo names failed upstream (${failures.join(", ")}) — the dataset's photo references have rotated; thumbnails are on the self-heal path or the placeholder. Regenerate photo names.`,
-    },
-  ];
+      detail: `The sampled photo name failed upstream (${slug}:${response.status}). The reference may have rotated; the app is using its placeholder.`,
+    }];
+  } catch {
+    return [{
+      source: "google-photos",
+      kind: "photo_rot",
+      detail: `The sampled photo name could not be fetched (${slug}:fetch-error). The app is using its placeholder.`,
+    }];
+  }
 }
 
 /** The /transit zero-routes class: the upstream schema changed and the
@@ -299,6 +320,9 @@ export async function askCanaryTripwire(): Promise<Anomaly[]> {
  */
 export function ingestFreshnessTripwire(now: Date = new Date()): Anomaly[] {
   const out: Anomaly[] = [];
+  const googleHoursHint = googleMapsPlatformRuntimeEnabled()
+    ? "The authorized Google refresh should be running. Verify HOURS_REFRESH_CRON=1, GOOGLE_PLACES_API_KEY, DATABASE_URL, and CRON_SECRET in Production, then run the data-steward workflow."
+    : "Google-backed refresh is deliberately held by policy. Do not re-enable it from this alert; restore freshness through an approved source or complete the documented authorization review first.";
   const check = (
     name: string,
     stamps: Array<string | undefined>,
@@ -342,7 +366,7 @@ export function ingestFreshnessTripwire(now: Date = new Date()): Anomaly[] {
       .filter(([key]) => !key.startsWith("_"))
       .map(([, value]) => (value as { refreshed_at?: string })?.refreshed_at),
     HOURS_SNAPSHOT_MAX_AGE_DAYS,
-    "The Vercel hours cron has stopped landing rows. Verify HOURS_REFRESH_CRON=1, GOOGLE_PLACES_API_KEY, DATABASE_URL and CRON_SECRET in Production, then run the data-steward workflow.",
+    googleHoursHint,
   );
   // The newest-stamp check above answers "did the WRITER stop". It cannot
   // answer "did DELIVERY stop", and delivery is what actually failed: the
@@ -371,7 +395,7 @@ export function ingestFreshnessTripwire(now: Date = new Date()): Anomaly[] {
         kind: "ingest_stale",
         detail:
           `Only ${Math.round(share * 100)}% of the ${withSchedule.length} committed hour schedules are still inside the ${HOURS_MAX_AGE_DAYS}-day publishing window ` +
-          `(${publishable} rows). Open and closed states are already going dark across the county. The refresh itself may be healthy — check whether the data-steward PR is merging, not just whether the cron ran.`,
+          `(${publishable} rows). Open and closed states are already going dark across the county. ${googleHoursHint}`,
       });
     }
   }
@@ -499,8 +523,9 @@ export type TripwireReport = {
  * `npm run build:radius-search` as the one-off bootstrap.
  *
  * Red when searchable rows are empty or stale. Vector coverage is only a
- * fault when OPENAI_API_KEY is configured and the optional backfill is
- * expected to be operating.
+ * fault only when the dedicated semantic switch, direct credential, and
+ * positive scheduled document allowance say the optional backfill should be
+ * operating.
  */
 export async function semanticIndexTripwire(): Promise<Anomaly[]> {
   if (process.env.RADIUS_HYBRID_SEARCH === "0") return []; // switched off on purpose
@@ -537,7 +562,7 @@ export async function semanticIndexTripwire(): Promise<Anomaly[]> {
       ];
     }
     if (
-      process.env.OPENAI_API_KEY &&
+      radiusSearchSemanticConfigured() &&
       embedded < Math.max(1, total * 0.8)
     ) {
       return [
@@ -546,7 +571,7 @@ export async function semanticIndexTripwire(): Promise<Anomaly[]> {
           kind: "embedding_stale",
           detail:
             `${embedded} of ${total} local search documents have optional semantic vectors. ` +
-            `OPENAI_API_KEY is configured, so check the radius-search cron or re-run \`npm run build:radius-search\` to continue the backfill.`,
+            `Scheduled semantic recall is enabled, so check the radius-search cron, its daily allowance, or re-run \`npm run build:radius-search\` to continue the backfill.`,
         },
       ];
     }

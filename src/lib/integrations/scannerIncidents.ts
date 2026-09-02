@@ -48,6 +48,11 @@ export type ScannerIncident = PublicIncident & {
 };
 
 export type ScannerFeedSource = "direct" | "slack" | "rss";
+export type ScannerFeedFailureReason =
+  | "timeout"
+  | "upstream_unavailable"
+  | "invalid_response"
+  | "internal_error";
 
 export type ScannerIncidentsResult = {
   data: ScannerIncident[];
@@ -57,6 +62,8 @@ export type ScannerIncidentsResult = {
   /** Provider event time or HTTP response time; see `asOfBasis`. */
   asOf?: string;
   asOfBasis?: "provider" | "retrieval";
+  /** Bounded, public-safe reason; never contains provider payloads or URLs. */
+  reason?: ScannerFeedFailureReason;
 };
 
 /** One parsed post plus its wall-clock time, before we fold it into a call. */
@@ -195,6 +202,19 @@ function successfulScannerResult(
   };
 }
 
+function unavailableScannerResult(
+  source: ScannerFeedSource,
+  reason: ScannerFeedFailureReason,
+): ScannerIncidentsResult {
+  return { data: [], available: false, source, reason };
+}
+
+export function scannerFetchFailureReason(
+  signal: AbortSignal,
+): ScannerFeedFailureReason {
+  return signal.aborted ? "timeout" : "upstream_unavailable";
+}
+
 async function fetchFromSlack(signal: AbortSignal): Promise<ScannerIncidentsResult> {
   try {
     const res = await fetch(
@@ -205,10 +225,10 @@ async function fetchFromSlack(signal: AbortSignal): Promise<ScannerIncidentsResu
         next: { revalidate: 60 },
       },
     );
-    if (!res.ok) return { data: [], available: false, source: "slack" };
+    if (!res.ok) return unavailableScannerResult("slack", "upstream_unavailable");
     const data = (await res.json()) as { ok?: boolean; messages?: SlackMessage[] };
     if (!data.ok || !Array.isArray(data.messages)) {
-      return { data: [], available: false, source: "slack" };
+      return unavailableScannerResult("slack", "invalid_response");
     }
 
     const entries: IncidentEntry[] = [];
@@ -225,7 +245,7 @@ async function fetchFromSlack(signal: AbortSignal): Promise<ScannerIncidentsResu
     }
     return successfulScannerResult("slack", aggregate(entries), responseDate(res));
   } catch {
-    return { data: [], available: false, source: "slack" };
+    return unavailableScannerResult("slack", scannerFetchFailureReason(signal));
   }
 }
 
@@ -255,10 +275,10 @@ async function fetchFromRss(signal: AbortSignal): Promise<ScannerIncidentsResult
       signal,
       next: { revalidate: 60 },
     });
-    if (!res.ok) return { data: [], available: false, source: "rss" };
+    if (!res.ok) return unavailableScannerResult("rss", "upstream_unavailable");
     const xml = await res.text();
     if (!/<(?:rss|feed)\b/i.test(xml)) {
-      return { data: [], available: false, source: "rss" };
+      return unavailableScannerResult("rss", "invalid_response");
     }
     const items = xml.split(/<item[\s>]/i).slice(1);
 
@@ -288,7 +308,7 @@ async function fetchFromRss(signal: AbortSignal): Promise<ScannerIncidentsResult
     }
     return successfulScannerResult("rss", aggregate(entries), responseDate(res));
   } catch {
-    return { data: [], available: false, source: "rss" };
+    return unavailableScannerResult("rss", scannerFetchFailureReason(signal));
   }
 }
 
@@ -322,7 +342,7 @@ async function fetchFromDirect(signal: AbortSignal): Promise<ScannerIncidentsRes
       signal,
       next: { revalidate: 60 },
     });
-    if (!res.ok) return { data: [], available: false, source: "direct" };
+    if (!res.ok) return unavailableScannerResult("direct", "upstream_unavailable");
     const html = await res.text();
     const paragraphMatches = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)];
     const lines = paragraphMatches
@@ -349,7 +369,7 @@ async function fetchFromDirect(signal: AbortSignal): Promise<ScannerIncidentsRes
     // require either a dated dispatch-shaped row or the board's explicit empty
     // sentinel before suppressing the Slack/RSS fallback.
     if (!hasDispatchLine && !hasValidEmptyBoard) {
-      return { data: [], available: false, source: "direct" };
+      return unavailableScannerResult("direct", "invalid_response");
     }
 
     const entries: IncidentEntry[] = [];
@@ -362,7 +382,7 @@ async function fetchFromDirect(signal: AbortSignal): Promise<ScannerIncidentsRes
     }
     return successfulScannerResult("direct", aggregate(entries), responseDate(res));
   } catch {
-    return { data: [], available: false, source: "direct" };
+    return unavailableScannerResult("direct", scannerFetchFailureReason(signal));
   }
 }
 

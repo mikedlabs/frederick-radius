@@ -36,17 +36,31 @@ function sqlReturning(row: { total: number; embedded: number }) {
 describe("semanticIndexTripwire", () => {
   const ORIGINAL = process.env.RADIUS_HYBRID_SEARCH;
   const ORIGINAL_OPENAI = process.env.OPENAI_API_KEY;
+  const ORIGINAL_SEMANTIC = process.env.RADIUS_SEARCH_SEMANTIC_ENABLED;
+  const ORIGINAL_LIMIT =
+    process.env.RADIUS_SEARCH_EMBEDDING_DAILY_DOCUMENT_LIMIT;
 
   beforeEach(() => {
     mockPlaces.count = 1000;
     delete process.env.RADIUS_HYBRID_SEARCH;
     delete process.env.OPENAI_API_KEY;
+    delete process.env.RADIUS_SEARCH_SEMANTIC_ENABLED;
+    delete process.env.RADIUS_SEARCH_EMBEDDING_DAILY_DOCUMENT_LIMIT;
   });
   afterEach(() => {
     if (ORIGINAL === undefined) delete process.env.RADIUS_HYBRID_SEARCH;
     else process.env.RADIUS_HYBRID_SEARCH = ORIGINAL;
     if (ORIGINAL_OPENAI === undefined) delete process.env.OPENAI_API_KEY;
     else process.env.OPENAI_API_KEY = ORIGINAL_OPENAI;
+    if (ORIGINAL_SEMANTIC === undefined) {
+      delete process.env.RADIUS_SEARCH_SEMANTIC_ENABLED;
+    } else process.env.RADIUS_SEARCH_SEMANTIC_ENABLED = ORIGINAL_SEMANTIC;
+    if (ORIGINAL_LIMIT === undefined) {
+      delete process.env.RADIUS_SEARCH_EMBEDDING_DAILY_DOCUMENT_LIMIT;
+    } else {
+      process.env.RADIUS_SEARCH_EMBEDDING_DAILY_DOCUMENT_LIMIT =
+        ORIGINAL_LIMIT;
+    }
   });
 
   it("stays silent when there is no database (fail-soft contract)", async () => {
@@ -82,8 +96,16 @@ describe("semanticIndexTripwire", () => {
     expect(await semanticIndexTripwire()).toEqual([]);
   });
 
-  it("reports a stalled optional vector backfill when OpenAI is configured", async () => {
+  it("does not infer a vector-backfill expectation from an OpenAI key", async () => {
     process.env.OPENAI_API_KEY = "test-openai-key";
+    mockSql.current = sqlReturning({ total: 980, embedded: 100 });
+    expect(await semanticIndexTripwire()).toEqual([]);
+  });
+
+  it("reports a stalled optional vector backfill only when explicitly configured", async () => {
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    process.env.RADIUS_SEARCH_SEMANTIC_ENABLED = "1";
+    process.env.RADIUS_SEARCH_EMBEDDING_DAILY_DOCUMENT_LIMIT = "100";
     mockSql.current = sqlReturning({ total: 980, embedded: 100 });
     const out = await semanticIndexTripwire();
     expect(out).toHaveLength(1);
@@ -92,6 +114,8 @@ describe("semanticIndexTripwire", () => {
 
   it("stays green when configured vector coverage is healthy", async () => {
     process.env.OPENAI_API_KEY = "test-openai-key";
+    process.env.RADIUS_SEARCH_SEMANTIC_ENABLED = "1";
+    process.env.RADIUS_SEARCH_EMBEDDING_DAILY_DOCUMENT_LIMIT = "100";
     mockSql.current = sqlReturning({ total: 980, embedded: 900 });
     expect(await semanticIndexTripwire()).toEqual([]);
   });

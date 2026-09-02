@@ -2,6 +2,7 @@ import { afterEach, describe, it, expect, vi } from "vitest";
 import {
   aggregate,
   loadScannerIncidentsResult,
+  scannerFetchFailureReason,
   type IncidentEntry,
 } from "./scannerIncidents";
 import type { PublicIncident } from "@/lib/scanner/incidentFeed";
@@ -73,6 +74,15 @@ describe("aggregate — call-lifecycle grouping", () => {
 });
 
 describe("scanner source availability", () => {
+  it("classifies an elapsed route deadline as a timeout", () => {
+    const controller = new AbortController();
+    expect(scannerFetchFailureReason(controller.signal)).toBe(
+      "upstream_unavailable",
+    );
+    controller.abort();
+    expect(scannerFetchFailureReason(controller.signal)).toBe("timeout");
+  });
+
   it("falls back when the direct endpoint returns an unrelated 200 HTML page", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()

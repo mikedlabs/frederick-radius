@@ -36,7 +36,7 @@ import { isUtilityEvent } from "@/lib/event-kind";
 import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
 import { isEventToday, isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { isSameTodayListing, splitTonightFeature, withoutTodayFeature } from "@/lib/today/tonight";
+import { splitTonightFeature, withoutTodayFeature } from "@/lib/today/tonight";
 import PoolsToday from "@/components/today/PoolsToday";
 import TodayLocalGuides, { TodayFoodTruckGuide } from "@/components/today/TodayLocalGuides";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
@@ -57,7 +57,11 @@ import { getStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
 import { shouldPromoteTodayHeadliner } from "@/components/today/headlinerTiming";
 import TodayScopeStatus from "@/components/today/TodayScopeStatus";
-import { shouldRenderTodayEventSection } from "@/lib/today-events";
+import TodayEventsRecovery from "@/components/today/TodayEventsRecovery";
+import {
+  shouldRenderTodayEventSection,
+  todayEventPicksMeta,
+} from "@/lib/today-events";
 import { eventTown } from "@/lib/events/eventTown";
 import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
@@ -628,21 +632,11 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
   // on the same "late" daypart — so the tomorrow answer isn't duplicated.)
   // The headliner itself renders ONCE in TodayDecisionLead; this section
   // carries the rest of the program. Same derivation, same promise.
-  const { ahead, feature, upcomingRest, remainingAlsoToday, remainingEarlierToday } =
+  const { feature, upcomingRest, remainingAlsoToday, remainingEarlierToday } =
     deriveTodayProgram(publicEvents, now);
   const featureIsPromoted = feature
     ? shouldPromoteTodayHeadliner(feature, now)
     : false;
-  // "N events today" counts only what is still AHEAD (the headliner plus the
-  // forward program), never the draws that already wrapped up — those live in
-  // the collapsed "Earlier today" list and must not inflate the header count
-  // (the 7:55 PM audit: six ended library crafts made the count read "11" over
-  // ~3 visible rows). Dedupe the headliner's repeat feed occurrences.
-  const featureDuplicateCount = feature
-    ? Math.max(0, ahead.filter((event) => isSameTodayListing(event, feature)).length - 1)
-    : 0;
-  const visibleTodayCount = ahead.length - featureDuplicateCount;
-
   // The day PROGRAM (replaced the unlabeled sideways rail + separate "Also
   // today" bucket, owner call 2026-07-15: "feels like a list with no
   // understanding of what's in the list"). One chronological spine, grouped
@@ -661,6 +655,17 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
   const PROGRAM_MAX = 3;
   const shown = program.slice(0, PROGRAM_MAX);
   const programOverflow = program.length - shown.length;
+  // Count only the briefing picks a person can see here. The complete total
+  // remains on /events from the same unifiedEvents set. Labeling this bounded
+  // front-page selection as picks prevents a degraded archive fallback (or a
+  // deliberate three-row brief) from contradicting the full calendar count.
+  const briefingPicks = [
+    ...(featureIsPromoted && feature ? [feature] : []),
+    ...shown.map(({ e }) => e),
+  ];
+  const briefingTonightPicks = briefingPicks.filter(
+    (event) => !event.is_all_day && easternStartHour(event.starts_at) >= 17,
+  ).length;
   const partOf = (row: (typeof program)[number]): string => {
     if (row.e.is_all_day) return "All day";
     const h = easternStartHour(row.e.starts_at);
@@ -673,13 +678,6 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
     if (last && last.label === label) last.rows.push(row);
     else programGroups.push({ label, rows: [row] });
   }
-  const tonightCount = ahead.filter(
-    (e) =>
-      (!feature || e === feature || !isSameTodayListing(e, feature)) &&
-      !e.is_all_day &&
-      easternStartHour(e.starts_at) >= 17,
-  ).length;
-
   // A degraded archive with no usable rows is an unknown calendar state, not
   // an empty day. Do not leave a heading with a blank body or claim that
   // nothing is happening; the full Events board remains available in the
@@ -690,7 +688,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
     programCount: program.length,
     earlierCount: remainingEarlierToday.length,
   })) {
-    return null;
+    return <TodayEventsRecovery />;
   }
 
   return (
@@ -699,15 +697,13 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
         id="upcoming"
         title="Events today"
         href="/events"
-        cta={visibleTodayCount > 0 || feature ? "See all" : "Full board"}
+        cta={briefingPicks.length > 0 || feature ? "See all" : "Full board"}
         flat
-        meta={
-          visibleTodayCount > 0
-            ? `${visibleTodayCount} today${tonightCount > 0 ? ` · ${tonightCount} tonight` : ""} · Countywide${sourceHealth.degraded ? " · Partial coverage" : ""}`
-            : sourceHealth.degraded
-              ? "Partial calendar coverage"
-              : undefined
-        }
+        meta={todayEventPicksMeta({
+          todayPicks: briefingPicks.length,
+          tonightPicks: briefingTonightPicks,
+          degraded: sourceHealth.degraded,
+        })}
       >
         {/* Keep degraded-source honesty in the section's own metadata rather
             than repeating the Events page's full warning card. Today stays

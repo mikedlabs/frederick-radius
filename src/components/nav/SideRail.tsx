@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { haptic } from "@/lib/haptics";
+import { shouldPrefetchGlobalNavigation } from "@/lib/fair/route-policy";
 import { TABS, tabIndexForPath } from "./tabs";
 
 /** Desktop counterpart to the mobile field-guide index strip. */
@@ -11,6 +12,7 @@ export default function SideRail() {
   const pathname = usePathname();
   const router = useRouter();
   const realIdx = tabIndexForPath(pathname);
+  const allowPrefetch = shouldPrefetchGlobalNavigation(pathname);
   const [pendingIdx, setPendingIdx] = useState<number | null>(null);
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export default function SideRail() {
               <li key={href} className="flex">
                 <Link
                   href={href}
-                  prefetch={prefetch}
+                  prefetch={allowPrefetch ? prefetch : false}
                   onPointerDown={() => {
                     if (!isAtDestination) setPendingIdx(idx);
                   }}

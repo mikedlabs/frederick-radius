@@ -1,11 +1,48 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 
 export const UPDATE_PROMPT_DURATION_MS = 10_000;
 export const UPDATE_PROMPT_SNOOZE_MS = 30 * 60 * 1_000;
 const UPDATE_PROMPT_SNOOZE_KEY = "fr.update-prompt-snoozed-at.v1";
+const FAIR_OFFLINE_PATHS = new Set([
+  "/fair",
+  "/moments/great-frederick-fair-2026",
+]);
+
+type FairOfflineWorker = Pick<ServiceWorker, "postMessage">;
+type FairOfflineRegistration = { active: FairOfflineWorker | null };
+type FairOfflineContainer = {
+  ready: PromiseLike<FairOfflineRegistration>;
+};
+
+export function shouldWarmFairOffline(pathname: string, search: string): boolean {
+  return search === "" && FAIR_OFFLINE_PATHS.has(pathname);
+}
+
+/**
+ * Ask an active worker to warm the public Fair workspace. On a visitor's
+ * first-ever install there is no active worker yet, so wait for the ready
+ * registration and message the newly activated worker instead.
+ */
+export async function requestFairOfflineWarm(
+  pathname: string,
+  search: string,
+  registration: FairOfflineRegistration,
+  serviceWorkers: FairOfflineContainer,
+): Promise<boolean> {
+  if (!shouldWarmFairOffline(pathname, search)) return false;
+  try {
+    const worker = registration.active ?? (await serviceWorkers.ready).active;
+    if (!worker) return false;
+    worker.postMessage({ type: "CACHE_FAIR" });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * "Later" means later, including after an in-app route change. The app shell
@@ -70,6 +107,8 @@ export function shouldReloadForAcceptedUpdate(
  *      tab — which is what was happening before A5.
  */
 export default function ServiceWorkerRegister() {
+  const pathname = usePathname();
+
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
     // Skip ONLY true local dev (registering on localhost fights HMR).
@@ -233,5 +272,30 @@ export default function ServiceWorkerRegister() {
       if (toastId !== undefined) toast.dismiss(toastId);
     };
   }, []);
+
+  // The global registrar survives App Router navigation. Run this separately
+  // from registration so entering Fair from elsewhere in Radius still warms
+  // the offline workspace; a direct first visit waits for the first worker to
+  // become ready through the same path.
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1" || host.endsWith(".local")) {
+      return;
+    }
+    if (!shouldWarmFairOffline(pathname, window.location.search)) return;
+
+    void navigator.serviceWorker.ready
+      .then((registration) =>
+        requestFairOfflineWarm(
+          pathname,
+          window.location.search,
+          registration,
+          navigator.serviceWorker,
+        ),
+      )
+      .catch(() => {});
+  }, [pathname]);
+
   return null;
 }

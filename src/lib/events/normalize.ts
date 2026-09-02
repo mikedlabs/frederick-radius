@@ -11,7 +11,7 @@
  * mocking globals.
  */
 
-import { cleanFeedText } from "@/lib/format/text";
+import { cleanFeedText, formatAddress } from "@/lib/format/text";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
 const ET = "America/New_York";
@@ -362,7 +362,7 @@ export function clampDescription(text: string, max = 320): string {
  * Shares the label vocabulary with cleanDescription.
  */
 export function cleanVenueName(raw: string | null | undefined): string | null {
-  const v = cleanFeedText(raw ?? "").trim();
+  const v = formatAddress(cleanFeedText(raw ?? "").trim());
   if (!v) return null;
   if (new RegExp(`\\b(?:${ANY_LABEL})\\s*:`, "i").test(v) || v.includes("?")) {
     return null;

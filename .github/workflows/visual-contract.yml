@@ -43,6 +43,7 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Install Chromium
+        timeout-minutes: 10
         run: npx playwright install --with-deps chromium
 
       - name: Run visual contracts

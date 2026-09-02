@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { track } from "@/lib/track";
+import { shouldPostAutomaticActivity } from "@/lib/fair/route-policy";
 import {
   BETA_ID_COOKIE,
   BETA_OWNER_MARKER,
@@ -31,7 +33,11 @@ export function recordAggregateBetaActivity(): void {
 }
 
 export default function BetaTelemetry() {
+  const pathname = usePathname();
+  const recorded = useRef(false);
+
   useEffect(() => {
+    if (recorded.current || !shouldPostAutomaticActivity(pathname)) return;
     const identity = readCookie(BETA_ID_COOKIE);
     if (!identity || identity === BETA_OWNER_MARKER) return;
     // Older sessions may still carry the pre-fix personal code in this
@@ -46,10 +52,11 @@ export default function BetaTelemetry() {
     } catch {
       // Private mode / storage disabled — fall through and fire once per mount.
     }
+    recorded.current = true;
     recordAggregateBetaActivity();
     // Best-effort last-seen refresh; never surfaces an error to the user.
     void fetch("/api/beta/seen", { method: "POST", keepalive: true }).catch(() => {});
-  }, []);
+  }, [pathname]);
 
   return null;
 }

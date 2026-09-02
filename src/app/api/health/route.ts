@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCachedPublicHealthSnapshot } from "@/lib/public-health";
-import { publicDataSnapshot } from "@/lib/public-data-snapshot";
+import {
+  publicDataSnapshot,
+  publicHoursProductHealth,
+} from "@/lib/public-data-snapshot";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,9 +14,17 @@ export async function GET() {
   // probe can distinguish "the app answered" from "the database/feed layer
   // needs attention." Monitors must parse `readiness.surfaces`, migrations,
   // and heartbeats; HTTP status alone is not a release-readiness signal.
+  const health = await getCachedPublicHealthSnapshot();
+  const release = publicDataSnapshot();
+  const hours = publicHoursProductHealth(release);
   return NextResponse.json({
-    ...await getCachedPublicHealthSnapshot(),
-    release: publicDataSnapshot(),
+    ...health,
+    status:
+      health.status === "operational" && hours.status === "current"
+        ? "operational"
+        : "degraded",
+    products: { hours },
+    release,
   }, {
     status: 200,
     headers: {

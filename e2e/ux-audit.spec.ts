@@ -37,6 +37,7 @@ const ROUTES = [
   "/map",
   "/ask",
   "/events",
+  "/fair",
   "/search?q=animal+control",
   "/nearby",
   "/contacts",

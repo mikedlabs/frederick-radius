@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { isFairDayPath } from "@/lib/fair/route-policy";
 import {
   decisionImpressionFromDataset,
   decisionTelemetryFromDatasets,
@@ -34,7 +36,10 @@ function impressionKey(element: HTMLElement): string {
  * impressions fire only after at least half the marked card is visible.
  */
 export default function DecisionTelemetryObserver() {
+  const pathname = usePathname();
+
   useEffect(() => {
+    if (isFairDayPath(pathname)) return;
     const seen = new Set<string>();
     const observed = new WeakSet<Element>();
     const io =
@@ -107,7 +112,7 @@ export default function DecisionTelemetryObserver() {
       mutations?.disconnect();
       io?.disconnect();
     };
-  }, []);
+  }, [pathname]);
 
   return null;
 }

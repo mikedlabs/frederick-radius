@@ -62,8 +62,8 @@ describe("Today decision hierarchy", () => {
     expect(eventsStart).toBeGreaterThan(-1);
     expect(events).toContain("featureIsPromoted && feature ?");
     expect(events).toContain("<TonightHeadline event={feature} now={now} embedded />");
-    expect(events).toContain("Countywide");
-    expect(events).toContain("return null;");
+    expect(events).toContain("meta={todayEventPicksMeta({");
+    expect(events).toContain("return <TodayEventsRecovery />;");
     expect(events).not.toContain("Some event sources are still updating.");
   });
 

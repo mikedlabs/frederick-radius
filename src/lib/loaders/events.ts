@@ -550,7 +550,14 @@ export function getEventBySlug(slug: string): (EventWithMeta & { venue_place_nam
  */
 export function seriesKey(e: Event): string {
   if (!e.is_recurring) return `__one_off__${e.slug}`;
-  const base = e.title.split(/\s+[·—–-]\s+/)[0].trim().toLowerCase();
+  const base = e.title
+    .split(/\s+[·—–-]\s+/)[0]
+    // Curated publisher lineups sometimes label the first/final occurrence
+    // before the performer separator ("Series: Season Finale · Artist").
+    // Those labels describe an occurrence, not a new series identity.
+    .replace(/:\s*(?:opening night|season finale)\s*$/i, "")
+    .trim()
+    .toLowerCase();
   return `${base}@@${(e.venue_name || "").toLowerCase()}`;
 }
 

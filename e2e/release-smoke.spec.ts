@@ -323,7 +323,9 @@ test("map search keeps its exact state through place details and Back", async ({
   );
 
   await page
-    .getByRole("combobox", { name: "Search this map" })
+    .getByRole("combobox", {
+      name: /Search (?:this map|Frederick Radius)/,
+    })
     .fill("Gravel and Grind");
   const result = page.locator(
     '[data-map-search-result="place:gravel-and-grind-frederick"]',
@@ -375,7 +377,9 @@ test("map search keeps its exact state through place details and Back", async ({
     .getByRole("button", { name: "Close Gravel & Grind" })
     .click();
   await expect(
-    page.getByRole("combobox", { name: "Search this map" }),
+    page.getByRole("combobox", {
+      name: /Search (?:this map|Frederick Radius)/,
+    }),
   ).toHaveValue("Gravel and Grind");
   expect(issues, "map → place → map runtime failures").toEqual([]);
 });

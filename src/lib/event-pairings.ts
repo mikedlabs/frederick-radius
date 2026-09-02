@@ -19,7 +19,10 @@
 
 import type { NwsForecast, NwsHourly } from "@/lib/integrations/nws";
 import type { PlaceCardData } from "@/lib/loaders/places";
-import { formatDistance } from "@/lib/geo";
+import {
+  eventParkingSummary,
+  type EventParkingDecision,
+} from "@/lib/events/parking";
 
 // ── Weather ───────────────────────────────────────────────────────
 
@@ -99,17 +102,14 @@ export function weatherPhrase(period: NwsHourly | null): string | null {
 // ── Parking ───────────────────────────────────────────────────────
 
 /**
- * Synthesize a parking-nearby phrase from the pre-decorated list of
- * nearby parking places (already sorted by distance, distance_m
- * populated). Returns null when there's nothing useful within range.
+ * Synthesize the parking phrase from the canonical event-detail garage
+ * decision. The Getting there section receives the same decision, so one page
+ * cannot advertise two different closest garages or distances.
  */
-export function parkingPhrase(nearbyParking: PlaceCardData[]): string | null {
-  const closest = nearbyParking[0];
-  if (!closest) return null;
-  const d = closest.distance_m ?? Infinity;
-  if (!Number.isFinite(d)) return null;
-  const dist = formatDistance(d);
-  return `The closest listed parking is ${dist} away at ${closest.name}.`;
+export function parkingPhrase(
+  parking: EventParkingDecision | null,
+): string | null {
+  return eventParkingSummary(parking);
 }
 
 // ── Eat before ────────────────────────────────────────────────────

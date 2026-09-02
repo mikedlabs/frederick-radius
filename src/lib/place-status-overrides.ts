@@ -1,4 +1,5 @@
 import RAW from "@/data/place-status-overrides.json" with { type: "json" };
+import { easternDayKey } from "@/lib/tz";
 import { isIsoCalendarDate } from "../../scripts/lib/iso-calendar-date.mjs";
 
 export { isIsoCalendarDate } from "../../scripts/lib/iso-calendar-date.mjs";
@@ -87,7 +88,7 @@ export function isManualPlaceStatusReviewCurrent(
 ): boolean {
   return (
     isIsoCalendarDate(override.review_after) &&
-    now.toISOString().slice(0, 10) <= override.review_after
+    easternDayKey(now) <= override.review_after
   );
 }
 
@@ -106,7 +107,7 @@ export function activeManualPlaceStatusOverride(
     return undefined;
   }
 
-  const today = now.toISOString().slice(0, 10);
+  const today = easternDayKey(now);
   if (override.effective_at > today) return undefined;
   if (isManualPlaceClosureOverride(override)) return override;
   return isManualPlaceStatusReviewCurrent(override, now) ? override : undefined;

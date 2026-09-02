@@ -25,6 +25,12 @@ describe("momentBySlug", () => {
     expect(momentBySlug("fourth-of-july-2026")?.title).toContain("Fourth");
     expect(momentBySlug("nope")).toBeNull();
   });
+
+  it("keeps the Fair's independent-guide boundary in its public data", () => {
+    expect(momentBySlug("great-frederick-fair-2026")?.disclosure).toBe(
+      "Radius is an independent local guide. Fair details come from official Fair sources linked below.",
+    );
+  });
 });
 
 describe("data integrity (a bad hand-edit fails here)", () => {

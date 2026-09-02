@@ -68,7 +68,10 @@ function isBetaDestination(value) {
   }
 }
 
-async function request(path, { follow = true, accept = "*/*" } = {}) {
+async function request(
+  path,
+  { follow = true, accept = "*/*", requestHeaders = {} } = {},
+) {
   const hops = [];
   let url = new URL(path, BASE);
 
@@ -82,6 +85,7 @@ async function request(path, { follow = true, accept = "*/*" } = {}) {
         Accept: accept,
         "Cache-Control": "no-cache",
         "User-Agent": USER_AGENT,
+        ...requestHeaders,
       },
     });
     const ttfbMs = Date.now() - requestStartedAt;
@@ -255,6 +259,63 @@ async function run() {
     }
   } catch (error) {
     bad(`/api/health readiness check failed: ${error.message}`);
+  }
+
+  // Today and Events read the same durable archive, but Today keeps a shorter
+  // server-rendering deadline. Prove that the compact recovery endpoint still
+  // has a valid contract and that a non-empty shortlist cannot disappear from
+  // the page without either a rendered link or the explicit recovery mount.
+  try {
+    const result = await request("/api/today/events?refresh=1", {
+      accept: "application/json",
+      // Match the browser recovery request instead of exercising only the
+      // public cached branch. The explicit refresh path has its own origin,
+      // rate-limit, and no-store safeguards.
+      requestHeaders: {
+        Referer: new URL("/today", BASE).href,
+      },
+    });
+    assertNoBetaRedirect("/api/today/events?refresh=1", result);
+    check(
+      result.status === 200,
+      "/api/today/events?refresh=1 is available to the Today page",
+      `/api/today/events?refresh=1 returned ${result.status}`,
+    );
+    check(
+      (result.headers.get("cache-control") || "").includes("no-store"),
+      "Today event recovery cannot enter a shared cache",
+      `Today event recovery returned cache-control ${JSON.stringify(result.headers.get("cache-control"))}`,
+    );
+    let payload = null;
+    try {
+      payload = JSON.parse(result.body);
+    } catch {
+      bad("/api/today/events did not return valid JSON");
+    }
+    if (payload) {
+      const events = Array.isArray(payload.events) ? payload.events : null;
+      check(
+        events !== null && typeof payload.partial === "boolean",
+        "Today event recovery returns its documented JSON shape",
+        "Today event recovery returned an invalid JSON shape",
+      );
+      if (events?.length > 0) {
+        const todayHtml = checkedPages.get("/today")?.body || "";
+        const rendered = new Set(eventDetailPathsFromHtml(todayHtml, BASE));
+        const hasRecovery = todayHtml.includes(
+          'data-today-event-recovery="true"',
+        );
+        check(
+          rendered.size > 0 || hasRecovery,
+          rendered.size > 0
+            ? "Today server-renders an event pick"
+            : "Today mounts its runtime event recovery",
+          "Today dropped every current event pick and has no runtime recovery",
+        );
+      }
+    }
+  } catch (error) {
+    bad(`/api/today/events?refresh=1 contract check failed: ${error.message}`);
   }
 
   // Installed-app contract: discover the linked manifest, verify its launch

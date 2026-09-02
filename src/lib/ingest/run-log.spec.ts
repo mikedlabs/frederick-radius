@@ -10,6 +10,7 @@ vi.mock("@/lib/db/client", () => ({
 }));
 
 import {
+  recordCompletedIngestRunStrict,
   recordSourceProbeFailuresStrict,
   recordSourceProbeResultsStrict,
   startIngestRunStrict,
@@ -77,6 +78,30 @@ describe("runtime source failure evidence", () => {
 });
 
 describe("strict ingest-run heartbeat cancellation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.sql.mockResolvedValue([]);
+    mocks.getSql.mockReturnValue(mocks.sql);
+  });
+
+  it("records a completed reporter heartbeat in one write", async () => {
+    await expect(recordCompletedIngestRunStrict(
+      "tripwires",
+      "2026-08-27T09:30:00.000Z",
+      {
+        status: "error",
+        records_in: 19,
+        records_upserted: 12,
+        records_failed: 7,
+        error: "12/19 green",
+      },
+    )).resolves.toBe(true);
+
+    expect(mocks.sql).toHaveBeenCalledTimes(1);
+    expect(mocks.sql.mock.calls[0]).toContain("tripwires");
+    expect(mocks.sql.mock.calls[0]).toContain("2026-08-27T09:30:00.000Z");
+  });
+
   it("cancels a queued start write when the route deadline aborts", async () => {
     let rejectQuery: (reason: unknown) => void = () => undefined;
     const query = new Promise<never>((_resolve, reject) => {
@@ -92,6 +117,30 @@ describe("strict ingest-run heartbeat cancellation", () => {
     const heartbeat = startIngestRunStrict("event-archive", {
       signal: controller.signal,
     });
+    controller.abort();
+
+    await expect(heartbeat).rejects.toThrow("route deadline");
+    expect(query.cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels a queued atomic completion write when the route deadline aborts", async () => {
+    let rejectQuery: (reason: unknown) => void = () => undefined;
+    const query = new Promise<never>((_resolve, reject) => {
+      rejectQuery = reject;
+    }) as Promise<never> & { cancel: ReturnType<typeof vi.fn> };
+    query.cancel = vi.fn(() => {
+      rejectQuery(new Error("cancelled by route deadline"));
+    });
+    mocks.getSql.mockReturnValue(mocks.sql);
+    mocks.sql.mockReturnValue(query);
+    const controller = new AbortController();
+
+    const heartbeat = recordCompletedIngestRunStrict(
+      "tripwires",
+      "2026-08-27T09:30:00.000Z",
+      { status: "ok" },
+      { signal: controller.signal },
+    );
     controller.abort();
 
     await expect(heartbeat).rejects.toThrow("route deadline");

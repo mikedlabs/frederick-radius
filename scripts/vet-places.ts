@@ -5,28 +5,32 @@
  * website went dead, phone changed, rating swung.
  *
  * DRY RUN BY DEFAULT, exactly like `npm run discover`. Cost is
- * documented up-front; `--live --confirm` (with a key, under
- * `--max-cost`) actually calls. Writes a REVIEW artifact only —
+ * documented up-front; `--live --confirm --limit N` actually calls. Writes a REVIEW artifact only —
  * NEVER mutates places-enrichment.json. The owner reviews drift in
  * /admin/drift-review (dev) and decides what to accept.
  *
  *   npm run vet                              # dry run, $0
- *   npm run vet -- --live --confirm          # execute (gated, capped)
- *   npm run vet -- --sample 50               # vet only the first N rows
+ *   npm run vet -- --live --confirm --limit 100
+ *   npm run vet -- --limit 50                # plan only the first N rows
  *
- * Pricing (2026-05): Place Details, our field mask = Enterprise+
- * Atmosphere $25.00 / 1,000. Pro/Enterprise tiers include 5,000 free
- * billable events / month, so a typical monthly sweep on a ~2,400-place
- * catalog costs $0–$10 after the free tier.
+ * Pricing (2026-08): Place Details, our lean field mask includes
+ * editorialSummary and therefore reaches Enterprise + Atmosphere at
+ * $25.00 / 1,000. The script prints list-price exposure without assuming
+ * that a free allowance is still unused.
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { getPlaceDetails } from "@/lib/integrations/google-places";
 import { PLACE_BY_SLUG } from "@/data/places";
 import { isValidCoord } from "@/lib/geo";
+import {
+  assertManualGoogleArgs,
+  createManualGoogleCallBudget,
+  googleCostPreview,
+  parseManualGoogleRun,
+  selectRotatingManualBatch,
+} from "./lib/manual-google-run";
 
-const PRICE_DETAILS = 25.0 / 1000;
-const FREE_EVENTS = 5000;
 const ENRICHMENT_PATH = path.join(process.cwd(), "src/data/places-enrichment.json");
 const DRIFT_DIR = path.join(process.cwd(), "data");
 const DRIFT_PATH = path.join(DRIFT_DIR, "place-drift.json");
@@ -71,14 +75,6 @@ type DriftFile = {
   rows: DriftRow[];
 };
 
-function arg(name: string, def?: string): string | undefined {
-  const i = process.argv.indexOf(name);
-  return i >= 0 ? (process.argv[i + 1] ?? "") : def;
-}
-function flag(name: string): boolean {
-  return process.argv.includes(name);
-}
-
 /** Cheap deep-equal for our tiny shapes — hours arrays are short and
  *  primitive, so JSON.stringify is sufficient and avoids a dep. */
 function eqHours(a?: string[], b?: string[]): boolean {
@@ -86,6 +82,12 @@ function eqHours(a?: string[], b?: string[]): boolean {
 }
 
 async function main() {
+  const args = process.argv.slice(2);
+  assertManualGoogleArgs(args);
+  const run = parseManualGoogleRun(args, {
+    defaultLimit: 100,
+    maxLimit: 500,
+  });
   const enrichment = JSON.parse(readFileSync(ENRICHMENT_PATH, "utf8")) as Record<string, Enriched>;
   const rejectedPlacement = Object.keys(enrichment).filter((slug) => {
     const place = PLACE_BY_SLUG[slug];
@@ -96,42 +98,35 @@ async function main() {
     return enrichment[slug].google_place_id && place && isValidCoord(place.geom);
   });
 
-  const sampleN = parseInt(arg("--sample", "0")!, 10) || 0;
-  const targets = sampleN > 0 ? allSlugs.slice(0, sampleN) : allSlugs;
-
-  const cost = targets.length * PRICE_DETAILS;
-  const afterFree = Math.max(0, targets.length - FREE_EVENTS) * PRICE_DETAILS;
-  const maxCost = parseFloat(arg("--max-cost", "80")!) || 80;
+  const now = new Date();
+  const cycle = now.getUTCFullYear() * 12 + now.getUTCMonth();
+  const selection = selectRotatingManualBatch(allSlugs, run.limit, cycle);
+  const targets = selection.items;
 
   console.log(`\n  Place vetting — Google Place Details refresh`);
   console.log("  ---------------------------------------------");
   console.log(`  Eligible rows         ${allSlugs.length}`);
-  console.log(`  Selected              ${targets.length}${sampleN > 0 ? "  (--sample)" : ""}`);
+  console.log(`  Selected              ${targets.length}`);
+  console.log(`  Monthly rotation      offset ${selection.offset}`);
   console.log(`  Details calls         ${targets.length}`);
-  console.log(`  List cost             $${cost.toFixed(2)}`);
-  console.log(`  After 5,000/mo free   $${afterFree.toFixed(2)}`);
-  console.log(`  Hard cap (--max-cost) $${maxCost.toFixed(2)}`);
+  console.log(`  Hard request ceiling  ${run.limit}`);
+  console.log(
+    `  ${googleCostPreview({
+      calls: targets.length,
+      pricePerThousandUsd: 25,
+      sku: "Place Details Enterprise + Atmosphere",
+    })}`,
+  );
   if (rejectedPlacement.length > 0) {
     console.log(
       `  Placement rejects     ${rejectedPlacement.length} (retained in source data; no paid call)`,
     );
   }
 
-  const live = flag("--live");
-  const confirmed = flag("--confirm");
-
-  if (!live) {
+  if (run.dryRun) {
     console.log("\n  DRY RUN — nothing was called, $0 spent.");
-    console.log("  To execute: npm run vet -- --live --confirm\n");
+    console.log("  To execute: npm run vet -- --live --confirm --limit N\n");
     return;
-  }
-  if (!confirmed) {
-    console.log("\n  --live requires --confirm. Aborted, $0 spent.\n");
-    process.exit(1);
-  }
-  if (cost > maxCost) {
-    console.log("\n  Projected cost exceeds the cap. Lower --sample or raise --max-cost. $0 spent.\n");
-    process.exit(1);
   }
   if (!process.env.GOOGLE_PLACES_API_KEY) {
     console.log("\n  GOOGLE_PLACES_API_KEY not set. Aborted, $0 spent.\n");
@@ -142,10 +137,12 @@ async function main() {
 
   const drift: DriftRow[] = [];
   let calls = 0;
+  const callBudget = createManualGoogleCallBudget(run.limit);
   for (const slug of targets) {
+    if (!callBudget.reserve()) break;
     const stored = enrichment[slug];
     const id = stored.google_place_id;
-    const fresh = await getPlaceDetails(id);
+    const fresh = await getPlaceDetails(id, "lean");
     calls += 1;
     if (!fresh) continue;
     const changes: DriftRow["changes"] = [];

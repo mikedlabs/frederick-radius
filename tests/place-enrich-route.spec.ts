@@ -4,8 +4,10 @@ const mocks = vi.hoisted(() => ({
   isSameOriginRequest: vi.fn(),
   isRateLimited: vi.fn(),
   getPlaceDetails: vi.fn(),
+  googlePlacesConfigured: vi.fn(),
   resolveAndEnrich: vi.fn(),
   activeManualPlaceStatusOverride: vi.fn(),
+  reserveDailyUsage: vi.fn(),
 }));
 
 vi.mock("@/lib/origin-check", () => ({
@@ -44,6 +46,7 @@ vi.mock("@/data/places", () => ({
 vi.mock("@/data/places-overrides.json", () => ({ default: { patch: {} } }));
 vi.mock("@/lib/integrations/google-places", () => ({
   getPlaceDetails: mocks.getPlaceDetails,
+  googlePlacesConfigured: mocks.googlePlacesConfigured,
   resolveAndEnrich: mocks.resolveAndEnrich,
 }));
 vi.mock("@/lib/place-status-overrides", () => ({
@@ -51,6 +54,9 @@ vi.mock("@/lib/place-status-overrides", () => ({
   isManualPlaceClosureOverride: (override: { status?: string } | undefined) =>
     override?.status === "closed_temporarily" ||
     override?.status === "closed_permanently",
+}));
+vi.mock("@/lib/usage-meter", () => ({
+  reserveDailyUsage: mocks.reserveDailyUsage,
 }));
 
 import { GET } from "@/app/api/place/[slug]/enrich/route";
@@ -74,9 +80,11 @@ describe("GET /api/place/[slug]/enrich", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.isSameOriginRequest.mockReturnValue(true);
+    mocks.googlePlacesConfigured.mockReturnValue(true);
     mocks.isRateLimited.mockResolvedValue(false);
     mocks.getPlaceDetails.mockResolvedValue(null);
     mocks.activeManualPlaceStatusOverride.mockReturnValue(undefined);
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
   });
 
   it("rejects a foreign request before a paid Google call", async () => {
@@ -96,6 +104,7 @@ describe("GET /api/place/[slug]/enrich", () => {
 
     expect(response.status).toBe(429);
     expect(response.headers.get("retry-after")).toBe("60");
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
     expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
   });
 
@@ -233,6 +242,7 @@ describe("GET /api/place/[slug]/enrich", () => {
     const response = await GET(request("experience"), context);
 
     expect(response.status).toBe(429);
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
     expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
   });
 

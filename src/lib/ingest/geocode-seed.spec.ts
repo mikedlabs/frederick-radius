@@ -32,7 +32,7 @@ vi.mock("@/data/places", () => ({
 import {
   seedVenueCache,
   VERIFIED_CATALOG_CACHE_SOURCE,
-  VERIFIED_GOOGLE_CACHE_SOURCE,
+  VERIFIED_FREDERICK_COUNTY_CACHE_SOURCE,
 } from "@/lib/ingest/geocode";
 import { normalizeForCache } from "@/lib/ingest/location";
 
@@ -41,7 +41,7 @@ function queryText(strings: TemplateStringsArray): string {
 }
 
 describe("seedVenueCache", () => {
-  it("bulk-seeds only verified in-county catalog rows without replacing Google", async () => {
+  it("bulk-seeds verified in-county catalog rows without replacing official County data", async () => {
     const fragment = { kind: "bulk-values" };
     const sql = vi.fn(
       (first: TemplateStringsArray | unknown[], ...rest: unknown[]) => {
@@ -74,7 +74,7 @@ describe("seedVenueCache", () => {
     expect(text).toContain("where venue_geocache.source <>");
     expect(values).toEqual([
       fragment,
-      VERIFIED_GOOGLE_CACHE_SOURCE,
+      VERIFIED_FREDERICK_COUNTY_CACHE_SOURCE,
     ]);
   });
 });

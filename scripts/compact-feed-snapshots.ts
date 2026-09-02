@@ -12,6 +12,23 @@ import {
   SNAPSHOT_COMPACTION_BATCH_SIZE,
 } from "@/lib/integrations/feed-snapshot";
 import { closeDb } from "@/lib/db/client";
+import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
+
+const MAX_BATCHES_PER_RUN = 10;
+
+export function requestedCompactionBatches(argv: readonly string[]): number {
+  const equals = argv.find((arg) => arg.startsWith("--batches="));
+  const index = argv.indexOf("--batches");
+  const raw = equals?.slice("--batches=".length)
+    ?? (index >= 0 ? argv[index + 1] : undefined)
+    ?? "1";
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < 1 || value > MAX_BATCHES_PER_RUN) {
+    throw new Error(`--batches must be an integer from 1 to ${MAX_BATCHES_PER_RUN}.`);
+  }
+  return value;
+}
 
 async function main(): Promise<void> {
   const telemetry = await getFeedSnapshotStorageTelemetry();
@@ -35,9 +52,16 @@ async function main(): Promise<void> {
     );
   }
 
-  const deleted = await compactDuplicateSnapshots(
-    SNAPSHOT_COMPACTION_BATCH_SIZE,
-  );
+  const batches = requestedCompactionBatches(process.argv.slice(2));
+  let deleted = 0;
+  for (let batch = 1; batch <= batches; batch += 1) {
+    const batchDeleted = await compactDuplicateSnapshots(
+      SNAPSHOT_COMPACTION_BATCH_SIZE,
+    );
+    deleted += batchDeleted;
+    console.log(JSON.stringify({ batch, batchDeleted, deleted }));
+    if (batchDeleted < SNAPSHOT_COMPACTION_BATCH_SIZE) break;
+  }
   const after = await getFeedSnapshotStorageTelemetry();
   if (!after) {
     throw new Error(
@@ -47,7 +71,12 @@ async function main(): Promise<void> {
   console.log(JSON.stringify({ deleted, after }, null, 2));
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-}).finally(() => closeDb());
+if (
+  process.argv[1]
+  && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  }).finally(() => closeDb());
+}

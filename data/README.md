@@ -3,12 +3,14 @@
 This directory holds the data source manifest and, on the
 `data-snapshots` branch, the raw and cleaned data the pipeline produces.
 
-The split is deliberate. Plain code in `pipeline/` does the daily
-fetch, validate, and transform. The agent commands in `AGENTS.md` at
+The split is deliberate. Plain code in `pipeline/` can fetch, validate, and
+transform an operator-requested snapshot. The agent commands in `AGENTS.md` at
 the repo root do the judgment work of adding and repairing sources. The
 app itself is not yet wired to read this directory; it still reads
 `src/data/`. Rewiring the app to consume `data/clean/` is a separate,
-later, reviewed change.
+later, reviewed change. The GitHub snapshot refresh and freshness check are
+therefore manual-only; scheduling data that production does not read wastes
+runner time and creates a second freshness story.
 
 ## Files
 
@@ -39,7 +41,8 @@ later, reviewed change.
    `pipeline/lib/normalize.ts` so coordinates, dates, and addresses
    follow the same rules everywhere.
 5. Run the worker locally and confirm the source produces clean output.
-6. Change `status` to `active`. The next daily run picks it up.
+6. Change `status` to `active`. Run the snapshot workflow intentionally after
+   review; it is not scheduled while production remains disconnected.
 
 ## How to run the discovery command
 
@@ -50,7 +53,7 @@ status by hand after checking the license and fit.
 
 ## How to debug a failed fetch
 
-1. Read the issue the daily Action opened. It includes the tail of the
+1. Read the issue the operator-run Action opened. It includes the tail of the
    worker log with the failing source ids.
 2. Look at the latest raw snapshot on the `data-snapshots` branch under
    `data/raw/{id}/`. It is saved before validation, so a validation
@@ -64,7 +67,7 @@ status by hand after checking the license and fit.
 
 ## How the snapshot branch works
 
-The daily Action commits `data/raw/`, `data/clean/`, and the updated
+An intentional workflow run commits `data/raw/`, `data/clean/`, and the updated
 `data/sources.yaml` to a branch named `data-snapshots`, force pushed
 each run. This keeps the `main` branch history small while still giving
 one place to find the most recent data. `data/raw/` and `data/clean/`
@@ -78,6 +81,6 @@ JSON for tabular data.
 
 ## Commands
 
-- `npm run pipeline:fetch` runs the daily worker once.
+- `npm run pipeline:fetch` runs the snapshot worker once.
 - `npm run pipeline:freshness` checks that active sources are updating
   as often as their `refresh_cadence` claims.

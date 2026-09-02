@@ -10,10 +10,9 @@
  * response and the upstream request still uses `overview=false`.
  *
  * Proxied for the same two reasons as /api/isochrone:
- *   1. The Mapbox token's URL restrictions stay intact (domain-locked
- *      to frederickradius.app). Server-to-server the restriction STILL
- *      applies — Mapbox matches the Referer header — so the upstream
- *      fetch must send MAPBOX_SERVER_HEADERS.
+ *   1. The dedicated Mapbox server token stays out of browser JavaScript.
+ *      The upstream fetch also sends MAPBOX_SERVER_HEADERS so a token carrying
+ *      a URL rule remains compatible.
  *   2. Cache by rounded origin and destination. The client rounds the origin
  *      to 3 decimals (~100m — see src/lib/walkTime.ts), so
  *      nearby users share one cache entry AND no precise user location
@@ -31,8 +30,12 @@ import {
   MAPBOX_SERVER_HEADERS,
   MAPBOX_SERVER_TOKEN,
 } from "@/lib/mapbox-server";
+import {
+  mapboxDailyUsageCap,
+  mapboxRequestRuntimeEnabled,
+} from "@/lib/mapbox-budget";
 import { isValidCoord } from "@/lib/geo";
-import { meterUsage } from "@/lib/usage-meter";
+import { reserveDailyUsage } from "@/lib/usage-meter";
 import {
   normalizeWalkRouteCoordinates,
   roundCoord,
@@ -60,12 +63,43 @@ class MapboxDirectionsError extends Error {
   }
 }
 
+class MapboxDirectionsUnavailableError extends Error {
+  constructor(
+    readonly reason:
+      | "disabled"
+      | "no-token"
+      | "cost-control-unavailable"
+      | "daily-cap-reached",
+  ) {
+    super(reason);
+  }
+}
+
 async function fetchWalkRouteUncached(
   origin: string,
   destinationLng: number,
   destinationLat: number,
   includeGeometry: boolean,
 ): Promise<MapboxDirectionsData> {
+  // Keep the breaker and reservation inside the cache-miss function. A route
+  // already paid for can still be reused while all new provider work is off.
+  if (!mapboxRequestRuntimeEnabled("directions")) {
+    throw new MapboxDirectionsUnavailableError("disabled");
+  }
+  if (!MAPBOX_SERVER_TOKEN) {
+    throw new MapboxDirectionsUnavailableError("no-token");
+  }
+  const reservation = await reserveDailyUsage(
+    "mapbox_directions",
+    mapboxDailyUsageCap("directions_request"),
+  );
+  if (!reservation) {
+    throw new MapboxDirectionsUnavailableError("cost-control-unavailable");
+  }
+  if (!reservation.reserved) {
+    throw new MapboxDirectionsUnavailableError("daily-cap-reached");
+  }
+
   const routeShape = includeGeometry
     ? "overview=simplified&geometries=geojson"
     : "overview=false";
@@ -73,9 +107,6 @@ async function fetchWalkRouteUncached(
     `https://api.mapbox.com/directions/v5/mapbox/walking/${origin};${destinationLng},${destinationLat}` +
     `?${routeShape}&access_token=${MAPBOX_SERVER_TOKEN}`;
 
-  // The meter lives inside the cache-miss function: a validated request that
-  // reuses this routed leg does not increment or reach Mapbox.
-  meterUsage("mapbox_directions");
   // MAPBOX_SERVER_HEADERS is load-bearing: the URL-restricted token 403s any
   // server fetch that does not present the app's Referer.
   const response = await fetch(upstream, {
@@ -89,7 +120,7 @@ async function fetchWalkRouteUncached(
 
 const fetchWalkRoute = unstable_cache(
   fetchWalkRouteUncached,
-  ["mapbox-walk-directions-v1"],
+  ["mapbox-walk-directions-v2"],
   { revalidate: 86400 },
 );
 
@@ -123,11 +154,6 @@ export async function GET(req: NextRequest) {
   ) {
     return Response.json({ ok: false, reason: "out-of-county" }, { status: 400 });
   }
-  if (!MAPBOX_SERVER_TOKEN) {
-    // No token = degrade silently; the client keeps its estimate.
-    return Response.json({ ok: false, reason: "no-token" });
-  }
-
   // Snap the origin to the ~100m grid so the route cache collapses nearby
   // requests too, even if a caller skipped the client-side rounding.
   const o = `${roundCoord(olng)},${roundCoord(olat)}`;
@@ -159,6 +185,9 @@ export async function GET(req: NextRequest) {
       },
     );
   } catch (error) {
+    if (error instanceof MapboxDirectionsUnavailableError) {
+      return Response.json({ ok: false, reason: error.reason });
+    }
     if (error instanceof MapboxDirectionsError) {
       return Response.json({
         ok: false,

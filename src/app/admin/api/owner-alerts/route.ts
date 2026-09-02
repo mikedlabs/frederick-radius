@@ -19,6 +19,7 @@ import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { push_subscriptions } from "@/lib/db/schema";
 import { OWNER_ALERTS_TOPIC } from "@/lib/push-topics";
+import { requireJsonRequest } from "@/lib/security/admin-request";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,6 +52,9 @@ type Body = {
 };
 
 export async function POST(req: NextRequest) {
+  const contentType = requireJsonRequest(req);
+  if (contentType) return contentType;
+
   const db = getDb();
   if (!db) return NextResponse.json({ error: "no-db" }, { status: 503, headers: noStore });
 

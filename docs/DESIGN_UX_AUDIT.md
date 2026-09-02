@@ -256,28 +256,31 @@ pending**. The unwired ones are silently capping the experience.
   feeds (Celebrate Frederick, Hood, County) + seed data are live — which
   is why a weekend can read empty. *Action:* set `TICKETMASTER_API_KEY`
   + `BANDSINTOWN_APP_ID` in Vercel and flip those sources `active`.
-- **Place richness.** `GOOGLE_PLACES_API_KEY` powers photos + hours
-  enrichment; `MAPILLARY_TOKEN` the street-level map pins; `YELP_API_KEY`
-  ratings. Missing keys = grey cards / fewer pins.
-- **Weather extras.** `AIRNOW_API_KEY` (AQI in the almanac),
-  `NWS_USER_AGENT` (NWS *requires* a UA or throttles).
+- **Place richness.** The current Google key preserves attributed business
+  photos through Radius's key-safe, private/no-store proxy and its bounded
+  daily allowance. Hours and other maintenance calls remain separately held
+  behind reviewed policy approval and explicit runtime switches.
+  `MAPILLARY_TOKEN` remains optional for street-level map media.
+- **Weather extras.** `AIRNOW_API_KEY` adds AirNow context when configured.
+  NWS requests already send the application's built-in identifying user agent;
+  there is no required `NWS_USER_AGENT` environment variable.
 
 ### Env keys the code expects (set in Vercel → Project → Settings → Env)
 | Area | Vars |
 | --- | --- |
-| Places/enrichment | `GOOGLE_PLACES_API_KEY`, `YELP_API_KEY` |
+| Places/enrichment | `GOOGLE_PLACES_API_KEY` for the existing attributed photo proxy; explicit Google policy/runtime switches for hours and maintenance |
 | Map | `MAPILLARY_TOKEN` |
 | Events | `TICKETMASTER_API_KEY`, `BANDSINTOWN_APP_ID`, `HOOD_CALENDAR_URL` |
-| Weather/air | `AIRNOW_API_KEY`, `NWS_USER_AGENT`, `NPS_API_KEY` |
+| Weather/air | `AIRNOW_API_KEY`, `NPS_API_KEY` |
 | Data / persistence | `NEXT_PUBLIC_SUPABASE_URL`, `*_SUPABASE_*_KEY`, `POSTGRES_URL` / `DATABASE_URL` (saved / My Radius / business claims) |
 | Notifications / email | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` (web push), `RESEND_API_KEY` (email) |
-| Ops / observability | `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_PLAUSIBLE_*`, `SLACK_WEBHOOK_URL` |
+| Ops / observability | `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_PLAUSIBLE_*`; optional `SLACK_WEBHOOK_URL` |
 | AI | `ANTHROPIC_API_KEY` |
 
 ### Cron jobs (vercel.json) — depend on the keys + DB above
 `/api/ingest/civicengage`, `/api/ingest/fcpl`, and `/api/ingest/fcvfra`
 (daily), plus `/api/cron/notify-civic-alerts`
-(every 30m → needs VAPID), `/api/cron/business-status` (daily),
+(every 30m → needs VAPID), `/api/cron/business-status` (manual diagnostic),
 `/api/cron/data-health` (daily). If their upstream keys are unset they
 run but no-op.
 

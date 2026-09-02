@@ -6,7 +6,8 @@
  * rather than real `ChIJ…` IDs, so we resolve by Text Search biased on
  * the existing geom. Read-only — emits JSON to audit/dfp-mash-verification.json.
  *
- * Run: GOOGLE_PLACES_API_KEY=... npm exec tsx scripts/audit-dfp-mash.ts
+ * Plan: npm exec tsx scripts/audit-dfp-mash.ts
+ * Live: GOOGLE_PLACES_API_KEY=... npm exec tsx scripts/audit-dfp-mash.ts -- --live --confirm --limit 17
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -16,6 +17,12 @@ import {
   resolveAndEnrich,
   type PlaceEnrichment,
 } from "@/lib/integrations/google-places";
+import {
+  assertManualGoogleArgs,
+  createManualGoogleCallBudget,
+  googleCostPreview,
+  parseManualGoogleRun,
+} from "./lib/manual-google-run";
 
 // Lightweight .env.local loader — refresh-business-status relies on the
 // shell, but we want this script runnable with a plain `tsx` invocation.
@@ -72,25 +79,66 @@ const CHIJ_RE = /^ChIJ[A-Za-z0-9_-]+$/;
 
 async function verify(row: DfpRow): Promise<PlaceEnrichment | null> {
   if (row.google_place_id && CHIJ_RE.test(row.google_place_id)) {
-    return getPlaceDetails(row.google_place_id);
+    return getPlaceDetails(row.google_place_id, "lean");
   }
   return resolveAndEnrich({
     name: row.name,
     address: row.address ? `${row.address}, Frederick, MD` : "Frederick, MD",
     lat: row.geom?.lat,
     lng: row.geom?.lng,
-  });
+  }, "lean");
 }
 
 async function main() {
-  if (!googlePlacesConfigured()) {
-    console.error("GOOGLE_PLACES_API_KEY missing — aborting (no spend).");
-    process.exit(1);
-  }
+  const args = process.argv.slice(2);
+  assertManualGoogleArgs(args);
+  const run = parseManualGoogleRun(args, {
+    defaultLimit: TARGETS.length,
+    maxLimit: TARGETS.length,
+  });
   const dfp = JSON.parse(
     readFileSync(resolve("src/data/places-dfp.json"), "utf8"),
   ) as DfpRow[];
   const bySlug = new Map(dfp.map((r) => [r.slug, r]));
+  const batch = TARGETS.slice(0, run.limit);
+  const callableRows = batch
+    .map((slug) => bySlug.get(slug))
+    .filter((row): row is DfpRow => Boolean(row));
+  const detailsCalls = callableRows.filter((row) =>
+    Boolean(row.google_place_id && CHIJ_RE.test(row.google_place_id)),
+  ).length;
+  const searchCalls = callableRows.length - detailsCalls;
+
+  console.log("\nDFP mash audit");
+  console.log(`Mode: ${run.dryRun ? "DRY RUN" : "LIVE"}`);
+  console.log(`Hard request ceiling: ${run.limit}`);
+  console.log(
+    googleCostPreview({
+      calls: detailsCalls,
+      pricePerThousandUsd: 25,
+      sku: "Place Details Enterprise + Atmosphere",
+    }),
+  );
+  console.log(
+    googleCostPreview({
+      calls: searchCalls,
+      pricePerThousandUsd: 40,
+      sku: "Text Search Enterprise + Atmosphere",
+    }),
+  );
+  if (run.dryRun) {
+    console.log("DRY RUN — no API calls and no files changed.");
+    console.log(
+      "Add --live --confirm --limit N after reviewing the request ceiling.\n",
+    );
+    return;
+  }
+  if (!googlePlacesConfigured()) {
+    console.error("GOOGLE_PLACES_API_KEY missing — aborting (no spend).");
+    process.exit(1);
+  }
+
+  const callBudget = createManualGoogleCallBudget(run.limit);
   const results: Array<{
     slug: string;
     name: string;
@@ -108,7 +156,7 @@ async function main() {
     google_display_name?: string;
     notes?: string;
   }> = [];
-  for (const slug of TARGETS) {
+  for (const slug of batch) {
     const row = bySlug.get(slug);
     if (!row) {
       results.push({
@@ -119,6 +167,7 @@ async function main() {
       });
       continue;
     }
+    if (!callBudget.reserve()) break;
     process.stdout.write(`→ ${slug} … `);
     const enr = await verify(row);
     if (!enr) {

@@ -5,7 +5,11 @@ import {
   MAPBOX_SERVER_HEADERS,
   MAPBOX_SERVER_TOKEN,
 } from "@/lib/mapbox-server";
-import { meterUsage } from "@/lib/usage-meter";
+import {
+  mapboxDailyUsageCap,
+  mapboxMatrixRuntimeEnabled,
+} from "@/lib/mapbox-budget";
+import { reserveDailyUsage } from "@/lib/usage-meter";
 import { roundCoord } from "@/lib/walkTime";
 
 /**
@@ -64,6 +68,8 @@ export type MapboxMatrixFailureReason =
   | "no-token"
   | "upstream-timeout"
   | "upstream-network"
+  | "cost-control-unavailable"
+  | "daily-cap-reached"
   | `upstream-${number}`
   | "no-route"
   | "invalid-upstream-response";
@@ -228,10 +234,11 @@ export async function getMapboxTravelMatrix(
 ): Promise<MapboxMatrixResponse> {
   const normalized = normalizeMapboxMatrixInput(rawInput);
   if (!normalized.ok) return fail(normalized.reason);
-  if (process.env.MAPBOX_MATRIX_ENABLED !== "1") return fail("disabled");
+  if (!mapboxMatrixRuntimeEnabled()) return fail("disabled");
   if (!MAPBOX_SERVER_TOKEN) return fail("no-token");
 
   const { profile, origin, destinations } = normalized.value;
+  const dailyElementCap = mapboxDailyUsageCap("matrix_element");
   const coords = [origin, ...destinations]
     .map(({ lng, lat }) => `${lng},${lat}`)
     .join(";");
@@ -245,7 +252,13 @@ export async function getMapboxTravelMatrix(
 
   try {
     // Matrix is billed per returned element, not per HTTP request.
-    meterUsage("mapbox_matrix", destinations.length);
+    const reservation = await reserveDailyUsage(
+      "mapbox_matrix",
+      dailyElementCap,
+      destinations.length,
+    );
+    if (!reservation) return fail("cost-control-unavailable", true);
+    if (!reservation.reserved) return fail("daily-cap-reached");
     const response = await fetch(upstream, {
       headers: MAPBOX_SERVER_HEADERS,
       cache: "no-store",

@@ -26,7 +26,11 @@
  * Usage:
  *   node --env-file=.env.local scripts/extract-known-for.mjs
  *   node --env-file=.env.local scripts/extract-known-for.mjs --limit=50
- *   node --env-file=.env.local scripts/extract-known-for.mjs --force
+ *   node --env-file=.env.local scripts/extract-known-for.mjs --live --confirm --limit=50
+ *   node --env-file=.env.local scripts/extract-known-for.mjs --live --confirm --limit=50 --force
+ *
+ * The first two forms are zero-cost previews. A paid run always requires the
+ * explicit live/confirm/limit trio and can never exceed the immutable ceiling.
  */
 
 import fs from "node:fs";
@@ -43,17 +47,82 @@ const DFP = JSON.parse(
 );
 const OUT_PATH = path.join(ROOT, "src/data/known-for.json");
 
-const args = new Set(process.argv.slice(2));
-const FORCE = args.has("--force");
-const LIMIT = (() => {
-  const a = [...args].find((a) => a.startsWith("--limit="));
-  return a ? parseInt(a.split("=")[1], 10) : Infinity;
-})();
+const DEFAULT_PREVIEW_LIMIT = 50;
+const MAX_MODEL_CALLS_PER_RUN = 250;
 
-// AI Gateway uses VERCEL_OIDC_TOKEN at runtime.
-if (!process.env.VERCEL_OIDC_TOKEN) {
-  console.error("ERR: VERCEL_OIDC_TOKEN missing. Run `vc env pull` first.");
-  process.exit(1);
+export function parseRunArgs(rawArgs) {
+  const allowedFlags = new Set([
+    "--live",
+    "--confirm",
+    "--force",
+    "--dry-run",
+    "--plan",
+  ]);
+  let limit;
+  let limitSeen = false;
+
+  for (let index = 0; index < rawArgs.length; index++) {
+    const arg = rawArgs[index];
+    if (allowedFlags.has(arg)) continue;
+    if (arg === "--limit") {
+      if (limitSeen) throw new Error("--limit may be provided only once.");
+      const value = rawArgs[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("--limit requires a positive whole number.");
+      }
+      limit = value;
+      limitSeen = true;
+      index++;
+      continue;
+    }
+    if (arg.startsWith("--limit=")) {
+      if (limitSeen) throw new Error("--limit may be provided only once.");
+      limit = arg.slice("--limit=".length);
+      limitSeen = true;
+      continue;
+    }
+    throw new Error(`Unknown option ${arg}. Refusing to start paid maintenance.`);
+  }
+
+  for (const flag of allowedFlags) {
+    if (rawArgs.filter((arg) => arg === flag).length > 1) {
+      throw new Error(`${flag} may be provided only once.`);
+    }
+  }
+
+  const live = rawArgs.includes("--live");
+  const confirmed = rawArgs.includes("--confirm");
+  const explicitPlan = rawArgs.includes("--dry-run") || rawArgs.includes("--plan");
+  if (live !== confirmed) {
+    throw new Error("Paid extraction requires both --live and --confirm.");
+  }
+  if (live && explicitPlan) {
+    throw new Error("A planning flag cannot be combined with --live.");
+  }
+  if (live && !limitSeen) {
+    throw new Error("A paid extraction requires an explicit --limit N ceiling.");
+  }
+
+  const parsedLimit = limitSeen ? Number(limit) : DEFAULT_PREVIEW_LIMIT;
+  if (limitSeen && !/^[1-9]\d*$/.test(String(limit))) {
+    throw new Error("--limit must be a positive whole number.");
+  }
+  if (!Number.isSafeInteger(parsedLimit) || parsedLimit < 1) {
+    throw new Error("--limit must be a positive safe integer.");
+  }
+  if (parsedLimit > MAX_MODEL_CALLS_PER_RUN) {
+    throw new Error(
+      `--limit cannot exceed the immutable ${MAX_MODEL_CALLS_PER_RUN}-call ceiling.`,
+    );
+  }
+
+  return {
+    live,
+    confirmed,
+    dryRun: !live,
+    force: rawArgs.includes("--force"),
+    limit: parsedLimit,
+  };
 }
 
 const ResultSchema = z.object({
@@ -76,6 +145,12 @@ const ResultSchema = z.object({
 async function extractOne(name, editorial, review) {
   const { object } = await generateObject({
     model: "openai/gpt-4o-mini",
+    // The command's --limit is a provider-attempt ceiling, not just a count of
+    // input rows. Disable SDK retries so one candidate cannot silently turn
+    // into several paid model attempts, and bound both latency and output.
+    maxRetries: 0,
+    maxOutputTokens: 256,
+    abortSignal: AbortSignal.timeout(20_000),
     schema: ResultSchema,
     prompt: `You are extracting structured tags from a Google Maps listing for "${name}".
 
@@ -95,6 +170,24 @@ Rules:
 }
 
 async function main() {
+  const run = parseRunArgs(process.argv.slice(2));
+  if (
+    run.live &&
+    (process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL !==
+      "written-google-authorization-confirmed" ||
+      process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED !== "1")
+  ) {
+    throw new Error(
+      "Google-derived tag extraction is on policy hold. Record reviewed written authorization and enable the Google Maps Platform runtime before deriving new tags.",
+    );
+  }
+
+  // AI Gateway uses VERCEL_OIDC_TOKEN at runtime. Planning never requires a
+  // credential and never touches the model or output file.
+  if (run.live && !process.env.VERCEL_OIDC_TOKEN) {
+    throw new Error("VERCEL_OIDC_TOKEN missing. Run `vc env pull` before a paid run.");
+  }
+
   // Existing extractions on disk (idempotent).
   let existing = {};
   if (fs.existsSync(OUT_PATH)) {
@@ -122,10 +215,18 @@ async function main() {
         (c.review && c.review.length > 60),
     )
     .sort((a, b) => b.score - a.score)
-    .filter((c) => FORCE || !existing[c.slug])
-    .slice(0, LIMIT);
+    .filter((c) => run.force || !existing[c.slug])
+    .slice(0, run.limit);
 
-  console.log(`Processing ${candidates.length} places...`);
+  console.log(
+    `${run.dryRun ? "Planning" : "Processing"} ${candidates.length} place(s) ` +
+      `(hard ceiling: ${run.limit} model call(s)).`,
+  );
+  if (run.dryRun) {
+    console.log("DRY RUN — no model calls and no files changed.");
+    console.log("Use --live --confirm --limit N after reviewing this bounded plan.");
+    return;
+  }
 
   let done = 0;
   const out = { ...existing };

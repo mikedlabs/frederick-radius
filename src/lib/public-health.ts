@@ -19,10 +19,14 @@ import {
   type OperationalReadinessEvidence,
   type PublicReleaseReadiness,
 } from "@/lib/quality/surface-readiness";
+import {
+  getRadiusSearchIndexHealth,
+  UNKNOWN_RADIUS_SEARCH_INDEX_HEALTH,
+} from "@/lib/quality/search-index-health";
 
 const DATABASE_DEADLINE_MS = 1_000;
 const SOURCE_LEDGER_DEADLINE_MS = 1_000;
-const OPERATIONAL_READINESS_DEADLINE_MS = 1_000;
+const OPERATIONAL_READINESS_DEADLINE_MS = 2_000;
 // Public readiness follows the actual two-hour worker schedules, not the
 // nightly reporter's narrow handoff window. These budgets allow one delayed
 // invocation without letting a dead cron look current indefinitely.
@@ -567,6 +571,10 @@ async function defaultOperationalReadiness(
         },
       ),
     },
+    searchIndex:
+      migrations.search === "ready"
+        ? await getRadiusSearchIndexHealth()
+        : UNKNOWN_RADIUS_SEARCH_INDEX_HEALTH,
   };
 }
 

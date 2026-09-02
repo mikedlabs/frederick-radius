@@ -1,8 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { qualifiedSearchIndex, searchIndex } from "./index";
 import { findDepartments } from "@/data/departments";
+import { isPaidGooglePhotoUrl } from "@/lib/google-photo-policy";
 
 describe("deterministic map search actions", () => {
+  it("does not hand paid Google photos to live search suggestions", () => {
+    const results = searchIndex("Cugino Forno", 12, []);
+    const exact = results.find(
+      (result) => result.id === "place:cugino-forno-frederick",
+    );
+
+    expect(exact).toBeDefined();
+    expect(exact?.thumbnail).toBeUndefined();
+    expect(
+      results.some((result) => isPaidGooglePhotoUrl(result.thumbnail)),
+    ).toBe(false);
+  });
+
   it.each([
     ["trash cans near me", "/map?amenity=trash"],
     ["public restrooms", "/map?amenity=restroom"],

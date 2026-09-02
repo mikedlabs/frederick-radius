@@ -11,10 +11,6 @@ name: Production apex canary
 # the repository secret VERCEL_TOKEN; read-only canary runs do not.
 on:
   deployment_status:
-  # Event providers can degrade after a clean deployment. Six small checks a
-  # day catch that drift without turning this canary into a high-cost crawler.
-  schedule:
-    - cron: "27 */4 * * *"
   workflow_dispatch:
     inputs:
       base_url:
@@ -26,8 +22,7 @@ on:
         required: false
 
 concurrency:
-  # Keep routine observations away from the rollback-capable deployment gate.
-  # Runs from the same trigger still supersede older copies of themselves.
+  # Runs from the same trigger supersede older copies of themselves.
   group: production-apex-canary-${{ github.event_name }}
   cancel-in-progress: true
 
@@ -45,7 +40,6 @@ jobs:
     # is exactly the drift this canary exists to name.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'schedule' ||
       (
         (
           github.event.deployment_status.state == 'success' ||
@@ -63,7 +57,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # External deployment checks use recovery code from the trusted
-          # default branch. Manual and scheduled checks verify their own ref.
+          # default branch. Manual checks verify their own ref.
           ref: ${{ github.event_name == 'deployment_status' && 'main' || github.sha }}
           persist-credentials: false
 

@@ -9,7 +9,6 @@
  * Missing cells and every failure stay fail-soft, so the existing `~Nm`
  * estimates remain useful.
  */
-import { unstable_cache } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { isValidCoord } from "@/lib/geo";
 import {
@@ -29,6 +28,10 @@ import {
   type MatrixTravelMode,
 } from "@/lib/mapboxMatrix";
 import {
+  mapboxDailyUsageCap,
+  mapboxMatrixRuntimeEnabled,
+} from "@/lib/mapbox-budget";
+import {
   hasJsonContentType,
   isOverPaidRequestBudget,
   isRateLimited,
@@ -36,14 +39,12 @@ import {
   isSameOriginRequest,
   readJsonBodyWithLimit,
 } from "@/lib/origin-check";
-import { meterUsage } from "@/lib/usage-meter";
+import { reserveDailyUsage } from "@/lib/usage-meter";
 import { roundCoord } from "@/lib/walkTime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DAY_SECONDS = 86_400;
-const TRAFFIC_CACHE_SECONDS = 300;
 const MAX_BODY_BYTES = 4 * 1024;
 const RATE_LIMIT = 30;
 const RATE_WINDOW_SECONDS = 60;
@@ -69,7 +70,13 @@ class MapboxMatrixError extends Error {
   }
 }
 
-async function fetchMatrixUncached(
+class MapboxMatrixBudgetError extends Error {
+  constructor(readonly reason: "cost-control-unavailable" | "daily-cap-reached") {
+    super(reason);
+  }
+}
+
+async function fetchMatrix(
   profile: string,
   coordinatePath: string,
   destinationIndexes: string,
@@ -79,9 +86,19 @@ async function fetchMatrixUncached(
     `https://api.mapbox.com/directions-matrix/v1/mapbox/${profile}/${coordinatePath}` +
     `?sources=0&destinations=${destinationIndexes}&annotations=duration&access_token=${MAPBOX_SERVER_TOKEN}`;
 
-  // Matrix is billed by returned element. The meter sits inside the cache-miss
-  // function so a shared cached shortlist never increments twice.
-  meterUsage("mapbox_matrix", elementCount);
+  // Matrix is billed by returned element. Reserve immediately before every
+  // upstream call; responses are neither persisted nor put in an HTTP cache.
+  const reservation = await reserveDailyUsage(
+    "mapbox_matrix",
+    mapboxDailyUsageCap("matrix_element"),
+    elementCount,
+  );
+  if (!reservation) {
+    throw new MapboxMatrixBudgetError("cost-control-unavailable");
+  }
+  if (!reservation.reserved) {
+    throw new MapboxMatrixBudgetError("daily-cap-reached");
+  }
   const response = await fetch(upstream, {
     headers: MAPBOX_SERVER_HEADERS,
     cache: "no-store",
@@ -90,18 +107,6 @@ async function fetchMatrixUncached(
   if (!response.ok) throw new MapboxMatrixError(response.status);
   return (await response.json()) as MapboxMatrixData;
 }
-
-const fetchStableMatrix = unstable_cache(
-  fetchMatrixUncached,
-  ["mapbox-radius-matrix-stable-v1"],
-  { revalidate: DAY_SECONDS },
-);
-
-const fetchTrafficMatrix = unstable_cache(
-  fetchMatrixUncached,
-  ["mapbox-radius-matrix-traffic-v1"],
-  { revalidate: TRAFFIC_CACHE_SECONDS },
-);
 
 function numberParam(value: string | null): number {
   return value === null || value.trim() === "" ? Number.NaN : Number(value);
@@ -117,6 +122,10 @@ function json(body: unknown, status = 200): NextResponse {
 export async function GET(req: NextRequest) {
   if (!isSameOriginRequest(req)) {
     return new Response("Forbidden", { status: 403 });
+  }
+  // The breaker is checked before validation, counters, or provider work.
+  if (!mapboxMatrixRuntimeEnabled()) {
+    return json({ ok: false, reason: "disabled" });
   }
   // A settled radius sends one debounced request. Thirty per minute leaves
   // generous room for real exploration while containing forged loops.
@@ -210,14 +219,8 @@ export async function GET(req: NextRequest) {
   const destinationIndexes = parsedDestinations
     .map((_, index) => String(index + 1))
     .join(";");
-  const cacheSeconds =
-    mode === "drive" ? TRAFFIC_CACHE_SECONDS : DAY_SECONDS;
-  const staleSeconds = mode === "drive" ? TRAFFIC_CACHE_SECONDS : 604_800;
-
   try {
-    const data = await (mode === "drive"
-      ? fetchTrafficMatrix
-      : fetchStableMatrix)(
+    const data = await fetchMatrix(
       PROFILES[mode],
       coordinatePath,
       destinationIndexes,
@@ -248,12 +251,14 @@ export async function GET(req: NextRequest) {
       mode,
       durations,
     };
-    return Response.json(response, {
-      headers: {
-        "Cache-Control": `public, max-age=${cacheSeconds}, s-maxage=${cacheSeconds}, stale-while-revalidate=${staleSeconds}`,
-      },
-    });
+    // Never persist Matrix responses or put them in a browser/CDN cache. This
+    // keeps the operator breaker immediate and avoids assuming a provider
+    // response-storage permission that Radius has not documented.
+    return json(response);
   } catch (error) {
+    if (error instanceof MapboxMatrixBudgetError) {
+      return Response.json({ ok: false, reason: error.reason });
+    }
     if (error instanceof MapboxMatrixError) {
       return Response.json({
         ok: false,
@@ -274,6 +279,12 @@ export async function POST(req: NextRequest) {
   // directly instead of proxying through this route.
   if (!isSameOriginMutationRequest(req)) {
     return json({ ok: false, reason: "forbidden-origin" }, 403);
+  }
+  // Keep the route-level contract honest even when the integration is mocked
+  // in tests or replaced later. The integration repeats this check so direct
+  // server callers receive the same fail-soft behavior.
+  if (!mapboxMatrixRuntimeEnabled()) {
+    return json({ ok: false, reason: "disabled" });
   }
   if (
     await isRateLimited(

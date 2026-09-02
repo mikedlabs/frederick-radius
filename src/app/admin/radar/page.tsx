@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { ExternalLink, Radar as RadarIcon, Store } from "lucide-react";
-import { getRedditRadar } from "@/lib/integrations/redditRadar";
+import {
+  getFairRedditRadar,
+  getRedditRadar,
+  type FairFrictionTopic,
+} from "@/lib/integrations/redditRadar";
 import { AdminShell, Section, StatStrip, EmptyState, Tag } from "@/components/admin/kit";
 
 /**
@@ -70,8 +74,60 @@ function Row({
   );
 }
 
+const FAIR_TOPIC_LABELS: Record<FairFrictionTopic, string> = {
+  accessibility: "Accessibility",
+  arrival: "Parking & arrival",
+  crowds: "Crowds & waits",
+  family: "Families",
+  "food-rides": "Food & rides",
+  policy: "Rules",
+  tickets: "Tickets & shows",
+  other: "Review",
+};
+
+function FairRow({
+  title,
+  url,
+  agoLabel,
+  topics,
+}: {
+  title: string;
+  url: string;
+  agoLabel: string;
+  topics: FairFrictionTopic[];
+}) {
+  return (
+    <li>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group flex items-start gap-2.5 rounded-[var(--app-radius-sm)] px-2 py-2 hover:bg-[var(--app-bg-elevated)]"
+      >
+        <span className="min-w-0 flex-1 text-[13px] leading-snug" style={{ color: "var(--app-ink)" }}>
+          {title}
+          {topics.map((topic) => (
+            <span key={topic} className="ml-1.5 align-middle">
+              <Tag tone={topic === "other" ? "neutral" : "cool"}>
+                {FAIR_TOPIC_LABELS[topic]}
+              </Tag>
+            </span>
+          ))}
+        </span>
+        <span className="flex shrink-0 items-center gap-1.5 font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+          {agoLabel}
+          <ExternalLink className="h-3 w-3 opacity-40 transition group-hover:opacity-80" strokeWidth={2.25} aria-hidden />
+        </span>
+      </a>
+    </li>
+  );
+}
+
 export default async function RadarPage() {
-  const posts = await getRedditRadar().catch(() => []);
+  const [posts, fairPosts] = await Promise.all([
+    getRedditRadar().catch(() => []),
+    getFairRedditRadar().catch(() => []),
+  ]);
   const leads = posts.filter((p) => p.lead);
   const rest = posts.filter((p) => !p.lead);
   const asks = posts.filter((p) => p.ask).length;
@@ -94,6 +150,23 @@ export default async function RadarPage() {
           ]}
         />
       </div>
+
+      <Section
+        title="Fair experience leads"
+        description="Exact public RSS search for Great Frederick Fair posts. Titles and links are review prompts only. Open the original discussion, look for repeated experience, and confirm any operational claim with the Fair before publishing it."
+      >
+        {fairPosts.length === 0 ? (
+          <EmptyState icon={RadarIcon}>
+            The Fair search feed is unreachable or has no matching posts.
+          </EmptyState>
+        ) : (
+          <ul className="mt-2 space-y-0.5">
+            {fairPosts.map((post) => (
+              <FairRow key={post.url} {...post} />
+            ))}
+          </ul>
+        )}
+      </Section>
 
       <Section
         title="Possible catalog leads"

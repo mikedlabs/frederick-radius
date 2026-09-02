@@ -220,6 +220,7 @@ describe("map list decision telemetry", () => {
     // `result`, not `sheet`: browsing the list and tapping a pin are two
     // different ways of reaching the same place and must stay separable.
     expect(html).toContain('data-decision-position="result"');
+    expect(html).toContain('class="map-list-category"');
   });
 
   it("keeps an event row a map event, not a place", () => {

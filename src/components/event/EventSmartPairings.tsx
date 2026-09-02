@@ -7,13 +7,14 @@ import {
   parkingPhrase,
   eatBeforePhrase,
 } from "@/lib/event-pairings";
+import type { EventParkingDecision } from "@/lib/events/parking";
 
 /**
  * EventSmartPairings — the "decision layer" card that sits high on
  * the event detail page. Synthesizes three signals into one row each:
  *
  *   ☀ Weather at the event start (NWS hourly)
- *   🅿 Closest parking (nearbyParking[0])
+ *   🅿 Closest city garage (the shared event parking decision)
  *   🍽 Eat before (nearbyFood[0])
  *
  * Why this exists
@@ -38,14 +39,14 @@ import {
 export default async function EventSmartPairings({
   event,
   nearbyFood,
-  nearbyParking,
+  parkingDecision,
 }: {
   event: {
     starts_at: string;
     geom: { lng: number; lat: number };
   };
   nearbyFood: PlaceCardData[];
-  nearbyParking: PlaceCardData[];
+  parkingDecision: EventParkingDecision | null;
 }) {
   const startsAt = new Date(event.starts_at);
   // Server component: request-time clock is correct here. Reading
@@ -65,7 +66,7 @@ export default async function EventSmartPairings({
     : null;
 
   const weather = weatherPhrase(findHourlyAt(forecast, startsAt));
-  const parking = parkingPhrase(nearbyParking);
+  const parking = parkingPhrase(parkingDecision);
   const eat = eatBeforePhrase(nearbyFood);
 
   // Don't render empty chrome — if every synthesis returned null,

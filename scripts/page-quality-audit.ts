@@ -14,6 +14,7 @@
 import { chromium, type BrowserContext, type Page } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { sweepMarkedHorizontalRails } from "./lib/page-quality-horizontal-rails";
 
 type RouteGroup = "core" | "guide" | "template" | "support";
 
@@ -240,6 +241,10 @@ const NAVIGATION_TIMEOUT_MS = positiveNumber(process.env.AUDIT_TIMEOUT_MS, 45_00
 const SETTLE_MS = positiveNumber(process.env.AUDIT_SETTLE_MS, 800);
 const IMAGE_LOAD_TIMEOUT_MS = positiveNumber(process.env.AUDIT_IMAGE_TIMEOUT_MS, 6_000);
 const TOUCH_TARGET_MIN_PX = positiveNumber(process.env.TOUCH_TARGET_MIN_PX, 44);
+const HORIZONTAL_RAIL_SELECTOR = "[data-page-quality-horizontal-rail]";
+const HORIZONTAL_RAIL_SETTLE_MS = 70;
+const HORIZONTAL_RAIL_STEP_FRACTION = 0.8;
+const HORIZONTAL_RAIL_MAX_STEPS = 120;
 
 async function resolveRuntimeRoutes(routes: AuditRoute[]): Promise<AuditRoute[]> {
   if (!routes.some((route) => route.id === "event-detail")) return routes;
@@ -380,6 +385,17 @@ async function prepareContext(context: BrowserContext): Promise<void> {
 }
 
 async function revealLazyContent(page: Page): Promise<void> {
+  // A vertical document sweep cannot intersect images that are several cards
+  // away inside an overflow-x rail. Exercise only rails that explicitly opt in
+  // to the audit gesture, then restore their positions before collecting DOM
+  // metrics. Production lazy-loading behavior remains untouched.
+  await page.evaluate(sweepMarkedHorizontalRails, {
+    selector: HORIZONTAL_RAIL_SELECTOR,
+    settleMs: HORIZONTAL_RAIL_SETTLE_MS,
+    stepFraction: HORIZONTAL_RAIL_STEP_FRACTION,
+    maxStepsPerRail: HORIZONTAL_RAIL_MAX_STEPS,
+  });
+
   await page.evaluate(async ({ imageLoadTimeoutMs }) => {
     const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
     const viewportStep = Math.max(Math.round(window.innerHeight * 0.8), 500);

@@ -71,4 +71,14 @@ describe("Google photo storage guardrails", () => {
     expect(route).not.toContain("unstable_cache");
     expect(route).toContain('"Cache-Control": "private, no-store, max-age=0"');
   });
+
+  it("keeps protected Google media out of crawler-facing place JSON-LD", () => {
+    const page = read("src/app/(app)/places/[slug]/page.tsx");
+    expect(page).toContain(
+      "image: absoluteSiteUrl(`/api/og?type=place&slug=${place.slug}`)",
+    );
+    expect(page).not.toContain(
+      "image: absoluteSiteUrl(place.google_photo_url ?? place.hero_image)",
+    );
+  });
 });

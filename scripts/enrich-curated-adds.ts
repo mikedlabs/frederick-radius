@@ -8,24 +8,37 @@
  * only (never mutates src/data); the owner reviews, then we append the good
  * rows to discovered-enriched.json and run the normal build.
  *
+ * Dry-run preview (default):
  *   npx tsx --env-file=.env.local --tsconfig tsconfig.json \
  *     scripts/enrich-curated-adds.ts <in.json> <out.json>
+ * Confirmed paid batch:
+ *   npx tsx --env-file=.env.local --tsconfig tsconfig.json \
+ *     scripts/enrich-curated-adds.ts <in.json> <out.json> \
+ *     --live --confirm --limit 25
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { resolveFrederickMunicipality } from "@/lib/location";
+import {
+  assertManualGoogleArgs,
+  googleCostPreview,
+  parseManualGoogleRun,
+} from "./lib/manual-google-run";
 
-const KEY = process.env.GOOGLE_PLACES_API_KEY;
-if (!KEY) {
-  console.error("GOOGLE_PLACES_API_KEY not set — aborting, $0 spent.");
-  process.exit(1);
+const args = process.argv.slice(2);
+assertManualGoogleArgs(args, { maxPositionals: 2 });
+const positional: string[] = [];
+for (let index = 0; index < args.length; index++) {
+  if (args[index] === "--limit") {
+    index++;
+    continue;
+  }
+  if (!args[index]?.startsWith("--")) positional.push(args[index]!);
 }
-
-const IN = process.argv[2] ?? "/tmp/frederick-trulynew.json";
-const OUT = process.argv[3] ?? "/tmp/frederick-enriched.json";
+const IN = positional[0] ?? "/tmp/frederick-trulynew.json";
+const OUT = positional[1] ?? "/tmp/frederick-enriched.json";
 
 type Cand = { name: string; town: string; category: string; blurb?: string; website?: string; address?: string };
-const cands = JSON.parse(readFileSync(IN, "utf8")) as Cand[];
 
 const MUNI = new Map<string, { lat: number; lng: number }>();
 for (const m of MUNICIPALITIES as Array<{ slug: string; centroid: { lat: number; lng: number } }>) {
@@ -79,13 +92,13 @@ type GPlace = {
   photos?: { name?: string }[];
 };
 
-async function search(c: Cand): Promise<GPlace | null> {
+async function search(c: Cand, key: string): Promise<GPlace | null> {
   const { center } = muniFor(c.town);
   const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Goog-Api-Key": KEY!,
+      "X-Goog-Api-Key": key,
       "X-Goog-FieldMask": MASK,
     },
     body: JSON.stringify({
@@ -103,13 +116,45 @@ async function search(c: Cand): Promise<GPlace | null> {
 }
 
 async function main() {
+  const run = parseManualGoogleRun(args, {
+    defaultLimit: 25,
+    maxLimit: 200,
+  });
+  const cands = JSON.parse(readFileSync(IN, "utf8")) as Cand[];
+  const batch = cands.slice(0, run.limit);
+  console.log("\nCurated Google place enrichment");
+  console.log(`Mode: ${run.dryRun ? "DRY RUN" : "LIVE"}`);
+  console.log(`Eligible review candidates: ${cands.length}`);
+  console.log(`Hard request ceiling: ${run.limit}`);
+  console.log(`This batch: ${batch.length}`);
+  console.log(googleCostPreview({
+    calls: batch.length,
+    pricePerThousandUsd: 40,
+    sku: "Text Search Enterprise + Atmosphere",
+  }));
+  if (run.dryRun) {
+    console.log("No Google API calls or output-file changes from this script.");
+    console.log(
+      `Candidates: ${batch.map((candidate) => candidate.name).join(", ") || "none"}`,
+    );
+    console.log(
+      "Run with --live --confirm --limit N after reviewing this batch.\n",
+    );
+    return;
+  }
+
+  const key = process.env.GOOGLE_PLACES_API_KEY;
+  if (!key) {
+    throw new Error("GOOGLE_PLACES_API_KEY not set — aborting, $0 spent.");
+  }
+
   const enriched: Record<string, unknown>[] = [];
   const weak: string[] = [];
   const failed: string[] = [];
   let calls = 0;
 
-  for (const c of cands) {
-    const p = await search(c).catch(() => null);
+  for (const c of batch) {
+    const p = await search(c, key).catch(() => null);
     calls++;
     if (!p || !p.displayName?.text || !p.location?.latitude || !p.location?.longitude) {
       failed.push(`${c.name} (${c.town}) — no result`);

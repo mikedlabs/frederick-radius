@@ -2,7 +2,44 @@ import type { Metadata } from "next";
 import { gte } from "drizzle-orm";
 import { getDb, getSql } from "@/lib/db/client";
 import { usage_counters } from "@/lib/db/schema";
-import type { PaidUpstream } from "@/lib/usage-meter";
+import type { UsageBudgetNamespace } from "@/lib/usage-meter";
+import { googlePhotoDailyCap } from "@/lib/google-photo-budget";
+import { googleHoursRefreshDailyCap } from "@/lib/google-hours-refresh-budget";
+import { googlePlaceEnrichmentDailyCap } from "@/lib/google-place-enrichment-budget";
+import { googleRoutesDailyElementCap } from "@/lib/google-routes-budget";
+import {
+  googleEventGeocodeDailyLimit,
+  MAX_GOOGLE_EVENT_GEOCODE_DAILY_LIMIT,
+} from "@/lib/paid-usage-limits";
+import {
+  googleMapsPlatformRuntimeEnabled,
+  googleMapsWrittenApprovalConfirmed,
+  googleRoutesRuntimeEnabled,
+} from "@/lib/google-maps-policy";
+import {
+  mapboxDailyUsageCap,
+  mapboxMatrixRuntimeEnabled,
+  mapboxRequestRuntimeEnabled,
+} from "@/lib/mapbox-budget";
+import {
+  askAiDailyCallLimit,
+  askAiEmbeddingDailyLimit,
+  askAiMaxOutputTokens,
+  askAiRuntimeRequested,
+  askRuntimeEmbeddingsConfigured,
+  askRuntimeEmbeddingsRequested,
+  askTextGenerationRuntimeConfigured,
+  askTextProvider,
+  askTextProviderCredentialConfigured,
+  MAX_ASK_AI_DAILY_CALL_LIMIT,
+  MAX_ASK_AI_EMBEDDING_DAILY_LIMIT,
+} from "@/lib/ask/runtime-budget";
+import {
+  radiusSearchEmbeddingDailyDocumentLimit,
+  radiusSearchSemanticConfigured,
+  radiusSearchSemanticRequested,
+  MAX_RADIUS_SEARCH_EMBEDDING_DAILY_DOCUMENT_LIMIT,
+} from "@/lib/ask/search-index-budget";
 import {
   AdminShell,
   SectionLabel,
@@ -38,15 +75,17 @@ export const dynamic = "force-dynamic";
  */
 
 type MeteredUpstreamBase = {
-  key: PaidUpstream;
+  key: UsageBudgetNamespace;
   label: string;
   note: string;
+  dailyCap?: number;
 };
 
 type UnitEstimateUpstream = MeteredUpstreamBase & {
   billing: "unit-estimate";
   per1000: number;
   freeMonthly?: number;
+  rateLabel?: string;
 };
 
 type PlanCreditUpstream = MeteredUpstreamBase & {
@@ -54,20 +93,52 @@ type PlanCreditUpstream = MeteredUpstreamBase & {
   dailyCap: number;
 };
 
-type MeteredUpstream = UnitEstimateUpstream | PlanCreditUpstream;
+type GuardedAttemptUpstream = MeteredUpstreamBase & {
+  billing: "guarded-attempt";
+  dailyCap: number;
+};
+
+type MeteredUpstream =
+  | UnitEstimateUpstream
+  | PlanCreditUpstream
+  | GuardedAttemptUpstream;
+
+type CostControlState = "active" | "off" | "attention";
+
+type CostControl = {
+  label: string;
+  state: CostControlState;
+  why: string;
+};
+
+const CONTROL_STATUS: Record<
+  CostControlState,
+  { label: string; tone: "positive" | "muted" | "warning" }
+> = {
+  active: { label: "Active", tone: "positive" },
+  off: { label: "Off, safe", tone: "muted" },
+  attention: { label: "Needs attention", tone: "warning" },
+};
 
 /** Unit prices are estimates, not bills. Capped-attempt services deliberately do
  * not receive a made-up dollar conversion. */
 const UPSTREAMS: MeteredUpstream[] = [
-  { key: "google_photo", label: "Google place photos", billing: "unit-estimate", per1000: 7, note: "Places Photo SKU. Each no-store proxy request can reach Google; these counts are real upstream fetch attempts." },
-  { key: "anthropic_ask", label: "Ask Radius AI", billing: "unit-estimate", per1000: 10, note: "Counts submitted AI answers, not every internal tool step. AI Gateway is the source of truth for model and embedding spend." },
-  { key: "google_routes_matrix", label: "Google Routes matrix", billing: "unit-estimate", per1000: 10, note: "Place-sheet travel time runs only after an explicit tap. Each estimate uses two 1×1 matrices (walk and traffic-aware drive); device origins are rounded and never stored in Radius's persistent cache." },
-  { key: "mapbox_directions", label: "Mapbox walking directions", billing: "unit-estimate", per1000: 2, note: "One routed leg when a nearby place is selected. Route and fetch-cache hits do not increment this counter." },
-  { key: "mapbox_isochrone", label: "Mapbox isochrone", billing: "unit-estimate", per1000: 2, freeMonthly: 100_000, note: "After the 100k-request monthly free tier. Platform caching means real hits run lower than this count." },
-  { key: "mapbox_matrix", label: "Mapbox travel matrix", billing: "unit-estimate", per1000: 2, freeMonthly: 100_000, note: "After the 100k-element monthly free tier. Mapbox bills each returned matrix element. Within reach caches its 2–9-place shortlist for five minutes or one day, while map-search walking enrichment stays no-store." },
-  { key: "mapbox_search_box", label: "Mapbox Search Box fallback", billing: "unit-estimate", per1000: 11.5, freeMonthly: 2_500, note: "After the 2,500-session monthly free tier. Counts each fallback session when its first suggestion succeeds, including sessions abandoned without a selection. Radius search always runs first." },
-  { key: "mapbox_geocode", label: "Mapbox permanent geocoding", billing: "unit-estimate", per1000: 5, note: "Stored event-address enrichment. Mapbox has no free tier for permanent results; disabled unless MAPBOX_GEOCODING_ENABLED=1." },
-  { key: "mapbox_static", label: "Mapbox static maps", billing: "unit-estimate", per1000: 1, freeMonthly: 50_000, note: "After the 50k/month free tier; cached for 30 days per location." },
+  { key: "google_photo", label: "Google place photos", billing: "unit-estimate", per1000: 7, freeMonthly: 1_000, dailyCap: googlePhotoDailyCap(), note: "Places Photo SKU. Each no-store proxy request can reach Google. The configured aggregate cap is a spike breaker shared by public images and the health probe." },
+  { key: "google_event_geocode", label: "Google event geocoding", billing: "unit-estimate", per1000: 5, dailyCap: googleEventGeocodeDailyLimit(), note: "Last-resort event coordinates after official County, trusted catalog, and current cache misses. A hashed normalized-address claim and one shared Eastern-day database cap prevent duplicate or unbounded paid requests." },
+  { key: "budget_google_place_enrich_basic", label: "Google place sheet refresh", billing: "unit-estimate", per1000: 35, rateLabel: "$20–$35", dailyCap: googlePlaceEnrichmentDailyCap("basic"), note: "One deliberate, uncached basic refresh. A known Place ID uses Place Details Enterprise ($20/1k); a missing ID uses Text Search Enterprise ($35/1k). The dollar estimate conservatively uses the higher rate and does not pretend the two SKU free tiers are one pool." },
+  { key: "budget_google_place_enrich_experience", label: "Google place experience", billing: "unit-estimate", per1000: 40, rateLabel: "$25–$40", dailyCap: googlePlaceEnrichmentDailyCap("experience"), note: "One user-requested rich context lookup. A known Place ID uses Enterprise + Atmosphere ($25/1k); identity search uses Text Search Enterprise + Atmosphere ($40/1k). The estimate uses the higher rate." },
+  { key: "budget_google_business_status", label: "Google business status", billing: "unit-estimate", per1000: 17, freeMonthly: 5_000, dailyCap: 40, note: "Manual status-only diagnostic, unscheduled because the hours refresh already receives business status in the same paid Place Details request. If an operator runs it, the shared counter prevents retries from reopening the fixed 40-call Eastern-day allowance." },
+  { key: "budget_google_hours_refresh", label: "Google hours refresh", billing: "unit-estimate", per1000: 20, freeMonthly: 1_000, dailyCap: googleHoursRefreshDailyCap(), note: "Place Details Enterprise hours checks. One shared Eastern-day counter covers the scheduled bucket, retries, and authenticated cycleDay backfills; counter uncertainty blocks the paid call." },
+  { key: "ask_model_call", label: "Ask model calls", billing: "guarded-attempt", dailyCap: askAiDailyCallLimit(), note: "One unit is reserved immediately before each selected-provider turn, including every tool-agent step. These are guarded attempts, not a dollar estimate; the selected provider is the source of truth for tokens and cost." },
+  { key: "ask_embedding", label: "Ask runtime embeddings", billing: "guarded-attempt", dailyCap: askAiEmbeddingDailyLimit(), note: "Optional direct-OpenAI semantic recall. One unit is reserved before each visitor-time embedding attempt; Postgres full-text results remain available when this path is off or unavailable." },
+  { key: "radius_search_embedding", label: "Scheduled search vectors", billing: "guarded-attempt", dailyCap: radiusSearchEmbeddingDailyDocumentLimit(), note: "Optional direct-OpenAI index vectors. One unit is reserved for each document before a provider batch; the scheduled switch defaults off and Postgres full-text search remains the required baseline." },
+  { key: "google_routes_matrix", label: "Google Routes matrix", billing: "unit-estimate", per1000: 10, freeMonthly: 5_000, dailyCap: googleRoutesDailyElementCap(), note: "Matrix elements, conservatively priced at the Pro rate and free tier. A place-sheet estimate uses one walking and one traffic-aware driving element after an explicit tap; device origins are never stored in Radius's persistent cache." },
+  { key: "mapbox_directions", label: "Mapbox walking directions", billing: "unit-estimate", per1000: 2, dailyCap: mapboxDailyUsageCap("directions_request"), note: "One request is reserved only for a routed-leg cache miss. A dedicated switch or zero cap stops new provider work while a prior cached route can still answer." },
+  { key: "mapbox_isochrone", label: "Mapbox isochrone", billing: "unit-estimate", per1000: 2, freeMonthly: 100_000, dailyCap: mapboxDailyUsageCap("isochrone_request"), note: "One request is reserved only for a polygon cache miss. Walk/bike results live for a day; traffic-aware driving results live for five minutes." },
+  { key: "mapbox_matrix", label: "Mapbox travel matrix", billing: "unit-estimate", per1000: 2, freeMonthly: 100_000, dailyCap: mapboxDailyUsageCap("matrix_element"), note: "Each request reserves one Matrix element per place checked. Responses are not persisted; counter uncertainty or exhaustion keeps the local-distance estimate." },
+  { key: "mapbox_search_box", label: "Mapbox Search Box fallback", billing: "unit-estimate", per1000: 11.5, freeMonthly: 2_500, dailyCap: mapboxDailyUsageCap("search_box_session"), note: "One unit is reserved when the server opens a lifecycle row. Retrieve, 180 seconds, or 50 suggestions closes that UUID permanently; missing lifecycle storage or an exhausted Eastern-day allowance blocks Mapbox without erasing the completed local result." },
+  { key: "mapbox_geocode", label: "Mapbox permanent geocoding", billing: "unit-estimate", per1000: 5, dailyCap: mapboxDailyUsageCap("permanent_geocode"), note: "Permanent-result requests reserved only on a 30-day cache miss. Counter uncertainty or an exhausted Eastern-day allowance keeps the existing honest centroid instead of calling Mapbox." },
+  { key: "mapbox_static", label: "Mapbox static maps", billing: "unit-estimate", per1000: 1, freeMonthly: 50_000, dailyCap: mapboxDailyUsageCap("static_request"), note: "One request is reserved only for an allowlisted locator-image cache miss. The bounded image is then cached for 30 days per rounded location." },
   {
     key: "firecrawl_visit_frederick",
     label: "Visit Frederick recovery",
@@ -79,8 +150,9 @@ const UPSTREAMS: MeteredUpstream[] = [
 
 const BILLING_LINKS: Array<{ label: string; href: string }> = [
   { label: "Google Cloud billing", href: "https://console.cloud.google.com/billing" },
+  { label: "Google Maps pricing", href: "https://developers.google.com/maps/billing-and-pricing/pricing" },
   { label: "Vercel AI Gateway usage", href: "https://vercel.com/dashboard/ai" },
-  { label: "Anthropic fallback usage", href: "https://console.anthropic.com/settings/usage" },
+  { label: "Anthropic direct usage", href: "https://console.anthropic.com/settings/usage" },
   { label: "Mapbox statistics", href: "https://account.mapbox.com/statistics" },
   { label: "Firecrawl usage", href: "https://www.firecrawl.dev/app" },
   { label: "Vercel usage", href: "https://vercel.com/dashboard/usage" },
@@ -90,11 +162,15 @@ function dayKeyEastern(d: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(d);
 }
 
+function envConfigured(value: string | undefined): boolean {
+  return Boolean(value?.trim());
+}
+
 function estimatedMonthlyCost(
   upstream: MeteredUpstream,
   calls: number,
 ): number | null {
-  if (upstream.billing === "plan-credit") return null;
+  if (upstream.billing !== "unit-estimate") return null;
   return (
     (Math.max(0, calls - (upstream.freeMonthly ?? 0)) / 1000) *
     upstream.per1000
@@ -118,17 +194,30 @@ function EstimateFigure({ est }: { est: number }) {
   );
 }
 
-function PlanCreditFigure({ used, limit }: { used: number; limit: number }) {
+function CappedAttemptFigure({
+  used,
+  limit,
+  label,
+}: {
+  used: number;
+  limit: number;
+  label: string;
+}) {
   return (
     <div className="shrink-0 text-right">
       <p
         className="font-mono text-[14px] font-semibold leading-none tabular-nums"
-        style={{ color: used >= limit ? "var(--app-brand-press)" : "var(--app-ink-2)" }}
+        style={{
+          color:
+            limit > 0 && used >= limit
+              ? "var(--app-brand-press)"
+              : "var(--app-ink-2)",
+        }}
       >
         {used.toLocaleString()} / {limit}
       </p>
       <p className="mt-1 text-[10px] font-medium" style={{ color: "var(--app-ink-3)" }}>
-        recovery attempts today
+        {label}
       </p>
     </div>
   );
@@ -139,6 +228,8 @@ export default async function CostsAdmin() {
   let rows: Array<{ day: string; upstream: string; count: number }> = [];
   let dbError = false;
   let searchDocumentCount = 0;
+  let usageCounterUniqueIndexReady = false;
+  let mapboxSearchSessionTableReady = false;
   const nowMs = Date.now();
   if (db) {
     try {
@@ -153,6 +244,45 @@ export default async function CostsAdmin() {
   }
   const rawSql = getSql();
   if (rawSql) {
+    try {
+      const [row] = await rawSql<Array<{ ready: boolean }>>`
+        select exists (
+          select 1
+          from pg_catalog.pg_index index_meta
+          join pg_catalog.pg_class index_relation
+            on index_relation.oid = index_meta.indexrelid
+          join pg_catalog.pg_class table_relation
+            on table_relation.oid = index_meta.indrelid
+          join pg_catalog.pg_namespace table_namespace
+            on table_namespace.oid = table_relation.relnamespace
+          where table_namespace.nspname = 'public'
+            and table_relation.relname = 'usage_counters'
+            and index_relation.relname = 'usage_counters_day_upstream_uq'
+            and index_meta.indisunique
+            and index_meta.indisvalid
+            and index_meta.indisready
+            and index_meta.indislive
+            and index_meta.indpred is null
+            and index_meta.indexprs is null
+            and index_meta.indnkeyatts = 2
+            and pg_catalog.pg_get_indexdef(index_meta.indexrelid, 1, true) = 'day'
+            and pg_catalog.pg_get_indexdef(index_meta.indexrelid, 2, true) = 'upstream'
+        ) as ready
+      `;
+      usageCounterUniqueIndexReady = row?.ready === true;
+    } catch {
+      // The checklist must not claim atomic budgets when catalog inspection
+      // is unavailable. Paid paths fail closed independently.
+    }
+    try {
+      const [row] = await rawSql<Array<{ ready: boolean }>>`
+        select to_regclass('public.mapbox_search_sessions') is not null as ready
+      `;
+      mapboxSearchSessionTableReady = row?.ready === true;
+    } catch {
+      // Search Box fails closed independently when its lifecycle table is not
+      // available. Keep that missing prerequisite visible to the operator.
+    }
     try {
       const [row] = await rawSql<Array<{ count: number | string }>>`
         select count(*) as count from public.radius_search_documents
@@ -191,7 +321,9 @@ export default async function CostsAdmin() {
     const projectedEst = estimatedMonthlyCost(u, projectedCalls);
     // Same alarm rule as the desk's cost sentinel: real volume, 3x the median.
     const atDailyCap =
-      u.billing === "plan-credit" && todayCalls >= u.dailyCap;
+      u.dailyCap !== undefined &&
+      u.dailyCap > 0 &&
+      todayCalls >= u.dailyCap;
     const hot =
       atDailyCap ||
       (todayCalls >= 50 && todayCalls > 3 * Math.max(1, medianDaily));
@@ -205,14 +337,356 @@ export default async function CostsAdmin() {
   const hotCount = monthMath.filter((m) => m.hot).length;
 
   // Cost-control posture — read live from env so the checklist is honest.
-  const controls: Array<{ label: string; ok: boolean; why: string }> = [
-    { label: "Rate limiting (Vercel KV)", ok: Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN), why: "Without KV, isRateLimited() silently passes everything through and every paid upstream is unmetered." },
-    { label: "Google Maps key", ok: Boolean(process.env.GOOGLE_PLACES_API_KEY), why: "Places and Routes share this deployment key. Set quota limits and billing alerts in Google Cloud." },
-    { label: "AI Gateway", ok: Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN), why: "Routes the agent through one budgeted, observable model layer. Set a team spend limit in Vercel." },
-    { label: "Agent step limit", ok: true, why: "Radius stops the decision loop after five model steps and keeps simple questions off the model path." },
-    { label: "Mapbox Matrix switch", ok: process.env.MAPBOX_MATRIX_ENABLED === "1", why: "Real travel-time ranking stays off unless this dedicated switch is set to 1." },
-    { label: "Mapbox Search Box switch", ok: process.env.MAPBOX_SEARCH_BOX_ENABLED === "1", why: "The metered fallback search stays off unless this dedicated switch is set to 1." },
-    { label: "Hybrid search index", ok: searchDocumentCount > 0, why: searchDocumentCount > 0 ? `${searchDocumentCount.toLocaleString()} local records are available to meaning + exact-match retrieval.` : "Apply migration 0025, then run npm run build:radius-search once." },
+  const googlePolicyApprovalRecorded = googleMapsWrittenApprovalConfirmed();
+  const googlePlatformSwitchRequested =
+    process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED === "1";
+  const googleRoutesSwitchRequested =
+    process.env.GOOGLE_ROUTES_ENABLED === "1";
+  const googlePlatformRuntimeEnabled = googleMapsPlatformRuntimeEnabled();
+  const googleRoutesEnabled = googleRoutesRuntimeEnabled();
+  const googlePlacesCredentialConfigured = envConfigured(
+    process.env.GOOGLE_PLACES_API_KEY,
+  );
+  const googlePlacesRuntimeReady =
+    googlePlatformRuntimeEnabled && googlePlacesCredentialConfigured;
+  const dedicatedGoogleRoutesConfigured = envConfigured(
+    process.env.GOOGLE_ROUTES_API_KEY,
+  );
+  const googleRoutesRuntimeReady =
+    googleRoutesEnabled && dedicatedGoogleRoutesConfigured;
+  const googleGeocodingRequested =
+    process.env.GOOGLE_GEOCODING_ENABLED === "1";
+  const dedicatedGoogleGeocodingConfigured = envConfigured(
+    process.env.GOOGLE_GEOCODING_API_KEY,
+  );
+  const googleGeocodingRuntimeReady =
+    googlePlatformRuntimeEnabled &&
+    googleGeocodingRequested &&
+    dedicatedGoogleGeocodingConfigured;
+  const anyGoogleRuntimeRequested =
+    googlePlatformSwitchRequested ||
+    googleRoutesSwitchRequested ||
+    googleGeocodingRequested;
+  const mapboxSearchBoxEnabled =
+    process.env.MAPBOX_SEARCH_BOX_ENABLED === "1";
+  const mapboxPermanentGeocodingEnabled =
+    process.env.MAPBOX_GEOCODING_ENABLED === "1";
+  const mapboxMatrixSwitchEnabled =
+    process.env.MAPBOX_MATRIX_ENABLED === "1";
+  const mapboxStaticSwitchEnabled =
+    process.env.MAPBOX_STATIC_MAPS_ENABLED === "1";
+  const mapboxDirectionsSwitchEnabled =
+    process.env.MAPBOX_DIRECTIONS_ENABLED === "1";
+  const mapboxIsochroneSwitchEnabled =
+    process.env.MAPBOX_ISOCHRONE_ENABLED === "1";
+  const mapboxServerTokenConfigured = envConfigured(
+    process.env.MAPBOX_SERVER_TOKEN,
+  );
+  const mapboxMatrixElementCap = mapboxDailyUsageCap("matrix_element");
+  const mapboxMatrixEnabled = mapboxMatrixRuntimeEnabled();
+  const mapboxStaticRequestCap = mapboxDailyUsageCap("static_request");
+  const mapboxDirectionsRequestCap = mapboxDailyUsageCap(
+    "directions_request",
+  );
+  const mapboxIsochroneRequestCap = mapboxDailyUsageCap("isochrone_request");
+  const mapboxStaticRuntimeEnabled = mapboxRequestRuntimeEnabled("static");
+  const mapboxDirectionsRuntimeEnabled =
+    mapboxRequestRuntimeEnabled("directions");
+  const mapboxIsochroneRuntimeEnabled =
+    mapboxRequestRuntimeEnabled("isochrone");
+  const askRuntimeRequested = askAiRuntimeRequested();
+  const askCallCap = askAiDailyCallLimit();
+  const askSelectedProvider = askTextProvider();
+  const askSelectedProviderConfigured =
+    askTextProviderCredentialConfigured(askSelectedProvider);
+  const askTextRuntimeConfigured = askTextGenerationRuntimeConfigured();
+  const askEmbeddingRequested = askRuntimeEmbeddingsRequested();
+  const askEmbeddingCap = askAiEmbeddingDailyLimit();
+  const askEmbeddingRuntimeConfigured = askRuntimeEmbeddingsConfigured();
+  const askOutputTokenCap = askAiMaxOutputTokens();
+  const searchSemanticRequested = radiusSearchSemanticRequested();
+  const searchSemanticCap = radiusSearchEmbeddingDailyDocumentLimit();
+  const searchSemanticConfigured = radiusSearchSemanticConfigured();
+  const eventGeocodeDailyCap = googleEventGeocodeDailyLimit();
+  const sharedUsageCounterReady =
+    Boolean(rawSql) && !dbError && usageCounterUniqueIndexReady;
+  const mapboxSearchLifecycleReady =
+    sharedUsageCounterReady && mapboxSearchSessionTableReady;
+  const requestPricedMapboxControlsReady = [
+    {
+      requested: mapboxStaticSwitchEnabled,
+      enabled: mapboxStaticRuntimeEnabled,
+      cap: mapboxStaticRequestCap,
+    },
+    {
+      requested: mapboxDirectionsSwitchEnabled,
+      enabled: mapboxDirectionsRuntimeEnabled,
+      cap: mapboxDirectionsRequestCap,
+    },
+    {
+      requested: mapboxIsochroneSwitchEnabled,
+      enabled: mapboxIsochroneRuntimeEnabled,
+      cap: mapboxIsochroneRequestCap,
+    },
+  ].every(
+    ({ requested, enabled, cap }) =>
+      !requested || cap === 0 || (enabled && sharedUsageCounterReady),
+  );
+  const anyRequestPricedMapboxRuntimeRequested = [
+    {
+      requested: mapboxStaticSwitchEnabled,
+      cap: mapboxStaticRequestCap,
+    },
+    {
+      requested: mapboxDirectionsSwitchEnabled,
+      cap: mapboxDirectionsRequestCap,
+    },
+    {
+      requested: mapboxIsochroneSwitchEnabled,
+      cap: mapboxIsochroneRequestCap,
+    },
+  ].some(({ requested, cap }) => requested && cap > 0);
+  const anyMapboxPaidRuntimeRequested =
+    mapboxSearchBoxEnabled ||
+    mapboxPermanentGeocodingEnabled ||
+    mapboxMatrixEnabled ||
+    mapboxStaticRuntimeEnabled ||
+    mapboxDirectionsRuntimeEnabled ||
+    mapboxIsochroneRuntimeEnabled;
+  const controls: CostControl[] = [
+    {
+      label: "Rate limiting (Vercel KV)",
+      state:
+        process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
+          ? "active"
+          : "attention",
+      why: "Without KV, a bounded per-instance fallback still limits each warm worker, but it cannot coordinate across serverless workers. KV remains the preferred distributed layer; guarded paid paths also keep their atomic daily budgets.",
+    },
+    {
+      label: "Google Maps policy approval",
+      state: googlePolicyApprovalRecorded
+        ? "active"
+        : anyGoogleRuntimeRequested
+          ? "attention"
+          : "off",
+      why: googlePolicyApprovalRecorded
+        ? "The exact written-authorization marker is recorded. Runtime APIs still require their separate switches and least-privilege credentials."
+        : anyGoogleRuntimeRequested
+          ? "A Google runtime switch was requested without the written-authorization marker. The code-level hold blocks the call until that mismatch is corrected."
+          : "No Google runtime is requested. The policy hold safely prevents maintenance, Routes, and geocoding calls even when credentials exist.",
+    },
+    {
+      label: "Google Places runtime",
+      state: googlePlacesRuntimeReady
+        ? "active"
+        : googlePlatformSwitchRequested
+          ? "attention"
+          : "off",
+      why: googlePlacesRuntimeReady
+        ? "Places runtime is explicitly authorized and uses its dedicated credential. Provider quotas and billing alerts remain the source-of-truth controls."
+        : googlePlatformSwitchRequested
+          ? "Places runtime was requested, but policy approval or the dedicated Places credential is missing. Maintenance calls remain unavailable."
+          : "Places maintenance is held off. Existing credentials alone cannot activate hours, status, or enrichment. Current photo delivery is managed separately.",
+    },
+    {
+      label: "Dedicated Google Routes runtime",
+      state: googleRoutesRuntimeReady
+        ? "active"
+        : googleRoutesSwitchRequested
+          ? "attention"
+          : "off",
+      why: googleRoutesRuntimeReady
+        ? "Routes is explicitly authorized and uses only GOOGLE_ROUTES_API_KEY. Results are not persisted and upstream failures keep the local-distance fallback."
+        : googleRoutesSwitchRequested
+          ? "Routes was requested, but policy approval, the platform switch, or its dedicated credential is missing. There is no Places-key fallback, so no paid request is made."
+          : "Routes is held off. A dedicated key alone cannot activate it, and callers keep their local-distance or unavailable state.",
+    },
+    {
+      label: "Google event-geocoding isolation",
+      state: googleGeocodingRuntimeReady
+        ? "active"
+        : googleGeocodingRequested
+          ? "attention"
+          : "off",
+      why: googleGeocodingRuntimeReady
+        ? "The official County address service remains first. The separately authorized Google fallback uses only GOOGLE_GEOCODING_API_KEY and keeps a maximum 30-day coordinate cache."
+        : googleGeocodingRequested
+          ? "Google geocoding was requested, but policy approval, the platform switch, or its dedicated key is missing. Official County, trusted catalog, and cache coordinates continue to publish."
+          : "Google event geocoding is held off. The official Frederick County address lookup remains available without a Google request.",
+    },
+    {
+      label: "Google event-geocode daily breaker",
+      state:
+        !googleGeocodingRequested || eventGeocodeDailyCap === 0
+          ? "off"
+          : googleGeocodingRuntimeReady && sharedUsageCounterReady
+            ? "active"
+            : "attention",
+      why:
+        !googleGeocodingRequested
+          ? "Paid event geocoding is not requested. Official County, trusted catalog, and current cache coordinates remain available."
+          : eventGeocodeDailyCap === 0
+          ? `Paid event geocoding is disabled. Set GOOGLE_EVENT_GEOCODE_DAILY_LIMIT from 1 to ${MAX_GOOGLE_EVENT_GEOCODE_DAILY_LIMIT} only after the policy and runtime gates are satisfied.`
+          : googleGeocodingRuntimeReady && sharedUsageCounterReady
+            ? `The app allows at most ${eventGeocodeDailyCap} unique cache-miss event addresses per Eastern day (code maximum ${MAX_GOOGLE_EVENT_GEOCODE_DAILY_LIMIT}). Duplicate addresses are denied until the current provider result reaches the cache.`
+            : "Paid geocoding was requested, but its runtime prerequisites or the atomic database counter are unavailable. It fails closed while official County, trusted catalog, and current cache coordinates remain available.",
+    },
+    {
+      label: "Scheduled search-vector budget",
+      state:
+        !searchSemanticRequested || searchSemanticCap === 0
+          ? "off"
+          : searchSemanticConfigured && sharedUsageCounterReady
+            ? "active"
+            : "attention",
+      why:
+        !searchSemanticRequested || searchSemanticCap === 0
+          ? "Scheduled semantic vectors are held off. The required Postgres full-text index still refreshes without OpenAI spend."
+          : !searchSemanticConfigured
+            ? "Scheduled vectors were requested, but direct OpenAI or a positive document allowance is missing. Full-text indexing continues."
+            : sharedUsageCounterReady
+              ? `Each document is reserved before its provider batch under a ${searchSemanticCap.toLocaleString()}-document Eastern-day cap (code maximum ${MAX_RADIUS_SEARCH_EMBEDDING_DAILY_DOCUMENT_LIMIT.toLocaleString()}).`
+              : "The semantic switch is on, but the shared counter or its unique index is unavailable. OpenAI stays untouched and full-text indexing continues.",
+    },
+    {
+      label: "Public Ask model budget",
+      state:
+        !askRuntimeRequested || askCallCap === 0
+          ? "off"
+          : askTextRuntimeConfigured && sharedUsageCounterReady
+            ? "active"
+            : "attention",
+      why: !askRuntimeRequested || askCallCap === 0
+        ? "Public model calls are held off. Cached responses and deterministic Frederick answers remain available without provider spend."
+        : !askSelectedProvider
+          ? "ASK_AI_PROVIDER contains an unsupported value. Use gateway, anthropic, or openai. Model calls fail closed until the setting is corrected."
+          : !askSelectedProviderConfigured
+          ? `ASK_AI_PROVIDER selects ${askSelectedProvider}, but that provider's credential is missing. Radius does not borrow another provider.`
+          : sharedUsageCounterReady
+            ? `The selected ${askSelectedProvider} path reserves every provider turn under a ${askCallCap.toLocaleString()}-call Eastern-day cap (code maximum ${MAX_ASK_AI_DAILY_CALL_LIMIT.toLocaleString()}).`
+            : "The runtime switch and provider are configured, but the shared counter or its unique index is unavailable. Model calls fail closed while local answers continue.",
+    },
+    {
+      label: "Ask runtime embedding budget",
+      state:
+        !askEmbeddingRequested || askEmbeddingCap === 0
+          ? "off"
+          : askEmbeddingRuntimeConfigured && sharedUsageCounterReady
+            ? "active"
+            : "attention",
+      why: !askEmbeddingRequested || askEmbeddingCap === 0
+        ? "Visitor-time semantic embeddings are held off. Postgres full-text retrieval remains available."
+        : !askEmbeddingRuntimeConfigured
+          ? "Runtime semantic recall was requested, but direct OpenAI, hybrid search, or a nonzero cap is missing. Full-text retrieval remains available."
+          : sharedUsageCounterReady
+            ? `Each runtime embedding reserves one unit under a ${askEmbeddingCap.toLocaleString()}-attempt Eastern-day cap (code maximum ${MAX_ASK_AI_EMBEDDING_DAILY_LIMIT.toLocaleString()}).`
+            : "The runtime embedding switch is on, but the shared counter is unavailable. OpenAI stays untouched and full-text retrieval remains available.",
+    },
+    {
+      label: "Ask output and retry bounds",
+      state: "active",
+      why: `Every generation path is capped at ${askOutputTokenCap.toLocaleString()} output tokens, the tool loop stops after five steps, and SDK retries are zero so one reservation cannot hide another provider attempt.`,
+    },
+    {
+      label: "Mapbox server-only credential",
+      state: !anyMapboxPaidRuntimeRequested
+        ? "off"
+        : mapboxServerTokenConfigured
+          ? "active"
+          : "attention",
+      why: !anyMapboxPaidRuntimeRequested
+        ? "All paid Mapbox server features are off. A dedicated least-privilege token is only required before one is enabled."
+        : mapboxServerTokenConfigured
+        ? "Paid server routes use only MAPBOX_SERVER_TOKEN. They never fall back to the publishable token shipped in browser JavaScript."
+        : "A paid Mapbox switch is on, but the dedicated server token is missing. New provider work fails closed; the public browser token is never used as a substitute.",
+    },
+    {
+      label: "Mapbox locator and reach breakers",
+      state: !anyRequestPricedMapboxRuntimeRequested
+        ? "off"
+        : requestPricedMapboxControlsReady && mapboxServerTokenConfigured
+          ? "active"
+          : "attention",
+      why: !anyRequestPricedMapboxRuntimeRequested
+        ? "Static Images, walking Directions, and Isochrone are off or held at a zero cap. Existing cache hits and local results remain available."
+        : requestPricedMapboxControlsReady && mapboxServerTokenConfigured
+        ? `Static Images, walking Directions, and Isochrone each have a dedicated switch plus Eastern-day request caps of ${mapboxStaticRequestCap.toLocaleString()}, ${mapboxDirectionsRequestCap.toLocaleString()}, and ${mapboxIsochroneRequestCap.toLocaleString()}. Cache hits remain available without a reservation.`
+        : "A request-priced Mapbox path is enabled without its server credential or shared atomic counter. New cache misses fail closed before Mapbox until both are available.",
+    },
+    {
+      label: "Mapbox Matrix global breaker",
+      state: !mapboxMatrixEnabled
+        ? "off"
+        : mapboxServerTokenConfigured && sharedUsageCounterReady
+          ? "active"
+          : "attention",
+      why: mapboxMatrixEnabled && mapboxServerTokenConfigured && sharedUsageCounterReady
+        ? `Ask, map search, and Within reach share the ${mapboxMatrixElementCap.toLocaleString()}-element Eastern-day cap. Matrix responses are not persisted.`
+        : !mapboxMatrixEnabled
+          ? mapboxMatrixSwitchEnabled && mapboxMatrixElementCap === 0
+          ? "The Matrix switch is on, but its zero-element cap deliberately disables every Matrix path without removing the token. Local distance estimates remain available."
+            : "Every Matrix path stays off unless MAPBOX_MATRIX_ENABLED is 1. Local distance estimates remain available."
+          : "Matrix was enabled, but its server credential or atomic counter is unavailable. Provider work fails closed while local distance estimates remain available.",
+    },
+    {
+      label: "Atomic Mapbox daily budgets",
+      state: !anyMapboxPaidRuntimeRequested
+        ? "off"
+        : sharedUsageCounterReady
+          ? "active"
+          : "attention",
+      why: !anyMapboxPaidRuntimeRequested
+        ? "No paid Mapbox server feature is active, so no provider allowance can be spent. The counter must be verified before enabling one."
+        : sharedUsageCounterReady
+        ? `The shared database counter and its unique day/upstream index are available. Search Box, permanent geocoding, Matrix, Static Images, Directions, and Isochrone reserve atomically in their billed session, request, or element units before uncached work.`
+        : "The shared counter or its required unique day/upstream index is unavailable. Guarded paid requests fail closed until both are restored; cache hits and local fallbacks remain available.",
+    },
+    {
+      label: "Mapbox Search Box lifecycle",
+      state: !mapboxSearchBoxEnabled
+        ? "off"
+        : mapboxSearchLifecycleReady && mapboxServerTokenConfigured
+          ? "active"
+          : "attention",
+      why: !mapboxSearchBoxEnabled
+        ? "Search Box is off. Apply and verify migration 0045 before enabling it so every paid session has a server-owned lifecycle."
+        : mapboxSearchLifecycleReady && mapboxServerTokenConfigured
+        ? "The hashed session ledger is available. A UUID closes after retrieve, 180 seconds, or 50 suggestions, and cannot reopen a paid provider session."
+        : "Search Box is switched on, but its server credential, migration 0045, or the shared daily counter is unavailable. The fallback fails closed before Mapbox until all are verified.",
+    },
+    {
+      label: "Mapbox permanent-geocoding switch",
+      state: !mapboxPermanentGeocodingEnabled
+        ? "off"
+        : mapboxServerTokenConfigured && sharedUsageCounterReady
+          ? "active"
+          : "attention",
+      why: !mapboxPermanentGeocodingEnabled
+        ? "Stored address enrichment is off. Cache hits and official or local sources do not need it."
+        : mapboxServerTokenConfigured && sharedUsageCounterReady
+          ? "Permanent geocoding is enabled with its server credential and shared atomic allowance."
+          : "Permanent geocoding was enabled without its server credential or shared atomic allowance. New provider work fails closed.",
+    },
+    {
+      label: "Mapbox Search Box switch",
+      state: !mapboxSearchBoxEnabled
+        ? "off"
+        : mapboxServerTokenConfigured && mapboxSearchLifecycleReady
+          ? "active"
+          : "attention",
+      why: !mapboxSearchBoxEnabled
+        ? "The paid fallback is off. Radius search still completes locally."
+        : mapboxServerTokenConfigured && mapboxSearchLifecycleReady
+          ? "The paid fallback is enabled only after local Radius search, with its server-owned session lifecycle available."
+          : "The paid fallback was enabled without its server credential or session lifecycle. It fails closed after local Radius search.",
+    },
+    {
+      label: "Hybrid search index",
+      state: searchDocumentCount > 0 ? "active" : "attention",
+      why: searchDocumentCount > 0
+        ? `${searchDocumentCount.toLocaleString()} local records are available to meaning + exact-match retrieval.`
+        : "Apply migration 0025, then run npm run build:radius-search once.",
+    },
   ];
 
   return (
@@ -234,6 +708,16 @@ export default async function CostsAdmin() {
             The usage_counters table isn&rsquo;t migrated yet. Run
             <code className="mx-1">drizzle/0017_usage_counters.sql</code> in the Supabase
             SQL editor, then reload. Counters start filling as soon as it exists.
+          </Notice>
+        </div>
+      )}
+      {!dbError && rawSql && !usageCounterUniqueIndexReady && (
+        <div className="mt-6">
+          <Notice tone="warning">
+            The usage counter can be read, but its required unique day/upstream
+            index could not be verified. Run
+            <code className="mx-1">drizzle/0017_usage_counters.sql</code> in the Supabase
+            SQL editor before enabling paid paths; they fail closed without it.
           </Notice>
         </div>
       )}
@@ -279,11 +763,24 @@ export default async function CostsAdmin() {
                       )}
                     </div>
                     <p className="mt-1 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-                      today {d1.toLocaleString()} · 7d {d7.toLocaleString()} · 30d {d30.toLocaleString()}
+                      today {d1.toLocaleString()}
+                      {u.billing === "unit-estimate" && u.dailyCap !== undefined && (
+                        <span> / {u.dailyCap.toLocaleString()} cap</span>
+                      )}
+                      {" · "}7d {d7.toLocaleString()} · 30d {d30.toLocaleString()}
                       {u.billing === "unit-estimate" ? (
-                        <span style={{ color: "var(--app-ink-3)" }}> · ~${u.per1000}/1k</span>
+                        <span style={{ color: "var(--app-ink-3)" }}>
+                          {u.rateLabel
+                            ? ` · ${u.rateLabel}/1k`
+                            : ` · ~$${u.per1000}/1k`}
+                        </span>
                       ) : (
-                        <span style={{ color: "var(--app-ink-3)" }}> · recovery attempts · hard cap {u.dailyCap}/day</span>
+                        <span style={{ color: "var(--app-ink-3)" }}>
+                          {u.billing === "plan-credit"
+                            ? " · recovery attempts"
+                            : " · reserved provider units"}
+                          {" · hard cap "}{u.dailyCap}/day
+                        </span>
                       )}
                     </p>
                     {u.billing === "unit-estimate" && (
@@ -296,12 +793,13 @@ export default async function CostsAdmin() {
                       {u.note}
                     </p>
                   </div>
-                  {u.billing === "unit-estimate" && est30 !== null ? (
-                    <EstimateFigure est={est30} />
+                  {u.billing === "unit-estimate" ? (
+                    <EstimateFigure est={est30 ?? 0} />
                   ) : (
-                    <PlanCreditFigure
+                    <CappedAttemptFigure
                       used={d1}
-                      limit={u.billing === "plan-credit" ? u.dailyCap : 0}
+                      limit={u.dailyCap}
+                      label={u.billing === "plan-credit" ? "recovery attempts today" : "reserved units today"}
                     />
                   )}
                 </div>
@@ -315,21 +813,24 @@ export default async function CostsAdmin() {
       <section className="mt-7">
         <SectionLabel>Cost controls</SectionLabel>
         <HairlineList>
-          {controls.map((c, i) => (
-            <li key={c.label} style={i > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}>
-              <div className="flex items-start gap-3 bg-[var(--app-bg-elevated)] px-3 py-2.5">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-medium leading-tight" style={{ color: "var(--app-ink)" }}>
-                    {c.label}
-                  </p>
-                  <p className="mt-1 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-                    {c.why}
-                  </p>
+          {controls.map((c, i) => {
+            const status = CONTROL_STATUS[c.state];
+            return (
+              <li key={c.label} style={i > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}>
+                <div className="flex items-start gap-3 bg-[var(--app-bg-elevated)] px-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] font-medium leading-tight" style={{ color: "var(--app-ink)" }}>
+                      {c.label}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                      {c.why}
+                    </p>
+                  </div>
+                  <StatusPill tone={status.tone}>{status.label}</StatusPill>
                 </div>
-                <StatusPill tone={c.ok ? "positive" : "brand"}>{c.ok ? "Active" : "Missing"}</StatusPill>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </HairlineList>
       </section>
 
@@ -351,9 +852,10 @@ export default async function CostsAdmin() {
         Providers can still reject or fail an attempted call, so their consoles
         remain the billing source of truth. Unit prices are estimates pinned in
         code (src/app/admin/costs/page.tsx); update them when provider pricing
-        changes. Firecrawl recovery is shown as app-side attempts and is
-        excluded from dollar totals because an attempt is not the same as a
-        provider credit or billable call. The month
+        changes. Firecrawl recovery and the guarded Ask model/embedding rows
+        are excluded from dollar totals: a recovery attempt is not necessarily
+        a provider credit, and AI cost depends on the selected model plus input
+        and output tokens rather than a flat call price. The month
         projection extends what has already been spent at the median daily rate
         of the last seven full days, so one spiky day does not distort it.
       </p>

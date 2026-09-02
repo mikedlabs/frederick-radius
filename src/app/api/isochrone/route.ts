@@ -11,13 +11,9 @@
  * creeks, hills, one-ways, and railroad tracks.
  *
  * Proxied for two reasons:
- *   1. Keep the Mapbox token's URL restrictions intact. The token is
- *      domain-locked to frederickradius.app, so client-side fetches
- *      from a different origin (preview deploys, scrapers) would 401.
- *      Server-to-server the restriction STILL applies (Mapbox matches
- *      the Referer header), so this route must send
- *      MAPBOX_SERVER_HEADERS — without it every upstream call 403s and
- *      the client silently falls back to a circle.
+ *   1. Keep the dedicated server token out of browser JavaScript. The route
+ *      also sends MAPBOX_SERVER_HEADERS so a least-privilege token carrying a
+ *      URL rule remains compatible.
  *   2. Edge-cache the polygon by (lng,lat,mode,minutes). Mapbox bills
  *      per request; walking and cycling polygons can live for a day,
  *      while traffic-aware driving polygons refresh every five minutes.
@@ -26,13 +22,18 @@
  * a structured `{ ok: false, reason }` 200 so the client can quietly
  * fall back to a circle. Map should never go blank because of this.
  */
-import { meterUsage } from "@/lib/usage-meter";
 import { isValidCoord } from "@/lib/geo";
 import { NextRequest } from "next/server";
+import { unstable_cache } from "next/cache";
 import {
   MAPBOX_SERVER_HEADERS,
   MAPBOX_SERVER_TOKEN,
 } from "@/lib/mapbox-server";
+import {
+  mapboxDailyUsageCap,
+  mapboxRequestRuntimeEnabled,
+} from "@/lib/mapbox-budget";
+import { reserveDailyUsage } from "@/lib/usage-meter";
 import { isOverPaidRequestBudget, isSameOriginRequest } from "@/lib/origin-check";
 import { roundCoord } from "@/lib/walkTime";
 
@@ -52,6 +53,73 @@ const DRIVE_TRAFFIC_CACHE_SECONDS = 300;
 // would silently turn most slider choices into circle fallbacks.
 const MIN_MINUTES = 1;
 const MAX_MINUTES = 60;
+
+class MapboxIsochroneError extends Error {
+  constructor(readonly status: number) {
+    super(`Mapbox Isochrone HTTP ${status}`);
+  }
+}
+
+class MapboxIsochroneUnavailableError extends Error {
+  constructor(
+    readonly reason:
+      | "disabled"
+      | "no-token"
+      | "cost-control-unavailable"
+      | "daily-cap-reached",
+  ) {
+    super(reason);
+  }
+}
+
+async function fetchIsochroneUncached(
+  profile: string,
+  lng: number,
+  lat: number,
+  minutes: number,
+): Promise<unknown> {
+  // Cached polygons remain available with the breaker off. Only a true cache
+  // miss needs a runtime gate, a server credential, and one atomic request.
+  if (!mapboxRequestRuntimeEnabled("isochrone")) {
+    throw new MapboxIsochroneUnavailableError("disabled");
+  }
+  if (!MAPBOX_SERVER_TOKEN) {
+    throw new MapboxIsochroneUnavailableError("no-token");
+  }
+  const reservation = await reserveDailyUsage(
+    "mapbox_isochrone",
+    mapboxDailyUsageCap("isochrone_request"),
+  );
+  if (!reservation) {
+    throw new MapboxIsochroneUnavailableError("cost-control-unavailable");
+  }
+  if (!reservation.reserved) {
+    throw new MapboxIsochroneUnavailableError("daily-cap-reached");
+  }
+
+  const upstream =
+    `https://api.mapbox.com/isochrone/v1/mapbox/${profile}/${lng},${lat}` +
+    `?contours_minutes=${minutes}&polygons=true&denoise=1&access_token=${MAPBOX_SERVER_TOKEN}`;
+  const response = await fetch(upstream, {
+    headers: MAPBOX_SERVER_HEADERS,
+    cache: "no-store",
+    signal: AbortSignal.timeout(6_000),
+  });
+  if (!response.ok) throw new MapboxIsochroneError(response.status);
+  return response.json();
+}
+
+const fetchDayIsochrone = unstable_cache(
+  fetchIsochroneUncached,
+  ["mapbox-isochrone-day-v2"],
+  { revalidate: DAY_SECONDS },
+);
+
+const fetchTrafficIsochrone = unstable_cache(
+  fetchIsochroneUncached,
+  ["mapbox-isochrone-traffic-v2"],
+  { revalidate: DRIVE_TRAFFIC_CACHE_SECONDS },
+);
 
 export async function GET(req: NextRequest) {
   if (!isSameOriginRequest(req)) {
@@ -88,11 +156,6 @@ export async function GET(req: NextRequest) {
   ) {
     return Response.json({ ok: false, reason: "bad-minutes" }, { status: 400 });
   }
-  if (!MAPBOX_SERVER_TOKEN) {
-    // No token = degrade silently; client falls back to circle.
-    return Response.json({ ok: false, reason: "no-token" });
-  }
-
   // Snap to the same ~100m grid as the browser. This prevents an exact device
   // fix from reaching Mapbox or being reflected in our public response/cache.
   const approximateLng = roundCoord(lng);
@@ -116,26 +179,14 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Build the Mapbox URL. `polygons=true` returns one filled polygon
-  // (rather than line contours). `denoise=1` reduces tiny islands of
-  // unreachable area — cleaner rendering at our zoom levels.
-  const upstream = `https://api.mapbox.com/isochrone/v1/mapbox/${profile}/${approximateLng},${approximateLat}` +
-    `?contours_minutes=${minutes}&polygons=true&denoise=1&access_token=${MAPBOX_SERVER_TOKEN}`;
   const cacheSeconds =
     mode === "drive" ? DRIVE_TRAFFIC_CACHE_SECONDS : DAY_SECONDS;
   const staleSeconds = mode === "drive" ? DRIVE_TRAFFIC_CACHE_SECONDS : 604_800;
 
   try {
-    meterUsage("mapbox_isochrone");
-    const r = await fetch(upstream, {
-      headers: MAPBOX_SERVER_HEADERS,
-      next: { revalidate: cacheSeconds },
-      signal: AbortSignal.timeout(6_000),
-    });
-    if (!r.ok) {
-      return Response.json({ ok: false, reason: `upstream-${r.status}` });
-    }
-    const data = await r.json();
+    const data = await (mode === "drive"
+      ? fetchTrafficIsochrone(profile, approximateLng, approximateLat, minutes)
+      : fetchDayIsochrone(profile, approximateLng, approximateLat, minutes));
     // Mapbox returns a FeatureCollection; pass through with a small
     // wrapper so the client knows it's a real success vs a fallback.
     return Response.json(
@@ -152,7 +203,13 @@ export async function GET(req: NextRequest) {
         },
       },
     );
-  } catch {
+  } catch (error) {
+    if (error instanceof MapboxIsochroneUnavailableError) {
+      return Response.json({ ok: false, reason: error.reason });
+    }
+    if (error instanceof MapboxIsochroneError) {
+      return Response.json({ ok: false, reason: `upstream-${error.status}` });
+    }
     return Response.json({ ok: false, reason: "fetch-error" });
   }
 }

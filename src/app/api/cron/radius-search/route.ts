@@ -2,8 +2,8 @@
  * Bounded daily maintenance for Radius' private local-search index.
  *
  * The initial full-text fill advances in bounded slices. Optional OpenAI
- * embeddings use the same limit when configured; later runs only revisit
- * changed content or rows that still need a vector. The writer is
+ * embeddings use their own explicit atomic daily document cap; later runs
+ * only revisit changed content or rows that still need a vector. The writer is
  * content-hash based and idempotent by (kind, source_id).
  */
 import { NextResponse } from "next/server";

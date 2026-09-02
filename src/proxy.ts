@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { verifyAdminRequestOrigin } from "@/lib/security/admin-request";
 
 /**
  * Request proxy: admin protection plus public-session refresh.
@@ -9,14 +10,20 @@ import { updateSession } from "@/lib/supabase/middleware";
  *                   /admin is unreachable. Set both env vars to
  *                   enable. Edge-safe (Web `atob`, no Node crypto).
  *
- *   2. Everywhere else — Supabase session refresh. Short-lived
+ *   2. Fair entry routes — direct public pass-through. The public Fair
+ *                   experience does not read session state, so `/fair` and
+ *                   its canonical 2026 moment skip Supabase entirely. This
+ *                   keeps the surge path cacheable and avoids refresh work
+ *                   even when a visitor happens to carry a session cookie.
+ *
+ *   3. Everywhere else — Supabase session refresh. Short-lived
  *                   access tokens (~1h) get silently refreshed on
  *                   each request that carries a session cookie.
  *                   Logged-out users pass through with no change.
  *                   Does NOT enforce auth; pages decide whether
  *                   they need a signed-in user via getServerUser().
  *
- *   3. Static + image paths — skipped via the matcher below so the
+ *   4. Static + image paths — skipped via the matcher below so the
  *                   middleware doesn't intercept _next/image, _next/
  *                   static, or asset requests.
  *
@@ -40,6 +47,12 @@ function unauthorized(): NextResponse {
 
 function isAdminPath(pathname: string): boolean {
   return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+
+function isFairPublicFastPath(pathname: string): boolean {
+  return (
+    pathname === "/fair" || pathname === "/moments/great-frederick-fair-2026"
+  );
 }
 
 /**
@@ -90,10 +103,17 @@ export async function proxy(req: NextRequest) {
   if (isAdminPath(pathname)) {
     const block = await adminBasicAuth(req);
     if (block) return block;
+    const crossOrigin = verifyAdminRequestOrigin(req);
+    if (crossOrigin) return crossOrigin;
     // Admin paths skip Supabase session refresh — the admin surface
     // is its own world.
     return NextResponse.next();
   }
+
+  // These two Fair entry points are wholly public and session-independent.
+  // Skip Supabase even for visitors carrying cookies so a fair-day surge does
+  // not spend latency or backend capacity refreshing an unused session.
+  if (isFairPublicFastPath(pathname)) return NextResponse.next();
 
   // Every public route is open. Refresh Supabase session state when a cookie is
   // present, then pass through unchanged for logged-out visitors.
