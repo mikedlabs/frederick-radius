@@ -159,20 +159,20 @@ test.describe("critical surfaces under combined dependency failure", () => {
       }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Close Find" }).click();
-    const moreForToday = page.getByRole("region", {
-      name: "More for today",
+    const localGuides = page.getByRole("region", {
+      name: "Local guides and saved places",
       exact: true,
     });
-    await expect(moreForToday).toHaveAttribute(
+    await expect(localGuides).toHaveAttribute(
       "data-collapsible-interaction-ready",
       "true",
     );
-    const moreForTodayButton = moreForToday.getByRole("button", {
-      name: "More for today",
+    const localGuidesButton = localGuides.getByRole("button", {
+      name: "Local guides and saved places",
       exact: true,
     });
-    await moreForTodayButton.click();
-    await expect(moreForTodayButton).toHaveAttribute("aria-expanded", "true");
+    await localGuidesButton.click();
+    await expect(localGuidesButton).toHaveAttribute("aria-expanded", "true");
     const foodTrucksLink = page.getByRole("link", { name: /Food trucks/i });
     await expect(foodTrucksLink).toBeVisible();
     await expect
