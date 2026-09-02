@@ -43,6 +43,9 @@ import {
 import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback-ui";
 import { mapCameraDuration } from "@/lib/motion";
 
+import FairGroundsMapLoading from "./FairGroundsMapLoading";
+import FairGroundsMapMasthead from "./FairGroundsMapMasthead";
+
 export type FairGroundsMapSavedStop = {
   id: string;
   title: string;
@@ -78,11 +81,32 @@ const FILTERS: Array<{
   id: FairGroundsMapFilter;
   label: string;
   kinds: FairGroundsMapKind[];
+  tone: string;
 }> = [
-  { id: "essentials", label: "Entry + essentials", kinds: ["gate", "ticket", "restroom", "stage"] },
-  { id: "animals", label: "Animals", kinds: ["animal"] },
-  { id: "buildings", label: "Buildings", kinds: ["building"] },
-  { id: "parking", label: "Parking (Lot A)", kinds: ["parking"] },
+  {
+    id: "essentials",
+    label: "Entry + essentials",
+    kinds: ["gate", "ticket", "restroom", "stage"],
+    tone: "var(--app-brand-press)",
+  },
+  {
+    id: "animals",
+    label: "Animals",
+    kinds: ["animal"],
+    tone: "var(--app-brand-2)",
+  },
+  {
+    id: "buildings",
+    label: "Buildings",
+    kinds: ["building"],
+    tone: "var(--app-warning-press)",
+  },
+  {
+    id: "parking",
+    label: "Parking (Lot A)",
+    kinds: ["parking"],
+    tone: "var(--app-cool)",
+  },
 ];
 
 const MARKER_THEME: Record<
@@ -92,11 +116,17 @@ const MARKER_THEME: Record<
   gate: { color: "var(--app-brand-press)", background: "var(--app-brand-tint-6)" },
   ticket: { color: "var(--app-brand-press)", background: "var(--app-brand-tint-6)" },
   restroom: { color: "var(--app-cool)", background: "var(--app-bg-elevated-solid)" },
-  building: { color: "var(--app-ink-2)", background: "var(--app-bg-elevated-solid)" },
+  building: { color: "var(--app-warning-press)", background: "var(--app-bg-elevated-solid)" },
   animal: { color: "var(--app-brand-2)", background: "var(--app-bg-elevated-solid)" },
   stage: { color: "var(--app-accent-press)", background: "var(--app-bg-elevated-solid)" },
   parking: { color: "var(--app-cool)", background: "var(--app-bg-elevated-solid)" },
 };
+
+function markerTone(kind: FairGroundsMapKind): string {
+  return kind === "fairgrounds"
+    ? "var(--app-brand-press)"
+    : MARKER_THEME[kind].color;
+}
 
 function markerIcon(kind: FairGroundsMapKind) {
   return {
@@ -109,15 +139,6 @@ function markerIcon(kind: FairGroundsMapKind) {
     parking: CircleParking,
     fairgrounds: MapPin,
   }[kind];
-}
-
-function checkedLabel(date: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${date}T12:00:00Z`));
 }
 
 function mappedFeatureName(
@@ -254,6 +275,9 @@ export default function FairGroundsMapInner({
   const selected =
     mapData?.features.find((feature) => feature.properties.id === selectedId) ??
     null;
+  const selectedTone = selected
+    ? markerTone(selected.properties.kind)
+    : "var(--app-brand-press)";
   const searchMatches = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     if (!mapData || normalized.length < 2) return [];
@@ -450,36 +474,17 @@ export default function FairGroundsMapInner({
   }
 
   if (!mapData) {
-    return (
-      <div
-        className="mt-5 h-[52dvh] min-h-[430px] max-h-[560px] animate-pulse rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-sunken)] motion-reduce:animate-none"
-        style={{ borderColor: "var(--app-border-strong)" }}
-        role="status"
-        aria-label="Loading reviewed Fair map data"
-      />
-    );
+    return <FairGroundsMapLoading />;
   }
 
   return (
     <section className="mt-5" aria-labelledby="fair-grounds-map-heading" data-fair-grounds-map>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[12px] font-bold uppercase tracking-[0.13em]" style={{ color: "var(--app-cool)" }}>
-            Source-checked grounds map
-          </p>
-          <h2 id="fair-grounds-map-heading" className="mt-1 text-[24px] font-extrabold tracking-[-0.035em]">
-            Find it before you need it.
-          </h2>
-        </div>
-        <span
-          className="rounded-full border px-3 py-1.5 text-[12px] font-semibold"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-        >
-          Checked {checkedLabel(mapData.reviewedOn)}
-        </span>
-      </div>
+      <FairGroundsMapMasthead
+        checkedOn={mapData.reviewedOn}
+        headingId="fair-grounds-map-heading"
+      />
 
-      <div className="relative mt-4">
+      <div className="relative mt-3">
         <label htmlFor="fair-map-search" className="sr-only">
           Find a place or program event on the Fair grounds map
         </label>
@@ -495,9 +500,9 @@ export default function FairGroundsMapInner({
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Find a place or program event"
           autoComplete="off"
-          className="tap-44 min-h-12 w-full rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] py-3 pl-11 pr-11 text-[14px] font-semibold outline-none placeholder:font-medium focus-visible:ring-2"
+          className="tap-44 min-h-12 w-full rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] py-3 pl-11 pr-11 text-[14px] font-semibold outline-none placeholder:font-medium focus-visible:border-[var(--app-brand-press)] focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--app-brand)_22%,transparent)]"
           style={{
-            borderColor: "var(--app-border-strong)",
+            borderColor: "var(--app-control-border)",
             color: "var(--app-ink)",
             boxShadow: "var(--app-elev-1)",
           }}
@@ -546,7 +551,7 @@ export default function FairGroundsMapInner({
                   </span>
                   <MapPin
                     className="h-4 w-4 shrink-0"
-                    style={{ color: "var(--app-brand-press)" }}
+                    style={{ color: markerTone(feature.properties.kind) }}
                     aria-hidden
                   />
                 </button>
@@ -563,44 +568,57 @@ export default function FairGroundsMapInner({
         ) : null}
       </div>
 
-      <div
-        className="scrollbar-none -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6"
-        role="group"
-        aria-label="Choose what the Fair map shows"
-      >
-        {FILTERS.map((option) => {
-          const active = option.id === filter;
-          const count = option.kinds.reduce(
-            (total, kind) => total + (counts.get(kind) ?? 0),
-            0,
-          );
-          return (
-            <button
-              key={option.id}
-              type="button"
-              aria-pressed={active}
-              onClick={() => {
-                setFilter(option.id);
-                setSelectedId(null);
-                fitFilter(option.id);
-              }}
-              className="tap-44 min-h-11 shrink-0 rounded-full border px-3 text-[12px] font-semibold"
-              style={{
-                borderColor: active ? "var(--app-ink)" : "var(--app-border-strong)",
-                color: active ? "var(--app-ink-inverse)" : "var(--app-ink-2)",
-                background: active ? "var(--app-ink)" : "var(--app-bg-elevated)",
-              }}
-            >
-              {option.label} · {count}
-            </button>
-          );
-        })}
+      <div className="relative">
+        <div
+          className="scrollbar-none -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 pr-10 sm:-mx-6 sm:px-6"
+          role="group"
+          aria-label="Choose what the Fair map shows"
+        >
+          {FILTERS.map((option) => {
+            const active = option.id === filter;
+            const count = option.kinds.reduce(
+              (total, kind) => total + (counts.get(kind) ?? 0),
+              0,
+            );
+            return (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => {
+                  setFilter(option.id);
+                  setSelectedId(null);
+                  fitFilter(option.id);
+                }}
+                className="tap-44 min-h-11 shrink-0 rounded-full border px-3 text-[12px] font-semibold"
+                style={{
+                  borderColor: active ? option.tone : "var(--app-control-border)",
+                  color: active ? "var(--app-ink-inverse)" : "var(--app-ink-2)",
+                  background: active ? option.tone : "var(--app-bg-elevated-solid)",
+                  boxShadow: active
+                    ? "0 6px 16px -12px var(--app-ink)"
+                    : "inset 0 1px 0 color-mix(in srgb, white 65%, transparent)",
+                }}
+              >
+                {option.label} · {count}
+              </button>
+            );
+          })}
+        </div>
+        <div
+          className="pointer-events-none absolute -bottom-0.5 -right-4 top-0 w-9 bg-gradient-to-r from-transparent to-[var(--app-bg)] sm:hidden"
+          aria-hidden
+        />
       </div>
 
       <div className="mt-3 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-4">
         <div
           className="fair-grounds-map-canvas relative h-[52dvh] min-h-[430px] max-h-[560px] overflow-hidden rounded-[var(--app-radius-xl)] border lg:h-[620px] lg:max-h-none"
-          style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-sunken)" }}
+          style={{
+            borderColor: "var(--app-control-border)",
+            background: "var(--app-bg-sunken)",
+            boxShadow: "0 18px 40px -34px var(--app-ink), inset 0 0 0 1px color-mix(in srgb, var(--app-bg-elevated-solid) 72%, transparent)",
+          }}
         >
           <MapCanvas
             ref={mapRef}
@@ -705,31 +723,33 @@ export default function FairGroundsMapInner({
                       aria-label={`Open ${mappedFeatureName(feature, mapData)}, ${fairGroundsMapKindLabel(kind)}`}
                     >
                       <span
-                        className="grid h-8 w-8 place-items-center rounded-full border-2"
+                        className="grid h-9 w-9 place-items-center rounded-full border-2"
                         style={{
                           color: selectedMarker ? "var(--app-ink-inverse)" : theme.color,
-                          background: selectedMarker ? "var(--app-ink)" : theme.background,
+                          background: selectedMarker ? theme.color : theme.background,
                           borderColor: selectedMarker ? "var(--app-ink-inverse)" : theme.color,
-                          boxShadow: "0 3px 10px rgba(34, 28, 21, 0.24)",
+                          boxShadow: selectedMarker
+                            ? "0 0 0 3px var(--app-amber), 0 6px 16px rgba(34, 28, 21, 0.3)"
+                            : "0 3px 10px rgba(34, 28, 21, 0.24)",
                         }}
                       >
                         {gateLabel ? (
                           <span
-                            className="text-[10px] font-extrabold leading-none tabular-nums"
+                            className="text-[12px] font-extrabold leading-none tabular-nums"
                             aria-hidden
                           >
                             {gateLabel}
                           </span>
                         ) : (
-                          <Icon className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+                          <Icon className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
                         )}
                       </span>
                       {savedMatches.length > 0 ? (
                         <span
-                          className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full border px-1 text-[10px] font-bold tabular-nums"
+                          className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full border px-1 text-[11px] font-bold tabular-nums"
                           style={{
                             color: "var(--app-on-brand)",
-                            background: "var(--app-brand)",
+                            background: "var(--app-brand-press)",
                             borderColor: "var(--app-ink-inverse)",
                           }}
                           aria-hidden
@@ -739,10 +759,10 @@ export default function FairGroundsMapInner({
                       ) : null}
                       {scheduledHere.length > 0 ? (
                         <span
-                          className="absolute bottom-0 left-0 grid h-5 min-w-5 place-items-center rounded-full border px-1 text-[10px] font-bold tabular-nums"
+                          className="absolute bottom-0 left-0 grid h-5 min-w-5 place-items-center rounded-full border px-1 text-[11px] font-bold tabular-nums"
                           style={{
                             color: "var(--app-ink)",
-                            background: "var(--app-accent-soft)",
+                            background: "var(--app-amber)",
                             borderColor: "var(--app-bg-elevated-solid)",
                           }}
                           aria-hidden
@@ -797,7 +817,7 @@ export default function FairGroundsMapInner({
             style={{
               color: "var(--app-ink)",
               background: "var(--app-bg-elevated-solid)",
-              borderColor: "var(--app-border-strong)",
+              borderColor: "var(--app-control-border)",
               boxShadow: "var(--app-elev-1)",
             }}
           >
@@ -812,7 +832,7 @@ export default function FairGroundsMapInner({
             style={{
               color: "var(--app-ink)",
               background: "var(--app-bg-elevated-solid)",
-              borderColor: "var(--app-border-strong)",
+              borderColor: "var(--app-control-border)",
               boxShadow: "var(--app-elev-1)",
             }}
           >
@@ -824,7 +844,9 @@ export default function FairGroundsMapInner({
             <div
               className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[70] mx-auto max-w-[30rem] rounded-[var(--app-radius-lg)] border p-4 lg:hidden"
               style={{
-                borderColor: "var(--app-border-strong)",
+                borderColor: "var(--app-control-border)",
+                borderTopColor: selectedTone,
+                borderTopWidth: "4px",
                 background: "var(--app-bg-elevated-solid)",
                 boxShadow:
                   "var(--app-elev-3), var(--app-edge), var(--app-hi)",
@@ -843,7 +865,7 @@ export default function FairGroundsMapInner({
               </button>
               <p
                 className="pr-10 text-[11px] font-bold uppercase tracking-[0.11em]"
-                style={{ color: "var(--app-brand-press)" }}
+                style={{ color: selectedTone }}
               >
                 {fairGroundsMapKindLabel(selected.properties.kind)}
               </p>
@@ -861,11 +883,11 @@ export default function FairGroundsMapInner({
               {selectedProgramItems.length > 0 ? (
                 <div
                   className="mt-3 border-l-2 pl-3"
-                  style={{ borderColor: "var(--app-accent)" }}
+                  style={{ borderColor: "var(--app-amber)" }}
                 >
                   <p
-                    className="text-[10px] font-bold uppercase tracking-[0.1em]"
-                    style={{ color: "var(--app-ink-3)" }}
+                    className="text-[12px] font-bold uppercase tracking-[0.1em]"
+                    style={{ color: "var(--app-warning-press)" }}
                   >
                     On your selected day
                   </p>
@@ -922,7 +944,9 @@ export default function FairGroundsMapInner({
             selected ? "hidden lg:flex" : "lg:flex"
           }`}
           style={{
-            borderColor: "var(--app-border-strong)",
+            borderColor: "var(--app-control-border)",
+            borderTopColor: selected ? selectedTone : "var(--app-brand-press)",
+            borderTopWidth: "4px",
             background: "var(--app-bg-elevated-solid)",
             boxShadow: "var(--app-elev-2), var(--app-edge), var(--app-hi)",
           }}
@@ -930,7 +954,7 @@ export default function FairGroundsMapInner({
         >
           {selected ? (
             <>
-              <p className="text-[12px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-brand-press)" }}>
+              <p className="text-[12px] font-bold uppercase tracking-[0.12em]" style={{ color: selectedTone }}>
                 {fairGroundsMapKindLabel(selected.properties.kind)}
               </p>
               <h3 className="mt-1 text-[22px] font-extrabold leading-tight tracking-[-0.035em]">
@@ -955,11 +979,11 @@ export default function FairGroundsMapInner({
               {selectedProgramItems.length > 0 ? (
                 <div
                   className="mt-4 border-l-2 pl-3"
-                  style={{ borderColor: "var(--app-accent)" }}
+                  style={{ borderColor: "var(--app-amber)" }}
                 >
                   <p
-                    className="text-[11px] font-bold uppercase tracking-[0.1em]"
-                    style={{ color: "var(--app-ink-3)" }}
+                    className="text-[12px] font-bold uppercase tracking-[0.1em]"
+                    style={{ color: "var(--app-warning-press)" }}
                   >
                     On your selected day
                   </p>
