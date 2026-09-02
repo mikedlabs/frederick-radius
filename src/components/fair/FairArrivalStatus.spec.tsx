@@ -122,9 +122,9 @@ describe("FairArrivalStatusView", () => {
       status({
         state: "not-today",
         coverage: "not-checked",
-        headline: "Live arrival updates will start on your selected Fair day.",
+        headline: "Radius will check live arrival feeds on your selected Fair day.",
         summary:
-          "Radius will check official road, weather, civic, and selected-transit feeds before you leave.",
+          "The check uses official road, weather, and civic feeds, plus County Transit when you choose it.",
         signals: [],
         sources: [],
       }),
