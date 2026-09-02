@@ -44,6 +44,7 @@ export default function PlaceList({
   initialLayout = "grid",
   emptyMessage,
   facetTags,
+  pageSize = 24,
 }: {
   places: PlaceCardData[];
   initialLayout?: "grid" | "list";
@@ -52,10 +53,16 @@ export default function PlaceList({
    *  places carrying ALL selected tags. Surfaces shadow data (dog-friendly,
    *  outdoor, kid-friendly, …) as a real filter instead of buried metadata. */
   facetTags?: { slug: string; name: string }[];
+  /** Initial and incremental result count. Large categories stay bounded so
+   * one expand action cannot mount every photo in the set. */
+  pageSize?: number;
 }) {
   const [layout, setLayout] = useState<"grid" | "list">(initialLayout);
   const [sort, setSort] = useState<PlaceSortKey>("score");
   const [activeFacets, setActiveFacets] = useState<ReadonlySet<string>>(new Set());
+  const requestedPageSize = Number.isFinite(pageSize) ? Math.floor(pageSize) : 24;
+  const safePageSize = Math.max(1, Math.min(48, requestedPageSize));
+  const [visibleCount, setVisibleCount] = useState(safePageSize);
   const [mounted, setMounted] = useState(false);
 
   // Sort the incoming places per the user's choice. "score" is the
@@ -100,6 +107,7 @@ export default function PlaceList({
       return true;
     });
   }, [sortedPlaces, activeFacets]);
+  const visiblePlaces = filteredPlaces.slice(0, visibleCount);
 
   // Filter out the "distance" option when no place has a distance_m
   // value — otherwise the dropdown would offer a sort that produces
@@ -252,13 +260,13 @@ export default function PlaceList({
         </p>
       ) : layout === "grid" ? (
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
-          {filteredPlaces.map((p) => (
+          {visiblePlaces.map((p) => (
             <PlaceCard key={p.slug} place={p} variant="grid" />
           ))}
         </div>
       ) : (
         <ul className="space-y-2" aria-busy={!mounted ? "true" : undefined}>
-          {filteredPlaces.map((p) => (
+          {visiblePlaces.map((p) => (
             <li key={p.slug}>
               {/* compact=true drops the second metadata row (status +
                   rating + price) so the row reads tighter — list mode
@@ -267,6 +275,16 @@ export default function PlaceList({
             </li>
           ))}
         </ul>
+      )}
+      {visibleCount < filteredPlaces.length && (
+        <button
+          type="button"
+          onClick={() => setVisibleCount((count) => count + safePageSize)}
+          className="tap-44 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-sm)] border px-4 text-[12px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+        >
+          Show {Math.min(safePageSize, filteredPlaces.length - visibleCount)} more
+        </button>
       )}
     </div>
   );

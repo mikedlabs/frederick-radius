@@ -1,0 +1,11 @@
+{
+  "_doc": "Private, titles-and-links-only monitoring of Reddit's public r/frederickmd Fair search feed. No authors, bodies, comments, media, private posts, sentiment scores, or public publishing.",
+  "version": 1,
+  "feedUrl": "https://www.reddit.com/r/frederickmd/search.rss?q=%22Great%20Frederick%20Fair%22&restrict_sr=on&sort=new&t=all",
+  "limits": {
+    "timeoutMs": 12000,
+    "maxResponseBytes": 524288,
+    "maxEntries": 50,
+    "maxRememberedIds": 500
+  }
+}

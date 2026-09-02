@@ -1,12 +1,11 @@
 name: Data refresh
 
-# A previous bounded snapshot seeds each daily run so one upstream failure
-# cannot erase the last-known-good normalized data. Fetching, publication, and
-# issue mutation are isolated into separate least-privilege jobs.
+# This legacy snapshot pipeline is not consumed by the deployed application.
+# Keep it available for an intentional operator run while the live app reads
+# its runtime collectors and reviewed src/data artifacts. Do not schedule it
+# again until a production reader and owner are documented.
 
 on:
-  schedule:
-    - cron: "0 10 * * *" # 10:00 UTC, about 6 AM Eastern
   workflow_dispatch: {}
 
 permissions: {}

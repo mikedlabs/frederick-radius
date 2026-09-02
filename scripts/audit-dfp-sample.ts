@@ -20,7 +20,8 @@
  * Output: audit/dfp-sample-50.json with one row per sample plus a
  * tally summary.
  *
- * Run: GOOGLE_PLACES_API_KEY=... npm exec tsx scripts/audit-dfp-sample.ts [seed]
+ * Plan: npm exec tsx scripts/audit-dfp-sample.ts -- --seed 20260527
+ * Live: GOOGLE_PLACES_API_KEY=... npm exec tsx scripts/audit-dfp-sample.ts -- --seed 20260527 --live --confirm --limit 50
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -29,6 +30,12 @@ import {
   resolveAndEnrich,
   googlePlacesConfigured,
 } from "@/lib/integrations/google-places";
+import {
+  assertManualGoogleArgs,
+  createManualGoogleCallBudget,
+  googleCostPreview,
+  parseManualGoogleRun,
+} from "./lib/manual-google-run";
 
 function loadEnvLocal() {
   try {
@@ -115,11 +122,22 @@ function mulberry32(a: number) {
 }
 
 async function main() {
-  if (!googlePlacesConfigured()) {
-    console.error("GOOGLE_PLACES_API_KEY missing — aborting (no spend).");
-    process.exit(1);
+  const args = process.argv.slice(2);
+  assertManualGoogleArgs(args, { valueFlags: ["--seed"], maxPositionals: 1 });
+  const run = parseManualGoogleRun(args, {
+    defaultLimit: 50,
+    maxLimit: 50,
+  });
+  const seedIndex = args.indexOf("--seed");
+  const legacySeed = args[0] && !args[0].startsWith("--") ? args[0] : undefined;
+  const seedRaw = seedIndex >= 0 ? args[seedIndex + 1] : legacySeed;
+  if (seedIndex >= 0 && (!seedRaw || seedRaw.startsWith("--"))) {
+    throw new Error("--seed requires a numeric value.");
   }
-  const seed = Number(process.argv[2] ?? 20260527);
+  const seed = Number(seedRaw ?? 20260527);
+  if (!Number.isSafeInteger(seed)) {
+    throw new Error("--seed must be a safe integer.");
+  }
   const dfp = JSON.parse(
     readFileSync(resolve("src/data/places-dfp.json"), "utf8"),
   ) as DfpRow[];
@@ -148,28 +166,64 @@ async function main() {
   ]);
   const pool = eligible.filter((r) => !FIXED.has(r.slug));
 
-  // Deterministic 50-row sample
+  // Deterministic, explicitly bounded sample.
   const rng = mulberry32(seed);
   const shuffled = [...pool].sort(() => rng() - 0.5);
-  const sample = shuffled.slice(0, 50);
+  const sample = shuffled.slice(0, run.limit);
+  const detailsCalls = sample.filter((row) =>
+    Boolean(row.google_place_id && CHIJ_RE.test(row.google_place_id)),
+  ).length;
+  const searchCalls = sample.length - detailsCalls;
+
+  console.log("\nDFP address sample audit");
+  console.log(`Mode: ${run.dryRun ? "DRY RUN" : "LIVE"}`);
+  console.log(`Seed: ${seed}`);
+  console.log(`Hard request ceiling: ${run.limit}`);
+  console.log(
+    googleCostPreview({
+      calls: detailsCalls,
+      pricePerThousandUsd: 25,
+      sku: "Place Details Enterprise + Atmosphere",
+    }),
+  );
+  console.log(
+    googleCostPreview({
+      calls: searchCalls,
+      pricePerThousandUsd: 40,
+      sku: "Text Search Enterprise + Atmosphere",
+    }),
+  );
+  if (run.dryRun) {
+    console.log("DRY RUN — no API calls and no files changed.");
+    console.log(
+      "Add --live --confirm --limit N after reviewing the request ceiling.\n",
+    );
+    return;
+  }
+  if (!googlePlacesConfigured()) {
+    console.error("GOOGLE_PLACES_API_KEY missing — aborting (no spend).");
+    process.exit(1);
+  }
 
   const rows: Array<Record<string, unknown>> = [];
   let agree = 0;
   let disagree = 0;
   let noResult = 0;
 
+  const callBudget = createManualGoogleCallBudget(run.limit);
   for (let i = 0; i < sample.length; i++) {
+    if (!callBudget.reserve()) break;
     const r = sample[i];
-    process.stdout.write(`[${i + 1}/50] ${r.slug.padEnd(40).slice(0, 40)} `);
+    process.stdout.write(`[${i + 1}/${sample.length}] ${r.slug.padEnd(40).slice(0, 40)} `);
     const enr =
       r.google_place_id && CHIJ_RE.test(r.google_place_id)
-        ? await getPlaceDetails(r.google_place_id)
+        ? await getPlaceDetails(r.google_place_id, "lean")
         : await resolveAndEnrich({
             name: r.name,
             address: r.address ? `${r.address}, Frederick, MD` : "Frederick, MD",
             lat: r.geom?.lat,
             lng: r.geom?.lng,
-          });
+          }, "lean");
 
     if (!enr || !enr.formatted_address) {
       console.log("no result");

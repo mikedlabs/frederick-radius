@@ -1,7 +1,7 @@
 # Data Audit — July 2026
 
 Three-part audit of the data layer: the complete source inventory, the
-quality/gaps report, and an externally-verified scout of NEW Frederick-specific
+quality/gaps report, and an externally-verified scout of new Frederick-specific
 sources. Read like MAP_AUDIT.md / EXPERIENCE_REVIEW.md: a working document.
 
 > **Status update, 2026-07-27:** This document preserves the July 2 audit
@@ -21,9 +21,8 @@ sources. Read like MAP_AUDIT.md / EXPERIENCE_REVIEW.md: a working document.
 Frederick Radius has an unusually RICH acquisition layer (60+ sources) and a
 weak MAINTENANCE layer. The pattern across every finding: data enters well and
 then rots silently — snapshots with no refresh (venue-events: 100% expired),
-verifications that age out together (everything says 2026-06), report-only
-crons that detect problems nobody sees (business-status finds permanently
-closed places daily and persists nothing), and switches left off
+verifications that age out together (everything says 2026-06), diagnostics
+whose findings are not promoted into the public read model, and switches left off
 (SAVED_REMINDERS_ENABLED, amenity enrichment never run).
 
 ### Fix-first (the rot)
@@ -57,7 +56,7 @@ but need a PIA request to the county health dept — owner letter, not code.
 - **Discovered places (Google Places sweep)** — `scripts/discover-places.ts` → `src/data/discovered-candidates.json` (1,294) → `discovered-clean.json`/`discovered-enriched.json` (1,035) → `places-discovered.json` (1,077) — build-time, manual re-runs — pipeline: discover → enrich (`enrich-discovered.ts`) → merge (`merge-discovered.ts`).
 - **Google Places enrichment** — `src/lib/integrations/google-places.ts` (Places API v1, keyed) — runtime fetch, `revalidate: 86400` (24h) + build scripts `enrich-places.ts`, artifacts `places-enrichment.json` (2,386 rows), `business-info.json` (36), `descriptions.json` (**empty**), `known-for.json` (5) — powers details/photos/hours/nearby.
 - **Hours refresh** — cron `/api/cron/hours-refresh` (daily 08:00) walks Google-backed slugs on a 7-day hash cycle → `places-hours-refresh.json` (report-only; 1 row).
-- **Business status** — cron `/api/cron/business-status` (daily 07:00) compares Google `businessStatus` vs `is_operational`; **reports only, does not persist** (serverless can't write the repo).
+- **Business status** — the scheduled `/api/cron/hours-refresh` collector receives Google `businessStatus` with hours in the same paid Place Details request and persists the observation to Supabase. `/api/cron/business-status` remains an explicitly gated manual diagnostic and is not scheduled, avoiding a second paid sweep.
 - **Human corrections** — `src/data/places-overrides.json` (fold/remove/patch, 4 top-level keys) — hand-curated, wins over normalizers by design (per CLAUDE.md).
 - **Dedup/quality artifacts** — `places-dedup.json` (208), `dedup-decisions.json`, `copy-scores.json`, `photo-suppress.json`, `places-dfp.json` (1,279, scraped from downtownfrederick.org via `scripts/scrape-dfp.mjs`) — build-time; recomputed nightly by `/api/cron/data-health` (09:30, report-only).
 - **Client dataset** — `src/data/places-client.json` (1,634) built by `scripts/build-client-places.ts` — **must be regenerated after any place-data change** (`npm run build:client-places`); search/map/funnel read this, not the loaders (PR #503 lesson).
@@ -100,8 +99,8 @@ but need a PIA request to the county health dept — owner letter, not code.
 - **FirstEnergy/Potomac Edison outages** — `firstenergy.ts` (public report.js, 600).
 - **FAA airport status** — `faa-airports.ts` (nasstatus.faa.gov, 120); **METARs** via `aviationweather.ts` (900).
 - **Local news** — `news.ts` (Google News RSS, 3600), `local-news.ts` (1800), `local-news-sources.ts` (Patch/FNP/MD Matters registry); `reddit.ts` (r/frederickmd, 900).
-- **Parking** — curated `parking-garages.ts` (12 decks); `parking-live.ts` (`unstable_cache` 60s — **no real live feed exists**); `/api/cron/parking-alerts` (10 min, **DORMANT** until a feed is wired); `/api/cron/parking-forecast` (30 min, LIVE — predicts crunch from event starts, no external feed); ParkMobile deep links in `deeplinks.ts`.
-- **Feed health** — `feed-registry.ts` (11 keyed + 11 keyless feeds catalog, powers /admin/data-health), `feed-snapshot.ts` + Supabase `feed_snapshots`; `/api/cron/link-health` (daily 06:00, rotating HEAD-check of outbound links); `alerts.ts` (internal admin alerting).
+- **Parking** — curated `parking-garages.ts` (12 decks); `parking-live.ts` (`unstable_cache` 60s — **no real live feed exists**); `/api/cron/parking-alerts` is implemented but deliberately unscheduled until a licensed feed is wired; `/api/cron/parking-forecast` (30 min, LIVE — predicts crunch from event starts, no external feed); ParkMobile deep links in `deeplinks.ts`.
+- **Feed health** — `feed-registry.ts` (11 keyed + 11 keyless feeds catalog, powers /admin/data-health), `feed-snapshot.ts` + Supabase `feed_snapshots`; `/api/cron/link-health` is implemented but unscheduled until recurring link checks are explicitly enabled; `alerts.ts` (internal admin alerting).
 
 ## Weather / environment
 
@@ -125,7 +124,7 @@ but need a PIA request to the county health dept — owner letter, not code.
 
 ## Community / UGC (Supabase — user data, not mirrors)
 
-Schema: `src/lib/db/schema.ts`. **User/community:** `radii` (saved places), `saved_events`, `push_subscriptions` + `push_log`, `beta_emails`, `submissions`, `user_profiles`, `follows`, `place_claims`, `business_updates`, `field_amenities` (community-confirmed amenities), `community_reports`, `commerce_link_reports`. **Mirrors/pipeline:** `municipalities`, `categories`, `tags`, `places`, `events`, `place_hours_refresh`, `data_sources`, `ingest_runs`, `civic_alerts`, `feed_snapshots`. Reminder crons: `/api/cron/saved-reminders` (10 min, **GATED OFF** unless `SAVED_REMINDERS_ENABLED=1`), `/api/cron/daily-briefing` (12:00/13:00 UTC, NWS + event count push).
+Schema: `src/lib/db/schema.ts`. **User/community:** `radii` (saved places), `saved_events`, `push_subscriptions` + `push_log`, `beta_emails`, `submissions`, `user_profiles`, `follows`, `place_claims`, `business_updates`, `field_amenities` (community-confirmed amenities), `community_reports`, `commerce_link_reports`. **Mirrors/pipeline:** `municipalities`, `categories`, `tags`, `places`, `events`, `place_hours_refresh`, `data_sources`, `ingest_runs`, `civic_alerts`, `feed_snapshots`. `/api/cron/saved-reminders` remains available but is deliberately absent from `vercel.json` until device-scoped reminders are enabled and verified; `/api/cron/daily-briefing` still runs at 12:00/13:00 UTC.
 
 ## AI
 
@@ -137,8 +136,8 @@ Schema: `src/lib/db/schema.ts`. **User/community:** `radii` (saved places), `sav
 - **`src/data/descriptions.json`** and **`places-amenities.json`** — committed but empty (0 rows).
 - **Mapillary litter/trash-can map features** — fetched but no obvious UI layer beyond imagery.
 - **Aerial EXIF altitude + DateTimeOriginal** — captured into the manifest; map layer uses coordinates only.
-- **Report-only crons** — `business-status`, `data-health`, `hours-refresh`, `link-health` compute findings but persist nothing user-facing (admin/report surfaces only).
-- **Dormant/gated**: parking-alerts cron (no live occupancy feed), saved-reminders (env-gated off), DFP iCal (`DFP_ICAL_URL` gate, upstream dead).
+- **Report and maintenance jobs** — `business-status` is manual-only, `hours-refresh` persists its operational observations, and `data-health` reports the combined state. The `link-health` route remains available for deliberate operator runs but is not scheduled while its Production gate is absent.
+- **Dormant/gated**: parking-alerts and saved-reminders routes are unscheduled rather than paying for no-op invocations; DFP iCal remains gated with its upstream dead.
 - **Supabase `data_sources` table** — registry exists but freshness is actually answered by `feed-registry.ts` + `feed_snapshots`.
 - **SeatGeek** — configured in feed-registry, only one call site; verify it actually reaches unifiedEvents output.
 

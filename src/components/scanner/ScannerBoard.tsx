@@ -121,9 +121,15 @@ function IncidentRow({
   );
 }
 
-export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }) {
+export default function ScannerBoard({
+  initial,
+  initialAvailable,
+}: {
+  initial: ScannerIncident[];
+  initialAvailable: boolean;
+}) {
   const [incidents, setIncidents] = useState<ScannerIncident[]>(initial);
-  const [live, setLive] = useState(false);
+  const [available, setAvailable] = useState(initialAvailable);
   const [kind, setKind] = useState<string | null>(null);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
   // Wall-clock now (ms) for "updated X ago" / active detection, stamped on poll
@@ -139,8 +145,14 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
     const load = async () => {
       try {
         const r = await fetch("/api/scanner/feed", { cache: "no-store" });
-        if (!r.ok) return;
-        const d = (await r.json()) as { incidents?: ScannerIncident[] };
+        const d = (await r.json()) as {
+          status?: "available" | "unavailable";
+          incidents?: ScannerIncident[];
+        };
+        if (!r.ok || d.status !== "available") {
+          if (alive) setAvailable(false);
+          return;
+        }
         if (alive && Array.isArray(d.incidents)) {
           const nextKeys = new Set(d.incidents.map(incidentKey));
           if (!firstRefresh.current) {
@@ -162,11 +174,11 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
           firstRefresh.current = false;
           knownIds.current = nextKeys;
           setIncidents(d.incidents);
-          setLive(true);
+          setAvailable(true);
           setNowMs(Date.now());
         }
       } catch {
-        /* keep last known */
+        if (alive) setAvailable(false);
       }
     };
     load();
@@ -209,15 +221,30 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
             </>
           )}
         </p>
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-3)" }}>
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: available ? "var(--app-brand-press)" : "var(--app-ink-3)" }}>
           <span
             aria-hidden
-            className={`h-2 w-2 rounded-full ${live ? "motion-safe:animate-pulse" : ""}`}
-            style={{ background: live ? "var(--app-brand)" : "var(--app-ink-3)" }}
+            className={`h-2 w-2 rounded-full ${available ? "motion-safe:animate-pulse" : ""}`}
+            style={{ background: available ? "var(--app-brand)" : "var(--app-ink-3)" }}
           />
-          {live ? "Live" : "Idle"}
+          {available ? "Live" : "Unavailable"}
         </span>
       </div>
+
+      {!available && incidents.length > 0 && (
+        <div
+          role="status"
+          className="rounded-[var(--app-radius-md)] border px-3.5 py-3 text-[12.5px] leading-relaxed"
+          style={{
+            borderColor: "var(--app-border)",
+            background: "var(--app-bg-sunken)",
+            color: "var(--app-ink-2)",
+          }}
+        >
+          Live updates are temporarily unavailable. These are the last calls
+          Radius verified, not a current all-clear.
+        </div>
+      )}
 
       {/* Kind filter chips (only when there's a mix to filter). */}
       {kinds.length > 1 && (
@@ -277,12 +304,18 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
         >
           <Radio className="mx-auto h-6 w-6" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
           <p className="mt-2 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-            {kind ? `No ${kind.toLowerCase()} calls right now` : "Nothing on the public wire right now"}
+            {kind
+              ? `No ${kind.toLowerCase()} calls right now`
+              : available
+                ? "Nothing on the public wire right now"
+                : "Live dispatch is temporarily unavailable"}
           </p>
           <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
             {kind
               ? "Try another kind, or clear the filter."
-              : "Crashes, wires down, fires, and other public calls appear here as they are dispatched."}
+              : available
+                ? "Crashes, wires down, fires, and other public calls appear here as they are dispatched."
+                : "Radius could not verify the live source. This is not an all-clear; try again shortly or use the credited source below."}
           </p>
         </div>
       )}

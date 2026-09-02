@@ -3,15 +3,21 @@ name: Attach automated PR checks
 # Data publishers create review PRs with the repository token. GitHub holds
 # their native pull_request workflows for approval, so the publisher dispatches
 # the same secret-free CI and style workflows on the exact bot commit, then
-# explicitly dispatches this bridge on main. The bridge polls only runs started
-# by that dispatch and copies their real job conclusions to GitHub's synthetic
-# PR merge commit, which is evaluated by the strict main-branch ruleset.
+# CI explicitly dispatches this bridge on main after its expensive verify job
+# finishes. It supplies the exact CI and style run IDs plus a one-time token,
+# so the bridge never selects a run by a broad wall-clock window. A low-cost
+# six-hour reconciliation pass fails stale synthetic statuses closed if an
+# entire CI workflow was force-cancelled before it could dispatch the bridge.
 #
 # No generated code is checked out or executed here. Before a status is
 # written, the bot branch, head SHA, changed paths, current main revision, and
 # open PR are all revalidated through the API.
 
 on:
+  schedule:
+    # Cheap fail-closed recovery for a whole-workflow cancellation. It does not
+    # run application code or convert a missing check into success.
+    - cron: "23 */6 * * *"
   workflow_dispatch:
     inputs:
       branch:
@@ -22,8 +28,16 @@ on:
         description: Exact validated bot PR head
         required: true
         type: string
-      dispatched_after:
-        description: Earliest accepted CI/style dispatch time
+      ci_run_id:
+        description: Exact CI workflow run containing the completed verify job
+        required: true
+        type: string
+      style_run_id:
+        description: Exact style workflow run paired by the dispatcher
+        required: true
+        type: string
+      dispatch_token:
+        description: One-time token shared by the paired workflow run names
         required: true
         type: string
 
@@ -35,34 +49,38 @@ permissions:
 
 jobs:
   attach:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 43
+    timeout-minutes: 8
     steps:
       - name: Validate the bot PR and attach its real job results
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           AUTOMATED_PR_BRANCH: ${{ inputs.branch }}
           AUTOMATED_PR_HEAD_SHA: ${{ inputs.head_sha }}
-          AUTOMATED_PR_DISPATCHED_AFTER: ${{ inputs.dispatched_after }}
+          AUTOMATED_PR_CI_RUN_ID: ${{ inputs.ci_run_id }}
+          AUTOMATED_PR_STYLE_RUN_ID: ${{ inputs.style_run_id }}
+          AUTOMATED_PR_TOKEN: ${{ inputs.dispatch_token }}
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const branch = process.env.AUTOMATED_PR_BRANCH;
             const headSha = process.env.AUTOMATED_PR_HEAD_SHA;
-            const dispatchedAfter = Date.parse(process.env.AUTOMATED_PR_DISPATCHED_AFTER || '');
+            const ciRunId = Number(process.env.AUTOMATED_PR_CI_RUN_ID);
+            const styleRunId = Number(process.env.AUTOMATED_PR_STYLE_RUN_ID);
+            const dispatchToken = process.env.AUTOMATED_PR_TOKEN;
 
             if (context.ref !== 'refs/heads/main') {
               core.setFailed('The automated status bridge must run from main.');
               return;
             }
-            if (!Number.isFinite(dispatchedAfter)) {
-              core.setFailed('The check dispatcher did not provide a valid start time.');
-              return;
-            }
-            const now = Date.now();
-            if (dispatchedAfter > now + 60_000 || dispatchedAfter < now - 10 * 60_000) {
-              core.setFailed('The check dispatch start time is outside the accepted window.');
+            if (
+              !Number.isSafeInteger(ciRunId) || ciRunId <= 0 ||
+              !Number.isSafeInteger(styleRunId) || styleRunId <= 0 ||
+              !/^[0-9a-f-]{36}$/.test(dispatchToken || '')
+            ) {
+              core.setFailed('The check dispatcher did not provide valid exact run identities.');
               return;
             }
 
@@ -88,6 +106,7 @@ jobs:
                 'src/data/transit.json',
               ],
               'bot/curated-place-enrichment': [
+                'audit/google-enrichment-attempts.json',
                 'src/data/data-release.json',
                 'src/data/event-venue-photo-credits.json',
                 'src/data/place-refresh-identities.json',
@@ -209,13 +228,17 @@ jobs:
 
             const workflowSpecs = [
               {
+                runId: ciRunId,
                 workflowId: 'ci.yml',
                 workflowName: 'CI',
-                contexts: ['verify', 'Required browser chaos'],
+                displayTitle: `CI / automated ${dispatchToken}`,
+                contexts: ['verify'],
               },
               {
+                runId: styleRunId,
                 workflowId: 'style.yml',
                 workflowName: 'style',
+                displayTitle: `style / automated ${dispatchToken}`,
                 contexts: ['style-lint'],
               },
             ];
@@ -235,71 +258,65 @@ jobs:
             };
             await writeAllStatuses('pending', 'Trusted automated-data checks are running');
 
-            const acceptedAfter = dispatchedAfter - 5_000;
-            const discoveryDeadline = Date.now() + 3 * 60_000;
-            const completionDeadline = Date.now() + 40 * 60_000;
-            const discoveredRuns = new Map();
+            const completionDeadline = Date.now() + 5 * 60_000;
             const completedRuns = new Map();
             while (completedRuns.size < workflowSpecs.length) {
               for (const spec of workflowSpecs) {
-                const recentRuns = await github.rest.actions.listWorkflowRuns({
+                if (completedRuns.has(spec.workflowId)) continue;
+                const response = await github.rest.actions.getWorkflowRun({
                   owner,
                   repo,
-                  workflow_id: spec.workflowId,
-                  branch,
-                  event: 'workflow_dispatch',
+                  run_id: spec.runId,
+                });
+                const candidate = response.data;
+                if (
+                  candidate.id !== spec.runId ||
+                  candidate.path?.split('@')[0] !== `.github/workflows/${spec.workflowId}` ||
+                  candidate.display_title !== spec.displayTitle ||
+                  candidate.event !== 'workflow_dispatch' ||
+                  candidate.head_sha !== headSha ||
+                  candidate.head_branch !== branch ||
+                  candidate.head_repository?.full_name !== `${owner}/${repo}`
+                ) {
+                  await writeAllStatuses('error', `${spec.workflowName} run identity did not match`);
+                  core.setFailed(`Exact ${spec.workflowName} run identity did not match the validated bot PR.`);
+                  return;
+                }
+                const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRunAttempt, {
+                  owner,
+                  repo,
+                  run_id: candidate.id,
+                  attempt_number: candidate.run_attempt,
                   per_page: 100,
                 });
-                const candidate = recentRuns.data.workflow_runs.find((run) =>
-                  run.head_sha === headSha &&
-                  run.head_branch === branch &&
-                  run.head_repository?.full_name === `${owner}/${repo}` &&
-                  Date.parse(run.created_at || '') >= acceptedAfter
+                const requiredJobs = spec.contexts.map((contextName) =>
+                  jobs.find((job) => job.name === contextName)
                 );
-                if (candidate) {
-                  discoveredRuns.set(spec.workflowId, candidate);
-                  if (candidate.status === 'completed') {
-                    // A completed unsuccessful workflow cannot recover. Stop
-                    // paying for this bridge runner while an unrelated gate
-                    // finishes; the dispatched workflows keep their own logs.
-                    if (candidate.conclusion !== 'success') {
-                      const conclusion = candidate.conclusion || 'unknown';
-                      await writeAllStatuses(
-                        'error',
-                        `${spec.workflowName} concluded: ${conclusion}`,
-                        candidate.html_url,
-                      );
-                      core.setFailed(`${spec.workflowName} concluded before the other gates: ${conclusion}`);
-                      return;
-                    }
-                    completedRuns.set(spec.workflowId, candidate);
-                  }
+                if (requiredJobs.every((job) => job?.completed_at)) {
+                  completedRuns.set(spec.workflowId, candidate);
+                } else if (candidate.status === 'completed') {
+                  await writeAllStatuses(
+                    'error',
+                    `${spec.workflowName} did not produce its required job`,
+                    candidate.html_url,
+                  );
+                  core.setFailed(`${spec.workflowName} completed without every required job.`);
+                  return;
                 }
               }
 
               if (completedRuns.size === workflowSpecs.length) break;
-              if (
-                Date.now() >= discoveryDeadline &&
-                discoveredRuns.size < workflowSpecs.length
-              ) {
-                const missing = workflowSpecs
-                  .filter((spec) => !discoveredRuns.has(spec.workflowId))
-                  .map((spec) => spec.workflowName);
-                await writeAllStatuses('error', `Checks did not start: ${missing.join(', ')}`);
-                core.setFailed(`Timed out waiting for dispatched checks to appear: ${missing.join(', ')}`);
-                return;
-              }
               if (Date.now() >= completionDeadline) {
                 await writeAllStatuses('error', 'Trusted automated-data checks timed out');
                 core.setFailed('Timed out waiting for dispatched checks to finish.');
                 return;
               }
-              await new Promise((resolve) => setTimeout(resolve, 30_000));
+              await new Promise((resolve) => setTimeout(resolve, 10_000));
             }
 
-            // CI can take half an hour. Revalidate every mutable identity after
-            // it finishes so a branch, PR, or main movement cannot inherit an
-            // earlier result.
+            // Revalidate every mutable identity after observing the completed
+            // runs so a branch, PR, or main movement cannot inherit an earlier
+            // result.
             const [latestMain, latestBot, latestPull] = await Promise.all([
               github.rest.git.getRef({ owner, repo, ref: 'heads/main' }),
               github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` }),
@@ -366,5 +383,94 @@ jobs:
                   target_url: job.html_url,
                 });
                 core.info(`${contextName}: ${state} -> ${mergeSha}`);
+              }
+            }
+
+  reconcile-stale:
+    if: ${{ github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail stale automated PR checks closed
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const allowedBranches = new Set([
+              'bot/marc-schedule-refresh',
+              'bot/data-steward',
+              'bot/transit-steward',
+              'bot/curated-place-enrichment',
+              'bot/business-info-refresh',
+              'bot/municipal-civic-refresh',
+              'bot/venue-event-refresh',
+              'bot/google-photo-attribution-backfill',
+              'bot/official-commerce-link-refresh',
+            ]);
+            const requiredContexts = ['verify', 'style-lint'];
+            const staleBefore = Date.now() - 90 * 60_000;
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: 'open',
+              base: 'main',
+              per_page: 100,
+            });
+
+            for (const summary of pulls) {
+              if (
+                !allowedBranches.has(summary.head.ref) ||
+                summary.head.repo?.full_name !== `${owner}/${repo}`
+              ) continue;
+              const response = await github.rest.pulls.get({
+                owner,
+                repo,
+                pull_number: summary.number,
+              });
+              const pull = response.data;
+              const headCommit = await github.rest.repos.getCommit({
+                owner,
+                repo,
+                ref: pull.head.sha,
+              });
+              const headUpdatedAt = Date.parse(
+                headCommit.data.commit.committer?.date ||
+                headCommit.data.commit.author?.date ||
+                pull.created_at || '',
+              );
+              if (!Number.isFinite(headUpdatedAt) || headUpdatedAt > staleBefore) continue;
+              const mergeSha = pull.merge_commit_sha;
+              if (!/^[0-9a-f]{40}$/.test(mergeSha || '')) {
+                core.warning(`PR #${pull.number} has no merge revision to reconcile.`);
+                continue;
+              }
+              const mergeCommit = await github.rest.git.getCommit({
+                owner,
+                repo,
+                commit_sha: mergeSha,
+              });
+              const parents = mergeCommit.data.parents.map((parent) => parent.sha);
+              if (parents[0] !== pull.base.sha || parents[1] !== pull.head.sha) {
+                core.warning(`PR #${pull.number} merge revision changed; leaving it untouched.`);
+                continue;
+              }
+              const statuses = await github.paginate(
+                github.rest.repos.listCommitStatusesForRef,
+                { owner, repo, ref: mergeSha, per_page: 100 },
+              );
+              for (const contextName of requiredContexts) {
+                const latest = statuses.find((status) => status.context === contextName);
+                if (latest && latest.state !== 'pending') continue;
+                await github.rest.repos.createCommitStatus({
+                  owner,
+                  repo,
+                  sha: mergeSha,
+                  state: 'error',
+                  context: contextName,
+                  description: 'Automated check did not finish; rerun its data workflow',
+                  target_url: pull.html_url,
+                });
+                core.warning(`Failed stale ${contextName} closed on PR #${pull.number}.`);
               }
             }

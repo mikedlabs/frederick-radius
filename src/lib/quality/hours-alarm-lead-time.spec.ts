@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   curatedFreshnessAnomalies,
   HOURS_SNAPSHOT_MAX_AGE_DAYS,
@@ -35,6 +35,22 @@ import {
  */
 
 const DAY = 86_400_000;
+const POLICY_APPROVAL = "written-google-authorization-confirmed";
+const originalPolicyApproval = process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL;
+const originalRuntimeEnabled = process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED;
+
+afterEach(() => {
+  if (originalPolicyApproval === undefined) {
+    delete process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL;
+  } else {
+    process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL = originalPolicyApproval;
+  }
+  if (originalRuntimeEnabled === undefined) {
+    delete process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED;
+  } else {
+    process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED = originalRuntimeEnabled;
+  }
+});
 const NEWEST = Date.parse(
   (HOURS_REFRESH as { _meta?: { newest_refreshed_at?: string } })._meta
     ?.newest_refreshed_at ?? "2026-08-01T08:00:33.740Z",
@@ -119,5 +135,34 @@ describe("hours staleness alarm lead time", () => {
     // A threshold >= HOURS_MAX_AGE_DAYS - 1 reintroduces the shipped bug,
     // because snapshotFreshnessAnomaly first goes red at threshold + 1 day.
     expect(HOURS_SNAPSHOT_MAX_AGE_DAYS).toBeLessThanOrEqual(HOURS_MAX_AGE_DAYS - 2);
+  });
+
+  it("does not tell an operator to re-enable Google when policy holds it off", () => {
+    delete process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL;
+    delete process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED;
+
+    const anomalies = ingestFreshnessTripwire(
+      new Date(NEWEST + (HOURS_MAX_AGE_DAYS + 2) * DAY),
+    ).filter((anomaly) => anomaly.source === "places-hours-refresh");
+
+    expect(anomalies.length).toBeGreaterThan(0);
+    expect(anomalies.every((anomaly) =>
+      anomaly.detail.includes("deliberately held by policy"),
+    )).toBe(true);
+    expect(anomalies.every((anomaly) =>
+      !anomaly.detail.includes("GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED=1"),
+    )).toBe(true);
+  });
+
+  it("keeps an actionable runtime diagnosis after authorization is enabled", () => {
+    process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL = POLICY_APPROVAL;
+    process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED = "1";
+
+    const anomaly = ingestFreshnessTripwire(
+      new Date(NEWEST + (HOURS_MAX_AGE_DAYS + 2) * DAY),
+    ).find((item) => item.source === "places-hours-refresh");
+
+    expect(anomaly?.detail).toContain("authorized Google refresh should be running");
+    expect(anomaly?.detail).toContain("HOURS_REFRESH_CRON=1");
   });
 });

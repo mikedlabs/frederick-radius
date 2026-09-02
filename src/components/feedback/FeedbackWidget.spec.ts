@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { FEEDBACK_TRIGGER_BOTTOM } from "./FeedbackWidget";
+import {
+  FEEDBACK_TRIGGER_BOTTOM,
+  publicFeedbackSurface,
+  shouldShowFeedbackTrigger,
+} from "./FeedbackWidget";
 import { MOBILE_BOTTOM_CHROME_RESERVE } from "@/components/ui/MobileActionBar";
 
 describe("FeedbackWidget bottom-chrome clearance", () => {
@@ -7,5 +11,21 @@ describe("FeedbackWidget bottom-chrome clearance", () => {
     expect(FEEDBACK_TRIGGER_BOTTOM).toContain(MOBILE_BOTTOM_CHROME_RESERVE);
     expect(FEEDBACK_TRIGGER_BOTTOM).toContain("safe-area-inset-bottom");
     expect(FEEDBACK_TRIGGER_BOTTOM).toContain("+ 12px");
+  });
+});
+
+describe("FeedbackWidget public surfaces", () => {
+  it("opens feedback to Fair Day without exposing unrelated app pages", () => {
+    expect(publicFeedbackSurface("/moments/great-frederick-fair-2026")).toBe(
+      "fair",
+    );
+    expect(publicFeedbackSurface("/food-trucks")).toBe("food-trucks");
+    expect(publicFeedbackSurface("/today")).toBeNull();
+  });
+
+  it("keeps Fair feedback in the Fair Help flow instead of floating over its navigation", () => {
+    expect(shouldShowFeedbackTrigger("fair")).toBe(false);
+    expect(shouldShowFeedbackTrigger("food-trucks")).toBe(true);
+    expect(shouldShowFeedbackTrigger(null)).toBe(true);
   });
 });

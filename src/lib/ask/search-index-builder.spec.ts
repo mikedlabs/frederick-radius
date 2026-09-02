@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   getSql: vi.fn(),
   decoratePlace: vi.fn(),
   publicPlaces: vi.fn(),
+  reserveDailyUsage: vi.fn(),
 }));
 
 vi.mock("ai", () => ({
@@ -22,6 +23,9 @@ vi.mock("@/lib/db/client", () => ({
 vi.mock("@/lib/loaders/places", () => ({
   decoratePlace: mocks.decoratePlace,
   publicPlaces: mocks.publicPlaces,
+}));
+vi.mock("@/lib/usage-meter", () => ({
+  reserveDailyUsage: mocks.reserveDailyUsage,
 }));
 
 import {
@@ -80,11 +84,19 @@ function sqlWith(
   );
 }
 
+function enableScheduledSemanticSearch(cap = 512): void {
+  process.env.OPENAI_API_KEY = "test-openai-key";
+  process.env.RADIUS_SEARCH_SEMANTIC_ENABLED = "1";
+  process.env.RADIUS_SEARCH_EMBEDDING_DAILY_DOCUMENT_LIMIT = String(cap);
+}
+
 describe("Radius search index builder", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.OPENAI_API_KEY;
     delete process.env.RADIUS_EMBEDDING_MODEL;
+    delete process.env.RADIUS_SEARCH_SEMANTIC_ENABLED;
+    delete process.env.RADIUS_SEARCH_EMBEDDING_DAILY_DOCUMENT_LIMIT;
     mocks.decoratePlace.mockImplementation((place) => place);
     mocks.publicPlaces.mockReturnValue(places);
     mocks.embeddingModel.mockReturnValue({ provider: "openai" });
@@ -94,12 +106,15 @@ describe("Radius search index builder", () => {
         usage: { tokens: values.length * 10 },
       }),
     );
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
   });
 
   afterEach(() => {
     vi.useRealTimers();
     delete process.env.OPENAI_API_KEY;
     delete process.env.RADIUS_EMBEDDING_MODEL;
+    delete process.env.RADIUS_SEARCH_SEMANTIC_ENABLED;
+    delete process.env.RADIUS_SEARCH_EMBEDDING_DAILY_DOCUMENT_LIMIT;
   });
 
   it("bounds the hosted batch configuration", () => {
@@ -144,8 +159,46 @@ describe("Radius search index builder", () => {
     expect(insertCall?.[1]).toEqual(["bravo"]);
   });
 
-  it("backfills a null embedding even when the content hash is unchanged", async () => {
+  it("does not infer scheduled embedding spend from an OpenAI key alone", async () => {
     process.env.OPENAI_API_KEY = "test-openai-key";
+    const sql = sqlWith();
+    mocks.getSql.mockReturnValue(sql);
+    mocks.publicPlaces.mockReturnValue([places[0]]);
+
+    const result = await refreshRadiusSearchIndex();
+
+    expect(result).toMatchObject({
+      current: true,
+      embeddingEnabled: false,
+      embedded: 0,
+      embeddingRemaining: 0,
+      embeddingCurrent: true,
+    });
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
+    expect(mocks.embeddingModel).not.toHaveBeenCalled();
+    expect(mocks.embedMany).not.toHaveBeenCalled();
+  });
+
+  it("reports an explicitly requested semantic layer with missing controls", async () => {
+    process.env.RADIUS_SEARCH_SEMANTIC_ENABLED = "1";
+    const sql = sqlWith();
+    mocks.getSql.mockReturnValue(sql);
+    mocks.publicPlaces.mockReturnValue([places[0]]);
+
+    const result = await refreshRadiusSearchIndex();
+
+    expect(result).toMatchObject({
+      current: true,
+      embeddingEnabled: false,
+      embedded: 0,
+      embeddingWarning: { code: "invalid_configuration" },
+    });
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
+    expect(mocks.embedMany).not.toHaveBeenCalled();
+  });
+
+  it("backfills a null embedding even when the content hash is unchanged", async () => {
+    enableScheduledSemanticSearch();
     const unchanged = buildRadiusSearchDocument(places[0] as never);
     const sql = sqlWith([
       {
@@ -183,6 +236,17 @@ describe("Radius search index builder", () => {
       "text-embedding-3-small",
     );
     expect(mocks.embedMany).toHaveBeenCalledTimes(1);
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "radius_search_embedding",
+      512,
+      1,
+    );
+    expect(mocks.reserveDailyUsage.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.embedMany.mock.invocationCallOrder[0],
+    );
+    expect(mocks.embedMany).toHaveBeenCalledWith(
+      expect.objectContaining({ maxRetries: 0 }),
+    );
     expect(
       sql.mock.calls.some(([strings]) =>
         queryText(strings).includes(
@@ -193,7 +257,7 @@ describe("Radius search index builder", () => {
   });
 
   it("accepts the old Gateway-style model value with the direct provider", async () => {
-    process.env.OPENAI_API_KEY = "test-openai-key";
+    enableScheduledSemanticSearch();
     process.env.RADIUS_EMBEDDING_MODEL =
       "openai/text-embedding-3-small";
     const sql = sqlWith();
@@ -208,7 +272,7 @@ describe("Radius search index builder", () => {
   });
 
   it("checks storage before making a paid embedding call", async () => {
-    process.env.OPENAI_API_KEY = "test-openai-key";
+    enableScheduledSemanticSearch();
     const sql = vi
       .fn()
       .mockRejectedValueOnce(new Error("relation does not exist"));
@@ -387,7 +451,7 @@ describe("Radius search index builder", () => {
   });
 
   it("finishes every full-text batch when the optional provider fails", async () => {
-    process.env.OPENAI_API_KEY = "test-openai-key";
+    enableScheduledSemanticSearch();
     const sql = sqlWith();
     mocks.getSql.mockReturnValue(sql);
     mocks.publicPlaces.mockReturnValue(
@@ -432,9 +496,69 @@ describe("Radius search index builder", () => {
     );
   });
 
+  it.each([
+    [null, "budget_unavailable"],
+    [{ reserved: false, count: 8 }, "budget_exhausted"],
+  ] as const)(
+    "does not call OpenAI when the shared reservation is %s",
+    async (reservation, warningCode) => {
+      enableScheduledSemanticSearch(8);
+      const sql = sqlWith();
+      mocks.getSql.mockReturnValue(sql);
+      mocks.publicPlaces.mockReturnValue([places[0]]);
+      mocks.reserveDailyUsage.mockResolvedValueOnce(reservation);
+
+      const result = await refreshRadiusSearchIndex();
+
+      expect(result).toMatchObject({
+        current: true,
+        embeddingEnabled: true,
+        embedded: 0,
+        embeddingRemaining: 1,
+        embeddingCurrent: false,
+        embeddingWarning: { code: warningCode },
+      });
+      expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+        "radius_search_embedding",
+        8,
+        1,
+      );
+      expect(mocks.embeddingModel).not.toHaveBeenCalled();
+      expect(mocks.embedMany).not.toHaveBeenCalled();
+    },
+  );
+
+  it("limits a scheduled vector batch to the paid daily document allowance", async () => {
+    enableScheduledSemanticSearch(3);
+    const sql = sqlWith();
+    mocks.getSql.mockReturnValue(sql);
+    mocks.publicPlaces.mockReturnValue(
+      Array.from({ length: 8 }, (_, index) => ({
+        ...places[0],
+        slug: `cap-${index}`,
+        name: `Cap ${index}`,
+      })),
+    );
+
+    const result = await refreshRadiusSearchIndex();
+
+    expect(result).toMatchObject({
+      current: true,
+      embedded: 3,
+      embeddingRemaining: 5,
+      embeddingCurrent: false,
+    });
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "radius_search_embedding",
+      3,
+      3,
+    );
+    expect(mocks.embedMany.mock.calls[0]?.[0]?.values).toHaveLength(3);
+  });
+
   it("times out a hanging optional provider and returns a degraded full-text result", async () => {
     vi.useFakeTimers();
-    process.env.OPENAI_API_KEY = "test-openai-key";
+    enableScheduledSemanticSearch();
     const sql = sqlWith();
     mocks.getSql.mockReturnValue(sql);
     mocks.publicPlaces.mockReturnValue([places[0]]);
@@ -476,7 +600,7 @@ describe("Radius search index builder", () => {
   });
 
   it("keeps full-text search healthy when a model returns wrong dimensions", async () => {
-    process.env.OPENAI_API_KEY = "test-openai-key";
+    enableScheduledSemanticSearch();
     const sql = sqlWith();
     mocks.getSql.mockReturnValue(sql);
     mocks.publicPlaces.mockReturnValue([places[0]]);
@@ -514,7 +638,7 @@ describe("Radius search index builder", () => {
   });
 
   it("does not make a paid call for a model that would mix vector spaces", async () => {
-    process.env.OPENAI_API_KEY = "test-openai-key";
+    enableScheduledSemanticSearch();
     process.env.RADIUS_EMBEDDING_MODEL = "text-embedding-3-large";
     const sql = sqlWith();
     mocks.getSql.mockReturnValue(sql);

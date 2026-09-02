@@ -24,7 +24,11 @@ type SourceRow = {
   rows_required?: boolean;
   snapshot_cadence?: string;
   change_cadence?: string;
+  refresh_cadence?: string;
+  publication_applicability?: string;
   transform_file?: string | null;
+  policy_basis?: string;
+  policy_reviewed_at?: string;
 };
 
 const MONITORED_CADENCE =
@@ -32,7 +36,6 @@ const MONITORED_CADENCE =
 
 export const REQUIRED_ACTIVE: Record<string, Collection> = {
   // Business/place spine.
-  google_places: "workflow",
   business_info_extraction: "workflow",
   osm_overpass: "runtime",
   // Event spine and high-value direct ingests.
@@ -66,6 +69,19 @@ const REQUIRED_POLICY_GATED = [
   "visit_frederick",
 ] as const;
 
+/**
+ * These adapters stay pending today, but unlike a permanent deny-list the
+ * ledger must be able to represent a future reviewed authorization. Moving one
+ * to active requires a non-secret approval record in the manifest as well as
+ * the ordinary collection owner and real code pointer enforced above.
+ */
+const REVIEWABLE_GOOGLE_POLICY_GATED = [
+  "google_places",
+  "google_geocode",
+  "google_routes",
+] as const;
+const GOOGLE_WRITTEN_AUTHORIZATION_BASIS = "written_authorization";
+
 const VISIT_FREDERICK_PENDING_ID = "visit_frederick";
 
 const COUNTY_APPROVAL_GATED = FREDERICK_COUNTY_APPROVAL_GATED_SOURCE_IDS;
@@ -92,6 +108,31 @@ export function auditSourceRows(
       if (cadence !== undefined && !MONITORED_CADENCE.test(cadence)) {
         issues.push(`${row.id}: unsupported ${field}=${cadence}`);
       }
+    }
+    const publicationApplicability =
+      row.publication_applicability ?? "required";
+    if (
+      publicationApplicability !== "required" &&
+      publicationApplicability !== "not_applicable"
+    ) {
+      issues.push(
+        `${row.id}: unsupported publication_applicability=${publicationApplicability}`,
+      );
+    }
+    if (
+      publicationApplicability === "not_applicable" &&
+      (
+        row.status !== "active" ||
+        row.collection !== "runtime" ||
+        !row.refresh_cadence?.startsWith("on_demand") ||
+        row.rows_required === true ||
+        row.snapshot_cadence !== undefined ||
+        row.change_cadence !== undefined
+      )
+    ) {
+      issues.push(
+        `${row.id}: publication_applicability=not_applicable requires active/runtime/on_demand with rows_required=false and no snapshot or change cadence`,
+      );
     }
     if (row.status !== "active") {
       if (row.collection) issues.push(`${row.id}: non-active row declares collection=${row.collection}`);
@@ -122,6 +163,34 @@ export function auditSourceRows(
       issues.push(`${id}: policy-gated adapter is missing from the manifest`);
     } else if (!["pending_approval", "pending_review"].includes(row.status)) {
       issues.push(`${id}: policy-gated adapter must stay pending, found ${row.status}`);
+    }
+  }
+  for (const id of REVIEWABLE_GOOGLE_POLICY_GATED) {
+    const row = byId.get(id);
+    if (!row) {
+      issues.push(`${id}: reviewable Google adapter is missing from the manifest`);
+      continue;
+    }
+    if (["pending_approval", "pending_review"].includes(row.status)) continue;
+    if (row.status !== "active") {
+      issues.push(
+        `${id}: reviewable Google adapter must be pending or active, found ${row.status}`,
+      );
+      continue;
+    }
+    if (row.policy_basis !== GOOGLE_WRITTEN_AUTHORIZATION_BASIS) {
+      issues.push(
+        `${id}: active Google adapter requires policy_basis=${GOOGLE_WRITTEN_AUTHORIZATION_BASIS}`,
+      );
+    }
+    if (
+      !row.policy_reviewed_at ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(row.policy_reviewed_at) ||
+      Number.isNaN(Date.parse(`${row.policy_reviewed_at}T00:00:00Z`))
+    ) {
+      issues.push(
+        `${id}: active Google adapter requires a valid policy_reviewed_at date`,
+      );
     }
   }
   const visitFrederick = byId.get(VISIT_FREDERICK_PENDING_ID);

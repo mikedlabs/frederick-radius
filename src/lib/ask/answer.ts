@@ -15,6 +15,13 @@ import {
 } from "@/lib/ask/intent";
 import { buildAskPlanPreview } from "@/lib/ask/plan-preview";
 import { runRadiusAgent, shouldUseRadiusAgent } from "@/lib/ask/intelligence";
+import {
+  askAgentRuntimeConfigured,
+  askAiMaxOutputTokens,
+  askTextGenerationRuntimeConfigured,
+  askTextProvider,
+  reserveAskModelCall,
+} from "@/lib/ask/runtime-budget";
 import { filterCitedSources } from "@/lib/ask/citations";
 import { buildTasteProfile, normalizeTasteSignals, rerankWithTaste, tasteSummary, type AskTasteSignals } from "@/lib/ask/taste";
 import {
@@ -110,14 +117,11 @@ import TRANSIT from "@/data/transit.json" with { type: "json" };
  * `sources` so the UI renders clickable, verifiable cards alongside the
  * prose — the answer is anchored to real records, not vibes.
  *
- * Provider-flexible, in priority order:
- *   1. AI_GATEWAY_API_KEY — the Vercel AI Gateway (recommended): one key,
- *      a model-agnostic "provider/model" string, built-in observability +
- *      fallbacks. This is the key to set on Vercel.
- *   2. ANTHROPIC_API_KEY — direct Claude Haiku (the proven path here).
- *   3. OPENAI_API_KEY — direct GPT-4o-mini via the AI SDK.
- * With none set it returns { configured: false } and the UI degrades to the
- * retrieved place cards (never a dead end) — no errors, no fabrication.
+ * Provider-flexible but never a paid waterfall: ASK_AI_PROVIDER chooses exactly
+ * one of Gateway, direct Anthropic, or direct OpenAI. The global runtime switch,
+ * a code-bounded Eastern-day reservation, and the selected credential are all
+ * required before a cache miss reaches that provider. Otherwise the UI keeps
+ * the retrieved place cards and deterministic answer, never a dead end.
  */
 
 export type { AskAction, AskIntelligence, AskPlanPreview, AskResult, AskSource } from "@/lib/ask/contracts";
@@ -1862,69 +1866,58 @@ Rules you must follow:
 - PLAIN TEXT ONLY. No markdown of any kind: no asterisks, underscores, backticks, bullet lists, headers, or [text](url) links. Write prose.`;
 
 function hasKey(): boolean {
-  return Boolean(
-    // VERCEL_OIDC_TOKEN: the Vercel AI Gateway's KEYLESS auth, injected
-    // automatically into deployments when the Gateway is enabled. Enabling
-    // the Gateway (the recommended setup) is enough — no raw key needed —
-    // so the marquee Ask feature stops reading "not configured" when the
-    // owner turned the Gateway on rather than pasting an explicit key.
-    process.env.AI_GATEWAY_API_KEY ||
-      process.env.VERCEL_OIDC_TOKEN ||
-      process.env.ANTHROPIC_API_KEY ||
-      process.env.OPENAI_API_KEY,
-  );
+  // Configuration is not permission to spend. Every cache miss still needs a
+  // durable Eastern-day reservation immediately before its provider call.
+  return askTextGenerationRuntimeConfigured() || askAgentRuntimeConfigured();
 }
 
-/**
- * Set ASK_AI_PROVIDER=anthropic to route Ask's single-shot TEXT generation
- * straight to YOUR Anthropic account (direct api.anthropic.com) instead of the
- * Vercel AI Gateway. This is a routing/control preference, NOT a cost fix: the
- * July 2026 bill showed AI Gateway spend is negligible, so this no longer
- * disables hybrid search or the agent (those stay on for recall/quality).
- * Vercel auto-injects VERCEL_OIDC_TOKEN when the Gateway is enabled, so without
- * this flag the Gateway path wins by default. Leave unset to keep the Gateway.
- */
-function forceDirectAnthropic(): boolean {
-  return process.env.ASK_AI_PROVIDER?.toLowerCase() === "anthropic";
-}
+/** One budgeted provider turn. Exported so the fail-closed boundary can be
+ * tested without forcing a particular natural-language query through Ask's
+ * intentionally broad deterministic routing. */
+export async function callAskModelWithBudget(
+  userContent: string,
+): Promise<string | null> {
+  if (!askTextGenerationRuntimeConfigured()) return null;
 
-async function callModel(userContent: string): Promise<string | null> {
-  // One user-visible deadline across every provider attempt. A stalled gateway
-  // must not consume the full 30-second function ceiling before the direct
-  // fallback even starts; quick failures still leave the remaining budget for
-  // the next provider.
+  // A cache miss owns exactly one provider attempt. Counter uncertainty or an
+  // exhausted allowance keeps the deterministic Frederick answer; it never
+  // reaches a model. Reserving before the dynamic provider import is slightly
+  // conservative on a local import failure, which is the safe billing bias.
+  const reservation = await reserveAskModelCall();
+  if (!reservation?.reserved) return null;
+
+  const provider = askTextProvider();
+  // Configuration is checked before reserving, but keep the provider dispatch
+  // independently fail-closed in case the environment changes between checks.
+  if (!provider) return null;
+  const maxOutputTokens = askAiMaxOutputTokens();
   const controller = new AbortController();
   const deadline = setTimeout(() => controller.abort(), 3_500);
   try {
-  // 1) Vercel AI Gateway — the preferred path UNLESS ASK_AI_PROVIDER pins us to
-  // direct Anthropic (to keep AI spend off the Vercel bill). A plain
-  // "provider/model" string routes through the gateway, authenticated by
-  // AI_GATEWAY_API_KEY if set, else the keyless VERCEL_OIDC_TOKEN Vercel injects
-  // when the Gateway is enabled. If the model slug ever drifts, this throws and
-  // we fall through to the direct provider below.
-  if (!forceDirectAnthropic() && (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN)) {
+  // One configured provider only. A provider failure does not waterfall into
+  // a second unreserved billable attempt; the caller uses its local answer.
+  if (provider === "gateway") {
     try {
       const { generateText } = await import("ai");
       const { text } = await generateText({
         model: "anthropic/claude-haiku-4.5",
         system: SYSTEM,
         prompt: userContent,
-        // ai-gw-3: bound the primary Ask path like the fallbacks (raw
-        // Anthropic caps max_tokens:400, the planner 200). The system prompt
-        // asks for only the detail the decision requires, so 400 is ample. A
-        // low temperature keeps the output factual and near-deterministic.
-        maxOutputTokens: 400,
+        maxOutputTokens,
         temperature: 0.3,
+        maxRetries: 0,
         abortSignal: controller.signal,
       });
       if (text) return text.trim();
     } catch {
-      /* fall through to a direct provider */
+      return null;
     }
+    return null;
   }
 
-  const anthropic = process.env.ANTHROPIC_API_KEY;
-  if (anthropic) {
+  if (provider === "anthropic") {
+    const anthropic = process.env.ANTHROPIC_API_KEY;
+    if (!anthropic) return null;
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -1935,7 +1928,7 @@ async function callModel(userContent: string): Promise<string | null> {
         },
         body: JSON.stringify({
           model: "claude-haiku-4-5-20251001",
-          max_tokens: 400,
+          max_tokens: maxOutputTokens,
           system: SYSTEM,
           messages: [{ role: "user", content: userContent }],
         }),
@@ -1947,23 +1940,25 @@ async function callModel(userContent: string): Promise<string | null> {
         if (t) return String(t).trim();
       }
     } catch {
-      /* fall through to OpenAI */
+      return null;
     }
+    return null;
   }
-  if (process.env.OPENAI_API_KEY) {
-    try {
-      const { generateText } = await import("ai");
-      const { openai } = await import("@ai-sdk/openai");
-      const { text } = await generateText({
-        model: openai("gpt-4o-mini"),
-        system: SYSTEM,
-        prompt: userContent,
-        abortSignal: controller.signal,
-      });
-      if (text) return text.trim();
-    } catch {
-      /* fall through to null */
-    }
+
+  try {
+    const { generateText } = await import("ai");
+    const { openai } = await import("@ai-sdk/openai");
+    const { text } = await generateText({
+      model: openai("gpt-4o-mini"),
+      system: SYSTEM,
+      prompt: userContent,
+      maxOutputTokens,
+      maxRetries: 0,
+      abortSignal: controller.signal,
+    });
+    if (text) return text.trim();
+  } catch {
+    return null;
   }
   return null;
   } finally {
@@ -1979,14 +1974,14 @@ async function callModel(userContent: string): Promise<string | null> {
  * from live data: when the catalog/events change, userContent changes and the
  * key changes. `sources` are recomputed live in askFrederick and never cached.
  *
- * Failures are NOT cached: callModel returns null when no provider is configured
- * or every provider threw (transient), so we throw a sentinel on null — a thrown
- * inner fn is not stored by unstable_cache, so the next request retries instead
- * of serving an hour of "no answer". SHA-pinned per the #509 lesson.
+ * Failures are NOT cached: callAskModelWithBudget returns null when the selected
+ * provider is unavailable, its reservation is denied, or its one attempt fails.
+ * We throw a sentinel on null so unstable_cache does not store the failure and
+ * the next request may try again after the local answer has already been served.
  */
 const cachedCallModel = unstable_cache(
   async (userContent: string): Promise<string> => {
-    const answer = await callModel(userContent);
+    const answer = await callAskModelWithBudget(userContent);
     if (answer === null) throw new Error("ask:no-answer"); // don't cache failures
     // Boundary cleaning for MODEL prose, same rule as feed text: the LLM
     // loves em dashes and the voice bans them (verified in the first live

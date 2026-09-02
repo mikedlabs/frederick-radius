@@ -4,11 +4,16 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 const WORKFLOW_DIR = resolve(process.cwd(), ".github/workflows");
+const NAS_RUNNER_DIR = resolve(process.cwd(), "ops/nas-runner");
 const PINNED_CREATE_PR =
   "peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1";
 
 function workflowText(name: string): string {
   return readFileSync(resolve(WORKFLOW_DIR, name), "utf8");
+}
+
+function nasRunnerText(name: string): string {
+  return readFileSync(resolve(NAS_RUNNER_DIR, name), "utf8");
 }
 
 type WorkflowDocument = {
@@ -25,8 +30,9 @@ type WorkflowDocument = {
   jobs?: Record<
     string,
     {
+      if?: string;
       "timeout-minutes"?: number;
-      "runs-on"?: string;
+      "runs-on"?: string | string[];
       permissions?: {
         actions?: string;
         contents?: string;
@@ -38,6 +44,15 @@ type WorkflowDocument = {
 };
 
 describe("scheduled data workflow contracts", () => {
+  it("closes the production health issue on the endpoint's real recovery status", () => {
+    const workflow = workflowText("production-health-alert.yml");
+
+    expect(workflow).toContain('if [ "$STATUS" = "operational" ]');
+    expect(workflow).not.toContain('if [ "$STATUS" = "ok" ]');
+    expect(workflow).toContain("h.products?.hours");
+    expect(workflow).toContain("readiness.searchIndex");
+  });
+
   it("pins every external workflow action to an immutable commit", () => {
     const workflowNames = readdirSync(WORKFLOW_DIR).filter((name) =>
       /\.ya?ml$/.test(name),
@@ -58,6 +73,82 @@ describe("scheduled data workflow contracts", () => {
     }
 
     expect(checkedActions).toBeGreaterThan(0);
+  });
+
+  it("routes only reviewed trusted-main generators to the repository NAS runner", () => {
+    const workflowNames = readdirSync(WORKFLOW_DIR).filter((name) =>
+      /\.ya?ml$/.test(name),
+    );
+    const radiusDataJobs: string[] = [];
+
+    for (const name of workflowNames) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
+        const labels = Array.isArray(job["runs-on"])
+          ? job["runs-on"]
+          : [job["runs-on"]];
+        if (labels.includes("radius-data")) {
+          radiusDataJobs.push(`${name}:${jobName}`);
+        }
+      }
+    }
+
+    const trustedGenerators = [
+      ["build-marc-schedule.yml", "build"],
+      ["data-steward.yml", "steward"],
+      ["transit-steward.yml", "transit"],
+    ] as const;
+    expect(radiusDataJobs.sort()).toEqual(
+      trustedGenerators.map(([name, jobName]) => `${name}:${jobName}`).sort(),
+    );
+
+    for (const [name, jobName] of trustedGenerators) {
+      const workflowTextValue = workflowText(name);
+      const workflow = parse(workflowTextValue) as WorkflowDocument;
+      expect(workflowTextValue).toContain("workflow_dispatch:");
+      expect(workflowTextValue).toContain("schedule:");
+      expect(workflowTextValue).not.toContain("pull_request:");
+      expect(workflowTextValue).not.toContain("\n  push:");
+      expect(workflow.jobs?.[jobName]?.["runs-on"]).toEqual([
+        "self-hosted",
+        "radius-data",
+      ]);
+      expect(workflow.jobs?.[jobName]?.if).toBe(
+        "${{ github.ref == 'refs/heads/main' }}",
+      );
+      expect(workflow.jobs?.[jobName]?.permissions).toEqual({ contents: "read" });
+    }
+
+    const hostedJobs = [
+      ["publish-automated-pr.yml", "publish"],
+      ["automated-pr-checks.yml", "dispatch"],
+      ["ci.yml", "verify"],
+      ["ci.yml", "attach-automated-pr-checks"],
+      ["style.yml", "style-lint"],
+    ] as const;
+    for (const [name, jobName] of hostedJobs) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      expect(
+        workflow.jobs?.[jobName]?.["runs-on"],
+        `${name}:${jobName} must stay on an isolated hosted runner`,
+      ).toBe("ubuntu-latest");
+    }
+  });
+
+  it("caps the persistent NAS data runner so it cannot take over the appliance", () => {
+    const compose = parse(nasRunnerText("compose.yaml")) as {
+      services?: Record<
+        string,
+        {
+          cpuset?: string;
+          mem_limit?: string;
+        }
+      >;
+    };
+    const dataRunner = compose.services?.["radius-data-runner"];
+
+    expect(dataRunner?.mem_limit).toBe("4g");
+    expect(dataRunner?.cpuset).toBe("0,1");
   });
 
   it("uses the read-only Supabase Data API handoff for the hours snapshot", () => {
@@ -142,16 +233,13 @@ describe("scheduled data workflow contracts", () => {
     );
   });
 
-  it("schedules the explicitly gated paid business-status reporter", () => {
+  it("does not schedule the duplicate paid business-status reporter", () => {
     const vercel = JSON.parse(
       readFileSync(resolve(process.cwd(), "vercel.json"), "utf8"),
     ) as { crons?: Array<{ path?: string; schedule?: string }> };
 
-    expect(vercel.crons ?? []).toContainEqual(
-      expect.objectContaining({
-        path: "/api/cron/business-status",
-        schedule: "0 7 * * *",
-      }),
+    expect(vercel.crons ?? []).not.toContainEqual(
+      expect.objectContaining({ path: "/api/cron/business-status" }),
     );
     expect(vercel.crons ?? []).toContainEqual(
       expect.objectContaining({ path: "/api/cron/hours-refresh" }),
@@ -334,6 +422,22 @@ describe("scheduled data workflow contracts", () => {
     expect(workflow).toContain("INGEST_LIMIT: ${{ inputs.limit || '60' }}");
     expect(workflow).toContain('--limit="$INGEST_LIMIT"');
     expect(workflow).not.toContain("--limit=${{");
+  });
+
+  it.each([
+    ["ingest-business-info.yml", "bot/business-info-refresh"],
+    ["ingest-civic.yml", "bot/municipal-civic-refresh"],
+    ["ingest-venues.yml", "bot/venue-event-refresh"],
+  ])("pauses paid extraction in %s while its review PR is open", (name, branch) => {
+    const workflow = workflowText(name);
+
+    expect(workflow).toContain("refresh_open_review:");
+    expect(workflow).toContain("Pause paid extraction while its review is open");
+    expect(workflow).toContain(`const branch = '${branch}';`);
+    expect(workflow).toContain("pull-requests: read");
+    expect(workflow).toContain(
+      "if: ${{ needs.review-gate.outputs.should_run == 'true' }}",
+    );
   });
 
   it("caps normal business runs at 60 and reviewed backfills at 100", () => {
@@ -605,11 +709,34 @@ describe("scheduled data workflow contracts", () => {
     );
     expect(publisherText).not.toContain("npm ci");
 
-    expect(workflowText("ci.yml")).toContain("workflow_dispatch: {}");
+    const ciText = workflowText("ci.yml");
+    expect(ciText).toContain("workflow_dispatch:");
+    expect(ciText).toContain("CI / automated {0}");
+    expect(ciText).toContain("automated_pr_head_sha:");
+    expect(ciText).toContain("automated_pr_style_run_id:");
+    expect(ciText).toContain("automated_pr_token:");
+    expect(ciText).toContain("ci_run_id: String(context.runId)");
+    expect(ciText).not.toContain("\n  push:");
+    expect(ciText).toContain("e2e/critical-dependency-chaos.spec.ts");
+    expect(ciText).toContain("e2e/service-worker-upgrade-contract.spec.ts");
+    expect(ciText).not.toContain("\n  browser-chaos:");
+    expect(ciText).toContain("needs: verify");
+    expect(ciText).toContain(
+      "workflow_id: 'automated-pr-status-bridge.yml'",
+    );
+    const uxText = workflowText("ux-audit.yml");
+    expect(uxText).toContain("workflow_dispatch:");
+    expect(uxText).not.toContain("\n  schedule:");
+    expect(uxText).toContain("--workers=2");
+    expect(uxText).not.toContain("matrix:");
+    expect(uxText).not.toContain("--shard=");
+    expect(workflowText("style.yml")).not.toContain("\n  push:");
+    expect(workflowText("style.yml")).toContain("style / automated {0}");
     const dispatcher = workflowText("automated-pr-checks.yml");
     expect(dispatcher).toContain("actions: write");
     expect(dispatcher).toContain("contents: read");
-    expect(dispatcher).toContain("['ci.yml', 'style.yml']");
+    expect(dispatcher).toContain("workflow_id: 'ci.yml'");
+    expect(dispatcher).toContain("workflow_id: 'style.yml'");
     expect(dispatcher).toContain(
       "actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3",
     );
@@ -617,17 +744,19 @@ describe("scheduled data workflow contracts", () => {
     expect(dispatcher).toContain("compareCommitsWithBasehead");
     expect(dispatcher).toContain("comparison.data.behind_by !== 0");
     expect(dispatcher).toContain("allowedByBranch");
-    expect(dispatcher).toContain(
+    expect(dispatcher).toContain("automated_pr_head_sha: expectedHead");
+    expect(dispatcher).toContain("automated_pr_style_run_id: String(styleRun.id)");
+    expect(dispatcher).toContain("run.display_title === `style / automated ${dispatchToken}`");
+    expect(dispatcher).not.toContain(
       "workflow_id: 'automated-pr-status-bridge.yml'",
     );
-    expect(dispatcher).toContain("ref: 'main'");
-    expect(dispatcher).toContain("dispatched_after: dispatchedAfter");
     expect(dispatcher).not.toContain("actions/checkout");
 
     // GITHUB_TOKEN can start workflow_dispatch runs, but their completion does
     // not reliably create another workflow_run hop. The bridge must therefore
-    // be explicitly dispatched on trusted main, then poll only the exact bot
-    // head and post-dispatch run window before writing required statuses.
+    // be explicitly dispatched on trusted main after CI finishes. The bridge
+    // receives the exact paired run IDs and a one-time run-name token, while a
+    // cheap schedule fails a whole-workflow cancellation closed.
     const bridgeText = workflowText("automated-pr-status-bridge.yml");
     const bridge = parse(bridgeText) as WorkflowDocument;
     expect(bridge.permissions).toEqual({
@@ -638,29 +767,31 @@ describe("scheduled data workflow contracts", () => {
     });
     expect(bridgeText).toContain("workflow_dispatch:");
     expect(bridgeText).not.toContain("workflow_run:");
+    expect(bridgeText).toContain('cron: "23 */6 * * *"');
     expect(bridgeText).toContain("context.ref !== 'refs/heads/main'");
-    expect(bridgeText).toContain("run.head_sha === headSha");
-    expect(bridgeText).toContain("run.head_branch === branch");
+    expect(bridgeText).toContain("candidate.head_sha !== headSha");
+    expect(bridgeText).toContain("candidate.head_branch !== branch");
+    expect(bridgeText).toContain("candidate.id !== spec.runId");
     expect(bridgeText).toContain(
-      "Date.parse(run.created_at || '') >= acceptedAfter",
+      "candidate.path?.split('@')[0] !== `.github/workflows/${spec.workflowId}`",
     );
+    expect(bridgeText).not.toContain("candidate.name !== spec.workflowName");
+    expect(bridgeText).toContain("candidate.display_title !== spec.displayTitle");
+    expect(bridgeText).toContain("github.rest.actions.getWorkflowRun");
+    expect(bridgeText).not.toContain("acceptedAfter");
     expect(bridgeText).toContain("comparison.data.behind_by !== 0");
     expect(bridgeText).toContain("latestMain.data.object.sha !== mainSha");
     expect(bridgeText).toContain("latestBot.data.object.sha !== headSha");
     expect(bridgeText).toContain("writeAllStatuses('pending'");
-    expect(bridgeText).toContain("['verify', 'Required browser chaos']");
+    expect(bridgeText).toContain("contexts: ['verify']");
     expect(bridgeText).toContain("contexts: ['style-lint']");
-    expect(bridge.jobs?.attach?.["timeout-minutes"]).toBe(43);
+    expect(bridge.jobs?.attach?.["timeout-minutes"]).toBe(8);
     expect(bridgeText).toContain(
-      "const discoveryDeadline = Date.now() + 3 * 60_000",
+      "const completionDeadline = Date.now() + 5 * 60_000",
     );
-    expect(bridgeText).toContain(
-      "const completionDeadline = Date.now() + 40 * 60_000",
-    );
-    expect(bridgeText).toContain("candidate.conclusion !== 'success'");
-    expect(bridgeText).toContain(
-      "concluded before the other gates",
-    );
+    expect(bridgeText).toContain("Fail stale automated PR checks closed");
+    expect(bridgeText).toContain("Date.now() - 90 * 60_000");
+    expect(bridgeText).toContain("latest.state !== 'pending'");
     expect(bridgeText).not.toContain("actions/checkout");
 
     // Validation attachment does not broaden the publication policy: only a

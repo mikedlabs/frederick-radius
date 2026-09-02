@@ -9,7 +9,6 @@ import {
 
 const schedules = new Map([
   ["/api/cron/hours-refresh", "0 8 * * *"],
-  ["/api/cron/business-status", "0 7 * * *"],
 ]);
 
 describe("data-tool activation status", () => {
@@ -81,6 +80,8 @@ describe("data-tool activation status", () => {
       status: "missing_configuration",
       missing: [
         "one of DATABASE_URL, POSTGRES_URL, SUPABASE_DB_URL",
+        "GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL=written-google-authorization-confirmed",
+        "GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED=1",
         "GOOGLE_PLACES_API_KEY",
       ],
     });
@@ -92,6 +93,9 @@ describe("data-tool activation status", () => {
         HOURS_REFRESH_CRON: "1",
         CRON_SECRET: "configured",
         DATABASE_URL: "configured",
+        GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL:
+          "written-google-authorization-confirmed",
+        GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED: "1",
         GOOGLE_PLACES_API_KEY: "configured",
       },
       schedules,
@@ -104,14 +108,15 @@ describe("data-tool activation status", () => {
     });
   });
 
-  it("reports the paid business-status cron and its explicit spend gate", () => {
+  it("reports the paid business-status diagnostic as manual-only", () => {
     const disabled = classifyDataTools({}, schedules).find(
       (tool) => tool.id === "business-status",
     );
     expect(disabled).toMatchObject({
       status: "disabled",
       gate: "BUSINESS_STATUS_CRON",
-      schedule: "0 7 * * *",
+      scope: "operator",
+      schedule: undefined,
       missing: [],
     });
 
@@ -119,13 +124,17 @@ describe("data-tool activation status", () => {
       {
         BUSINESS_STATUS_CRON: "1",
         CRON_SECRET: "configured",
+        GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL:
+          "written-google-authorization-confirmed",
+        GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED: "1",
         GOOGLE_PLACES_API_KEY: "configured",
       },
       schedules,
     ).find((tool) => tool.id === "business-status");
     expect(active).toMatchObject({
       status: "active",
-      schedule: "0 7 * * *",
+      scope: "operator",
+      schedule: undefined,
       missing: [],
     });
   });
@@ -136,6 +145,9 @@ describe("data-tool activation status", () => {
         HOURS_REFRESH_CRON: "1",
         CRON_SECRET: "configured",
         DATABASE_URL: "configured",
+        GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL:
+          "written-google-authorization-confirmed",
+        GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED: "1",
         GOOGLE_PLACES_API_KEY: "configured",
       },
       new Map(),

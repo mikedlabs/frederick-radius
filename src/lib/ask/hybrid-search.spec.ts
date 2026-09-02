@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   embed: vi.fn(),
   embeddingModel: vi.fn(),
   getSql: vi.fn(),
+  runtimeEmbeddingsConfigured: vi.fn(),
+  reserveAskEmbeddingCall: vi.fn(),
 }));
 
 vi.mock("ai", () => ({
@@ -23,6 +25,10 @@ vi.mock("@ai-sdk/openai", () => ({
 }));
 vi.mock("@/lib/db/client", () => ({
   getSql: mocks.getSql,
+}));
+vi.mock("@/lib/ask/runtime-budget", () => ({
+  askRuntimeEmbeddingsConfigured: mocks.runtimeEmbeddingsConfigured,
+  reserveAskEmbeddingCall: mocks.reserveAskEmbeddingCall,
 }));
 
 import {
@@ -64,6 +70,10 @@ describe("hybrid Radius retrieval", () => {
     delete process.env.OPENAI_API_KEY;
     delete process.env.RADIUS_HYBRID_SEARCH;
     delete process.env.RADIUS_EMBEDDING_MODEL;
+    mocks.runtimeEmbeddingsConfigured.mockImplementation(() =>
+      Boolean(process.env.OPENAI_API_KEY),
+    );
+    mocks.reserveAskEmbeddingCall.mockResolvedValue({ reserved: true, count: 1 });
     mocks.embeddingModel.mockReturnValue({ provider: "openai" });
     mocks.embed.mockResolvedValue({
       embedding: Array(1536).fill(0.01),
@@ -110,6 +120,20 @@ describe("hybrid Radius retrieval", () => {
     await expect(hybridPlaceSearch("coffee")).resolves.toMatchObject([
       { sourceId: "exact" },
     ]);
+    expect(sql).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps FTS without calling OpenAI when the shared reservation is unavailable", async () => {
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    const sql = sqlWith();
+    mocks.getSql.mockReturnValue(sql);
+    mocks.reserveAskEmbeddingCall.mockResolvedValue(null);
+
+    await expect(hybridPlaceSearch("coffee")).resolves.toMatchObject([
+      { sourceId: "exact" },
+    ]);
+    expect(mocks.reserveAskEmbeddingCall).toHaveBeenCalledOnce();
+    expect(mocks.embed).not.toHaveBeenCalled();
     expect(sql).toHaveBeenCalledTimes(1);
   });
 
@@ -197,6 +221,12 @@ describe("hybrid Radius retrieval", () => {
     ]);
     expect(mocks.embeddingModel).toHaveBeenCalledWith(
       "text-embedding-3-small",
+    );
+    expect(mocks.reserveAskEmbeddingCall.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.embed.mock.invocationCallOrder[0],
+    );
+    expect(mocks.embed).toHaveBeenCalledWith(
+      expect.objectContaining({ maxRetries: 0 }),
     );
     expect(sql).toHaveBeenCalledTimes(2);
   });

@@ -4,6 +4,7 @@ import {
   isStrongTodayEvent,
   selectTodayEvents,
   shouldRenderTodayEventSection,
+  todayEventPicksMeta,
 } from "./today-events";
 
 const now = new Date("2026-07-16T17:45:00.000Z"); // 1:45 PM Eastern
@@ -31,6 +32,26 @@ function event(overrides: Partial<Event> & Pick<Event, "slug" | "title">): Event
 }
 
 describe("Today event shortlist", () => {
+  it("labels briefing counts as picks instead of calendar totals", () => {
+    expect(todayEventPicksMeta({
+      todayPicks: 1,
+      tonightPicks: 1,
+      degraded: true,
+    })).toBe(
+      "1 event pick today · 1 event pick tonight · Countywide · Partial coverage",
+    );
+    expect(todayEventPicksMeta({
+      todayPicks: 3,
+      tonightPicks: 2,
+      degraded: false,
+    })).toBe("3 event picks today · 2 event picks tonight · Countywide");
+    expect(todayEventPicksMeta({
+      todayPicks: 0,
+      tonightPicks: 0,
+      degraded: true,
+    })).toBe("Partial calendar coverage");
+  });
+
   it("rejects the bad all-day nighttime label and venue-less noise", () => {
     expect(isStrongTodayEvent(event({
       slug: "night-bingo",

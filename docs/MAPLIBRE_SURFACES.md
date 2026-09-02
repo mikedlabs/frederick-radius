@@ -92,3 +92,15 @@ the pixels: Isochrone, Directions walking, Directions-Matrix, Geocoding v6,
 Search Box, and Static Images. All are server-to-server. Mapbox's terms want
 Mapbox-API results shown on Mapbox maps, so isochrone and directions results
 drawn on a MapLibre surface remain the open contractual item.
+
+The server APIs never borrow the publishable browser token. Static Images,
+walking Directions, and Isochrone each have their own disabled-by-default
+runtime switch and a code-bounded Eastern-day request cap. A cache miss reserves
+one request atomically before Mapbox; cache hits do not reserve or spend. Matrix
+uses the same fail-closed pattern in billed elements.
+
+Search Box billing lifecycle is server-owned. Migration `0045` stores only a
+hash of the opaque UUID and closes it after retrieve, 180 seconds, or 50
+suggestions. The UI rotates after retrieve and can reopen the same temporary
+result only from a five-minute, twelve-item tab-memory cache. Search text,
+coordinates, suggestions, and retrieved features are never persisted.

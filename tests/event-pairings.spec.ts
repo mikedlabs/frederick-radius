@@ -7,6 +7,7 @@ import {
 } from "@/lib/event-pairings";
 import type { NwsForecast, NwsHourly } from "@/lib/integrations/nws";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import type { EventParkingDecision } from "@/lib/events/parking";
 
 // ── findHourlyAt ──────────────────────────────────────────────────
 
@@ -140,21 +141,20 @@ function place(name: string, distance_m: number): PlaceCardData {
 
 describe("parkingPhrase", () => {
   it("names the closest parking with a distance", () => {
-    const out = parkingPhrase([
-      place("Court Street Garage", 120),
-      place("West Patrick Garage", 380),
-    ]);
+    const parking: EventParkingDecision = {
+      slug: "court-street-garage",
+      name: "Court Street Garage",
+      distanceM: 120,
+      distanceLabel: "394 ft",
+      walkMinutes: 2,
+    };
+    const out = parkingPhrase(parking);
     expect(out).toContain("Court Street Garage");
-    expect(out).toMatch(/\d/);
+    expect(out).toContain("394 ft");
   });
 
-  it("returns null when the list is empty", () => {
-    expect(parkingPhrase([])).toBeNull();
-  });
-
-  it("returns null when distance is unknown", () => {
-    const p = { ...place("Mystery Lot", 0), distance_m: undefined } as PlaceCardData;
-    expect(parkingPhrase([p])).toBeNull();
+  it("returns null when there is no canonical parking decision", () => {
+    expect(parkingPhrase(null)).toBeNull();
   });
 });
 

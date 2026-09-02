@@ -61,7 +61,7 @@ export const SOURCE_COVERAGE_STAGE_LABELS: Record<
   configured: "Configured",
   observed: "Observed",
   normalized: "Normalized",
-  published: "Published",
+  published: "Publication",
   surface: "Product use",
 };
 
@@ -151,16 +151,16 @@ export function sourceCoverageObservationsFromLedger(
   }));
 }
 
-export function sourceSurfaceDeclarationsFromFeeds(
-  feeds: readonly {
+export function sourceSurfaceDeclarationsFromConsumers(
+  consumers: readonly {
     sourceIds?: readonly string[];
     powers: string;
   }[],
 ): SourceSurfaceDeclaration[] {
-  return feeds.flatMap((feed) =>
-    (feed.sourceIds ?? []).map((sourceId) => ({
+  return consumers.flatMap((consumer) =>
+    (consumer.sourceIds ?? []).map((sourceId) => ({
       sourceId,
-      description: feed.powers.trim(),
+      description: consumer.powers.trim(),
     })),
   );
 }
@@ -176,10 +176,11 @@ function recorded(
 }
 
 /**
- * Build the five-step coverage report. Stage counts are independent evidence
- * counts, not a manufactured funnel: a product use may be declared even when
- * publication proof is missing, and that mismatch is exactly what operators
- * need to see.
+ * Build the five-step coverage report. Stage counts are independent historical
+ * evidence counts, not a manufactured funnel or a live-health assertion: a
+ * product use may be declared even when publication proof is missing, and an
+ * evidence-complete on-demand adapter may still require request-time validation
+ * before the health ledger marks it available.
  */
 export function buildSourceCoverageReport(
   sources: readonly SourceManifestEntry[],
@@ -246,11 +247,18 @@ export function buildSourceCoverageReport(
       "A successful validated collection is recorded.",
       "No successful validated collection is recorded.",
     );
-    const published = recorded(
-      observation?.lastPublishedAt ?? null,
-      "Publication evidence is recorded.",
-      "No publication evidence is recorded.",
-    );
+    const published = source.publicationApplicability === "not_applicable"
+      ? {
+          proved: true,
+          at: null,
+          detail:
+            "A separate publication is not applicable to this bounded on-demand adapter. This stage does not prove current runtime availability.",
+        }
+      : recorded(
+          observation?.lastPublishedAt ?? null,
+          "Publication evidence is recorded.",
+          "No publication evidence is recorded.",
+        );
     const surface = surfaceDescriptions.length
       ? {
           proved: true,

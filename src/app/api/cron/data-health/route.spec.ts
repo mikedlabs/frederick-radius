@@ -16,10 +16,10 @@ const mocks = vi.hoisted(() => ({
   getRecentIngestRuns: vi.fn(),
   runTripwires: vi.fn(),
   deliverDataHealthReport: vi.fn(),
-  startIngestRunStrict: vi.fn(),
-  finishIngestRunStrict: vi.fn(),
+  recordCompletedIngestRunStrict: vi.fn(),
   readStoredFoodTruckSchedule: vi.fn(),
   evaluateFoodTruckScheduleHealth: vi.fn(),
+  getRadiusSearchIndexHealth: vi.fn(),
 }));
 
 vi.mock("../../ingest/_auth", () => ({
@@ -76,8 +76,7 @@ vi.mock("@/lib/integrations/github-alerts", () => ({
   deliverDataHealthReport: mocks.deliverDataHealthReport,
 }));
 vi.mock("@/lib/ingest/run-log", () => ({
-  startIngestRunStrict: mocks.startIngestRunStrict,
-  finishIngestRunStrict: mocks.finishIngestRunStrict,
+  recordCompletedIngestRunStrict: mocks.recordCompletedIngestRunStrict,
 }));
 vi.mock("@/lib/food-trucks/schedule-store", () => ({
   readStoredFoodTruckSchedule: mocks.readStoredFoodTruckSchedule,
@@ -85,6 +84,21 @@ vi.mock("@/lib/food-trucks/schedule-store", () => ({
 vi.mock("@/lib/quality/food-truck-schedule-health", () => ({
   evaluateFoodTruckScheduleHealth:
     mocks.evaluateFoodTruckScheduleHealth,
+}));
+vi.mock("@/lib/quality/search-index-health", () => ({
+  getRadiusSearchIndexHealth: mocks.getRadiusSearchIndexHealth,
+  UNKNOWN_RADIUS_SEARCH_INDEX_HEALTH: {
+    status: "unknown",
+    expected: null,
+    indexed: null,
+    current: null,
+    missing: null,
+    stale: null,
+    retired: null,
+    embedded: null,
+    lastDocumentChangeAt: null,
+    freshnessBasis: "catalog_content_hash",
+  },
 }));
 
 import { GET } from "./route";
@@ -185,8 +199,7 @@ describe("GET /api/cron/data-health", () => {
     ]);
     mocks.runTripwires.mockResolvedValue({ anomalies: [], checks: [] });
     mocks.deliverDataHealthReport.mockResolvedValue("missing_token");
-    mocks.startIngestRunStrict.mockResolvedValue("report-run");
-    mocks.finishIngestRunStrict.mockResolvedValue(undefined);
+    mocks.recordCompletedIngestRunStrict.mockResolvedValue(true);
     mocks.readStoredFoodTruckSchedule.mockResolvedValue({});
     mocks.evaluateFoodTruckScheduleHealth.mockReturnValue({
       green: true,
@@ -196,6 +209,18 @@ describe("GET /api/cron/data-health", () => {
       sourceCount: 1,
       failedSources: [],
       anomalies: [],
+    });
+    mocks.getRadiusSearchIndexHealth.mockResolvedValue({
+      status: "current",
+      expected: 1_570,
+      indexed: 1_570,
+      current: 1_570,
+      missing: 0,
+      stale: 0,
+      retired: 0,
+      embedded: 0,
+      lastDocumentChangeAt: "2026-08-24T12:00:00.000Z",
+      freshnessBasis: "catalog_content_hash",
     });
   });
 
@@ -392,6 +417,50 @@ describe("GET /api/cron/data-health", () => {
           expect.objectContaining({
             source: "places-hours-refresh-publication",
             kind: "ingest_stale",
+          }),
+        ]),
+      }),
+    );
+  });
+
+  it("reports a one-document local-search gap explicitly", async () => {
+    mocks.getRadiusSearchIndexHealth.mockResolvedValue({
+      status: "degraded",
+      expected: 1_570,
+      indexed: 1_569,
+      current: 1_569,
+      missing: 1,
+      stale: 0,
+      retired: 0,
+      embedded: 0,
+      lastDocumentChangeAt: "2026-08-24T12:00:00.000Z",
+      freshnessBasis: "catalog_content_hash",
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.summary.gates).toContainEqual({
+      name: "search-index-coverage",
+      green: false,
+    });
+    expect(body.search_index).toMatchObject({
+      status: "degraded",
+      expected: 1_570,
+      indexed: 1_569,
+      current: 1_569,
+      missing: 1,
+      evaluation_outcome: "fulfilled",
+      freshnessBasis: "catalog_content_hash",
+    });
+    expect(mocks.deliverDataHealthReport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        anomalies: expect.arrayContaining([
+          expect.objectContaining({
+            source: "radius-search-index",
+            kind: "index_stale",
+            detail: expect.stringContaining("1 missing"),
           }),
         ]),
       }),
@@ -600,7 +669,7 @@ describe("GET /api/cron/data-health", () => {
   });
 
   it("returns 503 when the reporter cannot record its own completion", async () => {
-    mocks.finishIngestRunStrict.mockRejectedValue(
+    mocks.recordCompletedIngestRunStrict.mockRejectedValue(
       new Error("completion write failed"),
     );
 
@@ -609,5 +678,28 @@ describe("GET /api/cron/data-health", () => {
 
     expect(response.status).toBe(503);
     expect(body.summary.reporter_heartbeat_recorded).toBe(false);
+    expect(body.summary.reporter_heartbeat_outcome).toBe("rejected");
+  });
+
+  it("records reporter completion atomically with a cancelable deadline", async () => {
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mocks.recordCompletedIngestRunStrict).toHaveBeenCalledTimes(1);
+    expect(mocks.recordCompletedIngestRunStrict).toHaveBeenCalledWith(
+      "tripwires",
+      expect.any(String),
+      expect.objectContaining({
+        status: "ok",
+        records_in: expect.any(Number),
+        records_failed: 0,
+      }),
+      { signal: expect.any(AbortSignal) },
+    );
+    expect(body.summary).toMatchObject({
+      reporter_heartbeat_recorded: true,
+      reporter_heartbeat_outcome: "fulfilled",
+    });
   });
 });

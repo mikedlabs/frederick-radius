@@ -147,6 +147,19 @@ import { useMapLocation } from "./useMapLocation";
 import { useOsmPlaces } from "./useOsmPlaces";
 import { useWalkRoute } from "./useWalkRoute";
 import {
+  readTemporaryMapboxResult,
+  writeTemporaryMapboxResult,
+  type TemporaryMapboxResult,
+  type TemporaryMapboxResultCache,
+} from "./mapboxTemporaryResultCache";
+import {
+  claimTemporaryMapboxRetrieve,
+  expireTemporaryMapboxSuggestions,
+  settleTemporaryMapboxSuggestions,
+  temporaryMapboxRetrieveIsCurrent,
+  type TemporaryMapboxRetrieveClaim,
+} from "./mapboxTemporarySuggestionState";
+import {
   SHORT_LANDSCAPE_MAX_BOUNDS,
   countyFitPadding,
   fitNearbyRadius,
@@ -180,6 +193,7 @@ const CURATED_CLUSTER_LABEL = curatedClusterLabelExpression();
 // every basemap frame.
 const MAP_RENDER_READINESS_PROBE_INTERVAL_MS = 250;
 const MAP_RENDER_READINESS_MAX_ATTEMPTS = 12;
+const MAP_RENDERER_CONFIGURED = MAPBOX_TOKEN.length > 0;
 
 // Types, constants, and popup components are kept in focused siblings so this
 // file can own map state, effects, and layout.
@@ -206,6 +220,7 @@ import {
   immediateMapPlaceResults,
   reconcileMapSearchResults,
 } from "./mapLocalPlaceSearch";
+import { mapSearchResultsForRenderer } from "./mapSearchVisibility";
 import { nearbyReachBounds, placesWithinReach } from "./mapNearbyScope";
 import {
   AMENITY_GROUPS,
@@ -931,8 +946,10 @@ export default function AppMap({
   // filter can survive without UI to show or clear it.
   const wantsOsmInitially = (initialAmenityGroups ?? []).length > 0;
   // P0-10: a fatal Mapbox failure (missing/invalid token, style auth)
-  // must degrade to a stable branded state, never a blank rectangle.
-  const [mapError, setMapError] = useState(false);
+  // must degrade to a stable branded state, never a blank rectangle. Missing
+  // build-time credentials are known synchronously, so never mount an empty-
+  // token canvas and wait for an avoidable provider/network failure.
+  const [mapError, setMapError] = useState(() => !MAP_RENDERER_CONFIGURED);
   // A visible canvas is not proof that Mapbox has loaded its style and sources.
   // This flag deliberately promises only that the load handler ran. Initial
   // amenity/selection camera work may still follow, so do not call it settled.
@@ -950,6 +967,10 @@ export default function AppMap({
     }, 18_000);
     return () => window.clearTimeout(timeout);
   }, [mapError, mapLoaded, onVisualReady]);
+  useEffect(() => {
+    if (MAP_RENDERER_CONFIGURED) return;
+    onVisualReady?.();
+  }, [onVisualReady]);
   // A browser with no WebGL (locked-down corporate profile, a headless/bot
   // client, GPU blocklisted) can never paint the GL canvas — react-map-gl just
   // renders an empty rectangle, which is exactly the "map failed to load" a
@@ -958,6 +979,7 @@ export default function AppMap({
   // once on mount (client only); the same branded overlay covers the dead canvas.
   const [mapUnsupported, setMapUnsupported] = useState(false);
   useEffect(() => {
+    if (!MAP_RENDERER_CONFIGURED) return;
     if (!hasWebGL()) {
       setMapUnsupported(true);
       setMapError(true);
@@ -1093,20 +1115,38 @@ export default function AppMap({
     if (typeof window === "undefined") return "";
     return (new URLSearchParams(window.location.search).get("q") ?? "").slice(0, 160);
   });
+  const searchLiveQueryRef = useRef(q);
+  const searchRequestRef = useRef(0);
+  const searchRetrieveInFlightRef =
+    useRef<TemporaryMapboxRetrieveClaim | null>(null);
+  const searchRetrieveAbortRef = useRef<AbortController | null>(null);
+  const invalidateTemporaryMapboxRetrieve = useCallback(() => {
+    // The input event invalidates a retrieve before React's next effect runs.
+    // This closes the small window where an older response could otherwise
+    // move the camera after the person had already typed a new phrase.
+    searchRequestRef.current += 1;
+    searchRetrieveAbortRef.current?.abort();
+    searchRetrieveAbortRef.current = null;
+    searchRetrieveInFlightRef.current = null;
+  }, []);
   const pendingLocalQueryRef = useRef<string | null>(null);
   const setMapQuery = useCallback(
     (updater: string | ((current: string) => string)) => {
-      setQ((current) => {
-        const next =
-          typeof updater === "function" ? updater(current) : updater;
-        // MapDock serializes a trimmed query into the URL. Track that exact
-        // representation so a harmless trailing space cannot leave route/back
-        // synchronization blocked forever.
-        pendingLocalQueryRef.current = next.trim();
-        return next;
-      });
+      const next =
+        typeof updater === "function"
+          ? updater(searchLiveQueryRef.current)
+          : updater;
+      if (next !== searchLiveQueryRef.current) {
+        searchLiveQueryRef.current = next;
+        invalidateTemporaryMapboxRetrieve();
+      }
+      // MapDock serializes a trimmed query into the URL. Track that exact
+      // representation so a harmless trailing space cannot leave route/back
+      // synchronization blocked forever.
+      pendingLocalQueryRef.current = next.trim();
+      setQ(next);
     },
-    [],
+    [invalidateTemporaryMapboxRetrieve],
   );
   // Next keeps recently visited route segments in its client cache. Returning
   // from a full place page can therefore revive this map with its prior local
@@ -1133,10 +1173,12 @@ export default function AppMap({
         return;
       }
     }
-    setQ((current) =>
-      current === liveRouteQuery ? current : liveRouteQuery,
-    );
-  }, [routeQuery]);
+    if (liveRouteQuery !== searchLiveQueryRef.current) {
+      searchLiveQueryRef.current = liveRouteQuery;
+      invalidateTemporaryMapboxRetrieve();
+      setQ(liveRouteQuery);
+    }
+  }, [invalidateTemporaryMapboxRetrieve, routeQuery]);
   // Back and Forward are browser actions, so restore their exact query from
   // the address bar immediately instead of waiting for Next's route snapshot
   // to settle. Under a busy map load that snapshot can arrive late enough for
@@ -1147,22 +1189,39 @@ export default function AppMap({
       const next = (
         new URLSearchParams(window.location.search).get("q") ?? ""
       ).slice(0, 160);
-      setQ((current) => (current === next ? current : next));
+      if (next === searchLiveQueryRef.current) return;
+      searchLiveQueryRef.current = next;
+      invalidateTemporaryMapboxRetrieve();
+      setQ(next);
     };
     window.addEventListener("popstate", restoreBrowserQuery);
     return () => window.removeEventListener("popstate", restoreBrowserQuery);
-  }, []);
+  }, [invalidateTemporaryMapboxRetrieve]);
   const [searchMatches, setSearchMatches] = useState<SearchResult[]>([]);
+  const searchMatchesForSurface = useMemo(
+    () => mapSearchResultsForRenderer(searchMatches, !mapError),
+    [mapError, searchMatches],
+  );
   const [searchSettledQuery, setSearchSettledQuery] = useState("");
   const [searchUnavailableQuery, setSearchUnavailableQuery] = useState("");
   const [searchAttempt, setSearchAttempt] = useState(0);
   const [searchOpeningId, setSearchOpeningId] = useState<string | null>(null);
-  const searchRequestRef = useRef(0);
   const searchSessionRef = useRef<string | null>(null);
-  const searchSessionStartedRef = useRef(false);
-  const searchSessionLastUsedRef = useRef(0);
+  const searchSessionStartedAtRef = useRef(0);
   const searchSessionSuggestCountRef = useRef(0);
+  const searchRetrievedResultCacheRef = useRef<TemporaryMapboxResultCache>(
+    new globalThis.Map(),
+  );
   const searchRouteRef = useRef<string | null>(null);
+  const resetSearchBoxSession = useCallback((expectedToken?: string) => {
+    // A person can type a new phrase while an older retrieve is in flight.
+    // Never let that terminal response clear the fresh session the new phrase
+    // just opened.
+    if (expectedToken && searchSessionRef.current !== expectedToken) return;
+    searchSessionRef.current = null;
+    searchSessionStartedAtRef.current = 0;
+    searchSessionSuggestCountRef.current = 0;
+  }, []);
   // A global Find result can hand the map both a camera point and a place slug.
   // The camera is seeded by BrowseMapClient; this slug opens the same compact
   // peek a direct pin tap would once the map style is ready.
@@ -1895,7 +1954,19 @@ export default function AppMap({
       : null;
 
     if (place) {
-      if (entitySelectionUrlIntentRef.current.place === place.slug) return;
+      const placeAlreadyOpen =
+        selectedSlug === place.slug && peekPlace?.slug === place.slug;
+      // With a working renderer, the map load handler owns the initial
+      // deep-link so it can coordinate the camera. In the no-renderer fallback
+      // that handler never runs, so URL-backed place details must be restored
+      // here instead of leaving `place=` in the address bar with no visible
+      // selection.
+      if (
+        entitySelectionUrlIntentRef.current.place === place.slug &&
+        (!mapError || placeAlreadyOpen)
+      ) {
+        return;
+      }
       clearMapSelection();
       entitySelectionUrlIntentRef.current = { place: place.slug, event: null };
       rememberMapSelectionOpener();
@@ -1907,7 +1978,12 @@ export default function AppMap({
       return;
     }
     if (eventPin) {
-      if (entitySelectionUrlIntentRef.current.event === eventPin.slug) return;
+      if (
+        entitySelectionUrlIntentRef.current.event === eventPin.slug &&
+        (!mapError || selectedEvent?.slug === eventPin.slug)
+      ) {
+        return;
+      }
       clearMapSelection();
       entitySelectionUrlIntentRef.current = {
         place: null,
@@ -1980,6 +2056,10 @@ export default function AppMap({
     routePlaceSelection,
     routeResultSelection,
     routeSelectionToken,
+    mapError,
+    peekPlace,
+    selectedEvent,
+    selectedSlug,
   ]);
 
   /** One stable object per mount, so layers don't re-register every render. */
@@ -3219,6 +3299,14 @@ export default function AppMap({
   useEffect(() => {
     const term = q.trim();
     const requestId = ++searchRequestRef.current;
+    // Selecting a temporary provider row is allowed to finish only for the
+    // phrase that launched it. Abort and synchronously release an older claim
+    // before this phrase can display a fresh, actionable result list.
+    searchRetrieveAbortRef.current?.abort();
+    searchRetrieveAbortRef.current = null;
+    searchRetrieveInFlightRef.current = null;
+    setSearchOpeningId(null);
+    if (mapError) resetSearchBoxSession();
     const origin =
       userLoc ?? viewCenterRef.current ?? searchFallbackOriginRef.current;
     const immediateMatches = immediateMapPlaceResults(
@@ -3240,10 +3328,7 @@ export default function AppMap({
     }
     if (term.length < 2) {
       setSearchSettledQuery(term);
-      searchSessionRef.current = null;
-      searchSessionStartedRef.current = false;
-      searchSessionLastUsedRef.current = 0;
-      searchSessionSuggestCountRef.current = 0;
+      resetSearchBoxSession();
       return;
     }
     const ctrl = new AbortController();
@@ -3265,9 +3350,13 @@ export default function AppMap({
         if (!Array.isArray(body.results)) {
           throw new Error("Radius search returned an invalid response");
         }
+        const rendererSafeResults = mapSearchResultsForRenderer(
+          body.results,
+          !mapError,
+        );
         const local = reconcileMapSearchResults(
           immediateMatches,
-          body.results,
+          rendererSafeResults,
           term,
           6,
         );
@@ -3275,7 +3364,7 @@ export default function AppMap({
         if (local.length > 0) {
           setSearchMatches(local);
           setSearchSettledQuery(term);
-          const routedCandidates = userLoc
+          const routedCandidates = userLoc && !mapError
             ? local
                 .filter(
                   (result) =>
@@ -3349,24 +3438,22 @@ export default function AppMap({
           return;
         }
 
-        if (!isBrowseMap || term.length < 3) {
+        if (!isBrowseMap || term.length < 3 || mapError) {
           setSearchSettledQuery(term);
           return;
         }
         const now = Date.now();
         const sessionExpired =
-          searchSessionLastUsedRef.current > 0 &&
-          now - searchSessionLastUsedRef.current > 150_000;
+          searchSessionStartedAtRef.current > 0 &&
+          now - searchSessionStartedAtRef.current > 150_000;
         const sessionAtLimit = searchSessionSuggestCountRef.current >= 45;
         if (sessionExpired || sessionAtLimit) {
-          searchSessionRef.current = null;
-          searchSessionStartedRef.current = false;
-          searchSessionSuggestCountRef.current = 0;
+          resetSearchBoxSession();
         }
-        const sessionToken =
-          searchSessionRef.current ?? window.crypto.randomUUID();
+        const sessionAlreadyStarted = Boolean(searchSessionRef.current);
+        const sessionToken = searchSessionRef.current ?? window.crypto.randomUUID();
         searchSessionRef.current = sessionToken;
-        searchSessionLastUsedRef.current = now;
+        if (!sessionAlreadyStarted) searchSessionStartedAtRef.current = now;
         searchSessionSuggestCountRef.current += 1;
         const fallbackResponse = await fetch("/api/map/search-fallback", {
           method: "POST",
@@ -3376,7 +3463,6 @@ export default function AppMap({
             action: "suggest",
             q: term,
             sessionToken,
-            sessionStart: !searchSessionStartedRef.current,
             proximity: origin,
             limit: 4,
             ...(searchRouteRef.current
@@ -3392,8 +3478,10 @@ export default function AppMap({
           ? await fallbackResponse.json()
           : null) as {
             ok?: boolean;
+            reason?: string;
             retryable?: boolean;
             attribution?: string;
+            sessionClosed?: boolean;
             suggestions?: Array<{
               mapboxId: string;
               name: string;
@@ -3410,6 +3498,14 @@ export default function AppMap({
           );
         }
         if (!fallback.ok) {
+          if (
+            fallback.reason === "session-missing" ||
+            fallback.reason === "session-expired" ||
+            fallback.reason === "session-closed" ||
+            fallback.reason === "session-limit-reached"
+          ) {
+            resetSearchBoxSession();
+          }
           // A disabled optional Mapbox enhancement does not invalidate the
           // already-completed Radius search. A retryable upstream failure does:
           // never translate an outage into a confident zero-result claim.
@@ -3422,7 +3518,7 @@ export default function AppMap({
         if (!Array.isArray(fallback.suggestions)) {
           throw new Error("Backup map search returned an invalid response");
         }
-        searchSessionStartedRef.current = true;
+        if (fallback.sessionClosed) resetSearchBoxSession();
         setSearchMatches(
           fallback.suggestions.map((suggestion) => ({
             type: "place",
@@ -3462,8 +3558,11 @@ export default function AppMap({
     return () => {
       clearTimeout(t);
       ctrl.abort();
+      searchRetrieveAbortRef.current?.abort();
+      searchRetrieveAbortRef.current = null;
+      searchRetrieveInFlightRef.current = null;
     };
-  }, [isBrowseMap, places, q, searchAttempt, userLoc]);
+  }, [isBrowseMap, mapError, places, q, resetSearchBoxSession, searchAttempt, userLoc]);
 
   const placesBySlug = useMemo(() => {
     // globalThis.Map: the bare `Map` is react-map-gl's component here.
@@ -3476,19 +3575,108 @@ export default function AppMap({
     haptic("light");
     exitRadiusScene();
     clearMapSelection();
+    if (
+      mapError &&
+      mapSearchResultsForRenderer([r], false).length === 0
+    ) {
+      resetSearchBoxSession();
+      setSearchMatches((current) =>
+        mapSearchResultsForRenderer(current, false),
+      );
+      setSearchOpeningId(null);
+      setGeoMsg(
+        "That option needs the interactive map. Search for a place or event instead.",
+      );
+      return;
+    }
     if (r.temporary && r.provider === "Mapbox") {
-      const sessionToken = searchSessionRef.current;
       const mapboxId = r.mapbox_id ?? r.id.replace(/^mapbox:/, "");
       const origin = userLoc ?? viewCenter ?? searchFallbackOriginRef.current;
-      if (!sessionToken || !mapboxId) {
-        setGeoMsg("That temporary map result expired. Search for it again.");
+      if (!mapboxId) {
+        setSearchMatches((current) =>
+          expireTemporaryMapboxSuggestions(current),
+        );
+        setSearchSettledQuery("");
+        setSearchAttempt((current) => current + 1);
+        setGeoMsg("That map result expired, so Radius refreshed the search.");
         return;
       }
+
+      const presentTemporaryResult = (result: TemporaryMapboxResult) => {
+        const { lng, lat } = result.coordinates;
+        openMapSelection({
+          kind: "spot",
+          value: {
+            lng,
+            lat,
+            label: result.name || r.title,
+            temporary: true,
+            attribution: result.attribution ?? r.attribution,
+          },
+        });
+        cameraIntentRef.current = true;
+        mapRef.current?.getMap().easeTo({
+          center: [lng, lat],
+          zoom: 15,
+          offset: [0, -100],
+          duration: mapCameraDuration("focus"),
+          easing: CAM_EASE,
+          essential: true,
+        });
+      };
+
+      // Reopening a result is a local UI action. The short-lived, bounded
+      // memory cache avoids a second retrieve while the provider UUID remains
+      // permanently closed after its first successful selection.
+      const cached = readTemporaryMapboxResult(
+        searchRetrievedResultCacheRef.current,
+        mapboxId,
+      );
+      if (cached) {
+        presentTemporaryResult(cached);
+        return;
+      }
+
+      const sessionToken = searchSessionRef.current;
+      if (!sessionToken) {
+        // The cache and one-use provider session expired together. Do not
+        // leave a row that can only fail; preserve the person's phrase and
+        // rerun the Radius-first search to obtain a fresh provider session.
+        setSearchMatches((current) =>
+          expireTemporaryMapboxSuggestions(current),
+        );
+        setSearchSettledQuery("");
+        setSearchAttempt((current) => current + 1);
+        setGeoMsg("That map result expired, so Radius refreshed the search.");
+        return;
+      }
+
+      // React state alone cannot close the same-frame window between two fast
+      // taps. Claim the retrieve synchronously so one one-use provider session
+      // can never launch two competing row selections.
+      const retrieveClaim = { mapboxId, sessionToken };
+      const claim = claimTemporaryMapboxRetrieve(
+        searchRetrieveInFlightRef.current,
+        retrieveClaim,
+      );
+      if (!claim.accepted) {
+        return;
+      }
+      const retrieveRequestId = searchRequestRef.current;
+      const retrieveController = new AbortController();
+      searchRetrieveInFlightRef.current = claim.claim;
+      searchRetrieveAbortRef.current = retrieveController;
+      // Retrieve is terminal at the server before the upstream call begins.
+      // Detach this token immediately so typing a new phrase creates a new
+      // session instead of suggesting against one that is closing.
+      resetSearchBoxSession(sessionToken);
       setSearchOpeningId(r.id);
+      let opened = false;
       try {
         const response = await fetch("/api/map/search-fallback", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: retrieveController.signal,
           body: JSON.stringify({
             action: "retrieve",
             mapboxId,
@@ -3505,6 +3693,14 @@ export default function AppMap({
             coordinates: { lng: number; lat: number };
           };
         } | null;
+        const retrieveIsCurrent = temporaryMapboxRetrieveIsCurrent(
+          searchRetrieveInFlightRef.current,
+          retrieveClaim,
+          searchRequestRef.current,
+          retrieveRequestId,
+        ) && searchRetrieveAbortRef.current === retrieveController &&
+          !retrieveController.signal.aborted;
+        if (!retrieveIsCurrent) return;
         if (!body?.ok || !body.result) {
           setGeoMsg(
             body?.reason === "outside-county"
@@ -3513,34 +3709,58 @@ export default function AppMap({
           );
           return;
         }
-        const { lng, lat } = body.result.coordinates;
-        // Keep the query and suggestion session underneath the temporary
-        // result. Back should return to the exact search the person made, and
-        // selecting the same suggestion again must not require a second paid
-        // provider request merely because they inspected then closed it.
-        openMapSelection({
-          kind: "spot",
-          value: {
-            lng,
-            lat,
-            label: body.result.name || r.title,
-            temporary: true,
-            attribution: body.attribution ?? r.attribution,
-          },
-        });
-        cameraIntentRef.current = true;
-        mapRef.current?.getMap().easeTo({
-          center: [lng, lat],
-          zoom: 15,
-          offset: [0, -100],
-          duration: mapCameraDuration("focus"),
-          easing: CAM_EASE,
-          essential: true,
-        });
-      } catch {
-        setGeoMsg("That map result could not be opened. Try another search.");
+        const retrieved: TemporaryMapboxResult = {
+          name: body.result.name || r.title,
+          coordinates: body.result.coordinates,
+          attribution: body.attribution ?? r.attribution,
+        };
+        writeTemporaryMapboxResult(
+          searchRetrievedResultCacheRef.current,
+          mapboxId,
+          retrieved,
+        );
+        opened = true;
+        // The provider session is one-use. Keep only the retrieved row, which
+        // is safe to reopen from the bounded tab-memory cache; remove its
+        // now-expired siblings before they can look actionable again.
+        setSearchMatches((current) =>
+          settleTemporaryMapboxSuggestions(current, r.id, true),
+        );
+        presentTemporaryResult(retrieved);
+      } catch (error) {
+        const retrieveIsCurrent = temporaryMapboxRetrieveIsCurrent(
+          searchRetrieveInFlightRef.current,
+          retrieveClaim,
+          searchRequestRef.current,
+          retrieveRequestId,
+        ) && searchRetrieveAbortRef.current === retrieveController &&
+          !retrieveController.signal.aborted;
+        if (
+          retrieveIsCurrent &&
+          (error as { name?: string })?.name !== "AbortError"
+        ) {
+          setGeoMsg("That map result could not be opened. Try another search.");
+        }
       } finally {
-        setSearchOpeningId(null);
+        const retrieveIsCurrent = temporaryMapboxRetrieveIsCurrent(
+          searchRetrieveInFlightRef.current,
+          retrieveClaim,
+          searchRequestRef.current,
+          retrieveRequestId,
+        ) && searchRetrieveAbortRef.current === retrieveController;
+        if (!opened && retrieveIsCurrent) {
+          // An ambiguous response can still mean the server closed the token.
+          // Remove every result owned by that terminal session rather than
+          // inviting a guaranteed second failure from an expired suggestion.
+          setSearchMatches((current) =>
+            settleTemporaryMapboxSuggestions(current, r.id, false),
+          );
+        }
+        if (retrieveIsCurrent) {
+          searchRetrieveAbortRef.current = null;
+          searchRetrieveInFlightRef.current = null;
+          setSearchOpeningId((current) => (current === r.id ? null : current));
+        }
       }
       return;
     }
@@ -3700,6 +3920,10 @@ export default function AppMap({
     // current filters/layers intact. MapDock subscribes to setScope and owns
     // the full browse-map flight; a dock-less embed receives the same flight
     // directly here.
+    if (mapError && r.type === "municipality") {
+      router.push(r.href);
+      return;
+    }
     if (r.type === "municipality") {
       const slug = r.id.replace(/^municipality:/, "");
       const town = MUNICIPALITIES.find((candidate) => candidate.slug === slug);
@@ -4294,7 +4518,7 @@ export default function AppMap({
         <AppMapDeck
           q={q}
           setQ={setQ}
-          searchMatches={searchMatches}
+          searchMatches={searchMatchesForSurface}
           pickSearch={pickSearch}
           goNearMe={goNearMe}
           locating={locating}
@@ -4321,7 +4545,9 @@ export default function AppMap({
                   className="font-sans text-base font-semibold"
                   style={{ color: "var(--app-ink)" }}
                 >
-                  {mapUnsupported
+                  {!MAP_RENDERER_CONFIGURED
+                    ? "Map view is not enabled right now"
+                    : mapUnsupported
                     ? "This browser cannot draw the map"
                     : "The map is temporarily unavailable"}
                 </h2>
@@ -4329,13 +4555,15 @@ export default function AppMap({
                   className="mt-1 max-w-xl text-xs leading-relaxed"
                   style={{ color: "var(--app-ink-3)" }}
                 >
-                  {mapUnsupported
+                  {!MAP_RENDERER_CONFIGURED
+                    ? "Search and the current Frederick County results still work below."
+                    : mapUnsupported
                     ? "The same places and events are available below in a readable list."
                     : "Your current results are still available below. Reload the map when you are ready."}
                 </p>
               </div>
               <div className="map-error-fallback-actions">
-                {!mapUnsupported && (
+                {MAP_RENDERER_CONFIGURED && !mapUnsupported && (
                   <button
                     type="button"
                     onClick={() => window.location.reload()}
@@ -6748,7 +6976,7 @@ export default function AppMap({
 
         {/* ── The dock: one instrument for the browse map. Scrim + card;
             collapsed face is the What · When · Where caption. ── */}
-        {dock && !mapError && (
+        {dock && (
           <div
             className="map-dock-slot"
             inert={compactMapViewport && selectionOpen}
@@ -6756,6 +6984,7 @@ export default function AppMap({
           >
           <MapDock
             browse={dock}
+            mapAvailable={!mapError}
             placeCount={inViewPlaces.length}
             eventCount={inViewEvents.length}
             closingSoonCount={closingSoonCount}
@@ -6775,7 +7004,7 @@ export default function AppMap({
             }}
             q={q}
             setQ={setMapQuery}
-            searchMatches={searchMatches}
+            searchMatches={searchMatchesForSurface}
             searchPending={
               q.trim().length >= 2 &&
               searchSettledQuery !== q.trim()
@@ -6791,7 +7020,9 @@ export default function AppMap({
             }}
             searchOpeningId={searchOpeningId}
             pickSearch={pickSearch}
-            searchDistanceOriginLabel={userLoc ? "from you" : "from map center"}
+            searchDistanceOriginLabel={
+              userLoc ? "from you" : mapError ? null : "from map center"
+            }
             openNowAvailable={dock.openNowAvailable}
             openNowUnavailableLabel={dock.openNowUnavailableLabel}
             savedCount={followedSlugs.size}

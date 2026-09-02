@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { haptic } from "@/lib/haptics";
+import { shouldPrefetchGlobalNavigation } from "@/lib/fair/route-policy";
 import { TABS, tabIndexForPath } from "./tabs";
 
 type NavigationGesture = Pick<
@@ -38,6 +39,7 @@ export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const realIdx = tabIndexForPath(pathname);
+  const allowPrefetch = shouldPrefetchGlobalNavigation(pathname);
   const [pendingIdx, setPendingIdx] = useState<number | null>(null);
 
   useEffect(() => {
@@ -106,7 +108,7 @@ export default function BottomNav() {
                 <li key={href} className="flex">
                   <Link
                     href={href}
-                    prefetch={prefetch}
+                    prefetch={allowPrefetch ? prefetch : false}
                     onPointerDown={(event) => {
                       if (
                         !isAtDestination

@@ -590,6 +590,23 @@ describe("buildWantAnswer — one location per chain", () => {
     expect(answer.also.map((row) => chainBrandKey(row.name))).not.toContain(heroBrand);
   });
 
+  it("keeps the same chain diversity when thin hours use best-fit ranking", () => {
+    const answer = buildWantAnswer(
+      "coffee",
+      null,
+      origin,
+      at("2026-08-21T09:30:00.000Z"),
+      { rankingMode: "best-fit" },
+    );
+    expect(answer).not.toBeNull();
+    const brands = [answer!.hero, ...answer!.also]
+      .filter((row) => row != null)
+      .map((row) => chainBrandKey(row.name))
+      .filter((brand): brand is string => brand != null);
+
+    expect(new Set(brands).size).toBe(brands.length);
+  });
+
   it("leaves independents alone, however many share a row", () => {
     // Two genuinely different local places must both survive; only chain
     // BRANDS collapse. A rule that deduped by anything looser would quietly

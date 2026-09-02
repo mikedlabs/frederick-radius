@@ -75,6 +75,7 @@ describe("GET /api/ingest/fcvfra geocode budget", () => {
     mocks.geocodeLimitForRemaining.mockReturnValue(4);
     mocks.geocodePending.mockResolvedValue({
       fromCache: 0,
+      fromOfficial: 0,
       fromApi: 0,
       failed: 1,
       seeded: 0,
@@ -222,6 +223,7 @@ describe("GET /api/ingest/fcvfra geocode budget", () => {
     mocks.upsertEvent.mockRejectedValue(new Error("event transaction failed"));
     mocks.geocodePending.mockResolvedValue({
       fromCache: 0,
+      fromOfficial: 0,
       fromApi: 0,
       failed: 0,
       seeded: 0,

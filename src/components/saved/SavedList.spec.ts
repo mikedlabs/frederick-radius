@@ -87,6 +87,21 @@ describe("SavedList empty state", () => {
     expect(source).toContain("if (savedStatePending || placesPending)");
   });
 
+  it("does not advertise the dormant saved-event reminder worker", () => {
+    const button = readFileSync("src/components/saved/SaveButton.tsx", "utf8");
+    const list = readFileSync("src/components/saved/SavedList.tsx", "utf8");
+    const notifications = readFileSync(
+      "src/components/settings/NotificationsCard.tsx",
+      "utf8",
+    );
+
+    expect(button).not.toContain("syncSavedEventReminder");
+    expect(button).not.toContain("maybeOfferEventReminders");
+    expect(button).not.toContain("nudge an hour");
+    expect(list).not.toContain("A nudge before a saved place closes");
+    expect(notifications).not.toContain('topics: ["saved-events"');
+  });
+
   it("hydrates a signed-in saved page from the server snapshot before client effects", () => {
     const source = readFileSync("src/components/saved/SavedList.tsx", "utf8");
 

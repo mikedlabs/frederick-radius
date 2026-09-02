@@ -7,8 +7,9 @@ import type {
 import {
   buildSourceCoverageReport,
   sourceCoverageObservationsFromEvidence,
-  sourceSurfaceDeclarationsFromFeeds,
+  sourceSurfaceDeclarationsFromConsumers,
 } from "./source-coverage";
+import { SOURCE_ARTIFACT_CONSUMERS } from "./source-consumers";
 
 function source(
   overrides: Partial<SourceManifestEntry> = {},
@@ -29,6 +30,7 @@ function source(
     transformFile: "src/lib/integrations/calendar.ts",
     evidenceAliases: ["county"],
     rowsRequired: false,
+    publicationApplicability: "required",
     ...overrides,
   };
 }
@@ -119,7 +121,7 @@ describe("source coverage control plane", () => {
 
   it("counts product use only from an explicit source id declaration", () => {
     const sources = [source(), source({ id: "unmapped", evidenceAliases: [] })];
-    const declarations = sourceSurfaceDeclarationsFromFeeds([
+    const declarations = sourceSurfaceDeclarationsFromConsumers([
       {
         sourceIds: ["county_calendar"],
         powers: "County events on Today and Events",
@@ -148,6 +150,79 @@ describe("source coverage control plane", () => {
       "County events on Today and Events",
     ]);
     expect(byId.get("unmapped")?.stages.surface.proved).toBe(false);
+  });
+
+  it("treats explicit non-publication applicability as proved without inventing a timestamp", () => {
+    const report = buildSourceCoverageReport(
+      [
+        source({
+          id: "fc_address_points_complete",
+          refreshCadence: "on_demand",
+          publicationApplicability: "not_applicable",
+        }),
+      ],
+      [
+        {
+          sourceId: "fc_address_points_complete",
+          configured: true,
+          missingSettings: [],
+          lastObservedAt: "2026-08-23T00:00:00.000Z",
+          lastNormalizedAt: "2026-08-23T00:00:00.000Z",
+          lastPublishedAt: null,
+        },
+      ],
+      sourceSurfaceDeclarationsFromConsumers([
+        {
+          sourceIds: ["fc_address_points_complete"],
+          powers:
+            "Bounded exact-address checks for event and map geocoding, with no bulk mirror",
+        },
+      ]),
+    );
+    const [row] = report.rows;
+
+    expect(row?.stages.published).toEqual({
+      proved: true,
+      at: null,
+      detail:
+        "A separate publication is not applicable to this bounded on-demand adapter. This stage does not prove current runtime availability.",
+    });
+    expect(row?.stages.surface.proved).toBe(true);
+    expect(row?.firstGap).toBeNull();
+    expect(row?.surfaceDescriptions).toEqual([
+      "Bounded exact-address checks for event and map geocoding, with no bulk mirror",
+    ]);
+  });
+
+  it("declares artifact consumers without laundering missing publication evidence", () => {
+    const report = buildSourceCoverageReport(
+      [
+        source({
+          id: "census_tiger_county_boundary",
+          collection: "workflow",
+          refreshCadence: "yearly",
+        }),
+      ],
+      [
+        {
+          sourceId: "census_tiger_county_boundary",
+          configured: true,
+          missingSettings: [],
+          lastObservedAt: "2026-07-28T00:00:00.000Z",
+          lastNormalizedAt: "2026-07-28T00:00:00.000Z",
+          lastPublishedAt: null,
+        },
+      ],
+      sourceSurfaceDeclarationsFromConsumers(SOURCE_ARTIFACT_CONSUMERS),
+    );
+    const [row] = report.rows;
+
+    expect(row?.stages.surface.proved).toBe(true);
+    expect(row?.stages.published.proved).toBe(false);
+    expect(row?.firstGap).toBe("published");
+    expect(row?.surfaceDescriptions).toEqual([
+      "The published county boundary overlay and map frame",
+    ]);
   });
 
   it("keeps inactive candidates out of active lifecycle totals", () => {

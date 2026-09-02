@@ -38,8 +38,8 @@ const TOPIC_GROUPS: Array<{
   },
   {
     label: "Your plans",
-    description: "Reminders connected to things you follow.",
-    topics: ["saved-events", "specials"],
+    description: "Updates from Frederick County businesses you follow.",
+    topics: ["specials"],
   },
   {
     label: "Daily rhythm",

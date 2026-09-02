@@ -1,11 +1,10 @@
 name: Freshness check
 
-# Daily verification catches sources that fetch successfully while quietly
-# returning frozen payloads. Checking and issue mutation use separate tokens.
+# This verifies the legacy data-snapshots branch, which the deployed app does
+# not currently consume. Keep it manual until that branch becomes a production
+# read model; live collectors report freshness through their own heartbeats.
 
 on:
-  schedule:
-    - cron: "0 11 * * *" # after the daily snapshot refresh
   workflow_dispatch: {}
 
 permissions: {}

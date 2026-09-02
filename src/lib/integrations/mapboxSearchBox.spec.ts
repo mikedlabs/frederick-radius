@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  meterUsage: vi.fn(),
+  reserveMapboxSearchSessionAction: vi.fn(),
 }));
 
 vi.mock("@/lib/mapbox-server", () => ({
@@ -11,8 +11,8 @@ vi.mock("@/lib/mapbox-server", () => ({
   },
 }));
 
-vi.mock("@/lib/usage-meter", () => ({
-  meterUsage: mocks.meterUsage,
+vi.mock("@/lib/integrations/mapboxSearchSession", () => ({
+  reserveMapboxSearchSessionAction: mocks.reserveMapboxSearchSessionAction,
 }));
 
 import {
@@ -47,7 +47,6 @@ describe("normalizeMapboxSearchBoxInput", () => {
         action: "suggest",
         q: "Gravel and Grind",
         sessionToken: SESSION_TOKEN,
-        sessionStart: true,
         proximity: { lng: -77.41, lat: 39.414 },
         limit: 4,
       },
@@ -153,13 +152,22 @@ describe("normalizeMapboxSearchBoxInput", () => {
 describe("searchMapboxTemporary", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    mocks.meterUsage.mockReset();
+    mocks.reserveMapboxSearchSessionAction.mockReset();
+    mocks.reserveMapboxSearchSessionAction.mockResolvedValue({
+      allowed: true,
+      newSession: true,
+      suggestionCount: 1,
+      sessionClosed: false,
+      dailyCount: 1,
+    });
     process.env.MAPBOX_SEARCH_BOX_ENABLED = "1";
+    delete process.env.MAPBOX_SEARCH_BOX_DAILY_SESSION_CAP;
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     delete process.env.MAPBOX_SEARCH_BOX_ENABLED;
+    delete process.env.MAPBOX_SEARCH_BOX_DAILY_SESSION_CAP;
   });
 
   it("always bounds suggestions to Frederick County and excludes closed POIs", async () => {
@@ -184,7 +192,6 @@ describe("searchMapboxTemporary", () => {
       action: "suggest",
       q: "coffee and bikes",
       sessionToken: SESSION_TOKEN,
-      sessionStart: true,
       proximity: { lng: -77.4105, lat: 39.4144 },
       limit: 4,
     });
@@ -232,7 +239,10 @@ describe("searchMapboxTemporary", () => {
     expect(requestInit.headers).toEqual({
       Referer: "https://frederickradius.app/",
     });
-    expect(mocks.meterUsage).toHaveBeenCalledWith("mapbox_search_box");
+    expect(mocks.reserveMapboxSearchSessionAction).toHaveBeenCalledWith(
+      { action: "suggest", sessionToken: SESSION_TOKEN },
+      75,
+    );
   });
 
   it("passes bounded route search fields only when supplied", async () => {
@@ -257,7 +267,10 @@ describe("searchMapboxTemporary", () => {
     expect(requestUrl.searchParams.get("route")).toBe("g`miF~s~vM_BcB");
     expect(requestUrl.searchParams.get("route_geometry")).toBe("polyline6");
     expect(requestUrl.searchParams.get("time_deviation")).toBe("7.5");
-    expect(mocks.meterUsage).not.toHaveBeenCalled();
+    expect(mocks.reserveMapboxSearchSessionAction).toHaveBeenCalledWith(
+      { action: "suggest", sessionToken: SESSION_TOKEN },
+      75,
+    );
   });
 
   it("retrieves only the paired county feature and sanitizes its point", async () => {
@@ -321,7 +334,114 @@ describe("searchMapboxTemporary", () => {
     expect(requestUrl.searchParams.get("proximity")).toBe(
       "-77.41,39.414",
     );
-    expect(mocks.meterUsage).not.toHaveBeenCalled();
+    expect(mocks.reserveMapboxSearchSessionAction).toHaveBeenCalledWith(
+      { action: "retrieve", sessionToken: SESSION_TOKEN, mapboxId },
+      75,
+    );
+  });
+
+  it("uses the configured session count and never calls Mapbox when the daily cap is exhausted", async () => {
+    process.env.MAPBOX_SEARCH_BOX_DAILY_SESSION_CAP = "9";
+    mocks.reserveMapboxSearchSessionAction.mockResolvedValue({
+      allowed: false,
+      reason: "daily-cap-reached",
+      dailyCount: 9,
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      searchMapboxTemporary({
+        action: "suggest",
+        q: "coffee",
+        sessionToken: SESSION_TOKEN,
+        proximity: { lng: -77.4105, lat: 39.4144 },
+        limit: 4,
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "daily-cap-reached",
+      retryable: false,
+    });
+
+    expect(mocks.reserveMapboxSearchSessionAction).toHaveBeenCalledWith(
+      { action: "suggest", sessionToken: SESSION_TOKEN },
+      9,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not permit an expired or retrieved UUID to reach Mapbox again", async () => {
+    mocks.reserveMapboxSearchSessionAction.mockResolvedValue({
+      allowed: false,
+      reason: "session-closed",
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      searchMapboxTemporary({
+        action: "retrieve",
+        mapboxId: "mapbox.place.1",
+        sessionToken: SESSION_TOKEN,
+        proximity: { lng: -77.4105, lat: 39.4144 },
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "session-closed",
+      retryable: false,
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("never returns suggestions after the final slot closes the retrieve session", async () => {
+    mocks.reserveMapboxSearchSessionAction.mockResolvedValue({
+      allowed: true,
+      newSession: false,
+      suggestionCount: 50,
+      sessionClosed: true,
+    });
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      suggestions: [{ mapbox_id: "mapbox.place.unopenable", name: "Unsafe" }],
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      searchMapboxTemporary({
+        action: "suggest",
+        q: "coffee",
+        sessionToken: SESSION_TOKEN,
+        proximity: { lng: -77.4105, lat: 39.4144 },
+        limit: 4,
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "session-limit-reached",
+      retryable: false,
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("fails closed before Mapbox when the shared lifecycle ledger is unavailable", async () => {
+    mocks.reserveMapboxSearchSessionAction.mockResolvedValue(null);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      searchMapboxTemporary({
+        action: "suggest",
+        q: "coffee",
+        sessionToken: SESSION_TOKEN,
+        proximity: { lng: -77.4105, lat: 39.4144 },
+        limit: 4,
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "cost-control-unavailable",
+      retryable: true,
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("drops a forged retrieve result outside Frederick County", async () => {

@@ -4,7 +4,7 @@
 > and run the app?" This is the answer — every env var the app reads,
 > WHICH host it belongs in, and why. Walk your dashboards against this.
 > Checked against the active workflows and `process.env.*` reads on
-> 2026-08-02.
+> 2026-08-24.
 >
 > **The #1 gotcha:** there are THREE separate systems, and a key in the
 > wrong one silently does nothing. They do NOT share variables:
@@ -19,7 +19,9 @@
 
 | Var                                           | Host                              | Why it matters                                           | Symptom if missing                                       |
 | --------------------------------------------- | --------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
-| `ANTHROPIC_API_KEY`                           | **GitHub Actions secret**         | Powers the three scheduled website-extraction workflows  | Venue, civic, and business information stops refreshing. |
+| `ANTHROPIC_BUSINESS_INFO_API_KEY`             | **GitHub Data Enrichment secret** | Powers reviewed business-information extraction          | Business-information refreshes fail before model calls.  |
+| `ANTHROPIC_CIVIC_API_KEY`                     | **GitHub Data Enrichment secret** | Powers reviewed municipal civic extraction               | Civic source refreshes fail before model calls.          |
+| `ANTHROPIC_VENUE_EVENTS_API_KEY`              | **GitHub Data Enrichment secret** | Powers reviewed venue-event extraction                   | Venue refreshes fail before model calls.                 |
 | Vercel Firewall rules                         | **Vercel**                        | Edge limits for Ask, paid APIs, signup, and public forms | Paid endpoints lose their shared production guardrail.   |
 | `DATABASE_URL` (or `POSTGRES_URL`)            | **Vercel**                        | Postgres (follows, claims, submissions, push)            | Those features no-op                                     |
 | RLS migration (`drizzle/0007_enable_rls.sql`) | **Supabase → SQL editor**         | Locks the public anon-key door                           | Anyone with the public key can read your tables          |
@@ -31,13 +33,17 @@
 | ---------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `NEXT_PUBLIC_SUPABASE_URL`                                 | Vercel | Auth (magic link)                                                                                                                                                             |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or `_PUBLISHABLE_KEY`)    | Vercel | Auth client                                                                                                                                                                   |
-| `GOOGLE_PLACES_API_KEY`                                    | Vercel | Place photos + enrichment                                                                                                                                                     |
+| `GOOGLE_PLACES_API_KEY`                                    | Vercel | Preserves the existing attributed place-photo proxy. Google place maintenance remains separately blocked behind reviewed platform approval and explicit runtime switches.     |
+| `GOOGLE_PHOTO_DAILY_CAP=1500`                              | Vercel | Bounds the existing private/no-store photo proxy above measured normal use. Same-origin checks, per-minute abuse protection, and the shared daily counter remain in force.     |
 | `HOURS_REFRESH_CRON=1`                                     | Vercel | Runs the paid, six-day rolling hours refresh into Postgres. The seven-day publication boundary remains unchanged; without the cron, stale schedules remain safely withheld.   |
 | `RADIUS_SEARCH_CRON=1`                                     | Vercel | Runs the bounded, idempotent full-text place-index refresh used by Ask Radius.                                                                                                |
+| `RADIUS_SEARCH_SEMANTIC_ENABLED=1` + `RADIUS_SEARCH_EMBEDDING_DAILY_DOCUMENT_LIMIT` | Vercel | Optionally adds scheduled direct-OpenAI vectors behind the shared atomic counter. Leave both off/zero until migration `0017` and its unique index are verified. |
+| `ASK_AI_RUNTIME_ENABLED=1` + `ASK_AI_DAILY_CALL_LIMIT`     | Vercel | Deliberately enables public Ask model calls behind the shared atomic Eastern-day ceiling. Leave off until migration `0017` and its unique index are verified.                 |
+| `ASK_AI_PROVIDER` + its one matching credential            | Vercel | Selects exactly one text provider (`gateway`, `anthropic`, or `openai`). Only an omitted setting defaults to Gateway; blank or unsupported values fail closed, and Radius never waterfalls into another paid provider. |
+| `ASK_RADIUS_AGENT=1`                                       | Vercel | Explicitly enables the multi-step Gateway tool agent for complex requests. Leave at `0` unless its measured answer-quality gain justifies up to five separately reserved turns. |
 | `RADIUS_POSTGIS_SYNC=1`                                    | Vercel | Refreshes the private PostGIS place mirror after migration `0037` is applied and verified. Keep off before then.                                                              |
 | `RADIUS_POSTGIS_NEARBY=shadow`                             | Vercel | Compares PostGIS nearby results after the response without changing user-visible ordering. Promote to `on` only after the mirror audit is current and shadow parity is clean. |
-| `DATA_RETENTION_PRUNE=1`                                   | Vercel | Enables the separately scheduled, bounded 90-day retention worker. Leave unset until a recent Supabase backup is confirmed; the scheduled route is inert without it.          |
-| `BUSINESS_STATUS_CRON=1`                                   | Vercel | Runs the paid rotating closure-status check. The Vercel route reports mismatches; the GitHub data-steward job creates the reviewable snapshot.                                |
+| `DATA_RETENTION_PRUNE=1`                                   | Vercel | Allows an authenticated operator-only bounded 90-day retention run. It is deliberately absent from `vercel.json`; leave unset until a recent Supabase backup is confirmed. |
 | `TICKETMASTER_API_KEY`                                     | Vercel | Concert + Keys-game events                                                                                                                                                    |
 | `BANDSINTOWN_APP_ID`                                       | Vercel | Venue lineups (Bentztown etc.)                                                                                                                                                |
 | `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` + `VAPID_SUBJECT` | Vercel | Web push notifications                                                                                                                                                        |
@@ -49,20 +55,23 @@
 | Var                                           | Host           | Powers                                                                                                                                                   |
 | --------------------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `AIRNOW_API_KEY`                              | Vercel         | Air-quality data                                                                                                                                         |
-| `OPENAI_API_KEY`                              | Vercel         | Adds semantic vectors to the required full-text Ask Radius index and provides a direct text-generation fallback. The local index still works without it. |
+| `OPENAI_API_KEY`                              | Vercel         | Can power text only when `ASK_AI_PROVIDER=openai` and optional vectors only behind their dedicated runtime or scheduled switches and nonzero caps. A key alone activates nothing. |
+| `ASK_AI_RUNTIME_EMBEDDINGS_ENABLED=1`          | Vercel         | Opts visitor-time semantic recall into its own atomic daily embedding cap. Leave off unless measured recall gains justify the spend.                                          |
 | `NPS_API_KEY`                                 | Vercel         | National Park info                                                                                                                                       |
 | `MAPILLARY_TOKEN`                             | Vercel         | Street-level imagery / trash-can layer                                                                                                                   |
 | `PULSEPOINT_ENABLED` + `PULSEPOINT_AGENCY_ID` | Vercel         | Restricted incident feed; enable only after the review recorded in `data/sources.yaml`                                                                   |
 | `FCPS_FEED_URL`, `HOOD_CALENDAR_URL`          | Vercel         | School + Hood College calendars                                                                                                                          |
-| `NWS_USER_AGENT`                              | Vercel         | Weather API courtesy header                                                                                                                              |
 | `SLACK_WEBHOOK_URL`                           | GitHub Actions | Agent failure notifications                                                                                                                              |
 | `KV_REST_API_URL` + `KV_REST_API_TOKEN`       | Vercel         | Adds durable per-bucket application limits. Without it, the app uses a per-instance fallback while Vercel Firewall remains the shared edge guard.        |
 
-Mapbox is temporarily an intentional exception to the environment-variable
-table: `src/lib/mapbox.ts` uses a validated publishable token and ignores the
-dead Vercel value that previously blanked the map. Do not restore
-`NEXT_PUBLIC_MAPBOX_TOKEN` precedence until a replacement is verified against
-map tiles, Static Images, and Isochrone requests.
+Mapbox browser rendering requires `NEXT_PUBLIC_MAPBOX_TOKEN` at build time.
+There is no source-controlled fallback. The token must be publishable (`pk.`),
+restricted to Radius production and one exact stable preview origin (never all
+of `*.vercel.app`), and verified with
+`npm run verify:credentials -- --probe` before deployment. Server APIs require a separate
+`MAPBOX_SERVER_TOKEN`, an API-specific runtime switch, a nonzero bounded daily
+cap, and an available atomic `usage_counters` index before a cache miss can
+reach Mapbox.
 
 ## Feature flags (set to "1"/"on" in Vercel to toggle behavior)
 
@@ -80,8 +89,10 @@ configuration.
 
 | Name                                   | Kind                                           | Why it matters                                                                                                                                                                                                                                                                           |
 | -------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GOOGLE_PLACES_API_KEY`                | Secret                                         | Runs the rotating business-status snapshot, cost-capped enrichment, and manually dispatched photo-attribution backfill.                                                                                                                                                                  |
-| `ANTHROPIC_API_KEY`                    | Secret                                         | Runs the venue, civic, and business-information extraction workflows.                                                                                                                                                                                                                    |
+| `GOOGLE_PLACES_API_KEY`                | Secret                                         | Runs deliberately confirmed, cost-capped enrichment and the manually dispatched photo-attribution backfill. The scheduled hours writer uses the Vercel Production copy.                                                                                                                 |
+| `ANTHROPIC_BUSINESS_INFO_API_KEY`      | Secret in the GitHub `Data Enrichment` environment | Runs the business-information extraction workflow.                                                                                                                                                                                                                                   |
+| `ANTHROPIC_CIVIC_API_KEY`              | Secret in the GitHub `Data Enrichment` environment | Runs the municipal civic extraction workflow.                                                                                                                                                                                                                                        |
+| `ANTHROPIC_VENUE_EVENTS_API_KEY`       | Secret in the GitHub `Data Enrichment` environment | Runs the venue-event extraction workflow.                                                                                                                                                                                                                                            |
 | `FIRECRAWL_API_KEY`                    | Secret in the GitHub `Production` environment  | Runs manual exact-page Source Watch checks. Its weekly schedule is deferred pending the County Connector unchanged-repeat proof. A separate Vercel copy is used only if the documented extraction fallback is deliberately enabled; keep all fallback flags off during the review pilot. |
 | `TAVILY_API_KEY`                       | Secret in the GitHub `Production` environment  | Runs domain-constrained Source Scout discovery profiles. It does not belong in Vercel or browser code.                                                                                                                                                                                   |
 | `APIFY_TOKEN`                          | Secret in the GitHub `APIFY_TOKEN` environment | Runs the exact-page, review-only source-change radar. It does not belong in browser code, and the radar does not use the Vercel copy.                                                                                                                                                    |

@@ -33,11 +33,9 @@ function refreshError(error: string, status: number) {
   );
 }
 
-export async function GET(request?: Request) {
-  const bypassCache = request
-    ? new URL(request.url).searchParams.get("refresh") === "1"
-    : false;
-  if (bypassCache && request) {
+export async function GET(request: Request) {
+  const bypassCache = new URL(request.url).searchParams.get("refresh") === "1";
+  if (bypassCache) {
     if (!isSameOriginRequest(request)) {
       return refreshError("forbidden-origin", 403);
     }

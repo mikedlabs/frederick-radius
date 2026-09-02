@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildPublicDataSnapshot,
+  publicHoursProductHealth,
   publicDataSnapshot,
 } from "@/lib/public-data-snapshot";
 
@@ -127,6 +128,38 @@ describe("public data snapshot", () => {
     });
     expect(snapshot.counts.currentSources.value).toBeNull();
     expect(snapshot.counts.degradedSources.status).toBe("unavailable");
+  });
+
+  it("reports current public hours coverage against the Open Now gate", () => {
+    const snapshot = buildPublicDataSnapshot(
+      RELEASE,
+      [
+        {
+          slug: "fresh",
+          name: "Fresh",
+          is_operational: "operational",
+          hours_verified: true,
+          hours_updated_at: "2026-08-10T12:00:00Z",
+          hours: { mon: [{ open: "09:00", close: "17:00" }] },
+        },
+        {
+          slug: "missing",
+          name: "Missing",
+          is_operational: "operational",
+        },
+      ],
+      new Date("2026-08-11T12:00:00Z"),
+    );
+
+    expect(publicHoursProductHealth(snapshot)).toEqual({
+      status: "degraded",
+      current: 1,
+      expected: 2,
+      coveragePct: 50,
+      target: 2,
+      targetPct: 60,
+      checkedAt: "2026-08-11T12:00:00.000Z",
+    });
   });
 
   it("matches the checked-in promoted release", () => {

@@ -167,7 +167,7 @@ describe("GET /api/cron/runtime-source-health", () => {
     });
   });
 
-  it("returns 503 when every configured runtime source is down", async () => {
+  it("returns a completed degraded report when every configured runtime source is down", async () => {
     mocks.probeFeedEndpoints.mockResolvedValue([
       {
         group: "Traffic",
@@ -207,9 +207,11 @@ describe("GET /api/cron/runtime-source-health", () => {
     const response = await GET(request());
     const body = await response.json();
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-radius-cron-monitor-status")).toBe("error");
     expect(body).toMatchObject({
-      status: "error",
+      status: "degraded",
+      execution: { status: "complete", reason: null },
       readiness: {
         blocking: true,
         reason: "systemic-outage",
@@ -229,6 +231,10 @@ describe("GET /api/cron/runtime-source-health", () => {
     expect(response.status).toBe(503);
     expect(body).toMatchObject({
       status: "error",
+      execution: {
+        status: "failed",
+        reason: "evidence_persistence_incomplete",
+      },
       evidence: { expected: 2, persisted: 1 },
     });
   });

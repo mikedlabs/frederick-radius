@@ -18,7 +18,9 @@ import MotionDisclosure from "@/components/ui/MotionDisclosure";
  * Header matches the app's `.eyebrow` section-label register so a
  * collapsed section reads as native page furniture, not a widget.
  *
- * Children remain server-rendered and mounted so opening never refetches.
+ * Children remain server-rendered and mounted by default so opening never
+ * refetches. Costly browse tails can opt into `mountOnOpen`; those children
+ * mount only after an open preference or a deliberate trigger action.
  * MotionDisclosure gives the reveal spatial continuity and makes the closed
  * panel inert, rather than snapping between display:none and visible.
  *
@@ -34,6 +36,7 @@ export default function CollapsibleSection({
   headingLevel,
   storageKey,
   defaultOpen = false,
+  mountOnOpen = false,
   children,
   className = "",
 }: {
@@ -51,24 +54,39 @@ export default function CollapsibleSection({
   /** localStorage key so the open/closed choice persists per section. */
   storageKey: string;
   defaultOpen?: boolean;
+  /** Defer costly children until this disclosure is opened. Existing sections
+   * keep the server-rendered/mounted default unless they explicitly opt in. */
+  mountOnOpen?: boolean;
   children: ReactNode;
   className?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const [contentMounted, setContentMounted] = useState(
+    defaultOpen || !mountOnOpen,
+  );
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    let storedOpen: boolean | undefined;
     try {
       const stored = window.localStorage.getItem(storageKey);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate stored preference after mount; localStorage isn't readable during SSR
-      if (stored === "true" || stored === "false") setOpen(stored === "true");
+      if (stored === "true" || stored === "false") {
+        storedOpen = stored === "true";
+      }
     } catch {
       // localStorage unavailable — keep defaultOpen
     }
-    setMounted(true);
+    queueMicrotask(() => {
+      if (storedOpen !== undefined) {
+        setOpen(storedOpen);
+        if (storedOpen) setContentMounted(true);
+      }
+      setMounted(true);
+    });
   }, [storageKey]);
 
-  const toggle = () =>
+  const toggle = () => {
+    if (!open && mountOnOpen) setContentMounted(true);
     setOpen((v) => {
       const next = !v;
       try {
@@ -78,6 +96,7 @@ export default function CollapsibleSection({
       }
       return next;
     });
+  };
 
   const contentId = `collapsible-${storageKey.replace(/[^a-z0-9]/gi, "-")}`;
   // When the count is aria-only, fold it into the section's accessible name
@@ -131,7 +150,7 @@ export default function CollapsibleSection({
     >
       {headingLevel === 2 ? <h2>{trigger}</h2> : headingLevel === 3 ? <h3>{trigger}</h3> : trigger}
       <MotionDisclosure id={contentId} open={open} innerClassName="pt-1.5">
-        {children}
+        {contentMounted ? children : null}
       </MotionDisclosure>
     </section>
   );

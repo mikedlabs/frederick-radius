@@ -44,7 +44,12 @@ import {
 import { isAreaCentroid } from "@/lib/events/geo-confidence";
 import { anchorEventToReviewedVenue } from "@/lib/events/venue-resolver";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { meterUsage } from "@/lib/usage-meter";
+import { mapboxDailyUsageCap } from "@/lib/mapbox-budget";
+import { reserveDailyUsage } from "@/lib/usage-meter";
+import {
+  lookupOfficialCountyAddress,
+  type OfficialCountyAddressLookupResult,
+} from "@/lib/ingest/fc-address-lookup";
 
 // ── Pure helpers (spec-covered) ─────────────────────────────────────────
 
@@ -74,8 +79,17 @@ export function looksLikeStreetAddress(s: string | null | undefined): boolean {
  *  variants of the same address must share one cache entry. */
 export function normalizeAddressKey(s: string): string {
   return s
+    .normalize("NFKC")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
+    // Preserve address semantics while collapsing presentation punctuation.
+    // A unit marker affects an official exact match, while an apostrophe is
+    // normally part of the street name rather than a word boundary.
+    .replace(/[‘’]/g, "'")
+    .replace(/#/g, " unit ")
+    .replace(/&/g, " and ")
+    .replace(/\s*-\s*/g, "-")
+    .replace(/[^a-z0-9'-]+/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -125,6 +139,7 @@ export function parseGeocodeResponse(json: unknown): LngLat | null {
 const PROXIMITY = "-77.41,39.41";
 /** A geocode must never hold the (cron-warmed) assembly hostage. */
 const GEOCODE_TIMEOUT_MS = 4_000;
+const OFFICIAL_GEOCODE_TIMEOUT_MS = 3_000;
 
 /**
  * One uncached forward-geocode round trip. THROWS on transient trouble
@@ -135,6 +150,22 @@ const GEOCODE_TIMEOUT_MS = 4_000;
  * app code goes through geocodeAddressInCounty.
  */
 export async function geocodeForwardUncached(q: string): Promise<LngLat | null> {
+  // The cache wrapper calls this function only on a miss. Reserve one
+  // permanent-geocode unit before Mapbox; throwing keeps budget exhaustion or
+  // counter uncertainty out of the 30-day cache while the public caller
+  // continues to fail soft to its existing centroid.
+  const reservation = await reserveDailyUsage(
+    "mapbox_geocode",
+    mapboxDailyUsageCap("permanent_geocode"),
+    1,
+  );
+  if (!reservation) {
+    throw new Error("mapbox-geocode cost control unavailable");
+  }
+  if (!reservation.reserved) {
+    throw new Error("mapbox-geocode daily cap reached");
+  }
+
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), GEOCODE_TIMEOUT_MS);
   try {
@@ -157,7 +188,6 @@ export async function geocodeForwardUncached(q: string): Promise<LngLat | null> 
     // MAPBOX_SERVER_HEADERS is load-bearing: the production token is
     // URL-restricted and Mapbox matches the Referer on ALL APIs, so a
     // server fetch without it 403s in prod while passing local tests.
-    meterUsage("mapbox_geocode");
     const res = await fetch(url, { signal: ctrl.signal, headers: MAPBOX_SERVER_HEADERS });
     if (!res.ok) throw new Error(`mapbox-geocode HTTP ${res.status}`);
     return parseGeocodeResponse(await res.json());
@@ -167,21 +197,77 @@ export async function geocodeForwardUncached(q: string): Promise<LngLat | null> 
 }
 
 const cachedGeocode = unstable_cache(
-  async (addressKey: string, q: string) => {
-    // addressKey exists only to key the cache on the NORMALIZED address,
-    // so punctuation/case variants of one address share an entry.
-    void addressKey;
-    return geocodeForwardUncached(q);
-  },
+  async (normalizedQuery: string) => geocodeForwardUncached(normalizedQuery),
   // Deliberately NOT SHA-pinned, against the repo norm for event caches:
   // a geocode maps an address string to a coordinate and is deploy-
   // independent, so re-paying Mapbox for the whole address set on every
   // deploy buys nothing. Addresses don't move; 30 days is plenty fresh.
   // v2 invalidates coordinates originally fetched without permanent=true, so
   // every retained value is backed by an explicitly permanent request.
-  ["mapbox-geocode-v2"],
+  ["mapbox-geocode-v3"],
   { revalidate: 30 * 24 * 3600 },
 );
+
+const cachedOfficialAddressLookup = unstable_cache(
+  async (normalizedQuery: string) => {
+    const result = await lookupOfficialCountyAddress(normalizedQuery, {
+      timeoutMs: OFFICIAL_GEOCODE_TIMEOUT_MS,
+    });
+    // Exact matches and strict misses are stable public address facts. An
+    // outage or operational kill switch is not, so throw to keep either one
+    // out of the 30-day cache.
+    if (result.status === "unavailable" || result.status === "disabled") {
+      throw new Error(`county-address ${result.status}: ${result.reason}`);
+    }
+    return result;
+  },
+  ["frederick-county-address-geocode-v2"],
+  { revalidate: 30 * 24 * 3600 },
+);
+
+type AddressProviderOptions = {
+  officialLookup?: (
+    query: string,
+  ) => Promise<OfficialCountyAddressLookupResult>;
+  paidLookup?: (query: string) => Promise<LngLat | null>;
+  paidEnabled?: boolean;
+};
+
+/**
+ * Resolve one normalized query through the official County address layer
+ * before considering paid Mapbox. Exported so the provider ordering and
+ * fail-closed behavior can be tested without network or framework caches.
+ */
+export async function resolveAddressCoordinate(
+  query: string,
+  options: AddressProviderOptions = {},
+): Promise<LngLat | null> {
+  // Pass only the canonical address to both cached providers. Next includes
+  // every function argument in the cache key, so passing the raw query as a
+  // second argument would make case and punctuation variants pay twice even
+  // when the first argument was normalized.
+  const normalizedQuery = normalizeAddressKey(query);
+  if (!normalizedQuery) return null;
+
+  const officialLookup =
+    options.officialLookup ??
+    ((value: string) => cachedOfficialAddressLookup(value));
+  try {
+    const official = await officialLookup(normalizedQuery);
+    if (official.status === "match") return official.coordinate;
+  } catch {
+    // A temporary County outage may fall through to the separately enabled,
+    // separately capped paid provider. It must never become a cached miss.
+  }
+
+  const paidEnabled =
+    options.paidEnabled ??
+    (MAPBOX_GEOCODING_ENABLED && Boolean(MAPBOX_SERVER_TOKEN));
+  if (!paidEnabled) return null;
+  const paidLookup =
+    options.paidLookup ?? ((value: string) => cachedGeocode(value));
+  return paidLookup(normalizedQuery);
+}
 
 /**
  * Forward-geocode an address to a Frederick-County coordinate, 30-day
@@ -193,14 +279,9 @@ export async function geocodeAddressInCounty(
   address: string,
   town?: string,
 ): Promise<LngLat | null> {
-  // Token check OUTSIDE the cache: a missing token must not persist a
-  // 30-day null that outlives the token being configured.
-  if (!MAPBOX_GEOCODING_ENABLED || !MAPBOX_SERVER_TOKEN) return null;
   const q = buildGeocodeQuery(address, town);
-  const key = normalizeAddressKey(q);
-  if (!key) return null;
   try {
-    return await cachedGeocode(key, q);
+    return await resolveAddressCoordinate(q);
   } catch {
     return null; // transient upstream failure — uncached, retried next pass
   }
@@ -246,7 +327,6 @@ export async function upgradeEventGeoms(events: EventWithMeta[]): Promise<EventW
   // resolver is deliberately exact/reviewed-only and also stamps the canonical
   // venue slug, so every surface sees one venue identity and one coordinate.
   const anchored = events.map((event) => anchorEventToReviewedVenue(event));
-  if (!MAPBOX_GEOCODING_ENABLED || !MAPBOX_SERVER_TOKEN) return anchored;
 
   // Collect unique geocode candidates (insertion order = event order).
   const wanted = new Map<string, { address: string; town?: string }>();

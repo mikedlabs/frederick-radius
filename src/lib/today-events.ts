@@ -22,6 +22,30 @@ export type TodayEventResponse = {
   partial: boolean;
 };
 
+/**
+ * The Today page is a briefing, not the complete calendar. Its count must
+ * describe the picks actually shown in the briefing so it can never be read
+ * as the total returned by unifiedEvents (the Events board owns that total).
+ */
+export function todayEventPicksMeta({
+  todayPicks,
+  tonightPicks,
+  degraded,
+}: {
+  todayPicks: number;
+  tonightPicks: number;
+  degraded: boolean;
+}): string | undefined {
+  if (todayPicks <= 0) {
+    return degraded ? "Partial calendar coverage" : undefined;
+  }
+  const pickLabel = (count: number) =>
+    `${count} event ${count === 1 ? "pick" : "picks"}`;
+  return `${pickLabel(todayPicks)} today${
+    tonightPicks > 0 ? ` · ${pickLabel(tonightPicks)} tonight` : ""
+  } · Countywide${degraded ? " · Partial coverage" : ""}`;
+}
+
 export function shouldRenderTodayEventSection({
   degraded,
   featurePromoted,

@@ -110,7 +110,7 @@ export function SourceHealthLedger({ rows }: { rows: SourceLedgerRow[] }) {
             : `${problems.length} need attention`}
         </StatusPill>
       }
-      description="Configuration, collection, and publication are tracked separately. A configured adapter is not called available until it has current publication evidence."
+      description="Configuration, collection, and publication applicability are tracked separately. Availability requires current publication evidence unless a bounded on-demand adapter explicitly has no publication step."
     >
       {problems.length === 0 ? (
         <EmptyState tone="positive">

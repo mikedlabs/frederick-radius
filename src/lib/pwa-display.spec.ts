@@ -46,6 +46,12 @@ describe("install prompt policy", () => {
     expect(isInstallPromptSuppressedPath("/ask/breakfast")).toBe(true);
     expect(isInstallPromptSuppressedPath("/places/gravel-and-grind-frederick")).toBe(true);
     expect(isInstallPromptSuppressedPath("/events/alive-at-five")).toBe(true);
+    expect(isInstallPromptSuppressedPath("/fair")).toBe(true);
+    expect(
+      isInstallPromptSuppressedPath(
+        "/moments/great-frederick-fair-2026",
+      ),
+    ).toBe(true);
     expect(isInstallPromptSuppressedPath("/places")).toBe(false);
     // /today flipped to suppressed. It was the ONLY focused surface left
     // unprotected, so the panel opened over the landing shelf ten seconds into

@@ -32,7 +32,11 @@ concurrency:
 jobs:
   steward:
     if: ${{ github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-latest
+    # The generator is trusted-main, read-only, and receives browser-safe
+    # Supabase variables only. Keep publication and PR mutation on the hosted
+    # reusable workflow below so the persistent NAS never receives write
+    # credentials.
+    runs-on: [self-hosted, radius-data]
     timeout-minutes: 60
     permissions:
       contents: read
@@ -82,11 +86,6 @@ jobs:
             exit 1
           fi
           echo "The hours snapshot will use Supabase's read-only anon Data API path."
-
-      # Informational only — the dedicated feed-health.yml job is what
-      # turns a feed outage red. Here we just log it alongside the refresh.
-      - name: Feed health (informational)
-        run: npm run feed:health || true
 
       # Build the accepted provider identity set before reading the live hours
       # and business-status snapshot. Public places-client.json intentionally
@@ -228,7 +227,7 @@ jobs:
             echo "| Hours + business-status snapshot pull | ${{ steps.hours-snapshot.outcome }} |"
             echo ""
             echo "The GitHub hours pull should use browser-safe \`NEXT_PUBLIC_SUPABASE_URL\` and \`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY\` repository variables, not a privileged database secret."
-            echo "A healthy writer still requires Vercel Production to have \`HOURS_REFRESH_CRON=1\`, \`GOOGLE_PLACES_API_KEY\`, \`DATABASE_URL\`, and \`CRON_SECRET\`."
+            echo "A healthy writer still requires reviewed Google authorization, \`GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED=1\`, \`HOURS_REFRESH_CRON=1\`, \`GOOGLE_PLACES_API_KEY\`, \`DATABASE_URL\`, and \`CRON_SECRET\` in Vercel Production."
             echo "Apply \`drizzle/0024_place_hours_refresh.sql\` and \`drizzle/0034_expose_place_hours_refresh_read_only.sql\` in Supabase before enabling the paid Vercel cron and public pull."
             echo "Repository Settings → Actions → General must allow GitHub Actions to create pull requests."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -313,4 +312,3 @@ jobs:
     with:
       branch: ${{ needs.steward-publish.outputs.pr_branch }}
       head_sha: ${{ needs.steward-publish.outputs.pr_head_sha }}
-

@@ -4,14 +4,30 @@ The repository uses a small protected path from reviewed code to production.
 
 ## Pull-request gates
 
-- `ci.yml` runs type, lint, data, unit, build, release-browser, and dependency-chaos checks.
+- `ci.yml` runs type, lint, data, unit, build, release-browser, and dependency-chaos checks from one shared production build on each PR.
 - `style.yml` enforces the public editorial rules.
-- `ux-audit.yml` runs the broader nightly browser audit in bounded production-build shards.
+- `ux-audit.yml` runs the broader browser audit when an owner explicitly dispatches it.
 
-`main` requires `verify`, `Required browser chaos`, and `style-lint`. Do not
-bypass those contexts. Automated data PRs dispatch the same secret-free gates;
-`automated-pr-status-bridge.yml` validates the bot branch and copies the real
-job conclusions to the merge revision evaluated by the ruleset.
+Vercel owns the post-merge build and deployment from `main`. GitHub does not
+rebuild that same reviewed commit a second time. The deployment-status canary
+runs once for each Production promotion; the daily health alert is the single
+external uptime backstop.
+
+`main` requires `verify` and `style-lint`. Do not bypass those contexts.
+Automated data PRs dispatch the same secret-free gates. After `verify` ends,
+`automated-pr-status-bridge.yml` validates the bot branch and the exact paired
+workflow run IDs, then copies the real job conclusions to the merge revision
+evaluated by the ruleset. A six-hour, API-only reconciliation pass fails stale
+missing statuses closed after a whole-workflow cancellation; it never turns a
+missing check into success.
+
+The automated `verify` path is intentionally artifact-specific. The publisher
+and bridge both revalidate an exact allowlisted bot branch, then CI checks the
+release manifest, county/data contracts, source registry, size budget, transit,
+and data-focused tests. It does not pay for typecheck, the full application
+build, Storybook, and browsers when no code or dependency can have changed.
+Vercel still performs the post-merge production build and will retain the prior
+healthy deployment if that build fails.
 
 ## Data automation
 

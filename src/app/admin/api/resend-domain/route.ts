@@ -13,6 +13,7 @@
  * include, bounce MX) — they exist to be published in DNS.
  */
 import { NextResponse, type NextRequest } from "next/server";
+import { requireJsonRequest } from "@/lib/security/admin-request";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,6 +55,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const contentType = requireJsonRequest(req);
+  if (contentType) return contentType;
+
   let body: { action?: string; id?: string };
   try {
     body = (await req.json()) as { action?: string; id?: string };

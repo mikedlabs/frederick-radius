@@ -5,7 +5,8 @@ const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
   isRateLimited: vi.fn(),
   isSameOriginRequest: vi.fn(),
-  meterUsage: vi.fn(),
+  reserveDailyUsage: vi.fn(),
+  runtimeEnabled: vi.fn(),
   routeCache: new Map<string, unknown>(),
 }));
 
@@ -28,6 +29,11 @@ vi.mock("@/lib/mapbox-server", () => ({
   MAPBOX_SERVER_HEADERS: { Referer: "https://frederickradius.app/" },
 }));
 
+vi.mock("@/lib/mapbox-budget", () => ({
+  mapboxDailyUsageCap: () => 250,
+  mapboxRequestRuntimeEnabled: mocks.runtimeEnabled,
+}));
+
 vi.mock("@/lib/origin-check", () => ({
   isRateLimited: mocks.isRateLimited,
   isSameOriginRequest: mocks.isSameOriginRequest,
@@ -43,7 +49,7 @@ vi.mock("@/lib/origin-check", () => ({
 }));
 
 vi.mock("@/lib/usage-meter", () => ({
-  meterUsage: mocks.meterUsage,
+  reserveDailyUsage: mocks.reserveDailyUsage,
 }));
 
 import { GET } from "./route";
@@ -71,6 +77,8 @@ describe("/api/walk-time routed geometry", () => {
     vi.stubGlobal("fetch", mocks.fetch);
     mocks.isSameOriginRequest.mockReturnValue(true);
     mocks.isRateLimited.mockResolvedValue(false);
+    mocks.runtimeEnabled.mockReturnValue(true);
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
   });
 
   it("preserves the legacy response and overview=false by default", async () => {
@@ -100,8 +108,11 @@ describe("/api/walk-time routed geometry", () => {
       expect.any(Object),
     );
     expect(String(mocks.fetch.mock.calls[0]?.[0])).not.toContain("geometries=");
-    expect(mocks.meterUsage).toHaveBeenCalledOnce();
-    expect(mocks.meterUsage).toHaveBeenCalledWith("mapbox_directions");
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledOnce();
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "mapbox_directions",
+      250,
+    );
   });
 
   it("requests simplified GeoJSON and returns compact coordinates on opt-in", async () => {
@@ -136,8 +147,7 @@ describe("/api/walk-time routed geometry", () => {
     const upstream = String(mocks.fetch.mock.calls[0]?.[0]);
     expect(upstream).toContain("overview=simplified");
     expect(upstream).toContain("geometries=geojson");
-    expect(mocks.meterUsage).toHaveBeenCalledOnce();
-    expect(mocks.meterUsage).toHaveBeenCalledWith("mapbox_directions");
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledOnce();
   });
 
   it("keeps timing success fail-soft when optional geometry is unusable", async () => {
@@ -168,7 +178,7 @@ describe("/api/walk-time routed geometry", () => {
 
     expect(response.status).toBe(400);
     expect(mocks.fetch).not.toHaveBeenCalled();
-    expect(mocks.meterUsage).not.toHaveBeenCalled();
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
   });
 
   it("meters an upstream attempt even when Mapbox rejects it", async () => {
@@ -179,8 +189,7 @@ describe("/api/walk-time routed geometry", () => {
       reason: "upstream-429",
     });
     expect(mocks.fetch).toHaveBeenCalledOnce();
-    expect(mocks.meterUsage).toHaveBeenCalledOnce();
-    expect(mocks.meterUsage).toHaveBeenCalledWith("mapbox_directions");
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledOnce();
   });
 
   it("does not remeter a routed leg served from cache", async () => {
@@ -192,7 +201,33 @@ describe("/api/walk-time routed geometry", () => {
     await GET(request());
 
     expect(mocks.fetch).toHaveBeenCalledOnce();
-    expect(mocks.meterUsage).toHaveBeenCalledOnce();
-    expect(mocks.meterUsage).toHaveBeenCalledWith("mapbox_directions");
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [null, "cost-control-unavailable"],
+    [{ reserved: false, count: 250 }, "daily-cap-reached"],
+  ])(
+    "fails closed before Mapbox when the daily reservation is %j",
+    async (reservation, reason) => {
+      mocks.reserveDailyUsage.mockResolvedValue(reservation);
+
+      expect(await (await GET(request())).json()).toEqual({
+        ok: false,
+        reason,
+      });
+      expect(mocks.fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("uses the dedicated runtime breaker before a reservation or fetch", async () => {
+    mocks.runtimeEnabled.mockReturnValue(false);
+
+    expect(await (await GET(request())).json()).toEqual({
+      ok: false,
+      reason: "disabled",
+    });
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
+    expect(mocks.fetch).not.toHaveBeenCalled();
   });
 });

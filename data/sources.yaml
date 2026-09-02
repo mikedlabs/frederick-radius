@@ -21,6 +21,11 @@
 # rows_required is reserved for baseline datasets whose successful normalized
 # output cannot validly be empty. Do not use it for alerts, incidents, events,
 # seasonal schedules, or on-demand work where zero rows can be an honest result.
+# publication_applicability defaults to required. The only supported exception,
+# not_applicable, is for a bounded runtime lookup with on_demand cadence that
+# returns one validated response directly and intentionally creates no durable
+# artifact or bulk mirror. It must never be used to hide a stale, restricted,
+# empty, or unused snapshot.
 # Pipeline rows may set snapshot_cadence when the stored backup is refreshed at
 # a different rate from the upstream or request-time adapter.
 # change_cadence is reserved for feeds whose normalized payload is expected to
@@ -217,18 +222,16 @@ sources:
     refresh_cadence: weekly
     license: Google Places terms, attribution required
     contact: https://developers.google.com/maps
-    status: active
-    collection: workflow
+    status: pending_review
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: scripts/enrich-places.ts
+    transform_file: null
     notes: |
-      Enrichment only. Requires GOOGLE_PLACES_API_KEY. The monthly
-      enrich-places workflow refreshes curated records. The dry-run-first
-      backfill:photo-attributions command fills exact per-photo source
-      metadata in request-capped batches without overwriting ratings, hours,
-      status, or descriptions.
+      Place IDs are retained as provider identifiers. New enrichment, hours,
+      and status refreshes are paused behind a code-level policy hold
+      pending reviewed written authorization and a field-level provenance
+      migration. Credentials alone do not activate the workflow.
 
   - id: wikimedia_commons
     name: Wikimedia Commons
@@ -789,12 +792,18 @@ sources:
     refresh_cadence: on_demand
     license: Google Maps terms
     contact: https://developers.google.com/maps
-    status: scaffold
+    status: pending_review
     last_validated: null
     last_success: null
     schema_file: null
     transform_file: null
-    notes: On demand only, not a batch source. Requires a key.
+    notes: |
+      Optional event-address fallback retained behind the Google Maps Platform
+      policy hold. Calls require reviewed written authorization, the platform
+      runtime switch, GOOGLE_GEOCODING_ENABLED=1, and a dedicated
+      GOOGLE_GEOCODING_API_KEY. The Places key is never a fallback. Successful
+      coordinates have a maximum 30-day cache and the official Frederick
+      County address service is checked first.
 
   - id: google_routes
     name: Google Routes
@@ -805,16 +814,16 @@ sources:
     refresh_cadence: on_demand
     license: Google Maps terms
     contact: https://developers.google.com/maps
-    status: active
-    collection: runtime
+    status: pending_review
     last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: src/lib/integrations/google-routes.ts
+    transform_file: null
     notes: |
-      Active on-demand travel-time adapter used by /api/travel-time.
-      Requires GOOGLE_PLACES_API_KEY with Routes API access and limits each
-      matrix to one origin by at most 25 destinations.
+      On-demand travel-time adapter retained behind a code-level policy hold.
+      It requires reviewed written authorization, the platform and Routes
+      switches, and a dedicated GOOGLE_ROUTES_API_KEY. It never falls back to
+      the Places key and does not persist route results.
 
   - id: md_wzdx
     name: Maryland Work Zone Data Exchange
@@ -1151,6 +1160,32 @@ sources:
       layer is publicly reachable but is not listed in the County Hub catalog.
       An open application is not evidence of approval, construction, or a
       completion date.
+
+  - id: fc_address_points_complete
+    name: Frederick County Address Points Complete
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/Basemap/Addresses/MapServer/1
+    endpoint_type: arcgis_rest
+    format: json
+    refresh_cadence: on_demand
+    license: official public ArcGIS REST service; bounded exact attributed lookup only; no bulk mirror
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    publication_applicability: not_applicable
+    last_validated: 2026-08-23
+    last_success: 2026-08-23
+    schema_file: null
+    transform_file: src/lib/ingest/fc-address-lookup.ts
+    notes: |
+      The County layer exposes active address points, exact street fields,
+      unit fields, edit dates, and point geometry through standardized ArcGIS
+      queries. Radius's adapter requests one exact address at a time, caps the
+      result and response size, asks for WGS84 coordinates, and never mirrors
+      the layer. FREDERICK_COUNTY_GIS_ENABLED=0 stops every lookup and reports
+      the source as intentionally disabled rather than unavailable. Event,
+      scanner-incident, and scanner-hotspot geocoding now checks this official
+      source before any separately enabled paid fallback.
 
   - id: fc_snow_command
     name: Frederick County SnowCommand Routes

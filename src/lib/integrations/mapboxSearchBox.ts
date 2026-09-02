@@ -8,13 +8,15 @@ import {
   MAPBOX_SERVER_HEADERS,
   MAPBOX_SERVER_TOKEN,
 } from "@/lib/mapbox-server";
-import { meterUsage } from "@/lib/usage-meter";
+import { mapboxDailyUsageCap } from "@/lib/mapbox-budget";
+import { reserveMapboxSearchSessionAction } from "@/lib/integrations/mapboxSearchSession";
 
 /**
  * Mapbox Search Box results are licensed for temporary use only. This module
  * deliberately avoids Next caches, database writes, logs, and response fields
- * that the map does not need. Callers must keep the same UUIDv4 session token
- * from suggest through retrieve and discard the result with the UI session.
+ * that the map does not need. Callers keep one UUIDv4 from suggest through one
+ * retrieve, then rotate it. The server independently closes that UUID after
+ * retrieve, 180 seconds, or 50 suggestions.
  */
 
 const SEARCH_BOX_BASE = "https://api.mapbox.com/search/searchbox/v1";
@@ -43,10 +45,6 @@ export type MapboxSearchSuggestInput = {
   action: "suggest";
   q: string;
   sessionToken: string;
-  /** True only for the first successful suggest attempt in this UI session.
-   *  Mapbox bills abandoned suggest-only sessions too, so Radius meters the
-   *  session here instead of waiting for a retrieve that may never happen. */
-  sessionStart?: boolean;
   proximity: MapboxSearchProximity;
   limit: number;
   route?: string;
@@ -110,6 +108,12 @@ export type MapboxSearchBoxResponse =
         | "upstream-timeout"
         | "upstream-rate-limited"
         | "upstream-unavailable"
+        | "cost-control-unavailable"
+        | "daily-cap-reached"
+        | "session-missing"
+        | "session-expired"
+        | "session-closed"
+        | "session-limit-reached"
         | "malformed-upstream"
         | "no-result"
         | "outside-county";
@@ -238,7 +242,6 @@ export function normalizeMapboxSearchBoxInput(
         action,
         q,
         sessionToken,
-        ...(value.sessionStart === true ? { sessionStart: true } : {}),
         proximity,
         limit,
       },
@@ -270,7 +273,6 @@ export function normalizeMapboxSearchBoxInput(
       action,
       q,
       sessionToken,
-      ...(value.sessionStart === true ? { sessionStart: true } : {}),
       proximity,
       limit,
       route,
@@ -494,6 +496,45 @@ export async function searchMapboxTemporary(
   const unavailable = serviceAvailable();
   if (unavailable) return unavailable;
 
+  // The lifecycle row and a new session's daily billing unit move together in
+  // one database transaction. Unknown retrieve requests and expired or closed
+  // UUIDs fail here without contacting Mapbox.
+  const reservation = await reserveMapboxSearchSessionAction(
+    input.action === "retrieve"
+      ? {
+          action: "retrieve",
+          sessionToken: input.sessionToken,
+          mapboxId: input.mapboxId,
+        }
+      : { action: "suggest", sessionToken: input.sessionToken },
+    mapboxDailyUsageCap("search_box_session"),
+  );
+  if (!reservation) {
+    return {
+      ok: false,
+      reason: "cost-control-unavailable",
+      retryable: true,
+    };
+  }
+  if (!reservation.allowed) {
+    return {
+      ok: false,
+      reason: reservation.reason,
+      retryable: false,
+    };
+  }
+  // The lifecycle ledger closes the UUID as soon as the final suggestion slot
+  // is reserved. Do not ask Mapbox for suggestions that this same UUID can no
+  // longer retrieve. The client receives no unusable result and will rotate to
+  // a fresh session for its next attempt.
+  if (input.action === "suggest" && reservation.sessionClosed) {
+    return {
+      ok: false,
+      reason: "session-limit-reached",
+      retryable: false,
+    };
+  }
+
   if (input.action === "suggest") {
     const params = commonParams(input.sessionToken, input.proximity);
     params.set("q", input.q);
@@ -519,10 +560,6 @@ export async function searchMapboxTemporary(
     );
     if (!(upstream instanceof Response)) return upstream;
     if (!upstream.ok) return upstreamFailure(upstream.status);
-    if (input.sessionStart) {
-      meterUsage("mapbox_search_box");
-    }
-
     const payload = await readJsonWithLimit(upstream);
     if (!isRecord(payload) || !Array.isArray(payload.suggestions)) {
       return { ok: false, reason: "malformed-upstream", retryable: true };

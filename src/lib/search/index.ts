@@ -23,6 +23,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { placeHoursTrust, eventTrust, type TrustSignal } from "@/lib/trust";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import { browseSafePhotoUrl } from "@/lib/google-photo-policy";
 
 export type SearchResultType =
   | "place"
@@ -46,13 +47,10 @@ export type SearchResult = {
    */
   trust?: TrustSignal;
   /**
-   * Optional thumbnail URL. Populated server-side for place and event
-   * results so SearchOverlay can render a 32px image instead of the
-   * generic round-icon stamp. When absent (category, municipality,
-   * action, or a place/event without a hero photo) the overlay falls
-   * back to the type's icon. The URL goes straight into <img>; for
-   * places it's the proxied Google Places photo, for events the
-   * event's hero_image.
+   * Optional provider-free thumbnail URL. Populated server-side for place and
+   * event results so SearchOverlay can render a 32px image instead of the
+   * generic round-icon stamp. Paid Google media is intentionally omitted from
+   * this live-search path; the overlay falls back to the type's icon.
    */
   thumbnail?: string;
   /** Place coordinates, so SearchOverlay can show distance when the user has
@@ -709,10 +707,9 @@ function hitToResult(h: SearchHit): SearchResult {
       href: `/places/${p.slug}`,
       badge: cat?.name,
       trust: p.open_status ? placeHoursTrust(p.open_status) : undefined,
-      // First photo from the place's Google photo pipeline. Already
-      // resolved to a proxied or Blob URL in decoratePlace, so the
-      // overlay can render it directly without further work.
-      thumbnail: p.google_photo_url,
+      // Live typeahead runs on each query edit. Keep it on owned/publisher
+      // media so typing cannot fan out into paid Google photo requests.
+      thumbnail: browseSafePhotoUrl(p.hero_image, p.google_photo_url),
       lat: p.geom?.lat,
       lng: p.geom?.lng,
       distance_m: p.distance_m,
@@ -729,7 +726,7 @@ function hitToResult(h: SearchHit): SearchResult {
       href: `/events/${e.slug}`,
       badge: e.category,
       trust: eventTrust(e),
-      thumbnail: e.hero_image,
+      thumbnail: browseSafePhotoUrl(e.hero_image),
     };
   }
   if (h.type === "category") {

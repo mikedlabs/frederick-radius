@@ -75,6 +75,7 @@ import {
 import { mapEventSourcesWithConcurrency } from "@/lib/integrations/event-source-circuit";
 import { rememberServedEvents } from "@/lib/events/served-event-snapshot";
 import { isPromotedDataBuild } from "@/lib/data-release-mode";
+import { cleanFeedText, formatAddress } from "@/lib/format/text";
 
 export type UnifiedEvents = {
   /** Full deduplicated set, BEFORE public/civic laning (the /events page
@@ -227,10 +228,13 @@ function mergeUnifiedEventCards(
 
   const venueCleaned = [...bySlug.values()].map((e) => {
     const v = cleanVenueName(e.venue_name) ?? "";
+    const address = e.address
+      ? formatAddress(cleanFeedText(e.address))
+      : e.address;
     const t = stripFacilityPrefix(e.title);
-    return v === e.venue_name && t === e.title
+    return v === e.venue_name && address === e.address && t === e.title
       ? e
-      : { ...e, venue_name: v, title: t };
+      : { ...e, venue_name: v, address, title: t };
   });
 
   return dedupeCrossSourceShows(
@@ -596,7 +600,7 @@ const cachedAssemble = unstable_cache(
   // corrections ahead of later fetch timestamps from stale live feeds.
   // v31: DFP rows retain WordPress's publisher modification timestamp and a
   // newer structured record can correct the matching curated occurrence.
-  ["unified-events-v31"],
+  ["unified-events-v32"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.

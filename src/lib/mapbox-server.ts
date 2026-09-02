@@ -1,16 +1,15 @@
 import "server-only";
 
-import { MAPBOX_TOKEN } from "@/lib/mapbox";
-
 /**
  * Token used only by server-side Mapbox requests.
  *
- * MAPBOX_SERVER_TOKEN should be a dedicated, least-privilege token. The public
- * fallback preserves Static Images, Directions, and Isochrone while production
- * is migrated; it can be removed after the dedicated token is verified.
+ * MAPBOX_SERVER_TOKEN must be a dedicated, least-privilege access token kept
+ * only in the server environment. The current APIs require no secret account
+ * scopes, so this may be a separate public-scope `pk.` token. It never falls
+ * back to the token bundled in client JavaScript.
  */
 export const MAPBOX_SERVER_TOKEN =
-  process.env.MAPBOX_SERVER_TOKEN?.trim() || MAPBOX_TOKEN;
+  process.env.MAPBOX_SERVER_TOKEN?.trim() ?? "";
 
 /**
  * Forward geocoding is deliberately opt-in. It is enrichment, not a critical
@@ -27,9 +26,8 @@ export const MAPBOX_GEOCODING_ENABLED =
   process.env.CI !== "true";
 
 /**
- * A restricted publishable fallback requires an allowed Referer even when the
- * request originates on the server. A dedicated server token may ignore this
- * header; sending it remains harmless and keeps the fallback operational.
+ * Sending the production Referer remains harmless for a dedicated token and
+ * preserves compatibility with a server token that also carries a URL rule.
  */
 export const MAPBOX_SERVER_HEADERS = {
   Referer: "https://frederickradius.app/",

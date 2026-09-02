@@ -47,6 +47,7 @@ import { GET } from "./route";
 
 const HEALTHY_GEOCODE = {
   fromCache: 1,
+  fromOfficial: 0,
   fromApi: 0,
   failed: 0,
   seeded: 0,

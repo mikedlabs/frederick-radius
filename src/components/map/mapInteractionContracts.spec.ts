@@ -80,7 +80,12 @@ describe("map interaction state contracts", () => {
     const source = readFileSync("src/components/map/AppMap.tsx", "utf8");
 
     expect(source).toContain("const liveRouteQuery");
-    expect(source).toContain("current === liveRouteQuery ? current : liveRouteQuery");
+    expect(source).toContain(
+      "liveRouteQuery !== searchLiveQueryRef.current",
+    );
+    expect(source).toContain("searchLiveQueryRef.current = liveRouteQuery");
+    expect(source).toContain("invalidateTemporaryMapboxRetrieve();");
+    expect(source).toContain("setQ(liveRouteQuery);");
     expect(source).toContain("pendingLocalQueryRef.current = null");
     expect(source).not.toContain("if (!routeQuery) return;");
   });

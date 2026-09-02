@@ -5901,8 +5901,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: #fff;
   background: color-mix(in srgb, #181612 66%, transparent);
   border-radius: 4px;
-  font-size: 7px;
-  line-height: 1;
+  font-size: 12px;
+  line-height: 1.25;
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -6527,6 +6527,19 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     max(18px, env(safe-area-inset-bottom, 0px))
     max(12px, env(safe-area-inset-left, 0px));
 }
+/* Renderer failure changes the dock into a search-only instrument. Preserve a
+   clear lane for it instead of letting a recovery heading or the last result
+   sit underneath the still-useful control. */
+@media (min-width: 1024px) {
+  .dock-host[data-map-error] .map-error-fallback-head {
+    padding-top: 74px;
+  }
+}
+@media (max-width: 1023.98px) {
+  .dock-host[data-map-error] .map-error-fallback .map-list {
+    padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+  }
+}
 @media (max-width: 600px) {
   .map-error-fallback-head {
     align-items: flex-start;
@@ -6637,6 +6650,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   align-items: center;
   gap: 5px;
   font-size: 12px;
+  color: var(--app-ink-2);
+}
+.map-list-category {
   color: var(--app-ink-2);
 }
 .map-list-mid {

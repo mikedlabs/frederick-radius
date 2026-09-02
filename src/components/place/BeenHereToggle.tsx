@@ -15,11 +15,15 @@ export default function BeenHereToggle({ placeSlug, label }: { placeSlug: string
         type="button"
         aria-hidden
         tabIndex={-1}
-        className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium"
-        style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+        className="tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-elevated)",
+          color: "var(--app-ink-2)",
+        }}
       >
-        <Circle className="h-3.5 w-3.5" strokeWidth={1.75} />
-        Been here
+        <Circle className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        Mark as visited
       </button>
     );
   }

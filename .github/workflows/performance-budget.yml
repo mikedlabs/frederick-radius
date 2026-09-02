@@ -1,10 +1,6 @@
 name: Mobile performance budget
 
 on:
-  schedule:
-    # Weekly, off the top of the hour. PRs keep the small resilience browser
-    # gate; this heavier five-route Lighthouse pass runs independently.
-    - cron: "43 9 * * 1"
   workflow_dispatch:
 
 concurrency:
@@ -17,7 +13,7 @@ permissions:
 jobs:
   lighthouse:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -28,31 +24,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build the production app
-        run: npm run build
-        env:
-          NEXT_TELEMETRY_DISABLED: "1"
-
-      - name: Start the production app
-        run: |
-          npm start > /tmp/frederick-radius-performance.log 2>&1 &
-          echo "$!" > /tmp/frederick-radius-performance.pid
-          for attempt in $(seq 1 60); do
-            if curl --fail --silent http://127.0.0.1:3000/today > /dev/null; then
-              exit 0
-            fi
-            sleep 1
-          done
-          tail -100 /tmp/frederick-radius-performance.log
-          exit 1
-        env:
-          NEXT_TELEMETRY_DISABLED: "1"
-
       - name: Enforce key-route mobile budgets
         run: >-
           npm run perf --
-          --url=http://127.0.0.1:3000
-          --label=ci-${GITHUB_SHA::12}
+          --url=https://frederickradius.app
+          --label=production-monitor-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}
+          --audit-code-revision=${GITHUB_SHA}
+          --require-stable-deployment
+          --runs=3
           --enforce
 
       - name: Upload Lighthouse evidence
@@ -61,9 +40,6 @@ jobs:
         with:
           name: mobile-performance-reports
           path: .perf
-          if-no-files-found: ignore
+          include-hidden-files: true
+          if-no-files-found: error
           retention-days: 14
-
-      - name: Show server log on failure
-        if: failure()
-        run: tail -200 /tmp/frederick-radius-performance.log

@@ -3,8 +3,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Flag, TriangleAlert, Star, Info, ExternalLink, CloudSun } from "lucide-react";
 import { CIVIC_MOMENTS, momentBySlug, type MomentItem, type MomentItemKind } from "@/data/civic-moments";
+import FairDayPage from "@/components/fair/FairDayPage";
 import PageBloom from "@/components/ui/PageBloom";
 import { jsonLdScript } from "@/lib/seo/jsonld";
+
+const FAIR_DAY_SLUG = "great-frederick-fair-2026";
 
 /**
  * /moments/[slug] — a curated hub for a big county occasion (the Fourth, the
@@ -24,12 +27,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const m = momentBySlug(slug);
   if (!m) notFound();
   const ogImage = { url: `/api/og?type=moment&slug=${slug}`, width: 1200, height: 630 };
+  const title = slug === FAIR_DAY_SLUG ? "Fair Day | The Great Frederick Fair 2026" : m.title;
+  const description =
+    slug === FAIR_DAY_SLUG
+      ? "An independent Frederick Radius guide to tickets, arrival, the official schedule, and your plan for the 2026 Great Frederick Fair."
+      : m.subtitle;
   return {
-    title: m.title,
-    description: m.subtitle,
+    title,
+    description,
     alternates: { canonical: `/moments/${slug}` },
-    openGraph: { title: m.title, description: m.subtitle, images: [ogImage] },
-    twitter: { card: "summary_large_image", title: m.title, description: m.subtitle, images: [ogImage.url] },
+    openGraph: { title, description, images: [ogImage] },
+    twitter: { card: "summary_large_image", title, description, images: [ogImage.url] },
   };
 }
 
@@ -100,6 +108,10 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
   const m = momentBySlug(slug);
   if (!m) notFound();
 
+  if (slug === FAIR_DAY_SLUG) {
+    return <FairDayPage />;
+  }
+
   return (
     <div className="relative mx-auto max-w-screen-sm space-y-6 pb-10">
       <PageBloom variant="warm-cool" />
@@ -126,6 +138,19 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
         <h1 className="relative mt-2 font-serif font-semibold leading-[1.02] tracking-tight" style={{ color: "var(--app-ink)", fontSize: "clamp(28px, 7vw, 40px)" }}>
           {m.title}
         </h1>
+        {m.disclosure && (
+          <p
+            className="relative mt-3 flex items-start gap-2 rounded-[var(--app-radius-md)] border px-3 py-2.5 text-[12.5px] font-semibold leading-relaxed"
+            style={{
+              borderColor: `color-mix(in srgb, ${m.accent} 38%, var(--app-border))`,
+              background: "var(--app-bg-elevated-solid)",
+              color: "var(--app-ink)",
+            }}
+          >
+            <Info className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: m.accent }} aria-hidden />
+            <span>{m.disclosure}</span>
+          </p>
+        )}
         <p className="relative mt-2 max-w-[40ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           {m.intro}
         </p>

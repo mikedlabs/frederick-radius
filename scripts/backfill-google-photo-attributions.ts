@@ -11,9 +11,9 @@
  *
  * Dry-run by default:
  *   npm run backfill:photo-attributions
- *   npm run backfill:photo-attributions -- --limit 100 --live --confirm
+ *   npm run backfill:photo-attributions -- --live --confirm --limit 100
  *   npm run backfill:photo-attributions -- --resolve-missing-ids --limit 100
- *   npm run backfill:photo-attributions -- --resolve-missing-ids --limit 100 --live --confirm
+ *   npm run backfill:photo-attributions -- --resolve-missing-ids --live --confirm --limit 100
  *
  * `--limit` is a hard request ceiling, not a projection. Every successful run
  * removes those rows from the next batch, so repeated reviewed runs advance
@@ -35,6 +35,12 @@ import {
 } from "@/lib/google-photo-backfill";
 import { publishableGooglePhotoNames } from "@/lib/google-photo-policy";
 import { isGooglePlaceId } from "@/lib/provenance";
+import {
+  assertManualGoogleArgs,
+  createManualGoogleCallBudget,
+  googleCostPreview,
+  parseManualGoogleRun,
+} from "./lib/manual-google-run";
 
 const OUT = new URL(
   "../src/data/places-enrichment.json",
@@ -54,19 +60,14 @@ type ClientPriority = {
   geom?: { lat: number; lng: number };
 };
 
-function numberArg(name: string, fallback: number): number {
-  const index = process.argv.indexOf(name);
-  const value = index >= 0 ? Number(process.argv[index + 1]) : fallback;
-  return Number.isFinite(value) && value > 0
-    ? Math.floor(value)
-    : fallback;
-}
-
 async function main() {
-  const live =
-    process.argv.includes("--live") && process.argv.includes("--confirm");
+  const args = process.argv.slice(2);
+  assertManualGoogleArgs(args, { booleanFlags: ["--resolve-missing-ids"] });
+  const run = parseManualGoogleRun(args, {
+    defaultLimit: 100,
+    maxLimit: 500,
+  });
   const resolveMissingIds = process.argv.includes("--resolve-missing-ids");
-  const limit = Math.min(numberArg("--limit", 100), 500);
   const existing = JSON.parse(
     readFileSync(OUT, "utf8"),
   ) as Record<string, PhotoBackfillRow>;
@@ -104,16 +105,25 @@ async function main() {
           (publicPriority.get(slugA) ?? -1) ||
         slugA.localeCompare(slugB),
     );
-  const batch = candidates.slice(0, limit);
+  const batch = candidates.slice(0, run.limit);
 
   console.log("\nGoogle photo attribution backfill");
   console.log(
     `Mode: ${resolveMissingIds ? "resolve missing Google identities" : "refresh known Google identities"}`,
   );
   console.log(`Eligible public rows: ${candidates.length}`);
-  console.log(`Hard request ceiling: ${limit}`);
+  console.log(`Hard request ceiling: ${run.limit}`);
   console.log(`This batch: ${batch.length}`);
-  if (!live) {
+  console.log(
+    googleCostPreview({
+      calls: batch.length,
+      pricePerThousandUsd: resolveMissingIds ? 32 : 0,
+      sku: resolveMissingIds
+        ? "Text Search Pro"
+        : "Place Details IDs Only (photo metadata; photo media not fetched)",
+    }),
+  );
+  if (run.dryRun) {
     console.log("DRY RUN — no API calls and no files changed.");
     console.log(
       `First ${Math.min(25, batch.length)} candidates: ${batch
@@ -122,7 +132,7 @@ async function main() {
         .join(", ") || "none"}`,
     );
     console.log(
-      "Add --live --confirm after reviewing the request ceiling.\n",
+      "Add --live --confirm --limit N after reviewing the request ceiling.\n",
     );
     return;
   }
@@ -134,7 +144,9 @@ async function main() {
   let updated = 0;
   let missing = 0;
   let unusable = 0;
+  const callBudget = createManualGoogleCallBudget(run.limit);
   for (let index = 0; index < batch.length; index++) {
+    if (!callBudget.reserve()) break;
     const [slug, row, place] = batch[index];
     const details = resolveMissingIds
       ? await resolveAndEnrich(

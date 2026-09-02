@@ -18,6 +18,18 @@ const operationalReady: OperationalReadinessEvidence = {
     feeds: "current",
     eventArchive: "current",
   },
+  searchIndex: {
+    status: "current",
+    expected: 1_570,
+    indexed: 1_570,
+    current: 1_570,
+    missing: 0,
+    stale: 0,
+    retired: 0,
+    embedded: 0,
+    lastDocumentChangeAt: "2026-08-24T12:00:00.000Z",
+    freshnessBasis: "catalog_content_hash",
+  },
 };
 
 const run = (
@@ -116,6 +128,36 @@ describe("public surface release readiness", () => {
     expect(result.surfaces.map).toMatchObject({ status: "partial" });
   });
 
+  it("marks Ask partial for a one-document search gap without holding its catalog fallback", () => {
+    const result = derivePublicReleaseReadiness({
+      database: "reachable",
+      data: "current",
+      operational: {
+        ...operationalReady,
+        searchIndex: {
+          ...operationalReady.searchIndex,
+          status: "degraded",
+          indexed: 1_569,
+          current: 1_569,
+          missing: 1,
+        },
+      },
+    });
+
+    expect(result.status).toBe("partial");
+    expect(result.searchIndex).toMatchObject({
+      expected: 1_570,
+      indexed: 1_569,
+      missing: 1,
+      freshnessBasis: "catalog_content_hash",
+    });
+    expect(result.surfaces.ask).toEqual({
+      status: "partial",
+      reasons: ["search_index_incomplete"],
+    });
+    expect(result.surfaces.today.status).toBe("ready");
+  });
+
   it("reports unobserved operational evidence as partial rather than inventing failure", () => {
     const result = derivePublicReleaseReadiness({
       database: "reachable",
@@ -129,6 +171,18 @@ describe("public surface release readiness", () => {
           dataTruth: "unknown",
         },
         heartbeats: { feeds: "unknown", eventArchive: "unknown" },
+        searchIndex: {
+          ...operationalReady.searchIndex,
+          status: "unknown",
+          expected: null,
+          indexed: null,
+          current: null,
+          missing: null,
+          stale: null,
+          retired: null,
+          embedded: null,
+          lastDocumentChangeAt: null,
+        },
       },
     });
 

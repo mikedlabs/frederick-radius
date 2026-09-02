@@ -105,6 +105,23 @@ jobs:
               lines.push("**Not ready**");
               for (const [k, v] of notReady) lines.push(`- ${k}: ${v}`);
             }
+            const hours = h.products?.hours;
+            if (hours) {
+              lines.push("");
+              lines.push(
+                `**Published current hours:** ${hours.current ?? "?"}/${hours.expected ?? "?"} ` +
+                `(${hours.coveragePct ?? "?"}%; target ${hours.targetPct ?? "?"}%) · ${hours.status ?? "unknown"}`,
+              );
+            }
+            const search = readiness.searchIndex;
+            if (search) {
+              lines.push("");
+              lines.push(
+                `**Local search index:** ${search.current ?? "?"}/${search.expected ?? "?"} current · ` +
+                `${search.missing ?? "?"} missing · ${search.stale ?? "?"} stale · ` +
+                `${search.retired ?? "?"} retired · ${search.status ?? "unknown"}`,
+              );
+            }
             out.push("detail<<EOF");
             out.push(lines.join("\n"));
             out.push("EOF");
@@ -134,7 +151,10 @@ jobs:
           stamp=$(date -u '+%Y-%m-%d %H:%M UTC')
           body=$(printf '%s\n\n%s\n\n_Checked %s. [Run](%s)._\n' "$SUMMARY" "$DETAIL" "$stamp" "$RUN_URL")
 
-          if [ "$STATUS" = "ok" ]; then
+          # /api/health uses "operational" for recovery. The former "ok"
+          # comparison could never match, so a recovered app left the tracking
+          # issue open forever and made the durable alert itself stale.
+          if [ "$STATUS" = "operational" ]; then
             if [ -n "$existing" ]; then
               recovered=$(printf 'Recovered. %s\n\n_Checked %s._\n' "$SUMMARY" "$stamp")
               gh issue comment "$existing" --body "$recovered"

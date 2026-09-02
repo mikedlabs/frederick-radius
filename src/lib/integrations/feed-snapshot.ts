@@ -682,6 +682,7 @@ export type Anomaly = {
     // and the FCPL ingest died mid-run for two months. Each becomes a
     // sampled daily check on the same alert channel.
     | "photo_rot"
+    | "provider_budget_exhausted"
     | "transit_empty"
     | "events_empty"
     | "events_sources_degraded"

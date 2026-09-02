@@ -43,6 +43,7 @@ import {
 } from "@/lib/place-status-overrides";
 import { isHoursFresh } from "@/lib/hours-freshness";
 import { HOURS_REFRESH_CYCLE_DAYS } from "@/lib/hours-refresh-targets";
+import { easternDayKey } from "@/lib/tz";
 import { classifyDescription } from "@/lib/copy-quality";
 import {
   decisionCopyCounts,
@@ -276,7 +277,7 @@ const GATES: Gate[] = [
     audit: "operational status",
     run: () => {
       const entries = Object.entries(MANUAL_PLACE_STATUS_OVERRIDES);
-      const today = new Date().toISOString().slice(0, 10);
+      const today = easternDayKey(new Date());
       const stale = entries.filter(([, override]) =>
         !isManualPlaceStatusReviewCurrent(override),
       );

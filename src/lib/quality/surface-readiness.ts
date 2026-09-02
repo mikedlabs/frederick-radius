@@ -1,5 +1,7 @@
 import type { PublicDatabaseHealth, PublicSourceHealth } from "@/lib/public-health";
 import type { DataHealthPhaseRun } from "@/lib/quality/data-health-phases";
+import type { RadiusSearchIndexHealth } from "@/lib/quality/search-index-health";
+import { UNKNOWN_RADIUS_SEARCH_INDEX_HEALTH } from "@/lib/quality/search-index-health";
 
 export const PUBLIC_SURFACES = ["today", "ask", "map", "events"] as const;
 export type PublicSurface = (typeof PUBLIC_SURFACES)[number];
@@ -36,6 +38,9 @@ export type SurfaceReadinessReason =
   | "hours_schema_unknown"
   | "search_schema_missing"
   | "search_schema_unknown"
+  | "search_index_empty"
+  | "search_index_incomplete"
+  | "search_index_unknown"
   | "event_archive_schema_missing"
   | "event_archive_schema_unknown"
   | "source_health_schema_missing"
@@ -60,12 +65,14 @@ export type PublicReleaseReadiness = {
   status: SurfaceReadinessStatus;
   migrations: MigrationReadiness;
   heartbeats: HeartbeatReadiness;
+  searchIndex: RadiusSearchIndexHealth;
   surfaces: Record<PublicSurface, PublicSurfaceReadiness>;
 };
 
 export type OperationalReadinessEvidence = {
   migrations: Omit<MigrationReadiness, "status">;
   heartbeats: Omit<HeartbeatReadiness, "status">;
+  searchIndex: RadiusSearchIndexHealth;
 };
 
 export const UNKNOWN_OPERATIONAL_READINESS: OperationalReadinessEvidence = {
@@ -80,6 +87,7 @@ export const UNKNOWN_OPERATIONAL_READINESS: OperationalReadinessEvidence = {
     feeds: "unknown",
     eventArchive: "unknown",
   },
+  searchIndex: UNKNOWN_RADIUS_SEARCH_INDEX_HEALTH,
 };
 
 export const READINESS_ACTIVE_RUN_MAX_MS = 2 * 60_000;
@@ -229,6 +237,24 @@ export function derivePublicReleaseReadiness(input: {
     }
   }
 
+  // The schema can exist while the required local index is empty, one row
+  // short, or carrying an older content hash. Ask remains usable through its
+  // deterministic catalog fallback, so this is public partial readiness, not
+  // a release hold. Keep schema and content reasons separate for diagnosis.
+  if (migrations.search === "ready") {
+    const searchReason =
+      input.operational.searchIndex.status === "empty"
+        ? "search_index_empty"
+        : input.operational.searchIndex.status === "degraded"
+          ? "search_index_incomplete"
+          : input.operational.searchIndex.status === "unknown"
+            ? "search_index_unknown"
+            : null;
+    if (searchReason) {
+      addReason(surfaces.ask, "partial", searchReason);
+    }
+  }
+
   const feedReason = heartbeatReason("feed", heartbeats.feeds);
   if (feedReason) {
     const status = BAD_HEARTBEATS.has(heartbeats.feeds) ? "hold" : "partial";
@@ -266,6 +292,7 @@ export function derivePublicReleaseReadiness(input: {
       status: heartbeatSummary(heartbeats),
       ...heartbeats,
     },
+    searchIndex: input.operational.searchIndex,
     surfaces,
   };
 }
