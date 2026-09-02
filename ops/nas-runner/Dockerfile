@@ -2,7 +2,7 @@
 
 FROM ubuntu:24.04
 
-ARG TARGETARCH
+ARG TARGETARCH=amd64
 ARG RUNNER_VERSION=2.337.0
 ARG RUNNER_SHA256=70920811a4f8ad4328818682bca5c6469c1c942fab52448868071d0063816613
 
@@ -25,6 +25,7 @@ RUN apt-get update \
       procps \
       tar \
       tini \
+      unzip \
       util-linux \
     && rm -rf /var/lib/apt/lists/*
 
@@ -45,11 +46,13 @@ RUN curl --fail --show-error --silent --location --retry 5 \
     && rm -rf /var/lib/apt/lists/* \
     && chown -R runner:actions /opt/actions-runner
 
-COPY --chmod=0755 runner-entrypoint.sh /usr/local/bin/runner-entrypoint
+COPY runner-entrypoint.sh /usr/local/bin/runner-entrypoint
+
+RUN chmod 0755 /usr/local/bin/runner-entrypoint
 
 WORKDIR /runner
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=2m --retries=3 \
   CMD test -f /runner/.runner && pgrep -f 'Runner.Listener run' >/dev/null || exit 1
 
-ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/runner-entrypoint"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/bin/bash", "/usr/local/bin/runner-entrypoint"]
