@@ -66,7 +66,32 @@ describe("FeedbackWidget Fair reporting", () => {
       dialog?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]')
         ?.textContent,
     ).toContain("Map or location");
-    expect(dialog?.querySelectorAll('button[aria-pressed]').length).toBe(5);
+    expect(dialog?.querySelectorAll('button[aria-pressed]').length).toBe(6);
+  });
+
+  it("offers a plainly labeled accessibility barrier report", async () => {
+    await act(async () => {
+      window.dispatchEvent(
+        new CustomEvent(OPEN_FEEDBACK_EVENT, {
+          detail: { fairIssue: "access_barrier" },
+        }),
+      );
+    });
+
+    const dialog =
+      document.body.querySelector<HTMLElement>('[role="dialog"]');
+    expect(
+      dialog?.querySelector<HTMLButtonElement>(
+        'button[aria-pressed="true"]',
+      )?.textContent,
+    ).toContain("Accessibility barrier");
+    expect(
+      dialog
+        ?.querySelector<HTMLTextAreaElement>("#fr-feedback-message")
+        ?.getAttribute("placeholder"),
+    ).toBe("Tell us what made the Fair harder to access or use.");
+    expect(dialog?.textContent).toContain("call 911");
+    expect(dialog?.textContent).toContain("not the Fair");
   });
 
   it("makes a Fair category quick to select and keeps email optional", async () => {

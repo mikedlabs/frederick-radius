@@ -279,6 +279,27 @@ describe("buildFeedbackOwnerAlert", () => {
     });
   });
 
+  it("keeps an accessibility barrier distinct in storage and owner alerts", () => {
+    const parsed = parseFeedback({
+      message: "The route from the shuttle drop-off has a blocked curb cut.",
+      pathname: FAIR_FEEDBACK_PATHNAME,
+      fairIssue: "access_barrier",
+      fairContext: "Gate 4A",
+    });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    expect(buildFeedbackRow(parsed.value, "deploy789").payload).toMatchObject({
+      fair_issue: "access_barrier",
+      fair_context: "Gate 4A",
+    });
+    expect(buildFeedbackOwnerAlert(parsed.value)).toEqual({
+      title: "Fair accessibility report",
+      body:
+        "Gate 4A · The route from the shuttle drop-off has a blocked curb cut.",
+    });
+  });
+
   it("keeps generic feedback generic and bounds phone-alert copy", () => {
     const parsed = parseFeedback({
       message: "x".repeat(300),

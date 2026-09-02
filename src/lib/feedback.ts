@@ -25,6 +25,7 @@ export const FAIR_FEEDBACK_REASONS = {
   schedule_change: "Schedule change",
   parking_entry: "Parking or entry",
   restroom_help: "Restroom or family help",
+  access_barrier: "Accessibility barrier",
   other: "Something else",
 } as const;
 
@@ -283,6 +284,7 @@ const FAIR_OWNER_ALERT_TITLES: Record<FairFeedbackReason, string> = {
   schedule_change: "Fair schedule report",
   parking_entry: "Fair parking or entry report",
   restroom_help: "Fair restroom or family report",
+  access_barrier: "Fair accessibility report",
   other: "Fair visitor report",
 };
 

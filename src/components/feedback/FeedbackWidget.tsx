@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { usePathname } from "next/navigation";
 import {
+  Accessibility,
   Baby,
   CalendarDays,
   Car,
@@ -49,6 +50,7 @@ const FAIR_REASON_ICONS: Record<
   schedule_change: CalendarDays,
   parking_entry: Car,
   restroom_help: Baby,
+  access_barrier: Accessibility,
   other: CircleHelp,
 };
 
@@ -57,6 +59,7 @@ const FAIR_MESSAGE_PROMPTS: Record<FairFeedbackReason, string> = {
   schedule_change: "Tell us which time, event, or detail changed.",
   parking_entry: "Tell us what happened while parking or entering.",
   restroom_help: "Tell us what was missing or hard to find.",
+  access_barrier: "Tell us what made the Fair harder to access or use.",
   other: "Tell us what changed or what made Fair Day harder to use.",
 };
 
@@ -375,7 +378,7 @@ export default function FeedbackWidget() {
                             setErrorText("");
                             if (phase === "error") setPhase("idle");
                           }}
-                          className="flex min-h-12 items-center gap-2 rounded-[var(--app-radius-md)] border px-3 py-2.5 text-left text-[13px] font-semibold leading-tight transition-colors last:col-span-2"
+                          className="flex min-h-12 items-center gap-2 rounded-[var(--app-radius-md)] border px-3 py-2.5 text-left text-[13px] font-semibold leading-tight transition-colors"
                           style={{
                             borderColor: selected
                               ? "var(--app-brand)"
