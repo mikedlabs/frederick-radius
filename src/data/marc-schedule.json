@@ -1,10 +1,10 @@
 {
   "source": "https://feeds.mta.maryland.gov/gtfs/marc",
   "feedDate": null,
-  "generatedAt": "2026-08-02",
+  "generatedAt": "2026-09-02",
   "staticFeed": {
     "sourceUrl": "https://feeds.mta.maryland.gov/gtfs/marc",
-    "fetchedOn": "2026-08-02",
+    "fetchedOn": "2026-09-02",
     "serviceWindowStart": "2022-11-14",
     "serviceWindowEnd": "2026-12-31"
   },
