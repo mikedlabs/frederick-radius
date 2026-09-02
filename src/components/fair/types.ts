@@ -60,6 +60,14 @@ export type FairDayExternalGuideView = {
   url: string;
 };
 
+export type FairDayAccessHighlight = {
+  id: string;
+  date: string;
+  title: string;
+  detail: string;
+  answerId: string;
+};
+
 export type FairDayWorkspaceData = {
   fairId: string;
   packRevision: string;
@@ -75,6 +83,7 @@ export type FairDayWorkspaceData = {
   offers: FairDayOfferView[];
   partyOffers: FairPartyOffer[];
   practicalAnswers: FairPracticalAnswer[];
+  accessHighlights: FairDayAccessHighlight[];
   arrivalOptions: FairDayArrivalView[];
   entrySummary: string;
   entryDetail: string;

@@ -294,6 +294,31 @@ describe("FairDayWorkspace app journey", () => {
     ).toHaveLength(1);
   });
 
+  it("promotes the Sunday sensory window into the selected-day journey", async () => {
+    await renderFair();
+
+    expect(container.querySelector("[data-fair-access-highlight]")).toBeNull();
+    await chooseDate("2026-09-20");
+
+    const highlight = container.querySelector<HTMLElement>(
+      "[data-fair-access-highlight]",
+    );
+    expect(highlight?.textContent).toContain(
+      "Sensory-friendly carnival · noon–2 p.m.",
+    );
+    expect(highlight?.textContent).toContain(
+      "whole-ground low-sensory period",
+    );
+
+    await act(async () =>
+      buttonWithText(container, "Open sensory-friendly details").click(),
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(20));
+    expect(document.body.textContent).toContain(
+      "When is the sensory-friendly carnival period?",
+    );
+  });
+
   it("keeps the live ticket recommendation current when an open drawer crosses a known cutoff", async () => {
     const data = buildFairDayWorkspaceData(
       greatFrederickFair2026Pack,

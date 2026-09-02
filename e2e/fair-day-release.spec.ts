@@ -55,6 +55,13 @@ test.describe("Fair Day production release journey", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Plan Sunday at the Fair." }),
     ).toBeVisible();
+    const accessHighlight = page.locator("[data-fair-access-highlight]");
+    await expect(accessHighlight).toContainText(
+      "Sensory-friendly carnival · noon–2 p.m.",
+    );
+    await expect(accessHighlight).toContainText(
+      "does not describe this as a whole-ground low-sensory period",
+    );
 
     await page.getByRole("button", { name: "Access guide", exact: true }).click();
     const accessGuide = page.getByRole("dialog", { name: "Fair help" });

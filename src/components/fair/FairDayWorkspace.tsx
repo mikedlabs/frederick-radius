@@ -23,6 +23,7 @@ import {
   TicketCheck,
   Trash2,
   TriangleAlert,
+  Volume1,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -398,6 +399,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   });
   const selectedArrival =
     data.arrivalOptions.find((option) => option.id === selectedArrivalId) ?? null;
+  const selectedAccessHighlight =
+    data.accessHighlights.find((highlight) => highlight.date === selectedDate) ??
+    null;
 
   useEffect(() => {
     try {
@@ -877,6 +881,66 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             <p className="mt-3 max-w-[40rem] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               Radius connects the official program with tickets, travel, entry, and the things you save, so you can make one plan instead of hunting across separate sites. Your plan stays on this device.
             </p>
+
+            {selectedAccessHighlight ? (
+              <section
+                data-fair-access-highlight
+                aria-labelledby="fair-access-highlight-heading"
+                className="mt-6 overflow-hidden rounded-[var(--app-radius-lg)] border-l-4 p-4 sm:p-5"
+                style={{
+                  borderColor: "var(--app-cool)",
+                  background:
+                    "color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated))",
+                  boxShadow: "var(--app-elev-1), var(--app-edge)",
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full"
+                    style={{
+                      background:
+                        "color-mix(in srgb, var(--app-cool) 13%, var(--app-bg-elevated-solid))",
+                      color: "var(--app-cool)",
+                    }}
+                  >
+                    <Volume1 className="h-5 w-5" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <p
+                      className="text-[12px] font-bold uppercase tracking-[0.11em]"
+                      style={{ color: "var(--app-cool)" }}
+                    >
+                      Sunday access highlight
+                    </p>
+                    <h2
+                      id="fair-access-highlight-heading"
+                      className="mt-1 text-[20px] font-bold leading-tight tracking-[-0.025em]"
+                    >
+                      {selectedAccessHighlight.title}
+                    </h2>
+                  </div>
+                </div>
+                <p
+                  className="mt-3 text-[15px] leading-relaxed"
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  {selectedAccessHighlight.detail}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHelpAnswerId(selectedAccessHighlight.answerId);
+                    setHelpCategory(null);
+                    setHelpOpen(true);
+                  }}
+                  className="tap-44 mt-2 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold underline underline-offset-4"
+                  style={{ color: "var(--app-cool)" }}
+                >
+                  Open sensory-friendly details
+                  <ChevronRight className="h-4 w-4" aria-hidden />
+                </button>
+              </section>
+            ) : null}
 
             <div
               className="mt-7 overflow-hidden rounded-[var(--app-radius-xl)] text-[var(--app-ink-inverse)]"
