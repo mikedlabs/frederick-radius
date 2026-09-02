@@ -1059,6 +1059,12 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             {findView === "map" ? (
               <FairGroundsMap
                 savedStops={mappedPlanStops}
+                programItems={discoveryItems.map((item) => ({
+                  id: item.id,
+                  title: item.title,
+                  timeLabel: item.timeLabel,
+                  placeLabel: item.placeLabel,
+                }))}
                 onBrowseProgram={() => chooseFindView("explore")}
               />
             ) : (

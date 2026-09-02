@@ -49,8 +49,16 @@ export type FairGroundsMapSavedStop = {
   placeLabel: string;
 };
 
+export type FairGroundsMapProgramItem = {
+  id: string;
+  title: string;
+  timeLabel: string;
+  placeLabel: string;
+};
+
 export type FairGroundsMapProps = {
   savedStops: FairGroundsMapSavedStop[];
+  programItems: FairGroundsMapProgramItem[];
   onBrowseProgram: () => void;
 };
 
@@ -159,6 +167,7 @@ function reportMapIssue(feature: FairGroundsMapFeature | null) {
 
 export default function FairGroundsMapInner({
   savedStops,
+  programItems,
   onBrowseProgram,
 }: FairGroundsMapProps) {
   const mapRef = useRef<MapRef | null>(null);
@@ -210,6 +219,19 @@ export default function FairGroundsMapInner({
       }),
     );
   }, [mapData, savedStops]);
+  const programMatches = useMemo(() => {
+    if (!mapData) return new Map<string, FairGroundsMapProgramItem[]>();
+    return new Map(
+      mapData.features.flatMap((feature) => {
+        const matches = programItems.filter((item) =>
+          fairGroundsFeatureMatchesPlace(feature, item.placeLabel),
+        );
+        return matches.length > 0
+          ? ([[feature.properties.id, matches]] as const)
+          : [];
+      }),
+    );
+  }, [mapData, programItems]);
 
   const visibleFeatures = useMemo(
     () =>
@@ -242,15 +264,21 @@ export default function FairGroundsMapInner({
           feature.properties.name,
           fairGroundsMapKindLabel(feature.properties.kind),
           ...feature.properties.scheduleAliases,
+          ...(programMatches.get(feature.properties.id) ?? []).map(
+            (item) => item.title,
+          ),
         ]
           .join(" ")
           .toLocaleLowerCase()
           .includes(normalized),
       )
       .slice(0, 6);
-  }, [mapData, query]);
+  }, [mapData, programMatches, query]);
   const selectedStops = selected
     ? (savedStopMatches.get(selected.properties.id) ?? [])
+    : [];
+  const selectedProgramItems = selected
+    ? (programMatches.get(selected.properties.id) ?? [])
     : [];
   const mappedSavedStopIds = new Set(
     Array.from(savedStopMatches.values()).flatMap((stops) =>
@@ -453,7 +481,7 @@ export default function FairGroundsMapInner({
 
       <div className="relative mt-4">
         <label htmlFor="fair-map-search" className="sr-only">
-          Find a place on the Fair grounds map
+          Find a place or program event on the Fair grounds map
         </label>
         <Search
           className="pointer-events-none absolute left-4 top-1/2 z-10 h-4 w-4 -translate-y-1/2"
@@ -465,7 +493,7 @@ export default function FairGroundsMapInner({
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Find a gate, restroom, barn, or building"
+          placeholder="Find a place or program event"
           autoComplete="off"
           className="tap-44 min-h-12 w-full rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] py-3 pl-11 pr-11 text-[14px] font-semibold outline-none placeholder:font-medium focus-visible:ring-2"
           style={{
@@ -654,6 +682,7 @@ export default function FairGroundsMapInner({
                 const theme = MARKER_THEME[kind];
                 const Icon = markerIcon(kind);
                 const savedMatches = savedStopMatches.get(feature.properties.id) ?? [];
+                const scheduledHere = programMatches.get(feature.properties.id) ?? [];
                 const selectedMarker = selectedId === feature.properties.id;
                 const gateLabel =
                   kind === "gate"
@@ -706,6 +735,19 @@ export default function FairGroundsMapInner({
                           aria-hidden
                         >
                           {savedStops.findIndex((stop) => stop.id === savedMatches[0].id) + 1}
+                        </span>
+                      ) : null}
+                      {scheduledHere.length > 0 ? (
+                        <span
+                          className="absolute bottom-0 left-0 grid h-5 min-w-5 place-items-center rounded-full border px-1 text-[10px] font-bold tabular-nums"
+                          style={{
+                            color: "var(--app-ink)",
+                            background: "var(--app-accent-soft)",
+                            borderColor: "var(--app-bg-elevated-solid)",
+                          }}
+                          aria-hidden
+                        >
+                          {scheduledHere.length}
                         </span>
                       ) : null}
                     </button>
@@ -816,6 +858,37 @@ export default function FairGroundsMapInner({
                   Saved in My Day: {selectedStops.map((stop) => stop.title).join(", ")}
                 </p>
               ) : null}
+              {selectedProgramItems.length > 0 ? (
+                <div
+                  className="mt-3 border-l-2 pl-3"
+                  style={{ borderColor: "var(--app-accent)" }}
+                >
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-[0.1em]"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    On your selected day
+                  </p>
+                  {selectedProgramItems.slice(0, 2).map((item) => (
+                    <p key={item.id} className="mt-1 text-[12px] font-semibold leading-snug">
+                      <span className="tabular-nums" style={{ color: "var(--app-brand-press)" }}>
+                        {item.timeLabel}
+                      </span>{" "}
+                      · {item.title}
+                    </p>
+                  ))}
+                  {selectedProgramItems.length > 2 ? (
+                    <button
+                      type="button"
+                      onClick={onBrowseProgram}
+                      className="tap-44 mt-1 inline-flex min-h-11 items-center text-[11px] font-bold"
+                      style={{ color: "var(--app-cool)" }}
+                    >
+                      See {selectedProgramItems.length - 2} more in Program
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
               <div
                 className="mt-3 flex flex-wrap items-center gap-3 border-t pt-2"
                 style={{ borderColor: "var(--app-border)" }}
@@ -879,6 +952,37 @@ export default function FairGroundsMapInner({
                   Use this mapped landmark to orient yourself. Radius does not infer an indoor entrance or walking route.
                 </p>
               )}
+              {selectedProgramItems.length > 0 ? (
+                <div
+                  className="mt-4 border-l-2 pl-3"
+                  style={{ borderColor: "var(--app-accent)" }}
+                >
+                  <p
+                    className="text-[11px] font-bold uppercase tracking-[0.1em]"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    On your selected day
+                  </p>
+                  {selectedProgramItems.slice(0, 3).map((item) => (
+                    <p key={item.id} className="mt-2 text-[12px] font-semibold leading-snug">
+                      <span className="tabular-nums" style={{ color: "var(--app-brand-press)" }}>
+                        {item.timeLabel}
+                      </span>{" "}
+                      · {item.title}
+                    </p>
+                  ))}
+                  {selectedProgramItems.length > 3 ? (
+                    <button
+                      type="button"
+                      onClick={onBrowseProgram}
+                      className="tap-44 mt-2 inline-flex min-h-11 items-center text-[11px] font-bold"
+                      style={{ color: "var(--app-cool)" }}
+                    >
+                      See {selectedProgramItems.length - 3} more in Program
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
               <a
                 href={selected.properties.sourceUrl}
                 target="_blank"

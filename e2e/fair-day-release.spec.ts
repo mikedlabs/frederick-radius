@@ -109,7 +109,7 @@ test.describe("Fair Day production release journey", () => {
     await expect(fairMap).toBeVisible();
     await expect(
       page.getByRole("searchbox", {
-        name: "Find a place on the Fair grounds map",
+        name: "Find a place or program event on the Fair grounds map",
       }),
     ).toBeVisible();
     await expect(fairMap.locator("canvas")).toBeVisible({ timeout: 15_000 });
@@ -126,13 +126,16 @@ test.describe("Fair Day production release journey", () => {
     );
 
     await page
-      .getByRole("searchbox", { name: "Find a place on the Fair grounds map" })
-      .fill("4-H");
-    await page.getByRole("option", { name: /4-H Building/ }).click();
+      .getByRole("searchbox", {
+        name: "Find a place or program event on the Fair grounds map",
+      })
+      .fill("Homegrown Wineries");
+    await page.getByRole("option", { name: /Commercial Building/ }).click();
     const selectedPlace = page.getByRole("region", {
-      name: "Selected map place: 4-H Building",
+      name: "Selected map place: Commercial Building",
     });
     await expect(selectedPlace).toBeVisible();
+    await expect(selectedPlace).toContainText("On your selected day");
     await expect(
       page.getByRole("button", { name: "Close selected map place" }),
     ).toBeVisible();
