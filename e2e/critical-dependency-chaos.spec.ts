@@ -134,10 +134,25 @@ test.describe("critical surfaces under combined dependency failure", () => {
       name: "Ask or find across Frederick County",
     });
     await expect(primaryFind).toBeVisible();
+    await expect(primaryFind).toHaveAttribute(
+      "data-find-interaction-ready",
+      "true",
+    );
     await primaryFind.click();
+    // The shell opens a synchronous, accessible loading dialog while its
+    // deliberately lazy search workspace downloads. A cold production runner
+    // can keep that fallback visible beyond Playwright's generic five-second
+    // expectation, so first prove the tap was honored, then judge the full
+    // workspace against a bounded cold-load budget.
+    const immediateFindDialog = page.locator("#radius-find-dialog");
+    await expect(immediateFindDialog).toBeVisible();
+    await expect(immediateFindDialog).toHaveAttribute("role", "dialog");
+    await expect(immediateFindDialog).toHaveAccessibleName(
+      /Loading search|What do you need\?/,
+    );
     await expect(
       page.getByRole("dialog", { name: "What do you need?" }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
     await expect(
       page.getByRole("searchbox", {
         name: "Ask or find across Frederick County",
