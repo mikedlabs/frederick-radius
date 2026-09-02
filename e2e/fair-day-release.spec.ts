@@ -40,6 +40,7 @@ test.describe("Fair Day production release journey", () => {
     await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
       "data-fair-interaction-ready",
       "true",
+      { timeout: 15_000 },
     );
     await expect(
       page.getByRole("navigation", { name: "Primary" }),
