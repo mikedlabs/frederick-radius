@@ -137,13 +137,11 @@ export default async function OnNowBand({
       />
       <div className="space-y-4">
         <div key={lead.key}>{lead.node}</div>
-        {/* "Also running today", not "More available today": the page-level
-            disclosure at the bottom is already titled "More for today", and
-            two near-identical "More …" doors on one page read as the same
-            door twice. */}
+        {/* Keep secondary utilities available without making the briefing look
+            like an endless list of equal-weight cards. */}
         {additional.length > 0 ? (
           <CollapsibleSection
-            title="Also running today"
+            title="Other scheduled updates"
             count={additional.length}
             countLabel={additional.length === 1 ? "section" : "sections"}
             storageKey="fr.today.on-now-more"

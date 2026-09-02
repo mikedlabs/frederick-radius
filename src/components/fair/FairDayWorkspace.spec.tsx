@@ -38,6 +38,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).toContain("fairgrounds-night-mike-d-960.jpg");
     expect(html).toContain("fairgrounds-night-mike-d-1920.jpg");
     expect(html).toContain('href="/today"');
+    expect(html).toContain("instead of hunting across separate sites");
   });
 
   it("renders one app panel instead of the old long scrolling document", () => {

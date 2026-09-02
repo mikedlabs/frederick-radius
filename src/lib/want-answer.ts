@@ -12,7 +12,12 @@ import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
 import { MEALS, isMealKey, matchMeal } from "@/lib/meal";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { knownFor } from "@/lib/cuisine";
-import { formatHoursLine, getOpenStatus, type OpenStatus } from "@/lib/hours";
+import {
+  formatHoursLine,
+  formatTime,
+  getOpenStatus,
+  type OpenStatus,
+} from "@/lib/hours";
 import { formatDistance, haversineMeters } from "@/lib/geo";
 import { mayAssertOpenState } from "@/lib/hours-freshness";
 import { mayAssertNoneOpen } from "@/lib/hours-availability";
@@ -24,7 +29,11 @@ import {
   keepOneLocationPerChain,
   ratingSignal,
 } from "@/lib/category-ranking";
-import { isLikelyOpenNow } from "@/data/reliable-open-windows";
+import {
+  isLikelyOpenNow,
+  openingSoonFromStatus,
+  reliableOpeningSoon,
+} from "@/data/reliable-open-windows";
 import { mayUseLikelyOpenFallback } from "@/lib/likely-open";
 import {
   compareDecisionEvaluations,
@@ -90,8 +99,11 @@ export type WantRow = {
     label: string;
     href: string;
   };
-  /** Present when this row is being used as a current-availability answer. */
+  /** Strength of the hours evidence behind this row's availability statement. */
   confidence?: "confirmed" | "likely";
+  /** Present only for the bounded opening-soon lane. This is structured so a
+   * client can place the transition without parsing user-facing copy. */
+  opensInMinutes?: number;
   /** Real routed travel context, added only when Radius has an explicit
    *  device location and Mapbox Matrix answers within the request budget.
    *  `distance` remains the compact display line so older clients degrade
@@ -112,6 +124,9 @@ export type WantAnswer = {
   /** Complete open-now set for category tools that need an honest filter.
    *  Included only for breweries so ordinary Today answers stay compact. */
   open?: WantRow[];
+  /** One useful same-day transition within the next hour. Confirmed schedules
+   * win; the conservative curated fallback is always labeled likely. */
+  soon?: WantRow | null;
   later: WantRow[];
   /** How many more open-later places fold behind the "later" preview. */
   laterMore: number;
@@ -379,6 +394,73 @@ export function partitionWant(candidates: WantCandidate[]): {
   return { open, later, other, total: candidates.length };
 }
 
+export type WantOpeningSoonCandidate = {
+  candidate: WantCandidate;
+  opensAt: string;
+  minutesUntil: number;
+  confidence: "confirmed" | "likely";
+};
+
+/**
+ * Select one opening transition without making a provider call. Fresh
+ * verified hours always outrank the curated fallback, even when the fallback
+ * opens a few minutes earlier. Within a confidence tier, the soonest opening
+ * wins; intent fit, local curation, proximity, and input order break ties.
+ */
+export function selectOpeningSoonCandidate(
+  candidates: readonly WantCandidate[],
+  now: Date,
+): WantOpeningSoonCandidate | null {
+  const compare = (
+    a: { candidate: WantCandidate; minutesUntil: number; index: number },
+    b: { candidate: WantCandidate; minutesUntil: number; index: number },
+  ) =>
+    a.minutesUntil - b.minutesUntil ||
+    (b.candidate.intent_fit_tier ?? 0) -
+      (a.candidate.intent_fit_tier ?? 0) ||
+    Number(Boolean(b.candidate.local_favorite)) -
+      Number(Boolean(a.candidate.local_favorite)) ||
+    (a.candidate.distance_m ?? Infinity) -
+      (b.candidate.distance_m ?? Infinity) ||
+    b.candidate.feature_score - a.candidate.feature_score ||
+    a.index - b.index;
+  const confirmed = candidates
+    .map((candidate, index) => {
+      const timing = openingSoonFromStatus(candidate.open_status, now);
+      return timing
+        ? { candidate, index, ...timing, confidence: "confirmed" as const }
+        : null;
+    })
+    .filter((match): match is NonNullable<typeof match> => Boolean(match))
+    .sort(compare)[0];
+  if (confirmed) {
+    return {
+      candidate: confirmed.candidate,
+      opensAt: confirmed.opensAt,
+      minutesUntil: confirmed.minutesUntil,
+      confidence: confirmed.confidence,
+    };
+  }
+
+  const likely = candidates
+    .map((candidate, index) => {
+      if (!mayUseLikelyOpenFallback(candidate.open_status)) return null;
+      const timing = reliableOpeningSoon(candidate.slug, now);
+      return timing
+        ? { candidate, index, ...timing, confidence: "likely" as const }
+        : null;
+    })
+    .filter((match): match is NonNullable<typeof match> => Boolean(match))
+    .sort(compare)[0];
+  if (!likely) return null;
+  return {
+    candidate: likely.candidate,
+    opensAt: likely.opensAt,
+    minutesUntil: likely.minutesUntil,
+    confidence: likely.confidence,
+  };
+}
+
 const ALSO_MAX = 4;
 const LATER_PREVIEW = 3;
 const NOTABLE_MAX = 6;
@@ -413,6 +495,22 @@ function toMovieRow(
           href,
         }
       : undefined,
+  };
+}
+
+function toOpeningSoonRow(
+  match: WantOpeningSoonCandidate,
+  reasons: readonly DecisionReason[] = [],
+): WantRow {
+  const row = toRow(match.candidate, false, match.confidence, reasons);
+  const time = formatTime(match.opensAt);
+  return {
+    ...row,
+    fact:
+      match.confidence === "confirmed"
+        ? `Opens soon · ${time}`
+        : `Likely opens at ${time} · check hours`,
+    opensInMinutes: match.minutesUntil,
   };
 }
 
@@ -842,6 +940,16 @@ export function buildWantAnswer(
     requestedRankingMode === "best-fit"
       ? false
       : availability.mayAssertNoneOpen;
+  const openingSoonMatch =
+    requestedRankingMode === "best-fit" || want.availability === "not-applicable"
+      ? null
+      : selectOpeningSoonCandidate([...later, ...other], now);
+  const openingSoon = openingSoonMatch
+    ? toOpeningSoonRow(
+        openingSoonMatch,
+        reasonsFor(openingSoonMatch.candidate),
+      )
+    : null;
 
   // "Movies" is not an open-now storefront question. Cinema hours do not
   // answer which films are playing, and most theaters do not publish useful
@@ -860,6 +968,7 @@ export function buildWantAnswer(
       also: ranked
         .slice(1, ALSO_MAX + 1)
         .map((candidate) => toMovieRow(candidate, preciseOrigin)),
+      soon: null,
       later: [],
       laterMore: 0,
       notable: [],
@@ -880,7 +989,9 @@ export function buildWantAnswer(
     const best =
       requestedRankingMode === "best-fit"
         ? rankBestFit(candidates, preciseOrigin)
-        : availability.current;
+        : availability.current.filter(
+            (candidate) => candidate.slug !== openingSoon?.slug,
+          );
     // Thin hours coverage can move an ordinary right-now request into this
     // best-fit branch. Keep the same short-answer diversity rule used by the
     // open-now branch so one chain cannot take the hero and repeat in the
@@ -935,6 +1046,7 @@ export function buildWantAnswer(
       hero: diverseBest[0] ? rowForBestFit(diverseBest[0]) : null,
       also: diverseBest.slice(1, ALSO_MAX + 1).map(rowForBestFit),
       open: breweryCurrent,
+      soon: openingSoon,
       later:
         requestedRankingMode === "best-fit"
           ? []
@@ -1044,6 +1156,7 @@ export function buildWantAnswer(
             ),
           )
         : undefined,
+    soon: openingSoon,
     later: later.slice(0, LATER_PREVIEW).map((c) => toRow(c, true)),
     laterMore: Math.max(0, later.length - LATER_PREVIEW),
     notable,

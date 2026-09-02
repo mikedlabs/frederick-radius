@@ -36,6 +36,36 @@ describe("Today decision hierarchy", () => {
     expect(renderedPage).not.toContain("<WeatherNeeds");
   });
 
+  it("keeps alerts first, identifies Today, then gives the Fair one campaign slot", () => {
+    const alerts = renderedPage.indexOf("<CivicAlerts />");
+    const fair = renderedPage.indexOf("<TodayFairFeature");
+    const masthead = renderedPage.indexOf("{frame.title}");
+    const weather = renderedPage.indexOf("<SkyHero");
+
+    expect(masthead).toBeGreaterThan(alerts);
+    expect(fair).toBeGreaterThan(masthead);
+    expect(weather).toBeGreaterThan(fair);
+    expect(renderedPage).toContain("fairPromotionPhase ? (");
+    expect(renderedPage).toContain(": civicMoment ? (");
+    expect(renderedPage.match(/<TodayFairFeature\b/g)).toHaveLength(1);
+  });
+
+  it("gives each part of the briefing one purpose and preserves an overlapping civic moment", () => {
+    const decide = renderedPage.indexOf('label="Decide now"');
+    const follow = renderedPage.indexOf('label="Follow the day"');
+    const plan = renderedPage.indexOf('label="Plan the rest"');
+    const more = renderedPage.indexOf('title="Local guides and saved places"');
+
+    expect(decide).toBeGreaterThan(-1);
+    expect(follow).toBeGreaterThan(decide);
+    expect(plan).toBeGreaterThan(follow);
+    expect(more).toBeGreaterThan(plan);
+    expect(renderedPage).toContain(
+      "civicMoment.slug !== TODAY_FAIR_PROMOTION_SLUG",
+    );
+    expect(renderedPage.match(/<MomentSpotlight\b/g)).toHaveLength(2);
+  });
+
   it("keeps the town-aware place answer mounted instead of replacing it with an event", () => {
     const decisionStart = todayPage.indexOf("const decisionLead =");
     const decisionEnd = todayPage.indexOf(
@@ -84,7 +114,9 @@ describe("Today decision hierarchy", () => {
   });
 
   it("keeps low-value repeated discovery rails off the briefing", () => {
-    const disclosureStart = todayPage.indexOf('title="More for today"');
+    const disclosureStart = todayPage.indexOf(
+      'title="Local guides and saved places"',
+    );
     const disclosureEnd = todayPage.indexOf(
       "</CollapsibleSection>",
       disclosureStart,

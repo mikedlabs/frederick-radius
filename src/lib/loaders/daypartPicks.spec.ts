@@ -86,6 +86,28 @@ describe("buildDaypartRows", () => {
     expect(coffee?.picks[0]?.name).not.toMatch(/\b(?:starbucks|dunkin'?|wawa)\b/i);
   });
 
+  it("surfaces Gravel & Grind as a likely near-term opening, not an open pick", () => {
+    const rows = buildDaypartRows(new Date("2026-09-02T11:13:00.000Z"));
+    const coffee = rows.find((row) => row.category === "coffee");
+
+    expect(coffee?.openingSoon).toMatchObject({
+      slug: "gravel-and-grind-frederick",
+      name: "Gravel & Grind",
+      confidence: "likely",
+      fact: "Likely opens at 8am · check hours",
+    });
+    expect(coffee?.picks.map((pick) => pick.slug)).not.toContain(
+      "gravel-and-grind-frederick",
+    );
+  });
+
+  it("does not create an opening-soon lane outside the next hour", () => {
+    const rows = buildDaypartRows(new Date("2026-09-02T10:59:00.000Z"));
+    const coffee = rows.find((row) => row.category === "coffee");
+
+    expect(coffee?.openingSoon?.slug).not.toBe("gravel-and-grind-frederick");
+  });
+
   it("does not spend a short coffee shelf on duplicate chain locations", () => {
     for (const hour of [8, 12, 17, 21]) {
       const rows = buildDaypartRows(

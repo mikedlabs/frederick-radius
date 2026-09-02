@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:357fbc55940afe40cee5e24fc1a2bf9a38ede9ba265038890af71e4c854ec87a",
+  "data_version": "sha256:cf81019591f057e5052abc7d5fd3456923a3c5612e7e6e644512f095da803952",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-09-02T04:26:42.878Z",
+      "promoted_at": "2026-09-02T11:43:50.342Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -144,9 +144,9 @@
         },
         {
           "path": "src/data/reliable-open-windows.ts",
-          "sha256": "a34b9a00d690548cabc71962923ad0c221221a5db615e5d5d610eb6f4792a9a3",
+          "sha256": "d974786c064b85423edded873f59449ebbf07a45fd0414f9e087b99bcad028ea",
           "records": null,
-          "bytes": 4214
+          "bytes": 6759
         },
         {
           "path": "src/lib/relevance.ts",

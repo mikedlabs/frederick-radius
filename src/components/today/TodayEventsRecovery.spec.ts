@@ -38,9 +38,10 @@ describe("TodayEventsRecoveryView", () => {
       createElement(TodayEventsRecoveryView, { response: null }),
     );
 
-    expect(html).toContain("Radius is checking the current event board.");
+    expect(html).toContain("Updating today&#x27;s event picks");
     expect(html).not.toContain("No events are on the calendar");
     expect(html).toContain('href="/events"');
+    expect(html).not.toContain("Refreshing current picks");
   });
 
   it("names a failed recovery instead of looking stuck", () => {
@@ -51,8 +52,8 @@ describe("TodayEventsRecoveryView", () => {
       }),
     );
 
-    expect(html).toContain("Current event picks could not load here.");
-    expect(html).not.toContain("Radius is checking the current event board.");
+    expect(html).toContain("Event picks are unavailable here");
+    expect(html).not.toContain("Updating today&#x27;s event picks");
   });
 
   it("distinguishes a healthy empty shortlist from a failed archive read", () => {
@@ -62,9 +63,8 @@ describe("TodayEventsRecoveryView", () => {
       }),
     );
 
-    expect(html).toContain("No event picks");
-    expect(html).toContain("No event picks are available for this Today brief.");
-    expect(html).not.toContain("Current picks unavailable");
+    expect(html).toContain("No picks in this brief");
+    expect(html).not.toContain("Event picks are unavailable here");
   });
 
   it("keeps partial coverage explicit when usable rows survive", () => {
