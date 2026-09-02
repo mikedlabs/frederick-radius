@@ -16,7 +16,12 @@ export function isFairDayPath(pathname: string): boolean {
     normalized === FAIR_DAY_CANONICAL_PATH;
 }
 
-/** Fair Day keeps the global shell but does not warm unrelated app surfaces. */
+/** Fair Day owns a dedicated task shell instead of inheriting the site chrome. */
+export function shouldShowGlobalAppChrome(pathname: string): boolean {
+  return !isFairDayPath(pathname);
+}
+
+/** Fair Day does not warm unrelated app surfaces. */
 export function shouldPrefetchGlobalNavigation(pathname: string): boolean {
   return !isFairDayPath(pathname);
 }

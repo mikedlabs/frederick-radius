@@ -51,6 +51,11 @@ describe("buildFairDayWorkspaceData", () => {
         )
         .every((item) => item.timeLabel === "Times listed in item"),
     ).toBe(true);
+    const kidZone = data.scheduleItems.find((item) =>
+      item.sourceItem.text.includes("gffair.com/free"),
+    );
+    expect(kidZone?.title).toBe("Kid Zone: Free fun for all ages!");
+    expect(kidZone?.detail).toContain("gffair.com/free");
   });
 
   it("keeps county Transit and the Fair parking shuttle as separate facts", () => {

@@ -6,6 +6,7 @@ import {
   isFairDayPath,
   shouldPostAutomaticActivity,
   shouldPrefetchGlobalNavigation,
+  shouldShowGlobalAppChrome,
 } from "./route-policy";
 
 describe("Fair Day route policy", () => {
@@ -18,7 +19,15 @@ describe("Fair Day route policy", () => {
     expect(isFairDayPath("/fairgrounds")).toBe(false);
   });
 
-  it("suppresses automatic hot-path work without hiding normal navigation", () => {
+  it("gives both Fair entrances a dedicated shell", () => {
+    for (const pathname of [FAIR_DAY_SHORT_PATH, FAIR_DAY_CANONICAL_PATH]) {
+      expect(shouldShowGlobalAppChrome(pathname)).toBe(false);
+    }
+    expect(shouldShowGlobalAppChrome("/today")).toBe(true);
+    expect(shouldShowGlobalAppChrome("/moments/in-the-street-2026")).toBe(true);
+  });
+
+  it("suppresses automatic hot-path work", () => {
     for (const pathname of [FAIR_DAY_SHORT_PATH, FAIR_DAY_CANONICAL_PATH]) {
       expect(shouldPostAutomaticActivity(pathname)).toBe(false);
       expect(shouldPrefetchGlobalNavigation(pathname)).toBe(false);

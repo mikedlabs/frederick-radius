@@ -5,6 +5,7 @@ import {
   addFairPlanItem,
   createFairPlan,
   moveFairPlanItem,
+  moveFairPlanItemWithinDay,
   numberedFairPlanSteps,
   parseFairPlanText,
   readFairPlan,
@@ -72,6 +73,37 @@ describe("device-local Fair plan", () => {
     plan = removeFairPlanItem(plan, second.id, "2026-09-01T12:05:00Z");
     expect(numberedFairPlanSteps(plan)).toMatchObject([
       { number: 1, scheduleItemId: first.id },
+    ]);
+  });
+
+  it("reorders stops within one Fair day without crossing another day", () => {
+    const sundayFirst = item("sunday-first");
+    const friday = {
+      ...item("friday"),
+      id: "schedule-2026-09-18-friday",
+      dayId: "day-2026-09-18",
+      fairDate: "2026-09-18",
+    };
+    const sundaySecond = item("sunday-second");
+    let plan = addFairPlanItem(
+      emptyPlan(),
+      sundayFirst,
+      "2026-09-01T12:01:00Z",
+    );
+    plan = addFairPlanItem(plan, friday, "2026-09-01T12:02:00Z");
+    plan = addFairPlanItem(plan, sundaySecond, "2026-09-01T12:03:00Z");
+
+    plan = moveFairPlanItemWithinDay(
+      plan,
+      sundaySecond.id,
+      -1,
+      "2026-09-01T12:04:00Z",
+    );
+
+    expect(plan.steps.map((step) => step.scheduleItemId)).toEqual([
+      sundaySecond.id,
+      friday.id,
+      sundayFirst.id,
     ]);
   });
 
