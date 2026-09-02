@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const todayPage = readFileSync("src/app/(app)/today/page.tsx", "utf8");
+const globalCss = readFileSync("src/app/globals.css", "utf8");
 
 describe("Today decision hierarchy", () => {
   const renderedPage = todayPage.slice(todayPage.indexOf("<EventSheetBoundary"));
@@ -34,6 +35,36 @@ describe("Today decision hierarchy", () => {
   it("does not stack a second weather-safety panel below the active alert", () => {
     expect(renderedPage).toContain("<CivicAlerts />");
     expect(renderedPage).not.toContain("<WeatherNeeds");
+  });
+
+  it("keeps alerts first, identifies Today, then gives the Fair one campaign slot", () => {
+    const alerts = renderedPage.indexOf("<CivicAlerts />");
+    const fair = renderedPage.indexOf("<TodayFairFeature");
+    const masthead = renderedPage.indexOf("{frame.title}");
+    const weather = renderedPage.indexOf("<SkyHero");
+
+    expect(masthead).toBeGreaterThan(alerts);
+    expect(fair).toBeGreaterThan(masthead);
+    expect(weather).toBeGreaterThan(fair);
+    expect(renderedPage).toContain("fairPromotionPhase ? (");
+    expect(renderedPage).toContain(": civicMoment ? (");
+    expect(renderedPage.match(/<TodayFairFeature\b/g)).toHaveLength(1);
+  });
+
+  it("gives each part of the briefing one purpose and preserves an overlapping civic moment", () => {
+    const decide = renderedPage.indexOf('label="Decide now"');
+    const follow = renderedPage.indexOf('label="Follow the day"');
+    const plan = renderedPage.indexOf('label="Plan the rest"');
+    const more = renderedPage.indexOf('title="Local guides and saved places"');
+
+    expect(decide).toBeGreaterThan(-1);
+    expect(follow).toBeGreaterThan(decide);
+    expect(plan).toBeGreaterThan(follow);
+    expect(more).toBeGreaterThan(plan);
+    expect(renderedPage).toContain(
+      "civicMoment.slug !== TODAY_FAIR_PROMOTION_SLUG",
+    );
+    expect(renderedPage.match(/<MomentSpotlight\b/g)).toHaveLength(2);
   });
 
   it("keeps the town-aware place answer mounted instead of replacing it with an event", () => {
@@ -78,13 +109,24 @@ describe("Today decision hierarchy", () => {
     );
   });
 
+  it("hides the optional plan chapter when every time-gated child is empty", () => {
+    expect(todayPage).toContain('className="today-plan-rest mt-8"');
+    expect(globalCss).toContain(
+      ".today-plan-rest:not(:has([data-today-plan-rest-content]))",
+    );
+    expect(todayPage).toContain("<WeatherSafeGoldenHour");
+    expect(todayPage).toContain("<TomorrowPreview");
+  });
+
   it("renders the location-aware DaypartNeeds implementation once and removes its lower duplicate", () => {
     expect(todayPage.match(/<DaypartNeeds\b/g)).toHaveLength(1);
     expect(todayPage).not.toContain('label="Right now"');
   });
 
   it("keeps low-value repeated discovery rails off the briefing", () => {
-    const disclosureStart = todayPage.indexOf('title="More for today"');
+    const disclosureStart = todayPage.indexOf(
+      'title="Local guides and saved places"',
+    );
     const disclosureEnd = todayPage.indexOf(
       "</CollapsibleSection>",
       disclosureStart,

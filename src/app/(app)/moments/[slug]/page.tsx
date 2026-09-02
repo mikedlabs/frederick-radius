@@ -26,11 +26,25 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const m = momentBySlug(slug);
   if (!m) notFound();
-  const ogImage = { url: `/api/og?type=moment&slug=${slug}`, width: 1200, height: 630 };
+  // The Fair has a distinctive owned photograph, so a shared link should lead
+  // with the actual experience instead of the generic civic-moment card. Other
+  // moments keep the generated field-guide artwork.
+  const ogImage = slug === FAIR_DAY_SLUG
+    ? {
+        url: "/images/fair/fairgrounds-night-mike-d-1920.jpg",
+        width: 1920,
+        height: 1080,
+        alt: "The Great Frederick Fairgrounds glowing at night, seen from above.",
+      }
+    : {
+        url: `/api/og?type=moment&slug=${slug}`,
+        width: 1200,
+        height: 630,
+      };
   const title = slug === FAIR_DAY_SLUG ? "Fair Day | The Great Frederick Fair 2026" : m.title;
   const description =
     slug === FAIR_DAY_SLUG
-      ? "An independent Frederick Radius guide to tickets, arrival, the official schedule, and your plan for the 2026 Great Frederick Fair."
+      ? "Plan tickets, arrival, the official schedule, and what you do not want to miss in one independent Frederick Radius guide."
       : m.subtitle;
   return {
     title,

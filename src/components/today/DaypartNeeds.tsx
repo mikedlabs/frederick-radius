@@ -30,6 +30,7 @@ type WantRow = {
 type WantAnswer = {
   hero: WantRow | null;
   also: WantRow[];
+  soon?: WantRow | null;
   browseHref: string;
   contextLabel: string;
   contextSource?: "town" | "device" | "home" | "ip" | "county" | "none";
@@ -38,6 +39,7 @@ type WantAnswer = {
 
 export type LiveShelf = {
   picks: DaypartPick[];
+  openingSoon: DaypartPick | null;
   href: string;
   contextLabel: string;
   contextSource: NonNullable<WantAnswer["contextSource"]>;
@@ -51,7 +53,10 @@ export type LiveShelf = {
  * trustworthy server result, while keeping every category available as a tab.
  */
 export function initialDaypartCategory(rows: DaypartRow[]): string {
-  return rows.find((row) => row.picks.length > 0)?.category ?? rows[0]?.category ?? "";
+  return (
+    rows.find((row) => row.picks.length > 0 || Boolean(row.openingSoon))
+      ?.category ?? rows[0]?.category ?? ""
+  );
 }
 
 /**
@@ -71,7 +76,9 @@ export function nextUnresolvedDaypartCategory(
       resolvedCategories[row.category] !== true,
   );
   return (
-    unresolved.find((row) => row.picks.length > 0)?.category ??
+    unresolved.find(
+      (row) => row.picks.length > 0 || Boolean(row.openingSoon),
+    )?.category ??
     unresolved[0]?.category ??
     null
   );
@@ -96,6 +103,27 @@ export function liveShelfFromWantAnswer(
   row: DaypartRow,
   scope: Scope | null,
 ): LiveShelf {
+  const toPick = (candidate: WantRow): DaypartPick => ({
+    slug: candidate.slug,
+    name: candidate.name,
+    rating: null,
+    photo: candidate.photo,
+    photoCredit: null,
+    where: candidate.where,
+    distance: candidate.distance,
+    fact: candidate.fact,
+    decisionReasons: candidate.decisionReasons,
+    confidence: candidate.confidence ?? "unconfirmed",
+  });
+  // `undefined` supports one rollout boundary: an older cached response did
+  // not know this field, so retain the server-rendered transition. An explicit
+  // null is a successful scoped answer and clears the countywide fallback.
+  const openingSoon =
+    answer.soon === undefined
+      ? row.openingSoon ?? null
+      : answer.soon
+        ? toPick(answer.soon)
+        : null;
   // Rows WITHOUT a confidence value are the ranker's notable lane: real,
   // quality-ranked places whose hours the county cannot currently vouch for.
   // Dropping them (the filter here used to require a confidence value) is what
@@ -105,6 +133,7 @@ export function liveShelfFromWantAnswer(
   // hours line and the heading stops claiming anything about open.
   const picks = [answer.hero, ...answer.also]
     .filter((candidate): candidate is WantRow => Boolean(candidate))
+    .filter((candidate) => candidate.slug !== openingSoon?.slug)
     // Confidence outranks the ranker's order for the LEAD card specifically: a
     // place whose hours confirm it is open now must never sit behind one whose
     // hours are unknown. Sort is stable, so within a tier the ranker's order
@@ -115,21 +144,11 @@ export function liveShelfFromWantAnswer(
         - WANT_CONFIDENCE_RANK[b.confidence ?? "unconfirmed"],
     )
     .slice(0, 4)
-    .map((candidate) => ({
-      slug: candidate.slug,
-      name: candidate.name,
-      rating: null,
-      photo: candidate.photo,
-      photoCredit: null,
-      where: candidate.where,
-      distance: candidate.distance,
-      fact: candidate.fact,
-      decisionReasons: candidate.decisionReasons,
-      confidence: candidate.confidence ?? "unconfirmed",
-    }));
+    .map(toPick);
 
   return {
     picks,
+    openingSoon,
     href:
       daypartBrowseHref(row.category, row.label, scope) ||
       answer.browseHref ||
@@ -194,6 +213,31 @@ export const DAYPART_SHELF_ARIA: Record<
   likely: "Places likely open right now",
   unconfirmed: "Places to try, hours not confirmed",
 };
+
+export function daypartShelfHeading(
+  picks: readonly DaypartPick[],
+  openingSoon: DaypartPick | null | undefined,
+): { title: string; aria: string } {
+  const tier = daypartShelfTier(picks);
+  if (!openingSoon) {
+    return {
+      title: DAYPART_SHELF_TITLE[tier],
+      aria: DAYPART_SHELF_ARIA[tier],
+    };
+  }
+  if (picks.length === 0) {
+    return { title: "Opening soon", aria: "Place opening soon" };
+  }
+  return tier === "confirmed"
+    ? {
+        title: "Open now and soon",
+        aria: "Places open now and opening soon",
+      }
+    : {
+        title: "Places for now and soon",
+        aria: "Places for now and opening soon",
+      };
+}
 
 /**
  * Only an explicit town scope filters the candidate set geographically.
@@ -517,6 +561,99 @@ function DaypartPickCard({
   );
 }
 
+/** A closed door with a useful near-term transition. It is deliberately not a
+ * DaypartPickCard: the separate treatment prevents a confirmed schedule from
+ * borrowing the shelf's "open now" grammar before the opening minute. */
+function OpeningSoonPick({
+  place,
+  category,
+}: {
+  place: DaypartPick;
+  category: string;
+}) {
+  const signaledPhoto = place.photo
+    ? daypartPhotoSrc(proxyPhotoAtWidth(place.photo, 192))
+    : null;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const showPhoto = Boolean(signaledPhoto && failedSrc !== signaledPhoto);
+  const context = place.distance || place.where;
+
+  return (
+    <Link
+      href={`/places/${place.slug}`}
+      prefetch={false}
+      data-today-opening-soon="true"
+      data-place-availability="opening-soon"
+      data-decision-impression="true"
+      data-decision-surface="today"
+      data-decision-entity="place"
+      data-decision-id={place.slug}
+      data-decision-position="opening-soon"
+      data-decision-action="open"
+      className="group mt-2 flex min-h-[84px] w-full overflow-hidden rounded-[var(--app-radius-md)] border transition active:scale-[0.985]"
+      style={{
+        borderColor:
+          "color-mix(in srgb, var(--app-amber) 42%, var(--app-border))",
+        background:
+          "linear-gradient(112deg, color-mix(in srgb, var(--app-amber) 11%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 64%)",
+        boxShadow: "var(--app-edge), var(--app-hi)",
+      }}
+    >
+      {showPhoto && signaledPhoto ? (
+        <span className="relative min-h-[84px] w-[5.75rem] shrink-0 overflow-hidden">
+          <Image
+            src={signaledPhoto}
+            alt=""
+            fill
+            unoptimized={signaledPhoto.startsWith("/api/place-photo")}
+            placeholder="blur"
+            blurDataURL={PAPER_CREAM_BLUR}
+            className="object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.025]"
+            onLoad={(event) => {
+              if (isPhotoFailureSignal(event.currentTarget)) {
+                setFailedSrc(signaledPhoto);
+              }
+            }}
+            onError={() => setFailedSrc(signaledPhoto)}
+          />
+        </span>
+      ) : (
+        <span
+          aria-hidden
+          className="m-3 grid h-11 w-11 shrink-0 place-items-center self-center rounded-[var(--app-radius-sm)]"
+          style={{
+            color: "var(--app-warning-press)",
+            background: "var(--app-warning-tint-14)",
+          }}
+        >
+          <CategoryIcon slug={category} className="h-5 w-5" strokeWidth={1.9} />
+        </span>
+      )}
+      <span className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2.5">
+        <span
+          className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.11em]"
+          style={{ color: "var(--app-warning-press)" }}
+        >
+          Opening soon
+        </span>
+        <span
+          className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-tight"
+          style={{ color: "var(--app-ink)" }}
+        >
+          {place.name}
+        </span>
+        <span
+          className="mt-1 text-[11.5px] leading-snug"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          {place.fact || "Opening time available"}
+          {context ? <span> · {context}</span> : null}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 /**
  * The daypart's open-now place needs, shown as one focused shelf at a time.
  * The server still decides which categories and places qualify; this client
@@ -547,7 +684,12 @@ export default function DaypartNeeds({
   const active = useMemo(
     () =>
       baseActive && liveActive
-        ? { ...baseActive, picks: liveActive.picks, href: liveActive.href }
+        ? {
+            ...baseActive,
+            picks: liveActive.picks,
+            openingSoon: liveActive.openingSoon,
+            href: liveActive.href,
+          }
         : baseActive,
     [baseActive, liveActive],
   );
@@ -556,8 +698,14 @@ export default function DaypartNeeds({
   const awaitingLive =
     Boolean(activeCategory) &&
     active?.picks.length === 0 &&
+    !active?.openingSoon &&
     !resolvedCategories[activeCategory];
-  const activePickKey = active?.picks.map((place) => place.slug).join("|") ?? "";
+  const activePickKey = active
+    ? [
+        ...active.picks.map((place) => place.slug),
+        active.openingSoon?.slug ?? "",
+      ].join("|")
+    : "";
 
   // A town/location refresh replaces this ranked shelf in place. Browsers can
   // preserve the old horizontal offset as that list changes, which made the
@@ -600,13 +748,17 @@ export default function DaypartNeeds({
           ...previous,
           [baseActive.category]: shelf,
         }));
-        settleCategory(shelf.picks.length);
+        settleCategory(
+          shelf.picks.length + (shelf.openingSoon ? 1 : 0),
+        );
       })
       .catch(() => {
         if (!current) return;
         // Keep the already-rendered countywide shelf. A live refresh is an
         // enhancement, never a reason to replace useful content with an error.
-        settleCategory(baseActive.picks.length);
+        settleCategory(
+          baseActive.picks.length + (baseActive.openingSoon ? 1 : 0),
+        );
       });
     return () => {
       current = false;
@@ -638,7 +790,7 @@ export default function DaypartNeeds({
   // entire read as a saved, potentially changed snapshot.
   useEffect(() => {
     if (navigator.onLine === false) return;
-    const first = active?.picks[0];
+    const first = active?.picks[0] ?? active?.openingSoon;
     if (!first) return;
     void persistOfflineTodaySnapshot({
       dayKey: easternDayKey(new Date()),
@@ -656,7 +808,12 @@ export default function DaypartNeeds({
   // A single-category shelf can collapse to one compact answer. A
   // multi-category shelf must keep its tabs: an empty museum (or coffee) query
   // says nothing about dinner, breweries, or the other needs beside it.
-  if (!awaitingLive && active.picks.length === 0 && rows.length === 1) {
+  if (
+    !awaitingLive &&
+    active.picks.length === 0 &&
+    !active.openingSoon &&
+    rows.length === 1
+  ) {
     const countywide = isDaypartCountywideContext(contextSource);
     const countyHref =
       daypartBrowseHref(active.category, active.label, "county") || active.href;
@@ -673,17 +830,26 @@ export default function DaypartNeeds({
   }
 
   const shelfTier = daypartShelfTier(active.picks);
+  const shelfHeading = daypartShelfHeading(
+    active.picks,
+    active.openingSoon,
+  );
   const pickScopeLabel = daypartPickScopeLabel(contextSource, contextLabel);
-  const leadReason = daypartLeadReason(active.picks);
   // Today edits the answer to one lead and two alternatives. The deeper route
   // remains in See all; a fourth card created a second mobile row that pushed
   // the universal Find doorway well below the first viewport.
-  const visiblePicks = active.picks.slice(0, 3);
+  const visiblePicks = active.picks.slice(0, active.openingSoon ? 2 : 3);
+  const openingSoonFirst =
+    Boolean(active.openingSoon) && shelfTier !== "confirmed";
+  // When the transition leads visually, a reason about picks[0] would explain
+  // the wrong card. The opening-soon card already carries its actionable hours
+  // evidence, so reserve "Why it leads" for a current place that truly leads.
+  const leadReason = openingSoonFirst ? null : daypartLeadReason(active.picks);
 
   return (
-    <section aria-label={DAYPART_SHELF_ARIA[shelfTier]} className="mt-6">
+    <section aria-label={shelfHeading.aria} className="mt-6">
       <TodaySectionHeading
-        title={DAYPART_SHELF_TITLE[shelfTier]}
+        title={shelfHeading.title}
         meta={contextLabel}
         href={active.href}
         cta="See all"
@@ -794,29 +960,51 @@ export default function DaypartNeeds({
               </div>
             ))}
           </div>
-        ) : active.picks.length > 0 ? (
+        ) : active.picks.length > 0 || active.openingSoon ? (
           <div>
+            {openingSoonFirst && active.openingSoon ? (
+              <OpeningSoonPick
+                place={active.openingSoon}
+                category={active.category}
+              />
+            ) : null}
             {/* Phones get an edited grid, not a hidden horizontal rail. One
                 lead and two alternatives fit as a complete decision set; See
                 all owns the longer inventory. From sm up the same three cards
                 become a rail, where the column has room. The decision role is
                 layout-independent, so "Why it leads" keeps its subject. */}
-            <ul ref={shelfRef} className="shelf-rail today-answer-shelf mt-2 gap-2.5 pb-1">
-              {visiblePicks.map((place, index) => (
-                <li
-                  key={place.slug}
-                  className="shrink-0"
-                  data-shelf-lead={index === 0 ? "true" : undefined}
-                >
-                  <DaypartPickCard
-                    place={place}
-                    category={active.category}
-                    eager={index === 0}
-                    lead={index === 0}
-                  />
-                </li>
-              ))}
-            </ul>
+            {visiblePicks.length > 0 ? (
+              <ul
+                ref={shelfRef}
+                data-shelf-two={
+                  active.openingSoon && visiblePicks.length === 2
+                    ? "true"
+                    : undefined
+                }
+                className="shelf-rail today-answer-shelf mt-2 gap-2.5 pb-1"
+              >
+                {visiblePicks.map((place, index) => (
+                  <li
+                    key={place.slug}
+                    className="shrink-0"
+                    data-shelf-lead={index === 0 ? "true" : undefined}
+                  >
+                    <DaypartPickCard
+                      place={place}
+                      category={active.category}
+                      eager={index === 0}
+                      lead={index === 0}
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {!openingSoonFirst && active.openingSoon ? (
+              <OpeningSoonPick
+                place={active.openingSoon}
+                category={active.category}
+              />
+            ) : null}
             {leadReason ? (
               <p
                 data-today-decision-reason="true"

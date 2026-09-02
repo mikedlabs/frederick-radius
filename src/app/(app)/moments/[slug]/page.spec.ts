@@ -25,5 +25,15 @@ describe("Fair Day moment route", () => {
     expect(metadata.alternates?.canonical).toBe(
       "/moments/great-frederick-fair-2026",
     );
+    expect(metadata.openGraph?.images).toEqual([
+      expect.objectContaining({
+        url: "/images/fair/fairgrounds-night-mike-d-1920.jpg",
+        width: 1920,
+        height: 1080,
+      }),
+    ]);
+    expect(metadata.twitter?.images).toEqual([
+      "/images/fair/fairgrounds-night-mike-d-1920.jpg",
+    ]);
   });
 });

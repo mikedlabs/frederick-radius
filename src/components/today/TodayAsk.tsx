@@ -68,7 +68,7 @@ export default function TodayAsk({
             What do you need?
           </span>
           <span className="mt-1 block text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-            Find a name, describe a need, or ask a question.
+            Ask once. Radius connects hours, distance, weather, and today’s schedule.
           </span>
         </span>
         <ArrowRight

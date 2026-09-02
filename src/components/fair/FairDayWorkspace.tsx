@@ -739,7 +739,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               {titleCopy}
             </h1>
             <p className="mt-3 max-w-[40rem] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              Handle tickets, travel, and entry, then save what you do not want to miss. Your plan stays on this device.
+              Radius connects the official program with tickets, travel, entry, and the things you save, so you can make one plan instead of hunting across separate sites. Your plan stays on this device.
             </p>
 
             <div

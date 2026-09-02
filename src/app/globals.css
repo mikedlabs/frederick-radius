@@ -688,6 +688,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .today-answer-shelf > [data-shelf-lead] {
     grid-column: 1 / -1;
   }
+  /* When an opening-soon transition consumes the third decision slot, keep
+     the two current choices balanced instead of stranding one half-width card
+     under a full-width lead. */
+  .today-answer-shelf[data-shelf-two="true"] > [data-shelf-lead] {
+    grid-column: auto;
+  }
 }
 
 /* ── Field-guide chapters ───────────────────────────────────────────────
@@ -805,10 +811,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .content-chapter--plain .content-chapter__label {
   font-family: var(--font-sans), system-ui, sans-serif;
-  font-size: 1.0625rem;
-  font-weight: 650;
-  letter-spacing: -0.015em;
-  text-transform: none;
+  font-size: 0.6875rem;
+  font-weight: 750;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
 }
 .content-chapter--plain .content-chapter__rule {
   background: var(--app-border);
@@ -827,6 +833,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 .today-sports-stack:not(:has([data-today-sports-card])) {
+  display: none;
+}
+
+/* Every child in this chapter is time- or data-gated. Remove the chapter
+   itself when none of those children rendered so an empty heading never
+   interrupts the briefing. */
+.today-plan-rest:not(:has([data-today-plan-rest-content])) {
   display: none;
 }
 
