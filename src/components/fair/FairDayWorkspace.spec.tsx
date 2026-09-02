@@ -81,11 +81,15 @@ describe("FairDayWorkspace server-rendered contract", () => {
       createElement(FairDayWorkspace, { data }),
     );
 
-    expect(html).toContain("0 of 3 handled");
+    expect(html).toContain("Start here");
     expect(html).toContain("Compare or mark ready");
     expect(html).toContain("Choose drive, transit, or drop-off");
     expect(html).toContain("Payment, gate, and ticket access");
     expect(html).toContain("Review tickets");
+    expect(html).toContain('aria-label="Fair trip at a glance"');
+    expect(html).toContain("Tickets + entry");
+    expect(html).toContain("Arrive + return");
+    expect(html).toContain("Your saved stops");
     expect(html).not.toContain("Return plan set");
     expect(html).not.toContain("Ready to Go checks");
   });

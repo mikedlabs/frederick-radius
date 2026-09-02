@@ -282,11 +282,11 @@ describe("FairDayWorkspace app journey", () => {
     await act(async () =>
       buttonWithText(document.body, "I already have tickets").click(),
     );
-    expect(container.textContent).toContain("1 of 3 handled");
-    expect(container.textContent).toContain("Choose how to get there");
+    expect(container.textContent).toContain("1 detail left");
+    expect(container.textContent).toContain("Choose travel");
   });
 
-  it("derives the return plan from a travel choice instead of asking twice", async () => {
+  it("does not mark arrival and return ready until the chosen plan is confirmed", async () => {
     await renderFair();
     await openMode("Travel");
 
@@ -296,16 +296,35 @@ describe("FairDayWorkspace app journey", () => {
     if (!drive) throw new Error("Missing Drive / Park option.");
     await act(async () => drive.click());
 
-    const stored = JSON.parse(
+    const selectedPlan = JSON.parse(
       storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}",
     );
-    expect(stored.arrivalChoice).toBe("drive");
-    expect(stored.readyKeys).toEqual(
-      expect.arrayContaining(["arrival", "return"]),
+    expect(selectedPlan.arrivalChoice).toBe("drive");
+    expect(selectedPlan.readyKeys).not.toContain("travel");
+    expect(selectedPlan.readyKeys).not.toContain("arrival");
+    expect(selectedPlan.readyKeys).not.toContain("return");
+    const travelStage = Array.from(
+      container.querySelectorAll<HTMLElement>("[aria-label]"),
+    ).find((element) => element.getAttribute("aria-label")?.startsWith("Travel:"));
+    expect(travelStage?.getAttribute("aria-label")).toContain("Finish");
+    expect(container.textContent).toContain("Use this driving plan");
+
+    await act(async () =>
+      buttonWithText(container, "Use this driving plan").click(),
     );
+
+    const confirmedPlan = JSON.parse(
+      storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}",
+    );
+    expect(confirmedPlan.readyKeys).toContain("travel");
+    expect(confirmedPlan.readyKeys).not.toContain("arrival");
+    expect(confirmedPlan.readyKeys).not.toContain("return");
 
     await openMode("My Day");
     expect(container.textContent).toContain("Drive and park");
+    expect(container.textContent).toContain(
+      "Give the middle of your day a place to start.",
+    );
     expect(container.textContent).toContain("Head back");
     expect(container.textContent).toContain("Return to your saved parking lot");
     expect(container.textContent).not.toContain("Return plan set");

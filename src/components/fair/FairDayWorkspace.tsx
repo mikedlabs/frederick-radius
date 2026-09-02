@@ -42,8 +42,10 @@ import {
   type FairPlan,
   type FairPlanReadyKey,
 } from "@/lib/fair/plan";
+import type { FairPlanStatus } from "@/lib/fair/plan-status";
 import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback-ui";
 
+import FairPlanStatusRibbon from "./FairPlanStatusRibbon";
 import FairPartyPlanner from "./FairPartyPlanner";
 import FairPracticalAnswers from "./FairPracticalAnswers";
 import FairTravelPanel from "./FairTravelPanel";
@@ -503,24 +505,68 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   const chooseArrival = (option: FairDayArrivalView) => {
     setSelectedArrivalId(option.id);
     setPlan((current) => {
+      const now = updateTimestamp();
       const chosen = setFairPlanArrivalChoice(
         current,
         option.planChoice,
-        updateTimestamp(),
+        now,
       );
-      const arrivalReady = setFairPlanReady(
+      const travelNotReady = setFairPlanReady(
         chosen,
+        "travel",
+        false,
+        now,
+      );
+      const legacyArrivalCleared = setFairPlanReady(
+        travelNotReady,
         "arrival",
-        true,
-        updateTimestamp(),
+        false,
+        now,
       );
       return setFairPlanReady(
-        arrivalReady,
+        legacyArrivalCleared,
         "return",
-        true,
-        updateTimestamp(),
+        false,
+        now,
       );
     });
+  };
+
+  const changeTravelReadiness = (ready: boolean) => {
+    setPlan((current) => {
+      const now = updateTimestamp();
+      const legacyArrivalCleared = setFairPlanReady(
+        current,
+        "arrival",
+        false,
+        now,
+      );
+      const legacyReturnCleared = setFairPlanReady(
+        legacyArrivalCleared,
+        "return",
+        false,
+        now,
+      );
+      return setFairPlanReady(legacyReturnCleared, "travel", ready, now);
+    });
+  };
+
+  const openPlanNextAction = (status: FairPlanStatus) => {
+    if (status.nextAction === "tickets") {
+      chooseMode("now");
+      setActivePreparation("ticket");
+      return;
+    }
+    if (status.nextAction === "travel") {
+      chooseMode("travel");
+      return;
+    }
+    if (status.nextAction === "entry") {
+      chooseMode("now");
+      setActivePreparation("entry");
+      return;
+    }
+    chooseMode(status.nextAction === "find" ? "find" : "my-day");
   };
 
   const normalizedQuery = query.trim().toLocaleLowerCase();
@@ -565,26 +611,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       step,
       item: scheduleById.get(step.scheduleItemId) ?? null,
     }));
-  const preparationCount = ["ticket", "arrival", "entry"].filter((key) =>
-    plan.readyKeys.includes(key as FairPlanReadyKey),
-  ).length;
   const selectedDay = data.dates.find((day) => day.date === selectedDate);
-
-  const nextAction = !plan.readyKeys.includes("ticket")
-    ? {
-        label: "Review tickets",
-        action: () => setActivePreparation("ticket"),
-      }
-    : !selectedArrival
-      ? { label: "Choose how to get there", action: () => chooseMode("travel") }
-      : !plan.readyKeys.includes("entry")
-        ? {
-            label: "Check entry details",
-            action: () => setActivePreparation("entry"),
-          }
-        : plannedRows.length === 0
-          ? { label: "Find something to do", action: () => chooseMode("find") }
-          : { label: "Open My Day", action: () => chooseMode("my-day") };
 
   const titleCopy =
     data.eventPhase === "pre-fair"
@@ -725,6 +752,14 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         </nav>
       </header>
 
+      <FairPlanStatusRibbon
+        plan={plan}
+        dates={data.dates}
+        selectedDate={selectedDate}
+        onDateChange={chooseFairDate}
+        onNextAction={openPlanNextAction}
+      />
+
       <div className="mx-auto max-w-[48rem] px-4 pb-28 pt-6 sm:px-6 sm:pt-8 lg:pb-12">
         {activeMode === "now" ? (
           <section id={MODE_PANEL_IDS.now} aria-labelledby="fair-now-heading">
@@ -750,63 +785,22 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 boxShadow: "var(--app-elev-3), inset 0 1px 0 color-mix(in srgb, var(--app-ink-inverse) 14%, transparent)",
               }}
             >
-              <div
-                className="flex items-center justify-between gap-4 border-b px-4 py-4"
-                style={{ borderColor: "color-mix(in srgb, var(--app-ink-inverse) 16%, transparent)" }}
-              >
-                <div>
-                  <p
-                    className="text-[11px] font-bold uppercase tracking-[0.12em]"
-                    style={{ color: "color-mix(in srgb, var(--app-ink-inverse) 70%, transparent)" }}
-                  >
-                    Plan for
-                  </p>
-                  <p className="mt-0.5 text-[16px] font-bold">Choose a Fair day</p>
-                </div>
-                <label className="relative">
-                  <span className="sr-only">Choose your Fair day</span>
-                  <select
-                    value={selectedDate}
-                    onChange={(event) => chooseFairDate(event.target.value)}
-                    className="h-11 max-w-[10rem] rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 text-[13px] font-semibold"
-                    style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
-                  >
-                    {data.dates.map((day) => (
-                      <option key={day.date} value={day.date}>
-                        {fairDateShortLabel(day.date)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
               <div className="px-4 py-4">
-                <div className="flex items-end justify-between gap-4">
-                  <div>
-                    <p
-                      className="text-[12px] font-semibold"
-                      style={{ color: "color-mix(in srgb, var(--app-ink-inverse) 70%, transparent)" }}
-                    >
-                      Ready before you leave
-                    </p>
-                    <p className="mt-0.5 text-[22px] font-bold tabular-nums">
-                      {preparationCount} of 3 handled
-                    </p>
-                  </div>
-                  <ListChecks className="h-6 w-6" style={{ color: "var(--app-amber)" }} aria-hidden />
-                </div>
-
-                <Button
-                  className="mt-4 w-full"
-                  size="lg"
-                  onClick={nextAction.action}
-                  iconRight={<ChevronRight className="h-4 w-4" aria-hidden />}
+                <p
+                  className="text-[11px] font-bold uppercase tracking-[0.12em]"
+                  style={{
+                    color:
+                      "color-mix(in srgb, var(--app-ink-inverse) 70%, transparent)",
+                  }}
                 >
-                  {nextAction.label}
-                </Button>
+                  Before you leave
+                </p>
+                <h2 className="mt-1 text-[22px] font-bold tracking-[-0.025em]">
+                  Check the details that can slow you down.
+                </h2>
 
                 <div
-                  className="mt-3 divide-y"
+                  className="mt-3 divide-y border-t"
                   style={{ borderColor: "color-mix(in srgb, var(--app-ink-inverse) 16%, transparent)" }}
                 >
                   <button
@@ -835,11 +829,15 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                       <span>
                         <span className="block text-[15px] font-semibold">Travel</span>
                         <span className="block text-[13px]" style={{ color: "color-mix(in srgb, var(--app-ink-inverse) 68%, transparent)" }}>
-                          {selectedArrival?.label ?? "Choose drive, transit, or drop-off"}
+                          {plan.readyKeys.includes("travel")
+                            ? "Travel and return marked ready"
+                            : selectedArrival
+                              ? `${selectedArrival.label} selected; finish the plan`
+                              : "Choose drive, transit, or drop-off"}
                         </span>
                       </span>
                     </span>
-                    {selectedArrival ? <Check className="h-5 w-5" style={{ color: "var(--app-amber)" }} aria-hidden /> : <ChevronRight className="h-5 w-5" aria-hidden />}
+                    {plan.readyKeys.includes("travel") ? <Check className="h-5 w-5" style={{ color: "var(--app-amber)" }} aria-hidden /> : <ChevronRight className="h-5 w-5" aria-hidden />}
                   </button>
                   <button
                     type="button"
@@ -912,30 +910,6 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             <p className="mt-2 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               Search the reviewed program and save what you do not want to miss.
             </p>
-
-            <div className="mt-4 flex min-h-[58px] items-center justify-between gap-4 border-y py-1" style={{ borderColor: "var(--app-border-strong)" }}>
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-                  Fair day
-                </p>
-                <p className="mt-0.5 text-[15px] font-semibold">{fairDateShortLabel(selectedDate)}</p>
-              </div>
-              <label className="relative">
-                <span className="sr-only">Choose a Fair day</span>
-                <select
-                  value={selectedDate}
-                  onChange={(event) => chooseFairDate(event.target.value)}
-                  className="h-11 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-3 text-[13px] font-semibold"
-                  style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
-                >
-                  {data.dates.map((day) => (
-                    <option key={day.date} value={day.date}>
-                      {day.weekdayLabel}, {day.dayLabel}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
 
             <label className="mt-4 block" htmlFor="fair-unified-search">
               <span className="sr-only">Search the Fair</span>
@@ -1120,31 +1094,6 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               </p>
             ) : null}
 
-            <div className="mt-5 grid grid-cols-2 divide-x border-y" style={{ borderColor: "var(--app-border-strong)" }}>
-              <button
-                type="button"
-                onClick={() => setActivePreparation("ticket")}
-                className="tap-44 flex min-h-[68px] items-center justify-between gap-3 py-2 pr-3 text-left"
-              >
-                <span>
-                  <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink-3)" }}>Tickets</span>
-                  <span className="mt-0.5 block text-[15px] font-bold">{plan.readyKeys.includes("ticket") ? "Handled" : "Not marked ready"}</span>
-                </span>
-                <ChevronRight className="h-4 w-4" aria-hidden />
-              </button>
-              <button
-                type="button"
-                onClick={() => chooseMode("travel")}
-                className="tap-44 flex min-h-[68px] items-center justify-between gap-3 py-2 pl-3 text-left"
-              >
-                <span>
-                  <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink-3)" }}>Travel</span>
-                  <span className="mt-0.5 block text-[15px] font-bold">{selectedArrival?.label ?? "Not chosen"}</span>
-                </span>
-                <ChevronRight className="h-4 w-4" aria-hidden />
-              </button>
-            </div>
-
             {plannedRows.length === 0 && !selectedArrival ? (
               <div className="relative mt-8 border-l-2 py-2 pl-6" style={{ borderColor: "var(--app-brand)" }}>
                 <span className="absolute -left-[7px] top-2 h-3 w-3 rounded-full border-2 bg-[var(--app-bg)]" style={{ borderColor: "var(--app-brand)" }} aria-hidden />
@@ -1203,6 +1152,52 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                   );
                 })}
 
+                {selectedArrival && plannedRows.length === 0 ? (
+                  <li
+                    className="grid grid-cols-[40px_minmax(0,1fr)] gap-3 border-b py-5"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    <span
+                      className="grid h-10 w-10 place-items-center rounded-full border-2 bg-[var(--app-bg)]"
+                      style={{ borderColor: "var(--app-brand)" }}
+                    >
+                      <Plus
+                        className="h-5 w-5"
+                        style={{ color: "var(--app-brand-press)" }}
+                        aria-hidden
+                      />
+                    </span>
+                    <div className="pt-0.5">
+                      <p
+                        className="text-[13px] font-bold uppercase tracking-[0.08em]"
+                        style={{ color: "var(--app-brand-press)" }}
+                      >
+                        At the Fair
+                      </p>
+                      <p className="mt-1 text-[17px] font-semibold">
+                        Give the middle of your day a place to start.
+                      </p>
+                      <p
+                        className="mt-1 text-[14px] leading-relaxed"
+                        style={{ color: "var(--app-ink-2)" }}
+                      >
+                        Save food, a show, an animal event, or a ride. You can
+                        change it any time.
+                      </p>
+                      <Button
+                        className="mt-3"
+                        variant="secondary"
+                        onClick={() => chooseMode("find")}
+                        iconRight={
+                          <ChevronRight className="h-4 w-4" aria-hidden />
+                        }
+                      >
+                        Find a Fair stop
+                      </Button>
+                    </div>
+                  </li>
+                ) : null}
+
                 {selectedArrival ? (
                   <li className="grid grid-cols-[40px_minmax(0,1fr)] gap-3 pt-5">
                     <span className="grid h-10 w-10 place-items-center rounded-full text-[13px] font-bold text-[var(--app-on-brand)]" style={{ background: "var(--app-cool)" }}>{plannedRows.length + 2}</span>
@@ -1233,7 +1228,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               options={data.arrivalOptions}
               selected={selectedArrival}
               eventPhase={data.eventPhase}
+              ready={plan.readyKeys.includes("travel")}
               onSelect={chooseArrival}
+              onReadyChange={changeTravelReadiness}
             />
           </section>
         ) : null}

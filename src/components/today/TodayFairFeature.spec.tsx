@@ -1,7 +1,15 @@
-import { createElement } from "react";
+// @vitest-environment jsdom
+
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import {
+  createFairPlan,
+  writeFairPlan,
+  type FairPlan,
+} from "@/lib/fair/plan";
 import { TODAY_FAIR_PROMOTION_HREF } from "@/lib/today/fair-promotion";
 
 import TodayFairFeature from "./TodayFairFeature";
@@ -33,5 +41,69 @@ describe("TodayFairFeature", () => {
     expect(html).toContain("Through Sep 26");
     expect(html).toContain("find food and rides");
     expect(html).toContain("Open Fair Day");
+  });
+
+  it("continues the saved on-device plan with its one next action", async () => {
+    const savedPlan: FairPlan = {
+      ...createFairPlan({
+        fairId: "great-frederick-fair-2026",
+        packRevision: `sha256:${"b".repeat(64)}`,
+        selectedDayId: "day-2026-09-18",
+        now: "2026-09-02T12:00:00Z",
+      }),
+      arrivalChoice: "drive",
+      party: {
+        adults11Plus: 2,
+        children10Under: 2,
+        adultRiders: 1,
+        childRiders: 1,
+      },
+      readyKeys: ["ticket"],
+      steps: [
+        {
+          scheduleItemId: "schedule-2026-09-18-horse-pull",
+          dayId: "day-2026-09-18",
+          labelSnapshot: "Horse pull",
+          timeLabelSnapshot: "7:00 PM",
+          sourceState: "current",
+        },
+      ],
+    };
+    const storedValues = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => storedValues.get(key) ?? null,
+      setItem: (key: string, value: string) =>
+        void storedValues.set(key, value),
+      removeItem: (key: string) => void storedValues.delete(key),
+    };
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: storage,
+    });
+    expect(writeFairPlan(storage, savedPlan)).toBe(true);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(createElement(TodayFairFeature, { phase: "planning" }));
+    });
+
+    expect(container.textContent).toContain("Your Fair day is taking shape.");
+    expect(container.textContent).toContain(
+      "plan for 4 people has 1 saved stop",
+    );
+    expect(container.textContent).toContain("Finish travel plan");
+    expect(container.querySelector("a")?.getAttribute("href")).toBe(
+      "/moments/great-frederick-fair-2026#travel",
+    );
+    expect(
+      container
+        .querySelector("[data-today-fair-feature]")
+        ?.getAttribute("data-today-fair-plan"),
+    ).toBe("saved");
+
+    await act(async () => root.unmount());
+    container.remove();
   });
 });

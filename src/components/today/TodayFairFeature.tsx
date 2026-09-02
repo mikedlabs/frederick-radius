@@ -1,6 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
 
+import { readFairPlan, type FairPlan } from "@/lib/fair/plan";
+import { buildFairPlanStatus } from "@/lib/fair/plan-status";
 import {
   TODAY_FAIR_PROMOTION_HREF,
   type TodayFairPromotionPhase,
@@ -32,13 +37,39 @@ export default function TodayFairFeature({
   phase: TodayFairPromotionPhase;
 }) {
   const copy = COPY[phase];
+  const [savedPlan, setSavedPlan] = useState<FairPlan | null>(null);
+
+  useEffect(() => {
+    const refreshPlan = () => setSavedPlan(readFairPlan(window.localStorage));
+    refreshPlan();
+    window.addEventListener("storage", refreshPlan);
+    window.addEventListener("pageshow", refreshPlan);
+    return () => {
+      window.removeEventListener("storage", refreshPlan);
+      window.removeEventListener("pageshow", refreshPlan);
+    };
+  }, []);
+
+  const status = savedPlan ? buildFairPlanStatus(savedPlan) : null;
+  const headline = status
+    ? status.savedStopCount > 0
+      ? "Your Fair day is taking shape."
+      : status.handledPreparationCount > 0 ||
+          savedPlan?.arrivalChoice !== "undecided"
+        ? "Keep your Fair plan moving."
+        : copy.headline
+    : copy.headline;
+  const detail = status?.summarySentence ?? copy.detail;
+  const cta = status?.nextActionLabel ?? copy.cta;
+  const href = status?.nextActionHref ?? TODAY_FAIR_PROMOTION_HREF;
 
   return (
     <section aria-label="The Great Frederick Fair">
       <Link
-        href={TODAY_FAIR_PROMOTION_HREF}
+        href={href}
         prefetch={false}
         data-today-fair-feature={phase}
+        data-today-fair-plan={status ? "saved" : "new"}
         className="group relative isolate block min-h-[188px] overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bedrock)] text-[var(--app-ink-inverse)] shadow-[var(--app-elev-1)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--app-bg)] sm:min-h-[220px]"
       >
         <picture className="absolute inset-0 block">
@@ -78,13 +109,13 @@ export default function TodayFairFeature({
 
           <div className="max-w-[19rem] sm:max-w-[31rem]">
             <p className="text-[27px] font-extrabold leading-[0.98] tracking-[-0.04em] sm:text-[34px]">
-              {copy.headline}
+              {headline}
             </p>
             <p className="mt-2 max-w-[28rem] text-[12.5px] font-medium leading-[1.35] sm:text-[14px]">
-              {copy.detail}
+              {detail}
             </p>
             <span className="mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-bold sm:text-[13px]">
-              {copy.cta}
+              {cta}
               <ArrowRight
                 className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
                 strokeWidth={2.5}
