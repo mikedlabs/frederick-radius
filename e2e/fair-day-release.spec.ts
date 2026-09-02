@@ -16,7 +16,9 @@ test.describe("Fair Day production release journey", () => {
     serviceWorkers: "block",
   });
 
-  test("keeps planning, official handoffs, and Find ready", async ({ page }) => {
+  test("keeps tickets, travel, planning, help, and official handoffs ready", async ({
+    page,
+  }) => {
     test.setTimeout(90_000);
 
     const redirect = await page.request.get("/fair", { maxRedirects: 0 });
@@ -32,29 +34,30 @@ test.describe("Fair Day production release journey", () => {
     await expect(
       page.getByRole("heading", {
         level: 1,
-        name: "Ready before you leave.",
+        name: "Plan Friday at the Fair.",
       }),
     ).toBeVisible();
-
-    const findTrigger = page.getByRole("button", {
-      name: "Ask or find across Frederick County",
-    });
-    await expect(findTrigger).toBeVisible();
-    await expect(findTrigger).toHaveAttribute(
-      "data-find-interaction-ready",
+    await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
+      "data-fair-interaction-ready",
       "true",
       { timeout: 15_000 },
     );
+    await expect(
+      page.getByRole("navigation", { name: "Primary" }),
+    ).toHaveCount(0);
+    await expect(page.getByLabel("Send feedback")).toHaveCount(0);
 
     const datePicker = page.getByLabel("Choose your Fair day", {
       exact: false,
     });
     await datePicker.selectOption("2026-09-20");
     await expect(datePicker).toHaveValue("2026-09-20");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Plan Sunday at the Fair." }),
+    ).toBeVisible();
 
-    await page
-      .getByRole("button", { name: "Compare ticket options" })
-      .click();
+    await page.getByRole("button", { name: "Review tickets" }).click();
+    await page.getByRole("button", { name: "Compare tickets" }).click();
     await page.getByRole("spinbutton", { name: "Adults 11+" }).fill("2");
 
     const ticketCombination = page.getByRole("list", {
@@ -71,66 +74,57 @@ test.describe("Fair Day production release journey", () => {
     await expect(etixLink).toHaveAttribute("href", ETIX_ADMISSION_URL);
     await expect(etixLink).toHaveAttribute("target", "_blank");
     await expect(etixLink).toHaveAttribute("rel", "noopener noreferrer");
+    await page.getByRole("button", { name: "Close Tickets" }).click();
 
     await page
-      .getByRole("button", { name: "2. Arrival and parking" })
+      .getByRole("button", { name: "Travel", exact: true })
       .click();
     const transitChoice = page.getByRole("radio", { name: /County Transit/ });
     await transitChoice.locator("..").click();
     await expect(transitChoice).toBeChecked();
-
-    const arrivalPanel = page.locator("#fair-ready-arrival");
-    await expect(arrivalPanel).toContainText("County Transit");
-    await expect(arrivalPanel).toContainText("not a service promise");
-    const transitLink = arrivalPanel.getByRole("link", {
-      name: "Check the official visit page",
-    });
-    await expect(transitLink).toHaveAttribute("href", COUNTY_TRANSIT_URL);
-    await expect(transitLink).toHaveAttribute("target", "_blank");
-    await expect(transitLink).toHaveAttribute("rel", "noopener noreferrer");
-
-    const addProgramItem = page
-      .getByRole("button", { name: /^Add .+ to My Fair Day$/ })
-      .first();
-    const addLabel = await addProgramItem.getAttribute("aria-label");
-    expect(addLabel).toMatch(/^Add .+ to My Fair Day$/);
-    const programTitle = addLabel
-      ?.replace(/^Add /, "")
-      .replace(/ to My Fair Day$/, "");
-    expect(programTitle).toBeTruthy();
-    await addProgramItem.click();
-
     await expect(
-      page.getByRole("link", { name: "Plan, 1 saved program stop" }),
+      page.getByText(/Fair-date service and arrival times are not confirmed/),
     ).toBeVisible();
-    const numberedPlan = page.getByRole("list", {
-      name: "My numbered Fair Day plan",
-    });
-    await expect(numberedPlan).toContainText(programTitle ?? "");
-    await expect(numberedPlan.locator("li")).toHaveCount(3);
+    await expect(
+      page.getByRole("link", { name: "Open Radius Transit" }),
+    ).toHaveAttribute("href", "/transit");
 
-    const eventHubLink = page.getByRole("link", {
-      name: "EventHub",
-      exact: true,
+    await page.getByText("Sources and limits").click();
+    const transitSource = page.getByRole("link", {
+      name: "Open the official information",
     });
+    await expect(transitSource).toHaveAttribute("href", COUNTY_TRANSIT_URL);
+    await expect(transitSource).toHaveAttribute("target", "_blank");
+    await expect(transitSource).toHaveAttribute("rel", "noopener noreferrer");
+
+    await page.getByRole("button", { name: "Find", exact: true }).click();
+    const eventHubLink = page.getByRole("link", { name: "Vendor map" });
     await expect(eventHubLink).toHaveAttribute("href", EVENTHUB_URL);
     await expect(eventHubLink).toHaveAttribute("target", "_blank");
     await expect(eventHubLink).toHaveAttribute("rel", "noopener noreferrer");
 
-    await findTrigger.click();
-    const immediateFindDialog = page.locator("#radius-find-dialog");
-    await expect(immediateFindDialog).toBeVisible({ timeout: 1_000 });
-    await expect(immediateFindDialog).toHaveAttribute("role", "dialog");
-    await expect(immediateFindDialog).toHaveAccessibleName(
-      /Loading search|What do you need\?/,
-    );
+    const addProgramItem = page
+      .getByRole("button", { name: /^Add .+ to My Day$/ })
+      .first();
+    const addLabel = await addProgramItem.getAttribute("aria-label");
+    expect(addLabel).toMatch(/^Add .+ to My Day$/);
+    const programTitle = addLabel
+      ?.replace(/^Add /, "")
+      .replace(/ to My Day$/, "");
+    expect(programTitle).toBeTruthy();
+    await addProgramItem.click();
+
+    await page
+      .getByRole("button", { name: "My Day, 1 saved", exact: true })
+      .click();
+    const timeline = page.getByRole("list", { name: "My Fair Day timeline" });
+    await expect(timeline).toContainText(programTitle ?? "");
+    await expect(timeline.locator("li")).toHaveCount(3);
+
+    await page.getByRole("button", { name: "Help" }).click();
+    await page.getByRole("button", { name: "Send Fair feedback" }).click();
     await expect(
-      page.getByRole("dialog", { name: "What do you need?" }),
-    ).toBeVisible({ timeout: 15_000 });
-    await expect(
-      page.getByRole("searchbox", {
-        name: "Ask or find across Frederick County",
-      }),
+      page.getByRole("dialog", { name: "Send feedback" }),
     ).toBeVisible();
   });
 });

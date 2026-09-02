@@ -215,6 +215,39 @@ export function moveFairPlanItem(
   return withUpdate(plan, { steps }, now);
 }
 
+/** Reorders one day's stops without moving through stops saved for another day. */
+export function moveFairPlanItemWithinDay(
+  planCandidate: FairPlan,
+  scheduleItemId: string,
+  direction: -1 | 1,
+  now: string,
+): FairPlan {
+  const plan = fairPlanSchema.parse(planCandidate);
+  const index = plan.steps.findIndex(
+    (step) => step.scheduleItemId === scheduleItemId,
+  );
+  if (index < 0) return plan;
+
+  const dayId = plan.steps[index].dayId;
+  const sameDayIndices = plan.steps.flatMap((step, stepIndex) =>
+    step.dayId === dayId ? [stepIndex] : [],
+  );
+  const dayPosition = sameDayIndices.indexOf(index);
+  const nextDayPosition = dayPosition + direction;
+  if (
+    dayPosition < 0 ||
+    nextDayPosition < 0 ||
+    nextDayPosition >= sameDayIndices.length
+  ) {
+    return plan;
+  }
+
+  const nextIndex = sameDayIndices[nextDayPosition];
+  const steps = [...plan.steps];
+  [steps[index], steps[nextIndex]] = [steps[nextIndex], steps[index]];
+  return withUpdate(plan, { steps }, now);
+}
+
 export function clearFairPlan(planCandidate: FairPlan, now: string): FairPlan {
   const plan = fairPlanSchema.parse(planCandidate);
   return plan.steps.length === 0

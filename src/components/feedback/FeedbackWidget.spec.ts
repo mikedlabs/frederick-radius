@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   FEEDBACK_TRIGGER_BOTTOM,
   publicFeedbackSurface,
+  shouldShowFeedbackTrigger,
 } from "./FeedbackWidget";
 import { MOBILE_BOTTOM_CHROME_RESERVE } from "@/components/ui/MobileActionBar";
 
@@ -20,5 +21,11 @@ describe("FeedbackWidget public surfaces", () => {
     );
     expect(publicFeedbackSurface("/food-trucks")).toBe("food-trucks");
     expect(publicFeedbackSurface("/today")).toBeNull();
+  });
+
+  it("keeps Fair feedback in the Fair Help flow instead of floating over its navigation", () => {
+    expect(shouldShowFeedbackTrigger("fair")).toBe(false);
+    expect(shouldShowFeedbackTrigger("food-trucks")).toBe(true);
+    expect(shouldShowFeedbackTrigger(null)).toBe(true);
   });
 });

@@ -111,13 +111,22 @@ function scheduleKind(
 
 function scheduleCopy(text: string): { title: string; detail?: string } {
   const normalized = text.replace(/\s+/g, " ").replace(/^\|\s*/, "").trim();
-  const firstSection =
-    normalized
+  const displayText = normalized
+    .replace(
+      /\b(?:https?:\/\/)?(?:www\.)?[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?:\/[^\s|]*)?/giu,
+      "",
+    )
+    .replace(/\s+([,.;!?])/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim() || normalized;
+  const firstSectionRaw =
+    displayText
       .split(
         /\s+\|\s+|\s+-\s+(?=(?:Presented\s+[Bb]y|Grandstand))/u,
       )
       .find((section) => section.trim().length > 0)
-      ?.trim() ?? normalized;
+      ?.trim() ?? displayText;
+  const firstSection = firstSectionRaw.replace(/\s+-\s*/g, ": ");
   const beforeLongQualifier =
     firstSection.length > 120 && firstSection.includes(": ")
       ? firstSection.slice(0, firstSection.indexOf(": ")).trim()

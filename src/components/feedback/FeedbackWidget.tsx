@@ -52,6 +52,14 @@ export function publicFeedbackSurface(
   return null;
 }
 
+/** Fair Day exposes feedback inside its Help drawer so it does not compete with
+ * the Fair's four primary controls. Other surfaces keep the floating trigger. */
+export function shouldShowFeedbackTrigger(
+  publicSurface: "fair" | "food-trucks" | null,
+): boolean {
+  return publicSurface !== "fair";
+}
+
 export default function FeedbackWidget() {
   const pathname = usePathname();
   const [show, setShow] = useState(false);
@@ -157,7 +165,7 @@ export default function FeedbackWidget() {
           the tap target stays comfortable. During beta the owner wants feedback
           reachable on every screen (owner call, 2026-07-20), so the tab stays up
           over other bottom sheets and only steps aside for its OWN open sheet. */}
-      {!open && (
+      {!open && shouldShowFeedbackTrigger(publicSurface) && (
         <button
           type="button"
           onClick={() => setOpen(true)}
