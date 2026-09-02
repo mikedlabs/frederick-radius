@@ -48,6 +48,12 @@ import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback-ui";
 import FairPlanStatusRibbon from "./FairPlanStatusRibbon";
 import FairPartyPlanner from "./FairPartyPlanner";
 import FairPracticalAnswers from "./FairPracticalAnswers";
+import FairDiscoveryChoices, {
+  fairDiscoveryIntentMatches,
+  fairDiscoveryIntentTitle,
+  type FairDiscoveryIntentId,
+} from "./FairDiscoveryChoices";
+import FairEssentialsRail from "./FairEssentialsRail";
 import FairTravelPanel from "./FairTravelPanel";
 import type {
   FairDayArrivalView,
@@ -348,6 +354,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   const [activePreparation, setActivePreparation] =
     useState<PreparationKey | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [helpAnswerId, setHelpAnswerId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(
     data.initialPlan.selectedDayId?.replace(/^day-/, "") ??
       (validDates.has(data.initialDate) ? data.initialDate : (data.dates[0]?.date ?? "")),
@@ -362,6 +369,8 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   const [query, setQuery] = useState("");
   const [scheduleFilter, setScheduleFilter] =
     useState<ScheduleFilter>("all");
+  const [discoveryIntent, setDiscoveryIntent] =
+    useState<FairDiscoveryIntentId | null>(null);
   const [showAllSchedule, setShowAllSchedule] = useState(false);
   const [editPlan, setEditPlan] = useState(false);
   const [storageReady, setStorageReady] = useState(false);
@@ -497,6 +506,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   const chooseFairDate = (date: string) => {
     setSelectedDate(date);
     setShowAllSchedule(false);
+    setDiscoveryIntent(null);
     setPlan((current) =>
       setFairPlanDay(current, `day-${date}`, updateTimestamp()),
     );
@@ -570,11 +580,24 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   };
 
   const normalizedQuery = query.trim().toLocaleLowerCase();
+  const discoveryItems = useMemo(
+    () =>
+      data.scheduleItems.filter(
+        (item) =>
+          item.date === selectedDate && !isScheduleUtilityRow(item),
+      ),
+    [data.scheduleItems, selectedDate],
+  );
   const matchingSchedule = useMemo(
     () =>
       data.scheduleItems
         .filter((item) => item.date === selectedDate)
         .filter((item) => !isScheduleUtilityRow(item))
+        .filter((item) =>
+          discoveryIntent
+            ? fairDiscoveryIntentMatches(item, discoveryIntent)
+            : true,
+        )
         .filter((item) => scheduleFilterMatches(item, scheduleFilter))
         .filter((item) => {
           if (!normalizedQuery) return true;
@@ -588,7 +611,13 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               scheduleStartMinutes(right.timeLabel) ||
             left.title.localeCompare(right.title),
         ),
-    [data.scheduleItems, normalizedQuery, scheduleFilter, selectedDate],
+    [
+      data.scheduleItems,
+      discoveryIntent,
+      normalizedQuery,
+      scheduleFilter,
+      selectedDate,
+    ],
   );
   const visibleSchedule =
     showAllSchedule || normalizedQuery.length > 0
@@ -684,7 +713,10 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             </Link>
             <button
               type="button"
-              onClick={() => setHelpOpen(true)}
+              onClick={() => {
+                setHelpAnswerId(null);
+                setHelpOpen(true);
+              }}
               className="fair-hero-control tap-44 inline-flex min-h-11 items-center gap-2 rounded-[var(--app-radius-sm)] px-1 text-[13px] font-semibold text-[var(--app-ink-inverse)] [text-shadow:0_1px_3px_rgba(0,0,0,0.72)]"
             >
               <CircleHelp className="h-4 w-4" aria-hidden />
@@ -758,9 +790,22 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         selectedDate={selectedDate}
         onDateChange={chooseFairDate}
         onNextAction={openPlanNextAction}
+        compact={activeMode !== "now"}
       />
 
-      <div className="mx-auto max-w-[48rem] px-4 pb-28 pt-6 sm:px-6 sm:pt-8 lg:pb-12">
+      <FairEssentialsRail
+        onOpenHelp={(answerId) => {
+          setHelpAnswerId(answerId);
+          setHelpOpen(true);
+        }}
+        onOpenTravel={() => chooseMode("travel")}
+      />
+
+      <div
+        className={`mx-auto px-4 pb-28 pt-6 sm:px-6 sm:pt-8 lg:pb-12 ${
+          activeMode === "find" ? "max-w-[68rem]" : "max-w-[48rem]"
+        }`}
+      >
         {activeMode === "now" ? (
           <section id={MODE_PANEL_IDS.now} aria-labelledby="fair-now-heading">
             <p className="text-[11px] font-bold uppercase tracking-[0.13em]" style={{ color: "var(--app-brand-press)" }}>
@@ -908,10 +953,23 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               Find your Fair
             </h1>
             <p className="mt-2 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              Search the reviewed program and save what you do not want to miss.
+              Pick a feeling first, then save what you do not want to miss.
             </p>
 
-            <label className="mt-4 block" htmlFor="fair-unified-search">
+            <FairDiscoveryChoices
+              items={discoveryItems}
+              selected={discoveryIntent}
+              onSelect={(intent) => {
+                setDiscoveryIntent((current) =>
+                  current === intent ? null : intent,
+                );
+                setQuery("");
+                setScheduleFilter("all");
+                setShowAllSchedule(false);
+              }}
+            />
+
+            <label className="mt-6 block" htmlFor="fair-unified-search">
               <span className="sr-only">Search the Fair</span>
               <span className="relative block">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2" style={{ color: "var(--app-ink-3)" }} aria-hidden />
@@ -921,6 +979,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                   value={query}
                   onChange={(event) => {
                     setQuery(event.target.value);
+                    setDiscoveryIntent(null);
                     setShowAllSchedule(false);
                   }}
                   placeholder="Search events, food, animals, parking, bags…"
@@ -940,6 +999,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                     aria-pressed={active}
                     onClick={() => {
                       setScheduleFilter(filter.id);
+                      setDiscoveryIntent(null);
                       setShowAllSchedule(false);
                     }}
                     className="tap-44 min-h-11 shrink-0 border-b-[3px] px-0 text-[13px] font-semibold"
@@ -975,7 +1035,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
 
             <div className="mt-6 flex items-end justify-between gap-4 border-b pb-3" style={{ borderColor: "var(--app-border-strong)" }}>
               <div>
-                <h2 className="text-[22px] font-bold tracking-[-0.03em]">Program</h2>
+                <h2 className="text-[22px] font-bold tracking-[-0.03em]">
+                  {fairDiscoveryIntentTitle(discoveryIntent)}
+                </h2>
                 <p className="mt-1 text-[13px]" style={{ color: "var(--app-ink-3)" }} aria-live="polite">
                   {matchingSchedule.length} {matchingSchedule.length === 1 ? "match" : "matches"}, sorted by time
                 </p>
@@ -1320,12 +1382,19 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
 
       <BottomDrawer
         open={helpOpen}
-        onOpenChange={setHelpOpen}
+        onOpenChange={(open) => {
+          setHelpOpen(open);
+          if (!open) setHelpAnswerId(null);
+        }}
         title="Fair help"
         subtitle="Parking, bags, children, rides, weather, and re-entry"
       >
         <div className="px-4 pb-6 sm:px-6">
-          <FairPracticalAnswers answers={data.practicalAnswers} />
+          <FairPracticalAnswers
+            key={helpAnswerId ?? "fair-help"}
+            answers={data.practicalAnswers}
+            focusAnswerId={helpAnswerId}
+          />
           <div className="mt-8 border-t pt-5" style={{ borderColor: "var(--app-border)" }}>
             <p className="text-[14px] font-semibold">{data.source.label}</p>
             <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>

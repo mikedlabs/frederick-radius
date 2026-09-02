@@ -21,12 +21,14 @@ export default function FairPlanStatusRibbon({
   selectedDate,
   onDateChange,
   onNextAction,
+  compact = false,
 }: {
   plan: FairPlan;
   dates: FairDayDateOption[];
   selectedDate: string;
   onDateChange: (date: string) => void;
   onNextAction: (status: FairPlanStatus) => void;
+  compact?: boolean;
 }) {
   const status = buildFairPlanStatus(plan);
   const travelReady = plan.readyKeys.includes("travel");
@@ -78,7 +80,7 @@ export default function FairPlanStatusRibbon({
 
   return (
     <section
-      data-fair-plan-status
+      data-fair-plan-status={compact ? "compact" : "full"}
       aria-label="Your Fair plan status"
       className="border-y py-3"
       style={{
@@ -102,7 +104,7 @@ export default function FairPlanStatusRibbon({
               {status.savedStopsLabel}
             </p>
             <p
-              className="mt-0.5 text-[12px] font-semibold"
+              className={`mt-0.5 text-[12px] font-semibold ${compact ? "hidden sm:block" : ""}`}
               style={{ color: "var(--app-ink-3)" }}
             >
               {status.partyLabel}
@@ -131,7 +133,7 @@ export default function FairPlanStatusRibbon({
         </div>
 
         <div
-          className="mt-3 grid grid-cols-3 divide-x border-y"
+          className={`${compact ? "hidden" : "mt-3 grid"} grid-cols-3 divide-x border-y`}
           aria-label="Fair trip at a glance"
           style={{ borderColor: "var(--app-border-strong)" }}
         >
@@ -175,11 +177,11 @@ export default function FairPlanStatusRibbon({
         </div>
 
         <div
-          className="mt-3 flex flex-col items-stretch gap-2 border-t pt-3 sm:flex-row sm:items-center sm:justify-between"
+          className={`${compact ? "mt-2" : "mt-3 border-t pt-3"} flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between`}
           style={{ borderColor: "var(--app-border)" }}
         >
           <p
-            className="min-w-0 text-[12.5px] leading-snug"
+            className={`min-w-0 text-[12.5px] leading-snug ${compact ? "hidden sm:block" : ""}`}
             style={{ color: "var(--app-ink-2)" }}
             aria-live="polite"
           >

@@ -161,6 +161,72 @@ describe("FairDayWorkspace app journey", () => {
     expect(container.textContent).toContain("sorted by time");
   });
 
+  it("starts Find with visual intent choices and excludes agriculture from Animals", async () => {
+    const data = await renderFair();
+    await openMode("Find");
+
+    expect(
+      container.querySelector('[data-fair-plan-status="compact"]'),
+    ).not.toBeNull();
+    const kidZone = buttonWithText(container, "Kid Zone");
+    const search = container.querySelector("#fair-unified-search");
+    expect(
+      kidZone.compareDocumentPosition(search!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    await act(async () => buttonWithText(container, "Animals & livestock").click());
+    const results = container.querySelector<HTMLOListElement>(
+      '[aria-label="Fair program results"]',
+    );
+    if (!results) throw new Error("Missing animal program results.");
+    const fridayAnimals = data.scheduleItems.filter(
+      (item) => item.date === "2026-09-18" && item.kind === "animal",
+    );
+    const fridayAgriculture = data.scheduleItems.filter(
+      (item) => item.date === "2026-09-18" && item.kind === "agriculture",
+    );
+    for (const item of fridayAnimals) {
+      expect(results.textContent).toContain(item.title);
+    }
+    for (const item of fridayAgriculture) {
+      expect(results.textContent).not.toContain(item.title);
+    }
+    expect(container.textContent).toContain("Clear choice · see the full program");
+
+    await act(async () =>
+      buttonWithText(container, "Clear choice · see the full program").click(),
+    );
+    expect(container.textContent).toContain("Program");
+  });
+
+  it("reopens the same family essential with its reviewed answer after closing Help", async () => {
+    await renderFair();
+
+    const openFamilyCare = async () => {
+      await act(async () =>
+        buttonWithText(container, "Family Care + changing").click(),
+      );
+      await act(async () => vi.advanceTimersByTimeAsync(20));
+      expect(document.body.textContent).toContain(
+        "Where can a family handle nursing or diaper changes?",
+      );
+      expect(document.body.textContent).toContain(
+        "every restroom also has a diaper-changing station",
+      );
+    };
+
+    await openFamilyCare();
+    const close = document.body.querySelector<HTMLButtonElement>(
+      'button[aria-label="Close Fair help"]',
+    );
+    if (!close) throw new Error("Missing Fair help close button.");
+    await act(async () => close.click());
+    await act(async () => vi.advanceTimersByTimeAsync(400));
+
+    await openFamilyCare();
+    expect(document.body.textContent).not.toMatch(/first aid/i);
+  });
+
   it("adds a program result and carries it into My Day without a page scroll", async () => {
     await renderFair();
     await openMode("Find");
