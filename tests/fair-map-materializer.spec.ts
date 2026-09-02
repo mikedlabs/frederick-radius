@@ -52,7 +52,7 @@ describe("Fair grounds map materializer", () => {
     expect(map.source.snapshotSha256).toMatch(/^[a-f0-9]{64}$/);
   });
 
-  it("fails closed for unreviewed, off-ground, and incomplete geometry", () => {
+  it("refuses an artifact made only from unreviewed, off-ground, or incomplete geometry", () => {
     const unsafeXml = `<osm version="0.6">
       <node id="20" lat="39.5000" lon="-77.3950"><tag k="amenity" v="toilets" /></node>
       <node id="21" lat="39.4120" lon="-77.3930" />
@@ -60,12 +60,12 @@ describe("Fair grounds map materializer", () => {
       <way id="30"><nd ref="21" /><nd ref="22" /><nd ref="999" /><tag k="name" v="4H Building" /></way>
       <node id="9999" lat="39.4120" lon="-77.3930"><tag k="amenity" v="toilets" /></node>
     </osm>`;
-    const map = materializeFairGroundsMap(unsafeXml, "2026-09-02", {
-      nodeIds: new Set(["20"]),
-      wayIds: new Set(["30"]),
-    });
-
-    expect(map.features).toEqual([]);
+    expect(() =>
+      materializeFairGroundsMap(unsafeXml, "2026-09-02", {
+        nodeIds: new Set(["20"]),
+        wayIds: new Set(["30"]),
+      }),
+    ).toThrow("refusing to write an empty artifact");
     expect(() =>
       materializeFairGroundsMap(unsafeXml, "2026-02-30", {
         nodeIds: new Set(),

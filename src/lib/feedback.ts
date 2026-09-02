@@ -172,7 +172,7 @@ export function parseFeedback(raw: unknown): ParseResult {
     if (!message) return { ok: false, error: "empty" };
     if (message.length > FEEDBACK_MAX_MESSAGE) return { ok: false, error: "too-long" };
 
-    if (carriesFairMetadata) {
+    if (pathname === FAIR_FEEDBACK_PATHNAME || carriesFairMetadata) {
       if (pathname !== FAIR_FEEDBACK_PATHNAME) {
         return { ok: false, error: "bad-fair-surface" };
       }

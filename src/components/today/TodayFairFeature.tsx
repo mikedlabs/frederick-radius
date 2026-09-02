@@ -40,7 +40,15 @@ export default function TodayFairFeature({
   const [savedPlan, setSavedPlan] = useState<FairPlan | null>(null);
 
   useEffect(() => {
-    const refreshPlan = () => setSavedPlan(readFairPlan(window.localStorage));
+    const refreshPlan = () => {
+      try {
+        setSavedPlan(readFairPlan(window.localStorage));
+      } catch {
+        // Some privacy modes throw while the storage property itself is read,
+        // before readFairPlan can guard its getItem call.
+        setSavedPlan(null);
+      }
+    };
     refreshPlan();
     window.addEventListener("storage", refreshPlan);
     window.addEventListener("pageshow", refreshPlan);

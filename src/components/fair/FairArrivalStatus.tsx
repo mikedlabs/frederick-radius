@@ -374,11 +374,11 @@ export default function FairArrivalStatus({
   }, [mode, reload, requestKey, selectedDate]);
 
   const refresh = () => setReload((value) => value + 1);
-  if (loaded?.key === requestKey) {
-    return <FairArrivalStatusView status={loaded.value} onRefresh={refresh} />;
-  }
   if (failedKey === requestKey) {
     return <FairArrivalStatusUnavailable onRetry={refresh} />;
+  }
+  if (loaded?.key === requestKey) {
+    return <FairArrivalStatusView status={loaded.value} onRefresh={refresh} />;
   }
   return <FairArrivalStatusLoading />;
 }

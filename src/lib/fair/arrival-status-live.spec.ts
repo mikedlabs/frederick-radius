@@ -129,4 +129,33 @@ describe("getFairArrivalStatus", () => {
       "does not mean service is not running",
     );
   });
+
+  it("aborts slow weather and transit work at the shared response deadline", async () => {
+    vi.useFakeTimers();
+    const signals: AbortSignal[] = [];
+    const stayPending = (signal: AbortSignal) => {
+      signals.push(signal);
+      return new Promise<never>(() => undefined);
+    };
+    mocks.getNwsAlertsResult.mockImplementation(stayPending);
+    mocks.getStopPredictionsResult.mockImplementation(stayPending);
+    mocks.getTransitServiceAlertsResult.mockImplementation(stayPending);
+
+    try {
+      const statusPromise = getFairArrivalStatus({
+        selectedDate: "2026-09-18",
+        includeTransit: true,
+        now: NOW,
+      });
+      await vi.advanceTimersByTimeAsync(2_400);
+      const status = await statusPromise;
+
+      expect(signals).toHaveLength(3);
+      expect(signals.every((signal) => signal.aborted)).toBe(true);
+      expect(status.coverage).toBe("partial");
+      expect(status.transit?.state).toBe("unavailable");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

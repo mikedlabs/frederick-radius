@@ -44,13 +44,20 @@ function resolvedClock(value?: Date): Date {
   return now;
 }
 
-async function within<T>(work: Promise<T>, fallback: T): Promise<T> {
+async function within<T>(
+  work: (signal: AbortSignal) => Promise<T>,
+  fallback: T,
+): Promise<T> {
+  const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
-      work.catch(() => fallback),
+      work(controller.signal).catch(() => fallback),
       new Promise<T>((resolve) => {
-        timer = setTimeout(() => resolve(fallback), DEADLINE_MS);
+        timer = setTimeout(() => {
+          controller.abort();
+          resolve(fallback);
+        }, DEADLINE_MS);
       }),
     ]);
   } finally {
@@ -94,11 +101,11 @@ export async function getFairArrivalStatus({
   const transitPromise = includeTransit
     ? Promise.all([
         within<TransitFeedResult<StopPrediction[]>>(
-          getStopPredictionsResult(),
+          (signal) => getStopPredictionsResult(signal),
           unavailableTransit<StopPrediction>(now.getTime()),
         ),
         within<TransitFeedResult<TransitServiceAlert[]>>(
-          getTransitServiceAlertsResult(),
+          (signal) => getTransitServiceAlertsResult(signal),
           unavailableTransit<TransitServiceAlert>(now.getTime()),
         ),
       ])
@@ -106,25 +113,25 @@ export async function getFairArrivalStatus({
 
   const [chart, workZones, weather, civic, transit] = await Promise.all([
     within<ChartIncidentsResult>(
-      getChartIncidentsFrederickResult({
+      () => getChartIncidentsFrederickResult({
         deadlineMs: PROVIDER_DEADLINE_MS,
         revalidateSeconds: 60,
       }),
       { data: [], available: false },
     ),
     within<MdotWorkZonesResult>(
-      getMdotWorkZonesFrederickResult({
+      () => getMdotWorkZonesFrederickResult({
         deadlineMs: PROVIDER_DEADLINE_MS,
         revalidateSeconds: 60,
       }),
       { data: [], available: false, sourceUrl: MDOT_WZDX_SOURCE_URL },
     ),
-    within<NwsAlertsResult>(getNwsAlertsResult(), {
+    within<NwsAlertsResult>((signal) => getNwsAlertsResult(signal), {
       alerts: [],
       available: false,
     }),
     within<OfficialCivicAlertsResult>(
-      getOfficialCivicAlertsResult({
+      () => getOfficialCivicAlertsResult({
         deadlineMs: PROVIDER_DEADLINE_MS,
         revalidateSeconds: 300,
         now,

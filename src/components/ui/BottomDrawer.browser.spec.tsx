@@ -32,6 +32,27 @@ function ControlledDrawer() {
   );
 }
 
+function RejectingControlledDrawer() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Open rejecting drawer
+      </button>
+      <BottomDrawer
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) setOpen(true);
+        }}
+        title="Required details"
+      >
+        <button type="button">Required body action</button>
+      </BottomDrawer>
+    </>
+  );
+}
+
 function UncontrolledDrawer() {
   return (
     <BottomDrawer
@@ -57,9 +78,9 @@ function closeButton(): HTMLButtonElement {
   return match;
 }
 
-async function settleFocus(delayMs = 0) {
+async function flushScheduledWork() {
   await act(async () => {
-    await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+    await vi.runAllTimersAsync();
   });
 }
 
@@ -68,6 +89,14 @@ describe("BottomDrawer keyboard focus", () => {
   let root: Root;
 
   beforeEach(() => {
+    vi.useFakeTimers({
+      toFake: [
+        "setTimeout",
+        "clearTimeout",
+        "requestAnimationFrame",
+        "cancelAnimationFrame",
+      ],
+    });
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: vi.fn().mockImplementation((query: string) => ({
@@ -88,6 +117,8 @@ describe("BottomDrawer keyboard focus", () => {
 
   afterEach(async () => {
     await act(async () => root.unmount());
+    vi.clearAllTimers();
+    vi.useRealTimers();
     container.remove();
     document.body.querySelectorAll('[role="dialog"]').forEach((node) =>
       node.remove(),
@@ -101,7 +132,7 @@ describe("BottomDrawer keyboard focus", () => {
 
     opener.focus();
     await act(async () => opener.click());
-    await settleFocus();
+    await flushScheduledWork();
 
     expect(dialog().getAttribute("aria-modal")).toBe("true");
     expect(dialog().getAttribute("aria-labelledby")).toBeTruthy();
@@ -113,7 +144,7 @@ describe("BottomDrawer keyboard focus", () => {
         new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
       );
     });
-    await settleFocus(600);
+    await flushScheduledWork();
 
     expect(dialog().getAttribute("data-state")).toBe("closed");
     expect(document.activeElement).toBe(opener);
@@ -126,7 +157,7 @@ describe("BottomDrawer keyboard focus", () => {
 
     opener.focus();
     await act(async () => opener.click());
-    await settleFocus();
+    await flushScheduledWork();
 
     const buttons = Array.from(
       dialog().querySelectorAll<HTMLButtonElement>("button"),
@@ -162,15 +193,37 @@ describe("BottomDrawer keyboard focus", () => {
 
     opener.focus();
     await act(async () => opener.click());
-    await settleFocus();
+    await flushScheduledWork();
 
     expect(document.activeElement).toBe(closeButton());
     expect(dialog().hasAttribute("aria-describedby")).toBe(false);
 
     await act(async () => closeButton().click());
-    await settleFocus(600);
+    await flushScheduledWork();
 
     expect(dialog().getAttribute("data-state")).toBe("closed");
     expect(document.activeElement).toBe(opener);
+  });
+
+  it("does not restore focus when a controlled close request is rejected", async () => {
+    await act(async () => root.render(createElement(RejectingControlledDrawer)));
+    const opener = container.querySelector<HTMLButtonElement>("button");
+    if (!opener) throw new Error("Expected the controlled drawer opener.");
+
+    opener.focus();
+    await act(async () => opener.click());
+    await flushScheduledWork();
+
+    const openerFocus = vi.spyOn(opener, "focus");
+    await act(async () => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+    await flushScheduledWork();
+
+    expect(dialog().getAttribute("data-state")).toBe("open");
+    expect(openerFocus).not.toHaveBeenCalled();
+    expect(dialog().contains(document.activeElement)).toBe(true);
   });
 });

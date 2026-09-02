@@ -75,4 +75,38 @@ describe("FairPracticalAnswers result announcements", () => {
       'No practical answers match "no reviewed answer uses this phrase".',
     );
   });
+
+  it("lets a visitor leave a focused quick answer and browse all Fair help", async () => {
+    await act(async () => {
+      root.render(
+        createElement(FairPracticalAnswers, {
+          answers: greatFrederickFair2026PracticalAnswers,
+        }),
+      );
+    });
+
+    const buttonNamed = (label: string) =>
+      Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find(
+        (button) => button.textContent?.includes(label),
+      );
+    const familyCare = buttonNamed("Family Care + changing");
+    if (!familyCare) throw new Error("Missing the family-care quick answer.");
+
+    await act(async () => familyCare.click());
+
+    expect(container.textContent).toContain(
+      "Where can a family handle nursing or diaper changes?",
+    );
+    const seeAll = buttonNamed("See all Fair help");
+    if (!seeAll) throw new Error("Missing the focused-answer reset action.");
+
+    await act(async () => seeAll.click());
+
+    expect(
+      container.querySelector('[aria-label="Filter practical answers by part of the visit"]'),
+    ).not.toBeNull();
+    expect(container.textContent).toContain(
+      "Can I leave the Fair and come back on the same ticket?",
+    );
+  });
 });

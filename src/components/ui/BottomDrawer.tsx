@@ -111,11 +111,14 @@ export default function BottomDrawer({
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (nextOpen) rememberCurrentFocus();
-      drawerOpenRef.current = nextOpen;
+      // In controlled mode, the prop is the source of truth. A parent may
+      // delay or reject a close request, so do not mark the drawer closed or
+      // restore focus until the controlled `open` value actually changes.
+      if (open === undefined) drawerOpenRef.current = nextOpen;
       onOpenChange?.(nextOpen);
-      if (!nextOpen) restoreRememberedFocus();
+      if (!nextOpen && open === undefined) restoreRememberedFocus();
     },
-    [onOpenChange, rememberCurrentFocus, restoreRememberedFocus],
+    [onOpenChange, open, rememberCurrentFocus, restoreRememberedFocus],
   );
 
   useLayoutEffect(() => {

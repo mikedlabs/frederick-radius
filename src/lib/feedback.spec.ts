@@ -91,6 +91,13 @@ describe("parseFeedback", () => {
       {
         body: {
           message: "note",
+          pathname: FAIR_FEEDBACK_PATHNAME,
+        },
+        error: "bad-fair-issue",
+      },
+      {
+        body: {
+          message: "note",
           pathname: "/today",
           fairIssue: "parking_entry",
         },

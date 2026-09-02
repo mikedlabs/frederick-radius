@@ -111,4 +111,44 @@ describe("TodayFairFeature", () => {
     await act(async () => root.unmount());
     container.remove();
   });
+
+  it("keeps the default Fair action when browser storage is unavailable", async () => {
+    const originalStorage = Object.getOwnPropertyDescriptor(
+      window,
+      "localStorage",
+    );
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      get() {
+        throw new DOMException("Storage is disabled", "SecurityError");
+      },
+    });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    try {
+      await act(async () => {
+        root.render(createElement(TodayFairFeature, { phase: "planning" }));
+      });
+
+      expect(container.textContent).toContain(
+        "Your Fair Day planner is ready.",
+      );
+      expect(container.textContent).toContain("Plan your Fair day");
+      expect(
+        container
+          .querySelector("[data-today-fair-feature]")
+          ?.getAttribute("data-today-fair-plan"),
+      ).toBe("new");
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      if (originalStorage) {
+        Object.defineProperty(window, "localStorage", originalStorage);
+      } else {
+        Reflect.deleteProperty(window, "localStorage");
+      }
+    }
+  });
 });

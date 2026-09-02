@@ -672,9 +672,17 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
     setSelectedDate(date);
     setShowAllSchedule(false);
     setDiscoveryIntent(null);
-    setPlan((current) =>
-      setFairPlanDay(current, `day-${date}`, updateTimestamp()),
-    );
+    setPlan((current) => {
+      const now = updateTimestamp();
+      const nextDayId = `day-${date}`;
+      const changedDay = current.selectedDayId !== nextDayId;
+      const nextDay = setFairPlanDay(current, nextDayId, now);
+      // Travel checks are date-specific: transit service, road conditions,
+      // and return details can all differ across the nine Fair days.
+      return changedDay
+        ? setFairPlanReady(nextDay, "travel", false, now)
+        : nextDay;
+    });
   };
 
   const toggleFairScheduleItem = (

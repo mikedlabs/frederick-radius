@@ -296,6 +296,12 @@ export function materializeFairGroundsMap(
     left.properties.id.localeCompare(right.properties.id),
   );
 
+  if (features.length === 0) {
+    throw new Error(
+      "The reviewed Fair map contains no usable features; refusing to write an empty artifact.",
+    );
+  }
+
   return {
     type: "FeatureCollection",
     id: "great-frederick-fair-2026-grounds-map",

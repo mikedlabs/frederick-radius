@@ -668,6 +668,19 @@ describe("FairDayWorkspace app journey", () => {
     expect(confirmedPlan.readyKeys).not.toContain("arrival");
     expect(confirmedPlan.readyKeys).not.toContain("return");
 
+    await chooseDate("2026-09-18");
+    expect(
+      JSON.parse(storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}").readyKeys,
+    ).toContain("travel");
+
+    await chooseDate("2026-09-19");
+    const nextDayPlan = JSON.parse(
+      storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}",
+    );
+    expect(nextDayPlan.selectedDayId).toBe("day-2026-09-19");
+    expect(nextDayPlan.readyKeys).not.toContain("travel");
+    expect(container.textContent).toContain("Use this driving plan");
+
     await openMode("My Day");
     expect(container.textContent).toContain("Drive and park");
     expect(container.textContent).toContain(

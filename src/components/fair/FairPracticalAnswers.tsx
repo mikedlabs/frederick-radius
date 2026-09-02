@@ -178,6 +178,15 @@ export default function FairPracticalAnswers({
     setOpenIds(new Set(firstMatch ? [firstMatch.id] : []));
   };
 
+  const showAllAnswers = () => {
+    setFocusedAnswerId(null);
+    setFocusedCategory(null);
+    setQuery("");
+    setStage("all");
+    setBrowseAll(true);
+    setOpenIds(new Set());
+  };
+
   return (
     <section id="answers" aria-labelledby="fair-practical-heading">
       <div>
@@ -326,14 +335,10 @@ export default function FairPracticalAnswers({
         </button>
       ) : null}
 
-      {focusedCategory ? (
+      {focusedAnswerId || focusedCategory ? (
         <button
           type="button"
-          onClick={() => {
-            setFocusedCategory(null);
-            setBrowseAll(true);
-            setOpenIds(new Set());
-          }}
+          onClick={showAllAnswers}
           className="tap-44 mt-2 inline-flex min-h-11 items-center text-[13px] font-semibold"
           style={{ color: "var(--app-brand-press)" }}
         >
