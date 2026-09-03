@@ -114,6 +114,32 @@ const FILTERS: Array<{
   },
 ];
 
+const ACCESSIBLE_PLACE_GROUPS: Array<{
+  id: "arrive" | "essentials" | "explore";
+  label: string;
+  detail: string;
+  kinds: readonly FairGroundsMapKind[];
+}> = [
+  {
+    id: "arrive",
+    label: "Arrive and enter",
+    detail: "Parking, transit, and gates",
+    kinds: ["parking", "transit", "gate"],
+  },
+  {
+    id: "essentials",
+    label: "Find essentials",
+    detail: "Restrooms, tickets, and guest services",
+    kinds: ["restroom", "ticket", "service"],
+  },
+  {
+    id: "explore",
+    label: "Explore the grounds",
+    detail: "Buildings, animals, and show areas",
+    kinds: ["building", "animal", "stage"],
+  },
+];
+
 const MARKER_THEME: Record<
   Exclude<FairGroundsMapKind, "fairgrounds">,
   { color: string; background: string }
@@ -395,6 +421,23 @@ export default function FairGroundsMapInner({
             ) || left.properties.name.localeCompare(right.properties.name),
         ),
     [visibleFeatures],
+  );
+  const groupedAccessibleFeatures = useMemo(
+    () =>
+      ACCESSIBLE_PLACE_GROUPS.map((group) => ({
+        ...group,
+        features: accessibleFeatures.filter((feature) =>
+          group.kinds.includes(feature.properties.kind),
+        ),
+      })).filter(
+        (group) =>
+          group.features.length > 0 ||
+          (group.id === "arrive" &&
+            savedCar !== null &&
+            savedCar?.longitude !== null &&
+            savedCar?.latitude !== null),
+      ),
+    [accessibleFeatures, savedCar],
   );
   const selected =
     mapData?.features.find((feature) => feature.properties.id === selectedId) ??
@@ -730,7 +773,10 @@ export default function FairGroundsMapInner({
         current signs on the grounds.
       </p>
 
-      <div className="absolute inset-x-3 top-3 z-30 lg:relative lg:inset-auto lg:top-auto lg:z-auto lg:mt-3">
+      <div
+        data-fair-map-search-rail
+        className="absolute inset-x-3 top-3 z-30 lg:relative lg:inset-auto lg:top-auto lg:z-auto lg:mt-3"
+      >
         <label htmlFor="fair-map-search" className="sr-only">
           Find a place or program event on the Fair grounds map
         </label>
@@ -832,7 +878,10 @@ export default function FairGroundsMapInner({
         ) : null}
       </div>
 
-      <div className="absolute inset-x-0 top-[4.15rem] z-20 lg:relative lg:inset-auto lg:top-auto lg:z-auto">
+      <div
+        data-fair-map-filter-rail
+        className="absolute inset-x-0 top-[4.15rem] z-20 lg:relative lg:inset-auto lg:top-auto lg:z-auto"
+      >
         <div
           className="scrollbar-none flex gap-2 overflow-x-auto px-3 pb-1 pr-10 lg:-mx-6 lg:mt-4 lg:px-6"
           role="group"
@@ -1136,8 +1185,9 @@ export default function FairGroundsMapInner({
             <div
               id="fair-map-selection-mobile"
               data-fair-map-selection
-              className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[var(--z-map-drawer)] mx-auto max-h-[calc(100dvh-5.25rem-env(safe-area-inset-bottom))] max-w-[30rem] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-4 lg:hidden"
+              className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-3 right-3 mx-auto max-h-[calc(100dvh-5.25rem-env(safe-area-inset-bottom))] max-w-[30rem] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-4 lg:hidden"
               style={{
+                zIndex: "calc(var(--z-sticky) + 1)",
                 borderColor: "var(--app-control-border)",
                 borderTopColor: selectedTone,
                 borderTopWidth: "4px",
@@ -1455,7 +1505,7 @@ export default function FairGroundsMapInner({
         }}
       >
         <summary className="tap-44 flex min-h-12 cursor-pointer items-center justify-between gap-3 px-4 py-2 text-[14px] font-bold">
-          <span>Browse mapped places as a list</span>
+          <span>Find places by task</span>
           <span
             className="tabular-nums"
             style={{ color: "var(--app-ink-3)" }}
@@ -1470,76 +1520,125 @@ export default function FairGroundsMapInner({
           </span>
         </summary>
         <ul
-          className="grid gap-1 border-t p-2 sm:grid-cols-2"
+          className="border-t"
           style={{ borderColor: "var(--app-border)" }}
-          aria-label="Mapped places shown"
+          aria-label="Mapped places grouped by task"
         >
-          {savedCar &&
-          savedCar.longitude !== null &&
-          savedCar.latitude !== null ? (
-            <li>
-              <button
-                type="button"
-                onClick={(event) => showSavedCar(event.currentTarget)}
-                className="tap-44 flex min-h-12 w-full items-center gap-3 rounded-[var(--app-radius-md)] px-3 py-2 text-left hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
-              >
-                <CircleParking
-                  className="h-5 w-5 shrink-0"
-                  style={{ color: "var(--app-cool)" }}
-                  aria-hidden
-                />
-                <span>
-                  <span className="block text-[14px] font-bold">Saved car</span>
-                  <span className="block text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
-                    {savedCar.lotLabel ?? "Saved location"}
-                  </span>
-                </span>
-              </button>
-            </li>
-          ) : null}
-          {accessibleFeatures.map((feature) => {
-            const savedHere = savedStopMatches.get(feature.properties.id) ?? [];
-            const scheduledHere = programMatches.get(feature.properties.id) ?? [];
-            const selectedHere = selectedId === feature.properties.id;
-            return (
-              <li key={`list-${feature.properties.id}`}>
-                <button
-                  type="button"
-                  aria-pressed={selectedHere}
-                  aria-controls={
-                    selectedHere
-                      ? "fair-map-selection-mobile fair-map-selection-desktop"
-                      : undefined
-                  }
-                  onClick={(event) =>
-                    chooseFeature(feature, event.currentTarget)
-                  }
-                  className="tap-44 min-h-12 w-full rounded-[var(--app-radius-md)] px-3 py-2 text-left hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
-                  style={{
-                    background: selectedHere
-                      ? "var(--app-brand-tint-6)"
-                      : "transparent",
-                  }}
-                >
-                  <span className="block text-[14px] font-bold">
-                    {mappedFeatureName(feature, mapData)}
-                  </span>
-                  <span
-                    className="block text-[12px] font-semibold leading-snug"
+          {groupedAccessibleFeatures.map((group) => (
+            <li
+              key={group.id}
+              className="border-b p-2 last:border-b-0"
+              style={{ borderColor: "var(--app-border)" }}
+            >
+              <section aria-labelledby={`fair-map-list-${group.id}`}>
+                <div className="px-3 pb-1.5 pt-2">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h3
+                      id={`fair-map-list-${group.id}`}
+                      className="text-[14px] font-bold"
+                    >
+                      {group.label}
+                    </h3>
+                    <span
+                      className="text-[12px] font-semibold tabular-nums"
+                      style={{ color: "var(--app-ink-3)" }}
+                      aria-hidden="true"
+                    >
+                      {group.features.length +
+                        (group.id === "arrive" &&
+                        savedCar !== null &&
+                        savedCar?.longitude !== null &&
+                        savedCar?.latitude !== null
+                          ? 1
+                          : 0)}
+                    </span>
+                  </div>
+                  <p
+                    className="mt-0.5 text-[12px] leading-snug"
                     style={{ color: "var(--app-ink-3)" }}
                   >
-                    {fairGroundsMapKindLabel(feature.properties.kind)}
-                    {savedHere.length > 0
-                      ? ` · ${savedHere.length} saved ${savedHere.length === 1 ? "stop" : "stops"}`
-                      : ""}
-                    {scheduledHere.length > 0
-                      ? ` · ${scheduledHere.length} ${scheduledHere.length === 1 ? "program item" : "program items"}`
-                      : ""}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
+                    {group.detail}
+                  </p>
+                </div>
+                <ul className="grid gap-1 sm:grid-cols-2">
+                  {group.id === "arrive" &&
+                  savedCar &&
+                  savedCar.longitude !== null &&
+                  savedCar.latitude !== null ? (
+                    <li>
+                      <button
+                        type="button"
+                        onClick={(event) => showSavedCar(event.currentTarget)}
+                        className="tap-44 flex min-h-12 w-full items-center gap-3 rounded-[var(--app-radius-md)] px-3 py-2 text-left hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
+                      >
+                        <CircleParking
+                          className="h-5 w-5 shrink-0"
+                          style={{ color: "var(--app-cool)" }}
+                          aria-hidden
+                        />
+                        <span>
+                          <span className="block text-[14px] font-bold">
+                            Saved car
+                          </span>
+                          <span
+                            className="block text-[12px] font-semibold"
+                            style={{ color: "var(--app-ink-3)" }}
+                          >
+                            {savedCar.lotLabel ?? "Saved location"}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  ) : null}
+                  {group.features.map((feature) => {
+                    const savedHere =
+                      savedStopMatches.get(feature.properties.id) ?? [];
+                    const scheduledHere =
+                      programMatches.get(feature.properties.id) ?? [];
+                    const selectedHere = selectedId === feature.properties.id;
+                    return (
+                      <li key={`list-${feature.properties.id}`}>
+                        <button
+                          type="button"
+                          aria-pressed={selectedHere}
+                          aria-controls={
+                            selectedHere
+                              ? "fair-map-selection-mobile fair-map-selection-desktop"
+                              : undefined
+                          }
+                          onClick={(event) =>
+                            chooseFeature(feature, event.currentTarget)
+                          }
+                          className="tap-44 min-h-12 w-full rounded-[var(--app-radius-md)] px-3 py-2 text-left hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
+                          style={{
+                            background: selectedHere
+                              ? "var(--app-brand-tint-6)"
+                              : "transparent",
+                          }}
+                        >
+                          <span className="block text-[14px] font-bold">
+                            {mappedFeatureName(feature, mapData)}
+                          </span>
+                          <span
+                            className="block text-[12px] font-semibold leading-snug"
+                            style={{ color: "var(--app-ink-3)" }}
+                          >
+                            {fairGroundsMapKindLabel(feature.properties.kind)}
+                            {savedHere.length > 0
+                              ? ` · ${savedHere.length} saved ${savedHere.length === 1 ? "stop" : "stops"}`
+                              : ""}
+                            {scheduledHere.length > 0
+                              ? ` · ${scheduledHere.length} ${scheduledHere.length === 1 ? "program item" : "program items"}`
+                              : ""}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            </li>
+          ))}
         </ul>
       </details>
     </section>
