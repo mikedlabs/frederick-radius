@@ -20,7 +20,15 @@ import {
   TicketCheck,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import MapCanvas, {
   AttributionControl,
   Layer,
@@ -51,6 +59,7 @@ import {
   type FairGroundsMapFilter,
   type FairGroundsMapKind,
 } from "@/lib/fair/grounds-map";
+import { groupCollidingMobileMarkers } from "@/lib/fair/mobile-marker-layout";
 import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback-ui";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { mapCameraDuration } from "@/lib/motion";
@@ -78,13 +87,25 @@ export type FairGroundsMapProps = {
   onBrowseProgram: () => void;
 };
 
+type FairGroundsMarkerGroup = {
+  id: string;
+  features: FairGroundsMapFeature[];
+  representative: FairGroundsMapFeature;
+};
+
 const FAIR_VIEW = {
   longitude: -77.3943,
   latitude: 39.4125,
   zoom: 16.25,
 };
-const FAIR_BOUNDS: [number, number, number, number] = [
+const FAIR_NEARBY_BOUNDS: [number, number, number, number] = [
   -77.4045, 39.4065, -77.385, 39.4205,
+];
+// A portrait canvas is taller than the old grounds-focused camera bounds.
+// Give the camera enough Frederick context to zoom out and include the two
+// official edge transit stops without widening the separate location check.
+const FAIR_CAMERA_BOUNDS: [number, number, number, number] = [
+  -77.405, 39.395, -77.3825, 39.43,
 ];
 const FAIR_GROUNDS_BOUNDS: [number, number, number, number] = [
   -77.398595, 39.4101944, -77.391291, 39.4152037,
@@ -92,33 +113,55 @@ const FAIR_GROUNDS_BOUNDS: [number, number, number, number] = [
 const MAP_LOAD_WATCHDOG_MS = 18_000;
 
 type FairMapRuntime = "checking" | "interactive" | "unsupported" | "failed";
+// The reviewed arrival layer reaches the official transit stops on both sides
+// of the grounds. Narrow phones need this floor for the initial fit to include
+// those stops instead of clipping them at the previous grounds-only zoom.
+const FAIR_ARRIVAL_MIN_ZOOM = 13.5;
 
 const FILTERS: Array<{
   id: FairGroundsMapFilter;
   label: string;
+  compactLabel: string;
   tone: string;
 }> = [
   {
+    id: "arrival",
+    label: "Parking + transit",
+    compactLabel: "Arrive",
+    tone: "var(--app-cool)",
+  },
+  {
     id: "essentials",
     label: "Entry + essentials",
+    compactLabel: "Essentials",
     tone: "var(--app-brand-press)",
   },
   {
     id: "animals",
     label: "Animals",
+    compactLabel: "Animals",
     tone: "var(--app-brand-2)",
   },
   {
     id: "buildings",
     label: "Buildings",
+    compactLabel: "Buildings",
     tone: "var(--app-warning-press)",
   },
-  {
-    id: "arrival",
-    label: "Parking + transit",
-    tone: "var(--app-cool)",
-  },
 ];
+
+// FairDayWorkspace conditionally mounts the map as visitors move between its
+// four modes. Remember the chosen lens for that client-side journey only;
+// a document reload evaluates this module again and restores Arrive.
+let rememberedFairGroundsMapFilter: FairGroundsMapFilter | null = null;
+
+function readRememberedFairGroundsMapFilter(): FairGroundsMapFilter | null {
+  return rememberedFairGroundsMapFilter;
+}
+
+function rememberFairGroundsMapFilter(filter: FairGroundsMapFilter): void {
+  rememberedFairGroundsMapFilter = filter;
+}
 
 const ACCESSIBLE_PLACE_GROUPS: Array<{
   id: "arrive" | "essentials" | "explore";
@@ -218,10 +261,10 @@ function mappedFeatureName(
 
 function isNearFair(longitude: number, latitude: number): boolean {
   return (
-    longitude >= FAIR_BOUNDS[0] &&
-    longitude <= FAIR_BOUNDS[2] &&
-    latitude >= FAIR_BOUNDS[1] &&
-    latitude <= FAIR_BOUNDS[3]
+    longitude >= FAIR_NEARBY_BOUNDS[0] &&
+    longitude <= FAIR_NEARBY_BOUNDS[2] &&
+    latitude >= FAIR_NEARBY_BOUNDS[1] &&
+    latitude <= FAIR_NEARBY_BOUNDS[3]
   );
 }
 
@@ -330,6 +373,44 @@ function FairMapCanvasFallback({
   );
 }
 
+function keepFocusInsideDialog(event: ReactKeyboardEvent<HTMLElement>) {
+  if (event.key !== "Tab") return;
+  const focusable = Array.from(
+    event.currentTarget.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  ).filter(
+    (element) =>
+      element.getClientRects().length > 0 &&
+      window.getComputedStyle(element).visibility !== "hidden",
+  );
+  if (focusable.length === 0) {
+    event.preventDefault();
+    event.currentTarget.focus({ preventScroll: true });
+    return;
+  }
+
+  const activeIndex = focusable.findIndex(
+    (element) => element === document.activeElement,
+  );
+  if (activeIndex === -1) {
+    event.preventDefault();
+    focusable[event.shiftKey ? focusable.length - 1 : 0]?.focus({
+      preventScroll: true,
+    });
+    return;
+  }
+  if (!event.shiftKey && activeIndex === focusable.length - 1) {
+    event.preventDefault();
+    focusable[0]?.focus({ preventScroll: true });
+    return;
+  }
+  if (event.shiftKey && activeIndex === 0) {
+    event.preventDefault();
+    focusable[focusable.length - 1]?.focus({ preventScroll: true });
+  }
+}
+
 function FairMapFeatureActions({
   feature,
 }: {
@@ -400,9 +481,17 @@ export default function FairGroundsMapInner({
 }: FairGroundsMapProps) {
   const mapRef = useRef<MapRef | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const condensedSearchTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const mapViewSelectRef = useRef<HTMLSelectElement | null>(null);
+  const clusterSelectionDialogRef = useRef<HTMLDialogElement | null>(null);
+  const clusterSelectionHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const mobileSelectionHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const desktopSelectionHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const lastSelectionTriggerRef = useRef<HTMLElement | null>(null);
+  const clusterOriginRef = useRef<{
+    element: HTMLElement;
+    memberIds: string[];
+  } | null>(null);
   const focusedDeepLinkRef = useRef(false);
   const mapLoadedRef = useRef(false);
   const locationRequestRef = useRef(0);
@@ -413,10 +502,21 @@ export default function FairGroundsMapInner({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapData, setMapData] = useState<FairGroundsMap | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [filter, setFilter] = useState<FairGroundsMapFilter>("essentials");
+  const [filter, setFilterState] = useState<FairGroundsMapFilter>(() =>
+    typeof window === "undefined"
+      ? "arrival"
+      : (readRememberedFairGroundsMapFilter() ?? "arrival"),
+  );
   const [query, setQuery] = useState("");
+  const [condensedMobileControls, setCondensedMobileControls] = useState(false);
+  const [condensedSearchOpen, setCondensedSearchOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [clusterSelectionIds, setClusterSelectionIds] = useState<string[]>([]);
   const [selectionExpanded, setSelectionExpanded] = useState(false);
+  const [markerGroups, setMarkerGroups] = useState<FairGroundsMarkerGroup[]>([]);
+  const [mobileActionBarHeight, setMobileActionBarHeight] = useState<
+    number | null
+  >(null);
   const [locating, setLocating] = useState(false);
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
   const [mapAnnouncement, setMapAnnouncement] = useState("");
@@ -428,6 +528,7 @@ export default function FairGroundsMapInner({
     if (typeof window === "undefined") return null;
     return readSavedFairCar(window.localStorage);
   });
+  const latestFilterRef = useRef(filter);
   const interactiveMapAvailable = mapRuntime === "interactive";
 
   const handleMapFailure = useCallback(
@@ -437,7 +538,9 @@ export default function FairGroundsMapInner({
       const liveFocusIsInsideRemovedMapUi =
         activeElement instanceof HTMLElement &&
         (interactiveMapSurfaceRef.current?.contains(activeElement) === true ||
-          activeElement.closest("[data-fair-map-runtime-control]") !== null);
+          activeElement.closest(
+            "[data-fair-map-runtime-control], [data-fair-map-high-text-controls], [data-fair-map-filter-rail], [data-fair-map-utility-controls], [data-fair-map-cluster-selection]",
+          ) !== null);
       const focusWasInsideRemovedMapUi =
         context?.focusWasInside === true || liveFocusIsInsideRemovedMapUi;
 
@@ -445,6 +548,10 @@ export default function FairGroundsMapInner({
       setLocating(false);
       setVisitorLocation(null);
       setLocationStatus(null);
+      clusterSelectionDialogRef.current?.close();
+      setClusterSelectionIds([]);
+      setSelectedId(null);
+      setMarkerGroups([]);
       setMapRuntime("failed");
       setMapAnnouncement(
         mapWasInteractive
@@ -477,6 +584,108 @@ export default function FairGroundsMapInner({
     }, MAP_LOAD_WATCHDOG_MS);
     return () => window.clearTimeout(watchdog);
   }, [handleMapFailure, mapData, mapLoaded, mapRuntime]);
+
+  useEffect(() => {
+    latestFilterRef.current = filter;
+  }, [filter]);
+
+  useEffect(() => {
+    let frame = 0;
+    const measure = () => {
+      const rootFontSize = Number.parseFloat(
+        window.getComputedStyle(document.documentElement).fontSize,
+      );
+      const viewportWidth = Math.min(
+        window.innerWidth,
+        window.visualViewport?.width ?? window.innerWidth,
+      );
+      const shouldCondense = viewportWidth < 640 && rootFontSize >= 24;
+      setCondensedMobileControls((current) =>
+        current === shouldCondense ? current : shouldCondense,
+      );
+      if (!shouldCondense) setCondensedSearchOpen(false);
+    };
+    const scheduleMeasure = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(measure);
+    };
+
+    measure();
+    window.addEventListener("resize", scheduleMeasure);
+    window.visualViewport?.addEventListener("resize", scheduleMeasure);
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(scheduleMeasure);
+    resizeObserver?.observe(document.documentElement);
+    const mutationObserver =
+      typeof MutationObserver === "undefined"
+        ? null
+        : new MutationObserver(scheduleMeasure);
+    mutationObserver?.observe(document.documentElement, { attributes: true });
+    if (document.head && mutationObserver) {
+      mutationObserver.observe(document.head, {
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", scheduleMeasure);
+      window.visualViewport?.removeEventListener("resize", scheduleMeasure);
+      resizeObserver?.disconnect();
+      mutationObserver?.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!condensedMobileControls || !condensedSearchOpen) return;
+    const frame = window.requestAnimationFrame(() =>
+      searchInputRef.current?.focus({ preventScroll: true }),
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [condensedMobileControls, condensedSearchOpen]);
+
+  useEffect(() => {
+    const actionBar = document.querySelector<HTMLElement>(
+      "[data-mobile-action-bar]",
+    );
+    if (!actionBar) return;
+
+    let frame = 0;
+    const measure = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const height = Math.ceil(actionBar.getBoundingClientRect().height);
+        if (height > 0) {
+          setMobileActionBarHeight((current) =>
+            current === height ? current : height,
+          );
+        }
+      });
+    };
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(measure);
+    resizeObserver?.observe(actionBar);
+    window.addEventListener("resize", measure);
+    window.visualViewport?.addEventListener("resize", measure);
+    measure();
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", measure);
+      window.visualViewport?.removeEventListener("resize", measure);
+    };
+  }, []);
+
+  const setFilter = (nextFilter: FairGroundsMapFilter) => {
+    rememberFairGroundsMapFilter(nextFilter);
+    setFilterState(nextFilter);
+  };
 
   useEffect(() => {
     let active = true;
@@ -596,9 +805,131 @@ export default function FairGroundsMapInner({
   const selected =
     mapData?.features.find((feature) => feature.properties.id === selectedId) ??
     null;
+  const clusterSelectionFeatures = clusterSelectionIds.flatMap((id) => {
+    const feature = mapData?.features.find(
+      (candidate) => candidate.properties.id === id,
+    );
+    return feature ? [feature] : [];
+  });
+  useEffect(() => {
+    if (clusterSelectionFeatures.length <= 1 || selected) return;
+    const dialog = clusterSelectionDialogRef.current;
+    if (!dialog) return;
+    if (!dialog.open) dialog.showModal();
+    const frame = window.requestAnimationFrame(() =>
+      clusterSelectionHeadingRef.current?.focus({ preventScroll: true }),
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [clusterSelectionFeatures.length, selected]);
   const selectedTone = selected
     ? markerTone(selected.properties.kind)
     : "var(--app-brand-press)";
+  const restoreMapControlFocus = useCallback(
+    (
+      preferred: HTMLElement | null,
+      preferredClusterMemberIds: readonly string[] = [],
+    ) => {
+      window.requestAnimationFrame(() => {
+        const restoredCluster =
+          preferredClusterMemberIds.length > 0
+            ? Array.from(
+                document.querySelectorAll<HTMLElement>(
+                  "[data-fair-map-cluster-members]",
+                ),
+              ).find((candidate) => {
+                const memberIds =
+                  candidate.dataset.fairMapClusterMembers?.split(" ") ?? [];
+                return preferredClusterMemberIds.every((id) =>
+                  memberIds.includes(id),
+                );
+              })
+            : null;
+        const nextTarget = [
+          restoredCluster,
+          preferred,
+          condensedSearchTriggerRef.current,
+          searchInputRef.current,
+          mapViewSelectRef.current,
+        ].find(
+          (candidate) =>
+            candidate?.isConnected && candidate.getClientRects().length > 0,
+        );
+        nextTarget?.focus({ preventScroll: true });
+      });
+    },
+    [],
+  );
+  const updateMarkerGroups = useCallback(() => {
+    const features = visibleFeatures.filter(
+      (feature) => feature.properties.kind !== "fairgrounds",
+    );
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+
+    const points = features.map((feature) => {
+      const point = map.project(feature.properties.anchor);
+      return {
+        id: feature.properties.id,
+        item: feature,
+        x: point.x,
+        y: point.y,
+      };
+    });
+    const groups =
+      map.getCanvas().clientWidth < 640
+        ? groupCollidingMobileMarkers(points)
+        : points.map((point) => ({
+            id: point.id,
+            items: [point.item],
+            representative: point,
+          }));
+    const nextGroups = groups.map((group) => ({
+      id: group.id,
+      features: group.items,
+      representative: group.representative.item,
+    }));
+    setMarkerGroups(nextGroups);
+
+    if (clusterSelectionIds.length > 1) {
+      const activeIds = new Set(clusterSelectionIds);
+      const stillMatchesRenderedCluster = nextGroups.some(
+        (group) =>
+          group.features.length === activeIds.size &&
+          group.features.length > 1 &&
+          group.features.every((feature) =>
+            activeIds.has(feature.properties.id),
+          ),
+      );
+      if (!stillMatchesRenderedCluster) {
+        setClusterSelectionIds([]);
+        setMapAnnouncement(
+          "The map changed, so the nearby-place chooser closed.",
+        );
+        restoreMapControlFocus(lastSelectionTriggerRef.current);
+      }
+    }
+  }, [clusterSelectionIds, restoreMapControlFocus, visibleFeatures]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(updateMarkerGroups);
+    return () => window.cancelAnimationFrame(frame);
+  }, [updateMarkerGroups]);
+  const renderedMarkerGroups = useMemo(
+    () =>
+      markerGroups.map((group) => {
+        const selectedFeature = group.features.find(
+          (feature) => feature.properties.id === selectedId,
+        );
+        return selectedFeature
+          ? {
+              ...group,
+              features: [selectedFeature],
+              representative: selectedFeature,
+            }
+          : group;
+      }),
+    [markerGroups, selectedId],
+  );
   const searchMatches = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     if (!mapData || normalized.length < 2) return [];
@@ -665,6 +996,62 @@ export default function FairGroundsMapInner({
     );
   }, [mapData]);
 
+  const fairMapFitPadding = useCallback(() => {
+    const map = mapRef.current?.getMap();
+    if (!map || map.getCanvas().clientWidth >= 640) return 52;
+    const mapBox = map.getCanvas().getBoundingClientRect();
+    const markerRadius = 22;
+    const markerGap = 8;
+    const clearance = markerRadius + markerGap;
+    const intersectsMap = (box: DOMRect) =>
+      box.width > 0 &&
+      box.height > 0 &&
+      box.right > mapBox.left &&
+      box.left < mapBox.right &&
+      box.bottom > mapBox.top &&
+      box.top < mapBox.bottom;
+    const visibleBoxes = (selectors: readonly string[]) =>
+      selectors.flatMap((selector) =>
+        Array.from(document.querySelectorAll<HTMLElement>(selector)).flatMap(
+          (element) => {
+            const box = element.getBoundingClientRect();
+            return intersectsMap(box) ? [box] : [];
+          },
+        ),
+      );
+
+    const topChrome = visibleBoxes([
+      "[data-fair-map-high-text-controls]",
+      "[data-fair-map-search-rail]",
+      "[data-fair-map-filter-rail]",
+      "[data-fair-map-utility-controls]",
+    ]);
+    const bottomChrome = visibleBoxes([
+      ".fair-grounds-map-canvas .maplibregl-ctrl-attrib",
+      "[data-mobile-action-bar]",
+    ]);
+    const top = topChrome.reduce(
+      (padding, box) =>
+        Math.max(
+          padding,
+          Math.ceil(Math.min(box.bottom, mapBox.bottom) - mapBox.top) +
+            clearance,
+        ),
+      clearance,
+    );
+    const bottom = bottomChrome.reduce(
+      (padding, box) =>
+        Math.max(
+          padding,
+          Math.ceil(mapBox.bottom - Math.max(box.top, mapBox.top)) +
+            clearance,
+        ),
+      clearance,
+    );
+
+    return { top, right: clearance, bottom, left: clearance };
+  }, []);
+
   const focusSelectedDetails = () => {
     const desktop = window.matchMedia("(min-width: 1024px)").matches;
     const heading = desktop
@@ -673,11 +1060,43 @@ export default function FairGroundsMapInner({
     heading?.focus({ preventScroll: true });
   };
 
+  const openMarkerCluster = (
+    features: FairGroundsMapFeature[],
+    trigger: HTMLElement,
+  ) => {
+    const memberIds = features.map((feature) => feature.properties.id);
+    lastSelectionTriggerRef.current = trigger;
+    clusterOriginRef.current = { element: trigger, memberIds };
+    setSelectedId(null);
+    setClusterSelectionIds(memberIds);
+    setMapAnnouncement(
+      `${features.length} nearby map places are ready to choose from.`,
+    );
+  };
+
+  const closeMarkerCluster = () => {
+    const origin = clusterOriginRef.current;
+    const returnTarget = origin?.element ?? lastSelectionTriggerRef.current;
+    clusterSelectionDialogRef.current?.close();
+    setClusterSelectionIds([]);
+    setMapAnnouncement("Nearby map places closed.");
+    restoreMapControlFocus(returnTarget, origin?.memberIds);
+    clusterOriginRef.current = null;
+  };
+
   const chooseFeature = (
     feature: FairGroundsMapFeature,
     trigger?: HTMLElement,
+    preserveClusterOrigin = false,
   ) => {
-    if (trigger) lastSelectionTriggerRef.current = trigger;
+    if (preserveClusterOrigin && clusterOriginRef.current) {
+      lastSelectionTriggerRef.current = clusterOriginRef.current.element;
+    } else {
+      clusterOriginRef.current = null;
+      if (trigger) lastSelectionTriggerRef.current = trigger;
+    }
+    clusterSelectionDialogRef.current?.close();
+    setClusterSelectionIds([]);
     setSelectionExpanded(false);
     setSelectedId(feature.properties.id);
     const selectedName = mapData
@@ -690,23 +1109,26 @@ export default function FairGroundsMapInner({
       center: feature.properties.anchor,
       zoom: Math.max(mapRef.current?.getZoom() ?? FAIR_VIEW.zoom, 17),
       duration: mapCameraDuration("focus"),
-      padding: { top: 44, right: 44, bottom: 84, left: 44 },
+      padding: fairMapFitPadding(),
     });
     window.requestAnimationFrame(focusSelectedDetails);
   };
 
   const closeSelection = () => {
-    const returnTarget = lastSelectionTriggerRef.current;
+    const origin = clusterOriginRef.current;
+    const returnTarget = origin?.element ?? lastSelectionTriggerRef.current;
     setSelectionExpanded(false);
     setSelectedId(null);
     setMapAnnouncement("Map place details closed.");
-    window.requestAnimationFrame(() => {
-      if (returnTarget?.isConnected) {
-        returnTarget.focus({ preventScroll: true });
-        return;
-      }
-      searchInputRef.current?.focus({ preventScroll: true });
-    });
+    restoreMapControlFocus(returnTarget, origin?.memberIds);
+    clusterOriginRef.current = null;
+  };
+
+  const closeCondensedSearch = () => {
+    setQuery("");
+    setCondensedSearchOpen(false);
+    setMapAnnouncement("Map search closed.");
+    restoreMapControlFocus(null);
   };
 
   const browseProgram = () => {
@@ -717,7 +1139,7 @@ export default function FairGroundsMapInner({
     });
   };
 
-  const fitFeatures = (features: FairGroundsMapFeature[]) => {
+  const fitFeatures = useCallback((features: FairGroundsMapFeature[]) => {
     const anchors = features
       .filter((feature) => feature.properties.kind !== "fairgrounds")
       .map((feature) => feature.properties.anchor);
@@ -728,6 +1150,7 @@ export default function FairGroundsMapInner({
         center: anchors[0],
         zoom: 17.25,
         duration: mapCameraDuration("focus"),
+        padding: fairMapFitPadding(),
       });
       return;
     }
@@ -739,20 +1162,43 @@ export default function FairGroundsMapInner({
         [Math.max(...longitudes), Math.max(...latitudes)],
       ],
       {
-        padding: 52,
+        padding: fairMapFitPadding(),
         maxZoom: 17.25,
         duration: mapCameraDuration("focus"),
       },
     );
-  };
+  }, [fairMapFitPadding]);
 
-  const fitFilter = (nextFilter: FairGroundsMapFilter) => {
+  const fitFilter = useCallback((nextFilter: FairGroundsMapFilter) => {
     if (!mapData) return;
     fitFeatures(
       mapData.features.filter((feature) =>
         fairGroundsFeatureMatchesFilter(feature, nextFilter),
       ),
     );
+  }, [fitFeatures, mapData]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const map = mapRef.current?.getMap();
+      if (!map) return;
+      map.resize();
+      fitFilter(latestFilterRef.current);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [condensedMobileControls, fitFilter, mobileActionBarHeight]);
+
+  const activateMapFilter = (nextFilter: FairGroundsMapFilter) => {
+    const count = filterCounts.get(nextFilter) ?? 0;
+    const option = FILTERS.find((candidate) => candidate.id === nextFilter);
+    setFilter(nextFilter);
+    setSelectedId(null);
+    setClusterSelectionIds([]);
+    setMarkerGroups([]);
+    setMapAnnouncement(
+      `${option?.label ?? "Selected"} map layer selected. ${count} ${count === 1 ? "place" : "places"} shown.`,
+    );
+    fitFilter(nextFilter);
   };
 
   const showWholeGrounds = () => {
@@ -762,7 +1208,7 @@ export default function FairGroundsMapInner({
         [FAIR_GROUNDS_BOUNDS[2], FAIR_GROUNDS_BOUNDS[3]],
       ],
       {
-        padding: 34,
+        padding: fairMapFitPadding(),
         maxZoom: 17.15,
         duration: mapCameraDuration("focus"),
       },
@@ -772,7 +1218,8 @@ export default function FairGroundsMapInner({
   const handleMapLoad = () => {
     mapLoadedRef.current = true;
     setMapLoaded(true);
-    showWholeGrounds();
+    fitFilter(filter);
+    updateMarkerGroups();
     const canvas = mapRef.current?.getMap().getCanvas();
     canvas?.setAttribute("role", "region");
     canvas?.setAttribute("aria-label", "Interactive Fairgrounds map");
@@ -794,7 +1241,10 @@ export default function FairGroundsMapInner({
             ? "arrival"
             : "essentials";
     setFilter(nextFilter);
+    setClusterSelectionIds([]);
+    setMarkerGroups([]);
     setQuery("");
+    setCondensedSearchOpen(false);
     chooseFeature(feature, trigger);
   };
 
@@ -915,8 +1365,73 @@ export default function FairGroundsMapInner({
     return <FairGroundsMapLoading />;
   }
 
+  const renderSearchResults = () =>
+    normalizedQuery.length >= 2 ? (
+      <div
+        id="fair-map-search-results"
+        className="absolute left-0 right-0 top-[calc(100%+0.4rem)] z-30 max-h-[min(18rem,50dvh)] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-1"
+        style={{
+          borderColor: "var(--app-border-strong)",
+          background: "var(--app-bg-elevated-solid)",
+          boxShadow: "var(--app-elev-3)",
+        }}
+      >
+        {searchMatches.length > 0 ? (
+          <ul aria-label="Fair map search results">
+            {searchMatches.map((feature) => (
+              <li key={feature.properties.id}>
+                <button
+                  type="button"
+                  onClick={(event) =>
+                    chooseSearchResult(feature, event.currentTarget)
+                  }
+                  className="tap-44 flex min-h-12 w-full items-center justify-between gap-3 rounded-[calc(var(--app-radius-lg)-5px)] px-3 py-2 text-left hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-[14px] font-bold">
+                      {mappedFeatureName(feature, mapData)}
+                    </span>
+                    <span
+                      className="block text-[12px] font-semibold"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      {fairGroundsMapKindLabel(feature.properties.kind)}
+                    </span>
+                  </span>
+                  <MapPin
+                    className="h-4 w-4 shrink-0"
+                    style={{ color: markerTone(feature.properties.kind) }}
+                    aria-hidden
+                  />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p
+            className="px-3 py-3 text-[13px] font-semibold"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            No reviewed map place matches that yet.
+          </p>
+        )}
+      </div>
+    ) : null;
+
   return (
-    <section className="relative lg:mt-5" aria-labelledby="fair-grounds-map-heading" data-fair-grounds-map>
+    <section
+      className="relative lg:mt-5"
+      aria-labelledby="fair-grounds-map-heading"
+      data-fair-grounds-map
+      style={
+        {
+          "--fair-map-action-bar-height":
+            mobileActionBarHeight === null
+              ? undefined
+              : `${mobileActionBarHeight}px`,
+        } as CSSProperties
+      }
+    >
       <div className="hidden lg:block">
         <FairGroundsMapMasthead checkedOn={mapData.reviewedOn} />
       </div>
@@ -933,165 +1448,348 @@ export default function FairGroundsMapInner({
         {searchAnnouncement}
       </p>
       <p id="fair-map-instructions" className="sr-only">
-        Use the map controls to zoom, or browse the mapped places as a list
-        below. Grounds geometry comes from reviewed OpenStreetMap data. Official
+        On a phone, pinch or double-tap the map to zoom. When the map is
+        focused, use keyboard plus and minus to zoom. Every shown place is also
+        available in the complete task-grouped list below. Grounds geometry
+        comes from reviewed OpenStreetMap data. Official
         arrival pins and published transit stops identify their sources. Follow
         current signs on the grounds.
       </p>
 
-      <div
-        data-fair-map-search-rail
-        className="absolute inset-x-3 top-3 z-30 lg:relative lg:inset-auto lg:top-auto lg:z-auto lg:mt-3"
-      >
-        <label htmlFor="fair-map-search" className="sr-only">
-          Find a place or program event on the Fair grounds map
-        </label>
-        <Search
-          className="pointer-events-none absolute left-4 top-1/2 z-10 h-4 w-4 -translate-y-1/2"
-          style={{ color: "var(--app-ink-3)" }}
-          aria-hidden
-        />
-        <input
-          ref={searchInputRef}
-          id="fair-map-search"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Find a place or program event"
-          autoComplete="off"
-          aria-controls={
-            normalizedQuery.length >= 2
-              ? "fair-map-search-results"
-              : undefined
-          }
-          aria-describedby="fair-map-search-status"
-          onKeyDown={(event) => {
-            if (event.key === "Escape" && query) {
-              event.preventDefault();
-              setQuery("");
-            }
-          }}
-          className="tap-44 min-h-12 w-full rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] py-3 pl-11 pr-11 text-base font-semibold outline-none placeholder:font-medium focus-visible:border-[var(--app-brand-press)] focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--app-brand)_22%,transparent)]"
-          style={{
-            borderColor: "var(--app-control-border)",
-            color: "var(--app-ink)",
-            boxShadow: "var(--app-elev-1)",
-          }}
-        />
-        {query ? (
-          <button
-            type="button"
-            onClick={() => {
-              setQuery("");
-              window.requestAnimationFrame(() => searchInputRef.current?.focus());
-            }}
-            className="tap-44 absolute right-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full"
-            aria-label="Clear map search"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </button>
-        ) : null}
-        {query.trim().length >= 2 ? (
-          <div
-            id="fair-map-search-results"
-            className="absolute left-0 right-0 top-[calc(100%+0.4rem)] z-30 max-h-[min(18rem,50dvh)] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-1"
-            style={{
-              borderColor: "var(--app-border-strong)",
-              background: "var(--app-bg-elevated-solid)",
-              boxShadow: "var(--app-elev-3)",
-            }}
-          >
-            {searchMatches.length > 0 ? (
-              <ul aria-label="Fair map search results">
-                {searchMatches.map((feature) => (
-                  <li key={feature.properties.id}>
-                    <button
-                      type="button"
-                      onClick={(event) =>
-                        chooseSearchResult(feature, event.currentTarget)
-                      }
-                      className="tap-44 flex min-h-12 w-full items-center justify-between gap-3 rounded-[calc(var(--app-radius-lg)-5px)] px-3 py-2 text-left hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate text-[14px] font-bold">
-                          {mappedFeatureName(feature, mapData)}
-                        </span>
-                        <span
-                          className="block text-[12px] font-semibold"
-                          style={{ color: "var(--app-ink-3)" }}
-                        >
-                          {fairGroundsMapKindLabel(feature.properties.kind)}
-                        </span>
-                      </span>
-                      <MapPin
-                        className="h-4 w-4 shrink-0"
-                        style={{ color: markerTone(feature.properties.kind) }}
-                        aria-hidden
-                      />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p
-                className="px-3 py-3 text-[13px] font-semibold"
-                style={{ color: "var(--app-ink-2)" }}
-              >
-                No reviewed map place matches that yet.
-              </p>
-            )}
-          </div>
-        ) : null}
-      </div>
-
-      {interactiveMapAvailable ? (
+      {condensedMobileControls && interactiveMapAvailable ? (
         <div
-          data-fair-map-filter-rail
+          data-fair-map-high-text-controls
           data-fair-map-runtime-control
-          className="absolute inset-x-0 top-[4.15rem] z-20 lg:relative lg:inset-auto lg:top-auto lg:z-auto"
+          className="absolute inset-x-[12px] top-[12px] z-30"
         >
-        <div
-          className="scrollbar-none flex gap-2 overflow-x-auto px-3 pb-1 pr-10 lg:-mx-6 lg:mt-4 lg:px-6"
-          role="group"
-          aria-label="Choose what the Fair map shows"
-        >
-          {FILTERS.map((option) => {
-            const active = option.id === filter;
-            const count = filterCounts.get(option.id) ?? 0;
-            return (
-              <button
-                key={option.id}
-                type="button"
-                aria-pressed={active}
-                onClick={() => {
-                  setFilter(option.id);
-                  setSelectedId(null);
-                  setMapAnnouncement(
-                    `${option.label} map layer selected. ${count} ${count === 1 ? "place" : "places"} shown.`,
-                  );
-                  fitFilter(option.id);
+          {condensedSearchOpen ? (
+            <div
+              data-fair-map-search-rail
+              className="relative flex h-[44px] w-full items-stretch"
+            >
+              <label htmlFor="fair-map-search" className="sr-only">
+                Find a place or program event on the Fair grounds map
+              </label>
+              <Search
+                className="pointer-events-none absolute left-[14px] top-1/2 z-10 h-[16px] w-[16px] -translate-y-1/2"
+                style={{ color: "var(--app-ink-3)" }}
+                aria-hidden
+              />
+              <input
+                ref={searchInputRef}
+                id="fair-map-search"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Find a place or event"
+                autoComplete="off"
+                aria-controls={
+                  normalizedQuery.length >= 2
+                    ? "fair-map-search-results"
+                    : undefined
+                }
+                aria-describedby="fair-map-search-status"
+                onKeyDown={(event) => {
+                  if (event.key !== "Escape") return;
+                  event.preventDefault();
+                  closeCondensedSearch();
                 }}
-                className="tap-44 min-h-11 shrink-0 rounded-full border px-3 text-[13px] font-semibold"
+                className="tap-44 h-[44px] min-w-0 flex-1 rounded-l-full border border-r-0 bg-[var(--app-bg-elevated-solid)] py-0 pl-[42px] pr-[10px] text-[clamp(16px,0.75rem,20px)] font-semibold outline-none placeholder:font-medium focus-visible:border-[var(--app-brand-press)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand-press)]"
                 style={{
-                  borderColor: active ? option.tone : "var(--app-control-border)",
-                  color: active ? "var(--app-ink-inverse)" : "var(--app-ink-2)",
-                  background: active ? option.tone : "var(--app-bg-elevated-solid)",
-                  boxShadow: active
-                    ? "0 6px 16px -12px var(--app-ink)"
-                    : "inset 0 1px 0 color-mix(in srgb, white 65%, transparent)",
+                  borderColor: "var(--app-control-border)",
+                  color: "var(--app-ink)",
+                  boxShadow: "var(--app-elev-1)",
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (!query) {
+                    closeCondensedSearch();
+                    return;
+                  }
+                  setQuery("");
+                  window.requestAnimationFrame(() =>
+                    searchInputRef.current?.focus({ preventScroll: true }),
+                  );
+                }}
+                className="tap-44 grid h-[44px] w-[44px] shrink-0 place-items-center rounded-r-full border bg-[var(--app-bg-elevated-solid)]"
+                style={{
+                  borderColor: "var(--app-control-border)",
+                  color: "var(--app-ink)",
+                }}
+                aria-label={query ? "Clear search" : "Close map search"}
+              >
+                <X className="h-[18px] w-[18px]" aria-hidden />
+              </button>
+              {renderSearchResults()}
+            </div>
+          ) : (
+            <div
+              className="flex h-[44px] w-full items-stretch gap-[6px]"
+              role="group"
+              aria-label="Fair map controls"
+            >
+              <button
+                ref={condensedSearchTriggerRef}
+                type="button"
+                onClick={() => setCondensedSearchOpen(true)}
+                className="tap-44 grid h-[44px] w-[44px] shrink-0 place-items-center rounded-full border"
+                style={{
+                  color: "var(--app-ink)",
+                  background: "var(--app-bg-elevated-solid)",
+                  borderColor: "var(--app-control-border)",
+                  boxShadow: "var(--app-elev-1)",
+                }}
+                aria-label="Search the Fair map"
+              >
+                <Search className="h-[18px] w-[18px]" aria-hidden />
+              </button>
+              <div
+                className="relative h-[44px] min-w-0 flex-1 rounded-full"
+              >
+                <label htmlFor="fair-map-view" className="sr-only">
+                  Map view
+                </label>
+                <select
+                  ref={mapViewSelectRef}
+                  id="fair-map-view"
+                  data-fair-map-filter-select
+                  value={filter}
+                  onChange={(event) =>
+                    activateMapFilter(
+                      event.target.value as FairGroundsMapFilter,
+                    )
+                  }
+                  aria-describedby="fair-map-filter-status"
+                  className="block h-[44px] w-full appearance-none rounded-full border bg-[var(--app-bg-elevated-solid)] py-0 pl-[10px] pr-[24px] text-[clamp(14px,0.625rem,18px)] font-bold outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--app-brand-press)]"
+                  style={{
+                    color: "var(--app-ink)",
+                    borderColor: "var(--app-control-border)",
+                    boxShadow: "var(--app-elev-1)",
+                  }}
+                >
+                  {FILTERS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.compactLabel} · {filterCounts.get(option.id) ?? 0}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  className="pointer-events-none absolute right-[7px] top-1/2 h-[16px] w-[16px] -translate-y-1/2"
+                  style={{ color: "var(--app-ink-3)" }}
+                  aria-hidden
+                />
+              </div>
+              <button
+                type="button"
+                data-fair-map-runtime-control
+                onClick={locate}
+                disabled={locating}
+                className="tap-44 grid h-[44px] w-[44px] shrink-0 place-items-center rounded-full border disabled:opacity-60"
+                style={{
+                  color: "var(--app-ink)",
+                  background: "var(--app-bg-elevated-solid)",
+                  borderColor: "var(--app-control-border)",
+                  boxShadow: "var(--app-elev-1)",
+                }}
+                aria-label={locating ? "Finding location" : "Show my location"}
+              >
+                <LocateFixed className="h-[18px] w-[18px]" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={showWholeGrounds}
+                className="tap-44 grid h-[44px] w-[44px] shrink-0 place-items-center rounded-full border"
+                style={{
+                  color: "var(--app-ink)",
+                  background: "var(--app-bg-elevated-solid)",
+                  borderColor: "var(--app-control-border)",
+                  boxShadow: "var(--app-elev-1)",
+                }}
+                aria-label="Whole grounds"
+              >
+                <Scan className="h-[18px] w-[18px]" aria-hidden />
+              </button>
+            </div>
+          )}
+          <p
+            id="fair-map-filter-status"
+            className="sr-only"
+            aria-live="polite"
+          >
+            This map view shows{" "}
+            {FILTERS.find((option) => option.id === filter)?.label ??
+              "the selected places"}
+            : {filterCounts.get(filter) ?? 0}{" "}
+            {(filterCounts.get(filter) ?? 0) === 1 ? "place" : "places"}.
+          </p>
+        </div>
+      ) : (
+        <div data-fair-map-standard-controls className="contents">
+          <div
+            data-fair-map-search-rail
+            className="absolute inset-x-3 top-3 z-30 lg:relative lg:inset-auto lg:top-auto lg:z-auto lg:mt-3"
+          >
+            <label htmlFor="fair-map-search" className="sr-only">
+              Find a place or program event on the Fair grounds map
+            </label>
+            <Search
+              className="pointer-events-none absolute left-4 top-1/2 z-10 h-4 w-4 -translate-y-1/2"
+              style={{ color: "var(--app-ink-3)" }}
+              aria-hidden
+            />
+            <input
+              ref={searchInputRef}
+              id="fair-map-search"
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Find a place or event"
+              autoComplete="off"
+              aria-controls={
+                normalizedQuery.length >= 2
+                  ? "fair-map-search-results"
+                  : undefined
+              }
+              aria-describedby="fair-map-search-status"
+              onKeyDown={(event) => {
+                if (event.key === "Escape" && query) {
+                  event.preventDefault();
+                  setQuery("");
+                }
+              }}
+              className="tap-44 min-h-12 w-full rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] py-3 pl-11 pr-11 text-base font-semibold outline-none placeholder:font-medium focus-visible:border-[var(--app-brand-press)] focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--app-brand)_22%,transparent)]"
+              style={{
+                borderColor: "var(--app-control-border)",
+                color: "var(--app-ink)",
+                boxShadow: "var(--app-elev-1)",
+              }}
+            />
+            {query ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  window.requestAnimationFrame(() =>
+                    searchInputRef.current?.focus(),
+                  );
+                }}
+                className="tap-44 absolute right-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full"
+                aria-label="Clear map search"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            ) : null}
+            {renderSearchResults()}
+          </div>
+
+          {interactiveMapAvailable ? (
+            <div
+              data-fair-map-filter-rail
+              data-fair-map-runtime-control
+              className="absolute inset-x-0 top-[4.15rem] z-20 lg:relative lg:inset-auto lg:top-auto lg:z-auto"
+            >
+            <div className="px-3 pb-1 sm:hidden">
+              <div
+                className="flex h-11 overflow-hidden rounded-full border"
+                style={{
+                  borderColor: "var(--app-control-border)",
+                  background: "var(--app-bg-elevated-solid)",
+                  boxShadow:
+                    "inset 0 1px 0 color-mix(in srgb, white 65%, transparent)",
                 }}
               >
-                {option.label} · {count}
-              </button>
-            );
-          })}
+                <label
+                  htmlFor="fair-map-view"
+                  className="flex shrink-0 items-center px-3 text-[11px] font-bold uppercase tracking-[0.08em]"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  Map view
+                </label>
+                <span
+                  className="relative min-w-0 flex-1 border-l"
+                  style={{ borderColor: "var(--app-control-border)" }}
+                >
+                  <select
+                    ref={mapViewSelectRef}
+                    id="fair-map-view"
+                    data-fair-map-filter-select
+                    value={filter}
+                    onChange={(event) =>
+                      activateMapFilter(
+                        event.target.value as FairGroundsMapFilter,
+                      )
+                    }
+                    aria-describedby="fair-map-filter-status"
+                    className="h-11 w-full appearance-none bg-transparent py-0 pl-3 pr-9 text-[13px] font-bold outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--app-brand-press)]"
+                    style={{ color: "var(--app-ink)" }}
+                  >
+                    {FILTERS.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.compactLabel} ·{" "}
+                        {filterCounts.get(option.id) ?? 0}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2"
+                    style={{ color: "var(--app-ink-3)" }}
+                    aria-hidden
+                  />
+                </span>
+              </div>
+              <p
+                id="fair-map-filter-status"
+                className="sr-only"
+                aria-live="polite"
+              >
+                This map view shows{" "}
+                {FILTERS.find((option) => option.id === filter)?.label ??
+                  "the selected places"}
+                : {filterCounts.get(filter) ?? 0}{" "}
+                {(filterCounts.get(filter) ?? 0) === 1 ? "place" : "places"}.
+              </p>
+            </div>
+            <div
+              className="scrollbar-none hidden gap-2 overflow-x-auto px-3 pb-1 sm:flex lg:-mx-6 lg:mt-4 lg:px-6"
+              role="group"
+              aria-label="Choose what the Fair map shows"
+            >
+              {FILTERS.map((option) => {
+                const active = option.id === filter;
+                const count = filterCounts.get(option.id) ?? 0;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => activateMapFilter(option.id)}
+                    className="tap-44 min-h-11 shrink-0 rounded-full border px-3 text-[13px] font-semibold"
+                    style={{
+                      borderColor: active
+                        ? option.tone
+                        : "var(--app-control-border)",
+                      color: active
+                        ? "var(--app-ink-inverse)"
+                        : "var(--app-ink-2)",
+                      background: active
+                        ? option.tone
+                        : "var(--app-bg-elevated-solid)",
+                      boxShadow: active
+                        ? "0 6px 16px -12px var(--app-ink)"
+                        : "inset 0 1px 0 color-mix(in srgb, white 65%, transparent)",
+                    }}
+                  >
+                    {option.label} · {count}
+                  </button>
+                );
+              })}
+            </div>
+            </div>
+          ) : null}
         </div>
-        <div
-          className="pointer-events-none absolute -bottom-0.5 -right-4 top-0 w-9 bg-gradient-to-r from-transparent to-[var(--app-bg)] sm:hidden"
-          aria-hidden
-        />
-        </div>
-      ) : null}
+      )}
 
       <div className="mt-0 lg:mt-3 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-4">
         <div
@@ -1127,15 +1825,18 @@ export default function FairGroundsMapInner({
                   initialViewState={FAIR_VIEW}
                   mapStyle={mapStyle}
                   style={{ position: "absolute", inset: 0 }}
-                  maxBounds={FAIR_BOUNDS}
-                  minZoom={14.8}
+                  maxBounds={FAIR_CAMERA_BOUNDS}
+                  minZoom={FAIR_ARRIVAL_MIN_ZOOM}
                   maxZoom={19}
                   reuseMaps
                   attributionControl={false}
                   dragRotate={false}
                   touchPitch={false}
                   cooperativeGestures
+                  keyboard
                   onLoad={handleMapLoad}
+                  onMoveEnd={updateMarkerGroups}
+                  onResize={updateMarkerGroups}
                   onError={(event) => {
                     const message = String(
                       event?.error?.message ?? "",
@@ -1144,10 +1845,13 @@ export default function FairGroundsMapInner({
                       handleMapFailure();
                     }
                   }}
-                  onClick={() => setSelectedId(null)}
+                  onClick={() => {
+                    setSelectedId(null);
+                    setClusterSelectionIds([]);
+                  }}
                 >
-            {mapLoaded ? (
-              <>
+                  {mapLoaded ? (
+                    <>
             <AttributionControl compact position="bottom-right" />
             <NavigationControl position="top-right" showCompass={false} />
             <Source id="fair-reviewed-geometry" type="geojson" data={visiblePolygons}>
@@ -1203,41 +1907,90 @@ export default function FairGroundsMapInner({
               />
             </Source>
 
-            {visibleFeatures
-              .filter((feature) => feature.properties.kind !== "fairgrounds")
-              .map((feature) => {
-                const kind = feature.properties.kind as Exclude<
-                  FairGroundsMapKind,
-                  "fairgrounds"
-                >;
-                const theme = MARKER_THEME[kind];
-                const Icon = markerIcon(kind);
-                const savedMatches = savedStopMatches.get(feature.properties.id) ?? [];
-                const scheduledHere = programMatches.get(feature.properties.id) ?? [];
-                const selectedMarker = selectedId === feature.properties.id;
-                const mappedName = mappedFeatureName(feature, mapData);
-                const savedDescription =
-                  savedMatches.length > 0
-                    ? `Saved in My Day as ${savedMatches.map((stop) => stop.title).join(", ")}.`
-                    : "";
-                const scheduleDescription =
-                  scheduledHere.length > 0
-                    ? `${scheduledHere.length} ${scheduledHere.length === 1 ? "program item" : "program items"} here on your selected day.`
-                    : "";
-                const gateLabel =
-                  kind === "gate"
-                    ? (feature.properties.name.match(/\b\d+A?\b/)?.[0] ?? "LM")
-                    : null;
-                return (
-                  <Marker
-                    key={feature.properties.id}
-                    longitude={feature.properties.anchor[0]}
-                    latitude={feature.properties.anchor[1]}
-                    anchor="center"
-                  >
+            {renderedMarkerGroups.map((group) => {
+              const feature = group.representative;
+              const clustered = group.features.length > 1;
+              const clusterExpanded =
+                clustered &&
+                clusterSelectionIds.length === group.features.length &&
+                group.features.every((candidate) =>
+                  clusterSelectionIds.includes(candidate.properties.id),
+                );
+              const kind = feature.properties.kind as Exclude<
+                FairGroundsMapKind,
+                "fairgrounds"
+              >;
+              const theme = MARKER_THEME[kind];
+              const Icon = markerIcon(kind);
+              const savedMatches =
+                savedStopMatches.get(feature.properties.id) ?? [];
+              const scheduledHere =
+                programMatches.get(feature.properties.id) ?? [];
+              const selectedMarker = selectedId === feature.properties.id;
+              const mappedName = mappedFeatureName(feature, mapData);
+              const savedDescription =
+                savedMatches.length > 0
+                  ? `Saved in My Day as ${savedMatches.map((stop) => stop.title).join(", ")}.`
+                  : "";
+              const scheduleDescription =
+                scheduledHere.length > 0
+                  ? `${scheduledHere.length} ${scheduledHere.length === 1 ? "program item" : "program items"} here on your selected day.`
+                  : "";
+              const gateLabel =
+                kind === "gate"
+                  ? (feature.properties.name.match(/\b\d+A?\b/)?.[0] ?? "LM")
+                  : null;
+              return (
+                <Marker
+                  key={group.id}
+                  longitude={feature.properties.anchor[0]}
+                  latitude={feature.properties.anchor[1]}
+                  anchor="center"
+                >
+                  {clustered ? (
                     <button
                       type="button"
-                      className="fair-grounds-map-marker tap-44 relative grid h-11 w-11 place-items-center rounded-full"
+                      data-fair-map-marker-group
+                      data-fair-map-cluster
+                      data-fair-map-marker-count={group.features.length}
+                      data-fair-map-cluster-members={group.features
+                        .map((candidate) => candidate.properties.id)
+                        .join(" ")}
+                      className="fair-grounds-map-marker tap-44 grid h-[44px] w-[44px] place-items-center rounded-full border-2 text-[14px] font-extrabold tabular-nums"
+                      style={{
+                        color: "var(--app-ink-inverse)",
+                        background: "var(--app-cool)",
+                        borderColor: clusterExpanded
+                          ? "var(--app-amber)"
+                          : "var(--app-ink-inverse)",
+                        boxShadow: clusterExpanded
+                          ? "0 0 0 3px var(--app-amber), 0 6px 16px rgba(34, 28, 21, 0.3)"
+                          : "0 3px 12px rgba(34, 28, 21, 0.3)",
+                      }}
+                      aria-label={`${group.features.length} nearby map places. Open the list to choose one.`}
+                      aria-expanded={clusterExpanded}
+                      aria-controls={
+                        clusterExpanded
+                          ? "fair-map-cluster-selection"
+                          : undefined
+                      }
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openMarkerCluster(
+                          group.features,
+                          event.currentTarget,
+                        );
+                      }}
+                    >
+                      {group.features.length}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      data-fair-map-marker-group
+                      data-fair-map-marker-count="1"
+                      data-fair-map-cluster-members={feature.properties.id}
+                      className="fair-grounds-map-marker tap-44 relative grid h-[44px] w-[44px] place-items-center rounded-full"
                       aria-label={`${mappedName}. ${fairGroundsMapKindLabel(kind)}. ${savedDescription} ${scheduleDescription}`.trim()}
                       aria-expanded={selectedMarker}
                       aria-controls={
@@ -1251,11 +2004,17 @@ export default function FairGroundsMapInner({
                       }}
                     >
                       <span
-                        className="grid h-9 w-9 place-items-center rounded-full border-2"
+                        className="grid h-[36px] w-[36px] place-items-center rounded-full border-2"
                         style={{
-                          color: selectedMarker ? "var(--app-ink-inverse)" : theme.color,
-                          background: selectedMarker ? theme.color : theme.background,
-                          borderColor: selectedMarker ? "var(--app-ink-inverse)" : theme.color,
+                          color: selectedMarker
+                            ? "var(--app-ink-inverse)"
+                            : theme.color,
+                          background: selectedMarker
+                            ? theme.color
+                            : theme.background,
+                          borderColor: selectedMarker
+                            ? "var(--app-ink-inverse)"
+                            : theme.color,
                           boxShadow: selectedMarker
                             ? "0 0 0 3px var(--app-amber), 0 6px 16px rgba(34, 28, 21, 0.3)"
                             : "0 3px 10px rgba(34, 28, 21, 0.24)",
@@ -1269,12 +2028,16 @@ export default function FairGroundsMapInner({
                             {gateLabel}
                           </span>
                         ) : (
-                          <Icon className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
+                          <Icon
+                            className="h-[18px] w-[18px]"
+                            strokeWidth={2.25}
+                            aria-hidden
+                          />
                         )}
                       </span>
                       {savedMatches.length > 0 ? (
                         <span
-                          className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full border px-1 text-[12px] font-bold tabular-nums"
+                          className="absolute right-0 top-0 grid h-[20px] min-w-[20px] place-items-center rounded-full border px-1 text-[12px] font-bold tabular-nums"
                           style={{
                             color: "var(--app-on-brand)",
                             background: "var(--app-brand-press)",
@@ -1282,12 +2045,14 @@ export default function FairGroundsMapInner({
                           }}
                           aria-hidden
                         >
-                          {savedStops.findIndex((stop) => stop.id === savedMatches[0].id) + 1}
+                          {savedStops.findIndex(
+                            (stop) => stop.id === savedMatches[0].id,
+                          ) + 1}
                         </span>
                       ) : null}
                       {scheduledHere.length > 0 ? (
                         <span
-                          className="absolute bottom-0 left-0 grid h-5 min-w-5 place-items-center rounded-full border px-1 text-[12px] font-bold tabular-nums"
+                          className="absolute bottom-0 left-0 grid h-[20px] min-w-[20px] place-items-center rounded-full border px-1 text-[12px] font-bold tabular-nums"
                           style={{
                             color: "var(--app-ink)",
                             background: "var(--app-amber)",
@@ -1299,18 +2064,23 @@ export default function FairGroundsMapInner({
                         </span>
                       ) : null}
                     </button>
-                  </Marker>
-                );
-              })}
+                  )}
+                </Marker>
+              );
+            })}
 
             {savedCar &&
             savedCar.longitude !== null &&
             savedCar.latitude !== null ? (
-              <Marker longitude={savedCar.longitude} latitude={savedCar.latitude} anchor="bottom">
+              <Marker
+                longitude={savedCar.longitude}
+                latitude={savedCar.latitude}
+                anchor="bottom"
+              >
                 <button
                   type="button"
                   data-fair-saved-car
-                  className="fair-grounds-map-marker tap-44 grid h-11 w-11 place-items-center rounded-full"
+                  className="fair-grounds-map-marker tap-44 grid h-[44px] w-[44px] place-items-center rounded-full"
                   aria-label={`Show saved car location${savedCar.lotLabel ? `, ${savedCar.lotLabel}` : ""}${savedCar.note ? `, note: ${savedCar.note}` : ""}`}
                   onClick={(event) => {
                     event.stopPropagation();
@@ -1318,7 +2088,7 @@ export default function FairGroundsMapInner({
                   }}
                 >
                   <span
-                    className="grid h-10 w-10 place-items-center rounded-full border-2"
+                    className="grid h-[40px] w-[40px] place-items-center rounded-full border-2"
                     style={{
                       color: "var(--app-ink-inverse)",
                       background: "var(--app-cool)",
@@ -1360,48 +2130,154 @@ export default function FairGroundsMapInner({
             />
           ) : null}
 
-          {interactiveMapAvailable && mapLoaded ? (
-            <>
-              <button
-                type="button"
-                data-fair-map-runtime-control
-                onClick={locate}
-                disabled={locating}
-                className="tap-44 absolute left-3 top-[7.75rem] z-10 inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[13px] font-bold disabled:opacity-60 lg:top-3"
-                style={{
-                  color: "var(--app-ink)",
-                  background: "var(--app-bg-elevated-solid)",
-                  borderColor: "var(--app-control-border)",
-                  boxShadow: "var(--app-elev-1)",
-                }}
-              >
-                <LocateFixed className="h-4 w-4" aria-hidden />
-                {locating ? "Finding location…" : "Show my location"}
-              </button>
+          {interactiveMapAvailable && mapLoaded && !condensedMobileControls ? (
+            <div
+              data-fair-map-utility-controls
+              className="absolute left-3 top-[7.75rem] z-10 flex items-start gap-2 lg:top-3 lg:flex-col"
+            >
+            <button
+              type="button"
+              data-fair-map-runtime-control
+              onClick={locate}
+              disabled={locating}
+              className="tap-44 inline-flex h-[44px] w-[44px] items-center justify-center gap-2 rounded-full border px-0 text-[13px] font-bold disabled:opacity-60 sm:w-auto sm:px-3"
+              style={{
+                color: "var(--app-ink)",
+                background: "var(--app-bg-elevated-solid)",
+                borderColor: "var(--app-control-border)",
+                boxShadow: "var(--app-elev-1)",
+              }}
+            >
+              <LocateFixed className="h-4 w-4" aria-hidden />
+              <span className="sr-only sm:not-sr-only">
+                {locating ? "Finding location" : "Show my location"}
+              </span>
+            </button>
 
+            <button
+              type="button"
+              onClick={showWholeGrounds}
+              className="tap-44 inline-flex h-[44px] w-[44px] items-center justify-center gap-2 rounded-full border px-0 text-[13px] font-bold sm:w-auto sm:px-3"
+              style={{
+                color: "var(--app-ink)",
+                background: "var(--app-bg-elevated-solid)",
+                borderColor: "var(--app-control-border)",
+                boxShadow: "var(--app-elev-1)",
+              }}
+            >
+              <Scan className="h-4 w-4" aria-hidden />
+              <span className="sr-only sm:not-sr-only">Whole grounds</span>
+            </button>
+            </div>
+          ) : null}
+
+          {interactiveMapAvailable && mapLoaded && clusterSelectionFeatures.length > 1 && !selected ? (
+            <dialog
+              ref={clusterSelectionDialogRef}
+              id="fair-map-cluster-selection"
+              data-fair-map-cluster-selection
+              className="fair-map-mobile-sheet fair-map-cluster-dialog fixed left-3 right-3 mx-auto max-w-[30rem] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-0 lg:absolute lg:bottom-3 lg:left-3 lg:right-auto lg:max-h-[calc(100%-1.5rem)] lg:w-[22rem]"
+              style={{
+                zIndex: "var(--z-overlay)",
+                borderColor: "var(--app-control-border)",
+                borderTopColor: "var(--app-cool)",
+                borderTopWidth: "4px",
+                background: "var(--app-bg-elevated-solid)",
+                boxShadow: "var(--app-elev-3), var(--app-edge), var(--app-hi)",
+              }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="fair-map-cluster-selection-heading"
+              onCancel={(event) => {
+                event.preventDefault();
+                closeMarkerCluster();
+              }}
+              onClick={(event) => {
+                if (event.target !== event.currentTarget) return;
+                event.preventDefault();
+                event.stopPropagation();
+                closeMarkerCluster();
+              }}
+              onKeyDown={keepFocusInsideDialog}
+            >
+              <div className="relative p-3">
               <button
                 type="button"
-                data-fair-map-runtime-control
-                onClick={showWholeGrounds}
-                className="tap-44 absolute left-3 top-[11rem] z-10 inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[13px] font-bold lg:top-[4.25rem]"
-                style={{
-                  color: "var(--app-ink)",
-                  background: "var(--app-bg-elevated-solid)",
-                  borderColor: "var(--app-control-border)",
-                  boxShadow: "var(--app-elev-1)",
-                }}
+                onClick={closeMarkerCluster}
+                className="tap-44 absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full"
+                aria-label="Close nearby map places"
               >
-                <Scan className="h-4 w-4" aria-hidden />
-                Whole grounds
+                <X className="h-4 w-4" aria-hidden />
               </button>
-            </>
+              <p
+                className="pr-11 text-[12px] font-bold uppercase tracking-[0.1em]"
+                style={{ color: "var(--app-cool)" }}
+              >
+                Nearby on the map
+              </p>
+              <h3
+                id="fair-map-cluster-selection-heading"
+                ref={clusterSelectionHeadingRef}
+                tabIndex={-1}
+                className="mt-1 pr-11 text-[21px] font-extrabold leading-tight tracking-[-0.03em] outline-none"
+              >
+                Choose from {clusterSelectionFeatures.length} places
+              </h3>
+              <p
+                className="mt-1 text-[13px] leading-relaxed"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                These places are close together at this zoom. Choose one to
+                open its details.
+              </p>
+              <ul className="mt-2 grid gap-1" aria-label="Nearby map places">
+                {clusterSelectionFeatures.map((feature) => {
+                  const Icon = markerIcon(feature.properties.kind);
+                  return (
+                    <li key={feature.properties.id}>
+                      <button
+                        type="button"
+                        onClick={(event) =>
+                          chooseFeature(feature, event.currentTarget, true)
+                        }
+                        className="tap-44 flex min-h-12 w-full items-center gap-3 rounded-[var(--app-radius-md)] px-2 py-2 text-left hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
+                      >
+                        <span
+                          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border"
+                          style={{
+                            color: markerTone(feature.properties.kind),
+                            borderColor: markerTone(feature.properties.kind),
+                            background: "var(--app-bg-elevated-solid)",
+                          }}
+                          aria-hidden
+                        >
+                          <Icon className="h-4 w-4" aria-hidden />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-[14px] font-bold leading-snug">
+                            {mappedFeatureName(feature, mapData)}
+                          </span>
+                          <span
+                            className="block text-[12px] font-semibold"
+                            style={{ color: "var(--app-ink-3)" }}
+                          >
+                            {fairGroundsMapKindLabel(feature.properties.kind)}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              </div>
+            </dialog>
           ) : null}
 
           {selected ? (
             <div
               id="fair-map-selection-mobile"
               data-fair-map-selection
-              className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-3 right-3 mx-auto max-h-[calc(100dvh-5.25rem-env(safe-area-inset-bottom))] max-w-[30rem] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-4 lg:hidden"
+              className="fair-map-mobile-sheet fixed left-3 right-3 mx-auto max-w-[30rem] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-4 lg:hidden"
               style={{
                 zIndex: "calc(var(--z-sticky) + 1)",
                 borderColor: "var(--app-control-border)",
