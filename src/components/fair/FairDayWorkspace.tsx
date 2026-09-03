@@ -1372,25 +1372,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 : "Choose one useful path or search the official program."}
             </p>
 
-            {!exploreFocused ? (
-              <FairDiscoveryChoices
-                items={discoveryItems}
-                selected={null}
-                onSelect={(intent) => {
-                  setDiscoveryIntent(intent);
-                  setQuery("");
-                  setScheduleFilter("all");
-                  setShowAllSchedule(false);
-                  window.requestAnimationFrame(() =>
-                    document
-                      .getElementById("fair-find-heading")
-                      ?.focus({ preventScroll: true }),
-                  );
-                }}
-              />
-            ) : null}
-
-            <label className="mt-5 block" htmlFor="fair-unified-search">
+            <label className="mt-4 block" htmlFor="fair-unified-search">
               <span className="sr-only">Search the Fair</span>
               <span className="relative block">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2" style={{ color: "var(--app-ink-3)" }} aria-hidden />
@@ -1408,6 +1390,25 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 />
               </span>
             </label>
+
+            {!exploreFocused ? (
+              <FairDiscoveryChoices
+                items={discoveryItems}
+                asOf={partyAsOf}
+                selected={null}
+                onSelect={(intent) => {
+                  setDiscoveryIntent(intent);
+                  setQuery("");
+                  setScheduleFilter("all");
+                  setShowAllSchedule(false);
+                  window.requestAnimationFrame(() =>
+                    document
+                      .getElementById("fair-find-heading")
+                      ?.focus({ preventScroll: true }),
+                  );
+                }}
+              />
+            ) : null}
 
             {exploreFocused ? (
             <details className="mt-2 border-b" style={{ borderColor: "var(--app-border)" }}>

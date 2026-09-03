@@ -39,26 +39,68 @@ describe("FairDiscoveryChoices", () => {
     expect(fairDiscoveryIntentMatches(kidZone!, "kid-zone")).toBe(true);
   });
 
-  it("shows a compact, day-specific path rail without dead choices or directory copy", () => {
+  it("shows a fixed two-by-two task portal with one timely item instead of counts", () => {
     const html = renderToStaticMarkup(
       <FairDiscoveryChoices
         items={fridayItems}
+        asOf="2026-09-18T20:59:00Z"
         selected={null}
         onSelect={() => undefined}
       />,
     );
 
     expect(html).toContain("Kid Zone");
-    expect(html).toContain("Free fun for all ages");
-    expect(html).toContain("Animals &amp; livestock");
-    expect(html).toContain("Carnival &amp; rides");
-    expect(html).not.toContain("Food-related program");
+    expect(html).toContain("Animals");
+    expect(html).toContain("Rides");
+    expect(html).toContain("Food events");
+    expect(html).toContain("No food event listed");
+    expect(html).toContain("No matching program item this day");
     expect(html).not.toMatch(/listing/i);
     expect(html).toContain('aria-label="Fair activity paths"');
     expect(html).toContain("data-fair-discovery-choices");
+    expect(html).toContain("data-fair-discovery-grid");
+    expect(html).toContain("grid-cols-2");
+    expect(html).toContain("min-h-[88px]");
+    expect(html).toContain("sm:min-h-[124px]");
+    expect(html).toContain("text-[11px]");
+    expect(html).toContain("text-[12px]");
+    expect(html).toContain("sr-only break-words");
+    expect(html).toContain("sm:not-sr-only");
     expect(html).not.toContain("What sounds good?");
-    expect(html).toContain("snap-mandatory");
-    expect(html).toContain("1 option");
-    expect(html).toContain("4 p.m. - 9 p.m. · Kid Zone");
+    expect(html).not.toContain("snap-mandatory");
+    expect(html).not.toContain("overflow-x-auto");
+    expect(html).not.toMatch(/\d+ options?/);
+    expect(html).toContain("Happening now");
+    expect(html).toContain("4 p.m.–9 p.m.");
+    expect(html).toContain("Next");
+    expect(html).toContain("6 p.m.");
+    expect(html).toContain("Horse Barrel Racing Expo");
+    expect(html).toContain(
+      'data-fair-discovery-choice="food-program" disabled=""',
+    );
+  });
+
+  it("turns a choice on only when the selected day has reviewed matching data", () => {
+    const sundayItems = data.scheduleItems.filter(
+      (item) => item.date === "2026-09-20",
+    );
+    const html = renderToStaticMarkup(
+      <FairDiscoveryChoices
+        items={sundayItems}
+        asOf="2026-09-18T20:59:00Z"
+        selected="food-program"
+        onSelect={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("Next");
+    expect(html).toContain("4 p.m.");
+    expect(html).toContain("Youth Cake &amp; Baked Goods Auction");
+    expect(html).toContain(
+      'data-fair-discovery-choice="food-program" aria-pressed="true"',
+    );
+    expect(html).not.toContain(
+      'data-fair-discovery-choice="food-program" disabled=""',
+    );
   });
 });
