@@ -244,7 +244,7 @@ describe("FairDayWorkspace app journey", () => {
     expect(container.querySelector<HTMLAnchorElement>(`a[href="${data.externalGuide.url}"]`)).not.toBeNull();
   });
 
-  it("starts Find with visual intent choices and excludes agriculture from Animals", async () => {
+  it("starts Find with a fixed task portal and excludes agriculture from Animals", async () => {
     const data = await renderFair();
     await openMode("Explore");
 
@@ -254,13 +254,46 @@ describe("FairDayWorkspace app journey", () => {
       container.querySelector('[aria-label="Fair program results"]'),
     ).toBeNull();
     expect(container.textContent).toContain("Browse full program");
+    const portal = container.querySelector<HTMLElement>(
+      "[data-fair-discovery-choices]",
+    );
+    const grid = portal?.querySelector<HTMLElement>(
+      "[data-fair-discovery-grid]",
+    );
+    expect(grid?.className).toContain("grid-cols-2");
+    expect(grid?.className).not.toContain("overflow-x-auto");
+    expect(
+      portal?.querySelectorAll("[data-fair-discovery-choice]"),
+    ).toHaveLength(4);
+    expect(
+      portal?.querySelector("[data-fair-discovery-event-title]")?.className,
+    ).toContain("sr-only");
+    expect(
+      portal?.querySelector("[data-fair-discovery-event-title]")?.className,
+    ).toContain("sm:not-sr-only");
+    expect(portal?.textContent).not.toMatch(/\d+ options?/);
+
     const kidZone = buttonWithText(container, "Kid Zone");
     const search = container.querySelector("#fair-unified-search");
     expect(
-      kidZone.compareDocumentPosition(search!) & Node.DOCUMENT_POSITION_FOLLOWING,
+      search!.compareDocumentPosition(kidZone) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    expect(
+      container.querySelector<HTMLButtonElement>(
+        '[data-fair-discovery-choice="food-program"]',
+      )?.disabled,
+    ).toBe(true);
 
-    await act(async () => buttonWithText(container, "Animals & livestock").click());
+    await chooseDate("2026-09-20");
+    expect(
+      container.querySelector<HTMLButtonElement>(
+        '[data-fair-discovery-choice="food-program"]',
+      )?.disabled,
+    ).toBe(false);
+    expect(portal?.textContent).toContain("Youth Cake & Baked Goods Auction");
+    await chooseDate("2026-09-18");
+
+    await act(async () => buttonWithText(container, "Animals").click());
     const results = container.querySelector<HTMLOListElement>(
       '[aria-label="Fair program results"]',
     );

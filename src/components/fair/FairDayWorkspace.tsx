@@ -970,92 +970,117 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       <header>
         {activeMode === "now" ? (
           <div
-          className="relative h-[184px] overflow-hidden border-b-2 sm:h-[260px]"
-          style={{ borderColor: "var(--app-brand)" }}
+            data-fair-hero
+            className="relative overflow-hidden border-b-2"
+            style={{ borderColor: "var(--app-brand)" }}
           >
-          <picture className="absolute inset-0 block">
-            <source
-              media="(min-width: 640px)"
-              srcSet="/images/fair/fairgrounds-night-mike-d-1920.jpg"
-            />
-            <img
-              src="/images/fair/fairgrounds-night-mike-d-960.jpg"
-              alt="The Great Frederick Fairgrounds glowing at night, seen from above."
-              width="960"
-              height="640"
-              loading="eager"
-              fetchPriority="high"
-              className="h-full w-full scale-[1.02] object-cover object-[76%_center] saturate-[1.2] brightness-[1.08] sm:object-center"
-            />
-          </picture>
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(to bottom, color-mix(in srgb, var(--app-ink) 42%, transparent), transparent 34%), linear-gradient(to top, color-mix(in srgb, var(--app-cool) 88%, var(--app-ink)), color-mix(in srgb, var(--app-brand-press) 32%, transparent) 58%, transparent 82%)",
-            }}
-            aria-hidden
-          />
-
-          <div className="absolute inset-x-0 top-0 z-10 mx-auto flex max-w-[68rem] items-center justify-between gap-3 px-3 pt-3 sm:px-5 sm:pt-4">
-            <Link
-              href="/today"
-              className="fair-hero-control tap-44 inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-[13px] font-semibold shadow-[var(--app-elev-1)] backdrop-blur-sm"
+            <picture className="absolute inset-0 block">
+              <img
+                src="/images/fair/fairgrounds-night-mike-d-960.jpg"
+                srcSet="/images/fair/fairgrounds-night-mike-d-960.jpg 960w, /images/fair/fairgrounds-night-mike-d-1920.jpg 1920w"
+                sizes="100vw"
+                alt="The Great Frederick Fairgrounds glowing at night, seen from above."
+                width="960"
+                height="540"
+                loading="eager"
+                fetchPriority="high"
+                className="h-full w-full scale-[1.02] object-cover object-[76%_center] saturate-[1.2] brightness-[1.08] sm:object-center"
+              />
+            </picture>
+            <div
+              className="absolute inset-0"
               style={{
-                color: "var(--app-brand-press)",
                 background:
-                  "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
+                  "linear-gradient(to bottom, color-mix(in srgb, var(--app-ink) 42%, transparent), transparent 34%), linear-gradient(to top, color-mix(in srgb, var(--app-cool) 88%, var(--app-ink)), color-mix(in srgb, var(--app-brand-press) 32%, transparent) 58%, transparent 82%)",
               }}
-            >
-              <ArrowLeft className="h-4 w-4" aria-hidden />
-              Frederick Radius
-            </Link>
-            <button
-              type="button"
-              onClick={() => {
-                setHelpAnswerId(null);
-                setHelpCategory(null);
-                openHelp();
-              }}
-              className="fair-hero-control tap-44 inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-[13px] font-semibold shadow-[var(--app-elev-1)] backdrop-blur-sm"
-              style={{
-                color: "var(--app-cool)",
-                background:
-                  "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
-              }}
-            >
-              <CircleHelp className="h-4 w-4" aria-hidden />
-              Help &amp; access
-            </button>
-          </div>
+              aria-hidden
+            />
 
-          <span
-            className="absolute right-3 top-[62px] z-10 rounded-full px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] shadow-[var(--app-elev-1)] backdrop-blur-sm sm:right-5 sm:top-[70px]"
-            style={{
-              color: "var(--app-ink-2)",
-              background:
-                "color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent)",
-            }}
-          >
-            Photograph by Mike D
-          </span>
+            <div
+              data-fair-hero-content
+              className="relative z-10 mx-auto flex min-h-[190px] max-w-[68rem] flex-col px-3 pb-3 pt-3 text-[var(--app-ink-inverse)] sm:min-h-[260px] sm:px-6 sm:pb-6 sm:pt-4"
+            >
+              <div
+                data-fair-hero-controls
+                className="flex flex-wrap items-start justify-between gap-2"
+              >
+                <Link
+                  href="/today"
+                  aria-label="Frederick Radius"
+                  className="fair-hero-control tap-44 inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-[13px] font-semibold shadow-[var(--app-elev-1)] backdrop-blur-sm"
+                  style={{
+                    color: "var(--app-brand-press)",
+                    background:
+                      "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
+                  }}
+                >
+                  <ArrowLeft className="h-4 w-4" aria-hidden />
+                  <span className="min-[360px]:hidden">Radius</span>
+                  <span className="hidden min-[360px]:inline">
+                    Frederick Radius
+                  </span>
+                </Link>
+                <button
+                  type="button"
+                  aria-label="Help & access"
+                  onClick={() => {
+                    setHelpAnswerId(null);
+                    setHelpCategory(null);
+                    openHelp();
+                  }}
+                  className="fair-hero-control tap-44 inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-[13px] font-semibold shadow-[var(--app-elev-1)] backdrop-blur-sm"
+                  style={{
+                    color: "var(--app-cool)",
+                    background:
+                      "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
+                  }}
+                >
+                  <CircleHelp className="h-4 w-4" aria-hidden />
+                  <span className="min-[360px]:hidden">Help</span>
+                  <span className="hidden min-[360px]:inline">
+                    Help &amp; access
+                  </span>
+                </button>
+              </div>
 
-          <div className="absolute inset-x-0 bottom-0 mx-auto max-w-[68rem] px-4 pb-4 text-[var(--app-ink-inverse)] sm:px-6 sm:pb-6">
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.11em] opacity-90 sm:text-[11px]">
-              <RippleMark size={24} />
-              Fair Day · Frederick Radius
+              <span
+                data-fair-hero-credit
+                className="mt-2 self-end rounded-full px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] shadow-[var(--app-elev-1)] backdrop-blur-sm"
+                style={{
+                  color: "var(--app-ink-2)",
+                  background:
+                    "color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent)",
+                }}
+              >
+                <span className="min-[360px]:hidden">Photo: Mike D</span>
+                <span className="hidden min-[360px]:inline">
+                  Photograph by Mike D
+                </span>
+              </span>
+
+              <div data-fair-hero-identity className="mt-auto pt-3">
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.11em] opacity-90 sm:text-[11px]">
+                  <RippleMark size={24} />
+                  Fair Day · Frederick Radius
+                </div>
+                <h1
+                  id="fair-now-heading"
+                  tabIndex={-1}
+                  className="mt-1 max-w-[14ch] font-editorial text-[34px] font-normal leading-[0.9] tracking-[-0.035em] [text-shadow:0_2px_10px_rgba(0,0,0,0.42)] sm:mt-2 sm:text-[54px]"
+                >
+                  {data.eventName}
+                </h1>
+                <p
+                  className="mt-1.5 max-w-[20rem] border-t pt-1.5 text-[10px] font-bold uppercase tracking-[0.15em] tabular-nums sm:mt-2 sm:pt-2 sm:text-[11px]"
+                  style={{
+                    borderColor:
+                      "color-mix(in srgb, var(--app-ink-inverse) 42%, transparent)",
+                  }}
+                >
+                  Sep 18–26 · 2026
+                </p>
+              </div>
             </div>
-            <h1
-              id="fair-now-heading"
-              tabIndex={-1}
-              className="mt-1 max-w-[14ch] font-editorial text-[34px] font-normal leading-[0.9] tracking-[-0.035em] [text-shadow:0_2px_10px_rgba(0,0,0,0.42)] sm:mt-2 sm:text-[54px]"
-            >
-              {data.eventName}
-            </h1>
-            <p className="mt-1.5 max-w-[20rem] border-t pt-1.5 text-[10px] font-bold uppercase tracking-[0.15em] tabular-nums sm:mt-2 sm:pt-2 sm:text-[11px]" style={{ borderColor: "color-mix(in srgb, var(--app-ink-inverse) 42%, transparent)" }}>
-              Sep 18–26 · 2026
-            </p>
-          </div>
           </div>
         ) : (
           <div
@@ -1166,7 +1191,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         className={
           activeMode === "map"
             ? "w-full pb-24 lg:mx-auto lg:max-w-[68rem] lg:px-6 lg:pb-12 lg:pt-6"
-            : `mx-auto px-4 pb-32 pt-6 sm:px-6 sm:pt-8 lg:pb-12 ${
+            : `mx-auto px-4 pb-32 sm:px-6 lg:pb-12 ${
+                activeMode === "travel" ? "pt-3 sm:pt-6" : "pt-6 sm:pt-8"
+              } ${
                 activeMode === "find" ? "max-w-[68rem]" : "max-w-[48rem]"
               }`
         }
@@ -1345,25 +1372,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 : "Choose one useful path or search the official program."}
             </p>
 
-            {!exploreFocused ? (
-              <FairDiscoveryChoices
-                items={discoveryItems}
-                selected={null}
-                onSelect={(intent) => {
-                  setDiscoveryIntent(intent);
-                  setQuery("");
-                  setScheduleFilter("all");
-                  setShowAllSchedule(false);
-                  window.requestAnimationFrame(() =>
-                    document
-                      .getElementById("fair-find-heading")
-                      ?.focus({ preventScroll: true }),
-                  );
-                }}
-              />
-            ) : null}
-
-            <label className="mt-5 block" htmlFor="fair-unified-search">
+            <label className="mt-4 block" htmlFor="fair-unified-search">
               <span className="sr-only">Search the Fair</span>
               <span className="relative block">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2" style={{ color: "var(--app-ink-3)" }} aria-hidden />
@@ -1381,6 +1390,25 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 />
               </span>
             </label>
+
+            {!exploreFocused ? (
+              <FairDiscoveryChoices
+                items={discoveryItems}
+                asOf={partyAsOf}
+                selected={null}
+                onSelect={(intent) => {
+                  setDiscoveryIntent(intent);
+                  setQuery("");
+                  setScheduleFilter("all");
+                  setShowAllSchedule(false);
+                  window.requestAnimationFrame(() =>
+                    document
+                      .getElementById("fair-find-heading")
+                      ?.focus({ preventScroll: true }),
+                  );
+                }}
+              />
+            ) : null}
 
             {exploreFocused ? (
             <details className="mt-2 border-b" style={{ borderColor: "var(--app-border)" }}>
@@ -1809,7 +1837,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
 
         {activeMode === "travel" ? (
           <section id={MODE_PANEL_IDS.travel} aria-labelledby="fair-travel-heading">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <button
                 type="button"
                 onClick={() => chooseMode("my-day")}
@@ -1826,14 +1854,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 label="Fair day for travel"
               />
             </div>
-            <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--app-cool)" }}>
-              Travel plan · {fairDateShortLabel(selectedDate)}
-            </p>
-            <h1 id="fair-travel-heading" tabIndex={-1} className="mt-1 text-[34px] font-extrabold leading-[1.02] tracking-[-0.045em] outline-none sm:text-[40px]">
+            <h1 id="fair-travel-heading" tabIndex={-1} className="mt-2 text-[30px] font-extrabold leading-[1.02] tracking-[-0.04em] outline-none sm:text-[40px]">
               Get there and back
             </h1>
-            <p className="mt-2 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              Choose one way to arrive. Radius will show only the facts and tools that apply to it.
+            <p className="mt-1 text-[13px] leading-snug sm:text-[15px]" style={{ color: "var(--app-ink-2)" }}>
+              Choose how you’ll arrive. Radius shows only what applies.
             </p>
             <FairTravelPanel
               options={data.arrivalOptions}

@@ -38,6 +38,10 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).toContain("Photograph by Mike D");
     expect(html).toContain("fairgrounds-night-mike-d-960.jpg");
     expect(html).toContain("fairgrounds-night-mike-d-1920.jpg");
+    expect(html).toContain('width="960" height="540"');
+    expect(html).toContain("fairgrounds-night-mike-d-960.jpg 960w");
+    expect(html).toContain("fairgrounds-night-mike-d-1920.jpg 1920w");
+    expect(html).toContain('sizes="100vw"');
     expect(html).toContain('href="/today"');
     expect(html).toContain('<h1 id="fair-now-heading"');
     expect(html).toContain(data.eventName);

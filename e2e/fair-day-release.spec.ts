@@ -330,6 +330,114 @@ test.describe("Fair Day production release journey", () => {
         "true",
       );
 
+      if (width === 320) {
+        const heroLayout = await page.locator("[data-fair-hero]").evaluate(
+          (hero) => {
+            const credit = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-credit]",
+            );
+            const identity = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-identity]",
+            );
+            const controls = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-controls]",
+            );
+            const content = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-content]",
+            );
+            if (!credit || !identity || !controls || !content) return null;
+            const creditBox = credit.getBoundingClientRect();
+            const identityBox = identity.getBoundingClientRect();
+            return {
+              clientHeight: content.clientHeight,
+              scrollHeight: content.scrollHeight,
+              creditBottom: creditBox.bottom,
+              identityTop: identityBox.top,
+              controlButtons: Array.from(
+                controls.querySelectorAll<HTMLElement>("a, button"),
+              ).map((control) => ({
+                width: control.getBoundingClientRect().width,
+                height: control.getBoundingClientRect().height,
+              })),
+            };
+          },
+        );
+        expect(heroLayout).not.toBeNull();
+        expect(heroLayout?.scrollHeight).toBeLessThanOrEqual(
+          (heroLayout?.clientHeight ?? 0) + 1,
+        );
+        expect(heroLayout?.creditBottom).toBeLessThanOrEqual(
+          heroLayout?.identityTop ?? 0,
+        );
+        for (const control of heroLayout?.controlButtons ?? []) {
+          expect(control.height).toBeGreaterThanOrEqual(44);
+        }
+
+        const planSummary = page.locator("[data-fair-plan-summary]");
+        const planDate = page.locator("[data-fair-plan-date]");
+        const planLayout = await planSummary.evaluate((summary) => {
+          const style = window.getComputedStyle(summary);
+          return {
+            clientWidth: summary.clientWidth,
+            scrollWidth: summary.scrollWidth,
+            textOverflow: style.textOverflow,
+            whiteSpace: style.whiteSpace,
+          };
+        });
+        expect(planLayout.scrollWidth).toBeLessThanOrEqual(
+          planLayout.clientWidth + 1,
+        );
+        expect(planLayout.textOverflow).not.toBe("ellipsis");
+        expect(planLayout.whiteSpace).not.toBe("nowrap");
+        const summaryBox = await planSummary.boundingBox();
+        const dateBox = await planDate.boundingBox();
+        expect(dateBox?.x ?? 0).toBeGreaterThanOrEqual(
+          (summaryBox?.x ?? 0) + (summaryBox?.width ?? 0),
+        );
+
+        await page.addStyleTag({
+          content: `
+            [data-fair-hero-controls] :is(a, button) { font-size: 26px !important; }
+            [data-fair-hero-credit] { font-size: 18px !important; }
+            [data-fair-hero-identity] > div { font-size: 20px !important; }
+            #fair-now-heading { font-size: 68px !important; }
+            [data-fair-hero-identity] > p { font-size: 20px !important; }
+          `,
+        });
+        const enlargedHero = await page.locator("[data-fair-hero]").evaluate(
+          (hero) => {
+            const credit = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-credit]",
+            );
+            const identity = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-identity]",
+            );
+            const content = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-content]",
+            );
+            if (!credit || !identity || !content) return null;
+            return {
+              clientHeight: content.clientHeight,
+              scrollHeight: content.scrollHeight,
+              creditBottom: credit.getBoundingClientRect().bottom,
+              identityTop: identity.getBoundingClientRect().top,
+              documentClientWidth: document.documentElement.clientWidth,
+              documentScrollWidth: document.documentElement.scrollWidth,
+            };
+          },
+        );
+        expect(enlargedHero).not.toBeNull();
+        expect(enlargedHero?.scrollHeight).toBeLessThanOrEqual(
+          (enlargedHero?.clientHeight ?? 0) + 1,
+        );
+        expect(enlargedHero?.creditBottom).toBeLessThanOrEqual(
+          enlargedHero?.identityTop ?? 0,
+        );
+        expect(enlargedHero?.documentScrollWidth).toBeLessThanOrEqual(
+          (enlargedHero?.documentClientWidth ?? 0) + 1,
+        );
+      }
+
       for (const label of ["Today", "Explore", "Map", "My Day"] as const) {
         const destination = page
           .getByRole("navigation", { name: "Fair Day" })
@@ -352,5 +460,167 @@ test.describe("Fair Day production release journey", () => {
         expect(geometry.scrollX).toBe(0);
       }
     }
+  });
+
+  test("keeps all three travel choices on the first phone screen", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await page.route("**/api/fair/arrival-status?*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          schemaVersion: 1,
+          generatedAt: "2026-09-18T16:00:00.000Z",
+          state: "no-current-update",
+          coverage: "configured-sources-current",
+          headline: "No official arrival update needs your attention right now.",
+          summary: "Check again before you leave.",
+          signals: [],
+          hiddenSignalCount: 0,
+          sources: [
+            {
+              id: "nws",
+              label: "National Weather Service",
+              url: "https://www.weather.gov/lwx/",
+              state: "current",
+              checkedAt: "2026-09-18T16:00:00.000Z",
+              providerUpdatedAt: "2026-09-18T15:59:00.000Z",
+            },
+          ],
+          transit: null,
+          limitsLabel:
+            "Official feeds do not measure Fair attendance, parking-space availability, or gate waits.",
+        }),
+      });
+    });
+
+    for (const width of [320, 390, 430]) {
+      await page.setViewportSize({ width, height: 568 });
+      await page.goto(`${FAIR_CANONICAL_PATH}#travel`, {
+        waitUntil: "domcontentloaded",
+      });
+      await expect(
+        page.getByRole("heading", { name: "Get there and back" }),
+      ).toBeVisible();
+      const status = page.locator('[data-fair-arrival-status="compact"]');
+      await expect(status).toBeVisible();
+      await expect(status).toContainText("Checked 12:00 PM");
+      const statusBox = await status.boundingBox();
+      expect(statusBox?.height ?? 0).toBeGreaterThanOrEqual(56);
+      expect(statusBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
+        72,
+      );
+
+      const travelModes = page.getByRole("radiogroup", {
+        name: "Fair travel mode",
+      });
+      const choices = travelModes.locator("[data-fair-travel-choice]");
+      await expect(choices).toHaveCount(3);
+      for (const choice of await choices.all()) {
+        await expect(choice).toBeVisible();
+        expect((await choice.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(
+          44,
+        );
+      }
+      const finalChoiceBox = await choices.last().boundingBox();
+      const actionBarBox = await page
+        .locator("[data-mobile-action-bar]")
+        .boundingBox();
+      expect(
+        (finalChoiceBox?.y ?? 0) + (finalChoiceBox?.height ?? 0),
+      ).toBeLessThanOrEqual(actionBarBox?.y ?? 568);
+      const pageWidth = await page.evaluate(() => ({
+        client: document.documentElement.clientWidth,
+        scroll: document.documentElement.scrollWidth,
+      }));
+      expect(pageWidth.scroll).toBeLessThanOrEqual(pageWidth.client + 1);
+    }
+
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.reload({
+      waitUntil: "domcontentloaded",
+    });
+    await expect(
+      page.locator('[data-fair-arrival-status="compact"]'),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Show official arrival check details" })
+      .click();
+    await expect(page.locator("[data-fair-arrival-details]")).toBeVisible();
+    await expect
+      .poll(async () => {
+        const positions = await page.evaluate(() => ({
+          modesBottom: document
+            .querySelector<HTMLElement>(
+              '[role="radiogroup"][aria-label="Fair travel mode"]',
+            )
+            ?.getBoundingClientRect().bottom,
+          actionBarTop: document
+            .querySelector<HTMLElement>("[data-mobile-action-bar]")
+            ?.getBoundingClientRect().top,
+        }));
+        if (
+          positions.modesBottom === undefined ||
+          positions.actionBarTop === undefined
+        ) {
+          return false;
+        }
+        return positions.modesBottom <= positions.actionBarTop;
+      })
+      .toBe(true);
+    const expandedLayout = await page.evaluate(() => ({
+      documentClientWidth: document.documentElement.clientWidth,
+      documentScrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(expandedLayout.documentScrollWidth).toBeLessThanOrEqual(
+      expandedLayout.documentClientWidth + 1,
+    );
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(
+      page.locator('[data-fair-arrival-status="compact"]'),
+    ).toBeVisible();
+    await page.addStyleTag({
+      content: `
+        #fair-travel-heading { font-size: 60px !important; }
+        #fair-travel-panel > p { font-size: 26px !important; }
+        [data-fair-arrival-status] :is(span, h2, p) { font-size: 200% !important; }
+        [data-fair-travel-choice] span { font-size: 200% !important; }
+      `,
+    });
+    const enlargedLayout = await page.evaluate(() => ({
+      client: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+      choices: Array.from(
+        document.querySelectorAll<HTMLElement>("[data-fair-travel-choice]"),
+      ).map((choice) => ({
+        clientHeight: choice.clientHeight,
+        scrollHeight: choice.scrollHeight,
+      })),
+    }));
+    expect(enlargedLayout.scroll).toBeLessThanOrEqual(
+      enlargedLayout.client + 1,
+    );
+    for (const choice of enlargedLayout.choices) {
+      expect(choice.scrollHeight).toBeLessThanOrEqual(choice.clientHeight + 1);
+      expect(choice.clientHeight).toBeGreaterThanOrEqual(44);
+    }
+
+    const detailsToggle = page.getByRole("button", {
+      name: "Show official arrival check details",
+    });
+    await detailsToggle.focus();
+    await detailsToggle.press("Enter");
+    await expect(
+      page.getByRole("button", {
+        name: "Hide official arrival check details",
+      }),
+    ).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator("[data-fair-arrival-details]")).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /National Weather Service/ }),
+    ).toBeVisible();
   });
 });
