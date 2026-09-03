@@ -78,6 +78,8 @@ const REVIEWED_FEATURES: FairGroundsMapReviewSet = {
     "103615600",
     "103615601",
     "106918950",
+    "1548624421",
+    "1550204782",
     "1550204781",
     "1550204790",
     "1550204791",
@@ -88,6 +90,7 @@ const REVIEWED_FEATURES: FairGroundsMapReviewSet = {
     "305093780",
     "305093781",
     "307321830",
+    "307321832",
     "307321833",
     "307321834",
     "307321838",
@@ -98,6 +101,9 @@ const REVIEWED_FEATURES: FairGroundsMapReviewSet = {
     "307321843",
     "307321844",
     "307321845",
+    "307321846",
+    "307321847",
+    "307321848",
     "307321849",
     "307321850",
     "307321852",
@@ -108,9 +114,66 @@ const REVIEWED_FEATURES: FairGroundsMapReviewSet = {
 
 const SCHEDULE_ALIASES: Record<string, string[]> = {
   "way-103615596": ["grandstand"],
+  "way-1548624421": [
+    "bldg. 28",
+    "building 28",
+    "small livestock arena",
+    "farmer's cooperative small livestock arena",
+  ],
+  "way-1550204782": [
+    "infield",
+    "pleasants' horse park",
+    "pleasants’ horse park",
+    "outdoor equine arena",
+    "horse expo tent",
+  ],
+  "way-307321832": ["bldg. 14a", "building 14a", "farm and garden"],
+  "way-307321842": [
+    "bldg. 18",
+    "building 18",
+    "south side tire & auto show arena",
+    "south side tire & auto beef show arena",
+  ],
+  "way-307321846": [
+    "bldg. 44",
+    "building 44",
+    "city streets country roads",
+  ],
+  "way-307321847": [
+    "bldg. 25",
+    "building 25",
+    "middletown valley bank arena",
+  ],
+  "way-307321848": ["bldg. 14", "building 14", "poultry and rabbits"],
+  "way-307321849": [
+    "bldg. 32",
+    "building 32",
+    "south mt. creamery large arena",
+    "large livestock show arena",
+  ],
   "way-307321839": ["bldg. 12", "building 12"],
   "way-307321845": ["horse barns", "bldg. 23", "building 23"],
   "way-307321854": ["bldg. 13", "building 13"],
+};
+
+const PUBLIC_NAME_OVERRIDES: Record<string, string> = {
+  "way-1548624421": "Small Livestock Show Arena",
+  "way-1550204782": "Pleasants' Horse Park",
+  "way-307321832": "Farm & Garden",
+  "way-307321846": "City Streets Country Roads",
+  "way-307321847": "Middletown Valley Bank Arena",
+  "way-307321848": "Poultry & Rabbits",
+  "way-307321849": "Large Livestock Show Arena",
+};
+
+const KIND_OVERRIDES: Partial<Record<string, FairMapKind>> = {
+  "way-1548624421": "animal",
+  "way-1550204782": "animal",
+  "way-307321832": "building",
+  "way-307321846": "building",
+  "way-307321847": "animal",
+  "way-307321848": "animal",
+  "way-307321849": "animal",
 };
 
 const REVIEW_BOUNDS = [-77.401, 39.409, -77.389, 39.418] as const;
@@ -248,7 +311,8 @@ export function materializeFairGroundsMap(
   for (const way of list(parsed.osm?.way)) {
     if (!reviewSet.wayIds.has(way.id)) continue;
     const wayTags = tags(way.tag);
-    const name = wayTags.name ?? "";
+    const sourceId = `way-${way.id}`;
+    const name = PUBLIC_NAME_OVERRIDES[sourceId] ?? wayTags.name ?? "";
     const references = list(way.nd);
     if (
       references.length < 3 ||
@@ -275,7 +339,7 @@ export function materializeFairGroundsMap(
     ) {
       positions.push([...positions[0]]);
     }
-    const kind = mapKind(name, wayTags);
+    const kind = KIND_OVERRIDES[sourceId] ?? mapKind(name, wayTags);
     const anchor = averagePosition(positions);
     if (!insideReviewBounds(anchor)) continue;
     features.push({

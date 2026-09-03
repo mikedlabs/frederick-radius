@@ -117,6 +117,52 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(commercialMarker).toBeFocused();
   });
 
+  test("connects rideshare search with owned arrival, parking, and transit details", async ({
+    page,
+  }) => {
+    const map = await openFairMap(page);
+    const search = page.getByRole("searchbox", {
+      name: "Find a place or program event on the Fair grounds map",
+    });
+
+    await search.fill("rideshare");
+    const gateResult = page
+      .locator("#fair-map-search-results")
+      .getByRole("button", { name: /Gate 4A/ });
+    await expect(gateResult).toBeVisible();
+    await gateResult.press("Enter");
+
+    const gateDetails = page.getByRole("region", {
+      name: "Selected map place: Gate 4A",
+    });
+    await expect(gateDetails).toBeVisible();
+    await gateDetails.getByRole("button", { name: "More details" }).click();
+    await expect(
+      gateDetails.getByRole("link", { name: /Get directions/i }),
+    ).toBeVisible();
+    await expect(
+      gateDetails.getByRole("link", { name: /Official details/i }),
+    ).toBeVisible();
+
+    await gateDetails
+      .getByRole("button", { name: "Close selected map place" })
+      .click();
+    await page
+      .getByRole("button", { name: /Parking \+ transit/ })
+      .click();
+
+    await expect(
+      map.getByRole("button", {
+        name: /^Lot D entrance on Monroe Avenue\. Parking\./,
+      }),
+    ).toBeVisible();
+    await expect(
+      map.getByRole("button", {
+        name: /^East Patrick Street at Fairground Center\. Transit stop\./,
+      }),
+    ).toBeVisible();
+  });
+
   test("provides a keyboard list equivalent and cooperative map gestures", async ({
     page,
   }) => {

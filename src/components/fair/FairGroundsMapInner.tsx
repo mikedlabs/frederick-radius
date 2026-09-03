@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  Accessibility,
   Building2,
+  BusFront,
   ChevronDown,
   CircleParking,
   DoorOpen,
@@ -10,6 +12,7 @@ import {
   MapPin,
   MessageSquareWarning,
   Megaphone,
+  Navigation,
   PawPrint,
   Scan,
   Search,
@@ -29,9 +32,14 @@ import MapCanvas, {
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import { useFrederickFlavorStyle } from "@/components/map/useFrederickFlavorStyle";
+import {
+  greatFrederickFair2026MapAdditions,
+  greatFrederickFair2026MapPatches,
+} from "@/data/fair/great-frederick-fair-2026-map-overlays";
 import { readSavedFairCar, type SavedFairCar } from "@/lib/fair/car-memory";
 import {
   FAIR_GROUNDS_MAP_URL,
+  enrichFairGroundsMap,
   fairGroundsFeatureMatchesFilter,
   fairGroundsFeatureMatchesPlace,
   fairGroundsMapKindLabel,
@@ -42,6 +50,7 @@ import {
   type FairGroundsMapKind,
 } from "@/lib/fair/grounds-map";
 import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback-ui";
+import { directionsHref } from "@/lib/map/directionsHref";
 import { mapCameraDuration } from "@/lib/motion";
 
 import FairGroundsMapLoading from "./FairGroundsMapLoading";
@@ -81,31 +90,26 @@ const FAIR_GROUNDS_BOUNDS: [number, number, number, number] = [
 const FILTERS: Array<{
   id: FairGroundsMapFilter;
   label: string;
-  kinds: FairGroundsMapKind[];
   tone: string;
 }> = [
   {
     id: "essentials",
     label: "Entry + essentials",
-    kinds: ["gate", "ticket", "restroom", "stage"],
     tone: "var(--app-brand-press)",
   },
   {
     id: "animals",
     label: "Animals",
-    kinds: ["animal"],
     tone: "var(--app-brand-2)",
   },
   {
     id: "buildings",
     label: "Buildings",
-    kinds: ["building"],
     tone: "var(--app-warning-press)",
   },
   {
-    id: "parking",
-    label: "Parking (Lot A)",
-    kinds: ["parking"],
+    id: "arrival",
+    label: "Parking + transit",
     tone: "var(--app-cool)",
   },
 ];
@@ -121,6 +125,8 @@ const MARKER_THEME: Record<
   animal: { color: "var(--app-brand-2)", background: "var(--app-bg-elevated-solid)" },
   stage: { color: "var(--app-accent-press)", background: "var(--app-bg-elevated-solid)" },
   parking: { color: "var(--app-cool)", background: "var(--app-bg-elevated-solid)" },
+  service: { color: "var(--app-cool)", background: "var(--app-bg-elevated-solid)" },
+  transit: { color: "var(--app-cool)", background: "var(--app-bg-elevated-solid)" },
 };
 
 function markerTone(kind: FairGroundsMapKind): string {
@@ -138,8 +144,21 @@ function markerIcon(kind: FairGroundsMapKind) {
     animal: PawPrint,
     stage: Megaphone,
     parking: CircleParking,
+    service: Accessibility,
+    transit: BusFront,
     fairgrounds: MapPin,
   }[kind];
+}
+
+function locationPrecisionLabel(
+  precision: FairGroundsMapFeature["properties"]["locationPrecision"],
+): string | null {
+  return {
+    "mapped-feature": "Reviewed mapped feature",
+    "official-pin": "Official arrival pin",
+    "published-area": "Published area; follow signs",
+    "static-transit-stop": "Static county transit stop",
+  }[precision ?? "mapped-feature"] ?? null;
 }
 
 function mappedFeatureName(
@@ -187,6 +206,69 @@ function reportMapIssue(feature: FairGroundsMapFeature | null) {
   );
 }
 
+function FairMapFeatureActions({
+  feature,
+}: {
+  feature: FairGroundsMapFeature;
+}) {
+  const informationSource = feature.properties.informationSource;
+  const mappedSourceIsInformationSource =
+    informationSource?.url === feature.properties.sourceUrl;
+  const mappedSourceLabel = feature.properties.id.startsWith("osm-")
+    ? "Mapped source"
+    : feature.properties.kind === "parking"
+      ? "Official entrance pin"
+      : null;
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      {feature.properties.directionsEnabled ? (
+        <a
+          href={directionsHref(
+            feature.properties.anchor[1],
+            feature.properties.anchor[0],
+          )}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tap-44 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[13px] font-bold"
+          style={{
+            color: "var(--app-ink-inverse)",
+            background: "var(--app-cool)",
+          }}
+        >
+          <Navigation className="h-4 w-4" aria-hidden />
+          Get directions
+        </a>
+      ) : null}
+      {informationSource ? (
+        <a
+          href={informationSource.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tap-44 inline-flex min-h-11 items-center gap-1.5 px-2 text-[13px] font-bold"
+          style={{ color: "var(--app-cool)" }}
+        >
+          Official details
+          <span className="sr-only"> from {informationSource.publisher}</span>
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+        </a>
+      ) : null}
+      {mappedSourceLabel && !mappedSourceIsInformationSource ? (
+        <a
+          href={feature.properties.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tap-44 inline-flex min-h-11 items-center gap-1.5 px-2 text-[13px] font-semibold"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          {mappedSourceLabel}
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
 export default function FairGroundsMapInner({
   savedStops,
   programItems,
@@ -222,7 +304,11 @@ export default function FairGroundsMapInner({
     fetch(FAIR_GROUNDS_MAP_URL, { cache: "force-cache" })
       .then(async (response) => {
         if (!response.ok) throw new Error(`Fair map returned ${response.status}`);
-        return parseFairGroundsMap(await response.json());
+        return enrichFairGroundsMap(
+          parseFairGroundsMap(await response.json()),
+          greatFrederickFair2026MapPatches,
+          greatFrederickFair2026MapAdditions,
+        );
       })
       .then((map) => {
         if (active) setMapData(map);
@@ -326,6 +412,9 @@ export default function FairGroundsMapInner({
           feature.properties.name,
           fairGroundsMapKindLabel(feature.properties.kind),
           ...feature.properties.scheduleAliases,
+          ...(feature.properties.keywords ?? []),
+          feature.properties.detail ?? "",
+          feature.properties.informationSource?.title ?? "",
           ...(programMatches.get(feature.properties.id) ?? []).map(
             (item) => item.title,
           ),
@@ -364,6 +453,19 @@ export default function FairGroundsMapInner({
       ),
     );
     return next;
+  }, [mapData]);
+  const filterCounts = useMemo(() => {
+    if (!mapData) return new Map<FairGroundsMapFilter, number>();
+    return new Map(
+      FILTERS.map((option) => [
+        option.id,
+        mapData.features.filter(
+          (feature) =>
+            feature.properties.kind !== "fairgrounds" &&
+            fairGroundsFeatureMatchesFilter(feature, option.id),
+        ).length,
+      ]),
+    );
   }, [mapData]);
 
   const focusSelectedDetails = () => {
@@ -487,8 +589,10 @@ export default function FairGroundsMapInner({
         ? "animals"
         : feature.properties.kind === "building"
           ? "buildings"
-          : feature.properties.kind === "parking"
-            ? "parking"
+          : feature.properties.kind === "parking" ||
+              feature.properties.kind === "transit" ||
+              feature.properties.filterIds?.includes("arrival")
+            ? "arrival"
             : "essentials";
     setFilter(nextFilter);
     setQuery("");
@@ -621,8 +725,9 @@ export default function FairGroundsMapInner({
       </p>
       <p id="fair-map-instructions" className="sr-only">
         Use the map controls to zoom, or browse the mapped places as a list
-        below. Marker positions come from reviewed OpenStreetMap geometry.
-        Follow current signs on the grounds.
+        below. Grounds geometry comes from reviewed OpenStreetMap data. Official
+        arrival pins and published transit stops identify their sources. Follow
+        current signs on the grounds.
       </p>
 
       <div className="absolute inset-x-3 top-3 z-30 lg:relative lg:inset-auto lg:top-auto lg:z-auto lg:mt-3">
@@ -735,10 +840,7 @@ export default function FairGroundsMapInner({
         >
           {FILTERS.map((option) => {
             const active = option.id === filter;
-            const count = option.kinds.reduce(
-              (total, kind) => total + (counts.get(kind) ?? 0),
-              0,
-            );
+            const count = filterCounts.get(option.id) ?? 0;
             return (
               <button
                 key={option.id}
@@ -1077,8 +1179,19 @@ export default function FairGroundsMapInner({
               <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
                 {selectedProgramItems.length > 0
                   ? `${selectedProgramItems.length} ${selectedProgramItems.length === 1 ? "event" : "events"} here on your day`
-                  : "Reviewed Fair map place"}
+                  : (locationPrecisionLabel(
+                      selected.properties.locationPrecision,
+                    ) ?? "Reviewed Fair map place")}
               </p>
+              {selected.properties.detail ? (
+                <p
+                  className="mt-2 text-[14px] leading-relaxed"
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  {selected.properties.detail}
+                </p>
+              ) : null}
+              <FairMapFeatureActions feature={selected} />
               <button
                 type="button"
                 aria-expanded={selectionExpanded}
@@ -1136,30 +1249,20 @@ export default function FairGroundsMapInner({
                   ) : null}
                 </div>
               ) : null}
-              <div
-                className="mt-3 flex flex-wrap items-center gap-3 border-t pt-2"
-                style={{ borderColor: "var(--app-border)" }}
-              >
+                <div
+                  className="mt-3 flex flex-wrap items-center gap-3 border-t pt-2"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
                 <button
                   type="button"
                   onClick={() => reportMapIssue(selected)}
                   className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-bold"
                   style={{ color: "var(--app-brand-press)" }}
                 >
-                  <MessageSquareWarning className="h-4 w-4" aria-hidden />
-                  Report issue
-                </button>
-                <a
-                  href={selected.properties.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold"
-                  style={{ color: "var(--app-cool)" }}
-                >
-                  Mapped source
-                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                </a>
-              </div>
+                    <MessageSquareWarning className="h-4 w-4" aria-hidden />
+                    Report issue
+                  </button>
+                </div>
               </div>
             </div>
           ) : null}
@@ -1209,6 +1312,22 @@ export default function FairGroundsMapInner({
                 <span className="sr-only">Selected map place: </span>
                 {mappedFeatureName(selected, mapData)}
               </h3>
+              <p
+                className="mt-2 text-[12px] font-bold uppercase tracking-[0.08em]"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                {locationPrecisionLabel(
+                  selected.properties.locationPrecision,
+                ) ?? "Reviewed Fair map place"}
+              </p>
+              <p
+                className="mt-3 text-[14px] leading-relaxed"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                {selected.properties.detail ??
+                  "Use this mapped landmark to orient yourself. Radius does not infer an indoor entrance or walking route."}
+              </p>
+              <FairMapFeatureActions feature={selected} />
               {selectedStops.length > 0 ? (
                 <div className="mt-4 border-l-2 pl-3" style={{ borderColor: "var(--app-brand)" }}>
                   <p className="text-[13px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--app-brand-press)" }}>
@@ -1220,11 +1339,7 @@ export default function FairGroundsMapInner({
                     </p>
                   ))}
                 </div>
-              ) : (
-                <p className="mt-3 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                  Use this mapped landmark to orient yourself. Radius does not infer an indoor entrance or walking route.
-                </p>
-              )}
+              ) : null}
               {selectedProgramItems.length > 0 ? (
                 <div
                   className="mt-4 border-l-2 pl-3"
@@ -1256,16 +1371,6 @@ export default function FairGroundsMapInner({
                   ) : null}
                 </div>
               ) : null}
-              <a
-                href={selected.properties.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="tap-44 mt-3 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold"
-                style={{ color: "var(--app-cool)" }}
-              >
-                View mapped source
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-              </a>
             </>
           ) : (
             <>
@@ -1276,7 +1381,7 @@ export default function FairGroundsMapInner({
                 Tap a marker, not a directory.
               </h3>
               <p className="mt-3 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                Start with gates, restrooms, and show areas. Switch the layer when you want animals, buildings, or parking.
+                Start with gates, restrooms, and show areas. Switch the layer when you want animals, buildings, parking, or published transit stops.
               </p>
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <div className="rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] p-3">
@@ -1317,7 +1422,7 @@ export default function FairGroundsMapInner({
               className="mt-2 text-[12px] leading-relaxed"
               style={{ color: "var(--app-ink-3)" }}
             >
-              Map features: {" "}
+              Grounds geometry: {" "}
               <a
                 href={mapData.source.url}
                 target="_blank"
@@ -1326,7 +1431,8 @@ export default function FairGroundsMapInner({
               >
                 {mapData.source.publisher}, {mapData.source.license}
               </a>
-              . Follow current on-site signs.
+              . Official arrival and transit details link to their own sources.
+              Follow current on-site signs.
             </p>
           </div>
         </aside>
