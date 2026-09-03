@@ -66,6 +66,9 @@ describe("FairTravelPanel", () => {
     expect(html).toContain("County Transit");
     expect(html).toContain("Drop-off");
     expect(html.match(/type="radio"/g)).toHaveLength(3);
+    expect(html).toContain("data-fair-travel-modes");
+    expect(html.match(/data-fair-travel-choice=/g)).toHaveLength(3);
+    expect(html).toContain("Fare-free; verify Fair-day service");
     expect(html).toContain("Choose a travel mode to see only the steps you need.");
     expect(html).not.toContain("Open Radius Transit");
     expect(html).not.toContain("Device-only car memory");

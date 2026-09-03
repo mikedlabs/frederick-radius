@@ -77,7 +77,51 @@ describe("FairArrivalStatus refresh", () => {
     });
     await settle();
 
-    expect(container.textContent).toContain(STATUS.headline);
+    expect(container.textContent).toContain(
+      "No official update needs attention.",
+    );
+    const detailsToggle = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("button"),
+    ).find(
+      (button) =>
+        button.getAttribute("aria-label") ===
+        "Show official arrival check details",
+    );
+    if (!detailsToggle) throw new Error("Expected the arrival details control.");
+    const compactStatus = container.querySelector<HTMLElement>(
+      '[data-fair-arrival-status="compact"]',
+    );
+    if (!compactStatus) throw new Error("Expected the compact arrival status.");
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(compactStatus, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      (callback: FrameRequestCallback) => {
+        callback(0);
+        return 0;
+      },
+    );
+    expect(detailsToggle.getAttribute("aria-expanded")).toBe("false");
+    expect(
+      container.querySelector<HTMLElement>("[data-fair-arrival-details]")
+        ?.hidden,
+    ).toBe(true);
+
+    await act(async () => detailsToggle.click());
+    await settle();
+    expect(detailsToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: "auto",
+      block: "start",
+    });
+    expect(
+      container.querySelector<HTMLElement>("[data-fair-arrival-details]")
+        ?.hidden,
+    ).toBe(false);
+
     const refresh = Array.from(
       container.querySelectorAll<HTMLButtonElement>("button"),
     ).find((button) => button.textContent?.includes("Check again"));

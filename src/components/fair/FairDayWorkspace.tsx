@@ -975,15 +975,13 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             style={{ borderColor: "var(--app-brand)" }}
           >
             <picture className="absolute inset-0 block">
-              <source
-                media="(min-width: 640px)"
-                srcSet="/images/fair/fairgrounds-night-mike-d-1920.jpg"
-              />
               <img
                 src="/images/fair/fairgrounds-night-mike-d-960.jpg"
+                srcSet="/images/fair/fairgrounds-night-mike-d-960.jpg 960w, /images/fair/fairgrounds-night-mike-d-1920.jpg 1920w"
+                sizes="100vw"
                 alt="The Great Frederick Fairgrounds glowing at night, seen from above."
                 width="960"
-                height="640"
+                height="540"
                 loading="eager"
                 fetchPriority="high"
                 className="h-full w-full scale-[1.02] object-cover object-[76%_center] saturate-[1.2] brightness-[1.08] sm:object-center"
@@ -1193,7 +1191,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         className={
           activeMode === "map"
             ? "w-full pb-24 lg:mx-auto lg:max-w-[68rem] lg:px-6 lg:pb-12 lg:pt-6"
-            : `mx-auto px-4 pb-32 pt-6 sm:px-6 sm:pt-8 lg:pb-12 ${
+            : `mx-auto px-4 pb-32 sm:px-6 lg:pb-12 ${
+                activeMode === "travel" ? "pt-3 sm:pt-6" : "pt-6 sm:pt-8"
+              } ${
                 activeMode === "find" ? "max-w-[68rem]" : "max-w-[48rem]"
               }`
         }
@@ -1836,7 +1836,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
 
         {activeMode === "travel" ? (
           <section id={MODE_PANEL_IDS.travel} aria-labelledby="fair-travel-heading">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <button
                 type="button"
                 onClick={() => chooseMode("my-day")}
@@ -1853,14 +1853,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 label="Fair day for travel"
               />
             </div>
-            <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--app-cool)" }}>
-              Travel plan · {fairDateShortLabel(selectedDate)}
-            </p>
-            <h1 id="fair-travel-heading" tabIndex={-1} className="mt-1 text-[34px] font-extrabold leading-[1.02] tracking-[-0.045em] outline-none sm:text-[40px]">
+            <h1 id="fair-travel-heading" tabIndex={-1} className="mt-2 text-[30px] font-extrabold leading-[1.02] tracking-[-0.04em] outline-none sm:text-[40px]">
               Get there and back
             </h1>
-            <p className="mt-2 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              Choose one way to arrive. Radius will show only the facts and tools that apply to it.
+            <p className="mt-1 text-[13px] leading-snug sm:text-[15px]" style={{ color: "var(--app-ink-2)" }}>
+              Choose how you’ll arrive. Radius shows only what applies.
             </p>
             <FairTravelPanel
               options={data.arrivalOptions}

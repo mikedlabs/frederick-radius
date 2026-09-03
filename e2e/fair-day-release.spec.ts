@@ -461,4 +461,166 @@ test.describe("Fair Day production release journey", () => {
       }
     }
   });
+
+  test("keeps all three travel choices on the first phone screen", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await page.route("**/api/fair/arrival-status?*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          schemaVersion: 1,
+          generatedAt: "2026-09-18T16:00:00.000Z",
+          state: "no-current-update",
+          coverage: "configured-sources-current",
+          headline: "No official arrival update needs your attention right now.",
+          summary: "Check again before you leave.",
+          signals: [],
+          hiddenSignalCount: 0,
+          sources: [
+            {
+              id: "nws",
+              label: "National Weather Service",
+              url: "https://www.weather.gov/lwx/",
+              state: "current",
+              checkedAt: "2026-09-18T16:00:00.000Z",
+              providerUpdatedAt: "2026-09-18T15:59:00.000Z",
+            },
+          ],
+          transit: null,
+          limitsLabel:
+            "Official feeds do not measure Fair attendance, parking-space availability, or gate waits.",
+        }),
+      });
+    });
+
+    for (const width of [320, 390, 430]) {
+      await page.setViewportSize({ width, height: 568 });
+      await page.goto(`${FAIR_CANONICAL_PATH}#travel`, {
+        waitUntil: "domcontentloaded",
+      });
+      await expect(
+        page.getByRole("heading", { name: "Get there and back" }),
+      ).toBeVisible();
+      const status = page.locator('[data-fair-arrival-status="compact"]');
+      await expect(status).toBeVisible();
+      await expect(status).toContainText("Checked 12:00 PM");
+      const statusBox = await status.boundingBox();
+      expect(statusBox?.height ?? 0).toBeGreaterThanOrEqual(56);
+      expect(statusBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
+        72,
+      );
+
+      const travelModes = page.getByRole("radiogroup", {
+        name: "Fair travel mode",
+      });
+      const choices = travelModes.locator("[data-fair-travel-choice]");
+      await expect(choices).toHaveCount(3);
+      for (const choice of await choices.all()) {
+        await expect(choice).toBeVisible();
+        expect((await choice.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(
+          44,
+        );
+      }
+      const finalChoiceBox = await choices.last().boundingBox();
+      const actionBarBox = await page
+        .locator("[data-mobile-action-bar]")
+        .boundingBox();
+      expect(
+        (finalChoiceBox?.y ?? 0) + (finalChoiceBox?.height ?? 0),
+      ).toBeLessThanOrEqual(actionBarBox?.y ?? 568);
+      const pageWidth = await page.evaluate(() => ({
+        client: document.documentElement.clientWidth,
+        scroll: document.documentElement.scrollWidth,
+      }));
+      expect(pageWidth.scroll).toBeLessThanOrEqual(pageWidth.client + 1);
+    }
+
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.reload({
+      waitUntil: "domcontentloaded",
+    });
+    await expect(
+      page.locator('[data-fair-arrival-status="compact"]'),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Show official arrival check details" })
+      .click();
+    await expect(page.locator("[data-fair-arrival-details]")).toBeVisible();
+    await expect
+      .poll(async () => {
+        const positions = await page.evaluate(() => ({
+          modesBottom: document
+            .querySelector<HTMLElement>(
+              '[role="radiogroup"][aria-label="Fair travel mode"]',
+            )
+            ?.getBoundingClientRect().bottom,
+          actionBarTop: document
+            .querySelector<HTMLElement>("[data-mobile-action-bar]")
+            ?.getBoundingClientRect().top,
+        }));
+        if (
+          positions.modesBottom === undefined ||
+          positions.actionBarTop === undefined
+        ) {
+          return false;
+        }
+        return positions.modesBottom <= positions.actionBarTop;
+      })
+      .toBe(true);
+    const expandedLayout = await page.evaluate(() => ({
+      documentClientWidth: document.documentElement.clientWidth,
+      documentScrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(expandedLayout.documentScrollWidth).toBeLessThanOrEqual(
+      expandedLayout.documentClientWidth + 1,
+    );
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(
+      page.locator('[data-fair-arrival-status="compact"]'),
+    ).toBeVisible();
+    await page.addStyleTag({
+      content: `
+        #fair-travel-heading { font-size: 60px !important; }
+        #fair-travel-panel > p { font-size: 26px !important; }
+        [data-fair-arrival-status] :is(span, h2, p) { font-size: 200% !important; }
+        [data-fair-travel-choice] span { font-size: 200% !important; }
+      `,
+    });
+    const enlargedLayout = await page.evaluate(() => ({
+      client: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+      choices: Array.from(
+        document.querySelectorAll<HTMLElement>("[data-fair-travel-choice]"),
+      ).map((choice) => ({
+        clientHeight: choice.clientHeight,
+        scrollHeight: choice.scrollHeight,
+      })),
+    }));
+    expect(enlargedLayout.scroll).toBeLessThanOrEqual(
+      enlargedLayout.client + 1,
+    );
+    for (const choice of enlargedLayout.choices) {
+      expect(choice.scrollHeight).toBeLessThanOrEqual(choice.clientHeight + 1);
+      expect(choice.clientHeight).toBeGreaterThanOrEqual(44);
+    }
+
+    const detailsToggle = page.getByRole("button", {
+      name: "Show official arrival check details",
+    });
+    await detailsToggle.focus();
+    await detailsToggle.press("Enter");
+    await expect(
+      page.getByRole("button", {
+        name: "Hide official arrival check details",
+      }),
+    ).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator("[data-fair-arrival-details]")).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /National Weather Service/ }),
+    ).toBeVisible();
+  });
 });
