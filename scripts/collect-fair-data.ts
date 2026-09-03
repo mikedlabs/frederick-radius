@@ -26,6 +26,7 @@ import {
 import { parseGreatFrederickFair2026Schedule } from "../src/lib/fair/schedule";
 
 const CONFIG_PATH = resolve("config/fair-data-collector.json");
+const REVIEW_BASELINE_PATH = resolve("config/fair-data-review-baseline.json");
 const DEFAULT_REPORT_DIRECTORY = resolve("scripts/reports/fair-data");
 const REVIEWED_SCHEDULE_PATH = resolve(
   "src/lib/fair/__fixtures__/great-frederick-fair-2026.ics",
@@ -79,7 +80,59 @@ const configSchema = z
   })
   .strict();
 
+const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
+const reviewBaselineSchema = z
+  .object({
+    _doc: z.string().optional(),
+    version: z.literal(1),
+    checkedAt: z.string().datetime(),
+    minimums: z
+      .object({
+        scheduleDays: z.number().int().positive(),
+        scheduleItems: z.number().int().positive(),
+        exhibitors: z.number().int().positive(),
+        boothShapes: z.number().int().positive(),
+        matchedBoothReferences: z.number().int().positive(),
+      })
+      .strict(),
+    maximums: z
+      .object({
+        ambiguousBoothReferences: z.number().int().nonnegative(),
+        unmatchedBoothReferences: z.number().int().nonnegative(),
+        mapSourceWarnings: z.number().int().nonnegative(),
+        scheduleSourceWarnings: z.number().int().nonnegative(),
+      })
+      .strict(),
+    expectedFloorplanIds: z.array(z.string().regex(/^\d+$/)).min(1),
+    knownConflictIds: z.array(z.string().trim().min(1)).default([]),
+    officialPageVisibleTextSha256ById: z.record(
+      z.string().regex(/^\d+$/),
+      sha256Schema,
+    ),
+    exhibitorInventorySha256: sha256Schema,
+    floorplanGeometrySha256: sha256Schema,
+  })
+  .strict();
+
 type Config = z.infer<typeof configSchema>;
+export type FairDataReviewBaseline = z.infer<typeof reviewBaselineSchema>;
+export type FairDataReviewSnapshot = {
+  scheduleStatus: "same" | "source-revision-only" | "content-changed";
+  scheduleDays: number;
+  scheduleItems: number;
+  exhibitors: number;
+  boothShapes: number;
+  matchedBoothReferences: number;
+  ambiguousBoothReferences: number;
+  unmatchedBoothReferences: number;
+  mapSourceWarnings: number;
+  scheduleSourceWarnings: number;
+  floorplanIds: string[];
+  conflictIds: string[];
+  officialPageVisibleTextSha256ById: Record<string, string>;
+  exhibitorInventorySha256: string;
+  floorplanGeometrySha256: string;
+};
 type SourceKind =
   | "schedule"
   | "official-pages"
@@ -439,7 +492,111 @@ export function crossSourceScheduleConflicts(
   return conflicts;
 }
 
-async function collect(config: Config, reportDirectory: string): Promise<void> {
+function stableSha256(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function sortedUnique(values: readonly string[]): string[] {
+  return Array.from(new Set(values)).sort();
+}
+
+export function fairDataReviewAlerts(
+  baseline: FairDataReviewBaseline,
+  snapshot: FairDataReviewSnapshot,
+): string[] {
+  const alerts: string[] = [];
+  if (snapshot.scheduleStatus === "content-changed") {
+    alerts.push("The official calendar differs from the reviewed schedule fixture.");
+  }
+
+  const minimumChecks: Array<[string, number, number]> = [
+    ["schedule day", snapshot.scheduleDays, baseline.minimums.scheduleDays],
+    ["schedule item", snapshot.scheduleItems, baseline.minimums.scheduleItems],
+    ["exhibitor", snapshot.exhibitors, baseline.minimums.exhibitors],
+    ["booth shape", snapshot.boothShapes, baseline.minimums.boothShapes],
+    [
+      "matched booth reference",
+      snapshot.matchedBoothReferences,
+      baseline.minimums.matchedBoothReferences,
+    ],
+  ];
+  minimumChecks.forEach(([label, actual, minimum]) => {
+    if (actual < minimum) {
+      alerts.push(`${label} count ${actual} is below the reviewed minimum ${minimum}.`);
+    }
+  });
+
+  const maximumChecks: Array<[string, number, number]> = [
+    [
+      "ambiguous booth reference",
+      snapshot.ambiguousBoothReferences,
+      baseline.maximums.ambiguousBoothReferences,
+    ],
+    [
+      "unmatched booth reference",
+      snapshot.unmatchedBoothReferences,
+      baseline.maximums.unmatchedBoothReferences,
+    ],
+    [
+      "map source warning",
+      snapshot.mapSourceWarnings,
+      baseline.maximums.mapSourceWarnings,
+    ],
+    [
+      "schedule source warning",
+      snapshot.scheduleSourceWarnings,
+      baseline.maximums.scheduleSourceWarnings,
+    ],
+  ];
+  maximumChecks.forEach(([label, actual, maximum]) => {
+    if (actual > maximum) {
+      alerts.push(`${label} count ${actual} exceeds the reviewed maximum ${maximum}.`);
+    }
+  });
+
+  const expectedFloorplanIds = sortedUnique(baseline.expectedFloorplanIds);
+  const floorplanIds = sortedUnique(snapshot.floorplanIds);
+  if (JSON.stringify(floorplanIds) !== JSON.stringify(expectedFloorplanIds)) {
+    alerts.push(
+      `The floorplan set changed (expected ${expectedFloorplanIds.join(", ")}; received ${floorplanIds.join(", ") || "none"}).`,
+    );
+  }
+
+  const knownConflictIds = sortedUnique(baseline.knownConflictIds);
+  const conflictIds = sortedUnique(snapshot.conflictIds);
+  if (JSON.stringify(conflictIds) !== JSON.stringify(knownConflictIds)) {
+    alerts.push(
+      `The official-source conflict set changed (expected ${knownConflictIds.join(", ") || "none"}; received ${conflictIds.join(", ") || "none"}).`,
+    );
+  }
+
+  const pageIds = sortedUnique([
+    ...Object.keys(baseline.officialPageVisibleTextSha256ById),
+    ...Object.keys(snapshot.officialPageVisibleTextSha256ById),
+  ]);
+  pageIds.forEach((pageId) => {
+    if (
+      baseline.officialPageVisibleTextSha256ById[pageId] !==
+      snapshot.officialPageVisibleTextSha256ById[pageId]
+    ) {
+      alerts.push(`Official Fair page ${pageId} changed from its reviewed text.`);
+    }
+  });
+
+  if (baseline.exhibitorInventorySha256 !== snapshot.exhibitorInventorySha256) {
+    alerts.push("The normalized EventHub exhibitor inventory changed.");
+  }
+  if (baseline.floorplanGeometrySha256 !== snapshot.floorplanGeometrySha256) {
+    alerts.push("The normalized EventHub floorplan geometry changed.");
+  }
+  return alerts;
+}
+
+async function collect(
+  config: Config,
+  reviewBaseline: FairDataReviewBaseline,
+  reportDirectory: string,
+): Promise<void> {
   const checkedAt = new Date().toISOString();
   const [schedule, officialPagesSource, exhibitorsSource, floorplansSource] =
     await Promise.all([
@@ -525,6 +682,46 @@ async function collect(config: Config, reportDirectory: string): Promise<void> {
     candidateSchedule,
     officialPages,
   );
+  const officialPageVisibleTextSha256ById = Object.fromEntries(
+    officialPages.map((page) => [
+      String(page.id),
+      createHash("sha256").update(page.visibleText).digest("hex"),
+    ]),
+  );
+  const exhibitorInventorySha256 = stableSha256(exhibitors);
+  const floorplanGeometrySha256 = stableSha256(
+    maps.map((map) => {
+      const backgroundImage = new URL(map.backgroundImageUrl);
+      backgroundImage.search = "";
+      return {
+        mapId: map.mapId,
+        name: map.name,
+        width: map.width,
+        height: map.height,
+        backgroundImageUrl: backgroundImage.href,
+        booths: map.booths,
+        sourceWarnings: map.sourceWarnings,
+      };
+    }),
+  );
+  const reviewSnapshot: FairDataReviewSnapshot = {
+    scheduleStatus: scheduleDiff.status,
+    scheduleDays: candidateSchedule.stats.dayCount,
+    scheduleItems: candidateSchedule.stats.itemCount,
+    exhibitors: exhibitors.length,
+    boothShapes: totalBooths,
+    matchedBoothReferences: coverage.matchedBoothReferenceCount,
+    ambiguousBoothReferences: coverage.ambiguousBoothReferenceCount,
+    unmatchedBoothReferences: coverage.unmatchedBoothReferenceCount,
+    mapSourceWarnings: quality.mapSourceWarnings.length,
+    scheduleSourceWarnings: quality.scheduleSourceWarnings.length,
+    floorplanIds: floorplans.map((floorplan) => floorplan.mapId),
+    conflictIds: scheduleConflicts.map((conflict) => conflict.id),
+    officialPageVisibleTextSha256ById,
+    exhibitorInventorySha256,
+    floorplanGeometrySha256,
+  };
+  const reviewAlerts = fairDataReviewAlerts(reviewBaseline, reviewSnapshot);
 
   const candidate = {
     schemaVersion: 1,
@@ -555,9 +752,8 @@ async function collect(config: Config, reportDirectory: string): Promise<void> {
     },
     officialPages: officialPages.map((page) => ({
       ...page,
-      visibleTextSha256: createHash("sha256")
-        .update(page.visibleText)
-        .digest("hex"),
+      visibleTextSha256:
+        officialPageVisibleTextSha256ById[String(page.id)],
     })),
     crossSourceReview: {
       conflictCount: scheduleConflicts.length,
@@ -573,6 +769,16 @@ async function collect(config: Config, reportDirectory: string): Promise<void> {
       maps,
       coverage,
       quality,
+    },
+    reviewGate: {
+      baselineVersion: reviewBaseline.version,
+      baselineCheckedAt: reviewBaseline.checkedAt,
+      status: reviewAlerts.length === 0 ? "clear" : "attention-required",
+      alerts: reviewAlerts,
+      fingerprints: {
+        exhibitorInventorySha256,
+        floorplanGeometrySha256,
+      },
     },
   };
   const summary = {
@@ -615,6 +821,11 @@ async function collect(config: Config, reportDirectory: string): Promise<void> {
       mapSourceWarningCount: quality.mapSourceWarnings.length,
       scheduleSourceWarningCount: quality.scheduleSourceWarnings.length,
     },
+    reviewGate: {
+      status: reviewAlerts.length === 0 ? "clear" : "attention-required",
+      alertCount: reviewAlerts.length,
+      alerts: reviewAlerts,
+    },
   };
 
   const candidatePath = resolve(reportDirectory, "candidate-latest.json");
@@ -624,12 +835,20 @@ async function collect(config: Config, reportDirectory: string): Promise<void> {
   console.log(
     `Fair data candidate: ${candidateSchedule.stats.itemCount} schedule rows (${scheduleDiff.status}), ${exhibitors.length} exhibitors, ${floorplans.length} floorplans, ${totalBooths} booth shapes, ${scheduleConflicts.length} cross-source conflicts. Review ${candidatePath}.`,
   );
+  if (reviewAlerts.length > 0) {
+    throw new Error(
+      `Fair data requires review; the private candidate was saved.\n- ${reviewAlerts.join("\n- ")}`,
+    );
+  }
 }
 
 async function main(): Promise<void> {
   const live = process.argv.includes("--live");
   const config = configSchema.parse(
     JSON.parse(await readFile(CONFIG_PATH, "utf8")),
+  );
+  const reviewBaseline = reviewBaselineSchema.parse(
+    JSON.parse(await readFile(REVIEW_BASELINE_PATH, "utf8")),
   );
   const reportDirectory = resolve(
     process.env.FAIR_DATA_REPORT_DIR ?? DEFAULT_REPORT_DIRECTORY,
@@ -640,7 +859,7 @@ async function main(): Promise<void> {
     );
     return;
   }
-  await collect(config, reportDirectory);
+  await collect(config, reviewBaseline, reportDirectory);
 }
 
 const invokedPath = process.argv[1] ? resolve(process.argv[1]) : "";

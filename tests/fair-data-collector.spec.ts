@@ -4,7 +4,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   crossSourceScheduleConflicts,
+  fairDataReviewAlerts,
   FAIR_SOURCE_REDIRECT_POLICY,
+  type FairDataReviewBaseline,
+  type FairDataReviewSnapshot,
 } from "../scripts/collect-fair-data";
 import { parseOfficialFairPages } from "../src/lib/fair/data-candidate";
 import { parseGreatFrederickFair2026Schedule } from "../src/lib/fair/schedule";
@@ -18,6 +21,50 @@ const schedule = parseGreatFrederickFair2026Schedule(
     "utf8",
   ),
 );
+
+const SHA_A = "a".repeat(64);
+const SHA_B = "b".repeat(64);
+
+const reviewBaseline: FairDataReviewBaseline = {
+  version: 1,
+  checkedAt: "2026-09-03T00:00:00.000Z",
+  minimums: {
+    scheduleDays: 9,
+    scheduleItems: 170,
+    exhibitors: 140,
+    boothShapes: 450,
+    matchedBoothReferences: 380,
+  },
+  maximums: {
+    ambiguousBoothReferences: 0,
+    unmatchedBoothReferences: 0,
+    mapSourceWarnings: 1,
+    scheduleSourceWarnings: 2,
+  },
+  expectedFloorplanIds: ["9564", "9565", "9566"],
+  knownConflictIds: ["known-conflict"],
+  officialPageVisibleTextSha256ById: { "1722": SHA_A },
+  exhibitorInventorySha256: SHA_A,
+  floorplanGeometrySha256: SHA_B,
+};
+
+const reviewSnapshot: FairDataReviewSnapshot = {
+  scheduleStatus: "same",
+  scheduleDays: 9,
+  scheduleItems: 190,
+  exhibitors: 155,
+  boothShapes: 508,
+  matchedBoothReferences: 409,
+  ambiguousBoothReferences: 0,
+  unmatchedBoothReferences: 0,
+  mapSourceWarnings: 1,
+  scheduleSourceWarnings: 2,
+  floorplanIds: ["9564", "9565", "9566"],
+  conflictIds: ["known-conflict"],
+  officialPageVisibleTextSha256ById: { "1722": SHA_A },
+  exhibitorInventorySha256: SHA_A,
+  floorplanGeometrySha256: SHA_B,
+};
 
 function page(id: number, slug: string, content: string) {
   return {
@@ -33,6 +80,41 @@ function page(id: number, slug: string, content: string) {
 describe("Fair data collector review gates", () => {
   it("refuses source redirects before a NAS request can leave the allowlist", () => {
     expect(FAIR_SOURCE_REDIRECT_POLICY).toBe("error");
+  });
+
+  it("keeps an unchanged complete source set green", () => {
+    expect(fairDataReviewAlerts(reviewBaseline, reviewSnapshot)).toEqual([]);
+  });
+
+  it("turns silent source loss and reviewed content changes into actionable failures", () => {
+    const alerts = fairDataReviewAlerts(reviewBaseline, {
+      ...reviewSnapshot,
+      scheduleStatus: "content-changed",
+      exhibitors: 1,
+      boothShapes: 1,
+      matchedBoothReferences: 0,
+      unmatchedBoothReferences: 1,
+      floorplanIds: ["9564"],
+      conflictIds: ["new-conflict"],
+      officialPageVisibleTextSha256ById: { "1722": SHA_B },
+      exhibitorInventorySha256: SHA_B,
+      floorplanGeometrySha256: SHA_A,
+    });
+
+    expect(alerts).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("official calendar differs"),
+        expect.stringContaining("exhibitor count 1"),
+        expect.stringContaining("booth shape count 1"),
+        expect.stringContaining("matched booth reference count 0"),
+        expect.stringContaining("unmatched booth reference count 1"),
+        expect.stringContaining("floorplan set changed"),
+        expect.stringContaining("conflict set changed"),
+        expect.stringContaining("page 1722 changed"),
+        expect.stringContaining("exhibitor inventory changed"),
+        expect.stringContaining("floorplan geometry changed"),
+      ]),
+    );
   });
 
   it("surfaces known conflicts between current official schedule sources", () => {

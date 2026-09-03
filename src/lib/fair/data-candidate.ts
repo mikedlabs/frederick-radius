@@ -298,13 +298,26 @@ export function assertOfficialVendorPageReferencesShow(
   html: string,
   expectedShowId: string,
 ): void {
-  const referencedShowIds = Array.from(
-    html.matchAll(/(?:Show_ID|show_id)=(\d+)/gi),
-    (match) => match[1],
-  );
-  if (!referencedShowIds.includes(expectedShowId)) {
+  const hasApprovedGuide = Array.from(
+    html.matchAll(/https:\/\/[^\s"'<>]+/gi),
+    (match) => match[0].replaceAll("&amp;", "&"),
+  ).some((candidate) => {
+    try {
+      const url = new URL(candidate);
+      return (
+        url.protocol === "https:" &&
+        url.hostname === "mobile.eventhub-floorplan.net" &&
+        url.port === "" &&
+        url.pathname === "/" &&
+        url.searchParams.get("Show_ID") === expectedShowId
+      );
+    } catch {
+      return false;
+    }
+  });
+  if (!hasApprovedGuide) {
     throw new Error(
-      `The official Fair vendor page does not reference EventHub show ${expectedShowId}.`,
+      `The official Fair vendor page does not reference the approved EventHub guide for show ${expectedShowId}.`,
     );
   }
 }

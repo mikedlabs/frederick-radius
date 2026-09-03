@@ -79,6 +79,18 @@ describe("Fair official-data candidates", () => {
         "18209",
       ),
     ).toThrow("does not reference");
+    expect(() =>
+      assertOfficialVendorPageReferencesShow(
+        '<a href="https://unapproved.example/?Show_ID=18209">Map</a>',
+        "18209",
+      ),
+    ).toThrow("approved EventHub guide");
+    expect(() =>
+      assertOfficialVendorPageReferencesShow(
+        '<a href="https://mobile.eventhub-floorplan.net/not-the-guide?Show_ID=18209">Map</a>',
+        "18209",
+      ),
+    ).toThrow("approved EventHub guide");
   });
 
   it("normalizes an exact set of official WordPress pages and their outbound links", () => {

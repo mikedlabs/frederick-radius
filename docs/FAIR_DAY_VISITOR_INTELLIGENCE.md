@@ -160,7 +160,11 @@ registration, contact, and transaction data are out of scope.
 
 The `Fair data steward` workflow runs the collector twice daily on the
 `radius-data` NAS runner and retains a review artifact for three days. It has
-read-only repository permission and no promotion job.
+read-only repository permission and no promotion job. The job stays green only
+while the normalized schedule, official page text, exhibitor inventory, map
+geometry, floorplan set, and reviewed quality bounds remain intact. A change or
+sharp source-data loss saves the candidate, fails the job, and therefore uses
+the existing GitHub failure-notification lane instead of silently accepting it.
 
 ## NAS cadence after deployment
 
