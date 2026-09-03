@@ -27,7 +27,7 @@ const informationSourceSchema = z
   .object({
     publisher: z.string().trim().min(2).max(80),
     title: z.string().trim().min(2).max(120),
-    url: z.string().url(),
+    url: z.string().url().startsWith("https://"),
     checkedAt: z.string().datetime({ offset: true }),
   })
   .strict();
@@ -44,7 +44,7 @@ const propertiesSchema = z
       .regex(/^(?:osm-(?:node|way)-\d+|fair-(?:arrival|service)-[a-z0-9-]+|transit-stop-\d+)$/),
     name: z.string().trim().min(2).max(100),
     kind: fairGroundsMapKindSchema,
-    sourceUrl: z.string().url(),
+    sourceUrl: z.string().url().startsWith("https://"),
     sourceUpdatedAt: z.string().datetime({ offset: true }).nullable(),
     scheduleAliases: z.array(z.string().trim().min(2).max(80)).max(8),
     anchor: coordinateSchema,

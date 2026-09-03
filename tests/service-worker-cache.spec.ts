@@ -256,8 +256,30 @@ describe("service worker cache boundaries", () => {
     ]);
   });
 
-  it("serves the warmed Fair map snapshot without a network request", async () => {
+  it("revalidates the Fair map snapshot and replaces the warmed copy", async () => {
     const worker = await workerHarness();
+    const currentMap = response(
+      "https://frederick.example/data/fair/great-frederick-fair-2026-map.geojson",
+    );
+    worker.fetch.mockResolvedValueOnce(currentMap);
+
+    const handled = worker.dispatchFetch(
+      "https://frederick.example/data/fair/great-frederick-fair-2026-map.geojson",
+    );
+
+    await expect(handled.result()).resolves.toBe(currentMap);
+    expect(worker.fetch).toHaveBeenCalledWith(handled.request, {
+      cache: "no-cache",
+    });
+    expect(worker.puts).toHaveLength(1);
+    expect(worker.puts[0]).toMatchObject({
+      request: "/data/fair/great-frederick-fair-2026-map.geojson",
+    });
+  });
+
+  it("falls back to the warmed Fair map snapshot when offline", async () => {
+    const worker = await workerHarness();
+    worker.fetch.mockRejectedValueOnce(new Error("offline"));
 
     const handled = worker.dispatchFetch(
       "https://frederick.example/data/fair/great-frederick-fair-2026-map.geojson",
@@ -267,7 +289,7 @@ describe("service worker cache boundaries", () => {
     expect(worker.caches.match).toHaveBeenCalledWith(
       "/data/fair/great-frederick-fair-2026-map.geojson",
     );
-    expect(worker.fetch).not.toHaveBeenCalled();
+    expect(worker.puts).toHaveLength(0);
   });
 
   it.each([

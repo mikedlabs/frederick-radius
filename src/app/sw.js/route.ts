@@ -359,28 +359,30 @@ self.addEventListener("fetch", (event) => {
   // enter any runtime cache. Let the browser perform its normal network fetch.
   if (isSensitiveRequest(request, url)) return;
 
-  // The owned Fair map snapshot is tied to this deployment's cache version.
-  // Prefer the explicitly warmed copy, with a network fill for visitors whose
-  // worker activated before they opened Fair.
+  // The owned Fair map snapshot is tied to the current application release.
+  // Revalidate it before reading the warmed copy so an older active worker
+  // cannot pair a newly deployed shell with stale map data. The cached copy is
+  // still the offline fallback.
   if (url.pathname === FAIR_MAP_DATA_URL && url.search === "") {
     event.respondWith(
-      caches.match(FAIR_MAP_DATA_URL).then(
-        (hit) =>
-          hit ||
-          fetch(request).then(async (res) => {
-            const expectedUrl = new URL(FAIR_MAP_DATA_URL, self.location.origin);
-            if (
-              isCacheableResponse(res) &&
-              new URL(res.url).href === expectedUrl.href
-            ) {
-              try {
-                const cache = await caches.open(STATIC_CACHE);
-                await cache.put(FAIR_MAP_DATA_URL, res.clone());
-              } catch {}
-            }
-            return res;
-          }),
-      ),
+      fetch(request, { cache: "no-cache" })
+        .then(async (res) => {
+          const expectedUrl = new URL(FAIR_MAP_DATA_URL, self.location.origin);
+          if (
+            isCacheableResponse(res) &&
+            new URL(res.url).href === expectedUrl.href
+          ) {
+            try {
+              const cache = await caches.open(STATIC_CACHE);
+              await cache.put(FAIR_MAP_DATA_URL, res.clone());
+            } catch {}
+          }
+          return res;
+        })
+        .catch(async () => {
+          const fallback = await caches.match(FAIR_MAP_DATA_URL);
+          return fallback || Response.error();
+        }),
     );
     return;
   }

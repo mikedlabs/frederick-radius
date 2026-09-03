@@ -108,6 +108,26 @@ describe("Fair grounds map", () => {
     ).toThrow(/Fair map feature ids must be unique/);
   });
 
+  it("rejects non-HTTPS feature and information-source links", () => {
+    const unsafeFeatureLink = structuredClone(map);
+    const ownedFeature = unsafeFeatureLink.features.find(
+      (feature) => !feature.properties.id.startsWith("osm-"),
+    );
+    if (!ownedFeature) throw new Error("Expected an owned Fair map feature");
+    ownedFeature.properties.sourceUrl = "javascript:alert(1)";
+    expect(() => parseFairGroundsMap(unsafeFeatureLink)).toThrow();
+
+    const unsafeInformationLink = structuredClone(map);
+    const sourcedFeature = unsafeInformationLink.features.find(
+      (feature) => feature.properties.informationSource,
+    );
+    if (!sourcedFeature?.properties.informationSource) {
+      throw new Error("Expected a sourced Fair map feature");
+    }
+    sourcedFeature.properties.informationSource.url = "http://example.com";
+    expect(() => parseFairGroundsMap(unsafeInformationLink)).toThrow();
+  });
+
   it("keeps official metadata on every owned annotation", () => {
     const annotatedFeatures = map.features.filter(
       (feature) => feature.properties.informationSource,
