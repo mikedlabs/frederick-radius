@@ -93,6 +93,7 @@
     "closures:detect": "tsx --tsconfig tsconfig.json scripts/detect-closures.ts",
     "source:watch": "tsx --tsconfig tsconfig.json scripts/source-watch.ts",
     "fair:source-watch": "tsx --tsconfig tsconfig.json scripts/fair-source-watch.ts",
+    "fair:data:collect": "tsx --tsconfig tsconfig.json scripts/collect-fair-data.ts",
     "fair:map:materialize": "tsx --tsconfig tsconfig.json scripts/materialize-fair-grounds-map.ts",
     "fair:community-watch": "tsx --tsconfig tsconfig.json scripts/fair-community-watch.ts",
     "source:scout": "tsx --tsconfig tsconfig.json scripts/source-scout.ts",
