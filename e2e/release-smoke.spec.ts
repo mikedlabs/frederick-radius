@@ -294,7 +294,15 @@ test.describe("Today hydration clock boundary", () => {
     });
     expect(response?.status()).toBe(200);
     await expect(page.locator("main h1")).toHaveCount(1);
-    await expect(page.locator('[aria-label="Today in Frederick"]')).toBeVisible();
+    // TodayCard has two legitimate resolved states: live forecast content and
+    // the truthful weather-unavailable recovery. Either proves the Suspense
+    // boundary completed without a hydration crash; the runtime guard below
+    // still fails this test on an actual client error.
+    await expect(
+      page.locator(
+        '[aria-label="Today in Frederick"], [aria-label="Weather unavailable"]',
+      ),
+    ).toBeVisible();
     const readyCollapsibles = page.locator(
       '[data-collapsible-interaction-ready="true"]',
     );
