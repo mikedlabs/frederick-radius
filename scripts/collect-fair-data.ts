@@ -32,6 +32,7 @@ const REVIEWED_SCHEDULE_PATH = resolve(
 );
 const USER_AGENT =
   "FrederickRadiusFairData/1.0 (review-only local guide; hello@frederickradius.app)";
+export const FAIR_SOURCE_REDIRECT_POLICY = "error" as const;
 
 const EXACT_SCHEDULE_URL =
   "https://calendar.google.com/calendar/ical/gffcal%40gmail.com/public/basic.ics";
@@ -219,7 +220,10 @@ async function fetchSource(
   const timeout = setTimeout(() => controller.abort(), config.limits.timeoutMs);
   try {
     const response = await fetch(sourceUrl, {
-      redirect: "follow",
+      // This job runs inside the NAS network. Never let an allowlisted public
+      // source redirect the request to a private or metadata address before we
+      // can validate it. Each currently approved endpoint is direct.
+      redirect: FAIR_SOURCE_REDIRECT_POLICY,
       signal: controller.signal,
       headers: {
         Accept:

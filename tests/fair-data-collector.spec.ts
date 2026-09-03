@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { crossSourceScheduleConflicts } from "../scripts/collect-fair-data";
+import {
+  crossSourceScheduleConflicts,
+  FAIR_SOURCE_REDIRECT_POLICY,
+} from "../scripts/collect-fair-data";
 import { parseOfficialFairPages } from "../src/lib/fair/data-candidate";
 import { parseGreatFrederickFair2026Schedule } from "../src/lib/fair/schedule";
 
@@ -28,6 +31,10 @@ function page(id: number, slug: string, content: string) {
 }
 
 describe("Fair data collector review gates", () => {
+  it("refuses source redirects before a NAS request can leave the allowlist", () => {
+    expect(FAIR_SOURCE_REDIRECT_POLICY).toBe("error");
+  });
+
   it("surfaces known conflicts between current official schedule sources", () => {
     const pages = parseOfficialFairPages(
       JSON.stringify([
@@ -69,4 +76,3 @@ describe("Fair data collector review gates", () => {
     ]);
   });
 });
-
