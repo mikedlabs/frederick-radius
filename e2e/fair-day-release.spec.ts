@@ -330,6 +330,114 @@ test.describe("Fair Day production release journey", () => {
         "true",
       );
 
+      if (width === 320) {
+        const heroLayout = await page.locator("[data-fair-hero]").evaluate(
+          (hero) => {
+            const credit = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-credit]",
+            );
+            const identity = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-identity]",
+            );
+            const controls = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-controls]",
+            );
+            const content = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-content]",
+            );
+            if (!credit || !identity || !controls || !content) return null;
+            const creditBox = credit.getBoundingClientRect();
+            const identityBox = identity.getBoundingClientRect();
+            return {
+              clientHeight: content.clientHeight,
+              scrollHeight: content.scrollHeight,
+              creditBottom: creditBox.bottom,
+              identityTop: identityBox.top,
+              controlButtons: Array.from(
+                controls.querySelectorAll<HTMLElement>("a, button"),
+              ).map((control) => ({
+                width: control.getBoundingClientRect().width,
+                height: control.getBoundingClientRect().height,
+              })),
+            };
+          },
+        );
+        expect(heroLayout).not.toBeNull();
+        expect(heroLayout?.scrollHeight).toBeLessThanOrEqual(
+          (heroLayout?.clientHeight ?? 0) + 1,
+        );
+        expect(heroLayout?.creditBottom).toBeLessThanOrEqual(
+          heroLayout?.identityTop ?? 0,
+        );
+        for (const control of heroLayout?.controlButtons ?? []) {
+          expect(control.height).toBeGreaterThanOrEqual(44);
+        }
+
+        const planSummary = page.locator("[data-fair-plan-summary]");
+        const planDate = page.locator("[data-fair-plan-date]");
+        const planLayout = await planSummary.evaluate((summary) => {
+          const style = window.getComputedStyle(summary);
+          return {
+            clientWidth: summary.clientWidth,
+            scrollWidth: summary.scrollWidth,
+            textOverflow: style.textOverflow,
+            whiteSpace: style.whiteSpace,
+          };
+        });
+        expect(planLayout.scrollWidth).toBeLessThanOrEqual(
+          planLayout.clientWidth + 1,
+        );
+        expect(planLayout.textOverflow).not.toBe("ellipsis");
+        expect(planLayout.whiteSpace).not.toBe("nowrap");
+        const summaryBox = await planSummary.boundingBox();
+        const dateBox = await planDate.boundingBox();
+        expect(dateBox?.x ?? 0).toBeGreaterThanOrEqual(
+          (summaryBox?.x ?? 0) + (summaryBox?.width ?? 0),
+        );
+
+        await page.addStyleTag({
+          content: `
+            [data-fair-hero-controls] :is(a, button) { font-size: 26px !important; }
+            [data-fair-hero-credit] { font-size: 18px !important; }
+            [data-fair-hero-identity] > div { font-size: 20px !important; }
+            #fair-now-heading { font-size: 68px !important; }
+            [data-fair-hero-identity] > p { font-size: 20px !important; }
+          `,
+        });
+        const enlargedHero = await page.locator("[data-fair-hero]").evaluate(
+          (hero) => {
+            const credit = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-credit]",
+            );
+            const identity = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-identity]",
+            );
+            const content = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-content]",
+            );
+            if (!credit || !identity || !content) return null;
+            return {
+              clientHeight: content.clientHeight,
+              scrollHeight: content.scrollHeight,
+              creditBottom: credit.getBoundingClientRect().bottom,
+              identityTop: identity.getBoundingClientRect().top,
+              documentClientWidth: document.documentElement.clientWidth,
+              documentScrollWidth: document.documentElement.scrollWidth,
+            };
+          },
+        );
+        expect(enlargedHero).not.toBeNull();
+        expect(enlargedHero?.scrollHeight).toBeLessThanOrEqual(
+          (enlargedHero?.clientHeight ?? 0) + 1,
+        );
+        expect(enlargedHero?.creditBottom).toBeLessThanOrEqual(
+          enlargedHero?.identityTop ?? 0,
+        );
+        expect(enlargedHero?.documentScrollWidth).toBeLessThanOrEqual(
+          (enlargedHero?.documentClientWidth ?? 0) + 1,
+        );
+      }
+
       for (const label of ["Today", "Explore", "Map", "My Day"] as const) {
         const destination = page
           .getByRole("navigation", { name: "Fair Day" })

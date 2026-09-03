@@ -36,7 +36,7 @@ export default function FairPlanStatusRibbon({
         background: "var(--app-bg-elevated-solid)",
       }}
     >
-      <div className="mx-auto flex min-h-[76px] max-w-[68rem] items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
+      <div className="mx-auto grid min-h-[76px] max-w-[68rem] grid-cols-[minmax(0,1fr)_8rem] items-center gap-2 px-4 py-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:px-6">
         <div className="min-w-0">
           <p
             className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.13em]"
@@ -45,14 +45,17 @@ export default function FairPlanStatusRibbon({
             <CalendarDays className="h-3.5 w-3.5" aria-hidden />
             Your Fair Day
           </p>
-          <p className="mt-1 truncate text-[14px] font-bold leading-tight sm:text-[15px]">
+          <p
+            data-fair-plan-summary
+            className="mt-1 text-[14px] font-bold leading-snug sm:text-[15px]"
+          >
             {status.readinessLabel}
             <span aria-hidden="true"> · </span>
             {status.savedStopsLabel}
           </p>
           {!compact && status.partySize > 0 ? (
             <p
-              className="mt-0.5 truncate text-[12px] leading-tight"
+              className="mt-0.5 text-[12px] leading-snug"
               style={{ color: "var(--app-ink-3)" }}
             >
               {status.partyLabel}
@@ -60,13 +63,16 @@ export default function FairPlanStatusRibbon({
           ) : null}
         </div>
 
-        <label className="shrink-0">
+        <label
+          data-fair-plan-date
+          className="w-full shrink-0"
+        >
           <span className="sr-only">Fair day in your plan</span>
           <select
             value={selectedDate}
             onChange={(event) => onDateChange(event.target.value)}
             aria-label="Fair day in your plan"
-            className="h-11 max-w-[9.5rem] rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 text-[12.5px] font-semibold"
+            className="h-11 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 text-[12.5px] font-semibold sm:w-auto sm:max-w-[9.5rem]"
             style={{
               borderColor: "var(--app-control-border)",
               color: "var(--app-ink)",
