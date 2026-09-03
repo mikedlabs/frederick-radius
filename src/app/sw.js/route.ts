@@ -62,6 +62,7 @@ const STATIC_CACHE = CACHE_VERSION + "-static";
 const IMAGE_CACHE = CACHE_VERSION + "-img";
 const OFFLINE_URL = "/offline";
 const FAIR_CANONICAL_URL = "/moments/great-frederick-fair-2026";
+const FAIR_MAP_DATA_URL = "/data/fair/great-frederick-fair-2026-map.geojson";
 const FAIR_FALLBACK_PATHS = new Set(["/fair", FAIR_CANONICAL_URL]);
 const MAX_PAGE_STATIC_ASSETS = 40;
 
@@ -161,6 +162,25 @@ async function cacheFairFallback() {
   const assetSource = response.clone();
   await cache.put(FAIR_CANONICAL_URL, response);
   await cachePageStaticAssets(assetSource, cache, "omit");
+
+  // The owned Fair map reads this committed snapshot after hydration. Keep it
+  // beside the Fair shell so the map remains useful when fairgrounds service
+  // is congested or a visitor loses connectivity after the initial visit.
+  try {
+    const mapResponse = await fetch(FAIR_MAP_DATA_URL, {
+      cache: "reload",
+      credentials: "omit",
+    });
+    if (!isCacheableResponse(mapResponse)) return;
+
+    const finalMapUrl = new URL(mapResponse.url);
+    const expectedMapUrl = new URL(FAIR_MAP_DATA_URL, self.location.origin);
+    if (finalMapUrl.href !== expectedMapUrl.href) return;
+
+    await cache.put(FAIR_MAP_DATA_URL, mapResponse);
+  } catch {
+    // A map-data failure must not discard the successfully warmed Fair shell.
+  }
 }
 
 self.addEventListener("install", (event) => {
@@ -187,6 +207,7 @@ async function purgeLegacyRuntimeEntries() {
       if (
         pathname === OFFLINE_URL ||
         pathname === FAIR_CANONICAL_URL ||
+        pathname === FAIR_MAP_DATA_URL ||
         pathname.startsWith("/_next/static/")
       ) return undefined;
       return cache.delete(request);
@@ -337,6 +358,34 @@ self.addEventListener("fetch", (event) => {
   // Authenticated, personalized, API, and capability-bearing requests never
   // enter any runtime cache. Let the browser perform its normal network fetch.
   if (isSensitiveRequest(request, url)) return;
+
+  // The owned Fair map snapshot is tied to the current application release.
+  // Revalidate it before reading the warmed copy so an older active worker
+  // cannot pair a newly deployed shell with stale map data. The cached copy is
+  // still the offline fallback.
+  if (url.pathname === FAIR_MAP_DATA_URL && url.search === "") {
+    event.respondWith(
+      fetch(request, { cache: "no-cache" })
+        .then(async (res) => {
+          const expectedUrl = new URL(FAIR_MAP_DATA_URL, self.location.origin);
+          if (
+            isCacheableResponse(res) &&
+            new URL(res.url).href === expectedUrl.href
+          ) {
+            try {
+              const cache = await caches.open(STATIC_CACHE);
+              await cache.put(FAIR_MAP_DATA_URL, res.clone());
+            } catch {}
+          }
+          return res;
+        })
+        .catch(async () => {
+          const fallback = await caches.match(FAIR_MAP_DATA_URL);
+          return fallback || Response.error();
+        }),
+    );
+    return;
+  }
 
   // 2. Build assets (content-hashed, immutable): cache-first.
   if (url.pathname.startsWith("/_next/static/")) {

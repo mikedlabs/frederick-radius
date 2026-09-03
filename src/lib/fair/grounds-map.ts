@@ -12,7 +12,25 @@ export const fairGroundsMapKindSchema = z.enum([
   "animal",
   "stage",
   "parking",
+  "service",
+  "transit",
 ]);
+
+export const fairGroundsMapFilterSchema = z.enum([
+  "essentials",
+  "animals",
+  "buildings",
+  "arrival",
+]);
+
+const informationSourceSchema = z
+  .object({
+    publisher: z.string().trim().min(2).max(80),
+    title: z.string().trim().min(2).max(120),
+    url: z.string().url().startsWith("https://"),
+    checkedAt: z.string().datetime({ offset: true }),
+  })
+  .strict();
 
 const coordinateSchema = z.tuple([
   z.number().finite().min(-77.41).max(-77.38),
@@ -21,15 +39,44 @@ const coordinateSchema = z.tuple([
 
 const propertiesSchema = z
   .object({
-    id: z.string().regex(/^osm-(?:node|way)-\d+$/),
+    id: z
+      .string()
+      .regex(/^(?:osm-(?:node|way)-\d+|fair-(?:arrival|service)-[a-z0-9-]+|transit-stop-\d+)$/),
     name: z.string().trim().min(2).max(100),
     kind: fairGroundsMapKindSchema,
-    sourceUrl: z.string().url().startsWith("https://www.openstreetmap.org/"),
+    sourceUrl: z.string().url().startsWith("https://"),
     sourceUpdatedAt: z.string().datetime({ offset: true }).nullable(),
     scheduleAliases: z.array(z.string().trim().min(2).max(80)).max(8),
     anchor: coordinateSchema,
+    detail: z.string().trim().min(2).max(360).optional(),
+    keywords: z.array(z.string().trim().min(2).max(80)).max(24).optional(),
+    informationSource: informationSourceSchema.optional(),
+    locationPrecision: z
+      .enum(["mapped-feature", "official-pin", "published-area", "static-transit-stop"])
+      .optional(),
+    directionsEnabled: z.boolean().optional(),
+    filterIds: z.array(fairGroundsMapFilterSchema).max(3).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((properties, context) => {
+    if (
+      properties.id.startsWith("osm-") &&
+      !properties.sourceUrl.startsWith("https://www.openstreetmap.org/")
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "OpenStreetMap feature ids must link to their OpenStreetMap source",
+        path: ["sourceUrl"],
+      });
+    }
+    if (!properties.id.startsWith("osm-") && !properties.informationSource) {
+      context.addIssue({
+        code: "custom",
+        message: "Non-OpenStreetMap features require a checked information source",
+        path: ["informationSource"],
+      });
+    }
+  });
 
 const pointFeatureSchema = z
   .object({
@@ -101,14 +148,63 @@ export const fairGroundsMapSchema = z
 export type FairGroundsMap = z.infer<typeof fairGroundsMapSchema>;
 export type FairGroundsMapFeature = FairGroundsMap["features"][number];
 export type FairGroundsMapKind = z.infer<typeof fairGroundsMapKindSchema>;
-export type FairGroundsMapFilter =
-  | "essentials"
-  | "animals"
-  | "buildings"
-  | "parking";
+export type FairGroundsMapFilter = z.infer<typeof fairGroundsMapFilterSchema>;
+
+export type FairGroundsMapFeaturePatch = {
+  targetId: string;
+  properties: Partial<
+    Pick<
+      FairGroundsMapFeature["properties"],
+      | "anchor"
+      | "detail"
+      | "keywords"
+      | "informationSource"
+      | "locationPrecision"
+      | "directionsEnabled"
+      | "filterIds"
+    >
+  >;
+};
 
 export function parseFairGroundsMap(candidate: unknown): FairGroundsMap {
   return fairGroundsMapSchema.parse(candidate);
+}
+
+export function enrichFairGroundsMap(
+  map: FairGroundsMap,
+  patches: readonly FairGroundsMapFeaturePatch[],
+  additions: readonly FairGroundsMapFeature[],
+): FairGroundsMap {
+  const patchById = new Map(patches.map((patch) => [patch.targetId, patch]));
+  if (patchById.size !== patches.length) {
+    throw new Error("Fair map feature patches must target unique ids");
+  }
+
+  const knownIds = new Set(map.features.map((feature) => feature.properties.id));
+  for (const targetId of patchById.keys()) {
+    if (!knownIds.has(targetId)) {
+      throw new Error(`Fair map feature patch targets missing id: ${targetId}`);
+    }
+  }
+
+  return parseFairGroundsMap({
+    ...map,
+    features: [
+      ...map.features.map((feature) => {
+        const patch = patchById.get(feature.properties.id);
+        return patch
+          ? {
+              ...feature,
+              properties: {
+                ...feature.properties,
+                ...patch.properties,
+              },
+            }
+          : feature;
+      }),
+      ...additions,
+    ],
+  });
 }
 
 export function fairGroundsFeatureMatchesFilter(
@@ -116,14 +212,15 @@ export function fairGroundsFeatureMatchesFilter(
   filter: FairGroundsMapFilter,
 ): boolean {
   if (feature.properties.kind === "fairgrounds") return true;
+  if (feature.properties.filterIds?.includes(filter)) return true;
   if (filter === "essentials") {
-    return ["gate", "ticket", "restroom", "stage"].includes(
+    return ["gate", "ticket", "restroom", "stage", "service"].includes(
       feature.properties.kind,
     );
   }
   if (filter === "animals") return feature.properties.kind === "animal";
   if (filter === "buildings") return feature.properties.kind === "building";
-  return feature.properties.kind === "parking";
+  return ["parking", "transit"].includes(feature.properties.kind);
 }
 
 function normalizedLocation(value: string): string {
@@ -154,5 +251,7 @@ export function fairGroundsMapKindLabel(kind: FairGroundsMapKind): string {
     animal: "Animal area",
     stage: "Show area",
     parking: "Parking",
+    service: "Guest service",
+    transit: "Transit stop",
   }[kind];
 }

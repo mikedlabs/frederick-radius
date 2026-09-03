@@ -117,6 +117,118 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(commercialMarker).toBeFocused();
   });
 
+  test("connects rideshare search with owned arrival, parking, and transit details", async ({
+    page,
+  }) => {
+    const map = await openFairMap(page);
+    const search = page.getByRole("searchbox", {
+      name: "Find a place or program event on the Fair grounds map",
+    });
+
+    await search.fill("rideshare");
+    const gateResult = page
+      .locator("#fair-map-search-results")
+      .getByRole("button", { name: /Gate 4A/ });
+    await expect(gateResult).toBeVisible();
+    await gateResult.press("Enter");
+
+    const gateDetails = page.getByRole("region", {
+      name: "Selected map place: Gate 4A",
+    });
+    await expect(gateDetails).toBeVisible();
+    await gateDetails.getByRole("button", { name: "More details" }).click();
+    await expect(
+      gateDetails.getByRole("link", { name: /Get directions/i }),
+    ).toBeVisible();
+    await expect(
+      gateDetails.getByRole("link", { name: /Official details/i }),
+    ).toBeVisible();
+
+    await gateDetails
+      .getByRole("button", { name: "Close selected map place" })
+      .click();
+    await page
+      .getByRole("button", { name: /Parking \+ transit/ })
+      .click();
+
+    await expect(
+      map.getByRole("button", {
+        name: /^Lot D entrance on Monroe Avenue\. Parking\./,
+      }),
+    ).toBeVisible();
+    await expect(
+      map.getByRole("button", {
+        name: /^East Patrick Street at Fairground Center\. Transit stop\./,
+      }),
+    ).toBeVisible();
+  });
+
+  test("keeps selected-place details above map controls at 320px", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    const map = await openFairMap(page);
+    await page
+      .getByRole("button", { name: /Parking \+ transit/ })
+      .click();
+    await map
+      .getByRole("button", {
+        name: /^Lot D entrance on Monroe Avenue\. Parking\./,
+      })
+      .click();
+
+    const sheet = page.getByRole("region", {
+      name: "Selected map place: Lot D entrance on Monroe Avenue",
+    });
+    const heading = sheet.getByRole("heading", {
+      name: "Selected map place: Lot D entrance on Monroe Avenue",
+    });
+    await expect(sheet).toBeVisible();
+    await expect(heading).toBeVisible();
+    await expect(heading).toBeFocused();
+
+    const stacking = await page.evaluate(() => {
+      const selected = document.querySelector<HTMLElement>(
+        "#fair-map-selection-mobile",
+      );
+      const search = document.querySelector<HTMLElement>(
+        "[data-fair-map-search-rail]",
+      );
+      const filters = document.querySelector<HTMLElement>(
+        "[data-fair-map-filter-rail]",
+      );
+      const title = document.querySelector<HTMLElement>(
+        "#fair-map-selection-mobile-heading",
+      );
+      if (!selected || !search || !filters || !title) return null;
+      const selectedBox = selected.getBoundingClientRect();
+      const titleBox = title.getBoundingClientRect();
+      return {
+        selectedZ: Number(window.getComputedStyle(selected).zIndex),
+        searchZ: Number(window.getComputedStyle(search).zIndex),
+        filtersZ: Number(window.getComputedStyle(filters).zIndex),
+        selectedTop: selectedBox.top,
+        selectedBottom: selectedBox.bottom,
+        titleTop: titleBox.top,
+        titleBottom: titleBox.bottom,
+        viewportHeight: window.innerHeight,
+      };
+    });
+    expect(stacking).not.toBeNull();
+    expect(stacking?.selectedZ).toBeGreaterThan(stacking?.searchZ ?? 0);
+    expect(stacking?.selectedZ).toBeGreaterThan(stacking?.filtersZ ?? 0);
+    expect(stacking?.selectedTop).toBeGreaterThanOrEqual(0);
+    expect(stacking?.titleTop).toBeGreaterThanOrEqual(
+      stacking?.selectedTop ?? 0,
+    );
+    expect(stacking?.titleBottom).toBeLessThanOrEqual(
+      Math.min(
+        stacking?.selectedBottom ?? Number.POSITIVE_INFINITY,
+        stacking?.viewportHeight ?? Number.POSITIVE_INFINITY,
+      ),
+    );
+  });
+
   test("provides a keyboard list equivalent and cooperative map gestures", async ({
     page,
   }) => {
@@ -137,10 +249,18 @@ test.describe("Fairgrounds map accessibility", () => {
 
     const listDisclosure = page
       .locator("summary")
-      .filter({ hasText: "Browse mapped places as a list" });
+      .filter({ hasText: "Find places by task" });
     await listDisclosure.focus();
     await listDisclosure.press("Enter");
-    const places = page.getByRole("list", { name: "Mapped places shown" });
+    const places = page.getByRole("list", {
+      name: "Mapped places grouped by task",
+    });
+    await expect(
+      places.getByRole("heading", { name: "Arrive and enter" }),
+    ).toBeVisible();
+    await expect(
+      places.getByRole("heading", { name: "Find essentials" }),
+    ).toBeVisible();
     const gate = places.getByRole("button", { name: /^Gate 1 Gate$/ });
     await expect(gate).toBeVisible();
     await gate.focus();
