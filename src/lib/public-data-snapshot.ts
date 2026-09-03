@@ -11,6 +11,10 @@ import {
   type CoveragePlace,
 } from "@/lib/quality/coverage";
 import { OPEN_NOW_MINIMUM_COVERAGE } from "@/lib/hours-availability";
+import {
+  GOOGLE_HOURS_POLICY_HOLD_MESSAGE,
+  googleHoursRefreshRuntimeEnabled,
+} from "@/lib/google-maps-policy";
 
 export const PUBLIC_DATA_SNAPSHOT_SCHEMA_VERSION = 1;
 
@@ -56,52 +60,65 @@ export type PublicDataSnapshot = {
 };
 
 export type PublicHoursProductHealth = {
-  status: "current" | "degraded" | "unknown";
+  status: "current" | "degraded" | "unknown" | "policy_hold";
+  mode: "active_refresh" | "policy_hold";
   current: number | null;
   expected: number | null;
   coveragePct: number | null;
   target: number | null;
   targetPct: number;
   checkedAt: string | null;
+  operatorMessage: string | null;
 };
 
 /**
  * Public Open Now coverage from the exact promoted catalog.
  *
  * This is deliberately separate from collection health: a fresh database row
- * is not public until the reviewed artifact is deployed. The count therefore
- * catches a stalled nightly publication even while the writer is healthy.
+ * is not public until the reviewed artifact is deployed. When paid collection
+ * is authorized, the count therefore catches a stalled nightly publication
+ * even while the writer is healthy. When policy holds that collector off, the
+ * same real count remains visible but the product reports `policy_hold`
+ * instead of turning an intentionally unavailable feature into a site outage.
  */
 export function publicHoursProductHealth(
   snapshot: PublicDataSnapshot,
+  refreshExpected = googleHoursRefreshRuntimeEnabled(),
 ): PublicHoursProductHealth {
   const total = snapshot.counts.activePublicPlaces;
   const current = snapshot.counts.placesWithCurrentHours;
   if (total.status !== "available" || current.status !== "available") {
     return {
       status: "unknown",
+      mode: refreshExpected ? "active_refresh" : "policy_hold",
       current: null,
       expected: null,
       coveragePct: null,
       target: null,
       targetPct: OPEN_NOW_MINIMUM_COVERAGE * 100,
       checkedAt: null,
+      operatorMessage:
+        refreshExpected ? null : GOOGLE_HOURS_POLICY_HOLD_MESSAGE,
     };
   }
 
   const coverage = total.value > 0 ? current.value / total.value : 0;
   const target = Math.ceil(total.value * OPEN_NOW_MINIMUM_COVERAGE);
   return {
-    status:
-      current.value > 0 && coverage >= OPEN_NOW_MINIMUM_COVERAGE
+    status: !refreshExpected
+      ? "policy_hold"
+      : current.value > 0 && coverage >= OPEN_NOW_MINIMUM_COVERAGE
         ? "current"
         : "degraded",
+    mode: refreshExpected ? "active_refresh" : "policy_hold",
     current: current.value,
     expected: total.value,
     coveragePct: Number((coverage * 100).toFixed(1)),
     target,
     targetPct: OPEN_NOW_MINIMUM_COVERAGE * 100,
     checkedAt: current.asOf,
+    operatorMessage:
+      refreshExpected ? null : GOOGLE_HOURS_POLICY_HOLD_MESSAGE,
   };
 }
 

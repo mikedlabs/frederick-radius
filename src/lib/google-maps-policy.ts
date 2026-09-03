@@ -9,6 +9,8 @@
  */
 export const GOOGLE_MAPS_WRITTEN_APPROVAL_VALUE =
   "written-google-authorization-confirmed";
+export const GOOGLE_HOURS_POLICY_HOLD_MESSAGE =
+  "Paid Google hours refresh is intentionally disabled. Current-hours coverage remains unavailable until an approved replacement source is promoted.";
 
 export function googleMapsWrittenApprovalConfirmed(): boolean {
   return (
@@ -21,6 +23,13 @@ export function googleMapsPlatformRuntimeEnabled(): boolean {
   return (
     googleMapsWrittenApprovalConfirmed() &&
     process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED === "1"
+  );
+}
+
+export function googleHoursRefreshRuntimeEnabled(): boolean {
+  return (
+    googleMapsPlatformRuntimeEnabled() &&
+    process.env.HOURS_REFRESH_CRON === "1"
   );
 }
 

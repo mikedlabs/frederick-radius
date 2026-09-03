@@ -151,8 +151,13 @@ The hosted hours writer needs `HOURS_REFRESH_CRON=1`,
 `GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL=written-google-authorization-confirmed`,
 `GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED=1`, `GOOGLE_PLACES_API_KEY`,
 `DATABASE_URL`, and `CRON_SECRET` in Vercel Production. If reviewed written
-authorization is not documented, keep the policy/runtime switches off and let
-the health report describe the resulting hours-freshness decay honestly.
+authorization is not documented, keep the policy/runtime switches off. The
+scheduled Vercel route then records a healthy policy hold without making a
+provider request, the NAS steward stays skipped, and public health reports the
+real hours count as policy-held rather than current, with release readiness
+remaining partial because Open Now is unavailable. To restart the handoff,
+mirror `HOURS_REFRESH_CRON` and both policy values as GitHub repository variables
+only after the Vercel writer is authorized too.
 The local-search writer needs `RADIUS_SEARCH_CRON=1`,
 `DATABASE_URL`, and `CRON_SECRET`. Full-text search is the required baseline;
 scheduled vectors additionally require `RADIUS_SEARCH_SEMANTIC_ENABLED=1`, a

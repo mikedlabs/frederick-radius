@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   curatedFreshnessAnomalies,
   HOURS_SNAPSHOT_MAX_AGE_DAYS,
@@ -38,6 +38,7 @@ const DAY = 86_400_000;
 const POLICY_APPROVAL = "written-google-authorization-confirmed";
 const originalPolicyApproval = process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL;
 const originalRuntimeEnabled = process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED;
+const originalHoursRefresh = process.env.HOURS_REFRESH_CRON;
 
 afterEach(() => {
   if (originalPolicyApproval === undefined) {
@@ -50,6 +51,17 @@ afterEach(() => {
   } else {
     process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED = originalRuntimeEnabled;
   }
+  if (originalHoursRefresh === undefined) {
+    delete process.env.HOURS_REFRESH_CRON;
+  } else {
+    process.env.HOURS_REFRESH_CRON = originalHoursRefresh;
+  }
+});
+
+beforeEach(() => {
+  process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL = POLICY_APPROVAL;
+  process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED = "1";
+  process.env.HOURS_REFRESH_CRON = "1";
 });
 const NEWEST = Date.parse(
   (HOURS_REFRESH as { _meta?: { newest_refreshed_at?: string } })._meta
@@ -137,21 +149,21 @@ describe("hours staleness alarm lead time", () => {
     expect(HOURS_SNAPSHOT_MAX_AGE_DAYS).toBeLessThanOrEqual(HOURS_MAX_AGE_DAYS - 2);
   });
 
-  it("does not tell an operator to re-enable Google when policy holds it off", () => {
+  it("does not alarm on an hours writer that policy deliberately holds off", () => {
     delete process.env.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL;
     delete process.env.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED;
+    delete process.env.HOURS_REFRESH_CRON;
 
     const anomalies = ingestFreshnessTripwire(
       new Date(NEWEST + (HOURS_MAX_AGE_DAYS + 2) * DAY),
     ).filter((anomaly) => anomaly.source === "places-hours-refresh");
 
-    expect(anomalies.length).toBeGreaterThan(0);
-    expect(anomalies.every((anomaly) =>
-      anomaly.detail.includes("deliberately held by policy"),
-    )).toBe(true);
-    expect(anomalies.every((anomaly) =>
-      !anomaly.detail.includes("GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED=1"),
-    )).toBe(true);
+    expect(anomalies).toEqual([]);
+    expect(
+      curatedFreshnessAnomalies(
+        new Date(NEWEST + (HOURS_MAX_AGE_DAYS + 2) * DAY),
+      ).filter((anomaly) => anomaly.source === "places-hours-refresh.json"),
+    ).toEqual([]);
   });
 
   it("keeps an actionable runtime diagnosis after authorization is enabled", () => {

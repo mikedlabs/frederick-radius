@@ -28,12 +28,14 @@ describe("GET /api/health", () => {
     });
     mocks.publicHoursProductHealth.mockReturnValue({
       status: "current",
+      mode: "active_refresh",
       current: 1_000,
       expected: 1_570,
       coveragePct: 63.7,
       target: 942,
       targetPct: 60,
       checkedAt: "2026-08-27T14:00:00.000Z",
+      operatorMessage: null,
     });
   });
 
@@ -99,7 +101,15 @@ describe("GET /api/health", () => {
       service: "frederick-radius",
       status: "operational",
       database: { status: "reachable" },
-      readiness: { status: "ready" },
+      readiness: {
+        status: "ready",
+        surfaces: {
+          today: { status: "ready", reasons: [] },
+          ask: { status: "ready", reasons: [] },
+          map: { status: "ready", reasons: [] },
+          events: { status: "ready", reasons: [] },
+        },
+      },
       products: { hours: { status: "current", current: 1_000 } },
       release: { dataVersion: `sha256:${"a".repeat(64)}` },
     });
@@ -108,12 +118,14 @@ describe("GET /api/health", () => {
   it("marks liveness degraded when deployed current-hours coverage is below its gate", async () => {
     mocks.publicHoursProductHealth.mockReturnValue({
       status: "degraded",
+      mode: "active_refresh",
       current: 346,
       expected: 1_570,
       coveragePct: 22,
       target: 942,
       targetPct: 60,
       checkedAt: "2026-08-27T14:10:00.000Z",
+      operatorMessage: null,
     });
     mocks.getCachedPublicHealthSnapshot.mockResolvedValue({
       service: "frederick-radius",
@@ -135,6 +147,79 @@ describe("GET /api/health", () => {
           current: 346,
           expected: 1_570,
           coveragePct: 22,
+        },
+      },
+    });
+  });
+
+  it("keeps the service operational while paid hours refresh is deliberately held", async () => {
+    mocks.publicHoursProductHealth.mockReturnValue({
+      status: "policy_hold",
+      mode: "policy_hold",
+      current: 0,
+      expected: 1_570,
+      coveragePct: 0,
+      target: 942,
+      targetPct: 60,
+      checkedAt: "2026-09-03T15:43:56.000Z",
+      operatorMessage:
+        "Paid Google hours refresh is intentionally disabled. Current-hours coverage remains unavailable until an approved replacement source is promoted.",
+    });
+    mocks.getCachedPublicHealthSnapshot.mockResolvedValue({
+      service: "frederick-radius",
+      status: "operational",
+      generatedAt: "2026-09-03T15:43:56.000Z",
+      deployment: { environment: "production", revision: "abcdef012345" },
+      database: { status: "reachable", latencyMs: 18 },
+      data: { status: "current" },
+      readiness: {
+        status: "ready",
+        surfaces: {
+          today: { status: "ready", reasons: [] },
+          ask: { status: "ready", reasons: [] },
+          map: { status: "ready", reasons: [] },
+          events: { status: "ready", reasons: [] },
+        },
+      },
+    });
+
+    const response = await GET();
+
+    await expect(response.json()).resolves.toMatchObject({
+      status: "operational",
+      readiness: {
+        status: "partial",
+        surfaces: {
+          today: {
+            status: "partial",
+            reasons: ["current_hours_policy_hold"],
+          },
+          ask: {
+            status: "partial",
+            reasons: ["current_hours_policy_hold"],
+          },
+          map: {
+            status: "partial",
+            reasons: ["current_hours_policy_hold"],
+          },
+          events: { status: "ready", reasons: [] },
+        },
+        capabilities: {
+          currentHours: {
+            status: "policy_hold",
+            affectedSurfaces: ["today", "ask", "map"],
+            message: expect.stringContaining(
+              "Current-hours coverage remains unavailable",
+            ),
+          },
+        },
+      },
+      products: {
+        hours: {
+          status: "policy_hold",
+          mode: "policy_hold",
+          current: 0,
+          expected: 1_570,
         },
       },
     });

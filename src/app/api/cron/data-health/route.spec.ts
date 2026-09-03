@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   readStoredFoodTruckSchedule: vi.fn(),
   evaluateFoodTruckScheduleHealth: vi.fn(),
   getRadiusSearchIndexHealth: vi.fn(),
+  googleHoursRefreshRuntimeEnabled: vi.fn(),
 }));
 
 vi.mock("../../ingest/_auth", () => ({
@@ -100,6 +101,12 @@ vi.mock("@/lib/quality/search-index-health", () => ({
     freshnessBasis: "catalog_content_hash",
   },
 }));
+vi.mock("@/lib/google-maps-policy", () => ({
+  googleHoursRefreshRuntimeEnabled:
+    mocks.googleHoursRefreshRuntimeEnabled,
+  GOOGLE_HOURS_POLICY_HOLD_MESSAGE:
+    "Paid Google hours refresh is intentionally disabled. Current-hours coverage remains unavailable until an approved replacement source is promoted.",
+}));
 
 import { GET } from "./route";
 
@@ -131,6 +138,7 @@ describe("GET /api/cron/data-health", () => {
     vi.clearAllMocks();
     vi.stubEnv("DATA_RETENTION_PRUNE", "0");
     vi.stubEnv("VERCEL_GITHUB_ALERTS_ENABLED", "1");
+    mocks.googleHoursRefreshRuntimeEnabled.mockReturnValue(true);
     mocks.verifyCronAuth.mockReturnValue(null);
     mocks.buildDedup.mockReturnValue({});
     mocks.classifyDescription.mockReturnValue("none");
@@ -351,6 +359,79 @@ describe("GET /api/cron/data-health", () => {
       source: "current-verified-hours",
     });
     expect(body.hours.note).toContain("Stored or historical schedules do not");
+  });
+
+  it("reports zero current hours as a policy hold without failing readiness", async () => {
+    mocks.googleHoursRefreshRuntimeEnabled.mockReturnValue(false);
+    mocks.computePlaceTrustReport.mockReturnValue({
+      fresh_hours: {
+        fresh_count: 0,
+        total_count: 1_570,
+        coverage_pct: 0,
+        target_count: 942,
+        target_pct: 60,
+        open_now_eligible: false,
+        below_gate: true,
+        checked_at: "2026-09-03T15:43:56.000Z",
+        source: "current-verified-hours",
+      },
+      provenance: {
+        coverage_pct: 100,
+        below_gate: false,
+        missing_sample: [],
+      },
+      confidence: {},
+      open_assertions: {
+        asserting: 0,
+        stale_or_missing: 0,
+        stale_sample: [],
+      },
+    });
+    mocks.getLatestHoursRefreshAt.mockResolvedValue(null);
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.hours).toMatchObject({
+      mode: "policy_hold",
+      operator_message: expect.stringContaining(
+        "Current-hours coverage remains unavailable",
+      ),
+      fresh_count: 0,
+      total_count: 1_570,
+      open_now_eligible: false,
+      publication: { green: false, state: "policy_hold" },
+    });
+    expect(body.summary.gates).not.toContainEqual(
+      expect.objectContaining({ name: "open-now-eligibility" }),
+    );
+    expect(body.summary.gates).not.toContainEqual(
+      expect.objectContaining({ name: "hours-publication" }),
+    );
+    expect(body.summary.held).toEqual([
+      "open-now-eligibility",
+      "hours-publication",
+    ]);
+    expect(body.summary.headline).toContain(
+      "held: open-now-eligibility, hours-publication",
+    );
+    expect(body.summary).toMatchObject({
+      status: "held",
+      degraded: false,
+    });
+    expect(mocks.recordCompletedIngestRunStrict).toHaveBeenCalledWith(
+      "tripwires",
+      expect.any(String),
+      expect.objectContaining({
+        status: "partial",
+        records_failed: 0,
+        error: expect.stringContaining(
+          "held: open-now-eligibility, hours-publication",
+        ),
+      }),
+      { signal: expect.any(AbortSignal) },
+    );
   });
 
   it("reports the committed hours refresh cycle separately from Open Now coverage", async () => {

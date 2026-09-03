@@ -14,6 +14,7 @@ export type HoursPromotionState =
   | "current"
   | "within_window"
   | "stalled"
+  | "policy_hold"
   | "unknown";
 
 export type HoursPromotionHealth = {
@@ -51,6 +52,7 @@ export function evaluateHoursPromotionHealth(
     artifactLatestAt: string | null | undefined;
     now?: Date;
     maxLagHours?: number;
+    refreshExpected?: boolean;
   },
 ): HoursPromotionHealth {
   const now = input.now ?? new Date();
@@ -60,6 +62,18 @@ export function evaluateHoursPromotionHealth(
   const artifactMs = validTimestamp(input.artifactLatestAt, nowMs);
   const sourceLatestAt = sourceMs === null ? null : new Date(sourceMs).toISOString();
   const artifactLatestAt = artifactMs === null ? null : new Date(artifactMs).toISOString();
+
+  if (input.refreshExpected === false) {
+    return {
+      green: false,
+      state: "policy_hold",
+      sourceLatestAt,
+      artifactLatestAt,
+      lagHours: null,
+      maxLagHours,
+      anomaly: null,
+    };
+  }
 
   if (
     !Number.isFinite(nowMs)
