@@ -326,16 +326,35 @@ export function assertOfficialVendorPageReferencesShow(
 export function parseEventHubExhibitors(
   html: string,
 ): EventHubExhibitorCandidate[] {
-  const pattern =
-    /<div class='nu catch' onClick="loadLink\('https:\/\/mobile\.map-dynamics\.com\/exhibitor-profile-g2app\.php\?ID=(\d+)'\);"[^>]*>[\s\S]*?<div class='exhib-tile-image( placeholder)?' style="background-image:\s*url\('([^']+)'\);"><\/div>[\s\S]*?<div class='exhib-title'>([\s\S]*?)<\/div>[\s\S]*?<span class='exhib-value'>Booths?:\s*([\s\S]*?)<\/span>/g;
+  const tileStartPattern =
+    /<div class='nu catch' onClick="loadLink\('https:\/\/mobile\.map-dynamics\.com\/exhibitor-profile-g2app\.php\?ID=(\d+)'\);"[^>]*>/g;
+  const tileStarts = Array.from(html.matchAll(tileStartPattern));
+  if (tileStarts.length === 0) {
+    throw new Error("The EventHub response contains no recognizable exhibitor tiles.");
+  }
   const byProfileId = new Map<string, EventHubExhibitorCandidate>();
-  for (const match of html.matchAll(pattern)) {
-    const profileId = match[1];
-    const placeholder = Boolean(match[2]);
-    const rawMediaUrl = visibleText(match[3]);
-    const sourceName = visibleText(match[4]);
+  tileStarts.forEach((tileStart, index) => {
+    const start = tileStart.index ?? 0;
+    const end = tileStarts[index + 1]?.index ?? html.length;
+    const tile = html.slice(start, end);
+    const profileId = tileStart[1];
+    const image = tile.match(
+      /<div class='exhib-tile-image( placeholder)?' style="background-image:\s*url\('([^']+)'\);"><\/div>/,
+    );
+    const title = tile.match(/<div class='exhib-title'>([\s\S]*?)<\/div>/);
+    const boothList = tile.match(
+      /<span class='exhib-value'>Booths?:\s*([\s\S]*?)<\/span>/,
+    );
+    if (!image || !title || !boothList) {
+      throw new Error(
+        `EventHub profile ${profileId} is missing a required public tile field.`,
+      );
+    }
+    const placeholder = Boolean(image[1]);
+    const rawMediaUrl = visibleText(image[2]);
+    const sourceName = visibleText(title[1]);
     const name = sourceName.replace(/\s+\/\s+[A-F0-9]{6}$/i, "").trim();
-    const sourceBooths = visibleText(match[5])
+    const sourceBooths = visibleText(boothList[1])
       .split(",")
       .map((value) => value.trim())
       .filter(Boolean);
@@ -359,7 +378,11 @@ export function parseEventHubExhibitors(
       }
       mediaSourceUrl = mediaUrl.href;
     }
-    if (!name || booths.length === 0) continue;
+    if (!name || booths.length === 0) {
+      throw new Error(
+        `EventHub profile ${profileId} has an empty public name or booth list.`,
+      );
+    }
     const media = {
       state: placeholder ? ("placeholder" as const) : ("provided" as const),
       sourceUrl: mediaSourceUrl,
@@ -381,7 +404,7 @@ export function parseEventHubExhibitors(
       duplicateBoothReferences,
       media,
     });
-  }
+  });
   const exhibitors = Array.from(byProfileId.values()).sort((left, right) =>
     left.name.localeCompare(right.name) || left.profileId.localeCompare(right.profileId),
   );
@@ -439,6 +462,16 @@ export function parseEventHubMap(
   }
   const height = Number(mapBox[1]);
   const width = Number(mapBox[2]);
+  if (
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    throw new Error(
+      `EventHub map ${expectedMapId} has non-positive canvas dimensions.`,
+    );
+  }
   const backgroundImageUrl = mapBox[3];
   const background = new URL(backgroundImageUrl);
   if (

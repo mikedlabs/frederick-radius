@@ -166,6 +166,23 @@ describe("Fair official-data candidates", () => {
     ]);
   });
 
+  it("fails closed when one exhibitor tile is malformed instead of borrowing the next tile", () => {
+    const malformed = `
+      <div class='nu catch' onClick="loadLink('https://mobile.map-dynamics.com/exhibitor-profile-g2app.php?ID=1');">
+        <div class='exhib-tile-image placeholder' style="background-image: url('/placeholder.png');"></div>
+        <span class='exhib-value'>Booths: 101</span>
+      </div>
+      <div class='nu catch' onClick="loadLink('https://mobile.map-dynamics.com/exhibitor-profile-g2app.php?ID=2');">
+        <div class='exhib-tile-image placeholder' style="background-image: url('/placeholder.png');"></div>
+        <div class='exhib-title'>Second vendor</div>
+        <span class='exhib-value'>Booths: 202</span>
+      </div>`;
+
+    expect(() => parseEventHubExhibitors(malformed)).toThrow(
+      "profile 1 is missing a required public tile field",
+    );
+  });
+
   it("extracts only floorplans belonging to the configured Fair show", () => {
     const html = `
       <a href='https://mobile.map-dynamics.com/floorplan-g2app.php?Show_ID=18209&Map_ID=9566'>Machinery Row &amp; West End</a>
@@ -283,5 +300,12 @@ describe("Fair official-data candidates", () => {
         "9564",
       ),
     ).toThrow("invalid map bounds");
+    expect(() =>
+      parseEventHubMap(
+        `<style>#mapBox {height:0px;width:100px;background:url('https://mapd-client-images.s3.us-east-2.amazonaws.com/map.png');}</style>
+         <a href="javascript:showModal('1', 'element', '9564');" ID='element' class='element booth1' style='top:0px;left:0px;width:20px;height:20px;'>1</a>`,
+        "9564",
+      ),
+    ).toThrow("non-positive canvas dimensions");
   });
 });
