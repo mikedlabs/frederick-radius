@@ -96,6 +96,7 @@ describe("scheduled data workflow contracts", () => {
     const trustedGenerators = [
       ["build-marc-schedule.yml", "build"],
       ["data-steward.yml", "steward"],
+      ["fair-data-steward.yml", "collect"],
       ["transit-steward.yml", "transit"],
     ] as const;
     expect(radiusDataJobs.sort()).toEqual(

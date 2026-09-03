@@ -119,6 +119,49 @@ September 1, 2026: six new baselines on the first run, then six unchanged pages
 with zero errors on the second. The Reddit watcher likewise established 20
 public post links, then found zero new discussions on its repeat.
 
+## Official structured-data candidate
+
+The NAS can also build a normalized private candidate from the official Fair
+calendar and the EventHub guide linked by the Fair:
+
+```sh
+npm run fair:data:collect -- --live
+```
+
+The collector uses exact URLs, bounded response sizes, redirect checks, a
+20-second source timeout, and atomic report writes. It validates the live
+calendar through the same fail-closed parser as the public Fair pack, compares
+it with the reviewed fixture, removes EventHub's duplicated A-to-Z and Z-to-A
+tiles, normalizes booth rectangles, and joins every vendor booth reference to
+map geometry without guessing. It writes only to the gitignored
+`scripts/reports/fair-data/` directory and cannot update the public app.
+
+The September 2, 2026 acquisition found:
+
+- 9 Fair days and 190 schedule rows, identical to the reviewed calendar copy;
+- 155 unique exhibitors after deduplicating 310 rendered tiles;
+- 3 current floorplans with 508 booth shapes; and
+- 409 normalized vendor-to-booth references, all matched to one map shape.
+
+The same review also found source defects that a production import must not
+hide: 99 exhibitors use a placeholder image, 35 exhibitor records repeat at
+least one booth value, one map contains editing residue, one calendar row has
+suspected encoding damage, and one concert remains marked TBA. The calendar,
+HTML schedule, Grandstand page, and brochure also disagree on some performer
+names and one dairy-show row. Those conflicts require a human decision with
+source provenance rather than a last-write-wins merge.
+
+EventHub remains a comparison source, not a production API. Its public HTML is
+undocumented and public access does not grant a republication license. Radius
+may keep linking or use the supported organizer embed. A custom public vendor
+map needs written Fair or Map D permission plus a read-only export or API with
+stable exhibitor, floorplan, booth, and modified-time fields. Attendee,
+registration, contact, and transaction data are out of scope.
+
+The `Fair data steward` workflow runs the collector twice daily on the
+`radius-data` NAS runner and retains a review artifact for three days. It has
+read-only repository permission and no promotion job.
+
 ## NAS cadence after deployment
 
 Use DSM Task Scheduler only after this branch is merged and the NAS checkout is
@@ -127,6 +170,7 @@ updated to that release:
 | Task | In season | Outside season | Alert condition |
 | --- | --- | --- | --- |
 | Official Fair pages | Daily at 6:10 a.m. Eastern | Weekly | Any changed page or retrieval error |
+| Structured Fair candidate | Twice daily | Pause after the Fair archive window | Fetch, validation, or source-conflict failure |
 | Public Fair discussions | Every six hours | Weekly | A new matching public post or retrieval error |
 
 The task account needs read/write access only to the Radius checkout and its

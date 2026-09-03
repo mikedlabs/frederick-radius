@@ -1,0 +1,18 @@
+{
+  "_doc": "Review-only Fair data acquisition for the NAS. Every fetch is bounded to an exact public source. The generated candidate is ignored by git and cannot publish itself.",
+  "version": 1,
+  "eventHubShowId": "18209",
+  "officialPageIds": [1722, 2711, 2862, 3081, 3140, 3175, 3224, 3262, 3662, 7698],
+  "limits": {
+    "timeoutMs": 20000,
+    "maxCalendarBytes": 5000000,
+    "maxHtmlBytes": 5000000,
+    "maxFloorplans": 6
+  },
+  "sources": {
+    "scheduleCalendarUrl": "https://calendar.google.com/calendar/ical/gffcal%40gmail.com/public/basic.ics",
+    "officialPagesUrl": "https://thegreatfrederickfair.com/wp-json/wp/v2/pages?include=1722%2C2711%2C2862%2C3081%2C3140%2C3175%2C3224%2C3262%2C3662%2C7698&per_page=10&context=view&_fields=id%2Cslug%2Cmodified_gmt%2Clink%2Ctitle%2Ccontent",
+    "eventHubExhibitorsUrl": "https://mobile.map-dynamics.com/exhibitors-g2app.php?Show_ID=18209",
+    "eventHubFloorplansUrl": "https://mobile.map-dynamics.com/floorplans-g2app.php?Show_ID=18209"
+  }
+}
