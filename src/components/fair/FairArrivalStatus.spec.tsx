@@ -59,11 +59,31 @@ function status(
 }
 
 describe("FairArrivalStatusView", () => {
+  it("collapses a fully checked calm status into one source-timed strip", () => {
+    const html = render(
+      status({
+        state: "no-current-update",
+        headline: "No official arrival update needs your attention right now.",
+        summary: "Check again before you leave.",
+        signals: [],
+      }),
+    );
+
+    expect(html).toContain('data-fair-arrival-status="compact"');
+    expect(html).toContain("No official update needs attention.");
+    expect(html).toContain("Checked 12:00 PM");
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain('aria-controls="fair-arrival-calm-details"');
+    expect(html).toContain('data-fair-arrival-details="true" hidden=""');
+    expect(html).toContain("parking-space availability");
+  });
+
   it("shows a compact official update with source, state, and checked time", () => {
     const html = render(status());
 
     expect(html).toContain("Before you leave · Official checks");
     expect(html).toContain("Crash on I-70 East");
+    expect(html).toContain('data-fair-arrival-status="prominent"');
     expect(html).toContain("MDOT CHART traffic");
     expect(html).toContain("Current · Checked 12:00 PM");
     expect(html).toContain("Sources, freshness, and limits");
@@ -93,6 +113,7 @@ describe("FairArrivalStatusView", () => {
     );
 
     expect(html).toContain("unknown, not an all-clear");
+    expect(html).toContain('data-fair-arrival-status="prominent"');
     expect(html).toContain("Unavailable · Checked 12:00 PM");
     expect(html).not.toContain("Roads are clear");
     expect(html).not.toContain("Parking is available");
@@ -131,6 +152,8 @@ describe("FairArrivalStatusView", () => {
     );
 
     expect(html).toContain("selected Fair day");
+    expect(html).toContain('data-fair-arrival-status="compact"');
+    expect(html).toContain("Runs on Fair day");
     expect(html).not.toContain("Sources, freshness, and limits");
     expect(html).not.toContain("Checked 12:00 PM");
   });

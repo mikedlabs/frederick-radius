@@ -5,7 +5,6 @@ import {
   CarFront,
   Check,
   ChevronDown,
-  ChevronRight,
   ExternalLink,
   MapPin,
   Navigation,
@@ -44,7 +43,7 @@ const MODE_META: Record<
   },
   transit: {
     label: "County Transit",
-    detail: "Fare-free network context",
+    detail: "Fare-free; verify Fair-day service",
     icon: BusFront,
   },
   "drop-off": {
@@ -359,13 +358,17 @@ export default function FairTravelPanel({
         transitSelected={activeOption?.planChoice === "transit"}
       />
       {supportedOptions.length > 0 ? (
-        <fieldset className="mt-5">
+        <fieldset className="mt-3">
           <legend className="sr-only">Choose a travel mode</legend>
           <div
-            className="divide-y border-y"
+            data-fair-travel-modes
+            className="grid grid-cols-3 gap-1 rounded-[var(--app-radius-lg)] border p-1"
             role="radiogroup"
             aria-label="Fair travel mode"
-            style={{ borderColor: "var(--app-border-strong)" }}
+            style={{
+              borderColor: "var(--app-border-strong)",
+              background: "var(--app-bg-elevated-solid)",
+            }}
           >
             {supportedOptions.map((option) => {
               const meta = MODE_META[option.planChoice];
@@ -374,9 +377,12 @@ export default function FairTravelPanel({
               return (
                 <label
                   key={option.id}
-                  className="relative flex min-h-[72px] cursor-pointer items-center gap-3 border-l-[3px] px-3 py-3 text-left outline-none transition-colors focus-within:ring-2 focus-within:ring-[color:var(--app-cool)] focus-within:ring-offset-2 focus-within:ring-offset-[color:var(--app-bg)] motion-reduce:transition-none"
+                  data-fair-travel-choice={option.planChoice}
+                  className="relative flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-[calc(var(--app-radius-lg)-4px)] border px-1 py-2 text-center outline-none transition-colors focus-within:ring-2 focus-within:ring-[color:var(--app-cool)] focus-within:ring-offset-2 focus-within:ring-offset-[color:var(--app-bg)] motion-reduce:transition-none"
                   style={{
-                    borderLeftColor: checked ? "var(--app-cool)" : "transparent",
+                    borderColor: checked
+                      ? "var(--app-cool)"
+                      : "transparent",
                     background: checked
                       ? "var(--app-cool-tint-14)"
                       : "transparent",
@@ -392,25 +398,27 @@ export default function FairTravelPanel({
                     onChange={() => onSelect(option)}
                   />
                   <Icon
-                    className="h-5 w-5 shrink-0"
+                    className="h-[18px] w-[18px] shrink-0"
                     style={{
                       color: checked ? "var(--app-cool)" : "var(--app-ink-2)",
                     }}
                     aria-hidden
                   />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-semibold leading-tight">
+                  <span className="min-w-0">
+                    <span className="block text-[12.5px] font-bold leading-tight">
                       {meta.label}
                     </span>
-                    <span className="mt-1 block text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                    <span className="sr-only sm:not-sr-only sm:mt-0.5 sm:block sm:text-[12px] sm:leading-snug" style={{ color: "var(--app-ink-3)" }}>
                       {meta.detail}
                     </span>
                   </span>
                   {checked ? (
-                    <Check className="h-5 w-5 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
-                  ) : (
-                    <ChevronRight className="h-5 w-5 shrink-0" style={{ color: "var(--app-ink-3)" }} aria-hidden />
-                  )}
+                    <Check
+                      className="absolute right-1 top-1 h-3.5 w-3.5"
+                      style={{ color: "var(--app-cool)" }}
+                      aria-hidden
+                    />
+                  ) : null}
                 </label>
               );
             })}
@@ -428,8 +436,11 @@ export default function FairTravelPanel({
 
       {activeOption ? (
         <div
-          className="mt-5 border-t pt-5"
-          style={{ borderColor: "var(--app-border-strong)" }}
+          className="mt-4 rounded-[var(--app-radius-lg)] border p-4"
+          style={{
+            borderColor: "var(--app-border-strong)",
+            background: "var(--app-bg-elevated-solid)",
+          }}
           aria-live="polite"
         >
           {activeOption.planChoice === "drive" ? (

@@ -1,12 +1,13 @@
 "use client";
 
 import {
+  ChevronDown,
   ExternalLink,
   Radio,
   RefreshCw,
   TriangleAlert,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import type {
@@ -56,10 +57,31 @@ function sourceStateLabel(state: FairArrivalSourceState): string {
   }
 }
 
+function compactCalmStatus(status: FairArrivalStatus): boolean {
+  if (status.state === "not-today") return true;
+  return (
+    status.state === "no-current-update" &&
+    status.coverage === "configured-sources-current" &&
+    status.signals.length === 0 &&
+    status.hiddenSignalCount === 0 &&
+    status.transit === null &&
+    status.sources.length > 0 &&
+    status.sources.every((source) => source.state === "current")
+  );
+}
+
+function latestSourceCheck(status: FairArrivalStatus): string | null {
+  const checks = status.sources
+    .map((source) => Date.parse(source.checkedAt))
+    .filter(Number.isFinite);
+  if (checks.length === 0) return null;
+  return new Date(Math.max(...checks)).toISOString();
+}
+
 function EvidenceLine({ evidence }: { evidence: FairArrivalEvidence }) {
   return (
     <p
-      className="mt-2 text-[12px] font-semibold leading-relaxed"
+      className="mt-0 text-[12px] font-semibold leading-relaxed sm:mt-2"
       style={{ color: "var(--app-ink-3)" }}
     >
       <a
@@ -102,9 +124,151 @@ export function FairArrivalStatusView({
   status: FairArrivalStatus;
   onRefresh?: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const compactSectionRef = useRef<HTMLElement | null>(null);
+  const compact = compactCalmStatus(status);
+  const checkedAt = latestSourceCheck(status);
+
+  function toggleCompactDetails() {
+    const nextExpanded = !expanded;
+    setExpanded(nextExpanded);
+    if (!nextExpanded) return;
+
+    const revealExpandedStatus = () => {
+      compactSectionRef.current?.scrollIntoView({
+        behavior: "auto",
+        block: "start",
+      });
+    };
+
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(revealExpandedStatus);
+    } else {
+      window.setTimeout(revealExpandedStatus, 0);
+    }
+  }
+
+  if (compact) {
+    const calmHeadline =
+      status.state === "not-today"
+        ? "Live checks start on your selected Fair day."
+        : "No official update needs attention.";
+    return (
+      <section
+        ref={compactSectionRef}
+        data-fair-arrival-status="compact"
+        className="mt-3 border-y"
+        style={{ borderColor: "var(--app-border-strong)" }}
+        aria-labelledby="fair-arrival-status-heading"
+        aria-live="polite"
+      >
+        <div className="flex min-h-16 items-center gap-2 py-1">
+          <Radio
+            className="h-5 w-5 shrink-0 max-[360px]:hidden"
+            style={{ color: "var(--app-cool)" }}
+            aria-hidden
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-x-2 text-[11px] font-bold uppercase tracking-[0.09em]">
+              <span style={{ color: "var(--app-cool)" }}>
+                Official check
+              </span>
+              <span
+                className="normal-case tracking-normal tabular-nums"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                {checkedAt
+                  ? `Checked ${easternTime(checkedAt)}`
+                  : "Runs on Fair day"}
+              </span>
+            </div>
+            <h2
+              id="fair-arrival-status-heading"
+              className="mt-0.5 text-[13px] font-semibold leading-snug"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {calmHeadline}
+            </h2>
+          </div>
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-controls="fair-arrival-calm-details"
+            aria-label={
+              expanded
+                ? "Hide official arrival check details"
+                : "Show official arrival check details"
+            }
+            onClick={toggleCompactDetails}
+            className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full"
+          >
+            <ChevronDown
+              className={`h-4 w-4 transition-transform motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`}
+              aria-hidden
+            />
+          </button>
+        </div>
+
+        <div
+          id="fair-arrival-calm-details"
+          data-fair-arrival-details
+          hidden={!expanded}
+          className="border-t pb-3 pt-3"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <p
+            className="text-[13px] leading-relaxed"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            {status.summary}
+          </p>
+          {status.sources.length > 0 ? (
+            <ul className="mt-2 space-y-1">
+              {status.sources.map((source) => (
+                <li
+                  key={source.id}
+                  className="text-[12px] leading-relaxed"
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  <a
+                    className="tap-44 inline-flex items-center gap-1 font-semibold underline decoration-1 underline-offset-2"
+                    href={source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {source.label}
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                  </a>
+                  {` · ${sourceStateLabel(source.state)} · Checked ${easternTime(source.checkedAt)}`}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <p
+            className="mt-2 text-[12px] leading-relaxed"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {status.limitsLabel}
+          </p>
+          {onRefresh && status.state !== "not-today" ? (
+            <Button
+              className="mt-2"
+              variant="quiet"
+              onClick={onRefresh}
+              iconLeft={<RefreshCw className="h-4 w-4" aria-hidden />}
+            >
+              Check again
+            </Button>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
-      className="mt-5 border-y py-4"
+      data-fair-arrival-status="prominent"
+      className="mt-5 border-y py-2 sm:py-4"
       style={{ borderColor: "var(--app-border-strong)" }}
       aria-labelledby="fair-arrival-status-heading"
       aria-live="polite"
@@ -115,7 +279,7 @@ export function FairArrivalStatusView({
       >
         Before you leave · Official checks
       </p>
-      <div className="mt-2 flex items-start gap-3">
+      <div className="mt-1 flex items-start gap-3 sm:mt-2">
         <StatusIcon state={status.state} />
         <div className="min-w-0 flex-1">
           <h2
@@ -136,11 +300,11 @@ export function FairArrivalStatusView({
 
       {status.signals.length > 0 ? (
         <ul
-          className="mt-4 divide-y border-t"
+          className="mt-2 divide-y border-t sm:mt-4"
           style={{ borderColor: "var(--app-border)" }}
         >
           {status.signals.map((signal) => (
-            <li key={signal.id} className="py-3">
+            <li key={signal.id} className="py-1 sm:py-3">
               <p
                 className="text-[14px] font-semibold leading-snug"
                 style={{ color: "var(--app-ink)" }}
@@ -148,7 +312,7 @@ export function FairArrivalStatusView({
                 {signal.title}
               </p>
               <p
-                className="mt-1 text-[13px] leading-relaxed"
+                className="mt-0.5 text-[13px] leading-relaxed sm:mt-1"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 {signal.detail}
@@ -211,7 +375,7 @@ export function FairArrivalStatusView({
 
       {status.sources.length > 0 ? (
         <details
-          className="group mt-4 border-t pt-2"
+          className="group mt-0 border-t pt-0 sm:mt-4 sm:pt-2"
           style={{ borderColor: "var(--app-border)" }}
         >
           <summary className="tap-44 flex min-h-11 cursor-pointer list-none items-center text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--app-cool)] [&::-webkit-details-marker]:hidden">
@@ -262,7 +426,8 @@ export function FairArrivalStatusView({
 function FairArrivalStatusLoading() {
   return (
     <section
-      className="mt-5 border-y py-4"
+      data-fair-arrival-status="loading"
+      className="mt-3 min-h-16 border-y py-2"
       style={{ borderColor: "var(--app-border-strong)" }}
       role="status"
       aria-label="Checking official Fair arrival information"
@@ -274,7 +439,7 @@ function FairArrivalStatusLoading() {
         Before you leave · Official checks
       </p>
       <p
-        className="mt-2 flex items-center gap-3 text-[14px] font-semibold"
+        className="mt-1 flex items-center gap-3 text-[14px] font-semibold"
         style={{ color: "var(--app-ink-2)" }}
       >
         <Radio className="h-5 w-5" aria-hidden />
@@ -287,6 +452,7 @@ function FairArrivalStatusLoading() {
 function FairArrivalStatusUnavailable({ onRetry }: { onRetry: () => void }) {
   return (
     <section
+      data-fair-arrival-status="unavailable"
       className="mt-5 border-y py-4"
       style={{ borderColor: "var(--app-border-strong)" }}
       role="status"
