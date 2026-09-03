@@ -20,7 +20,7 @@ import {
   TicketCheck,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MapCanvas, {
   AttributionControl,
   Layer,
@@ -31,6 +31,8 @@ import MapCanvas, {
 } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 
+import { hasWebGL } from "@/components/map/mapCameraHelpers";
+import { isFatalMapboxError } from "@/components/map/mapboxFailure";
 import { useFrederickFlavorStyle } from "@/components/map/useFrederickFlavorStyle";
 import {
   greatFrederickFair2026MapAdditions,
@@ -55,6 +57,7 @@ import { mapCameraDuration } from "@/lib/motion";
 
 import FairGroundsMapLoading from "./FairGroundsMapLoading";
 import FairGroundsMapMasthead from "./FairGroundsMapMasthead";
+import FairMapCanvasBoundary from "./FairMapCanvasBoundary";
 
 export type FairGroundsMapSavedStop = {
   id: string;
@@ -86,6 +89,9 @@ const FAIR_BOUNDS: [number, number, number, number] = [
 const FAIR_GROUNDS_BOUNDS: [number, number, number, number] = [
   -77.398595, 39.4101944, -77.391291, 39.4152037,
 ];
+const MAP_LOAD_WATCHDOG_MS = 18_000;
+
+type FairMapRuntime = "checking" | "interactive" | "unsupported" | "failed";
 
 const FILTERS: Array<{
   id: FairGroundsMapFilter;
@@ -232,6 +238,98 @@ function reportMapIssue(feature: FairGroundsMapFeature | null) {
   );
 }
 
+function FairMapCanvasFallback({
+  map,
+  reason,
+  mapWasInteractive = false,
+}: {
+  map: FairGroundsMap;
+  reason: Extract<FairMapRuntime, "unsupported" | "failed">;
+  mapWasInteractive?: boolean;
+}) {
+  const browsePlaces = () => {
+    const list = document.getElementById("fair-map-place-list");
+    if (list instanceof HTMLDetailsElement) list.open = true;
+    list?.scrollIntoView({ block: "start" });
+    list?.querySelector<HTMLElement>("summary")?.focus({ preventScroll: true });
+  };
+
+  return (
+    <div
+      data-fair-map-canvas-fallback={reason}
+      role="region"
+      aria-labelledby="fair-map-fallback-heading"
+      className="flex h-full min-h-[520px] items-start overflow-y-auto overscroll-contain px-4 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-16 lg:min-h-0 lg:items-center lg:justify-center lg:overflow-visible lg:p-8"
+    >
+      <div className="max-w-[34rem]">
+        <span
+          className="hidden h-11 w-11 place-items-center rounded-full border lg:grid"
+          style={{
+            color: "var(--app-cool)",
+            borderColor: "var(--app-control-border)",
+            background: "var(--app-bg-elevated-solid)",
+          }}
+          aria-hidden
+        >
+          <MapPin className="h-5 w-5" />
+        </span>
+        <p
+          className="text-[11px] font-bold uppercase tracking-[0.11em] lg:mt-4"
+          style={{ color: "var(--app-cool)" }}
+        >
+          Interactive map unavailable
+        </p>
+        <h2
+          id="fair-map-fallback-heading"
+          tabIndex={-1}
+          className="mt-1 text-[24px] font-extrabold leading-tight tracking-[-0.03em] outline-none"
+        >
+          Use the searchable grounds guide.
+        </h2>
+        <p
+          className="mt-2 text-[14px] leading-relaxed"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          {mapWasInteractive
+            ? "The interactive map stopped working. Search the reviewed places above or use the complete task list below. Directions and official source links still work."
+            : "This browser could not start the interactive map. Search the reviewed places above or use the complete task list below. Directions and official source links still work."}
+        </p>
+        <p
+          className="mt-2 text-[12px] leading-relaxed lg:mt-3"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          Grounds geometry comes from {map.source.publisher} under{" "}
+          {map.source.license}. Radius reviewed this map on {map.reviewedOn}.
+          Follow current signs on the grounds.
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2 lg:mt-3">
+          <button
+            type="button"
+            onClick={browsePlaces}
+            className="tap-44 inline-flex min-h-11 items-center rounded-full px-4 text-[13px] font-bold"
+            style={{
+              color: "var(--app-ink-inverse)",
+              background: "var(--app-cool)",
+            }}
+          >
+            Browse all reviewed places
+          </button>
+          <a
+            href={map.source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="tap-44 inline-flex min-h-11 items-center gap-1.5 px-2 text-[13px] font-semibold"
+            style={{ color: "var(--app-cool)" }}
+          >
+            Open the map source
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FairMapFeatureActions({
   feature,
 }: {
@@ -306,7 +404,13 @@ export default function FairGroundsMapInner({
   const desktopSelectionHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const lastSelectionTriggerRef = useRef<HTMLElement | null>(null);
   const focusedDeepLinkRef = useRef(false);
+  const mapLoadedRef = useRef(false);
+  const locationRequestRef = useRef(0);
+  const interactiveMapSurfaceRef = useRef<HTMLDivElement | null>(null);
   const mapStyle = useFrederickFlavorStyle();
+  const [mapRuntime, setMapRuntime] =
+    useState<FairMapRuntime>("checking");
+  const [mapLoaded, setMapLoaded] = useState(false);
   const [mapData, setMapData] = useState<FairGroundsMap | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [filter, setFilter] = useState<FairGroundsMapFilter>("essentials");
@@ -324,6 +428,55 @@ export default function FairGroundsMapInner({
     if (typeof window === "undefined") return null;
     return readSavedFairCar(window.localStorage);
   });
+  const interactiveMapAvailable = mapRuntime === "interactive";
+
+  const handleMapFailure = useCallback(
+    (context?: { focusWasInside?: boolean }) => {
+      const activeElement = document.activeElement;
+      const mapWasInteractive = mapLoadedRef.current;
+      const liveFocusIsInsideRemovedMapUi =
+        activeElement instanceof HTMLElement &&
+        (interactiveMapSurfaceRef.current?.contains(activeElement) === true ||
+          activeElement.closest("[data-fair-map-runtime-control]") !== null);
+      const focusWasInsideRemovedMapUi =
+        context?.focusWasInside === true || liveFocusIsInsideRemovedMapUi;
+
+      locationRequestRef.current += 1;
+      setLocating(false);
+      setVisitorLocation(null);
+      setLocationStatus(null);
+      setMapRuntime("failed");
+      setMapAnnouncement(
+        mapWasInteractive
+          ? "The interactive Fairgrounds map became unavailable. Search or browse the reviewed places instead."
+          : "The interactive Fairgrounds map could not start. Search or browse the reviewed places instead.",
+      );
+
+      if (focusWasInsideRemovedMapUi) {
+        window.requestAnimationFrame(() => {
+          document.getElementById("fair-map-fallback-heading")?.focus({
+            preventScroll: true,
+          });
+        });
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const check = window.setTimeout(() => {
+      setMapRuntime(hasWebGL() ? "interactive" : "unsupported");
+    }, 0);
+    return () => window.clearTimeout(check);
+  }, []);
+
+  useEffect(() => {
+    if (!mapData || mapRuntime !== "interactive" || mapLoaded) return;
+    const watchdog = window.setTimeout(() => {
+      handleMapFailure();
+    }, MAP_LOAD_WATCHDOG_MS);
+    return () => window.clearTimeout(watchdog);
+  }, [handleMapFailure, mapData, mapLoaded, mapRuntime]);
 
   useEffect(() => {
     let active = true;
@@ -409,9 +562,11 @@ export default function FairGroundsMapInner({
     }),
     [visibleFeatures],
   );
-  const accessibleFeatures = useMemo(
-    () =>
-      visibleFeatures
+  const accessibleFeatures = useMemo(() => {
+    const listFeatures = interactiveMapAvailable
+      ? visibleFeatures
+      : (mapData?.features ?? []);
+    return listFeatures
         .filter((feature) => feature.properties.kind !== "fairgrounds")
         .slice()
         .sort(
@@ -419,9 +574,8 @@ export default function FairGroundsMapInner({
             fairGroundsMapKindLabel(left.properties.kind).localeCompare(
               fairGroundsMapKindLabel(right.properties.kind),
             ) || left.properties.name.localeCompare(right.properties.name),
-        ),
-    [visibleFeatures],
-  );
+        );
+  }, [interactiveMapAvailable, mapData, visibleFeatures]);
   const groupedAccessibleFeatures = useMemo(
     () =>
       ACCESSIBLE_PLACE_GROUPS.map((group) => ({
@@ -616,6 +770,8 @@ export default function FairGroundsMapInner({
   };
 
   const handleMapLoad = () => {
+    mapLoadedRef.current = true;
+    setMapLoaded(true);
     showWholeGrounds();
     const canvas = mapRef.current?.getMap().getCanvas();
     canvas?.setAttribute("role", "region");
@@ -655,6 +811,12 @@ export default function FairGroundsMapInner({
     const label = savedCar.lotLabel
       ? `Saved car in ${savedCar.lotLabel}`
       : "Saved car location";
+    if (!interactiveMapAvailable) {
+      updateLocationStatus(
+        `${label} is still saved. The interactive map is unavailable on this device.`,
+      );
+      return;
+    }
     setLocationStatus(`${label} is centered on the map.`);
     setMapAnnouncement(`${label} is centered on the map.`);
     mapRef.current?.getMap().easeTo({
@@ -674,10 +836,13 @@ export default function FairGroundsMapInner({
       updateLocationStatus("Location is not available on this device.");
       return;
     }
+    const requestId = locationRequestRef.current + 1;
+    locationRequestRef.current = requestId;
     setLocating(true);
     setLocationStatus(null);
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        if (requestId !== locationRequestRef.current) return;
         setLocating(false);
         const longitude = position.coords.longitude;
         const latitude = position.coords.latitude;
@@ -710,6 +875,7 @@ export default function FairGroundsMapInner({
         });
       },
       () => {
+        if (requestId !== locationRequestRef.current) return;
         setLocating(false);
         updateLocationStatus(
           "Radius could not get your position. You can still use gates and landmarks.",
@@ -878,10 +1044,12 @@ export default function FairGroundsMapInner({
         ) : null}
       </div>
 
-      <div
-        data-fair-map-filter-rail
-        className="absolute inset-x-0 top-[4.15rem] z-20 lg:relative lg:inset-auto lg:top-auto lg:z-auto"
-      >
+      {interactiveMapAvailable ? (
+        <div
+          data-fair-map-filter-rail
+          data-fair-map-runtime-control
+          className="absolute inset-x-0 top-[4.15rem] z-20 lg:relative lg:inset-auto lg:top-auto lg:z-auto"
+        >
         <div
           className="scrollbar-none flex gap-2 overflow-x-auto px-3 pb-1 pr-10 lg:-mx-6 lg:mt-4 lg:px-6"
           role="group"
@@ -922,7 +1090,8 @@ export default function FairGroundsMapInner({
           className="pointer-events-none absolute -bottom-0.5 -right-4 top-0 w-9 bg-gradient-to-r from-transparent to-[var(--app-bg)] sm:hidden"
           aria-hidden
         />
-      </div>
+        </div>
+      ) : null}
 
       <div className="mt-0 lg:mt-3 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-4">
         <div
@@ -933,22 +1102,52 @@ export default function FairGroundsMapInner({
             boxShadow: "0 18px 40px -34px var(--app-ink), inset 0 0 0 1px color-mix(in srgb, var(--app-bg-elevated-solid) 72%, transparent)",
           }}
         >
-          <MapCanvas
-            ref={mapRef}
-            initialViewState={FAIR_VIEW}
-            mapStyle={mapStyle}
-            style={{ position: "absolute", inset: 0 }}
-            maxBounds={FAIR_BOUNDS}
-            minZoom={14.8}
-            maxZoom={19}
-            reuseMaps
-            attributionControl={false}
-            dragRotate={false}
-            touchPitch={false}
-            cooperativeGestures
-            onLoad={handleMapLoad}
-            onClick={() => setSelectedId(null)}
-          >
+          {interactiveMapAvailable ? (
+            <div
+              ref={interactiveMapSurfaceRef}
+              className="absolute inset-0"
+            >
+              <FairMapCanvasBoundary
+                captureFocus={() =>
+                  interactiveMapSurfaceRef.current?.contains(
+                    document.activeElement,
+                  ) === true
+                }
+                fallback={
+                  <FairMapCanvasFallback
+                    map={mapData}
+                    reason="failed"
+                    mapWasInteractive={mapLoaded}
+                  />
+                }
+                onFailure={(_error, context) => handleMapFailure(context)}
+              >
+                <MapCanvas
+                  ref={mapRef}
+                  initialViewState={FAIR_VIEW}
+                  mapStyle={mapStyle}
+                  style={{ position: "absolute", inset: 0 }}
+                  maxBounds={FAIR_BOUNDS}
+                  minZoom={14.8}
+                  maxZoom={19}
+                  reuseMaps
+                  attributionControl={false}
+                  dragRotate={false}
+                  touchPitch={false}
+                  cooperativeGestures
+                  onLoad={handleMapLoad}
+                  onError={(event) => {
+                    const message = String(
+                      event?.error?.message ?? "",
+                    ).toLowerCase();
+                    if (isFatalMapboxError(message, mapLoadedRef.current)) {
+                      handleMapFailure();
+                    }
+                  }}
+                  onClick={() => setSelectedId(null)}
+                >
+            {mapLoaded ? (
+              <>
             <AttributionControl compact position="bottom-right" />
             <NavigationControl position="top-right" showCompass={false} />
             <Source id="fair-reviewed-geometry" type="geojson" data={visiblePolygons}>
@@ -1148,38 +1347,55 @@ export default function FairGroundsMapInner({
                 />
               </Marker>
             ) : null}
-          </MapCanvas>
+              </>
+            ) : null}
+              </MapCanvas>
+              </FairMapCanvasBoundary>
+            </div>
+          ) : mapRuntime === "unsupported" || mapRuntime === "failed" ? (
+            <FairMapCanvasFallback
+              map={mapData}
+              reason={mapRuntime}
+              mapWasInteractive={mapLoaded}
+            />
+          ) : null}
 
-          <button
-            type="button"
-            onClick={locate}
-            disabled={locating}
-            className="tap-44 absolute left-3 top-[7.75rem] z-10 inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[13px] font-bold disabled:opacity-60 lg:top-3"
-            style={{
-              color: "var(--app-ink)",
-              background: "var(--app-bg-elevated-solid)",
-              borderColor: "var(--app-control-border)",
-              boxShadow: "var(--app-elev-1)",
-            }}
-          >
-            <LocateFixed className="h-4 w-4" aria-hidden />
-            {locating ? "Finding location…" : "Show my location"}
-          </button>
+          {interactiveMapAvailable && mapLoaded ? (
+            <>
+              <button
+                type="button"
+                data-fair-map-runtime-control
+                onClick={locate}
+                disabled={locating}
+                className="tap-44 absolute left-3 top-[7.75rem] z-10 inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[13px] font-bold disabled:opacity-60 lg:top-3"
+                style={{
+                  color: "var(--app-ink)",
+                  background: "var(--app-bg-elevated-solid)",
+                  borderColor: "var(--app-control-border)",
+                  boxShadow: "var(--app-elev-1)",
+                }}
+              >
+                <LocateFixed className="h-4 w-4" aria-hidden />
+                {locating ? "Finding location…" : "Show my location"}
+              </button>
 
-          <button
-            type="button"
-            onClick={showWholeGrounds}
-            className="tap-44 absolute left-3 top-[11rem] z-10 inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[13px] font-bold lg:top-[4.25rem]"
-            style={{
-              color: "var(--app-ink)",
-              background: "var(--app-bg-elevated-solid)",
-              borderColor: "var(--app-control-border)",
-              boxShadow: "var(--app-elev-1)",
-            }}
-          >
-            <Scan className="h-4 w-4" aria-hidden />
-            Whole grounds
-          </button>
+              <button
+                type="button"
+                data-fair-map-runtime-control
+                onClick={showWholeGrounds}
+                className="tap-44 absolute left-3 top-[11rem] z-10 inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[13px] font-bold lg:top-[4.25rem]"
+                style={{
+                  color: "var(--app-ink)",
+                  background: "var(--app-bg-elevated-solid)",
+                  borderColor: "var(--app-control-border)",
+                  boxShadow: "var(--app-elev-1)",
+                }}
+              >
+                <Scan className="h-4 w-4" aria-hidden />
+                Whole grounds
+              </button>
+            </>
+          ) : null}
 
           {selected ? (
             <div
@@ -1428,10 +1644,14 @@ export default function FairGroundsMapInner({
                 Your bearings
               </p>
               <h3 id="fair-map-guidance-heading" className="mt-1 text-[22px] font-extrabold leading-tight tracking-[-0.035em]">
-                Tap a marker, not a directory.
+                {interactiveMapAvailable
+                  ? "Tap a marker, not a directory."
+                  : "Search or browse by task."}
               </h3>
               <p className="mt-3 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                Start with gates, restrooms, and show areas. Switch the layer when you want animals, buildings, parking, or published transit stops.
+                {interactiveMapAvailable
+                  ? "Start with gates, restrooms, and show areas. Switch the layer when you want animals, buildings, parking, or published transit stops."
+                  : "Every reviewed place remains available below, including gates, restrooms, buildings, animals, parking, and published transit stops."}
               </p>
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <div className="rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] p-3">
@@ -1498,6 +1718,12 @@ export default function FairGroundsMapInner({
       ) : null}
 
       <details
+        id="fair-map-place-list"
+        open={
+          mapRuntime === "unsupported" || mapRuntime === "failed"
+            ? true
+            : undefined
+        }
         className="mt-4 overflow-hidden rounded-[var(--app-radius-lg)] border"
         style={{
           borderColor: "var(--app-control-border)",

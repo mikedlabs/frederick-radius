@@ -1,6 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+
+import { findErrorBoundaryMarker } from "./error-boundary-markers";
 
 const FAIR_PATH = "/moments/great-frederick-fair-2026#fair-map";
 const AXE_PATH = path.join(process.cwd(), "node_modules/axe-core/axe.min.js");
@@ -17,6 +19,7 @@ async function openFairMap(page: Page) {
   const map = page.locator("[data-fair-grounds-map]");
   await expect(map).toBeVisible({ timeout: 15_000 });
   await expect(map.locator("canvas")).toBeVisible({ timeout: 15_000 });
+  await expect(map.locator("[data-fair-map-canvas-fallback]")).toHaveCount(0);
   return map;
 }
 
@@ -55,12 +58,138 @@ async function expectNoAxeViolations(page: Page) {
   expect(violations, summary).toEqual([]);
 }
 
+async function expectCenterHitTarget(target: Locator) {
+  const center = await target.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const hit = document.elementFromPoint(x, y);
+    return {
+      x,
+      y,
+      hitTarget: hit === element || (hit !== null && element.contains(hit)),
+      insideViewport:
+        x >= 0 && x <= window.innerWidth && y >= 0 && y <= window.innerHeight,
+    };
+  });
+  expect(center.insideViewport).toBe(true);
+  expect(center.hitTarget).toBe(true);
+  return center;
+}
+
 test.describe("Fairgrounds map accessibility", () => {
   test.use({
     viewport: { width: 390, height: 844 },
     locale: "en-US",
     timezoneId: "America/New_York",
     serviceWorkers: "block",
+  });
+
+  test("keeps the Fair guide usable when WebGL2 is unavailable", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.addInitScript(() => {
+      const originalGetContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function getContext(
+        this: HTMLCanvasElement,
+        contextId: string,
+        ...args: unknown[]
+      ) {
+        if (contextId === "webgl2") return null;
+        return Reflect.apply(originalGetContext, this, [contextId, ...args]);
+      } as typeof HTMLCanvasElement.prototype.getContext;
+    });
+
+    await page.goto(FAIR_PATH, { waitUntil: "domcontentloaded" });
+    const map = page.locator("[data-fair-grounds-map]");
+    await expect(map).toBeVisible({ timeout: 15_000 });
+    const fallback = page.getByRole("region", {
+      name: "Use the searchable grounds guide.",
+    });
+    await expect(fallback).toBeVisible();
+    await expect(map.locator("canvas")).toHaveCount(0);
+    expect(findErrorBoundaryMarker(await page.textContent("body"))).toBeNull();
+
+    const sourceLink = fallback.getByRole("link", {
+      name: "Open the map source",
+    });
+    await expect(sourceLink).toHaveAttribute(
+      "href",
+      "https://www.openstreetmap.org/copyright",
+    );
+    const browseButton = fallback.getByRole("button", {
+      name: "Browse all reviewed places",
+    });
+    const browseCenter = await expectCenterHitTarget(browseButton);
+    const sourceCenter = await expectCenterHitTarget(sourceLink);
+    const mobileNavTop = await page
+      .getByRole("navigation", { name: "Fair Day" })
+      .evaluate((element) => element.getBoundingClientRect().top);
+    expect(browseCenter.y).toBeLessThan(mobileNavTop);
+    expect(sourceCenter.y).toBeLessThan(mobileNavTop);
+
+    // Use a raw pointer coordinate so Playwright cannot auto-scroll an obscured
+    // control into view and accidentally hide a fixed-navigation regression.
+    await page.mouse.click(browseCenter.x, browseCenter.y);
+    expect(await page.evaluate(() => window.location.hash)).toBe("#fair-map");
+    await expect(
+      page.locator("#fair-map-place-list > summary"),
+    ).toBeFocused();
+    await expect(
+      map.getByRole("button", { name: "Show my location" }),
+    ).toHaveCount(0);
+    await expect(
+      map.getByRole("button", { name: "Whole grounds" }),
+    ).toHaveCount(0);
+    const places = page.getByRole("list", {
+      name: "Mapped places grouped by task",
+    });
+    await expect(places).toBeVisible();
+    await expect(
+      places.getByRole("heading", { name: "Arrive and enter" }),
+    ).toBeVisible();
+    await expect(
+      places.getByRole("heading", { name: "Find essentials" }),
+    ).toBeVisible();
+    await expect(
+      places.getByRole("heading", { name: "Explore the grounds" }),
+    ).toBeVisible();
+    await expect(
+      places.getByRole("button", { name: /Restroom/ }).first(),
+    ).toBeVisible();
+    await expect(
+      places.getByRole("button", { name: /Beef Barn/ }).first(),
+    ).toBeVisible();
+
+    const search = page.getByRole("searchbox", {
+      name: "Find a place or program event on the Fair grounds map",
+    });
+    await search.fill("Gate 4A");
+    await page
+      .locator("#fair-map-search-results")
+      .getByRole("button", { name: /Gate 4A/ })
+      .click();
+    const selection = page.getByRole("region", {
+      name: "Selected map place: Gate 4A",
+    });
+    await expect(selection).toBeVisible();
+    await expect(
+      selection.getByRole("link", { name: /Get directions/i }),
+    ).toBeVisible();
+    await expect(
+      selection.getByRole("link", { name: /Official details/i }),
+    ).toBeVisible();
+
+    await expect(
+      page.getByRole("navigation", { name: "Fair Day" }),
+    ).toBeVisible();
+    await expectNoAxeViolations(page);
+    const width = await page.evaluate(() => ({
+      client: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+    }));
+    expect(width.scroll).toBeLessThanOrEqual(width.client + 1);
   });
 
   test("supports keyboard search, selected-place focus, Escape, and focus return", async ({
