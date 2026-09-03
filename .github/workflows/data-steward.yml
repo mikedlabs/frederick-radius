@@ -6,11 +6,12 @@ name: Data steward
 # Transit GTFS moved to transit-steward.yml on 2026-08-18 — sharing a run made
 # a failing transit snapshot paint the hours pipeline red for six days while it
 # was in fact succeeding nightly.
-# Hours failures are release-significant and fail loudly. The paid
-# Google writer runs once in Vercel; this workflow only materializes its
-# read-only Supabase snapshot, avoiding a second paid status-only sweep over the
-# same identities. If anything changed on disk, the workflow opens a PR
-# (PR-gated, never a direct push) so a human reviews the data diff.
+# When the paid hours writer is explicitly authorized, hours failures are
+# release-significant and fail loudly. The Google writer runs once in Vercel;
+# this workflow only materializes its read-only Supabase snapshot, avoiding a
+# second paid status-only sweep over the same identities. With policy authority
+# absent, the job is intentionally skipped instead of asking the NAS to publish
+# a writer that is not authorized to run.
 
 on:
   schedule:
@@ -31,7 +32,9 @@ concurrency:
 
 jobs:
   steward:
-    if: ${{ github.ref == 'refs/heads/main' }}
+    # This job exists only to publish the paid Google hours writer's output.
+    # Missing policy authority is an intentional hold, not a broken NAS run.
+    if: ${{ github.ref == 'refs/heads/main' && vars.HOURS_REFRESH_CRON == '1' && vars.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL == 'written-google-authorization-confirmed' && vars.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED == '1' }}
     # The generator is trusted-main, read-only, and receives browser-safe
     # Supabase variables only. Keep publication and PR mutation on the hosted
     # reusable workflow below so the persistent NAS never receives write

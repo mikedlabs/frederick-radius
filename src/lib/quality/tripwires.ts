@@ -28,7 +28,7 @@ import { HOURS_SNAPSHOT_MAX_AGE_DAYS } from "@/lib/quality/curated-freshness";
 import { HOURS_MAX_AGE_DAYS, isHoursFresh } from "@/lib/hours-freshness";
 import { reserveDailyUsage } from "@/lib/usage-meter";
 import { googlePhotoDailyCap } from "@/lib/google-photo-budget";
-import { googleMapsPlatformRuntimeEnabled } from "@/lib/google-maps-policy";
+import { googleHoursRefreshRuntimeEnabled } from "@/lib/google-maps-policy";
 import { radiusSearchSemanticConfigured } from "@/lib/ask/search-index-budget";
 
 /**
@@ -320,9 +320,6 @@ export async function askCanaryTripwire(): Promise<Anomaly[]> {
  */
 export function ingestFreshnessTripwire(now: Date = new Date()): Anomaly[] {
   const out: Anomaly[] = [];
-  const googleHoursHint = googleMapsPlatformRuntimeEnabled()
-    ? "The authorized Google refresh should be running. Verify HOURS_REFRESH_CRON=1, GOOGLE_PLACES_API_KEY, DATABASE_URL, and CRON_SECRET in Production, then run the data-steward workflow."
-    : "Google-backed refresh is deliberately held by policy. Do not re-enable it from this alert; restore freshness through an approved source or complete the documented authorization review first.";
   const check = (
     name: string,
     stamps: Array<string | undefined>,
@@ -360,43 +357,52 @@ export function ingestFreshnessTripwire(now: Date = new Date()): Anomaly[] {
   // stamps (HOURS_MAX_AGE_DAYS) — so when the writer stalls, coverage does
   // not decay gently, it reaches zero the day the newest row ages out. A
   // six-day window is one day of daylight before that.
-  check(
-    "places-hours-refresh",
-    Object.entries(HOURS_REFRESH as Record<string, unknown>)
+  const googleHoursRefreshExpected = googleHoursRefreshRuntimeEnabled();
+  if (googleHoursRefreshExpected) {
+    const googleHoursHint =
+      "The authorized Google refresh should be running. Verify HOURS_REFRESH_CRON=1, GOOGLE_PLACES_API_KEY, DATABASE_URL, and CRON_SECRET in Production, then run the data-steward workflow.";
+    check(
+      "places-hours-refresh",
+      Object.entries(HOURS_REFRESH as Record<string, unknown>)
+        .filter(([key]) => !key.startsWith("_"))
+        .map(([, value]) => (value as { refreshed_at?: string })?.refreshed_at),
+      HOURS_SNAPSHOT_MAX_AGE_DAYS,
+      googleHoursHint,
+    );
+    // The newest-stamp check above answers "did the WRITER stop". It cannot
+    // answer "did DELIVERY stop", and delivery is what actually failed: the
+    // refresh rotates a sixth of the catalog per day, so when the committed
+    // artifact stops being updated, coverage does not fall off a cliff, it
+    // decays as a ramp. Measured on the real artifact, publishable rows go
+    // 1160, 1160, 950, 765, 593, 372, 203, 0 across seven days of staleness.
+    // The newest-stamp alarm is still green at day five, when 68% of the
+    // county's hours are already gone, and first turns red at day six with 203
+    // rows left. It sat green through the August blackout for that reason.
+    //
+    // Measure what the reader actually loses. Below 85% publishable fires on
+    // day two and leaves five days to act.
+    const hoursRows = Object.entries(HOURS_REFRESH as Record<string, unknown>)
       .filter(([key]) => !key.startsWith("_"))
-      .map(([, value]) => (value as { refreshed_at?: string })?.refreshed_at),
-    HOURS_SNAPSHOT_MAX_AGE_DAYS,
-    googleHoursHint,
-  );
-  // The newest-stamp check above answers "did the WRITER stop". It cannot
-  // answer "did DELIVERY stop", and delivery is what actually failed: the
-  // refresh rotates a sixth of the catalog per day, so when the committed
-  // artifact stops being updated, coverage does not fall off a cliff, it
-  // decays as a ramp. Measured on the real artifact, publishable rows go
-  // 1160, 1160, 950, 765, 593, 372, 203, 0 across seven days of staleness.
-  // The newest-stamp alarm is still green at day five, when 68% of the
-  // county's hours are already gone, and first turns red at day six with 203
-  // rows left. It sat green through the August blackout for that reason.
-  //
-  // Measure what the reader actually loses. Below 85% publishable fires on
-  // day two and leaves five days to act.
-  const hoursRows = Object.entries(HOURS_REFRESH as Record<string, unknown>)
-    .filter(([key]) => !key.startsWith("_"))
-    .map(([, value]) => value as { refreshed_at?: string; weekday_hours?: unknown });
-  const withSchedule = hoursRows.filter((row) => Array.isArray(row.weekday_hours));
-  if (withSchedule.length > 0) {
-    const publishable = withSchedule.filter((row) =>
-      isHoursFresh(row.refreshed_at, now),
-    ).length;
-    const share = publishable / withSchedule.length;
-    if (share < HOURS_PUBLISHABLE_MIN_SHARE) {
-      out.push({
-        source: "places-hours-refresh",
-        kind: "ingest_stale",
-        detail:
-          `Only ${Math.round(share * 100)}% of the ${withSchedule.length} committed hour schedules are still inside the ${HOURS_MAX_AGE_DAYS}-day publishing window ` +
-          `(${publishable} rows). Open and closed states are already going dark across the county. ${googleHoursHint}`,
-      });
+      .map(([, value]) =>
+        value as { refreshed_at?: string; weekday_hours?: unknown }
+      );
+    const withSchedule = hoursRows.filter((row) =>
+      Array.isArray(row.weekday_hours)
+    );
+    if (withSchedule.length > 0) {
+      const publishable = withSchedule.filter((row) =>
+        isHoursFresh(row.refreshed_at, now),
+      ).length;
+      const share = publishable / withSchedule.length;
+      if (share < HOURS_PUBLISHABLE_MIN_SHARE) {
+        out.push({
+          source: "places-hours-refresh",
+          kind: "ingest_stale",
+          detail:
+            `Only ${Math.round(share * 100)}% of the ${withSchedule.length} committed hour schedules are still inside the ${HOURS_MAX_AGE_DAYS}-day publishing window ` +
+            `(${publishable} rows). Open and closed states are already going dark across the county. ${googleHoursHint}`,
+        });
+      }
     }
   }
   return out;

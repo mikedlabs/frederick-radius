@@ -151,14 +151,38 @@ describe("public data snapshot", () => {
       new Date("2026-08-11T12:00:00Z"),
     );
 
-    expect(publicHoursProductHealth(snapshot)).toEqual({
+    expect(publicHoursProductHealth(snapshot, true)).toEqual({
       status: "degraded",
+      mode: "active_refresh",
       current: 1,
       expected: 2,
       coveragePct: 50,
       target: 2,
       targetPct: 60,
       checkedAt: "2026-08-11T12:00:00.000Z",
+      operatorMessage: null,
+    });
+  });
+
+  it("reports an intentional policy hold without disguising zero coverage", () => {
+    const snapshot = buildPublicDataSnapshot(
+      RELEASE,
+      [{ slug: "missing", name: "Missing", is_operational: "operational" }],
+      new Date("2026-08-11T12:00:00Z"),
+    );
+
+    expect(publicHoursProductHealth(snapshot, false)).toEqual({
+      status: "policy_hold",
+      mode: "policy_hold",
+      current: 0,
+      expected: 1,
+      coveragePct: 0,
+      target: 1,
+      targetPct: 60,
+      checkedAt: "2026-08-11T12:00:00.000Z",
+      operatorMessage: expect.stringContaining(
+        "Current-hours coverage remains unavailable",
+      ),
     });
   });
 

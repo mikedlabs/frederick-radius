@@ -15,11 +15,13 @@
  * An authenticated operator may add ?cycleDay=0..5 to recover one missed
  * bucket without weakening the paid-call cap or the freshness policy.
  *
- * PAID and OFF by default, same contract as the business-status cron:
- * no-ops unless HOURS_REFRESH_CRON is "1", requires reviewed Google policy
- * approval, the platform runtime switch, a dedicated Places key, and a
- * writable database. One atomic Eastern-day allowance and one global run lease
- * cover scheduled runs, retries, and authenticated cycleDay backfills.
+ * PAID and OFF by default, same contract as the business-status cron. A
+ * scheduled invocation returns a healthy policy-hold response unless reviewed
+ * Google policy approval and the platform runtime switch are both present.
+ * Authorized execution also requires HOURS_REFRESH_CRON="1", a dedicated
+ * Places key, and a writable database. One atomic Eastern-day allowance and
+ * one global run lease cover scheduled runs, retries, and authenticated
+ * cycleDay backfills.
  */
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
@@ -46,6 +48,7 @@ import {
   startIdempotentDailyUsage,
 } from "@/lib/usage-meter";
 import { googleHoursRefreshDailyCap } from "@/lib/google-hours-refresh-budget";
+import { googleHoursRefreshRuntimeEnabled } from "@/lib/google-maps-policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -166,10 +169,11 @@ export async function GET(request: Request) {
 }
 
 async function runHoursRefresh(request: Request) {
-  if (process.env.HOURS_REFRESH_CRON !== "1") {
+  if (!googleHoursRefreshRuntimeEnabled()) {
     return NextResponse.json({
       enabled: false,
-      note: "Set HOURS_REFRESH_CRON=1 to enable. Off by default to avoid Google Places spend.",
+      mode: "policy_hold",
+      note: "Paid Google hours refresh is deliberately held. No provider request was made.",
     });
   }
   let cycle: ReturnType<typeof resolveHoursRefreshCycleSelection>;
@@ -192,8 +196,7 @@ async function runHoursRefresh(request: Request) {
     return NextResponse.json(
       {
         enabled: true,
-        error:
-          "Google Places runtime is on policy hold or its dedicated credential is missing",
+        error: "The dedicated Google Places credential is missing",
       },
       { status: 500 },
     );
