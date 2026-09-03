@@ -107,8 +107,8 @@ export default function OwnerAlertsCard() {
               : state === "error"
                 ? "Could not update. Reload and try again."
                 : on
-                  ? "New feedback and signups will push to this device the moment they arrive."
-                  : "Get a push here the moment a tester sends feedback or signs up."}
+                  ? "New feedback and signups will push to this device immediately, including during quiet hours."
+                  : "Get immediate owner alerts for feedback and signups. These alerts bypass quiet hours."}
         </p>
       </div>
       {state !== "unsupported" && state !== "denied" ? (
