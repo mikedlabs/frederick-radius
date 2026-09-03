@@ -17,7 +17,7 @@ concurrency:
 jobs:
   collect:
     if: ${{ github.ref == 'refs/heads/main' }}
-    runs-on: [self-hosted, radius-data]
+    runs-on: radius-data
     timeout-minutes: 30
     permissions:
       contents: read
