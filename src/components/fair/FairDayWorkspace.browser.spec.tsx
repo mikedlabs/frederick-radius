@@ -323,6 +323,10 @@ describe("FairDayWorkspace app journey", () => {
 
     expect(container.querySelector("[data-fair-discovery-choices]")).not.toBeNull();
     await openMode("Map");
+    vi.useRealTimers();
+    await act(async () => vi.dynamicImportSettled());
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-18T20:59:00Z"));
 
     expect(window.location.hash).toBe("#fair-map");
     expect(container.querySelector("[data-fair-discovery-choices]")).toBeNull();
