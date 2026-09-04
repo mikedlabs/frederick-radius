@@ -58,6 +58,7 @@ type SupportState =
   | "ios-needs-install"
   | "blocked"
   | "ready"
+  | "needs-reconnect"
   | "verification-error"
   | "subscribed";
 
@@ -251,22 +252,18 @@ function PushNotificationsCard() {
   }, []);
 
   const hydrateExistingSubscription = useCallback(
-    async (existing: PushSubscription): Promise<boolean> => {
+    async (
+      existing: PushSubscription,
+    ): Promise<"connected" | "missing" | "unverified"> => {
       try {
         const topicsResponse = await fetch(
           `/api/push/topics?endpoint=${encodeURIComponent(existing.endpoint)}`,
         );
         const reconciled = await reconcileExistingPushRegistration({
-          subscription: existing,
           topicsResponse,
           managedTopics: ALL_TOPICS,
-          deviceId:
-            typeof localStorage !== "undefined"
-              ? localStorage.getItem("fr-device-id") ?? undefined
-              : undefined,
-          homeTown: getHomeMuni(),
         });
-        if (!reconciled.connected) return false;
+        if (reconciled.state !== "connected") return reconciled.state;
 
         setSubscription(existing);
         setTopics(new Set(reconciled.topics));
@@ -295,9 +292,9 @@ function PushNotificationsCard() {
         } catch {
           // Quiet hours are optional. Keep the verified subscription active.
         }
-        return true;
+        return "connected";
       } catch {
-        return false;
+        return "unverified";
       }
     },
     [],
@@ -339,9 +336,9 @@ function PushNotificationsCard() {
           // missing row. A failed/ambiguous read gets a retry state so we
           // neither claim delivery nor replace the browser's existing setup.
           setSubscription(existing);
-          if (!(await hydrateExistingSubscription(existing))) {
-            setSupport("verification-error");
-          }
+          const state = await hydrateExistingSubscription(existing);
+          if (state === "missing") setSupport("needs-reconnect");
+          if (state === "unverified") setSupport("verification-error");
         } else {
           setSupport("ready");
         }
@@ -360,7 +357,13 @@ function PushNotificationsCard() {
     }
     setBusy(true);
     try {
-      if (!(await hydrateExistingSubscription(subscription))) {
+      const state = await hydrateExistingSubscription(subscription);
+      if (state === "missing") {
+        setSupport("needs-reconnect");
+        flash("This device needs a fresh notification connection.");
+        return;
+      }
+      if (state === "unverified") {
         setSupport("verification-error");
         flash("Couldn't verify this device yet. Your browser setup was not changed.");
         return;
@@ -370,6 +373,64 @@ function PushNotificationsCard() {
       setBusy(false);
     }
   }, [flash, hydrateExistingSubscription, subscription]);
+
+  const reconnect = useCallback(async () => {
+    if (!subscription || !pubKey) return;
+    setBusy(true);
+    let replacement: PushSubscription | null = null;
+    try {
+      await subscription.unsubscribe().catch(() => false);
+      const reg = await navigator.serviceWorker.ready;
+      const retained = await reg.pushManager.getSubscription();
+      if (retained?.endpoint === subscription.endpoint) {
+        setSupport("verification-error");
+        flash("Couldn't renew this connection yet. Try again.");
+        return;
+      }
+      replacement =
+        retained ??
+        (await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: uint8FromBase64(pubKey) as BufferSource,
+        }));
+      const response = await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subscription: replacement.toJSON(),
+          topics: [],
+          device_id:
+            typeof localStorage !== "undefined"
+              ? localStorage.getItem("fr-device-id") ?? undefined
+              : undefined,
+          home_town: getHomeMuni() ?? undefined,
+        }),
+      });
+      if (!response.ok) {
+        await replacement.unsubscribe().catch(() => false);
+        replacement = null;
+        setSubscription(null);
+        setSupport("ready");
+        flash("Couldn't reconnect notifications. Tap Turn on to try again.");
+        return;
+      }
+      setSubscription(replacement);
+      setTopics(new Set());
+      setSupport("subscribed");
+      track("push_optin");
+      haptic("success");
+      flash("Notifications reconnected. Choose the alerts you want.");
+    } catch {
+      if (replacement) {
+        await replacement.unsubscribe().catch(() => false);
+      }
+      setSubscription(null);
+      setSupport("ready");
+      flash("Couldn't reconnect notifications. Tap Turn on to try again.");
+    } finally {
+      setBusy(false);
+    }
+  }, [flash, pubKey, subscription]);
 
   const subscribe = useCallback(async () => {
     if (!pubKey) return;
@@ -388,7 +449,11 @@ function PushNotificationsCard() {
       const existing = await reg.pushManager.getSubscription();
       if (existing) {
         setSubscription(existing);
-        if (!(await hydrateExistingSubscription(existing))) {
+        const state = await hydrateExistingSubscription(existing);
+        if (state === "missing") {
+          setSupport("needs-reconnect");
+          flash("This device needs a fresh notification connection.");
+        } else if (state === "unverified") {
           setSupport("verification-error");
           flash("Couldn't verify this device yet. Your browser setup was not changed.");
         }
@@ -672,6 +737,21 @@ function PushNotificationsCard() {
           >
             <AlertCircle className="h-3 w-3" aria-hidden /> Blocked
           </span>
+        ) : support === "needs-reconnect" ? (
+          <button
+            type="button"
+            onClick={() => void reconnect()}
+            disabled={busy || !subscription || !pubKey}
+            className="tactile tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold disabled:opacity-50"
+            style={{
+              borderColor: "var(--app-control-border)",
+              color: "var(--app-brand-press)",
+              background: "var(--app-bg-elevated)",
+            }}
+          >
+            <Bell className="h-3.5 w-3.5" aria-hidden />
+            {busy ? "Reconnecting…" : "Reconnect"}
+          </button>
         ) : support === "verification-error" ? (
           <button
             type="button"
@@ -714,6 +794,8 @@ function PushNotificationsCard() {
       <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
         {support === "blocked"
           ? "Notifications are blocked at the browser level. Re-enable in your site settings to subscribe."
+          : support === "needs-reconnect"
+            ? "This browser kept an old notification connection that Radius can no longer deliver to. Reconnect to replace it safely."
           : support === "verification-error"
             ? "Radius could not verify this device’s notification connection. Retry without changing your existing alert choices."
           : enabled

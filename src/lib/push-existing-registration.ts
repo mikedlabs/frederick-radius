@@ -3,27 +3,13 @@ import {
   type PushTopic,
 } from "@/lib/push-topics";
 
-type ExistingPushSubscription = Pick<
-  PushSubscription,
-  "endpoint" | "toJSON"
->;
-
-type PushFetch = (
-  input: RequestInfo | URL,
-  init?: RequestInit,
-) => Promise<Response>;
-
 type ReconcileExistingPushRegistrationOptions = {
-  subscription: ExistingPushSubscription;
   topicsResponse: Response;
   managedTopics: readonly PushTopic[];
-  fetcher?: PushFetch;
-  deviceId?: string;
-  homeTown?: string | null;
 };
 
 export type ExistingPushRegistrationResult = {
-  connected: boolean;
+  state: "connected" | "missing" | "unverified";
   topics: PushTopic[];
 };
 
@@ -33,20 +19,16 @@ export type ExistingPushRegistrationResult = {
  * row before the browser drops its local object. In that state the browser API
  * alone is not proof that Radius can deliver anything.
  *
- * The topics read deliberately carries an explicit `registered` bit. We only
- * recreate a row after a successful, authoritative "missing" response; a
- * network/DB failure never gets mistaken for an empty preference set (which
- * would otherwise overwrite a healthy subscriber's selections).
+ * The topics read deliberately carries an explicit `registered` bit. A
+ * missing row must not be recreated with the same browser endpoint: the row
+ * may have been pruned after that endpoint failed at the push provider. The UI
+ * instead asks the user to reconnect and renews the browser subscription.
  */
 export async function reconcileExistingPushRegistration({
-  subscription,
   topicsResponse,
   managedTopics,
-  fetcher = fetch,
-  deviceId,
-  homeTown,
 }: ReconcileExistingPushRegistrationOptions): Promise<ExistingPushRegistrationResult> {
-  if (!topicsResponse.ok) return { connected: false, topics: [] };
+  if (!topicsResponse.ok) return { state: "unverified", topics: [] };
 
   let payload: { registered?: unknown; topics?: unknown };
   try {
@@ -55,7 +37,7 @@ export async function reconcileExistingPushRegistration({
       topics?: unknown;
     };
   } catch {
-    return { connected: false, topics: [] };
+    return { state: "unverified", topics: [] };
   }
 
   const managed = new Set<string>(managedTopics);
@@ -66,22 +48,7 @@ export async function reconcileExistingPushRegistration({
       )
     : [];
 
-  if (payload.registered === true) return { connected: true, topics };
-  if (payload.registered !== false) return { connected: false, topics: [] };
-
-  try {
-    const repaired = await fetcher("/api/push/subscribe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        subscription: subscription.toJSON(),
-        topics,
-        device_id: deviceId,
-        home_town: homeTown ?? undefined,
-      }),
-    });
-    return { connected: repaired.ok, topics };
-  } catch {
-    return { connected: false, topics: [] };
-  }
+  if (payload.registered === true) return { state: "connected", topics };
+  if (payload.registered === false) return { state: "missing", topics: [] };
+  return { state: "unverified", topics: [] };
 }

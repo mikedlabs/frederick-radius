@@ -95,8 +95,9 @@ describe("NotificationsCard existing subscription recovery", () => {
     });
   }
 
-  it("preserves the browser setup when a missing server row cannot be repaired", async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+  it("does not reinsert a missing server row with the same possibly dead endpoint", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      void _init;
       const url = String(input);
       if (url === "/api/push/public-key") {
         return Response.json({ enabled: true, key: "AQID" });
@@ -104,30 +105,57 @@ describe("NotificationsCard existing subscription recovery", () => {
       if (url.startsWith("/api/push/topics?")) {
         return Response.json({ registered: false, topics: [] });
       }
-      if (url === "/api/push/subscribe") {
-        return Response.json({}, { status: 503 });
-      }
       throw new Error(`Unexpected request: ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
 
     await renderAndSettle();
 
-    expect(container.textContent).toContain("Retry");
+    expect(container.textContent).toContain("Reconnect");
     expect(container.textContent).toContain(
-      "Retry without changing your existing alert choices.",
+      "Reconnect to replace it safely.",
     );
     expect(container.textContent).not.toContain("Turn on");
     expect(container.textContent).not.toContain("Turn off");
     expect(unsubscribeExisting).not.toHaveBeenCalled();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/push/subscribe",
-      expect.objectContaining({ method: "POST" }),
-    );
+    expect(
+      fetchMock.mock.calls.some(([input]) => String(input) === "/api/push/subscribe"),
+    ).toBe(false);
   });
 
-  it("renders alerts on only after the missing server row is restored", async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+  it("replaces a pruned endpoint before reporting alerts on", async () => {
+    const freshSubscription = {
+      endpoint: "https://web.push.apple.com/reconnected-device",
+      toJSON: () => ({
+        endpoint: "https://web.push.apple.com/reconnected-device",
+        expirationTime: null,
+        keys: { auth: "fresh-auth", p256dh: "fresh-public-key" },
+      }),
+      unsubscribe: vi.fn(async () => true),
+    };
+    let browserSubscription: typeof existingSubscription | typeof freshSubscription | null =
+      existingSubscription;
+    unsubscribeExisting.mockImplementationOnce(async () => {
+      browserSubscription = null;
+      return true;
+    });
+    const subscribeFresh = vi.fn(async () => {
+      browserSubscription = freshSubscription;
+      return freshSubscription;
+    });
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: {
+        ready: Promise.resolve({
+          pushManager: {
+            getSubscription: vi.fn(async () => browserSubscription),
+            subscribe: subscribeFresh,
+          },
+        }),
+      },
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      void _init;
       const url = String(input);
       if (url === "/api/push/public-key") {
         return Response.json({ enabled: true, key: "AQID" });
@@ -138,19 +166,38 @@ describe("NotificationsCard existing subscription recovery", () => {
       if (url === "/api/push/subscribe") {
         return Response.json({ ok: true });
       }
-      if (url.startsWith("/api/push/prefs?")) {
-        return Response.json({ quiet_start: null, quiet_end: null });
-      }
       throw new Error(`Unexpected request: ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
 
     await renderAndSettle();
 
+    expect(container.textContent).toContain("Reconnect");
+    const reconnect = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("button"),
+    ).find((button) => button.textContent?.includes("Reconnect"));
+    if (!reconnect) throw new Error("Missing notification reconnect action.");
+    await act(async () => {
+      reconnect.click();
+      for (let turn = 0; turn < 8; turn += 1) await Promise.resolve();
+    });
+
     expect(container.textContent).toContain("Turn off");
     expect(container.textContent).toContain(
       "You’re connected. Pick at least one alert below.",
     );
+    expect(unsubscribeExisting).toHaveBeenCalledTimes(1);
+    expect(subscribeFresh).toHaveBeenCalledTimes(1);
+    const subscribeCall = fetchMock.mock.calls.find(
+      ([input]) => String(input) === "/api/push/subscribe",
+    );
+    expect(subscribeCall).toBeDefined();
+    expect(JSON.parse(String(subscribeCall?.[1]?.body))).toMatchObject({
+      subscription: { endpoint: freshSubscription.endpoint },
+      topics: [],
+      device_id: "device-123",
+      home_town: "frederick",
+    });
   });
 
   it("rechecks an ambiguous server read without overwriting topics or unsubscribing", async () => {
