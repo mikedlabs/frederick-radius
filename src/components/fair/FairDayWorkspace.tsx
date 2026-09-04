@@ -5,20 +5,28 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  BusFront,
   Check,
   ChevronDown,
   ChevronRight,
+  Clock3,
   CircleHelp,
   ExternalLink,
+  FerrisWheel,
   House,
+  Info,
   ListChecks,
   MapPinned,
   MessageSquare,
+  Music2,
+  PawPrint,
   Pencil,
   Plus,
   Search,
   TicketCheck,
   Trash2,
+  Trophy,
+  UtensilsCrossed,
   Volume1,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -67,6 +75,7 @@ import type {
 } from "./types";
 
 type FairMode = "now" | "find" | "map" | "my-day" | "travel";
+type FairPhotoMode = Extract<FairMode, "find" | "my-day" | "travel">;
 type PreparationKey = Extract<FairPlanReadyKey, "ticket" | "entry">;
 type FairPlanStorageState = "checking" | "available" | "unavailable";
 type ScheduleFilter =
@@ -89,6 +98,30 @@ const FAIR_PRIMARY_MODES: Array<{
 ];
 
 const FAIR_MODE_IDS: FairMode[] = ["now", "find", "map", "my-day", "travel"];
+
+const FAIR_MODE_MASTHEADS: Record<
+  FairPhotoMode,
+  { eyebrow: string; title: string; accent: string; objectPosition: string }
+> = {
+  find: {
+    eyebrow: "Pick a feeling, not a filing cabinet",
+    title: "Explore",
+    accent: "var(--app-accent)",
+    objectPosition: "76% 54%",
+  },
+  "my-day": {
+    eyebrow: "Tickets, arrival and stops in one place",
+    title: "Your plan",
+    accent: "var(--app-brand)",
+    objectPosition: "54% 58%",
+  },
+  travel: {
+    eyebrow: "The easier way in and back out",
+    title: "Arrival",
+    accent: "var(--app-cool)",
+    objectPosition: "22% 48%",
+  },
+};
 
 const SCHEDULE_FILTERS: Array<{ id: ScheduleFilter; label: string }> = [
   { id: "all", label: "Everything" },
@@ -186,6 +219,125 @@ function scheduleAccent(kind: FairDayScheduleItemView["kind"]): string {
   if (kind === "service") return "var(--app-cool)";
   if (kind === "concert") return "var(--app-accent-press)";
   return "var(--app-brand-press)";
+}
+
+function scheduleKindLabel(kind: FairDayScheduleItemView["kind"]): string {
+  if (kind === "agriculture" || kind === "animal") return "Animals";
+  if (kind === "concert") return "Music";
+  if (kind === "carnival") return "Carnival";
+  if (kind === "motorsport") return "Grandstand";
+  if (kind === "food") return "Food";
+  if (kind === "service") return "Fair service";
+  if (kind === "exhibit") return "Exhibit";
+  return "Fair program";
+}
+
+function ScheduleKindGlyph({
+  kind,
+}: {
+  kind: FairDayScheduleItemView["kind"];
+}) {
+  const Icon =
+    kind === "agriculture" || kind === "animal"
+      ? PawPrint
+      : kind === "concert"
+        ? Music2
+        : kind === "carnival"
+          ? FerrisWheel
+          : kind === "motorsport"
+            ? Trophy
+            : kind === "food"
+              ? UtensilsCrossed
+              : kind === "service"
+                ? Info
+                : Clock3;
+  return <Icon className="h-[18px] w-[18px]" aria-hidden />;
+}
+
+function FairPhotoMasthead({
+  mode,
+  onBack,
+  onHelp,
+}: {
+  mode: FairPhotoMode;
+  onBack: () => void;
+  onHelp: () => void;
+}) {
+  const visual = FAIR_MODE_MASTHEADS[mode];
+
+  return (
+    <div
+      data-fair-mode-masthead={mode}
+      className="relative isolate min-h-[104px] overflow-hidden border-b sm:min-h-[190px]"
+      style={{ borderColor: visual.accent }}
+    >
+      <picture className="absolute inset-0 block">
+        <img
+          src="/images/fair/fairgrounds-night-mike-d-960.jpg"
+          srcSet="/images/fair/fairgrounds-night-mike-d-960.jpg 960w, /images/fair/fairgrounds-night-mike-d-1920.jpg 1920w"
+          sizes="100vw"
+          alt=""
+          width="960"
+          height="540"
+          loading="eager"
+          className="fair-mode-photo h-full w-full scale-[1.035] object-cover saturate-[1.18]"
+          style={{ objectPosition: visual.objectPosition }}
+        />
+      </picture>
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(180deg, color-mix(in srgb, var(--app-ink) 58%, transparent), color-mix(in srgb, var(--app-ink) 18%, transparent) 48%, color-mix(in srgb, var(--app-ink) 82%, transparent))",
+        }}
+        aria-hidden="true"
+      />
+      <div className="relative z-10 mx-auto flex min-h-[104px] max-w-[68rem] flex-col justify-between px-3 py-2 text-[var(--app-ink-inverse)] sm:min-h-[190px] sm:px-6 sm:py-4">
+        <div className="flex items-start justify-between gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            className="fair-hero-control tap-44 inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-[13px] font-semibold backdrop-blur-md"
+            style={{
+              color: "var(--app-brand-press)",
+              background:
+                "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
+            }}
+            aria-label="Back to Fair Today"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Fair Today
+          </button>
+          <button
+            type="button"
+            onClick={onHelp}
+            className="fair-hero-control tap-44 grid h-11 w-11 place-items-center rounded-full backdrop-blur-md"
+            style={{
+              color: "var(--app-cool)",
+              background:
+                "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
+            }}
+            aria-label="Help & access"
+          >
+            <CircleHelp className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="hidden text-[10px] font-bold uppercase tracking-[0.12em] opacity-90 sm:block">
+              {visual.eyebrow}
+            </p>
+            <p className="font-editorial text-[26px] leading-none tracking-[-0.035em] [text-shadow:0_2px_12px_rgba(0,0,0,0.5)] sm:mt-1 sm:text-[42px]">
+              {visual.title}
+            </p>
+          </div>
+          <span className="inline shrink-0 rounded-full bg-black/45 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] backdrop-blur-sm">
+            Photo: Mike D
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function scheduleFilterMatches(
@@ -952,8 +1104,31 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
           outline: 3px solid var(--app-bg-elevated-solid);
           box-shadow: 0 0 0 2px var(--app-brand-press);
         }
+        .fair-day-workspace .fair-mode-photo {
+          transition: transform 700ms cubic-bezier(.2,.8,.2,1), filter 450ms ease;
+        }
+        .fair-day-workspace [data-fair-mode-masthead]:hover .fair-mode-photo {
+          transform: scale(1.065);
+          filter: saturate(1.28);
+        }
+        .fair-day-workspace .fair-portal-action {
+          transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+        }
+        .fair-day-workspace .fair-portal-action:hover {
+          transform: translateY(-2px);
+          box-shadow: var(--app-elev-2);
+        }
         @media (prefers-reduced-motion: reduce) {
-          .fair-day-workspace * { scroll-behavior: auto !important; }
+          .fair-day-workspace * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            scroll-behavior: auto !important;
+            transition-duration: 0.01ms !important;
+          }
+          .fair-day-workspace [data-fair-mode-masthead]:hover .fair-mode-photo,
+          .fair-day-workspace .fair-portal-action:hover {
+            transform: none;
+          }
         }
       `}</style>
 
@@ -1082,7 +1257,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               </div>
             </div>
           </div>
-        ) : (
+        ) : activeMode === "map" ? (
           <div
             className="border-b"
             style={{
@@ -1120,6 +1295,16 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               </button>
             </div>
           </div>
+        ) : (
+          <FairPhotoMasthead
+            mode={activeMode}
+            onBack={() => chooseMode("now")}
+            onHelp={() => {
+              setHelpAnswerId(null);
+              setHelpCategory(null);
+              openHelp();
+            }}
+          />
         )}
 
         <nav
@@ -1252,6 +1437,93 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               </Button>
             </section>
 
+            <section
+              data-fair-now-portal
+              aria-labelledby="fair-now-portal-heading"
+              className="mt-5"
+            >
+              <p
+                className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                Start with what you need
+              </p>
+              <h2
+                id="fair-now-portal-heading"
+                className="mt-1 max-w-[20ch] text-[25px] font-extrabold leading-[1.04] tracking-[-0.035em] sm:text-[31px]"
+              >
+                Three ways into your Fair day.
+              </h2>
+              <div className="mt-3 grid gap-2.5 sm:grid-cols-3">
+                {[
+                  {
+                    label: "See what’s on",
+                    detail: "See a visual program for your day without the PDF wall.",
+                    Icon: Clock3,
+                    accent: "var(--app-accent-press)",
+                    wash:
+                      "color-mix(in srgb, var(--app-accent) 13%, var(--app-bg-elevated-solid))",
+                    action: () => chooseMode("find"),
+                  },
+                  {
+                    label: "Find it on the grounds",
+                    detail: "Gates, restrooms, animals, stages and your saved stops.",
+                    Icon: MapPinned,
+                    accent: "var(--app-brand-press)",
+                    wash:
+                      "color-mix(in srgb, var(--app-brand) 11%, var(--app-bg-elevated-solid))",
+                    action: () => chooseMode("map"),
+                  },
+                  {
+                    label: "Parking or Transit",
+                    detail: "Choose the easiest arrival before you leave home.",
+                    Icon: BusFront,
+                    accent: "var(--app-cool)",
+                    wash:
+                      "color-mix(in srgb, var(--app-cool) 11%, var(--app-bg-elevated-solid))",
+                    action: () => chooseMode("travel"),
+                  },
+                ].map(({ label, detail, Icon, accent, wash, action }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={action}
+                    className="fair-portal-action tap-44 group flex min-h-[92px] items-center gap-3 overflow-hidden rounded-[var(--app-radius-lg)] border p-3 text-left sm:min-h-[150px] sm:flex-col sm:items-start sm:justify-between sm:p-4"
+                    style={{
+                      borderColor:
+                        "color-mix(in srgb, var(--app-border-strong) 82%, transparent)",
+                      background: wash,
+                      boxShadow: "var(--app-elev-1)",
+                    }}
+                  >
+                    <span
+                      className="grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated-solid)]"
+                      style={{ borderColor: accent, color: accent }}
+                      aria-hidden="true"
+                    >
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0 flex-1 sm:flex-none">
+                      <span className="block text-[16px] font-extrabold leading-tight tracking-[-0.02em]">
+                        {label}
+                      </span>
+                      <span
+                        className="mt-1 block text-[12px] font-medium leading-snug"
+                        style={{ color: "var(--app-ink-2)" }}
+                      >
+                        {detail}
+                      </span>
+                    </span>
+                    <ChevronRight
+                      className="h-4 w-4 shrink-0 sm:self-end"
+                      style={{ color: accent }}
+                      aria-hidden="true"
+                    />
+                  </button>
+                ))}
+              </div>
+            </section>
+
             {selectedAccessHighlight ? (
               <section
                 data-fair-access-highlight
@@ -1319,7 +1591,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               </summary>
               <p className="pb-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
                 {data.disclosure} {data.source.label}. {data.source.ageLabel}.{" "}
-                <a href={data.source.sourceUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4" style={{ color: "var(--app-brand-press)" }}>
+                <a href={data.source.sourceUrl} target="_blank" rel="noopener noreferrer" className="tap-44 inline-flex min-h-11 items-center font-semibold underline underline-offset-4" style={{ color: "var(--app-brand-press)" }}>
                   Official source
                 </a>
               </p>
@@ -1355,7 +1627,15 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 label="Fair day to explore"
               />
             </div>
-            <h1 id="fair-find-heading" tabIndex={-1} className="mt-1 text-[34px] font-extrabold leading-[1.02] tracking-[-0.045em] outline-none sm:text-[40px]">
+            <h1
+              id="fair-find-heading"
+              tabIndex={-1}
+              className={
+                exploreFocused
+                  ? "mt-1 text-[34px] font-extrabold leading-[1.02] tracking-[-0.045em] outline-none sm:text-[40px]"
+                  : "sr-only"
+              }
+            >
               {showAllSchedule
                 ? discoveryIntent
                   ? `All ${fairDiscoveryIntentTitle(discoveryIntent)}`
@@ -1366,11 +1646,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                     ? fairDiscoveryIntentTitle(discoveryIntent)
                     : "Explore the Fair"}
             </h1>
-            <p className="mt-2 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              {exploreFocused
-                ? "A focused view of the official program for your selected day."
-                : "Choose one useful path or search the official program."}
-            </p>
+            {exploreFocused ? (
+              <p className="mt-2 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                A focused view of the official program for your selected day.
+              </p>
+            ) : null}
 
             <label className="mt-4 block" htmlFor="fair-unified-search">
               <span className="sr-only">Search the Fair</span>
@@ -1489,33 +1769,74 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             </div>
 
             {visibleSchedule.length > 0 ? (
-              <ol className="divide-y" style={{ borderColor: "var(--app-border)" }} aria-label="Fair program results">
+              <ol
+                className="relative mt-3 space-y-2.5 before:absolute before:bottom-7 before:left-[1.55rem] before:top-7 before:w-px before:bg-[var(--app-border-strong)] before:content-['']"
+                aria-label="Fair program results"
+                data-fair-program-trail
+              >
                 {visibleSchedule.map((item) => {
                   const planned = plan.steps.some((step) => step.scheduleItemId === item.id);
                   const place = compactPlaceLabel(item.placeLabel);
+                  const accent = scheduleAccent(item.kind);
                   return (
-                    <li key={item.id} className="grid grid-cols-[4.75rem_minmax(0,1fr)_auto] gap-3 py-4">
-                      <time className="pt-0.5 text-[13px] font-bold leading-tight tabular-nums" style={{ color: scheduleAccent(item.kind) }}>
-                        {item.timeLabel}
-                      </time>
+                    <li
+                      key={item.id}
+                      className="relative grid grid-cols-[3.15rem_minmax(0,1fr)_2.75rem] gap-2.5 overflow-hidden rounded-[var(--app-radius-lg)] border p-3"
+                      style={{
+                        borderColor:
+                          "color-mix(in srgb, var(--app-border-strong) 86%, transparent)",
+                        background: `linear-gradient(110deg, color-mix(in srgb, ${accent} 8%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 48%)`,
+                        boxShadow: "var(--app-elev-1)",
+                      }}
+                    >
+                      <span
+                        className="relative z-10 grid h-10 w-10 place-items-center self-start rounded-full border-2 bg-[var(--app-bg-elevated-solid)]"
+                        style={{ borderColor: accent, color: accent }}
+                      >
+                        <ScheduleKindGlyph kind={item.kind} />
+                      </span>
                       <div className="min-w-0">
-                        <p className="text-[16px] font-semibold leading-snug">{item.title}</p>
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                          <time
+                            className="text-[12px] font-extrabold leading-tight tabular-nums"
+                            style={{ color: accent }}
+                          >
+                            {item.timeLabel}
+                          </time>
+                          <span
+                            className="text-[9.5px] font-bold uppercase tracking-[0.09em]"
+                            style={{ color: "var(--app-ink-3)" }}
+                          >
+                            {scheduleKindLabel(item.kind)}
+                          </span>
+                        </div>
+                        <p className="mt-1 line-clamp-3 text-[16px] font-extrabold leading-[1.18] tracking-[-0.015em]">
+                          {item.title}
+                        </p>
                         {place ? (
-                          <p className="mt-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                          <p className="mt-1 text-[12px] font-semibold leading-snug" style={{ color: "var(--app-ink-3)" }}>
                             {place}
                           </p>
                         ) : null}
                         {item.detail ? (
-                          <button
-                            type="button"
-                            onClick={() => openProgramDetail(item.id)}
-                            className="tap-44 mt-1 inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold underline underline-offset-4"
-                            style={{ color: "var(--app-brand-press)" }}
-                            aria-label={`Open details for ${item.title}`}
-                          >
-                            Details
-                            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-                          </button>
+                          <>
+                            <p
+                              className="mt-1 line-clamp-2 text-[12px] leading-snug"
+                              style={{ color: "var(--app-ink-2)" }}
+                            >
+                              {item.detail}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => openProgramDetail(item.id)}
+                              className="tap-44 -mb-2 mt-0.5 inline-flex min-h-11 items-center gap-1 text-[12px] font-bold"
+                              style={{ color: accent }}
+                              aria-label={`Open details for ${item.title}`}
+                            >
+                              Full details
+                              <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                            </button>
+                          </>
                         ) : null}
                       </div>
                       <button
@@ -1523,7 +1844,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                         data-fair-plan-toggle={item.id}
                         aria-pressed={planned}
                         onClick={() => toggleFairScheduleItem(item, planned)}
-                        className="tap-44 tactile tactile-interactive grid h-11 w-11 place-items-center rounded-full transition active:scale-[0.94]"
+                        className="tap-44 tactile tactile-interactive grid h-11 w-11 place-items-center self-start rounded-full transition active:scale-[0.94] motion-reduce:transition-none"
                         style={{
                           background: planned ? "var(--app-bg-sunken)" : "var(--app-brand-tint-6)",
                           color: planned ? "var(--app-ink-3)" : "var(--app-brand-press)",
