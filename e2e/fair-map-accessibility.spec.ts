@@ -353,6 +353,7 @@ async function readFocusedMarkerClearance(page: Page, memberId: string) {
       "[data-fair-map-search-rail]",
       "[data-fair-map-filter-rail]",
       "[data-fair-map-utility-controls]",
+      "[data-fair-map-selection]",
       ".fair-grounds-map-canvas .maplibregl-ctrl-attrib",
       "[data-mobile-action-bar]",
     ]) {
@@ -414,6 +415,9 @@ async function openFairMap(page: Page) {
   await expect(map).toBeVisible({ timeout: 15_000 });
   await expect(map.locator("canvas")).toBeVisible({ timeout: 15_000 });
   await expect(map.locator("[data-fair-map-canvas-fallback]")).toHaveCount(0);
+  await expect(map.locator(".maplibregl-ctrl-attrib")).toBeVisible({
+    timeout: 15_000,
+  });
   return map;
 }
 
@@ -571,6 +575,7 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(
       selection.getByRole("link", { name: /Get directions/i }),
     ).toBeVisible();
+    await selection.getByRole("button", { name: "More details" }).click();
     await expect(
       selection.getByRole("link", { name: /Official details/i }),
     ).toBeVisible();
@@ -1152,6 +1157,13 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(heading).toBeVisible();
     await expect(heading).toBeFocused();
     await expectSheetClearOfActionBar(page, sheet);
+    await expect
+      .poll(
+        () =>
+          readFocusedMarkerClearance(page, "fair-arrival-lot-d-monroe"),
+        { timeout: 8_000 },
+      )
+      .toEqual([]);
 
     const stacking = await page.evaluate(() => {
       const selected = document.querySelector<HTMLElement>(

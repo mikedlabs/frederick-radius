@@ -413,8 +413,10 @@ function keepFocusInsideDialog(event: ReactKeyboardEvent<HTMLElement>) {
 
 function FairMapFeatureActions({
   feature,
+  mode = "all",
 }: {
   feature: FairGroundsMapFeature;
+  mode?: "all" | "primary" | "secondary";
 }) {
   const informationSource = feature.properties.informationSource;
   const mappedSourceIsInformationSource =
@@ -427,7 +429,7 @@ function FairMapFeatureActions({
 
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
-      {feature.properties.directionsEnabled ? (
+      {mode !== "secondary" && feature.properties.directionsEnabled ? (
         <a
           href={directionsHref(
             feature.properties.anchor[1],
@@ -445,7 +447,7 @@ function FairMapFeatureActions({
           Get directions
         </a>
       ) : null}
-      {informationSource ? (
+      {mode !== "primary" && informationSource ? (
         <a
           href={informationSource.url}
           target="_blank"
@@ -458,7 +460,9 @@ function FairMapFeatureActions({
           <ExternalLink className="h-3.5 w-3.5" aria-hidden />
         </a>
       ) : null}
-      {mappedSourceLabel && !mappedSourceIsInformationSource ? (
+      {mode !== "primary" &&
+      mappedSourceLabel &&
+      !mappedSourceIsInformationSource ? (
         <a
           href={feature.properties.sourceUrl}
           target="_blank"
@@ -488,6 +492,7 @@ export default function FairGroundsMapInner({
   const mobileSelectionHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const desktopSelectionHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const lastSelectionTriggerRef = useRef<HTMLElement | null>(null);
+  const lastClosedFeatureRef = useRef<FairGroundsMapFeature | null>(null);
   const clusterOriginRef = useRef<{
     element: HTMLElement;
     memberIds: string[];
@@ -1028,6 +1033,7 @@ export default function FairGroundsMapInner({
     ]);
     const bottomChrome = visibleBoxes([
       ".fair-grounds-map-canvas .maplibregl-ctrl-attrib",
+      "[data-fair-map-selection]",
       "[data-mobile-action-bar]",
     ]);
     const top = topChrome.reduce(
@@ -1105,18 +1111,57 @@ export default function FairGroundsMapInner({
     setMapAnnouncement(
       `${selectedName} selected. Details are open.`,
     );
-    mapRef.current?.getMap().easeTo({
-      center: feature.properties.anchor,
-      zoom: Math.max(mapRef.current?.getZoom() ?? FAIR_VIEW.zoom, 17),
-      duration: mapCameraDuration("focus"),
-      padding: fairMapFitPadding(),
-    });
-    window.requestAnimationFrame(focusSelectedDetails);
   };
+
+  useEffect(() => {
+    if (!selected || mapRuntime !== "interactive") return;
+
+    // The mobile place sheet is mounted by this selection. Wait until it has
+    // real bounds before computing camera padding so the chosen marker stays
+    // above the sheet instead of being centered underneath it.
+    const frame = window.requestAnimationFrame(() => {
+      const map = mapRef.current?.getMap();
+      if (!map) return;
+      map.easeTo({
+        center: selected.properties.anchor,
+        zoom: Math.max(map.getZoom(), 17),
+        duration: mapCameraDuration("focus"),
+        padding: fairMapFitPadding(),
+      });
+      focusSelectedDetails();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [fairMapFitPadding, mapRuntime, selected]);
+
+  useEffect(() => {
+    if (selected || mapRuntime !== "interactive") return;
+    const closedFeature = lastClosedFeatureRef.current;
+    if (!closedFeature) return;
+    lastClosedFeatureRef.current = null;
+
+    // The contextual controls have returned in this render. Reframe around
+    // their real bounds; cleanup cancels this if another place is selected.
+    const frame = window.requestAnimationFrame(() => {
+      const map = mapRef.current?.getMap();
+      if (!map) return;
+      map.easeTo({
+        center: closedFeature.properties.anchor,
+        zoom: Math.max(map.getZoom(), 17),
+        duration: mapCameraDuration("focus"),
+        padding: fairMapFitPadding(),
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [fairMapFitPadding, mapRuntime, selected]);
 
   const closeSelection = () => {
     const origin = clusterOriginRef.current;
     const returnTarget = origin?.element ?? lastSelectionTriggerRef.current;
+    // Keep a cluster-origin camera stable so its exact trigger can receive
+    // focus again. Search/list selections need a reframe when controls return.
+    lastClosedFeatureRef.current = origin ? null : selected;
     setSelectionExpanded(false);
     setSelectedId(null);
     setMapAnnouncement("Map place details closed.");
@@ -1460,7 +1505,7 @@ export default function FairGroundsMapInner({
         <div
           data-fair-map-high-text-controls
           data-fair-map-runtime-control
-          className="absolute inset-x-[12px] top-[12px] z-30"
+          className={`absolute inset-x-[12px] top-[12px] z-30 ${selected ? "hidden" : ""}`}
         >
           {condensedSearchOpen ? (
             <div
@@ -1626,7 +1671,10 @@ export default function FairGroundsMapInner({
           </p>
         </div>
       ) : (
-        <div data-fair-map-standard-controls className="contents">
+        <div
+          data-fair-map-standard-controls
+          className={selected ? "hidden lg:contents" : "contents"}
+        >
           <div
             data-fair-map-search-rail
             className="absolute inset-x-3 top-3 z-30 lg:relative lg:inset-auto lg:top-auto lg:z-auto lg:mt-3"
@@ -2133,7 +2181,7 @@ export default function FairGroundsMapInner({
           {interactiveMapAvailable && mapLoaded && !condensedMobileControls ? (
             <div
               data-fair-map-utility-controls
-              className="absolute left-3 top-[7.75rem] z-10 flex items-start gap-2 lg:top-3 lg:flex-col"
+              className={`absolute left-3 top-[7.75rem] z-10 items-start gap-2 lg:top-3 lg:flex lg:flex-col ${selected ? "hidden" : "flex"}`}
             >
             <button
               type="button"
@@ -2325,15 +2373,7 @@ export default function FairGroundsMapInner({
                       selected.properties.locationPrecision,
                     ) ?? "Reviewed Fair map place")}
               </p>
-              {selected.properties.detail ? (
-                <p
-                  className="mt-2 text-[14px] leading-relaxed"
-                  style={{ color: "var(--app-ink-2)" }}
-                >
-                  {selected.properties.detail}
-                </p>
-              ) : null}
-              <FairMapFeatureActions feature={selected} />
+              <FairMapFeatureActions feature={selected} mode="primary" />
               <button
                 type="button"
                 aria-expanded={selectionExpanded}
@@ -2352,6 +2392,15 @@ export default function FairGroundsMapInner({
                 id="fair-map-selection-mobile-details"
                 className={selectionExpanded ? "block" : "hidden"}
               >
+              {selected.properties.detail ? (
+                <p
+                  className="mt-2 text-[14px] leading-relaxed"
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  {selected.properties.detail}
+                </p>
+              ) : null}
+              <FairMapFeatureActions feature={selected} mode="secondary" />
               {selectedStops.length > 0 ? (
                 <p
                   className="mt-2 text-[14px] font-semibold"
