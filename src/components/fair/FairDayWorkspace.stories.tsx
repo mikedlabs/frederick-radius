@@ -3,6 +3,10 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { addFairPlanItem, createFairPlan } from "@/lib/fair/plan";
 import type { FairPartyOffer } from "@/lib/fair/party-plan";
 import { greatFrederickFair2026PracticalAnswers } from "@/data/fair/great-frederick-fair-2026-practical-answers";
+import {
+  fairTransitTravelSummary,
+  greatFrederickFair2026TransitReview,
+} from "@/data/fair/great-frederick-fair-2026-transit";
 
 import FairDayWorkspace from "./FairDayWorkspace";
 import type {
@@ -225,6 +229,8 @@ export const fairDayStoryData: FairDayWorkspaceData = {
     weekdayLabel,
     dayLabel,
     gateHoursLabel,
+    gateOpensAt: `${date}T${gateHoursLabel === "4 PM" ? "16" : "09"}:00:00-04:00`,
+    gateClosesAt: `${date}T22:00:00-04:00`,
   })),
   initialDate: "2026-09-18",
   offers: [
@@ -332,13 +338,13 @@ export const fairDayStoryData: FairDayWorkspaceData = {
       id: "arrival-transit",
       planChoice: "transit",
       label: "County Transit",
-      summary:
-        "The reviewed static feed associates East Patrick Street at Fairground Center with EFS and 15. This is static network context, not a service promise. Service on Fair dates is not confirmed, and arrival times are not confirmed.",
-      paymentLabel: "County Transit is fare-free. Check Fair-date service before relying on this option.",
+      summary: fairTransitTravelSummary(),
+      paymentLabel:
+        "County Transit is fare-free. Radius checked the published static Fair-week schedule on September 4.",
       returnLabel: "Recheck county Transit before leaving",
       returnSummary:
-        "Radius has no confirmed Fair-date service or arrival time for this stop.",
-      officialInfoUrl: "https://www.frederickcountymd.gov/105/Transit-Services",
+        "Static departure times can change. Check County Transit again before the return trip.",
+      officialInfoUrl: greatFrederickFair2026TransitReview.informationUrl,
     },
     {
       id: "arrival-dropoff",
@@ -353,6 +359,12 @@ export const fairDayStoryData: FairDayWorkspaceData = {
       officialInfoUrl: OFFICIAL_VISIT_URL,
     },
   ],
+  parkingGlance: {
+    satellitePriceLabel: "$10",
+    satellitePaymentLabel: "cash",
+    infieldPriceLabel: "$15",
+    infieldPaymentLabel: "cash or credit card",
+  },
   entrySummary:
     "Adult admission is $10 online or $15 at the gate. Apple Pay is not accepted.",
   entryDetail:
@@ -370,8 +382,8 @@ export const fairDayStoryData: FairDayWorkspaceData = {
   source: {
     label: "Official Fair program and visitor information",
     sourceUrl: OFFICIAL_FAIR_URL,
-    checkedLabel: "September 1, 2026 at 2:40 PM",
-    ageLabel: "The source was checked today",
+    checkedLabel: "August 29, 2026 at 8:52 AM",
+    ageLabel: "This imported program version is 3 days old",
   },
 };
 

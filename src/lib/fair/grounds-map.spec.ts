@@ -7,12 +7,18 @@ import {
   greatFrederickFair2026MapAdditions,
   greatFrederickFair2026MapPatches,
 } from "@/data/fair/great-frederick-fair-2026-map-overlays";
+import {
+  greatFrederickFair2026Pack,
+  greatFrederickFair2026PackPointer,
+} from "@/data/fair/great-frederick-fair-2026-pack";
+import { buildFairDayWorkspaceData } from "@/components/fair/buildFairDayWorkspaceData";
 
 import {
   enrichFairGroundsMap,
   fairGroundsFeatureMatchesFilter,
   fairGroundsFeatureMatchesPlace,
   parseFairGroundsMap,
+  resolveFairGroundsFeatureId,
 } from "./grounds-map";
 
 const baseMap = parseFairGroundsMap(
@@ -32,7 +38,10 @@ const map = enrichFairGroundsMap(
 
 describe("Fair grounds map", () => {
   it("ships a source-transparent reviewed OpenStreetMap base", () => {
-    expect(baseMap.reviewedOn).toBe("2026-09-02");
+    expect(baseMap.reviewedOn).toBe("2026-09-04");
+    expect(baseMap.source.snapshotSha256).toBe(
+      "eb5f3bbb245b6aa8ba357f032df718c07af2e559e91c2c5b963b633e10c23c5a",
+    );
     expect(baseMap.source.publisher).toBe("OpenStreetMap contributors");
     expect(baseMap.features).toHaveLength(44);
     expect(
@@ -45,6 +54,25 @@ describe("Fair grounds map", () => {
           feature.properties.sourceUrl.startsWith(
             "https://www.openstreetmap.org/",
           ),
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps every published program map action resolvable to one reviewed place", () => {
+    const workspace = buildFairDayWorkspaceData(
+      greatFrederickFair2026Pack,
+      greatFrederickFair2026PackPointer,
+      new Date("2026-09-04T16:00:00Z"),
+    );
+    const mappedProgramItems = workspace.scheduleItems.filter((item) =>
+      item.placeLabel.startsWith("Published place:"),
+    );
+
+    expect(mappedProgramItems).toHaveLength(146);
+    expect(
+      mappedProgramItems.every(
+        (item) =>
+          resolveFairGroundsFeatureId(map.features, [item.placeLabel]) !== null,
       ),
     ).toBe(true);
   });
@@ -66,9 +94,9 @@ describe("Fair grounds map", () => {
   });
 
   it("applies reviewed patches and additions without duplicate feature ids", () => {
-    expect(greatFrederickFair2026MapPatches).toHaveLength(22);
-    expect(greatFrederickFair2026MapAdditions).toHaveLength(9);
-    expect(map.features).toHaveLength(53);
+    expect(greatFrederickFair2026MapPatches).toHaveLength(28);
+    expect(greatFrederickFair2026MapAdditions).toHaveLength(12);
+    expect(map.features).toHaveLength(56);
     expect(new Set(map.features.map((feature) => feature.properties.id)).size).toBe(
       map.features.length,
     );
@@ -180,7 +208,7 @@ describe("Fair grounds map", () => {
       fairGroundsFeatureMatchesFilter(feature, "arrival"),
     );
 
-    expect(arrival).toHaveLength(14);
+    expect(arrival).toHaveLength(17);
     expect(
       arrival.filter((feature) => feature.properties.kind === "parking"),
     ).toHaveLength(5);
@@ -191,7 +219,7 @@ describe("Fair grounds map", () => {
       arrival
         .filter((feature) => feature.properties.kind === "gate")
         .map((feature) => feature.properties.name),
-    ).toEqual(["Gate 1", "Gate 3", "Gate 4A"]);
+    ).toEqual(["Gate 1", "Gate 3", "Gate 4", "Gate 4A", "Gate 5", "Gate 6"]);
     expect(
       arrival.every(
         (feature) =>
@@ -207,12 +235,109 @@ describe("Fair grounds map", () => {
     const essentials = map.features.filter((feature) =>
       fairGroundsFeatureMatchesFilter(feature, "essentials"),
     );
+    expect(essentials).toHaveLength(25);
     expect(
       essentials.some((feature) => feature.properties.kind === "restroom"),
     ).toBe(true);
     expect(
       essentials.some((feature) => feature.properties.kind === "animal"),
     ).toBe(false);
+    expect(
+      essentials.map((feature) => feature.properties.name),
+    ).toEqual(
+      expect.arrayContaining([
+        "Administration (Building 3)",
+        "Youth Indoor Exhibits (Building 12)",
+        "First Aid near Building 15",
+        "Information booth near Gate 4A",
+      ]),
+    );
+  });
+
+  it("makes non-public gates explicit without routing visitors to them", () => {
+    const restrictions = new Map(
+      ["Gate 4", "Gate 5", "Gate 6"].map((name) => {
+        const feature = map.features.find(
+          (candidate) => candidate.properties.name === name,
+        );
+        if (!feature) throw new Error(`Expected ${name}`);
+        return [name, feature] as const;
+      }),
+    );
+
+    expect(restrictions.get("Gate 4")?.properties.detail).toContain("Exit only");
+    expect(restrictions.get("Gate 5")?.properties.detail).toContain(
+      "Exhibitors only",
+    );
+    expect(restrictions.get("Gate 6")?.properties.detail).toContain("Closed");
+    expect(
+      [...restrictions.values()].every(
+        (feature) =>
+          feature.properties.directionsEnabled === false &&
+          feature.properties.filterIds?.includes("arrival") &&
+          feature.properties.informationSource?.title ===
+            "2026 Schedule of Events grounds map",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps schematic service locations useful without inventing routing precision", () => {
+    const services = map.features.filter(
+      (feature) => feature.properties.kind === "service",
+    );
+    const buildingFifteen = map.features.find(
+      (feature) => feature.properties.name === "Restroom (Building 15)",
+    );
+    const administration = map.features.find(
+      (feature) => feature.properties.name === "Administration (Building 3)",
+    );
+    const gateFourA = map.features.find(
+      (feature) => feature.properties.name === "Gate 4A",
+    );
+
+    expect(services).toHaveLength(3);
+    expect(
+      services.every(
+        (feature) =>
+          feature.properties.locationPrecision === "published-area" &&
+          feature.properties.directionsEnabled === false &&
+          feature.properties.filterIds?.includes("essentials"),
+      ),
+    ).toBe(true);
+    expect(
+      services.find(
+        (feature) => feature.properties.id === "fair-service-first-aid-building-15",
+      )?.properties.anchor,
+    ).toEqual(buildingFifteen?.properties.anchor);
+    expect(
+      services.find(
+        (feature) => feature.properties.id === "fair-service-information-gate-4a",
+      )?.properties.anchor,
+    ).toEqual(gateFourA?.properties.anchor);
+    expect(
+      services.find(
+        (feature) =>
+          feature.properties.id === "fair-service-information-administration",
+      )?.properties.anchor,
+    ).toEqual(administration?.properties.anchor);
+  });
+
+  it("uses the current published Fair-week transit times", () => {
+    const monroeAcross = map.features.find(
+      (feature) => feature.properties.id === "transit-stop-163112",
+    );
+    const transit = map.features.filter(
+      (feature) => feature.properties.kind === "transit",
+    );
+
+    expect(transit).toHaveLength(5);
+    expect(monroeAcross?.properties.detail).toContain(
+      "seven explicit published departures from 9:05 AM through 5:05 PM",
+    );
+    expect(monroeAcross?.properties.detail).not.toContain("6:05 PM");
+    expect(monroeAcross?.properties.informationSource?.checkedAt).toBe(
+      "2026-09-04T06:04:00Z",
+    );
   });
 
   it.each([
@@ -236,11 +361,50 @@ describe("Fair grounds map", () => {
     ["Published place: Bldg. 32.", "osm-way-307321849"],
     ["Published place: Bldg. 13.", "osm-way-307321854"],
   ])("maps the reviewed schedule venue %s to %s", (placeLabel, featureId) => {
-    const matches = baseMap.features.filter((feature) =>
+    const matches = map.features.filter((feature) =>
       fairGroundsFeatureMatchesPlace(feature, placeLabel),
     );
 
     expect(matches.map((feature) => feature.properties.id)).toEqual([featureId]);
+  });
+
+  it.each([
+    ["Published place: Bldg. 3 Administration office.", "osm-way-305093779"],
+    ["Published place: The Null Bldg. (9).", "osm-way-103615601"],
+    ["Published place: Youth Building, Bldg. 12.", "osm-way-307321839"],
+    ["Published place: Homegrown Frederick, Bldg. 13.", "osm-way-307321854"],
+    ["Published place: Bathroom Building 15.", "osm-way-307321850"],
+    ["Published place: Free Stage.", "osm-way-307321838"],
+  ])("maps the official 2026 label %s to %s", (placeLabel, featureId) => {
+    const matches = map.features.filter((feature) =>
+      fairGroundsFeatureMatchesPlace(feature, placeLabel),
+    );
+
+    expect(matches.map((feature) => feature.properties.id)).toEqual([featureId]);
+  });
+
+  it("resolves raw official program wording without guessing across matches", () => {
+    expect(
+      resolveFairGroundsFeatureId(map.features, [
+        "Household Building Demonstrations in The Null Bldg.",
+      ]),
+    ).toBe("osm-way-103615601");
+    expect(
+      resolveFairGroundsFeatureId(map.features, [
+        "Neal McCoy with special guest at the Grandstand",
+      ]),
+    ).toBe("osm-way-103615596");
+
+    const grandstand = map.features.find(
+      (feature) => feature.properties.id === "osm-way-103615596",
+    );
+    if (!grandstand) throw new Error("Expected Grandstand map feature");
+    const duplicated = [grandstand, grandstand];
+    expect(
+      resolveFairGroundsFeatureId(duplicated, [
+        "Published place: Grandstand.",
+      ]),
+    ).toBeNull();
   });
 
   it("does not confuse numbered buildings or invent Kid Zone geometry", () => {

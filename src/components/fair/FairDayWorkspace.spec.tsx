@@ -20,6 +20,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
   it("keeps original Fair links connected to the redesigned task views", () => {
     expect(fairModeFromHash("#now")).toBe("now");
     expect(fairModeFromHash("find")).toBe("find");
+    expect(fairModeFromHash("#program")).toBe("find");
     expect(fairModeFromHash("#fair-map")).toBe("map");
     expect(fairModeFromHash("#plan")).toBe("my-day");
     expect(fairModeFromHash("#leave")).toBe("travel");
@@ -27,17 +28,20 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(fairModeFromHash("#not-a-fair-view")).toBeNull();
   });
 
-  it("renders a dedicated Fair identity, independent-guide disclosure, and Mike D photo", () => {
+  it("renders a dedicated Fair identity, disclosure, and authentic Fair photography", () => {
     const html = renderToStaticMarkup(
       createElement(FairDayWorkspace, { data }),
     );
 
     expect(html).toContain("Fair Day");
-    expect(html).toContain("Fair Day · Frederick Radius");
+    expect(html).toContain("Radius at the Fair");
     expect(html).toContain(data.disclosure);
-    expect(html).toContain("Photograph by Mike D");
+    expect(html).not.toContain("Photograph by Mike D");
+    expect(html).not.toContain("Photo: Mike D");
     expect(html).toContain("fairgrounds-night-mike-d-960.jpg");
     expect(html).toContain("fairgrounds-night-mike-d-1920.jpg");
+    expect(html).toContain("fairgrounds-night-mike-d-480.webp 480w");
+    expect(html).toContain('type="image/webp"');
     expect(html).toContain('width="960" height="540"');
     expect(html).toContain("fairgrounds-night-mike-d-960.jpg 960w");
     expect(html).toContain("fairgrounds-night-mike-d-1920.jpg 1920w");
@@ -54,8 +58,10 @@ describe("FairDayWorkspace server-rendered contract", () => {
 
     expect(html).not.toContain("<main");
     expect(html).toContain('data-fair-app="true"');
+    expect(html).not.toContain("visibility:hidden");
+    expect(html).toContain("Preparing the Fair guide.");
     expect(html).toContain(
-      '<section id="fair-now-panel" aria-labelledby="fair-now-heading">',
+      '<section id="fair-now-panel" aria-labelledby="fair-now-heading" data-fair-mode-panel="true">',
     );
     expect(html).not.toContain('role="tabpanel"');
     expect(html).toContain('id="fair-now-heading"');
@@ -73,7 +79,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
 
     expect(html).toContain('data-mobile-action-bar="true"');
     expect(html).toContain('aria-label="Fair Day"');
-    for (const label of ["Today", "Explore", "Map", "My Day"]) {
+    for (const label of ["Home", "Program", "Map", "My Day"]) {
       expect(html).toContain(`aria-label="${label}"`);
     }
     expect(html).not.toContain('href="#now"');
@@ -82,21 +88,73 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).not.toContain('href="#travel"');
   });
 
-  it("shows one next action without repeating a preparation dashboard", () => {
+  it("puts the selected day's four essential decisions in one compact board", () => {
     const html = renderToStaticMarkup(
       createElement(FairDayWorkspace, { data }),
     );
 
-    expect(html).toContain("Your next best step");
-    expect(html).toContain("Tickets still need review.");
+    expect(html).toContain("data-fair-at-a-glance");
+    expect(html.match(/data-fair-glance-tile=/g)).toHaveLength(4);
+    expect(html).toContain("Friday at a glance");
+    expect(html).toContain('aria-label="Fair day in your plan"');
+    expect(html).toContain("4–10 p.m.");
+    expect(html).toContain("$8 first Friday");
+    expect(html).toContain("Children 10 &amp; under free");
+    expect(html).toContain("$10 cash lots");
+    expect(html).toContain("$15 infield · cash or card");
+    expect(html).toContain("Kid Zone");
     expect(html).toContain("Review tickets");
     expect(html.match(/0 of 3 ready/g)).toHaveLength(1);
     expect(html).toContain("No saved stops");
+    expect(html).not.toContain("data-fair-next-action");
+    expect(html).not.toContain('data-fair-plan-status="full"');
     expect(html).not.toContain('aria-label="Fair trip at a glance"');
     expect(html).not.toContain("Visitor essentials");
     expect(html).not.toContain("Check the details that can slow you down.");
     expect(html).not.toContain("Return plan set");
     expect(html).not.toContain("Ready to Go checks");
+  });
+
+  it("presents the three primary starts as a shallow mobile wallet stack", () => {
+    const html = renderToStaticMarkup(
+      createElement(FairDayWorkspace, { data }),
+    );
+
+    expect(html).toContain("What do you need first?");
+    expect(html).toContain("data-fair-wallet-stack");
+    expect(html.match(/data-fair-wallet-card=/g)).toHaveLength(3);
+    expect(html).toContain('data-fair-wallet-card="2"');
+    expect(html).toContain("-mt-2 ml-1");
+    expect(html).toContain('data-fair-wallet-card="3"');
+    expect(html).toContain("-mt-2 ml-2");
+    expect(html).toContain("focus-visible:z-[var(--z-nav)]");
+  });
+
+  it("offers the printable Fair extra after the primary planning choices", () => {
+    const html = renderToStaticMarkup(
+      createElement(FairDayWorkspace, { data }),
+    );
+
+    expect(html).toContain("data-fair-coloring-book");
+    expect(html).toContain("Fair Nights");
+    expect(html).toContain(
+      'href="/downloads/fair-nights-frederick-coloring-book.pdf"',
+    );
+    expect(html.indexOf("What do you need first?")).toBeLessThan(
+      html.indexOf("data-fair-coloring-book"),
+    );
+    expect(html.indexOf("data-fair-coloring-book")).toBeLessThan(
+      html.indexOf("About this independent guide"),
+    );
+  });
+
+  it("routes named vendor searches to the current official directory", () => {
+    const html = renderToStaticMarkup(
+      createElement(FairDayWorkspace, { data }),
+    );
+
+    expect(html).not.toContain("data-fair-vendor-search");
+    expect(data.externalGuide.url).toContain("Show_ID=18209");
   });
 
   it("keeps the first screen compact and defers external tools until their decision point", () => {
@@ -106,7 +164,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
 
     expect(html).not.toContain("Plan Friday at the Fair.");
     expect(html).not.toContain("Before the Fair · Fri, Sep 18");
-    expect(html.indexOf("Your next best step")).toBeLessThan(
+    expect(html.indexOf("Friday at a glance")).toBeLessThan(
       html.indexOf("About this independent guide"),
     );
     expect(html).not.toContain(data.externalGuide.url);

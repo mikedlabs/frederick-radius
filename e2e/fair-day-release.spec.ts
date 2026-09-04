@@ -16,6 +16,27 @@ test.describe("Fair Day production release journey", () => {
     serviceWorkers: "block",
   });
 
+  test("keeps the unrelated Today route out of the Fair cold load", async ({
+    page,
+  }) => {
+    const todayRequests: string[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === "/today") todayRequests.push(url.toString());
+    });
+
+    const response = await page.goto(FAIR_CANONICAL_PATH, {
+      waitUntil: "networkidle",
+      timeout: 60_000,
+    });
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("link", { name: "Back to Frederick Radius" }))
+      .toHaveAttribute("href", "/today");
+    await page.waitForTimeout(1_000);
+
+    expect(todayRequests).toEqual([]);
+  });
+
   test("keeps tickets, travel, planning, help, and official handoffs ready", async ({
     page,
   }) => {
@@ -37,18 +58,38 @@ test.describe("Fair Day production release journey", () => {
         name: "The Great Frederick Fair",
       }),
     ).toBeVisible();
+    const fairShare = page.getByRole("button", {
+      name: "Share the Fair guide",
+    });
+    await expect(fairShare).toBeVisible();
+    const fairShareBox = await fairShare.boundingBox();
+    expect(fairShareBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+    expect(fairShareBox?.width ?? 0).toBeGreaterThanOrEqual(44);
     await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
       "data-fair-interaction-ready",
       "true",
       { timeout: 15_000 },
     );
+    const essentials = page.locator("[data-fair-at-a-glance]");
+    await expect(essentials).toBeVisible();
+    const essentialTiles = essentials.locator("[data-fair-glance-tile]");
+    await expect(essentialTiles).toHaveCount(4);
+    await expect(essentials).toContainText("Children 10 & under free");
+    await expect(essentials).toContainText("$10 cash lots");
+    for (const tile of await essentialTiles.all()) {
+      const box = await tile.boundingBox();
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+      expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+    }
     await expect(
       page.getByRole("navigation", { name: "Primary" }),
     ).toHaveCount(0);
     await expect(page.getByLabel("Send feedback")).toHaveCount(0);
     const mobileActionBar = page.locator("[data-mobile-action-bar]");
     await expect(mobileActionBar).toBeVisible();
-    await expect(mobileActionBar).toHaveAttribute(
+    await expect(
+      mobileActionBar.getByRole("navigation", { name: "Fair Day" }),
+    ).toHaveAttribute(
       "style",
       /--app-bg-elevated-solid/,
     );
@@ -58,6 +99,9 @@ test.describe("Fair Day production release journey", () => {
     });
     await datePicker.selectOption("2026-09-20");
     await expect(datePicker).toHaveValue("2026-09-20");
+    await expect(essentials).toContainText("Sunday at a glance");
+    await expect(essentials).toContainText("$10 online · $15 gate");
+    await expect(essentials).not.toContainText("$8 first Friday");
     await expect(
       page.getByRole("heading", { level: 1, name: "The Great Frederick Fair" }),
     ).toBeVisible();
@@ -99,7 +143,6 @@ test.describe("Fair Day production release journey", () => {
     await page.getByRole("button", { name: "Close Fair help" }).click();
 
     await page.getByRole("button", { name: "Review tickets" }).click();
-    await page.getByRole("button", { name: "Compare tickets" }).click();
     await page.getByRole("spinbutton", { name: "Adults 11+" }).fill("2");
 
     const ticketCombination = page.getByRole("list", {
@@ -124,11 +167,14 @@ test.describe("Fair Day production release journey", () => {
     await transitChoice.locator("..").click();
     await expect(transitChoice).toBeChecked();
     await expect(
-      page.getByText(/Fair-date service and arrival times are not confirmed/),
+      page.getByText(/does not publish East Frederick Shuttle or Route 15 service/),
     ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: "Open Radius Transit" }),
-    ).toHaveAttribute("href", "/transit");
+    const officialTransit = page.getByRole("link", {
+      name: "Check official County Transit",
+    });
+    await expect(officialTransit).toHaveAttribute("href", COUNTY_TRANSIT_URL);
+    await expect(officialTransit).toHaveAttribute("target", "_blank");
+    await expect(officialTransit).toHaveAttribute("rel", "noopener noreferrer");
 
     await page.getByText("Sources and limits").click();
     const transitSource = page.getByRole("link", {
@@ -171,10 +217,10 @@ test.describe("Fair Day production release journey", () => {
       .fill("Homegrown Wineries");
     await page
       .locator("#fair-map-search-results")
-      .getByRole("button", { name: /Commercial Building/ })
+      .getByRole("button", { name: /Homegrown Frederick/ })
       .click();
     const selectedPlace = page.getByRole("region", {
-      name: "Selected map place: Commercial Building",
+      name: "Selected map place: Homegrown Frederick (Building 13)",
     });
     await expect(selectedPlace).toBeVisible();
     await expect(selectedPlace).toContainText("On your selected day");
@@ -188,18 +234,39 @@ test.describe("Fair Day production release journey", () => {
     expect(
       (selectedPosition?.y ?? 0) + (selectedPosition?.height ?? 0),
     ).toBeLessThanOrEqual(actionBarPosition?.y ?? Number.POSITIVE_INFINITY);
-    await page.getByRole("button", { name: "Explore", exact: true }).click();
+    await page.getByRole("button", { name: "Program", exact: true }).click();
     await expect(
       page.getByRole("region", { name: "Fair activity paths" }),
     ).toBeVisible();
+    const programVendorSearch = page.getByRole("link", {
+      name: "Search official vendor booths",
+    });
+    await expect(programVendorSearch).toHaveAttribute("href", EVENTHUB_URL);
+    await expect(programVendorSearch).toHaveAttribute("target", "_blank");
+    await expect(programVendorSearch).toHaveAttribute(
+      "rel",
+      "noopener noreferrer",
+    );
+    const grandstandSpotlight = page.locator(
+      "[data-fair-grandstand-spotlight]",
+    );
+    await expect(grandstandSpotlight).toBeVisible();
+    const grandstandSpotlightBox = await grandstandSpotlight.boundingBox();
+    expect(grandstandSpotlightBox?.height ?? 0).toBeGreaterThanOrEqual(190);
+    expect(grandstandSpotlightBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(215);
+    expect(
+      (grandstandSpotlightBox?.x ?? Number.POSITIVE_INFINITY) +
+        (grandstandSpotlightBox?.width ?? Number.POSITIVE_INFINITY),
+    ).toBeLessThanOrEqual(390);
     await expect(
       page.getByRole("list", { name: "Fair program results" }),
     ).toHaveCount(0);
     await page
       .getByRole("button", { name: "Browse full program", exact: true })
       .click();
+    await expect(page.locator("[data-fair-program-groups]")).toBeVisible();
     await expect(
-      page.getByRole("list", { name: "Fair program results" }),
+      page.locator("[data-fair-program-trail]:visible").first(),
     ).toBeVisible();
 
     const addProgramItem = page
@@ -240,6 +307,118 @@ test.describe("Fair Day production release journey", () => {
       "placeholder",
       "Tell us what made the Fair harder to access or use.",
     );
+  });
+
+  test("keeps concise program cards connected to exact official wording", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await page.goto(`${FAIR_CANONICAL_PATH}#program`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
+      "data-fair-interaction-ready",
+      "true",
+      { timeout: 15_000 },
+    );
+
+    await page
+      .getByRole("combobox", { name: "Fair day to explore" })
+      .selectOption("2026-09-18");
+    const foodProgram = page.locator(
+      '[data-fair-discovery-choice="food-program"]',
+    );
+    await expect(foodProgram).toBeEnabled();
+    await expect(foodProgram).toContainText(
+      "Homegrown Wineries, Breweries and Distilleries Showcase",
+    );
+
+    await page
+      .getByRole("button", { name: "Browse full program", exact: true })
+      .click();
+    const eveningGroup = page.locator(
+      '[data-fair-program-daypart="evening"]',
+    );
+    await eveningGroup.locator("summary").click();
+    const daughtryCard = eveningGroup.locator("li").filter({
+      has: page.getByText("Daughtry", { exact: true }),
+    });
+    await expect(daughtryCard).toBeVisible();
+    await daughtryCard
+      .getByRole("button", { name: "Open details for Daughtry" })
+      .click();
+
+    const details = page.getByRole("dialog", { name: "Daughtry" });
+    await expect(details).toContainText("Headliner 8 p.m.");
+    await details.getByText("Imported official wording", { exact: true }).click();
+    await expect(details).toContainText(
+      "Daughtry - Presented by Team Reeder of Long & Foster Real Estate, Inc. & Carter Machinery",
+    );
+    await expect(
+      details.getByRole("link", { name: "Official Grandstand source" }),
+    ).toHaveAttribute("target", "_blank");
+    await expect(
+      details.getByRole("link", { name: "Official Grandstand source" }),
+    ).toHaveAttribute(
+      "href",
+      "https://thegreatfrederickfair.com/grandstand/",
+    );
+    await page.getByRole("button", { name: "Close Daughtry" }).click();
+    await expect(
+      daughtryCard.getByRole("button", { name: "Open details for Daughtry" }),
+    ).toBeFocused();
+  });
+
+  test("hands an exact program place to the map once and returns cleanly", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await page.goto(`${FAIR_CANONICAL_PATH}#program`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
+      "data-fair-interaction-ready",
+      "true",
+      { timeout: 15_000 },
+    );
+    await page
+      .getByRole("combobox", { name: "Fair day to explore" })
+      .selectOption("2026-09-18");
+    await page
+      .getByRole("button", { name: "Browse full program", exact: true })
+      .click();
+    const eveningGroup = page.locator(
+      '[data-fair-program-daypart="evening"]',
+    );
+    await eveningGroup.locator("summary").click();
+    await eveningGroup
+      .getByRole("button", { name: "Open details for Daughtry" })
+      .click();
+    const details = page.getByRole("dialog", { name: "Daughtry" });
+    await details.getByRole("button", { name: "Show on map" }).click();
+
+    await expect(page).toHaveURL(/#fair-map$/);
+    const selectedGrandstand = page.getByRole("region", {
+      name: "Selected map place: Grandstand",
+    });
+    await expect(selectedGrandstand).toBeVisible({ timeout: 15_000 });
+    await expect
+      .poll(
+        () => page.evaluate(() => document.activeElement?.id ?? ""),
+        { timeout: 3_000 },
+      )
+      .toBe("fair-map-selection-mobile-heading");
+
+    await page.getByRole("button", { name: "Program", exact: true }).click();
+    await expect(page).toHaveURL(/#program$/);
+    await page.getByRole("button", { name: "Map", exact: true }).click();
+    await expect(page).toHaveURL(/#fair-map$/);
+    await expect(page.locator("[data-fair-grounds-map] canvas")).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(
+      page.getByRole("region", { name: "Selected map place: Grandstand" }),
+    ).toHaveCount(0);
   });
 
   test("uses location only after a tap and refuses a misleadingly broad fix", async ({
@@ -320,7 +499,7 @@ test.describe("Fair Day production release journey", () => {
   test("keeps every Fair tool inside common phone widths", async ({ page }) => {
     test.setTimeout(60_000);
 
-    for (const width of [320, 390, 430]) {
+    for (const width of [320, 375, 390, 430]) {
       await page.setViewportSize({ width, height: 844 });
       await page.goto(`${FAIR_CANONICAL_PATH}#now`, {
         waitUntil: "domcontentloaded",
@@ -333,9 +512,6 @@ test.describe("Fair Day production release journey", () => {
       if (width === 320) {
         const heroLayout = await page.locator("[data-fair-hero]").evaluate(
           (hero) => {
-            const credit = hero.querySelector<HTMLElement>(
-              "[data-fair-hero-credit]",
-            );
             const identity = hero.querySelector<HTMLElement>(
               "[data-fair-hero-identity]",
             );
@@ -345,13 +521,13 @@ test.describe("Fair Day production release journey", () => {
             const content = hero.querySelector<HTMLElement>(
               "[data-fair-hero-content]",
             );
-            if (!credit || !identity || !controls || !content) return null;
-            const creditBox = credit.getBoundingClientRect();
+            if (!identity || !controls || !content) return null;
+            const controlsBox = controls.getBoundingClientRect();
             const identityBox = identity.getBoundingClientRect();
             return {
               clientHeight: content.clientHeight,
               scrollHeight: content.scrollHeight,
-              creditBottom: creditBox.bottom,
+              controlsBottom: controlsBox.bottom,
               identityTop: identityBox.top,
               controlButtons: Array.from(
                 controls.querySelectorAll<HTMLElement>("a, button"),
@@ -366,12 +542,57 @@ test.describe("Fair Day production release journey", () => {
         expect(heroLayout?.scrollHeight).toBeLessThanOrEqual(
           (heroLayout?.clientHeight ?? 0) + 1,
         );
-        expect(heroLayout?.creditBottom).toBeLessThanOrEqual(
+        expect(heroLayout?.controlsBottom).toBeLessThanOrEqual(
           heroLayout?.identityTop ?? 0,
         );
         for (const control of heroLayout?.controlButtons ?? []) {
+          expect(control.width).toBeGreaterThanOrEqual(44);
           expect(control.height).toBeGreaterThanOrEqual(44);
         }
+
+        const walletCards = page.locator("[data-fair-wallet-card]");
+        await expect(walletCards).toHaveCount(3);
+        const walletLayout = await walletCards.evaluateAll((cards) =>
+          cards.map((card) => {
+            const box = card.getBoundingClientRect();
+            const copy = card.querySelector<HTMLElement>(
+              "[data-fair-wallet-copy]",
+            );
+            return {
+              top: box.top,
+              bottom: box.bottom,
+              left: box.left,
+              right: box.right,
+              clientHeight: card.clientHeight,
+              scrollHeight: card.scrollHeight,
+              copyBottom: copy?.getBoundingClientRect().bottom,
+              zIndex: window.getComputedStyle(card).zIndex,
+            };
+          }),
+        );
+        for (let index = 1; index < walletLayout.length; index += 1) {
+          const previous = walletLayout[index - 1];
+          const current = walletLayout[index];
+          const overlap = previous.bottom - current.top;
+          expect(overlap).toBeGreaterThanOrEqual(7);
+          expect(overlap).toBeLessThanOrEqual(9);
+          expect(current.left).toBeGreaterThan(previous.left);
+          expect(previous.copyBottom ?? Number.POSITIVE_INFINITY).toBeLessThan(
+            current.top,
+          );
+        }
+        for (const card of walletLayout) {
+          expect(card.right).toBeLessThanOrEqual(width);
+          expect(card.scrollHeight).toBeLessThanOrEqual(card.clientHeight + 1);
+        }
+        await walletCards.first().focus();
+        expect(
+          Number(
+            await walletCards
+              .first()
+              .evaluate((card) => window.getComputedStyle(card).zIndex),
+          ),
+        ).toBeGreaterThan(Number(walletLayout[2].zIndex));
 
         const planSummary = page.locator("[data-fair-plan-summary]");
         const planDate = page.locator("[data-fair-plan-date]");
@@ -398,7 +619,6 @@ test.describe("Fair Day production release journey", () => {
         await page.addStyleTag({
           content: `
             [data-fair-hero-controls] :is(a, button) { font-size: 26px !important; }
-            [data-fair-hero-credit] { font-size: 18px !important; }
             [data-fair-hero-identity] > div { font-size: 20px !important; }
             #fair-now-heading { font-size: 68px !important; }
             [data-fair-hero-identity] > p { font-size: 20px !important; }
@@ -406,20 +626,20 @@ test.describe("Fair Day production release journey", () => {
         });
         const enlargedHero = await page.locator("[data-fair-hero]").evaluate(
           (hero) => {
-            const credit = hero.querySelector<HTMLElement>(
-              "[data-fair-hero-credit]",
-            );
             const identity = hero.querySelector<HTMLElement>(
               "[data-fair-hero-identity]",
             );
             const content = hero.querySelector<HTMLElement>(
               "[data-fair-hero-content]",
             );
-            if (!credit || !identity || !content) return null;
+            const controls = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-controls]",
+            );
+            if (!identity || !content || !controls) return null;
             return {
               clientHeight: content.clientHeight,
               scrollHeight: content.scrollHeight,
-              creditBottom: credit.getBoundingClientRect().bottom,
+              controlsBottom: controls.getBoundingClientRect().bottom,
               identityTop: identity.getBoundingClientRect().top,
               documentClientWidth: document.documentElement.clientWidth,
               documentScrollWidth: document.documentElement.scrollWidth,
@@ -430,7 +650,7 @@ test.describe("Fair Day production release journey", () => {
         expect(enlargedHero?.scrollHeight).toBeLessThanOrEqual(
           (enlargedHero?.clientHeight ?? 0) + 1,
         );
-        expect(enlargedHero?.creditBottom).toBeLessThanOrEqual(
+        expect(enlargedHero?.controlsBottom).toBeLessThanOrEqual(
           enlargedHero?.identityTop ?? 0,
         );
         expect(enlargedHero?.documentScrollWidth).toBeLessThanOrEqual(
@@ -438,12 +658,67 @@ test.describe("Fair Day production release journey", () => {
         );
       }
 
-      for (const label of ["Today", "Explore", "Map", "My Day"] as const) {
+      for (const label of ["Home", "Program", "Map", "My Day"] as const) {
         const destination = page
           .getByRole("navigation", { name: "Fair Day" })
           .getByRole("button", { name: label, exact: true });
         await destination.focus();
         await destination.press("Enter");
+        const headerControls = page.locator(
+          "header .fair-hero-control:visible",
+        );
+        await expect(headerControls).toHaveCount(2);
+        for (const control of await headerControls.all()) {
+          const controlBox = await control.boundingBox();
+          const glyphBox = await control.locator("svg").boundingBox();
+          expect(controlBox?.width ?? 0).toBeGreaterThanOrEqual(44);
+          expect(controlBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+          expect(glyphBox?.width ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
+            20,
+          );
+          expect(glyphBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
+            20,
+          );
+        }
+        if (width === 320 && label === "Program") {
+          const programCards = page.locator("[data-fair-discovery-choice]");
+          await expect(programCards).toHaveCount(4);
+          const programLayout = await programCards.evaluateAll((cards) =>
+            cards.map((card) => {
+              const box = card.getBoundingClientRect();
+              return {
+                top: box.top,
+                bottom: box.bottom,
+                clientHeight: card.clientHeight,
+                scrollHeight: card.scrollHeight,
+                zIndex: window.getComputedStyle(card).zIndex,
+              };
+            }),
+          );
+          for (const [upperIndex, lowerIndex] of [
+            [0, 2],
+            [1, 3],
+          ] as const) {
+            const overlap =
+              programLayout[upperIndex].bottom - programLayout[lowerIndex].top;
+            expect(overlap).toBeGreaterThanOrEqual(5);
+            expect(overlap).toBeLessThanOrEqual(7);
+            expect(Number(programLayout[lowerIndex].zIndex)).toBeGreaterThan(
+              Number(programLayout[upperIndex].zIndex),
+            );
+          }
+          for (const card of programLayout) {
+            expect(card.scrollHeight).toBeLessThanOrEqual(card.clientHeight + 1);
+          }
+          await programCards.first().focus();
+          expect(
+            Number(
+              await programCards
+                .first()
+                .evaluate((card) => window.getComputedStyle(card).zIndex),
+            ),
+          ).toBeGreaterThan(Number(programLayout[2].zIndex));
+        }
         if (label === "Map") {
           await expect(page.locator("[data-fair-grounds-map] canvas")).toBeVisible({
             timeout: 15_000,
@@ -460,6 +735,45 @@ test.describe("Fair Day production release journey", () => {
         expect(geometry.scrollX).toBe(0);
       }
     }
+
+    await page.setViewportSize({ width: 768, height: 844 });
+    await page.goto(`${FAIR_CANONICAL_PATH}#program`, {
+      waitUntil: "domcontentloaded",
+    });
+    const tabletProgramCards = page.locator("[data-fair-discovery-choice]");
+    await expect(tabletProgramCards).toHaveCount(4);
+    const tabletProgramLayout = await tabletProgramCards.evaluateAll((cards) =>
+      cards.map((card) => {
+        const box = card.getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom };
+      }),
+    );
+    expect(tabletProgramLayout[2].top - tabletProgramLayout[0].bottom).toBeGreaterThanOrEqual(
+      11,
+    );
+  });
+
+  test("keeps the desktop Map date clear of the Fair navigation", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(`${FAIR_CANONICAL_PATH}#fair-map`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
+      "data-fair-interaction-ready",
+      "true",
+    );
+
+    const date = page.locator("[data-fair-compact-header-date]");
+    const navigation = page.locator("[data-fair-primary-nav-shell]");
+    await expect(date).toBeVisible();
+    await expect(navigation).toBeVisible();
+    const dateBox = await date.boundingBox();
+    const navigationBox = await navigation.boundingBox();
+    expect(dateBox).not.toBeNull();
+    expect(navigationBox).not.toBeNull();
+    expect(dateBox!.y + dateBox!.height).toBeLessThanOrEqual(navigationBox!.y);
   });
 
   test("keeps all three travel choices on the first phone screen", async ({

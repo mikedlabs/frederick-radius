@@ -42,7 +42,7 @@ function sampleHtml({
   return `<!doctype html>
     <html>
       <head>
-        <title>Fair Day · Frederick Radius</title>
+        <title>Fair Day | The Great Frederick Fair 2026 · Frederick Radius</title>
         <link rel="stylesheet" href="/_next/static/css/fair.css">
         <script src="/_next/static/chunks/fair.js"></script>
       </head>

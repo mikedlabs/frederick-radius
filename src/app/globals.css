@@ -1121,13 +1121,75 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     top: 10px !important;
   }
 
-  /* The Fair map is a bounded in-page canvas with its own mobile result sheet.
-     Give attribution a dedicated shelf below zoom instead of letting the
-     full-screen /map override stack both controls in the same corner. */
+  /* The Fair map carries an in-canvas search, lens rail, and two compact
+     utility actions on phones. Move MapLibre's native zoom group below those
+     rails. Keep attribution above the persistent Fair navigation; the rem
+     offset follows enlarged root text instead of falling behind that bar. */
+  .fair-grounds-map-canvas .maplibregl-ctrl-top-right {
+    top: 7.75rem !important;
+  }
   .fair-grounds-map-canvas .maplibregl-ctrl-bottom-right {
-    bottom: auto !important;
-    top: 112px !important;
-    right: 10px !important;
+    bottom: calc(
+      var(
+          --fair-map-action-bar-clearance,
+          calc(4.875rem + env(safe-area-inset-bottom))
+        ) + 8px
+    ) !important;
+    top: auto !important;
+    left: 10px !important;
+    right: auto !important;
+  }
+
+  /* Narrow phones already have pinch, double-tap, keyboard zoom, automatic
+     lens framing, and the 44px Whole grounds action. Hiding the redundant
+     native +/- rail gives real map places ownership of this scarce canvas
+     space, including when a visitor enlarges text to 200%. */
+  @media (max-width: 639.98px) {
+    .fair-grounds-map-canvas .maplibregl-ctrl-top-right {
+      display: none !important;
+    }
+  }
+
+  /* Fair place and cluster sheets stay between the app header and the Fair
+     navigation at every text size. Their own content scrolls instead of
+     covering either persistent navigation surface. */
+  .fair-map-mobile-sheet {
+    bottom: calc(
+      var(
+          --fair-map-action-bar-height,
+          calc(
+            var(--app-bottomnav-reserve, 68px) +
+              env(safe-area-inset-bottom, 0px)
+          )
+        ) + 8px
+    ) !important;
+    max-height: calc(
+      100dvh - var(--app-topbar-h, 56px) -
+        var(
+          --fair-map-action-bar-height,
+          calc(
+            var(--app-bottomnav-reserve, 68px) +
+              env(safe-area-inset-bottom, 0px)
+          )
+        ) -
+        env(safe-area-inset-top, 0px) -
+        24px
+    ) !important;
+  }
+
+  .fair-map-cluster-dialog,
+  .fair-map-place-dialog {
+    top: auto !important;
+    width: min(calc(100% - 1.5rem), 30rem);
+    margin-block: 0;
+    margin-inline: auto;
+    color: var(--app-ink);
+  }
+
+  .fair-map-cluster-dialog::backdrop,
+  .fair-map-place-dialog::backdrop {
+    background: color-mix(in srgb, var(--app-ink) 24%, transparent);
+    backdrop-filter: blur(2px);
   }
 
   /* /radius is an embedded planning canvas, not the full-screen browse map.

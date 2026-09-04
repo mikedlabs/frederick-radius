@@ -14,6 +14,7 @@ export type FairPlanStatus = {
   dateLabel: string;
   shortDateLabel: string;
   savedStopCount: number;
+  needsReviewStopCount: number;
   savedStopsLabel: string;
   partySize: number;
   partyLabel: string;
@@ -63,7 +64,7 @@ function fairDateLabel(date: string | null, short: boolean): string {
 
 function nextActionForPlan(
   plan: FairPlan,
-  savedStopCount: number,
+  currentSavedStopCount: number,
 ): FairPlanNextAction {
   if (!plan.readyKeys.includes("ticket")) return "tickets";
   if (
@@ -73,7 +74,7 @@ function nextActionForPlan(
     return "travel";
   }
   if (!plan.readyKeys.includes("entry")) return "entry";
-  return savedStopCount === 0 ? "find" : "my-day";
+  return currentSavedStopCount === 0 ? "find" : "my-day";
 }
 
 /**
@@ -84,14 +85,19 @@ function nextActionForPlan(
 export function buildFairPlanStatus(plan: FairPlan): FairPlanStatus {
   const selectedDate = selectedDateFromPlan(plan);
   const selectedDayId = selectedDate ? `day-${selectedDate}` : null;
-  const savedStopCount = selectedDayId
-    ? plan.steps.filter((step) => step.dayId === selectedDayId).length
-    : 0;
+  const selectedDaySteps = selectedDayId
+    ? plan.steps.filter((step) => step.dayId === selectedDayId)
+    : [];
+  const savedStopCount = selectedDaySteps.length;
+  const needsReviewStopCount = selectedDaySteps.filter(
+    (step) => step.sourceState === "changed-or-removed",
+  ).length;
+  const currentSavedStopCount = savedStopCount - needsReviewStopCount;
   const preparationKeys = ["ticket", "travel", "entry"] as const;
   const handledPreparationCount = preparationKeys.filter((key) =>
     plan.readyKeys.includes(key),
   ).length;
-  const nextAction = nextActionForPlan(plan, savedStopCount);
+  const nextAction = nextActionForPlan(plan, currentSavedStopCount);
   const actionMeta = ACTION_META[nextAction];
   const dateLabel = fairDateLabel(selectedDate, false);
   const shortDateLabel = fairDateLabel(selectedDate, true);
@@ -118,7 +124,7 @@ export function buildFairPlanStatus(plan: FairPlan): FairPlanStatus {
 
   let stateLabel: string;
   if (nextAction === "tickets") {
-    stateLabel = "Tickets still need review.";
+    stateLabel = "Start with your ticket options.";
   } else if (nextAction === "travel") {
     stateLabel =
       plan.arrivalChoice === "undecided"
@@ -127,7 +133,12 @@ export function buildFairPlanStatus(plan: FairPlan): FairPlanStatus {
   } else if (nextAction === "entry") {
     stateLabel = "Entry details still need review.";
   } else if (nextAction === "find") {
-    stateLabel = "Preparation is ready. Add one Fair stop.";
+    stateLabel =
+      needsReviewStopCount > 0
+        ? `${needsReviewStopCount} saved ${needsReviewStopCount === 1 ? "stop needs" : "stops need"} review. Add a current Fair stop.`
+        : "Preparation is ready. Add one Fair stop.";
+  } else if (needsReviewStopCount > 0) {
+    stateLabel = `${needsReviewStopCount} saved ${needsReviewStopCount === 1 ? "stop needs" : "stops need"} review before relying on this plan.`;
   } else {
     stateLabel = "Your preparation and saved plan are ready on this device.";
   }
@@ -150,6 +161,7 @@ export function buildFairPlanStatus(plan: FairPlan): FairPlanStatus {
     dateLabel,
     shortDateLabel,
     savedStopCount,
+    needsReviewStopCount,
     savedStopsLabel,
     partySize,
     partyLabel,

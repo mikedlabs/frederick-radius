@@ -66,11 +66,6 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
   experimental: {
-    // Enables Next's wiring around the browser View Transitions API
-    // so Link clicks animate between routes via the CSS defined in
-    // globals.css (vt-fade-in / vt-fade-out at the @view-transition
-    // root). No-op on browsers without VT API support.
-    viewTransition: true,
     // Client Router Cache lifetimes. Next 15+ defaults `dynamic` to 0,
     // which means a dynamic page (our tabs all read searchParams /
     // cookies, so they're dynamic) is dropped from the client cache

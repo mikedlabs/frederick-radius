@@ -45,8 +45,9 @@ export const dynamic = "force-dynamic";
  * currently opted into, so the settings card can hydrate its toggles on mount
  * instead of showing everything OFF for a returning subscriber (which, on the
  * next toggle, would REPLACE the server set with the empty-seeded UI and wipe
- * their real selections). Returns [] when push isn't configured or the
- * subscription isn't found.
+ * their real selections). `registered` is present only when the database read
+ * succeeded, so clients can repair a genuinely missing row without treating a
+ * database/configuration failure as an empty preference set.
  */
 export async function GET(request: Request) {
   const guarded = await guardPushRead(request, "push-topics-read", 60, 60);
@@ -65,7 +66,10 @@ export async function GET(request: Request) {
       .from(push_subscriptions)
       .where(eq(push_subscriptions.endpoint, endpoint))
       .limit(1);
-    return pushJson({ topics: publicPushTopics(rows[0]?.topics ?? []) });
+    return pushJson({
+      registered: rows.length > 0,
+      topics: publicPushTopics(rows[0]?.topics ?? []),
+    });
   } catch (err) {
     console.error("[push/topics GET] failed:", err instanceof Error ? err.message : err);
     return pushJson({ topics: [] });

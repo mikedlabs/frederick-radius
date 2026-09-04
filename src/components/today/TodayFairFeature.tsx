@@ -17,17 +17,17 @@ const COPY: Record<
 > = {
   planning: {
     eyebrow: "Great Frederick Fair · Sep 18–26",
-    headline: "Your Fair Day planner is ready.",
+    headline: "Plan the Fair in one place.",
     detail:
-      "Sort out tickets, parking, transit, and what you do not want to miss before you go.",
+      "Use the official program and searchable Fairgrounds map, compare ticket and arrival options, then save a day plan on your phone.",
     cta: "Plan your Fair day",
   },
   "fair-day": {
     eyebrow: "The Great Frederick Fair · Through Sep 26",
-    headline: "Make today at the Fair easier.",
+    headline: "Your Fair day, in one place.",
     detail:
-      "See what is on, find food and rides, and keep tickets, parking, transit, and your plan together.",
-    cta: "Open Fair Day",
+      "See what is happening, find places on the grounds, and keep your plan close while you are there.",
+    cta: "Open Radius at the Fair",
   },
 };
 
@@ -84,11 +84,14 @@ export default function TodayFairFeature({
       >
         <picture className="absolute inset-0 block">
           <source
-            media="(min-width: 640px)"
-            srcSet="/images/fair/fairgrounds-night-mike-d-1920.jpg"
+            type="image/webp"
+            srcSet="/images/fair/fairgrounds-night-mike-d-480.webp 480w, /images/fair/fairgrounds-night-mike-d-960.webp 960w, /images/fair/fairgrounds-night-mike-d-1920.webp 1920w"
+            sizes="(min-width: 1024px) 68rem, 100vw"
           />
           <img
             src="/images/fair/fairgrounds-night-mike-d-960.jpg"
+            srcSet="/images/fair/fairgrounds-night-mike-d-960.jpg 960w, /images/fair/fairgrounds-night-mike-d-1920.jpg 1920w"
+            sizes="(min-width: 1024px) 68rem, 100vw"
             alt=""
             width="960"
             height="540"
@@ -113,13 +116,13 @@ export default function TodayFairFeature({
           className="absolute inset-x-0 top-0 h-1"
           style={{
             background:
-              "linear-gradient(90deg, var(--app-brand) 0 46%, var(--app-bg-elevated-solid) 46% 52%, var(--app-cool) 52% 100%)",
+              "linear-gradient(90deg, var(--app-brand) 0 24%, var(--app-amber) 24% 41%, var(--app-brand-2) 41% 59%, var(--app-cool) 59% 78%, var(--app-accent) 78% 100%)",
           }}
         />
 
         <div className="relative z-10 flex min-h-[168px] flex-col justify-between p-4 pt-5 sm:min-h-[196px] sm:p-5 sm:pt-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex max-w-[78%] items-center gap-2.5">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center gap-2.5">
               <span
                 data-fair-feature-icon
                 className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-md)] text-[var(--app-ink-inverse)] shadow-[var(--app-elev-1)] sm:h-10 sm:w-10"
@@ -135,16 +138,6 @@ export default function TodayFairFeature({
                 {copy.eyebrow}
               </p>
             </div>
-            <span
-              className="shrink-0 rounded-full px-2 py-1 text-[9px] font-semibold leading-none sm:text-[10px]"
-              style={{
-                color: "var(--app-ink-2)",
-                background:
-                  "color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent)",
-              }}
-            >
-              Photo: Mike D
-            </span>
           </div>
 
           <div className="max-w-[17.5rem] sm:max-w-[31rem]">

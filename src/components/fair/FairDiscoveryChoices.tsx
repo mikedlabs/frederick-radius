@@ -30,7 +30,7 @@ const CHOICES = [
     Icon: Sparkles,
     accent: "var(--app-brand-press)",
     wash: "color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated))",
-    featured: true,
+    featured: false,
   },
   {
     id: "animals",
@@ -52,13 +52,13 @@ const CHOICES = [
     Icon: FerrisWheel,
     accent: "var(--app-accent-press)",
     wash: "color-mix(in srgb, var(--app-accent) 12%, var(--app-bg-elevated))",
-    featured: false,
+    featured: true,
   },
   {
     id: "food-program",
-    title: "Food events",
-    emptyLabel: "No food event listed",
-    heading: "Food-related program",
+    title: "Food program",
+    emptyLabel: "No food or drink event listed",
+    heading: "Food & drink program",
     detail: "Schedule entries, not a vendor list",
     Icon: UtensilsCrossed,
     accent: "var(--app-cool)",
@@ -158,10 +158,10 @@ export default function FairDiscoveryChoices({
       data-fair-discovery-choices
     >
       <div
-        className="grid grid-cols-2 items-stretch gap-2 sm:gap-3 lg:grid-cols-4"
+        className="grid grid-cols-2 items-stretch gap-x-2 gap-y-0 sm:gap-3 lg:grid-cols-4"
         data-fair-discovery-grid
       >
-        {choices.map(({ choice, matches }) => {
+        {choices.map(({ choice, matches }, index) => {
           const active = selected === choice.id;
           const Icon = choice.Icon;
           const preview = previewForChoice(matches, asOf);
@@ -183,30 +183,29 @@ export default function FairDiscoveryChoices({
               disabled={!available}
               aria-pressed={active}
               onClick={() => onSelect(choice.id)}
-              className="tap-44 relative min-h-[88px] min-w-0 overflow-hidden rounded-[var(--app-radius-lg)] border p-2.5 text-left transition-[transform,border-color] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-65 motion-reduce:transition-none sm:min-h-[124px] sm:p-3"
+              className={`tap-44 relative min-h-[88px] min-w-0 overflow-hidden rounded-[var(--app-radius-lg)] border p-2.5 text-left transition-[transform,border-color] active:scale-[0.985] focus-visible:z-30 disabled:cursor-not-allowed disabled:opacity-65 motion-reduce:transition-none sm:mt-0 sm:min-h-[124px] sm:p-3 ${index > 1 ? "z-20 -mt-1.5" : "z-10"}`}
               style={{
                 borderColor: active
                   ? choice.accent
                   : "var(--app-border-strong)",
                 background: choice.featured
-                  ? "linear-gradient(90deg, var(--app-bg-elevated-solid) 0%, color-mix(in srgb, var(--app-bg-elevated-solid) 97%, transparent) 48%, color-mix(in srgb, var(--app-bg-elevated-solid) 78%, transparent) 72%, color-mix(in srgb, var(--app-bg-elevated-solid) 18%, transparent) 100%), url('/images/fair/fairgrounds-night-mike-d-960.jpg') 70% 57% / cover"
+                  ? "linear-gradient(90deg, var(--app-bg-elevated-solid) 0%, color-mix(in srgb, var(--app-bg-elevated-solid) 97%, transparent) 48%, color-mix(in srgb, var(--app-bg-elevated-solid) 78%, transparent) 72%, color-mix(in srgb, var(--app-bg-elevated-solid) 18%, transparent) 100%), url('/images/fair/fairgrounds-ferris-wheel-mike-d-960.jpg') 72% 52% / cover"
                   : choice.wash,
                 boxShadow: active
-                  ? `inset 0 0 0 1px ${choice.accent}`
-                  : "var(--app-elev-1)",
+                  ? `inset 0 3px 0 ${choice.accent}, inset 0 0 0 1px ${choice.accent}, var(--app-hi), var(--app-lip), var(--app-deck-edge), var(--app-elev-2)`
+                  : `inset 0 3px 0 ${choice.accent}, var(--app-hi), var(--app-lip), var(--app-deck-edge), var(--app-elev-2)`,
               }}
             >
               <span className="relative flex min-w-0 items-start gap-2">
                 <span
-                  className="grid h-7 w-7 shrink-0 place-items-center rounded-full border sm:h-8 sm:w-8"
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-full sm:h-8 sm:w-8"
                   style={{
-                    borderColor: "var(--app-border-strong)",
-                    background: "var(--app-bg-elevated-solid)",
+                    color: "var(--app-on-brand)",
+                    background: choice.accent,
                   }}
                 >
                   <Icon
                     className="h-4 w-4 sm:h-[18px] sm:w-[18px]"
-                    style={{ color: choice.accent }}
                     aria-hidden
                   />
                 </span>
@@ -234,7 +233,14 @@ export default function FairDiscoveryChoices({
                     >
                       {compactPreviewStatus(preview.status)}
                     </span>
-                    <span className="sr-only sm:not-sr-only sm:uppercase sm:tracking-[0.07em]">
+                    <span className="sr-only">
+                      {preview.status}
+                    </span>
+                    <span
+                      className="hidden sm:inline sm:uppercase sm:tracking-[0.07em]"
+                      aria-hidden="true"
+                      data-fair-discovery-status
+                    >
                       {preview.status}
                     </span>
                     <span className="tabular-nums">
@@ -242,9 +248,15 @@ export default function FairDiscoveryChoices({
                     </span>
                   </span>
                   <span
-                    className="sr-only break-words text-[12px] font-semibold leading-[1.25] sm:not-sr-only sm:mt-1 sm:block"
+                    className="sr-only"
+                  >
+                    {previewCopy}
+                  </span>
+                  <span
+                    className="mt-1 hidden break-words text-[12px] font-semibold leading-[1.25] sm:block"
                     style={{ color: "var(--app-ink-2)" }}
                     data-fair-discovery-event-title
+                    aria-hidden="true"
                   >
                     {previewCopy}
                   </span>
@@ -261,7 +273,10 @@ export default function FairDiscoveryChoices({
                   <span className="sm:hidden" aria-hidden="true">
                     {choice.emptyLabel}
                   </span>
-                  <span className="sr-only sm:not-sr-only">
+                  <span className="sr-only">
+                    No matching program item this day
+                  </span>
+                  <span className="hidden sm:inline" aria-hidden="true">
                     No matching program item this day
                   </span>
                 </span>

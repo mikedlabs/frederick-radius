@@ -52,20 +52,26 @@ describe("FairDiscoveryChoices", () => {
     expect(html).toContain("Kid Zone");
     expect(html).toContain("Animals");
     expect(html).toContain("Rides");
-    expect(html).toContain("Food events");
-    expect(html).toContain("No food event listed");
-    expect(html).toContain("No matching program item this day");
+    expect(html).toContain("Food program");
+    expect(html).not.toContain("No food or drink event listed");
     expect(html).not.toMatch(/listing/i);
     expect(html).toContain('aria-label="Fair activity paths"');
     expect(html).toContain("data-fair-discovery-choices");
     expect(html).toContain("data-fair-discovery-grid");
     expect(html).toContain("grid-cols-2");
+    expect(html).toContain("gap-x-2 gap-y-0");
+    expect(html.match(/-mt-1.5/g)).toHaveLength(2);
+    expect(html).toContain("sm:mt-0");
+    expect(html).toContain("focus-visible:z-30");
+    expect(html).toContain("var(--app-deck-edge)");
     expect(html).toContain("min-h-[88px]");
     expect(html).toContain("sm:min-h-[124px]");
     expect(html).toContain("text-[11px]");
     expect(html).toContain("text-[12px]");
-    expect(html).toContain("sr-only break-words");
-    expect(html).toContain("sm:not-sr-only");
+    expect(html).toContain('class="sr-only"');
+    expect(html).toContain("hidden break-words");
+    expect(html).toContain("sm:block");
+    expect(html).not.toContain("sm:not-sr-only");
     expect(html).not.toContain("What sounds good?");
     expect(html).not.toContain("snap-mandatory");
     expect(html).not.toContain("overflow-x-auto");
@@ -76,6 +82,11 @@ describe("FairDiscoveryChoices", () => {
     expect(html).toContain("6 p.m.");
     expect(html).toContain("Horse Barrel Racing Expo");
     expect(html).toContain(
+      "Homegrown Wineries, Breweries and Distilleries Showcase",
+    );
+    expect(html).toContain("fairgrounds-ferris-wheel-mike-d-960.jpg");
+    expect(html).not.toContain("Photo: Mike D");
+    expect(html).not.toContain(
       'data-fair-discovery-choice="food-program" disabled=""',
     );
   });
@@ -94,8 +105,10 @@ describe("FairDiscoveryChoices", () => {
     );
 
     expect(html).toContain("Next");
-    expect(html).toContain("4 p.m.");
-    expect(html).toContain("Youth Cake &amp; Baked Goods Auction");
+    expect(html).toContain("Noon–10 p.m.");
+    expect(html).toContain(
+      "Homegrown Wineries, Breweries and Distilleries Showcase",
+    );
     expect(html).toContain(
       'data-fair-discovery-choice="food-program" aria-pressed="true"',
     );

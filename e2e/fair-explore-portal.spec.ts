@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const FAIR_PATH = "/moments/great-frederick-fair-2026#find";
+const FAIR_PATH = "/moments/great-frederick-fair-2026#program";
 
 test.describe("Fair Explore task portal", () => {
   test.use({
@@ -46,7 +46,12 @@ test.describe("Fair Explore task portal", () => {
       ).toContainText("4 p.m.–9 p.m.");
       await expect(
         portal.locator('[data-fair-discovery-choice="food-program"]'),
-      ).toBeDisabled();
+      ).toBeEnabled();
+      await expect(
+        portal.locator('[data-fair-discovery-choice="food-program"]'),
+      ).toContainText(
+        "Homegrown Wineries, Breweries and Distilleries Showcase",
+      );
       await expect(portal).not.toContainText(/\d+ options?/);
 
       const layout = await page.evaluate(() => {
@@ -120,7 +125,7 @@ test.describe("Fair Explore task portal", () => {
       for (const card of layout?.cards ?? []) {
         expect(card.width).toBeGreaterThanOrEqual(44);
         expect(card.height).toBeGreaterThanOrEqual(88);
-        expect(card.height).toBeLessThanOrEqual(92);
+        expect(card.height).toBeLessThanOrEqual(100);
         expect(card.left).toBeGreaterThanOrEqual(0);
         expect(card.right).toBeLessThanOrEqual(width + 1);
       }
@@ -160,5 +165,24 @@ test.describe("Fair Explore task portal", () => {
         expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth + 1);
       }
     }
+  });
+
+  test("uses desktop space for the next useful program details", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(FAIR_PATH, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
+      "data-fair-interaction-ready",
+      "true",
+    );
+
+    const portal = page.getByRole("region", { name: "Fair activity paths" });
+    const eventTitles = portal.locator("[data-fair-discovery-event-title]");
+    await expect(eventTitles.first()).toBeVisible();
+    await expect(eventTitles.first()).not.toHaveText("");
+    await expect(
+      portal.locator("[data-fair-discovery-status]").first(),
+    ).toBeVisible();
   });
 });

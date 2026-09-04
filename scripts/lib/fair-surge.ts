@@ -11,7 +11,7 @@ export const FAIR_POINTER_PATH = "/fair/2026/current.json" as const;
 export const FAIR_SURGE_MARKERS = Object.freeze([
   'data-fair-app="true"',
   "great-frederick-fair-2026",
-  "Fair Day · Frederick Radius",
+  "The Great Frederick Fair 2026 · Frederick Radius",
 ]);
 
 export type FairSurgeStage = {

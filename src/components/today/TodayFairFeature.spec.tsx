@@ -20,14 +20,16 @@ describe("TodayFairFeature", () => {
       createElement(TodayFairFeature, { phase: "planning" }),
     );
 
-    expect(html).toContain("Your Fair Day planner is ready.");
-    expect(html).toContain("tickets, parking, transit");
+    expect(html).toContain("Plan the Fair in one place.");
+    expect(html).toContain("official program and searchable Fairgrounds map");
     expect(html).toContain("Plan your Fair day");
     expect(html).toContain(`href="${TODAY_FAIR_PROMOTION_HREF}"`);
     expect(html).toContain("fairgrounds-night-mike-d-960.jpg");
     expect(html).toContain("fairgrounds-night-mike-d-1920.jpg");
+    expect(html).toContain("fairgrounds-night-mike-d-480.webp 480w");
+    expect(html).toContain('type="image/webp"');
     expect(html).toContain('alt=""');
-    expect(html).toContain("Photo: Mike D");
+    expect(html).not.toContain("Photo: Mike D");
     expect(html).toContain('data-fair-feature-tone="light"');
     expect(html).toContain("data-fair-feature-art");
     expect(html).toContain("data-fair-feature-icon");
@@ -42,10 +44,10 @@ describe("TodayFairFeature", () => {
       createElement(TodayFairFeature, { phase: "fair-day" }),
     );
 
-    expect(html).toContain("Make today at the Fair easier.");
+    expect(html).toContain("Your Fair day, in one place.");
     expect(html).toContain("Through Sep 26");
-    expect(html).toContain("find food and rides");
-    expect(html).toContain("Open Fair Day");
+    expect(html).toContain("find places on the grounds");
+    expect(html).toContain("Open Radius at the Fair");
   });
 
   it("continues the saved on-device plan with its one next action", async () => {
@@ -133,7 +135,7 @@ describe("TodayFairFeature", () => {
       });
 
       expect(container.textContent).toContain(
-        "Your Fair Day planner is ready.",
+        "Plan the Fair in one place.",
       );
       expect(container.textContent).toContain("Plan your Fair day");
       expect(
