@@ -48,7 +48,9 @@ test.describe("Fair Day production release journey", () => {
     await expect(page.getByLabel("Send feedback")).toHaveCount(0);
     const mobileActionBar = page.locator("[data-mobile-action-bar]");
     await expect(mobileActionBar).toBeVisible();
-    await expect(mobileActionBar).toHaveAttribute(
+    await expect(
+      mobileActionBar.getByRole("navigation", { name: "Fair Day" }),
+    ).toHaveAttribute(
       "style",
       /--app-bg-elevated-solid/,
     );
@@ -187,7 +189,7 @@ test.describe("Fair Day production release journey", () => {
     expect(
       (selectedPosition?.y ?? 0) + (selectedPosition?.height ?? 0),
     ).toBeLessThanOrEqual(actionBarPosition?.y ?? Number.POSITIVE_INFINITY);
-    await page.getByRole("button", { name: "Explore", exact: true }).click();
+    await page.getByRole("button", { name: "Program", exact: true }).click();
     await expect(
       page.getByRole("region", { name: "Fair activity paths" }),
     ).toBeVisible();
@@ -246,7 +248,7 @@ test.describe("Fair Day production release journey", () => {
     page,
   }) => {
     test.setTimeout(60_000);
-    await page.goto(`${FAIR_CANONICAL_PATH}#find`, {
+    await page.goto(`${FAIR_CANONICAL_PATH}#program`, {
       waitUntil: "domcontentloaded",
     });
     await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
@@ -294,6 +296,58 @@ test.describe("Fair Day production release journey", () => {
     await expect(
       daughtryCard.getByRole("button", { name: "Open details for Daughtry" }),
     ).toBeFocused();
+  });
+
+  test("hands an exact program place to the map once and returns cleanly", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await page.goto(`${FAIR_CANONICAL_PATH}#program`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
+      "data-fair-interaction-ready",
+      "true",
+      { timeout: 15_000 },
+    );
+    await page
+      .getByRole("combobox", { name: "Fair day to explore" })
+      .selectOption("2026-09-18");
+    await page
+      .getByRole("button", { name: "Browse full program", exact: true })
+      .click();
+    const eveningGroup = page.locator(
+      '[data-fair-program-daypart="evening"]',
+    );
+    await eveningGroup.locator("summary").click();
+    await eveningGroup
+      .getByRole("button", { name: "Open details for Daughtry" })
+      .click();
+    const details = page.getByRole("dialog", { name: "Daughtry" });
+    await details.getByRole("button", { name: "Show on map" }).click();
+
+    await expect(page).toHaveURL(/#fair-map$/);
+    const selectedGrandstand = page.getByRole("region", {
+      name: "Selected map place: Grandstand",
+    });
+    await expect(selectedGrandstand).toBeVisible({ timeout: 15_000 });
+    await expect
+      .poll(
+        () => page.evaluate(() => document.activeElement?.id ?? ""),
+        { timeout: 3_000 },
+      )
+      .toBe("fair-map-selection-mobile-heading");
+
+    await page.getByRole("button", { name: "Program", exact: true }).click();
+    await expect(page).toHaveURL(/#program$/);
+    await page.getByRole("button", { name: "Map", exact: true }).click();
+    await expect(page).toHaveURL(/#fair-map$/);
+    await expect(page.locator("[data-fair-grounds-map] canvas")).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(
+      page.getByRole("region", { name: "Selected map place: Grandstand" }),
+    ).toHaveCount(0);
   });
 
   test("uses location only after a tap and refuses a misleadingly broad fix", async ({
@@ -374,7 +428,7 @@ test.describe("Fair Day production release journey", () => {
   test("keeps every Fair tool inside common phone widths", async ({ page }) => {
     test.setTimeout(60_000);
 
-    for (const width of [320, 390, 430]) {
+    for (const width of [320, 375, 390, 430]) {
       await page.setViewportSize({ width, height: 844 });
       await page.goto(`${FAIR_CANONICAL_PATH}#now`, {
         waitUntil: "domcontentloaded",
@@ -387,9 +441,6 @@ test.describe("Fair Day production release journey", () => {
       if (width === 320) {
         const heroLayout = await page.locator("[data-fair-hero]").evaluate(
           (hero) => {
-            const credit = hero.querySelector<HTMLElement>(
-              "[data-fair-hero-credit]",
-            );
             const identity = hero.querySelector<HTMLElement>(
               "[data-fair-hero-identity]",
             );
@@ -399,13 +450,13 @@ test.describe("Fair Day production release journey", () => {
             const content = hero.querySelector<HTMLElement>(
               "[data-fair-hero-content]",
             );
-            if (!credit || !identity || !controls || !content) return null;
-            const creditBox = credit.getBoundingClientRect();
+            if (!identity || !controls || !content) return null;
+            const controlsBox = controls.getBoundingClientRect();
             const identityBox = identity.getBoundingClientRect();
             return {
               clientHeight: content.clientHeight,
               scrollHeight: content.scrollHeight,
-              creditBottom: creditBox.bottom,
+              controlsBottom: controlsBox.bottom,
               identityTop: identityBox.top,
               controlButtons: Array.from(
                 controls.querySelectorAll<HTMLElement>("a, button"),
@@ -420,7 +471,7 @@ test.describe("Fair Day production release journey", () => {
         expect(heroLayout?.scrollHeight).toBeLessThanOrEqual(
           (heroLayout?.clientHeight ?? 0) + 1,
         );
-        expect(heroLayout?.creditBottom).toBeLessThanOrEqual(
+        expect(heroLayout?.controlsBottom).toBeLessThanOrEqual(
           heroLayout?.identityTop ?? 0,
         );
         for (const control of heroLayout?.controlButtons ?? []) {
@@ -452,7 +503,6 @@ test.describe("Fair Day production release journey", () => {
         await page.addStyleTag({
           content: `
             [data-fair-hero-controls] :is(a, button) { font-size: 26px !important; }
-            [data-fair-hero-credit] { font-size: 18px !important; }
             [data-fair-hero-identity] > div { font-size: 20px !important; }
             #fair-now-heading { font-size: 68px !important; }
             [data-fair-hero-identity] > p { font-size: 20px !important; }
@@ -460,20 +510,20 @@ test.describe("Fair Day production release journey", () => {
         });
         const enlargedHero = await page.locator("[data-fair-hero]").evaluate(
           (hero) => {
-            const credit = hero.querySelector<HTMLElement>(
-              "[data-fair-hero-credit]",
-            );
             const identity = hero.querySelector<HTMLElement>(
               "[data-fair-hero-identity]",
             );
             const content = hero.querySelector<HTMLElement>(
               "[data-fair-hero-content]",
             );
-            if (!credit || !identity || !content) return null;
+            const controls = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-controls]",
+            );
+            if (!identity || !content || !controls) return null;
             return {
               clientHeight: content.clientHeight,
               scrollHeight: content.scrollHeight,
-              creditBottom: credit.getBoundingClientRect().bottom,
+              controlsBottom: controls.getBoundingClientRect().bottom,
               identityTop: identity.getBoundingClientRect().top,
               documentClientWidth: document.documentElement.clientWidth,
               documentScrollWidth: document.documentElement.scrollWidth,
@@ -484,7 +534,7 @@ test.describe("Fair Day production release journey", () => {
         expect(enlargedHero?.scrollHeight).toBeLessThanOrEqual(
           (enlargedHero?.clientHeight ?? 0) + 1,
         );
-        expect(enlargedHero?.creditBottom).toBeLessThanOrEqual(
+        expect(enlargedHero?.controlsBottom).toBeLessThanOrEqual(
           enlargedHero?.identityTop ?? 0,
         );
         expect(enlargedHero?.documentScrollWidth).toBeLessThanOrEqual(
@@ -492,7 +542,7 @@ test.describe("Fair Day production release journey", () => {
         );
       }
 
-      for (const label of ["Today", "Explore", "Map", "My Day"] as const) {
+      for (const label of ["Today", "Program", "Map", "My Day"] as const) {
         const destination = page
           .getByRole("navigation", { name: "Fair Day" })
           .getByRole("button", { name: label, exact: true });

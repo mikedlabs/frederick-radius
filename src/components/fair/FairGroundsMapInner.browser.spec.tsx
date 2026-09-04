@@ -5,6 +5,7 @@ import {
   createElement,
   forwardRef,
   useImperativeHandle,
+  type ComponentProps,
   type ForwardedRef,
   type ReactNode,
 } from "react";
@@ -48,8 +49,15 @@ vi.mock("react-map-gl/maplibre", () => ({
     mapHarness.capture(props);
     useImperativeHandle(ref, () => ({
       getMap: () => ({
+        easeTo: vi.fn(),
         fitBounds: vi.fn(),
         getCanvas: () => canvas,
+        getZoom: () => 16.25,
+        project: ([longitude, latitude]: [number, number]) => ({
+          x: longitude,
+          y: latitude,
+        }),
+        resize: vi.fn(),
       }),
       getZoom: () => 16.25,
     }));
@@ -119,6 +127,22 @@ const MAP_FIXTURE = {
         anchor: [-77.3944867, 39.4107704],
       },
     },
+    {
+      type: "Feature",
+      geometry: {
+        type: "Point",
+        coordinates: [-77.39358, 39.41326],
+      },
+      properties: {
+        id: "osm-way-103615596",
+        name: "Grandstand",
+        kind: "building",
+        sourceUrl: "https://www.openstreetmap.org/way/103615596",
+        sourceUpdatedAt: "2026-08-16T19:12:58Z",
+        scheduleAliases: ["Grandstand"],
+        anchor: [-77.39358, 39.41326],
+      },
+    },
   ],
 };
 
@@ -145,6 +169,39 @@ describe("FairGroundsMapInner map failure recovery", () => {
       return frameCallbacks.length;
     });
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(() => true),
+      })),
+    );
+    Object.defineProperties(window.HTMLDialogElement.prototype, {
+      close: {
+        configurable: true,
+        value() {
+          this.removeAttribute("open");
+        },
+      },
+      show: {
+        configurable: true,
+        value() {
+          this.setAttribute("open", "");
+        },
+      },
+      showModal: {
+        configurable: true,
+        value() {
+          this.setAttribute("open", "");
+        },
+      },
+    });
     window.history.replaceState({}, "", "/fair-map-test");
     container = document.createElement("div");
     document.body.append(container);
@@ -158,13 +215,16 @@ describe("FairGroundsMapInner map failure recovery", () => {
     vi.useRealTimers();
   });
 
-  async function renderMap() {
+  async function renderMap(
+    overrides: Partial<ComponentProps<typeof FairGroundsMapInner>> = {},
+  ) {
     await act(async () => {
       root.render(
         createElement(FairGroundsMapInner, {
           savedStops: [],
           programItems: [],
           onBrowseProgram: vi.fn(),
+          ...overrides,
         }),
       );
     });
@@ -325,5 +385,42 @@ describe("FairGroundsMapInner map failure recovery", () => {
     expect(
       container.querySelector("[data-fair-visitor-location]"),
     ).toBeNull();
+  });
+
+  it("opens the exact reviewed program place and acknowledges the one-time request", async () => {
+    const handled = vi.fn();
+    const openProgramItem = vi.fn();
+    await renderMap({
+      focusRequest: { programItemId: "program-daughtry", requestId: 7 },
+      onFocusRequestHandled: handled,
+      onOpenProgramItem: openProgramItem,
+      programItems: [
+        {
+          id: "program-daughtry",
+          title: "Daughtry",
+          timeLabel: "8 p.m.",
+          placeLabel: "Published place: Grandstand.",
+        },
+      ],
+    });
+    await flushAnimationFrames();
+
+    const view = container.querySelector<HTMLSelectElement>(
+      "[data-fair-map-filter-select]",
+    );
+    expect(view?.value).toBe("program");
+    expect(container.textContent).toContain("Grandstand");
+    expect(handled).toHaveBeenCalledOnce();
+    expect(handled).toHaveBeenCalledWith(7);
+
+    const programButton = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("button"),
+    ).find((button) => button.textContent?.includes("Daughtry"));
+    if (!programButton) throw new Error("Missing mapped Daughtry program action.");
+    await act(async () => programButton.click());
+    await flushAnimationFrames();
+
+    expect(openProgramItem).toHaveBeenCalledWith("program-daughtry");
+    expect(container.textContent).toContain("Grandstand");
   });
 });

@@ -113,13 +113,13 @@ export default function TodayFairFeature({
           className="absolute inset-x-0 top-0 h-1"
           style={{
             background:
-              "linear-gradient(90deg, var(--app-brand) 0 46%, var(--app-bg-elevated-solid) 46% 52%, var(--app-cool) 52% 100%)",
+              "linear-gradient(90deg, var(--app-brand) 0 24%, var(--app-amber) 24% 41%, var(--app-brand-2) 41% 59%, var(--app-cool) 59% 78%, var(--app-accent) 78% 100%)",
           }}
         />
 
         <div className="relative z-10 flex min-h-[168px] flex-col justify-between p-4 pt-5 sm:min-h-[196px] sm:p-5 sm:pt-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex max-w-[78%] items-center gap-2.5">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center gap-2.5">
               <span
                 data-fair-feature-icon
                 className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-md)] text-[var(--app-ink-inverse)] shadow-[var(--app-elev-1)] sm:h-10 sm:w-10"
@@ -135,16 +135,6 @@ export default function TodayFairFeature({
                 {copy.eyebrow}
               </p>
             </div>
-            <span
-              className="shrink-0 rounded-full px-2 py-1 text-[9px] font-semibold leading-none sm:text-[10px]"
-              style={{
-                color: "var(--app-ink-2)",
-                background:
-                  "color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent)",
-              }}
-            >
-              Photo: Mike D
-            </span>
           </div>
 
           <div className="max-w-[17.5rem] sm:max-w-[31rem]">

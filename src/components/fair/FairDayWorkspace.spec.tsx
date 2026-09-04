@@ -20,6 +20,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
   it("keeps original Fair links connected to the redesigned task views", () => {
     expect(fairModeFromHash("#now")).toBe("now");
     expect(fairModeFromHash("find")).toBe("find");
+    expect(fairModeFromHash("#program")).toBe("find");
     expect(fairModeFromHash("#fair-map")).toBe("map");
     expect(fairModeFromHash("#plan")).toBe("my-day");
     expect(fairModeFromHash("#leave")).toBe("travel");
@@ -27,7 +28,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(fairModeFromHash("#not-a-fair-view")).toBeNull();
   });
 
-  it("renders a dedicated Fair identity, independent-guide disclosure, and Mike D photo", () => {
+  it("renders a dedicated Fair identity, disclosure, and authentic Fair photography", () => {
     const html = renderToStaticMarkup(
       createElement(FairDayWorkspace, { data }),
     );
@@ -35,7 +36,8 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).toContain("Fair Day");
     expect(html).toContain("Fair Day · Frederick Radius");
     expect(html).toContain(data.disclosure);
-    expect(html).toContain("Photograph by Mike D");
+    expect(html).not.toContain("Photograph by Mike D");
+    expect(html).not.toContain("Photo: Mike D");
     expect(html).toContain("fairgrounds-night-mike-d-960.jpg");
     expect(html).toContain("fairgrounds-night-mike-d-1920.jpg");
     expect(html).toContain('width="960" height="540"');
@@ -75,7 +77,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
 
     expect(html).toContain('data-mobile-action-bar="true"');
     expect(html).toContain('aria-label="Fair Day"');
-    for (const label of ["Today", "Explore", "Map", "My Day"]) {
+    for (const label of ["Today", "Program", "Map", "My Day"]) {
       expect(html).toContain(`aria-label="${label}"`);
     }
     expect(html).not.toContain('href="#now"');

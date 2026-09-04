@@ -1129,7 +1129,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     top: 7.75rem !important;
   }
   .fair-grounds-map-canvas .maplibregl-ctrl-bottom-right {
-    bottom: calc(4.875rem + env(safe-area-inset-bottom)) !important;
+    bottom: calc(
+      var(
+          --fair-map-action-bar-clearance,
+          calc(4.875rem + env(safe-area-inset-bottom))
+        ) + 8px
+    ) !important;
     top: auto !important;
     left: 10px !important;
     right: auto !important;

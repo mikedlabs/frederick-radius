@@ -122,7 +122,7 @@ describe("FairDayWorkspace app journey", () => {
     return data;
   }
 
-  async function openMode(label: "Today" | "Explore" | "Map" | "My Day") {
+  async function openMode(label: "Today" | "Program" | "Map" | "My Day") {
     const button = container.querySelector<HTMLButtonElement>(
       `[data-mobile-action-bar] button[aria-label^="${label}"]`,
     );
@@ -132,7 +132,7 @@ describe("FairDayWorkspace app journey", () => {
   }
 
   async function openFullProgram() {
-    await openMode("Explore");
+    await openMode("Program");
     await act(async () =>
       buttonWithText(container, "Browse full program").click(),
     );
@@ -167,9 +167,9 @@ describe("FairDayWorkspace app journey", () => {
     expect(container.querySelector("#fair-now-heading")).not.toBeNull();
     expect(container.querySelector("#fair-find-heading")).toBeNull();
 
-    await openMode("Explore");
+    await openMode("Program");
 
-    expect(window.location.hash).toBe("#find");
+    expect(window.location.hash).toBe("#program");
     expect(container.querySelector("#fair-now-heading")).toBeNull();
     expect(container.querySelector("#fair-find-heading")).not.toBeNull();
     expect(document.activeElement?.id).toBe("fair-find-heading");
@@ -182,6 +182,27 @@ describe("FairDayWorkspace app journey", () => {
     await openMode("Map");
     expect(container.querySelector("#fair-my-day-heading")).toBeNull();
     expect(document.activeElement?.id).toBe("fair-grounds-map-heading");
+  });
+
+  it("restores Fair modes through browser history", async () => {
+    await renderFair();
+    await openMode("Program");
+    await openMode("My Day");
+
+    expect(window.location.hash).toBe("#my-day");
+    await act(async () => {
+      window.history.back();
+      await vi.advanceTimersByTimeAsync(20);
+    });
+    expect(window.location.hash).toBe("#program");
+    expect(container.querySelector("#fair-find-heading")).not.toBeNull();
+
+    await act(async () => {
+      window.history.forward();
+      await vi.advanceTimersByTimeAsync(20);
+    });
+    expect(window.location.hash).toBe("#my-day");
+    expect(container.querySelector("#fair-my-day-heading")).not.toBeNull();
   });
 
   it("waits for Travel before checking live sources and defers transit until selected", async () => {
@@ -251,7 +272,7 @@ describe("FairDayWorkspace app journey", () => {
 
   it("starts Find with a fixed task portal and excludes agriculture from Animals", async () => {
     const data = await renderFair();
-    await openMode("Explore");
+    await openMode("Program");
 
     expect(container.querySelector('[aria-label="Back to Fair Today"]')).not.toBeNull();
     expect(container.querySelector('[aria-label="Fair day to explore"]')).not.toBeNull();
@@ -320,16 +341,16 @@ describe("FairDayWorkspace app journey", () => {
     for (const item of fridayAgriculture) {
       expect(results.textContent).not.toContain(item.title);
     }
-    expect(container.textContent).toContain("Back to Explore");
+    expect(container.textContent).toContain("Back to Program");
     expect(container.querySelector("[data-fair-discovery-choices]")).toBeNull();
 
-    await openMode("Explore");
+    await openMode("Program");
     expect(container.querySelector("[data-fair-discovery-choices]")).not.toBeNull();
   });
 
   it("switches between visual discovery and the grounds map without leaving the Fair plan", async () => {
     await renderFair();
-    await openMode("Explore");
+    await openMode("Program");
 
     expect(container.querySelector("[data-fair-discovery-choices]")).not.toBeNull();
     await openMode("Map");
@@ -342,8 +363,8 @@ describe("FairDayWorkspace app journey", () => {
     expect(container.querySelector("[data-fair-discovery-choices]")).toBeNull();
     expect(container.textContent).toContain("The grounds map could not open.");
 
-    await openMode("Explore");
-    expect(window.location.hash).toBe("#find");
+    await openMode("Program");
+    expect(window.location.hash).toBe("#program");
     expect(container.querySelector("[data-fair-discovery-choices]")).not.toBeNull();
   });
 
@@ -379,6 +400,44 @@ describe("FairDayWorkspace app journey", () => {
       document.body.querySelectorAll('[role="dialog"][data-state="open"]'),
     ).toHaveLength(1);
     expect(document.body.textContent).toContain("Fair help");
+  });
+
+  it("moves a mapped program event into the Fair map without offering a false action", async () => {
+    await renderFair();
+    await openFullProgram();
+
+    const kidZoneDetails = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Open details for Kid Zone"]',
+    );
+    if (!kidZoneDetails) throw new Error("Missing Kid Zone details control.");
+    await act(async () => kidZoneDetails.click());
+    await act(async () => vi.advanceTimersByTimeAsync(20));
+    expect(
+      Array.from(document.body.querySelectorAll("button, a")).some(
+        (control) => control.textContent?.trim() === "Show on map",
+      ),
+    ).toBe(false);
+
+    const daughtryDetails = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Open details for Daughtry"]',
+    );
+    if (!daughtryDetails) throw new Error("Missing Daughtry details control.");
+    await act(async () => daughtryDetails.click());
+    await act(async () => vi.advanceTimersByTimeAsync(20));
+
+    const showOnMap = buttonWithText(document.body, "Show on map");
+    await act(async () => showOnMap.click());
+    expect(window.location.hash).toBe("#fair-map");
+  });
+
+  it("refreshes the program clock at the next minute boundary", async () => {
+    await renderFair();
+    await openFullProgram();
+
+    expect(container.textContent).toContain("Up next in 1 min");
+    await act(async () => vi.advanceTimersByTimeAsync(61_000));
+    expect(container.textContent).not.toContain("Up next in 1 min");
+    expect(container.textContent).toContain("Happening now");
   });
 
   it("reopens the same family essential with its reviewed answer after closing Help", async () => {
@@ -515,7 +574,7 @@ describe("FairDayWorkspace app journey", () => {
     };
     await act(async () => saveOptions.cancel.onClick());
 
-    expect(window.location.hash).toBe("#find");
+    expect(window.location.hash).toBe("#program");
     expect(
       container.querySelector(
         'button[aria-label^="Add Daughtry to My Day"][aria-pressed="false"]',

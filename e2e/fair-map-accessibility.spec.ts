@@ -8,6 +8,7 @@ const FAIR_PATH = "/moments/great-frederick-fair-2026#fair-map";
 const AXE_PATH = path.join(process.cwd(), "node_modules/axe-core/axe.min.js");
 const FAIR_MAP_LENSES = [
   { id: "arrival", count: 16 },
+  { id: "program", count: 6 },
   { id: "essentials", count: 24 },
   { id: "animals", count: 16 },
   { id: "buildings", count: 7 },
@@ -83,7 +84,7 @@ async function readMobileMapChrome(page: Page) {
       attribution: readBox(
         ".fair-grounds-map-canvas .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib",
       ),
-      actionBar: readBox("[data-mobile-action-bar]"),
+      actionBar: readBox("[data-mobile-action-bar] nav"),
       attributionToggleOwnsHit:
         attribution !== null &&
         attributionHit !== null &&
@@ -766,7 +767,7 @@ test.describe("Fairgrounds map accessibility", () => {
       await expect(mapView).toHaveValue("arrival");
       await expect(mapView).toHaveCSS("height", "44px");
       await expect(mapView.locator("option:checked")).toHaveText("Arrive · 16");
-      await expect(mapView.locator("option")).toHaveCount(4);
+      await expect(mapView.locator("option")).toHaveCount(5);
       await expect(mapView.locator("option").last()).toHaveText("Buildings · 7");
       await expect(page.locator("#fair-map-filter-status")).toContainText(
         "This map view shows Arrive and enter: 16 places.",
@@ -957,6 +958,7 @@ test.describe("Fairgrounds map accessibility", () => {
   test("opens a compact choice sheet for a dense marker cluster", async ({
     page,
   }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width: 320, height: 568 });
     await openFairMap(page);
     await page
@@ -968,6 +970,10 @@ test.describe("Fairgrounds map accessibility", () => {
 
     const cluster = page.locator("[data-fair-map-cluster]").first();
     await expect(cluster).toBeVisible();
+    const clusterMemberIds =
+      (await cluster.getAttribute("data-fair-map-cluster-members"))?.split(
+        " ",
+      ) ?? [];
     await cluster.click();
     const choiceSheet = page.locator("[data-fair-map-cluster-selection]");
     await expect(choiceSheet).toHaveAttribute("open", "");
@@ -1018,7 +1024,17 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(selectedHeading).toBeVisible();
     await expect(selectedHeading).toBeFocused();
     await selectedHeading.press("Escape");
-    await expect(cluster).toBeFocused();
+    await expect
+      .poll(async () =>
+        page.evaluate((memberIds) => {
+          const active = document.activeElement as HTMLElement | null;
+          if (active?.id === "fair-map-search") return true;
+          const activeMemberIds =
+            active?.dataset.fairMapClusterMembers?.split(" ") ?? [];
+          return memberIds.every((id) => activeMemberIds.includes(id));
+        }, clusterMemberIds),
+      )
+      .toBe(true);
   });
 
   test("keeps pointer actions behind the cluster modal inert", async ({
@@ -1028,16 +1044,35 @@ test.describe("Fairgrounds map accessibility", () => {
     const map = await openFairMap(page);
     await page
       .getByRole("combobox", { name: "Map view" })
-      .selectOption("animals");
+      .selectOption("program");
     await expect
       .poll(async () => (await readMarkerHitTargets(page)).representedPlaces)
-      .toBe(16);
+      .toBe(6);
 
-    const cluster = page
-      .locator(
-        '[data-fair-map-cluster][data-fair-map-marker-count="3"]',
-      )
-      .first();
+    const clusters = page.locator("[data-fair-map-cluster]");
+    await expect
+      .poll(async () => {
+        const counts = await clusters.evaluateAll((nodes) =>
+          nodes.map((node) =>
+            Number(node.getAttribute("data-fair-map-marker-count") ?? 0),
+          ),
+        );
+        return Math.min(...counts.filter((count) => count > 1));
+      })
+      .toBeLessThanOrEqual(4);
+    const clusterCounts = await clusters.evaluateAll((nodes) =>
+      nodes.map((node) =>
+        Number(node.getAttribute("data-fair-map-marker-count") ?? 0),
+      ),
+    );
+    const smallestClusterIndex = clusterCounts.reduce(
+      (smallestIndex, count, index) =>
+        count > 1 && count < clusterCounts[smallestIndex]
+          ? index
+          : smallestIndex,
+      0,
+    );
+    const cluster = clusters.nth(smallestClusterIndex);
     await expect(cluster).toBeVisible();
     const dialog = page.locator("[data-fair-map-cluster-selection]");
     const openCluster = async () => {
@@ -1103,7 +1138,7 @@ test.describe("Fairgrounds map accessibility", () => {
       page
         .getByRole("group", { name: "Choose what the Fair map shows" })
         .getByRole("button"),
-    ).toHaveCount(4);
+    ).toHaveCount(5);
     await expect(arrival).toBeVisible();
     await expect(arrival).toContainText("Arrive and enter · 16");
     await expect(

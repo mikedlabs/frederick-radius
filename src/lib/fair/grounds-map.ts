@@ -243,6 +243,22 @@ export function fairGroundsFeatureMatchesPlace(
   );
 }
 
+/**
+ * Resolve only a single reviewed venue match. Multiple matches stay unresolved
+ * so a program-to-map handoff can never guess which marker a visitor needs.
+ */
+export function resolveFairGroundsFeatureId(
+  features: readonly FairGroundsMapFeature[],
+  candidateStrings: readonly string[],
+): string | null {
+  const matches = features.filter((feature) =>
+    candidateStrings.some((candidate) =>
+      fairGroundsFeatureMatchesPlace(feature, candidate),
+    ),
+  );
+  return matches.length === 1 ? matches[0].properties.id : null;
+}
+
 export function fairGroundsMapKindLabel(kind: FairGroundsMapKind): string {
   return {
     fairgrounds: "Fairgrounds",

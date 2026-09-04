@@ -107,11 +107,11 @@ function scheduleKind(
   if (/\b(?:agriculture|agricultural|farm|garden|landscape|produce)\b/.test(text)) {
     return "agriculture";
   }
-  if (/\b(?:concert|music|band|choir|singer)\b/.test(text)) return "concert";
-  if (/\b(?:carnival|ride|midway)\b/.test(text)) return "carnival";
   if (/\b(?:tractor|truck|motorsport|demolition)\b/.test(text)) {
     return "motorsport";
   }
+  if (/\b(?:concert|music|band|choir|singer)\b/.test(text)) return "concert";
+  if (/\b(?:carnival|ride|midway)\b/.test(text)) return "carnival";
   if (/\b(?:first aid|guest services|security)\b/.test(text)) return "service";
   return "other";
 }
@@ -185,9 +185,23 @@ function explicitPlaces(text: string): string[] {
         section.length <= 120 &&
         /\b(?:Arena|Grandstand|Horse Park|Infield|Stage|Tent)\b/i.test(section),
     );
-  return Array.from(
-    new Set([...(numberedPlaces ?? []), ...namedPlaces]),
+  const reviewedNamedMentions =
+    (numberedPlaces?.length ?? 0) + namedPlaces.length === 0
+      ? text.match(/\b(?:Grandstand|Household Building|The Null Bldg\.?)\b/gi)
+      : null;
+  const places = Array.from(
+    new Set([
+      ...(numberedPlaces ?? []),
+      ...(reviewedNamedMentions ?? []),
+      ...namedPlaces,
+    ]),
   );
+  const hasHouseholdBuilding = places.some((place) =>
+    /\bHousehold Building\b/i.test(place),
+  );
+  return hasHouseholdBuilding
+    ? places.filter((place) => !/\bThe Null Bldg\.?\b/i.test(place))
+    : places;
 }
 
 function explicitPlaceLabel(text: string): string {
@@ -431,6 +445,7 @@ export function buildFairDayWorkspaceData(
       }).format(new Date(`${day.date}T12:00:00-04:00`)),
       dayLabel: String(Number(day.date.slice(-2))),
       gateHoursLabel: clockLabel(day.gateStartsAt),
+      gateClosesAt: day.gateEndsAt,
     })),
     initialDate: initialDay.date,
     offers: pack.offers.map((offer) => ({

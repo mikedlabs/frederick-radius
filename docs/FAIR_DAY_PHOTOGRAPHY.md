@@ -3,8 +3,8 @@
 The Fair Day experience uses real photographs made by Mike D at The Great
 Frederick Fair on September 15, 2024. Mike supplied the original files as the
 photographer and Frederick Radius project owner and approved their use in the
-product. Keep the visible `Photo: Mike D` attribution wherever these images
-appear.
+product. Preserve this provenance record without repeating a visible credit on
+every compact product surface.
 
 ## Source record
 

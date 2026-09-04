@@ -7,12 +7,18 @@ import {
   greatFrederickFair2026MapAdditions,
   greatFrederickFair2026MapPatches,
 } from "@/data/fair/great-frederick-fair-2026-map-overlays";
+import {
+  greatFrederickFair2026Pack,
+  greatFrederickFair2026PackPointer,
+} from "@/data/fair/great-frederick-fair-2026-pack";
+import { buildFairDayWorkspaceData } from "@/components/fair/buildFairDayWorkspaceData";
 
 import {
   enrichFairGroundsMap,
   fairGroundsFeatureMatchesFilter,
   fairGroundsFeatureMatchesPlace,
   parseFairGroundsMap,
+  resolveFairGroundsFeatureId,
 } from "./grounds-map";
 
 const baseMap = parseFairGroundsMap(
@@ -48,6 +54,25 @@ describe("Fair grounds map", () => {
           feature.properties.sourceUrl.startsWith(
             "https://www.openstreetmap.org/",
           ),
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps every published program map action resolvable to one reviewed place", () => {
+    const workspace = buildFairDayWorkspaceData(
+      greatFrederickFair2026Pack,
+      greatFrederickFair2026PackPointer,
+      new Date("2026-09-04T16:00:00Z"),
+    );
+    const mappedProgramItems = workspace.scheduleItems.filter((item) =>
+      item.placeLabel.startsWith("Published place:"),
+    );
+
+    expect(mappedProgramItems).toHaveLength(146);
+    expect(
+      mappedProgramItems.every(
+        (item) =>
+          resolveFairGroundsFeatureId(map.features, [item.placeLabel]) !== null,
       ),
     ).toBe(true);
   });
@@ -356,6 +381,30 @@ describe("Fair grounds map", () => {
     );
 
     expect(matches.map((feature) => feature.properties.id)).toEqual([featureId]);
+  });
+
+  it("resolves raw official program wording without guessing across matches", () => {
+    expect(
+      resolveFairGroundsFeatureId(map.features, [
+        "Household Building Demonstrations in The Null Bldg.",
+      ]),
+    ).toBe("osm-way-103615601");
+    expect(
+      resolveFairGroundsFeatureId(map.features, [
+        "Neal McCoy with special guest at the Grandstand",
+      ]),
+    ).toBe("osm-way-103615596");
+
+    const grandstand = map.features.find(
+      (feature) => feature.properties.id === "osm-way-103615596",
+    );
+    if (!grandstand) throw new Error("Expected Grandstand map feature");
+    const duplicated = [grandstand, grandstand];
+    expect(
+      resolveFairGroundsFeatureId(duplicated, [
+        "Published place: Grandstand.",
+      ]),
+    ).toBeNull();
   });
 
   it("does not confuse numbered buildings or invent Kid Zone geometry", () => {

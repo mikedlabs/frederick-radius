@@ -7,7 +7,7 @@ test.describe("BottomDrawer keyboard focus", () => {
     page,
   }) => {
     test.setTimeout(180_000);
-    await page.goto("/moments/great-frederick-fair-2026#find", {
+    await page.goto("/moments/great-frederick-fair-2026#program", {
       waitUntil: "domcontentloaded",
     });
     await page

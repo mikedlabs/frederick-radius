@@ -8,6 +8,7 @@ export type FairDayDateOption = {
   weekdayLabel: string;
   dayLabel: string;
   gateHoursLabel: string;
+  gateClosesAt: string;
 };
 
 export type FairDayOfferView = {

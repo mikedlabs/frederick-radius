@@ -81,11 +81,21 @@ export type FairGroundsMapProgramItem = {
   placeLabel: string;
 };
 
+export type FairGroundsMapFocusRequest = {
+  programItemId: string;
+  requestId: number;
+};
+
 export type FairGroundsMapProps = {
   savedStops: FairGroundsMapSavedStop[];
   programItems: FairGroundsMapProgramItem[];
+  focusRequest?: FairGroundsMapFocusRequest | null;
   onBrowseProgram: () => void;
+  onFocusRequestHandled?: (requestId: number) => void;
+  onOpenProgramItem?: (itemId: string) => void;
 };
+
+type FairGroundsMapView = FairGroundsMapFilter | "program";
 
 type FairGroundsMarkerGroup = {
   id: string;
@@ -119,7 +129,7 @@ type FairMapRuntime = "checking" | "interactive" | "unsupported" | "failed";
 const FAIR_ARRIVAL_MIN_ZOOM = 13.5;
 
 const FILTERS: Array<{
-  id: FairGroundsMapFilter;
+  id: FairGroundsMapView;
   label: string;
   compactLabel: string;
   tone: string;
@@ -129,6 +139,12 @@ const FILTERS: Array<{
     label: "Arrive and enter",
     compactLabel: "Arrive",
     tone: "var(--app-cool)",
+  },
+  {
+    id: "program",
+    label: "On this day",
+    compactLabel: "Program places",
+    tone: "var(--app-accent)",
   },
   {
     id: "essentials",
@@ -153,13 +169,13 @@ const FILTERS: Array<{
 // FairDayWorkspace conditionally mounts the map as visitors move between its
 // four modes. Remember the chosen lens for that client-side journey only;
 // a document reload evaluates this module again and restores Arrive.
-let rememberedFairGroundsMapFilter: FairGroundsMapFilter | null = null;
+let rememberedFairGroundsMapFilter: FairGroundsMapView | null = null;
 
-function readRememberedFairGroundsMapFilter(): FairGroundsMapFilter | null {
+function readRememberedFairGroundsMapFilter(): FairGroundsMapView | null {
   return rememberedFairGroundsMapFilter;
 }
 
-function rememberFairGroundsMapFilter(filter: FairGroundsMapFilter): void {
+function rememberFairGroundsMapFilter(filter: FairGroundsMapView): void {
   rememberedFairGroundsMapFilter = filter;
 }
 
@@ -481,7 +497,10 @@ function FairMapFeatureActions({
 export default function FairGroundsMapInner({
   savedStops,
   programItems,
+  focusRequest,
   onBrowseProgram,
+  onFocusRequestHandled,
+  onOpenProgramItem,
 }: FairGroundsMapProps) {
   const mapRef = useRef<MapRef | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -501,16 +520,19 @@ export default function FairGroundsMapInner({
     memberIds: string[];
   } | null>(null);
   const focusedDeepLinkRef = useRef(false);
+  const focusedProgramRequestRef = useRef<number | null>(null);
+  const selectedFocusTimerRef = useRef<number | null>(null);
   const mapLoadedRef = useRef(false);
   const locationRequestRef = useRef(0);
   const interactiveMapSurfaceRef = useRef<HTMLDivElement | null>(null);
+  const mapCanvasShellRef = useRef<HTMLDivElement | null>(null);
   const mapStyle = useFrederickFlavorStyle();
   const [mapRuntime, setMapRuntime] =
     useState<FairMapRuntime>("checking");
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapData, setMapData] = useState<FairGroundsMap | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [filter, setFilterState] = useState<FairGroundsMapFilter>(() =>
+  const [filter, setFilterState] = useState<FairGroundsMapView>(() =>
     typeof window === "undefined"
       ? "arrival"
       : (readRememberedFairGroundsMapFilter() ?? "arrival"),
@@ -523,6 +545,9 @@ export default function FairGroundsMapInner({
   const [selectionExpanded, setSelectionExpanded] = useState(false);
   const [markerGroups, setMarkerGroups] = useState<FairGroundsMarkerGroup[]>([]);
   const [mobileActionBarHeight, setMobileActionBarHeight] = useState<
+    number | null
+  >(null);
+  const [mobileMapActionBarClearance, setMobileMapActionBarClearance] = useState<
     number | null
   >(null);
   const [locating, setLocating] = useState(false);
@@ -665,10 +690,26 @@ export default function FairGroundsMapInner({
     const measure = () => {
       window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
-        const height = Math.ceil(actionBar.getBoundingClientRect().height);
+        const actionBarBox = actionBar.getBoundingClientRect();
+        const height = Math.ceil(actionBarBox.height);
         if (height > 0) {
           setMobileActionBarHeight((current) =>
             current === height ? current : height,
+          );
+        }
+        const mapCanvasBox = mapCanvasShellRef.current?.getBoundingClientRect();
+        const actionSurface =
+          actionBar.querySelector<HTMLElement>("nav") ?? actionBar;
+        const actionSurfaceBox = actionSurface.getBoundingClientRect();
+        const clearance = mapCanvasBox
+          ? Math.max(
+              height,
+              Math.ceil(mapCanvasBox.bottom - actionSurfaceBox.top),
+            )
+          : height;
+        if (clearance > 0) {
+          setMobileMapActionBarClearance((current) =>
+            current === clearance ? current : clearance,
           );
         }
       });
@@ -678,6 +719,9 @@ export default function FairGroundsMapInner({
         ? null
         : new ResizeObserver(measure);
     resizeObserver?.observe(actionBar);
+    if (mapCanvasShellRef.current) {
+      resizeObserver?.observe(mapCanvasShellRef.current);
+    }
     window.addEventListener("resize", measure);
     window.visualViewport?.addEventListener("resize", measure);
     measure();
@@ -688,9 +732,9 @@ export default function FairGroundsMapInner({
       window.removeEventListener("resize", measure);
       window.visualViewport?.removeEventListener("resize", measure);
     };
-  }, []);
+  }, [mapData]);
 
-  const setFilter = (nextFilter: FairGroundsMapFilter) => {
+  const setFilter = (nextFilter: FairGroundsMapView) => {
     rememberFairGroundsMapFilter(nextFilter);
     setFilterState(nextFilter);
   };
@@ -761,14 +805,23 @@ export default function FairGroundsMapInner({
     );
   }, [mapData, programItems]);
 
+  const featureMatchesView = useCallback(
+    (feature: FairGroundsMapFeature, view: FairGroundsMapView) =>
+      view === "program"
+        ? feature.properties.kind === "fairgrounds" ||
+          programMatches.has(feature.properties.id)
+        : fairGroundsFeatureMatchesFilter(feature, view),
+    [programMatches],
+  );
+
   const visibleFeatures = useMemo(
     () =>
       mapData?.features.filter(
         (feature) =>
-          fairGroundsFeatureMatchesFilter(feature, filter) ||
+          featureMatchesView(feature, filter) ||
           savedStopMatches.has(feature.properties.id),
       ) ?? [],
-    [filter, mapData, savedStopMatches],
+    [featureMatchesView, filter, mapData, savedStopMatches],
   );
   const visiblePolygons = useMemo(
     () => ({
@@ -1046,18 +1099,18 @@ export default function FairGroundsMapInner({
     return next;
   }, [mapData]);
   const filterCounts = useMemo(() => {
-    if (!mapData) return new Map<FairGroundsMapFilter, number>();
+    if (!mapData) return new Map<FairGroundsMapView, number>();
     return new Map(
       FILTERS.map((option) => [
         option.id,
         mapData.features.filter(
           (feature) =>
             feature.properties.kind !== "fairgrounds" &&
-            fairGroundsFeatureMatchesFilter(feature, option.id),
+            featureMatchesView(feature, option.id),
         ).length,
       ]),
     );
-  }, [mapData]);
+  }, [featureMatchesView, mapData]);
 
   const fairMapFitPadding = useCallback(() => {
     const map = mapRef.current?.getMap();
@@ -1116,13 +1169,26 @@ export default function FairGroundsMapInner({
     return { top, right: clearance, bottom, left: clearance };
   }, []);
 
-  const focusSelectedDetails = () => {
-    const desktop = window.matchMedia("(min-width: 1024px)").matches;
-    const heading = desktop
-      ? desktopSelectionHeadingRef.current
-      : mobileSelectionHeadingRef.current;
-    heading?.focus({ preventScroll: true });
-  };
+  const focusSelectedDetails = useCallback(() => {
+    if (selectedFocusTimerRef.current !== null) {
+      window.clearTimeout(selectedFocusTimerRef.current);
+      selectedFocusTimerRef.current = null;
+    }
+    const attemptFocus = () => {
+      const desktop = window.matchMedia("(min-width: 1024px)").matches;
+      const heading = desktop
+        ? desktopSelectionHeadingRef.current
+        : mobileSelectionHeadingRef.current;
+      if (!heading) return;
+      if (heading.closest('[aria-hidden="true"]')) {
+        selectedFocusTimerRef.current = window.setTimeout(attemptFocus, 100);
+        return;
+      }
+      selectedFocusTimerRef.current = null;
+      heading.focus({ preventScroll: true });
+    };
+    attemptFocus();
+  }, []);
 
   const openMarkerCluster = (
     features: FairGroundsMapFeature[],
@@ -1172,7 +1238,49 @@ export default function FairGroundsMapInner({
   };
 
   useEffect(() => {
-    if (!selected || mapRuntime !== "interactive") return;
+    if (
+      !mapData ||
+      !focusRequest ||
+      focusedProgramRequestRef.current === focusRequest.requestId
+    ) {
+      return;
+    }
+    const requestId = focusRequest.requestId;
+    const programItemId = focusRequest.programItemId;
+    const frame = window.requestAnimationFrame(() => {
+      focusedProgramRequestRef.current = requestId;
+      const matchingFeatures = mapData.features.filter((feature) =>
+        (programMatches.get(feature.properties.id) ?? []).some(
+          (item) => item.id === programItemId,
+        ),
+      );
+      if (matchingFeatures.length !== 1) {
+        setMapAnnouncement(
+          "That program place is not available on the reviewed Fair map.",
+        );
+        onFocusRequestHandled?.(requestId);
+        return;
+      }
+
+      const feature = matchingFeatures[0];
+      rememberFairGroundsMapFilter("program");
+      setFilterState("program");
+      setQuery("");
+      setCondensedSearchOpen(false);
+      setClusterSelectionIds([]);
+      setMarkerGroups([]);
+      setSelectionExpanded(false);
+      setSelectedId(feature.properties.id);
+      setMapAnnouncement(
+        `${mappedFeatureName(feature, mapData)} selected for this program item. Details are open.`,
+      );
+      onFocusRequestHandled?.(requestId);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusRequest, mapData, onFocusRequestHandled, programMatches]);
+
+  useEffect(() => {
+    if (!selected || mapRuntime !== "interactive" || !mapLoaded) return;
 
     // The mobile place sheet is mounted by this selection. Wait until it has
     // real bounds before computing camera padding so the chosen marker stays
@@ -1180,17 +1288,37 @@ export default function FairGroundsMapInner({
     const frame = window.requestAnimationFrame(() => {
       const map = mapRef.current?.getMap();
       if (!map) return;
-      map.easeTo({
-        center: selected.properties.anchor,
-        zoom: Math.max(map.getZoom(), 17),
-        duration: mapCameraDuration("focus"),
-        padding: fairMapFitPadding(),
-      });
+      // A cluster choice already starts inside a deliberately framed group.
+      // Preserve that camera so closing details can restore the exact cluster
+      // trigger instead of returning visitors to an unrelated map control.
+      if (!clusterOriginRef.current) {
+        map.easeTo({
+          center: selected.properties.anchor,
+          zoom: Math.max(map.getZoom(), 17),
+          duration: mapCameraDuration("focus"),
+          padding: fairMapFitPadding(),
+        });
+      }
       focusSelectedDetails();
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [fairMapFitPadding, mapRuntime, selected]);
+  }, [
+    fairMapFitPadding,
+    focusSelectedDetails,
+    mapLoaded,
+    mapRuntime,
+    selected,
+  ]);
+
+  useEffect(
+    () => () => {
+      if (selectedFocusTimerRef.current !== null) {
+        window.clearTimeout(selectedFocusTimerRef.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (selected || mapRuntime !== "interactive") return;
@@ -1253,6 +1381,18 @@ export default function FairGroundsMapInner({
     });
   };
 
+  const openProgramItemFromMap = (itemId: string) => {
+    mobileSelectionDialogRef.current?.close();
+    setSelectionExpanded(false);
+    window.requestAnimationFrame(() => {
+      const returnTarget = window.matchMedia("(max-width: 1023.98px)").matches
+        ? mobileSelectionToggleRef.current
+        : desktopSelectionHeadingRef.current;
+      returnTarget?.focus({ preventScroll: true });
+      onOpenProgramItem?.(itemId);
+    });
+  };
+
   const fitFeatures = useCallback((features: FairGroundsMapFeature[]) => {
     const anchors = features
       .filter((feature) => feature.properties.kind !== "fairgrounds")
@@ -1283,14 +1423,14 @@ export default function FairGroundsMapInner({
     );
   }, [fairMapFitPadding]);
 
-  const fitFilter = useCallback((nextFilter: FairGroundsMapFilter) => {
+  const fitFilter = useCallback((nextFilter: FairGroundsMapView) => {
     if (!mapData) return;
     fitFeatures(
       mapData.features.filter((feature) =>
-        fairGroundsFeatureMatchesFilter(feature, nextFilter),
+        featureMatchesView(feature, nextFilter),
       ),
     );
-  }, [fitFeatures, mapData]);
+  }, [featureMatchesView, fitFeatures, mapData]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -1302,7 +1442,7 @@ export default function FairGroundsMapInner({
     return () => window.cancelAnimationFrame(frame);
   }, [condensedMobileControls, fitFilter, mobileActionBarHeight]);
 
-  const activateMapFilter = (nextFilter: FairGroundsMapFilter) => {
+  const activateMapFilter = (nextFilter: FairGroundsMapView) => {
     const count = filterCounts.get(nextFilter) ?? 0;
     const option = FILTERS.find((candidate) => candidate.id === nextFilter);
     setFilter(nextFilter);
@@ -1344,7 +1484,7 @@ export default function FairGroundsMapInner({
     feature: FairGroundsMapFeature,
     trigger: HTMLElement,
   ) => {
-    const nextFilter: FairGroundsMapFilter =
+    const nextFilter: FairGroundsMapView =
       feature.properties.kind === "animal"
         ? "animals"
         : feature.properties.kind === "building"
@@ -1543,6 +1683,10 @@ export default function FairGroundsMapInner({
             mobileActionBarHeight === null
               ? undefined
               : `${mobileActionBarHeight}px`,
+          "--fair-map-action-bar-clearance":
+            mobileMapActionBarClearance === null
+              ? undefined
+              : `${mobileMapActionBarClearance}px`,
         } as CSSProperties
       }
     >
@@ -1672,7 +1816,7 @@ export default function FairGroundsMapInner({
                   value={filter}
                   onChange={(event) =>
                     activateMapFilter(
-                      event.target.value as FairGroundsMapFilter,
+                      event.target.value as FairGroundsMapView,
                     )
                   }
                   aria-describedby="fair-map-filter-status"
@@ -1835,7 +1979,7 @@ export default function FairGroundsMapInner({
                     value={filter}
                     onChange={(event) =>
                       activateMapFilter(
-                        event.target.value as FairGroundsMapFilter,
+                        event.target.value as FairGroundsMapView,
                       )
                     }
                     aria-describedby="fair-map-filter-status"
@@ -1910,6 +2054,7 @@ export default function FairGroundsMapInner({
 
       <div className="mt-0 lg:mt-3 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-4">
         <div
+          ref={mapCanvasShellRef}
           className="fair-grounds-map-canvas relative h-[calc(100dvh-8rem)] min-h-[520px] overflow-hidden border-y lg:h-[620px] lg:min-h-0 lg:rounded-[var(--app-radius-xl)] lg:border"
           style={{
             borderColor: "var(--app-control-border)",
@@ -2310,7 +2455,15 @@ export default function FairGroundsMapInner({
                 closeMarkerCluster();
               }}
               onClick={(event) => {
-                if (event.target !== event.currentTarget) return;
+                const bounds = event.currentTarget.getBoundingClientRect();
+                const clickedBackdrop =
+                  event.clientX < bounds.left ||
+                  event.clientX > bounds.right ||
+                  event.clientY < bounds.top ||
+                  event.clientY > bounds.bottom;
+                if (event.target !== event.currentTarget && !clickedBackdrop) {
+                  return;
+                }
                 event.preventDefault();
                 event.stopPropagation();
                 closeMarkerCluster();
@@ -2509,12 +2662,20 @@ export default function FairGroundsMapInner({
                     On your selected day
                   </p>
                   {selectedProgramItems.slice(0, 2).map((item) => (
-                    <p key={item.id} className="mt-1 text-[14px] font-semibold leading-snug">
-                      <span className="tabular-nums" style={{ color: "var(--app-brand-press)" }}>
-                        {item.timeLabel}
-                      </span>{" "}
-                      · {item.title}
-                    </p>
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => openProgramItemFromMap(item.id)}
+                      className="tap-44 -ml-2 mt-0.5 flex min-h-11 w-[calc(100%+0.5rem)] items-center rounded-[var(--app-radius-sm)] px-2 text-left text-[14px] font-semibold leading-snug hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
+                      aria-label={`Open program details for ${item.title}`}
+                    >
+                      <span>
+                        <span className="tabular-nums" style={{ color: "var(--app-brand-press)" }}>
+                          {item.timeLabel}
+                        </span>{" "}
+                        · {item.title}
+                      </span>
+                    </button>
                   ))}
                   {selectedProgramItems.length > 2 ? (
                     <button
@@ -2631,12 +2792,20 @@ export default function FairGroundsMapInner({
                     On your selected day
                   </p>
                   {selectedProgramItems.slice(0, 3).map((item) => (
-                    <p key={item.id} className="mt-2 text-[14px] font-semibold leading-snug">
-                      <span className="tabular-nums" style={{ color: "var(--app-brand-press)" }}>
-                        {item.timeLabel}
-                      </span>{" "}
-                      · {item.title}
-                    </p>
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => openProgramItemFromMap(item.id)}
+                      className="tap-44 -ml-2 mt-1 flex min-h-11 w-[calc(100%+0.5rem)] items-center rounded-[var(--app-radius-sm)] px-2 text-left text-[14px] font-semibold leading-snug hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
+                      aria-label={`Open program details for ${item.title}`}
+                    >
+                      <span>
+                        <span className="tabular-nums" style={{ color: "var(--app-brand-press)" }}>
+                          {item.timeLabel}
+                        </span>{" "}
+                        · {item.title}
+                      </span>
+                    </button>
                   ))}
                   {selectedProgramItems.length > 3 ? (
                     <button

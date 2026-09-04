@@ -19,15 +19,15 @@ export default function FairGroundsMapMasthead({
       className="overflow-hidden rounded-[var(--app-radius-xl)] border"
       style={{
         borderColor:
-          "color-mix(in srgb, var(--app-brand-press) 22%, var(--app-border))",
+          "color-mix(in srgb, var(--app-cool) 28%, var(--app-border))",
         background:
-          "radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--app-amber) 13%, transparent), transparent 42%), var(--app-bg-elevated-solid)",
+          "radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--app-cool) 14%, transparent), transparent 46%), radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--app-amber) 13%, transparent), transparent 42%), var(--app-bg-elevated-solid)",
         boxShadow:
           "var(--app-edge), var(--app-hi), 0 20px 42px -38px var(--app-ink)",
       }}
     >
       <div
-        className="h-1 w-full"
+        className="h-1.5 w-full"
         style={{
           background:
             "linear-gradient(90deg, var(--app-brand-press) 0 34%, var(--app-amber) 34% 52%, var(--app-brand-2) 52% 68%, var(--app-cool) 68% 84%, var(--app-accent) 84% 100%)",
@@ -38,7 +38,7 @@ export default function FairGroundsMapMasthead({
         <div>
           <p
             className="text-[12px] font-extrabold uppercase tracking-[0.14em]"
-            style={{ color: "var(--app-brand-press)" }}
+            style={{ color: "var(--app-cool)" }}
           >
             Source-checked grounds map
           </p>

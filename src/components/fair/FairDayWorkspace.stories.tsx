@@ -225,6 +225,7 @@ export const fairDayStoryData: FairDayWorkspaceData = {
     weekdayLabel,
     dayLabel,
     gateHoursLabel,
+    gateClosesAt: `${date}T22:00:00-04:00`,
   })),
   initialDate: "2026-09-18",
   offers: [

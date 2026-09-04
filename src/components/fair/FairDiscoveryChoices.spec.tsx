@@ -78,7 +78,7 @@ describe("FairDiscoveryChoices", () => {
       "Homegrown Wineries, Breweries and Distilleries Showcase",
     );
     expect(html).toContain("fairgrounds-ferris-wheel-mike-d-960.jpg");
-    expect(html).toContain("Photo: Mike D");
+    expect(html).not.toContain("Photo: Mike D");
     expect(html).not.toContain(
       'data-fair-discovery-choice="food-program" disabled=""',
     );
