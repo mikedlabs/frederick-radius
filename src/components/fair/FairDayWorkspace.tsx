@@ -78,6 +78,7 @@ import {
 import FairPlanStatusRibbon from "./FairPlanStatusRibbon";
 import FairPartyPlanner from "./FairPartyPlanner";
 import FairPracticalAnswers from "./FairPracticalAnswers";
+import FairColoringBookCard from "./FairColoringBookCard";
 import FairShareButton from "./FairShareButton";
 import FairDiscoveryChoices, {
   fairDiscoveryIntentMatches,
@@ -2017,6 +2018,8 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 </button>
               </section>
             ) : null}
+
+            <FairColoringBookCard />
 
             <details className="mt-5 border-t pt-2" style={{ borderColor: "var(--app-border)" }}>
               <summary className="tap-44 flex min-h-11 cursor-pointer items-center justify-between gap-3 text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>

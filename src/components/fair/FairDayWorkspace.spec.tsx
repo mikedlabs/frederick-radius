@@ -118,6 +118,24 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).toContain("focus-visible:z-40");
   });
 
+  it("offers the printable Fair extra after the primary planning choices", () => {
+    const html = renderToStaticMarkup(
+      createElement(FairDayWorkspace, { data }),
+    );
+
+    expect(html).toContain("data-fair-coloring-book");
+    expect(html).toContain("Fair Nights");
+    expect(html).toContain(
+      'href="/downloads/fair-nights-frederick-coloring-book.pdf"',
+    );
+    expect(html.indexOf("What do you need first?")).toBeLessThan(
+      html.indexOf("data-fair-coloring-book"),
+    );
+    expect(html.indexOf("data-fair-coloring-book")).toBeLessThan(
+      html.indexOf("About this independent guide"),
+    );
+  });
+
   it("routes named vendor searches to the current official directory", () => {
     const html = renderToStaticMarkup(
       createElement(FairDayWorkspace, { data }),
