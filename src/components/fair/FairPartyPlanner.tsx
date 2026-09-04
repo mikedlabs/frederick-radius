@@ -348,7 +348,7 @@ export default function FairPartyPlanner({
                 {handoffs.map((handoff) => (
                   <div
                     key={handoff.url}
-                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2"
+                    className="grid gap-1.5"
                   >
                     <span className="text-[11.5px] font-semibold leading-snug">
                       {handoff.label}
@@ -357,8 +357,8 @@ export default function FairPartyPlanner({
                       href={handoff.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      variant="secondary"
-                      size="sm"
+                      className="w-full"
+                      variant={handoff.purchase ? "primary" : "secondary"}
                       aria-label={
                         handoff.purchase
                           ? `Continue to Etix for ${handoff.label}`
@@ -366,7 +366,7 @@ export default function FairPartyPlanner({
                       }
                       iconRight={<ExternalLink className="h-4 w-4" aria-hidden />}
                     >
-                      {handoff.purchase ? "Open Etix" : "Official details"}
+                      {handoff.purchase ? "Continue to Etix" : "Official details"}
                     </Button>
                   </div>
                 ))}

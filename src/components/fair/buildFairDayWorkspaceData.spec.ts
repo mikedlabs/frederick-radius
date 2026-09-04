@@ -28,9 +28,7 @@ describe("buildFairDayWorkspaceData", () => {
       120,
     );
     expect(
-      data.scheduleItems
-        .filter((item) => item.sourceItem.text.length > 200)
-        .every((item) => item.detail === item.sourceItem.text),
+      data.scheduleItems.every((item) => item.sourceItem.text.trim().length > 0),
     ).toBe(true);
     expect(data.scheduleItems.some((item) => item.kind === "animal")).toBe(true);
     expect(data.scheduleItems.some((item) => item.kind === "agriculture")).toBe(
@@ -54,8 +52,53 @@ describe("buildFairDayWorkspaceData", () => {
     const kidZone = data.scheduleItems.find((item) =>
       item.sourceItem.text.includes("gffair.com/free"),
     );
-    expect(kidZone?.title).toBe("Kid Zone: Free fun for all ages!");
-    expect(kidZone?.detail).toContain("gffair.com/free");
+    expect(kidZone?.title).toBe("Kid Zone");
+    expect(kidZone?.detail).toBe("Free fun for all ages!");
+    expect(kidZone?.sourceItem.text).toContain("gffair.com/free");
+
+    const beerGarden = data.scheduleItems.find((item) =>
+      item.sourceItem.text.startsWith("Beer Garden"),
+    );
+    const showcase = data.scheduleItems.find((item) =>
+      item.sourceItem.text.startsWith(
+        "Homegrown Wineries, Breweries and Distilleries Showcase",
+      ),
+    );
+    const daughtry = data.scheduleItems.find((item) =>
+      item.sourceItem.text.startsWith("Daughtry"),
+    );
+
+    expect(beerGarden).toMatchObject({
+      kind: "food",
+      title: "Beer Garden",
+      detail:
+        "Under the MICHELOB ULTRA sign, next to Farm & Garden · Michelob Ultra, Wantz Distributors",
+    });
+    expect(showcase).toMatchObject({
+      kind: "food",
+      title: "Homegrown Wineries, Breweries and Distilleries Showcase",
+      detail: "Bldg. 13 · Fred. Co. Office of Agriculture",
+    });
+    expect(daughtry).toMatchObject({
+      kind: "concert",
+      title: "Daughtry",
+    });
+    expect(daughtry?.detail).toContain("Headliner 8 p.m.");
+    expect(daughtry?.sourceItem.text).toContain(
+      "Presented by Team Reeder",
+    );
+    for (const publishedAnimalTitle of [
+      "Youth Turkey Show",
+      "Youth Dog Show",
+      "Youth Pretty Pig Contest",
+      "Youth Alpaca Show",
+    ]) {
+      expect(
+        data.scheduleItems.find((item) =>
+          item.sourceItem.text.startsWith(publishedAnimalTitle),
+        )?.kind,
+      ).toBe("animal");
+    }
   });
 
   it("keeps county Transit and the Fair parking shuttle as separate facts", () => {

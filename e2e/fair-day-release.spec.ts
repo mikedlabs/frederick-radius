@@ -99,7 +99,6 @@ test.describe("Fair Day production release journey", () => {
     await page.getByRole("button", { name: "Close Fair help" }).click();
 
     await page.getByRole("button", { name: "Review tickets" }).click();
-    await page.getByRole("button", { name: "Compare tickets" }).click();
     await page.getByRole("spinbutton", { name: "Adults 11+" }).fill("2");
 
     const ticketCombination = page.getByRole("list", {
@@ -198,8 +197,9 @@ test.describe("Fair Day production release journey", () => {
     await page
       .getByRole("button", { name: "Browse full program", exact: true })
       .click();
+    await expect(page.locator("[data-fair-program-groups]")).toBeVisible();
     await expect(
-      page.getByRole("list", { name: "Fair program results" }),
+      page.locator("[data-fair-program-trail]:visible").first(),
     ).toBeVisible();
 
     const addProgramItem = page
@@ -240,6 +240,60 @@ test.describe("Fair Day production release journey", () => {
       "placeholder",
       "Tell us what made the Fair harder to access or use.",
     );
+  });
+
+  test("keeps concise program cards connected to exact official wording", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await page.goto(`${FAIR_CANONICAL_PATH}#find`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
+      "data-fair-interaction-ready",
+      "true",
+      { timeout: 15_000 },
+    );
+
+    await page
+      .getByRole("combobox", { name: "Fair day to explore" })
+      .selectOption("2026-09-18");
+    const foodProgram = page.locator(
+      '[data-fair-discovery-choice="food-program"]',
+    );
+    await expect(foodProgram).toBeEnabled();
+    await expect(foodProgram).toContainText(
+      "Homegrown Wineries, Breweries and Distilleries Showcase",
+    );
+
+    await page
+      .getByRole("button", { name: "Browse full program", exact: true })
+      .click();
+    const eveningGroup = page.locator(
+      '[data-fair-program-daypart="evening"]',
+    );
+    await eveningGroup.locator("summary").click();
+    const daughtryCard = eveningGroup.locator("li").filter({
+      has: page.getByText("Daughtry", { exact: true }),
+    });
+    await expect(daughtryCard).toBeVisible();
+    await daughtryCard
+      .getByRole("button", { name: "Open details for Daughtry" })
+      .click();
+
+    const details = page.getByRole("dialog", { name: "Daughtry" });
+    await expect(details).toContainText("Headliner 8 p.m.");
+    await details.getByText("Official program wording", { exact: true }).click();
+    await expect(details).toContainText(
+      "Daughtry - Presented by Team Reeder of Long & Foster Real Estate, Inc. & Carter Machinery",
+    );
+    await expect(
+      details.getByRole("link", { name: "Official program source" }),
+    ).toHaveAttribute("target", "_blank");
+    await page.getByRole("button", { name: "Close Daughtry" }).click();
+    await expect(
+      daughtryCard.getByRole("button", { name: "Open details for Daughtry" }),
+    ).toBeFocused();
   });
 
   test("uses location only after a tap and refuses a misleadingly broad fix", async ({

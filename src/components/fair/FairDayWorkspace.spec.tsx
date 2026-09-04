@@ -54,6 +54,8 @@ describe("FairDayWorkspace server-rendered contract", () => {
 
     expect(html).not.toContain("<main");
     expect(html).toContain('data-fair-app="true"');
+    expect(html).not.toContain("visibility:hidden");
+    expect(html).toContain("Preparing the Fair guide.");
     expect(html).toContain(
       '<section id="fair-now-panel" aria-labelledby="fair-now-heading">',
     );

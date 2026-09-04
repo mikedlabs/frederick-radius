@@ -30,7 +30,7 @@ const CHOICES = [
     Icon: Sparkles,
     accent: "var(--app-brand-press)",
     wash: "color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated))",
-    featured: true,
+    featured: false,
   },
   {
     id: "animals",
@@ -52,13 +52,13 @@ const CHOICES = [
     Icon: FerrisWheel,
     accent: "var(--app-accent-press)",
     wash: "color-mix(in srgb, var(--app-accent) 12%, var(--app-bg-elevated))",
-    featured: false,
+    featured: true,
   },
   {
     id: "food-program",
-    title: "Food events",
-    emptyLabel: "No food event listed",
-    heading: "Food-related program",
+    title: "Food program",
+    emptyLabel: "No food or drink event listed",
+    heading: "Food & drink program",
     detail: "Schedule entries, not a vendor list",
     Icon: UtensilsCrossed,
     accent: "var(--app-cool)",
@@ -189,13 +189,25 @@ export default function FairDiscoveryChoices({
                   ? choice.accent
                   : "var(--app-border-strong)",
                 background: choice.featured
-                  ? "linear-gradient(90deg, var(--app-bg-elevated-solid) 0%, color-mix(in srgb, var(--app-bg-elevated-solid) 97%, transparent) 48%, color-mix(in srgb, var(--app-bg-elevated-solid) 78%, transparent) 72%, color-mix(in srgb, var(--app-bg-elevated-solid) 18%, transparent) 100%), url('/images/fair/fairgrounds-night-mike-d-960.jpg') 70% 57% / cover"
+                  ? "linear-gradient(90deg, var(--app-bg-elevated-solid) 0%, color-mix(in srgb, var(--app-bg-elevated-solid) 97%, transparent) 48%, color-mix(in srgb, var(--app-bg-elevated-solid) 78%, transparent) 72%, color-mix(in srgb, var(--app-bg-elevated-solid) 18%, transparent) 100%), url('/images/fair/fairgrounds-ferris-wheel-mike-d-960.jpg') 72% 52% / cover"
                   : choice.wash,
                 boxShadow: active
                   ? `inset 0 0 0 1px ${choice.accent}`
                   : "var(--app-elev-1)",
               }}
             >
+              {choice.featured ? (
+                <span
+                  className="absolute right-1.5 top-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.06em]"
+                  style={{
+                    color: "var(--app-ink-inverse)",
+                    background:
+                      "color-mix(in srgb, var(--app-ink) 66%, transparent)",
+                  }}
+                >
+                  Photo: Mike D
+                </span>
+              ) : null}
               <span className="relative flex min-w-0 items-start gap-2">
                 <span
                   className="grid h-7 w-7 shrink-0 place-items-center rounded-full border sm:h-8 sm:w-8"

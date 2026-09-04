@@ -23,6 +23,7 @@ import {
   Pencil,
   Plus,
   Search,
+  Sprout,
   TicketCheck,
   Trash2,
   Trophy,
@@ -101,31 +102,43 @@ const FAIR_MODE_IDS: FairMode[] = ["now", "find", "map", "my-day", "travel"];
 
 const FAIR_MODE_MASTHEADS: Record<
   FairPhotoMode,
-  { eyebrow: string; title: string; accent: string; objectPosition: string }
+  {
+    eyebrow: string;
+    title: string;
+    accent: string;
+    visual: "photo" | "plan" | "travel";
+    objectPosition?: string;
+    src?: string;
+    srcSet?: string;
+  }
 > = {
   find: {
-    eyebrow: "Pick a feeling, not a filing cabinet",
+    eyebrow: "Choose what you want to do",
     title: "Explore",
     accent: "var(--app-accent)",
+    visual: "photo",
     objectPosition: "76% 54%",
+    src: "/images/fair/fairgrounds-midway-mike-d-960.jpg",
+    srcSet:
+      "/images/fair/fairgrounds-midway-mike-d-960.jpg 960w, /images/fair/fairgrounds-midway-mike-d-1920.jpg 1920w",
   },
   "my-day": {
     eyebrow: "Tickets, arrival and stops in one place",
     title: "Your plan",
     accent: "var(--app-brand)",
-    objectPosition: "54% 58%",
+    visual: "plan",
   },
   travel: {
     eyebrow: "The easier way in and back out",
     title: "Arrival",
     accent: "var(--app-cool)",
-    objectPosition: "22% 48%",
+    visual: "travel",
   },
 };
 
 const SCHEDULE_FILTERS: Array<{ id: ScheduleFilter; label: string }> = [
   { id: "all", label: "Everything" },
-  { id: "animals", label: "Animals" },
+  { id: "animals", label: "Farm & animals" },
   { id: "music", label: "Music" },
   { id: "rides", label: "Rides" },
   { id: "food", label: "Food" },
@@ -194,7 +207,7 @@ function fairNextActionDetail(
   storageState: FairPlanStorageState,
 ): string {
   if (action === "tickets") {
-    return "Compare the reviewed ticket choices before the handoff to Etix.";
+    return "Compare the reviewed ticket choices before opening Etix.";
   }
   if (action === "travel") {
     return "Choose parking, Transit, drop-off, walking, or biking before you leave.";
@@ -222,7 +235,8 @@ function scheduleAccent(kind: FairDayScheduleItemView["kind"]): string {
 }
 
 function scheduleKindLabel(kind: FairDayScheduleItemView["kind"]): string {
-  if (kind === "agriculture" || kind === "animal") return "Animals";
+  if (kind === "agriculture") return "Farm & garden";
+  if (kind === "animal") return "Animals";
   if (kind === "concert") return "Music";
   if (kind === "carnival") return "Carnival";
   if (kind === "motorsport") return "Grandstand";
@@ -238,8 +252,10 @@ function ScheduleKindGlyph({
   kind: FairDayScheduleItemView["kind"];
 }) {
   const Icon =
-    kind === "agriculture" || kind === "animal"
-      ? PawPrint
+    kind === "agriculture"
+      ? Sprout
+      : kind === "animal"
+        ? PawPrint
       : kind === "concert"
         ? Music2
         : kind === "carnival"
@@ -254,6 +270,124 @@ function ScheduleKindGlyph({
   return <Icon className="h-[18px] w-[18px]" aria-hidden />;
 }
 
+function FairProgramResultList({
+  items,
+  plan,
+  label,
+  onToggle,
+  onOpen,
+}: {
+  items: FairDayScheduleItemView[];
+  plan: FairPlan;
+  label: string;
+  onToggle: (item: FairDayScheduleItemView, planned: boolean) => void;
+  onOpen: (itemId: string) => void;
+}) {
+  return (
+    <ol
+      className="relative mt-3 space-y-2.5 before:absolute before:bottom-7 before:left-[1.55rem] before:top-7 before:w-px before:bg-[var(--app-border-strong)] before:content-['']"
+      aria-label={label}
+      data-fair-program-trail
+    >
+      {items.map((item) => {
+        const planned = plan.steps.some(
+          (step) => step.scheduleItemId === item.id,
+        );
+        const place = compactPlaceLabel(item.placeLabel);
+        const accent = scheduleAccent(item.kind);
+        return (
+          <li
+            key={item.id}
+            className="relative grid grid-cols-[3.15rem_minmax(0,1fr)_2.75rem] gap-2.5 overflow-hidden rounded-[var(--app-radius-lg)] border p-3"
+            style={{
+              borderColor:
+                "color-mix(in srgb, var(--app-border-strong) 86%, transparent)",
+              background: `linear-gradient(110deg, color-mix(in srgb, ${accent} 8%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 48%)`,
+              boxShadow: "var(--app-elev-1)",
+            }}
+          >
+            <span
+              className="relative z-10 grid h-10 w-10 place-items-center self-start rounded-full border-2 bg-[var(--app-bg-elevated-solid)]"
+              style={{ borderColor: accent, color: accent }}
+            >
+              <ScheduleKindGlyph kind={item.kind} />
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <time
+                  className="text-[12px] font-extrabold leading-tight tabular-nums"
+                  style={{ color: accent }}
+                >
+                  {item.timeLabel}
+                </time>
+                <span
+                  className="text-[11px] font-bold uppercase tracking-[0.07em]"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {scheduleKindLabel(item.kind)}
+                </span>
+              </div>
+              <p className="mt-1 line-clamp-3 text-[16px] font-extrabold leading-[1.18] tracking-[-0.015em]">
+                {item.title}
+              </p>
+              {place ? (
+                <p
+                  className="mt-1 text-[12px] font-semibold leading-snug"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {place}
+                </p>
+              ) : null}
+              {item.detail ? (
+                <p
+                  className="mt-1 line-clamp-2 text-[12px] leading-snug"
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  {item.detail}
+                </p>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => onOpen(item.id)}
+                className="tap-44 -mb-2 mt-0.5 inline-flex min-h-11 items-center gap-1 text-[12px] font-bold"
+                style={{ color: accent }}
+                aria-label={`Open details for ${item.title}`}
+              >
+                Details
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </div>
+            <button
+              type="button"
+              data-fair-plan-toggle={item.id}
+              aria-pressed={planned}
+              onClick={() => onToggle(item, planned)}
+              className="tap-44 tactile tactile-interactive grid h-11 w-11 place-items-center self-start rounded-full transition active:scale-[0.94] motion-reduce:transition-none"
+              style={{
+                background: planned
+                  ? "var(--app-bg-sunken)"
+                  : "var(--app-brand-tint-6)",
+                color: planned ? "var(--app-ink-3)" : "var(--app-brand-press)",
+              }}
+              aria-label={
+                planned
+                  ? `Remove ${item.title} from My Day`
+                  : `Add ${item.title} to My Day`
+              }
+            >
+              {planned ? (
+                <Check className="h-4 w-4" aria-hidden />
+              ) : (
+                <Plus className="h-4 w-4" aria-hidden />
+              )}
+            </button>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 function FairPhotoMasthead({
   mode,
   onBack,
@@ -264,35 +398,72 @@ function FairPhotoMasthead({
   onHelp: () => void;
 }) {
   const visual = FAIR_MODE_MASTHEADS[mode];
+  const usesPhoto = visual.visual === "photo";
 
   return (
     <div
       data-fair-mode-masthead={mode}
       className="relative isolate min-h-[104px] overflow-hidden border-b sm:min-h-[190px]"
-      style={{ borderColor: visual.accent }}
+      style={{
+        borderColor: visual.accent,
+        background: usesPhoto
+          ? "var(--app-ink)"
+          : `linear-gradient(120deg, color-mix(in srgb, ${visual.accent} 15%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 58%, color-mix(in srgb, var(--app-brand-2) 8%, var(--app-bg-elevated-solid)))`,
+      }}
     >
-      <picture className="absolute inset-0 block">
-        <img
-          src="/images/fair/fairgrounds-night-mike-d-960.jpg"
-          srcSet="/images/fair/fairgrounds-night-mike-d-960.jpg 960w, /images/fair/fairgrounds-night-mike-d-1920.jpg 1920w"
-          sizes="100vw"
-          alt=""
-          width="960"
-          height="540"
-          loading="eager"
-          className="fair-mode-photo h-full w-full scale-[1.035] object-cover saturate-[1.18]"
-          style={{ objectPosition: visual.objectPosition }}
-        />
-      </picture>
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(180deg, color-mix(in srgb, var(--app-ink) 58%, transparent), color-mix(in srgb, var(--app-ink) 18%, transparent) 48%, color-mix(in srgb, var(--app-ink) 82%, transparent))",
-        }}
-        aria-hidden="true"
-      />
-      <div className="relative z-10 mx-auto flex min-h-[104px] max-w-[68rem] flex-col justify-between px-3 py-2 text-[var(--app-ink-inverse)] sm:min-h-[190px] sm:px-6 sm:py-4">
+      {usesPhoto ? (
+        <>
+          <picture className="absolute inset-0 block">
+            <img
+              src={visual.src}
+              srcSet={visual.srcSet}
+              sizes="100vw"
+              alt=""
+              width="960"
+              height="540"
+              loading="eager"
+              className="fair-mode-photo h-full w-full scale-[1.025] object-cover"
+              style={{ objectPosition: visual.objectPosition }}
+            />
+          </picture>
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(180deg, color-mix(in srgb, var(--app-ink) 62%, transparent), color-mix(in srgb, var(--app-ink) 16%, transparent) 46%, color-mix(in srgb, var(--app-ink) 82%, transparent))",
+            }}
+            aria-hidden="true"
+          />
+        </>
+      ) : (
+        <div className="pointer-events-none absolute bottom-1 right-3 top-14 flex w-[44%] items-center justify-end sm:bottom-0 sm:right-8 sm:top-0" aria-hidden="true">
+          {visual.visual === "plan" ? (
+            <div className="relative flex h-[52px] w-[128px] items-center justify-between sm:h-[126px] sm:w-[260px]">
+              <span className="absolute left-5 right-5 top-1/2 h-1 -translate-y-1/2 rounded-full" style={{ background: "var(--app-border-strong)" }} />
+              {[TicketCheck, MapPinned, Check].map((Icon, index) => (
+                <span
+                  key={index}
+                  className="relative grid h-9 w-9 place-items-center rounded-full border-2 bg-[var(--app-bg-elevated-solid)] shadow-[var(--app-elev-1)] sm:h-14 sm:w-14"
+                  style={{ borderColor: index === 2 ? "var(--app-brand)" : "var(--app-border-strong)", color: index === 2 ? "var(--app-brand-press)" : "var(--app-ink-2)" }}
+                >
+                  <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div className="relative h-[52px] w-[128px] sm:h-[132px] sm:w-[250px]">
+              <span className="absolute bottom-1 left-2 grid h-9 w-9 place-items-center rounded-full border bg-[var(--app-bg-elevated-solid)] shadow-[var(--app-elev-1)] sm:h-16 sm:w-16" style={{ borderColor: "var(--app-cool)", color: "var(--app-cool)" }}>
+                <BusFront className="h-5 w-5 sm:h-7 sm:w-7" />
+              </span>
+              <span className="absolute right-2 top-0 grid h-10 w-10 place-items-center rounded-full border-2 bg-[var(--app-bg-elevated-solid)] shadow-[var(--app-elev-2)] sm:h-20 sm:w-20" style={{ borderColor: "var(--app-brand)", color: "var(--app-brand-press)" }}>
+                <MapPinned className="h-5 w-5 sm:h-8 sm:w-8" />
+              </span>
+              <span className="absolute bottom-3 left-[38%] right-[24%] h-1 -rotate-[18deg] rounded-full" style={{ background: "var(--app-border-strong)" }} />
+            </div>
+          )}
+        </div>
+      )}
+      <div className={`relative z-10 mx-auto flex min-h-[104px] max-w-[68rem] flex-col justify-between px-3 py-2 sm:min-h-[190px] sm:px-6 sm:py-4 ${usesPhoto ? "text-[var(--app-ink-inverse)]" : "text-[var(--app-ink)]"}`}>
         <div className="flex items-start justify-between gap-3">
           <button
             type="button"
@@ -327,13 +498,25 @@ function FairPhotoMasthead({
             <p className="hidden text-[10px] font-bold uppercase tracking-[0.12em] opacity-90 sm:block">
               {visual.eyebrow}
             </p>
-            <p className="font-editorial text-[26px] leading-none tracking-[-0.035em] [text-shadow:0_2px_12px_rgba(0,0,0,0.5)] sm:mt-1 sm:text-[42px]">
+            <p
+              className="text-[26px] font-extrabold leading-none tracking-[-0.035em] sm:mt-1 sm:text-[42px]"
+              style={
+                usesPhoto
+                  ? {
+                      textShadow:
+                        "0 2px 12px color-mix(in srgb, var(--app-ink) 68%, transparent)",
+                    }
+                  : undefined
+              }
+            >
               {visual.title}
             </p>
           </div>
-          <span className="inline shrink-0 rounded-full bg-black/45 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] backdrop-blur-sm">
-            Photo: Mike D
-          </span>
+          {usesPhoto ? (
+            <span className="inline shrink-0 rounded-full px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] backdrop-blur-sm" style={{ background: "color-mix(in srgb, var(--app-ink) 62%, transparent)" }}>
+              Photo: Mike D
+            </span>
+          ) : null}
         </div>
       </div>
     </div>
@@ -370,6 +553,16 @@ function scheduleStartMinutes(label: string): number {
   let hour = Number(match[1]) % 12;
   if (match[3] === "p") hour += 12;
   return hour * 60 + Number(match[2] ?? 0);
+}
+
+function scheduleDaypart(
+  item: FairDayScheduleItemView,
+): "morning" | "afternoon" | "evening" | "unscheduled" {
+  const minutes = scheduleStartMinutes(item.timeLabel);
+  if (!Number.isFinite(minutes)) return "unscheduled";
+  if (minutes < 12 * 60) return "morning";
+  if (minutes < 5 * 60 + 12 * 60) return "afternoon";
+  return "evening";
 }
 
 function compactPlaceLabel(placeLabel: string): string | null {
@@ -418,12 +611,6 @@ function TicketPreparation({
   onPartyChange: (party: FairPlan["party"]) => void;
   onReadyChange: (ready: boolean) => void;
 }) {
-  const partyCount =
-    plan.party.adults11Plus +
-    plan.party.children10Under +
-    plan.party.adultRiders +
-    plan.party.childRiders;
-  const [showCalculator, setShowCalculator] = useState(partyCount > 0);
   const ready = plan.readyKeys.includes("ticket");
   const eligibilityOffers = offers.filter(
     (offer) => offer.placement === "eligibility-promotion",
@@ -434,16 +621,54 @@ function TicketPreparation({
       <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         Tell Radius who is going only if you want a reviewed subtotal. Radius uses your counts only in this browser.
       </p>
-      <div className="mt-4 grid gap-2 min-[380px]:grid-cols-2">
-        <Button
-          className="w-full"
-          variant={showCalculator ? "primary" : "secondary"}
-          aria-pressed={showCalculator}
-          onClick={() => setShowCalculator((current) => !current)}
-          iconLeft={<TicketCheck className="h-4 w-4" aria-hidden />}
-        >
-          Compare tickets
-        </Button>
+      <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--app-border)" }}>
+        <FairPartyPlanner
+          party={plan.party}
+          date={plan.selectedDayId?.replace(/^day-/, "") ?? data.initialDate}
+          asOf={data.reviewedAt}
+          offers={data.partyOffers}
+          onPartyChange={onPartyChange}
+        />
+        {eligibilityOffers.length > 0 ? (
+          <details className="mt-5 border-t pt-2" style={{ borderColor: "var(--app-border)" }}>
+            <summary className="tap-44 flex min-h-11 cursor-pointer items-center justify-between gap-3 text-[14px] font-semibold">
+              Day-specific promotions
+              <ChevronDown className="h-4 w-4" aria-hidden />
+            </summary>
+            <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
+              {eligibilityOffers.map((offer) => (
+                <li key={offer.id} className="py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[15px] font-semibold">{offer.label}</p>
+                      <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                        {offer.detail}
+                      </p>
+                    </div>
+                    <strong className="shrink-0 text-[15px] tabular-nums" style={{ color: "var(--app-brand-press)" }}>
+                      {offer.priceLabel}
+                    </strong>
+                  </div>
+                  <a
+                    href={offer.officialPurchaseUrl ?? offer.officialInfoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="tap-44 mt-2 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold"
+                    style={{ color: "var(--app-brand-press)" }}
+                  >
+                    Official details
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
+      </div>
+      <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
+        <p className="mb-2 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+          Already purchased on Etix? Mark this step handled when you return.
+        </p>
         <Button
           className="w-full"
           variant={ready ? "primary" : "secondary"}
@@ -454,53 +679,6 @@ function TicketPreparation({
           {ready ? "Tickets handled" : "I already have tickets"}
         </Button>
       </div>
-
-      {showCalculator ? (
-        <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--app-border)" }}>
-          <FairPartyPlanner
-            party={plan.party}
-            date={plan.selectedDayId?.replace(/^day-/, "") ?? data.initialDate}
-            asOf={data.reviewedAt}
-            offers={data.partyOffers}
-            onPartyChange={onPartyChange}
-          />
-          {eligibilityOffers.length > 0 ? (
-            <details className="mt-5 border-t pt-2" style={{ borderColor: "var(--app-border)" }}>
-              <summary className="tap-44 flex min-h-11 cursor-pointer items-center justify-between gap-3 text-[14px] font-semibold">
-                Day-specific promotions
-                <ChevronDown className="h-4 w-4" aria-hidden />
-              </summary>
-              <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
-                {eligibilityOffers.map((offer) => (
-                  <li key={offer.id} className="py-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[15px] font-semibold">{offer.label}</p>
-                        <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                          {offer.detail}
-                        </p>
-                      </div>
-                      <strong className="shrink-0 text-[15px] tabular-nums" style={{ color: "var(--app-brand-press)" }}>
-                        {offer.priceLabel}
-                      </strong>
-                    </div>
-                    <a
-                      href={offer.officialPurchaseUrl ?? offer.officialInfoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="tap-44 mt-2 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold"
-                      style={{ color: "var(--app-brand-press)" }}
-                    >
-                      Official details
-                      <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -549,15 +727,26 @@ function FairDayPicker({
   selectedDate,
   onChange,
   label,
+  visibleLabel,
 }: {
   dates: FairDayWorkspaceData["dates"];
   selectedDate: string;
   onChange: (date: string) => void;
   label: string;
+  visibleLabel?: string;
 }) {
   return (
-    <label className="shrink-0">
-      <span className="sr-only">{label}</span>
+    <label className="flex shrink-0 items-center gap-2">
+      <span
+        className={
+          visibleLabel
+            ? "text-[10px] font-bold uppercase tracking-[0.1em]"
+            : "sr-only"
+        }
+        style={visibleLabel ? { color: "var(--app-ink-3)" } : undefined}
+      >
+        {visibleLabel ?? label}
+      </span>
       <select
         value={selectedDate}
         onChange={(event) => onChange(event.target.value)}
@@ -1002,7 +1191,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         .filter((item) => scheduleFilterMatches(item, scheduleFilter))
         .filter((item) => {
           if (!normalizedQuery) return true;
-          return `${item.title} ${item.timeLabel} ${item.placeLabel}`
+          return `${item.title} ${item.detail ?? ""} ${scheduleKindLabel(item.kind)} ${item.timeLabel} ${item.placeLabel}`
             .toLocaleLowerCase()
             .includes(normalizedQuery);
         })
@@ -1029,6 +1218,28 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
     showAllSchedule || normalizedQuery.length > 0
       ? matchingSchedule
       : matchingSchedule.slice(0, discoveryIntent ? 6 : 3);
+  const visibleScheduleGroups = [
+    { id: "morning", label: "Morning", items: [] as FairDayScheduleItemView[] },
+    {
+      id: "afternoon",
+      label: "Afternoon",
+      items: [] as FairDayScheduleItemView[],
+    },
+    { id: "evening", label: "Evening", items: [] as FairDayScheduleItemView[] },
+    {
+      id: "unscheduled",
+      label: "Time not published",
+      items: [] as FairDayScheduleItemView[],
+    },
+  ];
+  for (const item of visibleSchedule) {
+    visibleScheduleGroups
+      .find((group) => group.id === scheduleDaypart(item))
+      ?.items.push(item);
+  }
+  const nonEmptyScheduleGroups = visibleScheduleGroups.filter(
+    (group) => group.items.length > 0,
+  );
   const contextualAnswers = normalizedQuery
     ? data.practicalAnswers
         .filter((answer) => answer.evidence !== "community-pattern")
@@ -1092,7 +1303,6 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       style={{
         background: "var(--app-bg)",
         color: "var(--app-ink)",
-        visibility: routeReady ? "visible" : "hidden",
       }}
     >
       <style>{`
@@ -1105,25 +1315,26 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
           box-shadow: 0 0 0 2px var(--app-brand-press);
         }
         .fair-day-workspace .fair-mode-photo {
-          transition: transform 700ms cubic-bezier(.2,.8,.2,1), filter 450ms ease;
-        }
-        .fair-day-workspace [data-fair-mode-masthead]:hover .fair-mode-photo {
-          transform: scale(1.065);
-          filter: saturate(1.28);
+          transition: transform var(--app-dur-slow) var(--app-ease-out);
         }
         .fair-day-workspace .fair-portal-action {
-          transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+          transition: transform var(--app-dur-fast) var(--app-ease-out), box-shadow var(--app-dur-fast) var(--app-ease-out), border-color var(--app-dur-fast) var(--app-ease-out);
         }
-        .fair-day-workspace .fair-portal-action:hover {
-          transform: translateY(-2px);
-          box-shadow: var(--app-elev-2);
+        @media (hover: hover) and (pointer: fine) {
+          .fair-day-workspace [data-fair-mode-masthead]:hover .fair-mode-photo {
+            transform: scale(1.055);
+          }
+          .fair-day-workspace .fair-portal-action:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--app-elev-2);
+          }
         }
         @media (prefers-reduced-motion: reduce) {
           .fair-day-workspace * {
-            animation-duration: 0.01ms !important;
+            animation-duration: 0ms !important;
             animation-iteration-count: 1 !important;
             scroll-behavior: auto !important;
-            transition-duration: 0.01ms !important;
+            transition-duration: 0ms !important;
           }
           .fair-day-workspace [data-fair-mode-masthead]:hover .fair-mode-photo,
           .fair-day-workspace .fair-portal-action:hover {
@@ -1159,7 +1370,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 height="540"
                 loading="eager"
                 fetchPriority="high"
-                className="h-full w-full scale-[1.02] object-cover object-[76%_center] saturate-[1.2] brightness-[1.08] sm:object-center"
+                className="h-full w-full scale-[1.02] object-cover object-[76%_center] sm:object-center"
               />
             </picture>
             <div
@@ -1241,7 +1452,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 <h1
                   id="fair-now-heading"
                   tabIndex={-1}
-                  className="mt-1 max-w-[14ch] font-editorial text-[34px] font-normal leading-[0.9] tracking-[-0.035em] [text-shadow:0_2px_10px_rgba(0,0,0,0.42)] sm:mt-2 sm:text-[54px]"
+                  className="mt-1 max-w-[14ch] font-editorial text-[34px] font-normal leading-[0.9] tracking-[-0.035em] sm:mt-2 sm:text-[54px]"
+                  style={{
+                    textShadow:
+                      "0 2px 10px color-mix(in srgb, var(--app-ink) 58%, transparent)",
+                  }}
                 >
                   {data.eventName}
                 </h1>
@@ -1343,6 +1558,25 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
           })}
         </nav>
       </header>
+
+      {!routeReady ? (
+        <div
+          data-fair-loading-state
+          role="status"
+          className="mx-4 mt-4 flex items-center gap-3 rounded-[var(--app-radius-lg)] border px-4 py-3 sm:mx-6 lg:mx-auto lg:w-[min(100%-3rem,68rem)]"
+          style={{
+            borderColor: "var(--app-border-strong)",
+            background: "var(--app-bg-elevated-solid)",
+            color: "var(--app-ink-2)",
+          }}
+        >
+          <RippleMark size={24} />
+          <p className="text-[13px] font-semibold leading-snug">
+            Preparing the Fair guide. The program, map, and planning tools will
+            be ready here.
+          </p>
+        </div>
+      ) : null}
 
       {planStorageState === "unavailable" ? (
         <aside
@@ -1458,7 +1692,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 {[
                   {
                     label: "See what’s on",
-                    detail: "See a visual program for your day without the PDF wall.",
+                    detail: "See the day’s program, sorted around your visit.",
                     Icon: Clock3,
                     accent: "var(--app-accent-press)",
                     wash:
@@ -1488,7 +1722,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                     key={label}
                     type="button"
                     onClick={action}
-                    className="fair-portal-action tap-44 group flex min-h-[92px] items-center gap-3 overflow-hidden rounded-[var(--app-radius-lg)] border p-3 text-left sm:min-h-[150px] sm:flex-col sm:items-start sm:justify-between sm:p-4"
+                    className="fair-portal-action tap-44 group flex min-h-[92px] items-center gap-3 overflow-hidden rounded-[var(--app-radius-lg)] border p-3 text-left active:scale-[0.985] sm:min-h-[150px] sm:flex-col sm:items-start sm:justify-between sm:p-4"
                     style={{
                       borderColor:
                         "color-mix(in srgb, var(--app-border-strong) 82%, transparent)",
@@ -1515,7 +1749,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                       </span>
                     </span>
                     <ChevronRight
-                      className="h-4 w-4 shrink-0 sm:self-end"
+                      className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:transform-none sm:self-end"
                       style={{ color: accent }}
                       aria-hidden="true"
                     />
@@ -1601,7 +1835,15 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
 
         {activeMode === "find" ? (
           <section id={MODE_PANEL_IDS.find} aria-labelledby="fair-find-heading">
-            <div className="flex items-center justify-between gap-3">
+            <div
+              className="sticky top-0 z-[var(--z-sticky)] -mx-4 flex items-center justify-between gap-3 border-b px-4 py-1 backdrop-blur-md sm:-mx-6 sm:px-6"
+              style={{
+                borderColor: "var(--app-border)",
+                background:
+                  "color-mix(in srgb, var(--app-bg) 91%, transparent)",
+              }}
+              data-fair-program-context
+            >
               {exploreFocused ? (
                 <button
                   type="button"
@@ -1625,6 +1867,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 selectedDate={selectedDate}
                 onChange={chooseFairDate}
                 label="Fair day to explore"
+                visibleLabel="Fair day"
               />
             </div>
             <h1
@@ -1769,99 +2012,61 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             </div>
 
             {visibleSchedule.length > 0 ? (
-              <ol
-                className="relative mt-3 space-y-2.5 before:absolute before:bottom-7 before:left-[1.55rem] before:top-7 before:w-px before:bg-[var(--app-border-strong)] before:content-['']"
-                aria-label="Fair program results"
-                data-fair-program-trail
-              >
-                {visibleSchedule.map((item) => {
-                  const planned = plan.steps.some((step) => step.scheduleItemId === item.id);
-                  const place = compactPlaceLabel(item.placeLabel);
-                  const accent = scheduleAccent(item.kind);
-                  return (
-                    <li
-                      key={item.id}
-                      className="relative grid grid-cols-[3.15rem_minmax(0,1fr)_2.75rem] gap-2.5 overflow-hidden rounded-[var(--app-radius-lg)] border p-3"
+              showAllSchedule && !normalizedQuery ? (
+                <div className="mt-3 space-y-2" data-fair-program-groups>
+                  {nonEmptyScheduleGroups.map((group, index) => (
+                    <details
+                      key={group.id}
+                      open={index === 0 ? true : undefined}
+                      className="group rounded-[var(--app-radius-lg)] border px-3"
                       style={{
-                        borderColor:
-                          "color-mix(in srgb, var(--app-border-strong) 86%, transparent)",
-                        background: `linear-gradient(110deg, color-mix(in srgb, ${accent} 8%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 48%)`,
-                        boxShadow: "var(--app-elev-1)",
+                        borderColor: "var(--app-border-strong)",
+                        background: "var(--app-bg-elevated-solid)",
                       }}
+                      data-fair-program-daypart={group.id}
                     >
-                      <span
-                        className="relative z-10 grid h-10 w-10 place-items-center self-start rounded-full border-2 bg-[var(--app-bg-elevated-solid)]"
-                        style={{ borderColor: accent, color: accent }}
-                      >
-                        <ScheduleKindGlyph kind={item.kind} />
-                      </span>
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                          <time
-                            className="text-[12px] font-extrabold leading-tight tabular-nums"
-                            style={{ color: accent }}
-                          >
-                            {item.timeLabel}
-                          </time>
+                      <summary className="tap-44 flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 text-[15px] font-extrabold [&::-webkit-details-marker]:hidden">
+                        <span>{group.label}</span>
+                        <span className="flex items-center gap-2">
                           <span
-                            className="text-[9.5px] font-bold uppercase tracking-[0.09em]"
+                            className="text-[12px] font-semibold tabular-nums"
                             style={{ color: "var(--app-ink-3)" }}
                           >
-                            {scheduleKindLabel(item.kind)}
+                            {group.items.length}
                           </span>
-                        </div>
-                        <p className="mt-1 line-clamp-3 text-[16px] font-extrabold leading-[1.18] tracking-[-0.015em]">
-                          {item.title}
-                        </p>
-                        {place ? (
-                          <p className="mt-1 text-[12px] font-semibold leading-snug" style={{ color: "var(--app-ink-3)" }}>
-                            {place}
-                          </p>
-                        ) : null}
-                        {item.detail ? (
-                          <>
-                            <p
-                              className="mt-1 line-clamp-2 text-[12px] leading-snug"
-                              style={{ color: "var(--app-ink-2)" }}
-                            >
-                              {item.detail}
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => openProgramDetail(item.id)}
-                              className="tap-44 -mb-2 mt-0.5 inline-flex min-h-11 items-center gap-1 text-[12px] font-bold"
-                              style={{ color: accent }}
-                              aria-label={`Open details for ${item.title}`}
-                            >
-                              Full details
-                              <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-                            </button>
-                          </>
-                        ) : null}
+                          <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden />
+                        </span>
+                      </summary>
+                      <div className="border-t pb-3" style={{ borderColor: "var(--app-border)" }}>
+                        <FairProgramResultList
+                          items={group.items}
+                          plan={plan}
+                          label={`${group.label} Fair program results`}
+                          onToggle={toggleFairScheduleItem}
+                          onOpen={openProgramDetail}
+                        />
                       </div>
-                      <button
-                        type="button"
-                        data-fair-plan-toggle={item.id}
-                        aria-pressed={planned}
-                        onClick={() => toggleFairScheduleItem(item, planned)}
-                        className="tap-44 tactile tactile-interactive grid h-11 w-11 place-items-center self-start rounded-full transition active:scale-[0.94] motion-reduce:transition-none"
-                        style={{
-                          background: planned ? "var(--app-bg-sunken)" : "var(--app-brand-tint-6)",
-                          color: planned ? "var(--app-ink-3)" : "var(--app-brand-press)",
-                        }}
-                        aria-label={planned ? `Remove ${item.title} from My Day` : `Add ${item.title} to My Day`}
-                      >
-                        {planned ? <Check className="h-4 w-4" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
+                    </details>
+                  ))}
+                </div>
+              ) : (
+                <FairProgramResultList
+                  items={visibleSchedule}
+                  plan={plan}
+                  label="Fair program results"
+                  onToggle={toggleFairScheduleItem}
+                  onOpen={openProgramDetail}
+                />
+              )
             ) : (
               <div className="py-10 text-center">
-                <p className="text-[17px] font-semibold">Nothing matches that search.</p>
+                <p className="text-[17px] font-semibold">
+                  No program event matches that search.
+                </p>
                 <p className="mt-2 text-[14px]" style={{ color: "var(--app-ink-3)" }}>
-                  Try another word, category, or Fair day.
+                  {contextualAnswers.length > 0
+                    ? "A reviewed Fair answer is shown above."
+                    : "Try another word, category, or Fair day."}
                 </p>
               </div>
             )}
@@ -2312,6 +2517,34 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               {selectedProgramDetail.detail ?? "The Fair has not published more detail for this program item."}
             </p>
+            {selectedProgramDetail.sourceItem.text.trim() !==
+            selectedProgramDetail.title.trim() ? (
+              <details
+                data-fair-official-wording
+                className="mt-4 rounded-[var(--app-radius-md)] border px-3"
+                style={{
+                  borderColor: "var(--app-border)",
+                  background: "var(--app-bg-sunken)",
+                }}
+              >
+                <summary
+                  className="tap-44 flex min-h-11 cursor-pointer items-center justify-between gap-3 text-[13px] font-semibold"
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  Official program wording
+                  <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
+                </summary>
+                <p
+                  className="border-t pb-3 pt-3 text-[13px] leading-relaxed"
+                  style={{
+                    borderColor: "var(--app-border)",
+                    color: "var(--app-ink-2)",
+                  }}
+                >
+                  {selectedProgramDetail.sourceItem.text}
+                </p>
+              </details>
+            ) : null}
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
               <Button
                 className="w-full sm:w-auto"

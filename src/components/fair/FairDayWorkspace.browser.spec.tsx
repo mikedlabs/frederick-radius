@@ -227,12 +227,17 @@ describe("FairDayWorkspace app journey", () => {
     const data = await renderFair();
     await openFullProgram();
 
-    const results = container.querySelector<HTMLOListElement>(
-      '[aria-label="Fair program results"]',
+    const results = container.querySelectorAll<HTMLOListElement>(
+      "[data-fair-program-trail]",
     );
-    if (!results) throw new Error("Missing Fair program results.");
-    const text = results.textContent ?? "";
+    if (results.length === 0) throw new Error("Missing Fair program results.");
+    const text = Array.from(results)
+      .map((result) => result.textContent ?? "")
+      .join(" ");
 
+    expect(
+      container.querySelectorAll("[data-fair-program-daypart]").length,
+    ).toBeGreaterThan(1);
     expect(text).not.toContain("DEADLINE to purchase");
     expect(text.indexOf("Daughtry")).toBeLessThan(
       text.indexOf("2026 Agricultural Awards Ceremony"),
@@ -282,7 +287,10 @@ describe("FairDayWorkspace app journey", () => {
       container.querySelector<HTMLButtonElement>(
         '[data-fair-discovery-choice="food-program"]',
       )?.disabled,
-    ).toBe(true);
+    ).toBe(false);
+    expect(portal?.textContent).toContain(
+      "Homegrown Wineries, Breweries and Distilleries Showcase",
+    );
 
     await chooseDate("2026-09-20");
     expect(
@@ -290,7 +298,9 @@ describe("FairDayWorkspace app journey", () => {
         '[data-fair-discovery-choice="food-program"]',
       )?.disabled,
     ).toBe(false);
-    expect(portal?.textContent).toContain("Youth Cake & Baked Goods Auction");
+    expect(portal?.textContent).toContain(
+      "Homegrown Wineries, Breweries and Distilleries Showcase",
+    );
     await chooseDate("2026-09-18");
 
     await act(async () => buttonWithText(container, "Animals").click());
@@ -672,7 +682,6 @@ describe("FairDayWorkspace app journey", () => {
   it("persists party counts and turns the next action into the next useful task", async () => {
     await renderFair();
     await act(async () => buttonWithText(container, "Review tickets").click());
-    await act(async () => buttonWithText(document.body, "Compare tickets").click());
 
     const changeCount = async (label: string, value: number) => {
       const input = document.body.querySelector<HTMLInputElement>(

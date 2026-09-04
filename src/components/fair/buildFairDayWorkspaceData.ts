@@ -91,18 +91,24 @@ function scheduleKind(
 ): FairDayScheduleItemView["kind"] {
   const text = item.text.toLocaleLowerCase();
   if (
-    /\b(?:cattle|dairy|goat|horse|livestock|poultry|rabbit|sheep|swine)\b/.test(
+    /\b(?:alpacas?|cattle|dairy|dogs?|goats?|horses?|livestock|llamas?|pigs?|poultry|rabbits?|sheep|swine|turkeys?)\b/.test(
       text,
     )
   ) {
     return "animal";
+  }
+  if (
+    /\b(?:food|bake|baked|cooking|cake|pie|culinary|chef|beer garden|winery|wineries|brewery|breweries|distillery|distilleries)\b/.test(
+      text,
+    )
+  ) {
+    return "food";
   }
   if (/\b(?:agriculture|agricultural|farm|garden|landscape|produce)\b/.test(text)) {
     return "agriculture";
   }
   if (/\b(?:concert|music|band|choir|singer)\b/.test(text)) return "concert";
   if (/\b(?:carnival|ride|midway)\b/.test(text)) return "carnival";
-  if (/\b(?:food|bake|cooking|cake|pie)\b/.test(text)) return "food";
   if (/\b(?:tractor|truck|motorsport|demolition)\b/.test(text)) {
     return "motorsport";
   }
@@ -120,25 +126,45 @@ function scheduleCopy(text: string): { title: string; detail?: string } {
     .replace(/\s+([,.;!?])/g, "$1")
     .replace(/\s+/g, " ")
     .trim() || normalized;
-  const firstSectionRaw =
-    displayText
-      .split(
-        /\s+\|\s+|\s+-\s+(?=(?:Presented\s+[Bb]y|Grandstand))/u,
-      )
-      .find((section) => section.trim().length > 0)
-      ?.trim() ?? displayText;
-  const firstSection = firstSectionRaw.replace(/\s+-\s*/g, ": ");
-  const beforeLongQualifier =
-    firstSection.length > 120 && firstSection.includes(": ")
-      ? firstSection.slice(0, firstSection.indexOf(": ")).trim()
-      : firstSection;
+  const sections = displayText
+    .split(/\s+\|\s+|\s+-\s+/u)
+    .map((section) => section.trim())
+    .filter(Boolean);
+  const firstSectionCandidate = sections[0] ?? displayText;
+  const colonIndex = firstSectionCandidate.indexOf(": ");
+  const colonSections =
+    colonIndex >= 3 && colonIndex <= 80
+      ? [
+          firstSectionCandidate.slice(0, colonIndex),
+          firstSectionCandidate.slice(colonIndex + 2),
+          ...sections.slice(1),
+        ]
+      : sections;
+  const firstSection = colonSections[0] ?? displayText;
+
+  if (
+    colonSections.length > 1 &&
+    firstSection.length >= 3 &&
+    firstSection.length <= 80
+  ) {
+    const detail = colonSections
+      .slice(1)
+      .join(" · ")
+      .replace(/\s*~\s*/g, " · ")
+      .replace(/[{}]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    return detail ? { title: firstSection, detail } : { title: firstSection };
+  }
+
+  const beforeLongQualifier = firstSection;
   const breakAt = beforeLongQualifier.lastIndexOf(" ", 116);
   const title =
     beforeLongQualifier.length > 120
       ? `${beforeLongQualifier.slice(0, Math.max(80, breakAt)).trim()}…`
       : beforeLongQualifier;
 
-  return title === normalized ? { title } : { title, detail: text };
+  return title === displayText ? { title } : { title, detail: displayText };
 }
 
 function explicitPlaceLabel(text: string): string {

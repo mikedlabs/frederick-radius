@@ -52,9 +52,8 @@ describe("FairDiscoveryChoices", () => {
     expect(html).toContain("Kid Zone");
     expect(html).toContain("Animals");
     expect(html).toContain("Rides");
-    expect(html).toContain("Food events");
-    expect(html).toContain("No food event listed");
-    expect(html).toContain("No matching program item this day");
+    expect(html).toContain("Food program");
+    expect(html).not.toContain("No food or drink event listed");
     expect(html).not.toMatch(/listing/i);
     expect(html).toContain('aria-label="Fair activity paths"');
     expect(html).toContain("data-fair-discovery-choices");
@@ -76,6 +75,11 @@ describe("FairDiscoveryChoices", () => {
     expect(html).toContain("6 p.m.");
     expect(html).toContain("Horse Barrel Racing Expo");
     expect(html).toContain(
+      "Homegrown Wineries, Breweries and Distilleries Showcase",
+    );
+    expect(html).toContain("fairgrounds-ferris-wheel-mike-d-960.jpg");
+    expect(html).toContain("Photo: Mike D");
+    expect(html).not.toContain(
       'data-fair-discovery-choice="food-program" disabled=""',
     );
   });
@@ -94,8 +98,10 @@ describe("FairDiscoveryChoices", () => {
     );
 
     expect(html).toContain("Next");
-    expect(html).toContain("4 p.m.");
-    expect(html).toContain("Youth Cake &amp; Baked Goods Auction");
+    expect(html).toContain("Noon–10 p.m.");
+    expect(html).toContain(
+      "Homegrown Wineries, Breweries and Distilleries Showcase",
+    );
     expect(html).toContain(
       'data-fair-discovery-choice="food-program" aria-pressed="true"',
     );
