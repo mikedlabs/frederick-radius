@@ -6,6 +6,7 @@ import {
   fairProgramDaypart,
   fairProgramDefaultOpenDaypart,
   fairProgramLiveStatus,
+  fairProgramNextStart,
   rankFairProgramPreviewItems,
   sortFairProgramItems,
 } from "./program-view";
@@ -169,5 +170,74 @@ describe("Fair program view timing", () => {
       label: "Up next · approximate time",
       state: "next",
     });
+  });
+
+  it("tracks opener and headliner starts independently without inventing a live interval", () => {
+    const daughtry = {
+      ...item("Daughtry", "2026-09-18T18:30:00-04:00"),
+      performanceSlots: [
+        {
+          name: null,
+          timeLabel: "6:30 p.m.",
+          startsAt: "2026-09-18T18:30:00-04:00",
+          role: "opener" as const,
+        },
+        {
+          name: "Daughtry",
+          timeLabel: "8 p.m.",
+          startsAt: "2026-09-18T20:00:00-04:00",
+          role: "headliner" as const,
+        },
+      ],
+    };
+
+    const beforeOpener = "2026-09-18T18:10:00-04:00";
+    const openerStart = Date.parse("2026-09-18T18:30:00-04:00");
+    expect(fairProgramNextStart([daughtry], beforeOpener, "2026-09-18")).toBe(
+      openerStart,
+    );
+    expect(
+      fairProgramLiveStatus(
+        daughtry,
+        beforeOpener,
+        "2026-09-18",
+        openerStart,
+      ),
+    ).toEqual({ label: "Opener in 20 min", state: "next" });
+
+    const betweenPerformances = "2026-09-18T19:10:00-04:00";
+    const headlinerStart = Date.parse("2026-09-18T20:00:00-04:00");
+    expect(
+      fairProgramNextStart(
+        [daughtry],
+        betweenPerformances,
+        "2026-09-18",
+      ),
+    ).toBe(headlinerStart);
+    expect(
+      fairProgramLiveStatus(
+        daughtry,
+        betweenPerformances,
+        "2026-09-18",
+        headlinerStart,
+      ),
+    ).toEqual({ label: "Daughtry in 50 min", state: "next" });
+
+    const afterHeadlinerStart = "2026-09-18T20:10:00-04:00";
+    expect(
+      fairProgramNextStart(
+        [daughtry],
+        afterHeadlinerStart,
+        "2026-09-18",
+      ),
+    ).toBeNull();
+    expect(
+      fairProgramLiveStatus(
+        daughtry,
+        afterHeadlinerStart,
+        "2026-09-18",
+        null,
+      ),
+    ).toBeNull();
   });
 });

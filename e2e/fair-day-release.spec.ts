@@ -16,6 +16,27 @@ test.describe("Fair Day production release journey", () => {
     serviceWorkers: "block",
   });
 
+  test("keeps the unrelated Today route out of the Fair cold load", async ({
+    page,
+  }) => {
+    const todayRequests: string[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === "/today") todayRequests.push(url.toString());
+    });
+
+    const response = await page.goto(FAIR_CANONICAL_PATH, {
+      waitUntil: "networkidle",
+      timeout: 60_000,
+    });
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("link", { name: "Back to Frederick Radius" }))
+      .toHaveAttribute("href", "/today");
+    await page.waitForTimeout(1_000);
+
+    expect(todayRequests).toEqual([]);
+  });
+
   test("keeps tickets, travel, planning, help, and official handoffs ready", async ({
     page,
   }) => {
@@ -49,6 +70,17 @@ test.describe("Fair Day production release journey", () => {
       "true",
       { timeout: 15_000 },
     );
+    const essentials = page.locator("[data-fair-at-a-glance]");
+    await expect(essentials).toBeVisible();
+    const essentialTiles = essentials.locator("[data-fair-glance-tile]");
+    await expect(essentialTiles).toHaveCount(4);
+    await expect(essentials).toContainText("Children 10 & under free");
+    await expect(essentials).toContainText("$10 cash lots");
+    for (const tile of await essentialTiles.all()) {
+      const box = await tile.boundingBox();
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+      expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+    }
     await expect(
       page.getByRole("navigation", { name: "Primary" }),
     ).toHaveCount(0);
@@ -67,6 +99,9 @@ test.describe("Fair Day production release journey", () => {
     });
     await datePicker.selectOption("2026-09-20");
     await expect(datePicker).toHaveValue("2026-09-20");
+    await expect(essentials).toContainText("Sunday at a glance");
+    await expect(essentials).toContainText("$10 online · $15 gate");
+    await expect(essentials).not.toContainText("$8 first Friday");
     await expect(
       page.getByRole("heading", { level: 1, name: "The Great Frederick Fair" }),
     ).toBeVisible();
@@ -132,11 +167,14 @@ test.describe("Fair Day production release journey", () => {
     await transitChoice.locator("..").click();
     await expect(transitChoice).toBeChecked();
     await expect(
-      page.getByText(/Fair-date service and arrival times are not confirmed/),
+      page.getByText(/does not publish East Frederick Shuttle or Route 15 service/),
     ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: "Open Radius Transit" }),
-    ).toHaveAttribute("href", "/transit");
+    const officialTransit = page.getByRole("link", {
+      name: "Check official County Transit",
+    });
+    await expect(officialTransit).toHaveAttribute("href", COUNTY_TRANSIT_URL);
+    await expect(officialTransit).toHaveAttribute("target", "_blank");
+    await expect(officialTransit).toHaveAttribute("rel", "noopener noreferrer");
 
     await page.getByText("Sources and limits").click();
     const transitSource = page.getByRole("link", {
@@ -209,6 +247,17 @@ test.describe("Fair Day production release journey", () => {
       "rel",
       "noopener noreferrer",
     );
+    const grandstandSpotlight = page.locator(
+      "[data-fair-grandstand-spotlight]",
+    );
+    await expect(grandstandSpotlight).toBeVisible();
+    const grandstandSpotlightBox = await grandstandSpotlight.boundingBox();
+    expect(grandstandSpotlightBox?.height ?? 0).toBeGreaterThanOrEqual(190);
+    expect(grandstandSpotlightBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(215);
+    expect(
+      (grandstandSpotlightBox?.x ?? Number.POSITIVE_INFINITY) +
+        (grandstandSpotlightBox?.width ?? Number.POSITIVE_INFINITY),
+    ).toBeLessThanOrEqual(390);
     await expect(
       page.getByRole("list", { name: "Fair program results" }),
     ).toHaveCount(0);
@@ -301,13 +350,19 @@ test.describe("Fair Day production release journey", () => {
 
     const details = page.getByRole("dialog", { name: "Daughtry" });
     await expect(details).toContainText("Headliner 8 p.m.");
-    await details.getByText("Official program wording", { exact: true }).click();
+    await details.getByText("Imported official wording", { exact: true }).click();
     await expect(details).toContainText(
       "Daughtry - Presented by Team Reeder of Long & Foster Real Estate, Inc. & Carter Machinery",
     );
     await expect(
-      details.getByRole("link", { name: "Official program source" }),
+      details.getByRole("link", { name: "Official Grandstand source" }),
     ).toHaveAttribute("target", "_blank");
+    await expect(
+      details.getByRole("link", { name: "Official Grandstand source" }),
+    ).toHaveAttribute(
+      "href",
+      "https://thegreatfrederickfair.com/grandstand/",
+    );
     await page.getByRole("button", { name: "Close Daughtry" }).click();
     await expect(
       daughtryCard.getByRole("button", { name: "Open details for Daughtry" }),
@@ -603,7 +658,7 @@ test.describe("Fair Day production release journey", () => {
         );
       }
 
-      for (const label of ["Today", "Program", "Map", "My Day"] as const) {
+      for (const label of ["Home", "Program", "Map", "My Day"] as const) {
         const destination = page
           .getByRole("navigation", { name: "Fair Day" })
           .getByRole("button", { name: label, exact: true });

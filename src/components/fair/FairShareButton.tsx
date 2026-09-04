@@ -52,7 +52,7 @@ export default function FairShareButton() {
       try {
         await navigator.share({
           title: "Radius at the Fair",
-          text: "Plan the Great Frederick Fair with the program, map, parking, transit, and My Day in one place.",
+          text: "Plan your visit to The Great Frederick Fair in one place. Use the official program and searchable grounds map, then save a day plan on your phone.",
           url,
         });
         return;

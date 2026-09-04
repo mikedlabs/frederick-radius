@@ -16,6 +16,7 @@ import { TOPIC_LABELS, type PushTopic } from "@/lib/push-topics";
 import { isIos, isStandalone } from "@/lib/pwa-display";
 import { openReturnBridge } from "@/lib/return-bridge";
 import { getHomeMuni } from "@/lib/personalize";
+import { reconcileExistingPushRegistration } from "@/lib/push-existing-registration";
 import {
   haptic,
   isPhoneFeedbackEnabled,
@@ -57,6 +58,7 @@ type SupportState =
   | "ios-needs-install"
   | "blocked"
   | "ready"
+  | "verification-error"
   | "subscribed";
 
 function uint8FromBase64(base64: string): Uint8Array {
@@ -243,6 +245,64 @@ function PushNotificationsCard() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
+  const flash = useCallback((msg: string) => {
+    setToast(msg);
+    window.setTimeout(() => setToast(null), 2500);
+  }, []);
+
+  const hydrateExistingSubscription = useCallback(
+    async (existing: PushSubscription): Promise<boolean> => {
+      try {
+        const topicsResponse = await fetch(
+          `/api/push/topics?endpoint=${encodeURIComponent(existing.endpoint)}`,
+        );
+        const reconciled = await reconcileExistingPushRegistration({
+          subscription: existing,
+          topicsResponse,
+          managedTopics: ALL_TOPICS,
+          deviceId:
+            typeof localStorage !== "undefined"
+              ? localStorage.getItem("fr-device-id") ?? undefined
+              : undefined,
+          homeTown: getHomeMuni(),
+        });
+        if (!reconciled.connected) return false;
+
+        setSubscription(existing);
+        setTopics(new Set(reconciled.topics));
+        setSupport("subscribed");
+
+        try {
+          const preferencesResponse = await fetch(
+            `/api/push/prefs?endpoint=${encodeURIComponent(existing.endpoint)}`,
+          );
+          if (preferencesResponse.ok) {
+            const preferences = (await preferencesResponse.json()) as {
+              quiet_start?: number | null;
+              quiet_end?: number | null;
+            };
+            setQuietStart(
+              typeof preferences.quiet_start === "number"
+                ? preferences.quiet_start
+                : null,
+            );
+            setQuietEnd(
+              typeof preferences.quiet_end === "number"
+                ? preferences.quiet_end
+                : null,
+            );
+          }
+        } catch {
+          // Quiet hours are optional. Keep the verified subscription active.
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
+
   // Feature detect + load existing subscription on mount.
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -273,29 +333,15 @@ function PushNotificationsCard() {
         const reg = await navigator.serviceWorker.ready;
         const existing = await reg.pushManager.getSubscription();
         if (existing) {
+          // A browser-owned subscription can outlive its server row after a
+          // provider invalidation or database restore. Verify the server side
+          // before rendering "on", and recreate only an authoritatively
+          // missing row. A failed/ambiguous read gets a retry state so we
+          // neither claim delivery nor replace the browser's existing setup.
           setSubscription(existing);
-          setSupport("subscribed");
-          // Hydrate the toggles from the server so a returning subscriber
-          // sees their REAL selections, not all-off (a stale empty UI would,
-          // on the next toggle, REPLACE the server set and wipe their topics).
-          try {
-            const tRes = await fetch(`/api/push/topics?endpoint=${encodeURIComponent(existing.endpoint)}`);
-            if (tRes.ok) {
-              const tj = (await tRes.json()) as { topics?: string[] };
-              if (Array.isArray(tj.topics)) {
-                setTopics(new Set(tj.topics.filter((t): t is PushTopic => (ALL_TOPICS as string[]).includes(t))));
-              }
-            }
-          } catch { /* leave toggles as-seeded */ }
-          // Hydrate quiet hours so a returning subscriber sees their window.
-          try {
-            const pRes = await fetch(`/api/push/prefs?endpoint=${encodeURIComponent(existing.endpoint)}`);
-            if (pRes.ok) {
-              const pj = (await pRes.json()) as { quiet_start?: number | null; quiet_end?: number | null };
-              setQuietStart(typeof pj.quiet_start === "number" ? pj.quiet_start : null);
-              setQuietEnd(typeof pj.quiet_end === "number" ? pj.quiet_end : null);
-            }
-          } catch { /* leave quiet hours off */ }
+          if (!(await hydrateExistingSubscription(existing))) {
+            setSupport("verification-error");
+          }
         } else {
           setSupport("ready");
         }
@@ -305,16 +351,30 @@ function PushNotificationsCard() {
         setSupport("unsupported");
       }
     })();
-  }, []);
+  }, [hydrateExistingSubscription]);
 
-  const flash = useCallback((msg: string) => {
-    setToast(msg);
-    window.setTimeout(() => setToast(null), 2500);
-  }, []);
+  const retryVerification = useCallback(async () => {
+    if (!subscription) {
+      setSupport("ready");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (!(await hydrateExistingSubscription(subscription))) {
+        setSupport("verification-error");
+        flash("Couldn't verify this device yet. Your browser setup was not changed.");
+        return;
+      }
+      flash("Notification connection verified.");
+    } finally {
+      setBusy(false);
+    }
+  }, [flash, hydrateExistingSubscription, subscription]);
 
   const subscribe = useCallback(async () => {
     if (!pubKey) return;
     setBusy(true);
+    let createdSubscription: PushSubscription | null = null;
     try {
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
@@ -325,6 +385,16 @@ function PushNotificationsCard() {
         return;
       }
       const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) {
+        setSubscription(existing);
+        if (!(await hydrateExistingSubscription(existing))) {
+          setSupport("verification-error");
+          flash("Couldn't verify this device yet. Your browser setup was not changed.");
+        }
+        return;
+      }
+
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         // Newer TS lib narrows BufferSource to ArrayBufferView<ArrayBuffer>
@@ -332,6 +402,7 @@ function PushNotificationsCard() {
         // the value IS one at runtime; the strict generic just rejects it.
         applicationServerKey: uint8FromBase64(pubKey) as BufferSource,
       });
+      createdSubscription = sub;
       const body = {
         subscription: sub.toJSON(),
         topics: [...topics],
@@ -348,6 +419,7 @@ function PushNotificationsCard() {
       });
       if (!res.ok) {
         await sub.unsubscribe().catch(() => false);
+        createdSubscription = null;
         flash("Couldn't save subscription. Try again later.");
         return;
       }
@@ -357,11 +429,14 @@ function PushNotificationsCard() {
       haptic("success");
       flash("Notifications on.");
     } catch {
+      if (createdSubscription) {
+        await createdSubscription.unsubscribe().catch(() => false);
+      }
       flash("Notifications could not be turned on. Try again.");
     } finally {
       setBusy(false);
     }
-  }, [pubKey, topics, flash]);
+  }, [flash, hydrateExistingSubscription, pubKey, topics]);
 
   const unsubscribe = useCallback(async () => {
     if (!subscription) return;
@@ -597,6 +672,21 @@ function PushNotificationsCard() {
           >
             <AlertCircle className="h-3 w-3" aria-hidden /> Blocked
           </span>
+        ) : support === "verification-error" ? (
+          <button
+            type="button"
+            onClick={() => void retryVerification()}
+            disabled={busy || !subscription}
+            className="tactile tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold disabled:opacity-50"
+            style={{
+              borderColor: "var(--app-control-border)",
+              color: "var(--app-brand-press)",
+              background: "var(--app-bg-elevated)",
+            }}
+          >
+            <AlertCircle className="h-3.5 w-3.5" aria-hidden />
+            {busy ? "Checking…" : "Retry"}
+          </button>
         ) : (
           <button
             type="button"
@@ -624,6 +714,8 @@ function PushNotificationsCard() {
       <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
         {support === "blocked"
           ? "Notifications are blocked at the browser level. Re-enable in your site settings to subscribe."
+          : support === "verification-error"
+            ? "Radius could not verify this device’s notification connection. Retry without changing your existing alert choices."
           : enabled
             ? topics.size === 0
               ? "You’re connected. Pick at least one alert below."

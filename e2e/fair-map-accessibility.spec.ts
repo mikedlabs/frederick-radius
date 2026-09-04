@@ -396,18 +396,17 @@ async function expectLensTargetsReachable(
         const audit = await readMarkerHitTargets(page);
         return {
           representedPlaces: audit.representedPlaces,
-          renderedTargets: audit.markers.length,
+          hasRenderedTarget: audit.markers.length > 0,
           blockedTargets: audit.blockedTargets,
         };
       },
       { timeout: 8_000 },
     )
-    .toEqual({
-      representedPlaces: lens.count,
-      renderedTargets: expect.any(Number),
-      blockedTargets: [],
-    });
-  expect((await readMarkerHitTargets(page)).markers.length).toBeGreaterThan(0);
+      .toEqual({
+        representedPlaces: lens.count,
+        hasRenderedTarget: true,
+        blockedTargets: [],
+      });
 }
 
 async function openFairMap(page: Page) {
@@ -1113,7 +1112,7 @@ test.describe("Fairgrounds map accessibility", () => {
     await openCluster();
     const today = page
       .locator("[data-mobile-action-bar]")
-      .getByRole("button", { name: "Today" });
+      .getByRole("button", { name: "Home" });
     await clickBehindDialog(today);
     await expect(map).toBeVisible();
     await expect(
@@ -1210,19 +1209,25 @@ test.describe("Fairgrounds map accessibility", () => {
     );
 
     const actionBar = page.locator("[data-mobile-action-bar]");
-    await actionBar.getByRole("button", { name: "Today" }).press("Enter");
+    await actionBar.getByRole("button", { name: "Home" }).press("Enter");
     await expect(page.locator("[data-fair-grounds-map]")).toHaveCount(0);
     await actionBar.getByRole("button", { name: "Map" }).press("Enter");
     await expect(page.locator("[data-fair-grounds-map] canvas")).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Map view" })).toHaveValue(
       "buildings",
     );
+    await expect
+      .poll(async () => (await readMarkerHitTargets(page)).representedPlaces)
+      .toBe(7);
 
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.locator("[data-fair-grounds-map] canvas")).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Map view" })).toHaveValue(
       "arrival",
     );
+    await expect
+      .poll(async () => (await readMarkerHitTargets(page)).representedPlaces)
+      .toBe(16);
   });
 
   test("keeps selected-place details above map controls at 320px", async ({

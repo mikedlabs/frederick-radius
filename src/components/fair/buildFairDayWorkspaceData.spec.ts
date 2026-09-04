@@ -4,7 +4,13 @@ import {
   greatFrederickFair2026Pack,
   greatFrederickFair2026PackPointer,
 } from "@/data/fair/great-frederick-fair-2026-pack";
+import { greatFrederickFair2026MapAdditions } from "@/data/fair/great-frederick-fair-2026-map-overlays";
 import { greatFrederickFair2026PracticalAnswers } from "@/data/fair/great-frederick-fair-2026-practical-answers";
+import {
+  fairTransitStopServiceSummary,
+  fairTransitTravelSummary,
+  greatFrederickFair2026TransitStops,
+} from "@/data/fair/great-frederick-fair-2026-transit";
 
 import { buildFairDayWorkspaceData } from "./buildFairDayWorkspaceData";
 
@@ -118,6 +124,25 @@ describe("buildFairDayWorkspaceData", () => {
     expect(daughtry?.sourceItem.text).toContain(
       "Presented by Team Reeder",
     );
+    expect(daughtry).toMatchObject({
+      sourceUrl: "https://thegreatfrederickfair.com/grandstand/",
+      sourceReview: {
+        reviewedOn: "2026-09-04",
+        validThrough: "2026-09-26",
+        sourceRevision: "manual-review-2026-09-04",
+      },
+      performanceSlots: [
+        {
+          role: "opener",
+          startsAt: "2026-09-18T18:30:00-04:00",
+        },
+        {
+          role: "headliner",
+          name: "Daughtry",
+          startsAt: "2026-09-18T20:00:00-04:00",
+        },
+      ],
+    });
     expect(farmAndGarden).toMatchObject({
       detail: "Grange Day",
       placeLabel: "Published place: Bldg. 14A.",
@@ -141,12 +166,15 @@ describe("buildFairDayWorkspaceData", () => {
       kind: "concert",
       title: "Danny Gokey",
       timeLabel: "Headliner 8 p.m. · Opener 6:30 p.m.",
-      detail: "Bay Turner opens at 6:30 p.m. Danny Gokey headlines at 8 p.m.",
+      detail:
+        "When Radius checked on September 4, both official pages listed the 6:30 p.m. opener as TBA. Danny Gokey headlines at 8 p.m.",
     });
     expect(pop2000).toMatchObject({
       kind: "concert",
       title: "POP 2000 Tour",
       timeLabel: "7:30 p.m.",
+      detail:
+        "When Radius checked on September 4, the Fair's schedule and Grandstand page named different lead performers. Both listed LFO, OTOWN, and Ryan Cabrera; check the official event page for updates.",
     });
     expect(pop2000?.detail).not.toContain("Jeff Timmons");
     expect(taylorTribute).toMatchObject({
@@ -158,6 +186,8 @@ describe("buildFairDayWorkspaceData", () => {
       kind: "concert",
       title: "Warren Zeiders",
       timeLabel: "Headliner 8 p.m. · Opener 6:30 p.m.",
+      detail:
+        "When Radius checked on September 4, both official pages listed Chris Darlington at 6:30 p.m. Warren Zeiders headlines at 8 p.m.",
     });
     expect(data.scheduleItems.filter((item) => item.kind === "concert")).toHaveLength(
       6,
@@ -168,12 +198,26 @@ describe("buildFairDayWorkspaceData", () => {
       "Youth Dog Show",
       "Youth Pretty Pig Contest",
       "Youth Alpaca Show",
+      "Youth Pretty Cow Contest",
+      "Youth Beef Market Show",
+      "Northeast Texas Longhorn Regional Show",
+      "Supreme LegenDAIRY Showcase",
     ]) {
       expect(
         data.scheduleItems.find((item) =>
           item.sourceItem.text.startsWith(publishedAnimalTitle),
         )?.kind,
       ).toBe("animal");
+    }
+    for (const publishedFoodTitle of [
+      'Taste of "Home Grown Frederick"',
+      "Ice Cream in a Bag Demonstration",
+    ]) {
+      expect(
+        data.scheduleItems.find((item) =>
+          item.sourceItem.text.startsWith(publishedFoodTitle),
+        )?.kind,
+      ).toBe("food");
     }
   });
 
@@ -193,9 +237,9 @@ describe("buildFairDayWorkspaceData", () => {
     expect(transit?.summary).toContain(
       "East Patrick Street at Fairground Center",
     );
-    expect(transit?.summary).toContain("EFS and 15");
-    expect(transit?.summary).toContain("not a service promise");
-    expect(transit?.summary).toContain("arrival times are not confirmed");
+    expect(transit?.summary).toBe(fairTransitTravelSummary());
+    expect(transit?.summary).toContain("6:17 AM through 9:17 PM");
+    expect(transit?.summary).toContain("not a live arrival prediction");
     expect(transit?.paymentLabel).toContain("fare-free");
     expect(drive?.summary).toContain("free ADA-compliant shuttle");
     expect(drive?.summary).toContain("Use I-70 Exit 56");
@@ -203,6 +247,17 @@ describe("buildFairDayWorkspaceData", () => {
     expect(drive?.summary).toContain(
       "This is a Fair parking shuttle, not county Transit",
     );
+    expect(data.parkingGlance).toEqual({
+      satellitePriceLabel: "$10",
+      satellitePaymentLabel: "cash",
+      infieldPriceLabel: "$15",
+      infieldPaymentLabel: "cash or credit card",
+    });
+    expect(data.dates[0]).toMatchObject({
+      date: "2026-09-18",
+      gateOpensAt: "2026-09-18T20:00:00.000Z",
+      gateClosesAt: "2026-09-19T02:00:00.000Z",
+    });
     expect(data.entryDetail).toContain("Apple Pay is not accepted");
     expect(data.ticketWalletHelpUrl).toBe(
       "https://support.etix.com/general-info/what-is-etix-wallet-and-how-do-i-use-it",
@@ -213,6 +268,32 @@ describe("buildFairDayWorkspaceData", () => {
         "The Fair links to EventHub for its 2026 vendor floorplan and exhibitor directory. Radius opens it as an external guide and does not treat that floorplan as reviewed map geometry.",
       url: "https://mobile.eventhub-floorplan.net/?Show_ID=18209",
     });
+  });
+
+  it("uses one reviewed transit truth for Travel and the Fair map", () => {
+    const data = buildFairDayWorkspaceData(
+      greatFrederickFair2026Pack,
+      greatFrederickFair2026PackPointer,
+      REVIEW_TIME,
+    );
+    const transit = data.arrivalOptions.find(
+      (option) => option.planChoice === "transit",
+    );
+    const fairgroundCenter = greatFrederickFair2026TransitStops.find(
+      (stop) => stop.id === "162918",
+    );
+    const mappedStop = greatFrederickFair2026MapAdditions.find(
+      (feature) => feature.properties.id === "transit-stop-162918",
+    );
+
+    expect(fairgroundCenter).toBeDefined();
+    expect(transit?.summary).toBe(fairTransitTravelSummary());
+    expect(mappedStop?.properties.detail).toContain(
+      fairTransitStopServiceSummary(fairgroundCenter!),
+    );
+    expect(transit?.summary.includes("6:17 AM")).toBe(
+      mappedStop?.properties.detail?.includes("6:17 AM"),
+    );
   });
 
   it("keeps official Etix handoffs stable and free of transient trackers", () => {
@@ -282,7 +363,10 @@ describe("buildFairDayWorkspaceData", () => {
     expect(data.source.label).toContain(
       `${greatFrederickFair2026PackPointer.itemCount} program rows`,
     );
-    expect(data.source.ageLabel).toBe("The source was checked today");
+    expect(data.source.checkedLabel).toBe("August 29, 2026 at 8:52 AM");
+    expect(data.source.ageLabel).toBe(
+      "This imported program version is 3 days old",
+    );
     expect(
       data.offers.find((offer) => offer.id === "offer-carload-special")?.detail,
     ).toContain("This offer is valid on September 22.");

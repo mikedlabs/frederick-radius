@@ -17,17 +17,17 @@ const COPY: Record<
 > = {
   planning: {
     eyebrow: "Great Frederick Fair · Sep 18–26",
-    headline: "Your Fair Day planner is ready.",
+    headline: "Plan the Fair in one place.",
     detail:
-      "Sort out tickets, parking, transit, and what you do not want to miss before you go.",
+      "Use the official program and searchable Fairgrounds map, compare ticket and arrival options, then save a day plan on your phone.",
     cta: "Plan your Fair day",
   },
   "fair-day": {
     eyebrow: "The Great Frederick Fair · Through Sep 26",
-    headline: "Make today at the Fair easier.",
+    headline: "Your Fair day, in one place.",
     detail:
-      "See what is on, find food and rides, and keep tickets, parking, transit, and your plan together.",
-    cta: "Open Fair Day",
+      "See what is happening, find places on the grounds, and keep your plan close while you are there.",
+    cta: "Open Radius at the Fair",
   },
 };
 
@@ -84,11 +84,14 @@ export default function TodayFairFeature({
       >
         <picture className="absolute inset-0 block">
           <source
-            media="(min-width: 640px)"
-            srcSet="/images/fair/fairgrounds-night-mike-d-1920.jpg"
+            type="image/webp"
+            srcSet="/images/fair/fairgrounds-night-mike-d-480.webp 480w, /images/fair/fairgrounds-night-mike-d-960.webp 960w, /images/fair/fairgrounds-night-mike-d-1920.webp 1920w"
+            sizes="(min-width: 1024px) 68rem, 100vw"
           />
           <img
             src="/images/fair/fairgrounds-night-mike-d-960.jpg"
+            srcSet="/images/fair/fairgrounds-night-mike-d-960.jpg 960w, /images/fair/fairgrounds-night-mike-d-1920.jpg 1920w"
+            sizes="(min-width: 1024px) 68rem, 100vw"
             alt=""
             width="960"
             height="540"

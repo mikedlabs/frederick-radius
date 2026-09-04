@@ -10,7 +10,6 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     id: "/",
     display: "standalone",
-    orientation: "portrait-primary",
     // Launch on the paper-cream ground so the OS splash (Android shows the
     // maskable icon centered on background_color; iOS falls back to it when a
     // matched startup image is absent) reads as the same light app you land in

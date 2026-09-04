@@ -4,6 +4,12 @@ const FAIR_TIME_ZONE = "America/New_York";
 
 export type FairProgramTimedItem = {
   title: string;
+  performanceSlots?: readonly {
+    startsAt: string;
+    role: "performance" | "opener" | "headliner";
+    name: string | null;
+    timeLabel: string;
+  }[];
   sourceItem: Pick<
     FairScheduleSourceItem,
     "startsAt" | "endsAt" | "sourcePosition" | "timing"
@@ -25,6 +31,20 @@ export function fairProgramTimestamp(value: string | null): number {
   if (!value) return Number.POSITIVE_INFINITY;
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) ? timestamp : Number.POSITIVE_INFINITY;
+}
+
+function fairProgramStartTimestamps(item: FairProgramTimedItem): number[] {
+  const slotStarts = item.performanceSlots
+    ?.map((slot) => fairProgramTimestamp(slot.startsAt))
+    .filter(Number.isFinite)
+    .sort((left, right) => left - right);
+  if (slotStarts && slotStarts.length > 0) return slotStarts;
+  const sourceStart = fairProgramTimestamp(item.sourceItem.startsAt);
+  return Number.isFinite(sourceStart) ? [sourceStart] : [];
+}
+
+function fairProgramFirstStart(item: FairProgramTimedItem): number {
+  return fairProgramStartTimestamps(item)[0] ?? Number.POSITIVE_INFINITY;
 }
 
 function fairLocalParts(timestamp: string): {
@@ -59,9 +79,9 @@ export function fairProgramLocalDate(timestamp: string): string | null {
 }
 
 export function fairProgramStartMinutes(item: FairProgramTimedItem): number {
-  const startsAt = item.sourceItem.startsAt;
-  if (!startsAt) return Number.POSITIVE_INFINITY;
-  const parts = fairLocalParts(startsAt);
+  const startsAt = fairProgramFirstStart(item);
+  if (!Number.isFinite(startsAt)) return Number.POSITIVE_INFINITY;
+  const parts = fairLocalParts(new Date(startsAt).toISOString());
   return parts ? parts.hour * 60 + parts.minute : Number.POSITIVE_INFINITY;
 }
 
@@ -80,8 +100,7 @@ export function sortFairProgramItems<T extends FairProgramTimedItem>(
 ): T[] {
   return [...items].sort(
     (left, right) =>
-      fairProgramTimestamp(left.sourceItem.startsAt) -
-        fairProgramTimestamp(right.sourceItem.startsAt) ||
+      fairProgramFirstStart(left) - fairProgramFirstStart(right) ||
       left.sourceItem.sourcePosition - right.sourceItem.sourcePosition ||
       left.title.localeCompare(right.title),
   );
@@ -95,12 +114,11 @@ export function fairProgramNextStart<T extends FairProgramTimedItem>(
   if (fairProgramLocalDate(asOf) !== selectedDate) return null;
   const now = Date.parse(asOf);
   if (!Number.isFinite(now)) return null;
-  const next = sortFairProgramItems(items).find(
-    (item) => fairProgramTimestamp(item.sourceItem.startsAt) > now,
+  const timestamp = Math.min(
+    ...items.flatMap((item) =>
+      fairProgramStartTimestamps(item).filter((start) => start > now),
+    ),
   );
-  const timestamp = next
-    ? fairProgramTimestamp(next.sourceItem.startsAt)
-    : Number.POSITIVE_INFINITY;
   return Number.isFinite(timestamp) ? timestamp : null;
 }
 
@@ -116,11 +134,22 @@ export function rankFairProgramPreviewItems<T extends FairProgramTimedItem>(
   if (!Number.isFinite(now)) return ordered;
 
   const happeningNow: T[] = [];
-  const upcoming: T[] = [];
+  const upcoming: Array<{ item: T; startsAt: number }> = [];
   const earlierStarts: T[] = [];
   for (const item of ordered) {
-    const startsAt = fairProgramTimestamp(item.sourceItem.startsAt);
+    const startsAt = fairProgramFirstStart(item);
     const endsAt = fairProgramEffectiveEnd(item, dayClosesAt);
+    const nextPerformanceStart = fairProgramStartTimestamps(item).find(
+      (start) => start > now,
+    );
+    if (item.performanceSlots && item.performanceSlots.length > 0) {
+      if (nextPerformanceStart !== undefined) {
+        upcoming.push({ item, startsAt: nextPerformanceStart });
+      } else {
+        earlierStarts.push(item);
+      }
+      continue;
+    }
     if (
       Number.isFinite(startsAt) &&
       Number.isFinite(endsAt) &&
@@ -128,13 +157,18 @@ export function rankFairProgramPreviewItems<T extends FairProgramTimedItem>(
       now < endsAt
     ) {
       happeningNow.push(item);
-    } else if (Number.isFinite(startsAt) && startsAt > now) {
-      upcoming.push(item);
+    } else if (nextPerformanceStart !== undefined) {
+      upcoming.push({ item, startsAt: nextPerformanceStart });
     } else {
       earlierStarts.push(item);
     }
   }
-  return [...happeningNow, ...upcoming, ...earlierStarts];
+  upcoming.sort((left, right) => left.startsAt - right.startsAt);
+  return [
+    ...happeningNow,
+    ...upcoming.map(({ item }) => item),
+    ...earlierStarts,
+  ];
 }
 
 export function fairProgramLiveStatus(
@@ -146,6 +180,34 @@ export function fairProgramLiveStatus(
 ): FairProgramLiveStatus | null {
   if (fairProgramLocalDate(asOf) !== selectedDate) return null;
   const now = Date.parse(asOf);
+  const performanceSlot = item.performanceSlots
+    ?.map((slot) => ({
+      ...slot,
+      timestamp: fairProgramTimestamp(slot.startsAt),
+    }))
+    .filter((slot) => Number.isFinite(slot.timestamp) && slot.timestamp > now)
+    .sort((left, right) => left.timestamp - right.timestamp)[0];
+  if (performanceSlot) {
+    const minutesAway = Math.max(
+      1,
+      Math.ceil((performanceSlot.timestamp - now) / 60_000),
+    );
+    const subject =
+      performanceSlot.name ??
+      (performanceSlot.role === "opener" ? "Opener" : "Performance");
+    if (nextStart === performanceSlot.timestamp || minutesAway <= 60) {
+      return {
+        label:
+          minutesAway <= 90
+            ? `${subject} in ${minutesAway} min`
+            : `${subject} up next`,
+        state: "next",
+      };
+    }
+    return null;
+  }
+  if (item.performanceSlots && item.performanceSlots.length > 0) return null;
+
   const startsAt = fairProgramTimestamp(item.sourceItem.startsAt);
   const endsAt = fairProgramEffectiveEnd(item, dayClosesAt);
   if (!Number.isFinite(now) || !Number.isFinite(startsAt)) return null;

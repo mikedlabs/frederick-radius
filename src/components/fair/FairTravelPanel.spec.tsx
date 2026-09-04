@@ -2,6 +2,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+import { fairTransitTravelSummary } from "@/data/fair/great-frederick-fair-2026-transit";
+
 import FairTravelPanel from "./FairTravelPanel";
 import type { FairDayArrivalView } from "./types";
 
@@ -21,8 +23,7 @@ const options: FairDayArrivalView[] = [
     id: "arrival-transit",
     planChoice: "transit",
     label: "County Transit",
-    summary:
-      "The static feed associates East Patrick Street at Fairground Center with EFS and 15.",
+    summary: fairTransitTravelSummary(),
     paymentLabel: "County Transit is fare-free.",
     returnLabel: "Recheck County Transit before leaving",
     returnSummary: "No Fair-date arrival time is confirmed.",
@@ -44,12 +45,13 @@ function render(
   selected: FairDayArrivalView | null,
   eventPhase: "pre-fair" | "fair-day" = "pre-fair",
   ready = false,
+  selectedDate = "2026-09-18",
 ) {
   return renderToStaticMarkup(
     createElement(FairTravelPanel, {
       options,
       selected,
-      selectedDate: "2026-09-18",
+      selectedDate,
       eventPhase,
       ready,
       onSelect: vi.fn(),
@@ -89,17 +91,25 @@ describe("FairTravelPanel", () => {
 
     expect(html).toContain("County Transit is fare-free.");
     expect(html).toContain("East Patrick Street at Fairground Center");
-    expect(html).toContain(
-      "Fair-date service and arrival times are not confirmed from the current Fair data pack.",
-    );
-    expect(html).toContain('href="/transit"');
+    expect(html).toContain("6:17 AM through 9:17 PM");
+    expect(html).toContain("scheduled times, not live arrivals");
+    expect(html).not.toContain('href="/transit"');
     expect(html).toContain('href="https://example.com/county-transit"');
+    expect(html).toContain("Check official County Transit");
     expect(html).toContain("I checked Fair-date service");
     expect(html).toContain(
-      "Radius is not confirming Fair-date service or arrival times.",
+      "Use the published schedule as planning context and recheck County Transit before leaving.",
     );
     expect(html).not.toContain("$15 infield");
     expect(html).not.toContain("Meet your driver at Gate 4A");
+  });
+
+  it("shows the shared published no-service state for a weekend Fair day", () => {
+    const html = render(options[1], "pre-fair", false, "2026-09-19");
+
+    expect(html).toContain(
+      "does not publish East Frederick Shuttle or Route 15 service",
+    );
   });
 
   it("offers the device-only car memory only while the Fair is underway", () => {

@@ -257,6 +257,11 @@ export default function RootLayout({
         <Toaster
           position="bottom-center"
           offset="calc(env(safe-area-inset-bottom, 0px) + 80px)"
+          mobileOffset={{
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
+            left: "12px",
+            right: "12px",
+          }}
           toastOptions={{
             style: {
               background: "var(--app-bg-elevated)",

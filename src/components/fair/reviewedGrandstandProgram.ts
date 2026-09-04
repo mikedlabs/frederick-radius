@@ -1,8 +1,10 @@
 import type { FairScheduleSourceItem } from "@/lib/fair/schedule";
 
-type FairPerformanceSlot = {
+export type FairPerformanceSlot = {
   name: string | null;
   timeLabel: string;
+  startsAt: string;
+  role: "performance" | "opener" | "headliner";
   nameStatus: "named" | "not-published" | "to-be-announced";
 };
 
@@ -22,22 +24,38 @@ export type ReviewedGrandstandPresentation = {
   detail: string;
   timeLabel: string;
   billing: ReviewedGrandstandBilling;
+  sourceUrl: string;
+  reviewedOn: string;
+  validThrough: string;
+  sourceRevision: string;
 };
 
-type ReviewedGrandstandEntry = ReviewedGrandstandPresentation & {
+type ReviewedGrandstandEntry = Omit<
+  ReviewedGrandstandPresentation,
+  "sourceUrl" | "reviewedOn" | "validThrough" | "sourceRevision"
+> & {
   sourceItemId: string;
   fairDate: string;
   sourceTimeLabel: string;
   sourceTextStartsWith: string;
 };
 
+const GRANDSTAND_SOURCE_URL =
+  "https://thegreatfrederickfair.com/grandstand/";
+const GRANDSTAND_REVIEWED_ON = "2026-09-04";
+const GRANDSTAND_VALID_THROUGH = "2026-09-26";
+const GRANDSTAND_EXPIRES_AT = "2026-09-27T00:00:00-04:00";
+const GRANDSTAND_SOURCE_REVISION = "manual-review-2026-09-04";
+
 /**
  * Display adapters for the six reviewed 2026 evening musical Grandstand rows.
  *
  * The opaque source ID hashes the official date, time label, and wording. The
- * additional checks make the boundary intentional: if the Fair changes a row,
+ * additional checks make the boundary intentional: if the imported row changes,
  * Radius falls back to that unmodified source row until the new billing is
- * reviewed. The original FairScheduleSourceItem is never rewritten.
+ * reviewed. A presentation may also carry a newer, first-party correction than
+ * the immutable imported snapshot. The original FairScheduleSourceItem is never
+ * rewritten.
  */
 const REVIEWED_2026_GRANDSTAND_SHOWS = [
   {
@@ -54,11 +72,15 @@ const REVIEWED_2026_GRANDSTAND_SHOWS = [
       opener: {
         name: null,
         timeLabel: "6:30 p.m.",
+        startsAt: "2026-09-18T18:30:00-04:00",
+        role: "opener",
         nameStatus: "not-published",
       },
       headliner: {
         name: "Daughtry",
         timeLabel: "8 p.m.",
+        startsAt: "2026-09-18T20:00:00-04:00",
+        role: "headliner",
         nameStatus: "named",
       },
     },
@@ -71,12 +93,14 @@ const REVIEWED_2026_GRANDSTAND_SHOWS = [
     title: "POP 2000 Tour",
     timeLabel: "7:30 p.m.",
     detail:
-      "The POP 2000 Tour is listed for 7:30 p.m. Check the official event page for the latest lineup.",
+      "When Radius checked on September 4, the Fair's schedule and Grandstand page named different lead performers. Both listed LFO, OTOWN, and Ryan Cabrera; check the official event page for updates.",
     billing: {
       mode: "single-start",
       performance: {
         name: "POP 2000 Tour",
         timeLabel: "7:30 p.m.",
+        startsAt: "2026-09-19T19:30:00-04:00",
+        role: "performance",
         nameStatus: "named",
       },
     },
@@ -95,11 +119,15 @@ const REVIEWED_2026_GRANDSTAND_SHOWS = [
       opener: {
         name: "Mark Wills",
         timeLabel: "6:30 p.m.",
+        startsAt: "2026-09-20T18:30:00-04:00",
+        role: "opener",
         nameStatus: "named",
       },
       headliner: {
         name: "Neal McCoy",
         timeLabel: "8 p.m.",
+        startsAt: "2026-09-20T20:00:00-04:00",
+        role: "headliner",
         nameStatus: "named",
       },
     },
@@ -112,17 +140,21 @@ const REVIEWED_2026_GRANDSTAND_SHOWS = [
     title: "Danny Gokey",
     timeLabel: "Headliner 8 p.m. · Opener 6:30 p.m.",
     detail:
-      "Bay Turner opens at 6:30 p.m. Danny Gokey headlines at 8 p.m.",
+      "When Radius checked on September 4, both official pages listed the 6:30 p.m. opener as TBA. Danny Gokey headlines at 8 p.m.",
     billing: {
       mode: "opener-headliner",
       opener: {
-        name: "Bay Turner",
+        name: null,
         timeLabel: "6:30 p.m.",
-        nameStatus: "named",
+        startsAt: "2026-09-24T18:30:00-04:00",
+        role: "opener",
+        nameStatus: "to-be-announced",
       },
       headliner: {
         name: "Danny Gokey",
         timeLabel: "8 p.m.",
+        startsAt: "2026-09-24T20:00:00-04:00",
+        role: "headliner",
         nameStatus: "named",
       },
     },
@@ -140,6 +172,8 @@ const REVIEWED_2026_GRANDSTAND_SHOWS = [
       performance: {
         name: "Let's Sing Taylor!",
         timeLabel: "6 p.m.",
+        startsAt: "2026-09-25T18:00:00-04:00",
+        role: "performance",
         nameStatus: "named",
       },
     },
@@ -152,17 +186,21 @@ const REVIEWED_2026_GRANDSTAND_SHOWS = [
     title: "Warren Zeiders",
     timeLabel: "Headliner 8 p.m. · Opener 6:30 p.m.",
     detail:
-      "The Fair's current sources differ on the opener. Warren Zeiders headlines at 8 p.m.",
+      "When Radius checked on September 4, both official pages listed Chris Darlington at 6:30 p.m. Warren Zeiders headlines at 8 p.m.",
     billing: {
       mode: "opener-headliner",
       opener: {
-        name: null,
+        name: "Chris Darlington",
         timeLabel: "6:30 p.m.",
-        nameStatus: "to-be-announced",
+        startsAt: "2026-09-26T18:30:00-04:00",
+        role: "opener",
+        nameStatus: "named",
       },
       headliner: {
         name: "Warren Zeiders",
         timeLabel: "8 p.m.",
+        startsAt: "2026-09-26T20:00:00-04:00",
+        role: "headliner",
         nameStatus: "named",
       },
     },
@@ -171,6 +209,7 @@ const REVIEWED_2026_GRANDSTAND_SHOWS = [
 
 export function reviewedGrandstandPresentation(
   item: FairScheduleSourceItem,
+  asOf: Date,
 ): ReviewedGrandstandPresentation | null {
   const reviewed = REVIEWED_2026_GRANDSTAND_SHOWS.find(
     (candidate) => candidate.sourceItemId === item.id,
@@ -183,11 +222,18 @@ export function reviewedGrandstandPresentation(
   ) {
     return null;
   }
+  if (asOf.getTime() >= Date.parse(GRANDSTAND_EXPIRES_AT)) {
+    return null;
+  }
 
   return {
     title: reviewed.title,
     detail: reviewed.detail,
     timeLabel: reviewed.timeLabel,
     billing: reviewed.billing,
+    sourceUrl: GRANDSTAND_SOURCE_URL,
+    reviewedOn: GRANDSTAND_REVIEWED_ON,
+    validThrough: GRANDSTAND_VALID_THROUGH,
+    sourceRevision: GRANDSTAND_SOURCE_REVISION,
   };
 }

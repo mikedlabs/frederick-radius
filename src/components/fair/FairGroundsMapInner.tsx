@@ -98,6 +98,8 @@ export type FairGroundsMapProps = {
 
 type FairGroundsMapView = FairGroundsMapFilter | "program";
 
+type FairMapSnapshotStatus = "loading" | "failed" | "retrying" | "ready";
+
 type FairGroundsMarkerGroup = {
   id: string;
   features: FairGroundsMapFeature[];
@@ -522,7 +524,14 @@ export default function FairGroundsMapInner({
   } | null>(null);
   const focusedDeepLinkRef = useRef(false);
   const focusedProgramRequestRef = useRef<number | null>(null);
+  const pendingProgramFocusRequestRef = useRef<{
+    requestId: number;
+    featureId: string;
+  } | null>(null);
   const selectedFocusTimerRef = useRef<number | null>(null);
+  const mapSnapshotRequestRef = useRef(0);
+  const mapSnapshotAbortRef = useRef<AbortController | null>(null);
+  const focusAfterMapSnapshotRetryRef = useRef(false);
   const mapLoadedRef = useRef(false);
   const locationRequestRef = useRef(0);
   const interactiveMapSurfaceRef = useRef<HTMLDivElement | null>(null);
@@ -532,7 +541,8 @@ export default function FairGroundsMapInner({
     useState<FairMapRuntime>("checking");
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapData, setMapData] = useState<FairGroundsMap | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
+  const [mapSnapshotStatus, setMapSnapshotStatus] =
+    useState<FairMapSnapshotStatus>("loading");
   const [filter, setFilterState] = useState<FairGroundsMapView>(() =>
     typeof window === "undefined"
       ? "arrival"
@@ -740,27 +750,79 @@ export default function FairGroundsMapInner({
     setFilterState(nextFilter);
   };
 
-  useEffect(() => {
-    let active = true;
-    fetch(FAIR_GROUNDS_MAP_URL, { cache: "force-cache" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`Fair map returned ${response.status}`);
-        return enrichFairGroundsMap(
-          parseFairGroundsMap(await response.json()),
-          greatFrederickFair2026MapPatches,
-          greatFrederickFair2026MapAdditions,
-        );
-      })
-      .then((map) => {
-        if (active) setMapData(map);
-      })
-      .catch(() => {
-        if (active) setLoadFailed(true);
+  const loadMapSnapshot = useCallback(async (reason: "initial" | "retry") => {
+    const requestId = mapSnapshotRequestRef.current + 1;
+    mapSnapshotRequestRef.current = requestId;
+    mapSnapshotAbortRef.current?.abort();
+    const controller = new AbortController();
+    mapSnapshotAbortRef.current = controller;
+
+    if (reason === "retry") {
+      setMapSnapshotStatus("retrying");
+    }
+
+    try {
+      const response = await fetch(FAIR_GROUNDS_MAP_URL, {
+        // The Fair map is corrected in place as official information changes.
+        // Revalidate the same URL instead of trusting an old browser cache;
+        // the service worker still owns the deliberate offline copy.
+        cache: "no-cache",
+        signal: controller.signal,
       });
-    return () => {
-      active = false;
-    };
+      if (!response.ok) {
+        throw new Error(`Fair map returned ${response.status}`);
+      }
+      const map = enrichFairGroundsMap(
+        parseFairGroundsMap(await response.json()),
+        greatFrederickFair2026MapPatches,
+        greatFrederickFair2026MapAdditions,
+      );
+      if (
+        controller.signal.aborted ||
+        requestId !== mapSnapshotRequestRef.current
+      ) {
+        return;
+      }
+      if (reason === "retry") {
+        focusAfterMapSnapshotRetryRef.current = true;
+        setMapAnnouncement("The reviewed Fairgrounds map is ready.");
+      }
+      setMapData(map);
+      setMapSnapshotStatus("ready");
+    } catch {
+      if (
+        controller.signal.aborted ||
+        requestId !== mapSnapshotRequestRef.current
+      ) {
+        return;
+      }
+      setMapSnapshotStatus("failed");
+    } finally {
+      if (requestId === mapSnapshotRequestRef.current) {
+        mapSnapshotAbortRef.current = null;
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    void loadMapSnapshot("initial");
+    return () => {
+      mapSnapshotRequestRef.current += 1;
+      mapSnapshotAbortRef.current?.abort();
+      mapSnapshotAbortRef.current = null;
+    };
+  }, [loadMapSnapshot]);
+
+  useEffect(() => {
+    if (!mapData || !focusAfterMapSnapshotRetryRef.current) return;
+    focusAfterMapSnapshotRetryRef.current = false;
+    const frame = window.requestAnimationFrame(() => {
+      const target =
+        searchInputRef.current ?? condensedSearchTriggerRef.current;
+      target?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [mapData]);
 
   useEffect(() => {
     if (
@@ -1040,9 +1102,10 @@ export default function FairGroundsMapInner({
   }, [clusterSelectionIds, restoreMapControlFocus, visibleFeatures]);
 
   useEffect(() => {
+    if (!mapLoaded) return;
     const frame = window.requestAnimationFrame(updateMarkerGroups);
     return () => window.cancelAnimationFrame(frame);
-  }, [updateMarkerGroups]);
+  }, [mapLoaded, updateMarkerGroups]);
   const renderedMarkerGroups = useMemo(
     () =>
       markerGroups.map((group) => {
@@ -1182,7 +1245,7 @@ export default function FairGroundsMapInner({
     return { top, right: clearance, bottom, left: clearance };
   }, []);
 
-  const focusSelectedDetails = useCallback(() => {
+  const focusSelectedDetails = useCallback((onFocused?: () => void) => {
     if (selectedFocusTimerRef.current !== null) {
       window.clearTimeout(selectedFocusTimerRef.current);
       selectedFocusTimerRef.current = null;
@@ -1192,13 +1255,23 @@ export default function FairGroundsMapInner({
       const heading = desktop
         ? desktopSelectionHeadingRef.current
         : mobileSelectionHeadingRef.current;
-      if (!heading) return;
-      if (heading.closest('[aria-hidden="true"]')) {
+      if (!heading?.isConnected || heading.closest('[aria-hidden="true"]')) {
         selectedFocusTimerRef.current = window.setTimeout(attemptFocus, 100);
         return;
       }
-      selectedFocusTimerRef.current = null;
       heading.focus({ preventScroll: true });
+      // MapLibre and the native <dialog> both finish work immediately after a
+      // program-to-map transition. Confirm that neither stole focus before the
+      // parent clears the one-shot request; otherwise a transient mount can
+      // consume the handoff without leaving the visitor at the selected place.
+      selectedFocusTimerRef.current = window.setTimeout(() => {
+        if (document.activeElement !== heading) {
+          attemptFocus();
+          return;
+        }
+        selectedFocusTimerRef.current = null;
+        onFocused?.();
+      }, 50);
     };
     attemptFocus();
   }, []);
@@ -1289,7 +1362,14 @@ export default function FairGroundsMapInner({
       setMapAnnouncement(
         `${mappedFeatureName(feature, mapData)} selected for this program item. Details are open.`,
       );
-      onFocusRequestHandled?.(requestId);
+      // Keep the request alive until the map is interactive and the selected
+      // place heading has mounted and retained focus. If this lazy map remounts
+      // during startup, the parent can therefore deliver the same request to
+      // the replacement instance instead of silently losing the destination.
+      pendingProgramFocusRequestRef.current = {
+        requestId,
+        featureId: feature.properties.id,
+      };
     });
     return () => window.cancelAnimationFrame(frame);
   }, [focusRequest, mapData, onFocusRequestHandled, programMatches]);
@@ -1314,15 +1394,27 @@ export default function FairGroundsMapInner({
           padding: fairMapFitPadding(),
         });
       }
-      focusSelectedDetails();
+      focusSelectedDetails(() => {
+        const pending = pendingProgramFocusRequestRef.current;
+        if (!pending || pending.featureId !== selected.properties.id) return;
+        pendingProgramFocusRequestRef.current = null;
+        onFocusRequestHandled?.(pending.requestId);
+      });
     });
 
-    return () => window.cancelAnimationFrame(frame);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (selectedFocusTimerRef.current !== null) {
+        window.clearTimeout(selectedFocusTimerRef.current);
+        selectedFocusTimerRef.current = null;
+      }
+    };
   }, [
     fairMapFitPadding,
     focusSelectedDetails,
     mapLoaded,
     mapRuntime,
+    onFocusRequestHandled,
     selected,
   ]);
 
@@ -1605,28 +1697,64 @@ export default function FairGroundsMapInner({
     );
   };
 
-  if (loadFailed) {
+  if (
+    mapSnapshotStatus === "failed" ||
+    mapSnapshotStatus === "retrying"
+  ) {
+    const retryingMapSnapshot = mapSnapshotStatus === "retrying";
     return (
       <div
+        data-fair-map-snapshot-fallback
         className="mt-5 rounded-[var(--app-radius-xl)] border p-5"
         style={{
           borderColor: "var(--app-border-strong)",
           background: "var(--app-bg-elevated)",
         }}
-        role="status"
+        role="region"
+        aria-labelledby="fair-map-snapshot-fallback-heading"
       >
-        <p className="text-[18px] font-bold">The grounds map could not open.</p>
-        <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Your plan is still here. Browse the reviewed program or use the official vendor guide while Radius retries on your next visit.
-        </p>
-        <button
-          type="button"
-          onClick={onBrowseProgram}
-          className="tap-44 mt-4 inline-flex min-h-11 items-center font-semibold"
-          style={{ color: "var(--app-brand-press)" }}
+        <p
+          id="fair-map-snapshot-fallback-heading"
+          className="text-[18px] font-bold"
         >
-          Browse the program
-        </button>
+          The grounds map could not open.
+        </p>
+        <p
+          className="mt-2 text-[13px] leading-relaxed"
+          style={{ color: "var(--app-ink-2)" }}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {retryingMapSnapshot
+            ? "Radius is retrying the reviewed map now."
+            : "Your plan is still here. Try the reviewed map again, or browse the program without it."}
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (retryingMapSnapshot) return;
+              void loadMapSnapshot("retry");
+            }}
+            disabled={retryingMapSnapshot}
+            className="tap-44 inline-flex min-h-11 items-center rounded-full px-4 font-bold disabled:cursor-wait disabled:opacity-65"
+            style={{
+              color: "var(--app-bg)",
+              background: "var(--app-brand-press)",
+            }}
+          >
+            {retryingMapSnapshot ? "Retrying…" : "Retry grounds map"}
+          </button>
+          <button
+            type="button"
+            onClick={onBrowseProgram}
+            className="tap-44 inline-flex min-h-11 items-center font-semibold"
+            style={{ color: "var(--app-brand-press)" }}
+          >
+            Browse the program
+          </button>
+        </div>
       </div>
     );
   }

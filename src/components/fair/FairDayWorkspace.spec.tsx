@@ -40,6 +40,8 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).not.toContain("Photo: Mike D");
     expect(html).toContain("fairgrounds-night-mike-d-960.jpg");
     expect(html).toContain("fairgrounds-night-mike-d-1920.jpg");
+    expect(html).toContain("fairgrounds-night-mike-d-480.webp 480w");
+    expect(html).toContain('type="image/webp"');
     expect(html).toContain('width="960" height="540"');
     expect(html).toContain("fairgrounds-night-mike-d-960.jpg 960w");
     expect(html).toContain("fairgrounds-night-mike-d-1920.jpg 1920w");
@@ -77,7 +79,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
 
     expect(html).toContain('data-mobile-action-bar="true"');
     expect(html).toContain('aria-label="Fair Day"');
-    for (const label of ["Today", "Program", "Map", "My Day"]) {
+    for (const label of ["Home", "Program", "Map", "My Day"]) {
       expect(html).toContain(`aria-label="${label}"`);
     }
     expect(html).not.toContain('href="#now"');
@@ -86,16 +88,26 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).not.toContain('href="#travel"');
   });
 
-  it("shows one next action without repeating a preparation dashboard", () => {
+  it("puts the selected day's four essential decisions in one compact board", () => {
     const html = renderToStaticMarkup(
       createElement(FairDayWorkspace, { data }),
     );
 
-    expect(html).toContain("Your next best step");
-    expect(html).toContain("Tickets still need review.");
+    expect(html).toContain("data-fair-at-a-glance");
+    expect(html.match(/data-fair-glance-tile=/g)).toHaveLength(4);
+    expect(html).toContain("Friday at a glance");
+    expect(html).toContain('aria-label="Fair day in your plan"');
+    expect(html).toContain("4–10 p.m.");
+    expect(html).toContain("$8 first Friday");
+    expect(html).toContain("Children 10 &amp; under free");
+    expect(html).toContain("$10 cash lots");
+    expect(html).toContain("$15 infield · cash or card");
+    expect(html).toContain("Kid Zone");
     expect(html).toContain("Review tickets");
     expect(html.match(/0 of 3 ready/g)).toHaveLength(1);
     expect(html).toContain("No saved stops");
+    expect(html).not.toContain("data-fair-next-action");
+    expect(html).not.toContain('data-fair-plan-status="full"');
     expect(html).not.toContain('aria-label="Fair trip at a glance"');
     expect(html).not.toContain("Visitor essentials");
     expect(html).not.toContain("Check the details that can slow you down.");
@@ -115,7 +127,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).toContain("-mt-2 ml-1");
     expect(html).toContain('data-fair-wallet-card="3"');
     expect(html).toContain("-mt-2 ml-2");
-    expect(html).toContain("focus-visible:z-40");
+    expect(html).toContain("focus-visible:z-[var(--z-nav)]");
   });
 
   it("offers the printable Fair extra after the primary planning choices", () => {
@@ -152,7 +164,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
 
     expect(html).not.toContain("Plan Friday at the Fair.");
     expect(html).not.toContain("Before the Fair · Fri, Sep 18");
-    expect(html.indexOf("Your next best step")).toBeLessThan(
+    expect(html.indexOf("Friday at a glance")).toBeLessThan(
       html.indexOf("About this independent guide"),
     );
     expect(html).not.toContain(data.externalGuide.url);

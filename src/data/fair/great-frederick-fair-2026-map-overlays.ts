@@ -2,9 +2,13 @@ import type {
   FairGroundsMapFeature,
   FairGroundsMapFeaturePatch,
 } from "@/lib/fair/grounds-map";
+import {
+  fairTransitStopServiceSummary,
+  greatFrederickFair2026TransitReview,
+  greatFrederickFair2026TransitStops,
+} from "./great-frederick-fair-2026-transit";
 
 const OFFICIAL_CHECKED_AT = "2026-09-04T06:04:00Z";
-const GTFS_CHECKED_AT = "2026-09-04T06:04:00Z";
 
 const parkingInformationSource = {
   publisher: "The Great Frederick Fair",
@@ -44,8 +48,8 @@ const vendorGuideInformationSource = {
 const transitInformationSource = {
   publisher: "Transit Services of Frederick County",
   title: "Published static GTFS and Transit Services",
-  url: "https://www.frederickcountymd.gov/105/Transit-Services",
-  checkedAt: GTFS_CHECKED_AT,
+  url: greatFrederickFair2026TransitReview.informationUrl,
+  checkedAt: greatFrederickFair2026TransitReview.checkedAt,
 };
 
 const RESTROOM_IDS = [
@@ -420,74 +424,24 @@ const parkingFeatures: FairGroundsMapFeature[] = [
   }),
 ];
 
-const transitFeatures: FairGroundsMapFeature[] = [
-  {
-    id: "163112",
-    name: "Monroe Avenue across from FCC Monroe Center",
-    longitude: -77.39042922,
-    latitude: 39.41344959,
-    routes: "East Frederick Shuttle",
-    distance: 165,
-    service:
-      "Weekdays only during the Fair, with seven explicit published departures from 9:05 AM through 5:05 PM. This route does not run on Fair Saturdays or Sunday.",
-  },
-  {
-    id: "163103",
-    name: "Monroe Avenue at FCC Monroe Center",
-    longitude: -77.38991584,
-    latitude: 39.41379112,
-    routes: "East Frederick Shuttle",
-    distance: 223,
-    service:
-      "Weekdays only during the Fair, with published departures from 8:20 AM through 5:20 PM. This route does not run on Fair Saturdays or Sunday.",
-  },
-  {
-    id: "162919",
-    name: "East Patrick Street at Hamilton Avenue",
-    longitude: -77.39602587,
-    latitude: 39.41139132,
-    routes: "Route 15",
-    distance: 375,
-    service:
-      "Weekdays only during the Fair, with hourly published Route 15 departures from 6:18 AM through 9:18 PM. Route 15 does not run on Fair Saturdays or Sunday.",
-  },
-  {
-    id: "163111",
-    name: "Monocacy Boulevard at Bucheimer Road",
-    longitude: -77.38699611,
-    latitude: 39.40903282,
-    routes: "East Frederick Shuttle",
-    distance: 571,
-    service:
-      "Weekdays only during the Fair, with seven explicit published departures from 9:02 AM through 5:02 PM. This route does not run on Fair Saturdays or Sunday.",
-  },
-  {
-    id: "162918",
-    name: "East Patrick Street at Fairground Center",
-    longitude: -77.39916882,
-    latitude: 39.41301244,
-    routes: "Route 15",
-    distance: 627,
-    service:
-      "Weekdays only during the Fair, with hourly published Route 15 departures from 6:17 AM through 9:17 PM. Route 15 does not run on Fair Saturdays or Sunday.",
-  },
-].map(({ id, name, longitude, latitude, routes, distance, service }) =>
-  pointFeature({
-    id: `transit-stop-${id}`,
-    name: String(name),
-    kind: "transit",
-    sourceUrl: "https://passio3.com/frederick/passioTransit/gtfs/google_transit.zip",
-    sourceUpdatedAt: null,
-    scheduleAliases: [],
-    anchor: [Number(longitude), Number(latitude)],
-    detail: `${service} The stop is about ${distance} meters straight-line from the Fairgrounds; Radius has not verified the walking route or step-free access.`,
-    keywords: ["bus", "transit", routes, "fare free", "weekday service"],
-    informationSource: transitInformationSource,
-    locationPrecision: "static-transit-stop",
-    directionsEnabled: true,
-    filterIds: ["arrival"],
-  }),
-);
+const transitFeatures: FairGroundsMapFeature[] =
+  greatFrederickFair2026TransitStops.map((stop) =>
+    pointFeature({
+      id: `transit-stop-${stop.id}`,
+      name: stop.name,
+      kind: "transit",
+      sourceUrl: greatFrederickFair2026TransitReview.sourceUrl,
+      sourceUpdatedAt: null,
+      scheduleAliases: [],
+      anchor: [stop.longitude, stop.latitude],
+      detail: `${fairTransitStopServiceSummary(stop)} The stop is about ${stop.distanceMeters} meters straight-line from the Fairgrounds; Radius has not verified the walking route or step-free access.`,
+      keywords: ["bus", "transit", stop.routes, "fare free", "weekday service"],
+      informationSource: transitInformationSource,
+      locationPrecision: "static-transit-stop",
+      directionsEnabled: true,
+      filterIds: ["arrival"],
+    }),
+  );
 
 const serviceFeatures: FairGroundsMapFeature[] = [
   pointFeature({

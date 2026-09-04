@@ -15,6 +15,7 @@ import {
 import { useId, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { fairTransitDateStatus } from "@/data/fair/great-frederick-fair-2026-transit";
 
 import FairArrivalStatus from "./FairArrivalStatus";
 import FairCarMemoryPanel from "./FairCarMemoryPanel";
@@ -190,7 +191,14 @@ function DriveFlow({
   );
 }
 
-function TransitFlow({ option }: { option: FairDayArrivalView }) {
+function TransitFlow({
+  option,
+  selectedDate,
+}: {
+  option: FairDayArrivalView;
+  selectedDate: string;
+}) {
+  const dateStatus = fairTransitDateStatus(selectedDate);
   return (
     <div>
       <FactBlock label="What is confirmed">{option.paymentLabel}</FactBlock>
@@ -219,24 +227,27 @@ function TransitFlow({ option }: { option: FairDayArrivalView }) {
             style={{ color: "var(--app-warning-press)" }}
             aria-hidden
           />
-          Fair-date service and arrival times are not confirmed from the
-          current Fair data pack.
+          {dateStatus.detail}
         </p>
         <p
           className="mt-2 text-[13px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
-          The nearby stop and route names are static network context. Check the
-          official County Transit information before relying on this trip.
+          Radius checked the official static feed on September 4. Check County
+          Transit again before relying on the trip because the schedule can
+          change and these are not live arrivals.
         </p>
       </div>
 
       <Button
         className="mt-6 w-full sm:w-auto"
-        href="/transit"
+        href={option.officialInfoUrl}
+        target="_blank"
+        rel="noopener noreferrer"
         iconLeft={<BusFront className="h-4 w-4" aria-hidden />}
+        iconRight={<ExternalLink className="h-4 w-4" aria-hidden />}
       >
-        Open Radius Transit
+        Check official County Transit
       </Button>
 
       <SourceDisclosure option={option} />
@@ -318,7 +329,7 @@ function TravelReadinessControl({
         {ready
           ? "This travel and return plan is marked ready on this device."
           : choice === "transit"
-            ? "This records only your check. Radius is not confirming Fair-date service or arrival times."
+            ? "This records only your check. Use the published schedule as planning context and recheck County Transit before leaving."
             : "Mark this ready after you have checked the official details you need."}
       </p>
       <Button
@@ -452,7 +463,7 @@ export default function FairTravelPanel({
             <DriveFlow option={activeOption} eventPhase={eventPhase} />
           ) : null}
           {activeOption.planChoice === "transit" ? (
-            <TransitFlow option={activeOption} />
+            <TransitFlow option={activeOption} selectedDate={selectedDate} />
           ) : null}
           {activeOption.planChoice === "drop-off" ? (
             <DropOffFlow option={activeOption} />

@@ -3,18 +3,21 @@ import { buildFairPartyOffers } from "@/lib/fair/party-plan";
 import { createFairPlan } from "@/lib/fair/plan";
 import type { FairScheduleSourceItem } from "@/lib/fair/schedule";
 import { greatFrederickFair2026PracticalAnswers } from "@/data/fair/great-frederick-fair-2026-practical-answers";
+import {
+  fairTransitTravelSummary,
+  greatFrederickFair2026TransitReview,
+} from "@/data/fair/great-frederick-fair-2026-transit";
 
 import type {
   FairDayAccessHighlight,
   FairDayArrivalView,
+  FairDayParkingGlance,
   FairDayScheduleItemView,
   FairDayWorkspaceData,
 } from "./types";
 import { reviewedGrandstandPresentation } from "./reviewedGrandstandProgram";
 
 const FAIR_TIME_ZONE = "America/New_York";
-const COUNTY_TRANSIT_INFO_URL =
-  "https://www.frederickcountymd.gov/105/Transit-Services";
 const ETIX_WALLET_HELP_URL =
   "https://support.etix.com/general-info/what-is-etix-wallet-and-how-do-i-use-it";
 const EVENTHUB_GUIDE_URL =
@@ -70,9 +73,9 @@ function offerValidityLabel(
 function sourceAgeLabel(timestamp: string, asOf: Date): string {
   const elapsedMs = Math.max(0, asOf.getTime() - Date.parse(timestamp));
   const days = Math.floor(elapsedMs / 86_400_000);
-  if (days === 0) return "The source was checked today";
-  if (days === 1) return "The source was checked 1 day ago";
-  return `The source was checked ${days} days ago`;
+  if (days === 0) return "This imported program version is from today";
+  if (days === 1) return "This imported program version is 1 day old";
+  return `This imported program version is ${days} days old`;
 }
 
 function fairLocalDate(asOf: Date): string {
@@ -92,14 +95,14 @@ function scheduleKind(
 ): FairDayScheduleItemView["kind"] {
   const text = item.text.toLocaleLowerCase();
   if (
-    /\b(?:alpacas?|cattle|dairy|dogs?|goats?|horses?|livestock|llamas?|pigs?|poultry|rabbits?|sheep|swine|turkeys?)\b/.test(
+    /\b(?:alpacas?|cattle|dairy|dogs?|goats?|horses?|livestock|llamas?|pigs?|poultry|rabbits?|sheep|swine|turkeys?|pretty cow|beef (?:breed|cattle|fit(?:ting| out)|market)|longhorn(?: regional)? show|legendairy)\b/.test(
       text,
     )
   ) {
     return "animal";
   }
   if (
-    /\b(?:food|bake|baked|cooking|cake|pie|culinary|chef|beer garden|winery|wineries|brewery|breweries|distillery|distilleries)\b/.test(
+    /\b(?:food|bake|baked|cooking|cake|pie|culinary|chef|ice cream|taste of|beer garden|winery|wineries|brewery|breweries|distillery|distilleries)\b/.test(
       text,
     )
   ) {
@@ -245,10 +248,21 @@ function scheduleTimeLabel(item: FairScheduleSourceItem): string {
     : "Time not published";
 }
 
-function scheduleView(item: FairScheduleSourceItem): FairDayScheduleItemView {
-  const reviewedGrandstand = reviewedGrandstandPresentation(item);
+function scheduleView(
+  item: FairScheduleSourceItem,
+  asOf: Date,
+): FairDayScheduleItemView {
+  const reviewedGrandstand = reviewedGrandstandPresentation(item, asOf);
   const copy = scheduleCopy(item.text);
   const places = explicitPlaces(item.text);
+  const performanceSlots = reviewedGrandstand
+    ? reviewedGrandstand.billing.mode === "opener-headliner"
+      ? [
+          reviewedGrandstand.billing.opener,
+          reviewedGrandstand.billing.headliner,
+        ]
+      : [reviewedGrandstand.billing.performance]
+    : undefined;
   return {
     id: item.id,
     date: item.fairDate,
@@ -262,7 +276,15 @@ function scheduleView(item: FairScheduleSourceItem): FairDayScheduleItemView {
         ? `Published place: ${places.join(", ")}.`
         : explicitPlaceLabel(item.text),
     kind: reviewedGrandstand ? "concert" : scheduleKind(item),
-    sourceUrl: item.sourceUrl,
+    sourceUrl: reviewedGrandstand?.sourceUrl ?? item.sourceUrl,
+    sourceReview: reviewedGrandstand
+      ? {
+          reviewedOn: reviewedGrandstand.reviewedOn,
+          validThrough: reviewedGrandstand.validThrough,
+          sourceRevision: reviewedGrandstand.sourceRevision,
+        }
+      : undefined,
+    performanceSlots,
     sourceItem: item,
   };
 }
@@ -318,26 +340,18 @@ function arrivalViews(pack: FairPack): FairDayArrivalView[] {
     },
   ];
 
-  const featuredStop = pack.transit.featuredStop;
-  if (featuredStop) {
-    const routeLabels = featuredStop.routes.map((route) => route.short);
-    const routeText =
-      routeLabels.length > 0
-        ? `The reviewed static feed associates ${featuredStop.name} with ${routeLabels.join(" and ")}.`
-        : `The reviewed static feed includes ${featuredStop.name}, but it does not publish a route association in this pack.`;
-    views.push({
-      id: "arrival-transit-context",
-      planChoice: "transit",
-      label: "County Transit",
-      summary: `${routeText} This is static network context, not a service promise. Service on Fair dates is not confirmed, and arrival times are not confirmed.`,
-      paymentLabel:
-        "County Transit is fare-free. Check Fair-date service before relying on this option.",
-      returnLabel: "Recheck county Transit before leaving",
-      returnSummary:
-        "Radius has no confirmed Fair-date service or arrival time for this stop.",
-      officialInfoUrl: COUNTY_TRANSIT_INFO_URL,
-    });
-  }
+  views.push({
+    id: "arrival-transit-context",
+    planChoice: "transit",
+    label: "County Transit",
+    summary: fairTransitTravelSummary(),
+    paymentLabel:
+      "County Transit is fare-free. Radius checked the published static Fair-week schedule on September 4.",
+    returnLabel: "Recheck county Transit before leaving",
+    returnSummary:
+      "Static departure times can change. Check County Transit again before the return trip.",
+    officialInfoUrl: greatFrederickFair2026TransitReview.informationUrl,
+  });
 
   const dropOff = pack.manifest.accessFacts.find(
     (fact) => fact.kind === "accessible-drop-off" && fact.state.status === "known",
@@ -357,6 +371,30 @@ function arrivalViews(pack: FairPack): FairDayArrivalView[] {
   }
 
   return views;
+}
+
+function parkingGlance(pack: FairPack): FairDayParkingGlance {
+  const infield = pack.manifest.lots.find((lot) => lot.id === "lot-infield");
+  const satellite = pack.manifest.lots.find((lot) => lot.id === "lot-a");
+
+  return {
+    satellitePriceLabel:
+      satellite?.vehicleRate.status === "known"
+        ? moneyLabel(satellite.vehicleRate.amountCents)
+        : "Price not published",
+    satellitePaymentLabel:
+      satellite?.paymentMethods.status === "known"
+        ? satellite.paymentMethods.value.join(" or ")
+        : "Payment method not published",
+    infieldPriceLabel:
+      infield?.vehicleRate.status === "known"
+        ? moneyLabel(infield.vehicleRate.amountCents)
+        : "Price not published",
+    infieldPaymentLabel:
+      infield?.paymentMethods.status === "known"
+        ? infield.paymentMethods.value.join(" or ")
+        : "Payment method not published",
+  };
 }
 
 function entryCopy(pack: FairPack): {
@@ -409,7 +447,7 @@ export function buildFairDayWorkspaceData(
   asOf: Date,
 ): FairDayWorkspaceData {
   const scheduleItems = pack.schedule.days.flatMap((day) =>
-    day.items.map(scheduleView),
+    day.items.map((item) => scheduleView(item, asOf)),
   );
   const firstDay = pack.schedule.days[0];
   const todayAtFair = fairLocalDate(asOf);
@@ -449,6 +487,7 @@ export function buildFairDayWorkspaceData(
       }).format(new Date(`${day.date}T12:00:00-04:00`)),
       dayLabel: String(Number(day.date.slice(-2))),
       gateHoursLabel: clockLabel(day.gateStartsAt),
+      gateOpensAt: day.gateStartsAt,
       gateClosesAt: day.gateEndsAt,
     })),
     initialDate: initialDay.date,
@@ -494,6 +533,7 @@ export function buildFairDayWorkspaceData(
     practicalAnswers: greatFrederickFair2026PracticalAnswers,
     accessHighlights: accessHighlights(pack),
     arrivalOptions: arrivalViews(pack),
+    parkingGlance: parkingGlance(pack),
     ...entry,
     ticketWalletHelpUrl: ETIX_WALLET_HELP_URL,
     externalGuide: {
@@ -512,8 +552,8 @@ export function buildFairDayWorkspaceData(
     source: {
       label: `Official Fair data pack with ${pointer.itemCount} program rows`,
       sourceUrl: pack.provenance.scheduleSourceUrl,
-      checkedLabel: checkedLabel(pack.contentUpdatedAt),
-      ageLabel: sourceAgeLabel(pack.contentUpdatedAt, asOf),
+      checkedLabel: checkedLabel(pack.provenance.scheduleSourceRevision),
+      ageLabel: sourceAgeLabel(pack.provenance.scheduleSourceRevision, asOf),
     },
   };
 }

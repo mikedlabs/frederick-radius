@@ -38,6 +38,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import { toast } from "sonner";
 
@@ -69,13 +70,13 @@ import {
   fairProgramDaypart,
   fairProgramDefaultOpenDaypart,
   fairProgramLiveStatus,
+  fairProgramLocalDate,
   fairProgramNextStart,
   rankFairProgramPreviewItems,
   sortFairProgramItems,
   type FairProgramDaypart,
 } from "@/lib/fair/program-view";
 
-import FairPlanStatusRibbon from "./FairPlanStatusRibbon";
 import FairPartyPlanner from "./FairPartyPlanner";
 import FairPracticalAnswers from "./FairPracticalAnswers";
 import FairColoringBookCard from "./FairColoringBookCard";
@@ -86,9 +87,11 @@ import FairDiscoveryChoices, {
   type FairDiscoveryIntentId,
 } from "./FairDiscoveryChoices";
 import FairGroundsMap from "./FairGroundsMap";
+import FairGrandstandSpotlight from "./FairGrandstandSpotlight";
 import FairTravelPanel from "./FairTravelPanel";
 import type {
   FairDayArrivalView,
+  FairDayDateOption,
   FairDayOfferView,
   FairDayScheduleItemView,
   FairDayWorkspaceData,
@@ -115,7 +118,7 @@ const FAIR_PRIMARY_MODES: Array<{
 }> = [
   {
     id: "now",
-    label: "Today",
+    label: "Home",
     detail: "Best next step",
     icon: House,
     accent: "var(--app-brand)",
@@ -248,29 +251,94 @@ function fairDateShortLabel(date: string): string {
   }).format(new Date(`${date}T12:00:00Z`));
 }
 
-function fairNextActionDetail(
-  action: FairPlanStatus["nextAction"],
-  storageState: FairPlanStorageState,
-): string {
-  if (action === "tickets") {
-    return "Compare the reviewed ticket choices before opening Etix.";
+function fairDateWeekdayLabel(date: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    weekday: "long",
+  }).format(new Date(`${date}T12:00:00Z`));
+}
+
+function fairClockLabel(timestamp: string): string {
+  const timestampMs = Date.parse(timestamp);
+  if (!Number.isFinite(timestampMs)) return "Time not published";
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).formatToParts(new Date(timestampMs));
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  const minute = value("minute");
+  const dayPeriod = value("dayPeriod").toLocaleLowerCase() === "am" ? "a.m." : "p.m.";
+  return `${value("hour")}${minute === "00" ? "" : `:${minute}`} ${dayPeriod}`;
+}
+
+function fairTimeRange(startsAt: string, endsAt: string): string {
+  const starts = fairClockLabel(startsAt);
+  const ends = fairClockLabel(endsAt);
+  const meridiem = ends.endsWith("a.m.") ? "a.m." : ends.endsWith("p.m.") ? "p.m." : null;
+  const compactStart = meridiem && starts.endsWith(meridiem)
+    ? starts.slice(0, -meridiem.length).trim()
+    : starts;
+  return `${compactStart}–${ends}`;
+}
+
+function fairGateGlance(
+  day: FairDayDateOption | undefined,
+  asOf: string,
+  isSelectedLiveDay: boolean,
+): { label: string; value: string; detail: string } {
+  if (!day) {
+    return {
+      label: "Gate hours",
+      value: "Hours not published",
+      detail: "Check the official Fair source.",
+    };
   }
-  if (action === "travel") {
-    return "Choose parking, Transit, drop-off, walking, or biking before you leave.";
+
+  const schedule = fairTimeRange(day.gateOpensAt, day.gateClosesAt);
+  if (!isSelectedLiveDay) {
+    return {
+      label: "Gate hours",
+      value: schedule,
+      detail: `${fairDateWeekdayLabel(day.date)} schedule`,
+    };
   }
-  if (action === "entry") {
-    return "Keep your payment method and ticket access ready for the gate.";
+
+  const now = Date.parse(asOf);
+  const opensAt = Date.parse(day.gateOpensAt);
+  const closesAt = Date.parse(day.gateClosesAt);
+  if (![now, opensAt, closesAt].every(Number.isFinite)) {
+    return {
+      label: "Gate hours",
+      value: schedule,
+      detail: `${fairDateWeekdayLabel(day.date)} schedule`,
+    };
   }
-  if (action === "find") {
-    return "Choose one thing you do not want to miss and Radius will start your timeline.";
+  if (now < opensAt) {
+    return {
+      label: "Gates open",
+      value: fairClockLabel(day.gateOpensAt),
+      detail: `Closes ${fairClockLabel(day.gateClosesAt)}`,
+    };
   }
-  if (storageState === "unavailable") {
-    return "Your stops are arranged for this visit, but this browser is not storing them.";
+  if (now < closesAt) {
+    return {
+      label: "Gates",
+      value: "Open now",
+      detail: `Closes ${fairClockLabel(day.gateClosesAt)}`,
+    };
   }
-  if (storageState === "checking") {
-    return "Your saved stops are arranged in one timeline.";
-  }
-  return "Your saved stops are arranged in one timeline on this device.";
+  return {
+    label: "Gates",
+    value: "Closed today",
+    detail: `Closed at ${fairClockLabel(day.gateClosesAt)}`,
+  };
+}
+
+function compactPaymentLabel(label: string): string {
+  return label.replace("credit card", "card");
 }
 
 function scheduleAccent(kind: FairDayScheduleItemView["kind"]): string {
@@ -316,6 +384,74 @@ function ScheduleKindGlyph({
   return <Icon className="h-[18px] w-[18px]" aria-hidden />;
 }
 
+function FairGlanceTile({
+  kind,
+  label,
+  value,
+  detail,
+  icon,
+  accent,
+  onClick,
+  ariaLabel,
+}: {
+  kind: "gate" | "admission" | "parking" | "program";
+  label: string;
+  value: string;
+  detail: string;
+  icon: ReactNode;
+  accent: string;
+  onClick: (opener: HTMLButtonElement) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      data-fair-glance-tile={kind}
+      onClick={(event) => onClick(event.currentTarget)}
+      aria-label={ariaLabel}
+      className="group relative flex min-h-[104px] flex-col overflow-hidden rounded-[var(--app-radius-lg)] border p-3 text-left transition-transform duration-[var(--app-dur-fast)] active:scale-[0.985] motion-reduce:transition-none"
+      style={{
+        borderColor: `color-mix(in srgb, ${accent} 28%, var(--app-border))`,
+        background: `linear-gradient(145deg, color-mix(in srgb, ${accent} 10%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 72%)`,
+        boxShadow: `inset 0 2px 0 ${accent}, var(--app-hi), var(--app-edge)`,
+      }}
+    >
+      <span className="flex w-full items-center justify-between gap-2">
+        <span
+          aria-hidden="true"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+          style={{
+            background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-elevated-solid))`,
+            color: accent,
+          }}
+        >
+          {icon}
+        </span>
+        <ChevronRight
+          className="h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none motion-reduce:transition-none"
+          style={{ color: accent }}
+          aria-hidden="true"
+        />
+      </span>
+      <span
+        className="mt-2 block text-[10px] font-bold uppercase tracking-[0.11em]"
+        style={{ color: accent }}
+      >
+        {label}
+      </span>
+      <span className="mt-0.5 line-clamp-2 block text-[14px] font-extrabold leading-[1.14] tracking-[-0.02em] sm:text-[15px]">
+        {value}
+      </span>
+      <span
+        className="mt-1 line-clamp-2 block text-[11px] font-medium leading-snug"
+        style={{ color: "var(--app-ink-2)" }}
+      >
+        {detail}
+      </span>
+    </button>
+  );
+}
+
 function FairProgramResultList({
   items,
   plan,
@@ -335,7 +471,7 @@ function FairProgramResultList({
   nextStart: number | null;
   dayClosesAt?: string | null;
   onToggle: (item: FairDayScheduleItemView, planned: boolean) => void;
-  onOpen: (itemId: string) => void;
+  onOpen: (itemId: string, opener: HTMLButtonElement) => void;
 }) {
   return (
     <ol
@@ -427,7 +563,7 @@ function FairProgramResultList({
               ) : null}
               <button
                 type="button"
-                onClick={() => onOpen(item.id)}
+                onClick={(event) => onOpen(item.id, event.currentTarget)}
                 className="tap-44 -mb-2 mt-0.5 inline-flex min-h-11 items-center gap-1 text-[12px] font-bold"
                 style={{ color: accent }}
                 aria-label={`Open details for ${item.title}`}
@@ -850,6 +986,8 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   const mapFocusRequestId = useRef(0);
   const [programDetailOpen, setProgramDetailOpen] = useState(false);
   const programDetailClearTimer = useRef<number | null>(null);
+  const programDetailFocusTimer = useRef<number | null>(null);
+  const programDetailOpenerRef = useRef<HTMLElement | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpAnswerId, setHelpAnswerId] = useState<string | null>(null);
   const [helpCategory, setHelpCategory] = useState<
@@ -865,7 +1003,6 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
     )?.id ?? "",
   );
   const [plan, setPlan] = useState<FairPlan>(data.initialPlan);
-  const [planNotice, setPlanNotice] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [scheduleFilter, setScheduleFilter] =
     useState<ScheduleFilter>("all");
@@ -878,10 +1015,21 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
     useState<FairPlanStorageState>("checking");
   const [partyAsOf, setPartyAsOf] = useState(data.reviewedAt);
 
-  const closeProgramDetail = () => {
+  const closeProgramDetail = (restoreFocus = false) => {
     setProgramDetailOpen(false);
     if (programDetailClearTimer.current !== null) {
       window.clearTimeout(programDetailClearTimer.current);
+    }
+    if (programDetailFocusTimer.current !== null) {
+      window.clearTimeout(programDetailFocusTimer.current);
+      programDetailFocusTimer.current = null;
+    }
+    if (restoreFocus) {
+      const opener = programDetailOpenerRef.current;
+      programDetailFocusTimer.current = window.setTimeout(() => {
+        programDetailFocusTimer.current = null;
+        if (opener?.isConnected) opener.focus({ preventScroll: true });
+      }, 550);
     }
     programDetailClearTimer.current = window.setTimeout(() => {
       setSelectedProgramDetailId(null);
@@ -889,11 +1037,20 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
     }, 350);
   };
 
-  const openProgramDetail = (itemId: string) => {
+  const openProgramDetail = (itemId: string, opener?: HTMLElement) => {
     if (programDetailClearTimer.current !== null) {
       window.clearTimeout(programDetailClearTimer.current);
       programDetailClearTimer.current = null;
     }
+    if (programDetailFocusTimer.current !== null) {
+      window.clearTimeout(programDetailFocusTimer.current);
+      programDetailFocusTimer.current = null;
+    }
+    programDetailOpenerRef.current =
+      opener ??
+      (document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null);
     setActivePreparation(null);
     setHelpOpen(false);
     setSelectedProgramDetailId(itemId);
@@ -912,10 +1069,29 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
     setHelpOpen(true);
   };
 
+  const closePreparation = (preparation: PreparationKey) => {
+    setActivePreparation(null);
+    if (window.location.hash.toLocaleLowerCase() === `#fair-ready-${preparation}`) {
+      window.history.replaceState(window.history.state, "", "#now");
+    }
+  };
+
+  const closeHelp = () => {
+    setHelpOpen(false);
+    setHelpAnswerId(null);
+    setHelpCategory(null);
+    if (window.location.hash.toLocaleLowerCase() === "#answers") {
+      window.history.replaceState(window.history.state, "", "#now");
+    }
+  };
+
   useEffect(
     () => () => {
       if (programDetailClearTimer.current !== null) {
         window.clearTimeout(programDetailClearTimer.current);
+      }
+      if (programDetailFocusTimer.current !== null) {
+        window.clearTimeout(programDetailFocusTimer.current);
       }
     },
     [],
@@ -945,26 +1121,29 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         setStorageReady(true);
         return;
       }
+      const restoredAt = updateTimestamp();
       const reconciled = reconcileFairPlan(
         stored,
         sourceScheduleItems,
         data.packRevision,
-        updateTimestamp(),
+        restoredAt,
       );
-      setPlan(reconciled.plan);
-      if (reconciled.changedOrRemovedIds.length > 0) {
-        setPlanNotice(
-          `${reconciled.changedOrRemovedIds.length} saved ${
-            reconciled.changedOrRemovedIds.length === 1 ? "stop has" : "stops have"
-          } changed in the official program. Review the saved wording before relying on it.`,
-        );
-      }
+      let restoredPlan = reconciled.plan;
       if (reconciled.plan.selectedDayId) {
         const restoredDate = reconciled.plan.selectedDayId.replace(/^day-/, "");
-        if (validDates.has(restoredDate)) setSelectedDate(restoredDate);
+        if (validDates.has(restoredDate)) {
+          setSelectedDate(restoredDate);
+        } else {
+          restoredPlan = setFairPlanDay(
+            restoredPlan,
+            `day-${data.initialDate}`,
+            restoredAt,
+          );
+        }
       }
+      setPlan(restoredPlan);
       const restoredArrival = data.arrivalOptions.find(
-        (option) => option.planChoice === reconciled.plan.arrivalChoice,
+        (option) => option.planChoice === restoredPlan.arrivalChoice,
       );
       if (restoredArrival) setSelectedArrivalId(restoredArrival.id);
     } finally {
@@ -973,6 +1152,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   }, [
     data.arrivalOptions,
     data.fairId,
+    data.initialDate,
     data.packRevision,
     sourceScheduleItems,
     validDates,
@@ -991,33 +1171,43 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
 
   useLayoutEffect(() => {
     const syncModeFromHash = () => {
-      const requested = window.location.hash.slice(1);
+      const requested = window.location.hash
+        .slice(1)
+        .trim()
+        .toLocaleLowerCase();
       const requestedMode = fairModeFromHash(requested);
       if (!requestedMode) return;
 
       setActiveMode(requestedMode);
-      if (requested === "answers") {
-        setActivePreparation(null);
-        setProgramDetailOpen(false);
-        setHelpOpen(true);
+      setActivePreparation(
+        requested === "fair-ready-ticket"
+          ? "ticket"
+          : requested === "fair-ready-entry"
+            ? "entry"
+            : null,
+      );
+      setHelpOpen(requested === "answers");
+      if (requested !== "answers") {
+        setHelpAnswerId(null);
+        setHelpCategory(null);
       }
-      if (requested === "fair-ready-ticket") {
-        setHelpOpen(false);
-        setProgramDetailOpen(false);
-        setActivePreparation("ticket");
+      setProgramDetailOpen(false);
+      if (programDetailClearTimer.current !== null) {
+        window.clearTimeout(programDetailClearTimer.current);
+        programDetailClearTimer.current = null;
       }
-      if (requested === "fair-ready-entry") {
-        setHelpOpen(false);
-        setProgramDetailOpen(false);
-        setActivePreparation("entry");
-      }
+      setSelectedProgramDetailId(null);
 
       const canonicalHash =
-        requestedMode === "map"
-          ? "#fair-map"
-          : requestedMode === "find"
-            ? "#program"
-            : `#${requestedMode}`;
+        requested === "answers" ||
+        requested === "fair-ready-ticket" ||
+        requested === "fair-ready-entry"
+          ? `#${requested}`
+          : requestedMode === "map"
+            ? "#fair-map"
+            : requestedMode === "find"
+              ? "#program"
+              : `#${requestedMode}`;
       if (window.location.hash !== canonicalHash) {
         window.history.replaceState(window.history.state, "", canonicalHash);
       }
@@ -1267,6 +1457,20 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       ),
     [data.scheduleItems, selectedDate],
   );
+  const grandstandSpotlightItem = useMemo(() => {
+    const grandstandItems = sortFairProgramItems(
+      discoveryItems.filter(
+        (item) =>
+          item.kind === "concert" || /\bgrandstand\b/i.test(item.placeLabel),
+      ),
+    );
+
+    return (
+      grandstandItems.find((item) => item.kind === "concert") ??
+      grandstandItems[0] ??
+      null
+    );
+  }, [discoveryItems]);
   const matchingSchedule = useMemo(
     () =>
       sortFairProgramItems(
@@ -1305,6 +1509,71 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
     partyAsOf,
     selectedDate,
   );
+  const glanceProgramItem =
+    rankFairProgramPreviewItems(
+      discoveryItems,
+      partyAsOf,
+      selectedDate,
+      selectedDay?.gateClosesAt,
+    )[0] ?? null;
+  const glanceProgramStatus = glanceProgramItem
+    ? fairProgramLiveStatus(
+        glanceProgramItem,
+        partyAsOf,
+        selectedDate,
+        programNextStart,
+        selectedDay?.gateClosesAt,
+      )
+    : null;
+  const selectedDateIsLive =
+    fairProgramLocalDate(partyAsOf) === selectedDate &&
+    data.dates.some((day) => day.date === selectedDate);
+  const gateGlance = fairGateGlance(
+    selectedDay,
+    partyAsOf,
+    selectedDateIsLive,
+  );
+  const earlyAdmission = offersForSelectedDate.find(
+    (offer) => offer.id === "offer-adult-admission-early",
+  );
+  const onlineAdmission = data.offers.find(
+    (offer) => offer.id === "offer-adult-admission-online",
+  );
+  const gateAdmission = data.offers.find(
+    (offer) => offer.id === "offer-adult-admission-gate",
+  );
+  const childAdmission = data.offers.find(
+    (offer) => offer.id === "offer-child-admission",
+  );
+  const admissionValue = earlyAdmission
+    ? `${earlyAdmission.priceLabel} first Friday`
+    : onlineAdmission && gateAdmission
+      ? `${onlineAdmission.priceLabel} online · ${gateAdmission.priceLabel} gate`
+      : "See reviewed admission choices";
+  const childAdmissionDetail =
+    childAdmission?.priceLabel === "Free"
+      ? "Children 10 & under free"
+      : "See child admission details";
+  const admissionDetail = earlyAdmission?.deadlineAt
+    ? `Before ${fairClockLabel(earlyAdmission.deadlineAt)} · ${childAdmissionDetail}`
+    : childAdmissionDetail;
+  const parkingPrimary = `${data.parkingGlance.satellitePriceLabel} ${compactPaymentLabel(
+    data.parkingGlance.satellitePaymentLabel,
+  )} lots`;
+  const parkingDetail = `${data.parkingGlance.infieldPriceLabel} infield · ${compactPaymentLabel(
+    data.parkingGlance.infieldPaymentLabel,
+  )}`;
+  const glanceProgramPlace = glanceProgramItem
+    ? compactPlaceLabel(glanceProgramItem.placeLabel)
+    : null;
+  const glanceProgramLabel =
+    glanceProgramStatus?.label ??
+    `On ${fairDateWeekdayLabel(selectedDate)}`;
+  const glanceProgramDetail = glanceProgramItem
+    ? `${glanceProgramItem.timeLabel}${
+        glanceProgramPlace ? ` · ${glanceProgramPlace}` : ""
+      }`
+    : "Browse the selected day’s reviewed program.";
   const visibleSchedule =
     showAllSchedule || normalizedQuery.length > 0
       ? matchingSchedule
@@ -1374,18 +1643,23 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       step,
       item: scheduleById.get(step.scheduleItemId) ?? null,
     }));
-  const mappedPlanStops = plannedRows.flatMap(({ step, item }) =>
-    item
-      ? [
-          {
-            id: step.scheduleItemId,
-            title: item.title,
-            placeLabel: item.placeLabel,
-          },
-        ]
-      : [],
-  );
+  const mappedPlanStops = plannedRows.map(({ step, item }) => ({
+    id: step.scheduleItemId,
+    title: item?.title ?? step.labelSnapshot,
+    // Keep changed or removed steps in the denominator without inventing a
+    // map location. An empty label cannot match reviewed geometry.
+    placeLabel: item?.placeLabel ?? "",
+  }));
   const planStatus = buildFairPlanStatus(plan);
+  const changedOrRemovedStopCount = plan.steps.filter(
+    (step) => step.sourceState === "changed-or-removed",
+  ).length;
+  const planNotice =
+    changedOrRemovedStopCount > 0
+      ? `${changedOrRemovedStopCount} saved ${
+          changedOrRemovedStopCount === 1 ? "stop has" : "stops have"
+        } changed in the official program. Review the saved wording before relying on it.`
+      : null;
   const selectedProgramDetail = selectedProgramDetailId
     ? (scheduleById.get(selectedProgramDetailId) ?? null)
     : null;
@@ -1397,12 +1671,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   const ticketAndGateReady =
     plan.readyKeys.includes("ticket") && plan.readyKeys.includes("entry");
   const travelReady = plan.readyKeys.includes("travel");
-  const firstStopReady = plannedRows.length > 0;
-  const planStateLabel =
-    planStatus.nextAction === "my-day" && planStorageState !== "available"
-      ? "Your preparation and Fair plan are ready for this visit."
-      : planStatus.stateLabel;
-
+  const firstStopReady = plannedRows.some(
+    ({ item, step }) => item !== null && step.sourceState === "current",
+  );
   const activePrimaryLabel =
     activeMode === "travel"
       ? "Getting there"
@@ -1446,6 +1717,12 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         .fair-day-workspace .fair-hero-control--photo svg {
           filter: drop-shadow(0 1px 3px color-mix(in srgb, var(--app-ink) 92%, transparent));
         }
+        .fair-day-workspace .fair-hero-control--photo {
+          background: color-mix(in srgb, var(--app-ink) 58%, transparent);
+          border: 1px solid color-mix(in srgb, var(--app-ink-inverse) 28%, transparent);
+          box-shadow: 0 3px 12px color-mix(in srgb, var(--app-ink) 24%, transparent);
+          backdrop-filter: blur(5px);
+        }
         .fair-day-workspace .fair-mode-photo {
           transition: transform var(--app-dur-slow) var(--app-ease-out);
         }
@@ -1475,6 +1752,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         @media (hover: hover) and (pointer: fine) {
           .fair-day-workspace .fair-hero-control:hover {
             background: color-mix(in srgb, currentColor 10%, transparent);
+          }
+          .fair-day-workspace .fair-hero-control--photo:hover {
+            background: color-mix(in srgb, var(--app-ink) 70%, transparent);
           }
           .fair-day-workspace [data-fair-mode-masthead]:hover .fair-mode-photo {
             transform: scale(1.055);
@@ -1516,6 +1796,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             style={{ borderColor: "var(--app-brand)" }}
           >
             <picture className="absolute inset-0 block">
+              <source
+                type="image/webp"
+                srcSet="/images/fair/fairgrounds-night-mike-d-480.webp 480w, /images/fair/fairgrounds-night-mike-d-960.webp 960w, /images/fair/fairgrounds-night-mike-d-1920.webp 1920w"
+                sizes="100vw"
+              />
               <img
                 src="/images/fair/fairgrounds-night-mike-d-960.jpg"
                 srcSet="/images/fair/fairgrounds-night-mike-d-960.jpg 960w, /images/fair/fairgrounds-night-mike-d-1920.jpg 1920w"
@@ -1555,6 +1840,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               >
                 <Link
                   href="/today"
+                  prefetch={false}
                   aria-label="Back to Frederick Radius"
                   className="fair-hero-control fair-hero-control--photo tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full"
                   style={{ color: "var(--app-ink-inverse)" }}
@@ -1780,23 +2066,17 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         </aside>
       ) : null}
 
-      {activeMode === "now" ? (
-        <FairPlanStatusRibbon
-          plan={plan}
-          dates={data.dates}
-          selectedDate={selectedDate}
-          onDateChange={chooseFairDate}
-          savedCountsByDate={savedCountsByDate}
-        />
-      ) : null}
-
       <div
         data-fair-mode-content
         className={
           activeMode === "map"
             ? "w-full pb-24 lg:mx-auto lg:max-w-[68rem] lg:px-6 lg:pb-12 lg:pt-6"
             : `mx-auto px-4 pb-32 sm:px-6 lg:pb-12 ${
-                activeMode === "travel" ? "pt-3 sm:pt-6" : "pt-6 sm:pt-8"
+                activeMode === "travel"
+                  ? "pt-3 sm:pt-6"
+                  : activeMode === "now"
+                    ? "pt-3 sm:pt-5"
+                    : "pt-6 sm:pt-8"
               } ${
                 activeMode === "find" ? "max-w-[68rem]" : "max-w-[48rem]"
               }`
@@ -1809,12 +2089,12 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             data-fair-mode-panel
           >
             <section
-              data-fair-next-action
-              aria-labelledby="fair-next-action-heading"
-              className="relative overflow-hidden rounded-[var(--app-radius-xl)] border p-5 text-[var(--app-ink)] sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-6"
+              data-fair-at-a-glance
+              aria-labelledby="fair-at-a-glance-heading"
+              className="relative overflow-hidden rounded-[var(--app-radius-xl)] border p-3.5 text-[var(--app-ink)] sm:p-4"
               style={{
                 background:
-                  "linear-gradient(135deg, color-mix(in srgb, var(--app-brand) 11%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 52%, color-mix(in srgb, var(--app-cool) 8%, var(--app-bg-elevated-solid)))",
+                  "linear-gradient(135deg, color-mix(in srgb, var(--app-brand) 9%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 48%, color-mix(in srgb, var(--app-amber) 7%, var(--app-bg-elevated-solid)))",
                 borderColor:
                   "color-mix(in srgb, var(--app-brand) 34%, var(--app-border))",
                 boxShadow: "var(--app-elev-2)",
@@ -1825,39 +2105,156 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 className="absolute inset-y-0 left-0 w-1"
                 style={{
                   background:
-                    "linear-gradient(to bottom, var(--app-brand), var(--app-cool))",
+                    "linear-gradient(to bottom, var(--app-brand), var(--app-amber))",
                 }}
               />
-              <div className="min-w-0">
+              <div className="grid grid-cols-[minmax(0,1fr)_7.75rem] items-start gap-3">
+                <div className="min-w-0">
+                  <p
+                    className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em]"
+                    style={{ color: "var(--app-brand-press)" }}
+                  >
+                    <ListChecks className="h-3.5 w-3.5" aria-hidden />
+                    Fair essentials
+                  </p>
+                  <h2
+                    id="fair-at-a-glance-heading"
+                    className="mt-0.5 text-[19px] font-extrabold leading-tight tracking-[-0.025em] sm:text-[22px]"
+                  >
+                    {fairDateWeekdayLabel(selectedDate)} at a glance
+                  </h2>
+                  <p
+                    data-fair-plan-summary
+                    className="mt-1 text-[12px] font-semibold leading-snug"
+                    style={{ color: "var(--app-ink-2)" }}
+                  >
+                    {planStatus.readinessLabel}
+                    <span aria-hidden="true"> · </span>
+                    {planStatus.savedStopsLabel}
+                  </p>
+                </div>
+
+                <label data-fair-plan-date className="w-full shrink-0">
+                  <span className="sr-only">Fair day in your plan</span>
+                  <select
+                    value={selectedDate}
+                    onChange={(event) => chooseFairDate(event.target.value)}
+                    aria-label="Fair day in your plan"
+                    className="h-11 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-2.5 text-[12px] font-semibold"
+                    style={{
+                      borderColor: "var(--app-control-border)",
+                      color: "var(--app-ink)",
+                    }}
+                  >
+                    {data.dates.map((day) => (
+                      <option key={day.date} value={day.date}>
+                        {day.weekdayLabel}, Sep {day.dayLabel}
+                        {(savedCountsByDate[day.date] ?? 0) > 0
+                          ? ` · ${savedCountsByDate[day.date]} saved`
+                          : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div
+                data-fair-glance-board
+                className="mt-3 grid grid-cols-2 gap-2"
+              >
+                <FairGlanceTile
+                  kind="gate"
+                  label={gateGlance.label}
+                  value={gateGlance.value}
+                  detail={gateGlance.detail}
+                  icon={<Clock3 className="h-[17px] w-[17px]" />}
+                  accent="var(--app-brand)"
+                  ariaLabel={`View ${fairDateWeekdayLabel(selectedDate)} program and gate schedule`}
+                  onClick={() => chooseMode("find")}
+                />
+                <FairGlanceTile
+                  kind="admission"
+                  label="Admission"
+                  value={admissionValue}
+                  detail={admissionDetail}
+                  icon={<TicketCheck className="h-[17px] w-[17px]" />}
+                  accent="var(--app-accent-press)"
+                  ariaLabel="Review ticket and admission choices"
+                  onClick={() => openPreparation("ticket")}
+                />
+                <FairGlanceTile
+                  kind="parking"
+                  label="Parking"
+                  value={parkingPrimary}
+                  detail={parkingDetail}
+                  icon={<MapPinned className="h-[17px] w-[17px]" />}
+                  accent="var(--app-cool)"
+                  ariaLabel="Compare parking and travel choices"
+                  onClick={() => chooseMode("travel")}
+                />
+                <FairGlanceTile
+                  kind="program"
+                  label={glanceProgramLabel}
+                  value={glanceProgramItem?.title ?? "Browse the Fair program"}
+                  detail={glanceProgramDetail}
+                  icon={
+                    glanceProgramItem ? (
+                      <ScheduleKindGlyph kind={glanceProgramItem.kind} />
+                    ) : (
+                      <FerrisWheel className="h-[17px] w-[17px]" />
+                    )
+                  }
+                  accent={
+                    glanceProgramItem
+                      ? scheduleAccent(glanceProgramItem.kind)
+                      : "var(--app-amber-press)"
+                  }
+                  ariaLabel={
+                    glanceProgramItem
+                      ? `Open program details for ${glanceProgramItem.title}`
+                      : "Browse the selected Fair day program"
+                  }
+                  onClick={(opener) => {
+                    if (glanceProgramItem) {
+                      openProgramDetail(glanceProgramItem.id, opener);
+                      return;
+                    }
+                    chooseMode("find");
+                  }}
+                />
+              </div>
+
+              {planNotice ? (
                 <p
-                  className="text-[11px] font-bold uppercase tracking-[0.12em]"
-                  style={{ color: "var(--app-brand-press)" }}
+                  role="status"
+                  data-fair-glance-alert
+                  className="mt-2.5 rounded-[var(--app-radius-md)] px-3 py-2 text-[11.5px] font-semibold leading-snug"
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--app-warning) 11%, var(--app-bg-elevated-solid))",
+                    color: "var(--app-ink)",
+                  }}
                 >
-                  Your next best step
+                  {planNotice}
                 </p>
-                <h2
-                  id="fair-next-action-heading"
-                  className="mt-1 text-[21px] font-bold leading-tight tracking-[-0.025em]"
-                >
-                  {planStateLabel}
-                </h2>
+              ) : null}
+
+              <div className="mt-2.5 flex items-center gap-2 border-t pt-2.5" style={{ borderColor: "var(--app-border)" }}>
                 <p
-                  className="mt-1.5 text-[13px] leading-relaxed"
+                  className="line-clamp-2 min-w-0 flex-1 text-[11.5px] font-medium leading-snug"
                   style={{ color: "var(--app-ink-2)" }}
                 >
-                  {fairNextActionDetail(
-                    planStatus.nextAction,
-                    planStorageState,
-                  )}
+                  {planStatus.stateLabel}
                 </p>
+                <Button
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => openPlanNextAction(planStatus)}
+                  iconRight={<ChevronRight className="h-4 w-4" aria-hidden />}
+                >
+                  {planStatus.nextActionLabel}
+                </Button>
               </div>
-              <Button
-                className="mt-4 w-full shrink-0 sm:mt-0 sm:w-auto"
-                onClick={() => openPlanNextAction(planStatus)}
-                iconRight={<ChevronRight className="h-4 w-4" aria-hidden />}
-              >
-                {planStatus.nextActionLabel}
-              </Button>
             </section>
 
             <section
@@ -1906,8 +2303,8 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                     action: () => chooseMode("map"),
                   },
                   {
-                    label: "Parking or Transit",
-                    detail: "Choose the easiest arrival before you leave home.",
+                    label: "Plan your arrival",
+                    detail: "Compare parking, County Transit, and drop-off before you leave.",
                     Icon: BusFront,
                     accent: "var(--app-cool)",
                     wash:
@@ -1920,7 +2317,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                     type="button"
                     onClick={action}
                     data-fair-wallet-card={index + 1}
-                    className={`fair-portal-action tap-44 group relative flex min-h-[100px] items-center gap-3 overflow-hidden rounded-[var(--app-radius-lg)] border px-3 pb-4 pt-3 text-left active:scale-[0.985] focus-visible:z-40 sm:ml-0 sm:mt-0 sm:min-h-[150px] sm:flex-col sm:items-start sm:justify-between sm:p-4 ${index === 0 ? "z-10" : index === 1 ? "z-20 -mt-2 ml-1" : "z-30 -mt-2 ml-2"}`}
+                    className={`fair-portal-action tap-44 group relative flex min-h-[100px] items-center gap-3 overflow-hidden rounded-[var(--app-radius-lg)] border px-3 pb-4 pt-3 text-left active:scale-[0.985] focus-visible:z-[var(--z-nav)] sm:ml-0 sm:mt-0 sm:min-h-[150px] sm:flex-col sm:items-start sm:justify-between sm:p-4 ${index === 0 ? "z-10" : index === 1 ? "z-20 -mt-2 ml-1" : "z-30 -mt-2 ml-2"}`}
                     style={{
                       borderColor:
                         "color-mix(in srgb, var(--app-border-strong) 82%, transparent)",
@@ -2143,6 +2540,15 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
               </a>
             </div>
+
+            {!exploreFocused && grandstandSpotlightItem ? (
+              <div className="mt-3 sm:mt-4 [@media(max-height:700px)]:hidden">
+                <FairGrandstandSpotlight
+                  item={grandstandSpotlightItem}
+                  onOpen={openProgramDetail}
+                />
+              </div>
+            ) : null}
 
             {!exploreFocused ? (
               <FairDiscoveryChoices
@@ -2420,7 +2826,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               ) : null}
             </div>
             <p className="mt-2 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              One timeline for tickets, arrival, saved stops, and the trip back.
+              One checklist and timeline for ticket prep, arrival, saved stops, and the trip back.
             </p>
 
             <section
@@ -2536,6 +2942,15 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                     <li key={step.scheduleItemId} className="grid grid-cols-[40px_minmax(0,1fr)] gap-3 border-b py-5" style={{ borderColor: "var(--app-border)" }}>
                       <span className="grid h-10 w-10 place-items-center rounded-full text-[13px] font-bold text-[var(--app-on-brand)]" style={{ background: item ? scheduleAccent(item.kind) : "var(--app-warning-press)" }}>{number}</span>
                       <div className="min-w-0">
+                        {step.sourceState === "changed-or-removed" ? (
+                          <p
+                            data-fair-plan-source-state="needs-review"
+                            className="mb-1 text-[11px] font-extrabold uppercase tracking-[0.08em]"
+                            style={{ color: "var(--app-warning-press)" }}
+                          >
+                            Needs review · changed in the official program
+                          </p>
+                        ) : null}
                         <p className="text-[13px] font-bold tabular-nums" style={{ color: item ? scheduleAccent(item.kind) : "var(--app-warning-press)" }}>
                           {item?.timeLabel ?? step.timeLabelSnapshot ?? "Time not published"}
                         </p>
@@ -2751,7 +3166,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       <BottomDrawer
         open={activePreparation === "ticket"}
         onOpenChange={(open) =>
-          open ? openPreparation("ticket") : setActivePreparation(null)
+          open ? openPreparation("ticket") : closePreparation("ticket")
         }
         title="Tickets"
         subtitle={`Reviewed options for ${fairDateShortLabel(selectedDate)}`}
@@ -2768,7 +3183,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       <BottomDrawer
         open={activePreparation === "entry"}
         onOpenChange={(open) =>
-          open ? openPreparation("entry") : setActivePreparation(null)
+          open ? openPreparation("entry") : closePreparation("entry")
         }
         title="Entry"
         subtitle="Payment, ticket access, and gate preparation"
@@ -2783,7 +3198,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       <BottomDrawer
         open={programDetailOpen}
         onOpenChange={(open) => {
-          if (!open) closeProgramDetail();
+          if (!open) closeProgramDetail(true);
         }}
         title={selectedProgramDetail?.title ?? "Program details"}
         subtitle={
@@ -2811,7 +3226,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                   className="tap-44 flex min-h-11 cursor-pointer items-center justify-between gap-3 text-[13px] font-semibold"
                   style={{ color: "var(--app-ink-2)" }}
                 >
-                  Official program wording
+                  Imported official wording
                   <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
                 </summary>
                 <p
@@ -2864,7 +3279,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 variant="secondary"
                 iconRight={<ExternalLink className="h-4 w-4" aria-hidden />}
               >
-                Official program source
+                {selectedProgramDetail.sourceReview
+                  ? "Official Grandstand source"
+                  : "Official program source"}
               </Button>
             </div>
           </div>
@@ -2875,11 +3292,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         open={helpOpen}
         onOpenChange={(open) => {
           if (open) openHelp();
-          else setHelpOpen(false);
-          if (!open) {
-            setHelpAnswerId(null);
-            setHelpCategory(null);
-          }
+          else closeHelp();
         }}
         title="Fair help"
         subtitle="Access, parking, family needs, rides, weather, and re-entry"
@@ -2894,7 +3307,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
           <div className="mt-8 border-t pt-5" style={{ borderColor: "var(--app-border)" }}>
             <p className="text-[14px] font-semibold">{data.source.label}</p>
             <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-              The pack was checked {data.source.checkedLabel}. {data.source.ageLabel}.
+              Radius checked this official program source on {data.source.checkedLabel}. {data.source.ageLabel}.
             </p>
             <a href={data.source.sourceUrl} target="_blank" rel="noopener noreferrer" className="tap-44 mt-2 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
               Open the official source
@@ -2905,7 +3318,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               variant="secondary"
               iconLeft={<MessageSquare className="h-4 w-4" aria-hidden />}
               onClick={() => {
-                setHelpOpen(false);
+                closeHelp();
                 window.setTimeout(
                   () => window.dispatchEvent(new Event(OPEN_FEEDBACK_EVENT)),
                   320,

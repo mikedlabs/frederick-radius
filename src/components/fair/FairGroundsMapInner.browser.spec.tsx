@@ -147,6 +147,14 @@ const MAP_FIXTURE = {
   ],
 };
 
+function successfulMapResponse() {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => MAP_FIXTURE,
+  } as Response;
+}
+
 describe("FairGroundsMapInner map failure recovery", () => {
   let container: HTMLDivElement;
   let frameCallbacks: FrameRequestCallback[];
@@ -158,12 +166,7 @@ describe("FairGroundsMapInner map failure recovery", () => {
     frameCallbacks = [];
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        ({
-          ok: true,
-          json: async () => MAP_FIXTURE,
-        }) as Response,
-      ),
+      vi.fn(async () => successfulMapResponse()),
     );
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
       frameCallbacks.push(callback);
@@ -216,7 +219,15 @@ describe("FairGroundsMapInner map failure recovery", () => {
     vi.useRealTimers();
   });
 
-  async function renderMap(
+  async function settleMapSnapshot() {
+    await act(async () => {
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(0);
+      await Promise.resolve();
+    });
+  }
+
+  async function renderMapShell(
     overrides: Partial<ComponentProps<typeof FairGroundsMapInner>> = {},
   ) {
     await act(async () => {
@@ -229,11 +240,13 @@ describe("FairGroundsMapInner map failure recovery", () => {
         }),
       );
     });
-    await act(async () => {
-      await Promise.resolve();
-      await vi.advanceTimersByTimeAsync(0);
-      await Promise.resolve();
-    });
+    await settleMapSnapshot();
+  }
+
+  async function renderMap(
+    overrides: Partial<ComponentProps<typeof FairGroundsMapInner>> = {},
+  ) {
+    await renderMapShell(overrides);
     expect(container.querySelector("[data-mock-map-canvas]")).not.toBeNull();
   }
 
@@ -264,6 +277,106 @@ describe("FairGroundsMapInner map failure recovery", () => {
     if (!status) throw new Error("Missing Fair map runtime status.");
     return status;
   }
+
+  it("keeps the fallback usable and recovers from a 503 with one explicit retry", async () => {
+    let resolveRetry: ((response: Response) => void) | undefined;
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce({ ok: false, status: 503 } as Response)
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveRetry = resolve;
+          }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const browseProgram = vi.fn();
+
+    await renderMapShell({ onBrowseProgram: browseProgram });
+
+    const fallback = container.querySelector<HTMLElement>(
+      "[data-fair-map-snapshot-fallback]",
+    );
+    expect(fallback?.getAttribute("role")).toBe("region");
+    expect(fallback?.getAttribute("aria-labelledby")).toBe(
+      "fair-map-snapshot-fallback-heading",
+    );
+    expect(runtimeStatus().getAttribute("aria-live")).toBe("polite");
+    expect(runtimeStatus().getAttribute("aria-atomic")).toBe("true");
+
+    const browseButton = Array.from(
+      fallback?.querySelectorAll<HTMLButtonElement>("button") ?? [],
+    ).find((button) => button.textContent === "Browse the program");
+    if (!browseButton) throw new Error("Missing Fair program fallback.");
+    await act(async () => browseButton.click());
+    expect(browseProgram).toHaveBeenCalledOnce();
+
+    const retryButton = Array.from(
+      fallback?.querySelectorAll<HTMLButtonElement>("button") ?? [],
+    ).find((button) => button.textContent === "Retry grounds map");
+    if (!retryButton) throw new Error("Missing Fair map retry.");
+    retryButton.focus();
+    await act(async () => retryButton.click());
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(retryButton.disabled).toBe(true);
+    expect(retryButton.textContent).toBe("Retrying…");
+    expect(runtimeStatus().textContent).toBe(
+      "Radius is retrying the reviewed map now.",
+    );
+    retryButton.click();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    if (!resolveRetry) throw new Error("Missing deferred retry request.");
+    const completeRetry = resolveRetry;
+    await act(async () => {
+      completeRetry(successfulMapResponse());
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await flushAnimationFrames();
+
+    expect(container.querySelector("[data-mock-map-canvas]")).not.toBeNull();
+    expect(runtimeStatus().textContent).toBe(
+      "The reviewed Fairgrounds map is ready.",
+    );
+    expect(document.activeElement?.id).toBe("fair-map-search");
+  });
+
+  it("offers the same explicit recovery after an interrupted snapshot request", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(
+        new DOMException("The map request was interrupted.", "AbortError"),
+      )
+      .mockResolvedValueOnce(successfulMapResponse());
+    vi.stubGlobal("fetch", fetchMock);
+
+    await renderMapShell();
+
+    expect(container.textContent).toContain("The grounds map could not open.");
+    const retryButton = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("button"),
+    ).find((button) => button.textContent === "Retry grounds map");
+    if (!retryButton) throw new Error("Missing Fair map retry.");
+
+    await act(async () => retryButton.click());
+    await settleMapSnapshot();
+    await flushAnimationFrames();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({
+        cache: "no-cache",
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(container.querySelector("[data-mock-map-canvas]")).not.toBeNull();
+    expect(container.textContent).not.toContain(
+      "The grounds map could not open.",
+    );
+    expect(document.activeElement?.id).toBe("fair-map-search");
+  });
 
   it("announces a late fatal error and moves focus out of removed map UI", async () => {
     await renderMap();
@@ -305,6 +418,27 @@ describe("FairGroundsMapInner map failure recovery", () => {
     expect(
       container.querySelector('[data-mock-map-source="fair-reviewed-geometry"]'),
     ).not.toBeNull();
+  });
+
+  it("counts an unpinned changed stop in the saved-plan map total", async () => {
+    await renderMap({
+      savedStops: [
+        {
+          id: "program-grandstand",
+          title: "Grandstand show",
+          placeLabel: "Published place: Grandstand.",
+        },
+        {
+          id: "removed-show",
+          title: "Removed show",
+          placeLabel: "",
+        },
+      ],
+    });
+
+    expect(container.textContent).toContain(
+      "1 of 2 saved stops have reviewed map geometry",
+    );
   });
 
   it("keeps focus on persistent search UI after a late fatal error", async () => {
@@ -410,40 +544,68 @@ describe("FairGroundsMapInner map failure recovery", () => {
     ).toBeNull();
   });
 
-  it("opens the exact reviewed program place and acknowledges the one-time request", async () => {
-    const handled = vi.fn();
-    const openProgramItem = vi.fn();
-    await renderMap({
-      focusRequest: { programItemId: "program-daughtry", requestId: 7 },
-      onFocusRequestHandled: handled,
-      onOpenProgramItem: openProgramItem,
-      programItems: [
-        {
-          id: "program-daughtry",
-          title: "Daughtry",
-          timeLabel: "8 p.m.",
-          placeLabel: "Published place: Grandstand.",
-        },
-      ],
-    });
-    await flushAnimationFrames();
+  it.each([0, 250, 1_500])(
+    "keeps the exact program place pending through a %i ms map-start delay, then focuses and acknowledges it once",
+    async (mapStartDelay) => {
+      const handled = vi.fn();
+      const openProgramItem = vi.fn();
+      await renderMap({
+        focusRequest: { programItemId: "program-daughtry", requestId: 7 },
+        onFocusRequestHandled: handled,
+        onOpenProgramItem: openProgramItem,
+        programItems: [
+          {
+            id: "program-daughtry",
+            title: "Daughtry",
+            timeLabel: "8 p.m.",
+            placeLabel: "Published place: Grandstand.",
+          },
+        ],
+      });
+      await flushAnimationFrames();
 
-    const view = container.querySelector<HTMLSelectElement>(
-      "[data-fair-map-filter-select]",
-    );
-    expect(view?.value).toBe("program");
-    expect(container.textContent).toContain("Grandstand");
-    expect(handled).toHaveBeenCalledOnce();
-    expect(handled).toHaveBeenCalledWith(7);
+      const view = container.querySelector<HTMLSelectElement>(
+        "[data-fair-map-filter-select]",
+      );
+      expect(view?.value).toBe("program");
+      const selectedPlace = container.querySelector<HTMLDialogElement>(
+        '#fair-map-selection-mobile[role="region"]',
+      );
+      expect(selectedPlace?.textContent).toContain("Grandstand");
+      expect(handled).not.toHaveBeenCalled();
 
-    const programButton = Array.from(
-      container.querySelectorAll<HTMLButtonElement>("button"),
-    ).find((button) => button.textContent?.includes("Daughtry"));
-    if (!programButton) throw new Error("Missing mapped Daughtry program action.");
-    await act(async () => programButton.click());
-    await flushAnimationFrames();
+      await act(async () => vi.advanceTimersByTimeAsync(mapStartDelay));
+      expect(handled).not.toHaveBeenCalled();
 
-    expect(openProgramItem).toHaveBeenCalledWith("program-daughtry");
-    expect(container.textContent).toContain("Grandstand");
-  });
+      await loadMap();
+      await flushAnimationFrames();
+      const lateMapControl = container.querySelector<HTMLButtonElement>(
+        "[data-mock-map-focus]",
+      );
+      if (!lateMapControl) throw new Error("Missing mocked map control.");
+      lateMapControl.focus();
+
+      await act(async () => vi.advanceTimersByTimeAsync(50));
+      expect(handled).not.toHaveBeenCalled();
+      await act(async () => vi.advanceTimersByTimeAsync(50));
+
+      expect(document.activeElement?.id).toBe(
+        "fair-map-selection-mobile-heading",
+      );
+      expect(handled).toHaveBeenCalledOnce();
+      expect(handled).toHaveBeenCalledWith(7);
+
+      const programButton = Array.from(
+        container.querySelectorAll<HTMLButtonElement>("button"),
+      ).find((button) => button.textContent?.includes("Daughtry"));
+      if (!programButton) {
+        throw new Error("Missing mapped Daughtry program action.");
+      }
+      await act(async () => programButton.click());
+      await flushAnimationFrames();
+
+      expect(openProgramItem).toHaveBeenCalledWith("program-daughtry");
+      expect(container.textContent).toContain("Grandstand");
+    },
+  );
 });
