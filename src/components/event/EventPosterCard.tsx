@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { eventReasons } from "@/lib/event-reasons";
@@ -20,6 +23,7 @@ import {
   isEventLiveNow,
   startedEventTimingDisclosure,
 } from "@/lib/eventWhenLabel";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
 
 export type EventPosterCardProps = {
   event: EventWithMeta;
@@ -67,6 +71,19 @@ export function posterVisualForEvent(
 }
 
 /**
+ * A venue-photo proxy can fail with a successful SVG response. Ask it for the
+ * transparent 1px failure signal so the card can switch to its designed date
+ * plate instead of presenting an error graphic as event photography.
+ */
+export function eventPosterPhotoSrc(src: string): string {
+  const narrowed = proxyPhotoAtWidth(src, 720);
+  if (!narrowed.startsWith("/api/place-photo")) return narrowed;
+  const url = new URL(narrowed, "https://frederickradius.local");
+  url.searchParams.set("fallback", "signal");
+  return `${url.pathname}?${url.searchParams.toString()}`;
+}
+
+/**
  * The image-led event card used for a horizon lead.
  *
  * An approved event or venue photograph gets a source caption. Everything
@@ -84,7 +101,9 @@ export default function EventPosterCard({
 }: EventPosterCardProps) {
   const cardNow = nowISO ? new Date(nowISO) : null;
   const safeVisual = posterVisualForEvent(event, visual);
-  const onPhoto = safeVisual !== null;
+  const photoSrc = safeVisual ? eventPosterPhotoSrc(safeVisual.src) : null;
+  const [failedPhotoSrc, setFailedPhotoSrc] = useState<string | null>(null);
+  const onPhoto = safeVisual !== null && photoSrc !== failedPhotoSrc;
   const date = eventDateBlock(event);
   const cat = CATEGORY_BY_SLUG[event.category];
   const accent = cat?.color ?? "#7A7975";
@@ -137,18 +156,27 @@ export default function EventPosterCard({
       }}
       data-event-poster={onPhoto ? "photo" : "category"}
     >
-      {safeVisual ? (
+      {safeVisual && onPhoto && photoSrc ? (
         <>
           <Image
-            src={safeVisual.src}
+            src={photoSrc}
             alt=""
             fill
             priority={priorityImage}
-            unoptimized={safeVisual.src.startsWith("/api/place-photo")}
+            unoptimized={photoSrc.startsWith("/api/place-photo")}
             sizes="(max-width: 640px) 100vw, 720px"
             placeholder="blur"
             blurDataURL={PAPER_CREAM_BLUR}
             className="ken-burns object-cover"
+            onLoad={(loadEvent) => {
+              if (
+                loadEvent.currentTarget.naturalWidth <= 1 ||
+                loadEvent.currentTarget.naturalHeight <= 1
+              ) {
+                setFailedPhotoSrc(photoSrc);
+              }
+            }}
+            onError={() => setFailedPhotoSrc(photoSrc)}
           />
           <span
             aria-hidden
@@ -312,7 +340,7 @@ export default function EventPosterCard({
         )}
       </div>
     </article>
-      {safeVisual && (
+      {safeVisual && onPhoto && (
         <EventVisualCredit
           visual={safeVisual}
           compact

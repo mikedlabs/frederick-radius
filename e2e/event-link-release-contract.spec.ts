@@ -11,6 +11,11 @@ type EventDetailState = {
   kind: "healthy" | "recovery" | "failure";
   reason?: string;
 };
+type EventsHydrationProof = {
+  personalizedBeforeReady: boolean;
+  visibleSummaries: string[];
+  done: boolean;
+};
 
 // CI deliberately builds and starts the app without repository secrets. In
 // that environment, event rows that exist only in the durable archive must
@@ -29,6 +34,127 @@ async function visibleEventLinks(page: Page): Promise<string[]> {
         .map((anchor) => anchor.getAttribute("href") ?? ""),
     );
 }
+
+test("a returning Events view restores its scope before default results can paint", async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const appOrigin = new URL(baseURL ?? "http://localhost:3010");
+  await context.addCookies([
+    {
+      name: "fr_onboarded",
+      value: "1",
+      domain: appOrigin.hostname,
+      path: "/",
+    },
+  ]);
+
+  // Keep the server unaware of this client-only returning-user state. That
+  // deliberately makes its static event preview countywide, reproducing the
+  // exact hydration boundary where the wrong hero used to flash.
+  await page.addInitScript(() => {
+    window.localStorage.setItem("fr:scope:v1", "town:brunswick");
+    window.localStorage.setItem("fr:events-town:v1", "brunswick");
+
+    const proof: EventsHydrationProof = {
+      personalizedBeforeReady: false,
+      visibleSummaries: [],
+      done: false,
+    };
+    (window as typeof window & { __eventsHydrationProof?: EventsHydrationProof })
+      .__eventsHydrationProof = proof;
+    let sampled = 0;
+    let readyFrames = 0;
+
+    const samplePaint = () => {
+      sampled += 1;
+      const root = document.querySelector<HTMLElement>(
+        "[data-events-interaction-ready]",
+      );
+      const personalized = document.querySelector<HTMLElement>(
+        "[data-events-personalized-view]",
+      );
+      if (root && personalized) {
+        const ready =
+          root.getAttribute("data-events-interaction-ready") === "true";
+        const personalizedVisible =
+          !personalized.hidden &&
+          getComputedStyle(personalized).display !== "none" &&
+          personalized.getClientRects().length > 0;
+        if (personalizedVisible) {
+          if (!ready) proof.personalizedBeforeReady = true;
+          proof.visibleSummaries.push(
+            personalized
+              .querySelector<HTMLElement>(".eb-filter-summary")
+              ?.textContent?.trim() ?? "",
+          );
+        }
+        if (ready) readyFrames += 1;
+      }
+
+      if (sampled < 240 && readyFrames < 4) {
+        window.requestAnimationFrame(samplePaint);
+      } else {
+        proof.done = true;
+      }
+    };
+    window.requestAnimationFrame(samplePaint);
+  });
+
+  const response = await page.goto("/events?lens=weekend&free=1", {
+    waitUntil: "domcontentloaded",
+  });
+  expect(response?.status()).toBe(200);
+
+  const board = page.locator("[data-events-interaction-ready]");
+  await expect(board).toHaveAttribute("data-events-interaction-ready", "true", {
+    timeout: 30_000,
+  });
+  const personalized = page.locator("[data-events-personalized-view]");
+  await expect(personalized).toBeVisible();
+  await expect(personalized.locator(".eb-filter-summary")).toContainText(
+    "Free · This weekend · Brunswick",
+  );
+
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & {
+            __eventsHydrationProof?: EventsHydrationProof;
+          }).__eventsHydrationProof?.done ?? false,
+      ),
+    )
+    .toBe(true);
+  const proof = await page.evaluate(
+    () =>
+      (window as typeof window & {
+        __eventsHydrationProof?: EventsHydrationProof;
+      }).__eventsHydrationProof,
+  );
+  expect(proof, "the pre-hydration paint observer should run").toBeDefined();
+
+  expect(
+    proof!.personalizedBeforeReady,
+    "no default countywide result or hero may paint before browser state is restored",
+  ).toBe(false);
+
+  expect(proof!.visibleSummaries.length).toBeGreaterThan(0);
+  expect(
+    proof!.visibleSummaries.every(
+      (summary) =>
+        summary.includes("Free") &&
+        summary.includes("This weekend") &&
+        summary.includes("Brunswick"),
+    ),
+    "the first and every later personalized paint should carry the restored view",
+  ).toBe(true);
+  expect(
+    proof!.visibleSummaries.includes("Everything · Anytime · Whole county"),
+  ).toBe(false);
+});
 
 /**
  * Release contract for the event-detail incident class: if Today or Events

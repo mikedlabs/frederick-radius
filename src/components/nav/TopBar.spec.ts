@@ -45,6 +45,13 @@ describe("TopBar search ownership", () => {
     expect(location).toContain('data-location-scope-label="compact"');
     expect(location).toContain('data-location-scope-label="full"');
     expect(location).toContain(': "County";');
+    expect(location).toContain(
+      'className="hidden min-w-0 truncate min-[390px]:block sm:hidden"',
+    );
+    expect(location).toContain(
+      'className="hidden min-w-0 truncate sm:block sm:max-w-[160px]"',
+    );
+    expect(location).toContain("text-[12px] font-semibold leading-none");
     expect(styles).toContain('[data-location-scope-label="compact"]');
     expect(styles).toContain('[data-location-scope-label="full"]');
     expect(topBar).toContain('className="contents"');

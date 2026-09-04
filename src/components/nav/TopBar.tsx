@@ -440,9 +440,10 @@ export default function TopBar() {
                   sliced off by the clip.
 
                   Delaying THIS label rather than the location text is the
-                  trade worth making: "Frederick, MD" tells you something, and
-                  "Tools" only repeats an icon that already carries both an
-                  aria-label and a title. Nothing is lost but a duplicate. */}
+                  trade worth making: the complete short location scope tells
+                  you something, and "Tools" only repeats an icon that already
+                  carries both an aria-label and a title. Nothing is lost but a
+                  duplicate. */}
               <span className="hidden text-[12px] font-semibold leading-none min-[400px]:inline sm:hidden">Tools</span>
               <span className="hidden text-[14px] font-semibold leading-none sm:inline">Compass</span>
             </AppTransitionLink>

@@ -157,7 +157,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
         aria-controls="location-scope-choices"
         aria-label={`Change town or location scope. Current scope: ${label}`}
         title={`Town and location: ${label}`}
-        className="inline-flex h-11 min-w-11 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-full border bg-[var(--app-bg-elevated)] px-2 text-[11px] font-medium transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:max-w-none sm:justify-start"
+        className="inline-flex h-11 min-w-11 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-full border bg-[var(--app-bg-elevated)] px-2 text-[12px] font-semibold leading-none transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:max-w-none sm:justify-start"
         style={{ borderColor: "var(--app-border)", color: labelColor }}
       >
         <LabelIcon
@@ -178,9 +178,23 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
             </span>
           </>
         ) : (
-          <span className="hidden min-w-0 truncate min-[390px]:block sm:max-w-[160px]">
-            {label}
-          </span>
+          <>
+            {/* At the common 390px phone width, show one complete scope word
+                instead of squeezing "Frederick, MD" into a clipped chip.
+                Wider headers restore the full readout. */}
+            <span
+              data-location-scope-label="compact"
+              className="hidden min-w-0 truncate min-[390px]:block sm:hidden"
+            >
+              {compactLabel}
+            </span>
+            <span
+              data-location-scope-label="full"
+              className="hidden min-w-0 truncate sm:block sm:max-w-[160px]"
+            >
+              {label}
+            </span>
+          </>
         )}
         <ChevronDown className="hidden h-3 w-3 opacity-60 min-[390px]:block" strokeWidth={2} aria-hidden />
       </button>

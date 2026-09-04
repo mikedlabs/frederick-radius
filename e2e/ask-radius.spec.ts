@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 import type { AskResult, AskSource } from "../src/lib/ask/contracts";
+import { parseAskIntent } from "../src/lib/ask/intent";
 
 function answer(overrides: Partial<AskResult> = {}): AskResult {
   return {
@@ -116,6 +117,59 @@ test.describe("Ask Radius deterministic workspace", () => {
     await submit(page, "zero sources");
     await expect(page.getByText("0 source answer.")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Sources behind this answer" })).toHaveCount(0);
+  });
+
+  test("keeps the submitted question and scope editable without overstating unknown hours", async ({
+    page,
+  }) => {
+    const query = "Where should I eat tonight?";
+    await page.addInitScript(() => {
+      window.localStorage.setItem("fr:scope:v1", "town:frederick");
+    });
+    await page.route("**/api/ask", (route) =>
+      fulfill(
+        route,
+        answer({
+          answer: "Source 1 is the best match for dinner tonight.",
+          intent: parseAskIntent(query),
+          sources: [
+            {
+              ...source(1),
+              href: "/places/source-1",
+              status: "Hours not posted",
+              isPrimaryRankedResult: true,
+            },
+          ],
+        }),
+      ),
+    );
+
+    await page.goto("/ask");
+    await submit(page, query);
+
+    const composer = page.getByRole("textbox", { name: "Ask Radius" });
+    const area = page.getByRole("button", {
+      name: "Search area: Frederick City. Change area.",
+    });
+    await expect(composer).toHaveValue(query);
+    await expect(composer).toBeEditable();
+    await expect(area).toBeVisible();
+    await expect(area).toBeEnabled();
+    await expect(page.getByText("Possible match", { exact: true })).toBeVisible();
+    await expect(page.getByText("Best match", { exact: true })).toHaveCount(0);
+    await expect(
+      page.getByText(
+        "Radius has not confirmed this place's hours for tonight. Check before you go.",
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Source 1 is a possible match for dinner tonight."),
+    ).toBeVisible();
+
+    await composer.fill("Where can I get dessert tonight?");
+    await expect(composer).toHaveValue("Where can I get dessert tonight?");
+    await page.setViewportSize({ width: 320, height: 568 });
+    await expect(area.getByText("Frederick", { exact: true })).toBeVisible();
   });
 
   test("flags a bad answer without sending the question or answer text", async ({

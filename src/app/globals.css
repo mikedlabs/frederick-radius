@@ -4828,7 +4828,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 /* One control owns progressive disclosure. Its count is the only cold-bar
    indication of non-default state, so the map never grows another chip rail. */
 .dock-contents {
-  min-width: 92px;
+  /* The desktop grid sizes this auto track from the control's minimum. Give
+     the icon + complete action label their real width instead of allowing the
+     overflow-hidden span to collapse the track and ellipsize "What to see". */
+  min-width: 116px;
   max-width: 148px;
   display: inline-flex;
   align-items: center;
@@ -4852,12 +4855,19 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 @media (min-width: 360px) and (max-width: 1023.98px) {
   .dock-contents {
+    min-width: 80px;
     flex-direction: column;
     gap: 2px;
     padding: 3px 4px;
   }
   .dock-contents > span {
     max-width: 100%;
+  }
+}
+@media (max-width: 359.98px) {
+  .dock-contents {
+    min-width: 52px;
+    padding-inline: 4px;
   }
 }
 @media (max-width: 350px) {

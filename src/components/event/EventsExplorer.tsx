@@ -923,7 +923,52 @@ export default function EventsExplorer({
     <div
       data-events-interaction-ready={urlReady ? "true" : "false"}
       data-events-complete={dataComplete ? "true" : "false"}
+      aria-busy={!urlReady || loadingAll}
     >
+      {!urlReady ? (
+        <section
+          data-events-restoring-view
+          role="status"
+          aria-live="polite"
+          className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)]"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <div className="flex items-center gap-3 border-b px-4 py-4" style={{ borderColor: "var(--app-border)" }}>
+            <span
+              aria-hidden
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+              style={{
+                background: "var(--app-brand-tint-6)",
+                color: "var(--app-brand-press)",
+              }}
+            >
+              <CalendarDays className="h-5 w-5" strokeWidth={1.8} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[15px] font-extrabold tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+                Setting your local view
+              </p>
+              <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                Radius is restoring your town, time, and event filters.
+              </p>
+            </div>
+          </div>
+          <div aria-hidden className="space-y-3 p-4">
+            <div className="h-10 animate-pulse rounded-full bg-[var(--app-bg-sunken)] motion-reduce:animate-none" />
+            <div className="h-48 animate-pulse rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] motion-reduce:animate-none" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="h-20 animate-pulse rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] motion-reduce:animate-none" />
+              <div className="h-20 animate-pulse rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] motion-reduce:animate-none" />
+            </div>
+          </div>
+        </section>
+      ) : null}
+      <noscript>
+        <p className="rounded-[var(--app-radius-md)] border p-4 text-[13px]" style={{ borderColor: "var(--app-border)" }}>
+          Turn on JavaScript to restore local event filters and browse the interactive calendar.
+        </p>
+      </noscript>
+      <div data-events-personalized-view hidden={!urlReady}>
       <EventSheetBoundary events={eventPool} fetchFull className="space-y-3">
       {/* The masthead-dock — the almanac nameplate, one filter doorway, the
           mono count line, and the display controls. What, When, and Where stay
@@ -1402,6 +1447,7 @@ export default function EventsExplorer({
       )}
       </div>
       </EventSheetBoundary>
+      </div>
     </div>
   );
 }
