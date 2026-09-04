@@ -217,16 +217,13 @@ describe("FairDayWorkspace app journey", () => {
     expect(board).not.toBeNull();
     expect(
       board?.querySelectorAll("[data-fair-glance-tile]").length,
-    ).toBe(4);
+    ).toBe(3);
     expect(
       board?.querySelector('[data-fair-glance-tile="gate"]')?.textContent,
     ).toContain("Open now");
     expect(
       board?.querySelector('[data-fair-glance-tile="gate"]')?.textContent,
     ).toContain("Closes 10 p.m.");
-    expect(
-      board?.querySelector('[data-fair-glance-tile="program"]')?.textContent,
-    ).toContain("Happening now");
     expect(
       board?.querySelector('[data-fair-glance-tile="admission"]')?.textContent,
     ).toContain("$8 first Friday");
@@ -240,9 +237,6 @@ describe("FairDayWorkspace app journey", () => {
     expect(
       board?.querySelector('[data-fair-glance-tile="gate"]')?.textContent,
     ).toContain("9 a.m.–10 p.m.");
-    expect(
-      board?.querySelector('[data-fair-glance-tile="program"]')?.textContent,
-    ).toContain("On Saturday");
     expect(
       board?.querySelector('[data-fair-glance-tile="admission"]')?.textContent,
     ).toContain("$10 online · $15 gate");
@@ -991,6 +985,25 @@ describe("FairDayWorkspace app journey", () => {
     );
   });
 
+  it("offers official admission before optional party inputs and keeps ticket readiness independent", async () => {
+    await renderFair();
+    await act(async () => buttonWithText(container, "Review tickets").click());
+
+    const directAdmission = document.body.querySelector("[data-fair-direct-admission]");
+    const purchaseLink = directAdmission?.querySelector("a");
+    expect(purchaseLink?.textContent).toContain("Buy admission on Etix");
+    expect(purchaseLink?.getAttribute("href")).toContain("www.etix.com/ticket/");
+    expect(purchaseLink?.getAttribute("target")).toBe("_blank");
+    expect(directAdmission?.textContent).toContain("$8");
+    const calculator = document.body.querySelector<HTMLDetailsElement>("[data-fair-ticket-calculator]");
+    expect(calculator?.open).toBe(false);
+    expect(calculator?.querySelector("summary")?.textContent).toContain("Estimate for my group");
+
+    await act(async () => buttonWithText(document.body, "I already have tickets").click());
+    expect(JSON.parse(storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}").readyKeys).toContain("ticket");
+    expect(JSON.parse(storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}").party.adults11Plus).toBe(0);
+  });
+
   it("keeps the live ticket recommendation current when an open drawer crosses a known cutoff", async () => {
     const data = buildFairDayWorkspaceData(
       greatFrederickFair2026Pack,
@@ -1021,11 +1034,14 @@ describe("FairDayWorkspace app journey", () => {
       )?.textContent ?? "";
 
     expect(combination()).toContain("1 × First Friday advance admission$8");
+    expect(document.body.querySelector("[data-fair-direct-admission]")?.textContent).toContain("$8");
 
     await act(async () => vi.advanceTimersByTimeAsync(61_000));
 
     expect(combination()).not.toContain("First Friday advance admission");
     expect(combination()).toContain("1 × Adult admission online$10");
+    expect(document.body.querySelector("[data-fair-direct-admission]")?.textContent).not.toContain("$8");
+    expect(document.body.querySelector("[data-fair-direct-admission]")?.textContent).toContain("$10");
     expect(admissionGlance()).not.toContain("$8 first Friday");
     expect(admissionGlance()).toContain("$10 online · $15 gate");
   });

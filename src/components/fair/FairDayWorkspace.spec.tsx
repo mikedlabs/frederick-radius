@@ -88,13 +88,13 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).not.toContain('href="#travel"');
   });
 
-  it("puts the selected day's four essential decisions in one compact board", () => {
+  it("shows the selected day's essential facts without an empty-plan progress counter", () => {
     const html = renderToStaticMarkup(
       createElement(FairDayWorkspace, { data }),
     );
 
     expect(html).toContain("data-fair-at-a-glance");
-    expect(html.match(/data-fair-glance-tile=/g)).toHaveLength(4);
+    expect(html.match(/data-fair-glance-tile=/g)).toHaveLength(3);
     expect(html).toContain("Friday at a glance");
     expect(html).toContain('aria-label="Fair day in your plan"');
     expect(html).toContain("4–10 p.m.");
@@ -102,10 +102,9 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).toContain("Children 10 &amp; under free");
     expect(html).toContain("$10 cash lots");
     expect(html).toContain("$15 infield · cash or card");
-    expect(html).toContain("Kid Zone");
     expect(html).toContain("Review tickets");
-    expect(html.match(/0 of 3 ready/g)).toHaveLength(1);
-    expect(html).toContain("No saved stops");
+    expect(html).not.toContain("0 of 3 ready");
+    expect(html).not.toContain("No saved stops");
     expect(html).not.toContain("data-fair-next-action");
     expect(html).not.toContain('data-fair-plan-status="full"');
     expect(html).not.toContain('aria-label="Fair trip at a glance"');

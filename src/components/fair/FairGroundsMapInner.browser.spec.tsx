@@ -326,6 +326,123 @@ describe("FairGroundsMapInner map failure recovery", () => {
     ).toBe("buildings");
   });
 
+  it("uses one URL-backed history layer for map selections and restores it with Back and Forward", async () => {
+    await renderMap();
+    await loadMap();
+    await flushAnimationFrames();
+    const view = container.querySelector<HTMLSelectElement>(
+      "[data-fair-map-filter-select]",
+    );
+    if (!view) throw new Error("Missing map view control.");
+    await act(async () => {
+      view.value = "essentials";
+      view.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    const listButtons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("button"),
+    );
+    const gateOne = listButtons.find((button) =>
+      button.textContent?.includes("Gate 1"),
+    );
+    const gateTwo = listButtons.find((button) =>
+      button.textContent?.includes("Gate 2"),
+    );
+    if (!gateOne || !gateTwo) {
+      throw new Error(
+        `Missing reviewed gate controls: ${listButtons
+          .map((button) => button.textContent?.trim())
+          .filter(Boolean)
+          .join(" | ")}`,
+      );
+    }
+
+    const historyLength = window.history.length;
+    await act(async () => gateOne.click());
+    expect(new URLSearchParams(window.location.search).get("meet")).toBe(
+      "osm-node-14099608925",
+    );
+    expect(window.location.hash).toBe("#fair-map");
+    expect(window.history.length).toBe(historyLength + 1);
+    const selectionState = window.history.state;
+
+    await act(async () => gateTwo.click());
+    expect(new URLSearchParams(window.location.search).get("meet")).toBe(
+      "osm-node-14099608926",
+    );
+    expect(window.history.length).toBe(historyLength + 1);
+
+    window.history.replaceState({}, "", "/fair-map-test#fair-map");
+    await act(async () =>
+      window.dispatchEvent(new PopStateEvent("popstate", { state: {} })),
+    );
+    await flushAnimationFrames();
+    expect(container.querySelector("[data-fair-map-selection]")).toBeNull();
+    expect(container.textContent).toContain("Map place details closed.");
+
+    window.history.replaceState(
+      selectionState,
+      "",
+      "/fair-map-test?meet=osm-node-14099608926#fair-map",
+    );
+    await act(async () =>
+      window.dispatchEvent(
+        new PopStateEvent("popstate", { state: selectionState }),
+      ),
+    );
+    await flushAnimationFrames();
+    expect(
+      container.querySelector("[data-fair-map-selection]")?.textContent,
+    ).toContain("Gate 2");
+  });
+
+  it("closes a directly opened meeting place without leaving the Fair map", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/moments/great-frederick-fair-2026?meet=osm-way-103615596#fair-map",
+    );
+    await renderMap();
+    await flushAnimationFrames();
+    const close = container.querySelector<HTMLButtonElement>(
+      '[data-fair-map-selection] button[aria-label="Close selected map place"]',
+    );
+    if (!close) throw new Error("Missing selected-place close control.");
+
+    await act(async () => close.click());
+
+    expect(container.querySelector("[data-fair-map-selection]")).toBeNull();
+    expect(window.location.pathname).toBe(
+      "/moments/great-frederick-fair-2026",
+    );
+    expect(new URLSearchParams(window.location.search).has("meet")).toBe(false);
+    expect(window.location.hash).toBe("#fair-map");
+  });
+
+  it("clears a selected meeting place when the visitor changes map layers", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/moments/great-frederick-fair-2026?meet=osm-way-103615596#fair-map",
+    );
+    await renderMap();
+    await loadMap();
+    await flushAnimationFrames();
+    const view = container.querySelector<HTMLSelectElement>(
+      "[data-fair-map-filter-select]",
+    );
+    if (!view) throw new Error("Missing map view control.");
+
+    await act(async () => {
+      view.value = "essentials";
+      view.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    expect(container.querySelector("[data-fair-map-selection]")).toBeNull();
+    expect(new URLSearchParams(window.location.search).has("meet")).toBe(false);
+    expect(window.location.hash).toBe("#fair-map");
+    expect(view.value).toBe("essentials");
+  });
+
   it("shares only the reviewed public place even when the current URL contains private state", async () => {
     const share = vi
       .fn<(data: ShareData) => Promise<void>>()
@@ -734,6 +851,11 @@ describe("FairGroundsMapInner map failure recovery", () => {
         throw new Error("Missing mapped Daughtry program action.");
       }
       await act(async () => programButton.click());
+      window.history.replaceState({}, "", "/fair-map-test#fair-map");
+      await act(async () =>
+        window.dispatchEvent(new PopStateEvent("popstate", { state: {} })),
+      );
+      await act(async () => vi.advanceTimersByTimeAsync(0));
       await flushAnimationFrames();
 
       expect(openProgramItem).toHaveBeenCalledWith("program-daughtry");

@@ -48,6 +48,7 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { leanFromForecast, wetWindowEnd } from "@/lib/today/weatherLean";
 import EventWalkTime from "@/components/today/EventWalkTime";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
+import PlaceSheetBoundary from "@/components/place/PlaceSheetBoundary";
 import TodayAsk from "@/components/today/TodayAsk";
 import { todayFrame } from "@/lib/today/masthead";
 import { formatEasternDateline } from "@/lib/format/easternClock";
@@ -228,6 +229,7 @@ export default async function HomePage() {
     // link opens the sheet on a skeleton and fetches just that event.
     // Real anchors, SEO, and modified clicks all pass through untouched.
     <EventSheetBoundary fetchMissing className="relative">
+      <PlaceSheetBoundary fetchMissing>
       <PageBloom motif />
 
       {/* Stale-shell guard (June-9 review P0): a cached SW/CDN shell can
@@ -419,6 +421,7 @@ export default async function HomePage() {
           <MastheadNotes now={now} />
         </div>
       </CollapsibleSection>
+      </PlaceSheetBoundary>
     </EventSheetBoundary>
   );
 }
