@@ -166,4 +166,23 @@ test.describe("Fair Explore task portal", () => {
       }
     }
   });
+
+  test("uses desktop space for the next useful program details", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(FAIR_PATH, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
+      "data-fair-interaction-ready",
+      "true",
+    );
+
+    const portal = page.getByRole("region", { name: "Fair activity paths" });
+    const eventTitles = portal.locator("[data-fair-discovery-event-title]");
+    await expect(eventTitles.first()).toBeVisible();
+    await expect(eventTitles.first()).not.toHaveText("");
+    await expect(
+      portal.locator("[data-fair-discovery-status]").first(),
+    ).toBeVisible();
+  });
 });

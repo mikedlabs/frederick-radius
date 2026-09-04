@@ -37,6 +37,13 @@ test.describe("Fair Day production release journey", () => {
         name: "The Great Frederick Fair",
       }),
     ).toBeVisible();
+    const fairShare = page.getByRole("button", {
+      name: "Share the Fair guide",
+    });
+    await expect(fairShare).toBeVisible();
+    const fairShareBox = await fairShare.boundingBox();
+    expect(fairShareBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+    expect(fairShareBox?.width ?? 0).toBeGreaterThanOrEqual(44);
     await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
       "data-fair-interaction-ready",
       "true",
@@ -193,6 +200,15 @@ test.describe("Fair Day production release journey", () => {
     await expect(
       page.getByRole("region", { name: "Fair activity paths" }),
     ).toBeVisible();
+    const programVendorSearch = page.getByRole("link", {
+      name: "Search official vendor booths",
+    });
+    await expect(programVendorSearch).toHaveAttribute("href", EVENTHUB_URL);
+    await expect(programVendorSearch).toHaveAttribute("target", "_blank");
+    await expect(programVendorSearch).toHaveAttribute(
+      "rel",
+      "noopener noreferrer",
+    );
     await expect(
       page.getByRole("list", { name: "Fair program results" }),
     ).toHaveCount(0);
@@ -479,6 +495,50 @@ test.describe("Fair Day production release journey", () => {
           expect(control.height).toBeGreaterThanOrEqual(44);
         }
 
+        const walletCards = page.locator("[data-fair-wallet-card]");
+        await expect(walletCards).toHaveCount(3);
+        const walletLayout = await walletCards.evaluateAll((cards) =>
+          cards.map((card) => {
+            const box = card.getBoundingClientRect();
+            const copy = card.querySelector<HTMLElement>(
+              "[data-fair-wallet-copy]",
+            );
+            return {
+              top: box.top,
+              bottom: box.bottom,
+              left: box.left,
+              right: box.right,
+              clientHeight: card.clientHeight,
+              scrollHeight: card.scrollHeight,
+              copyBottom: copy?.getBoundingClientRect().bottom,
+              zIndex: window.getComputedStyle(card).zIndex,
+            };
+          }),
+        );
+        for (let index = 1; index < walletLayout.length; index += 1) {
+          const previous = walletLayout[index - 1];
+          const current = walletLayout[index];
+          const overlap = previous.bottom - current.top;
+          expect(overlap).toBeGreaterThanOrEqual(7);
+          expect(overlap).toBeLessThanOrEqual(9);
+          expect(current.left).toBeGreaterThan(previous.left);
+          expect(previous.copyBottom ?? Number.POSITIVE_INFINITY).toBeLessThan(
+            current.top,
+          );
+        }
+        for (const card of walletLayout) {
+          expect(card.right).toBeLessThanOrEqual(width);
+          expect(card.scrollHeight).toBeLessThanOrEqual(card.clientHeight + 1);
+        }
+        await walletCards.first().focus();
+        expect(
+          Number(
+            await walletCards
+              .first()
+              .evaluate((card) => window.getComputedStyle(card).zIndex),
+          ),
+        ).toBeGreaterThan(Number(walletLayout[2].zIndex));
+
         const planSummary = page.locator("[data-fair-plan-summary]");
         const planDate = page.locator("[data-fair-plan-date]");
         const planLayout = await planSummary.evaluate((summary) => {
@@ -549,6 +609,61 @@ test.describe("Fair Day production release journey", () => {
           .getByRole("button", { name: label, exact: true });
         await destination.focus();
         await destination.press("Enter");
+        const headerControls = page.locator(
+          "header .fair-hero-control:visible",
+        );
+        await expect(headerControls).toHaveCount(2);
+        for (const control of await headerControls.all()) {
+          const controlBox = await control.boundingBox();
+          const glyphBox = await control.locator("svg").boundingBox();
+          expect(controlBox?.width ?? 0).toBeGreaterThanOrEqual(44);
+          expect(controlBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+          expect(glyphBox?.width ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
+            20,
+          );
+          expect(glyphBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
+            20,
+          );
+        }
+        if (width === 320 && label === "Program") {
+          const programCards = page.locator("[data-fair-discovery-choice]");
+          await expect(programCards).toHaveCount(4);
+          const programLayout = await programCards.evaluateAll((cards) =>
+            cards.map((card) => {
+              const box = card.getBoundingClientRect();
+              return {
+                top: box.top,
+                bottom: box.bottom,
+                clientHeight: card.clientHeight,
+                scrollHeight: card.scrollHeight,
+                zIndex: window.getComputedStyle(card).zIndex,
+              };
+            }),
+          );
+          for (const [upperIndex, lowerIndex] of [
+            [0, 2],
+            [1, 3],
+          ] as const) {
+            const overlap =
+              programLayout[upperIndex].bottom - programLayout[lowerIndex].top;
+            expect(overlap).toBeGreaterThanOrEqual(5);
+            expect(overlap).toBeLessThanOrEqual(7);
+            expect(Number(programLayout[lowerIndex].zIndex)).toBeGreaterThan(
+              Number(programLayout[upperIndex].zIndex),
+            );
+          }
+          for (const card of programLayout) {
+            expect(card.scrollHeight).toBeLessThanOrEqual(card.clientHeight + 1);
+          }
+          await programCards.first().focus();
+          expect(
+            Number(
+              await programCards
+                .first()
+                .evaluate((card) => window.getComputedStyle(card).zIndex),
+            ),
+          ).toBeGreaterThan(Number(programLayout[2].zIndex));
+        }
         if (label === "Map") {
           await expect(page.locator("[data-fair-grounds-map] canvas")).toBeVisible({
             timeout: 15_000,
@@ -565,6 +680,45 @@ test.describe("Fair Day production release journey", () => {
         expect(geometry.scrollX).toBe(0);
       }
     }
+
+    await page.setViewportSize({ width: 768, height: 844 });
+    await page.goto(`${FAIR_CANONICAL_PATH}#program`, {
+      waitUntil: "domcontentloaded",
+    });
+    const tabletProgramCards = page.locator("[data-fair-discovery-choice]");
+    await expect(tabletProgramCards).toHaveCount(4);
+    const tabletProgramLayout = await tabletProgramCards.evaluateAll((cards) =>
+      cards.map((card) => {
+        const box = card.getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom };
+      }),
+    );
+    expect(tabletProgramLayout[2].top - tabletProgramLayout[0].bottom).toBeGreaterThanOrEqual(
+      11,
+    );
+  });
+
+  test("keeps the desktop Map date clear of the Fair navigation", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(`${FAIR_CANONICAL_PATH}#fair-map`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
+      "data-fair-interaction-ready",
+      "true",
+    );
+
+    const date = page.locator("[data-fair-compact-header-date]");
+    const navigation = page.locator("[data-fair-primary-nav-shell]");
+    await expect(date).toBeVisible();
+    await expect(navigation).toBeVisible();
+    const dateBox = await date.boundingBox();
+    const navigationBox = await navigation.boundingBox();
+    expect(dateBox).not.toBeNull();
+    expect(navigationBox).not.toBeNull();
+    expect(dateBox!.y + dateBox!.height).toBeLessThanOrEqual(navigationBox!.y);
   });
 
   test("keeps all three travel choices on the first phone screen", async ({

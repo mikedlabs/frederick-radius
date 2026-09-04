@@ -15,12 +15,14 @@ export default function FairPlanStatusRibbon({
   dates,
   selectedDate,
   onDateChange,
+  savedCountsByDate,
   compact = false,
 }: {
   plan: FairPlan;
   dates: FairDayDateOption[];
   selectedDate: string;
   onDateChange: (date: string) => void;
+  savedCountsByDate?: Readonly<Record<string, number>>;
   compact?: boolean;
 }) {
   const status = buildFairPlanStatus(plan);
@@ -81,6 +83,9 @@ export default function FairPlanStatusRibbon({
             {dates.map((day) => (
               <option key={day.date} value={day.date}>
                 {day.weekdayLabel}, Sep {day.dayLabel}
+                {(savedCountsByDate?.[day.date] ?? 0) > 0
+                  ? ` · ${savedCountsByDate?.[day.date]} saved`
+                  : ""}
               </option>
             ))}
           </select>

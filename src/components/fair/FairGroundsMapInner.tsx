@@ -2411,7 +2411,10 @@ export default function FairGroundsMapInner({
               }}
             >
               <LocateFixed className="h-4 w-4" aria-hidden />
-              <span className="sr-only sm:not-sr-only">
+              <span className="sr-only">
+                {locating ? "Finding location" : "Show my location"}
+              </span>
+              <span className="hidden sm:inline" aria-hidden="true">
                 {locating ? "Finding location" : "Show my location"}
               </span>
             </button>
@@ -2428,7 +2431,10 @@ export default function FairGroundsMapInner({
               }}
             >
               <Scan className="h-4 w-4" aria-hidden />
-              <span className="sr-only sm:not-sr-only">Whole grounds</span>
+              <span className="sr-only">Whole grounds</span>
+              <span className="hidden sm:inline" aria-hidden="true">
+                Whole grounds
+              </span>
             </button>
             </div>
           ) : null}

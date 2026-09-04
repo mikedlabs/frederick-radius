@@ -79,6 +79,18 @@ describe("buildFairDayWorkspaceData", () => {
     const nealMcCoy = data.scheduleItems.find((item) =>
       item.sourceItem.text.startsWith("Neal McCoy"),
     );
+    const dannyGokey = data.scheduleItems.find((item) =>
+      item.sourceItem.text.startsWith("Danny Gokey"),
+    );
+    const pop2000 = data.scheduleItems.find((item) =>
+      item.sourceItem.text.startsWith("POP 2000's"),
+    );
+    const taylorTribute = data.scheduleItems.find((item) =>
+      item.sourceItem.text.startsWith("Let's Sing Taylor!"),
+    );
+    const warrenZeiders = data.scheduleItems.find((item) =>
+      item.sourceItem.text.startsWith("Warren Zeiders"),
+    );
     const demolitionDerby = data.scheduleItems.find((item) =>
       item.sourceItem.text.includes("Demolition Derby"),
     );
@@ -98,10 +110,11 @@ describe("buildFairDayWorkspaceData", () => {
     expect(daughtry).toMatchObject({
       kind: "concert",
       title: "Daughtry",
+      timeLabel: "Headliner 8 p.m. · Opener 6:30 p.m.",
       placeLabel: "Published place: Grandstand.",
     });
-    expect(daughtry?.detail).toContain("Headliner 8 p.m.");
-    expect(daughtry?.detail).not.toContain("Grandstand");
+    expect(daughtry?.detail).toContain("8 p.m. headliner");
+    expect(daughtry?.detail).toContain("does not name the opener");
     expect(daughtry?.sourceItem.text).toContain(
       "Presented by Team Reeder",
     );
@@ -118,6 +131,37 @@ describe("buildFairDayWorkspaceData", () => {
       "Published place: Household Building.",
     );
     expect(nealMcCoy?.placeLabel).toBe("Published place: Grandstand.");
+    expect(nealMcCoy).toMatchObject({
+      kind: "concert",
+      title: "Neal McCoy",
+      timeLabel: "Headliner 8 p.m. · Opener 6:30 p.m.",
+      detail: "Mark Wills opens at 6:30 p.m. Neal McCoy headlines at 8 p.m.",
+    });
+    expect(dannyGokey).toMatchObject({
+      kind: "concert",
+      title: "Danny Gokey",
+      timeLabel: "Headliner 8 p.m. · Opener 6:30 p.m.",
+      detail: "Bay Turner opens at 6:30 p.m. Danny Gokey headlines at 8 p.m.",
+    });
+    expect(pop2000).toMatchObject({
+      kind: "concert",
+      title: "POP 2000 Tour",
+      timeLabel: "7:30 p.m.",
+    });
+    expect(pop2000?.detail).not.toContain("Jeff Timmons");
+    expect(taylorTribute).toMatchObject({
+      kind: "concert",
+      title: "Let's Sing Taylor!",
+      timeLabel: "6 p.m.",
+    });
+    expect(warrenZeiders).toMatchObject({
+      kind: "concert",
+      title: "Warren Zeiders",
+      timeLabel: "Headliner 8 p.m. · Opener 6:30 p.m.",
+    });
+    expect(data.scheduleItems.filter((item) => item.kind === "concert")).toHaveLength(
+      6,
+    );
     expect(demolitionDerby?.kind).toBe("motorsport");
     for (const publishedAnimalTitle of [
       "Youth Turkey Show",

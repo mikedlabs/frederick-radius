@@ -10,6 +10,7 @@ import type {
   FairDayScheduleItemView,
   FairDayWorkspaceData,
 } from "./types";
+import { reviewedGrandstandPresentation } from "./reviewedGrandstandProgram";
 
 const FAIR_TIME_ZONE = "America/New_York";
 const COUNTY_TRANSIT_INFO_URL =
@@ -245,19 +246,22 @@ function scheduleTimeLabel(item: FairScheduleSourceItem): string {
 }
 
 function scheduleView(item: FairScheduleSourceItem): FairDayScheduleItemView {
+  const reviewedGrandstand = reviewedGrandstandPresentation(item);
   const copy = scheduleCopy(item.text);
   const places = explicitPlaces(item.text);
   return {
     id: item.id,
     date: item.fairDate,
-    title: copy.title,
-    detail: detailWithoutRepeatedPlaces(copy.detail, places),
-    timeLabel: scheduleTimeLabel(item),
+    title: reviewedGrandstand?.title ?? copy.title,
+    detail:
+      reviewedGrandstand?.detail ??
+      detailWithoutRepeatedPlaces(copy.detail, places),
+    timeLabel: reviewedGrandstand?.timeLabel ?? scheduleTimeLabel(item),
     placeLabel:
       places.length > 0
         ? `Published place: ${places.join(", ")}.`
         : explicitPlaceLabel(item.text),
-    kind: scheduleKind(item),
+    kind: reviewedGrandstand ? "concert" : scheduleKind(item),
     sourceUrl: item.sourceUrl,
     sourceItem: item,
   };

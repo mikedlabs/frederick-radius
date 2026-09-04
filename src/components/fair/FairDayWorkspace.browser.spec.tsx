@@ -273,7 +273,7 @@ describe("FairDayWorkspace app journey", () => {
     expect(window.location.hash).toBe("#my-day");
   });
 
-  it("sorts program rows by time, removes ticket utility rows, and exposes EventHub in Find", async () => {
+  it("sorts program rows by time, removes ticket utility rows, and exposes EventHub in Program", async () => {
     const data = await renderFair();
     await openFullProgram();
 
@@ -292,7 +292,12 @@ describe("FairDayWorkspace app journey", () => {
     expect(text.indexOf("Daughtry")).toBeLessThan(
       text.indexOf("2026 Agricultural Awards Ceremony"),
     );
-    expect(container.querySelector<HTMLAnchorElement>(`a[href="${data.externalGuide.url}"]`)).toBeNull();
+    const vendorSearch = container.querySelector<HTMLAnchorElement>(
+      '[data-fair-vendor-search]',
+    );
+    expect(vendorSearch?.href).toBe(data.externalGuide.url);
+    expect(vendorSearch?.target).toBe("_blank");
+    expect(vendorSearch?.rel).toBe("noopener noreferrer");
     expect(container.textContent).toContain("sorted by time");
 
     await openMode("Map");
@@ -305,6 +310,9 @@ describe("FairDayWorkspace app journey", () => {
 
     expect(container.querySelector('[aria-label="Back to Fair Today"]')).not.toBeNull();
     expect(container.querySelector('[aria-label="Fair day to explore"]')).not.toBeNull();
+    expect(
+      container.querySelector('[aria-label="Search official vendor booths"]'),
+    ).not.toBeNull();
     expect(
       container.querySelector('[aria-label="Fair program results"]'),
     ).toBeNull();
@@ -322,10 +330,13 @@ describe("FairDayWorkspace app journey", () => {
     ).toHaveLength(4);
     expect(
       portal?.querySelector("[data-fair-discovery-event-title]")?.className,
-    ).toContain("sr-only");
+    ).toContain("hidden");
     expect(
       portal?.querySelector("[data-fair-discovery-event-title]")?.className,
-    ).toContain("sm:not-sr-only");
+    ).toContain("sm:block");
+    expect(
+      portal?.querySelector("[data-fair-discovery-event-title]")?.className,
+    ).not.toContain("sm:not-sr-only");
     expect(portal?.textContent).not.toMatch(/\d+ options?/);
 
     const kidZone = buttonWithText(container, "Kid Zone");
@@ -691,6 +702,11 @@ describe("FairDayWorkspace app journey", () => {
     );
     if (!addDaughtry) throw new Error("Missing Add Daughtry control.");
     await act(async () => addDaughtry.click());
+
+    const fridaySavedOption = container.querySelector<HTMLOptionElement>(
+      'option[value="2026-09-18"]',
+    );
+    expect(fridaySavedOption?.textContent).toContain("1 saved");
 
     await chooseDate("2026-09-20");
     await openMode("My Day");

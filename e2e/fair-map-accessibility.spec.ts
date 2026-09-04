@@ -1146,17 +1146,17 @@ test.describe("Fairgrounds map accessibility", () => {
         ".fair-grounds-map-canvas .maplibregl-ctrl-top-right .maplibregl-ctrl-group",
       ),
     ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Show my location" }).getByText(
-        "Show my location",
-        { exact: true },
-      ),
-    ).toBeVisible();
-    await expect(
-      page
-        .getByRole("button", { name: "Whole grounds" })
-        .getByText("Whole grounds", { exact: true }),
-    ).toBeVisible();
+    for (const name of ["Show my location", "Whole grounds"]) {
+      const utility = page.getByRole("button", { name });
+      await expect(utility.locator(".sr-only")).toHaveText(name);
+      await expect(utility.locator(".sr-only")).toHaveCSS(
+        "position",
+        "absolute",
+      );
+      const visibleLabel = utility.locator('span[aria-hidden="true"]');
+      await expect(visibleLabel).toHaveText(name);
+      await expect(visibleLabel).toBeVisible();
+    }
   });
 
   test("changes the real map zoom with focused-canvas plus and minus keys", async ({

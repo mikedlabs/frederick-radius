@@ -34,7 +34,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
     );
 
     expect(html).toContain("Fair Day");
-    expect(html).toContain("Fair Day · Frederick Radius");
+    expect(html).toContain("Radius at the Fair");
     expect(html).toContain(data.disclosure);
     expect(html).not.toContain("Photograph by Mike D");
     expect(html).not.toContain("Photo: Mike D");
@@ -101,6 +101,30 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).not.toContain("Check the details that can slow you down.");
     expect(html).not.toContain("Return plan set");
     expect(html).not.toContain("Ready to Go checks");
+  });
+
+  it("presents the three primary starts as a shallow mobile wallet stack", () => {
+    const html = renderToStaticMarkup(
+      createElement(FairDayWorkspace, { data }),
+    );
+
+    expect(html).toContain("What do you need first?");
+    expect(html).toContain("data-fair-wallet-stack");
+    expect(html.match(/data-fair-wallet-card=/g)).toHaveLength(3);
+    expect(html).toContain('data-fair-wallet-card="2"');
+    expect(html).toContain("-mt-2 ml-1");
+    expect(html).toContain('data-fair-wallet-card="3"');
+    expect(html).toContain("-mt-2 ml-2");
+    expect(html).toContain("focus-visible:z-40");
+  });
+
+  it("routes named vendor searches to the current official directory", () => {
+    const html = renderToStaticMarkup(
+      createElement(FairDayWorkspace, { data }),
+    );
+
+    expect(html).not.toContain("data-fair-vendor-search");
+    expect(data.externalGuide.url).toContain("Show_ID=18209");
   });
 
   it("keeps the first screen compact and defers external tools until their decision point", () => {

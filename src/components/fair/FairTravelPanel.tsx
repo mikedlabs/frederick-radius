@@ -408,7 +408,12 @@ export default function FairTravelPanel({
                     <span className="block text-[12.5px] font-bold leading-tight">
                       {meta.label}
                     </span>
-                    <span className="sr-only sm:not-sr-only sm:mt-0.5 sm:block sm:text-[12px] sm:leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                    <span className="sr-only">{meta.detail}</span>
+                    <span
+                      className="mt-0.5 hidden text-[12px] leading-snug sm:block"
+                      style={{ color: "var(--app-ink-3)" }}
+                      aria-hidden="true"
+                    >
                       {meta.detail}
                     </span>
                   </span>

@@ -69,6 +69,16 @@ describe("FairTravelPanel", () => {
     expect(html).toContain("data-fair-travel-modes");
     expect(html.match(/data-fair-travel-choice=/g)).toHaveLength(3);
     expect(html).toContain("Fare-free; verify Fair-day service");
+    expect(html).toContain(
+      '<span class="sr-only">Fare-free; verify Fair-day service</span>',
+    );
+    expect(html).toContain(
+      'class="mt-0.5 hidden text-[12px] leading-snug sm:block"',
+    );
+    expect(html).toMatch(
+      /class="mt-0\.5 hidden text-\[12px\] leading-snug sm:block"[^>]*aria-hidden="true"[^>]*>Fare-free; verify Fair-day service<\/span>/,
+    );
+    expect(html).not.toContain("sm:not-sr-only");
     expect(html).toContain("Choose a travel mode to see only the steps you need.");
     expect(html).not.toContain("Open Radius Transit");
     expect(html).not.toContain("Device-only car memory");

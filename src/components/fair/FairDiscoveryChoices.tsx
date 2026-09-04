@@ -158,10 +158,10 @@ export default function FairDiscoveryChoices({
       data-fair-discovery-choices
     >
       <div
-        className="grid grid-cols-2 items-stretch gap-2 sm:gap-3 lg:grid-cols-4"
+        className="grid grid-cols-2 items-stretch gap-x-2 gap-y-0 sm:gap-3 lg:grid-cols-4"
         data-fair-discovery-grid
       >
-        {choices.map(({ choice, matches }) => {
+        {choices.map(({ choice, matches }, index) => {
           const active = selected === choice.id;
           const Icon = choice.Icon;
           const preview = previewForChoice(matches, asOf);
@@ -183,7 +183,7 @@ export default function FairDiscoveryChoices({
               disabled={!available}
               aria-pressed={active}
               onClick={() => onSelect(choice.id)}
-              className="tap-44 relative min-h-[88px] min-w-0 overflow-hidden rounded-[var(--app-radius-lg)] border p-2.5 text-left transition-[transform,border-color] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-65 motion-reduce:transition-none sm:min-h-[124px] sm:p-3"
+              className={`tap-44 relative min-h-[88px] min-w-0 overflow-hidden rounded-[var(--app-radius-lg)] border p-2.5 text-left transition-[transform,border-color] active:scale-[0.985] focus-visible:z-30 disabled:cursor-not-allowed disabled:opacity-65 motion-reduce:transition-none sm:mt-0 sm:min-h-[124px] sm:p-3 ${index > 1 ? "z-20 -mt-1.5" : "z-10"}`}
               style={{
                 borderColor: active
                   ? choice.accent
@@ -192,8 +192,8 @@ export default function FairDiscoveryChoices({
                   ? "linear-gradient(90deg, var(--app-bg-elevated-solid) 0%, color-mix(in srgb, var(--app-bg-elevated-solid) 97%, transparent) 48%, color-mix(in srgb, var(--app-bg-elevated-solid) 78%, transparent) 72%, color-mix(in srgb, var(--app-bg-elevated-solid) 18%, transparent) 100%), url('/images/fair/fairgrounds-ferris-wheel-mike-d-960.jpg') 72% 52% / cover"
                   : choice.wash,
                 boxShadow: active
-                  ? `inset 0 3px 0 ${choice.accent}, inset 0 0 0 1px ${choice.accent}`
-                  : `inset 0 3px 0 ${choice.accent}, var(--app-elev-1)`,
+                  ? `inset 0 3px 0 ${choice.accent}, inset 0 0 0 1px ${choice.accent}, var(--app-hi), var(--app-lip), var(--app-deck-edge), var(--app-elev-2)`
+                  : `inset 0 3px 0 ${choice.accent}, var(--app-hi), var(--app-lip), var(--app-deck-edge), var(--app-elev-2)`,
               }}
             >
               <span className="relative flex min-w-0 items-start gap-2">
@@ -233,7 +233,14 @@ export default function FairDiscoveryChoices({
                     >
                       {compactPreviewStatus(preview.status)}
                     </span>
-                    <span className="sr-only sm:not-sr-only sm:uppercase sm:tracking-[0.07em]">
+                    <span className="sr-only">
+                      {preview.status}
+                    </span>
+                    <span
+                      className="hidden sm:inline sm:uppercase sm:tracking-[0.07em]"
+                      aria-hidden="true"
+                      data-fair-discovery-status
+                    >
                       {preview.status}
                     </span>
                     <span className="tabular-nums">
@@ -241,9 +248,15 @@ export default function FairDiscoveryChoices({
                     </span>
                   </span>
                   <span
-                    className="sr-only break-words text-[12px] font-semibold leading-[1.25] sm:not-sr-only sm:mt-1 sm:block"
+                    className="sr-only"
+                  >
+                    {previewCopy}
+                  </span>
+                  <span
+                    className="mt-1 hidden break-words text-[12px] font-semibold leading-[1.25] sm:block"
                     style={{ color: "var(--app-ink-2)" }}
                     data-fair-discovery-event-title
+                    aria-hidden="true"
                   >
                     {previewCopy}
                   </span>
@@ -260,7 +273,10 @@ export default function FairDiscoveryChoices({
                   <span className="sm:hidden" aria-hidden="true">
                     {choice.emptyLabel}
                   </span>
-                  <span className="sr-only sm:not-sr-only">
+                  <span className="sr-only">
+                    No matching program item this day
+                  </span>
+                  <span className="hidden sm:inline" aria-hidden="true">
                     No matching program item this day
                   </span>
                 </span>
