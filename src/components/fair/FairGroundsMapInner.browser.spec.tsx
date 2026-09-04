@@ -73,12 +73,13 @@ vi.mock("react-map-gl/maplibre", () => ({
     );
   }),
   AttributionControl: () => null,
-  Layer: () => null,
+  Layer: ({ id }: { id?: string }) =>
+    createElement("div", { "data-mock-map-layer": id }),
   Marker: ({ children }: { children?: ReactNode }) =>
     createElement("div", null, children),
   NavigationControl: () => null,
-  Source: ({ children }: { children?: ReactNode }) =>
-    createElement("div", null, children),
+  Source: ({ children, id }: { children?: ReactNode; id?: string }) =>
+    createElement("div", { "data-mock-map-source": id }, children),
 }));
 
 vi.mock("@/components/map/mapCameraHelpers", () => ({
@@ -282,6 +283,28 @@ describe("FairGroundsMapInner map failure recovery", () => {
     expect(runtimeStatus().getAttribute("aria-live")).toBe("polite");
     expect(runtimeStatus().getAttribute("aria-atomic")).toBe("true");
     expect(document.activeElement?.id).toBe("fair-map-fallback-heading");
+  });
+
+  it("keeps reviewed grounds shapes visible beneath the active map lens", async () => {
+    await renderMap();
+    await loadMap();
+
+    expect(
+      container.querySelector('[data-mock-map-source="fair-grounds-context"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector(
+        '[data-mock-map-layer="fair-grounds-context-shadow"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      container.querySelector(
+        '[data-mock-map-layer="fair-grounds-context-highlight"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[data-mock-map-source="fair-reviewed-geometry"]'),
+    ).not.toBeNull();
   });
 
   it("keeps focus on persistent search UI after a late fatal error", async () => {

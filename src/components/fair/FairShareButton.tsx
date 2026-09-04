@@ -69,7 +69,7 @@ export default function FairShareButton() {
         type="button"
         onClick={share}
         data-fair-share
-        className="tap-44 inline-flex h-11 items-center justify-center gap-1.5 rounded-full border px-3 text-[12px] font-extrabold transition-[background-color,color,transform] active:scale-[0.97] motion-reduce:transition-none"
+        className="tap-44 inline-flex min-h-12 items-center justify-center gap-1.5 rounded-full border px-3 text-[12px] font-extrabold transition-[background-color,color,transform] active:scale-[0.97] motion-reduce:transition-none"
         style={{
           borderColor:
             "color-mix(in srgb, var(--app-brand) 34%, var(--app-border))",

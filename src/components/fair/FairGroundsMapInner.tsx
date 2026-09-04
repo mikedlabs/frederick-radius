@@ -61,6 +61,7 @@ import {
 } from "@/lib/fair/grounds-map";
 import { groupCollidingMobileMarkers } from "@/lib/fair/mobile-marker-layout";
 import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback-ui";
+import { haptic } from "@/lib/haptics";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { mapCameraDuration } from "@/lib/motion";
 
@@ -832,6 +833,18 @@ export default function FairGroundsMapInner({
     }),
     [visibleFeatures],
   );
+  const groundsContextPolygons = useMemo(
+    () => ({
+      type: "FeatureCollection" as const,
+      features:
+        mapData?.features.filter(
+          (feature) =>
+            feature.geometry.type === "Polygon" &&
+            feature.properties.kind !== "fairgrounds",
+        ) ?? [],
+    }),
+    [mapData],
+  );
   const accessibleFeatures = useMemo(() => {
     const listFeatures = interactiveMapAvailable
       ? visibleFeatures
@@ -1194,6 +1207,7 @@ export default function FairGroundsMapInner({
     features: FairGroundsMapFeature[],
     trigger: HTMLElement,
   ) => {
+    haptic("light");
     const memberIds = features.map((feature) => feature.properties.id);
     lastSelectionTriggerRef.current = trigger;
     clusterOriginRef.current = { element: trigger, memberIds };
@@ -1219,6 +1233,7 @@ export default function FairGroundsMapInner({
     trigger?: HTMLElement,
     preserveClusterOrigin = false,
   ) => {
+    haptic("light");
     if (preserveClusterOrigin && clusterOriginRef.current) {
       lastSelectionTriggerRef.current = clusterOriginRef.current.element;
     } else {
@@ -1443,6 +1458,7 @@ export default function FairGroundsMapInner({
   }, [condensedMobileControls, fitFilter, mobileActionBarHeight]);
 
   const activateMapFilter = (nextFilter: FairGroundsMapView) => {
+    haptic("light");
     const count = filterCounts.get(nextFilter) ?? 0;
     const option = FILTERS.find((candidate) => candidate.id === nextFilter);
     setFilter(nextFilter);
@@ -2116,6 +2132,112 @@ export default function FairGroundsMapInner({
                     <>
             <AttributionControl compact position="bottom-right" />
             <NavigationControl position="top-right" showCompass={false} />
+            <Source
+              id="fair-grounds-context"
+              type="geojson"
+              data={groundsContextPolygons}
+            >
+              <Layer
+                id="fair-grounds-context-shadow"
+                type="line"
+                paint={{
+                  "line-color": "#221C15",
+                  "line-opacity": 0.14,
+                  "line-width": [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    14,
+                    1.5,
+                    18,
+                    5,
+                  ],
+                  "line-blur": 2.5,
+                  "line-translate": [2.5, 3.5],
+                  "line-translate-anchor": "viewport",
+                }}
+              />
+              <Layer
+                id="fair-grounds-context-fill"
+                type="fill"
+                paint={{
+                  "fill-color": [
+                    "match",
+                    ["get", "kind"],
+                    "animal",
+                    "#BCD1C2",
+                    "stage",
+                    "#D5AFCC",
+                    "parking",
+                    "#B8D2DC",
+                    "restroom",
+                    "#D5E2E7",
+                    "ticket",
+                    "#E8C9BD",
+                    "#E7D1A7",
+                  ],
+                  "fill-opacity": [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    14,
+                    0.34,
+                    18,
+                    0.72,
+                  ],
+                }}
+              />
+              <Layer
+                id="fair-grounds-context-outline"
+                type="line"
+                paint={{
+                  "line-color": [
+                    "match",
+                    ["get", "kind"],
+                    "animal",
+                    "#315A43",
+                    "stage",
+                    "#7E2C6F",
+                    "parking",
+                    "#285D73",
+                    "restroom",
+                    "#285D73",
+                    "ticket",
+                    "#B5462B",
+                    "#925E16",
+                  ],
+                  "line-opacity": 0.62,
+                  "line-width": [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    14,
+                    0.7,
+                    18,
+                    1.5,
+                  ],
+                }}
+              />
+              <Layer
+                id="fair-grounds-context-highlight"
+                type="line"
+                paint={{
+                  "line-color": "#FFFDF8",
+                  "line-opacity": 0.58,
+                  "line-width": [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    14,
+                    0.4,
+                    18,
+                    1,
+                  ],
+                  "line-translate": [-0.8, -0.8],
+                  "line-translate-anchor": "viewport",
+                }}
+              />
+            </Source>
             <Source id="fair-reviewed-geometry" type="geojson" data={visiblePolygons}>
               <Layer
                 id="fair-reviewed-fill"
@@ -2138,7 +2260,7 @@ export default function FairGroundsMapInner({
                     "case",
                     ["==", ["get", "kind"], "fairgrounds"],
                     0.07,
-                    0.24,
+                    0.48,
                   ],
                 }}
               />
