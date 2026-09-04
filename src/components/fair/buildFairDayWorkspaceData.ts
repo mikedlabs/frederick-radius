@@ -167,25 +167,57 @@ function scheduleCopy(text: string): { title: string; detail?: string } {
   return title === displayText ? { title } : { title, detail: displayText };
 }
 
-function explicitPlaceLabel(text: string): string {
+function explicitPlaces(text: string): string[] {
   const numberedPlaces = text.match(
     /\b(?:Bldg\.?|Building|Gate)\s*(?:#\s*)?\d+[A-Za-z]?\b/gi,
   );
   const namedPlaces = text
     .split(/\s+-\s+/u)
-    .map((section) => section.replace(/\s*\(\$\)\s*/g, "").trim())
+    .map((section) =>
+      section
+        .split(/\s*~\s*/u)[0]
+        ?.replace(/\s*\(\$\)\s*/g, "")
+        .trim(),
+    )
     .filter(
-      (section) =>
+      (section): section is string =>
+        Boolean(section) &&
         section.length <= 120 &&
         /\b(?:Arena|Grandstand|Horse Park|Infield|Stage|Tent)\b/i.test(section),
     );
-  const places = Array.from(
+  return Array.from(
     new Set([...(numberedPlaces ?? []), ...namedPlaces]),
   );
+}
+
+function explicitPlaceLabel(text: string): string {
+  const places = explicitPlaces(text);
   if (places.length === 0) {
     return "The official schedule does not publish a separate place field.";
   }
   return `Published place: ${places.join(", ")}.`;
+}
+
+function detailWithoutRepeatedPlaces(
+  detail: string | undefined,
+  places: string[],
+): string | undefined {
+  if (!detail || places.length === 0) return detail;
+  const normalize = (value: string) =>
+    value
+      .toLocaleLowerCase()
+      .replace(/\bbuilding\b/g, "bldg")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  const normalizedPlaces = places.map(normalize);
+  const remaining = detail
+    .split(" · ")
+    .filter(
+      (section) => !normalizedPlaces.includes(normalize(section)),
+    )
+    .join(" · ")
+    .trim();
+  return remaining || undefined;
 }
 
 function scheduleTimeLabel(item: FairScheduleSourceItem): string {
@@ -200,13 +232,17 @@ function scheduleTimeLabel(item: FairScheduleSourceItem): string {
 
 function scheduleView(item: FairScheduleSourceItem): FairDayScheduleItemView {
   const copy = scheduleCopy(item.text);
+  const places = explicitPlaces(item.text);
   return {
     id: item.id,
     date: item.fairDate,
     title: copy.title,
-    detail: copy.detail,
+    detail: detailWithoutRepeatedPlaces(copy.detail, places),
     timeLabel: scheduleTimeLabel(item),
-    placeLabel: explicitPlaceLabel(item.text),
+    placeLabel:
+      places.length > 0
+        ? `Published place: ${places.join(", ")}.`
+        : explicitPlaceLabel(item.text),
     kind: scheduleKind(item),
     sourceUrl: item.sourceUrl,
     sourceItem: item,

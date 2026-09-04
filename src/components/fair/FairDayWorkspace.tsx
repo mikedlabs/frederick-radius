@@ -1320,6 +1320,19 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         .fair-day-workspace .fair-portal-action {
           transition: transform var(--app-dur-fast) var(--app-ease-out), box-shadow var(--app-dur-fast) var(--app-ease-out), border-color var(--app-dur-fast) var(--app-ease-out);
         }
+        .fair-day-workspace [data-fair-mode-panel] {
+          animation: fair-mode-panel-enter var(--app-dur-med) var(--app-ease-out) both;
+        }
+        @keyframes fair-mode-panel-enter {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
         @media (hover: hover) and (pointer: fine) {
           .fair-day-workspace [data-fair-mode-masthead]:hover .fair-mode-photo {
             transform: scale(1.055);
@@ -1618,7 +1631,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         }
       >
         {activeMode === "now" ? (
-          <section id={MODE_PANEL_IDS.now} aria-labelledby="fair-now-heading">
+          <section
+            id={MODE_PANEL_IDS.now}
+            aria-labelledby="fair-now-heading"
+            data-fair-mode-panel
+          >
             <section
               data-fair-next-action
               aria-labelledby="fair-next-action-heading"
@@ -1834,7 +1851,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         ) : null}
 
         {activeMode === "find" ? (
-          <section id={MODE_PANEL_IDS.find} aria-labelledby="fair-find-heading">
+          <section
+            id={MODE_PANEL_IDS.find}
+            aria-labelledby="fair-find-heading"
+            data-fair-mode-panel
+          >
             <div
               className="sticky top-0 z-[var(--z-sticky)] -mx-4 flex items-center justify-between gap-3 border-b px-4 py-1 backdrop-blur-md sm:-mx-6 sm:px-6"
               style={{
@@ -2110,7 +2131,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         ) : null}
 
         {activeMode === "map" ? (
-          <section id={MODE_PANEL_IDS.map} aria-labelledby="fair-grounds-map-heading">
+          <section
+            id={MODE_PANEL_IDS.map}
+            aria-labelledby="fair-grounds-map-heading"
+            data-fair-mode-panel
+          >
             <FairGroundsMap
               savedStops={mappedPlanStops}
               programItems={discoveryItems.map((item) => ({
@@ -2137,7 +2162,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         ) : null}
 
         {activeMode === "my-day" ? (
-          <section id={MODE_PANEL_IDS["my-day"]} aria-labelledby="fair-my-day-heading">
+          <section
+            id={MODE_PANEL_IDS["my-day"]}
+            aria-labelledby="fair-my-day-heading"
+            data-fair-mode-panel
+          >
             <div className="flex items-center justify-between gap-3">
               <p className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-brand-press)" }}>
                 {planStorageState === "available"
@@ -2362,7 +2391,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         ) : null}
 
         {activeMode === "travel" ? (
-          <section id={MODE_PANEL_IDS.travel} aria-labelledby="fair-travel-heading">
+          <section
+            id={MODE_PANEL_IDS.travel}
+            aria-labelledby="fair-travel-heading"
+            data-fair-mode-panel
+          >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <button
                 type="button"

@@ -67,6 +67,12 @@ describe("buildFairDayWorkspaceData", () => {
     const daughtry = data.scheduleItems.find((item) =>
       item.sourceItem.text.startsWith("Daughtry"),
     );
+    const farmAndGarden = data.scheduleItems.find((item) =>
+      item.sourceItem.text.startsWith("Farm & Garden Building Opens"),
+    );
+    const horseExpo = data.scheduleItems.find((item) =>
+      item.sourceItem.text.startsWith("Horse Barrel Racing Expo"),
+    );
 
     expect(beerGarden).toMatchObject({
       kind: "food",
@@ -77,16 +83,28 @@ describe("buildFairDayWorkspaceData", () => {
     expect(showcase).toMatchObject({
       kind: "food",
       title: "Homegrown Wineries, Breweries and Distilleries Showcase",
-      detail: "Bldg. 13 · Fred. Co. Office of Agriculture",
+      detail: "Fred. Co. Office of Agriculture",
+      placeLabel: "Published place: Bldg. 13.",
     });
     expect(daughtry).toMatchObject({
       kind: "concert",
       title: "Daughtry",
+      placeLabel: "Published place: Grandstand.",
     });
     expect(daughtry?.detail).toContain("Headliner 8 p.m.");
+    expect(daughtry?.detail).not.toContain("Grandstand");
     expect(daughtry?.sourceItem.text).toContain(
       "Presented by Team Reeder",
     );
+    expect(farmAndGarden).toMatchObject({
+      detail: "Grange Day",
+      placeLabel: "Published place: Bldg. 14A.",
+    });
+    expect(horseExpo).toMatchObject({
+      detail: undefined,
+      placeLabel:
+        "Published place: Elm Street Development, Ryan Homes & NV Homes Equine Arena, Infield, Pleasants' Horse Park.",
+    });
     for (const publishedAnimalTitle of [
       "Youth Turkey Show",
       "Youth Dog Show",
