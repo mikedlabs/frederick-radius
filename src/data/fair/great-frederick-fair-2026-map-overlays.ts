@@ -3,8 +3,8 @@ import type {
   FairGroundsMapFeaturePatch,
 } from "@/lib/fair/grounds-map";
 
-const OFFICIAL_CHECKED_AT = "2026-09-03T02:10:47Z";
-const GTFS_CHECKED_AT = "2026-09-03T02:08:00Z";
+const OFFICIAL_CHECKED_AT = "2026-09-04T06:04:00Z";
+const GTFS_CHECKED_AT = "2026-09-04T06:04:00Z";
 
 const parkingInformationSource = {
   publisher: "The Great Frederick Fair",
@@ -34,6 +34,13 @@ const scheduleMapInformationSource = {
   checkedAt: OFFICIAL_CHECKED_AT,
 };
 
+const vendorGuideInformationSource = {
+  publisher: "The Great Frederick Fair",
+  title: "2026 Vendor Guide",
+  url: "https://thegreatfrederickfair.com/wp-content/uploads/2026/03/Vendor-Guide-2026.pdf",
+  checkedAt: OFFICIAL_CHECKED_AT,
+};
+
 const transitInformationSource = {
   publisher: "Transit Services of Frederick County",
   title: "Published static GTFS and Transit Services",
@@ -48,7 +55,6 @@ const RESTROOM_IDS = [
   "osm-way-305093780",
   "osm-way-305093781",
   "osm-way-307321830",
-  "osm-way-307321850",
 ];
 
 /**
@@ -61,8 +67,13 @@ export const greatFrederickFair2026MapPatches: FairGroundsMapFeaturePatch[] = [
     targetId: "osm-node-14099608925",
     properties: {
       detail:
-        "The Fair lists Gate 1 as a special-needs unloading location. Follow current traffic signs and on-site directions.",
-      keywords: ["accessible drop-off", "special needs", "unloading"],
+        "Gate 1 is pedestrian-only. The Fair allows special-needs unloading and loading outside this gate; follow current traffic signs and on-site directions.",
+      keywords: [
+        "pedestrian entrance",
+        "accessible drop-off",
+        "special needs",
+        "unloading",
+      ],
       informationSource: faqInformationSource,
       locationPrecision: "mapped-feature",
       filterIds: ["arrival"],
@@ -92,7 +103,7 @@ export const greatFrederickFair2026MapPatches: FairGroundsMapFeaturePatch[] = [
     targetId: "osm-node-14099608940",
     properties: {
       detail:
-        "Use the Gate 4A pull-off for taxi, rideshare, or friend drop-off. The free ADA-compliant shuttle from the Monocacy Boulevard side of Lot D also arrives here.",
+        "Gate 4A is pedestrian-only. Use its Highland Avenue pull-off for taxi, rideshare, or friend drop-off. The free ADA-compliant shuttle from the Monocacy Boulevard side of Lot D also arrives here.",
       keywords: [
         "rideshare",
         "uber",
@@ -106,6 +117,42 @@ export const greatFrederickFair2026MapPatches: FairGroundsMapFeaturePatch[] = [
       informationSource: faqInformationSource,
       locationPrecision: "mapped-feature",
       directionsEnabled: true,
+      filterIds: ["arrival"],
+    },
+  },
+  {
+    targetId: "osm-node-14099608937",
+    properties: {
+      detail:
+        "Exit only. The 2026 Fair grounds map does not show Gate 4 as a visitor entrance. Use Gate 4A for pedestrian entry, pickup, or drop-off.",
+      keywords: ["exit only", "not an entrance", "highland street"],
+      informationSource: scheduleMapInformationSource,
+      locationPrecision: "mapped-feature",
+      directionsEnabled: false,
+      filterIds: ["arrival"],
+    },
+  },
+  {
+    targetId: "osm-node-14099608957",
+    properties: {
+      detail:
+        "Exhibitors only. The 2026 Fair grounds map does not show Gate 5 as a public visitor entrance.",
+      keywords: ["exhibitors only", "not a public entrance", "highland street"],
+      informationSource: scheduleMapInformationSource,
+      locationPrecision: "mapped-feature",
+      directionsEnabled: false,
+      filterIds: ["arrival"],
+    },
+  },
+  {
+    targetId: "osm-node-3124269595",
+    properties: {
+      detail:
+        "Closed. The 2026 Fair grounds map marks Gate 6 closed; do not use it as an arrival or exit point.",
+      keywords: ["closed gate", "not an entrance", "not an exit"],
+      informationSource: scheduleMapInformationSource,
+      locationPrecision: "mapped-feature",
+      directionsEnabled: false,
       filterIds: ["arrival"],
     },
   },
@@ -147,6 +194,13 @@ export const greatFrederickFair2026MapPatches: FairGroundsMapFeaturePatch[] = [
   {
     targetId: "osm-way-305093779",
     properties: {
+      name: "Administration (Building 3)",
+      scheduleAliases: [
+        "bldg. 3",
+        "building 3",
+        "administration office",
+        "admin building",
+      ],
       detail:
         "The Family Care Station and Security Trailer are across from Administration near the midway entrance. Security handles lost people and property.",
       keywords: [
@@ -159,11 +213,35 @@ export const greatFrederickFair2026MapPatches: FairGroundsMapFeaturePatch[] = [
       ],
       informationSource: faqInformationSource,
       locationPrecision: "published-area",
+      filterIds: ["essentials"],
+    },
+  },
+  {
+    targetId: "osm-way-103615601",
+    properties: {
+      name: "Home Arts & Crafts (Building 9)",
+      scheduleAliases: [
+        "bldg. 9",
+        "building 9",
+        "the null bldg",
+        "household building",
+        "home arts and crafts",
+      ],
+      informationSource: scheduleMapInformationSource,
+      locationPrecision: "mapped-feature",
     },
   },
   {
     targetId: "osm-way-307321839",
     properties: {
+      name: "Youth Indoor Exhibits (Building 12)",
+      scheduleAliases: [
+        "bldg. 12",
+        "building 12",
+        "youth building",
+        "youth indoor exhibits",
+        "4-h building",
+      ],
       detail:
         "Rentals in the published area between Building 12 and Homegrown Building 13: scooters $10/hour, manual wheelchairs $25/day, and strollers, wagons, or push cars $20/day. They are first come; a driver's license is required.",
       keywords: [
@@ -176,6 +254,49 @@ export const greatFrederickFair2026MapPatches: FairGroundsMapFeaturePatch[] = [
       ],
       informationSource: guestServicesInformationSource,
       locationPrecision: "published-area",
+      filterIds: ["essentials"],
+    },
+  },
+  {
+    targetId: "osm-way-307321854",
+    properties: {
+      name: "Homegrown Frederick (Building 13)",
+      scheduleAliases: [
+        "bldg. 13",
+        "building 13",
+        "homegrown building",
+        "homegrown frederick",
+      ],
+      informationSource: scheduleMapInformationSource,
+      locationPrecision: "mapped-feature",
+    },
+  },
+  {
+    targetId: "osm-way-307321838",
+    properties: {
+      name: "Free Stage",
+      scheduleAliases: ["free stage", "funky joe's bandwagon stage"],
+      informationSource: scheduleMapInformationSource,
+      locationPrecision: "mapped-feature",
+    },
+  },
+  {
+    targetId: "osm-way-307321850",
+    properties: {
+      name: "Restroom (Building 15)",
+      scheduleAliases: ["bldg. 15", "building 15", "bathroom building 15"],
+      detail:
+        "The 2026 Fair map identifies this restroom as Building 15. First Aid is next to it inside Gate 3. The Fair also allows special-needs unloading and loading outside Building 15; follow on-site signs.",
+      keywords: [
+        "bathroom",
+        "toilet",
+        "diaper changing",
+        "baby",
+        "first aid",
+        "accessible drop-off",
+      ],
+      informationSource: vendorGuideInformationSource,
+      locationPrecision: "mapped-feature",
     },
   },
   ...[
@@ -308,7 +429,7 @@ const transitFeatures: FairGroundsMapFeature[] = [
     routes: "East Frederick Shuttle",
     distance: 165,
     service:
-      "Weekdays only during the Fair, with published departures from 9:05 AM through 6:05 PM. This route does not run on Fair Saturdays or Sunday.",
+      "Weekdays only during the Fair, with seven explicit published departures from 9:05 AM through 5:05 PM. This route does not run on Fair Saturdays or Sunday.",
   },
   {
     id: "163103",
@@ -368,7 +489,72 @@ const transitFeatures: FairGroundsMapFeature[] = [
   }),
 );
 
+const serviceFeatures: FairGroundsMapFeature[] = [
+  pointFeature({
+    id: "fair-service-first-aid-building-15",
+    name: "First Aid near Building 15",
+    kind: "service",
+    sourceUrl: vendorGuideInformationSource.url,
+    sourceUpdatedAt: null,
+    scheduleAliases: [],
+    // Reuse the reviewed Building 15 restroom anchor. The official Fair map
+    // is schematic, so this is deliberately an area result without routing.
+    anchor: [-77.3930768, 39.4120902],
+    detail:
+      "First Aid is next to Building 15, inside Gate 3, and is open during Fair hours. The official map is schematic, so follow First Aid signs when you reach this area.",
+    keywords: ["medical", "emergency", "fire rescue", "building 15", "gate 3"],
+    informationSource: vendorGuideInformationSource,
+    locationPrecision: "published-area",
+    directionsEnabled: false,
+    filterIds: ["essentials"],
+  }),
+  pointFeature({
+    id: "fair-service-information-gate-4a",
+    name: "Information booth near Gate 4A",
+    kind: "service",
+    sourceUrl: scheduleMapInformationSource.url,
+    sourceUpdatedAt: null,
+    scheduleAliases: [],
+    // Reuse the reviewed Gate 4A anchor; the publisher map does not provide
+    // survey-grade booth coordinates.
+    anchor: [-77.3936558, 39.4137365],
+    detail:
+      "The official 2026 Fair map marks an information booth in the Gate 4A entrance area. Volunteers can help with schedules and finding places; follow the orange INFO signs.",
+    keywords: ["info", "visitor center", "help", "schedule", "volunteer"],
+    informationSource: scheduleMapInformationSource,
+    locationPrecision: "published-area",
+    directionsEnabled: false,
+    filterIds: ["essentials"],
+  }),
+  pointFeature({
+    id: "fair-service-information-administration",
+    name: "Information booth near Administration",
+    kind: "service",
+    sourceUrl: scheduleMapInformationSource.url,
+    sourceUpdatedAt: null,
+    scheduleAliases: [],
+    // Reuse the reviewed Administration anchor for the published Gate 1 side
+    // service area; on-site INFO signs remain authoritative.
+    anchor: [-77.3954764, 39.411424874999994],
+    detail:
+      "The official 2026 Fair map marks an information booth in the Administration and Family Care area on the Gate 1 side. Follow the orange INFO signs for the exact booth.",
+    keywords: [
+      "info",
+      "visitor center",
+      "help",
+      "schedule",
+      "gate 1",
+      "family care",
+    ],
+    informationSource: scheduleMapInformationSource,
+    locationPrecision: "published-area",
+    directionsEnabled: false,
+    filterIds: ["essentials"],
+  }),
+];
+
 export const greatFrederickFair2026MapAdditions: FairGroundsMapFeature[] = [
   ...parkingFeatures,
   ...transitFeatures,
+  ...serviceFeatures,
 ];

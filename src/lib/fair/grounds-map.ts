@@ -155,6 +155,8 @@ export type FairGroundsMapFeaturePatch = {
   properties: Partial<
     Pick<
       FairGroundsMapFeature["properties"],
+      | "name"
+      | "scheduleAliases"
       | "anchor"
       | "detail"
       | "keywords"

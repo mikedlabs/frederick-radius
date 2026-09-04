@@ -126,7 +126,7 @@ const FILTERS: Array<{
 }> = [
   {
     id: "arrival",
-    label: "Parking + transit",
+    label: "Arrive and enter",
     compactLabel: "Arrive",
     tone: "var(--app-cool)",
   },
@@ -229,7 +229,7 @@ function locationPrecisionLabel(
   precision: FairGroundsMapFeature["properties"]["locationPrecision"],
 ): string | null {
   return {
-    "mapped-feature": "Reviewed mapped feature",
+    "mapped-feature": "Mapped place",
     "official-pin": "Official arrival pin",
     "published-area": "Published area; follow signs",
     "static-transit-stop": "Static county transit stop",
