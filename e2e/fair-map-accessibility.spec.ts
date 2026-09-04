@@ -576,8 +576,11 @@ test.describe("Fairgrounds map accessibility", () => {
       selection.getByRole("link", { name: /Get directions/i }),
     ).toBeVisible();
     await selection.getByRole("button", { name: "More details" }).click();
+    const expandedSelection = page.getByRole("dialog", {
+      name: "Selected map place: Gate 4A",
+    });
     await expect(
-      selection.getByRole("link", { name: /Official details/i }),
+      expandedSelection.getByRole("link", { name: /Official details/i }),
     ).toBeVisible();
 
     await expect(
@@ -669,14 +672,17 @@ test.describe("Fairgrounds map accessibility", () => {
     });
     await expect(gateDetails).toBeVisible();
     await gateDetails.getByRole("button", { name: "More details" }).click();
+    const expandedGateDetails = page.getByRole("dialog", {
+      name: "Selected map place: Gate 4A",
+    });
     await expect(
-      gateDetails.getByRole("link", { name: /Get directions/i }),
+      expandedGateDetails.getByRole("link", { name: /Get directions/i }),
     ).toBeVisible();
     await expect(
-      gateDetails.getByRole("link", { name: /Official details/i }),
+      expandedGateDetails.getByRole("link", { name: /Official details/i }),
     ).toBeVisible();
 
-    await gateDetails
+    await expandedGateDetails
       .getByRole("button", { name: "Close selected map place" })
       .click();
     await page.getByRole("combobox", { name: "Map view" }).selectOption("arrival");
@@ -712,14 +718,17 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(restrictedGate).toBeVisible();
     await expect(restrictedGate).toContainText("Mapped place");
     await restrictedGate.getByRole("button", { name: "More details" }).click();
-    await expect(restrictedGate).toContainText("Exit only");
+    const expandedRestrictedGate = page.getByRole("dialog", {
+      name: "Selected map place: Gate 4",
+    });
+    await expect(expandedRestrictedGate).toContainText("Exit only");
     await expect(
-      restrictedGate.getByRole("link", { name: /Get directions/i }),
+      expandedRestrictedGate.getByRole("link", { name: /Get directions/i }),
     ).toHaveCount(0);
     await expect(
-      restrictedGate.getByRole("link", { name: /Official details/i }),
+      expandedRestrictedGate.getByRole("link", { name: /Official details/i }),
     ).toBeVisible();
-    await restrictedGate
+    await expandedRestrictedGate
       .getByRole("button", { name: "Close selected map place" })
       .click();
 
@@ -732,9 +741,14 @@ test.describe("Fairgrounds map accessibility", () => {
     });
     await expect(firstAid).toContainText("Published area; follow signs");
     await firstAid.getByRole("button", { name: "More details" }).click();
-    await expect(firstAid).toContainText("next to Building 15, inside Gate 3");
+    const expandedFirstAid = page.getByRole("dialog", {
+      name: "Selected map place: First Aid near Building 15",
+    });
+    await expect(expandedFirstAid).toContainText(
+      "next to Building 15, inside Gate 3",
+    );
     await expect(
-      firstAid.getByRole("link", { name: /Get directions/i }),
+      expandedFirstAid.getByRole("link", { name: /Get directions/i }),
     ).toHaveCount(0);
   });
 
@@ -1286,12 +1300,15 @@ test.describe("Fairgrounds map accessibility", () => {
       await expectSheetClearOfActionBar(page, sheet);
       const details = sheet.getByRole("button", { name: "More details" });
       await details.click();
+      const expandedSheet = page.getByRole("dialog", {
+        name: `Selected map place: ${target.name}`,
+      });
       await expectControlInsideSheet(
-        sheet,
-        sheet.getByRole("button", { name: "Report issue" }),
+        expandedSheet,
+        expandedSheet.getByRole("button", { name: "Report issue" }),
       );
       await page.keyboard.press("Escape");
-      await expect(sheet).toHaveCount(0);
+      await expect(page.locator("#fair-map-selection-mobile")).toHaveCount(0);
       await expect
         .poll(() => readFocusedMarkerClearance(page, target.memberId), {
           timeout: 8_000,
@@ -1438,16 +1455,19 @@ test.describe("Fairgrounds map accessibility", () => {
     const details = sheet.getByRole("button", { name: "More details" });
     await expect(details).toHaveAttribute("aria-expanded", "false");
     await details.click();
+    const expandedSheet = page.getByRole("dialog", {
+      name: "Selected map place: Homegrown Frederick (Building 13)",
+    });
     await expect(
-      sheet.getByRole("button", { name: "Show less" }),
+      expandedSheet.getByRole("button", { name: "Show less" }),
     ).toHaveAttribute("aria-expanded", "true");
-    const source = sheet.getByRole("link", { name: "Mapped source" });
+    const source = expandedSheet.getByRole("link", { name: "Mapped source" });
     await source.focus();
     await expect(source).toBeInViewport();
-    await expectSheetClearOfActionBar(page, sheet);
+    await expectSheetClearOfActionBar(page, expandedSheet);
     await expectControlInsideSheet(
-      sheet,
-      sheet.getByRole("button", { name: "Report issue" }),
+      expandedSheet,
+      expandedSheet.getByRole("button", { name: "Report issue" }),
     );
 
     const geometry = await page.evaluate(() => {
@@ -1471,6 +1491,158 @@ test.describe("Fairgrounds map accessibility", () => {
     expect(geometry.selectionTop).toBeGreaterThanOrEqual(0);
     expect(geometry.selectionBottom).toBeLessThanOrEqual(
       geometry.actionBarTop - 7.5,
+    );
+  });
+
+  test("makes expanded place details modal at 320px and restores focus", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 480 });
+    await openFairMap(page);
+    const search = page.getByRole("searchbox", {
+      name: "Find a place or program event on the Fair grounds map",
+    });
+    const selectHomegrown = async () => {
+      await search.fill("Homegrown Wineries");
+      await page
+        .locator("#fair-map-search-results")
+        .getByRole("button", { name: /Homegrown Frederick/ })
+        .press("Enter");
+    };
+
+    await selectHomegrown();
+    const compactSheet = page.getByRole("region", {
+      name: "Selected map place: Homegrown Frederick (Building 13)",
+    });
+    await expect(compactSheet).not.toHaveAttribute("aria-modal", "true");
+    await expect(
+      compactSheet.evaluate(
+        (element) =>
+          element instanceof HTMLDialogElement &&
+          element.open &&
+          !element.matches(":modal"),
+      ),
+    ).resolves.toBe(true);
+
+    await compactSheet.getByRole("button", { name: "More details" }).click();
+    let modalSheet = page.getByRole("dialog", {
+      name: "Selected map place: Homegrown Frederick (Building 13)",
+    });
+    await expect(modalSheet).toHaveAttribute("aria-modal", "true");
+    const modalContract = await modalSheet.evaluate((element) => {
+      const dialog = element as HTMLDialogElement;
+      const style = window.getComputedStyle(dialog);
+      const backdrop = window.getComputedStyle(dialog, "::backdrop");
+      return {
+        nativeModal: dialog.matches(":modal"),
+        bodyOverflow: document.body.style.overflow,
+        overflowY: style.overflowY,
+        overscrollY: style.overscrollBehaviorY,
+        maxHeight: style.maxHeight,
+        clientHeight: dialog.clientHeight,
+        scrollHeight: dialog.scrollHeight,
+        backdrop: backdrop.backgroundColor,
+      };
+    });
+    expect(modalContract.nativeModal).toBe(true);
+    expect(modalContract.bodyOverflow).toBe("hidden");
+    expect(modalContract.overflowY).toBe("auto");
+    expect(modalContract.overscrollY).toBe("contain");
+    expect(modalContract.maxHeight).not.toBe("none");
+    expect(modalContract.scrollHeight).toBeGreaterThan(
+      modalContract.clientHeight,
+    );
+    expect(modalContract.backdrop).not.toBe("rgba(0, 0, 0, 0)");
+    expect(modalContract.backdrop).not.toBe("transparent");
+
+    const modalHeading = modalSheet.getByRole("heading", {
+      name: "Selected map place: Homegrown Frederick (Building 13)",
+    });
+    await expect(modalHeading).toBeFocused();
+    const backgroundStayedInert = await modalSheet.evaluate((dialog) => {
+      const outsideControl = document.querySelector<HTMLElement>(
+        "[data-mobile-action-bar] button",
+      );
+      outsideControl?.focus();
+      return {
+        focusStayedInside: dialog.contains(document.activeElement),
+        outsideReceivedFocus: document.activeElement === outsideControl,
+      };
+    });
+    expect(backgroundStayedInert).toEqual({
+      focusStayedInside: true,
+      outsideReceivedFocus: false,
+    });
+
+    const closeButton = modalSheet.getByRole("button", {
+      name: "Close selected map place",
+    });
+    const reportButton = modalSheet.getByRole("button", {
+      name: "Report issue",
+    });
+    await closeButton.focus();
+    await page.keyboard.press("Shift+Tab");
+    await expect(reportButton).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(closeButton).toBeFocused();
+
+    await modalSheet.getByRole("button", { name: "Show less" }).click();
+    const collapsedAgain = page.getByRole("region", {
+      name: "Selected map place: Homegrown Frederick (Building 13)",
+    });
+    const moreDetailsAgain = collapsedAgain.getByRole("button", {
+      name: "More details",
+    });
+    await expect(moreDetailsAgain).toBeFocused();
+    await moreDetailsAgain.click();
+    modalSheet = page.getByRole("dialog", {
+      name: "Selected map place: Homegrown Frederick (Building 13)",
+    });
+    await expect(modalSheet).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#fair-map-selection-mobile")).toHaveCount(0);
+    await expect(search).toBeFocused();
+    await expect
+      .poll(() => page.evaluate(() => document.body.style.overflow))
+      .toBe("");
+
+    await selectHomegrown();
+    await page
+      .getByRole("region", {
+        name: "Selected map place: Homegrown Frederick (Building 13)",
+      })
+      .getByRole("button", { name: "More details" })
+      .click();
+    modalSheet = page.getByRole("dialog", {
+      name: "Selected map place: Homegrown Frederick (Building 13)",
+    });
+    await modalSheet
+      .getByRole("button", { name: "Close selected map place" })
+      .click();
+    await expect(page.locator("#fair-map-selection-mobile")).toHaveCount(0);
+    await expect(search).toBeFocused();
+    await expect
+      .poll(() => page.evaluate(() => document.body.style.overflow))
+      .toBe("");
+
+    await selectHomegrown();
+    await page
+      .getByRole("region", {
+        name: "Selected map place: Homegrown Frederick (Building 13)",
+      })
+      .getByRole("button", { name: "More details" })
+      .click();
+    modalSheet = page.getByRole("dialog", {
+      name: "Selected map place: Homegrown Frederick (Building 13)",
+    });
+    await modalSheet.getByRole("button", { name: "Report issue" }).click();
+    await expect(page.locator("#fair-map-selection-mobile")).toHaveCount(0);
+    const reportDialog = page.getByRole("dialog", {
+      name: "Report a Fair issue",
+    });
+    await expect(reportDialog).toBeVisible();
+    await expect(reportDialog).toContainText(
+      "Reporting: Homegrown Frederick (Building 13)",
     );
   });
 

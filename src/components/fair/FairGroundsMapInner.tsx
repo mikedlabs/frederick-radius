@@ -489,7 +489,10 @@ export default function FairGroundsMapInner({
   const mapViewSelectRef = useRef<HTMLSelectElement | null>(null);
   const clusterSelectionDialogRef = useRef<HTMLDialogElement | null>(null);
   const clusterSelectionHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const mobileSelectionDialogRef = useRef<HTMLDialogElement | null>(null);
   const mobileSelectionHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const mobileSelectionToggleRef = useRef<HTMLButtonElement | null>(null);
+  const focusCollapsedSelectionRef = useRef(false);
   const desktopSelectionHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const lastSelectionTriggerRef = useRef<HTMLElement | null>(null);
   const lastClosedFeatureRef = useRef<FairGroundsMapFeature | null>(null);
@@ -826,6 +829,61 @@ export default function FairGroundsMapInner({
     );
     return () => window.cancelAnimationFrame(frame);
   }, [clusterSelectionFeatures.length, selected]);
+  useEffect(() => {
+    if (!selected) return;
+    const dialog = mobileSelectionDialogRef.current;
+    if (!dialog) return;
+    const mobileViewport = window.matchMedia("(max-width: 1023.98px)");
+    let frame = 0;
+    let previousBodyOverflow: string | null = null;
+
+    const lockBackgroundScroll = () => {
+      if (previousBodyOverflow !== null) return;
+      previousBodyOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    };
+    const unlockBackgroundScroll = () => {
+      if (previousBodyOverflow === null) return;
+      document.body.style.overflow = previousBodyOverflow;
+      previousBodyOverflow = null;
+    };
+    const syncMobileSelectionMode = () => {
+      window.cancelAnimationFrame(frame);
+      if (dialog.open) dialog.close();
+
+      if (!mobileViewport.matches) {
+        unlockBackgroundScroll();
+        return;
+      }
+
+      if (selectionExpanded) {
+        dialog.showModal();
+        lockBackgroundScroll();
+        frame = window.requestAnimationFrame(() =>
+          mobileSelectionHeadingRef.current?.focus({ preventScroll: true }),
+        );
+        return;
+      }
+
+      dialog.show();
+      unlockBackgroundScroll();
+      if (focusCollapsedSelectionRef.current) {
+        focusCollapsedSelectionRef.current = false;
+        frame = window.requestAnimationFrame(() =>
+          mobileSelectionToggleRef.current?.focus({ preventScroll: true }),
+        );
+      }
+    };
+
+    syncMobileSelectionMode();
+    mobileViewport.addEventListener("change", syncMobileSelectionMode);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      mobileViewport.removeEventListener("change", syncMobileSelectionMode);
+      if (dialog.open) dialog.close();
+      unlockBackgroundScroll();
+    };
+  }, [selected, selectionExpanded]);
   const selectedTone = selected
     ? markerTone(selected.properties.kind)
     : "var(--app-brand-press)";
@@ -1162,6 +1220,7 @@ export default function FairGroundsMapInner({
     // Keep a cluster-origin camera stable so its exact trigger can receive
     // focus again. Search/list selections need a reframe when controls return.
     lastClosedFeatureRef.current = origin ? null : selected;
+    focusCollapsedSelectionRef.current = false;
     setSelectionExpanded(false);
     setSelectedId(null);
     setMapAnnouncement("Map place details closed.");
@@ -1174,6 +1233,16 @@ export default function FairGroundsMapInner({
     setCondensedSearchOpen(false);
     setMapAnnouncement("Map search closed.");
     restoreMapControlFocus(null);
+  };
+
+  const reportMobileMapIssue = () => {
+    if (!selected) return;
+    const reportedFeature = selected;
+    // A native modal makes the rest of the document inert. Leave it before
+    // opening the shared feedback sheet so that second dialog can receive
+    // focus and return the visitor to the map search when it closes.
+    closeSelection();
+    window.requestAnimationFrame(() => reportMapIssue(reportedFeature));
   };
 
   const browseProgram = () => {
@@ -2322,12 +2391,15 @@ export default function FairGroundsMapInner({
           ) : null}
 
           {selected ? (
-            <div
+            <dialog
+              ref={mobileSelectionDialogRef}
               id="fair-map-selection-mobile"
               data-fair-map-selection
-              className="fair-map-mobile-sheet fixed left-3 right-3 mx-auto max-w-[30rem] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-4 lg:hidden"
+              className="fair-map-mobile-sheet fair-map-place-dialog fixed left-3 right-3 mx-auto max-w-[30rem] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-4 lg:hidden"
               style={{
-                zIndex: "calc(var(--z-sticky) + 1)",
+                zIndex: selectionExpanded
+                  ? "var(--z-overlay)"
+                  : "calc(var(--z-sticky) + 1)",
                 borderColor: "var(--app-control-border)",
                 borderTopColor: selectedTone,
                 borderTopWidth: "4px",
@@ -2335,12 +2407,22 @@ export default function FairGroundsMapInner({
                 boxShadow:
                   "var(--app-elev-3), var(--app-edge), var(--app-hi)",
               }}
-              role="region"
+              role={selectionExpanded ? "dialog" : "region"}
+              aria-modal={selectionExpanded ? "true" : undefined}
               aria-labelledby="fair-map-selection-mobile-heading"
-              onKeyDown={(event) => {
-                if (event.key !== "Escape") return;
+              onCancel={(event) => {
                 event.preventDefault();
                 closeSelection();
+              }}
+              onKeyDown={(event) => {
+                if (selectionExpanded) {
+                  keepFocusInsideDialog(event);
+                  return;
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  closeSelection();
+                }
               }}
             >
               <button
@@ -2375,10 +2457,16 @@ export default function FairGroundsMapInner({
               </p>
               <FairMapFeatureActions feature={selected} mode="primary" />
               <button
+                ref={mobileSelectionToggleRef}
                 type="button"
                 aria-expanded={selectionExpanded}
                 aria-controls="fair-map-selection-mobile-details"
-                onClick={() => setSelectionExpanded((current) => !current)}
+                onClick={() => {
+                  if (selectionExpanded) {
+                    focusCollapsedSelectionRef.current = true;
+                  }
+                  setSelectionExpanded((current) => !current);
+                }}
                 className="tap-44 mt-1 inline-flex min-h-11 items-center gap-1 text-[13px] font-bold"
                 style={{ color: selectedTone }}
               >
@@ -2446,7 +2534,7 @@ export default function FairGroundsMapInner({
                 >
                 <button
                   type="button"
-                  onClick={() => reportMapIssue(selected)}
+                  onClick={reportMobileMapIssue}
                   className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-bold"
                   style={{ color: "var(--app-brand-press)" }}
                 >
@@ -2455,7 +2543,7 @@ export default function FairGroundsMapInner({
                   </button>
                 </div>
               </div>
-            </div>
+            </dialog>
           ) : null}
         </div>
 

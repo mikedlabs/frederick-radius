@@ -1172,7 +1172,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     ) !important;
   }
 
-  .fair-map-cluster-dialog {
+  .fair-map-cluster-dialog,
+  .fair-map-place-dialog {
     top: auto !important;
     width: min(calc(100% - 1.5rem), 30rem);
     margin-block: 0;
@@ -1180,7 +1181,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     color: var(--app-ink);
   }
 
-  .fair-map-cluster-dialog::backdrop {
+  .fair-map-cluster-dialog::backdrop,
+  .fair-map-place-dialog::backdrop {
     background: color-mix(in srgb, var(--app-ink) 24%, transparent);
     backdrop-filter: blur(2px);
   }
