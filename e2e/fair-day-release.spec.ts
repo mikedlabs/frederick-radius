@@ -475,6 +475,7 @@ test.describe("Fair Day production release journey", () => {
           heroLayout?.identityTop ?? 0,
         );
         for (const control of heroLayout?.controlButtons ?? []) {
+          expect(control.width).toBeGreaterThanOrEqual(44);
           expect(control.height).toBeGreaterThanOrEqual(44);
         }
 

@@ -161,6 +161,35 @@ describe("FairDayWorkspace app journey", () => {
     });
   }
 
+  it("keeps Fair header navigation visually quiet and accessibly named", async () => {
+    await renderFair();
+
+    const radiusBack = container.querySelector<HTMLAnchorElement>(
+      'a[aria-label="Back to Frederick Radius"]',
+    );
+    const heroHelp = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Help & access"]',
+    );
+    expect(radiusBack?.textContent?.trim()).toBe("");
+    expect(heroHelp?.textContent?.trim()).toBe("");
+
+    await openMode("Program");
+    const fairBack = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Back to Fair Today"]',
+    );
+    expect(fairBack?.textContent?.trim()).toBe("");
+
+    await openMode("Map");
+    const mapBack = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Back to Fair Today"]',
+    );
+    const mapHelp = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Help & access"]',
+    );
+    expect(mapBack?.textContent?.trim()).toBe("");
+    expect(mapHelp?.textContent?.trim()).toBe("");
+  });
+
   it("switches real panels, updates the URL, and focuses the new heading", async () => {
     await renderFair();
 
@@ -444,9 +473,11 @@ describe("FairDayWorkspace app journey", () => {
     await renderFair();
 
     const openFamilyCare = async () => {
-      await act(async () =>
-        buttonWithText(container, "Help & access").click(),
+      const help = container.querySelector<HTMLButtonElement>(
+        'button[aria-label="Help & access"]',
       );
+      if (!help) throw new Error("Missing Fair help control.");
+      await act(async () => help.click());
       await act(async () => vi.advanceTimersByTimeAsync(20));
       await act(async () =>
         buttonWithText(document.body, "Family Care + changing").click(),

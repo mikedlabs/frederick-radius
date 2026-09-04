@@ -544,25 +544,24 @@ function FairPhotoMasthead({
           <button
             type="button"
             onClick={onBack}
-            className="fair-hero-control tap-44 inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-[13px] font-semibold backdrop-blur-md"
+            className="fair-hero-control tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full backdrop-blur-md"
             style={{
               color: "var(--app-brand-press)",
               background:
-                "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
+                "color-mix(in srgb, var(--app-bg-elevated-solid) 84%, transparent)",
             }}
             aria-label="Back to Fair Today"
           >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Fair Today
+            <ArrowLeft className="h-5 w-5" aria-hidden />
           </button>
           <button
             type="button"
             onClick={onHelp}
-            className="fair-hero-control tap-44 grid h-11 w-11 place-items-center rounded-full backdrop-blur-md"
+            className="fair-hero-control tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full backdrop-blur-md"
             style={{
               color: "var(--app-cool)",
               background:
-                "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
+                "color-mix(in srgb, var(--app-bg-elevated-solid) 84%, transparent)",
             }}
             aria-label="Help & access"
           >
@@ -1527,19 +1526,15 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               >
                 <Link
                   href="/today"
-                  aria-label="Frederick Radius"
-                  className="fair-hero-control tap-44 inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-[13px] font-semibold shadow-[var(--app-elev-1)] backdrop-blur-sm"
+                  aria-label="Back to Frederick Radius"
+                  className="fair-hero-control tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full shadow-[var(--app-elev-1)] backdrop-blur-sm"
                   style={{
                     color: "var(--app-brand-press)",
                     background:
-                      "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
+                      "color-mix(in srgb, var(--app-bg-elevated-solid) 84%, transparent)",
                   }}
                 >
-                  <ArrowLeft className="h-4 w-4" aria-hidden />
-                  <span className="min-[360px]:hidden">Radius</span>
-                  <span className="hidden min-[360px]:inline">
-                    Frederick Radius
-                  </span>
+                  <ArrowLeft className="h-5 w-5" aria-hidden />
                 </Link>
                 <button
                   type="button"
@@ -1549,18 +1544,14 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                     setHelpCategory(null);
                     openHelp();
                   }}
-                  className="fair-hero-control tap-44 inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-[13px] font-semibold shadow-[var(--app-elev-1)] backdrop-blur-sm"
+                  className="fair-hero-control tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full shadow-[var(--app-elev-1)] backdrop-blur-sm"
                   style={{
                     color: "var(--app-cool)",
                     background:
-                      "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
+                      "color-mix(in srgb, var(--app-bg-elevated-solid) 84%, transparent)",
                   }}
                 >
-                  <CircleHelp className="h-4 w-4" aria-hidden />
-                  <span className="min-[360px]:hidden">Help</span>
-                  <span className="hidden min-[360px]:inline">
-                    Help &amp; access
-                  </span>
+                  <CircleHelp className="h-5 w-5" aria-hidden />
                 </button>
               </div>
 
@@ -1604,14 +1595,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               <button
                 type="button"
                 onClick={() => chooseMode("now")}
-                className="tap-44 inline-flex min-h-11 min-w-11 items-center gap-2 rounded-[var(--app-radius-sm)] text-left"
+                className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full"
                 style={{ color: "var(--app-brand-press)" }}
                 aria-label="Back to Fair Today"
               >
-                <RippleMark size={26} />
-                <span className="hidden text-[12px] font-bold uppercase tracking-[0.09em] min-[360px]:block">
-                  Fair Day
-                </span>
+                <ArrowLeft className="h-5 w-5" aria-hidden />
               </button>
               <div className="min-w-0 text-center">
                 <p className="truncate text-[16px] font-extrabold tracking-[-0.02em]">
