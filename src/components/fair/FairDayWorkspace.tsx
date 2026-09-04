@@ -1297,6 +1297,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
     <article
       data-fair-app
       data-fair-interaction-ready={storageReady ? "true" : "false"}
+      data-fair-route-ready={routeReady ? "true" : "false"}
       data-fair-plan-storage={planStorageState}
       aria-busy={!routeReady || !storageReady}
       className="fair-day-workspace min-h-dvh w-full font-sans"
@@ -1305,6 +1306,14 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         color: "var(--app-ink)",
       }}
     >
+      {!routeReady ? (
+        <span
+          id="fair-map"
+          data-fair-route-target
+          className="pointer-events-none absolute h-px w-px overflow-hidden"
+          aria-hidden="true"
+        />
+      ) : null}
       <style>{`
         .fair-day-workspace :is(a, button, input, select, summary, [tabindex]):focus-visible {
           outline: 2px solid var(--app-brand);
@@ -1323,6 +1332,13 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         .fair-day-workspace [data-fair-mode-panel] {
           animation: fair-mode-panel-enter var(--app-dur-med) var(--app-ease-out) both;
         }
+        .fair-day-workspace[data-fair-route-ready="false"] > [data-fair-route-target]:target ~ header,
+        .fair-day-workspace[data-fair-route-ready="false"] > [data-fair-route-target]:target ~ [data-fair-plan-status],
+        .fair-day-workspace[data-fair-route-ready="false"] > [data-fair-route-target]:target ~ [data-fair-storage-warning],
+        .fair-day-workspace[data-fair-route-ready="false"] > [data-fair-route-target]:target ~ [data-fair-mode-content],
+        .fair-day-workspace[data-fair-route-ready="false"] > [data-fair-route-target]:target ~ [data-fair-loading-state] {
+          display: none;
+        }
         @keyframes fair-mode-panel-enter {
           from {
             opacity: 0;
@@ -1330,7 +1346,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
           }
           to {
             opacity: 1;
-            transform: translateY(0);
+            transform: none;
           }
         }
         @media (hover: hover) and (pointer: fine) {
@@ -1620,6 +1636,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       ) : null}
 
       <div
+        data-fair-mode-content
         className={
           activeMode === "map"
             ? "w-full pb-24 lg:mx-auto lg:max-w-[68rem] lg:px-6 lg:pb-12 lg:pt-6"
@@ -2134,7 +2151,6 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
           <section
             id={MODE_PANEL_IDS.map}
             aria-labelledby="fair-grounds-map-heading"
-            data-fair-mode-panel
           >
             <FairGroundsMap
               savedStops={mappedPlanStops}

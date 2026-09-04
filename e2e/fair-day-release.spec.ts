@@ -170,10 +170,10 @@ test.describe("Fair Day production release journey", () => {
       .fill("Homegrown Wineries");
     await page
       .locator("#fair-map-search-results")
-      .getByRole("button", { name: /Commercial Building/ })
+      .getByRole("button", { name: /Homegrown Frederick/ })
       .click();
     const selectedPlace = page.getByRole("region", {
-      name: "Selected map place: Commercial Building",
+      name: "Selected map place: Homegrown Frederick (Building 13)",
     });
     await expect(selectedPlace).toBeVisible();
     await expect(selectedPlace).toContainText("On your selected day");
