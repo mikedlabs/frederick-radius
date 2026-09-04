@@ -6,6 +6,49 @@ test.use({
   permissions: ["geolocation"],
 });
 
+test("desktop map dock keeps the complete content-choice label", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  // Exercise the shipped dock CSS without making this chrome regression test
+  // depend on the deferred map renderer or its place-layer data.
+  await page.goto("/compass", {
+    waitUntil: "domcontentloaded",
+    timeout: 90_000,
+  });
+  await page.locator("main").evaluate((main) => {
+    const fixture = document.createElement("div");
+    fixture.dataset.desktopDockFixture = "true";
+    fixture.innerHTML = `
+      <div class="dock" style="position:relative;inset:auto;width:680px">
+        <div class="dock-head">
+          <div class="dock-search-wrap">
+            <div class="dock-search">Search this map</div>
+          </div>
+          <button type="button" class="dock-contents tap-44" aria-label="Choose what to see on this map">
+            <svg aria-hidden="true" width="18" height="18"></svg>
+            <span class="dock-contents-label">What to see</span>
+          </button>
+        </div>
+      </div>`;
+    main.appendChild(fixture);
+  });
+
+  const browse = page.getByRole("button", { name: "Choose what to see on this map" });
+  const label = browse.locator(".dock-contents-label");
+  await expect(label).toBeVisible();
+  await expect(label).toHaveText("What to see");
+  const geometry = await browse.evaluate((control) => {
+    const visibleLabel = control.querySelector<HTMLElement>(".dock-contents-label");
+    return {
+      height: control.getBoundingClientRect().height,
+      labelClientWidth: visibleLabel?.clientWidth ?? 0,
+      labelScrollWidth: visibleLabel?.scrollWidth ?? 1,
+    };
+  });
+  expect(geometry.height).toBeGreaterThanOrEqual(44);
+  expect(geometry.labelScrollWidth).toBeLessThanOrEqual(geometry.labelClientWidth);
+});
+
 test("task-first map stays clear and makes the useful actions obvious", async ({ page }) => {
   await page.goto("/map", { waitUntil: "domcontentloaded" });
   await expect(page.locator(".dock-host")).toHaveAttribute("data-map-loaded", "true", {

@@ -6,6 +6,7 @@ import {
   askFailureForAbortReason,
   askQuestionPath,
   askResultHeading,
+  askVisibleRecommendationSummary,
   canDisplayAskSourcePhoto,
   explicitAreaInQuery,
   hasResolvedNearbyArea,
@@ -42,6 +43,7 @@ describe("Ask Radius evidence labels", () => {
     expect(askEvidenceLabels({})).toEqual({
       sourceLabel: "Source",
       explanationLabel: "What Radius found",
+      hoursLimitation: null,
     });
   });
 
@@ -49,7 +51,69 @@ describe("Ask Radius evidence labels", () => {
     expect(askEvidenceLabels({ isPrimaryRankedResult: true })).toEqual({
       sourceLabel: "Best match",
       explanationLabel: "Why it fits",
+      hoursLimitation: null,
     });
+  });
+
+  it.each([
+    [
+      "now" as const,
+      "Radius has not confirmed that this place is open now. Check before you go.",
+    ],
+    [
+      "tonight" as const,
+      "Radius has not confirmed this place's hours for tonight. Check before you go.",
+    ],
+  ])(
+    "qualifies a primary place recommendation when %s depends on unknown hours",
+    (timeNeed, hoursLimitation) => {
+      expect(
+        askEvidenceLabels(
+          {
+            href: "/places/gravel-and-grind-frederick",
+            isPrimaryRankedResult: true,
+            status: "At 7:00 PM · Hours not posted",
+          },
+          timeNeed,
+        ),
+      ).toEqual({
+        sourceLabel: "Possible match",
+        explanationLabel: "Why it may fit",
+        hoursLimitation,
+      });
+      expect(
+        askVisibleRecommendationSummary(
+          "Gravel & Grind is the best match for coffee.",
+          hoursLimitation,
+        ),
+      ).toBe("Gravel & Grind is a possible match for coffee.");
+    },
+  );
+
+  it("keeps verified and event recommendations authoritative", () => {
+    expect(
+      askEvidenceLabels(
+        {
+          href: "/places/cafe-nola-frederick",
+          isPrimaryRankedResult: true,
+          status: "Open until 10pm",
+        },
+        "now",
+      ),
+    ).toEqual({
+      sourceLabel: "Best match",
+      explanationLabel: "Why it fits",
+      hoursLimitation: null,
+    });
+    expect(
+      askEvidenceLabels(
+        {
+          href: "/events/alive-at-five",
+          isPrimaryRankedResult: true,
+        },
+        "tonight",
+      ).sourceLabel,
+    ).toBe("Best match");
   });
 });
 

@@ -406,17 +406,57 @@ export function askResultHeading(
 }
 
 export function askEvidenceLabels(
-  source: Pick<AskSource, "isPrimaryRankedResult">,
+  source: Partial<
+    Pick<AskSource, "href" | "isPrimaryRankedResult" | "status">
+  >,
+  timeNeed: NonNullable<AskResult["intent"]>["timeNeed"] = null,
 ): {
-  sourceLabel: "Best match" | "Source";
-  explanationLabel: "Why it fits" | "What Radius found";
+  sourceLabel: "Best match" | "Possible match" | "Source";
+  explanationLabel: "Why it fits" | "Why it may fit" | "What Radius found";
+  hoursLimitation: string | null;
 } {
   // AskResult.sources is normally a citation list. Retrieval order alone is
   // not a recommendation contract, so recommendation language requires the
   // server to explicitly identify the ranked primary result.
-  return source.isPrimaryRankedResult
-    ? { sourceLabel: "Best match", explanationLabel: "Why it fits" }
-    : { sourceLabel: "Source", explanationLabel: "What Radius found" };
+  if (!source.isPrimaryRankedResult) {
+    return {
+      sourceLabel: "Source",
+      explanationLabel: "What Radius found",
+      hoursLimitation: null,
+    };
+  }
+
+  const timeSensitive = timeNeed === "now" || timeNeed === "tonight";
+  const placeResult = source.href?.startsWith("/places/") ?? false;
+  const status = source.status?.trim() ?? "";
+  const hoursUnknown =
+    !status || /\bhours (?:not posted|not confirmed|unconfirmed)\b/i.test(status);
+  if (timeSensitive && placeResult && hoursUnknown) {
+    return {
+      sourceLabel: "Possible match",
+      explanationLabel: "Why it may fit",
+      hoursLimitation:
+        timeNeed === "now"
+          ? "Radius has not confirmed that this place is open now. Check before you go."
+          : "Radius has not confirmed this place's hours for tonight. Check before you go.",
+    };
+  }
+
+  return {
+    sourceLabel: "Best match",
+    explanationLabel: "Why it fits",
+    hoursLimitation: null,
+  };
+}
+
+export function askVisibleRecommendationSummary(
+  summary: string | null,
+  hoursLimitation: string | null,
+): string | null {
+  if (!summary || !hoursLimitation) return summary;
+  return summary
+    .replace(/\bthe best match\b/i, "a possible match")
+    .replace(/\bthe strongest match\b/i, "a possible match");
 }
 
 export function sourceHasDistinctDetail(
@@ -1111,7 +1151,7 @@ function WorkspaceComposer({
       }}
     >
       <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      <span className="hidden truncate min-[350px]:inline">
+      <span className="max-w-[58px] truncate min-[350px]:max-w-[70px]">
         {compactContextLabel(contextLabel)}
       </span>
     </button>
@@ -1585,7 +1625,6 @@ export default function AskFrederick({
       if (cached.result.status !== "empty") {
         track("ask_answer");
         lastQueryRef.current = effectiveQuery;
-        setQ("");
       }
       return;
     }
@@ -1636,7 +1675,6 @@ export default function AskFrederick({
         if (next.status !== "empty") {
           track("ask_answer");
           lastQueryRef.current = effectiveQuery;
-          setQ("");
         } else if (!failure) {
           // The question Radius could not answer IS the roadmap: the query
           // text goes with the event so the dashboard shows what was wanted
@@ -1848,8 +1886,20 @@ export default function AskFrederick({
     // made"). The permalink still comes along for the tap-through; the
     // question alone remains the fallback while an answer is loading.
     const answer = res?.answer?.trim() ?? "";
+    const shareHoursLimitation = res?.sources[0]
+      ? askEvidenceLabels(
+          res.sources[0],
+          res.intent?.timeNeed ?? null,
+        ).hoursLimitation
+      : null;
+    const answerWithHoursContext =
+      shareHoursLimitation && !answer.includes(shareHoursLimitation)
+        ? `${answer} ${shareHoursLimitation}`.trim()
+        : answer;
     const shareText =
-      answer.length > 600 ? `${answer.slice(0, 597).trimEnd()}…` : answer || query;
+      answerWithHoursContext.length > 600
+        ? `${answerWithHoursContext.slice(0, 597).trimEnd()}…`
+        : answerWithHoursContext || query;
 
     if (navigator.share) {
       try {
@@ -1885,7 +1935,15 @@ export default function AskFrederick({
   const correctionResultRef = res
     ? askCorrectionResultRef(res.sources)
     : null;
-  const evidenceLabels = leadSource ? askEvidenceLabels(leadSource) : null;
+  const evidenceLabels = leadSource
+    ? askEvidenceLabels(leadSource, res?.intent?.timeNeed ?? null)
+    : null;
+  const visibleSummary = responsePresentation
+    ? askVisibleRecommendationSummary(
+        responsePresentation.summary,
+        evidenceLabels?.hoursLimitation ?? null,
+      )
+    : null;
   const supportingSources = res?.sources.slice(1) ?? [];
   const collapsedSourceCount = responsePresentation?.layout === "place" ? 3 : 2;
   const collapsedSupportingCount = Math.max(
@@ -1989,7 +2047,7 @@ export default function AskFrederick({
                 contextLabel={contextLabel}
                 expanded={showAreaChooser}
                 loading={loading}
-                compact={false}
+                compact={Boolean(res)}
                 query={q}
                 onQueryChange={setQ}
                 onSubmit={() => void ask(q)}
@@ -2273,14 +2331,14 @@ export default function AskFrederick({
             </p>
             {responseSections.map((section) => {
               if (section === "summary") {
-                return responsePresentation.summary ? (
+                return visibleSummary ? (
                   <p
                     key={section}
                     data-ask-section={section}
                     className="whitespace-pre-wrap px-1 text-[15px] leading-[1.58] sm:text-[16px]"
                     style={{ color: "var(--app-ink)" }}
                   >
-                    {responsePresentation.summary}
+                    {visibleSummary}
                   </p>
                 ) : null;
               }
@@ -2406,6 +2464,23 @@ export default function AskFrederick({
                         ? "Official source"
                         : evidenceLabels?.sourceLabel}
                     </p>
+                    {evidenceLabels?.hoursLimitation ? (
+                      <p
+                        data-ask-hours-limitation
+                        className="mb-2 flex items-start gap-2 rounded-[var(--app-radius-sm)] px-3 py-2 text-[11.5px] font-medium leading-snug"
+                        style={{
+                          background:
+                            "color-mix(in srgb, var(--app-warning) 10%, var(--app-bg-elevated-solid))",
+                          color: "var(--app-ink-2)",
+                        }}
+                      >
+                        <Clock3
+                          className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                          aria-hidden
+                        />
+                        <span>{evidenceLabels.hoursLimitation}</span>
+                      </p>
+                    ) : null}
                     <AskSourceCard
                       source={leadSource}
                       index={0}

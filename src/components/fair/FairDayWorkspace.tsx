@@ -1918,7 +1918,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                   className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.06em] tabular-nums sm:text-[12px]"
                   style={{ color: "var(--app-ink-3)" }}
                 >
-                  {fairDateShortLabel(selectedDate)}
+                  {storageReady
+                    ? fairDateShortLabel(selectedDate)
+                    : "Restoring your day"}
                 </p>
               </div>
               <button
@@ -2016,7 +2018,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                       className="mt-0.5 block truncate text-[11px] font-semibold leading-tight"
                       style={{ color: "var(--app-ink-3)" }}
                     >
-                      {mode.id === "my-day" && plan.steps.length > 0
+                      {storageReady && mode.id === "my-day" && plan.steps.length > 0
                         ? `${plan.steps.length} saved · ${savedDayCount} ${savedDayCount === 1 ? "day" : "days"}`
                         : mode.detail}
                     </span>
@@ -2028,7 +2030,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         </div>
       </header>
 
-      {!routeReady ? (
+      {!routeReady || !storageReady ? (
         <div
           data-fair-loading-state
           role="status"
@@ -2041,8 +2043,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         >
           <RippleMark size={24} />
           <p className="text-[13px] font-semibold leading-snug">
-            Preparing the Fair guide. The program, map, and planning tools will
-            be ready here.
+            Preparing the Fair guide. Restoring your date and saved plan now.
           </p>
         </div>
       ) : null}
@@ -2068,6 +2069,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
 
       <div
         data-fair-mode-content
+        hidden={!routeReady || !storageReady}
         className={
           activeMode === "map"
             ? "w-full pb-24 lg:mx-auto lg:max-w-[68rem] lg:px-6 lg:pb-12 lg:pt-6"
@@ -3116,7 +3118,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 aria-current={active ? "page" : undefined}
                 onClick={() => chooseMode(mode.id)}
                 aria-label={
-                  mode.id === "my-day" && plannedRows.length > 0
+                  storageReady && mode.id === "my-day" && plannedRows.length > 0
                     ? `${mode.label}, ${plannedRows.length} saved`
                     : mode.label
                 }
@@ -3141,7 +3143,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                   aria-hidden="true"
                 >
                   <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
-                  {mode.id === "my-day" && plannedRows.length > 0 ? (
+                  {storageReady && mode.id === "my-day" && plannedRows.length > 0 ? (
                     <span
                       className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border px-1 text-[10px] font-extrabold leading-none tabular-nums"
                       style={{

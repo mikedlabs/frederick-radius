@@ -18,6 +18,7 @@ import {
   IngestedEventDetailColdScanDisabledError,
   ingestedSeriesToCards,
 } from "./ingestedEvents";
+import { cleanEventSlug } from "@/lib/events/normalize";
 
 describe("multi-day all-day ingested visibility", () => {
   beforeEach(() => {
@@ -197,6 +198,38 @@ describe("multi-day all-day ingested visibility", () => {
       municipality_name: "Frederick City",
       geo_confidence: "unknown",
     });
+  });
+
+  it("does not resolve a syndicated social profile as an event detail", async () => {
+    const title =
+      "RCCG- NCCC (@rccg.nccc) • Instagram photos and videos";
+    const startsAt = "2026-09-04T18:00:00.000Z";
+    mocks.getSql.mockReturnValue(
+      vi.fn(async () => [
+        {
+          source_uid: "social-profile-1",
+          source_domain: "www.frederickcountymd.gov",
+          source_url: "https://www.instagram.com/rccg.nccc/",
+          title,
+          description: "",
+          starts_at_utc: startsAt,
+          ends_at_utc: "2026-09-04T19:00:00.000Z",
+          all_day: false,
+          venue_name: "Frederick County",
+          address: null,
+          lat: null,
+          lng: null,
+          municipality: "Frederick County",
+          category: "Community Events",
+          hero_image: null,
+          hero_image_alt: null,
+        },
+      ]) as never,
+    );
+
+    await expect(
+      getIngestedCardBySlug(cleanEventSlug({ title, startsAt })),
+    ).resolves.toBeNull();
   });
 
   it("does not start the countywide series scan on a dated detail request", async () => {

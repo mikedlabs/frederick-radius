@@ -96,7 +96,7 @@ vi.mock("@/lib/fair/car-memory", () => ({
   readSavedFairCar: () => null,
 }));
 
-import FairGroundsMapInner from "./FairGroundsMapInner";
+import FairGroundsMapInner, { fairMeetHereUrl } from "./FairGroundsMapInner";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true;
@@ -126,6 +126,22 @@ const MAP_FIXTURE = {
         sourceUpdatedAt: "2026-08-16T19:12:58Z",
         scheduleAliases: [],
         anchor: [-77.3944867, 39.4107704],
+      },
+    },
+    {
+      type: "Feature",
+      geometry: {
+        type: "Point",
+        coordinates: [-77.39432, 39.41095],
+      },
+      properties: {
+        id: "osm-node-14099608926",
+        name: "Gate 2",
+        kind: "gate",
+        sourceUrl: "https://www.openstreetmap.org/node/14099608926",
+        sourceUpdatedAt: "2026-08-16T19:12:58Z",
+        scheduleAliases: [],
+        anchor: [-77.39432, 39.41095],
       },
     },
     {
@@ -271,6 +287,122 @@ describe("FairGroundsMapInner map failure recovery", () => {
       callbacks.forEach((callback) => callback(performance.now()));
     });
   }
+
+  it("builds a public meeting-place link without sharing a visitor location or private plan", () => {
+    const url = new URL(
+      fairMeetHereUrl(
+        "https://frederickradius.app",
+        "osm-way-103615596",
+      ),
+    );
+
+    expect(url.pathname).toBe("/moments/great-frederick-fair-2026");
+    expect(url.searchParams.get("meet")).toBe("osm-way-103615596");
+    expect(url.hash).toBe("#fair-map");
+    expect(url.searchParams.has("location")).toBe(false);
+    expect(url.searchParams.has("plan")).toBe(false);
+  });
+
+  it("opens the exact reviewed place from a shared meeting link", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/moments/great-frederick-fair-2026?meet=osm-way-103615596#fair-map",
+    );
+
+    await renderMap();
+    await flushAnimationFrames();
+
+    expect(
+      container.querySelector("[data-fair-map-selection]")?.textContent,
+    ).toContain("Grandstand");
+    expect(
+      container.querySelector<HTMLButtonElement>("[data-fair-meet-here]")
+        ?.textContent,
+    ).toContain("Meet here");
+    expect(
+      container.querySelector<HTMLSelectElement>("[data-fair-map-filter-select]")
+        ?.value,
+    ).toBe("buildings");
+  });
+
+  it("shares only the reviewed public place even when the current URL contains private state", async () => {
+    const share = vi
+      .fn<(data: ShareData) => Promise<void>>()
+      .mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { share });
+    window.history.replaceState(
+      {},
+      "",
+      "/moments/great-frederick-fair-2026?meet=osm-way-103615596&lat=39.41&lng=-77.39&plan=private#fair-map",
+    );
+
+    await renderMap();
+    await flushAnimationFrames();
+
+    const meetHere = container.querySelector<HTMLButtonElement>(
+      "[data-fair-meet-here]",
+    );
+    if (!meetHere) throw new Error("Missing meeting-place share action.");
+    expect(meetHere.getAttribute("aria-label")).toBe(
+      "Share Grandstand as a meeting place",
+    );
+    await act(async () => meetHere.click());
+
+    expect(share).toHaveBeenCalledOnce();
+    const payload = share.mock.calls[0]?.[0];
+    if (!payload) throw new Error("Missing native share payload.");
+    const sharedUrl = new URL(payload.url as string);
+    expect([...sharedUrl.searchParams.keys()]).toEqual(["meet"]);
+    expect(sharedUrl.searchParams.get("meet")).toBe("osm-way-103615596");
+    expect(sharedUrl.hash).toBe("#fair-map");
+    expect(payload.text).toContain("Meet me at Grandstand");
+  });
+
+  it("does not carry copied feedback onto a newly selected meeting place", async () => {
+    const writeText = vi
+      .fn<(value: string) => Promise<void>>()
+      .mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    window.history.replaceState(
+      {},
+      "",
+      "/moments/great-frederick-fair-2026?meet=osm-node-14099608925#fair-map",
+    );
+
+    await renderMap();
+    await flushAnimationFrames();
+
+    const firstMeetHere = container.querySelector<HTMLButtonElement>(
+      "[data-fair-meet-here]",
+    );
+    if (!firstMeetHere) throw new Error("Missing first meeting-place share action.");
+    await act(async () => {
+      firstMeetHere.click();
+      await Promise.resolve();
+    });
+    expect(firstMeetHere.textContent).toContain("Link copied");
+
+    const gateTwo = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(
+        "#fair-map-place-list button",
+      ),
+    ).find((button) => button.textContent?.includes("Gate 2"));
+    if (!gateTwo) throw new Error("Missing second reviewed meeting place.");
+    await act(async () => gateTwo.click());
+
+    const nextMeetHere = container.querySelector<HTMLButtonElement>(
+      "[data-fair-meet-here]",
+    );
+    expect(nextMeetHere?.textContent).toContain("Meet here");
+    expect(nextMeetHere?.getAttribute("aria-label")).toBe(
+      "Share Gate 2 as a meeting place",
+    );
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(writeText.mock.calls[0]?.[0]).toContain(
+      "meet=osm-node-14099608925",
+    );
+  });
 
   function runtimeStatus() {
     const status = container.querySelector<HTMLElement>('p[role="status"]');

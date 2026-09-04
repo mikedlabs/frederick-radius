@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { NwsAlert } from "@/lib/integrations/nws-alerts";
+import type { OfficialCivicAlert } from "@/lib/integrations/official-alert-feeds";
 import {
   alertCardSummary,
   dedupeUnifiedAlerts,
   nwsDisplaySeverity,
+  officialCivicAlerts,
   untilLabel,
   type UnifiedAlert,
 } from "./CivicAlerts";
@@ -131,5 +133,55 @@ describe("dedupeUnifiedAlerts", () => {
         roadAlert("mdot-road:work-zone:456"),
       ]),
     ).toHaveLength(2);
+  });
+});
+
+function officialAlert(
+  overrides: Partial<OfficialCivicAlert> = {},
+): OfficialCivicAlert {
+  return {
+    id: "health-closing:test",
+    kind: "health-closing",
+    state: "active",
+    active: true,
+    title: "Closed Labor Day",
+    summary: "Health Department offices will be closed Monday, September 7.",
+    scope: "county",
+    url: "https://health.frederickcountymd.gov/closing/test",
+    publishedAt: "2026-09-01T12:00:00.000Z",
+    occurredAt: "2026-09-01T12:00:00.000Z",
+    expiresAt: "2026-09-15T12:00:00.000Z",
+    confidence: "official",
+    provenance: {
+      publisher: "Frederick County Health Department",
+      authority: "official-government",
+      sourceUrl: "https://health.frederickcountymd.gov/closing/test",
+      canonicalUrl: "https://health.frederickcountymd.gov/closing/test",
+      sourceKind: "official-rss",
+      retrievedAt: "2026-09-04T12:00:00.000Z",
+      providerUpdatedAt: "2026-09-01T12:00:00.000Z",
+      confidence: "official",
+    },
+    ...overrides,
+  };
+}
+
+describe("officialCivicAlerts", () => {
+  it("keeps a routine office closing out of Today's high-signal interruption layer", () => {
+    expect(officialCivicAlerts([officialAlert()])[0]?.severity).toBe("info");
+  });
+
+  it("still promotes a closing whose copy describes an emergency", () => {
+    expect(officialCivicAlerts([officialAlert({
+      summary: "Offices are closed during an emergency. Avoid the affected building.",
+    })])[0]?.severity).toBe("warning");
+  });
+
+  it("keeps an official city emergency prominent even with quiet copy", () => {
+    expect(officialCivicAlerts([officialAlert({
+      kind: "city-emergency",
+      title: "City emergency notice",
+      summary: "Follow the latest official instructions.",
+    })])[0]?.severity).toBe("warning");
   });
 });

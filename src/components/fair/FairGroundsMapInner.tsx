@@ -16,6 +16,7 @@ import {
   PawPrint,
   Scan,
   Search,
+  Share2,
   Toilet,
   TicketCheck,
   X,
@@ -62,6 +63,7 @@ import {
 import { groupCollidingMobileMarkers } from "@/lib/fair/mobile-marker-layout";
 import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback-ui";
 import { haptic } from "@/lib/haptics";
+import { FAIR_DAY_PATH } from "@/lib/fair/plan-status";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { mapCameraDuration } from "@/lib/motion";
 
@@ -437,6 +439,12 @@ function FairMapFeatureActions({
   feature: FairGroundsMapFeature;
   mode?: "all" | "primary" | "secondary";
 }) {
+  const featureId = feature.properties.id;
+  const [copiedFeatureId, setCopiedFeatureId] = useState<string | null>(null);
+  const activeFeatureIdRef = useRef(featureId);
+  const resetTimerRef = useRef<number | null>(null);
+  activeFeatureIdRef.current = featureId;
+  const meetLinkCopied = copiedFeatureId === featureId;
   const informationSource = feature.properties.informationSource;
   const mappedSourceIsInformationSource =
     informationSource?.url === feature.properties.sourceUrl;
@@ -445,6 +453,52 @@ function FairMapFeatureActions({
     : feature.properties.kind === "parking"
       ? "Official entrance pin"
       : null;
+
+  useEffect(
+    () => () => {
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const shareMeetingPlace = async () => {
+    haptic("light");
+    const placeName = feature.properties.name;
+    const url = fairMeetHereUrl(window.location.origin, featureId);
+    const shareData = {
+      title: `Meet at ${placeName} · The Great Frederick Fair`,
+      text: `Meet me at ${placeName}. This link opens the exact place on the Fairgrounds map.`,
+      url,
+    };
+
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (error) {
+        if ((error as { name?: string } | null)?.name === "AbortError") return;
+      }
+    }
+
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(url);
+      if (activeFeatureIdRef.current !== featureId) return;
+      haptic("success");
+      setCopiedFeatureId(featureId);
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current);
+      }
+      resetTimerRef.current = window.setTimeout(() => {
+        setCopiedFeatureId(null);
+        resetTimerRef.current = null;
+      }, 2_000);
+    } catch {
+      window.prompt("Copy this meeting-place link:", url);
+    }
+  };
 
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -465,6 +519,28 @@ function FairMapFeatureActions({
           <Navigation className="h-4 w-4" aria-hidden />
           Get directions
         </a>
+      ) : null}
+      {mode !== "secondary" ? (
+        <>
+          <button
+            type="button"
+            onClick={() => void shareMeetingPlace()}
+            data-fair-meet-here
+            className="tap-44 inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-[13px] font-bold"
+            style={{
+              borderColor: "color-mix(in srgb, var(--app-cool) 36%, var(--app-border))",
+              color: meetLinkCopied ? "var(--app-positive)" : "var(--app-cool)",
+              background: "var(--app-bg-elevated-solid)",
+            }}
+            aria-label={meetLinkCopied ? "Meeting-place link copied" : `Share ${feature.properties.name} as a meeting place`}
+          >
+            <Share2 className="h-4 w-4" aria-hidden />
+            {meetLinkCopied ? "Link copied" : "Meet here"}
+          </button>
+          <span className="sr-only" role="status" aria-live="polite">
+            {meetLinkCopied ? "Meeting-place link copied." : ""}
+          </span>
+        </>
       ) : null}
       {mode !== "primary" && informationSource ? (
         <a
@@ -497,6 +573,14 @@ function FairMapFeatureActions({
   );
 }
 
+/** A shareable public place, never the visitor's live location or private plan. */
+export function fairMeetHereUrl(origin: string, featureId: string): string {
+  const url = new URL(FAIR_DAY_PATH, origin);
+  url.searchParams.set("meet", featureId);
+  url.hash = "fair-map";
+  return url.toString();
+}
+
 export default function FairGroundsMapInner({
   savedStops,
   programItems,
@@ -523,6 +607,7 @@ export default function FairGroundsMapInner({
     memberIds: string[];
   } | null>(null);
   const focusedDeepLinkRef = useRef(false);
+  const sharedMeetingPlaceHandledRef = useRef(false);
   const focusedProgramRequestRef = useRef<number | null>(null);
   const pendingProgramFocusRequestRef = useRef<{
     requestId: number;
@@ -1324,6 +1409,39 @@ export default function FairGroundsMapInner({
       `${selectedName} selected. Details are open.`,
     );
   };
+
+  useEffect(() => {
+    if (!mapData || sharedMeetingPlaceHandledRef.current) return;
+    sharedMeetingPlaceHandledRef.current = true;
+    const sharedId = new URLSearchParams(window.location.search).get("meet");
+    if (!sharedId) return;
+    const feature = mapData.features.find(
+      (candidate) => candidate.properties.id === sharedId,
+    );
+    if (!feature || feature.properties.kind === "fairgrounds") {
+      setMapAnnouncement("That shared meeting place is not available on the reviewed Fair map.");
+      return;
+    }
+    const nextFilter: FairGroundsMapView =
+      feature.properties.kind === "animal"
+        ? "animals"
+        : feature.properties.kind === "building"
+          ? "buildings"
+          : feature.properties.kind === "parking" ||
+              feature.properties.kind === "transit" ||
+              feature.properties.filterIds?.includes("arrival")
+            ? "arrival"
+            : "essentials";
+    setFilter(nextFilter);
+    setQuery("");
+    setClusterSelectionIds([]);
+    setMarkerGroups([]);
+    setSelectionExpanded(false);
+    setSelectedId(feature.properties.id);
+    setMapAnnouncement(
+      `${mappedFeatureName(feature, mapData)} opened from a shared meeting-place link.`,
+    );
+  }, [mapData]);
 
   useEffect(() => {
     if (
