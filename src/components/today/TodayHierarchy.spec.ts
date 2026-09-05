@@ -7,6 +7,21 @@ const globalCss = readFileSync("src/app/globals.css", "utf8");
 describe("Today decision hierarchy", () => {
   const renderedPage = todayPage.slice(todayPage.indexOf("<EventSheetBoundary"));
 
+  it("progressively enhances real event and place links without replacing their anchors", () => {
+    const eventOpen = renderedPage.indexOf("<EventSheetBoundary fetchMissing");
+    const placeOpen = renderedPage.indexOf("<PlaceSheetBoundary fetchMissing>");
+    const placeClose = renderedPage.indexOf("</PlaceSheetBoundary>");
+    const eventClose = renderedPage.indexOf("</EventSheetBoundary>");
+
+    expect(todayPage).toContain(
+      'import PlaceSheetBoundary from "@/components/place/PlaceSheetBoundary"',
+    );
+    expect(eventOpen).toBe(0);
+    expect(placeOpen).toBeGreaterThan(eventOpen);
+    expect(placeClose).toBeGreaterThan(placeOpen);
+    expect(eventClose).toBeGreaterThan(placeClose);
+  });
+
   it("keeps the one Find doorway tappable after weather, before the deeper place lead and event program", () => {
     const weather = renderedPage.indexOf("</SkyHero>");
     const lead = renderedPage.indexOf("{decisionLead}");

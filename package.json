@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "npm@10.9.8",
   "scripts": {
-    "predev": "npm run data:release:check",
+    "predev": "npm run data:release:check && node scripts/build-fair-photo-viewer.mjs",
     "dev": "next dev",
     "dev:refresh-data": "npm run build:client-places && next dev",
     "prebuild": "npm run data:release:check && npm run basemap:verify && npm run audit:sources && npm run audit:county-data && npm run audit:automation && npm run audit:cron-budget && npm run gates",

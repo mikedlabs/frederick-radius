@@ -23,6 +23,7 @@ import {
   Pencil,
   Plus,
   Search,
+  Sparkles,
   Sprout,
   Store,
   TicketCheck,
@@ -76,10 +77,13 @@ import {
   sortFairProgramItems,
   type FairProgramDaypart,
 } from "@/lib/fair/program-view";
+import {
+  isFairMapSelectionHistoryState,
+  withoutFairMapSelectionHistoryState,
+} from "@/lib/fair/map-selection-history";
 
 import FairPartyPlanner from "./FairPartyPlanner";
 import FairPracticalAnswers from "./FairPracticalAnswers";
-import FairColoringBookCard from "./FairColoringBookCard";
 import FairShareButton from "./FairShareButton";
 import FairDiscoveryChoices, {
   fairDiscoveryIntentMatches,
@@ -88,6 +92,7 @@ import FairDiscoveryChoices, {
 } from "./FairDiscoveryChoices";
 import FairGroundsMap from "./FairGroundsMap";
 import FairGrandstandSpotlight from "./FairGrandstandSpotlight";
+import FairPhotoExplorer from "./FairPhotoExplorer";
 import FairTravelPanel from "./FairTravelPanel";
 import type {
   FairDayArrivalView,
@@ -394,7 +399,7 @@ function FairGlanceTile({
   onClick,
   ariaLabel,
 }: {
-  kind: "gate" | "admission" | "parking" | "program";
+  kind: "gate" | "admission" | "parking";
   label: string;
   value: string;
   detail: string;
@@ -409,41 +414,24 @@ function FairGlanceTile({
       data-fair-glance-tile={kind}
       onClick={(event) => onClick(event.currentTarget)}
       aria-label={ariaLabel}
-      className="group relative flex min-h-[104px] flex-col overflow-hidden rounded-[var(--app-radius-lg)] border p-3 text-left transition-transform duration-[var(--app-dur-fast)] active:scale-[0.985] motion-reduce:transition-none"
-      style={{
-        borderColor: `color-mix(in srgb, ${accent} 28%, var(--app-border))`,
-        background: `linear-gradient(145deg, color-mix(in srgb, ${accent} 10%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 72%)`,
-        boxShadow: `inset 0 2px 0 ${accent}, var(--app-hi), var(--app-edge)`,
-      }}
+      className="tap-44 group flex min-h-11 min-w-0 flex-col px-2 py-2 text-left first:pl-0 last:pr-0 sm:px-4"
+      style={{ borderColor: "var(--app-border)" }}
     >
       <span className="flex w-full items-center justify-between gap-2">
         <span
           aria-hidden="true"
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-          style={{
-            background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-elevated-solid))`,
-            color: accent,
-          }}
+          className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.06em]"
+          style={{ color: accent }}
         >
           {icon}
+          {label}
         </span>
-        <ChevronRight
-          className="h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none motion-reduce:transition-none"
-          style={{ color: accent }}
-          aria-hidden="true"
-        />
       </span>
-      <span
-        className="mt-2 block text-[10px] font-bold uppercase tracking-[0.11em]"
-        style={{ color: accent }}
-      >
-        {label}
-      </span>
-      <span className="mt-0.5 line-clamp-2 block text-[14px] font-extrabold leading-[1.14] tracking-[-0.02em] sm:text-[15px]">
+      <span className="mt-2 block text-[14px] font-bold leading-snug tracking-[-0.02em] sm:text-[16px]">
         {value}
       </span>
       <span
-        className="mt-1 line-clamp-2 block text-[11px] font-medium leading-snug"
+        className="mt-1 block text-[11px] font-medium leading-snug sm:text-[12px]"
         style={{ color: "var(--app-ink-2)" }}
       >
         {detail}
@@ -743,7 +731,7 @@ function scheduleFilterMatches(
   if (filter === "music") return item.kind === "concert";
   if (filter === "rides") return item.kind === "carnival";
   if (filter === "food") return item.kind === "food";
-  return item.kind === "motorsport";
+  return item.kind === "motorsport" || /\bgrandstand\b/i.test(item.placeLabel);
 }
 
 function isScheduleUtilityRow(item: FairDayScheduleItemView): boolean {
@@ -802,13 +790,73 @@ function TicketPreparation({
   const eligibilityOffers = offers.filter(
     (offer) => offer.placement === "eligibility-promotion",
   );
+  const admissionOffer = offers.find(
+    (offer) => offer.id === "offer-adult-admission-early" && !offer.pastKnownDeadline,
+  ) ?? offers.find(
+    (offer) => offer.id === "offer-adult-admission-online" && !offer.pastKnownDeadline,
+  );
+  const childOffer = offers.find((offer) => offer.id === "offer-child-admission");
 
   return (
     <div className="px-4 pb-6 pt-2 sm:px-6">
-      <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-        Tell Radius who is going only if you want a reviewed subtotal. Radius uses your counts only in this browser.
-      </p>
-      <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--app-border)" }}>
+      {admissionOffer ? (
+        <div data-fair-direct-admission>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[16px] font-bold">{admissionOffer.label}</p>
+              <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                This admission is for guests age 11 and older.
+              </p>
+            </div>
+            <strong className="shrink-0 text-[28px] font-bold tabular-nums">{admissionOffer.priceLabel}</strong>
+          </div>
+          {admissionOffer.deadlineLabel ? (
+            <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{admissionOffer.deadlineLabel}</p>
+          ) : null}
+          {childOffer ? (
+            <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              {childOffer.priceLabel === "Free"
+                ? "Children age 10 and under enter free."
+                : childOffer.detail}
+            </p>
+          ) : null}
+          <a
+            href={admissionOffer.officialPurchaseUrl ?? admissionOffer.officialInfoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="tap-44 mt-4 flex min-h-12 items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 py-3 text-[14px] font-bold"
+            style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}
+          >
+            {admissionOffer.officialPurchaseUrl ? "Buy admission on Etix" : "Check official admission details"}
+            <ExternalLink className="h-4 w-4" aria-hidden />
+          </a>
+          <p className="mt-2 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+            {admissionOffer.officialPurchaseUrl
+              ? "Etix opens in a new tab. Confirm your ticket details and total there."
+              : "Official admission details open in a new tab."}
+          </p>
+        </div>
+      ) : (
+        <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          No current online admission offer is listed for this day. Check the official Fair information before buying.
+        </p>
+      )}
+      <div className="mt-4">
+        <Button
+          className="w-full"
+          variant={ready ? "primary" : "secondary"}
+          aria-pressed={ready}
+          onClick={() => onReadyChange(!ready)}
+          iconLeft={<Check className="h-4 w-4" aria-hidden />}
+        >
+          {ready ? "Tickets handled" : "I already have tickets"}
+        </Button>
+      </div>
+      <details className="group mt-5 border-t" style={{ borderColor: "var(--app-border)" }} data-fair-ticket-calculator>
+        <summary className="tap-44 flex min-h-12 cursor-pointer items-center justify-between gap-3 text-[14px] font-semibold">
+          Estimate for my group
+          <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden />
+        </summary>
         <FairPartyPlanner
           party={plan.party}
           date={plan.selectedDayId?.replace(/^day-/, "") ?? data.initialDate}
@@ -816,6 +864,7 @@ function TicketPreparation({
           offers={data.partyOffers}
           onPartyChange={onPartyChange}
         />
+      </details>
         {eligibilityOffers.length > 0 ? (
           <details className="mt-5 border-t pt-2" style={{ borderColor: "var(--app-border)" }}>
             <summary className="tap-44 flex min-h-11 cursor-pointer items-center justify-between gap-3 text-[14px] font-semibold">
@@ -851,21 +900,6 @@ function TicketPreparation({
             </ul>
           </details>
         ) : null}
-      </div>
-      <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
-        <p className="mb-2 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-          Already purchased on Etix? Mark this step handled when you return.
-        </p>
-        <Button
-          className="w-full"
-          variant={ready ? "primary" : "secondary"}
-          aria-pressed={ready}
-          onClick={() => onReadyChange(!ready)}
-          iconLeft={<Check className="h-4 w-4" aria-hidden />}
-        >
-          {ready ? "Tickets handled" : "I already have tickets"}
-        </Button>
-      </div>
     </div>
   );
 }
@@ -988,6 +1022,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   const programDetailClearTimer = useRef<number | null>(null);
   const programDetailFocusTimer = useRef<number | null>(null);
   const programDetailOpenerRef = useRef<HTMLElement | null>(null);
+  const [photoExplorerOpen, setPhotoExplorerOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpAnswerId, setHelpAnswerId] = useState<string | null>(null);
   const [helpCategory, setHelpCategory] = useState<
@@ -1277,17 +1312,68 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
     setActiveMode(mode);
     const hash =
       mode === "map" ? "#fair-map" : mode === "find" ? "#program" : `#${mode}`;
-    if (window.location.hash !== hash) {
-      window.history.pushState(
-        { ...window.history.state, fairMode: mode },
-        "",
-        hash,
-      );
+    const nextUrl = new URL(window.location.href);
+    const leavingMapSelection =
+      mode !== "map" &&
+      isFairMapSelectionHistoryState(window.history.state);
+    if (mode !== "map") nextUrl.searchParams.delete("meet");
+    nextUrl.hash = hash;
+    const nextPath = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+    const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (currentPath !== nextPath || leavingMapSelection) {
+      const nextState = {
+        ...(leavingMapSelection
+          ? withoutFairMapSelectionHistoryState(window.history.state)
+          : window.history.state),
+        fairMode: mode,
+      };
+      if (leavingMapSelection) {
+        window.history.replaceState(nextState, "", nextPath);
+      } else {
+        window.history.pushState(nextState, "", nextPath);
+      }
     }
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: "auto" });
       document.getElementById(MODE_HEADING_IDS[mode])?.focus({ preventScroll: true });
     });
+  };
+
+  const showReviewedFairMapFeature = (featureId: string) => {
+    setActivePreparation(null);
+    setHelpOpen(false);
+    closeProgramDetail();
+    setActiveMode("map");
+    const url = new URL(window.location.href);
+    url.searchParams.set("meet", featureId);
+    url.hash = "fair-map";
+    window.history.pushState(
+      { ...window.history.state, fairMode: "map" },
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "auto" });
+      document
+        .getElementById(MODE_HEADING_IDS.map)
+        ?.focus({ preventScroll: true });
+    });
+  };
+
+  const showGrandstandProgram = () => {
+    setShowAllSchedule(true);
+    setDiscoveryIntent(null);
+    setQuery("");
+    setScheduleFilter("motorsport");
+    chooseMode("find");
+  };
+
+  const showRidesProgram = () => {
+    setShowAllSchedule(true);
+    setDiscoveryIntent(null);
+    setQuery("");
+    setScheduleFilter("rides");
+    chooseMode("find");
   };
 
   const showProgramItemOnMap = (item: FairDayScheduleItemView) => {
@@ -1509,22 +1595,6 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
     partyAsOf,
     selectedDate,
   );
-  const glanceProgramItem =
-    rankFairProgramPreviewItems(
-      discoveryItems,
-      partyAsOf,
-      selectedDate,
-      selectedDay?.gateClosesAt,
-    )[0] ?? null;
-  const glanceProgramStatus = glanceProgramItem
-    ? fairProgramLiveStatus(
-        glanceProgramItem,
-        partyAsOf,
-        selectedDate,
-        programNextStart,
-        selectedDay?.gateClosesAt,
-      )
-    : null;
   const selectedDateIsLive =
     fairProgramLocalDate(partyAsOf) === selectedDate &&
     data.dates.some((day) => day.date === selectedDate);
@@ -1563,17 +1633,6 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   const parkingDetail = `${data.parkingGlance.infieldPriceLabel} infield · ${compactPaymentLabel(
     data.parkingGlance.infieldPaymentLabel,
   )}`;
-  const glanceProgramPlace = glanceProgramItem
-    ? compactPlaceLabel(glanceProgramItem.placeLabel)
-    : null;
-  const glanceProgramLabel =
-    glanceProgramStatus?.label ??
-    `On ${fairDateWeekdayLabel(selectedDate)}`;
-  const glanceProgramDetail = glanceProgramItem
-    ? `${glanceProgramItem.timeLabel}${
-        glanceProgramPlace ? ` · ${glanceProgramPlace}` : ""
-      }`
-    : "Browse the selected day’s reviewed program.";
   const visibleSchedule =
     showAllSchedule || normalizedQuery.length > 0
       ? matchingSchedule
@@ -1785,7 +1844,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         aria-atomic="true"
         data-fair-plan-announcement
       >
-        {planStatus.summarySentence}
+        {plan.readyKeys.length > 0 || plan.steps.length > 0
+          ? planStatus.summarySentence
+          : `You are viewing ${planStatus.dateLabel}.`}
       </p>
 
       <header>
@@ -1887,6 +1948,16 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 >
                   Sep 18–26 · 2026
                 </p>
+                <button
+                  type="button"
+                  onClick={() => setPhotoExplorerOpen(true)}
+                  className="fair-hero-control fair-hero-control--photo tap-44 mt-3 inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-[12px] font-extrabold"
+                  style={{ color: "var(--app-ink-inverse)" }}
+                  data-fair-photo-explore-trigger
+                >
+                  <Sparkles className="h-4 w-4" aria-hidden />
+                  See the Fair from above
+                </button>
               </div>
             </div>
           </div>
@@ -2093,39 +2164,17 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             <section
               data-fair-at-a-glance
               aria-labelledby="fair-at-a-glance-heading"
-              className="relative overflow-hidden rounded-[var(--app-radius-xl)] border p-3.5 text-[var(--app-ink)] sm:p-4"
-              style={{
-                background:
-                  "linear-gradient(135deg, color-mix(in srgb, var(--app-brand) 9%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 48%, color-mix(in srgb, var(--app-amber) 7%, var(--app-bg-elevated-solid)))",
-                borderColor:
-                  "color-mix(in srgb, var(--app-brand) 34%, var(--app-border))",
-                boxShadow: "var(--app-elev-2)",
-              }}
+              className="text-[var(--app-ink)]"
             >
-              <span
-                aria-hidden="true"
-                className="absolute inset-y-0 left-0 w-1"
-                style={{
-                  background:
-                    "linear-gradient(to bottom, var(--app-brand), var(--app-amber))",
-                }}
-              />
-              <div className="grid grid-cols-[minmax(0,1fr)_7.75rem] items-start gap-3">
+              <div className="grid grid-cols-[minmax(0,1fr)_7.75rem] items-center gap-3">
                 <div className="min-w-0">
-                  <p
-                    className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em]"
-                    style={{ color: "var(--app-brand-press)" }}
-                  >
-                    <ListChecks className="h-3.5 w-3.5" aria-hidden />
-                    Fair essentials
-                  </p>
                   <h2
                     id="fair-at-a-glance-heading"
-                    className="mt-0.5 text-[19px] font-extrabold leading-tight tracking-[-0.025em] sm:text-[22px]"
+                    className="text-[20px] font-bold leading-tight tracking-[-0.025em] sm:text-[24px]"
                   >
                     {fairDateWeekdayLabel(selectedDate)} at a glance
                   </h2>
-                  <p
+                  {plan.readyKeys.length > 0 || plan.steps.length > 0 ? <p
                     data-fair-plan-summary
                     className="mt-1 text-[12px] font-semibold leading-snug"
                     style={{ color: "var(--app-ink-2)" }}
@@ -2133,7 +2182,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                     {planStatus.readinessLabel}
                     <span aria-hidden="true"> · </span>
                     {planStatus.savedStopsLabel}
-                  </p>
+                  </p> : null}
                 </div>
 
                 <label data-fair-plan-date className="w-full shrink-0">
@@ -2162,7 +2211,8 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
 
               <div
                 data-fair-glance-board
-                className="mt-3 grid grid-cols-2 gap-2"
+                className="mt-3 grid grid-cols-3 divide-x border-y py-1"
+                style={{ borderColor: "var(--app-border)" }}
               >
                 <FairGlanceTile
                   kind="gate"
@@ -2194,36 +2244,6 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                   ariaLabel="Compare parking and travel choices"
                   onClick={() => chooseMode("travel")}
                 />
-                <FairGlanceTile
-                  kind="program"
-                  label={glanceProgramLabel}
-                  value={glanceProgramItem?.title ?? "Browse the Fair program"}
-                  detail={glanceProgramDetail}
-                  icon={
-                    glanceProgramItem ? (
-                      <ScheduleKindGlyph kind={glanceProgramItem.kind} />
-                    ) : (
-                      <FerrisWheel className="h-[17px] w-[17px]" />
-                    )
-                  }
-                  accent={
-                    glanceProgramItem
-                      ? scheduleAccent(glanceProgramItem.kind)
-                      : "var(--app-amber-press)"
-                  }
-                  ariaLabel={
-                    glanceProgramItem
-                      ? `Open program details for ${glanceProgramItem.title}`
-                      : "Browse the selected Fair day program"
-                  }
-                  onClick={(opener) => {
-                    if (glanceProgramItem) {
-                      openProgramDetail(glanceProgramItem.id, opener);
-                      return;
-                    }
-                    chooseMode("find");
-                  }}
-                />
               </div>
 
               {planNotice ? (
@@ -2241,7 +2261,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 </p>
               ) : null}
 
-              <div className="mt-2.5 flex items-center gap-2 border-t pt-2.5" style={{ borderColor: "var(--app-border)" }}>
+              <div className="mt-2.5 flex items-center gap-3">
                 <p
                   className="line-clamp-2 min-w-0 flex-1 text-[11.5px] font-medium leading-snug"
                   style={{ color: "var(--app-ink-2)" }}
@@ -2266,15 +2286,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             >
               <div className="flex items-end justify-between gap-3">
                 <div className="min-w-0">
-                  <p
-                    className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    Start with what you need
-                  </p>
                   <h2
                     id="fair-now-portal-heading"
-                    className="mt-1 max-w-[20ch] text-[25px] font-extrabold leading-[1.04] tracking-[-0.035em] sm:text-[31px]"
+                    className="max-w-[20ch] text-[24px] font-bold leading-[1.1] tracking-[-0.035em] sm:text-[30px]"
                   >
                     What do you need first?
                   </h2>
@@ -2418,8 +2432,6 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               </section>
             ) : null}
 
-            <FairColoringBookCard />
-
             <details className="mt-5 border-t pt-2" style={{ borderColor: "var(--app-border)" }}>
               <summary className="tap-44 flex min-h-11 cursor-pointer items-center justify-between gap-3 text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
                 About this independent guide
@@ -2482,27 +2494,21 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               tabIndex={-1}
               className={
                 exploreFocused
-                  ? "mt-1 text-[34px] font-extrabold leading-[1.02] tracking-[-0.045em] outline-none sm:text-[40px]"
+                  ? "mt-3 text-[27px] font-bold leading-tight tracking-[-0.035em] outline-none sm:text-[32px]"
                   : "sr-only"
               }
             >
               {showAllSchedule
                 ? discoveryIntent
                   ? `All ${fairDiscoveryIntentTitle(discoveryIntent)}`
-                  : "Full Fair program"
+                  : "Full program"
                 : normalizedQuery
                   ? "Search results"
                   : discoveryIntent
                     ? fairDiscoveryIntentTitle(discoveryIntent)
                     : "Explore the Fair"}
             </h1>
-            {exploreFocused ? (
-              <p className="mt-2 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                A focused view of the official program for your selected day.
-              </p>
-            ) : null}
-
-            <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+            <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
               <label className="block min-w-0" htmlFor="fair-unified-search">
                 <span className="sr-only">Search the Fair</span>
                 <span className="relative block">
@@ -2632,21 +2638,10 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
 
             {exploreFocused ? (
               <>
-            <div className="mt-6 border-b pb-3" style={{ borderColor: "var(--app-border-strong)" }}>
-              <div>
-                <h2 className="text-[22px] font-bold tracking-[-0.03em]">
-                  {normalizedQuery
-                    ? "Matching events"
-                    : discoveryIntent
-                      ? fairDiscoveryIntentTitle(discoveryIntent)
-                      : showAllSchedule
-                        ? "Official program"
-                        : "Three good starts"}
-                </h2>
-                <p className="mt-1 text-[13px]" style={{ color: "var(--app-ink-3)" }} aria-live="polite">
+            <div className="mt-3">
+                <p className="text-[13px]" style={{ color: "var(--app-ink-2)" }} aria-live="polite">
                   {matchingSchedule.length} {matchingSchedule.length === 1 ? "match" : "matches"}, sorted by time · Gates {selectedDay?.gateHoursLabel ?? "time not listed"}
                 </p>
-              </div>
             </div>
 
             {visibleSchedule.length > 0 ? (
@@ -2655,12 +2650,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                   {nonEmptyScheduleGroups.map((group) => (
                     <details
                       key={group.id}
-                      open={group.id === defaultOpenDaypart ? true : undefined}
-                      className="group rounded-[var(--app-radius-lg)] border px-3"
-                      style={{
-                        borderColor: "var(--app-border-strong)",
-                        background: "var(--app-bg-elevated-solid)",
-                      }}
+                      open={visibleSchedule.length <= 12 || group.id === defaultOpenDaypart ? true : undefined}
+                      className="group border-t"
+                      style={{ borderColor: "var(--app-border-strong)" }}
                       data-fair-program-daypart={group.id}
                     >
                       <summary className="tap-44 flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 text-[15px] font-extrabold [&::-webkit-details-marker]:hidden">
@@ -2675,7 +2667,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                           <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden />
                         </span>
                       </summary>
-                      <div className="border-t pb-3" style={{ borderColor: "var(--app-border)" }}>
+                      <div className="pb-3">
                         <FairProgramResultList
                           items={group.items}
                           plan={plan}
@@ -3164,6 +3156,16 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
           })}
         </nav>
       </div>
+
+      <FairPhotoExplorer
+        open={photoExplorerOpen}
+        onOpenChange={setPhotoExplorerOpen}
+        onShowGrandstandProgram={showGrandstandProgram}
+        onFindRides={showRidesProgram}
+        onShowGrandstandMap={() =>
+          showReviewedFairMapFeature("osm-way-103615596")
+        }
+      />
 
       <BottomDrawer
         open={activePreparation === "ticket"}

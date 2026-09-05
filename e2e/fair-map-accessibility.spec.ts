@@ -716,7 +716,9 @@ test.describe("Fairgrounds map accessibility", () => {
       name: "Selected map place: Gate 4",
     });
     await expect(restrictedGate).toBeVisible();
+    await expect(restrictedGate).toContainText("Fair gate");
     await expect(restrictedGate).toContainText("Mapped place");
+    await expect(restrictedGate).toContainText("Exit only");
     await restrictedGate.getByRole("button", { name: "More details" }).click();
     const expandedRestrictedGate = page.getByRole("dialog", {
       name: "Selected map place: Gate 4",
@@ -969,6 +971,9 @@ test.describe("Fairgrounds map accessibility", () => {
 
     const cluster = page.locator("[data-fair-map-cluster]").first();
     await expect(cluster).toBeVisible();
+    await expect(
+      cluster.locator("[data-fair-map-cluster-summary]"),
+    ).toContainText("animal areas");
     const clusterMemberIds =
       (await cluster.getAttribute("data-fair-map-cluster-members"))?.split(
         " ",
@@ -1415,6 +1420,85 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(heading).toBeFocused();
     await heading.press("Escape");
     await expect(gate).toBeFocused();
+  });
+
+  test("uses browser Back and Forward for a mobile map-place layer", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openFairMap(page);
+    const search = page.getByRole("searchbox", {
+      name: "Find a place or program event on the Fair grounds map",
+    });
+    await search.fill("Gate 1");
+    await page
+      .locator("#fair-map-search-results")
+      .getByRole("button", { name: /^Gate 1 Gate$/ })
+      .click();
+
+    await expect(page).toHaveURL(
+      /\/moments\/great-frederick-fair-2026\?meet=osm-node-14099608925#fair-map$/,
+    );
+    await expect(
+      page.getByRole("region", { name: "Selected map place: Gate 1" }),
+    ).toBeVisible();
+
+    await page.goBack();
+    await expect(page.locator("[data-fair-map-selection]")).toHaveCount(0);
+    await expect(page).toHaveURL(
+      /\/moments\/great-frederick-fair-2026#fair-map$/,
+    );
+    await expect(page.getByRole("heading", { name: "Fairgrounds map" })).toBeVisible();
+
+    await page.goForward();
+    await expect(page).toHaveURL(
+      /\/moments\/great-frederick-fair-2026\?meet=osm-node-14099608925#fair-map$/,
+    );
+    await expect(
+      page.getByRole("region", { name: "Selected map place: Gate 1" }),
+    ).toBeVisible();
+  });
+
+  test("leaves a map selection behind when switching Fair tools", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openFairMap(page);
+    const search = page.getByRole("searchbox", {
+      name: "Find a place or program event on the Fair grounds map",
+    });
+    await search.fill("Gate 1");
+    await page
+      .locator("#fair-map-search-results")
+      .getByRole("button", { name: /^Gate 1 Gate$/ })
+      .click();
+    await expect(page.locator("[data-fair-map-selection]:visible")).toBeVisible();
+
+    await page
+      .getByRole("navigation", { name: "Fair Day" })
+      .getByRole("button", { name: "Program", exact: true })
+      .click();
+
+    await expect(page).toHaveURL(
+      /\/moments\/great-frederick-fair-2026#program$/,
+    );
+    expect(new URL(page.url()).searchParams.has("meet")).toBe(false);
+    expect(
+      await page.evaluate(
+        () =>
+          (window.history.state as Record<string, unknown> | null)
+            ?.__frederickRadiusFairMapSelection,
+      ),
+    ).not.toBe(true);
+
+    await page.goBack();
+    await expect(page).toHaveURL(
+      /\/moments\/great-frederick-fair-2026#fair-map$/,
+    );
+    await expect(page.locator("[data-fair-map-selection]")).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "Fairgrounds map" }),
+    ).toBeVisible();
   });
 
   test("keeps the direct-to-map load visually stable", async ({ page }) => {

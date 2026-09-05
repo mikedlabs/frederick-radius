@@ -60,6 +60,10 @@ import {
   type FairGroundsMapFilter,
   type FairGroundsMapKind,
 } from "@/lib/fair/grounds-map";
+import {
+  FAIR_MAP_SELECTION_HISTORY_KEY,
+  isFairMapSelectionHistoryState,
+} from "@/lib/fair/map-selection-history";
 import { groupCollidingMobileMarkers } from "@/lib/fair/mobile-marker-layout";
 import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback-ui";
 import { haptic } from "@/lib/haptics";
@@ -107,6 +111,14 @@ type FairGroundsMarkerGroup = {
   features: FairGroundsMapFeature[];
   representative: FairGroundsMapFeature;
 };
+
+function fairMapSelectionUrl(featureId: string | null): string {
+  const url = new URL(window.location.href);
+  if (featureId) url.searchParams.set("meet", featureId);
+  else url.searchParams.delete("meet");
+  url.hash = "fair-map";
+  return `${url.pathname}${url.search}${url.hash}`;
+}
 
 const FAIR_VIEW = {
   longitude: -77.3943,
@@ -244,6 +256,95 @@ function markerIcon(kind: FairGroundsMapKind) {
     transit: BusFront,
     fairgrounds: MapPin,
   }[kind];
+}
+
+const CLUSTER_KIND_LABELS: Record<
+  Exclude<FairGroundsMapKind, "fairgrounds">,
+  { singular: string; plural: string }
+> = {
+  gate: { singular: "gate", plural: "gates" },
+  ticket: { singular: "ticket booth", plural: "ticket booths" },
+  restroom: { singular: "restroom", plural: "restrooms" },
+  building: { singular: "building", plural: "buildings" },
+  animal: { singular: "animal area", plural: "animal areas" },
+  stage: { singular: "show area", plural: "show areas" },
+  parking: { singular: "parking area", plural: "parking areas" },
+  service: { singular: "guest service", plural: "guest services" },
+  transit: { singular: "transit stop", plural: "transit stops" },
+};
+
+const CLUSTER_KIND_PRIORITY: Array<Exclude<FairGroundsMapKind, "fairgrounds">> = [
+  "gate",
+  "parking",
+  "transit",
+  "ticket",
+  "restroom",
+  "service",
+  "stage",
+  "animal",
+  "building",
+];
+
+function markerClusterSummary(features: FairGroundsMapFeature[]): {
+  compact: string;
+  detailed: string;
+} {
+  const counts = new Map<Exclude<FairGroundsMapKind, "fairgrounds">, number>();
+  features.forEach((feature) => {
+    if (feature.properties.kind === "fairgrounds") return;
+    counts.set(
+      feature.properties.kind,
+      (counts.get(feature.properties.kind) ?? 0) + 1,
+    );
+  });
+  const ranked = CLUSTER_KIND_PRIORITY.filter((kind) => counts.has(kind)).sort(
+    (left, right) =>
+      (counts.get(right) ?? 0) - (counts.get(left) ?? 0) ||
+      CLUSTER_KIND_PRIORITY.indexOf(left) - CLUSTER_KIND_PRIORITY.indexOf(right),
+  );
+  const phrases = ranked.map((kind) => {
+    const count = counts.get(kind) ?? 0;
+    const label = CLUSTER_KIND_LABELS[kind];
+    return `${count} ${count === 1 ? label.singular : label.plural}`;
+  });
+  const leadKind = ranked[0];
+  const leadCount = leadKind ? (counts.get(leadKind) ?? 0) : features.length;
+  const leadLabel = leadKind
+    ? CLUSTER_KIND_LABELS[leadKind][leadCount === 1 ? "singular" : "plural"]
+    : "places";
+  return {
+    compact: ranked.length > 1 ? `${leadLabel} + more` : leadLabel,
+    detailed: phrases.join(", "),
+  };
+}
+
+function fairGroundsMapPurposeLabel(feature: FairGroundsMapFeature): string {
+  return {
+    gate: "Fair gate",
+    ticket: "Tickets and entry help",
+    restroom: "Restroom",
+    building: "Fair building",
+    animal: "Animal area",
+    stage: "Shows and performances",
+    parking: "Fair parking",
+    service: "Guest service",
+    transit: "Transit stop",
+    fairgrounds: "Fairgrounds",
+  }[feature.properties.kind];
+}
+
+function fairGroundsMapFilterForFeature(
+  feature: FairGroundsMapFeature,
+): FairGroundsMapView {
+  return feature.properties.kind === "animal"
+    ? "animals"
+    : feature.properties.kind === "building"
+      ? "buildings"
+      : feature.properties.kind === "parking" ||
+          feature.properties.kind === "transit" ||
+          feature.properties.filterIds?.includes("arrival")
+        ? "arrival"
+        : "essentials";
 }
 
 function locationPrecisionLabel(
@@ -608,6 +709,7 @@ export default function FairGroundsMapInner({
   } | null>(null);
   const focusedDeepLinkRef = useRef(false);
   const sharedMeetingPlaceHandledRef = useRef(false);
+  const selectionHistoryEntryRef = useRef(false);
   const focusedProgramRequestRef = useRef<number | null>(null);
   const pendingProgramFocusRequestRef = useRef<{
     requestId: number;
@@ -1361,6 +1463,27 @@ export default function FairGroundsMapInner({
     attemptFocus();
   }, []);
 
+  const beginFairMapSelectionHistory = useCallback((featureId: string) => {
+    const currentState =
+      window.history.state && typeof window.history.state === "object"
+        ? window.history.state
+        : {};
+    const nextState = {
+      ...currentState,
+      [FAIR_MAP_SELECTION_HISTORY_KEY]: true,
+    };
+    const nextUrl = fairMapSelectionUrl(featureId);
+    if (
+      selectionHistoryEntryRef.current ||
+      isFairMapSelectionHistoryState(window.history.state)
+    ) {
+      window.history.replaceState(nextState, "", nextUrl);
+    } else {
+      window.history.pushState(nextState, "", nextUrl);
+    }
+    selectionHistoryEntryRef.current = true;
+  }, []);
+
   const openMarkerCluster = (
     features: FairGroundsMapFeature[],
     trigger: HTMLElement,
@@ -1401,6 +1524,7 @@ export default function FairGroundsMapInner({
     clusterSelectionDialogRef.current?.close();
     setClusterSelectionIds([]);
     setSelectionExpanded(false);
+    beginFairMapSelectionHistory(feature.properties.id);
     setSelectedId(feature.properties.id);
     const selectedName = mapData
       ? mappedFeatureName(feature, mapData)
@@ -1422,16 +1546,10 @@ export default function FairGroundsMapInner({
       setMapAnnouncement("That shared meeting place is not available on the reviewed Fair map.");
       return;
     }
-    const nextFilter: FairGroundsMapView =
-      feature.properties.kind === "animal"
-        ? "animals"
-        : feature.properties.kind === "building"
-          ? "buildings"
-          : feature.properties.kind === "parking" ||
-              feature.properties.kind === "transit" ||
-              feature.properties.filterIds?.includes("arrival")
-            ? "arrival"
-            : "essentials";
+    const nextFilter = fairGroundsMapFilterForFeature(feature);
+    selectionHistoryEntryRef.current = isFairMapSelectionHistoryState(
+      window.history.state,
+    );
     setFilter(nextFilter);
     setQuery("");
     setClusterSelectionIds([]);
@@ -1442,6 +1560,56 @@ export default function FairGroundsMapInner({
       `${mappedFeatureName(feature, mapData)} opened from a shared meeting-place link.`,
     );
   }, [mapData]);
+
+  useEffect(() => {
+    if (!mapData) return;
+    const syncSelectionFromHistory = (event: PopStateEvent) => {
+      const requestedId = new URLSearchParams(window.location.search).get(
+        "meet",
+      );
+      const feature = requestedId
+        ? (mapData.features.find(
+            (candidate) => candidate.properties.id === requestedId,
+          ) ?? null)
+        : null;
+
+      if (feature && feature.properties.kind !== "fairgrounds") {
+        const nextFilter = fairGroundsMapFilterForFeature(feature);
+        selectionHistoryEntryRef.current = isFairMapSelectionHistoryState(
+          event.state,
+        );
+        rememberFairGroundsMapFilter(nextFilter);
+        setFilterState(nextFilter);
+        setQuery("");
+        setCondensedSearchOpen(false);
+        setClusterSelectionIds([]);
+        setMarkerGroups([]);
+        setSelectionExpanded(false);
+        setSelectedId(feature.properties.id);
+        setMapAnnouncement(
+          `${mappedFeatureName(feature, mapData)} reopened from browser history.`,
+        );
+        return;
+      }
+
+      selectionHistoryEntryRef.current = false;
+      mobileSelectionDialogRef.current?.close();
+      setSelectionExpanded(false);
+      setSelectedId(null);
+      if (requestedId) {
+        setMapAnnouncement(
+          "That shared meeting place is not available on the reviewed Fair map.",
+        );
+      } else {
+        setMapAnnouncement("Map place details closed.");
+      }
+      restoreMapControlFocus(lastSelectionTriggerRef.current);
+    };
+
+    window.addEventListener("popstate", syncSelectionFromHistory);
+    return () =>
+      window.removeEventListener("popstate", syncSelectionFromHistory);
+  }, [mapData, restoreMapControlFocus]);
 
   useEffect(() => {
     if (
@@ -1476,6 +1644,7 @@ export default function FairGroundsMapInner({
       setClusterSelectionIds([]);
       setMarkerGroups([]);
       setSelectionExpanded(false);
+      beginFairMapSelectionHistory(feature.properties.id);
       setSelectedId(feature.properties.id);
       setMapAnnouncement(
         `${mappedFeatureName(feature, mapData)} selected for this program item. Details are open.`,
@@ -1490,7 +1659,13 @@ export default function FairGroundsMapInner({
       };
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [focusRequest, mapData, onFocusRequestHandled, programMatches]);
+  }, [
+    beginFairMapSelectionHistory,
+    focusRequest,
+    mapData,
+    onFocusRequestHandled,
+    programMatches,
+  ]);
 
   useEffect(() => {
     if (!selected || mapRuntime !== "interactive" || !mapLoaded) return;
@@ -1567,6 +1742,30 @@ export default function FairGroundsMapInner({
     return () => window.cancelAnimationFrame(frame);
   }, [fairMapFitPadding, mapRuntime, selected]);
 
+  const afterFairMapSelectionCloses = (next: () => void) => {
+    const closesHistoryLayer =
+      selectionHistoryEntryRef.current ||
+      isFairMapSelectionHistoryState(window.history.state);
+    if (closesHistoryLayer) {
+      selectionHistoryEntryRef.current = false;
+      window.addEventListener(
+        "popstate",
+        () => window.setTimeout(next, 0),
+        { once: true },
+      );
+      window.history.back();
+      return;
+    }
+    if (new URLSearchParams(window.location.search).has("meet")) {
+      window.history.replaceState(
+        window.history.state,
+        "",
+        fairMapSelectionUrl(null),
+      );
+    }
+    next();
+  };
+
   const closeSelection = () => {
     const origin = clusterOriginRef.current;
     const returnTarget = origin?.element ?? lastSelectionTriggerRef.current;
@@ -1579,6 +1778,7 @@ export default function FairGroundsMapInner({
     setMapAnnouncement("Map place details closed.");
     restoreMapControlFocus(returnTarget, origin?.memberIds);
     clusterOriginRef.current = null;
+    afterFairMapSelectionCloses(() => {});
   };
 
   const closeCondensedSearch = () => {
@@ -1594,27 +1794,36 @@ export default function FairGroundsMapInner({
     // A native modal makes the rest of the document inert. Leave it before
     // opening the shared feedback sheet so that second dialog can receive
     // focus and return the visitor to the map search when it closes.
-    closeSelection();
-    window.requestAnimationFrame(() => reportMapIssue(reportedFeature));
+    mobileSelectionDialogRef.current?.close();
+    setSelectionExpanded(false);
+    setSelectedId(null);
+    afterFairMapSelectionCloses(() =>
+      window.requestAnimationFrame(() => reportMapIssue(reportedFeature)),
+    );
   };
 
   const browseProgram = () => {
+    mobileSelectionDialogRef.current?.close();
+    setSelectionExpanded(false);
     setSelectedId(null);
-    onBrowseProgram();
-    window.requestAnimationFrame(() => {
-      document.getElementById("fair-find-heading")?.focus({ preventScroll: true });
+    afterFairMapSelectionCloses(() => {
+      onBrowseProgram();
+      window.requestAnimationFrame(() => {
+        document.getElementById("fair-find-heading")?.focus({
+          preventScroll: true,
+        });
+      });
     });
   };
 
   const openProgramItemFromMap = (itemId: string) => {
     mobileSelectionDialogRef.current?.close();
     setSelectionExpanded(false);
-    window.requestAnimationFrame(() => {
-      const returnTarget = window.matchMedia("(max-width: 1023.98px)").matches
-        ? mobileSelectionToggleRef.current
-        : desktopSelectionHeadingRef.current;
-      returnTarget?.focus({ preventScroll: true });
-      onOpenProgramItem?.(itemId);
+    setSelectedId(null);
+    afterFairMapSelectionCloses(() => {
+      window.requestAnimationFrame(() => {
+        onOpenProgramItem?.(itemId);
+      });
     });
   };
 
@@ -1671,14 +1880,26 @@ export default function FairGroundsMapInner({
     haptic("light");
     const count = filterCounts.get(nextFilter) ?? 0;
     const option = FILTERS.find((candidate) => candidate.id === nextFilter);
-    setFilter(nextFilter);
-    setSelectedId(null);
-    setClusterSelectionIds([]);
-    setMarkerGroups([]);
-    setMapAnnouncement(
-      `${option?.label ?? "Selected"} map layer selected. ${count} ${count === 1 ? "place" : "places"} shown.`,
-    );
-    fitFilter(nextFilter);
+    const applyFilter = () => {
+      setFilter(nextFilter);
+      setSelectionExpanded(false);
+      setSelectedId(null);
+      setClusterSelectionIds([]);
+      setMarkerGroups([]);
+      setMapAnnouncement(
+        `${option?.label ?? "Selected"} map layer selected. ${count} ${count === 1 ? "place" : "places"} shown.`,
+      );
+      fitFilter(nextFilter);
+    };
+    if (
+      selectedId ||
+      new URLSearchParams(window.location.search).has("meet") ||
+      isFairMapSelectionHistoryState(window.history.state)
+    ) {
+      afterFairMapSelectionCloses(applyFilter);
+      return;
+    }
+    applyFilter();
   };
 
   const showWholeGrounds = () => {
@@ -2540,6 +2761,9 @@ export default function FairGroundsMapInner({
             {renderedMarkerGroups.map((group) => {
               const feature = group.representative;
               const clustered = group.features.length > 1;
+              const clusterSummary = clustered
+                ? markerClusterSummary(group.features)
+                : null;
               const clusterExpanded =
                 clustered &&
                 clusterSelectionIds.length === group.features.length &&
@@ -2586,7 +2810,7 @@ export default function FairGroundsMapInner({
                       data-fair-map-cluster-members={group.features
                         .map((candidate) => candidate.properties.id)
                         .join(" ")}
-                      className="fair-grounds-map-marker tap-44 grid h-[44px] w-[44px] place-items-center rounded-full border-2 text-[14px] font-extrabold tabular-nums"
+                      className="fair-grounds-map-marker tap-44 relative grid h-[44px] w-[44px] place-items-center rounded-full border-2 text-[14px] font-extrabold tabular-nums"
                       style={{
                         color: "var(--app-ink-inverse)",
                         background: "var(--app-cool)",
@@ -2597,7 +2821,7 @@ export default function FairGroundsMapInner({
                           ? "0 0 0 3px var(--app-amber), 0 6px 16px rgba(34, 28, 21, 0.3)"
                           : "0 3px 12px rgba(34, 28, 21, 0.3)",
                       }}
-                      aria-label={`${group.features.length} nearby map places. Open the list to choose one.`}
+                      aria-label={`${group.features.length} nearby map places: ${clusterSummary?.detailed ?? "mixed places"}. Open the list to choose one.`}
                       aria-expanded={clusterExpanded}
                       aria-controls={
                         clusterExpanded
@@ -2613,6 +2837,19 @@ export default function FairGroundsMapInner({
                       }}
                     >
                       {group.features.length}
+                      <span
+                        data-fair-map-cluster-summary
+                        className="pointer-events-none absolute left-1/2 top-[40px] max-w-[94px] -translate-x-1/2 whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[10px] font-bold leading-none normal-case tracking-normal"
+                        style={{
+                          color: "var(--app-ink)",
+                          background: "color-mix(in srgb, var(--app-bg-elevated-solid) 94%, transparent)",
+                          borderColor: "var(--app-control-border)",
+                          boxShadow: "0 2px 7px rgba(34, 28, 21, 0.18)",
+                        }}
+                        aria-hidden
+                      >
+                        {clusterSummary?.compact ?? "Nearby places"}
+                      </span>
                     </button>
                   ) : (
                     <button
@@ -2871,8 +3108,8 @@ export default function FairGroundsMapInner({
                 className="mt-1 text-[13px] leading-relaxed"
                 style={{ color: "var(--app-ink-2)" }}
               >
-                These places are close together at this zoom. Choose one to
-                open its details.
+                {markerClusterSummary(clusterSelectionFeatures).detailed}. Choose
+                a place to open its details.
               </p>
               <ul className="mt-2 grid gap-1" aria-label="Nearby map places">
                 {clusterSelectionFeatures.map((feature) => {
@@ -2978,10 +3215,24 @@ export default function FairGroundsMapInner({
               <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
                 {selectedProgramItems.length > 0
                   ? `${selectedProgramItems.length} ${selectedProgramItems.length === 1 ? "event" : "events"} here on your day`
-                  : (locationPrecisionLabel(
+                  : fairGroundsMapPurposeLabel(selected)}
+                {selectedProgramItems.length === 0 ? (
+                  <span className="font-normal">
+                    {" "}·{" "}
+                    {locationPrecisionLabel(
                       selected.properties.locationPrecision,
-                    ) ?? "Reviewed Fair map place")}
+                    ) ?? "Reviewed Fair map place"}
+                  </span>
+                ) : null}
               </p>
+              {selected.properties.detail ? (
+                <p
+                  className={`mt-1.5 text-[13px] leading-relaxed ${selectionExpanded ? "" : "line-clamp-2"}`}
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  {selected.properties.detail}
+                </p>
+              ) : null}
               <FairMapFeatureActions feature={selected} mode="primary" />
               <button
                 ref={mobileSelectionToggleRef}
@@ -3007,14 +3258,6 @@ export default function FairGroundsMapInner({
                 id="fair-map-selection-mobile-details"
                 className={selectionExpanded ? "block" : "hidden"}
               >
-              {selected.properties.detail ? (
-                <p
-                  className="mt-2 text-[14px] leading-relaxed"
-                  style={{ color: "var(--app-ink-2)" }}
-                >
-                  {selected.properties.detail}
-                </p>
-              ) : null}
               <FairMapFeatureActions feature={selected} mode="secondary" />
               {selectedStops.length > 0 ? (
                 <p
@@ -3127,12 +3370,12 @@ export default function FairGroundsMapInner({
                 {mappedFeatureName(selected, mapData)}
               </h3>
               <p
-                className="mt-2 text-[12px] font-bold uppercase tracking-[0.08em]"
-                style={{ color: "var(--app-ink-3)" }}
+                className="mt-2 text-[14px] font-bold leading-snug"
+                style={{ color: selectedTone }}
               >
-                {locationPrecisionLabel(
-                  selected.properties.locationPrecision,
-                ) ?? "Reviewed Fair map place"}
+                {selectedProgramItems.length > 0
+                  ? `${selectedProgramItems.length} ${selectedProgramItems.length === 1 ? "event" : "events"} here on your day`
+                  : fairGroundsMapPurposeLabel(selected)}
               </p>
               <p
                 className="mt-3 text-[14px] leading-relaxed"
@@ -3140,6 +3383,14 @@ export default function FairGroundsMapInner({
               >
                 {selected.properties.detail ??
                   "Use this mapped landmark to orient yourself. Radius does not infer an indoor entrance or walking route."}
+              </p>
+              <p
+                className="mt-2 text-[11px] font-bold uppercase tracking-[0.08em]"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                {locationPrecisionLabel(
+                  selected.properties.locationPrecision,
+                ) ?? "Reviewed Fair map place"}
               </p>
               <FairMapFeatureActions feature={selected} />
               {selectedStops.length > 0 ? (

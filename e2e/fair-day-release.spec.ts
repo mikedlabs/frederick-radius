@@ -73,7 +73,8 @@ test.describe("Fair Day production release journey", () => {
     const essentials = page.locator("[data-fair-at-a-glance]");
     await expect(essentials).toBeVisible();
     const essentialTiles = essentials.locator("[data-fair-glance-tile]");
-    await expect(essentialTiles).toHaveCount(4);
+    await expect(essentialTiles).toHaveCount(3);
+    await expect(essentials).not.toContainText("0 of 3 ready");
     await expect(essentials).toContainText("Children 10 & under free");
     await expect(essentials).toContainText("$10 cash lots");
     for (const tile of await essentialTiles.all()) {
@@ -143,6 +144,11 @@ test.describe("Fair Day production release journey", () => {
     await page.getByRole("button", { name: "Close Fair help" }).click();
 
     await page.getByRole("button", { name: "Review tickets" }).click();
+    const directAdmission = page.getByRole("link", { name: "Buy admission on Etix" });
+    await expect(directAdmission).toBeVisible();
+    await expect(directAdmission).toHaveAttribute("href", ETIX_ADMISSION_URL);
+    await expect(page.getByRole("spinbutton", { name: "Adults 11+" })).not.toBeVisible();
+    await page.getByText("Estimate for my group", { exact: true }).click();
     await page.getByRole("spinbutton", { name: "Adults 11+" }).fill("2");
 
     const ticketCombination = page.getByRole("list", {
@@ -339,7 +345,7 @@ test.describe("Fair Day production release journey", () => {
     const eveningGroup = page.locator(
       '[data-fair-program-daypart="evening"]',
     );
-    await eveningGroup.locator("summary").click();
+    await expect(eveningGroup).toHaveAttribute("open", "");
     const daughtryCard = eveningGroup.locator("li").filter({
       has: page.getByText("Daughtry", { exact: true }),
     });
@@ -390,7 +396,7 @@ test.describe("Fair Day production release journey", () => {
     const eveningGroup = page.locator(
       '[data-fair-program-daypart="evening"]',
     );
-    await eveningGroup.locator("summary").click();
+    await expect(eveningGroup).toHaveAttribute("open", "");
     await eveningGroup
       .getByRole("button", { name: "Open details for Daughtry" })
       .click();
@@ -530,7 +536,9 @@ test.describe("Fair Day production release journey", () => {
               controlsBottom: controlsBox.bottom,
               identityTop: identityBox.top,
               controlButtons: Array.from(
-                controls.querySelectorAll<HTMLElement>("a, button"),
+                hero.querySelectorAll<HTMLElement>(
+                  "[data-fair-hero-controls] a, [data-fair-hero-controls] button, [data-fair-photo-explore-trigger]",
+                ),
               ).map((control) => ({
                 width: control.getBoundingClientRect().width,
                 height: control.getBoundingClientRect().height,
@@ -594,13 +602,14 @@ test.describe("Fair Day production release journey", () => {
           ),
         ).toBeGreaterThan(Number(walletLayout[2].zIndex));
 
-        const planSummary = page.locator("[data-fair-plan-summary]");
+        await expect(page.locator("[data-fair-plan-summary]")).toHaveCount(0);
+        const glanceHeading = page.locator("#fair-at-a-glance-heading");
         const planDate = page.locator("[data-fair-plan-date]");
-        const planLayout = await planSummary.evaluate((summary) => {
-          const style = window.getComputedStyle(summary);
+        const planLayout = await glanceHeading.evaluate((heading) => {
+          const style = window.getComputedStyle(heading);
           return {
-            clientWidth: summary.clientWidth,
-            scrollWidth: summary.scrollWidth,
+            clientWidth: heading.clientWidth,
+            scrollWidth: heading.scrollWidth,
             textOverflow: style.textOverflow,
             whiteSpace: style.whiteSpace,
           };
@@ -610,10 +619,10 @@ test.describe("Fair Day production release journey", () => {
         );
         expect(planLayout.textOverflow).not.toBe("ellipsis");
         expect(planLayout.whiteSpace).not.toBe("nowrap");
-        const summaryBox = await planSummary.boundingBox();
+        const headingBox = await glanceHeading.boundingBox();
         const dateBox = await planDate.boundingBox();
         expect(dateBox?.x ?? 0).toBeGreaterThanOrEqual(
-          (summaryBox?.x ?? 0) + (summaryBox?.width ?? 0),
+          (headingBox?.x ?? 0) + (headingBox?.width ?? 0),
         );
 
         await page.addStyleTag({
@@ -622,6 +631,7 @@ test.describe("Fair Day production release journey", () => {
             [data-fair-hero-identity] > div { font-size: 20px !important; }
             #fair-now-heading { font-size: 68px !important; }
             [data-fair-hero-identity] > p { font-size: 20px !important; }
+            [data-fair-photo-explore-trigger] { font-size: 24px !important; }
           `,
         });
         const enlargedHero = await page.locator("[data-fair-hero]").evaluate(
@@ -635,12 +645,26 @@ test.describe("Fair Day production release journey", () => {
             const controls = hero.querySelector<HTMLElement>(
               "[data-fair-hero-controls]",
             );
-            if (!identity || !content || !controls) return null;
+            const heading = hero.querySelector<HTMLElement>("#fair-now-heading");
+            const date = hero.querySelector<HTMLElement>(
+              "[data-fair-hero-identity] > p",
+            );
+            const photoTrigger = hero.querySelector<HTMLElement>(
+              "[data-fair-photo-explore-trigger]",
+            );
+            if (!identity || !content || !controls || !heading || !date || !photoTrigger) {
+              return null;
+            }
             return {
               clientHeight: content.clientHeight,
               scrollHeight: content.scrollHeight,
               controlsBottom: controls.getBoundingClientRect().bottom,
               identityTop: identity.getBoundingClientRect().top,
+              headingBottom: heading.getBoundingClientRect().bottom,
+              dateTop: date.getBoundingClientRect().top,
+              dateBottom: date.getBoundingClientRect().bottom,
+              photoTriggerTop: photoTrigger.getBoundingClientRect().top,
+              photoTriggerRight: photoTrigger.getBoundingClientRect().right,
               documentClientWidth: document.documentElement.clientWidth,
               documentScrollWidth: document.documentElement.scrollWidth,
             };
@@ -653,6 +677,13 @@ test.describe("Fair Day production release journey", () => {
         expect(enlargedHero?.controlsBottom).toBeLessThanOrEqual(
           enlargedHero?.identityTop ?? 0,
         );
+        expect(enlargedHero?.headingBottom).toBeLessThanOrEqual(
+          enlargedHero?.dateTop ?? 0,
+        );
+        expect(enlargedHero?.dateBottom).toBeLessThanOrEqual(
+          enlargedHero?.photoTriggerTop ?? 0,
+        );
+        expect(enlargedHero?.photoTriggerRight).toBeLessThanOrEqual(width);
         expect(enlargedHero?.documentScrollWidth).toBeLessThanOrEqual(
           (enlargedHero?.documentClientWidth ?? 0) + 1,
         );
@@ -667,7 +698,7 @@ test.describe("Fair Day production release journey", () => {
         const headerControls = page.locator(
           "header .fair-hero-control:visible",
         );
-        await expect(headerControls).toHaveCount(2);
+        await expect(headerControls).toHaveCount(label === "Home" ? 3 : 2);
         for (const control of await headerControls.all()) {
           const controlBox = await control.boundingBox();
           const glyphBox = await control.locator("svg").boundingBox();

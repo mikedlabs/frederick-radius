@@ -129,6 +129,8 @@ audit-reports/
 design-review/screenshots/
 # Closure-detector output: a local review artifact, regenerated each run.
 scripts/reports/
+# Deterministic, self-hosted viewer bundles generated before dev/build.
+/public/fair-viewer-assets/
 # The county PMTiles extract, sprites, and glyphs are intentionally tracked
 # promoted artifacts. Application builds verify their release manifest and do
 # not download or regenerate them. See ADR-002 and `npm run basemap:verify`.

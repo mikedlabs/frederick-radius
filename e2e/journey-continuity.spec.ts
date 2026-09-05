@@ -1,6 +1,38 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+const TODAY_PLACE_SLUG = "gravel-and-grind-frederick";
+
+async function openTodayWithConfirmedPlace(page: Page) {
+  await page.route(/\/api\/want(?:\?|$)/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        hero: {
+          slug: TODAY_PLACE_SLUG,
+          name: "Gravel & Grind",
+          photo: null,
+          where: "Frederick",
+          distance: null,
+          fact: "Open now",
+          confidence: "confirmed",
+        },
+        also: [],
+        soon: null,
+        browseHref: "/search?q=coffee",
+        contextLabel: "Across Frederick County",
+        contextSource: "county",
+        mayAssertNoneOpen: true,
+      }),
+    });
+  });
+  await page.goto("/today", { waitUntil: "domcontentloaded" });
+  const placeLink = page.locator(`a[href="/places/${TODAY_PLACE_SLUG}"]`).first();
+  await expect(placeLink).toBeVisible();
+  return placeLink;
+}
 
 test("a route result focuses the same transit map instead of ending in a directory card", async ({ page }) => {
   const hydrationWarnings: string[] = [];
@@ -161,6 +193,97 @@ test("a map place sheet carries its live camera, layers, and query to the full p
   );
   expect(missingCategoryImages).toEqual([]);
 });
+
+test("a Today place opens in context and Back or Escape restores its exact card", async ({ page }) => {
+  let releasePlaceLookup = () => {};
+  const heldPlaceLookup = new Promise<void>((resolve) => {
+    releasePlaceLookup = resolve;
+  });
+  await page.route(/\/api\/places\/by-slugs(?:\?|$)/, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("slugs") !== TODAY_PLACE_SLUG) {
+      await route.continue();
+      return;
+    }
+    const response = await route.fetch();
+    await heldPlaceLookup;
+    await route.fulfill({ response });
+  });
+
+  const placeLink = await openTodayWithConfirmedPlace(page);
+  await placeLink.scrollIntoViewIfNeeded();
+  await placeLink.focus();
+  const returnScrollY = await page.evaluate(() => window.scrollY);
+  await placeLink.click();
+
+  await expect(page).toHaveURL(/\/today$/);
+  await expect(
+    page.getByRole("dialog", { name: "Loading place details" }),
+  ).toBeVisible();
+
+  // A dismissed slow request must never reopen after its response arrives.
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(placeLink).toBeFocused();
+  await expect
+    .poll(() => page.evaluate((top) => Math.abs(window.scrollY - top), returnScrollY))
+    .toBeLessThanOrEqual(1);
+  releasePlaceLookup();
+  await page.waitForTimeout(100);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  await placeLink.scrollIntoViewIfNeeded();
+  const escapeReturnScrollY = await page.evaluate(() => window.scrollY);
+  await placeLink.click();
+  await expect(page.getByRole("dialog", { name: "Gravel & Grind" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(placeLink).toBeFocused();
+  await expect
+    .poll(() => page.evaluate((top) => Math.abs(window.scrollY - top), escapeReturnScrollY))
+    .toBeLessThanOrEqual(1);
+
+  await placeLink.scrollIntoViewIfNeeded();
+  const backReturnScrollY = await page.evaluate(() => window.scrollY);
+  await placeLink.click();
+  await expect(page.getByRole("dialog", { name: "Gravel & Grind" })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/today$/);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(placeLink).toBeFocused();
+  await expect
+    .poll(() => page.evaluate((top) => Math.abs(window.scrollY - top), backReturnScrollY))
+    .toBeLessThanOrEqual(1);
+});
+
+for (const lookup of [
+  { label: "unknown", status: 200, body: { places: [] } },
+  { label: "failed", status: 503, body: { error: "unavailable" } },
+]) {
+  test(`a ${lookup.label} Today place lookup reaches the canonical page`, async ({ page }) => {
+    await page.route(/\/api\/places\/by-slugs(?:\?|$)/, async (route) => {
+      const url = new URL(route.request().url());
+      if (url.searchParams.get("slugs") !== TODAY_PLACE_SLUG) {
+        await route.continue();
+        return;
+      }
+      await route.fulfill({
+        status: lookup.status,
+        contentType: "application/json",
+        body: JSON.stringify(lookup.body),
+      });
+    });
+
+    const placeLink = await openTodayWithConfirmedPlace(page);
+    await placeLink.click();
+
+    await expect(page).toHaveURL(
+      new RegExp(`/places/${TODAY_PLACE_SLUG}$`),
+      { timeout: 20_000 },
+    );
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
+}
 
 test("a place detail has one thumb dock, not a second nav stacked under it", async ({ page }) => {
   await page.goto("/places/gravel-and-grind-frederick", { waitUntil: "domcontentloaded" });
