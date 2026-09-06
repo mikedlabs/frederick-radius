@@ -30,7 +30,7 @@ export type AskIntent = {
 };
 
 const CIVIC_RE = /\b(report|permit|license|register to vote|trash pickup|pothole|county office|department|phone number|pay (?:a|my)|animal control|zoning|property tax|public records?|courthouse|(?:district|circuit|county) court|sheriff|police|county government|city government)\b/i;
-const EVENT_RE = /\b(event|events|concert|festival|live music|performance|happening|calendar)\b/i;
+const EVENT_RE = /\b(events?|concerts?|festivals?|live music|performances?|happening|calendar)\b/i;
 const PLAN_RE = /\b(plan|itinerary|date[-\s]+night|day out|afternoon out|evening out|morning out|perfect (?:hour|morning|afternoon|evening|day)|few hours|make (?:me|us) a day|build (?:me|us) a)\b/i;
 const PLACE_RE = /\b(food|eat|eaten|ate|eating|restaurant|pizza|coffee|cafe|breakfast|lunch|dinner|sandwich|ice ?cream|gelato|frozen (?:custard|yogurt)|froyo|dessert|beer|brewery|bar|park|trail|shop|store|grocery|pharmacy|drugstore|gas station|fuel station|atm|cash machine|hotel|motel|lodging|place to stay|museum|patio|bike|bikes|bicycle|bicycles|cycling|open|nearby|near me)\b/i;
 const PLACE_SEEKING_RE =
@@ -39,6 +39,17 @@ const GENERAL_INFORMATION_RE =
   /\b(?:information|info|instructions?|requirements?|applications?|forms?|websites?|online|rules?|polic(?:y|ies)|laws?|data|statistics?|records?|documents?|budgets?|schedules?)\b/i;
 const ACTIVITY_RE = /\b(?:(?:anything|something) fun|things? to do|what (?:should|can|could) (?:i|we) do|anything going on)\b/i;
 const ACTIVITY_TIME_RE = /\b(?:today|tonight|this evening|tomorrow|this weekend|next weekend|this morning|this afternoon|(?:(?:this|next)\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(?:morning|afternoon|evening|night))?)\b/i;
+const EXPLICIT_DURATION_RE = /\b(\d+(?:\.5)?|one|two|three|four|five|six)\s*[- ]?\s*(?:hour|hr)s?\b/i;
+const DURATION_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+
+/** A visitor's available time asks for a usable outing even without the
+ * word "plan". An event's duration alone is not an itinerary request. */
+function isDurationBoundedOuting(query: string): boolean {
+  return EXPLICIT_DURATION_RE.test(query) && (
+    ACTIVITY_RE.test(query) ||
+    /\b(?:i|we)\s+(?:have|have got|can spend)\b|\b(?:spend|fill)\s+(?:\d+|one|two|three|four|five|six)\s+hours?\b/i.test(query)
+  );
+}
 
 /** Natural event discovery often omits the noun "event." Keep a dated
  * activity request on the live-calendar path instead of fuzzy-searching
@@ -96,8 +107,8 @@ export function parseFixedAppointmentAnchor(
 }
 
 function durationFor(q: string): 2 | 3 | 4 | 6 {
-  const match = q.match(/\b(\d+(?:\.5)?)\s*(?:hour|hr)s?\b/i);
-  const stated = match ? Number(match[1]) : NaN;
+  const match = q.match(EXPLICIT_DURATION_RE);
+  const stated = match ? DURATION_WORDS[match[1].toLowerCase()] ?? Number(match[1]) : NaN;
   if (Number.isFinite(stated)) {
     if (stated >= 5) return 6;
     if (stated >= 3.5) return 4;
@@ -146,7 +157,7 @@ export function parseAskIntent(query: string, now = new Date()): AskIntent {
     /\b(?:show|concert|live music|event|performance)\b/i.test(q) &&
     /\b(?:and|then|plus|followed by|before|after)\b/i.test(q)
   );
-  const plan = (PLAN_RE.test(q) && !explicitPlaceList) || compoundPlan;
+  const plan = (PLAN_RE.test(q) && !explicitPlaceList) || compoundPlan || isDurationBoundedOuting(q);
   const civic = CIVIC_RE.test(q);
   const event = (EVENT_RE.test(q) || isTimedActivityRequest(q)) &&
     !(fixedAppointment && PLACE_RE.test(q));
@@ -179,6 +190,8 @@ export function parseAskIntent(query: string, now = new Date()): AskIntent {
             ? "afternoon"
           : /\btoday\b/i.test(q)
             ? "today"
+            : kind === "plan" && /\bnext\s+(?:\d+(?:\.5)?|one|two|three|four|five|six|few)\s*[- ]?\s*(?:hour|hr)s?\b/i.test(q)
+              ? "now"
             : null;
 
   const reducedMobility = /\b(?:less walking|minimal walking|can(?:not|'t) walk|limited mobility|mobility issues?|wheelchair|walker|easy parking|close parking)\b/i.test(q);

@@ -14,8 +14,6 @@
  * for Google Place photos and other dynamic URLs where the dominant
  * color is unknown at build time.
  */
+// A literal keeps this shared client module independent of Node Buffer.
 export const PAPER_CREAM_BLUR =
-  "data:image/svg+xml;base64," +
-  Buffer.from(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="5"><rect width="8" height="5" fill="#EAE1D1"/></svg>',
-  ).toString("base64");
+  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjUiPjxyZWN0IHdpZHRoPSI4IiBoZWlnaHQ9IjUiIGZpbGw9IiNFQUUxRDEiLz48L3N2Zz4=";

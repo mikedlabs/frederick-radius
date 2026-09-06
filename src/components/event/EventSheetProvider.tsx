@@ -79,7 +79,10 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
       const req = ++reqRef.current;
       setEvent(null);
       setPendingSlug(slug);
-      fetch(`/api/events/${encodeURIComponent(slug)}/summary`)
+      // The attendance summary now includes canonical venue coordinates and
+      // owner notices. Version its URL so an installed app cannot reuse the
+      // older cached shape after updating its client bundle.
+      fetch(`/api/events/${encodeURIComponent(slug)}/summary?v=attendance-2`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
           if (reqRef.current !== req) return; // superseded or closed

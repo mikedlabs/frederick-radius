@@ -105,7 +105,9 @@ describe("deterministic map search actions", () => {
       slug: "state-mva",
       jurisdiction: "state",
     });
-    expect(qualifiedSearchIndex("DMV", 10, []).results).toEqual([]);
+    expect(qualifiedSearchIndex("DMV", 10, []).results[0]).toMatchObject({
+      type: "action", id: "department:state-mva", badge: "Official resource",
+    });
   });
 
   it("answers Wi-Fi with the live amenity control instead of place-name noise", () => {
@@ -148,5 +150,43 @@ describe("deterministic map search actions", () => {
         ),
       ),
     ).toBe(true);
+  });
+});
+
+describe("official services share the Find doorway", () => {
+  it.each(["report a pothole", "marriage license", "register to vote", "water bill"])(
+    "gives %s the same authoritative answer in both adapters", (query) => {
+      const direct = searchIndex(query, 8, []);
+      const qualified = qualifiedSearchIndex(query, 8, []).results;
+      expect(qualified).toEqual(direct);
+      expect(qualified[0]?.id).toMatch(/^civic:/);
+      expect(qualified.every((result) => result.type === "action")).toBe(true);
+      expect(qualified[0]?.href).toMatch(/^https:\/\//);
+    },
+  );
+
+  it.each(["dog friendly restaurant", "water park", "health food", "bus station"])(
+    "does not invent government intent in %s", (query) => {
+      const results = qualifiedSearchIndex(query, 12, []).results;
+      expect(results.some((result) => /^(?:civic|department):/.test(result.id))).toBe(false);
+    },
+  );
+});
+
+describe("dated result handoffs", () => {
+  it("carries Brunswick and tonight into both map and calendar actions", () => {
+    const results = qualifiedSearchIndex("events in Brunswick tonight", 8, [], {
+      now: new Date("2026-09-06T16:00:00Z"),
+    }).results;
+    expect(results.some((result) => result.type === "place" || result.type === "category")).toBe(false);
+    expect(results.find((result) => result.id === "action:map-tonight")?.href).toBe("/map?t=tonight&in=brunswick");
+    expect(results.find((result) => result.id === "action:events")?.href).toBe("/events?in=brunswick&d=2026-09-06&tod=evening");
+  });
+
+  it("never passes next weekend into this weekend's map control", () => {
+    const results = qualifiedSearchIndex("events next weekend", 8, []).results;
+    expect(results.some((result) => result.type === "place")).toBe(false);
+    expect(results.some((result) => result.href.includes("t=weekend") || result.href.includes("when=weekend"))).toBe(false);
+    expect(results.find((result) => result.id === "action:events")?.subtitle).toContain("next weekend");
   });
 });

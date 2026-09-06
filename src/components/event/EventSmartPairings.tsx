@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CloudSun, ParkingSquare, Utensils } from "lucide-react";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import type { PlaceCardData } from "@/lib/loaders/places";
@@ -75,7 +76,7 @@ export default async function EventSmartPairings({
 
   return (
     <section
-      aria-label="Smart pairings"
+      aria-label="Around the event"
       className="rounded-[var(--app-radius-md)] border p-3.5"
       style={{
         borderColor: "var(--app-border)",
@@ -87,7 +88,7 @@ export default async function EventSmartPairings({
         className="text-[10px] font-bold uppercase tracking-[0.12em]"
         style={{ color: "var(--app-ink-3)" }}
       >
-        What to know
+        Around the event
       </p>
       <ul className="mt-1.5 space-y-1.5">
         {weather && (
@@ -98,7 +99,7 @@ export default async function EventSmartPairings({
               style={{ color: "var(--app-brand)" }}
               aria-hidden
             />
-            <span>{weather}</span>
+            <span>{weather}<span className="mt-1 block text-[12px]" style={{ color: "var(--app-ink-3)" }}>National Weather Service{forecast?.asOf ? ` · issued ${new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(forecast.asOf))}` : " · issue time unavailable"}</span></span>
           </li>
         )}
         {parking && (
@@ -120,7 +121,7 @@ export default async function EventSmartPairings({
               style={{ color: "var(--app-brand)" }}
               aria-hidden
             />
-            <span>{eat}</span>
+            <span>{eat}{nearbyFood[0] && <Link href={`/places/${nearbyFood[0].slug}`} className="tap-44 flex w-fit items-center text-[12px] font-semibold underline" style={{ color: "var(--app-brand-press)" }}>Check hours &amp; details</Link>}</span>
           </li>
         )}
       </ul>

@@ -22,15 +22,16 @@ describe("Today decision hierarchy", () => {
     expect(eventClose).toBeGreaterThan(placeClose);
   });
 
-  it("keeps the one Find doorway tappable after weather, before the deeper place lead and event program", () => {
+  it("keeps Find before supporting weather and the deeper place lead and event program", () => {
     const weather = renderedPage.indexOf("</SkyHero>");
     const lead = renderedPage.indexOf("{decisionLead}");
     const find = renderedPage.indexOf("<TodayAsk embedded");
     const events = renderedPage.indexOf("{whatsOn}");
 
     expect(weather).toBeGreaterThan(-1);
-    expect(find).toBeGreaterThan(weather);
+    expect(weather).toBeGreaterThan(find);
     expect(lead).toBeGreaterThan(find);
+    expect(weather).toBeGreaterThan(lead);
     expect(events).toBeGreaterThan(lead);
   });
 
@@ -60,14 +61,14 @@ describe("Today decision hierarchy", () => {
 
     expect(masthead).toBeGreaterThan(alerts);
     expect(fair).toBeGreaterThan(masthead);
-    expect(weather).toBeGreaterThan(fair);
+    expect(fair).toBeGreaterThan(weather);
     expect(renderedPage).toContain("fairPromotionPhase ? (");
     expect(renderedPage).toContain(": civicMoment ? (");
     expect(renderedPage.match(/<TodayFairFeature\b/g)).toHaveLength(1);
   });
 
   it("gives each part of the briefing one purpose and preserves an overlapping civic moment", () => {
-    const decide = renderedPage.indexOf('label="Decide now"');
+    const decide = renderedPage.indexOf('className="today-start-grid"');
     const follow = renderedPage.indexOf('label="Follow the day"');
     const plan = renderedPage.indexOf('title="Plan the rest"');
     const more = renderedPage.indexOf('title="Local guides and saved places"');

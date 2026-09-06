@@ -37,8 +37,8 @@ function liveEvent(): EventWithMeta {
     slug: "radius-investor-showcase",
     title: "Radius Investor Showcase",
     description: "A live event supplied by the unified event assembly.",
-    starts_at: "2026-08-01T23:00:00.000Z",
-    ends_at: "2026-08-02T01:00:00.000Z",
+    starts_at: new Date(Date.now() + 60 * 60 * 1_000).toISOString(),
+    ends_at: new Date(Date.now() + 3 * 60 * 60 * 1_000).toISOString(),
     timezone: "America/New_York",
     venue_name: "Test Venue",
     address: "1 Market Street, Frederick, MD 21701",
@@ -66,6 +66,26 @@ describe("GET /api/search map fast path", () => {
       origin: null,
       status: "unavailable",
     });
+  });
+
+  it("honors an explicit town over both map coordinates and a different stored town", async () => {
+    const req = request("coffee");
+    req.nextUrl.searchParams.set("in", "brunswick");
+    req.cookies.set("fr_scope", "town:frederick");
+    const body = await (await GET(req)).json();
+    const places = body.results.filter((result: { type: string }) => result.type === "place");
+    expect(places.length).toBeGreaterThan(0);
+    expect(places.every((result: { subtitle: string }) => result.subtitle.includes("Brunswick"))).toBe(true);
+    expect(mocks.loadEventArchiveSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("keeps an explicit county search from inheriting a stored town", async () => {
+    const req = request("coffee");
+    req.nextUrl.searchParams.set("in", "county");
+    req.cookies.set("fr_scope", "town:brunswick");
+    const body = await (await GET(req)).json();
+    const places = body.results.filter((result: { type: string }) => result.type === "place");
+    expect(places.some((result: { subtitle: string }) => !result.subtitle.includes("Brunswick"))).toBe(true);
   });
 
   it.each([
@@ -103,6 +123,15 @@ describe("GET /api/search map fast path", () => {
       }),
     );
   });
+
+  it.each(["DMV", "report a pothole", "water bill"])(
+    "answers the official %s task without waiting for an unrelated calendar", async (query) => {
+      const response = await GET(request(query, "global"));
+      const body = await response.json();
+      expect(body.results[0].id).toMatch(/^(?:civic|department):/);
+      expect(mocks.loadEventArchiveSnapshot).not.toHaveBeenCalled();
+    },
+  );
 
   it("returns an ordinary local place search without assembling the calendar", async () => {
     const response = await GET(request("coffee nearby"));

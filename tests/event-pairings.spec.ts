@@ -146,7 +146,6 @@ describe("parkingPhrase", () => {
       name: "Court Street Garage",
       distanceM: 120,
       distanceLabel: "394 ft",
-      walkMinutes: 2,
     };
     const out = parkingPhrase(parking);
     expect(out).toContain("Court Street Garage");
@@ -161,14 +160,16 @@ describe("parkingPhrase", () => {
 // ── eatBeforePhrase ───────────────────────────────────────────────
 
 describe("eatBeforePhrase", () => {
-  it("names the lead spot with a walking-time estimate + a count of more", () => {
+  it("names nearby food with straight-line distance and an explicit hours check", () => {
     const out = eatBeforePhrase([
       place("Cellar Door", 200), // ~3 min walk at 80 m/min
       place("Volt", 400),
       place("Brewer's Alley", 600),
     ]);
     expect(out).toContain("Cellar Door");
-    expect(out).toMatch(/minute walk/i);
+    expect(out).toMatch(/straight line/i);
+    expect(out).not.toMatch(/minute.walk/i);
+    expect(out).toContain("Check its hours for the event date.");
     expect(out).toMatch(/2 more/);
   });
 
@@ -182,9 +183,10 @@ describe("eatBeforePhrase", () => {
     expect(eatBeforePhrase([])).toBeNull();
   });
 
-  it("rounds walking time up so '0 min walk' never appears", () => {
+  it("does not translate a nearby coordinate into a walking promise", () => {
     const out = eatBeforePhrase([place("Right Outside", 30)]);
     expect(out).not.toMatch(/\b0-minute/);
-    expect(out).toMatch(/1-minute/);
+    expect(out).toContain("straight line");
+    expect(out).not.toMatch(/minute|walk/);
   });
 });

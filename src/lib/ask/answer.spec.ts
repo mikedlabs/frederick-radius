@@ -787,6 +787,23 @@ describe("askFrederick structured answers", () => {
     ).toBe(hasUnconfirmedHours);
   });
 
+  it.each(["I have two hours in Brunswick this afternoon. What can I do?", "Plan the next two hours in Brunswick"])("keeps a timed Brunswick request useful without invented availability: %s", async (query) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-06T18:00:00Z"));
+    try {
+      const result = await askFrederick(query, downtown);
+      expect(result.plan).toBeNull();
+      expect(result.intent).toMatchObject({ kind: "plan", durationHours: 2 });
+      expect(result.context).toBe("Brunswick");
+      expect(result.answer).toContain("does not have current verified hours");
+      expect(result.sources.every((source) => source.city === "Brunswick" && source.status === "Visit time unconfirmed")).toBe(true);
+      expect(result.actions?.some((action) => action.href === "/m/brunswick")).toBe(true);
+      expect(result.actions?.some((action) => action.kind === "refine")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("builds a lower-walking parent draft and labels unconfirmed hours", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-17T14:00:00.000Z"));

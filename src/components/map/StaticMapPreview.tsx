@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * A static locator that fails into a useful map handoff instead of showing a
@@ -21,12 +21,20 @@ export default function StaticMapPreview({
   className: string;
 }) {
   const [failed, setFailed] = useState(false);
+  const imageRef = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    const image = imageRef.current;
+    // A cached or fast 503 may settle before React attaches onError during
+    // hydration. Reconcile the browser's already-completed image state.
+    if (image?.complete) setFailed(image.naturalWidth === 0);
+  }, [src]);
 
   return (
     <div className={`relative overflow-hidden ${className}`}>
       {/* Plain <img>: the proxy already serves a right-sized @2x PNG. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        ref={imageRef}
         src={src}
         alt={alt}
         width={width}
@@ -34,6 +42,7 @@ export default function StaticMapPreview({
         loading="lazy"
         decoding="async"
         onError={() => setFailed(true)}
+        onLoad={() => setFailed(false)}
         hidden={failed}
         className="field-map-image h-full w-full object-cover"
       />

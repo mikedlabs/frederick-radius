@@ -8903,3 +8903,11 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
     transition: none;
   }
 }
+
+/* The first choice leads Today. Weather supports it without delaying Find. */
+.today-start-grid { display: grid; gap: 1rem; }
+.today-start-context { min-width: 0; }
+.today-start-grid + div { margin-top: 1.5rem; }
+@media (min-width: 768px) {
+  .today-start-grid { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; gap: 1.5rem; }
+}

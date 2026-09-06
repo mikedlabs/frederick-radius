@@ -10,7 +10,7 @@ import {
 } from "@/lib/loaders/todayEventSnapshot";
 import { approxLocation } from "@/lib/ip-geo";
 import { roundCoord } from "@/lib/walkTime";
-import { resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
+import { parseScope, resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 
 function normalizedSearchText(value: string): string {
   return value
@@ -71,7 +71,10 @@ export async function GET(request: NextRequest) {
   // is useful for global Find, but must not silently override an explicit map
   // origin after someone pans across the county.
   const mapOrigin = request.nextUrl.searchParams.get("origin") === "map" && deviceOrigin;
-  const context = mapOrigin
+  const explicitScope = parseScope(request.nextUrl.searchParams.get("in"));
+  const context = explicitScope
+    ? resolveDecisionContext({ scopeRaw: explicitScope, homeMuniRaw: null, deviceOrigin })
+    : mapOrigin
     ? {
         origin: deviceOrigin,
         filterMunicipality: null,
@@ -129,7 +132,8 @@ export async function GET(request: NextRequest) {
   );
   const skipLiveEventAssembly =
     !isEventSearchIntent(q) &&
-    ((mapRequest && baseAnswersMap) || baseHasAtmHandoff);
+    ((mapRequest && baseAnswersMap) || baseHasAtmHandoff ||
+      base.results.some((result) => result.id.startsWith("civic:") || result.id.startsWith("department:")));
   // Rank against the promoted event archive, not just the small curated seed
   // set. The archive is refreshed in the background and has a cancellable
   // sub-second read budget, so a search can discover current events without

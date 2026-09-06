@@ -24,6 +24,8 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { placeHoursTrust, eventTrust, type TrustSignal } from "@/lib/trust";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { browseSafePhotoUrl } from "@/lib/google-photo-policy";
+import { findDepartments, jurisdictionLabel } from "@/data/departments";
+import { isHighConfidenceCivicIntent, searchCivicActions, shouldShowDepartmentAnswers } from "@/lib/search/civic";
 
 export type SearchResultType =
   | "place"
@@ -766,6 +768,8 @@ export function searchIndex(
   limit = 12,
   eventPool?: readonly Event[],
 ): SearchResult[] {
+  const official = officialServiceResults(query);
+  if (official.complete) return official.results.slice(0, limit);
   const mapActions = matchMapActions(query).slice(0, 2);
   // Direct map answers lead generic doors and ranked records. Quick actions
   // follow them and stay capped at the head; the rest of the limit goes to
@@ -774,14 +778,40 @@ export function searchIndex(
   // Map layers ride after quick actions: "farmers market" should offer
   // the overlay alongside the market places themselves.
   const layers = matchLayers(query).slice(0, 1);
-  const head = [...mapActions, ...actions, ...layers];
+  const head = [...official.results, ...mapActions, ...actions, ...layers];
   const headHrefs = new Set(head.map((a) => a.href));
   // Registry pages and quick actions overlap on purpose (both are doors);
   // never render the same door twice.
   const hits = search(canonicalSearchQuery(query), Math.max(1, limit - head.length), eventPool)
     .map(hitToResult)
     .filter((r) => !headHrefs.has(r.href));
-  return [...head, ...hits];
+  return dedupeByHref([...head, ...hits], limit);
+}
+
+/** The same verified civic corpus used by full Search and Ask must also
+ * answer global Find. A service request should not depend on its doorway. */
+function officialServiceResults(query: string): { results: SearchResult[]; complete: boolean } {
+  const actions = searchCivicActions(query, 3);
+  if (isHighConfidenceCivicIntent(query, actions)) {
+    return {
+      complete: true,
+      results: actions.map((action) => ({
+        type: "action", id: action.id, title: action.title,
+        subtitle: action.subtitle, href: action.href, badge: "Official resource",
+      })),
+    };
+  }
+  const departments = shouldShowDepartmentAnswers(query, actions)
+    ? findDepartments(query, 2)
+    : [];
+  return {
+    complete: false,
+    results: departments.map((department) => ({
+      type: "action", id: `department:${department.slug}`, title: department.name,
+      subtitle: `${jurisdictionLabel(department.jurisdiction)} · ${department.about}`,
+      href: department.website, badge: "Official resource",
+    })),
+  };
 }
 
 function searchHead(query: string): SearchResult[] {
@@ -790,6 +820,27 @@ function searchHead(query: string): SearchResult[] {
     ...matchQuickActions(query).slice(0, 2),
     ...matchLayers(query).slice(0, 1),
   ];
+}
+
+export function contextualSearchResult(result: SearchResult, meta: QualifiedSearchMeta, query: string, fallbackScope?: "county"): SearchResult {
+  if (!result.href.startsWith("/map") && result.href !== "/events") return result;
+  const url = new URL(result.href, "https://frederickradius.app");
+  if (meta.scopeMunicipality || fallbackScope) url.searchParams.set("in", meta.scopeMunicipality ?? fallbackScope!);
+  if (url.pathname === "/events" && meta.eventWindow) {
+    const window = meta.eventWindow;
+    if (window.date) url.searchParams.set("d", window.date);
+    if (window.label === "This weekend") url.searchParams.set("when", "weekend");
+    if (window.label === "Tonight") url.searchParams.set("tod", "evening");
+    if (window.label === "This morning") url.searchParams.set("tod", "morning");
+    if (window.label === "This afternoon") url.searchParams.set("tod", "afternoon");
+    if (window.freeOnly) url.searchParams.set("free", "1");
+    // Events has no two-day "next weekend" lens. Make that broader handoff
+    // explicit instead of accidentally sending someone into this weekend.
+    if (/\bnext\s+weekend\b/i.test(query)) {
+      return { ...result, href: `${url.pathname}${url.search}`, title: "Choose dates in the event calendar", subtitle: "Open the full event list to choose next weekend's dates." };
+    }
+  }
+  return { ...result, href: `${url.pathname}${url.search}` };
 }
 
 function dedupeByHref(results: SearchResult[], limit: number): SearchResult[] {
@@ -875,18 +926,26 @@ export function qualifiedSearchIndex(
   eventPool?: readonly Event[],
   context: QualifiedSearchContext = {},
 ): QualifiedSearchIndexResult {
-  const head = searchHead(query);
+  const official = officialServiceResults(query);
+  const rawHead = [...official.results, ...searchHead(query)].filter((result) =>
+    !(result.id === "action:map-weekend" && /\bnext\s+weekend\b/i.test(query)),
+  );
   const qualified = qualifiedSearch(
     canonicalSearchQuery(query),
-    limit + head.length,
+    limit + rawHead.length,
     eventPool,
     context,
   );
+  if (official.complete) {
+    return { results: official.results.slice(0, limit), meta: qualified.meta };
+  }
+  const head = rawHead.map((result) => contextualSearchResult(result, qualified.meta, query));
   const deterministicUtilityAction = head.some((result) =>
     MAP_ACTIONS_THAT_FULLY_ANSWER_THE_QUERY.has(result.id),
   );
   const ranked = qualified.hits
     .map(hitToResult)
+    .map((result) => contextualSearchResult(result, qualified.meta, query))
     // A live amenity layer is the answer. A nearby business whose name shares
     // one loose token is not a useful second choice and made the flagship
     // search overlay look random after a correct first row. Keep guide/page

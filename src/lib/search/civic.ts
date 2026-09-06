@@ -137,7 +137,8 @@ export function isHighConfidenceCivicIntent(
   // action ready to replace them. A regex-only intent without an answer would
   // otherwise turn a useful query into an empty official-answer section.
   return answers.length > 0 && (
-    answers.some((answer) => answer.score >= 8) || UNAMBIGUOUS_CIVIC_TASK.test(query)
+    (wordsOf(query).filter((term) => !STOP.has(term)).length >= 2 &&
+      answers.some((answer) => answer.score >= 8)) || UNAMBIGUOUS_CIVIC_TASK.test(query)
   );
 }
 

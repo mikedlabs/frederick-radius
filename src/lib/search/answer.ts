@@ -1,4 +1,5 @@
 import { CRAVING_BY_KEY } from "@/data/cravings";
+import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 /**
  * primaryAnswerFor — turn a natural search query into ONE direct answer, so
@@ -58,7 +59,10 @@ export function queryWantsOpenNow(q: string): boolean {
   return /\bopen\b/.test(q) && !/open\s?mic/.test(q);
 }
 
-export function primaryAnswerFor(query: string): PrimaryAnswer | null {
+export function primaryAnswerFor(
+  query: string,
+  context: { municipality?: string | null } = {},
+): PrimaryAnswer | null {
   const q = query.toLowerCase().trim();
   if (q.length < 2) return null;
 
@@ -78,11 +82,17 @@ export function primaryAnswerFor(query: string): PrimaryAnswer | null {
     if (terms.some((t) => hasTerm(q, t))) {
       const craving = CRAVING_BY_KEY[key];
       if (!craving) continue;
+      const namedTown = MUNICIPALITIES.find((town) =>
+        new RegExp(`\\b${town.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(q)
+      );
+      const town = namedTown ?? (context.municipality
+        ? MUNICIPALITY_BY_SLUG[context.municipality]
+        : undefined);
       return {
         key,
         label: craving.label,
-        href: `/nearby?c=${key}`,
-        kicker: "Open picks; nearest when location is available",
+        href: `/nearby?c=${key}${town ? `&in=${town.slug}` : ""}`,
+        kicker: town ? `Browse ${craving.label.toLowerCase()} in ${town.name}.` : "Open picks; nearest when location is available",
       };
     }
   }

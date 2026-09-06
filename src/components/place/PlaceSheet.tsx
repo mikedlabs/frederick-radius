@@ -38,7 +38,7 @@ import {
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import LiveGooglePlaceContext, { type LiveGooglePlaceData } from "@/components/place/GooglePlaceContext";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
-import { normalizeMapReturnTo, withMapReturnTo } from "@/lib/map-return";
+import { browseReturnFromLocation, normalizeBrowseReturnTo, withBrowseReturnTo } from "@/lib/browse-return";
 import PlaceCommunicationAccess from "@/components/place/PlaceCommunicationAccess";
 import {
   decisionContextFromPath,
@@ -113,12 +113,10 @@ function PlaceSheetContent({
   const [fullPageHref] = useState(() => {
     const current =
       typeof window === "undefined" ? null : new URL(window.location.href);
-    const liveMapReturnTo = normalizeMapReturnTo(
-      current?.pathname === "/map"
-        ? `${current.pathname}${current.search}${current.hash}`
-        : mapReturnTo,
-    );
-    return withMapReturnTo(`/places/${place.slug}`, liveMapReturnTo);
+    const returnTo = current
+      ? browseReturnFromLocation(current)
+      : normalizeBrowseReturnTo(mapReturnTo);
+    return withBrowseReturnTo(`/places/${place.slug}`, returnTo);
   });
 
   // Real walk/drive time from a fresh, consented device location. Without an

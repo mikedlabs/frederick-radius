@@ -54,6 +54,8 @@ import { isEventToday } from "@/lib/eventWhenLabel";
 import { isUpcomingEvent } from "@/lib/events/visible";
 import Passport from "@/components/saved/Passport";
 import type { ReactNode } from "react";
+import { withBrowseReturnTo } from "@/lib/browse-return";
+import { useSavedJourney } from "./useSavedJourney";
 
 type SavedSortKey = "town" | "category" | "recent" | "az" | "distance" | "open";
 
@@ -199,6 +201,58 @@ export function mergeSavedEventHydration(
   return next;
 }
 
+/** A successful catalog answer can confirm an omitted slug; a failed
+ * request cannot. Keep previously loaded cards through a failed refresh. */
+export function mergeSavedPlaceHydration(
+  previous: ReadonlyMap<string, PlaceCardData>,
+  requested: readonly string[],
+  places: PlaceCardData[] | null,
+): Map<string, PlaceCardData> {
+  if (places === null) {
+    return new Map([...previous].map(([slug, place]) => [slug, {
+      ...place,
+      // A previously returned clock state is not proof of being open now.
+      open_status: { state: "unknown" as const },
+    }]));
+  }
+  const next = new Map(previous);
+  for (const slug of requested) next.delete(slug);
+  for (const place of places) next.set(place.slug, place);
+  return next;
+}
+
+/** Saved places, notes, and recent visits share the same request. Respect
+ * the API's per-request cap so a long collection is not mistaken for missing
+ * catalog entries. Sequential batches keep recovery traffic bounded. */
+export async function fetchSavedPlacesBySlugs(slugs: readonly string[], signal?: AbortSignal): Promise<PlaceCardData[]> {
+  const places: PlaceCardData[] = [];
+  for (let offset = 0; offset < slugs.length; offset += MAX_FOLLOWED_PLACES) {
+    const batch = slugs.slice(offset, offset + MAX_FOLLOWED_PLACES);
+    const response = await fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(batch.join(","))}`, { signal });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (!Array.isArray(data?.places)) throw new Error("Invalid places response");
+    places.push(...data.places);
+  }
+  return places;
+}
+
+export function SavedPlaceRefreshNotice({ unavailableCount, missingCount, onRetry, retrying }: {
+  unavailableCount: number;
+  missingCount: number;
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  if (unavailableCount === 0 && missingCount === 0) return null;
+  return (
+    <div role="status" className="space-y-2 border-y py-3 text-[13px] leading-relaxed" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
+      {unavailableCount > 0 && <p>We could not refresh {unavailableCount} saved place{unavailableCount === 1 ? "" : "s"}. Your saves are still here. Check current hours on the place page.</p>}
+      {missingCount > 0 && <p>{missingCount} saved place{missingCount === 1 ? " is" : "s are"} no longer listed. {missingCount === 1 ? "It remains" : "They remain"} saved on this device.</p>}
+      {unavailableCount > 0 && <button type="button" onClick={onRetry} disabled={retrying} className="tap-44 inline-flex items-center text-[13px] font-semibold underline underline-offset-4" style={{ color: "var(--app-brand-press)" }}>{retrying ? "Trying again…" : "Try again"}</button>}
+    </div>
+  );
+}
+
 export function SavedEventRefreshNotice({
   unresolvedCount,
   missingCount,
@@ -252,7 +306,7 @@ function EventRow({ event, today }: { event: DecoratedEvent; today: boolean }) {
     .filter(Boolean)
     .join(" · ");
   return (
-    <Link href={`/events/${event.slug}`} className="sv-evrow tactile-interactive">
+    <Link href={withBrowseReturnTo(`/events/${event.slug}`, "/my-radius")} className="sv-evrow tactile-interactive">
       <span className="cal" aria-hidden>
         <b>{parts?.day ?? ""}</b>
         <span>{parts?.mon ?? ""}</span>
@@ -356,8 +410,6 @@ export default function SavedList({
   // The user's personal lists ("date night", "takeout") keyed by slug, plus the
   // currently selected list filter (null = show all).
   const savedTags = useAllSavedTags();
-  const [activeList, setActiveList] = useState<string | null>(null);
-  const [organizerOpen, setOrganizerOpen] = useState(false);
 
   // Union of every slug this component might need: saved bookmarks,
   // recently viewed, and the empty-state seeds. We hand the whole set
@@ -393,6 +445,10 @@ export default function SavedList({
   const [resolvedKey, setResolvedKey] = useState<string | null>(
     initialFollowSlugs ? initialFollowSlugs.join(",") : null,
   );
+  const [placeRefreshFailed, setPlaceRefreshFailed] = useState(false);
+  const [missingPlaceSlugs, setMissingPlaceSlugs] = useState<string[]>([]);
+  const [placeRetry, setPlaceRetry] = useState(0);
+  const [placesRetrying, setPlacesRetrying] = useState(false);
 
   useEffect(() => {
     if (!mounted) return;
@@ -400,29 +456,27 @@ export default function SavedList({
       return;
     }
     const ctrl = new AbortController();
-    fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(slugsKey)}`, {
-      signal: ctrl.signal,
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((data: { places: PlaceCardData[] }) => {
-        setPlacesBySlug((previous) => {
-          const next = new Map(previous);
-          for (const place of data.places) next.set(place.slug, place);
-          return next;
-        });
+    fetchSavedPlacesBySlugs(slugsKey.split(","), ctrl.signal)
+      .then((places) => {
+        const requested = slugsKey.split(",");
+        const returned = new Set(places.map((place) => place.slug));
+        setPlacesBySlug((previous) => mergeSavedPlaceHydration(previous, requested, places));
+        setMissingPlaceSlugs(requested.filter((slug) => !returned.has(slug)));
+        setPlaceRefreshFailed(false);
+        setPlacesRetrying(false);
         setResolvedKey(slugsKey);
       })
       .catch((err) => {
-        // AbortError = navigated/unmounted; ignore. Anything else,
-        // collapse to an empty map so the UI keeps rendering rather
-        // than spinning forever.
+        // A failed source must not erase the cards already available.
         if (err && err.name !== "AbortError") {
-          setPlacesBySlug(new Map());
+          setPlacesBySlug((previous) => mergeSavedPlaceHydration(previous, [], null));
+          setPlaceRefreshFailed(true);
+          setPlacesRetrying(false);
           setResolvedKey(slugsKey);
         }
       });
     return () => ctrl.abort();
-  }, [mounted, slugsKey, slugsToFetch.length]);
+  }, [mounted, slugsKey, slugsToFetch.length, placeRetry]);
 
   // ── Saved events, hydrated the same way. Events are device-local by
   // contract, so the local refs ARE the truth about which slugs to ask for;
@@ -475,6 +529,15 @@ export default function SavedList({
       });
     return () => ctrl.abort();
   }, [mounted, eventSlugsToFetch]);
+
+  const { journey, updateJourney } = useSavedJourney(
+    mounted && !(Boolean(userId) && followsLoading) &&
+    (slugsToFetch.length === 0 || resolvedKey !== null) &&
+    (eventSlugsToFetch.length === 0 || eventsResolved),
+  );
+  const { activeList, organizerOpen, raisedSlug, showPast } = journey;
+  const setActiveList = (value: string | null) => updateJourney({ activeList: value });
+  const setRaisedSlug = (value: string | null) => updateJourney({ raisedSlug: value });
 
   // Persisted sort preference (defaults to "category" — the original
   // grouping behavior). Read on mount so SSR + first paint stay
@@ -534,7 +597,6 @@ export default function SavedList({
   // The wallet's raised card, lifted here so the On-now running line can
   // raise a card by name — the strip and the deck are one instrument.
   // null = the wallet's default (top card).
-  const [raisedSlug, setRaisedSlug] = useState<string | null>(null);
   function raiseCard(slug: string) {
     setRaisedSlug(slug);
     // Raising implies the wallet. Deliberately setView, not setViewAndStore:
@@ -551,7 +613,6 @@ export default function SavedList({
 
   // Past saved events are kept (you saved them) but tucked behind a toggle so a
   // months-old show never clutters the upcoming list.
-  const [showPast, setShowPast] = useState(false);
 
   // The "distance" sort needs an origin. Read the user's home muni
   // from localStorage (the same key PreferencesPanel writes); fall
@@ -949,6 +1010,13 @@ export default function SavedList({
         }
       />
 
+      <SavedPlaceRefreshNotice
+        unavailableCount={placeRefreshFailed ? placeRefsAll.length : 0}
+        missingCount={placeRefreshFailed ? 0 : placeRefsAll.filter((place) => missingPlaceSlugs.includes(place.id)).length}
+        retrying={placesRetrying}
+        onRetry={() => { setPlacesRetrying(true); setPlaceRetry((value) => value + 1); }}
+      />
+
       {followsTruncated && (
         <p
           role="status"
@@ -1072,7 +1140,7 @@ export default function SavedList({
               <Skeleton.Block height={62} round="var(--app-radius-md)" />
             </div>
           ) : upcomingEvents.length > 0 ? (
-            <SavedEventWallet events={upcomingEvents} savedAt={savedAtByEventSlug} now={now} />
+            <SavedEventWallet events={upcomingEvents} savedAt={savedAtByEventSlug} now={now} openSlug={journey.eventSlug} onOpenSlug={(eventSlug) => updateJourney({ eventSlug })} />
           ) : events.length > 0 ? (
             <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
               There are no upcoming events. Your saved events have all passed.
@@ -1095,7 +1163,7 @@ export default function SavedList({
             <div className="space-y-2">
               <button
                 type="button"
-                onClick={() => setShowPast((v) => !v)}
+                onClick={() => updateJourney({ showPast: !showPast })}
                 className="tap-44 text-[11px] font-semibold underline-offset-2 hover:underline"
                 style={{ color: "var(--app-ink-3)" }}
                 aria-expanded={showPast}
@@ -1109,6 +1177,8 @@ export default function SavedList({
                     savedAt={savedAtByEventSlug}
                     now={now}
                     startRaised={false}
+                    openSlug={journey.pastEventSlug}
+                    onOpenSlug={(pastEventSlug) => updateJourney({ pastEventSlug })}
                   />
                 </div>
               )}
@@ -1138,7 +1208,8 @@ export default function SavedList({
       {hasOrganizerContent ? (
       <details
         id="saved-organizer"
-        onToggle={(event) => setOrganizerOpen(event.currentTarget.open)}
+        open={organizerOpen}
+        onToggle={(event) => { if (event.currentTarget.open !== organizerOpen) updateJourney({ organizerOpen: event.currentTarget.open }); }}
         className="group overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)]"
         style={{ borderColor: "var(--app-border-strong)" }}
       >

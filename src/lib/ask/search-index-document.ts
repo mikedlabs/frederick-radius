@@ -23,11 +23,14 @@ export function buildRadiusSearchDocument(
     place.name,
     `Category: ${place.category}`,
     `Town: ${place.city || place.municipality}`,
+    place.address ? `Address: ${place.address}` : null,
+    place.postal_code ? `Postal code: ${place.postal_code}` : null,
     place.short_blurb,
     place.description,
     place.primary_type,
     place.subcategories?.join(", "),
     place.tags?.join(", "),
+    place.amenities?.length ? `Listed amenities: ${place.amenities.join(", ")}` : null,
     place.known_for?.join("; "),
     place.field_note_tip,
     // The lexical ranker scores these aliases too. Keeping them in the
@@ -46,6 +49,7 @@ export function buildRadiusSearchDocument(
       name: place.name,
       category: place.category,
       municipality: place.municipality,
+      address: place.address,
     },
   };
 }

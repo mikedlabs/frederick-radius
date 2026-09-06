@@ -19,6 +19,7 @@
 
 import type { NwsForecast, NwsHourly } from "@/lib/integrations/nws";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import { formatDistance } from "@/lib/geo";
 import {
   eventParkingSummary,
   type EventParkingDecision,
@@ -124,10 +125,9 @@ export function eatBeforePhrase(nearbyFood: PlaceCardData[]): string | null {
   if (!lead) return null;
   const d = lead.distance_m ?? Infinity;
   if (!Number.isFinite(d)) return null;
-  const distMin = Math.max(1, Math.round(d / 80)); // 80 m/min walking pace
   const tail = nearbyFood.length - 1;
   const more = tail > 0
     ? ` There ${tail === 1 ? "is" : "are"} ${tail} more ${tail === 1 ? "option" : "options"} nearby.`
     : "";
-  return `You could eat beforehand at ${lead.name}, about a ${distMin}-minute walk away.${more}`;
+  return `${lead.name} is ${formatDistance(d)} away in a straight line.${more} Check its hours for the event date.`;
 }

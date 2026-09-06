@@ -163,9 +163,11 @@ export function askQuestionPath(query: string): string {
   return text ? `/ask?q=${encodeURIComponent(text)}` : "/ask";
 }
 
-function replaceAskQuestionUrl(query: string): void {
+function replaceAskQuestionUrl(query: string, scope?: Scope | null): void {
   if (typeof window === "undefined") return;
-  const next = askQuestionPath(query);
+  const nextUrl = new URL(askQuestionPath(query), window.location.origin);
+  if (scope) nextUrl.searchParams.set("in", scope);
+  const next = `${nextUrl.pathname}${nextUrl.search}`;
   const current = `${window.location.pathname}${window.location.search}`;
   if (current === next) return;
   window.history.replaceState(window.history.state, "", next);
@@ -1255,6 +1257,7 @@ function AskWorkingPanel({ contextLabel }: { contextLabel: string }) {
 type AskFrederickProps = {
   hideLabel?: boolean;
   initialQuery?: string;
+  initialScope?: Scope | null;
   mode?: AskMode;
   quickAsks?: TodayPrompt[];
   placeholder?: string;
@@ -1263,6 +1266,7 @@ type AskFrederickProps = {
 export default function AskFrederick({
   hideLabel = false,
   initialQuery = "",
+  initialScope = null,
   mode = "compact",
   quickAsks = QUICK_ASKS,
   placeholder = "Ask for a place, a plan, or what is happening",
@@ -1279,7 +1283,7 @@ export default function AskFrederick({
   const [interactionReady, setInteractionReady] = useState(false);
   const [showAreaChooser, setShowAreaChooser] = useState(false);
   const [nearbyGateQuery, setNearbyGateQuery] = useState<string | null>(null);
-  const [currentScope, setCurrentScope] = useState<Scope | null>(null);
+  const [currentScope, setCurrentScope] = useState<Scope | null>(initialScope);
   const [homeScope, setHomeScope] = useState<Scope | null>(null);
   const [answeredContextKey, setAnsweredContextKey] = useState<string | null>(
     null,
@@ -1330,7 +1334,7 @@ export default function AskFrederick({
     setInteractionReady(true);
     const cachedPosition = readCachedPosition();
     setCurrentScope(
-      preferredAskScope(storedAskScope(), Boolean(cachedPosition)),
+      initialScope ?? preferredAskScope(storedAskScope(), Boolean(cachedPosition)),
     );
     setHomeScope(parseScope(getHomeMuni()));
     setHasCachedPosition(Boolean(cachedPosition));
@@ -1346,7 +1350,7 @@ export default function AskFrederick({
       unsubscribe();
       abortRef.current?.abort();
     };
-  }, []);
+  }, [initialScope]);
 
   useEffect(() => {
     if (approvedLocationCheckRef.current || readCachedPosition()) return;
@@ -1500,7 +1504,8 @@ export default function AskFrederick({
       // Some privacy modes block access to sessionStorage entirely. The
       // normal bounded request cache remains the fallback in that case.
     }
-    if (restored) {
+    const urlScope = parseScope(new URLSearchParams(window.location.search).get("in")) ?? initialScope;
+    if (restored && (!urlScope || parseScope(restored.scope) === urlScope)) {
       requestIdRef.current += 1;
       abortRef.current?.abort();
       abortRef.current = null;
@@ -1530,8 +1535,8 @@ export default function AskFrederick({
       return;
     }
 
-    void askRef.current(text, { selfContained: true });
-  }, [initialQuery]);
+    void askRef.current(text, { selfContained: true, scope: urlScope ?? undefined });
+  }, [initialQuery, initialScope]);
 
   async function ask(query: string, options: AskOptions = {}): Promise<void> {
     const text = query.trim().slice(0, MAX_QUERY_LENGTH);
@@ -1590,7 +1595,7 @@ export default function AskFrederick({
     // to a network-derived ranking origin when no device fix exists.
     const effectiveQuery = contextualQuery;
     urlQueryRef.current = effectiveQuery;
-    replaceAskQuestionUrl(effectiveQuery);
+    replaceAskQuestionUrl(effectiveQuery, resolvedScope);
     setPermalinkQuery(effectiveQuery);
     setShareStatus("idle");
     abortRef.current?.abort();
@@ -1878,7 +1883,9 @@ export default function AskFrederick({
   async function shareQuestion(): Promise<void> {
     const query = permalinkQuery.trim();
     if (!query || typeof window === "undefined") return;
-    const url = new URL(askQuestionPath(query), window.location.origin).toString();
+    const shareUrl = new URL(askQuestionPath(query), window.location.origin);
+    if (currentScope) shareUrl.searchParams.set("in", currentScope);
+    const url = shareUrl.toString();
 
     // Share the ANSWER when one is on screen, not just the question — a
     // plan texted to a friend only works if the plan itself rides in the

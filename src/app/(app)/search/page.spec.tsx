@@ -5,9 +5,14 @@ import type { SearchHit } from "@/lib/search";
 
 const mocks = vi.hoisted(() => ({
   search: vi.fn(),
+  eventSnapshot: vi.fn(),
 }));
 
-vi.mock("@/lib/search", () => ({ search: mocks.search }));
+vi.mock("@/lib/search", () => ({ qualifiedSearch: (...args: unknown[]) => ({ hits: mocks.search(...args), meta: { qualifiers: {} } }), isEventSearchIntent: () => false }));
+vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
+vi.mock("@/lib/loaders/todayEventSnapshot", () => ({ loadEventArchiveSnapshot: (...args: unknown[]) => mocks.eventSnapshot(...args), TODAY_EVENT_SNAPSHOT_TIMEOUT_MS: 1000 }));
+vi.mock("@/components/search/SearchBrowsePosition", () => ({ default: () => null }));
+vi.mock("@/components/search/SearchRefinements", () => ({ default: () => <div data-search-area /> }));
 vi.mock("@/lib/search/answer", () => ({ primaryAnswerFor: () => undefined }));
 vi.mock("@/data/departments", () => ({
   findDepartments: () => [],
@@ -44,7 +49,8 @@ function paidPlaceHit(index: number): SearchHit {
 
 describe("submitted search photo budget", () => {
   beforeEach(() => {
-    mocks.search.mockReset();
+    mocks.search.mockReset().mockReturnValue([]);
+    mocks.eventSnapshot.mockReset().mockResolvedValue({ publicEvents: [], sourceHealth: { degraded: false } });
   });
 
   it("renders no more than four paid photos across the visible and collapsed results", async () => {
@@ -61,5 +67,25 @@ describe("submitted search photo budget", () => {
     expect(html).toContain("photo-4");
     expect(html).not.toContain("photo-5");
     expect(html).not.toContain("photo-20");
+  });
+
+  it("loads the event archive for an exact title without event trigger words", async () => {
+    const eventPool = [{ slug: "radius-investor-showcase", title: "Radius Investor Showcase" }];
+    mocks.eventSnapshot.mockResolvedValue({ publicEvents: eventPool, sourceHealth: { degraded: false } });
+    await SearchPage({ searchParams: Promise.resolve({ q: "Radius Investor Showcase" }) });
+    expect(mocks.eventSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.search).toHaveBeenCalledWith("Radius Investor Showcase", 80, eventPool, expect.objectContaining({ resultKind: "all" }));
+  });
+
+  it("passes an explicit Events selection into retrieval", async () => {
+    await SearchPage({ searchParams: Promise.resolve({ q: "coffee", kind: "event" }) });
+    expect(mocks.eventSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.search).toHaveBeenCalledWith("coffee", 80, [], expect.objectContaining({ resultKind: "event" }));
+  });
+
+  it.each(["place", "page"])("does not load event data for %s-only retrieval", async (kind) => {
+    await SearchPage({ searchParams: Promise.resolve({ q: "coffee", kind }) });
+    expect(mocks.eventSnapshot).not.toHaveBeenCalled();
+    expect(mocks.search).toHaveBeenCalledWith("coffee", 80, undefined, expect.objectContaining({ resultKind: kind }));
   });
 });

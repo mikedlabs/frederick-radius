@@ -85,9 +85,11 @@ test("expanded map search carries the exact map state through a place detail", a
     .first();
   await expect(placeResult).toBeVisible();
   const placeHref = await placeResult.getAttribute("href");
-  expect(
-    new URL(placeHref!, "https://frederick-radius.test").searchParams.get("returnTo"),
-  ).toBe(mapReturnHref);
+  const searchReturnHref = new URL(placeHref!, "https://frederick-radius.test").searchParams.get("returnTo")!;
+  const searchReturnUrl = new URL(searchReturnHref, "https://frederick-radius.test");
+  expect(searchReturnUrl.pathname).toBe("/search");
+  expect(searchReturnUrl.searchParams.get("q")).toBe("coffee");
+  expect(searchReturnUrl.searchParams.get("returnTo")).toBe(mapReturnHref);
   await placeResult.click();
 
   // A cold local server can still be generating the static place page after
@@ -95,10 +97,14 @@ test("expanded map search carries the exact map state through a place detail", a
   // before asserting against its client-side return control.
   await expect(page).toHaveURL(/\/places\//, { timeout: 15_000 });
 
-  const detailBack = page.getByRole("link", { name: "Back to map" });
+  const detailBack = page.getByRole("link", { name: "Back to search results" });
   await expect(detailBack).toBeVisible({ timeout: 10_000 });
-  await expect(detailBack).toHaveAttribute("href", mapReturnHref!);
+  await expect(detailBack).toHaveAttribute("href", searchReturnHref);
   await detailBack.click();
+
+  await expect(page).toHaveURL(new RegExp(searchReturnHref.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  await expect(page.getByRole("searchbox", { name: "Search Frederick County" })).toHaveValue("coffee");
+  await page.getByRole("link", { name: "Back to the map" }).click();
 
   await expect
     .poll(() => {
@@ -277,11 +283,15 @@ for (const lookup of [
     const placeLink = await openTodayWithConfirmedPlace(page);
     await placeLink.click();
 
-    await expect(page).toHaveURL(
-      new RegExp(`/places/${TODAY_PLACE_SLUG}$`),
-      { timeout: 20_000 },
-    );
+    await expect(page).toHaveURL((url) =>
+      url.pathname === `/places/${TODAY_PLACE_SLUG}` &&
+      url.searchParams.get("returnTo") === "/today",
+    { timeout: 20_000 });
     await expect(page.getByRole("dialog")).toHaveCount(0);
+    const back = page.getByRole("link", { name: "Back to Today", exact: true });
+    await expect(back).toHaveAttribute("href", "/today");
+    await back.click();
+    await expect(page).toHaveURL(/\/today$/);
   });
 }
 

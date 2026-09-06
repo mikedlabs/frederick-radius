@@ -281,21 +281,18 @@ export default async function HomePage() {
         );
       })()}
 
-      {/* ── CAMPAIGN SPOTLIGHT — the document identifies itself before a
-          campaign asks for attention. Fair Day owns this photographic doorway
-          from Sep 2–26, then retires itself on Sep 27. When another civic
-          moment overlaps the Fair campaign, it moves into Follow the day
-          below instead of disappearing. */}
-      {fairPromotionPhase ? (
-        <div className="mb-4">
-          <TodayFairFeature phase={fairPromotionPhase} />
+      <div className="today-start-grid">
+        <div className="today-start-find">
+        <div className="today-arrival today-arrival--find">
+          <TodayAsk embedded>
+            <CravingStrip />
+          </TodayAsk>
         </div>
-      ) : civicMoment ? (
-        <div className="mb-4">
-          <MomentSpotlight moment={civicMoment} />
+        <div className="mt-5" aria-label="Places for your area">
+          {decisionLead}
         </div>
-      ) : null}
-
+        </div>
+        <div className="today-start-context">
       {/* ── WEATHER HERO — the time-of-day gradient sky and today's weather
           lead the page. Now a COMPACT, CONTAINED card (owner
           call: "all cards within the main part" + "one header with the weather
@@ -328,27 +325,25 @@ export default async function HomePage() {
           />
         </AppTransitionLink>
       </SkyHero>
-
-      <PageChapter
-        label="Decide now"
-        variant="plain"
-        className="mt-7"
-        bodyClassName="space-y-5"
-      >
-        {/* One universal doorway. A person can type a name, need, or question;
-            the Find surface chooses search or reasoning automatically. */}
-        <div className="today-arrival today-arrival--find">
-          <TodayAsk embedded>
-            <CravingStrip />
-          </TodayAsk>
+      {/* ── CAMPAIGN SPOTLIGHT — the document identifies itself before a
+          campaign asks for attention. Fair Day owns this photographic doorway
+          from Sep 2–26, then retires itself on Sep 27. When another civic
+          moment overlaps the Fair campaign, it moves into Follow the day
+          below instead of disappearing. */}
+      {fairPromotionPhase ? (
+        <div className="mb-4">
+          <TodayFairFeature phase={fairPromotionPhase} compact={fairPromotionPhase === "planning"} />
         </div>
-
-        {/* One town-aware first move. It stays mounted so a LocationChip change
-            immediately re-ranks this answer instead of only changing the chip. */}
-        <div className="today-arrival today-arrival--decision">
-          {decisionLead}
+      ) : civicMoment ? (
+        <div className="mb-4">
+          <MomentSpotlight moment={civicMoment} />
         </div>
-      </PageChapter>
+      ) : null}
+
+
+
+        </div>
+      </div>
 
       <PageChapter
         label="Follow the day"

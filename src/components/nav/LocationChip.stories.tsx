@@ -56,3 +56,9 @@ export const DesktopFullLabel: Story = {
     viewport: { value: "radiusTablet", isRotated: false },
   },
 };
+
+export const ExplicitBrunswick: Story = {
+  args: { compact: true },
+  parameters: { nextjs: { navigation: { pathname: "/map", query: { in: "brunswick", q: "coffee" } } } },
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+};

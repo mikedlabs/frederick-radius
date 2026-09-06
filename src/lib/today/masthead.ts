@@ -3,7 +3,7 @@
  * with the Eastern daypart, so the page's identity matches the reorder the
  * page already performs (the "evening gear" in the /today route flips the
  * lead from the day ahead to tonight at 17:00). Before this, the title read
- * a static "Today in Frederick" at every hour, so the adaptive behavior was
+ * a static "Today in Frederick County" at every hour, so the adaptive behavior was
  * invisible and the front door felt generic.
  *
  * Pure + unit-tested. The route computes the Eastern hour and calls this;
@@ -32,24 +32,24 @@ export function todayFrame(easternHour: number): TodayFrame {
   const h = ((easternHour % 24) + 24) % 24;
   if (h >= 5 && h < 12) {
     return {
-      title: "This morning in Frederick",
+      title: "This morning in Frederick County",
       sub: "See what is open and what is coming up.",
     };
   }
   if (h >= 12 && h < 17) {
     return {
-      title: "This afternoon in Frederick",
+      title: "This afternoon in Frederick County",
       sub: "See what is open and what is still ahead.",
     };
   }
   if (h >= 17 && h < 21) {
     return {
-      title: "Tonight in Frederick",
+      title: "Tonight in Frederick County",
       sub: "See what is happening and what is still open.",
     };
   }
   return {
-    title: "Late in Frederick",
+    title: "Late in Frederick County",
     sub: "See what is still open before the night winds down.",
   };
 }

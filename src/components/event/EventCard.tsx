@@ -2,7 +2,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import CategoryIcon from "@/components/place/CategoryIcon";
-import IconStamp from "@/components/ui/IconStamp";
 import type { EventWithMeta } from "@/lib/loaders/events";
 // VALUE import from the DATA-FREE formatter module, never from the loader:
 // a value import of loaders/events would drag its places-client static
@@ -18,7 +17,7 @@ import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
 import { statusLabel } from "@/lib/event-status";
 import DatePlate from "@/components/event/DatePlate";
-import { eventAttendanceLabel } from "@/lib/events/attendance";
+import { eventDecisionLocation, eventDecisionTime } from "@/lib/events/decision-facts";
 import { communicationAccessLabels } from "@/lib/events/communication-access";
 import {
   eventCardVisual,
@@ -29,7 +28,6 @@ import EventPosterCard from "@/components/event/EventPosterCard";
 import {
   eventHasTrustworthyEnd,
   isEventLiveNow,
-  startedEventTimingDisclosure,
 } from "@/lib/eventWhenLabel";
 
 // Event cards use the SHARED CategoryIcon seam (place/CategoryIcon): it resolves
@@ -109,9 +107,8 @@ export default function EventCard({
       ? isEventLiveNow(event, cardNow)
       : !event.is_all_day && eventHasTrustworthyEnd(event));
 
-  // A feature always remains a visual poster. The poster component resolves
-  // photographs through the source-aware eventCardVisual gate and otherwise
-  // paints honest category artwork; it never promotes event.hero_image raw.
+  // A lead uses a source-approved image when available and a compact date-led
+  // card otherwise. An unapproved image never bypasses the shared photo gate.
   if (variant === "feature") {
     return (
       <EventPosterCard
@@ -132,10 +129,7 @@ export default function EventCard({
   // a struck-through title so it can never be mistaken for "on."
   const statusText = statusLabel(status);
   const isCancelled = status === "cancelled";
-  const timingText =
-    status === "scheduled" && cardNow
-      ? startedEventTimingDisclosure(event, cardNow) ?? date.time
-      : date.time;
+  const timingText = eventDecisionTime(event, cardNow ?? undefined);
   // Badge palette: red for cancelled, amber for postponed.
   // Text-safe status color. Plain --app-warning (amber) fails WCAG AA both as
   // inline text on cream and as white-on-fill badge; --app-warning-press is the
@@ -143,7 +137,7 @@ export default function EventCard({
   // text on cream). Cancelled already uses --app-danger, which passes. This one
   // value feeds every status spot below (inline text + white pills). (audit a11y)
   const statusBg = isCancelled ? "var(--app-danger)" : "var(--app-warning-press)";
-  const venueLabel = eventAttendanceLabel(event);
+  const venueLabel = eventDecisionLocation(event);
   // Accent MUST be a hex literal — used in templates like `${accent}38`
   // to compose color-with-alpha. A CSS var() fallback would produce
   // invalid CSS. An unrecognized/blank category resolves to a NEUTRAL
@@ -284,11 +278,11 @@ export default function EventCard({
             }`}
             style={{ color: "var(--app-ink)" }}
           >
-            <span className="block truncate text-[14px] font-semibold tracking-tight">
+            <span className="block line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight">
               {event.title}
             </span>
             <span
-              className="block truncate text-[11px] font-normal leading-tight"
+              className="block text-[12px] font-normal leading-relaxed"
               style={{ color: "var(--app-ink-3)" }}
             >
               <span className="font-mono tabular-nums">{timingText}</span>
@@ -517,7 +511,7 @@ export default function EventCard({
               {/* Venue line — small, calm, single-line truncate. */}
               {venueLabel && (
                 <p
-                  className="mt-0.5 truncate text-[12px] leading-snug"
+                  className="mt-0.5 text-[13px] leading-snug"
                   style={{ color: "var(--app-ink-3)" }}
                 >
                   {venueLabel}
@@ -573,15 +567,7 @@ export default function EventCard({
                   />
                 </div>
               </figure>
-            ) : (
-              // The category glyph as a real pressed-paper SEAL — the canonical
-              // IconStamp (tint over elevated paper, engraved glyph in the
-              // accent, hairline edge + top highlight + warm accent lift),
-              // replacing the hand-built tile so event cards match place/Saved.
-              <IconStamp accent={accent} size="lg" className="shrink-0 self-center">
-                <CategoryIcon slug={event.category} />
-              </IconStamp>
-            )}
+            ) : null}
           </div>
         </Link>
         {cardVisual ? (

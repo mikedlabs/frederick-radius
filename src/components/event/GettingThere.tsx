@@ -1,111 +1,47 @@
 import { CarFront, TrainFront } from "lucide-react";
-import { MARC_STATIONS } from "@/data/marc-stations";
-import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
-import { haversineMeters, metersToMinutes } from "@/lib/geo";
-import {
-  eventParkingDirections,
-  type EventParkingDecision,
-} from "@/lib/events/parking";
+import { fieldNotesFor, recordedFieldNoteVerificationDate } from "@/lib/loaders/fieldNotes";
+import { eventParkingDirections, type EventParkingDecision } from "@/lib/events/parking";
+import { eventNearbyStation } from "@/lib/events/travel";
 import Link from "next/link";
 
-/**
- * GettingThere — the logistics stanza on an event page, assembled entirely
- * from data already in the repo (experience review, differentiators #4:
- * "the visitor-acquisition moment from NORTH_STAR answered in one move").
- *
- * Three quiet lines, each rendered only when EARNED by the data:
- *   1. The venue's VERIFIED Field-Notes parking line (via venue_place_slug) —
- *      the moat: "park in the lower lot, the front spots fill first."
- *   2. Else, for events with precise geo near downtown: the nearest city
- *      garage with walk time ($1/hr city schedule).
- *   3. A MARC station within a 12-minute walk (~1km), with walk minutes —
- *      Frederick/Monocacy/Brunswick/Point of Rocks events read as train-
- *      reachable to DC-area visitors.
- *
- * Server component; pure data joins, no fetches. Renders nothing when no
- * line is earned, so most county events are untouched.
- */
-export default function GettingThere({
-  geom,
-  venuePlaceSlug,
-  geoPrecise,
-  parkingDecision,
-}: {
+/** Source-backed venue notes and coordinate proximity, with no route or service assumptions. */
+export default function GettingThere({ geom, venuePlaceSlug, geoPrecise, parkingDecision }: {
   geom: { lng: number; lat: number };
   venuePlaceSlug?: string;
   geoPrecise: boolean;
   parkingDecision: EventParkingDecision | null;
 }) {
-  // 1. Verified parking intel for the venue itself.
-  const parkingNote = venuePlaceSlug ? fieldNotesFor(venuePlaceSlug)?.parking?.text : undefined;
-
-  // 2. The canonical city-garage decision computed once by the event page.
-  //    Smart pairings uses this exact value too. A venue-specific verified
-  //    note remains more useful than repeating the generic garage line here.
-  const garageLine = parkingNote
-    ? null
-    : eventParkingDirections(parkingDecision);
-
-  // 3. MARC within a ~12 minute walk.
-  let marcLine: string | null = null;
-  if (geoPrecise) {
-    let best: { name: string; m: number } | null = null;
-    for (const s of MARC_STATIONS) {
-      const m = haversineMeters(geom, { lng: s.lng, lat: s.lat });
-      if (m <= 1000 && (!best || m < best.m)) best = { name: s.name, m };
-    }
-    if (best) {
-      const min = Math.max(1, Math.round(metersToMinutes("walk", best.m)));
-      marcLine = `${best.name} MARC station is a ${min} min walk`;
-    }
-  }
-
-  if (!parkingNote && !garageLine && !marcLine) return null;
+  const parkingNote = venuePlaceSlug ? fieldNotesFor(venuePlaceSlug)?.parking : undefined;
+  const verified = recordedFieldNoteVerificationDate(parkingNote?.last_verified);
+  const garageLine = parkingNote ? null : eventParkingDirections(parkingDecision);
+  const station = geoPrecise ? eventNearbyStation(geom) : null;
+  if (!parkingNote && !garageLine && !station) return null;
 
   return (
-    <section
-      aria-label="Getting there"
-      className="rounded-[var(--app-radius-md)] border p-3.5"
-      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
-    >
-      <p
-        className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        Getting there
-      </p>
-      <ul className="mt-2 space-y-1.5">
-        {parkingNote && (
-          <li className="flex items-start gap-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            <CarFront className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-cool)" }} aria-hidden />
-            <span>
-              {parkingNote}
-              <span className="ml-1.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-cool)" }}>
-                Verified
-              </span>
-            </span>
+    <section aria-label="Getting there" className="space-y-3 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
+      <h2 className="text-[16px] font-semibold" style={{ color: "var(--app-ink)" }}>Getting there</h2>
+      <ul className="space-y-3 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+        {(parkingNote || garageLine) && (
+          <li className="flex items-start gap-2.5">
+            <CarFront className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
+            <div>
+              <p>{parkingNote?.text ?? garageLine}</p>
+              <div className="flex flex-wrap items-center gap-x-3 text-[12px]">
+                {parkingNote?.source_url && <a href={parkingNote.source_url} target="_blank" rel="noopener noreferrer" className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool)" }}>Parking source</a>}
+                {verified && <span>Checked {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" }).format(new Date(verified))}</span>}
+                {!parkingNote && parkingDecision && <Link href={`/places/${parkingDecision.slug}`} className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool)" }}>See garage &amp; directions</Link>}
+                {!parkingNote && <Link href="/parking" className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool)" }}>Check parking rates</Link>}
+              </div>
+            </div>
           </li>
         )}
-        {garageLine && (
-          <li className="flex items-start gap-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            <CarFront className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-cool)" }} aria-hidden />
-            <span>
-              {garageLine} ·{" "}
-              <Link href="/parking" className="font-semibold underline" style={{ color: "var(--app-cool)" }}>
-                all garages
-              </Link>
-            </span>
-          </li>
-        )}
-        {marcLine && (
-          <li className="flex items-start gap-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            <TrainFront className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-cool)" }} aria-hidden />
-            <span>
-              {marcLine} ·{" "}
-              <Link href="/transit" className="font-semibold underline" style={{ color: "var(--app-cool)" }}>
-                schedules
-              </Link>
-            </span>
+        {station && (
+          <li className="flex items-start gap-2.5">
+            <TrainFront className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
+            <div>
+              <p>{station.name} MARC station is {station.distanceLabel} away in a straight line. Check outbound and return service for the event date before planning the trip.</p>
+              <Link href="/transit" className="tap-44 inline-flex items-center text-[12px] font-semibold underline" style={{ color: "var(--app-cool)" }}>Check train schedules</Link>
+            </div>
           </li>
         )}
       </ul>

@@ -16,6 +16,14 @@ describe("primaryAnswerFor", () => {
     expect(primaryAnswerFor("a good hike")?.key).toBe("outside");
   });
 
+  it("retains a named town in the category destination", () => {
+    expect(primaryAnswerFor("coffee in Brunswick", { municipality: "frederick" })).toMatchObject({
+      href: "/nearby?c=coffee&in=brunswick",
+      kicker: "Browse coffee in Brunswick.",
+    });
+    expect(primaryAnswerFor("coffee", { municipality: "thurmont" })?.href).toBe("/nearby?c=coffee&in=thurmont");
+  });
+
   it("answers a bare open query with Open now", () => {
     const a = primaryAnswerFor("what's open right now");
     expect(a?.key).toBe("open-now");

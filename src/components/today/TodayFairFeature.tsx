@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, FerrisWheel } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -33,8 +34,10 @@ const COPY: Record<
 
 export default function TodayFairFeature({
   phase,
+  compact = false,
 }: {
   phase: TodayFairPromotionPhase;
+  compact?: boolean;
 }) {
   const copy = COPY[phase];
   const [savedPlan, setSavedPlan] = useState<FairPlan | null>(null);
@@ -70,6 +73,23 @@ export default function TodayFairFeature({
   const detail = status?.summarySentence ?? copy.detail;
   const cta = status?.nextActionLabel ?? copy.cta;
   const href = status?.nextActionHref ?? TODAY_FAIR_PROMOTION_HREF;
+
+  if (compact) {
+    return (
+      <section aria-label="The Great Frederick Fair" className="mt-4">
+        <Link href={href} prefetch={false} data-today-fair-feature={phase} data-today-fair-plan={status ? "saved" : "new"}
+          className="group flex min-h-28 items-center gap-4 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3"
+          style={{ borderColor: "var(--app-border)" }}>
+          <Image src="/images/fair/fairgrounds-night-mike-d-480.webp" alt="" width={72} height={88} sizes="72px" className="h-22 w-18 shrink-0 rounded-[var(--app-radius-sm)] object-cover" />
+          <span className="min-w-0">
+            <span className="block text-[11px] leading-normal" style={{ color: "var(--app-ink-2)" }}>{copy.eyebrow}</span>
+            <span className="mt-1 block text-[18px] font-semibold leading-tight tracking-tight">{status ? headline : "The Fair opens September 18"}</span>
+            <span className="mt-2 flex items-center gap-2 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>{cta}<ArrowRight className="h-4 w-4" aria-hidden /></span>
+          </span>
+        </Link>
+      </section>
+    );
+  }
 
   return (
     <section aria-label="The Great Frederick Fair">
