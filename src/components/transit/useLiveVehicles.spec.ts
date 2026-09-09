@@ -74,9 +74,38 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.doUnmock("react");
   vi.resetModules();
+  vi.useRealTimers();
 });
 
 describe("useLiveVehicles provider states", () => {
+  it("times out a stalled request, reports unavailable and recovers on the next poll", async () => {
+    vi.useFakeTimers();
+    vi.resetModules();
+    let subscribed = false;
+    vi.doMock("react", () => ({
+      useSyncExternalStore: (subscribe: (callback: () => void) => () => void, getSnapshot: () => unknown) => {
+        if (!subscribed) {
+          unsubscribe = subscribe(() => {});
+          subscribed = true;
+        }
+        return getSnapshot();
+      },
+    }));
+    const fetchMock = vi.fn()
+      .mockImplementationOnce((_url: string, options: RequestInit) => new Promise((_resolve, reject) => {
+        options.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ vehicles: [], available: true, status: "ok" })));
+    vi.stubGlobal("fetch", fetchMock);
+    const live = await import("./useLiveVehicles");
+    expect(live.useLiveVehicles().loaded).toBe(false);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(live.useLiveVehicles()).toMatchObject({ loaded: true, available: false, status: "unavailable" });
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(live.useLiveVehicles()).toMatchObject({ loaded: true, available: true, status: "ok" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("marks an upstream failure unavailable instead of calling it an empty service", async () => {
     const snapshot = await readLoadedSnapshot(
       {

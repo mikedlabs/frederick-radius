@@ -30,7 +30,8 @@ describe("TodayFairFeature", () => {
     expect(html).toContain('type="image/webp"');
     expect(html).toContain('alt=""');
     expect(html).not.toContain("Photo: Mike D");
-    expect(html).toContain('data-fair-feature-tone="light"');
+    expect(html).toContain('data-fair-feature-tone="photograph"');
+    expect(html).not.toContain("saturate-[");
     expect(html).toContain("data-fair-feature-art");
     expect(html).toContain("data-fair-feature-icon");
     expect(html).toContain('aria-hidden="true"');

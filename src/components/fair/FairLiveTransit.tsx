@@ -6,7 +6,7 @@ import { Marker } from "react-map-gl/maplibre";
 import { useLiveVehicles } from "@/components/transit/useLiveVehicles";
 import { fairNearbyVehicles } from "@/lib/fair/live-transit";
 
-function LiveLayer() {
+function LiveLayer({ condensed }: { condensed: boolean }) {
   const snapshot = useLiveVehicles();
   const vehicles = fairNearbyVehicles(snapshot);
   const status = !snapshot.loaded ? "Checking County Transit."
@@ -14,7 +14,7 @@ function LiveLayer() {
     : vehicles.length === 0 ? "No fresh bus positions near the Fairgrounds."
     : `${vehicles.length} county bus${vehicles.length === 1 ? "" : "es"} nearby now.`;
   return <>
-    <div className="absolute bottom-9 left-3 z-10 max-w-[240px] rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] p-3 shadow-[var(--app-elev-2)]" style={{ borderColor: "var(--app-border)" }}>
+    <div data-fair-transit-status className="absolute left-[12px] right-[12px] z-10 max-w-[280px] overflow-y-auto rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] p-[12px] shadow-[var(--app-elev-2)]" style={{ borderColor: "var(--app-border)", top: condensed ? 116 : 176, maxHeight: `calc(100% - ${condensed ? 132 : 192}px - var(--fair-map-action-bar-clearance, 96px))` }}>
       <p role="status" className="text-[13px] font-semibold">{status}</p>
       <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         Positions now, not your selected Fair date. Nearby does not mean Fair service.
@@ -34,14 +34,14 @@ function LiveLayer() {
 }
 
 /** Opt-in; uses the existing shared poller and stops when the layer closes. */
-export default function FairLiveTransit() {
+export default function FairLiveTransit({ condensed = false, hidden = false }: { condensed?: boolean; hidden?: boolean }) {
   const [enabled, setEnabled] = useState(false);
-  return <>
-    <button type="button" aria-pressed={enabled} onClick={() => setEnabled(!enabled)}
-      className="tap-44 absolute right-3 top-[7.75rem] z-10 inline-flex min-h-11 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated-solid)] px-3 text-[13px] font-semibold shadow-[var(--app-elev-2)] lg:left-3 lg:right-auto lg:top-28"
-      style={{ borderColor: enabled ? "var(--app-cool)" : "var(--app-border)" }}>
-      <BusFront className="h-4 w-4" aria-hidden /> Live county buses
+  return <div hidden={hidden}>
+    <button type="button" data-fair-map-runtime-control data-fair-transit-toggle aria-label="Live county buses" title="Live county buses" aria-pressed={enabled} onClick={() => setEnabled(!enabled)}
+      className="tap-44 absolute right-[12px] z-10 inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-[8px] rounded-full border bg-[var(--app-bg-elevated-solid)] px-[12px] text-[clamp(13px,0.8125rem,18px)] font-semibold shadow-[var(--app-elev-2)] lg:left-[12px] lg:right-auto"
+      style={{ top: condensed ? 64 : 124, borderColor: enabled ? "var(--app-cool)" : "var(--app-border)" }}>
+      <BusFront className="h-[16px] w-[16px]" aria-hidden /> <span className={condensed ? "sr-only" : undefined}>Live county buses</span>
     </button>
-    {enabled ? <LiveLayer /> : null}
-  </>;
+    {enabled ? <LiveLayer condensed={condensed} /> : null}
+  </div>;
 }

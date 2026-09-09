@@ -78,12 +78,12 @@ export default function TodayFairFeature({
     return (
       <section aria-label="The Great Frederick Fair" className="mt-4">
         <Link href={href} prefetch={false} data-today-fair-feature={phase} data-today-fair-plan={status ? "saved" : "new"}
-          className="group grid grid-cols-[40%_1fr] items-stretch overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)]"
+          className="group grid items-stretch overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
           style={{ borderColor: "var(--app-border)" }}>
-          <Image src="/images/fair/fairgrounds-night-mike-d-480.webp" alt="The Ferris wheel at The Great Frederick Fair, photographed by Mike D in 2024." width={480} height={270} sizes="(min-width: 1024px) 360px, 40vw" className="h-full min-h-44 w-full object-cover object-[76%_center]" />
+          <Image src="/images/fair/fairgrounds-night-mike-d-960.webp" alt="The Ferris wheel at The Great Frederick Fair, photographed by Mike D in 2024." width={960} height={540} sizes="(min-width: 1024px) 420px, 100vw" className="aspect-[16/9] w-full object-cover object-[76%_center]" />
           <span className="min-w-0 self-center p-4">
             <span className="block text-[11px] leading-normal" style={{ color: "var(--app-ink-2)" }}>{copy.eyebrow}</span>
-            <span className="mt-1 block text-[18px] font-semibold leading-tight tracking-tight">{status ? headline : "The Fair opens September 18"}</span>
+            <span className="mt-1 block text-[26px] font-bold leading-tight tracking-[-0.025em]">{status ? headline : "The Fair opens September 18"}</span>
             <span className="mt-2 flex items-center gap-2 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>{cta}<ArrowRight className="h-4 w-4" aria-hidden /></span>
           </span>
         </Link>
@@ -98,8 +98,8 @@ export default function TodayFairFeature({
         prefetch={false}
         data-today-fair-feature={phase}
         data-today-fair-plan={status ? "saved" : "new"}
-        data-fair-feature-tone="light"
-        className="group relative isolate block min-h-[168px] overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] text-[var(--app-ink)] shadow-[var(--app-elev-2)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--app-bg)] sm:min-h-[196px]"
+        data-fair-feature-tone="photograph"
+        className="group relative isolate block min-h-[320px] overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-ink)] text-[var(--app-on-brand)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--app-bg)] sm:min-h-[380px]"
         style={{ borderColor: "var(--app-border-strong)" }}
       >
         <picture className="absolute inset-0 block">
@@ -117,7 +117,7 @@ export default function TodayFairFeature({
             height="540"
             loading="eager"
             fetchPriority="high"
-            className="h-full w-full object-cover object-[78%_center] saturate-[1.22] brightness-[1.08] sm:object-center"
+            className="h-full w-full object-cover object-[78%_center] sm:object-center"
           />
         </picture>
 
@@ -126,7 +126,7 @@ export default function TodayFairFeature({
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(90deg, var(--app-bg-elevated-solid) 0%, color-mix(in srgb, var(--app-bg-elevated-solid) 98%, transparent) 50%, color-mix(in srgb, var(--app-bg-elevated-solid) 84%, transparent) 69%, color-mix(in srgb, var(--app-bg-elevated-solid) 12%, transparent) 100%), linear-gradient(to top, color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent) 0%, transparent 66%)",
+              "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 96%, transparent), color-mix(in srgb, var(--app-ink) 65%, transparent) 42%, transparent 90%)",
           }}
         />
 
@@ -140,7 +140,7 @@ export default function TodayFairFeature({
           }}
         />
 
-        <div className="relative z-10 flex min-h-[168px] flex-col justify-between p-4 pt-5 sm:min-h-[196px] sm:p-5 sm:pt-6">
+        <div className="relative z-10 flex min-h-[320px] flex-col justify-between p-5 sm:min-h-[380px] sm:p-6">
           <div className="flex items-start gap-3">
             <div className="flex items-center gap-2.5">
               <span

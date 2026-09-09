@@ -117,6 +117,7 @@ function scheduleKind(
   if (/\b(?:concert|music|band|choir|singer)\b/.test(text)) return "concert";
   if (/\b(?:carnival|ride|midway)\b/.test(text)) return "carnival";
   if (/\b(?:first aid|guest services|security)\b/.test(text)) return "service";
+  if (/\b(?:household building|exhibits?|arts? and crafts|photography)\b/.test(text)) return "exhibit";
   return "other";
 }
 

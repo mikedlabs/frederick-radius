@@ -161,7 +161,7 @@ async function readMarkerHitTargets(page: Page) {
             y: Math.round(y),
             hit:
               hitElement?.getAttribute("aria-label") ??
-              hitElement?.id ??
+              (hitElement?.id || hitElement?.outerHTML.slice(0, 240)) ??
               hitElement?.tagName.toLocaleLowerCase() ??
               null,
           },
@@ -890,6 +890,7 @@ test.describe("Fairgrounds map accessibility", () => {
       )
       .toBe(true);
 
+    await page.screenshot({ path: "output/playwright/visual-journey/map-large-text.png" });
     for (const lens of FAIR_MAP_LENSES) {
       await expectLensTargetsReachable(page, lens);
     }

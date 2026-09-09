@@ -1165,6 +1165,9 @@ export default function FairGroundsMapInner({
     };
     const syncMobileSelectionMode = () => {
       window.cancelAnimationFrame(frame);
+      const previousFocus = dialog.contains(document.activeElement)
+        ? document.activeElement as HTMLElement
+        : null;
       if (dialog.open) dialog.close();
 
       if (!mobileViewport.matches) {
@@ -1188,6 +1191,15 @@ export default function FairGroundsMapInner({
         frame = window.requestAnimationFrame(() =>
           mobileSelectionToggleRef.current?.focus({ preventScroll: true }),
         );
+      } else {
+        // Reopening the native dialog after the one-shot map handoff must not
+        // replace the selected-place heading with the first (close) button.
+        frame = window.requestAnimationFrame(() => {
+          const target = previousFocus?.isConnected
+            ? previousFocus
+            : mobileSelectionHeadingRef.current;
+          target?.focus({ preventScroll: true });
+        });
       }
     };
 
@@ -1401,6 +1413,7 @@ export default function FairGroundsMapInner({
       );
 
     const topChrome = visibleBoxes([
+      "[data-fair-transit-toggle]",
       "[data-fair-map-high-text-controls]",
       "[data-fair-map-search-rail]",
       "[data-fair-map-filter-rail]",
@@ -2600,7 +2613,7 @@ export default function FairGroundsMapInner({
                     <>
             <AttributionControl compact position="bottom-right" />
             <NavigationControl position="top-right" showCompass={false} />
-            <FairLiveTransit />
+            <FairLiveTransit condensed={condensedMobileControls} hidden={Boolean(selected)} />
             <Source
               id="fair-grounds-context"
               type="geojson"

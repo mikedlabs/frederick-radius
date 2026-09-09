@@ -82,6 +82,7 @@ describe("buildFairDayWorkspaceData", () => {
     const householdBuilding = data.scheduleItems.find((item) =>
       item.sourceItem.text.startsWith("Household Building Opens"),
     );
+    expect(householdBuilding?.kind).toBe("exhibit");
     const nealMcCoy = data.scheduleItems.find((item) =>
       item.sourceItem.text.startsWith("Neal McCoy"),
     );

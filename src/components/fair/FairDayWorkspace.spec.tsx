@@ -98,7 +98,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).toContain("Friday at a glance");
     expect(html).toContain('aria-label="Fair day in your plan"');
     expect(html).toContain("4–10 p.m.");
-    expect(html).toContain("$8 first Friday");
+    expect(html).toContain("$10 online · $15 gate");
     expect(html).toContain("Children 10 &amp; under free");
     expect(html).toContain("$10 cash lots");
     expect(html).toContain("$15 infield · cash or card");

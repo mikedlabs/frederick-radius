@@ -419,6 +419,22 @@ export const Narrow320: Story = {
   },
 };
 
+export const PhotoLedProgram: Story = {
+  name: "Program / direct schedule and visible categories",
+  play: async ({ canvasElement }) => {
+    Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("nav button"))
+      .find((button) => button.offsetParent !== null && button.textContent?.trim().startsWith("Program"))?.click();
+  },
+};
+
+export const SavedDay: Story = {
+  name: "My Day / saved experiences before preparation",
+  play: async ({ canvasElement }) => {
+    Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("nav button"))
+      .find((button) => button.offsetParent !== null && button.textContent?.trim().startsWith("My Day"))?.click();
+  },
+};
+
 export const NoProgramResults: Story = {
   args: {
     data: {
