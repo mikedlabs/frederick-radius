@@ -130,20 +130,15 @@ test.describe("critical surfaces under combined dependency failure", () => {
     });
     expect(response?.status()).toBe(200);
     await expectHealthyShell(page, "/today");
-    const primaryFind = page.getByRole("button", {
-      name: "Ask or find across Frederick County",
+    const primaryFind = page.getByRole("link", {
+      name: "Find a place, service, event, or answer",
     });
     await expect(primaryFind).toBeVisible();
-    await expect(primaryFind).toHaveAttribute(
-      "data-find-interaction-ready",
-      "true",
-    );
+    await expect(primaryFind).toHaveAttribute("href", "/search");
     await primaryFind.click();
-    // The shell opens a synchronous, accessible loading dialog while its
-    // deliberately lazy search workspace downloads. A cold production runner
-    // can keep that fallback visible beyond Playwright's generic five-second
-    // expectation, so first prove the tap was honored, then judge the full
-    // workspace against a bounded cold-load budget.
+    // The main-content launcher keeps a real /search fallback but enhances
+    // normal taps into Find. Verify both the immediate response and the full
+    // workspace while optional dependencies are failing.
     const immediateFindDialog = page.locator("#radius-find-dialog");
     await expect(immediateFindDialog).toBeVisible();
     await expect(immediateFindDialog).toHaveAttribute("role", "dialog");

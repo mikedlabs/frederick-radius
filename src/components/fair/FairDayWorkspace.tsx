@@ -1275,6 +1275,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   };
 
   const chooseMode = (mode: FairMode) => {
+    // Leaving the map cancels an unfinished one-shot handoff too. Focus can
+    // be visible before its confirmation timer acknowledges the request.
+    if (mode !== "map") setMapFocusRequest(null);
     setActivePreparation(null);
     setHelpOpen(false);
     closeProgramDetail();

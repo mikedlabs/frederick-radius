@@ -22,6 +22,14 @@ Publish through the existing PR and the normal main-branch deployment pipeline. 
 
 ## Recovery
 
+### Browser-gate corrections
+
+The hosted run at `17c88739` passed its dependency, unit, build, and component gates but caught a pending Fair map handoff surviving a mode change and passive Today recovery consuming the explicit-refresh allowance. The narrow follow-up cancels unfinished map handoffs when leaving Map and uses the ordinary bounded event endpoint for passive recovery without changing server rate limits.
+
+Release tests now target the main-content Find launcher instead of its retired header control, disambiguate a map peek from its result row, and allow only an aborted read-only place-hydration GET in the explicit map-to-place return journey. Completed server failures and exact return-state assertions remain blocking. Local verification of this follow-up passed: 7,524 unit tests (two skipped), production build, 50 UX checks, all 43 production release journeys, and both dependency-chaos/worker-upgrade checks. Changed-file ESLint and whitespace checks are clean. Hosted verification and the production alias must still be checked before calling it live.
+
+The newer aerial-map and Keep Guide experiments are isolated in the local preview branch and are not included in this release follow-up.
+
 Stop promotion if required checks fail. If a critical visitor journey breaks after publication, identify and verify the deployment being rolled back before acting. The previous deployment contains the dependencies being patched, so reverting to it is an emergency containment choice, not a permanent resolution. Prefer a narrow forward fix when safe.
 
 ## Next usability experiment, not part of this release
