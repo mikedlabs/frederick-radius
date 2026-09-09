@@ -757,9 +757,11 @@ function TicketPreparation({
   );
   const admissionOffer = offers.find(
     (offer) => offer.id === "offer-adult-admission-online" && !offer.pastKnownDeadline,
-  ) ?? offers.find(
-    (offer) => offer.id === "offer-adult-admission-early" && !offer.pastKnownDeadline,
   );
+  const bundleOffer = offers.find(
+    (offer) => offer.id === "offer-blue-ribbon-bundle" && !offer.pastKnownDeadline,
+  );
+  const gateOffer = offers.find((offer) => offer.id === "offer-adult-admission-gate");
   const childOffer = offers.find((offer) => offer.id === "offer-child-admission");
 
   return (
@@ -770,7 +772,7 @@ function TicketPreparation({
             <div>
               <p className="text-[16px] font-bold">{admissionOffer.label}</p>
               <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                This admission is for guests age 11 and older.
+                This single advance gate ticket is for guests age 11 and older.
               </p>
             </div>
             <strong className="shrink-0 text-[28px] font-bold tabular-nums">{admissionOffer.priceLabel}</strong>
@@ -811,6 +813,28 @@ function TicketPreparation({
           No current online admission offer is listed for this day. Check the official Fair information before buying.
         </p>
       )}
+      {bundleOffer ? (
+        <div className="mt-4 rounded-[var(--app-radius-md)] border p-3" style={{ borderColor: "var(--app-border)" }} data-fair-admission-alternatives>
+          <p className="text-[15px] font-bold">{bundleOffer.label}: {bundleOffer.priceLabel}</p>
+          <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            One online purchase includes 10 Fair admissions.
+          </p>
+          <a
+            href={bundleOffer.officialPurchaseUrl ?? bundleOffer.officialInfoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="tap-44 mt-1 inline-flex min-h-11 items-center gap-2 text-[14px] font-semibold underline underline-offset-4"
+          >
+            {bundleOffer.officialPurchaseUrl ? "Buy the 10-ticket bundle on Etix" : "Check official bundle details"}
+            <ExternalLink className="h-4 w-4" aria-hidden />
+          </a>
+        </div>
+      ) : null}
+      {gateOffer ? (
+        <p className="mt-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Single admission at the gate is {gateOffer.priceLabel}.
+        </p>
+      ) : null}
       <div className="mt-4">
         <Button
           className="w-full"

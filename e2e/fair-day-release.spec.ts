@@ -147,6 +147,14 @@ test.describe("Fair Day production release journey", () => {
     const directAdmission = page.getByRole("link", { name: "Buy admission on Etix" });
     await expect(directAdmission).toBeVisible();
     await expect(directAdmission).toHaveAttribute("href", ETIX_ADMISSION_URL);
+    await expect(page.locator("[data-fair-direct-admission]")).toContainText("$10");
+    await expect(page.locator("[data-fair-direct-admission]")).not.toContainText("$8");
+    await expect(page.locator("[data-fair-admission-alternatives]")).toContainText("Blue Ribbon Bundle: $80");
+    await expect(page.locator("[data-fair-admission-alternatives]")).toContainText("10 Fair admissions");
+    await expect(page.getByRole("link", { name: "Buy the 10-ticket bundle on Etix" })).toHaveAttribute(
+      "href", /etix\.com\/ticket\/p\/65356930\//,
+    );
+    await expect(page.getByRole("dialog", { name: "Tickets" })).toContainText("Single admission at the gate is $15.");
     await expect(page.getByRole("spinbutton", { name: "Adults 11+" })).not.toBeVisible();
     await page.getByText("Estimate for my group", { exact: true }).click();
     await page.getByRole("spinbutton", { name: "Adults 11+" }).fill("2");
@@ -265,7 +273,8 @@ test.describe("Fair Day production release journey", () => {
     );
     await expect(grandstandSpotlight).toBeVisible();
     const grandstandSpotlightBox = await grandstandSpotlight.boundingBox();
-    expect(grandstandSpotlightBox?.height ?? 0).toBeGreaterThanOrEqual(148);
+    // Browser transforms can report 147.999984px for the 148px minimum.
+    expect(Math.round(grandstandSpotlightBox?.height ?? 0)).toBeGreaterThanOrEqual(148);
     expect(grandstandSpotlightBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(240);
     expect(
       (grandstandSpotlightBox?.x ?? Number.POSITIVE_INFINITY) +
@@ -362,7 +371,7 @@ test.describe("Fair Day production release journey", () => {
       details.getByRole("link", { name: "Official Grandstand source" }),
     ).toHaveAttribute(
       "href",
-      "https://thegreatfrederickfair.com/grandstand/",
+      "https://thegreatfrederickfair.com/schedule/",
     );
     await page.getByRole("button", { name: "Close Daughtry" }).click();
     await expect(

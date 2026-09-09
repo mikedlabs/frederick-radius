@@ -22,14 +22,7 @@ const admissionSource = {
   publisher: "The Great Frederick Fair",
   sourceTitle: "Come to the Fair",
   sourceUrl: FAIR_INFO_URL,
-  verifiedAt: VERIFIED_AT,
-};
-
-const faqSource = {
-  publisher: "The Great Frederick Fair",
-  sourceTitle: "FAQ",
-  sourceUrl: "https://thegreatfrederickfair.com/faq/",
-  verifiedAt: VERIFIED_AT,
+  verifiedAt: "2026-09-09T08:16:24Z",
 };
 
 const scheduleSource = {
@@ -68,33 +61,6 @@ const inventoryNotTracked = {
 };
 
 export const greatFrederickFair2026Offers = parseFairOffers([
-  {
-    id: "offer-adult-admission-early",
-    fairId: FAIR_ID,
-    kind: "admission",
-    label: "First Friday advance admission",
-    audience: "adult-11-plus",
-    eligibility: "Guests age 11 and over who purchase by 5 p.m. on the first Friday.",
-    channel: "online",
-    price: { status: "known", amountCents: 800, currency: "USD" },
-    validDates: {
-      status: "known",
-      startsOn: "2026-09-18",
-      endsOn: "2026-09-18",
-    },
-    deadline: {
-      status: "known",
-      value: "2026-09-18T17:00:00-04:00",
-    },
-    inclusions: { status: "known", value: ["Fair admission"] },
-    inventory: inventoryNotTracked,
-    officialInfoUrl: faqSource.sourceUrl,
-    officialPurchaseUrl: {
-      status: "unknown",
-      reason: "The reviewed FAQ lists the opening-Friday discount, but the official Etix admission page currently lists $10. A checkout for the $8 offer has not been verified.",
-    },
-    provenance: [faqSource, ticketLinkSource(ADVANCE_ADMISSION_URL)],
-  },
   {
     id: "offer-adult-admission-online",
     fairId: FAIR_ID,

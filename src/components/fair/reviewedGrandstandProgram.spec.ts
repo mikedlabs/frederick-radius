@@ -121,18 +121,18 @@ describe("reviewedGrandstandPresentation", () => {
     );
 
     expect(byDate.get("2026-09-19")?.presentation.detail).toContain(
-      "named different lead performers",
+      "Chris Kirkpatrick",
     );
     expect(byDate.get("2026-09-19")?.presentation.detail).toContain(
       "LFO, OTOWN, and Ryan Cabrera",
     );
-    expect(byDate.get("2026-09-24")?.sourceText).toContain("Bay Turner");
+    expect(byDate.get("2026-09-24")?.sourceText).toContain("w/ TBA");
     expect(byDate.get("2026-09-24")?.presentation.detail).toContain(
       "opener as TBA",
     );
-    expect(byDate.get("2026-09-26")?.sourceText).toContain("w/ TBA");
+    expect(byDate.get("2026-09-26")?.sourceText).toContain("w/ Chris Darlington");
     expect(byDate.get("2026-09-26")?.presentation.detail).toContain(
-      "listed Chris Darlington",
+      "Chris Darlington opens",
     );
   });
 

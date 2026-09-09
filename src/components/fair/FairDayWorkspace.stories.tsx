@@ -32,17 +32,6 @@ const STORY_CARLOAD_URL =
 
 const storyPartyOffers: FairPartyOffer[] = [
   {
-    id: "offer-adult-admission-early",
-    label: "Opening-Friday adult admission online",
-    kind: "adult-online-admission",
-    unitPriceCents: 800,
-    validDates: { startsOn: "2026-09-18", endsOn: "2026-09-18" },
-    deadline: { status: "known", value: "2026-09-18T17:00:00-04:00" },
-    pastKnownDeadline: false,
-    officialInfoUrl: OFFICIAL_FAIR_URL,
-    officialPurchaseUrl: STORY_ADMISSION_URL,
-  },
-  {
     id: "offer-adult-admission-online",
     label: "Adult admission online",
     kind: "adult-online-admission",
@@ -234,19 +223,6 @@ export const fairDayStoryData: FairDayWorkspaceData = {
   })),
   initialDate: "2026-09-18",
   offers: [
-    {
-      id: "offer-adult-admission-early",
-      label: "Opening-Friday adult admission online",
-      priceLabel: "$8",
-      detail: "Adults age 11 and older can use this admission on opening Friday before the known purchase deadline.",
-      deadlineLabel: "Official sales end September 18 at 5:00 PM.",
-      deadlineAt: "2026-09-18T17:00:00-04:00",
-      officialInfoUrl: OFFICIAL_FAIR_URL,
-      officialPurchaseUrl: STORY_ADMISSION_URL,
-      validDates: { startsOn: "2026-09-18", endsOn: "2026-09-18" },
-      pastKnownDeadline: false,
-      placement: "calculator",
-    },
     {
       id: "offer-adult-admission-online",
       label: "Adult admission online",

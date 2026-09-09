@@ -133,7 +133,7 @@ export const greatFrederickFair2026 = parseFairManifest({
   timezone: "America/New_York",
   startsOn: "2026-09-18",
   endsOn: "2026-09-26",
-  updatedAt: ACCESS_VERIFIED_AT,
+  updatedAt: "2026-09-09T08:16:24Z",
   provenance: [fairHomeSource, visitorSource],
   days: [
     fairDay("2026-09-18", "16:00"),

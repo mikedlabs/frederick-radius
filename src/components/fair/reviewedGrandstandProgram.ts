@@ -41,11 +41,11 @@ type ReviewedGrandstandEntry = Omit<
 };
 
 const GRANDSTAND_SOURCE_URL =
-  "https://thegreatfrederickfair.com/grandstand/";
-const GRANDSTAND_REVIEWED_ON = "2026-09-04";
+  "https://thegreatfrederickfair.com/schedule/";
+const GRANDSTAND_REVIEWED_ON = "2026-09-09";
 const GRANDSTAND_VALID_THROUGH = "2026-09-26";
 const GRANDSTAND_EXPIRES_AT = "2026-09-27T00:00:00-04:00";
-const GRANDSTAND_SOURCE_REVISION = "manual-review-2026-09-04";
+const GRANDSTAND_SOURCE_REVISION = "manual-review-2026-09-09";
 
 /**
  * Display adapters for the six reviewed 2026 evening musical Grandstand rows.
@@ -86,14 +86,14 @@ const REVIEWED_2026_GRANDSTAND_SHOWS = [
     },
   },
   {
-    sourceItemId: "schedule-2026-09-19-3008a520ed07f68c",
+    sourceItemId: "schedule-2026-09-19-48fd72c61ae4d96a",
     fairDate: "2026-09-19",
     sourceTimeLabel: "7:30 p.m.",
-    sourceTextStartsWith: "POP 2000's (",
+    sourceTextStartsWith: "POP 2000’s (",
     title: "POP 2000 Tour",
     timeLabel: "7:30 p.m.",
     detail:
-      "When Radius checked on September 4, the Fair's schedule and Grandstand page named different lead performers. Both listed LFO, OTOWN, and Ryan Cabrera; check the official event page for updates.",
+      "The reviewed Fair schedule lists Chris Kirkpatrick from N*SYNC, LFO, OTOWN, and Ryan Cabrera.",
     billing: {
       mode: "single-start",
       performance: {
@@ -133,14 +133,14 @@ const REVIEWED_2026_GRANDSTAND_SHOWS = [
     },
   },
   {
-    sourceItemId: "schedule-2026-09-24-97006a0ee39943c2",
+    sourceItemId: "schedule-2026-09-24-145d13a52f4c3b39",
     fairDate: "2026-09-24",
     sourceTimeLabel: "6:30 p.m.",
-    sourceTextStartsWith: "Danny Gokey w/ Bay Turner -",
+    sourceTextStartsWith: "Danny Gokey w/ TBA -",
     title: "Danny Gokey",
     timeLabel: "Headliner 8 p.m. · Opener 6:30 p.m.",
     detail:
-      "When Radius checked on September 4, both official pages listed the 6:30 p.m. opener as TBA. Danny Gokey headlines at 8 p.m.",
+      "The reviewed Fair schedule lists the 6:30 p.m. opener as TBA. Danny Gokey headlines at 8 p.m.",
     billing: {
       mode: "opener-headliner",
       opener: {
@@ -160,10 +160,10 @@ const REVIEWED_2026_GRANDSTAND_SHOWS = [
     },
   },
   {
-    sourceItemId: "schedule-2026-09-25-73bc7d39e6038aa5",
+    sourceItemId: "schedule-2026-09-25-fa388a27b728316b",
     fairDate: "2026-09-25",
     sourceTimeLabel: "6 p.m.",
-    sourceTextStartsWith: "Let's Sing Taylor!",
+    sourceTextStartsWith: "Let’s Sing Taylor!",
     title: "Let's Sing Taylor!",
     timeLabel: "6 p.m.",
     detail: "This is an unofficial tribute to Taylor Swift.",
@@ -179,14 +179,14 @@ const REVIEWED_2026_GRANDSTAND_SHOWS = [
     },
   },
   {
-    sourceItemId: "schedule-2026-09-26-c8638ece748c83ea",
+    sourceItemId: "schedule-2026-09-26-76e1fe3070a06994",
     fairDate: "2026-09-26",
     sourceTimeLabel: "6:30 p.m.",
-    sourceTextStartsWith: "Warren Zeiders w/ TBA -",
+    sourceTextStartsWith: "Warren Zeiders w/ Chris Darlington -",
     title: "Warren Zeiders",
     timeLabel: "Headliner 8 p.m. · Opener 6:30 p.m.",
     detail:
-      "When Radius checked on September 4, both official pages listed Chris Darlington at 6:30 p.m. Warren Zeiders headlines at 8 p.m.",
+      "Chris Darlington opens at 6:30 p.m. Warren Zeiders headlines at 8 p.m.",
     billing: {
       mode: "opener-headliner",
       opener: {

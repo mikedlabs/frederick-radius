@@ -68,7 +68,7 @@ describe("Fair grounds map", () => {
       item.placeLabel.startsWith("Published place:"),
     );
 
-    expect(mappedProgramItems).toHaveLength(146);
+    expect(mappedProgramItems).toHaveLength(147);
     expect(
       mappedProgramItems.every(
         (item) =>

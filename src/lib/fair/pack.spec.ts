@@ -16,6 +16,7 @@ import {
   type FairPack,
 } from "@/lib/fair/pack";
 import { parseGreatFrederickFair2026Schedule } from "@/lib/fair/schedule";
+import reviewedSchedulePage from "@/lib/fair/__fixtures__/great-frederick-fair-2026-schedule-page.json";
 
 const releasePath = resolve(
   process.cwd(),
@@ -43,19 +44,19 @@ function clonePack(): FairPack {
 }
 
 describe("Great Frederick Fair static pack", () => {
-  it("contains all nine days and 190 rows once, nested under their days", () => {
+  it("contains all nine days and 188 visitor-page rows once, nested under their days", () => {
     const rows = greatFrederickFair2026Pack.schedule.days.flatMap(
       (day) => day.items,
     );
     expect(greatFrederickFair2026Pack.schedule.days).toHaveLength(9);
-    expect(rows).toHaveLength(190);
-    expect(new Set(rows.map((row) => row.id)).size).toBe(190);
+    expect(rows).toHaveLength(188);
+    expect(new Set(rows.map((row) => row.id)).size).toBe(188);
     expect(greatFrederickFair2026Pack.manifest.scheduleItems).toEqual([]);
     expect("items" in greatFrederickFair2026Pack.schedule).toBe(false);
   });
 
   it("matches the fail-closed reviewed calendar adapter exactly", () => {
-    const parsed = parseGreatFrederickFair2026Schedule(fixture);
+    const parsed = parseGreatFrederickFair2026Schedule(fixture, reviewedSchedulePage);
     expect(parsed.ok).toBe(true);
     expect(greatFrederickFair2026Pack.schedule.source.sourceRevision).toBe(
       parsed.sourceRevision,
@@ -74,7 +75,7 @@ describe("Great Frederick Fair static pack", () => {
     expect(greatFrederickFair2026PackPointer).toMatchObject({
       revision,
       dayCount: 9,
-      itemCount: 190,
+      itemCount: 188,
       assetPath: `/fair/2026/releases/${revision.slice("sha256:".length)}.json`,
       byteLength: new TextEncoder().encode(releaseText).byteLength,
     });

@@ -1,11 +1,11 @@
 {
   "version": 1,
   "fairId": "great-frederick-fair-2026",
-  "revision": "sha256:f2f1b4009bef6db75c7629380ff66592541cfb0fc30e430c9986b2e85f6f742e",
-  "assetPath": "/fair/2026/releases/f2f1b4009bef6db75c7629380ff66592541cfb0fc30e430c9986b2e85f6f742e.json",
-  "byteLength": 204685,
-  "contentUpdatedAt": "2026-09-02T13:21:52-04:00",
-  "sourceRevision": "2026-08-29T12:52:36.000Z",
+  "revision": "sha256:3076104cfce3b3cd30e4a5501fdc64a735755390f69d3d2d99e905208b105e6d",
+  "assetPath": "/fair/2026/releases/3076104cfce3b3cd30e4a5501fdc64a735755390f69d3d2d99e905208b105e6d.json",
+  "byteLength": 200423,
+  "contentUpdatedAt": "2026-09-09T08:16:24Z",
+  "sourceRevision": "2026-08-28T21:00:33Z",
   "dayCount": 9,
-  "itemCount": 190
+  "itemCount": 188
 }

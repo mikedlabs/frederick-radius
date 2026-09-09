@@ -90,10 +90,10 @@ describe("buildFairDayWorkspaceData", () => {
       item.sourceItem.text.startsWith("Danny Gokey"),
     );
     const pop2000 = data.scheduleItems.find((item) =>
-      item.sourceItem.text.startsWith("POP 2000's"),
+      item.sourceItem.text.startsWith("POP 2000"),
     );
     const taylorTribute = data.scheduleItems.find((item) =>
-      item.sourceItem.text.startsWith("Let's Sing Taylor!"),
+      item.sourceItem.text.startsWith("Let’s Sing Taylor!"),
     );
     const warrenZeiders = data.scheduleItems.find((item) =>
       item.sourceItem.text.startsWith("Warren Zeiders"),
@@ -126,11 +126,11 @@ describe("buildFairDayWorkspaceData", () => {
       "Presented by Team Reeder",
     );
     expect(daughtry).toMatchObject({
-      sourceUrl: "https://thegreatfrederickfair.com/grandstand/",
+      sourceUrl: "https://thegreatfrederickfair.com/schedule/",
       sourceReview: {
-        reviewedOn: "2026-09-04",
+        reviewedOn: "2026-09-09",
         validThrough: "2026-09-26",
-        sourceRevision: "manual-review-2026-09-04",
+        sourceRevision: "manual-review-2026-09-09",
       },
       performanceSlots: [
         {
@@ -151,7 +151,7 @@ describe("buildFairDayWorkspaceData", () => {
     expect(horseExpo).toMatchObject({
       detail: undefined,
       placeLabel:
-        "Published place: Elm Street Development, Ryan Homes & NV Homes Equine Arena, Infield, Pleasants' Horse Park.",
+        "Published place: Elm Street Development, Ryan Homes & NV Homes Equine Arena, Infield, Pleasants’ Horse Park.",
     });
     expect(householdBuilding?.placeLabel).toBe(
       "Published place: Household Building.",
@@ -168,14 +168,14 @@ describe("buildFairDayWorkspaceData", () => {
       title: "Danny Gokey",
       timeLabel: "Headliner 8 p.m. · Opener 6:30 p.m.",
       detail:
-        "When Radius checked on September 4, both official pages listed the 6:30 p.m. opener as TBA. Danny Gokey headlines at 8 p.m.",
+        "The reviewed Fair schedule lists the 6:30 p.m. opener as TBA. Danny Gokey headlines at 8 p.m.",
     });
     expect(pop2000).toMatchObject({
       kind: "concert",
       title: "POP 2000 Tour",
       timeLabel: "7:30 p.m.",
       detail:
-        "When Radius checked on September 4, the Fair's schedule and Grandstand page named different lead performers. Both listed LFO, OTOWN, and Ryan Cabrera; check the official event page for updates.",
+        "The reviewed Fair schedule lists Chris Kirkpatrick from N*SYNC, LFO, OTOWN, and Ryan Cabrera.",
     });
     expect(pop2000?.detail).not.toContain("Jeff Timmons");
     expect(taylorTribute).toMatchObject({
@@ -188,7 +188,7 @@ describe("buildFairDayWorkspaceData", () => {
       title: "Warren Zeiders",
       timeLabel: "Headliner 8 p.m. · Opener 6:30 p.m.",
       detail:
-        "When Radius checked on September 4, both official pages listed Chris Darlington at 6:30 p.m. Warren Zeiders headlines at 8 p.m.",
+        "Chris Darlington opens at 6:30 p.m. Warren Zeiders headlines at 8 p.m.",
     });
     expect(data.scheduleItems.filter((item) => item.kind === "concert")).toHaveLength(
       6,
@@ -211,7 +211,7 @@ describe("buildFairDayWorkspaceData", () => {
       ).toBe("animal");
     }
     for (const publishedFoodTitle of [
-      'Taste of "Home Grown Frederick"',
+      "Taste of “Home Grown Frederick”",
       "Ice Cream in a Bag Demonstration",
     ]) {
       expect(
@@ -345,11 +345,11 @@ describe("buildFairDayWorkspaceData", () => {
     });
     expect(
       data.partyOffers.find(
-        (offer) => offer.id === "offer-adult-admission-early",
+        (offer) => offer.id === "offer-adult-admission-online",
       ),
     ).toMatchObject({
       kind: "adult-online-admission",
-      unitPriceCents: 800,
+      unitPriceCents: 1000,
       pastKnownDeadline: false,
     });
     expect(
@@ -365,7 +365,7 @@ describe("buildFairDayWorkspaceData", () => {
     expect(data.source.label).toContain(
       `${greatFrederickFair2026PackPointer.itemCount} program rows`,
     );
-    expect(data.source.checkedLabel).toBe("August 29, 2026 at 8:52 AM");
+    expect(data.source.checkedLabel).toBe("August 28, 2026 at 5:00 PM");
     expect(data.source.ageLabel).toBe(
       "This imported program version is 3 days old",
     );
@@ -437,7 +437,7 @@ describe("buildFairDayWorkspaceData", () => {
       data.partyOffers.find(
         (offer) => offer.id === "offer-adult-admission-early",
       )?.pastKnownDeadline,
-    ).toBe(true);
+    ).toBeUndefined();
     expect(
       data.partyOffers.find((offer) => offer.id === "offer-jack-pass")
         ?.pastKnownDeadline,
