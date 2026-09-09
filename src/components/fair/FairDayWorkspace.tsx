@@ -84,6 +84,7 @@ import {
 import FairPartyPlanner from "./FairPartyPlanner";
 import FairPracticalAnswers from "./FairPracticalAnswers";
 import FairShareButton from "./FairShareButton";
+import FairKeepGuide from "./FairKeepGuide";
 import FairGroundsMap from "./FairGroundsMap";
 import FairGrandstandSpotlight from "./FairGrandstandSpotlight";
 import FairPhotoExplorer from "./FairPhotoExplorer";
@@ -401,7 +402,7 @@ function FairGlanceTile({
           {label}
         </span>
       </span>
-      <span className="mt-2 block text-[14px] font-bold leading-snug tracking-[-0.02em] sm:text-[16px]">
+      <span className="mt-2 block text-[16px] font-bold leading-snug tracking-[-0.02em] sm:text-[18px]">
         {value}
       </span>
       <span
@@ -2223,6 +2224,18 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 </Button>
               </div>
             </section>
+
+            {offersForSelectedDate.some((offer) => offer.placement === "eligibility-promotion") ? (
+              <section data-fair-day-promotions aria-label="Admission promotions for this day" className="mt-3 divide-y border-y" style={{ borderColor: "var(--app-border)" }}>
+                {offersForSelectedDate.filter((offer) => offer.placement === "eligibility-promotion").map((offer) => (
+                  <button key={offer.id} type="button" onClick={() => openPreparation("ticket")} className="tap-44 flex min-h-12 w-full items-start justify-between gap-3 py-3 text-left">
+                    <span className="min-w-0"><span className="block text-[14px] font-bold">{offer.label}</span><span className="mt-1 block text-[13px] leading-relaxed text-[var(--app-ink-2)]">{offer.detail}</span></span>
+                    <span className="shrink-0 text-[14px] font-bold text-[var(--app-brand-press)]">{offer.priceLabel}</span>
+                  </button>
+                ))}
+              </section>
+            ) : null}
+            <FairKeepGuide />
 
             <section
               data-fair-now-portal

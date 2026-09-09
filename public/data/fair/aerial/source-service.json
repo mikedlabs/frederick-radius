@@ -1,0 +1,298 @@
+{
+ "currentVersion": 11.3,
+ "serviceDescription": "<DIV STYLE=\"text-align:Left;\"><P><SPAN>This service provides Six Inch resolution aerial imagery for the State of Maryland. The imagery for this service is composed of imagery flown in 2023 (Western Shore) and 2024 (Eastern Shore).<\/SPAN><\/P><\/DIV>",
+ "name": "SixInch/SixInchImagery",
+ "description": "<DIV STYLE=\"text-align:Left;\"><DIV><DIV><P><SPAN>This service provides six inch resolution aerial imagery for the State of Maryland. The imagery for this service is composed of imagery flown in 2023 (Southern Western Shore: Anne Arundel, Calvert, Charles, Howard, Montgomery, Prince George's St. Mary's), 2024 (Eastern Shore), and 2025 (Northern Western Shore: Allegany, Baltimore City, Baltimore County, Carroll, Frederick, Garrett, Harford, Washington).<\/SPAN><\/P><\/DIV><\/DIV><\/DIV>",
+ "extent": {
+  "xmin": -8850724.705,
+  "ymin": 4562613.177640564,
+  "xmax": -8352454.804060198,
+  "ymax": 4827842.8957,
+  "spatialReference": {
+   "wkid": 102100,
+   "latestWkid": 3857
+  }
+ },
+ "initialExtent": {
+  "xmin": -8850724.705,
+  "ymin": 4562613.177640564,
+  "xmax": -8352454.804060198,
+  "ymax": 4827842.8957,
+  "spatialReference": {
+   "wkid": 102100,
+   "latestWkid": 3857
+  }
+ },
+ "fullExtent": {
+  "xmin": -8850724.705,
+  "ymin": 4562613.177640564,
+  "xmax": -8352454.804060198,
+  "ymax": 4827842.8957,
+  "spatialReference": {
+   "wkid": 102100,
+   "latestWkid": 3857
+  }
+ },
+ "sortableFields": "MinPS,MaxPS,LowPS,HighPS,CenterX,CenterY,ZOrder,Shape_Length,Shape_Area",
+ "bandCount": 5,
+ "pixelType": "U8",
+ "minValues": [
+  3,
+  6,
+  9,
+  0,
+  209
+ ],
+ "maxValues": [
+  251,
+  252,
+  250,
+  253,
+  255
+ ],
+ "meanValues": [
+  94.9890163604475,
+  93.12093265092835,
+  91.6046944037102,
+  142.41506129177213,
+  254.99383008903524
+ ],
+ "stdvValues": [
+  37.00395082919225,
+  30.225253548862867,
+  24.91954974211413,
+  64.57824660244279,
+  0.18386590336110734
+ ],
+ "hasMultidimensions": false,
+ "pixelSizeX": 0.15240030480060954,
+ "pixelSizeY": 0.15240030480060976,
+ "meanPixelSize": 0.15240030480060965,
+ "datasetFormat": "AMD",
+ "uncompressedSize": 28450189944345,
+ "blockWidth": 2048,
+ "blockHeight": 256,
+ "compressionType": "None",
+ "bandNames": [
+  "Band_1",
+  "Band_2",
+  "Band_3",
+  "Band_4",
+  "Band_5"
+ ],
+ "allowCopy": true,
+ "allowAnalysis": true,
+ "itemAccess": false,
+ "inspectionCapabilities": "",
+ "minPixelSize": 0,
+ "maxPixelSize": 0,
+ "copyrightText": "MD iMAP",
+ "serviceDataType": "esriImageServiceDataTypeGeneric",
+ "serviceSourceType": "esriImageServiceSourceTypeMosaicDataset",
+ "objectIdField": "OBJECTID",
+ "fields": [
+  {
+   "name": "OBJECTID",
+   "type": "esriFieldTypeOID",
+   "alias": "OBJECTID",
+   "domain": null
+  },
+  {
+   "name": "Shape",
+   "type": "esriFieldTypeGeometry",
+   "alias": "Shape",
+   "domain": null
+  },
+  {
+   "name": "Name",
+   "type": "esriFieldTypeString",
+   "alias": "Name",
+   "domain": null,
+   "length": 200
+  },
+  {
+   "name": "MinPS",
+   "type": "esriFieldTypeDouble",
+   "alias": "MinPS",
+   "domain": null
+  },
+  {
+   "name": "MaxPS",
+   "type": "esriFieldTypeDouble",
+   "alias": "MaxPS",
+   "domain": null
+  },
+  {
+   "name": "LowPS",
+   "type": "esriFieldTypeDouble",
+   "alias": "LowPS",
+   "domain": null
+  },
+  {
+   "name": "HighPS",
+   "type": "esriFieldTypeDouble",
+   "alias": "HighPS",
+   "domain": null
+  },
+  {
+   "name": "Category",
+   "type": "esriFieldTypeInteger",
+   "alias": "Category",
+   "domain": {
+    "type": "codedValue",
+    "name": "MosaicCatalogItemCategoryDomain",
+    "description": "Catalog item categories.",
+    "codedValues": [
+     {
+      "name": "Unknown",
+      "code": 0
+     },
+     {
+      "name": "Primary",
+      "code": 1
+     },
+     {
+      "name": "Overview",
+      "code": 2
+     },
+     {
+      "name": "Unprocessed Overview",
+      "code": 3
+     },
+     {
+      "name": "Partial Overview",
+      "code": 4
+     },
+     {
+      "name": "Inactive",
+      "code": 5
+     },
+     {
+      "name": "Uploaded",
+      "code": 253
+     },
+     {
+      "name": "Incomplete",
+      "code": 254
+     },
+     {
+      "name": "Custom",
+      "code": 255
+     }
+    ],
+    "mergePolicy": "esriMPTDefaultValue",
+    "splitPolicy": "esriSPTDefaultValue"
+   }
+  },
+  {
+   "name": "Tag",
+   "type": "esriFieldTypeString",
+   "alias": "Tag",
+   "domain": null,
+   "length": 100
+  },
+  {
+   "name": "GroupName",
+   "type": "esriFieldTypeString",
+   "alias": "GroupName",
+   "domain": null,
+   "length": 100
+  },
+  {
+   "name": "ProductName",
+   "type": "esriFieldTypeString",
+   "alias": "ProductName",
+   "domain": null,
+   "length": 100
+  },
+  {
+   "name": "CenterX",
+   "type": "esriFieldTypeDouble",
+   "alias": "CenterX",
+   "domain": null
+  },
+  {
+   "name": "CenterY",
+   "type": "esriFieldTypeDouble",
+   "alias": "CenterY",
+   "domain": null
+  },
+  {
+   "name": "ZOrder",
+   "type": "esriFieldTypeInteger",
+   "alias": "ZOrder",
+   "domain": null
+  },
+  {
+   "name": "Shape_Length",
+   "type": "esriFieldTypeDouble",
+   "alias": "Shape_Length",
+   "domain": null
+  },
+  {
+   "name": "Shape_Area",
+   "type": "esriFieldTypeDouble",
+   "alias": "Shape_Area",
+   "domain": null
+  }
+ ],
+ "capabilities": "Image,Metadata,Catalog",
+ "defaultMosaicMethod": "Northwest",
+ "allowedMosaicMethods": "NorthWest,Center,LockRaster,ByAttribute,Nadir,Viewpoint,Seamline,None",
+ "sortField": "",
+ "sortValue": null,
+ "sortAscending": true,
+ "mosaicOperator": "First",
+ "maxDownloadSizeLimit": 2048,
+ "defaultCompressionQuality": 75,
+ "defaultResamplingMethod": "Bilinear",
+ "maxImageHeight": 4100,
+ "maxImageWidth": 15000,
+ "maxRecordCount": 1000,
+ "maxDownloadImageCount": 20,
+ "maxMosaicImageCount": 50,
+ "allowRasterFunction": true,
+ "rasterFunctionInfos": [
+  {
+   "name": "None",
+   "description": "Make a Raster or Raster Dataset into a Function Raster Dataset.",
+   "help": ""
+  },
+  {
+   "name": "None",
+   "description": "Make a Raster or Raster Dataset into a Function Raster Dataset.",
+   "help": ""
+  }
+ ],
+ "rasterTypeInfos": [
+  {
+   "name": "Raster Dataset",
+   "description": "Supports all ArcGIS Raster Datasets",
+   "help": ""
+  }
+ ],
+ "mensurationCapabilities": "None",
+ "hasHistograms": true,
+ "hasColormap": false,
+ "hasRasterAttributeTable": false,
+ "minScale": 0,
+ "maxScale": 0,
+ "exportTilesAllowed": false,
+ "supportsStatistics": true,
+ "supportsAdvancedQueries": true,
+ "editFieldsInfo": null,
+ "ownershipBasedAccessControlForRasters": null,
+ "allowComputeTiePoints": false,
+ "useStandardizedQueries": true,
+ "advancedQueryCapabilities": {
+  "useStandardizedQueries": true,
+  "supportsStatistics": true,
+  "supportsOrderBy": true,
+  "supportsDistinct": true,
+  "supportsPagination": true
+ },
+ "spatialReference": {
+  "wkid": 102100,
+  "latestWkid": 3857
+ }
+}
