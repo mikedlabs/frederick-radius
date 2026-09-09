@@ -3072,11 +3072,11 @@ export default function FairGroundsMapInner({
               <p role="status" className="sr-only">
                 {aerialEnabled
                   ? aerialStatus === "unavailable"
-                    ? "Aerial unavailable. Showing the clear map."
+                    ? "The aerial is unavailable, so the clear map is shown."
                     : aerialStatus === "loading"
-                      ? "Loading the 2025 aerial."
-                      : "2025 aerial. Event layout may differ."
-                  : "Clear map with reviewed places."}
+                      ? "The 2025 aerial is loading."
+                      : "This is a 2025 aerial, and the event layout may differ."
+                  : "The map shows reviewed places without an aerial background."}
               </p>
             </div>
           ) : null}
