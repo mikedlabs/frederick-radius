@@ -14,9 +14,10 @@ for (const width of [390, 1440]) {
   test(`county search keeps area, query, result type and details at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
     await page.goto("/search?q=coffee%20in%20Brunswick");
-    const results = page.getByRole("region", { name: "3 results for coffee in Brunswick", exact: true });
+    const results = page.getByRole("region", { name: "2 results for coffee in Brunswick", exact: true });
     await expect(results).toBeVisible();
     await expect(results.getByRole("link", { name: /Beans in the Belfry/ })).toBeVisible();
+    await expect(results.getByRole("link", { name: /Whistle Punk/ })).toHaveCount(0);
     await expect(results.getByText(/Frederick/)).toHaveCount(0);
     await expect(page.getByRole("combobox", { name: "Search area" })).toHaveValue("brunswick");
     await fs.mkdir(evidence, { recursive: true });

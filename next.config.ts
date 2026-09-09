@@ -204,6 +204,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "t.plnspttrs.net" },
       { protocol: "https", hostname: "commons.wikimedia.org" },
       { protocol: "https", hostname: "upload.wikimedia.org" },
+      { protocol: "https", hostname: "thumb.wikimedia.org", pathname: "/wikipedia/commons/**" },
       // Library of Congress curated archive imagery. The app stores only
       // reviewed item metadata locally, then requests an explicit, pre-sized
       // IIIF/JPEG rendition from LOC's image CDN. No user request triggers a

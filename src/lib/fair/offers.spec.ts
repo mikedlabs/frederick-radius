@@ -171,7 +171,7 @@ describe("Fair offers", () => {
       officialPurchaseUrl: {
         status: "known",
         value:
-          "https://www.etix.com/ticket/v/11115/the-great-frederick-fair-advanced-gate?partner_id=944",
+          "https://www.etix.com/ticket/p/65356930/blue-ribbon-bundle-frederick-the-great-frederick-fair-advanced-gate?partner_id=944",
       },
     });
 

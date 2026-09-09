@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowUp,
   BusFront,
+  Camera,
   Check,
   ChevronDown,
   ChevronRight,
@@ -23,7 +24,6 @@ import {
   Pencil,
   Plus,
   Search,
-  Sparkles,
   Sprout,
   Store,
   TicketCheck,
@@ -818,6 +818,11 @@ function TicketPreparation({
               {childOffer.priceLabel === "Free"
                 ? "Children age 10 and under enter free."
                 : childOffer.detail}
+            </p>
+          ) : null}
+          {admissionOffer.purchaseNote ? (
+            <p className="mt-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              {admissionOffer.purchaseNote}
             </p>
           ) : null}
           <a
@@ -1866,19 +1871,19 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 src="/images/fair/fairgrounds-night-mike-d-960.jpg"
                 srcSet="/images/fair/fairgrounds-night-mike-d-960.jpg 960w, /images/fair/fairgrounds-night-mike-d-1920.jpg 1920w"
                 sizes="100vw"
-                alt="The Great Frederick Fairgrounds glowing at night, seen from above."
+                alt="Mike D's photograph of The Great Frederick Fair in 2024, with the illuminated Ferris wheel and midway seen from above."
                 width="960"
                 height="540"
                 loading="eager"
                 fetchPriority="high"
-                className="h-full w-full scale-[1.02] object-cover object-[76%_center] sm:object-center"
+                className="h-full w-full object-cover object-[76%_center] sm:object-center"
               />
             </picture>
             <div
               className="absolute inset-0"
               style={{
                 background:
-                  "linear-gradient(to bottom, color-mix(in srgb, var(--app-ink) 58%, transparent), transparent 34%), linear-gradient(to top, color-mix(in srgb, var(--app-cool) 88%, var(--app-ink)), color-mix(in srgb, var(--app-brand-press) 32%, transparent) 58%, transparent 82%)",
+                  "linear-gradient(to bottom, color-mix(in srgb, var(--app-ink) 48%, transparent), transparent 24%), linear-gradient(to top, color-mix(in srgb, var(--app-ink) 96%, transparent), color-mix(in srgb, var(--app-ink) 54%, transparent) 36%, transparent 72%)",
               }}
               aria-hidden
             />
@@ -1893,7 +1898,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
 
             <div
               data-fair-hero-content
-              className="relative z-10 mx-auto flex min-h-[208px] max-w-[68rem] flex-col px-3 pb-3 pt-3 text-[var(--app-ink-inverse)] sm:min-h-[260px] sm:px-6 sm:pb-6 sm:pt-4"
+              className="relative z-10 mx-auto flex min-h-[380px] max-w-[68rem] flex-col px-4 pb-5 pt-3 text-[var(--app-ink-inverse)] sm:min-h-[480px] sm:px-6 sm:pb-7 sm:pt-4"
             >
               <div
                 data-fair-hero-controls
@@ -1931,7 +1936,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 <h1
                   id="fair-now-heading"
                   tabIndex={-1}
-                  className="mt-1 max-w-[14ch] font-editorial text-[34px] font-normal leading-[0.9] tracking-[-0.035em] sm:mt-2 sm:text-[54px]"
+                  className="mt-2 max-w-[14ch] font-editorial text-[44px] font-normal leading-[0.94] tracking-[-0.035em] sm:mt-2 sm:text-[72px]"
                   style={{
                     textShadow:
                       "0 2px 10px color-mix(in srgb, var(--app-ink) 58%, transparent)",
@@ -1955,7 +1960,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                   style={{ color: "var(--app-ink-inverse)" }}
                   data-fair-photo-explore-trigger
                 >
-                  <Sparkles className="h-4 w-4" aria-hidden />
+                  <Camera className="h-4 w-4" aria-hidden />
                   See the Fair from above
                 </button>
               </div>

@@ -86,6 +86,7 @@ export type FairPartyOffer = {
   pastKnownDeadline: boolean;
   officialInfoUrl: string;
   officialPurchaseUrl: string | null;
+  purchaseNote?: string;
 };
 
 export type FairPartyPlanLine = {
@@ -237,6 +238,9 @@ export function buildFairPartyOffers(
         offer.deadline.status === "known" &&
         Date.parse(reviewedAt.data) >= Date.parse(offer.deadline.value),
       officialInfoUrl: offer.officialInfoUrl,
+      purchaseNote: offer.officialPurchaseUrl.status === "unknown"
+        ? offer.officialPurchaseUrl.reason
+        : undefined,
       officialPurchaseUrl:
         offer.officialPurchaseUrl.status === "known"
           ? offer.officialPurchaseUrl.value
@@ -293,6 +297,10 @@ function unknownDeadlineNotes(
   lines: readonly FairPartyPlanLine[],
   offers: readonly FairPartyOffer[],
 ): string[] {
+  const purchaseNotes = Array.from(new Set(lines.flatMap((item) => {
+    const note = offers.find((offer) => offer.id === item.offerId)?.purchaseNote;
+    return note ? [note] : [];
+  })));
   const unknownLabels = Array.from(
     new Set(
       lines.flatMap((item) => {
@@ -304,12 +312,13 @@ function unknownDeadlineNotes(
       }),
     ),
   );
-  if (unknownLabels.length === 0) return [];
+  if (unknownLabels.length === 0) return purchaseNotes;
   const formattedLabels = new Intl.ListFormat("en-US", {
     style: "long",
     type: "conjunction",
   }).format(unknownLabels);
   return [
+    ...purchaseNotes,
     `The reviewed source does not state a purchase deadline for ${formattedLabels}. Confirm availability on the official page.`,
   ];
 }

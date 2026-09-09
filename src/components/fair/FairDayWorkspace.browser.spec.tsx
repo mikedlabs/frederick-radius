@@ -991,8 +991,9 @@ describe("FairDayWorkspace app journey", () => {
 
     const directAdmission = document.body.querySelector("[data-fair-direct-admission]");
     const purchaseLink = directAdmission?.querySelector("a");
-    expect(purchaseLink?.textContent).toContain("Buy admission on Etix");
-    expect(purchaseLink?.getAttribute("href")).toContain("www.etix.com/ticket/");
+    expect(purchaseLink?.textContent).toContain("Check official admission details");
+    expect(purchaseLink?.getAttribute("href")).toContain("thegreatfrederickfair.com");
+    expect(directAdmission?.textContent).toContain("A checkout for the $8 offer has not been verified.");
     expect(purchaseLink?.getAttribute("target")).toBe("_blank");
     expect(directAdmission?.textContent).toContain("$8");
     const calculator = document.body.querySelector<HTMLDetailsElement>("[data-fair-ticket-calculator]");

@@ -313,7 +313,8 @@ describe("buildFairDayWorkspaceData", () => {
       [
         "https://www.etix.com/ticket/p/36957156/jack-pass-frederick-the-great-frederick-fair-advanced-gate?partner_id=944",
         "https://www.etix.com/ticket/p/66497377/carload-special-tuesday-sept22-lot-d-onlythe-great-frederick-fair-frederick-the-great-frederick-fair-advanced-gate?partner_id=944",
-        "https://www.etix.com/ticket/v/11115/the-great-frederick-fair-advanced-gate?partner_id=944",
+        "https://www.etix.com/ticket/p/61602326/advance-gate-admissionthe-great-frederick-fair-frederick-the-great-frederick-fair-advanced-gate?partner_id=944",
+        "https://www.etix.com/ticket/p/65356930/blue-ribbon-bundle-frederick-the-great-frederick-fair-advanced-gate?partner_id=944",
       ].sort(),
     );
     for (const value of purchaseUrls) {

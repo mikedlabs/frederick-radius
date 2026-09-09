@@ -67,6 +67,19 @@ function envelope(overrides: Record<string, unknown> = {}) {
 }
 
 describe("Today durable event snapshot", () => {
+  it("reconciles themed-title duplicates already stored in the archive", () => {
+    const titles = ["The Comedy Pigs at MET Comedy Night",
+      "Bacon to School! “The Comedy Pigs” at MET Comedy Night"];
+    const result = hydrateTodayEventSnapshot(envelope({
+      candidates: titles.map((title, index) => ({
+        canonical_slug: `comedy-${index}`,
+        snapshot: event({ slug: `comedy-${index}`, title,
+          venue_name: "Maryland Ensemble Theatre" }),
+      })),
+    }), NOW);
+    expect(result.publicEvents.filter((row) => row.slug.startsWith("comedy-"))).toHaveLength(1);
+    expect(result.sourceHealth.degraded).toBe(false);
+  });
   beforeEach(() => {
     vi.clearAllMocks();
   });

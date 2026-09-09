@@ -360,6 +360,38 @@ describe("seriesStem + series collapse", () => {
 });
 
 describe("dedupeCrossSourceShows", () => {
+  const comedy = mkEvent({
+    slug: "comedy-pigs",
+    title: "The Comedy Pigs at MET Comedy Night",
+    venue_name: "Maryland Ensemble Theatre",
+    starts_at: "2026-09-12T00:30:00Z",
+  });
+  const themedComedy = {
+    ...comedy,
+    slug: "bacon-to-school",
+    title: "Bacon to School! “The Comedy Pigs” at MET Comedy Night",
+  };
+
+  it("reconciles themed and plain titles for the same timed show in either order", () => {
+    expect(dedupeCrossSourceShows([comedy, themedComedy])).toHaveLength(1);
+    expect(dedupeCrossSourceShows([themedComedy, comedy])).toHaveLength(1);
+  });
+
+  it("does not merge suffix matches without the same explicit venue and start", () => {
+    for (const variation of [
+      { venue_name: "Other Theater" },
+      { venue_name: "" },
+      { starts_at: "2026-09-12T02:30:00Z" },
+      { is_all_day: true },
+      { is_recurring: true },
+    ]) {
+      expect(dedupeCrossSourceShows([comedy, { ...themedComedy, ...variation }])).toHaveLength(2);
+    }
+    expect(dedupeCrossSourceShows([
+      { ...comedy, title: "Community Comedy Night" },
+      { ...themedComedy, title: "Special Community Comedy Night" },
+    ])).toHaveLength(2);
+  });
   // The audit's pair: one source titles the show with the schedule embedded
   // and knows the venue + real time; the other emits a bare noon row.
   const venued = mkEvent({

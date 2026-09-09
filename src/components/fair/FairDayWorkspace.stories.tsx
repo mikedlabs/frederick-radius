@@ -407,6 +407,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Mobile390: Story = {
+  name: "Photo-led Fair entrance / 390px",
   globals: {
     viewport: { value: "radiusMobile", isRotated: false },
   },

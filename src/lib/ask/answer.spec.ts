@@ -1,5 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Positive availability scenarios need a stable reviewed fixture even when
+// production legitimately withholds every expired schedule. Never refresh
+// production timestamps just to make these tests pass.
+vi.mock("@/data/places-client-hours.json", async () => ({
+  default: (await import("../../../tests/fixtures/ask-reviewed-hours.json")).default,
+}));
+vi.mock("@/data/places-client.json", async (importOriginal) => {
+  const original = await importOriginal<{ default: Array<{ slug: string }> }>();
+  const hours = (await import("../../../tests/fixtures/ask-reviewed-hours.json")).default;
+  const bySlug = new Map(hours.map((row) => [row.slug, row]));
+  return { default: original.default.map((place) => ({ ...place, ...bySlug.get(place.slug) })) };
+});
+
 const foodTruckAvailabilityMocks = vi.hoisted(() => ({
   getFoodTruckAvailability: vi.fn(),
 }));

@@ -524,6 +524,9 @@ export function buildFairDayWorkspaceData(
           ? "eligibility-promotion"
           : "standard",
       officialInfoUrl: offer.officialInfoUrl,
+      purchaseNote: offer.officialPurchaseUrl.status === "unknown"
+        ? offer.officialPurchaseUrl.reason
+        : undefined,
       officialPurchaseUrl:
         offer.officialPurchaseUrl.status === "known"
           ? offer.officialPurchaseUrl.value

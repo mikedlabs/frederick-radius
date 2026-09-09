@@ -74,6 +74,7 @@ import { mapCameraDuration } from "@/lib/motion";
 import FairGroundsMapLoading from "./FairGroundsMapLoading";
 import FairGroundsMapMasthead from "./FairGroundsMapMasthead";
 import FairMapCanvasBoundary from "./FairMapCanvasBoundary";
+import FairLiveTransit from "./FairLiveTransit";
 
 export type FairGroundsMapSavedStop = {
   id: string;
@@ -2599,6 +2600,7 @@ export default function FairGroundsMapInner({
                     <>
             <AttributionControl compact position="bottom-right" />
             <NavigationControl position="top-right" showCompass={false} />
+            <FairLiveTransit />
             <Source
               id="fair-grounds-context"
               type="geojson"

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const FAIR_CANONICAL_PATH = "/moments/great-frederick-fair-2026";
 const ETIX_ADMISSION_URL =
-  "https://www.etix.com/ticket/v/11115/the-great-frederick-fair-advanced-gate?partner_id=944";
+  "https://www.etix.com/ticket/p/61602326/advance-gate-admissionthe-great-frederick-fair-frederick-the-great-frederick-fair-advanced-gate?partner_id=944";
 const COUNTY_TRANSIT_URL =
   "https://www.frederickcountymd.gov/105/Transit-Services";
 const EVENTHUB_URL =
@@ -160,11 +160,18 @@ test.describe("Fair Day production release journey", () => {
     await expect(ticketCombination).toContainText("$20");
 
     const etixLink = page.getByRole("link", {
-      name: "Continue to Etix for Adult admission online",
+      name: "Open Etix for Adult admission online",
     });
     await expect(etixLink).toHaveAttribute("href", ETIX_ADMISSION_URL);
     await expect(etixLink).toHaveAttribute("target", "_blank");
     await expect(etixLink).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(page.getByText("Your selections do not transfer.", { exact: false })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Copy ticket checklist" })).toBeVisible();
+    await page.getByRole("button", { name: "Close Tickets" }).click();
+    await page.reload();
+    await page.getByRole("button", { name: "Review tickets" }).click();
+    await page.getByText("Estimate for my group", { exact: true }).click();
+    await expect(page.getByRole("spinbutton", { name: "Adults 11+" })).toHaveValue("2");
     await page.getByRole("button", { name: "I already have tickets" }).click();
     await page.getByRole("button", { name: "Close Tickets" }).click();
 

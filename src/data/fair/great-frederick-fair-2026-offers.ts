@@ -4,7 +4,15 @@ const VERIFIED_AT = "2026-09-01T20:58:08Z";
 const FAIR_ID = "great-frederick-fair-2026";
 const FAIR_INFO_URL = "https://thegreatfrederickfair.com/come-to-the-fair/";
 const ADVANCE_ADMISSION_URL =
-  "https://www.etix.com/ticket/v/11115/the-great-frederick-fair-advanced-gate?partner_id=944";
+  "https://www.etix.com/ticket/p/61602326/advance-gate-admissionthe-great-frederick-fair-frederick-the-great-frederick-fair-advanced-gate?partner_id=944";
+const BLUE_RIBBON_URL =
+  "https://www.etix.com/ticket/p/65356930/blue-ribbon-bundle-frederick-the-great-frederick-fair-advanced-gate?partner_id=944";
+const ticketLinkSource = (url: string) => ({
+  publisher: "Etix",
+  sourceTitle: "Official 2026 Fair ticket page",
+  sourceUrl: url,
+  verifiedAt: "2026-09-09T04:48:00Z",
+});
 const JACK_PASS_URL =
   "https://www.etix.com/ticket/p/36957156/jack-pass-frederick-the-great-frederick-fair-advanced-gate?partner_id=944";
 const CARLOAD_SPECIAL_URL =
@@ -81,8 +89,11 @@ export const greatFrederickFair2026Offers = parseFairOffers([
     inclusions: { status: "known", value: ["Fair admission"] },
     inventory: inventoryNotTracked,
     officialInfoUrl: faqSource.sourceUrl,
-    officialPurchaseUrl: { status: "known", value: ADVANCE_ADMISSION_URL },
-    provenance: [faqSource],
+    officialPurchaseUrl: {
+      status: "unknown",
+      reason: "The reviewed FAQ lists the opening-Friday discount, but the official Etix admission page currently lists $10. A checkout for the $8 offer has not been verified.",
+    },
+    provenance: [faqSource, ticketLinkSource(ADVANCE_ADMISSION_URL)],
   },
   {
     id: "offer-adult-admission-online",
@@ -99,7 +110,7 @@ export const greatFrederickFair2026Offers = parseFairOffers([
     inventory: inventoryNotTracked,
     officialInfoUrl: FAIR_INFO_URL,
     officialPurchaseUrl: { status: "known", value: ADVANCE_ADMISSION_URL },
-    provenance: [admissionSource],
+    provenance: [admissionSource, ticketLinkSource(ADVANCE_ADMISSION_URL)],
   },
   {
     id: "offer-blue-ribbon-bundle",
@@ -115,8 +126,8 @@ export const greatFrederickFair2026Offers = parseFairOffers([
     inclusions: { status: "known", value: ["10 Fair admissions"] },
     inventory: inventoryNotTracked,
     officialInfoUrl: FAIR_INFO_URL,
-    officialPurchaseUrl: { status: "known", value: ADVANCE_ADMISSION_URL },
-    provenance: [admissionSource],
+    officialPurchaseUrl: { status: "known", value: BLUE_RIBBON_URL },
+    provenance: [admissionSource, ticketLinkSource(BLUE_RIBBON_URL)],
   },
   {
     id: "offer-jack-pass",
