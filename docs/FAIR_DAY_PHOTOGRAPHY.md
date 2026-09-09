@@ -25,3 +25,12 @@ layout, ride placement, parking operation, gate status, transit service, or
 accessibility routes. Do not use visible features in the photographs as map
 data, and do not place current operational claims over a photographed feature.
 Current Fair guidance must continue to come from the cited 2026 sources.
+
+## September 2026 visual direction
+
+Frederick imagery must depict the actual place. Use Mike's approved photographs
+or independently verified, reusable photographs with recorded creator, source,
+license and required attribution. Never substitute AI-generated scenes for
+Frederick. CSS crops, gradients and textures may improve legibility while
+preserving the photograph and its provenance. Do not infer current conditions
+from an atmosphere photograph.

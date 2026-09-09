@@ -106,6 +106,8 @@ async function readMarkerHitTargets(page: Page) {
       "[data-fair-map-filter-rail]",
       "[data-fair-map-high-text-controls]",
       "[data-fair-map-utility-controls]",
+      "[data-fair-aerial-controls]",
+      "[data-fair-transit-toggle]",
       ".fair-grounds-map-canvas .maplibregl-ctrl-attrib",
       ".fair-grounds-map-canvas .maplibregl-ctrl-top-right .maplibregl-ctrl-group",
       "[data-mobile-action-bar]",
@@ -161,7 +163,7 @@ async function readMarkerHitTargets(page: Page) {
             y: Math.round(y),
             hit:
               hitElement?.getAttribute("aria-label") ??
-              hitElement?.id ??
+              (hitElement?.id || hitElement?.outerHTML.slice(0, 240)) ??
               hitElement?.tagName.toLocaleLowerCase() ??
               null,
           },
@@ -754,7 +756,7 @@ test.describe("Fairgrounds map accessibility", () => {
     ).toHaveCount(0);
   });
 
-  test("starts with a compact arrival view across common narrow phone widths", async ({
+  test("starts with a compact essentials view across common narrow phone widths", async ({
     page,
   }) => {
     for (const { width, height } of [
@@ -765,13 +767,13 @@ test.describe("Fairgrounds map accessibility", () => {
       await page.setViewportSize({ width, height });
       await openFairMap(page);
       const mapView = page.getByRole("combobox", { name: "Map view" });
-      await expect(mapView).toHaveValue("arrival");
+      await expect(mapView).toHaveValue("essentials");
       await expect(mapView).toHaveCSS("height", "44px");
-      await expect(mapView.locator("option:checked")).toHaveText("Arrive · 16");
+      await expect(mapView.locator("option:checked")).toHaveText("Essentials · 24");
       await expect(mapView.locator("option")).toHaveCount(5);
       await expect(mapView.locator("option").last()).toHaveText("Buildings · 7");
       await expect(page.locator("#fair-map-filter-status")).toContainText(
-        "This map view shows Arrive and enter: 16 places.",
+        "This map view shows Entry + essentials: 24 places.",
       );
       await expect(
         page.locator(
@@ -790,7 +792,7 @@ test.describe("Fairgrounds map accessibility", () => {
         .poll(async () => {
           const markers = await readMarkerHitTargets(page);
           return (
-            markers.representedPlaces === 16 &&
+            markers.representedPlaces === 24 &&
             markers.markers.length > 0 &&
             markers.blockedTargets.length === 0
           );
@@ -808,6 +810,13 @@ test.describe("Fairgrounds map accessibility", () => {
       expect(boxesOverlap(chrome.search!, chrome.filters!)).toBe(false);
       expect(boxesOverlap(chrome.filters!, chrome.utilities!)).toBe(false);
       expect(boxesOverlap(chrome.utilities!, chrome.attribution!)).toBe(false);
+      await expect(page.getByRole("button", { name: "Aerial background" })).toHaveAttribute("aria-pressed", "true");
+      if (width === 390) {
+        // A whole-grounds view must actually expose choices, not satisfy
+        // hit-target checks with one opaque cluster of every essential.
+        await expect.poll(async () => (await readMarkerSpread(page)).widestPair).toBeGreaterThan(160);
+        await page.screenshot({ path: "output/playwright/visual-journey/fair-aerial-phone.png" });
+      }
       if (width === 320) {
         const search = page.getByRole("searchbox", {
           name: "Find a place or program event on the Fair grounds map",
@@ -890,6 +899,7 @@ test.describe("Fairgrounds map accessibility", () => {
       )
       .toBe(true);
 
+    await page.screenshot({ path: "output/playwright/visual-journey/map-large-text.png" });
     for (const lens of FAIR_MAP_LENSES) {
       await expectLensTargetsReachable(page, lens);
     }
@@ -1228,11 +1238,11 @@ test.describe("Fairgrounds map accessibility", () => {
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.locator("[data-fair-grounds-map] canvas")).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Map view" })).toHaveValue(
-      "arrival",
+      "essentials",
     );
     await expect
       .poll(async () => (await readMarkerHitTargets(page)).representedPlaces)
-      .toBe(16);
+      .toBe(24);
   });
 
   test("keeps selected-place details above map controls at 320px", async ({

@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { MapPin, Navigation, Loader2, AlertCircle, Check, ChevronDown, ChevronLeft, ArrowUpRight, Globe, X } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { haptic } from "@/lib/haptics";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance } from "@/lib/geo";
-import { getScope, setScope, scopeTownSlug, scopeLabel, subscribeScopeChange, type Scope } from "@/lib/scope";
+import { getScope, parseScope, setScope, scopeTownSlug, scopeLabel, subscribeScopeChange, type Scope } from "@/lib/scope";
+import { locationScopeHref } from "./locationScopeNavigation";
 
 /**
  * TopBar location chip — the browsing-scope selector (UX-02).
@@ -31,10 +32,12 @@ import { getScope, setScope, scopeTownSlug, scopeLabel, subscribeScopeChange, ty
  */
 export default function LocationChip({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { state, request } = useGeolocation();
   const [open, setOpen] = useState(false);
   const [showTowns, setShowTowns] = useState(false);
-  const [scope, setScopeState] = useState<Scope | null>(null);
+  const [storedScope, setScopeState] = useState<Scope | null>(null);
+  const scope = parseScope(searchParams.get("in")) ?? storedScope;
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -62,8 +65,19 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
     setScope(next);
     setScopeState(next);
     closePicker();
-    // Server components re-render with the new fr_scope cookie.
-    router.refresh();
+    const href = locationScopeHref(window.location.href, next);
+    if (href) {
+      if (window.location.pathname === "/map") {
+        // Native history keeps the live map mounted while synchronizing its
+        // URL-owned query and scope. The scope event above moves the camera.
+        window.history.replaceState(null, "", href);
+      } else {
+        router.replace(href, { scroll: false });
+      }
+    } else {
+      // Other server surfaces consume the new shared scope cookie directly.
+      router.refresh();
+    }
   };
 
   // Every town, sorted by how far it is from the reader. This loop already ran

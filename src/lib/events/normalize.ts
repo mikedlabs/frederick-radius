@@ -638,10 +638,24 @@ export function dedupeCrossSourceShows(events: EventWithMeta[]): EventWithMeta[]
         if (other.is_recurring) continue;
         const otherStem = normLoose(seriesStem(other.title));
         if (otherStem.length < CROSS_SOURCE_MIN_STEM) continue;
-        if (!(stem.startsWith(otherStem) || otherStem.startsWith(stem))) continue;
         const va = normLoose(e.venue_name ?? "");
         const vb = normLoose(other.venue_name ?? "");
         if (va && vb && va !== vb) continue;
+        const prefixMatch = stem.startsWith(otherStem) || otherStem.startsWith(stem);
+        const titleWords = (title: string) =>
+          seriesStem(title).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+        const words = titleWords(e.title);
+        const otherWords = titleWords(other.title);
+        // A publisher may prepend a theme ("Bacon to School!") to a show.
+        // Suffix matching needs stronger evidence than the older prefix rule:
+        // the full substantial title, a stated identical venue, and exactly
+        // the same non-all-day start. Different performances must survive.
+        const suffixMatch =
+          !!va && va === vb && !e.is_all_day && !other.is_all_day &&
+          Date.parse(e.starts_at) === Date.parse(other.starts_at) &&
+          Math.min(words.split(" ").length, otherWords.split(" ").length) >= 5 &&
+          (words.endsWith(` ${otherWords}`) || otherWords.endsWith(` ${words}`));
+        if (!prefixMatch && !suffixMatch) continue;
         if (documentation(e) > documentation(other)) kept[i] = e;
         merged = true;
         break;

@@ -13,7 +13,7 @@ describe("Today universal Find launcher", () => {
     expect(html).toContain('href="/search"');
     expect(html).toContain("What do you need?");
     expect(html).toContain(
-      "Radius connects hours, distance, weather, and today’s schedule.",
+      "Find a place or service, or ask for help planning your time.",
     );
     expect(html).toContain('href="/open-now"');
     expect(html).toContain('href="/amenities"');

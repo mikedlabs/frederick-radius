@@ -84,7 +84,7 @@ describe("TodayEventsRecovery", () => {
     vi.unstubAllGlobals();
   });
 
-  it("requests one uncached runtime refresh and replaces the checking state", async () => {
+  it("recovers without consuming the explicit refresh allowance", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ partial: false, events: [event] }),
@@ -102,7 +102,7 @@ describe("TodayEventsRecovery", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/today/events?refresh=1",
+      "/api/today/events",
       expect.objectContaining({ cache: "no-store" }),
     );
 

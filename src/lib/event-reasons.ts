@@ -1,7 +1,11 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { ReasonTone } from "@/components/ui/ReasonChip";
 import { daypart } from "@/lib/daypart";
-import { isEventLiveNow } from "@/lib/eventWhenLabel";
+import { formatDistance } from "@/lib/geo";
+import { easternParts } from "@/lib/tz";
+import { hasPhysicalAttendance } from "@/lib/events/attendance";
+import { eventHasPreciseLocation } from "@/lib/events/geo-confidence";
+import { isDateOnlyEventAnchor, isEventLiveNow } from "@/lib/eventWhenLabel";
 
 /**
  * Derive the small "why this is shown" chips for an event, from data
@@ -12,7 +16,7 @@ import { isEventLiveNow } from "@/lib/eventWhenLabel";
  *
  *   1. Live now / starting soon / tonight — time relevance
  *   2. Free — no admission cost
- *   3. Distance — walkable from the user / town
+ *   3. Straight-line distance from a known origin
  *   4. Outdoor / family-friendly (from category) — context
  */
 export type EventReason =
@@ -33,7 +37,6 @@ const TONIGHT_HOURS = 6; // next 6 hours = "tonight" lens
 
 const WALK_NEAR_M = 400;
 const WALK_OK_M = 1200;
-const WALK_SPEED_M_PER_MIN = 80;
 
 const OUTDOOR_CATS = new Set([
   "outdoors", "park", "trail", "festival", "market", "food-truck",
@@ -51,9 +54,10 @@ export function eventReasons(
   // 1. Time relevance — strongest first. Liveness goes through the shared
   // gate (all-day and end-of-day/range end stamps must not read "Live now"
   // at 11 PM — beta-reviewer catch, Jul 2026).
-  if (isEventLiveNow(e, now)) {
+  const timed = (e.status ?? "scheduled") === "scheduled" && !e.is_all_day && !isDateOnlyEventAnchor(e);
+  if (timed && isEventLiveNow(e, now)) {
     out.push({ kind: "live_now", label: "Live now", tone: "open" });
-  } else if (startsMs > nowMs) {
+  } else if (timed && startsMs > nowMs) {
     const minsAway = (startsMs - nowMs) / 60_000;
     if (minsAway <= STARTING_SOON_MIN) {
       out.push({ kind: "starting_soon", label: "Starting soon", tone: "open" });
@@ -69,7 +73,7 @@ export function eventReasons(
       // Compute here rather than threading from the server so a card
       // can decide independently.
       const startsDate = new Date(startsMs);
-      const dow = startsDate.getDay();
+      const dow = easternParts(startsDate).weekday;
       const isWeekend = dow === 5 || dow === 6 || dow === 0;
       const within7Days = startsMs - nowMs <= 7 * 24 * 3600_000;
       if (isWeekend && within7Days) {
@@ -84,12 +88,11 @@ export function eventReasons(
   }
 
   // 3. Distance — only when origin set.
-  if (typeof e.distance_m === "number") {
-    if (e.distance_m <= WALK_NEAR_M) {
-      const mins = Math.max(1, Math.round(e.distance_m / WALK_SPEED_M_PER_MIN));
-      out.push({ kind: "near", label: `${mins} min walk`, tone: "near" });
-    } else if (e.distance_m <= WALK_OK_M) {
-      out.push({ kind: "walkable", label: "Walkable", tone: "near" });
+  if (Number.isFinite(e.distance_m) && e.distance_m! >= 0 && hasPhysicalAttendance(e) && eventHasPreciseLocation(e)) {
+    if (e.distance_m! <= WALK_NEAR_M) {
+      out.push({ kind: "near", label: `${formatDistance(e.distance_m!)} away`, tone: "near" });
+    } else if (e.distance_m! <= WALK_OK_M) {
+      out.push({ kind: "walkable", label: `${formatDistance(e.distance_m!)} away`, tone: "near" });
     }
   }
 

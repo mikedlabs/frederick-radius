@@ -17,15 +17,16 @@ describe("event parking decision", () => {
       name: "Carroll Creek Garage",
     });
     expect(eventParkingSummary(parking)).toContain(
-      `${parking?.distanceLabel} away at Carroll Creek Garage`,
+      `Carroll Creek Garage is the nearest listed city garage, ${parking?.distanceLabel} away in a straight line`,
     );
     expect(eventParkingDirections(parking)).toContain(
-      `Carroll Creek Garage is a ${parking?.walkMinutes}-minute walk (${parking?.distanceLabel}).`,
+      `Carroll Creek Garage is ${parking?.distanceLabel} away in a straight line.`,
     );
     expect(eventParkingDirections(parking)).toContain(
       "Garage parking is $1 / hour; the overnight maximum is $5.",
     );
     expect(eventParkingDirections(parking)).not.toContain("Garage garage");
+    expect(eventParkingDirections(parking)).not.toMatch(/minute.walk/);
   });
 
   it("returns no claim when no city garage is within the trusted range", () => {

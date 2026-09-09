@@ -91,6 +91,13 @@
     "baker-park-bandshell"
   ],
   "patch": {
+    "beans-in-the-belfry-brunswick": {
+      "website": "https://beansinthebelfry.com/"
+    },
+    "whistle-punk-farm-delicatessen-brunswick": {
+      "category": "restaurant",
+      "website": "https://whistlepunkfarm.com/"
+    },
     "maryland-school-for-the-deaf": {
       "category": "community",
       "tags": [

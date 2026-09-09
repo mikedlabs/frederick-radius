@@ -43,9 +43,8 @@ export default function FairGroundsMapMasthead({
             Source-checked grounds map
           </p>
           <h2
-            className="mt-1 text-[30px] font-normal leading-[1.02] tracking-[-0.025em] sm:text-[34px]"
+            className="mt-1 text-[28px] font-bold leading-[1.1] tracking-[-0.025em] sm:text-[32px]"
             style={{
-              fontFamily: "var(--font-editorial)",
               color: "var(--app-ink)",
             }}
           >

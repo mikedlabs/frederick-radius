@@ -12,6 +12,9 @@ function categoryName(slug: string): string {
 
 function planStart(intent: AskIntent, query: string): string | undefined {
   if (intent.requestedDateTime) return intent.requestedDateTime;
+  // "The next two hours" starts now even when the outing is a date night.
+  // It must not receive the default evening clock used for undated ideas.
+  if (intent.timeNeed === "now" && !intent.requestedDate) return new Date().toISOString();
   if (intent.requestedDate) {
     const [year, month, day] = intent.requestedDate.split("-").map(Number);
     const hour = intent.timeNeed === "morning"

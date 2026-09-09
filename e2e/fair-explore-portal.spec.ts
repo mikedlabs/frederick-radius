@@ -1,188 +1,72 @@
+import { readFileSync } from "node:fs";
+import type { AxeResults } from "axe-core";
 import { expect, test } from "@playwright/test";
 
 const FAIR_PATH = "/moments/great-frederick-fair-2026#program";
 
-test.describe("Fair Explore task portal", () => {
-  test.use({
-    locale: "en-US",
-    timezoneId: "America/New_York",
-    serviceWorkers: "block",
-  });
+test.describe("Fair direct program discovery", () => {
+  test.use({ locale: "en-US", timezoneId: "America/New_York", serviceWorkers: "block" });
 
-  test("keeps search and four reviewed paths scannable at phone widths", async ({
-    page,
-  }) => {
-    test.setTimeout(90_000);
-
-    for (const width of [320, 390, 430]) {
-      await page.setViewportSize({ width, height: 568 });
-      await page.goto(FAIR_PATH, { waitUntil: "domcontentloaded" });
-      await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
-        "data-fair-interaction-ready",
-        "true",
-      );
-      await expect(
-        page.getByRole("heading", { level: 1, name: "Explore the Fair" }),
-      ).toBeVisible();
-
-      const dayPicker = page.getByRole("combobox", {
-        name: "Fair day to explore",
+  for (const width of [320, 375, 390, 430, 1280]) {
+    test(`shows events immediately with accessible categories at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto(FAIR_PATH);
+      await expect(page.locator("article[data-fair-app]")).toHaveAttribute("data-fair-interaction-ready", "true");
+      await page.getByRole("combobox", { name: "Fair day to explore" }).selectOption("2026-09-18");
+      const categories = page.getByRole("group", { name: "Filter the Fair program" });
+      await expect(categories.getByRole("button")).toHaveCount(8);
+      const grandstandLines = await categories.getByRole("button", { name: "Grandstand", exact: true }).locator("span").evaluate((label) => {
+        const range = document.createRange();
+        range.selectNodeContents(label);
+        return range.getClientRects().length;
       });
-      await dayPicker.selectOption("2026-09-18");
-
-      const search = page.getByRole("searchbox", { name: "Search the Fair" });
-      const portal = page.getByRole("region", {
-        name: "Fair activity paths",
-      });
-      const grid = portal.locator("[data-fair-discovery-grid]");
-      const choices = portal.locator("[data-fair-discovery-choice]");
-
-      await expect(search).toBeVisible();
-      await expect(portal).toBeVisible();
-      await expect(grid).toBeVisible();
-      await expect(choices).toHaveCount(4);
-      await expect(
-        portal.locator('[data-fair-discovery-choice="kid-zone"]'),
-      ).toContainText("4 p.m.–9 p.m.");
-      await expect(
-        portal.locator('[data-fair-discovery-choice="food-program"]'),
-      ).toBeEnabled();
-      await expect(
-        portal.locator('[data-fair-discovery-choice="food-program"]'),
-      ).toContainText(
-        "Homegrown Wineries, Breweries and Distilleries Showcase",
-      );
-      await expect(portal).not.toContainText(/\d+ options?/);
-
-      const layout = await page.evaluate(() => {
-        const searchField = document.querySelector<HTMLElement>(
-          "#fair-unified-search",
-        );
-        const portalElement = document.querySelector<HTMLElement>(
-          "[data-fair-discovery-choices]",
-        );
-        const gridElement = document.querySelector<HTMLElement>(
-          "[data-fair-discovery-grid]",
-        );
-        const actionBar = document.querySelector<HTMLElement>(
-          "[data-mobile-action-bar]",
-        );
-        const cardElements = Array.from(
-          document.querySelectorAll<HTMLElement>(
-            "[data-fair-discovery-choice]",
-          ),
-        );
-        if (!searchField || !portalElement || !gridElement || !actionBar) {
-          return null;
-        }
-        const cardBoxes = cardElements.map((card) =>
-          card.getBoundingClientRect(),
-        );
-        const gridBox = gridElement.getBoundingClientRect();
-        const actionBarBox = actionBar.getBoundingClientRect();
-        return {
-          searchBeforePortal: Boolean(
-            searchField.compareDocumentPosition(portalElement) &
-              Node.DOCUMENT_POSITION_FOLLOWING,
-          ),
-          searchBottom: searchField.getBoundingClientRect().bottom,
-          viewportHeight: window.innerHeight,
-          columnCount: window
-            .getComputedStyle(gridElement)
-            .gridTemplateColumns.split(" ").length,
-          rowCount: new Set(cardBoxes.map((box) => Math.round(box.top))).size,
-          gridBottom: gridBox.bottom,
-          actionBarTop: actionBarBox.top,
-          portalClientWidth: portalElement.clientWidth,
-          portalScrollWidth: portalElement.scrollWidth,
-          cards: cardBoxes.map((box) => ({
-            width: box.width,
-            height: box.height,
-            left: box.left,
-            right: box.right,
-          })),
-          documentClientWidth: document.documentElement.clientWidth,
-          documentScrollWidth: document.documentElement.scrollWidth,
-        };
-      });
-
-      expect(layout).not.toBeNull();
-      expect(layout?.searchBeforePortal).toBe(true);
-      expect(layout?.searchBottom).toBeLessThanOrEqual(
-        layout?.viewportHeight ?? 0,
-      );
-      expect(layout?.columnCount).toBe(2);
-      expect(layout?.rowCount).toBe(2);
-      expect(layout?.gridBottom).toBeLessThanOrEqual(
-        layout?.actionBarTop ?? 0,
-      );
-      expect(layout?.portalScrollWidth).toBeLessThanOrEqual(
-        (layout?.portalClientWidth ?? 0) + 1,
-      );
-      expect(layout?.documentScrollWidth).toBeLessThanOrEqual(
-        (layout?.documentClientWidth ?? 0) + 1,
-      );
-      for (const card of layout?.cards ?? []) {
-        expect(card.width).toBeGreaterThanOrEqual(44);
-        expect(card.height).toBeGreaterThanOrEqual(88);
-        expect(card.height).toBeLessThanOrEqual(100);
-        expect(card.left).toBeGreaterThanOrEqual(0);
-        expect(card.right).toBeLessThanOrEqual(width + 1);
+      expect(grandstandLines).toBe(1);
+      await expect(page.getByRole("button", { name: "Browse full program", exact: true })).toHaveCount(0);
+      await expect(page.locator("[data-fair-program-trail]").first()).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+      const firstEvent = await page.locator("[data-fair-program-trail] li").first().boundingBox();
+      expect(firstEvent?.y).toBeLessThan(760);
+      for (const category of await categories.getByRole("button").all()) {
+        const box = await category.boundingBox();
+        expect(box?.width).toBeGreaterThanOrEqual(44);
+        expect(box?.height).toBeGreaterThanOrEqual(44);
       }
-
-      const enlargedTextStyle = await page.addStyleTag({
-        content: `
-          [data-fair-discovery-copy] {
-            font-size: 200% !important;
-            line-height: 1.35 !important;
-            letter-spacing: normal !important;
-          }
-        `,
+      await page.addScriptTag({ content: readFileSync("node_modules/axe-core/axe.min.js", "utf8") });
+      const issues = await page.evaluate(async () => {
+        const axe = (window as unknown as { axe: { run: (context: string, options: object) => Promise<AxeResults> } }).axe;
+        return axe.run("#fair-find-panel", { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa"] } });
       });
-      const enlargedLayout = await page.evaluate(() => ({
-        documentClientWidth: document.documentElement.clientWidth,
-        documentScrollWidth: document.documentElement.scrollWidth,
-        cards: Array.from(
-          document.querySelectorAll<HTMLElement>(
-            "[data-fair-discovery-choice]",
-          ),
-        ).map((card) => ({
-          clientHeight: card.clientHeight,
-          scrollHeight: card.scrollHeight,
-          clientWidth: card.clientWidth,
-          scrollWidth: card.scrollWidth,
-        })),
+      expect(issues.violations).toEqual([]);
+      await categories.getByRole("button", { name: "Animals", exact: true }).focus();
+      await page.keyboard.press("Enter");
+      await expect(categories.getByRole("button", { name: "Animals", exact: true })).toHaveAttribute("aria-pressed", "true");
+      await expect(page.getByRole("list", { name: "Fair program results", exact: true })).toContainText("Horse Barrel Racing");
+      await categories.getByRole("button", { name: "Food & drink", exact: true }).click();
+      await expect(page.getByText("These are scheduled food and drink activities, not food stands.")).toBeVisible();
+      await expect(page.getByRole("link", { name: "Search official vendor booths" })).toHaveAttribute("target", "_blank");
+      await page.addStyleTag({ content: "[data-fair-program-filter] { font-size: 24px !important; }" });
+      const layout = await page.evaluate(() => ({
+        overflow: document.documentElement.scrollWidth > innerWidth,
+        clipped: Array.from(document.querySelectorAll<HTMLElement>("[data-fair-program-filter]")).some(el => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1),
       }));
-      await enlargedTextStyle.evaluate((style) =>
-        style.parentNode?.removeChild(style),
-      );
+      expect(layout).toEqual({ overflow: false, clipped: false });
+    });
+  }
 
-      expect(enlargedLayout.documentScrollWidth).toBeLessThanOrEqual(
-        enlargedLayout.documentClientWidth + 1,
-      );
-      for (const card of enlargedLayout.cards) {
-        expect(card.scrollHeight).toBeLessThanOrEqual(card.clientHeight + 1);
-        expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth + 1);
-      }
-    }
-  });
-
-  test("uses desktop space for the next useful program details", async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto(FAIR_PATH, { waitUntil: "domcontentloaded" });
-    await expect(page.locator("article[data-fair-app]")).toHaveAttribute(
-      "data-fair-interaction-ready",
-      "true",
-    );
-
-    const portal = page.getByRole("region", { name: "Fair activity paths" });
-    const eventTitles = portal.locator("[data-fair-discovery-event-title]");
-    await expect(eventTitles.first()).toBeVisible();
-    await expect(eventTitles.first()).not.toHaveText("");
-    await expect(
-      portal.locator("[data-fair-discovery-status]").first(),
-    ).toBeVisible();
+  test("keeps category and day through details and the map", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(FAIR_PATH);
+    await page.getByRole("combobox", { name: "Fair day to explore" }).selectOption("2026-09-18");
+    await page.getByRole("group", { name: "Filter the Fair program" }).getByRole("button", { name: "Music", exact: true }).click();
+    await page.getByRole("button", { name: "Open details for Daughtry", exact: true }).click();
+    const detail = page.getByRole("dialog", { name: "Daughtry", exact: true });
+    await detail.getByRole("button", { name: "Show on map", exact: true }).click();
+    await expect(page).toHaveURL(/#fair-map$/);
+    await expect(page.locator("[data-fair-map-selection]:visible")).toContainText("Grandstand", { timeout: 30000 });
+    await page.getByRole("navigation", { name: "Fair Day", exact: true }).getByRole("button", { name: "Program", exact: true }).click();
+    await expect(page.locator('[data-fair-program-filter="music"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("combobox", { name: "Fair day to explore" })).toHaveValue("2026-09-18");
+    await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+    await expect(page.locator('[data-fair-program-filter="all"]')).toHaveAttribute("aria-pressed", "true");
   });
 });

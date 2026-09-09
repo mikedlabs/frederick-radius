@@ -29,7 +29,8 @@ const SearchOverlay = lazy(() => import("@/components/search/SearchOverlay"));
 let searchLayerSequence = 0;
 
 export function pageOwnsPrimarySearch(pathname: string): boolean {
-  return pathname === "/map"
+  return pathname === "/today"
+    || pathname === "/map"
     || pathname === "/search"
     || pathname === "/compass"
     || pathname.startsWith("/ask");
@@ -44,7 +45,7 @@ export function shouldShowGlobalMobileSearch(pathname: string): boolean {
 export function shouldShowGlobalLocation(pathname: string): boolean {
   // Ask owns its scope inside the composer. A second location control in the
   // persistent header showed two competing answers to "where am I looking?"
-  return !pathname.startsWith("/ask");
+  return !pathname.startsWith("/ask") && pathname !== "/today" && pathname !== "/search";
 }
 
 export function topBarFindTarget(pathname: string): FindTarget {
@@ -404,7 +405,7 @@ export default function TopBar() {
               destinations retain full touch targets and accessible names on
               narrow phones. */}
           {shouldShowGlobalLocation(pathname) ? (
-            <LocationChip compact={pathname === "/map"} />
+            <Suspense fallback={null}><LocationChip compact={pathname === "/map"} /></Suspense>
           ) : null}
 
           {/* Pulse stays named on larger screens. On a phone it appears only

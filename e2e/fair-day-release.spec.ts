@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const FAIR_CANONICAL_PATH = "/moments/great-frederick-fair-2026";
 const ETIX_ADMISSION_URL =
-  "https://www.etix.com/ticket/v/11115/the-great-frederick-fair-advanced-gate?partner_id=944";
+  "https://www.etix.com/ticket/p/61602326/advance-gate-admissionthe-great-frederick-fair-frederick-the-great-frederick-fair-advanced-gate?partner_id=944";
 const COUNTY_TRANSIT_URL =
   "https://www.frederickcountymd.gov/105/Transit-Services";
 const EVENTHUB_URL =
@@ -147,6 +147,14 @@ test.describe("Fair Day production release journey", () => {
     const directAdmission = page.getByRole("link", { name: "Buy admission on Etix" });
     await expect(directAdmission).toBeVisible();
     await expect(directAdmission).toHaveAttribute("href", ETIX_ADMISSION_URL);
+    await expect(page.locator("[data-fair-direct-admission]")).toContainText("$10");
+    await expect(page.locator("[data-fair-direct-admission]")).not.toContainText("$8");
+    await expect(page.locator("[data-fair-admission-alternatives]")).toContainText("Blue Ribbon Bundle: $80");
+    await expect(page.locator("[data-fair-admission-alternatives]")).toContainText("10 Fair admissions");
+    await expect(page.getByRole("link", { name: "Buy the 10-ticket bundle on Etix" })).toHaveAttribute(
+      "href", /etix\.com\/ticket\/p\/65356930\//,
+    );
+    await expect(page.getByRole("dialog", { name: "Tickets" })).toContainText("Single admission at the gate is $15.");
     await expect(page.getByRole("spinbutton", { name: "Adults 11+" })).not.toBeVisible();
     await page.getByText("Estimate for my group", { exact: true }).click();
     await page.getByRole("spinbutton", { name: "Adults 11+" }).fill("2");
@@ -160,11 +168,18 @@ test.describe("Fair Day production release journey", () => {
     await expect(ticketCombination).toContainText("$20");
 
     const etixLink = page.getByRole("link", {
-      name: "Continue to Etix for Adult admission online",
+      name: "Open Etix for Adult admission online",
     });
     await expect(etixLink).toHaveAttribute("href", ETIX_ADMISSION_URL);
     await expect(etixLink).toHaveAttribute("target", "_blank");
     await expect(etixLink).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(page.getByText("Your selections do not transfer.", { exact: false })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Copy ticket checklist" })).toBeVisible();
+    await page.getByRole("button", { name: "Close Tickets" }).click();
+    await page.reload();
+    await page.getByRole("button", { name: "Review tickets" }).click();
+    await page.getByText("Estimate for my group", { exact: true }).click();
+    await expect(page.getByRole("spinbutton", { name: "Adults 11+" })).toHaveValue("2");
     await page.getByRole("button", { name: "I already have tickets" }).click();
     await page.getByRole("button", { name: "Close Tickets" }).click();
 
@@ -242,7 +257,7 @@ test.describe("Fair Day production release journey", () => {
     ).toBeLessThanOrEqual(actionBarPosition?.y ?? Number.POSITIVE_INFINITY);
     await page.getByRole("button", { name: "Program", exact: true }).click();
     await expect(
-      page.getByRole("region", { name: "Fair activity paths" }),
+      page.getByRole("group", { name: "Filter the Fair program" }),
     ).toBeVisible();
     const programVendorSearch = page.getByRole("link", {
       name: "Search official vendor booths",
@@ -258,18 +273,14 @@ test.describe("Fair Day production release journey", () => {
     );
     await expect(grandstandSpotlight).toBeVisible();
     const grandstandSpotlightBox = await grandstandSpotlight.boundingBox();
-    expect(grandstandSpotlightBox?.height ?? 0).toBeGreaterThanOrEqual(190);
-    expect(grandstandSpotlightBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(215);
+    // Browser transforms can report 147.999984px for the 148px minimum.
+    expect(Math.round(grandstandSpotlightBox?.height ?? 0)).toBeGreaterThanOrEqual(148);
+    expect(grandstandSpotlightBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(240);
     expect(
       (grandstandSpotlightBox?.x ?? Number.POSITIVE_INFINITY) +
         (grandstandSpotlightBox?.width ?? Number.POSITIVE_INFINITY),
     ).toBeLessThanOrEqual(390);
-    await expect(
-      page.getByRole("list", { name: "Fair program results" }),
-    ).toHaveCount(0);
-    await page
-      .getByRole("button", { name: "Browse full program", exact: true })
-      .click();
+    await expect(page.locator("[data-fair-program-trail]").first()).toBeVisible();
     await expect(page.locator("[data-fair-program-groups]")).toBeVisible();
     await expect(
       page.locator("[data-fair-program-trail]:visible").first(),
@@ -331,17 +342,10 @@ test.describe("Fair Day production release journey", () => {
     await page
       .getByRole("combobox", { name: "Fair day to explore" })
       .selectOption("2026-09-18");
-    const foodProgram = page.locator(
-      '[data-fair-discovery-choice="food-program"]',
-    );
+    const foodProgram = page.locator('[data-fair-program-filter="food"]');
     await expect(foodProgram).toBeEnabled();
-    await expect(foodProgram).toContainText(
-      "Homegrown Wineries, Breweries and Distilleries Showcase",
-    );
+    await expect(foodProgram).toContainText("Food & drink");
 
-    await page
-      .getByRole("button", { name: "Browse full program", exact: true })
-      .click();
     const eveningGroup = page.locator(
       '[data-fair-program-daypart="evening"]',
     );
@@ -367,7 +371,7 @@ test.describe("Fair Day production release journey", () => {
       details.getByRole("link", { name: "Official Grandstand source" }),
     ).toHaveAttribute(
       "href",
-      "https://thegreatfrederickfair.com/grandstand/",
+      "https://thegreatfrederickfair.com/schedule/",
     );
     await page.getByRole("button", { name: "Close Daughtry" }).click();
     await expect(
@@ -390,9 +394,6 @@ test.describe("Fair Day production release journey", () => {
     await page
       .getByRole("combobox", { name: "Fair day to explore" })
       .selectOption("2026-09-18");
-    await page
-      .getByRole("button", { name: "Browse full program", exact: true })
-      .click();
     const eveningGroup = page.locator(
       '[data-fair-program-daypart="evening"]',
     );
@@ -417,6 +418,9 @@ test.describe("Fair Day production release journey", () => {
 
     await page.getByRole("button", { name: "Program", exact: true }).click();
     await expect(page).toHaveURL(/#program$/);
+    // Returning to Program must preserve the event context rather than
+    // reopening a category gateway or silently resetting discovery.
+    await expect(page.locator("[data-fair-program-trail]").first()).toBeVisible();
     await page.getByRole("button", { name: "Map", exact: true }).click();
     await expect(page).toHaveURL(/#fair-map$/);
     await expect(page.locator("[data-fair-grounds-map] canvas")).toBeVisible({
@@ -712,43 +716,13 @@ test.describe("Fair Day production release journey", () => {
           );
         }
         if (width === 320 && label === "Program") {
-          const programCards = page.locator("[data-fair-discovery-choice]");
-          await expect(programCards).toHaveCount(4);
-          const programLayout = await programCards.evaluateAll((cards) =>
-            cards.map((card) => {
-              const box = card.getBoundingClientRect();
-              return {
-                top: box.top,
-                bottom: box.bottom,
-                clientHeight: card.clientHeight,
-                scrollHeight: card.scrollHeight,
-                zIndex: window.getComputedStyle(card).zIndex,
-              };
-            }),
-          );
-          for (const [upperIndex, lowerIndex] of [
-            [0, 2],
-            [1, 3],
-          ] as const) {
-            const overlap =
-              programLayout[upperIndex].bottom - programLayout[lowerIndex].top;
-            expect(overlap).toBeGreaterThanOrEqual(5);
-            expect(overlap).toBeLessThanOrEqual(7);
-            expect(Number(programLayout[lowerIndex].zIndex)).toBeGreaterThan(
-              Number(programLayout[upperIndex].zIndex),
-            );
+          const categories = page.locator("[data-fair-program-filter]");
+          await expect(categories).toHaveCount(8);
+          for (const category of await categories.all()) {
+            const box = await category.boundingBox();
+            expect(box?.width).toBeGreaterThanOrEqual(44);
+            expect(box?.height).toBeGreaterThanOrEqual(44);
           }
-          for (const card of programLayout) {
-            expect(card.scrollHeight).toBeLessThanOrEqual(card.clientHeight + 1);
-          }
-          await programCards.first().focus();
-          expect(
-            Number(
-              await programCards
-                .first()
-                .evaluate((card) => window.getComputedStyle(card).zIndex),
-            ),
-          ).toBeGreaterThan(Number(programLayout[2].zIndex));
         }
         if (label === "Map") {
           await expect(page.locator("[data-fair-grounds-map] canvas")).toBeVisible({
@@ -771,16 +745,16 @@ test.describe("Fair Day production release journey", () => {
     await page.goto(`${FAIR_CANONICAL_PATH}#program`, {
       waitUntil: "domcontentloaded",
     });
-    const tabletProgramCards = page.locator("[data-fair-discovery-choice]");
-    await expect(tabletProgramCards).toHaveCount(4);
+    const tabletProgramCards = page.locator("[data-fair-program-filter]");
+    await expect(tabletProgramCards).toHaveCount(8);
     const tabletProgramLayout = await tabletProgramCards.evaluateAll((cards) =>
       cards.map((card) => {
         const box = card.getBoundingClientRect();
         return { top: box.top, bottom: box.bottom };
       }),
     );
-    expect(tabletProgramLayout[2].top - tabletProgramLayout[0].bottom).toBeGreaterThanOrEqual(
-      11,
+    expect(tabletProgramLayout[4].top - tabletProgramLayout[0].bottom).toBeGreaterThanOrEqual(
+      5,
     );
   });
 

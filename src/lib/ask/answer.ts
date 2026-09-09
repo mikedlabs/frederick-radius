@@ -14,6 +14,7 @@ import {
   type FixedAppointmentAnchor,
 } from "@/lib/ask/intent";
 import { buildAskPlanPreview } from "@/lib/ask/plan-preview";
+import { askPlanContext, buildAskPlanRecovery } from "@/lib/ask/plan-recovery";
 import { runRadiusAgent, shouldUseRadiusAgent } from "@/lib/ask/intelligence";
 import {
   askAgentRuntimeConfigured,
@@ -2268,6 +2269,7 @@ export async function askFrederick(
       ? 6
       : 4;
   const intent = parseAskIntent(q, now);
+  if (intent.kind === "plan") context = askPlanContext(q, context);
   const parsedPlaceDateTime = intent.kind === "place"
     ? parseAskDateTime(q, now)
     : null;
@@ -2468,27 +2470,26 @@ export async function askFrederick(
   // deterministic planner behind /plan assembles real, shareable stops here;
   // Ask only translates natural constraints into its existing input contract.
   if (intent.kind === "plan") {
+    const planContext = askPlanContext(q, context);
     const reducedMobility = /\b(?:less walking|minimal walking|can(?:not|'t) walk|limited mobility|mobility issues?|wheelchair|walker|easy parking|close parking)\b/i.test(q);
     const anchorText = q.match(/\b(?:based on|around)\s*:?\s*(.+)$/i)?.[1]?.trim();
     const anchorHit = anchorText
-      ? qualifiedSearch(anchorText, 4, undefined, context).hits.find((hit) => hit.type === "place")
+      ? qualifiedSearch(anchorText, 4, undefined, planContext).hits.find((hit) => hit.type === "place")
       : undefined;
     const anchorSlug = anchorHit?.type === "place" ? anchorHit.place.slug : undefined;
     const anchorName = anchorHit?.type === "place" ? anchorHit.place.name : undefined;
-    const plan = buildAskPlanPreview(intent, context, q, anchorSlug, fit);
+    const plan = buildAskPlanPreview(intent, planContext, q, anchorSlug, fit);
     if (!plan) {
+      const recovery = buildAskPlanRecovery(intent, planContext, clientPlaces(), fit);
       return {
         status: "empty",
         configured: hasKey(),
         usedModel: false,
-        answer: "I couldn’t build a plan that honestly fits every constraint. Drop one filter and I’ll try again.",
-        sources: [],
-        context: context.contextLabel ?? (context.origin ? null : "Frederick County"),
+        answer: recovery.answer,
+        sources: recovery.sources,
+        context: planContext.contextLabel ?? (planContext.origin ? null : "Frederick County"),
         intent,
-        actions: [
-          { label: "Relax the filters", kind: "refine", query: `Plan an easy ${intent.durationHours} hour outing` },
-          { label: "Open the planner", kind: "open", href: "/plan" },
-        ],
+        actions: recovery.actions,
         plan: null,
       };
     }
@@ -2524,7 +2525,7 @@ export async function askFrederick(
         return place ? [place] : [];
       }), fit),
       sources: [],
-      context: context.contextLabel ?? (context.origin ? null : "Frederick County"),
+      context: planContext.contextLabel ?? (planContext.origin ? null : "Frederick County"),
       intent,
       actions: [
         { label: "Surprise me again", kind: "refine", query: `${q}, surprise me with a different mix` },

@@ -93,10 +93,10 @@ export const greatFrederickFair2026PracticalAnswers =
       category: "arrival",
       question: "What is easiest to miss before I leave?",
       answer:
-        "Adult admission is $10 online or $15 at the gate. Parking is separate: Lots A through D are $10 cash only, while Gate 3 infield parking is $15 and accepts cash or a credit card. The official gate-admission page says Apple Pay is not accepted. An advance Grandstand entertainment ticket includes Fair admission, but not parking. The current official pages do not clearly confirm re-entry, so ask at the gate before leaving the grounds.",
+        "Single advance adult admission is $10 online or $15 at the gate. The $80 Blue Ribbon Bundle includes 10 Fair admissions. Parking is separate: Lots A through D are $10 cash only, while Gate 3 infield parking is $15 and accepts cash or a credit card. The official gate-admission page says Apple Pay is not accepted. An advance Grandstand entertainment ticket includes Fair admission, but not parking. The current official pages do not clearly confirm re-entry, so ask at the gate before leaving the grounds.",
       evidence: "verified-official",
       usefulBefore: ["leave-home", "park", "enter", "leave"],
-      sources: [fairFaq, fairVisit, fairConcert, fairPolicies],
+      sources: [fairFaq, { ...fairVisit, checkedAt: "2026-09-09T08:16:24Z" }, fairConcert, fairPolicies],
       action: { label: "Open official visitor information", url: fairVisit.url },
     },
     {

@@ -561,6 +561,11 @@ function containsCategoryKeyword(text: string, keyword: string): boolean {
 
 function inferCategory(title: string, description: string, fallback: string): string {
   const text = `${title} ${description}`.toLowerCase();
+  // Stage credits are stronger evidence than the generic word "music".
+  // Do not promote every concert hosted at a theater into this category.
+  if (/\bmusic\s+and\s+lyrics\s+by\b/.test(text) && /\bbook\s+by\b/.test(text)) {
+    return "theater";
+  }
   for (const { slug, words } of CATEGORY_KEYWORDS) {
     if (words.some((word) => containsCategoryKeyword(text, word))) return slug;
   }
@@ -2814,7 +2819,7 @@ function getCachedEventSourcePage(
     [
       // v3 adds the publisher-owned modification timestamp used to settle
       // first-party event changes. Keep old cache tuples out of this shape.
-      "live-event-source-page-v3",
+      "live-event-source-page-v4",
       source,
       String(windowDays),
       afterCursor ?? "first",

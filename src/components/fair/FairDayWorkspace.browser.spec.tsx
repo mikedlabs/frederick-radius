@@ -133,9 +133,6 @@ describe("FairDayWorkspace app journey", () => {
 
   async function openFullProgram() {
     await openMode("Program");
-    await act(async () =>
-      buttonWithText(container, "Browse full program").click(),
-    );
     await act(async () => vi.advanceTimersByTimeAsync(20));
   }
 
@@ -226,7 +223,7 @@ describe("FairDayWorkspace app journey", () => {
     ).toContain("Closes 10 p.m.");
     expect(
       board?.querySelector('[data-fair-glance-tile="admission"]')?.textContent,
-    ).toContain("$8 first Friday");
+    ).toContain("$10 online · $15 gate");
     expect(
       board?.querySelector('[data-fair-glance-tile="parking"]')?.textContent,
     ).toContain("$10 cash lots");
@@ -357,88 +354,34 @@ describe("FairDayWorkspace app journey", () => {
     expect(container.querySelector<HTMLAnchorElement>(`a[href="${data.externalGuide.url}"]`)).not.toBeNull();
   });
 
-  it("starts Find with a fixed task portal and excludes agriculture from Animals", async () => {
+  it("shows the full day immediately with one consistent category system", async () => {
     const data = await renderFair();
     await openMode("Program");
-
-    expect(container.querySelector('[aria-label="Back to Fair Today"]')).not.toBeNull();
-    expect(container.querySelector('[aria-label="Fair day to explore"]')).not.toBeNull();
-    expect(
-      container.querySelector('[aria-label="Search official vendor booths"]'),
-    ).not.toBeNull();
-    expect(
-      container.querySelector('[aria-label="Fair program results"]'),
-    ).toBeNull();
-    expect(container.textContent).toContain("Browse full program");
-    const portal = container.querySelector<HTMLElement>(
-      "[data-fair-discovery-choices]",
-    );
-    const grid = portal?.querySelector<HTMLElement>(
-      "[data-fair-discovery-grid]",
-    );
-    expect(grid?.className).toContain("grid-cols-2");
-    expect(grid?.className).not.toContain("overflow-x-auto");
-    expect(
-      portal?.querySelectorAll("[data-fair-discovery-choice]"),
-    ).toHaveLength(4);
-    expect(
-      portal?.querySelector("[data-fair-discovery-event-title]")?.className,
-    ).toContain("hidden");
-    expect(
-      portal?.querySelector("[data-fair-discovery-event-title]")?.className,
-    ).toContain("sm:block");
-    expect(
-      portal?.querySelector("[data-fair-discovery-event-title]")?.className,
-    ).not.toContain("sm:not-sr-only");
-    expect(portal?.textContent).not.toMatch(/\d+ options?/);
-
-    const kidZone = buttonWithText(container, "Kid Zone");
-    const search = container.querySelector("#fair-unified-search");
-    expect(
-      search!.compareDocumentPosition(kidZone) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      container.querySelector<HTMLButtonElement>(
-        '[data-fair-discovery-choice="food-program"]',
-      )?.disabled,
-    ).toBe(false);
-    expect(portal?.textContent).toContain(
-      "Homegrown Wineries, Breweries and Distilleries Showcase",
-    );
-
-    await chooseDate("2026-09-20");
-    expect(
-      container.querySelector<HTMLButtonElement>(
-        '[data-fair-discovery-choice="food-program"]',
-      )?.disabled,
-    ).toBe(false);
-    expect(portal?.textContent).toContain(
-      "Homegrown Wineries, Breweries and Distilleries Showcase",
-    );
-    await chooseDate("2026-09-18");
+    expect(container.querySelector("[data-fair-program-trail]")).not.toBeNull();
+    expect(container.textContent).not.toContain("Browse full program");
+    expect(container.textContent).not.toContain("More filters");
+    expect(container.querySelectorAll("[data-fair-program-filter]")).toHaveLength(8);
+    expect(container.querySelector('[aria-label="Search official vendor booths"]')).not.toBeNull();
 
     await act(async () => buttonWithText(container, "Animals").click());
-    const results = container.querySelector<HTMLOListElement>(
-      '[aria-label="Fair program results"]',
-    );
-    if (!results) throw new Error("Missing animal program results.");
-    const fridayAnimals = data.scheduleItems.filter(
-      (item) => item.date === "2026-09-18" && item.kind === "animal",
-    );
-    const fridayAgriculture = data.scheduleItems.filter(
-      (item) => item.date === "2026-09-18" && item.kind === "agriculture",
-    );
-    for (const item of fridayAnimals) {
-      expect(results.textContent).toContain(item.title);
+    const results = container.querySelector('[aria-label="Fair program results"]');
+    expect(results).not.toBeNull();
+    for (const item of data.scheduleItems.filter((item) => item.date === "2026-09-18" && item.kind === "animal")) {
+      expect(results?.textContent).toContain(item.title);
     }
-    for (const item of fridayAgriculture) {
-      expect(results.textContent).not.toContain(item.title);
-    }
-    expect(container.textContent).toContain("Back to Program");
-    expect(container.querySelector("[data-fair-discovery-choices]")).toBeNull();
-
+    expect(results?.textContent).not.toContain("2026 Agricultural Awards Ceremony");
+    expect(container.querySelector('[data-fair-program-filter="animals"]')?.getAttribute("aria-pressed")).toBe("true");
+    await openMode("My Day");
     await openMode("Program");
-    expect(container.querySelector("[data-fair-discovery-choices]")).not.toBeNull();
+    expect(container.querySelector('[data-fair-program-filter="animals"]')?.getAttribute("aria-pressed")).toBe("true");
+    await chooseDate("2026-09-20");
+    expect(container.querySelector('[data-fair-program-filter="animals"]')?.getAttribute("aria-pressed")).toBe("true");
+
+    await act(async () => buttonWithText(container, "Clear filters").click());
+    expect(container.querySelector('[data-fair-program-filter="all"]')?.getAttribute("aria-pressed")).toBe("true");
+    await act(async () => buttonWithText(container, "Food & drink").click());
+    expect(container.textContent).toContain("not food stands");
+    expect(container.querySelector('[aria-label="Fair program results"]')?.textContent).toContain("Homegrown Wineries");
   });
 
   it("opens the selected day's visual Grandstand spotlight in the existing detail flow", async () => {
@@ -472,7 +415,7 @@ describe("FairDayWorkspace app journey", () => {
     await renderFair();
     await openMode("Program");
 
-    expect(container.querySelector("[data-fair-discovery-choices]")).not.toBeNull();
+    expect(container.querySelector("[data-fair-program-filters]")).not.toBeNull();
     await openMode("Map");
     vi.useRealTimers();
     await act(async () => vi.dynamicImportSettled());
@@ -480,12 +423,12 @@ describe("FairDayWorkspace app journey", () => {
     vi.setSystemTime(new Date("2026-09-18T20:59:00Z"));
 
     expect(window.location.hash).toBe("#fair-map");
-    expect(container.querySelector("[data-fair-discovery-choices]")).toBeNull();
+    expect(container.querySelector("[data-fair-program-filters]")).toBeNull();
     expect(container.textContent).toContain("The grounds map could not open.");
 
     await openMode("Program");
     expect(window.location.hash).toBe("#program");
-    expect(container.querySelector("[data-fair-discovery-choices]")).not.toBeNull();
+    expect(container.querySelector("[data-fair-program-filters]")).not.toBeNull();
   });
 
   it("keeps program details honest and allows only one Fair drawer", async () => {
@@ -585,7 +528,7 @@ describe("FairDayWorkspace app journey", () => {
 
     await replayHistoryDestination("#program");
     expect(openDialogs()).toHaveLength(0);
-    expect(container.querySelector("[data-fair-discovery-choices]")).not.toBeNull();
+    expect(container.querySelector("[data-fair-program-filters]")).not.toBeNull();
 
     await replayHistoryDestination("#fair-ready-entry");
     expect(openDialogs()).toHaveLength(1);
@@ -992,9 +935,15 @@ describe("FairDayWorkspace app journey", () => {
     const directAdmission = document.body.querySelector("[data-fair-direct-admission]");
     const purchaseLink = directAdmission?.querySelector("a");
     expect(purchaseLink?.textContent).toContain("Buy admission on Etix");
-    expect(purchaseLink?.getAttribute("href")).toContain("www.etix.com/ticket/");
+    expect(purchaseLink?.getAttribute("href")).toContain("etix.com/ticket/p/61602326/");
+    expect(directAdmission?.textContent).not.toContain("$8");
     expect(purchaseLink?.getAttribute("target")).toBe("_blank");
-    expect(directAdmission?.textContent).toContain("$8");
+    expect(directAdmission?.textContent).toContain("$10");
+    const alternatives = document.body.querySelector("[data-fair-admission-alternatives]");
+    expect(alternatives?.textContent).toContain("Blue Ribbon Bundle: $80");
+    expect(alternatives?.textContent).toContain("10 Fair admissions");
+    expect(alternatives?.querySelector("a")?.getAttribute("href")).toContain("etix.com/ticket/p/65356930/");
+    expect(document.body.textContent).toContain("Single admission at the gate is $15.");
     const calculator = document.body.querySelector<HTMLDetailsElement>("[data-fair-ticket-calculator]");
     expect(calculator?.open).toBe(false);
     expect(calculator?.querySelector("summary")?.textContent).toContain("Estimate for my group");
@@ -1004,7 +953,7 @@ describe("FairDayWorkspace app journey", () => {
     expect(JSON.parse(storedValues.get(FAIR_PLAN_STORAGE_KEY) ?? "{}").party.adults11Plus).toBe(0);
   });
 
-  it("keeps the live ticket recommendation current when an open drawer crosses a known cutoff", async () => {
+  it("keeps single admission at $10 on both sides of the withdrawn Friday cutoff", async () => {
     const data = buildFairDayWorkspaceData(
       greatFrederickFair2026Pack,
       greatFrederickFair2026PackPointer,
@@ -1025,7 +974,7 @@ describe("FairDayWorkspace app journey", () => {
     const admissionGlance = () =>
       container.querySelector('[data-fair-glance-tile="admission"]')
         ?.textContent ?? "";
-    expect(admissionGlance()).toContain("$8 first Friday");
+    expect(admissionGlance()).toContain("$10 online · $15 gate");
 
     await act(async () => buttonWithText(container, "Review tickets").click());
     const combination = () =>
@@ -1033,8 +982,9 @@ describe("FairDayWorkspace app journey", () => {
         '[aria-label="Reviewed party ticket combination"]',
       )?.textContent ?? "";
 
-    expect(combination()).toContain("1 × First Friday advance admission$8");
-    expect(document.body.querySelector("[data-fair-direct-admission]")?.textContent).toContain("$8");
+    expect(combination()).toContain("1 × Adult admission online$10");
+    expect(combination()).not.toContain("First Friday advance admission");
+    expect(document.body.querySelector("[data-fair-direct-admission]")?.textContent).toContain("$10");
 
     await act(async () => vi.advanceTimersByTimeAsync(61_000));
 

@@ -833,7 +833,7 @@ describe("DaypartNeeds", () => {
     expect(html).not.toContain('data-today-place-lead="true"');
   });
 
-  it("does not fill the briefing with an hours-unconfirmed recommendation", () => {
+  it("keeps a real option without claiming it is open when all hours are unconfirmed", () => {
     const html = renderToStaticMarkup(
       createElement(DaypartNeeds, {
         variant: "brief",
@@ -856,11 +856,10 @@ describe("DaypartNeeds", () => {
       }),
     );
 
-    expect(html).not.toContain("Hours Unknown");
-    expect(html).not.toContain('data-today-place-lead="true"');
-    expect(html).toContain(
-      "Current hours do not confirm an open match for museums &amp; indoors across Frederick County.",
-    );
+    expect(html).toContain("Hours Unknown");
+    expect(html).toContain('data-today-place-lead="true"');
+    expect(html).toContain("Places to try");
+    expect(html).toContain("Hours not confirmed");
     expect(html).toContain('href="/category/museum"');
     expect(html.match(/href="\/category\/museum"/g)).toHaveLength(1);
     expect(html).toContain("Browse places");

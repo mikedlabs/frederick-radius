@@ -43,6 +43,7 @@ import type { MapDiscovery } from "./mapDiscoveries";
 import { mapContentsSummary } from "./mapContent";
 import type { LiveLayerHealth } from "@/lib/live-layer-health";
 import { normalizeMapReturnTo } from "@/lib/map-return";
+import { normalizeBrowseReturnTo } from "@/lib/browse-return";
 import { replaceMapUrl } from "@/lib/map-url-state";
 import { mapSearchResultLimit } from "./mapSearchVisibility";
 import {
@@ -451,6 +452,8 @@ export default function MapDock(props: MapDockProps) {
   );
   const router = useRouter();
   const sp = useSearchParams();
+  const browseReturnTo = normalizeBrowseReturnTo(sp.get("returnTo"));
+  const searchReturnTo = browseReturnTo && new URL(browseReturnTo, "https://frederick-radius.invalid").pathname === "/search" ? browseReturnTo : null;
   const locationOfferVisible =
     mapAvailable && showLocationIntro && shouldOfferMapLocationForUrl(sp);
   const initialScope = parseScope(sp.get(SCOPE_PARAM)) ?? getScope() ?? "county";
@@ -1534,6 +1537,12 @@ export default function MapDock(props: MapDockProps) {
         data-search-keyboard={searchKeyboardOpen ? "true" : undefined}
         ref={dockRef}
       >
+        {searchReturnTo && !pane && !searchPanelOpen && (
+          <a href={searchReturnTo} className="flex min-h-11 items-center gap-1.5 rounded-t-[var(--app-radius-md)] border-b px-3 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)", background: "var(--app-bg-elevated-solid)" }}>
+            <ChevronLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+            Back to search results
+          </a>
+        )}
         {locationOfferVisible && pane === null && !searchPanelOpen && (
           <section
             className="map-location-offer"

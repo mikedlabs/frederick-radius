@@ -15,6 +15,7 @@ export const FAIR_GRANDSTAND_SPOTLIGHT_IMAGE_SRC_SET =
 export type FairGrandstandSpotlightProps = {
   item: FairDayScheduleItemView;
   onOpen: (itemId: string, opener: HTMLButtonElement) => void;
+  compact?: boolean;
 };
 
 function compactPlaceLabel(placeLabel: string): string {
@@ -69,6 +70,7 @@ function SpotlightTimes({ item }: { item: FairDayScheduleItemView }) {
 export default function FairGrandstandSpotlight({
   item,
   onOpen,
+  compact = false,
 }: FairGrandstandSpotlightProps) {
   const place = compactPlaceLabel(item.placeLabel);
 
@@ -78,7 +80,7 @@ export default function FairGrandstandSpotlight({
       data-fair-grandstand-spotlight={item.id}
       aria-label={`Open details for ${item.title}, ${item.timeLabel}, ${place}`}
       onClick={(event) => onOpen(item.id, event.currentTarget)}
-      className="tactile relative isolate block h-[196px] w-full cursor-pointer overflow-hidden rounded-[var(--app-radius-xl)] border text-left outline-none transition-[transform,box-shadow] duration-[var(--app-dur-fast)] active:scale-[0.985] motion-reduce:active:scale-100 motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-[color:var(--app-brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--app-bg)] sm:h-[208px]"
+      className={`tactile relative isolate block ${compact ? "min-h-[148px]" : "min-h-[300px] sm:min-h-[380px]"} w-full cursor-pointer overflow-hidden rounded-[var(--app-radius-xl)] text-left outline-none transition-transform duration-[var(--app-dur-fast)] active:scale-[0.985] motion-reduce:active:scale-100 motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-[color:var(--app-brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--app-bg)]`}
       style={{
         borderColor:
           "color-mix(in srgb, var(--app-accent) 34%, var(--app-border))",
@@ -97,18 +99,20 @@ export default function FairGrandstandSpotlight({
         height="539"
         loading="lazy"
         decoding="async"
-        className="absolute inset-0 -z-20 h-full w-full object-cover object-[72%_center] saturate-[1.06]"
+        className="absolute inset-0 -z-20 h-full w-full object-cover object-[72%_center]"
       />
       <span
         className="absolute inset-0 -z-10"
         style={{
           background:
-            "linear-gradient(102deg, color-mix(in srgb, var(--app-ink) 94%, transparent) 0%, color-mix(in srgb, var(--app-ink) 78%, transparent) 58%, color-mix(in srgb, var(--app-accent-press) 48%, transparent) 100%), linear-gradient(to top, color-mix(in srgb, var(--app-ink) 92%, transparent), transparent 76%)",
+            compact
+              ? "linear-gradient(90deg, color-mix(in srgb, var(--app-ink) 96%, transparent), color-mix(in srgb, var(--app-ink) 82%, transparent) 52%, color-mix(in srgb, var(--app-ink) 35%, transparent))"
+              : "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 96%, transparent), color-mix(in srgb, var(--app-ink) 65%, transparent) 36%, transparent 76%)",
         }}
         aria-hidden="true"
       />
 
-      <span className="flex h-full max-w-[38rem] flex-col justify-end px-4 py-3.5 sm:px-5 sm:py-4">
+      <span className={`flex max-w-[38rem] flex-col justify-end ${compact ? "min-h-[148px] px-4 py-3" : "min-h-[300px] px-5 py-5 sm:min-h-[380px] sm:px-7 sm:py-6"}`}>
         <span
           className="mb-auto w-fit rounded-full border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em]"
           style={{
@@ -116,14 +120,14 @@ export default function FairGrandstandSpotlight({
               "color-mix(in srgb, var(--app-on-brand) 42%, transparent)",
             color: "var(--app-on-brand)",
             background:
-              "color-mix(in srgb, var(--app-accent-press) 72%, transparent)",
+              "color-mix(in srgb, var(--app-ink) 72%, transparent)",
           }}
         >
           {spotlightLabel(item)}
         </span>
 
         <span
-          className="line-clamp-2 text-[24px] font-extrabold leading-[1.02] tracking-[-0.025em] sm:text-[28px]"
+          className={`${compact ? "mt-2 text-[26px] sm:text-[30px]" : "mt-16 text-[34px] sm:text-[46px]"} font-extrabold leading-[1.02] tracking-[-0.035em]`}
           style={{ color: "var(--app-on-brand)" }}
         >
           {item.title}
@@ -148,13 +152,14 @@ export default function FairGrandstandSpotlight({
           </span>
         </span>
 
-        <span
+        {!compact ? <span
           className="mt-2 inline-flex min-h-6 items-center gap-1 text-[12px] font-extrabold"
           style={{ color: "var(--app-on-brand)" }}
         >
           Open details
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
-        </span>
+        </span> : null}
+        <span className="mt-2 text-[10px] text-[var(--app-on-brand)]">Fairgrounds photograph · Mike D, 2024</span>
       </span>
     </button>
   );

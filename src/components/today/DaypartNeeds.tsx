@@ -852,10 +852,10 @@ export default function DaypartNeeds({
   const pickScopeLabel = daypartPickScopeLabel(contextSource, contextLabel);
   const openingSoonFirst =
     Boolean(active.openingSoon) && shelfTier !== "confirmed";
-  const decisionPicks =
-    variant === "brief"
-      ? active.picks.filter((place) => place.confidence !== "unconfirmed")
-      : active.picks;
+  // Prefer a current-hours answer. When hours are unavailable everywhere,
+  // keep one real option and let the unconfirmed heading explain its limit.
+  const knownPicks = active.picks.filter((place) => place.confidence !== "unconfirmed");
+  const decisionPicks = variant === "brief" && knownPicks.length > 0 ? knownPicks : active.picks;
   const briefUsesOpeningSoon =
     variant === "brief" &&
     Boolean(active.openingSoon) &&

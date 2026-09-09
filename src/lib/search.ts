@@ -25,6 +25,7 @@ import {
 } from "@/lib/search/qualifiers";
 import { isTimedActivityRequest } from "@/lib/ask/intent";
 import { expandQuery, type QueryExpansion } from "@/lib/search/synonyms";
+import { searchEventWindow, type SearchEventWindow } from "@/lib/search/eventWindow";
 
 export type SearchHit =
   | {
@@ -618,10 +619,10 @@ const EVENT_INTENTS: EventIntent[] = [
 
 function detectEventIntent(query: string): EventIntent | null {
   if (isTimedActivityRequest(query)) return EVENT_INTENTS[0];
-  const q = ` ${query.toLowerCase()} `;
-  const lower = query.toLowerCase();
   for (const intent of EVENT_INTENTS) {
-    if (intent.triggers.some((t) => q.includes(` ${t} `) || lower.includes(t))) return intent;
+    if (intent.triggers.some((term) =>
+      new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(query)
+    )) return intent;
   }
   return null;
 }
@@ -665,7 +666,11 @@ function eventIntentScore(e: Event, intent: EventIntent, now: Date): number {
  * (fresh-eyes audit, Jul 2026). EventWithMeta extends Event, so unified
  * rows pass through unchanged.
  */
+export type SearchResultKind = "all" | "place" | "event" | "page";
+
 export type SearchOptions = {
+  /** Apply an explicit result tab before limiting candidates. */
+  resultKind?: SearchResultKind;
   placeFilter?: (place: PlaceCardData) => boolean;
   onlyPlaces?: boolean;
   /**
@@ -686,6 +691,8 @@ export type SearchOptions = {
   rankEventsByDistance?: boolean;
   eventMunicipality?: string | null;
   eventFilter?: (event: Event) => boolean;
+  /** The original question retains time language after location cleaning. */
+  eventQuery?: string;
   /** Injectable clock for deterministic evaluations and time-scoped callers. */
   now?: Date;
 };
@@ -728,8 +735,11 @@ export function search(
     /\b(?:dog|pet)[ -]?friendly\b/i.test(query) &&
     /\b(?:patio|outdoor seating|terrace)\b/i.test(query);
   const now = options.now ?? new Date();
+  const eventWindow = searchEventWindow(options.eventQuery ?? query, now);
+  const explicitEventSearch = options.resultKind === "event" || options.resultKind === "all";
+  const datedEventRequest = Boolean((eventIntent || options.resultKind === "event") && eventWindow.meta.label && !options.onlyPlaces);
 
-  for (const p of clientPlaces()) {
+  for (const p of datedEventRequest || options.resultKind === "event" || options.resultKind === "page" ? [] : clientPlaces()) {
     if (options.placeFilter && !options.placeFilter(p)) continue;
     if (shortIntent && !matchesRecognizedShortIntent(p, shortIntent)) continue;
     const s =
@@ -828,9 +838,17 @@ export function search(
     }
   }
 
-  if (!options.onlyPlaces && !shortIntent && !intent?.placesOnly && !dogFriendlyPatioIntent && !phoneChargingIntent) for (const e of eventPool) {
+  if (options.resultKind !== "place" && options.resultKind !== "page" &&
+    (explicitEventSearch || (!options.onlyPlaces && !shortIntent && !intent?.placesOnly && !dogFriendlyPatioIntent && !phoneChargingIntent))) for (const e of eventPool) {
+    if (!eventWindow.matches(e)) continue;
     if (options.eventMunicipality && e.municipality !== options.eventMunicipality) continue;
     if (options.eventFilter && !options.eventFilter(e)) continue;
+    const eventEvidence = `${e.title} ${e.description ?? ""}`;
+    if (dogFriendlyPatioIntent && (
+      !/\b(?:dog|pet)[ -]?friendly\b/i.test(eventEvidence) ||
+      !/\b(?:patio|outdoor seating|terrace)\b/i.test(eventEvidence)
+    )) continue;
+    if (phoneChargingIntent && !/\b(?:phone|mobile|device|usb|power outlet|electrical outlet)\b/i.test(eventEvidence)) continue;
     const s =
       fieldScore(e.title, terms) * 4 +
       fieldScore(e.description, terms) * 1 +
@@ -848,7 +866,7 @@ export function search(
     }
   }
 
-  const doorsAllowed = !options.onlyPlaces || options.includeDoors;
+  const doorsAllowed = !datedEventRequest && (!options.onlyPlaces || options.includeDoors || options.resultKind === "page");
   // A door riding the strict near-me path meets the same bar its places do:
   // every term of the query has to land. Scoring alone is too generous when
   // no places survive to balance it, and one shared weak word was enough to
@@ -894,6 +912,7 @@ export function search(
   {
     const ql = query.toLowerCase();
     for (const { page, words, phrases } of PAGE_INDEX) {
+      if (datedEventRequest && !["/events", "/events/calendar", "/live-music"].includes(page.href)) continue;
       let s = 0;
       for (const t of terms) if (words.has(t)) s += 14;
       // A typed multi-word keyword ("ev charging", "post office") is the
@@ -916,6 +935,7 @@ export function search(
   // at 4+ chars: shorter typos are indistinguishable from prefixes the
   // substring pass already handles.
   if (
+    !datedEventRequest &&
     !shortIntent &&
     !phoneChargingIntent &&
     !dogFriendlyPatioIntent &&
@@ -1015,10 +1035,14 @@ export function search(
     }
     return 0;
   });
-  return hits.slice(0, limit);
+  return hits.filter((hit) =>
+    !options.resultKind || options.resultKind === "all" || hit.type === options.resultKind ||
+    (options.resultKind === "page" && (hit.type === "category" || hit.type === "municipality")),
+  ).slice(0, limit);
 }
 
 export type QualifiedSearchContext = {
+  resultKind?: SearchResultKind;
   origin?: LngLat | null;
   municipality?: string | null;
   contextLabel?: string;
@@ -1035,13 +1059,15 @@ export type QualifiedSearchMeta = {
   contextLabel: string | null;
   nearMeApplied: boolean;
   fallbackReason: "outside-county" | "location-unavailable" | null;
+  eventWindow?: SearchEventWindow;
+  scopeMunicipality?: string | null;
 };
 
 /** A town named in the query is an explicit destination, not a weak keyword.
  * Bare Frederick stays ambiguous unless the reader says Frederick City. A
  * town name by itself remains a normal municipality search rather than being
  * consumed as an empty scope. */
-function namedMunicipalityScope(query: string): Municipality | null {
+export function namedMunicipalityScope(query: string): Municipality | null {
   for (const municipality of MUNICIPALITIES) {
     const names = municipality.slug === "frederick"
       ? ["frederick city"]
@@ -1120,6 +1146,8 @@ export function qualifiedSearch(
     const municipality = namedMunicipality?.slug ?? context.municipality ?? null;
     return {
       hits: search(scopedQuery, limit, eventPool, {
+        resultKind: context.resultKind,
+        eventQuery: query,
         origin: rankingOrigin,
         rankPlacesByDistance: Boolean(rankingOrigin),
         rankEventsByDistance: Boolean(rankingOrigin),
@@ -1134,6 +1162,8 @@ export function qualifiedSearch(
         contextLabel: namedMunicipality?.name ?? (rankingOrigin ? context.contextLabel ?? null : null),
         nearMeApplied: false,
         fallbackReason: context.fallbackReason ?? null,
+        eventWindow: searchEventWindow(query, context.now).meta,
+        scopeMunicipality: municipality,
       },
     };
   }
@@ -1155,7 +1185,8 @@ export function qualifiedSearch(
   // place-only search. "Live music near me" should still return concerts;
   // the origin may rank genuine venue places without suppressing events.
   const preserveMixedEventResults = Boolean(
-    detectEventIntent(query) && !qualifiers.categoryKey && !qualifiers.openNow,
+    context.resultKind === "event" || context.resultKind === "all" ||
+    (detectEventIntent(query) && !qualifiers.categoryKey && !qualifiers.openNow),
   );
   const semanticIntent = detectIntent(query);
   const broadUmbrellaQuery =
@@ -1216,6 +1247,8 @@ export function qualifiedSearch(
   // before a smaller town gets a fair chance to appear.
   const candidateLimit = regionalScope && qualifiers.regions.length > 1 ? Math.max(limit * 4, 60) : limit;
   const candidates = search(effectiveQuery, candidateLimit, eventPool, {
+    resultKind: context.resultKind,
+    eventQuery: query,
     onlyPlaces: !preserveMixedEventResults,
     // Only where places are filtered down to explicit evidence. That branch
     // can legitimately empty the place list, and the town or category door is
@@ -1227,9 +1260,9 @@ export function qualifiedSearch(
     rankPlacesByDistance: Boolean(rankingOrigin),
     rankEventsByDistance: Boolean(rankingOrigin),
     eventMunicipality: municipality,
-    eventFilter: regionalScope
-      ? (event) => municipalityMatchesRegions(event.municipality, qualifiers.regions)
-      : undefined,
+    eventFilter: (event) =>
+      municipalityMatchesRegions(event.municipality, qualifiers.regions) &&
+      (!downtownApplied || haversineMeters(FREDERICK_CENTER, event.geom) <= downtownRadiusMeters),
     placeFilter: (place) =>
       matchesSearchQualifiers(place, qualifiers, municipality) &&
       (!requiresExplicitPlaceEvidence ||
@@ -1254,6 +1287,8 @@ export function qualifiedSearch(
           : context.contextLabel ?? null,
       nearMeApplied: nearMeApplied || downtownApplied,
       fallbackReason: context.fallbackReason ?? null,
+      eventWindow: searchEventWindow(query, context.now).meta,
+      scopeMunicipality: municipality ?? null,
     },
   };
 }

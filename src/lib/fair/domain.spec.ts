@@ -183,7 +183,9 @@ describe("Great Frederick Fair domain", () => {
     expect(fairManifestSchema.safeParse(ambiguous).success).toBe(false);
 
     const newerThanManifest = cloneManifest();
-    newerThanManifest.provenance[0].verifiedAt = "2026-09-03T00:00:00Z";
+    newerThanManifest.provenance[0].verifiedAt = new Date(
+      Date.parse(newerThanManifest.updatedAt) + 1000,
+    ).toISOString();
     expect(fairManifestSchema.safeParse(newerThanManifest).success).toBe(false);
   });
 

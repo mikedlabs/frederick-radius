@@ -63,6 +63,7 @@ function installRuntimeGuards(
   options: {
     allowBasemapNavigationAbort?: boolean;
     allowOptimizedImageNavigationAbort?: boolean;
+    allowPlaceHydrationNavigationAbort?: boolean;
   } = {},
 ) {
   const issues: string[] = [];
@@ -128,13 +129,22 @@ function installRuntimeGuards(
       options.allowOptimizedImageNavigationAbort === true &&
       url.pathname.startsWith("/_next/static/chunks/") &&
       /ERR_ABORTED|NS_BINDING_ABORTED/i.test(failure);
+    // The explicit map journey can leave while the optional place-sheet
+    // hydration GET is in flight. It writes no state; HTTP failures and the
+    // exact selected-place return assertions still remain blocking.
+    const placeHydrationNavigationAbort =
+      options.allowPlaceHydrationNavigationAbort === true &&
+      request.method() === "GET" &&
+      url.pathname === "/api/places/by-slugs" &&
+      /ERR_ABORTED|NS_BINDING_ABORTED/i.test(failure);
     if (
       url.origin === appOrigin &&
       !canceledRscPrefetch &&
       !documentedNavigationAbort &&
       !optimizedImageNavigationAbort &&
       !basemapNavigationAbort &&
-      !staleChunkNavigationAbort
+      !staleChunkNavigationAbort &&
+      !placeHydrationNavigationAbort
     ) {
       issues.push(`${failure} ${url.pathname}`);
     }
@@ -214,17 +224,14 @@ for (const viewport of VIEWPORTS) {
           await expect(
             header.getByRole("link", { name: /^Pulse:/ }),
           ).toBeVisible();
-          if (viewport.width >= 640) {
-            await expect(
-              header.getByRole("link", { name: "Open Compass tools" }),
-            ).toBeVisible();
-          } else {
-            await expect(
-              header.getByRole("button", {
-                name: "Ask or find across Frederick County",
-              }),
-            ).toBeVisible();
-          }
+          await expect(
+            header.getByRole("link", { name: "Open Compass tools" }),
+          ).toBeVisible();
+          // The connected-discovery pass moved the single request doorway
+          // into Today's main launcher; do not assert the retired header UI.
+          await expect(
+            main.getByRole("link", { name: "Find a place, service, event, or answer" }),
+          ).toHaveAttribute("href", "/search");
         }
 
         if (route === "/events") {
@@ -323,6 +330,7 @@ test("map search keeps its exact state through place details and Back", async ({
   const issues = installRuntimeGuards(page, appOrigin, {
     allowBasemapNavigationAbort: true,
     allowOptimizedImageNavigationAbort: true,
+    allowPlaceHydrationNavigationAbort: true,
   });
 
   await page.goto(
@@ -341,7 +349,7 @@ test("map search keeps its exact state through place details and Back", async ({
   await expect(result).toBeVisible();
   await result.click();
   await expect(
-    page.locator('[data-map-place-slug="gravel-and-grind-frederick"]'),
+    page.locator('.map-peek-body[data-map-place-slug="gravel-and-grind-frederick"]'),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Details", exact: true }).click();

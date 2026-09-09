@@ -27,6 +27,7 @@ export type FairDayOfferView = {
   detail: string;
   officialInfoUrl: string;
   officialPurchaseUrl: string | null;
+  purchaseNote?: string;
   deadlineLabel?: string;
   deadlineAt: string | null;
   validDates: { startsOn: string; endsOn: string } | null;

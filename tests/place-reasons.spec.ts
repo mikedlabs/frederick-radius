@@ -28,15 +28,21 @@ describe("placeReasons — extended intent reasons", () => {
     expect(kinds(place({ category: "coffee" }))).not.toContain("kid_friendly");
   });
 
-  it("free for obviously-free public destinations", () => {
-    expect(kinds(place({ category: "park" }))).toContain("free");
-    expect(kinds(place({ category: "trail" }))).toContain("free");
-    expect(kinds(place({ category: "public-art" }))).toContain("free");
+  it("only claims free admission when the catalog explicitly supports it", () => {
+    expect(kinds(place({ category: "park", tags: ["free"] }))).toContain("free");
+    expect(kinds(place({ category: "trail", tags: ["free"] }))).toContain("free");
+    expect(kinds(place({ category: "public-art", tags: ["free"] }))).toContain("free");
     expect(kinds(place({ category: "restaurant" }))).not.toContain("free");
     // "outdoors" used to be asserted here, but it is a PARENT slug: places are
     // filed under its children (park, trail, playground, golf, agritourism),
     // never under it, so the branch was unreachable in production.
     expect(kinds(place({ category: "outdoors" }))).not.toContain("free");
+  });
+
+  it("does not assume that state parks, national parks, or trails have free admission", () => {
+    expect(kinds(place({ category: "park", name: "Cunningham Falls State Park" }))).not.toContain("free");
+    expect(kinds(place({ category: "park", name: "National park" }))).not.toContain("free");
+    expect(kinds(place({ category: "trail" }))).not.toContain("free");
   });
 
   it("near_landmark when within 500m of a curated landmark", () => {
@@ -50,7 +56,7 @@ describe("placeReasons — extended intent reasons", () => {
   });
 
   it("emits only ONE intent reason (free wins over landmark for a park on the creek)", () => {
-    const r = kinds(place({ category: "park", geom: CARROLL_CREEK }));
+    const r = kinds(place({ category: "park", tags: ["free"], geom: CARROLL_CREEK }));
     expect(r).toContain("free");
     expect(r).not.toContain("near_landmark");
   });
@@ -72,6 +78,23 @@ describe("placeReasons — extended intent reasons", () => {
 });
 
 describe("placeReasons — cap & priority unchanged", () => {
+  it("shows measured proximity without inventing a walk time or a walkable route", () => {
+    const nearby = placeReasons(place({ category: "coffee", distance_m: 100 }));
+    expect(nearby.find((reason) => reason.kind === "near")?.label).toBe("328 ft away");
+    const acrossRiver = placeReasons(place({ category: "coffee", distance_m: 900 }));
+    expect(acrossRiver.find((reason) => reason.kind === "near")?.label).toBe("0.6 mi away");
+    expect([...nearby, ...acrossRiver].some((reason) => /walk/i.test(reason.label))).toBe(false);
+  });
+
+  it.each([NaN, Infinity, -100])("does not show invalid proximity %s", (distance_m) => {
+    expect(kinds(place({ category: "coffee", distance_m }))).not.toContain("near");
+  });
+
+  it("does not describe a future hours timestamp as recently checked", () => {
+    const reasons = placeReasons(place({ category: "coffee", hours_verified: true, hours_updated_at: "2026-09-07T12:00:00Z" }), new Date("2026-09-06T12:00:00Z"));
+    expect(reasons.some((reason) => reason.kind === "hours_checked")).toBe(false);
+  });
+
   it("stays capped at 3", () => {
     const r = placeReasons(
       place({

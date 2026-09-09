@@ -2,6 +2,22 @@ import { describe, expect, it } from "vitest";
 import { parseAskIntent, parseFixedAppointmentAnchor } from "./intent";
 
 describe("parseAskIntent", () => {
+  it.each(["Plan the next two hours", "Plan my next 2 hours in Brunswick", "What can I do in the next two hours?"])(
+    "recognizes an immediate outing: %s", (query) => {
+      expect(parseAskIntent(query)).toMatchObject({ kind: "plan", durationHours: 2, timeNeed: "now" });
+    },
+  );
+
+  it.each(["I have two hours in Brunswick this afternoon. What can I do?", "We have 2 hours in Thurmont today", "What can we do in a two-hour visit?"])(
+    "treats an available-time request as an outing: %s", (query) => {
+      expect(parseAskIntent(query)).toMatchObject({ kind: "plan", durationHours: 2 });
+    },
+  );
+
+  it("keeps a two-hour concert search as an event request", () => {
+    expect(parseAskIntent("two hour concerts this weekend")).toMatchObject({ kind: "event" });
+  });
+
   it("turns a natural date-night request into plan inputs", () => {
     expect(parseAskIntent("Plan a walkable 3 hour date night downtown")).toMatchObject({
       kind: "plan",

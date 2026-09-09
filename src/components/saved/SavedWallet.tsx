@@ -39,6 +39,7 @@ import { useToggleFollow } from "@/hooks/useFollows";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
 import { BRAND } from "@/lib/brand";
+import { withBrowseReturnTo } from "@/lib/browse-return";
 import {
   distanceLabel,
   lipFact,
@@ -189,7 +190,7 @@ function Card({
             (the ledger below takes over the facts). */}
         <div className="sw-top">
           <Link
-            href={`/places/${place.slug}`}
+            href={withBrowseReturnTo(`/places/${place.slug}`, "/my-radius")}
             className="sw-brand"
             onClick={() =>
               track("saved_wallet_open_page", { category: place.category })
@@ -299,7 +300,7 @@ function Card({
           </dl>
         </div>
         <div className="sw-actions">
-          <Link href={`/places/${place.slug}`} className="sw-act-primary">
+          <Link href={withBrowseReturnTo(`/places/${place.slug}`, "/my-radius")} className="sw-act-primary">
             Open page
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden>
               <path d="M5 12h14M13 6l6 6-6 6" />

@@ -42,11 +42,14 @@ import type { SearchResult } from "@/lib/search/index";
 import {
   getScope,
   parseScope,
+  scopeTownSlug,
+  scopeToParam,
   setScope,
   subscribeScopeChange,
   SCOPE_PARAM,
   type Scope,
 } from "@/lib/scope";
+import { mapFallbackResults } from "./mapFallbackResults";
 // TYPE ONLY: importing the loader at runtime drags the ~12MB
 // places-enrichment.json into the client bundle (a 13MB chunk) and
 // the map never loads. Places arrive already decorated from the
@@ -676,6 +679,8 @@ export default function AppMap({
   );
   const routeSearchParams = useSearchParams();
   const routeScopeParam = routeSearchParams.get(SCOPE_PARAM);
+  const explicitSearchScope = parseScope(routeScopeParam);
+  const explicitSearchTown = scopeTownSlug(explicitSearchScope);
   const [resultScope, setResultScope] = useState<Scope>(() =>
     parseScope(routeScopeParam) ?? (isBrowseMap ? getScope() : null) ?? "county",
   );
@@ -3310,7 +3315,7 @@ export default function AppMap({
     const origin =
       userLoc ?? viewCenterRef.current ?? searchFallbackOriginRef.current;
     const immediateMatches = immediateMapPlaceResults(
-      places,
+      explicitSearchTown ? places.filter((place) => place.municipality === explicitSearchTown) : places,
       term,
       origin,
       6,
@@ -3334,6 +3339,7 @@ export default function AppMap({
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       const params = new URLSearchParams({ q: term, limit: "6", origin: "map" });
+      if (explicitSearchScope && explicitSearchScope !== "nearme") params.set(SCOPE_PARAM, scopeToParam(explicitSearchScope));
       // About 11m precision is plenty for nearest-first ranking and avoids
       // sending an unnecessarily exact coordinate.
       params.set("lat", origin.lat.toFixed(4));
@@ -3562,7 +3568,7 @@ export default function AppMap({
       searchRetrieveAbortRef.current = null;
       searchRetrieveInFlightRef.current = null;
     };
-  }, [isBrowseMap, mapError, places, q, resetSearchBoxSession, searchAttempt, userLoc]);
+  }, [explicitSearchScope, explicitSearchTown, isBrowseMap, mapError, places, q, resetSearchBoxSession, searchAttempt, userLoc]);
 
   const placesBySlug = useMemo(() => {
     // globalThis.Map: the bare `Map` is react-map-gl's component here.
@@ -4586,8 +4592,8 @@ export default function AppMap({
               </div>
             </div>
             <MapList
-              places={inViewPlaces}
-              events={visibleEvents}
+              places={mapFallbackResults(inViewPlaces, searchMatchesForSurface, q, explicitSearchTown, "place")}
+              events={mapFallbackResults(visibleEvents, searchMatchesForSurface, q, explicitSearchTown, "event")}
               userLoc={userLoc}
               sortOrigin={userLoc}
               failureMode

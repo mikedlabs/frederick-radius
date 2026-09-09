@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import MapReturnLink from "@/components/place/MapReturnLink";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { unstable_noStore as noStore } from "next/cache";
@@ -65,7 +67,6 @@ import { eventTrust } from "@/lib/trust";
 import { easternOffsetIso, jsonLdScript } from "@/lib/seo/jsonld";
 import { noticeForEvent } from "@/lib/events/notices";
 import {
-  eventAttendanceLabel,
   eventAttendanceMode,
   eventOnlineActionUrl,
   hasPhysicalAttendance,
@@ -77,6 +78,8 @@ import { eventHasTrustworthyEnd } from "@/lib/events/format";
 import { isEventEnded } from "@/lib/eventWhenLabel";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { nearestEventParking } from "@/lib/events/parking";
+import { eventDecisionLocation, eventTimeCaution } from "@/lib/events/decision-facts";
+import { isDateOnlyEventAnchor } from "@/lib/eventWhenLabel";
 
 function splitDescription(text: string, limit = 300): { preview: string; rest: string } {
   if (text.length <= limit) return { preview: text, rest: "" };
@@ -243,7 +246,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const attendance = eventAttendanceMode(event);
   const physicalAttendance = hasPhysicalAttendance(event);
   const onlineActionUrl = eventOnlineActionUrl(event);
-  const attendanceLabel = eventAttendanceLabel(event);
+  const attendanceLabel = eventDecisionLocation(event);
   const communicationAccess = communicationAccessLabels(event);
 
   const cat = CATEGORY_BY_SLUG[event.category];
@@ -261,6 +264,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     ? `https://www.google.com/maps/dir/?api=1&destination=${pinGeom.lat},${pinGeom.lng}`
     : null;
   const hasTrustworthyEnd = eventHasTrustworthyEnd(event);
+  const timeCaution = eventTimeCaution(event);
   const calendarEndsAt = hasTrustworthyEnd
     ? event.ends_at
     : event.starts_at;
@@ -384,6 +388,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       data-decision-id={event.slug}
       data-decision-position="detail"
     >
+      <Suspense fallback={null}><MapReturnLink /></Suspense>
+
       {/* Visually small breadcrumbs with invisible 44px hit areas
           (WCAG 2.5.5) — py-3.5/-my-3.5 grows the tap zone only. */}
       <nav aria-label="Breadcrumb" className="text-xs">
@@ -520,40 +526,15 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             </div>
           </div>
         ) : (
-          <div
-            className="relative h-44 overflow-hidden sm:h-48"
-            style={{
-              background: `linear-gradient(135deg, ${cat?.color ?? "#B5462B"}40, ${cat?.color ?? "#B5462B"}0F 60%, var(--app-bg-elevated))`,
-            }}
-          >
-            {/* Watermark calendar — quietly anchors the right side. */}
-            <Calendar
-              className="pointer-events-none absolute -right-3 -top-3 h-32 w-32 opacity-15"
-              strokeWidth={1}
-              style={{ color: cat?.color ?? "var(--app-brand)" }}
-              aria-hidden
-            />
-            {/* Top-right action cluster */}
-            <div className="absolute right-3 top-3 z-10 flex shrink-0 items-center gap-1">
-              <EventActions event={event} actions={["share"]} />
-              <div className="hidden lg:block">
-                <SaveButton refType="event" refId={event.slug} label={event.title} />
+          <div className="relative bg-[var(--app-bg-elevated)] px-5 pb-2 pt-5">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>{cat?.name ?? "Event"}</p>
+              <div className="flex shrink-0 items-center gap-1">
+                <EventActions event={event} actions={["share"]} />
+                <div className="hidden lg:block"><SaveButton refType="event" refId={event.slug} label={event.title} /></div>
               </div>
             </div>
-            <div className="absolute inset-x-0 bottom-0 p-5">
-              <p
-                className="text-[11px] font-medium uppercase tracking-[0.14em]"
-                style={{ color: cat?.color ?? "var(--app-brand)" }}
-              >
-                {cat?.name ?? event.category}
-              </p>
-              <h1
-                className="mt-1 font-serif text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]"
-                style={{ color: "var(--app-ink)" }}
-              >
-                {event.title}
-              </h1>
-            </div>
+            <h1 className="text-[26px] font-semibold leading-tight tracking-tight sm:text-[32px]" style={{ color: "var(--app-ink)" }}>{event.title}</h1>
           </div>
         )}
         {eventVisual ? (
@@ -588,21 +569,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               </span>
             )}
           </div>
+          {timeCaution && <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{timeCaution}</p>}
           <TrustChip signal={eventTrust(event)} detail />
-          {desc && (
-            <div className="max-w-[68ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              <p>{description.preview}</p>
-              {description.rest ? (
-                <details className="group mt-1">
-                  <summary className="tap-44 inline-flex cursor-pointer list-none items-center gap-1 text-[12.5px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
-                    Read full description
-                    <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
-                  </summary>
-                  <p className="pb-1">{description.rest}</p>
-                </details>
-              ) : null}
-            </div>
-          )}
           <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: "var(--app-ink-3)" }}>
             {attendanceLabel && (
               <span className="inline-flex items-center gap-1">
@@ -633,6 +601,20 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             />
             {event.source_url && <EventSourceLink href={event.source_url} />}
           </div>
+          {desc && (
+            <div className="max-w-[68ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              <p>{description.preview}</p>
+              {description.rest ? (
+                <details className="group mt-1">
+                  <summary className="tap-44 inline-flex cursor-pointer list-none items-center gap-1 text-[12.5px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+                    Read full description
+                    <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
+                  </summary>
+                  <p className="pb-1">{description.rest}</p>
+                </details>
+              ) : null}
+            </div>
+          )}
           {communicationAccess.length > 0 && (
             <div
               className="flex items-start gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2.5"
@@ -662,19 +644,6 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           )}
         </div>
       </header>
-
-      {/* Smart pairings — the editorial decision layer the mobile
-          review called out as the killer feature. Synthesizes
-          weather at the event start, closest parking, and the
-          nearest food spot into one card. Self-hides if none of
-          the three signals are available. */}
-      {physicalAttendance && hasPreciseLocation && (
-        <EventSmartPairings
-          event={event}
-          nearbyFood={nearbyFood}
-          parkingDecision={parkingDecision}
-        />
-      )}
 
       {eventStatus !== "scheduled" ? (
         (() => {
@@ -826,19 +795,32 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         );
       })()}
 
-      {/* A map, directions, and nearby logistics are precise-location claims.
-          Area-only feed coordinates keep the venue text but never generate a
-          downtown pin for an event elsewhere in the county. */}
+      {/* Smart pairings — the editorial decision layer the mobile
+          review called out as the killer feature. Synthesizes
+          weather at the event start, closest parking, and the
+          nearest food spot into one card. Self-hides if none of
+          the three signals are available. */}
+      {physicalAttendance && hasPreciseLocation && eventStatus === "scheduled" && !hasEnded && !event.is_all_day && !isDateOnlyEventAnchor(event) && (
+        <EventSmartPairings
+          event={event}
+          nearbyFood={nearbyFood}
+          parkingDecision={null}
+        />
+      )}
+
+      {/* Practical attendance context uses the same precise location as Directions. */}
       {physicalAttendance && hasPreciseLocation && (
-        <>
+        <div className="space-y-4">
+          {eventStatus === "scheduled" && !hasEnded && (
+            <GettingThere
+              geom={pinGeom}
+              venuePlaceSlug={event.venue_place_slug ?? undefined}
+              geoPrecise
+              parkingDecision={parkingDecision}
+            />
+          )}
           <VenueMiniMap geom={pinGeom} name={event.venue_name} />
-          <GettingThere
-            geom={pinGeom}
-            venuePlaceSlug={event.venue_place_slug ?? undefined}
-            geoPrecise
-            parkingDecision={parkingDecision}
-          />
-        </>
+        </div>
       )}
 
       {event.info && (event.info.admission || event.info.drinks || event.info.food) && (
@@ -1012,7 +994,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           <div className="space-y-5 pb-4 pt-2">
             {nearbyFood.length > 0 ? (
               <section className="space-y-2.5">
-                <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Eat &amp; drink before</h2>
+                <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Eat &amp; drink nearby</h2>
                 <ul className="space-y-2">
                   {nearbyFood.map((p) => <li key={p.slug}><PlaceCard place={p} variant="row" /></li>)}
                 </ul>

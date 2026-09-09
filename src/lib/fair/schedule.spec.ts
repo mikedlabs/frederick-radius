@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import reviewedSchedulePage from "./__fixtures__/great-frederick-fair-2026-schedule-page.json";
 
 import {
   GREAT_FREDERICK_FAIR_2026_SCHEDULE_SOURCE_URL,
@@ -52,6 +53,38 @@ function withReversedEventOrder(source: string): string {
 }
 
 describe("Great Frederick Fair 2026 schedule adapter", () => {
+  it("uses all 188 reviewed visitor-page rows while preserving calendar gate hours", () => {
+    const result = parseGreatFrederickFair2026Schedule(OFFICIAL_2026_FIXTURE, reviewedSchedulePage);
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.days.map((day) => day.items.length)).toEqual([11, 23, 28, 19, 21, 21, 24, 22, 19]);
+    expect(result.stats.itemCount).toBe(188);
+    expect(result.days[0].gateStartsAt).toBe("2026-09-18T20:00:00.000Z");
+    const find = (text: string) => result.items.find((item) => item.text.includes(text));
+    expect(find("Chris Kirkpatrick")?.fairDate).toBe("2026-09-19");
+    expect(find("PeeWee & Open Class Dairy Showmanship")).toMatchObject({
+      fairDate: "2026-09-20", startsAt: "2026-09-20T17:30:00-04:00",
+    });
+    expect(find("Youth Beef Fit Out Contest")).toMatchObject({
+      fairDate: "2026-09-22", startsAt: "2026-09-22T16:00:00-04:00",
+    });
+    expect(result.items.filter((item) => item.text.includes("Youth Beef Fit Out Contest"))).toHaveLength(1);
+    expect(find("Demolition Derby, Cars")?.fairDate).toBe("2026-09-22");
+    expect(find("Chris Darlington")?.fairDate).toBe("2026-09-26");
+    expect(result.sourceRevision).toBe(reviewedSchedulePage.sourceModifiedAt);
+  });
+
+  it("rejects a reviewed page with a missing or duplicated day", () => {
+    for (const tables of [
+      reviewedSchedulePage.tables.slice(1),
+      [...reviewedSchedulePage.tables.slice(1), reviewedSchedulePage.tables[1]],
+    ]) {
+      expect(parseGreatFrederickFair2026Schedule(OFFICIAL_2026_FIXTURE, {
+        ...reviewedSchedulePage, tables,
+      }).ok).toBe(false);
+    }
+  });
+
   it("resolves the reviewed feed shape into nine days and 190 source rows", () => {
     const result = parseGreatFrederickFair2026Schedule(OFFICIAL_2026_FIXTURE);
 

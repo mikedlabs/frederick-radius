@@ -14,7 +14,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { usePushRecentPlace } from "@/hooks/useRecentPlaces";
-import { normalizeMapReturnTo } from "@/lib/map-return";
+import { browseReturnFromLocation, withBrowseReturnTo } from "@/lib/browse-return";
 import { readCachedGeoPosition } from "@/hooks/useGeolocation";
 import { isInFrederickCountyArea, type LngLat } from "@/lib/geo";
 import LazySheetFallback from "@/components/ui/LazySheetFallback";
@@ -127,13 +127,7 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
         const current =
           typeof window === "undefined" ? null : new URL(window.location.href);
         openPathRef.current = current?.pathname ?? pathname;
-        setMapReturnTo(
-          normalizeMapReturnTo(
-            current?.pathname === "/map"
-              ? `${current.pathname}${current.search}${current.hash}`
-              : current?.searchParams.get("returnTo"),
-          ),
-        );
+        setMapReturnTo(current ? browseReturnFromLocation(current) : null);
         pushRecent(p.slug);
         const cachedOrigin = options?.travelOrigin ?? readCachedGeoPosition();
         setTravelOrigin(freshTravelOrigin(cachedOrigin));
@@ -167,13 +161,8 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
       const current =
         typeof window === "undefined" ? null : new URL(window.location.href);
       openPathRef.current = current?.pathname ?? pathname;
-      setMapReturnTo(
-        normalizeMapReturnTo(
-          current?.pathname === "/map"
-            ? `${current.pathname}${current.search}${current.hash}`
-            : current?.searchParams.get("returnTo"),
-        ),
-      );
+      const returnTo = current ? browseReturnFromLocation(current) : null;
+      setMapReturnTo(returnTo);
       setTravelOrigin(freshTravelOrigin(readCachedGeoPosition()));
       activePlaceSlugRef.current = normalizedSlug;
       const req = ++reqRef.current;
@@ -188,7 +177,7 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
         setTravelOrigin(null);
         setMapReturnTo(null);
         navigateAfterHistoryLayer(historyLayerId, () => {
-          router.push(`/places/${encodeURIComponent(normalizedSlug)}`);
+          router.push(withBrowseReturnTo(`/places/${encodeURIComponent(normalizedSlug)}`, returnTo));
         });
       };
 

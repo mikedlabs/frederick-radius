@@ -100,7 +100,7 @@ test("hands Grandstand exploration to the selected day's filtered program", asyn
   await expect(page.locator("iframe[data-fair-photo-viewer]")).toHaveCount(0);
   await expect(page).toHaveURL(/#program$/);
   await expect(page.getByRole("combobox", { name: "Fair day to explore" })).toHaveValue("2026-09-18");
-  await expect(page.locator("#fair-find-panel summary").filter({ hasText: "More filters" })).toContainText("Grandstand");
+  await expect(page.locator('[data-fair-program-filter="motorsport"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: "Open details for Daughtry", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Open details for Kid Zone", exact: true })).toHaveCount(0);
 });

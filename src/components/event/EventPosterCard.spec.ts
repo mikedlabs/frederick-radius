@@ -115,7 +115,7 @@ describe("EventPosterCard visual trust", () => {
     expect(html).not.toContain("bg-black/55");
   });
 
-  it("keeps a photo-less EventCard feature in the poster layout", () => {
+  it("gives a photo-less EventCard feature a compact date-led layout", () => {
     const html = renderToStaticMarkup(
       createElement(EventCard, {
         event: event({ hero_image: undefined }),
@@ -202,7 +202,8 @@ describe("EventPosterCard visual trust", () => {
       }),
     );
 
-    expect(html).toContain("lg:min-h-[270px]");
+    expect(html).not.toContain("min-h-[270px]");
+    expect(html).not.toContain("min-h-[230px]");
     expect(html).not.toContain("lg:aspect-[4/3]");
   });
 

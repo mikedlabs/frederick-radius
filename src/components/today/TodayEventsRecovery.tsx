@@ -202,7 +202,9 @@ export function TodayEventsRecoveryView({
  * Recover the one state server-rendered Today cannot answer after its bounded
  * archive read times out. This component mounts only when the server snapshot
  * was degraded and had no usable event rows, then asks the same-origin runtime
- * refresh endpoint for one fresh read instead of leaving the section absent.
+ * endpoint for a bounded retry instead of leaving the section absent. A
+ * passive recovery is not an explicit visitor refresh and must not consume
+ * the separate, rate-limited cache-bypass allowance.
  */
 export default function TodayEventsRecovery() {
   const [state, setState] = useState<RecoveryState>({ status: "loading" });
@@ -214,7 +216,7 @@ export default function TodayEventsRecovery() {
       try {
         for (let attempt = 0; attempt < 2; attempt += 1) {
           if (controller.signal.aborted) return;
-          const response = await fetch("/api/today/events?refresh=1", {
+          const response = await fetch("/api/today/events", {
             cache: "no-store",
             headers: { Accept: "application/json" },
             signal: controller.signal,

@@ -172,8 +172,14 @@ for (const viewport of VIEWPORTS) {
       timezoneId: "America/New_York",
     });
 
-    test.beforeEach(async ({ page }) => {
-      await page.clock.setFixedTime(VISUAL_NOW);
+    test.beforeEach(async ({ page }, testInfo) => {
+      // Today is server-rendered for the current Eastern day. Freezing only
+      // the browser to an older day invokes its stale-page reload guard; the
+      // storage reset then erases that guard on every navigation. Keep the
+      // real clock for this interaction and pin the other visual fixtures.
+      if (testInfo.title !== "global Find opens as one focused task surface") {
+        await page.clock.setFixedTime(VISUAL_NOW);
+      }
       await prepareStableBrowser(page);
       await page.route("**/api/pulse/status", async (route) => {
         await route.fulfill({
@@ -186,9 +192,10 @@ for (const viewport of VIEWPORTS) {
 
     test("global Find opens as one focused task surface", async ({ page }, testInfo) => {
       await page.goto("/today", { waitUntil: "domcontentloaded" });
-      const trigger = page.getByRole("button", {
-        name: "Ask or find across Frederick County",
+      const trigger = page.getByRole("link", {
+        name: "Find a place, service, event, or answer",
       });
+      await expect(page.getByRole("combobox", { name: "Choose your area" })).toBeEnabled();
       await expect(trigger).toBeVisible({ timeout: 20_000 });
       await trigger.click();
 
@@ -314,7 +321,7 @@ for (const viewport of VIEWPORTS) {
         compass.getByRole("heading", { name: "Choose a direction" }),
       ).toBeVisible();
       await expect(
-        compass.getByRole("button", { name: /Find something/ }),
+        compass.getByRole("searchbox", { name: "Search Radius tools and local guides" }),
       ).toBeVisible();
 
       await visualContract({
@@ -359,7 +366,7 @@ for (const viewport of VIEWPORTS) {
         .click();
       const chooser = page.getByRole("region", { name: "Choose what to see" });
       await expect(chooser).toBeVisible();
-      await expect(chooser.getByRole("button", { name: /^Near me/ })).toBeVisible();
+      await expect(chooser.getByRole("button", { name: /^Nearby\b/ })).toBeVisible();
 
       await visualContract({
         page,

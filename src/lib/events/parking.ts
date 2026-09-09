@@ -5,7 +5,6 @@ import {
 import {
   formatDistance,
   haversineMeters,
-  metersToMinutes,
   type LngLat,
 } from "@/lib/geo";
 
@@ -14,7 +13,6 @@ export type EventParkingDecision = {
   name: string;
   distanceM: number;
   distanceLabel: string;
-  walkMinutes: number;
 };
 
 /**
@@ -39,10 +37,6 @@ export function nearestEventParking(
       name: garage.name,
       distanceM,
       distanceLabel: formatDistance(distanceM),
-      walkMinutes: Math.max(
-        1,
-        Math.round(metersToMinutes("walk", distanceM)),
-      ),
     };
   }
   return best;
@@ -52,7 +46,7 @@ export function eventParkingSummary(
   parking: EventParkingDecision | null,
 ): string | null {
   if (!parking) return null;
-  return `The closest listed parking is ${parking.distanceLabel} away at ${parking.name}.`;
+  return `${parking.name} is the nearest listed city garage, ${parking.distanceLabel} away in a straight line.`;
 }
 
 export function eventParkingDirections(
@@ -63,5 +57,5 @@ export function eventParkingDirections(
     /\s+max$/,
     "",
   );
-  return `${parking.name} is a ${parking.walkMinutes}-minute walk (${parking.distanceLabel}). Garage parking is ${PARKING_RATE_SCHEDULE.hourly}; the overnight maximum is ${overnightMaximum}.`;
+  return `${parking.name} is ${parking.distanceLabel} away in a straight line. Garage parking is ${PARKING_RATE_SCHEDULE.hourly}; the overnight maximum is ${overnightMaximum}. Check the route and current rates before leaving.`;
 }

@@ -1,0 +1,3 @@
+# Preserve the publisher's original license metadata byte-for-byte, including
+# its whitespace and line endings. Application source keeps normal checks.
+public/data/fair/aerial/source-metadata.xml -text -whitespace

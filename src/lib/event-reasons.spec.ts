@@ -53,3 +53,25 @@ describe("eventReasons time chips", () => {
     expect(chip.kind).toBe("starting_soon");
   });
 });
+
+
+describe("eventReasons geographic claims", () => {
+  it("does not promote cancelled or date-only events as starting soon", () => {
+    const now = new Date("2026-07-07T22:00:00Z");
+    for (const override of [{ status: "cancelled" as const }, { status: "postponed" as const }, { is_all_day: true }]) {
+      const chips = eventReasons(mkEvent(override), now);
+      expect(chips.some((chip) => ["starting_soon", "live_now", "tonight"].includes(chip.kind))).toBe(false);
+    }
+  });
+  it("shows distance without manufacturing walking time or accessibility", () => {
+    const chips = eventReasons(mkEvent({ distance_m: 200, geo_confidence: "exact_address" }), new Date("2026-07-09T12:00:00Z"));
+    expect(chips).toContainEqual(expect.objectContaining({ kind: "near", label: "0.1 mi away" }));
+    expect(JSON.stringify(chips)).not.toMatch(/min walk|Walkable/);
+  });
+  it("rejects distance on centroid and online-only records", () => {
+    for (const overrides of [{ geo_confidence: "area" as const }, { attendance_mode: "online" as const }, { distance_m: NaN }]) {
+      const chips = eventReasons(mkEvent({ distance_m: 200, ...overrides }), new Date("2026-07-09T12:00:00Z"));
+      expect(chips.some((chip) => chip.kind === "near" || chip.kind === "walkable")).toBe(false);
+    }
+  });
+});

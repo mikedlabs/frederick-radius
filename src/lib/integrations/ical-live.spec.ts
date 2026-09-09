@@ -55,6 +55,14 @@ const HORIZON = new Date("2026-08-18T12:00:00Z");
 const FETCHED = "2026-07-19T12:00:00.000Z";
 
 describe("official-feed classification and venue corrections", () => {
+  it("recognizes musical stage credits without reclassifying theater-hosted concerts", () => {
+    expect(feedCategory(DFP_FEED, "Into the Woods",
+      "Music and Lyrics by Stephen Sondheim Book by James Lapine Directed by Shea-Mikal Green",
+    )).toBe("theater");
+    expect(feedCategory(DFP_FEED, "Concert at the Weinberg Theatre",
+      "Live music with the band.",
+    )).toBe("music");
+  });
   it("classifies tennis as sports instead of matching the phrase match play as theater", () => {
     expect(
       feedCategory(

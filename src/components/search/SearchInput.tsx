@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 
-function searchHref(query: string, returnTo?: string): string {
+function searchHref(query: string, returnTo?: string, scope?: string, kind?: string): string {
   const params = new URLSearchParams();
   if (query) params.set("q", query);
   if (returnTo) params.set("returnTo", returnTo);
+  if (scope) params.set("in", scope);
+  if (kind) params.set("kind", kind);
   const suffix = params.toString();
   return suffix ? `/search?${suffix}` : "/search";
 }
@@ -15,9 +17,13 @@ function searchHref(query: string, returnTo?: string): string {
 export default function SearchInput({
   defaultValue = "",
   returnTo,
+  scope,
+  kind,
 }: {
   defaultValue?: string;
   returnTo?: string;
+  scope?: string;
+  kind?: string;
 }) {
   const router = useRouter();
   const [q, setQ] = useState(defaultValue);
@@ -33,7 +39,7 @@ export default function SearchInput({
       onSubmit={(e) => {
         e.preventDefault();
         const next = q.trim();
-        router.push(searchHref(next, returnTo));
+        router.push(searchHref(next, returnTo, scope, kind));
       }}
       className="search-field-shell flex items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3"
       style={{ borderColor: "var(--app-control-border)" }}
@@ -62,7 +68,7 @@ export default function SearchInput({
           type="button"
           onClick={() => {
             setQ("");
-            router.push(searchHref("", returnTo));
+            router.push(searchHref("", returnTo, scope, kind));
           }}
           className="tap-44 rounded px-1 text-xs"
           style={{ color: "var(--app-ink-3)" }}

@@ -2,17 +2,17 @@
 
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { normalizeMapReturnTo } from "@/lib/map-return";
+import { browseReturnLabel, normalizeBrowseReturnTo } from "@/lib/browse-return";
 
 /**
- * Restores the exact map URL carried through search or a PlaceSheet.
+ * Restores the originating listing and its query, scope, and filters.
  *
  * This stays a client island so the closed, statically generated place catalog
  * does not become dynamic merely to read a visitor-specific query parameter.
  */
 export default function MapReturnLink() {
   const searchParams = useSearchParams();
-  const returnTo = normalizeMapReturnTo(searchParams.get("returnTo"));
+  const returnTo = normalizeBrowseReturnTo(searchParams.get("returnTo"));
   if (!returnTo) return null;
 
   return (
@@ -26,7 +26,7 @@ export default function MapReturnLink() {
       style={{ color: "var(--app-brand-press)" }}
     >
       <ArrowLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-      Back to map
+      {browseReturnLabel(returnTo)}
     </a>
   );
 }

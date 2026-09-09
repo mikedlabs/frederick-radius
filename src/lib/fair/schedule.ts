@@ -734,8 +734,27 @@ function emptyResult(
  */
 export function parseGreatFrederickFair2026Schedule(
   icalText: string,
+  reviewedPage?: {
+    sourceUrl: string;
+    sourceModifiedAt: string;
+    checkedAt: string;
+    tables: { date: string; html: string }[];
+  },
 ): FairScheduleParseResult {
   const diagnostics: FairScheduleDiagnostic[] = [];
+  if (reviewedPage && (
+    reviewedPage.sourceUrl !== GREAT_FREDERICK_FAIR_2026_SCHEDULE_SOURCE_URL ||
+    !Number.isFinite(Date.parse(reviewedPage.sourceModifiedAt)) ||
+    !Number.isFinite(Date.parse(reviewedPage.checkedAt)) ||
+    reviewedPage.tables.map((table) => table.date).sort().join(",") !==
+      enumerateDates(GREAT_FREDERICK_FAIR_2026_START_DATE, GREAT_FREDERICK_FAIR_2026_END_DATE).join(",")
+  )) {
+    return emptyResult([{
+      level: "error",
+      code: "unexpected_table_shape",
+      message: "The reviewed official schedule page must cover each Fair date exactly once with source provenance.",
+    }]);
+  }
   const lines = unfoldIcalLines(icalText);
   const markers = lines.map((line) => line.trim().toUpperCase()).filter(Boolean);
   if (
@@ -989,7 +1008,13 @@ export function parseGreatFrederickFair2026Schedule(
 
   const days: FairScheduleSourceDay[] = dayEvents.map((event) => {
     const date = event.recurrenceId?.fairDate ?? event.start?.fairDate ?? "";
-    const items = parseDayRows(event, date, diagnostics);
+    // Keep calendar gate hours and recurrence identity, but use the explicitly
+    // reviewed visitor-page program when the publisher's two sources disagree.
+    const pageTable = reviewedPage?.tables.find((table) => table.date === date);
+    const scheduleEvent = pageTable && reviewedPage
+      ? { ...event, description: pageTable.html, lastModified: reviewedPage.sourceModifiedAt }
+      : event;
+    const items = parseDayRows(scheduleEvent, date, diagnostics);
     return {
       id: `day-${date}`,
       date,
@@ -997,7 +1022,7 @@ export function parseGreatFrederickFair2026Schedule(
       gateEndsAt: event.end?.iso ?? "",
       sourceUid: event.uid,
       recurrenceId: event.recurrenceId?.iso ?? null,
-      sourceModifiedAt: event.lastModified ?? "",
+      sourceModifiedAt: scheduleEvent.lastModified ?? "",
       items,
     };
   });
@@ -1007,7 +1032,7 @@ export function parseGreatFrederickFair2026Schedule(
 
   days.sort((left, right) => left.date.localeCompare(right.date));
   const items = days.flatMap((day) => day.items);
-  const sourceRevision = [master, ...dayEvents]
+  const sourceRevision = reviewedPage?.sourceModifiedAt ?? [master, ...dayEvents]
     .map((event) => event.lastModified)
     .filter((value): value is string => Boolean(value))
     .sort()

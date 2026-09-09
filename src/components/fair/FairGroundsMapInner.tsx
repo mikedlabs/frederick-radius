@@ -70,10 +70,13 @@ import { haptic } from "@/lib/haptics";
 import { FAIR_DAY_PATH } from "@/lib/fair/plan-status";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { mapCameraDuration } from "@/lib/motion";
+import { MAP_LABEL_FONT_MEDIUM } from "@/lib/map/frederickFlavorStyle";
 
 import FairGroundsMapLoading from "./FairGroundsMapLoading";
 import FairGroundsMapMasthead from "./FairGroundsMapMasthead";
 import FairMapCanvasBoundary from "./FairMapCanvasBoundary";
+import FairLiveTransit from "./FairLiveTransit";
+import FairAerialLayer, { FAIR_AERIAL_ATTRIBUTION, useFairAerialStatus } from "./FairAerialLayer";
 
 export type FairGroundsMapSavedStop = {
   id: string;
@@ -185,7 +188,7 @@ const FILTERS: Array<{
 
 // FairDayWorkspace conditionally mounts the map as visitors move between its
 // four modes. Remember the chosen lens for that client-side journey only;
-// a document reload evaluates this module again and restores Arrive.
+// a document reload evaluates this module again and restores Essentials.
 let rememberedFairGroundsMapFilter: FairGroundsMapView | null = null;
 
 function readRememberedFairGroundsMapFilter(): FairGroundsMapView | null {
@@ -724,6 +727,7 @@ export default function FairGroundsMapInner({
   const interactiveMapSurfaceRef = useRef<HTMLDivElement | null>(null);
   const mapCanvasShellRef = useRef<HTMLDivElement | null>(null);
   const mapStyle = useFrederickFlavorStyle();
+  const [aerialEnabled, setAerialEnabled] = useState(true);
   const [mapRuntime, setMapRuntime] =
     useState<FairMapRuntime>("checking");
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -732,8 +736,8 @@ export default function FairGroundsMapInner({
     useState<FairMapSnapshotStatus>("loading");
   const [filter, setFilterState] = useState<FairGroundsMapView>(() =>
     typeof window === "undefined"
-      ? "arrival"
-      : (readRememberedFairGroundsMapFilter() ?? "arrival"),
+      ? "essentials"
+      : (readRememberedFairGroundsMapFilter() ?? "essentials"),
   );
   const [query, setQuery] = useState("");
   const [condensedMobileControls, setCondensedMobileControls] = useState(false);
@@ -761,6 +765,8 @@ export default function FairGroundsMapInner({
   });
   const latestFilterRef = useRef(filter);
   const interactiveMapAvailable = mapRuntime === "interactive";
+  const aerialStatus = useFairAerialStatus(aerialEnabled && interactiveMapAvailable);
+  const showAerial = aerialEnabled && aerialStatus === "ready";
 
   const handleMapFailure = useCallback(
     (context?: { focusWasInside?: boolean }) => {
@@ -1164,6 +1170,9 @@ export default function FairGroundsMapInner({
     };
     const syncMobileSelectionMode = () => {
       window.cancelAnimationFrame(frame);
+      const previousFocus = dialog.contains(document.activeElement)
+        ? document.activeElement as HTMLElement
+        : null;
       if (dialog.open) dialog.close();
 
       if (!mobileViewport.matches) {
@@ -1187,6 +1196,15 @@ export default function FairGroundsMapInner({
         frame = window.requestAnimationFrame(() =>
           mobileSelectionToggleRef.current?.focus({ preventScroll: true }),
         );
+      } else {
+        // Reopening the native dialog after the one-shot map handoff must not
+        // replace the selected-place heading with the first (close) button.
+        frame = window.requestAnimationFrame(() => {
+          const target = previousFocus?.isConnected
+            ? previousFocus
+            : mobileSelectionHeadingRef.current;
+          target?.focus({ preventScroll: true });
+        });
       }
     };
 
@@ -1400,10 +1418,12 @@ export default function FairGroundsMapInner({
       );
 
     const topChrome = visibleBoxes([
+      "[data-fair-transit-toggle]",
       "[data-fair-map-high-text-controls]",
       "[data-fair-map-search-rail]",
       "[data-fair-map-filter-rail]",
       "[data-fair-map-utility-controls]",
+      "[data-fair-aerial-controls]",
     ]);
     const bottomChrome = visibleBoxes([
       ".fair-grounds-map-canvas .maplibregl-ctrl-attrib",
@@ -1874,7 +1894,7 @@ export default function FairGroundsMapInner({
       fitFilter(latestFilterRef.current);
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [condensedMobileControls, fitFilter, mobileActionBarHeight]);
+  }, [aerialStatus, mapLoaded, condensedMobileControls, fitFilter, mobileActionBarHeight]);
 
   const activateMapFilter = (nextFilter: FairGroundsMapView) => {
     haptic("light");
@@ -2195,6 +2215,8 @@ export default function FairGroundsMapInner({
         comes from reviewed OpenStreetMap data. Official
         arrival pins and published transit stops identify their sources. Follow
         current signs on the grounds.
+        The optional 2025 aerial is from the State of Maryland. It is not a
+        live image or a map of this year’s temporary booths and rides.
       </p>
 
       {condensedMobileControls && interactiveMapAvailable ? (
@@ -2581,7 +2603,12 @@ export default function FairGroundsMapInner({
                   keyboard
                   onLoad={handleMapLoad}
                   onMoveEnd={updateMarkerGroups}
-                  onResize={updateMarkerGroups}
+                  onResize={() => {
+                    updateMarkerGroups();
+                    // A restored map can first fit at its previous canvas
+                    // size. Reframe after the actual phone size is applied.
+                    if (mapLoadedRef.current && !selected) fitFilter(latestFilterRef.current);
+                  }}
                   onError={(event) => {
                     const message = String(
                       event?.error?.message ?? "",
@@ -2597,8 +2624,12 @@ export default function FairGroundsMapInner({
                 >
                   {mapLoaded ? (
                     <>
-            <AttributionControl compact position="bottom-right" />
+            <AttributionControl compact position="bottom-right" customAttribution={showAerial ? FAIR_AERIAL_ATTRIBUTION : undefined} />
             <NavigationControl position="top-right" showCompass={false} />
+            <FairLiveTransit condensed={condensedMobileControls} hidden={Boolean(selected)} />
+            {showAerial ? (
+              <FairAerialLayer beforeId={mapStyle.layers?.find((layer) => layer.type === "symbol")?.id} />
+            ) : null}
             <Source
               id="fair-grounds-context"
               type="geojson"
@@ -2643,7 +2674,7 @@ export default function FairGroundsMapInner({
                     "#E8C9BD",
                     "#E7D1A7",
                   ],
-                  "fill-opacity": [
+                  "fill-opacity": showAerial ? 0.1 : [
                     "interpolate",
                     ["linear"],
                     ["zoom"],
@@ -2704,6 +2735,26 @@ export default function FairGroundsMapInner({
                   "line-translate-anchor": "viewport",
                 }}
               />
+              <Layer
+                id="fair-landmark-labels"
+                type="symbol"
+                minzoom={15.5}
+                filter={["in", ["get", "kind"], ["literal", ["building", "stage"]]]}
+                layout={{
+                  "text-field": ["get", "name"],
+                  "text-font": MAP_LABEL_FONT_MEDIUM,
+                  "text-size": 12,
+                  "text-max-width": 10,
+                  "text-padding": 12,
+                  "text-offset": [0, 1.6],
+                  "text-anchor": "top",
+                }}
+                paint={{
+                  "text-color": "#221C15",
+                  "text-halo-color": "#FFFDF8",
+                  "text-halo-width": 2,
+                }}
+              />
             </Source>
             <Source id="fair-reviewed-geometry" type="geojson" data={visiblePolygons}>
               <Layer
@@ -2726,8 +2777,8 @@ export default function FairGroundsMapInner({
                   "fill-opacity": [
                     "case",
                     ["==", ["get", "kind"], "fairgrounds"],
-                    0.07,
-                    0.48,
+                    showAerial ? 0 : 0.07,
+                    showAerial ? 0.12 : 0.48,
                   ],
                 }}
               />
@@ -2995,6 +3046,39 @@ export default function FairGroundsMapInner({
               reason={mapRuntime}
               mapWasInteractive={mapLoaded}
             />
+          ) : null}
+
+          {interactiveMapAvailable && mapLoaded && !selected ? (
+            <div
+              data-fair-aerial-controls
+              className={`absolute z-10 rounded-full border bg-[var(--app-bg-elevated-solid)] shadow-sm ${condensedMobileControls ? "left-[12px] top-[64px]" : "left-[116px] top-[124px] sm:left-[12px] sm:top-[176px]"}`}
+              style={{ borderColor: "var(--app-control-border)" }}
+            >
+              <button
+                type="button"
+                data-fair-map-runtime-control
+                aria-label="Aerial background"
+                aria-pressed={aerialEnabled}
+                title="Switch between the 2025 aerial and the clear map"
+                onClick={() => setAerialEnabled((current) => !current)}
+                className="tap-44 min-h-[44px] rounded-full px-[8px] text-[12px] font-bold"
+                style={{
+                  background: aerialEnabled ? "var(--app-cool)" : "transparent",
+                  color: aerialEnabled ? "var(--app-ink-inverse)" : "var(--app-ink)",
+                }}
+              >
+                {aerialEnabled && aerialStatus === "unavailable" ? "No aerial" : aerialEnabled && aerialStatus === "loading" ? "Loading…" : "Aerial 2025"}
+              </button>
+              <p role="status" className="sr-only">
+                {aerialEnabled
+                  ? aerialStatus === "unavailable"
+                    ? "The aerial is unavailable, so the clear map is shown."
+                    : aerialStatus === "loading"
+                      ? "The 2025 aerial is loading."
+                      : "This is a 2025 aerial, and the event layout may differ."
+                  : "The map shows reviewed places without an aerial background."}
+              </p>
+            </div>
           ) : null}
 
           {interactiveMapAvailable && mapLoaded && !condensedMobileControls ? (
@@ -3452,7 +3536,7 @@ export default function FairGroundsMapInner({
               </p>
               <h3 id="fair-map-guidance-heading" className="mt-1 text-[22px] font-extrabold leading-tight tracking-[-0.035em]">
                 {interactiveMapAvailable
-                  ? "Tap a marker, not a directory."
+                  ? "Find your way around"
                   : "Search or browse by task."}
               </h3>
               <p className="mt-3 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
@@ -3511,6 +3595,11 @@ export default function FairGroundsMapInner({
               . Official arrival and transit details link to their own sources.
               Follow current on-site signs.
             </p>
+            {interactiveMapAvailable ? (
+              <p className="mt-2 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                Aerial imagery: State of Maryland, 2025. Buildings and paths may help you orient yourself; this year’s temporary rides and booths may differ.
+              </p>
+            ) : null}
           </div>
         </aside>
       </div>

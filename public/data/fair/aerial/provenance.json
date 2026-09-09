@@ -1,0 +1,42 @@
+{
+  "publisher": "State of Maryland, MD iMAP, DoIT",
+  "imageryYear": 2025,
+  "downloadedAt": "2026-09-09T07:15:19.653Z",
+  "service": "https://mdgeodata.md.gov/imagery/rest/services/SixInch/SixInchImagery/ImageServer",
+  "catalog": "https://www.arcgis.com/sharing/rest/content/items/7ff8fee809dd4afcab7fbea0916e4ebe",
+  "exportUrl": "https://mdgeodata.md.gov/imagery/rest/services/SixInch/SixInchImagery/ImageServer/exportImage?bbox=-8616629.525107944%2C4780067.610588346%2C-8614458.795037476%2C4782084.831868979&bboxSR=3857&imageSR=3857&size=2560%2C2560&format=jpg&compressionQuality=85&f=json",
+  "file": "frederick-fairgrounds-2025.jpg",
+  "bytes": 1881518,
+  "sha256": "3db59db02d3e9b3a43dec4713c160a55d493df5e37b1f3079ce31ca7e3b2f239",
+  "coordinates": [
+    [
+      -77.4045,
+      39.421032638408924
+    ],
+    [
+      -77.385,
+      39.421032638408924
+    ],
+    [
+      -77.385,
+      39.40596725055364
+    ],
+    [
+      -77.4045,
+      39.40596725055364
+    ]
+  ],
+  "extent": {
+    "xmin": -8616629.525107944,
+    "ymin": 4779990.856193429,
+    "xmax": -8614458.795037476,
+    "ymax": 4782161.586263897,
+    "spatialReference": {
+      "wkid": 102100,
+      "latestWkid": 3857
+    }
+  },
+  "width": 2560,
+  "height": 2560,
+  "note": "Aerial background only. Does not represent the 2026 temporary event layout. Original source catalog, service metadata, and attribution are preserved alongside the image."
+}

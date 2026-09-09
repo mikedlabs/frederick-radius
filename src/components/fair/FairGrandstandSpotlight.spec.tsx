@@ -122,7 +122,7 @@ describe("FairGrandstandSpotlight", () => {
     expect(button?.getAttribute("aria-label")).toContain(
       "Open details for Daughtry",
     );
-    expect(button?.className).toContain("h-[196px]");
+    expect(button?.className).toContain("min-h-[300px]");
     expect(button?.className).toContain("motion-reduce:transition-none");
     expect(button?.className).toContain("motion-reduce:active:scale-100");
     expect(container.querySelectorAll("button")).toHaveLength(1);

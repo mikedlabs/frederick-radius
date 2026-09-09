@@ -8,14 +8,50 @@ import {
   fetchSavedEventsBySlugs,
   fetchSavedEventsHydration,
   mergeSavedEventHydration,
+  mergeSavedPlaceHydration,
+  SavedPlaceRefreshNotice,
+  fetchSavedPlacesBySlugs,
 } from "./SavedList";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import type { PlaceCardData } from "@/lib/loaders/places";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe("SavedList empty state", () => {
+  it("resolves a collection beyond the API's per-request cap instead of declaring later saves missing", async () => {
+    const slugs = Array.from({ length: 101 }, (_, index) => `place-${index}`);
+    const fetchMock = vi.fn(async (url: string) => {
+      const batch = new URL(url, "https://example.test").searchParams.get("slugs")!.split(",");
+      expect(batch.length).toBeLessThanOrEqual(100);
+      return new Response(JSON.stringify({ places: batch.map((slug) => ({ slug })) }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const places = await fetchSavedPlacesBySlugs(slugs);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(places.map((place) => place.slug)).toEqual(slugs);
+  });
+
+  it("preserves loaded places after a failed refresh without repeating an obsolete open-now claim", () => {
+    const place = { slug: "beans-in-belfry", name: "Beans in the Belfry", open_status: { state: "open", closesAt: "17:00", closingSoon: false } } as PlaceCardData;
+    const original = new Map([[place.slug, place]]);
+    const failed = mergeSavedPlaceHydration(original, [place.slug], null);
+    expect(failed.get(place.slug)?.name).toBe(place.name);
+    expect(failed.get(place.slug)?.open_status.state).toBe("unknown");
+    expect(original.get(place.slug)?.open_status.state).toBe("open");
+    expect(mergeSavedPlaceHydration(failed, [place.slug], [place]).get(place.slug)?.open_status.state).toBe("open");
+    expect(mergeSavedPlaceHydration(failed, [place.slug], []).has(place.slug)).toBe(false);
+  });
+
+  it("distinguishes a refresh failure from a missing place and gives a local retry", () => {
+    const html = renderToStaticMarkup(createElement(SavedPlaceRefreshNotice, { unavailableCount: 2, missingCount: 0, retrying: false, onRetry: () => {} }));
+    expect(html).toContain("We could not refresh 2 saved places");
+    expect(html).toContain("Your saves are still here.");
+    expect(html).toContain("Try again");
+    expect(html).not.toContain("no longer listed");
+  });
+
   it("offers clear discovery and transit next steps without repeating the app shell", () => {
     const html = renderToStaticMarkup(createElement(EmptyState));
 

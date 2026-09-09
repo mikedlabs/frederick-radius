@@ -17,6 +17,7 @@ import SkyHero from "@/components/today/SkyHero";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MomentSpotlight from "@/components/today/MomentSpotlight";
 import TodayFairFeature from "@/components/today/TodayFairFeature";
+import Image from "next/image";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import DismissibleSection from "@/components/today/DismissibleSection";
@@ -265,7 +266,8 @@ export default async function HomePage() {
       {(() => {
         const frame = todayFrame(easternStartHour(now.toISOString()));
         return (
-          <header className="today-arrival today-arrival--masthead mb-3 px-0.5">
+          <header className="today-arrival today-arrival--masthead mb-5 flex flex-col overflow-hidden rounded-[var(--app-radius-lg)] border border-[var(--app-border)] bg-[var(--app-bg-elevated-solid)] sm:grid sm:grid-cols-[minmax(0,1fr)_42%]">
+            <div className="min-w-0 p-4 sm:p-6">
             {/* The page title, at page-title size. At 22px it sat two pixels
                 above its own 20px section headings, so the masthead read as
                 just another section. 30/32 restores the ladder: page over
@@ -277,25 +279,27 @@ export default async function HomePage() {
               {frame.title}
             </h1>
             <TodayScopeStatus dateline={formatEasternDateline(now)} />
+            </div>
+            <figure className="relative order-first h-[140px] sm:order-none sm:h-full sm:min-h-[180px]">
+              <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" fill sizes="(min-width: 1024px) 440px, 100vw" alt="Carroll Creek in Frederick, photographed by Mike D." className="object-cover object-center" />
+              <figcaption className="absolute bottom-2 right-2 rounded-sm bg-[var(--app-ink)] px-2 py-1 text-[10px] leading-snug text-[var(--app-on-brand)]">Carroll Creek · Mike D</figcaption>
+            </figure>
           </header>
         );
       })()}
 
-      {/* ── CAMPAIGN SPOTLIGHT — the document identifies itself before a
-          campaign asks for attention. Fair Day owns this photographic doorway
-          from Sep 2–26, then retires itself on Sep 27. When another civic
-          moment overlaps the Fair campaign, it moves into Follow the day
-          below instead of disappearing. */}
-      {fairPromotionPhase ? (
-        <div className="mb-4">
-          <TodayFairFeature phase={fairPromotionPhase} />
+      <div className="today-start-grid">
+        <div className="today-start-find">
+        <div className="today-arrival today-arrival--find">
+          <TodayAsk embedded>
+            <CravingStrip />
+          </TodayAsk>
         </div>
-      ) : civicMoment ? (
-        <div className="mb-4">
-          <MomentSpotlight moment={civicMoment} />
+        <div className="mt-5" aria-label="Places for your area">
+          {decisionLead}
         </div>
-      ) : null}
-
+        </div>
+        <div className="today-start-context">
       {/* ── WEATHER HERO — the time-of-day gradient sky and today's weather
           lead the page. Now a COMPACT, CONTAINED card (owner
           call: "all cards within the main part" + "one header with the weather
@@ -328,27 +332,25 @@ export default async function HomePage() {
           />
         </AppTransitionLink>
       </SkyHero>
-
-      <PageChapter
-        label="Decide now"
-        variant="plain"
-        className="mt-7"
-        bodyClassName="space-y-5"
-      >
-        {/* One universal doorway. A person can type a name, need, or question;
-            the Find surface chooses search or reasoning automatically. */}
-        <div className="today-arrival today-arrival--find">
-          <TodayAsk embedded>
-            <CravingStrip />
-          </TodayAsk>
+      {/* ── CAMPAIGN SPOTLIGHT — the document identifies itself before a
+          campaign asks for attention. Fair Day owns this photographic doorway
+          from Sep 2–26, then retires itself on Sep 27. When another civic
+          moment overlaps the Fair campaign, it moves into Follow the day
+          below instead of disappearing. */}
+      {fairPromotionPhase ? (
+        <div className="mb-4">
+          <TodayFairFeature phase={fairPromotionPhase} compact={fairPromotionPhase === "planning"} />
         </div>
-
-        {/* One town-aware first move. It stays mounted so a LocationChip change
-            immediately re-ranks this answer instead of only changing the chip. */}
-        <div className="today-arrival today-arrival--decision">
-          {decisionLead}
+      ) : civicMoment ? (
+        <div className="mb-4">
+          <MomentSpotlight moment={civicMoment} />
         </div>
-      </PageChapter>
+      ) : null}
+
+
+
+        </div>
+      </div>
 
       <PageChapter
         label="Follow the day"
