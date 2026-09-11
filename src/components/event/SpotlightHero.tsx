@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { eventDateBlock } from "@/lib/loaders/events";
+import { eventDateBlock } from "@/lib/events/format";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import SaveButton from "@/components/saved/SaveButton";
 import TrustChip from "@/components/ui/TrustChip";

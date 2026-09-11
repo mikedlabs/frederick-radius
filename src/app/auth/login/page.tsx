@@ -68,7 +68,7 @@ function recoveryMessage(reason?: string, legacyError?: string) {
     return "That older sign-in link was incomplete. Send a fresh sign-in email below and we will bring you back here.";
   }
   if (legacyError) {
-    return "We could not finish that sign-in. Your on-device saves are safe. Send a fresh sign-in email below.";
+    return "We could not finish that sign-in, but your on-device saves are safe. Send a fresh sign-in email below.";
   }
   return null;
 }

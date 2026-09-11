@@ -1,6 +1,6 @@
 import fs from "fs";
 
-let content = fs.readFileSync("src/components/today/BriefingLine.tsx", "utf-8");
+const _content = fs.readFileSync("src/components/today/BriefingLine.tsx", "utf-8");
 
 // We will overwrite BriefingLine.tsx with an AI-driven approach.
 const newBriefingLine = `import { PLACES } from "@/data/places";

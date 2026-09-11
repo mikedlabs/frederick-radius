@@ -98,7 +98,14 @@ async function main() {
   console.log("Parsing stop_times.txt...");
   const stopTimes = parseCSV(path.join(TMP_DIR, "stop_times.txt"));
   
-  const relevantDepartures: any[] = [];
+  interface MarcDeparture {
+    stop_id: string;
+    stop_name?: string;
+    departure_time: string;
+    headsign: string;
+    service_days: number[];
+  }
+  const relevantDepartures: MarcDeparture[] = [];
   
   for (const st of stopTimes) {
     if (frederickStops.includes(st.stop_id) && validTripIds.has(st.trip_id)) {
