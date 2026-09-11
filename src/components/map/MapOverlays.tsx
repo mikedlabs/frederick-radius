@@ -137,7 +137,16 @@ function popupFromFeature(
   feature: GeoJSON.Feature,
   anchor: { lng: number; lat: number },
 ): PopupState {
-  const p = (feature.properties ?? {}) as Record<string, string>;
+  const p = (feature.properties ?? {}) as Record<string, any>;
+  if (key === "land-value") {
+    return {
+      ...anchor,
+      key,
+      name: "Estimated Value: " + new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(p.land_value || 0),
+      summary: "Simulated land value based on proximity to downtown and I-270 corridor.",
+      popupLabel: "Parcel Hexagon"
+    };
+  }
   return {
     ...anchor,
     key,
@@ -181,10 +190,14 @@ export default function MapOverlays({
   active,
   onFeatureState,
   onFeatureBounds,
+  atlas3D = true,
+  atlasHeight = 1,
 }: {
   active: OverlayKey[];
   onFeatureState?: (key: OverlayKey, state: OverlayLoadState) => void;
   onFeatureBounds?: (key: OverlayKey, bounds: OverlayBounds | null) => void;
+  atlas3D?: boolean;
+  atlasHeight?: number;
 }) {
   const { current: map } = useMap();
   const [data, setData] = useState<Record<string, GeoJSON.FeatureCollection>>({});
@@ -259,7 +272,7 @@ export default function MapOverlays({
         }
       });
       onFeatureState?.(key, { status: "loading", count: 0 });
-      fetch(url)
+      fetch(`${url}?t=${Date.now()}`)
         .then(async (response) => {
           if (!response.ok) {
             throw new Error(`Overlay request failed with ${response.status}`);
@@ -330,7 +343,7 @@ export default function MapOverlays({
     const canvas = m.getCanvas();
     // Points AND polygon fills are tappable (a park's grounds answer
     // "what park is this?" just like its marker does).
-    const layerIds = active.flatMap((k) => [`ov-${k}-pt`, `ov-${k}-fill`]);
+    const layerIds = active.flatMap((k) => [`ov-${k}-pt`, `ov-${k}-fill`, `ov-${k}-extrusion`]);
 
     const onClick = (e: MapLayerMouseEvent) => {
       const f = e.features?.[0];
@@ -338,7 +351,7 @@ export default function MapOverlays({
       const layerId = f.layer?.id;
       if (!layerId) return;
       const key = active.find((candidate) =>
-        layerId === `ov-${candidate}-pt` || layerId === `ov-${candidate}-fill`,
+        layerId === `ov-${candidate}-pt` || layerId === `ov-${candidate}-fill` || layerId === `ov-${candidate}-extrusion`,
       );
       if (!key) return;
       // Anchor at the marker for points; at the tap for area fills.
@@ -415,6 +428,78 @@ export default function MapOverlays({
         // points (named markers) in one file. Fills draw first (under),
         // points draw over them; the filters keep each Layer honest, so
         // a points-only layer renders exactly as before.
+        if (key === "land-value") {
+          return (
+            <Source key={key} id={`ov-${key}`} type="geojson" data={fc}>
+              {atlas3D ? (
+                <Layer
+                  id={`ov-${key}-extrusion`}
+                  type="fill-extrusion"
+                  paint={{
+                    "fill-extrusion-color": [
+                      "interpolate",
+                      ["linear"],
+                      ["get", "land_value"],
+                      50000,
+                      "#2b83ba",
+                      250000,
+                      "#abdda4",
+                      500000,
+                      "#fdae61",
+                      750000,
+                      "#d7191c",
+                    ],
+                    "fill-extrusion-height": [
+                      "*",
+                      [
+                        "interpolate",
+                        ["linear"],
+                        ["get", "land_value"],
+                        50000,
+                        10,
+                        1000000,
+                        2000,
+                      ],
+                      atlasHeight,
+                    ],
+                    "fill-extrusion-base": 0,
+                    "fill-extrusion-opacity": isVisible ? 0.8 : 0,
+                    "fill-extrusion-opacity-transition": {
+                      duration: LAYER_FADE_MS,
+                      delay: 0,
+                    },
+                  }}
+                />
+              ) : (
+                <Layer
+                  id={`ov-${key}-fill`}
+                  type="fill"
+                  paint={{
+                    "fill-color": [
+                      "interpolate",
+                      ["linear"],
+                      ["get", "land_value"],
+                      50000,
+                      "#2b83ba",
+                      250000,
+                      "#abdda4",
+                      500000,
+                      "#fdae61",
+                      750000,
+                      "#d7191c",
+                    ],
+                    "fill-opacity": isVisible ? 0.6 : 0,
+                    "fill-opacity-transition": {
+                      duration: LAYER_FADE_MS,
+                      delay: 0,
+                    },
+                  }}
+                />
+              )}
+            </Source>
+          );
+        }
+
         return (
           <Source key={key} id={`ov-${key}`} type="geojson" data={fc}>
             <Layer
@@ -554,6 +639,7 @@ export default function MapOverlays({
       )}
       {popup && active.includes(popup.key) && (
         <Popup
+          className={popup.key === "land-value" ? "glass-popup" : ""}
           longitude={popup.lng}
           latitude={popup.lat}
           anchor="bottom"

@@ -89,6 +89,10 @@ import FairGroundsMap from "./FairGroundsMap";
 import FairGrandstandSpotlight from "./FairGrandstandSpotlight";
 import FairPhotoExplorer from "./FairPhotoExplorer";
 import FairTravelPanel from "./FairTravelPanel";
+import FairWeatherWidget from "./FairWeatherWidget";
+import FairUpNext from "./FairUpNext";
+import FairQuest from "./FairQuest";
+import { MagicCard } from "../ui/MagicCard";
 import type {
   FairDayArrivalView,
   FairDayDateOption,
@@ -2125,6 +2129,8 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               }`
         }
       >
+        {activeMode !== "map" && <FairWeatherWidget />}
+        
         {activeMode === "now" ? (
           <section
             id={MODE_PANEL_IDS.now}
@@ -2260,6 +2266,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               </section>
             ) : null}
             <FairKeepGuide />
+            <FairUpNext />
 
             <section
               data-fair-now-portal
@@ -2310,15 +2317,14 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                     action: () => chooseMode("travel"),
                   },
                 ].map(({ label, detail, Icon, accent, wash, action }, index) => (
-                  <button
+                  <MagicCard
+                    as="button"
                     key={label}
                     type="button"
                     onClick={action}
                     data-fair-wallet-card={index + 1}
-                    className={`fair-portal-action tap-44 group relative flex min-h-[100px] items-center gap-3 overflow-hidden rounded-[var(--app-radius-lg)] border px-3 pb-4 pt-3 text-left active:scale-[0.985] focus-visible:z-[var(--z-nav)] sm:ml-0 sm:mt-0 sm:min-h-[150px] sm:flex-col sm:items-start sm:justify-between sm:p-4 ${index === 0 ? "z-10" : index === 1 ? "z-20 -mt-2 ml-1" : "z-30 -mt-2 ml-2"}`}
+                    className={`fair-portal-action tap-44 group relative flex min-h-[100px] items-center gap-3 px-3 pb-4 pt-3 text-left active:scale-[0.985] focus-visible:z-[var(--z-nav)] sm:ml-0 sm:mt-0 sm:min-h-[150px] sm:flex-col sm:items-start sm:justify-between sm:p-4 ${index === 0 ? "z-10" : index === 1 ? "z-20 -mt-2 ml-1" : "z-30 -mt-2 ml-2"}`}
                     style={{
-                      borderColor:
-                        "color-mix(in srgb, var(--app-border-strong) 82%, transparent)",
                       background: `linear-gradient(118deg, color-mix(in srgb, ${accent} 7%, transparent), transparent 42%), ${wash}`,
                       boxShadow: `inset 0 3px 0 ${accent}, var(--app-hi), var(--app-lip), var(--app-deck-edge), var(--app-elev-2)`,
                     }}
@@ -2349,10 +2355,12 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                       style={{ color: accent }}
                       aria-hidden="true"
                     />
-                  </button>
+                  </MagicCard>
                 ))}
               </div>
             </section>
+
+            <FairQuest />
 
             {selectedAccessHighlight ? (
               <section

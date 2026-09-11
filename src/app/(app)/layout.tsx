@@ -13,7 +13,7 @@ import ModeParamSync from "@/components/mode/ModeParamSync";
 import OfflineSnapshotSync from "@/components/pwa/OfflineSnapshotSync";
 import { Suspense } from "react";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default function AppLayout({ children, modal }: { children: React.ReactNode, modal: React.ReactNode }) {
   return (
     <PlaceSheetProvider>
     <EventSheetProvider>
@@ -61,6 +61,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               AppMain so the map can fill the viewport on desktop. The
               lg:pl-24 clears the floating SideRail. */}
           <AppMain>{children}</AppMain>
+          {modal}
           {/* Two navs, one shows at a time:
               - BottomNav: floating pill at bottom, < lg
               - SideRail: floating rail on left edge, ≥ lg */}

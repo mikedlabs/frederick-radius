@@ -71,7 +71,7 @@
   /* The elevated token is slightly translucent so the static page wash can
      soften a dense stack. Sheets and popovers use the solid companion. */
   --app-bg-elevated-solid: #FBF8F0;  /* warm white — elevated card */
-  --app-bg-elevated: color-mix(in srgb, #FBF8F0 96%, transparent);
+  --app-bg-elevated: color-mix(in srgb, #FBF8F0 85%, transparent);
   --app-bg-sunken: #EAE1D1;
   --app-border: #D8CDBA;
   --app-border-strong: rgba(34, 28, 21, 0.14);
@@ -371,6 +371,8 @@
 
 html, body {
   font-family: var(--font-sans-base), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* CLIP, not hidden: `overflow-x: hidden` computes overflow-y to `auto`,
@@ -8932,4 +8934,14 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
 .today-start-grid + div { margin-top: 1.5rem; }
 @media (min-width: 768px) {
   .today-start-grid { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; gap: 1.5rem; }
+}
+
+.glass-popup .mapboxgl-popup-content {
+  background: var(--app-bg-elevated-translucent) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.glass-popup .mapboxgl-popup-tip {
+  border-top-color: var(--app-bg-elevated-translucent) !important;
 }

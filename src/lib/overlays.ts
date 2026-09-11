@@ -28,7 +28,8 @@ export type OverlayKey =
   | "mobility"
   | "art"
   | "markets"
-  | "bridges";
+  | "bridges"
+  | "land-value";
 
 export type OverlayDef = {
   key: OverlayKey;
@@ -45,6 +46,7 @@ export type OverlayDef = {
   /** False until the layer's data is seeded; the control shows it as
    *  coming soon instead of toggling an empty source. */
   ready: boolean;
+  hidden?: boolean;
 };
 
 export const OVERLAYS: OverlayDef[] = [
@@ -90,6 +92,15 @@ export const OVERLAYS: OverlayDef[] = [
     // advertise a working layer that opens onto an empty map; the control will
     // light up automatically when the human-reviewed catalog is populated.
     ready: false,
+  },
+  {
+    hidden: true,
+    key: "land-value",
+    label: "Housing & Land Value",
+    popupLabel: "Parcel Hex",
+    sources: "Maryland SDAT & Frederick County Open Data (H3 Extrusion Demo).",
+    endpoint: "/data/frederick_land_value.geojson",
+    ready: true,
   },
 ];
 

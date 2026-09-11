@@ -4,10 +4,12 @@ import Link from "next/link";
 import { Sparkles, Flag, TriangleAlert, Star, Info, ExternalLink, CloudSun } from "lucide-react";
 import { CIVIC_MOMENTS, momentBySlug, type MomentItem, type MomentItemKind } from "@/data/civic-moments";
 import FairDayPage from "@/components/fair/FairDayPage";
+import InTheStreetsWorkspace from "@/components/in-the-streets/InTheStreetsWorkspace";
 import PageBloom from "@/components/ui/PageBloom";
 import { jsonLdScript } from "@/lib/seo/jsonld";
 
 const FAIR_DAY_SLUG = "great-frederick-fair-2026";
+const IN_THE_STREETS_SLUG = "in-the-street-2026";
 
 /**
  * /moments/[slug] — a curated hub for a big county occasion (the Fourth, the
@@ -124,6 +126,9 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
 
   if (slug === FAIR_DAY_SLUG) {
     return <FairDayPage />;
+  }
+  if (slug === IN_THE_STREETS_SLUG) {
+    return <InTheStreetsWorkspace />;
   }
 
   return (

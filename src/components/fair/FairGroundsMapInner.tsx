@@ -19,6 +19,7 @@ import {
   Share2,
   Toilet,
   TicketCheck,
+  Utensils,
   X,
 } from "lucide-react";
 import {
@@ -127,6 +128,8 @@ const FAIR_VIEW = {
   longitude: -77.3943,
   latitude: 39.4125,
   zoom: 16.25,
+  pitch: 60,
+  bearing: -15,
 };
 const FAIR_NEARBY_BOUNDS: [number, number, number, number] = [
   -77.4045, 39.4065, -77.385, 39.4205,
@@ -184,6 +187,12 @@ const FILTERS: Array<{
     compactLabel: "Buildings",
     tone: "var(--app-warning-press)",
   },
+  {
+    id: "taste",
+    label: "Taste of the Fair",
+    compactLabel: "Food & Drink",
+    tone: "var(--app-destructive)",
+  },
 ];
 
 // FairDayWorkspace conditionally mounts the map as visitors move between its
@@ -200,7 +209,7 @@ function rememberFairGroundsMapFilter(filter: FairGroundsMapView): void {
 }
 
 const ACCESSIBLE_PLACE_GROUPS: Array<{
-  id: "arrive" | "essentials" | "explore";
+  id: "arrive" | "essentials" | "explore" | "taste";
   label: string;
   detail: string;
   kinds: readonly FairGroundsMapKind[];
@@ -223,6 +232,12 @@ const ACCESSIBLE_PLACE_GROUPS: Array<{
     detail: "Buildings, animals, and show areas",
     kinds: ["building", "animal", "stage"],
   },
+  {
+    id: "taste",
+    label: "Taste of the Fair",
+    detail: "Food and drinks",
+    kinds: ["food"],
+  },
 ];
 
 const MARKER_THEME: Record<
@@ -238,6 +253,7 @@ const MARKER_THEME: Record<
   parking: { color: "var(--app-cool)", background: "var(--app-bg-elevated-solid)" },
   service: { color: "var(--app-cool)", background: "var(--app-bg-elevated-solid)" },
   transit: { color: "var(--app-cool)", background: "var(--app-bg-elevated-solid)" },
+  food: { color: "var(--app-destructive)", background: "var(--app-bg-elevated-solid)" },
 };
 
 function markerTone(kind: FairGroundsMapKind): string {
@@ -257,6 +273,7 @@ function markerIcon(kind: FairGroundsMapKind) {
     parking: CircleParking,
     service: Accessibility,
     transit: BusFront,
+    food: Utensils,
     fairgrounds: MapPin,
   }[kind];
 }
@@ -274,6 +291,7 @@ const CLUSTER_KIND_LABELS: Record<
   parking: { singular: "parking area", plural: "parking areas" },
   service: { singular: "guest service", plural: "guest services" },
   transit: { singular: "transit stop", plural: "transit stops" },
+  food: { singular: "food vendor", plural: "food vendors" },
 };
 
 const CLUSTER_KIND_PRIORITY: Array<Exclude<FairGroundsMapKind, "fairgrounds">> = [
@@ -286,6 +304,7 @@ const CLUSTER_KIND_PRIORITY: Array<Exclude<FairGroundsMapKind, "fairgrounds">> =
   "stage",
   "animal",
   "building",
+  "food",
 ];
 
 function markerClusterSummary(features: FairGroundsMapFeature[]): {
@@ -332,6 +351,7 @@ function fairGroundsMapPurposeLabel(feature: FairGroundsMapFeature): string {
     parking: "Fair parking",
     service: "Guest service",
     transit: "Transit stop",
+    food: "Food & Drink",
     fairgrounds: "Fairgrounds",
   }[feature.properties.kind];
 }
@@ -343,11 +363,13 @@ function fairGroundsMapFilterForFeature(
     ? "animals"
     : feature.properties.kind === "building"
       ? "buildings"
-      : feature.properties.kind === "parking" ||
-          feature.properties.kind === "transit" ||
-          feature.properties.filterIds?.includes("arrival")
-        ? "arrival"
-        : "essentials";
+      : feature.properties.kind === "food"
+        ? "taste"
+        : feature.properties.kind === "parking" ||
+            feature.properties.kind === "transit" ||
+            feature.properties.filterIds?.includes("arrival")
+          ? "arrival"
+          : "essentials";
 }
 
 function locationPrecisionLabel(
@@ -740,6 +762,7 @@ export default function FairGroundsMapInner({
       : (readRememberedFairGroundsMapFilter() ?? "essentials"),
   );
   const [query, setQuery] = useState("");
+  const [activeFoodTags, setActiveFoodTags] = useState<string[]>([]);
   const [condensedMobileControls, setCondensedMobileControls] = useState(false);
   const [condensedSearchOpen, setCondensedSearchOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -1062,12 +1085,17 @@ export default function FairGroundsMapInner({
   }, [mapData, programItems]);
 
   const featureMatchesView = useCallback(
-    (feature: FairGroundsMapFeature, view: FairGroundsMapView) =>
-      view === "program"
-        ? feature.properties.kind === "fairgrounds" ||
-          programMatches.has(feature.properties.id)
-        : fairGroundsFeatureMatchesFilter(feature, view),
-    [programMatches],
+    (feature: FairGroundsMapFeature, view: FairGroundsMapView) => {
+      if (view === "program") {
+        return feature.properties.kind === "fairgrounds" || programMatches.has(feature.properties.id);
+      }
+      const matchesFilter = fairGroundsFeatureMatchesFilter(feature, view);
+      if (matchesFilter && view === "taste" && feature.properties.kind === "food" && activeFoodTags.length > 0) {
+        return feature.properties.foodTags?.some((tag) => activeFoodTags.includes(tag)) ?? false;
+      }
+      return matchesFilter;
+    },
+    [programMatches, activeFoodTags],
   );
 
   const visibleFeatures = useMemo(
@@ -2552,6 +2580,45 @@ export default function FairGroundsMapInner({
                 );
               })}
             </div>
+            {filter === "taste" ? (
+              <div
+                className="scrollbar-none flex gap-2 overflow-x-auto px-3 pb-2 lg:-mx-6 lg:px-6"
+                role="group"
+                aria-label="Filter food by category"
+              >
+                {["sweet", "savory", "fried", "drinks"].map((tag) => {
+                  const active = activeFoodTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => {
+                        setActiveFoodTags((prev) =>
+                          active
+                            ? prev.filter((t) => t !== tag)
+                            : [...prev, tag],
+                        );
+                      }}
+                      className="tap-44 min-h-9 shrink-0 rounded-full border px-3 text-[12px] font-semibold transition-colors"
+                      style={{
+                        borderColor: active
+                          ? "var(--app-destructive)"
+                          : "var(--app-control-border)",
+                        color: active
+                          ? "var(--app-ink-inverse)"
+                          : "var(--app-ink-2)",
+                        background: active
+                          ? "var(--app-destructive)"
+                          : "var(--app-bg-elevated-solid)",
+                      }}
+                    >
+                      {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
             </div>
           ) : null}
         </div>
@@ -2656,10 +2723,10 @@ export default function FairGroundsMapInner({
                 }}
               />
               <Layer
-                id="fair-grounds-context-fill"
-                type="fill"
+                id="fair-grounds-context-extrusion"
+                type="fill-extrusion"
                 paint={{
-                  "fill-color": [
+                  "fill-extrusion-color": [
                     "match",
                     ["get", "kind"],
                     "animal",
@@ -2674,14 +2741,30 @@ export default function FairGroundsMapInner({
                     "#E8C9BD",
                     "#E7D1A7",
                   ],
-                  "fill-opacity": showAerial ? 0.1 : [
+                  "fill-extrusion-height": [
+                    "match",
+                    ["get", "kind"],
+                    "stage",
+                    14,
+                    "building",
+                    10,
+                    "animal",
+                    8,
+                    "ticket",
+                    4,
+                    "restroom",
+                    3,
+                    0,
+                  ],
+                  "fill-extrusion-base": 0,
+                  "fill-extrusion-opacity": showAerial ? 0.3 : [
                     "interpolate",
                     ["linear"],
                     ["zoom"],
                     14,
-                    0.34,
+                    0.6,
                     18,
-                    0.72,
+                    0.95,
                   ],
                 }}
               />

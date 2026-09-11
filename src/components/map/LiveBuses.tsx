@@ -1130,26 +1130,17 @@ function VisibleLiveBuses({
                     haptic(next ? "success" : "light");
                   }}
                   aria-pressed={isWatching}
+                  className="mt-2.5 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--app-radius-lg)] border p-2.5 text-[13px] font-bold shadow-sm transition-transform active:scale-[0.98]"
                   style={{
-                    width: "100%",
-                    minHeight: 44,
-                    marginTop: 9,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                    border: `1px solid ${isWatching ? color : "var(--app-border, #D9D2C3)"}`,
-                    borderRadius: 999,
+                    borderColor: isWatching ? color : "var(--app-border, #D9D2C3)",
                     background: isWatching
                       ? `color-mix(in srgb, ${color} 10%, white)`
                       : "var(--app-bg-elevated, #FCFBF8)",
                     color: "var(--app-ink, #221C15)",
-                    fontSize: 11.5,
-                    fontWeight: 700,
                     cursor: "pointer",
                   }}
                 >
-                  <BellRing aria-hidden size={14} strokeWidth={2.2} />
+                  <BellRing aria-hidden size={16} strokeWidth={2.5} />
                   {isWatching ? "Watching next stop" : "Watch next stop"}
                 </button>
               )}
@@ -1209,34 +1200,21 @@ function VisibleLiveBuses({
                     });
                 }}
                 aria-pressed={busSaved}
+                className="mt-2.5 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--app-radius-lg)] border p-2.5 text-[13px] font-bold shadow-sm transition-transform active:scale-[0.98]"
                 style={{
-                  width: "100%",
-                  minHeight: 44,
-                  marginTop: 7,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                  border: `1px solid ${
-                    busSaved
-                      ? color
-                      : "var(--app-border, #D9D2C3)"
-                  }`,
-                  borderRadius: 999,
+                  borderColor: busSaved ? color : "var(--app-border, #D9D2C3)",
                   background: busSaved
                     ? `color-mix(in srgb, ${color} 10%, white)`
                     : "var(--app-bg-elevated, #FCFBF8)",
                   color: "var(--app-ink, #221C15)",
-                  fontSize: 11.5,
-                  fontWeight: 700,
                   cursor: canToggleSaved ? "pointer" : "not-allowed",
                   opacity: canToggleSaved ? 1 : 0.62,
                 }}
               >
                 {busSaved ? (
-                  <BookmarkCheck aria-hidden size={14} strokeWidth={2.2} />
+                  <BookmarkCheck aria-hidden size={16} strokeWidth={2.5} />
                 ) : (
-                  <Bookmark aria-hidden size={14} strokeWidth={2.2} />
+                  <Bookmark aria-hidden size={16} strokeWidth={2.5} />
                 )}
                 {busSaved
                   ? "Saved bus"

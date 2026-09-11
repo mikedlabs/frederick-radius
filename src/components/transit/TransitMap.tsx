@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Map as MapIcon } from "lucide-react";
+import {
+  Map as MapIcon,
+  MapPin,
+} from "lucide-react";
 import Map, {
   Source,
   Layer,
   AttributionControl,
   Popup,
+  Marker,
   type MapMouseEvent,
   type MapRef,
 } from "react-map-gl/mapbox";
@@ -219,6 +223,7 @@ export default function TransitMap({
   const mapLoadedRef = useRef(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
+  const [currentZoom, setCurrentZoom] = useState(zoom ?? 9);
   useEffect(() => {
     if (shapes.features.length === 0) return;
     const check = window.setTimeout(() => {
@@ -487,6 +492,7 @@ export default function TransitMap({
         minZoom={lockToService ? 10.5 : undefined}
         interactiveLayerIds={interactiveStops ? ["transit-stops-hit"] : undefined}
         cursor={cursor}
+        onMove={(e) => setCurrentZoom(e.viewState.zoom)}
         onMouseEnter={interactiveStops ? () => setCursor("pointer") : undefined}
         onMouseLeave={interactiveStops ? () => setCursor("") : undefined}
         onClick={interactiveStops ? onMapClick : undefined}
@@ -558,20 +564,28 @@ export default function TransitMap({
           />
         </Source>
 
-        {/* Route highlighter — the selected route's path, drawn bold in its
-            own color (with a white halo) on top of the slate network. */}
+        {/* Route highlighter — the selected route's path, drawn bold with a glowing neon aesthetic on top of the slate network. */}
         {selLine && selMeta && (
           <Source id="transit-route-highlight" type="geojson" data={selLine}>
+            {/* Outer soft glow */}
             <Layer
-              id="transit-route-highlight-halo"
+              id="transit-route-highlight-outer-glow"
               type="line"
-              paint={{ "line-color": "#ffffff", "line-width": 8, "line-opacity": 0.75, "line-blur": 0.4 }}
+              paint={{ "line-color": selMeta.color, "line-width": 24, "line-opacity": 0.4, "line-blur": 16 }}
               layout={{ "line-cap": "round", "line-join": "round" }}
             />
+            {/* Inner tight glow */}
+            <Layer
+              id="transit-route-highlight-inner-glow"
+              type="line"
+              paint={{ "line-color": selMeta.color, "line-width": 8, "line-opacity": 0.7, "line-blur": 4 }}
+              layout={{ "line-cap": "round", "line-join": "round" }}
+            />
+            {/* Bright white hot core */}
             <Layer
               id="transit-route-highlight-line"
               type="line"
-              paint={{ "line-color": selMeta.color, "line-width": 5, "line-opacity": 0.95 }}
+              paint={{ "line-color": "#ffffff", "line-width": 3, "line-opacity": 1.0 }}
               layout={{ "line-cap": "round", "line-join": "round" }}
             />
           </Source>
@@ -627,7 +641,7 @@ export default function TransitMap({
             tile background. Tiny radius + zoom-scaled so the network
             looks clean at county zoom and stops become readable when
             the user zooms into a single corridor. */}
-        {renderStops.length > 0 && (
+        {renderStops.length > 0 && currentZoom <= 13 && (
           <Source
             id="transit-stops"
             type="geojson"
@@ -682,6 +696,36 @@ export default function TransitMap({
               />
             )}
           </Source>
+        )}
+
+        {/* Custom HTML markers for stops when zoomed in close.
+            Provides a beautiful, native-feeling map pin with a soft shadow and icon. */}
+        {renderStops.length > 0 && currentZoom > 13 && interactiveStops && (
+          <>
+            {renderStops.map((s) => (
+              <Marker
+                key={`marker-${s.id}`}
+                longitude={s.lng}
+                latitude={s.lat}
+                anchor="bottom"
+                onClick={(e) => {
+                  e.originalEvent.stopPropagation();
+                  setSelectedStop({ id: s.id, name: s.name, lng: s.lng, lat: s.lat });
+                  haptic("light");
+                }}
+              >
+                <div
+                  className="group relative flex cursor-pointer flex-col items-center justify-center transition-transform hover:scale-110"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full border-[2px] border-white bg-[var(--app-cool)] shadow-[0_4px_12px_rgba(0,0,0,0.2)] backdrop-blur-md">
+                    <MapPin className="h-4 w-4 text-white" strokeWidth={2.5} />
+                  </div>
+                  {/* Subtle pulsing indicator below the pin */}
+                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--app-cool)] shadow-sm opacity-50 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </Marker>
+            ))}
+          </>
         )}
 
         {/* MARC Brunswick Line stations — the four county rail stops,

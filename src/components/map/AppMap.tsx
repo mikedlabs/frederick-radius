@@ -2567,6 +2567,8 @@ export default function AppMap({
   // Like the saved lens, it's a deliberate selection that shows its set even
   // with no category active.
   const [fieldNotesOnly, setFieldNotesOnly] = useState(false);
+  const [atlasHeight, setAtlasHeight] = useState(1);
+  const [atlas3D, setAtlas3D] = useState(true);
 
   // On mode flip (user tapped the toggle, or geo suggestion landed):
   // reset every layer-toggle to the new mode's defaults. We deliberately
@@ -4854,6 +4856,8 @@ export default function AppMap({
             "marc-station-pins",
             "marc-station-hit",
             "muni-label",
+            "ov-land-value-fill",
+            "ov-land-value-extrusion",
           ]}
           onMoveStart={(e) => {
             const isUserMove =
@@ -5525,6 +5529,8 @@ export default function AppMap({
             active={activeOverlays}
             onFeatureState={rememberOverlayFeatureState}
             onFeatureBounds={rememberOverlayFeatureBounds}
+            atlas3D={atlas3D}
+            atlasHeight={atlasHeight}
           />
           <CityMobilityOverlay
             active={activeOverlays.includes("mobility")}
@@ -7144,6 +7150,10 @@ export default function AppMap({
               exitRadiusScene();
               toggleOverlay(key);
             }}
+            atlasHeight={atlasHeight}
+            setAtlasHeight={setAtlasHeight}
+            atlas3D={atlas3D}
+            setAtlas3D={setAtlas3D}
             scrubHour={scrubHour}
             setScrubHour={(hour) => {
               exitRadiusScene();
