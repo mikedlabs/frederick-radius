@@ -14,6 +14,7 @@ export type MajorEvent = {
   getHypeSubline: (daysOut: number) => string;
   getLiveHeadline: (now: Date) => string;
   getLiveSubline: (now: Date) => string;
+  getLiveDetails?: (now: Date) => string[];
 };
 
 // Use the same timezone utility to ensure accurate comparisons
@@ -57,6 +58,24 @@ export const MAJOR_EVENTS: MajorEvent[] = [
       const fairDay = FAIR_DAYS.find((d) => d.date === ymd) || FAIR_DAYS[0];
       return `${fairDay.theme} • ${fairDay.admission_special}`;
     },
+    getLiveDetails: (now) => {
+      const todayStr = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(now);
+      const [month, day, year] = todayStr.split("/");
+      const ymd = `${year}-${month}-${day}`;
+      const fairDay = FAIR_DAYS.find((d) => d.date === ymd);
+      if (!fairDay) return [];
+      
+      return [
+        fairDay.theme,
+        `Grandstand: ${fairDay.grandstand_headline} at ${fairDay.grandstand_time}`,
+        fairDay.admission_special
+      ];
+    },
   },
   {
     id: "in-the-streets",
@@ -72,6 +91,13 @@ export const MAJOR_EVENTS: MajorEvent[] = [
     getHypeSubline: () => "Downtown's biggest block party is coming.",
     getLiveHeadline: () => "In the Streets is happening today!",
     getLiveSubline: () => "Market St is closed to cars. Live music, food, and fun.",
+    getLiveDetails: () => [
+      "9:00 AM: Market Street Mile",
+      "11:00 AM: Festival Opens",
+      "12:00 PM: Craft Beverage Experience",
+      "12:30 PM: Time Capsule Sealing at City Hall",
+      "5:00 PM: Up The Creek After-Party"
+    ],
   },
   {
     id: "festival-of-the-arts",

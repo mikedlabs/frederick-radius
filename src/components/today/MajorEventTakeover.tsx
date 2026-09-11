@@ -21,8 +21,8 @@ export default function MajorEventTakeover() {
         }}
       >
         <div className="px-5 py-4">
-          <div className="flex items-center gap-3">
-            <span aria-hidden className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-white text-xl shadow-sm"
+          <div className="flex items-start gap-3">
+            <span aria-hidden className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-white text-xl shadow-sm mt-1"
               style={{ backgroundColor: event.theme_color }}>
               {event.icon}
             </span>
@@ -30,12 +30,30 @@ export default function MajorEventTakeover() {
               <span className="block text-[11px] font-bold uppercase tracking-wider" style={{ color: event.theme_color }}>
                 {isLive ? `${event.title} is ON` : "Coming Soon"}
               </span>
-              <h2 className="mt-0.5 truncate text-lg font-bold text-[var(--app-ink)]">
+              <h2 className="mt-0.5 text-lg font-bold leading-tight text-[var(--app-ink)]">
                 {headline}
               </h2>
-              <p className="mt-0.5 truncate text-[13px] text-[var(--app-ink-2)]">
+              <p className="mt-0.5 text-[13px] leading-snug text-[var(--app-ink-2)]">
                 {subline}
               </p>
+              
+              {/* Dynamic details for the active day */}
+              {isLive && event.getLiveDetails && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {event.getLiveDetails(now).map((detail, idx) => (
+                    <span 
+                      key={idx}
+                      className="inline-block rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                      style={{ 
+                        backgroundColor: `color-mix(in srgb, ${event.theme_color} 15%, transparent)`,
+                        color: event.theme_color
+                      }}
+                    >
+                      {detail}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
