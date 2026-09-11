@@ -68,6 +68,7 @@ export default function NearbyNow() {
 
   useEffect(() => {
     if (state.status !== "granted") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear nearby context and loading state when geolocation is not granted
       setCtx(null);
       setLoading(false);
       return;

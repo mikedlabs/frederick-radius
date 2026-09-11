@@ -84,10 +84,24 @@ export default function PlaceList({
     return copy;
   }, [places, sort]);
 
+  // Filter out the "distance" option when no place has a distance_m
+  // value — otherwise the dropdown would offer a sort that produces
+  // the input order. Some pages (sitemap-driven category pages with
+  // no origin) genuinely don't have distances and shouldn't show the
+  // affordance.
+  const sortOptions = useMemo(
+    () =>
+      places.some((p) => typeof p.distance_m === "number")
+        ? SORT_OPTIONS
+        : SORT_OPTIONS.filter((o) => o.key !== "distance"),
+    [places],
+  );
+
   // Read saved preference on mount. If absent, keep the page's
   // initialLayout (a city page defaults to grid, a category page
   // to list — the existing behavior is preserved).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional client mount gate for localStorage layout preference
     setMounted(true);
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
@@ -119,19 +133,6 @@ export default function PlaceList({
       </p>
     ) : null;
   }
-
-  // Filter out the "distance" option when no place has a distance_m
-  // value — otherwise the dropdown would offer a sort that produces
-  // the input order. Some pages (sitemap-driven category pages with
-  // no origin) genuinely don't have distances and shouldn't show the
-  // affordance.
-  const sortOptions = useMemo(
-    () =>
-      places.some((p) => typeof p.distance_m === "number")
-        ? SORT_OPTIONS
-        : SORT_OPTIONS.filter((o) => o.key !== "distance"),
-    [places],
-  );
 
   return (
     <div className="space-y-2.5">

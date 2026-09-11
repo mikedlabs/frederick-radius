@@ -37,6 +37,7 @@ export default function NotificationsNudge() {
     if (!("Notification" in window) || !("PushManager" in window)) return;
     if (Notification.permission === "granted") return;
     if (Notification.permission === "denied") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only permission check determines nudge visibility on mount
     setShow(true);
   }, []);
 

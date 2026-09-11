@@ -94,6 +94,7 @@ export default function SearchOverlay({
   useEffect(() => {
     const q = query.trim();
     if (!q) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear search results when search query is cleared
       setResults([]);
       return;
     }

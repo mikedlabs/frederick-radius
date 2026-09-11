@@ -1421,3 +1421,59 @@ sources:
       token-auth) never tries to fetch it — this is a runtime
       integration, not a pipeline source. schema_file/transform_file
       stay null by design.
+
+  # ------------------------------------------------------------------ #
+  # Free modern POI base layers. Added 2026-05-30 after a live pull     #
+  # proved 17,319 county places at 80% match to the catalog, with 109   #
+  # free contact fills and 65 geocode-suspect flags. Use as an          #
+  # enrichment + validation layer, NOT a bulk import: net-new is        #
+  # dominated by the B2B/chain tail that isNonDiscoverable already       #
+  # suppresses. Neither carries opening hours (Google/owner stays the    #
+  # hours source). See DATA-STRATEGY-2026-05-30.md.                      #
+  # ------------------------------------------------------------------ #
+
+  - id: overture_places
+    name: Overture Maps — Places (Frederick County)
+    owner: Overture Maps Foundation
+    url: s3://overturemaps-us-west-2/release/2026-05-20.0/theme=places/type=place/
+    endpoint_type: s3_parquet
+    format: geoparquet
+    refresh_cadence: monthly
+    license: CDLA Permissive 2.0, attribution to Overture Maps Foundation
+    contact: https://docs.overturemaps.org/
+    status: pending_approval
+    last_validated: 2026-05-30
+    last_success: 2026-05-30
+    schema_file: null
+    transform_file: scripts/overture/pull_and_reconcile.py
+    notes: |
+      Free, no key. DuckDB streams the county bbox from S3 in ~8s. Carries
+      name, category, website, phone, socials, address, confidence, and
+      operating_status — but NOT opening hours. Pinned to a dated release
+      here; the puller can instead read the STAC catalog to always get the
+      latest. Reconciliation (scripts/overture/pull_and_reconcile.py) emits
+      contact fills + geocode suspects into docs/audits/. Promote to active
+      once the fills are reviewed through the data:review + overrides flow.
+
+  - id: foursquare_os_places
+    name: Foursquare Open Source Places
+    owner: Foursquare
+    url: https://huggingface.co/datasets/foursquare/fsq-os-places
+    endpoint_type: parquet
+    format: parquet
+    refresh_cadence: monthly
+    license: Apache 2.0
+    contact: https://opensource.foursquare.com/os-places/
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      100M+ global POIs, 22 core attributes incl. tel, website, socials,
+      category labels, and date_closed (but NOT hours). Gated dataset on
+      Hugging Face; needs an access token. Use as a SECOND opinion to
+      cross-validate Overture (agreement between two independent open
+      sources is a strong confidence signal) and to backfill where Overture
+      is sparse. Same rule as Overture: enrichment + validation, never raw
+      bulk import. Filter to the county bbox at read time.

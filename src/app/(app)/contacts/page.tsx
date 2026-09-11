@@ -250,7 +250,7 @@ export default function ContactsPage() {
       >
         Department names and URLs verified against the City of Frederick
         and Frederick County department index pages. Phone numbers are
-        added as they're confirmed. Spotted a wrong or missing number?{" "}
+        added as they&apos;re confirmed. Spotted a wrong or missing number?{" "}
         <a
           href="mailto:miked@madproductions.io?subject=Frederick%20Radius%20contacts%20fix"
           className="underline"

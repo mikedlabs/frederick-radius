@@ -1,0 +1,59 @@
+name: ci
+
+# The mechanical quality gate. Runs on every PR and on push to main:
+# typecheck, lint, unit tests, and a production build. This is what
+# makes the two-agent handoff in AGENTS.md ("tests must pass before
+# committing") enforceable by a machine instead of by honor system.
+
+on:
+  pull_request: {}
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        # Prefer `npm ci` (reproducible, lockfile-exact). Falls back to
+        # `npm install` if the lockfile was authored under a different
+        # Node and reports drift. Once the lock is regenerated on the
+        # pinned Node (.nvmrc), drop the fallback so a lock mismatch
+        # fails the build loudly instead of healing silently.
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        # Build with telemetry off and a dummy NWS UA so the build does
+        # not depend on secrets. Live features stay inert in CI; the
+        # build only needs to prove every route generates.
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          NWS_USER_AGENT: "frederick-radius-ci (ci@frederickradius.app)"
+        run: npm run build

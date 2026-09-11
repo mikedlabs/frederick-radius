@@ -33,7 +33,6 @@ export default function WeatherMore({ children }: { children: ReactNode }) {
     } catch {
       // ignore — localStorage may be unavailable
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical mounted flag for the SSR hydration guard
     setMounted(true);
   }, []);
 

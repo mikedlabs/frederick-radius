@@ -189,7 +189,7 @@ function detectPretty(text: string): boolean {
 async function patchFile(
   filePath: string,
   ranOnce: { done: boolean },
-): Promise<{ resolved: number; uncertain: any[]; skipped: number; calls: number }> {
+): Promise<{ resolved: number; uncertain: unknown[]; skipped: number; calls: number }> {
   const original = readFileSync(filePath, "utf8");
   const pretty = detectPretty(original);
   const rows = JSON.parse(original) as Row[];
@@ -203,7 +203,7 @@ async function patchFile(
   let resolved = 0;
   let skipped = 0;
   let calls = 0;
-  const uncertain: any[] = [];
+  const uncertain: unknown[] = [];
 
   for (const { r, i } of candidates) {
     // Sample-mode cap covers BOTH files combined.
@@ -264,7 +264,7 @@ async function main() {
   });
 
   const ranOnce = { done: false };
-  const totals = { resolved: 0, uncertain: [] as any[], skipped: 0, calls: 0 };
+  const totals = { resolved: 0, uncertain: [] as unknown[], skipped: 0, calls: 0 };
   for (const path of [
     "src/data/places-dfp.json",
     "src/data/places-discovered.json",

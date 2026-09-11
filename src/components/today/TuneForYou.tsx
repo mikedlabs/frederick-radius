@@ -53,10 +53,8 @@ export default function TuneForYou() {
     } catch {
       // localStorage unavailable; default to showing. A missed
       // dismiss across a single session is fine for an opt-in row.
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- fallback when localStorage isn't readable
       setShow(true);
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- mounted flag for the SSR hydration guard
     setMounted(true);
   }, []);
 

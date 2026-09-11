@@ -1,9 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import {
-  Newsreader,
-  Public_Sans,
-  JetBrains_Mono,
-} from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -28,26 +24,49 @@ import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
  * so downstream tokens (--font-sans / --font-serif / --font-mono in
  * globals.css) stay stable if we swap typefaces again.
  */
-const sans = Public_Sans({
+const sans = localFont({
+  src: [
+    {
+      path: "../fonts/PublicSans-Variable.woff2",
+      style: "normal",
+      weight: "100 900",
+    },
+    {
+      path: "../fonts/PublicSans-Italic-Variable.woff2",
+      style: "italic",
+      weight: "100 900",
+    },
+  ],
   variable: "--font-sans-base",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  style: ["normal", "italic"],
   display: "swap",
 });
 
-const display = Newsreader({
+const display = localFont({
+  src: [
+    {
+      path: "../fonts/Newsreader-Variable.woff2",
+      style: "normal",
+      weight: "200 800",
+    },
+    {
+      path: "../fonts/Newsreader-Italic-Variable.woff2",
+      style: "italic",
+      weight: "200 800",
+    },
+  ],
   variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  style: ["normal", "italic"],
   display: "swap",
 });
 
-const mono = JetBrains_Mono({
+const mono = localFont({
+  src: [
+    {
+      path: "../fonts/JetBrainsMono-Variable.woff2",
+      style: "normal",
+      weight: "100 800",
+    },
+  ],
   variable: "--font-mono-base",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
   display: "swap",
 });
 

@@ -302,6 +302,7 @@ export default function RadiusBuilder({
   const [isochrone, setIsochrone] = useState<GeoJSON.FeatureCollection | null>(null);
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear previous isochrone when center or time radius changes
     setIsochrone(null);
     const params = new URLSearchParams({
       lng: String(center.lng),
