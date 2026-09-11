@@ -6,14 +6,14 @@ describe("eventTrust", () => {
   it("is_verified wins over any source", () => {
     const t = eventTrust({ source: "manual", is_verified: true });
     expect(t.level).toBe("verified");
-    expect(t.label).toBe("Verified");
+    expect(t.label).toBe("Checked at source");
   });
 
   it("seed is curated/verified-level with editorial basis", () => {
     const t = eventTrust({ source: "seed", is_verified: false });
     expect(t.level).toBe("verified");
-    expect(t.label).toBe("Hand-picked");
-    expect(t.basis).toMatch(/Picked/);
+    expect(t.label).toBe("Radius reviewed");
+    expect(t.basis).toMatch(/reviewed/);
   });
 
   it("partner feeds are 'verified' with a named source", () => {
