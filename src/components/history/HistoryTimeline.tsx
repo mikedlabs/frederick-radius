@@ -10,9 +10,9 @@ import { ERAS, TIMELINE_FROM, TIMELINE_TO, eraForYear } from "@/lib/history-era"
  * the user can feel the density of the period — Civil War years bunch,
  * the Industrial era thins, modern years are dense again.
  *
- * Each tick is an anchor link that jumps to the entry on the same
- * page (we render `#h-<slug>` anchors on the cards). Pure server
- * component — no client JS, no hover state required to read.
+ * The ticks are a density overview, not separate controls. Eighteen 8px
+ * anchors packed into a phone-width rail created overlapping, impossible tap
+ * targets; the full entries remain directly below in readable cards.
  *
  * The ribbon is the page's identity move: the moment a visitor opens
  * /history they see it's a timeline, not an essay.
@@ -55,7 +55,7 @@ export default function HistoryTimeline() {
             The county in {span} years
           </h2>
         </div>
-        <p className="text-[10.5px] uppercase tracking-[0.12em] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+        <p className="text-[11px] uppercase tracking-[0.12em] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
           {TIMELINE_FROM}–today · {datedEntries.length} markers
         </p>
       </header>
@@ -95,7 +95,7 @@ export default function HistoryTimeline() {
               <span
                 key={`${era.key}-label`}
                 aria-hidden
-                className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 text-[8.5px] font-bold uppercase tracking-[0.1em] whitespace-nowrap"
+                className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-bold uppercase tracking-[0.1em] whitespace-nowrap"
                 style={{
                   left: `${mid}%`,
                   color: `color-mix(in srgb, ${era.color} 60%, var(--app-ink))`,
@@ -113,12 +113,10 @@ export default function HistoryTimeline() {
           const era = eraForYear(e._y);
           const isMoment = e.kind === "moment";
           return (
-            <a
+            <span
               key={e.slug}
-              href={`#h-${e.slug}`}
-              aria-label={`${e.title} (${e._y})`}
-              title={`${e.year}: ${e.title}`}
-              className="group absolute"
+              aria-hidden
+              className="absolute"
               style={{
                 left: `${pct(e._y)}%`,
                 top: 4,
@@ -129,7 +127,7 @@ export default function HistoryTimeline() {
             >
               <span
                 aria-hidden
-                className="block h-full w-[2px] mx-auto rounded-full transition-transform group-hover:scale-y-110"
+                className="mx-auto block h-full w-[2px] rounded-full"
                 style={{
                   background: era.color,
                   boxShadow: `0 0 6px color-mix(in srgb, ${era.color} 55%, transparent)`,
@@ -146,7 +144,7 @@ export default function HistoryTimeline() {
                   }}
                 />
               )}
-            </a>
+            </span>
           );
         })}
 
@@ -167,7 +165,7 @@ export default function HistoryTimeline() {
                 style={{ background: "var(--app-ink-3)" }}
               />
               <span
-                className="absolute left-1/2 top-3 -translate-x-1/2 text-[9px] font-semibold tabular-nums"
+                className="absolute left-1/2 top-3 -translate-x-1/2 text-[10px] font-semibold tabular-nums"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 {y}

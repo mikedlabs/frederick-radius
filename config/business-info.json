@@ -1,0 +1,22 @@
+{
+  "_doc": "Shared tuning for official business-site reads. scripts/refresh-official-commerce-links.ts deterministically preserves real menu, order, reservation, catering, and gift-card anchors without an AI key. scripts/ingest-business-info.ts separately uses ANTHROPIC_API_KEY for supported prose facts. Its bounded queue reads public places missing decision-useful Radius copy before routine food-and-drink refreshes; --plan shows the queue without fetching pages or using the model. Neither path constructs commerce URLs. Both validate fetches, prefer HTTPS, may fall back to a headless render for JS-only sites, and exclude social networks, directories, marketplaces, and government pages.",
+  "typeIncludes": [
+    "restaurant", "bar", "cafe", "coffee", "bakery", "brew", "winery", "wine",
+    "pub", "food", "ice_cream", "deli", "pizza", "diner", "distill", "gastropub",
+    "meal_takeaway", "night_club", "roastery", "creamery"
+  ],
+  "excludeDomains": [
+    "facebook.com", "instagram.com", "twitter.com", "x.com", "yelp.com",
+    "tripadvisor", "doordash", "ubereats", "grubhub", "toasttab", "opentable.com", "resy.com", "google.com",
+    "wheree.com", "goto-where.com", "menu-world.com", "findmenuworld.com",
+    "menus.fyi", "restaurantguru.com", "allmenus.com", "menupix.com",
+    "sirved.com", "usarestaurants.info", "restaurantji.com", "loc8nearme.com",
+    "mapquest.com", "yellowpages.com", "chamberofcommerce.com", "businessyab.com",
+    "bringfido.com", "songkick.com", "eventbrite.com", "foursquare.com",
+    "cityoffrederick", "visitfrederick.org", "nps.gov", "dnr.maryland",
+    "maryland.gov", ".gov", "linktr.ee"
+  ],
+  "refreshDays": 30,
+  "defaultLimit": 60,
+  "renderFallbackMinChars": 500
+}

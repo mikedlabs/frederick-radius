@@ -18,22 +18,56 @@
  */
 import type { LngLat } from "@/lib/geo";
 import type { LiveEvent } from "@/lib/integrations/ical-live";
+import { deriveEventStatus } from "@/lib/event-status";
 import { resolveMunicipality } from "@/lib/connect";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/integrations/overpass";
+import {
+  eventAdapterDisabled,
+  eventAdapterFailed,
+  eventAdapterOk,
+  type EventAdapterResult,
+} from "@/lib/integrations/event-adapter-result";
 
 const BASE = "https://rest.bandsintown.com/artists";
 const FETCH_TIMEOUT_MS = 12_000;
 
 export function bandsintownConfigured(): boolean {
-  return Boolean((process.env.BANDSINTOWN_APP_ID ?? "").trim());
+  return (
+    process.env.BANDSINTOWN_ENABLED === "1" &&
+    Boolean((process.env.BANDSINTOWN_APP_ID ?? "").trim())
+  );
 }
 
 type BitEvent = {
   id?: string;
   url?: string;
   datetime?: string;
+  /** Feed-side event title (often empty) — the one place a publisher
+   *  writes "CANCELLED"; our display title is the curated artist name. */
+  title?: string;
+  /** Publisher-written show notes, when the artist or venue wrote any. */
+  description?: string;
+  /** The full bill for the night. The curated artist is our title; the
+   *  other names on the lineup are real information for a listener. */
+  lineup?: string[];
   venue?: { name?: string; latitude?: number | string; longitude?: number | string; city?: string };
 };
+
+/** The show's own words: the publisher description, then the rest of the
+ *  bill beyond the curated artist. Empty when the feed carries neither. */
+export function bitDescription(ev: BitEvent, artist: string): string {
+  const others = (ev.lineup ?? [])
+    .map((name) => name?.trim())
+    .filter((name): name is string => Boolean(name))
+    .filter((name) => name.toLowerCase() !== artist.toLowerCase());
+  return [
+    ev.description?.trim(),
+    others.length > 0 ? `With ${others.join(", ")}.` : undefined,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
 
 function inCounty(lat: number, lng: number): boolean {
   const [s, w, n, e] = FREDERICK_COUNTY_BBOX;
@@ -58,7 +92,7 @@ export function normalizeBandsintown(raw: unknown, artist: string): LiveEvent[] 
     out.push({
       id: `bit-${ev.id}`,
       title: artist,
-      description: "",
+      description: bitDescription(ev, artist),
       starts_at: when,
       ends_at: when,
       venue_name: ev.venue?.name ?? "Live music",
@@ -71,7 +105,7 @@ export function normalizeBandsintown(raw: unknown, artist: string): LiveEvent[] 
       source_label: "Bandsintown",
       url: ev.url ?? "",
       is_free: false,
-      status: "scheduled" as const,
+      status: deriveEventStatus(ev.title ?? ""),
       last_verified_at: new Date().toISOString(),
     });
   }
@@ -84,22 +118,38 @@ export function normalizeBandsintown(raw: unknown, artist: string): LiveEvent[] 
  * note above). Callers pass the local-artist set; there is no area
  * query to make here.
  */
-export async function fetchBandsintownForArtists(artists: string[]): Promise<LiveEvent[]> {
+export async function fetchBandsintownForArtistsResult(
+  artists: string[],
+): Promise<EventAdapterResult<LiveEvent>> {
+  if (process.env.BANDSINTOWN_ENABLED !== "1") return eventAdapterDisabled();
   const appId = (process.env.BANDSINTOWN_APP_ID ?? "").trim();
-  if (!appId || artists.length === 0) return [];
+  if (!appId || artists.length === 0) return eventAdapterDisabled();
   const all: LiveEvent[] = [];
+  let failed = 0;
   for (const artist of artists) {
     const url = `${BASE}/${encodeURIComponent(artist)}/events?app_id=${encodeURIComponent(appId)}`;
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     try {
       const res = await fetch(url, { signal: ctrl.signal, headers: { Accept: "application/json" } });
-      if (res.ok) all.push(...normalizeBandsintown(await res.json(), artist));
+      if (res.ok) {
+        all.push(...normalizeBandsintown(await res.json(), artist));
+      } else {
+        failed += 1;
+      }
     } catch {
       // one artist failing must not sink the rest
+      failed += 1;
     } finally {
       clearTimeout(timer);
     }
   }
-  return all;
+  return failed > 0 ? eventAdapterFailed(all) : eventAdapterOk(all);
+}
+
+/** Legacy data-only facade. Health-aware callers should use the Result form. */
+export async function fetchBandsintownForArtists(
+  artists: string[],
+): Promise<LiveEvent[]> {
+  return (await fetchBandsintownForArtistsResult(artists)).items;
 }

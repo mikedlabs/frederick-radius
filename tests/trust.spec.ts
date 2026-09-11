@@ -16,13 +16,17 @@ describe("eventTrust", () => {
     expect(t.basis).toMatch(/Picked/);
   });
 
-  it("partner feeds are 'official' with a named source", () => {
-    for (const s of ["dfp", "celebrate", "county"] as const) {
+  it("partner feeds are 'verified' with a named source", () => {
+    for (const s of ["dfp", "celebrate"] as const) {
       const t = eventTrust({ source: s, is_verified: false });
-      expect(t.level).toBe("official");
-      expect(t.label).toBe("Official");
+      expect(t.level).toBe("verified");
+      expect(t.label).toBe("Publisher listing");
       expect(t.basis.length).toBeGreaterThan(0);
     }
+    const gov = eventTrust({ source: "county", is_verified: false });
+    expect(gov.level).toBe("verified");
+    expect(gov.label).toBe("Government listing");
+    expect(gov.basis.length).toBeGreaterThan(0);
   });
 
   it("live-aggregated (manual) is honestly 'likely/Live'", () => {
@@ -81,8 +85,7 @@ describe("formatChecked", () => {
 describe("TRUST_COLOR", () => {
   it("maps every level to a brand token", () => {
     expect(TRUST_COLOR.verified).toContain("--app-positive");
-    expect(TRUST_COLOR.official).toContain("--app-cool");
-    expect(TRUST_COLOR.likely).toContain("--app-warning");
+    expect(TRUST_COLOR.likely).toContain("--app-ink-3");
     expect(TRUST_COLOR.unconfirmed).toContain("--app-ink-3");
   });
 });

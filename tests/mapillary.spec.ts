@@ -47,9 +47,12 @@ describe("normalizeMapillaryFeatures", () => {
 
 describe("token gating + sanitization", () => {
   const saved = process.env.MAPILLARY_TOKEN;
+  const savedEnabled = process.env.MAPILLARY_ENABLED;
   afterEach(() => {
     if (saved === undefined) delete process.env.MAPILLARY_TOKEN;
     else process.env.MAPILLARY_TOKEN = saved;
+    if (savedEnabled === undefined) delete process.env.MAPILLARY_ENABLED;
+    else process.env.MAPILLARY_ENABLED = savedEnabled;
   });
 
   it("strips the trailing | / quotes / whitespace that broke it for rounds", () => {
@@ -61,16 +64,23 @@ describe("token gating + sanitization", () => {
     expect(mapillaryToken()).toBe("MLY|123|abc");
   });
 
-  it("configured only with a clean 3-part token", () => {
+  it("requires explicit policy approval and a clean 3-part token", () => {
     delete process.env.MAPILLARY_TOKEN;
+    delete process.env.MAPILLARY_ENABLED;
     expect(mapillaryConfigured()).toBe(false);
     process.env.MAPILLARY_TOKEN = "MLY|123"; // 2 parts
     expect(mapillaryConfigured()).toBe(false);
     process.env.MAPILLARY_TOKEN = "MLY|123|abc|"; // trailing | tolerated
+    expect(mapillaryConfigured()).toBe(false);
+    process.env.MAPILLARY_ENABLED = "1";
     expect(mapillaryConfigured()).toBe(true);
   });
 
-  it("fetchMapillaryTrash returns [] (no network) when no/!valid token", async () => {
+  it("fetchMapillaryTrash returns [] (no network) when policy is disabled or the token is invalid", async () => {
+    delete process.env.MAPILLARY_ENABLED;
+    process.env.MAPILLARY_TOKEN = "MLY|123|abc";
+    expect(await fetchMapillaryTrash()).toEqual([]);
+    process.env.MAPILLARY_ENABLED = "1";
     delete process.env.MAPILLARY_TOKEN;
     expect(await fetchMapillaryTrash()).toEqual([]);
     process.env.MAPILLARY_TOKEN = "MLY|123"; // not 3 parts

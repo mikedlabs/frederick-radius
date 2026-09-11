@@ -43,7 +43,7 @@ export default function KnownForCard({
   return (
     <section
       aria-labelledby="known-for-heading"
-      className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
+      className="border-y py-4"
       style={{ borderColor: "var(--app-border)" }}
     >
       <header className="flex items-center gap-2">
@@ -55,7 +55,7 @@ export default function KnownForCard({
         />
         <h3
           id="known-for-heading"
-          className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+          className="text-[11px] font-bold uppercase tracking-[0.12em]"
           style={{ color: "var(--app-ink-3)" }}
         >
           What people say
@@ -100,7 +100,7 @@ export default function KnownForCard({
               aria-hidden
               className="h-3 w-3"
               strokeWidth={2.5}
-              style={{ color: "var(--app-warm)" }}
+              style={{ color: "var(--app-accent-press)" }}
             />
             Customers loved
           </p>

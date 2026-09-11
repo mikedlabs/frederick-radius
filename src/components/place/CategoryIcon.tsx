@@ -5,10 +5,13 @@ import {
   PawPrint, Pill, Pizza, Recycle, ShieldCheck, ShoppingBag, Tent, Theater,
   ToyBrick, Train, Trees, Truck, Users, Utensils, UtensilsCrossed, Vote,
   Wifi, Wine, Wrench, MapPin,
+  Flag, Grape, FlaskConical, Tractor, IceCream, BusFront,
+  CarFront, Scissors, Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { GLYPHS } from "@/components/glyphs";
 
 /**
  * The category's real Lucide icon, by slug. Replaces the emoji glyph
@@ -25,6 +28,12 @@ const MAP: Record<string, LucideIcon> = {
   PawPrint, Pill, Pizza, Recycle, ShieldCheck, ShoppingBag, Tent, Theater,
   ToyBrick, Train, Trees, Truck, Users, Utensils, UtensilsCrossed, Vote,
   Wifi, Wine, Wrench,
+  // New-category icons (golf / wineries / distilleries / agritourism) — these
+  // were declared in categories.ts but missing here, so they were silently
+  // falling back to the generic pin.
+  Flag, Grape, FlaskConical, Tractor, IceCream, BusFront,
+  // Wellness subcategories (massage uses HeartPulse above; salon / spa here).
+  CarFront, Scissors, Sparkles,
   // Long-tail names declared in categories.ts that are not 1:1 Lucide
   // exports resolve to a sensible vector rather than a broken import.
   PinCircle: MapPin,
@@ -42,6 +51,10 @@ export default function CategoryIcon({
   strokeWidth?: number;
 }) {
   const name = CATEGORY_BY_SLUG[slug]?.icon ?? "";
+  // Bespoke engraved glyph first (it bakes its own stroke, so strokeWidth is
+  // intentionally not forwarded); otherwise the Lucide icon, else MapPin.
+  const Glyph = GLYPHS[name];
+  if (Glyph) return <Glyph className={className} style={style} aria-hidden />;
   const Icon = MAP[name] ?? MapPin;
   return <Icon className={className} style={style} strokeWidth={strokeWidth} aria-hidden />;
 }

@@ -8,14 +8,13 @@ export default function SyncStatus() {
   const saved = useSavedList();
   const followState = useFollowedSlugs();
   const placeCount = followState.slugs.size;
-  const accountPlaceCount = [...followState.accountSlugs].filter((slug) =>
-    followState.slugs.has(slug),
-  ).length;
-  const waitingPlaceCount = Math.max(0, placeCount - accountPlaceCount);
+  // accountSlugs is no longer returned; all slugs are unified. 
+  // We'll treat all followed places as account places when authed.
+  const accountPlaceCount = followState.authed ? placeCount : 0;
+  const waitingPlaceCount = 0; 
   const eventCount = saved.filter((item) => item.type === "event").length;
   const routeCount = saved.filter((item) => item.type === "radius").length;
-  const status = followState.status;
-  const isPaused = status === "offline" || status === "anonymous";
+  const isPaused = !followState.authed;
 
   return (
     <div className="space-y-3" aria-live="polite">
@@ -38,24 +37,22 @@ export default function SyncStatus() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="eyebrow" style={{ color: isPaused ? "var(--app-warning)" : "var(--app-positive)" }}>
-              {status === "checking"
+              {followState.loading
                 ? "Checking sync"
                 : isPaused
                   ? "Sync paused"
                   : "Up to date"}
             </p>
             <h2 className="mt-1 font-serif text-[23px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-              {status === "checking"
+              {followState.loading
                 ? "Bringing your Radius together…"
                 : isPaused
                   ? "Your on-device places are still safe."
-                  : waitingPlaceCount > 0
-                    ? `${waitingPlaceCount} ${waitingPlaceCount === 1 ? "place is" : "places are"} being added.`
-                    : `${accountPlaceCount} ${accountPlaceCount === 1 ? "place" : "places"} kept with your account.`}
+                  : `${accountPlaceCount} ${accountPlaceCount === 1 ? "place" : "places"} kept with your account.`}
             </h2>
             <p className="mt-1.5 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
               {isPaused
-                ? "We could not reach sync just now. Keep using My Radius and we will try again shortly."
+                ? "Sign in to securely sync your places."
                 : "Available anywhere you sign in. Places from this device are added without removing anything already there."}
             </p>
           </div>

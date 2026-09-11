@@ -60,3 +60,42 @@ describe("cleanFeedText (County feed sanitization)", () => {
     expect(capped).not.toContain("&lt;");
   });
 });
+
+// T5/T3c — named entities feeds emit beyond the basics, plus a residual
+// guard so no raw `&word;` can ever reach body or metadata.
+describe("cleanFeedText (named entities + residual guard)", () => {
+  it("decodes the bullet entity (the audit's &bull;)", () => {
+    expect(cleanFeedText("Doors 7 &bull; show 8")).toBe("Doors 7 • show 8");
+  });
+
+  it("decodes the curated named set (fractions, symbols, accents)", () => {
+    expect(cleanFeedText("a&middot;b")).toBe("a·b");
+    expect(cleanFeedText("90&deg;")).toBe("90°");
+    expect(cleanFeedText("Acme&trade; &copy;2026 &reg;")).toBe("Acme™ ©2026 ®");
+    expect(cleanFeedText("2&times;4 / 6&divide;2")).toBe("2×4 / 6÷2");
+    expect(cleanFeedText("&frac12; off, &frac14; left, &frac34; full")).toBe(
+      "½ off, ¼ left, ¾ full",
+    );
+    expect(cleanFeedText("Caf&eacute; Nola")).toBe("Café Nola");
+  });
+
+  it("residual guard: unknown named entities never leak raw (→ space)", () => {
+    const out = cleanFeedText("foo &madeupentity; bar");
+    expect(out).not.toContain("&madeupentity;");
+    expect(out).not.toMatch(/&[a-z]+;/i);
+    expect(out).toBe("foo bar");
+  });
+
+  it("decodes a double-encoded bullet (&amp;bull; → •)", () => {
+    expect(cleanFeedText("x &amp;bull; y")).toBe("x • y");
+  });
+
+  it("leaves real ampersands in plain text alone (C&O, AT&T)", () => {
+    expect(cleanFeedText("C&O Canal Towpath")).toBe("C&O Canal Towpath");
+    expect(cleanFeedText("AT&T Store")).toBe("AT&T Store");
+  });
+
+  it("decodes &amp;-encoded ampersands correctly (C&amp;O → C&O)", () => {
+    expect(cleanFeedText("C&amp;O Canal")).toBe("C&O Canal");
+  });
+});

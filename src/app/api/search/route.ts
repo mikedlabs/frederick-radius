@@ -1,5 +1,26 @@
-import { NextResponse } from "next/server";
-import { searchIndex } from "@/lib/search/index";
+import { NextResponse, type NextRequest } from "next/server";
+import {
+  isLiveEventIndependentMapActionQuery,
+  qualifiedSearchIndex,
+} from "@/lib/search/index";
+import { isEventSearchIntent } from "@/lib/search";
+import {
+  loadEventArchiveSnapshot,
+  TODAY_EVENT_SNAPSHOT_TIMEOUT_MS,
+} from "@/lib/loaders/todayEventSnapshot";
+import { approxLocation } from "@/lib/ip-geo";
+import { roundCoord } from "@/lib/walkTime";
+import { parseScope, resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
+
+function normalizedSearchText(value: string): string {
+  return value
+    .toLocaleLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
 
 /**
  * GET /api/search?q=<query>&limit=<n>
@@ -18,10 +39,9 @@ import { searchIndex } from "@/lib/search/index";
  * keeping freshness honest. Empty / overlong queries return an empty
  * list and cache aggressively.
  */
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const q = (url.searchParams.get("q") ?? "").trim();
-  const limitRaw = Number(url.searchParams.get("limit") ?? 12);
+export async function GET(request: NextRequest) {
+  const q = (request.nextUrl.searchParams.get("q") ?? "").trim();
+  const limitRaw = Number(request.nextUrl.searchParams.get("limit") ?? 12);
   const limit = Number.isFinite(limitRaw)
     ? Math.max(1, Math.min(20, Math.floor(limitRaw)))
     : 12;
@@ -39,16 +59,144 @@ export async function GET(request: Request) {
     );
   }
 
-  const results = searchIndex(q, limit);
+  const latRaw = request.nextUrl.searchParams.get("lat");
+  const lngRaw = request.nextUrl.searchParams.get("lng");
+  const lat = latRaw ? Number(latRaw) : NaN;
+  const lng = lngRaw ? Number(lngRaw) : NaN;
+  const deviceOrigin =
+    Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
+      ? { lat: roundCoord(lat), lng: roundCoord(lng) }
+      : null;
+  // The map ranks around the camera the user is looking at. A town/home cookie
+  // is useful for global Find, but must not silently override an explicit map
+  // origin after someone pans across the county.
+  const mapOrigin = request.nextUrl.searchParams.get("origin") === "map" && deviceOrigin;
+  const explicitScope = parseScope(request.nextUrl.searchParams.get("in"));
+  const context = explicitScope
+    ? resolveDecisionContext({ scopeRaw: explicitScope, homeMuniRaw: null, deviceOrigin })
+    : mapOrigin
+    ? {
+        origin: deviceOrigin,
+        filterMunicipality: null,
+        label: "Current map area",
+        fallbackReason: null,
+      }
+    : await approxLocation().then((approx) => resolveDecisionContext({
+        scopeRaw: request.cookies.get(SCOPE_COOKIE)?.value ?? null,
+        homeMuniRaw: request.cookies.get("fr_home_muni")?.value ?? null,
+        deviceOrigin,
+        approximateOrigin: approx.origin,
+        approximateStatus: approx.status,
+      }));
+
+  const searchContext = {
+    origin: context.origin,
+    municipality: context.filterMunicipality,
+    contextLabel: context.label,
+    fallbackReason: context.fallbackReason,
+  };
+  const base = qualifiedSearchIndex(q, limit, undefined, searchContext);
+  const mapRequest = request.nextUrl.searchParams.get("origin") === "map";
+  // Most map searches already have a complete answer in Radius's local place
+  // and control index. Do not make "coffee nearby" wait for a countywide live
+  // calendar. Event-shaped and genuinely unanswered phrases retain the live
+  // enrichment path.
+  const normalizedQuery = normalizedSearchText(q);
+  const qualifiers = base.meta.qualifiers;
+  const normalizedQualifiedQuery = normalizedSearchText(
+    qualifiers.cleanedQuery,
+  );
+  const directCategoryRequest = Boolean(
+    qualifiers.categoryKey &&
+    (
+      qualifiers.nearMe ||
+      qualifiers.openNow ||
+      normalizedQualifiedQuery === normalizedSearchText(qualifiers.categoryKey) ||
+      normalizedQualifiedQuery === normalizedSearchText(
+        qualifiers.categoryLabel ?? "",
+      )
+    ),
+  );
+  const exactEntityAnswer = base.results.some(
+    (result) =>
+      (result.type === "place" || result.type === "municipality") &&
+      normalizedSearchText(result.title) === normalizedQuery,
+  );
+  const baseAnswersMap =
+    isLiveEventIndependentMapActionQuery(q) ||
+    Boolean(qualifiers.compoundIntent || qualifiers.strictPlaceKind) ||
+    directCategoryRequest ||
+    exactEntityAnswer;
+  const baseHasAtmHandoff = base.results.some(
+    (result) => result.id === "action:map-atm",
+  );
+  const skipLiveEventAssembly =
+    !isEventSearchIntent(q) &&
+    ((mapRequest && baseAnswersMap) || baseHasAtmHandoff ||
+      base.results.some((result) => result.id.startsWith("civic:") || result.id.startsWith("department:")));
+  // Rank against the promoted event archive, not just the small curated seed
+  // set. The archive is refreshed in the background and has a cancellable
+  // sub-second read budget, so a search can discover current events without
+  // starting publisher fan-out in a visitor request.
+  let searchResult = base;
+  let liveEventsUnavailable = false;
+  if (!skipLiveEventAssembly) {
+    try {
+      // Both Map and global Find use the same durable archive contract. A
+      // resolved snapshot may still be degraded because the archive is stale,
+      // missing, or timed out; that state is not a healthy empty calendar.
+      const snapshot = await loadEventArchiveSnapshot(new Date(), {
+        timeoutMs: TODAY_EVENT_SNAPSHOT_TIMEOUT_MS,
+      });
+      liveEventsUnavailable = snapshot.sourceHealth?.degraded === true;
+      searchResult = qualifiedSearchIndex(
+        q,
+        limit,
+        snapshot.publicEvents,
+        searchContext,
+      );
+    } catch {
+      liveEventsUnavailable = true;
+    }
+  }
+  // The global ATM action is a handoff into Map's live provider search. Once
+  // the request is already coming from Map, returning that same action would
+  // route back to /map?q=ATM and prevent AppMap's zero-result fallback from
+  // ever running.
+  const results = mapRequest
+    ? searchResult.results.filter((result) => result.id !== "action:map-atm")
+    : searchResult.results;
+  const { meta } = searchResult;
+  const responseMeta = liveEventsUnavailable
+    ? { ...meta, liveEventsUnavailable: true }
+    : meta;
+
+  // A degraded event archive plus an empty result set used to answer 503, and
+  // the overlay treats any non-ok as a transport failure: it rendered "Check
+  // your connection" over the person's own working connection, with ZERO links
+  // out. The honest empty state and the Ask handoff are both gated on a done
+  // status, so both were unreachable, and the only real exit was a hint row
+  // that is hidden on touch. Three of nine realistic queries hit this.
+  //
+  // The condition is worth reporting, but it is a caveat on the answer, not a
+  // failure of the request. It travels in meta.liveEventsUnavailable, which the
+  // client now reads, so the person gets the results we do have plus a plain
+  // note that live events are missing from them.
+  //
+  // Do not bank misses from this debounced typeahead request. A person can
+  // pause briefly on "piz" while typing "pizza", and treating that network
+  // response as an unmet need poisons the owner backlog with partial words.
+  // SearchOverlay reports `search_empty` only after the query and zero-result
+  // state have remained settled; /api/track records that one deliberate signal.
 
   return NextResponse.json(
-    { results },
+    { results, meta: responseMeta },
     {
       headers: {
-        // Short s-maxage because the underlying index can change daily
-        // (events, hours). The longer SWR window keeps repeat queries
-        // fast while the edge revalidates in the background.
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        // Scope, device coordinates, and IP approximation can all affect a
+        // qualified result. Never let one visitor's "near me" ranking leak
+        // through a shared edge cache to another visitor.
+        "Cache-Control": "private, no-store",
       },
     },
   );

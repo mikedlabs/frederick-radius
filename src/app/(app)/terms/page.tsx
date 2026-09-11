@@ -1,41 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Terms",
+  title: "Terms of use",
   description:
-    "Terms of use for Frederick Radius — covers acceptable use, copyright, anti-scraping, and the contact path for licensing requests.",
+    "Terms for using Frederick Radius, including accuracy, submissions, acceptable use, and important disclaimers.",
 };
 
-/**
- * /terms — public-facing terms of use.
- *
- * The user-facing companion to the repository's LICENSE file. Lays out:
- *   - who owns what
- *   - acceptable use (browsing fine, scraping/training not)
- *   - the AI-training opt-out signal (robots.txt is authoritative;
- *     this page is the human-readable equivalent)
- *   - the licensing-contact path
- *
- * Deliberately short and direct. A terms page nobody reads is the
- * point — the value is having something to point at when someone
- * asks "can I use your data?" or when a scraper gets caught.
- */
+const headingClass = "font-serif text-[20px] font-semibold tracking-tight";
+const linkClass = "font-semibold underline underline-offset-2";
+
 export default function TermsPage() {
   return (
     <div className="relative mx-auto w-full max-w-screen-md space-y-6 py-6">
-      <nav aria-label="Breadcrumb" className="text-xs">
-        <Link
-          href="/today"
-          className="inline-flex items-center gap-1 hover:underline"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Back to Today
-        </Link>
-      </nav>
-
       <header className="space-y-2">
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
           Terms of use
@@ -44,114 +21,200 @@ export default function TermsPage() {
           className="font-serif text-[32px] font-semibold leading-tight tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          The short version.
+          The rules, in plain language.
         </h1>
         <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          Last updated: 2026-05-28
+          Effective July 15, 2026
         </p>
       </header>
 
       <section className="space-y-5 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+        <p>
+          By using Frederick Radius, you agree to these terms and our{" "}
+          <Link href="/privacy" className={linkClass} style={{ color: "var(--app-cool)" }}>
+            Privacy Policy
+          </Link>
+          . If you do not agree, do not use the app.
+        </p>
+
         <div className="space-y-2">
-          <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            What you can do
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Independent local guide
           </h2>
           <p>
-            Browse, search, share links, save places, submit corrections, and
-            tell people about it. The whole app is free to use. If anything
-            here helps you decide what to do in Frederick County, that&rsquo;s
-            the point.
+            Frederick Radius is an independent project. It is not affiliated
+            with, endorsed by, sponsored by, or operated by the City of
+            Frederick, Frederick County Government, or any municipality. A link,
+            listing, seal-free source label, or reference to an organization does
+            not mean that organization endorses Frederick Radius.
           </p>
         </div>
 
         <div className="space-y-2">
-          <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            What we ask you not to do
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Information, not a guarantee
+          </h2>
+          <p>
+            The app is a planning and discovery aid. Places close, hours change,
+            events move, routes become unavailable, and public information can be
+            delayed or wrong. Confirm important details with the business,
+            organizer, transit provider, or government agency before acting.
+            Maps, distances, travel times, alerts, and recommendations are
+            estimates and may not reflect current conditions.
+          </p>
+          <p>
+            Do not use Frederick Radius for emergencies, public-safety decisions,
+            medical advice, legal advice, or other situations where an error could
+            cause harm. Call 911 in an emergency and use official sources for
+            urgent instructions.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Accounts and legacy access codes
+          </h2>
+          <p>
+            You are responsible for activity under your account or any optional
+            access code tied to you. Do not sell, automate, probe, or misuse
+            access credentials. We may limit, suspend, or revoke access to protect
+            the app, its users, or its data sources.
+          </p>
+          <p>
+            The public app no longer requires a beta code. Older beta codes and
+            member cards may still support invitations, feedback, or device-linked
+            features; they are not a confidentiality or security boundary. Do not
+            submit or rely on confidential material. When you share a link, common
+            messaging and social preview services may fetch that page to generate
+            its title, description, and image.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Submissions
+          </h2>
+          <p>
+            You keep ownership of content you submit. You give Frederick Radius
+            a non-exclusive, worldwide, royalty-free license to store, review,
+            reproduce, edit for clarity or safety, publish, and remove that
+            content as needed to operate and improve the app. This license ends
+            when the content is deleted from active systems, except for reasonable
+            backups and records needed for legal or security purposes.
+          </p>
+          <p>
+            Submit only content you have the right to share. Do not submit private
+            personal information, unlawful material, threats, harassment,
+            impersonation, malware, spam, or content that infringes another
+            person&rsquo;s rights. Public reports and field markers may be shown
+            publicly after review. We may reject or remove any submission.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Acceptable use
           </h2>
           <ul className="ml-5 list-disc space-y-2">
-            <li>
-              <strong>Don&rsquo;t scrape the site or its APIs.</strong> The
-              curated place / event / amenity data took real work to clean and
-              verify. If you need bulk access for a legitimate project, email
-              and ask — we&rsquo;re probably willing to share with attribution
-              and rate limits.
-            </li>
-            <li>
-              <strong>Don&rsquo;t use this content to train AI models.</strong>{" "}
-              The <code>robots.txt</code> opts out the major LLM training
-              crawlers; this is the human-readable version of the same signal.
-              Honoring it is required.
-            </li>
-            <li>
-              <strong>Don&rsquo;t republish photographs</strong> from the From
-              Above collection without explicit permission. These are
-              copyrighted drone photographs by Michael DeMattia.
-            </li>
-            <li>
-              <strong>
-                Don&rsquo;t use the Frederick Radius name or disc logo
-              </strong>{" "}
-              to identify a different product or service. The mark is in use.
-            </li>
+            <li>Do not interfere with the app, bypass access controls, test vulnerabilities without written permission, or burden its services.</li>
+            <li>Do not scrape, bulk-download, copy, resell, or republish the app or its APIs without written permission.</li>
+            <li>Do not use Frederick Radius content or data to train or evaluate an AI model without written permission.</li>
+            <li>Do not use the Frederick Radius name or visual identity to suggest a relationship, endorsement, or different product.</li>
           </ul>
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Where the data comes from
-          </h2>
           <p>
-            Public sources (Frederick County GIS, National Weather Service,
-            OpenStreetMap, Google Places, the City of Frederick&rsquo;s event
-            feeds, and others) plus the editorial curation that turns those
-            into a useful product. Each source keeps its own license; the
-            curation work is ours. See{" "}
-            <Link
-              href="/trust"
-              className="font-semibold underline-offset-2 hover:underline"
-              style={{ color: "var(--app-cool)" }}
-            >
-              /trust
-            </Link>{" "}
-            for the full provenance.
+            Search engines and other automated services may access only the paths
+            and uses permitted by our published crawler controls or written
+            permission.
           </p>
         </div>
 
         <div className="space-y-2">
-          <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Accuracy
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Content, sources, and trademarks
           </h2>
           <p>
-            We work hard to keep place and event data current, but information
-            does drift — businesses close, hours change, events get rescheduled.
-            Always confirm time-sensitive details directly with the place or
-            event organizer before showing up. If something is wrong,{" "}
-            <Link
-              href="/submit/place"
-              className="font-semibold underline-offset-2 hover:underline"
-              style={{ color: "var(--app-cool)" }}
-            >
-              tell us
+            Frederick Radius combines original editorial work with information
+            from businesses, event organizers, public agencies, and third-party
+            services. Those sources retain their own rights and licenses. Business
+            names, logos, government names, and other marks belong to their
+            respective owners. Their appearance is descriptive and does not imply
+            endorsement. Photographs and original Frederick Radius content may not
+            be republished without permission unless the item states otherwise.
+          </p>
+          <p>
+            See{" "}
+            <Link href="/trust" className={linkClass} style={{ color: "var(--app-cool)" }}>
+              Trust &amp; sources
             </Link>{" "}
-            — corrections land in the next data refresh.
+            for provenance and attribution details.
           </p>
         </div>
 
         <div className="space-y-2">
-          <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Licensing & permissions
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Third-party services
           </h2>
           <p>
-            For licensing, partnership, data-sharing, or republication
-            requests, email{" "}
+            The app links to and relies on services we do not control. Their
+            availability, content, security, and terms are their responsibility.
+            Use third-party sites and services at your own discretion.
+          </p>
+          <p>
+            Some place information, ratings, reviews, and photos are provided by
+            Google Maps Platform. Use of those features is also subject to the{" "}
             <a
-              href="mailto:miked@madproductions.io?subject=Frederick%20Radius%20licensing"
-              className="font-semibold underline-offset-2 hover:underline"
-              style={{ color: "var(--app-brand)" }}
+              href="https://cloud.google.com/maps-platform/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={linkClass}
+              style={{ color: "var(--app-cool)" }}
             >
-              miked@madproductions.io
+              Google Maps Platform Terms of Service
             </a>
-            . Most reasonable asks get a yes.
+            .
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            No warranties; limits on liability
+          </h2>
+          <p>
+            To the fullest extent permitted by law, Frederick Radius is provided
+            &ldquo;as is&rdquo; and &ldquo;as available,&rdquo; without warranties
+            of accuracy, availability, fitness for a particular purpose, or
+            non-infringement. To the fullest extent permitted by law, Frederick
+            Radius and its operator will not be liable for indirect, incidental,
+            special, consequential, or punitive damages, lost profits or data, or
+            harm arising from reliance on the app or inability to use it. Nothing
+            in these terms excludes liability that cannot legally be excluded.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Changes and Maryland law
+          </h2>
+          <p>
+            We may change or discontinue features and update these terms. The
+            effective date above will change when the terms do. Maryland law
+            governs these terms, without regard to conflict-of-law rules. Any
+            dispute that is not resolved informally will be brought in a court
+            with jurisdiction in Frederick County, Maryland.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Contact
+          </h2>
+          <p>
+            Questions, corrections, copyright concerns, or permission requests:
+            {" "}
+            <a href="mailto:hello@frederickradius.app" className={linkClass} style={{ color: "var(--app-brand)" }}>
+              hello@frederickradius.app
+            </a>
+            .
           </p>
         </div>
       </section>
@@ -160,10 +223,7 @@ export default function TermsPage() {
         className="border-t pt-4 text-[12px]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
       >
-        <p>
-          Frederick Radius is built and operated by Michael DeMattia, a
-          downtown Frederick resident. © 2025–2026. All rights reserved.
-        </p>
+        <p>&copy; 2025&ndash;2026 Frederick Radius. All rights reserved.</p>
       </footer>
     </div>
   );

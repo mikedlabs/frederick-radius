@@ -238,23 +238,6 @@
     "municipality": "brunswick"
   },
   {
-    "google_place_id": "ChIJe61Ako4etokRSPGx3Fvkfoc",
-    "name": "Back Street Brews Coffee & Tea House",
-    "address": "11 E Pennsylvania Ave, Lovettsville, VA 20180, USA",
-    "primary_type": "cafe",
-    "location": {
-      "latitude": 39.2730162,
-      "longitude": -77.6375961
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Brunswick"
-    },
-    "lat": 39.2730162,
-    "lng": -77.6375961,
-    "municipality": "brunswick"
-  },
-  {
     "google_place_id": "ChIJYU3HjpkftokR8z11aVYE_hk",
     "name": "Whistle Punk Farm Delicatessen",
     "address": "30 W Potomac St Suite 103, Brunswick, MD 21716, USA",
@@ -457,23 +440,6 @@
     "lat": 39.633983099999995,
     "lng": -77.4099049,
     "municipality": "thurmont"
-  },
-  {
-    "google_place_id": "ChIJF2_WSc2xyYkR8SynaESDk44",
-    "name": "Deja Brew at Miney Branch",
-    "address": "815 Waynesboro Pike, Fairfield, PA 17320, USA",
-    "primary_type": "coffee_shop",
-    "location": {
-      "latitude": 39.7353909,
-      "longitude": -77.371696
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Thurmont"
-    },
-    "lat": 39.7353909,
-    "lng": -77.371696,
-    "municipality": "emmitsburg"
   },
   {
     "google_place_id": "ChIJvfZni4THyYkRsJ_5CFSWle0",
@@ -2040,23 +2006,6 @@
     "municipality": "emmitsburg"
   },
   {
-    "google_place_id": "ChIJ-7M6g-awyYkRWeTploKWNN0",
-    "name": "Dave & Jane's Crabhouse",
-    "address": "2989 Tract Rd, Fairfield, PA 17320, USA",
-    "primary_type": "seafood_restaurant",
-    "location": {
-      "latitude": 39.720953099999996,
-      "longitude": -77.339709
-    },
-    "discovered_for": {
-      "category": "cafe",
-      "area": "Emmitsburg"
-    },
-    "lat": 39.720953099999996,
-    "lng": -77.339709,
-    "municipality": "emmitsburg"
-  },
-  {
     "google_place_id": "ChIJx5gybFhLyIkRyp_avERGoaU",
     "name": "Cafe Au Bouchon",
     "address": "5525 Taneytown Pike, Taneytown, MD 21787, USA",
@@ -2635,40 +2584,6 @@
     "municipality": "frederick"
   },
   {
-    "google_place_id": "ChIJic8M0Y0etokRXMJtwarbccI",
-    "name": "1836 Kitchen and Taproom",
-    "address": "34 E Broad Way, Lovettsville, VA 20180, USA",
-    "primary_type": "american_restaurant",
-    "location": {
-      "latitude": 39.271696,
-      "longitude": -77.63592299999999
-    },
-    "discovered_for": {
-      "category": "restaurant",
-      "area": "Brunswick"
-    },
-    "lat": 39.271696,
-    "lng": -77.63592299999999,
-    "municipality": "brunswick"
-  },
-  {
-    "google_place_id": "ChIJv2jwbHsftokRrWsl2p2n438",
-    "name": "El Pitayo Mexican Restaurant",
-    "address": "5 Town Center Dr, Lovettsville, VA 20180, USA",
-    "primary_type": "mexican_restaurant",
-    "location": {
-      "latitude": 39.274451899999995,
-      "longitude": -77.640087
-    },
-    "discovered_for": {
-      "category": "restaurant",
-      "area": "Brunswick"
-    },
-    "lat": 39.274451899999995,
-    "lng": -77.640087,
-    "municipality": "brunswick"
-  },
-  {
     "google_place_id": "ChIJTanbWEXhyYkRPBDIm897i48",
     "name": "Papa Johns Pizza",
     "address": "1201 Dutchmans Creek Dr D, Brunswick, MD 21716, USA",
@@ -2683,23 +2598,6 @@
     },
     "lat": 39.333987,
     "lng": -77.63748199999999,
-    "municipality": "brunswick"
-  },
-  {
-    "google_place_id": "ChIJx8Ul6ncftokR8aTetVGG7uA",
-    "name": "Rodeo's Mexican Grill",
-    "address": "26 E Broad Way D, Lovettsville, VA 20180, USA",
-    "primary_type": "mexican_restaurant",
-    "location": {
-      "latitude": 39.27242340000001,
-      "longitude": -77.63678329999999
-    },
-    "discovered_for": {
-      "category": "restaurant",
-      "area": "Brunswick"
-    },
-    "lat": 39.27242340000001,
-    "lng": -77.63678329999999,
     "municipality": "brunswick"
   },
   {
@@ -2836,23 +2734,6 @@
     },
     "lat": 39.702827899999996,
     "lng": -77.3280901,
-    "municipality": "emmitsburg"
-  },
-  {
-    "google_place_id": "ChIJPZX7nIawyYkR2ez-3iadXbM",
-    "name": "Frontier Bar B Q",
-    "address": "801 Waynesboro Pike, Fairfield, PA 17320, USA",
-    "primary_type": "barbecue_restaurant",
-    "location": {
-      "latitude": 39.7350241,
-      "longitude": -77.3705938
-    },
-    "discovered_for": {
-      "category": "restaurant",
-      "area": "Emmitsburg"
-    },
-    "lat": 39.7350241,
-    "lng": -77.3705938,
     "municipality": "emmitsburg"
   },
   {
@@ -3281,23 +3162,6 @@
     "municipality": "thurmont"
   },
   {
-    "google_place_id": "ChIJm-tFAw-9yYkRpJKSya7TdJI",
-    "name": "Michaux Brewing Company",
-    "address": "11657 Buchanan Trail E, Waynesboro, PA 17268, USA",
-    "primary_type": "brewery",
-    "location": {
-      "latitude": 39.7384713,
-      "longitude": -77.5251723
-    },
-    "discovered_for": {
-      "category": "brewery",
-      "area": "Thurmont"
-    },
-    "lat": 39.7384713,
-    "lng": -77.5251723,
-    "municipality": "thurmont"
-  },
-  {
     "google_place_id": "ChIJdXekOBE1yIkRqM3b7TNZ3CU",
     "name": "Flood Zone Marketplace & Brewery",
     "address": "50 N Main St, Union Bridge, MD 21791, USA",
@@ -3706,23 +3570,6 @@
     "municipality": "burkittsville"
   },
   {
-    "google_place_id": "ChIJNX4ak0gdtokRk_spVZ3l1iE",
-    "name": "Stockyard Brewery",
-    "address": "12428 Mountain Rd, Lovettsville, VA 20180, USA",
-    "primary_type": "brewery",
-    "location": {
-      "latitude": 39.270784899999995,
-      "longitude": -77.6873631
-    },
-    "discovered_for": {
-      "category": "brewery",
-      "area": "Rosemont"
-    },
-    "lat": 39.270784899999995,
-    "lng": -77.6873631,
-    "municipality": "rosemont"
-  },
-  {
     "google_place_id": "ChIJUxNbV0TbyYkRx32tTuvkdB8",
     "name": "Puerto Rico Distillery",
     "address": "402 5th Ave, Brunswick, MD 21716, USA",
@@ -3893,40 +3740,6 @@
     "municipality": "burkittsville"
   },
   {
-    "google_place_id": "ChIJK2PlEN0ftokRck_Rsxf1rX8",
-    "name": "Flying Ace Farm",
-    "address": "40950 Flying Ace Ln, Lovettsville, VA 20180, USA",
-    "primary_type": "manufacturer",
-    "location": {
-      "latitude": 39.2770791,
-      "longitude": -77.5827865
-    },
-    "discovered_for": {
-      "category": "distillery",
-      "area": "Rosemont"
-    },
-    "lat": 39.2770791,
-    "lng": -77.5827865,
-    "municipality": "brunswick"
-  },
-  {
-    "google_place_id": "ChIJyUEFYQAdtokRlomSivVPmPw",
-    "name": "Cool Spring Distillery",
-    "address": "37871 Nicewarner Ln, Lovettsville, VA 20180, USA",
-    "primary_type": "manufacturer",
-    "location": {
-      "latitude": 39.2770413,
-      "longitude": -77.6907894
-    },
-    "discovered_for": {
-      "category": "distillery",
-      "area": "Rosemont"
-    },
-    "lat": 39.2770413,
-    "lng": -77.6907894,
-    "municipality": "rosemont"
-  },
-  {
     "google_place_id": "ChIJRxayRpTbyYkRSGPYCz4GA48",
     "name": "Simple Theory Wine Co",
     "address": "37 N Market St Suite 200, Frederick, MD 21701, USA",
@@ -4095,23 +3908,6 @@
     "lat": 39.3270601,
     "lng": -77.21146449999999,
     "municipality": "mount-airy"
-  },
-  {
-    "google_place_id": "ChIJGzbhbDgctokR3MKy0qJxmMY",
-    "name": "Hiddencroft Vineyards, LLC",
-    "address": "12202 Axline Rd, Lovettsville, VA 20180, USA",
-    "primary_type": "winery",
-    "location": {
-      "latitude": 39.2717455,
-      "longitude": -77.6743712
-    },
-    "discovered_for": {
-      "category": "winery",
-      "area": "Brunswick"
-    },
-    "lat": 39.2717455,
-    "lng": -77.6743712,
-    "municipality": "brunswick"
   },
   {
     "google_place_id": "ChIJD9rl7r7PyYkRqCWBPk_Oxsk",
@@ -6390,23 +6186,6 @@
     "municipality": "burkittsville"
   },
   {
-    "google_place_id": "ChIJFxAEwNEdtokRKxZ77SvvDU4",
-    "name": "Georges Mill Farm Artisan Cheese",
-    "address": "11873 Georges Mill Rd, Lovettsville, VA 20180, USA",
-    "primary_type": "farmers_market",
-    "location": {
-      "latitude": 39.2891178,
-      "longitude": -77.66369069999999
-    },
-    "discovered_for": {
-      "category": "farmers market",
-      "area": "Burkittsville"
-    },
-    "lat": 39.2891178,
-    "lng": -77.66369069999999,
-    "municipality": "brunswick"
-  },
-  {
     "google_place_id": "ChIJuYW27y_oyYkRmUDhjrRViws",
     "name": "Frog Hollow Schoolmaster's Homestead",
     "address": "2812A Monument Rd, Myersville, MD 21773, USA",
@@ -6422,23 +6201,6 @@
     "lat": 39.5081501,
     "lng": -77.5729307,
     "municipality": "myersville"
-  },
-  {
-    "google_place_id": "ChIJoSr6xDEftokRLo_8vM9SpvI",
-    "name": "Lovettsville Co-op Market",
-    "address": "11 Town Center Dr suite 150, Lovettsville, VA 20180, USA",
-    "primary_type": "grocery_store",
-    "location": {
-      "latitude": 39.2747854,
-      "longitude": -77.64036879999999
-    },
-    "discovered_for": {
-      "category": "farmers market",
-      "area": "Burkittsville"
-    },
-    "lat": 39.2747854,
-    "lng": -77.64036879999999,
-    "municipality": "brunswick"
   },
   {
     "google_place_id": "ChIJ_YjvHhPtyYkRtKd44GpLViw",
@@ -7019,23 +6781,6 @@
     "municipality": "thurmont"
   },
   {
-    "google_place_id": "ChIJQToyw44etokR1Z1hU9k5Gm8",
-    "name": "Lovettsville Historical Society & Museum",
-    "address": "4 E Pennsylvania Ave, Lovettsville, VA 20180, USA",
-    "primary_type": "museum",
-    "location": {
-      "latitude": 39.2736678,
-      "longitude": -77.6384897
-    },
-    "discovered_for": {
-      "category": "museum",
-      "area": "Rosemont"
-    },
-    "lat": 39.2736678,
-    "lng": -77.6384897,
-    "municipality": "brunswick"
-  },
-  {
     "google_place_id": "ChIJC4zOpBLbyYkRQ_18mGPZw98",
     "name": "Eastside Artists' Gallery",
     "address": "313 E Patrick St, Frederick, MD 21701, USA",
@@ -7368,23 +7113,6 @@
     },
     "lat": 39.683950599999996,
     "lng": -77.3489101,
-    "municipality": "emmitsburg"
-  },
-  {
-    "google_place_id": "ChIJRQz5U3OxyYkRqi7S1JR5QG8",
-    "name": "TomAntolinArtWood",
-    "address": "66 Waynesboro Pike, Fairfield, PA 17320, USA",
-    "primary_type": "art_gallery",
-    "location": {
-      "latitude": 39.720631499999996,
-      "longitude": -77.3521426
-    },
-    "discovered_for": {
-      "category": "art gallery",
-      "area": "Emmitsburg"
-    },
-    "lat": 39.720631499999996,
-    "lng": -77.3521426,
     "municipality": "emmitsburg"
   },
   {
@@ -11595,23 +11323,6 @@
     "municipality": "myersville"
   },
   {
-    "google_place_id": "ChIJ-V_XDowetokRmCByuLdrKCM",
-    "name": "Lovettsville Library",
-    "address": "12 N Light St, Lovettsville, VA 20180, USA",
-    "primary_type": "library",
-    "location": {
-      "latitude": 39.274252,
-      "longitude": -77.63551799999999
-    },
-    "discovered_for": {
-      "category": "library",
-      "area": "Rosemont"
-    },
-    "lat": 39.274252,
-    "lng": -77.63551799999999,
-    "municipality": "brunswick"
-  },
-  {
     "google_place_id": "ChIJSTqrPoDlyYkR8c_gyKqxq6Q",
     "name": "Keedysville Library",
     "address": "22 Taylor Dr, Keedysville, MD 21756, USA",
@@ -12496,40 +12207,6 @@
     "municipality": "myersville"
   },
   {
-    "google_place_id": "ChIJQ-3q37W9yYkRB_HbSCJHMuo",
-    "name": "Pen Mar Antique Market",
-    "address": "11870 Buchanan Trail E, Waynesboro, PA 17268, USA",
-    "primary_type": "home_goods_store",
-    "location": {
-      "latitude": 39.7377389,
-      "longitude": -77.5217861
-    },
-    "discovered_for": {
-      "category": "antique store",
-      "area": "Thurmont"
-    },
-    "lat": 39.7377389,
-    "lng": -77.5217861,
-    "municipality": "thurmont"
-  },
-  {
-    "google_place_id": "ChIJXWCAMYixyYkRy85fE-Ud68Q",
-    "name": "Bowden's The Farm",
-    "address": "1042 Bullfrog Rd, Fairfield, PA 17320, USA",
-    "primary_type": "home_goods_store",
-    "location": {
-      "latitude": 39.743701099999996,
-      "longitude": -77.28687339999999
-    },
-    "discovered_for": {
-      "category": "antique store",
-      "area": "Thurmont"
-    },
-    "lat": 39.743701099999996,
-    "lng": -77.28687339999999,
-    "municipality": "emmitsburg"
-  },
-  {
     "google_place_id": "ChIJOcOI4IDKyYkR0TLVy-4ws3s",
     "name": "Cotton & Co Vintage Boutique & Marketplace",
     "address": "900 Francis Scott Key Hwy rear building, Keymar, MD 21757, USA",
@@ -12749,23 +12426,6 @@
     "lat": 39.493988099999996,
     "lng": -77.25430840000001,
     "municipality": "woodsboro"
-  },
-  {
-    "google_place_id": "ChIJ47Q_K-sftokRLxI4SoRg3CA",
-    "name": "Willows Vintage Charm",
-    "address": "3 S Berlin Pike, Lovettsville, VA 20180, USA",
-    "primary_type": "home_goods_store",
-    "location": {
-      "latitude": 39.273561099999995,
-      "longitude": -77.6393162
-    },
-    "discovered_for": {
-      "category": "antique store",
-      "area": "Burkittsville"
-    },
-    "lat": 39.273561099999995,
-    "lng": -77.6393162,
-    "municipality": "brunswick"
   },
   {
     "google_place_id": "ChIJ2cT1WqcfyIkRS9TtGQPy4As",
@@ -13363,23 +13023,6 @@
     "municipality": "frederick"
   },
   {
-    "google_place_id": "ChIJA6P7IswftokRH-KAdwt8Ga8",
-    "name": "Good Stretch Yoga",
-    "address": "39090 Dobbins Farm Ln, Lovettsville, VA 20180, USA",
-    "primary_type": "yoga_studio",
-    "location": {
-      "latitude": 39.2798667,
-      "longitude": -77.6492947
-    },
-    "discovered_for": {
-      "category": "yoga studio",
-      "area": "Burkittsville"
-    },
-    "lat": 39.2798667,
-    "lng": -77.6492947,
-    "municipality": "brunswick"
-  },
-  {
     "google_place_id": "ChIJt0FY16HbyYkRfu8Fk1k0qTI",
     "name": "Unrivaled Iron Gym",
     "address": "605 E Church St, Frederick, MD 21701, USA",
@@ -13958,23 +13601,6 @@
     "municipality": "frederick"
   },
   {
-    "google_place_id": "ChIJRT8dDzoftokRsSP2mDaQ25E",
-    "name": "Wild's Edge Fitness",
-    "address": "27 S Loudoun St, Lovettsville, VA 20180, USA",
-    "primary_type": "health",
-    "location": {
-      "latitude": 39.269197299999995,
-      "longitude": -77.6388687
-    },
-    "discovered_for": {
-      "category": "gym",
-      "area": "Burkittsville"
-    },
-    "lat": 39.269197299999995,
-    "lng": -77.6388687,
-    "municipality": "brunswick"
-  },
-  {
     "google_place_id": "ChIJASizFznbyYkR-96yJ1F-EkA",
     "name": "Frederick Fit Body Boot Camp",
     "address": "5634 Buckeystown Pike, Frederick, MD 21704, USA",
@@ -14332,23 +13958,6 @@
     "municipality": "rosemont"
   },
   {
-    "google_place_id": "ChIJM753gdEdtokR1WL15C3DXPk",
-    "name": "Georges Mill Farm Bed & Breakfast",
-    "address": "11867 Georges Mill Rd, Lovettsville, VA 20180, USA",
-    "primary_type": "bed_and_breakfast",
-    "location": {
-      "latitude": 39.287790199999996,
-      "longitude": -77.66322890000001
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Brunswick"
-    },
-    "lat": 39.287790199999996,
-    "lng": -77.66322890000001,
-    "municipality": "brunswick"
-  },
-  {
     "google_place_id": "ChIJZdPFwa7myYkRsOvbB7LEkdc",
     "name": "The Treehouse Camp At Maple Tree LLC",
     "address": "20716 Townsend Rd, Rohrersville, MD 21779, USA",
@@ -14417,23 +14026,6 @@
     "municipality": "emmitsburg"
   },
   {
-    "google_place_id": "ChIJUwu6ybC9yYkRwx6bqkl7ze8",
-    "name": "Cobblestone Hotel & Suites - Waynesboro",
-    "address": "12695 Washington Twp Blvd, Waynesboro, PA 17268, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.7441253,
-      "longitude": -77.52716819999999
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Thurmont"
-    },
-    "lat": 39.7441253,
-    "lng": -77.52716819999999,
-    "municipality": "thurmont"
-  },
-  {
     "google_place_id": "ChIJRaQZDB_ByYkRlip722LYcp4",
     "name": "Ole Mink Farm Recreation Resort",
     "address": "12806 Mink Farm Rd, Thurmont, MD 21788, USA",
@@ -14500,23 +14092,6 @@
     "lat": 39.3830761,
     "lng": -77.2707341,
     "municipality": "new-market"
-  },
-  {
-    "google_place_id": "ChIJfwahaPuyyYkR2TqOd59AXgg",
-    "name": "Mary-Penn Bed & Breakfast",
-    "address": "716 Mason Dixon Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "bed_and_breakfast",
-    "location": {
-      "latitude": 39.719918199999995,
-      "longitude": -77.23421859999999
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Thurmont"
-    },
-    "lat": 39.719918199999995,
-    "lng": -77.23421859999999,
-    "municipality": "emmitsburg"
   },
   {
     "google_place_id": "ChIJc1Jfl4_ZyYkRk2aaPMMU3oA",

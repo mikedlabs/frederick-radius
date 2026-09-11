@@ -1,0 +1,470 @@
+name: Source intelligence
+run-name: >-
+  Source intelligence (${{
+    github.event_name == 'schedule' &&
+      (github.event.schedule == '11 14 2,16 * *' ||
+       github.event.schedule == '21 14 5,19 * *' ||
+       github.event.schedule == '31 14 8,22 * *' ||
+       github.event.schedule == '41 14 11 * *' ||
+       github.event.schedule == '51 14 25 * *') && 'tavily-live' ||
+    inputs.tool == 'tavily-scout' && inputs.confirm_live && 'tavily-live' ||
+    inputs.tool == 'firecrawl-watch' && inputs.confirm_live && 'firecrawl-live' ||
+    'plan'
+  }})
+
+# Review-only scheduled and manual checks of first-party sources.
+# This workflow never writes canonical app data, commits changes, or publishes
+# provider output. Every schedule maps to one tracked Tavily profile; Firecrawl
+# Source Watch remains manually dispatched until its unchanged-repeat proof.
+on:
+  schedule:
+    - cron: "11 14 2,16 * *"
+    - cron: "21 14 5,19 * *"
+    - cron: "31 14 8,22 * *"
+    - cron: "41 14 11 * *"
+    - cron: "51 14 25 * *"
+  workflow_dispatch:
+    inputs:
+      tool:
+        description: "Choose a zero-cost plan or one capped live provider run"
+        required: true
+        type: choice
+        default: tavily-plan
+        options:
+          - tavily-plan
+          - tavily-scout
+          - firecrawl-watch
+      profile:
+        description: "Reviewed Tavily discovery profile"
+        required: true
+        type: choice
+        default: menus-reservations-accessibility
+        options:
+          - provider-smoke
+          - official-civic-mdot
+          - official-new-events
+          - menus-reservations-accessibility
+          - food-truck-schedules
+          - unresolved-source-recovery
+      source:
+        description: "Exact reviewed Firecrawl page for a one-source pilot"
+        required: true
+        type: choice
+        default: weinberg-performances
+        options:
+          - downtown-frederick-events
+          - celebrate-frederick-events
+          - great-frederick-fair-schedule
+          - visit-frederick-events
+          - weinberg-performances
+          - sky-stage-calendar
+          - delaplaine-events
+          - maryland-ensemble-events
+          - frederick-center-events
+          - mdcc-deaf-community-events
+          - city-emergency-alerts
+          - county-health-alerts
+          - county-connector-schedules
+          - county-food-truck-roster
+      confirm_live:
+        description: "Required for a live provider request"
+        required: true
+        type: boolean
+        default: false
+      initialize_state:
+        description: "Allow the first live run to create a new budget ledger and comparison baseline"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+concurrency:
+  group: source-intelligence-pilot
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: Production
+    steps:
+      - name: Checkout without write credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact provider target
+        id: selection
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SCHEDULE: ${{ github.event.schedule || '' }}
+          INPUT_TOOL: ${{ inputs.tool || '' }}
+          INPUT_PROFILE: ${{ inputs.profile || '' }}
+          INPUT_SOURCE: ${{ inputs.source || '' }}
+          INPUT_CONFIRM_LIVE: ${{ inputs.confirm_live && 'true' || 'false' }}
+          INPUT_INITIALIZE_STATE: ${{ inputs.initialize_state && 'true' || 'false' }}
+        with:
+          script: |
+            const { resolveSourceIntelligenceSelection } = require("./scripts/lib/source-intelligence-schedule.cjs");
+            const selection = resolveSourceIntelligenceSelection({
+              eventName: process.env.EVENT_NAME,
+              eventSchedule: process.env.EVENT_SCHEDULE,
+              tool: process.env.INPUT_TOOL,
+              profile: process.env.INPUT_PROFILE,
+              source: process.env.INPUT_SOURCE,
+              confirmLive: process.env.INPUT_CONFIRM_LIVE,
+              initializeState: process.env.INPUT_INITIALIZE_STATE,
+            });
+            core.setOutput("mode", selection.mode);
+            core.setOutput("tool", selection.tool);
+            core.setOutput("profile", selection.profile);
+            core.setOutput("source", selection.source);
+            core.setOutput("live", String(selection.live));
+            core.setOutput("initialize_state", String(selection.initializeState));
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The provider cache and attempted-credit ledgers must survive ephemeral
+      # runners or daily/monthly caps would reset on every manual run.
+      - name: Restore source intelligence state
+        id: source-state
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            scripts/reports/source-scout-cache.json
+            scripts/reports/source-scout-usage.json
+            scripts/reports/source-watch/state.json
+          key: source-intelligence-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            source-intelligence-state-
+
+      - name: Zero-cost Tavily plan and preflight
+        if: ${{ steps.selection.outputs.tool == 'tavily-plan' || steps.selection.outputs.tool == 'tavily-scout' }}
+        env:
+          SCOUT_PROFILE: ${{ steps.selection.outputs.profile }}
+        run: |
+          set -o pipefail
+          npm run source:scout -- --profile="$SCOUT_PROFILE" 2>&1 | tee source-intelligence.log
+
+      - name: Zero-cost Firecrawl plan and preflight
+        if: ${{ steps.selection.outputs.tool == 'firecrawl-watch' }}
+        env:
+          WATCH_SOURCE: ${{ steps.selection.outputs.source }}
+        run: |
+          set -o pipefail
+          npm run source:watch -- --source="$WATCH_SOURCE" 2>&1 | tee source-intelligence.log
+
+      - name: Require explicit live confirmation
+        if: ${{ steps.selection.outputs.tool != 'tavily-plan' && steps.selection.outputs.live != 'true' }}
+        run: |
+          echo "::error title=Live confirmation required::Run the workflow again with confirm_live checked."
+          exit 1
+
+      - name: Keep live budget state on main
+        if: ${{ steps.selection.outputs.live == 'true' && github.ref != 'refs/heads/main' }}
+        run: |
+          echo "::error title=Live pilots run from main only::Choose the main branch so provider budgets and comparison state cannot split across branch-scoped caches."
+          exit 1
+
+      - name: Enforce durable provider spend ceilings
+        id: durable-budget
+        if: ${{ steps.selection.outputs.live == 'true' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SELECTED_TOOL: ${{ steps.selection.outputs.tool }}
+        with:
+          script: |
+            const policies = {
+              "tavily-scout": {
+                provider: "tavily",
+                liveRunName: "Source intelligence (tavily-live)",
+                reservation: 12,
+                dailyCeiling: 24,
+                monthlyCeiling: 300,
+              },
+              "firecrawl-watch": {
+                provider: "firecrawl",
+                liveRunName: "Source intelligence (firecrawl-live)",
+                reservation: 1,
+                dailyCeiling: 2,
+                monthlyCeiling: 30,
+              },
+            };
+            const planRunName = "Source intelligence (plan)";
+            const legacyRunNames = new Set([
+              "Source intelligence pilot",
+              // Runs created before the immutable provider-specific run-name
+              // expression landed use the workflow's plain display name.
+              // They may have spent against either provider, so reserve them
+              // against both instead of failing every future scheduled run.
+              "Source intelligence",
+            ]);
+            const policy = policies[process.env.SELECTED_TOOL];
+            if (!policy) {
+              core.setFailed("The selected live provider has no durable budget policy; no provider request is allowed.");
+              return;
+            }
+
+            const currentRunId = Number(process.env.GITHUB_RUN_ID);
+            const contextRunId = Number(context.runId);
+            const currentAttempt = Number(process.env.GITHUB_RUN_ATTEMPT);
+            if (
+              !Number.isSafeInteger(currentRunId) ||
+              currentRunId < 1 ||
+              currentRunId !== contextRunId ||
+              !Number.isInteger(currentAttempt) ||
+              currentAttempt < 1
+            ) {
+              core.setFailed("GitHub did not provide a valid current run ID and attempt; no provider request is allowed.");
+              return;
+            }
+
+            const now = new Date();
+            const nowMs = now.getTime();
+            const day = now.toISOString().slice(0, 10);
+            const month = day.slice(0, 7);
+            const dayStartMs = Date.parse(`${day}T00:00:00.000Z`);
+            const monthStartMs = Date.parse(`${month}-01T00:00:00.000Z`);
+            if (!Number.isFinite(nowMs) || !Number.isFinite(dayStartMs) || !Number.isFinite(monthStartMs)) {
+              core.setFailed("The UTC budget window could not be determined; no provider request is allowed.");
+              return;
+            }
+
+            // Workflow history is the durable reservation ledger. It survives
+            // cache loss and a runner dying after a provider request. Fetch all
+            // pages, count every attempt regardless of conclusion, and stop on
+            // any uncertain record before either provider secret is exposed.
+            const runs = await github.paginate(
+              github.rest.actions.listWorkflowRuns,
+              {
+                ...context.repo,
+                workflow_id: "source-intelligence.yml",
+                per_page: 100,
+              },
+            );
+            if (!Array.isArray(runs)) {
+              core.setFailed("GitHub returned malformed workflow history; no provider request is allowed.");
+              return;
+            }
+
+            const totals = Object.fromEntries(
+              Object.values(policies).map(({ provider }) => [
+                provider,
+                { dailyAttempts: 0, monthlyAttempts: 0 },
+              ]),
+            );
+            const liveNameToPolicy = new Map(
+              Object.values(policies).map((item) => [item.liveRunName, item]),
+            );
+            let currentSeen = false;
+            for (const run of runs) {
+              if (!run || typeof run !== "object") {
+                core.setFailed("GitHub returned a malformed workflow run; no provider request is allowed.");
+                return;
+              }
+              const runId = Number(run.id);
+              const runAttempt = Number(run.run_attempt);
+              const updatedAtMs =
+                typeof run.updated_at === "string"
+                  ? Date.parse(run.updated_at)
+                  : Number.NaN;
+              if (
+                !Number.isSafeInteger(runId) ||
+                runId < 1 ||
+                !Number.isInteger(runAttempt) ||
+                runAttempt < 1 ||
+                !Number.isFinite(updatedAtMs) ||
+                updatedAtMs > nowMs + 300_000 ||
+                typeof run.display_title !== "string" ||
+                typeof run.head_branch !== "string"
+              ) {
+                core.setFailed("GitHub returned uncertain workflow-run history; no provider request is allowed.");
+                return;
+              }
+              if (updatedAtMs < monthStartMs || run.head_branch !== "main") {
+                continue;
+              }
+              if (run.display_title === planRunName) {
+                continue;
+              }
+              if (legacyRunNames.has(run.display_title)) {
+                // Runs made before immutable provider names cannot be
+                // classified safely. Reserve each one against both providers
+                // rather than ignoring possible historical spend.
+                for (const providerTotals of Object.values(totals)) {
+                  providerTotals.monthlyAttempts += runAttempt;
+                  if (updatedAtMs >= dayStartMs) {
+                    providerTotals.dailyAttempts += runAttempt;
+                  }
+                }
+                continue;
+              }
+              const runPolicy = liveNameToPolicy.get(run.display_title);
+              if (!runPolicy) {
+                core.setFailed("A recent main-branch run has an unrecognized spend classification; no provider request is allowed.");
+                return;
+              }
+              const providerTotals = totals[runPolicy.provider];
+              providerTotals.monthlyAttempts += runAttempt;
+              if (updatedAtMs >= dayStartMs) {
+                providerTotals.dailyAttempts += runAttempt;
+              }
+              if (runId === currentRunId) {
+                if (currentSeen || run.display_title !== policy.liveRunName) {
+                  core.setFailed("GitHub history does not uniquely classify the current provider run; no provider request is allowed.");
+                  return;
+                }
+                currentSeen = true;
+                if (runAttempt !== currentAttempt) {
+                  core.setFailed("GitHub run history has not indexed the exact current attempt; no provider request is allowed.");
+                  return;
+                }
+              }
+            }
+            if (!currentSeen) {
+              core.setFailed("The current live run ID and attempt are absent from durable GitHub history; no provider request is allowed.");
+              return;
+            }
+
+            const providerTotals = totals[policy.provider];
+            const dailyReserved = providerTotals.dailyAttempts * policy.reservation;
+            const monthlyReserved = providerTotals.monthlyAttempts * policy.reservation;
+            if (
+              dailyReserved > policy.dailyCeiling ||
+              monthlyReserved > policy.monthlyCeiling
+            ) {
+              core.setFailed(
+                `${policy.provider} durable reservation ceiling reached: ${dailyReserved}/${policy.dailyCeiling} credits today and ${monthlyReserved}/${policy.monthlyCeiling} this UTC month. No provider request is allowed.`,
+              );
+              return;
+            }
+            core.setOutput("provider", policy.provider);
+            core.setOutput("day", day);
+            core.setOutput("month", month);
+            core.setOutput("daily-reserved-credits", String(dailyReserved));
+            core.setOutput("monthly-reserved-credits", String(monthlyReserved));
+            core.info(
+              `${policy.provider} durable reservation floor: ${dailyReserved}/${policy.dailyCeiling} credits today; ${monthlyReserved}/${policy.monthlyCeiling} this UTC month.`,
+            );
+
+      - name: Protect persistent budgets and comparison state
+        if: ${{ steps.selection.outputs.live == 'true' && steps.selection.outputs.initialize_state != 'true' }}
+        env:
+          RESTORED_STATE_KEY: ${{ steps.source-state.outputs.cache-matched-key }}
+          SELECTED_TOOL: ${{ steps.selection.outputs.tool }}
+        run: |
+          if [ -z "$RESTORED_STATE_KEY" ]; then
+            echo "::error title=Source state was not restored::If this is the first intentional live run, check initialize_state. Otherwise stop and recover the previous state before spending credits."
+            exit 1
+          fi
+          case "$SELECTED_TOOL" in
+            tavily-scout)
+              test -f scripts/reports/source-scout-usage.json || {
+                echo "::error title=Tavily usage ledger is missing::Check initialize_state only for the first intentional run."
+                exit 1
+              }
+              ;;
+            firecrawl-watch)
+              test -f scripts/reports/source-watch/state.json || {
+                echo "::error title=Firecrawl comparison baseline is missing::Check initialize_state only for the first intentional run."
+                exit 1
+              }
+              ;;
+          esac
+
+      - name: Run capped Tavily Source Scout
+        id: tavily-live
+        if: ${{ steps.selection.outputs.tool == 'tavily-scout' && steps.selection.outputs.live == 'true' }}
+        env:
+          SCOUT_PROFILE: ${{ steps.selection.outputs.profile }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+        run: |
+          rm -f scripts/reports/source-scout-github-issue.json
+          if [ -z "$TAVILY_API_KEY" ]; then
+            echo "::error title=Missing TAVILY_API_KEY::Add a fresh key to the GitHub Production environment."
+            exit 1
+          fi
+          set -o pipefail
+          npm run source:scout -- --live --confirm --profile="$SCOUT_PROFILE" 2>&1 | tee -a source-intelligence.log
+
+      - name: Open or update the Source Scout review queue
+        id: source-scout-review-queue
+        if: ${{ always() && steps.selection.outputs.tool == 'tavily-scout' && steps.selection.outputs.live == 'true' && (steps.tavily-live.outcome == 'success' || steps.tavily-live.outcome == 'failure') && hashFiles('scripts/reports/source-scout-github-issue.json') != '' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { updateSourceScoutIssues } = require("./scripts/lib/source-scout-issue.cjs");
+            await updateSourceScoutIssues({ github, context, core });
+
+      - name: Run one-source Firecrawl Source Watch pilot
+        id: firecrawl-live
+        if: ${{ steps.selection.outputs.tool == 'firecrawl-watch' && steps.selection.outputs.live == 'true' }}
+        env:
+          WATCH_SOURCE: ${{ steps.selection.outputs.source }}
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+        run: |
+          rm -f scripts/reports/source-watch/github-issue.json
+          if [ -z "$FIRECRAWL_API_KEY" ]; then
+            echo "::error title=Missing FIRECRAWL_API_KEY::Add the key to the GitHub Production environment."
+            exit 1
+          fi
+          set -o pipefail
+          npm run source:watch -- --live --confirm --source="$WATCH_SOURCE" 2>&1 | tee source-intelligence.log
+
+      - name: Open or update the per-source review queue
+        id: source-watch-review-queue
+        if: ${{ always() && steps.selection.outputs.tool == 'firecrawl-watch' && steps.selection.outputs.live == 'true' && (steps.firecrawl-live.outcome == 'success' || steps.firecrawl-live.outcome == 'failure') && hashFiles('scripts/reports/source-watch/github-issue.json') != '' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { updateSourceWatchIssues } = require("./scripts/lib/source-watch-issue.cjs");
+            await updateSourceWatchIssues({ github, context, core });
+
+      - name: Add operator result to job summary
+        if: always()
+        run: |
+          {
+            echo "## Source intelligence"
+            echo
+            echo "Review evidence only. No Radius data was published."
+            echo
+            echo '```text'
+            cat source-intelligence.log 2>/dev/null || echo "No provider run was completed."
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload review evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: source-intelligence-${{ steps.selection.outputs.tool }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            source-intelligence.log
+            scripts/reports/source-scout-latest.json
+            scripts/reports/source-scout-github-issue.json
+            scripts/reports/source-watch/source-watch-*.json
+            scripts/reports/source-watch/github-issue.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Save source intelligence state
+        if: ${{ always() && steps.selection.outputs.live == 'true' && (steps.selection.outputs.tool != 'firecrawl-watch' || steps.source-watch-review-queue.outcome == 'success') }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            scripts/reports/source-scout-cache.json
+            scripts/reports/source-scout-usage.json
+            scripts/reports/source-watch/state.json
+          key: source-intelligence-state-${{ github.run_id }}-${{ github.run_attempt }}

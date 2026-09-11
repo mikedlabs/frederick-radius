@@ -8,6 +8,8 @@
  *   - Phone numbers only populated where verified from an official .gov
  *     page or a directory entry. Unverified phones are deliberately
  *     omitted (not faked) — the user calls the office via the website.
+ *     Fourteen numbers backfilled Jul 2026 from the department-contacts.ts
+ *     sweep (each confirmed against the department's own page, 2026-06).
  *   - 911 / 988 / Poison Control are national lines, no source needed.
  *
  * Voice
@@ -25,7 +27,7 @@ export type DepartmentContact = {
   /** URL-safe slug, used as the React key and anchor. */
   slug: string;
   /** What jurisdiction owns this line. Drives section grouping. */
-  jurisdiction: "city" | "county" | "emergency";
+  jurisdiction: "city" | "county" | "state" | "emergency";
   /** Display name as a resident would say it. */
   name: string;
   /** One-sentence "call us about" line in resident voice. */
@@ -37,9 +39,11 @@ export type DepartmentContact = {
   phone?: string;
 };
 
-/** US 10-digit phone → "301-600-1380" for display. */
+/** US phone → display form: "301-600-1380", "1-800-222-1222", "555-1234". */
 export function formatPhone(digits: string): string {
   const d = digits.replace(/\D/g, "");
+  if (d.length === 11 && d.startsWith("1"))
+    return `1-${d.slice(1, 4)}-${d.slice(4, 7)}-${d.slice(7)}`;
   if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
   if (d.length === 7) return `${d.slice(0, 3)}-${d.slice(3)}`;
   return digits;
@@ -80,6 +84,18 @@ const EMERGENCY: DepartmentContact[] = [
     about: "The county hospital, on West 7th Street.",
     website: "https://www.frederickhealth.org/",
   },
+  {
+    // Pets have ERs too, and "animal hospital" names mislead in a crisis
+    // (beta-tester safety request, Jul 2026). The in-app guide carries the
+    // verified 24/7 ERs, urgent-care hours, and poison lines; no single
+    // phone belongs on this row because the right number depends on the
+    // tier, which is the guide's whole point.
+    slug: "pet-emergency",
+    jurisdiction: "emergency",
+    name: "Pet emergency",
+    about: "The two 24/7 animal ERs, urgent care, and pet poison lines. Verified.",
+    website: "/emergency-vet",
+  },
 ];
 
 // ─── City of Frederick ──────────────────────────────────────────────────
@@ -90,6 +106,7 @@ const CITY: DepartmentContact[] = [
     name: "Frederick Police",
     about: "City police, non-emergency. For active emergencies call 911.",
     website: "https://www.cityoffrederickmd.gov/99/Frederick-Police-Department",
+    phone: "3016002101",
   },
   {
     slug: "city-emergency-management",
@@ -104,7 +121,9 @@ const CITY: DepartmentContact[] = [
     name: "Public Works",
     about: "Streets, sidewalks, street trees, flooding, signal outages.",
     website: "https://www.cityoffrederickmd.gov/67/Public-Works",
-    phone: "3016001405",
+    // 24-hour DPW switchboard per the official page (verified 2026-07-17;
+    // the previously-listed 301-600-1405 appears nowhere on it).
+    phone: "3016001440",
   },
   {
     slug: "city-parks-recreation",
@@ -126,6 +145,7 @@ const CITY: DepartmentContact[] = [
     name: "Code Enforcement",
     about: "Property maintenance, abandoned vehicles, zoning complaints.",
     website: "https://www.cityoffrederickmd.gov/157/Code-Enforcement",
+    phone: "3016003825",
   },
   {
     slug: "city-building-permits",
@@ -140,6 +160,7 @@ const CITY: DepartmentContact[] = [
     name: "Planning",
     about: "Land use, historic preservation, comp plan.",
     website: "https://www.cityoffrederickmd.gov/221/Planning",
+    phone: "3016001499",
   },
   {
     slug: "city-housing-human-services",
@@ -154,6 +175,7 @@ const CITY: DepartmentContact[] = [
     name: "Sustainability",
     about: "Climate plan, energy, water conservation, green programs.",
     website: "https://www.cityoffrederickmd.gov/891/Sustainability",
+    phone: "3016002843",
   },
   {
     slug: "city-urban-forestry",
@@ -168,7 +190,8 @@ const CITY: DepartmentContact[] = [
     name: "Finance",
     about: "City taxes, billing, business licenses.",
     website: "https://www.cityoffrederickmd.gov/193/Finance",
-    phone: "3016001166",
+    // Official Finance page number (verified 2026-07-17; 301-600-1166 was wrong).
+    phone: "3016001399",
   },
   {
     slug: "city-utility-billing",
@@ -184,6 +207,7 @@ const CITY: DepartmentContact[] = [
     name: "Public Affairs",
     about: "Press inquiries, public records, city communications.",
     website: "https://www.cityoffrederickmd.gov/277/Public-Affairs",
+    phone: "3016001380",
   },
 ];
 
@@ -211,6 +235,7 @@ const COUNTY: DepartmentContact[] = [
     name: "Sheriff's Office",
     about: "County police, non-emergency. For active emergencies call 911.",
     website: "https://www.frederickcosheriff.com/",
+    phone: "3016001046",
   },
   {
     slug: "county-fire-rescue",
@@ -225,13 +250,15 @@ const COUNTY: DepartmentContact[] = [
     name: "Emergency Management",
     about: "Countywide alerts, severe weather, disaster response.",
     website: "https://frederickcountymd.gov/2001/Emergency-Management",
+    phone: "3016006790",
   },
   {
     slug: "county-animal-control",
     jurisdiction: "county",
     name: "Animal Control",
-    about: "Stray, injured, or dangerous animals. Adoption and licensing.",
+    about: "Animal Control handles stray, injured, or dangerous animals as well as adoption and licensing.",
     website: "https://www.frederickcountymd.gov/15/Animal-Control",
+    phone: "3016001546",
   },
   {
     slug: "county-health",
@@ -239,6 +266,7 @@ const COUNTY: DepartmentContact[] = [
     name: "Health Department",
     about: "Vaccines, public health programs, food and water safety.",
     website: "https://health.frederickcountymd.gov/",
+    phone: "3016001029",
   },
   {
     slug: "county-solid-waste",
@@ -260,6 +288,7 @@ const COUNTY: DepartmentContact[] = [
     name: "TransIT Services",
     about: "County buses, routes, schedules, paratransit.",
     website: "https://frederickcountymd.gov/105/Transit-Services",
+    phone: "3016002065",
   },
   {
     slug: "county-parks-rec",
@@ -282,6 +311,7 @@ const COUNTY: DepartmentContact[] = [
     name: "Family Services",
     about: "Programs for kids and families, child care, supportive services.",
     website: "https://frederickcountymd.gov/16/Family-Services",
+    phone: "3016001200",
   },
   {
     slug: "county-planning-permitting",
@@ -297,6 +327,7 @@ const COUNTY: DepartmentContact[] = [
     name: "Public Works",
     about: "County roads, drainage, signs, snow removal outside city limits.",
     website: "https://frederickcountymd.gov/19/Public-Works",
+    phone: "3016001129",
   },
   {
     slug: "county-housing",
@@ -304,6 +335,7 @@ const COUNTY: DepartmentContact[] = [
     name: "Housing",
     about: "Housing assistance, fair-housing complaints, rental programs.",
     website: "https://frederickcountymd.gov/6366/Housing",
+    phone: "3016001061",
   },
   {
     slug: "county-courts",
@@ -318,6 +350,21 @@ const COUNTY: DepartmentContact[] = [
     name: "County Council",
     about: "Legislative body, meeting agendas, public comment.",
     website: "https://frederickcountymd.gov/591/County-Council",
+    phone: "3016001135",
+  },
+];
+
+// ─── State of Maryland ──────────────────────────────────────────────────
+// State lines residents ask the county app for anyway. Phone verified
+// from mva.maryland.gov (July 2026).
+const STATE: DepartmentContact[] = [
+  {
+    slug: "state-mva",
+    jurisdiction: "state",
+    name: "MVA (Motor Vehicle Administration)",
+    about: "Driver's license, vehicle registration, REAL ID, and permits. Book the Frederick branch online.",
+    website: "https://mva.maryland.gov/",
+    phone: "4107687000",
   },
 ];
 
@@ -325,4 +372,173 @@ export const DEPARTMENTS: readonly DepartmentContact[] = [
   ...EMERGENCY,
   ...CITY,
   ...COUNTY,
+  ...STATE,
 ];
+
+/**
+ * Browse-by-NEED taxonomy. Residents think "I have a problem with my
+ * [house / pet / car / trash]," not "which level of government owns this."
+ * Each non-emergency department is filed under a life-area topic so the
+ * directory can be scanned by need, with the jurisdiction kept only as a
+ * small tag on the row. Kept as a slug→topic map (not a field on every
+ * object) so the department records stay a clean verified source of truth.
+ */
+export type TopicId =
+  | "home" | "utilities" | "pets" | "transport"
+  | "safety" | "money" | "health" | "parks" | "govt";
+
+/** Ordered for display: the everyday, high-frequency needs first. `icon` is a
+ *  lucide-react component name resolved in the directory. */
+export const TOPICS: readonly { id: TopicId; label: string; icon: string }[] = [
+  { id: "home",      label: "Home & property",       icon: "House" },
+  { id: "utilities", label: "Trash, water & recycling", icon: "Trash2" },
+  { id: "pets",      label: "Pets & animals",        icon: "PawPrint" },
+  { id: "transport", label: "Getting around",        icon: "Bus" },
+  { id: "safety",    label: "Police, fire & safety", icon: "ShieldCheck" },
+  { id: "health",    label: "Health & family",       icon: "HeartPulse" },
+  { id: "money",     label: "Money, taxes & records", icon: "Landmark" },
+  { id: "parks",     label: "Parks & recreation",    icon: "Trees" },
+  { id: "govt",      label: "Government & voting",    icon: "Vote" },
+];
+
+const TOPIC_BY_SLUG: Record<string, TopicId> = {
+  // Home & property
+  "city-public-works": "home", "city-code-enforcement": "home",
+  "city-building-permits": "home", "city-planning": "home",
+  "city-sustainability": "home", "city-urban-forestry": "home",
+  "county-planning-permitting": "home", "county-public-works": "home",
+  // Trash, water & recycling
+  "county-solid-waste": "utilities", "city-utility-billing": "utilities",
+  "county-water-sewer": "utilities",
+  // Pets & animals
+  "county-animal-control": "pets",
+  // Getting around
+  "city-parking": "transport", "county-transit": "transport", "state-mva": "transport",
+  // Police, fire & safety
+  "city-frederick-police": "safety", "city-emergency-management": "safety",
+  "county-sheriff": "safety", "county-fire-rescue": "safety",
+  "county-emergency-management": "safety",
+  // Health & family
+  "county-health": "health", "county-aging": "health",
+  "county-family-services": "health", "city-housing-human-services": "health",
+  "county-housing": "health",
+  // Money, taxes & records
+  "city-finance": "money", "county-courts": "money",
+  // Parks & recreation
+  "city-parks-recreation": "parks", "county-parks-rec": "parks",
+  // Government & voting
+  "county-main": "govt", "county-executive": "govt",
+  "county-council": "govt", "city-public-affairs": "govt",
+};
+
+/** The life-area topic a department belongs to, or null for the pinned
+ *  emergency lines (which are never filed under a browse topic). */
+export function topicOf(slug: string): TopicId | null {
+  return TOPIC_BY_SLUG[slug] ?? null;
+}
+
+/** The curated "most important numbers" set — the lines worth pinning and
+ *  worth being able to text or email to family in one tap. */
+const ESSENTIAL_SLUGS: readonly string[] = [
+  "emergency-911", "suicide-crisis-988", "poison-control",
+  "city-frederick-police", "county-sheriff", "county-animal-control", "county-main",
+];
+export function isEssential(slug: string): boolean {
+  return ESSENTIAL_SLUGS.includes(slug);
+}
+
+/** Lines answered around the clock (dispatch, national crisis/poison, ERs).
+ *  Only slugs verified 24/7 from the official page are listed, so the badge
+ *  never overclaims that a regular office is open. */
+const OPEN_24_7: ReadonlySet<string> = new Set([
+  "emergency-911", "suicide-crisis-988", "poison-control",
+  "frederick-health-hospital", "pet-emergency",
+  "city-frederick-police", "county-sheriff", "city-public-works",
+]);
+export function isOpen24_7(slug: string): boolean {
+  return OPEN_24_7.has(slug);
+}
+
+/**
+ * Plain-language → department routing. The answer engine ("ask
+ * Frederick") uses this to turn a buried-gov question ("when's
+ * recycling", "report a pothole", "dog at large", "building permit")
+ * into a direct department answer with a phone + source. Each hint maps
+ * everyday words to a substring of the canonical department name.
+ */
+const DEPT_HINTS: { terms: string[]; match: string }[] = [
+  { terms: ["trash", "garbage", "recycl", "refuse", "yard waste", "compost", "bulk", "dump", "landfill"], match: "solid waste" },
+  { terms: ["permit", "building", "construction", "zoning", "inspection", "renovat"], match: "permit" },
+  { terms: ["pothole", "road", "street", "snow", "plow", "sidewalk", "sign", "drain"], match: "public works" },
+  { terms: ["pet", "dog", "cat", "animal", "stray", "leash"], match: "animal control" },
+  { terms: ["water", "sewer"], match: "water and sewer" },
+  { terms: ["bus", "transit", "ride", "paratransit"], match: "transit" },
+  { terms: ["parking", "meter", "garage", "ticket"], match: "parking" },
+  { terms: ["tree", "forestry", "branch"], match: "urban forestry" },
+  { terms: ["tax"], match: "finance" },
+  { terms: ["utility bill", "payment", "billing"], match: "billing" },
+  { terms: ["code", "nuisance", "violation", "blight"], match: "code enforcement" },
+  { terms: ["police", "crime", "report"], match: "police" },
+  { terms: ["fire", "rescue", "ems"], match: "fire and rescue" },
+  { terms: ["health", "clinic", "vaccine"], match: "health" },
+  { terms: ["senior", "aging", "elder"], match: "aging" },
+  // The MVA is the most-asked state line and the catalog has no place row
+  // for it, so a bare "dmv" used to dead-end on an empty overlay (answer
+  // audit, Jul 2026). Only unambiguous vehicle terms: plain "registration"
+  // is left out because voter registration is a different door.
+  {
+    terms: [
+      "dmv", "mva", "drivers license", "driver's license", "license plate",
+      "vehicle registration", "registration renewal", "real id",
+      "learners permit", "car title", "emissions test",
+    ],
+    match: "mva",
+  },
+];
+
+/**
+ * Find the department(s) that answer a plain-language query. Direct
+ * name/about matches first, then everyday-word hints. Returns [] for
+ * very short queries.
+ */
+export function findDepartments(query: string, limit = 2): DepartmentContact[] {
+  const lq = query.toLowerCase().trim();
+  if (lq.length < 3) return [];
+
+  const direct = DEPARTMENTS.filter(
+    (d) => d.name.toLowerCase().includes(lq) || d.about.toLowerCase().includes(lq),
+  );
+  // Hint terms match on WORD BOUNDARIES, not raw substrings: "pride"
+  // contains "ride", which made a Pride query answer with TransIT buses
+  // (fresh-eyes audit, Jul 2026). Single-word hints must equal a query
+  // token; multi-word hints still match as phrases.
+  const tokens = lq.split(/[^a-z0-9]+/).filter(Boolean);
+  const hinted: DepartmentContact[] = [];
+  for (const h of DEPT_HINTS) {
+    const hit = h.terms.some((t) =>
+      t.includes(" ") ? lq.includes(t) : tokens.includes(t),
+    );
+    if (hit) {
+      const d = DEPARTMENTS.find((x) => x.name.toLowerCase().includes(h.match));
+      if (d) hinted.push(d);
+    }
+  }
+
+  const seen = new Set<string>();
+  const out: DepartmentContact[] = [];
+  for (const d of [...hinted, ...direct]) {
+    if (!seen.has(d.slug)) {
+      seen.add(d.slug);
+      out.push(d);
+    }
+  }
+  return out.slice(0, limit);
+}
+
+/** Resident-facing source label for an answer's provenance line. */
+export function jurisdictionLabel(j: DepartmentContact["jurisdiction"]): string {
+  return j === "city" ? "City of Frederick"
+    : j === "county" ? "Frederick County"
+    : j === "state" ? "State of Maryland"
+    : "Emergency";
+}

@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "data_version": "sha256:74d7bdcc72fea807c789a9386fc8911cc36cf3e047915613ed0b4902a40f6aa6",
+  "streams": {
+    "basemap": {
+      "promoted_at": "2026-08-06T00:00:00Z",
+      "artifacts": [
+        {
+          "path": "src/data/basemap-release.json",
+          "sha256": "cd636527f64cdb6707c53ef7bd1475ba26084230e2f1c66690d843fb12b4fca9",
+          "records": 6,
+          "bytes": 5898
+        }
+      ]
+    },
+    "places": {
+      "promoted_at": "2026-09-09T04:33:44.823Z",
+      "artifacts": [
+        {
+          "path": "src/data/places.ts",
+          "sha256": "921409883084164642dd3db03658326d5b47d8312711bfbfebb04cc2ed5631c0",
+          "records": null,
+          "bytes": 126228
+        },
+        {
+          "path": "src/data/places-dfp.json",
+          "sha256": "d910bc7d9ab0f5ef006995aaaeadca6161fed2c900c1677ef26294bc887090d9",
+          "records": 1279,
+          "bytes": 749904
+        },
+        {
+          "path": "src/data/places-discovered.json",
+          "sha256": "76c34ef5aefc944f7e0b8057e4495a1ac150d6d207e02eb7aefe28fc3a6d0f96",
+          "records": 1069,
+          "bytes": 654144
+        },
+        {
+          "path": "src/data/places-enrichment.json",
+          "sha256": "a44fd6a7ad5c241b2cb2f2cab3332fc56e35a37f3fac08f1642a743632bd8b77",
+          "records": 2434,
+          "bytes": 11307460
+        },
+        {
+          "path": "src/data/places-dedup.json",
+          "sha256": "9ada83f82055bb836e8cb910db817c2a4947a1001b1f36cf6978011d73335992",
+          "records": 208,
+          "bytes": 17023
+        },
+        {
+          "path": "src/data/places-overrides.json",
+          "sha256": "db95733a9cf344faa8d9a1515351b71fb78fbf5ec0fdff71082180a545df8b96",
+          "records": 4,
+          "bytes": 39193
+        },
+        {
+          "path": "src/data/place-status-overrides.json",
+          "sha256": "17ce722404512719660094aa702ed668be91410dd81e08ae045c022e892e0841",
+          "records": 8,
+          "bytes": 4008
+        },
+        {
+          "path": "src/data/places-hours-refresh.json",
+          "sha256": "97fe3be647d2e12796622f22b47668d8edc285c3620474f8b82ef79485eafebc",
+          "records": 1522,
+          "bytes": 640881
+        },
+        {
+          "path": "src/data/business-status.json",
+          "sha256": "1962525d966db4edfee07f7171dabce799dbdcc5fbebcc60661cf2f18f6d46a4",
+          "records": 4,
+          "bytes": 380
+        },
+        {
+          "path": "src/data/known-for.json",
+          "sha256": "913122ea6565d4d26e1d7cf3639bd47e8c39c1f203c20b1dc1884a482e7462f8",
+          "records": 5,
+          "bytes": 1255
+        },
+        {
+          "path": "src/data/photo-suppress.json",
+          "sha256": "53d9f642a79a1049b8fce4a0aff4851c7f4e361f73f1a8e0771a5997dd5bda38",
+          "records": 3,
+          "bytes": 2784
+        },
+        {
+          "path": "src/data/local-favorites.json",
+          "sha256": "52a87886599abcade871af91eb18ac08bb72a7a511f9563c613c32fb8be4f450",
+          "records": 2,
+          "bytes": 630
+        },
+        {
+          "path": "src/data/seasonal-places.json",
+          "sha256": "93a4accdfa93a424eba8cfad092dd74f5ba2f2621177c3b25b215eefd6d2215c",
+          "records": 1,
+          "bytes": 586
+        },
+        {
+          "path": "src/data/places-amenities.json",
+          "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+          "records": 0,
+          "bytes": 3
+        },
+        {
+          "path": "src/data/farmers-markets.json",
+          "sha256": "98074ca53c2c319cdc42c56441e8a0bcdafb7441136095e1fd921a8d3a732401",
+          "records": 9,
+          "bytes": 1949
+        },
+        {
+          "path": "src/data/descriptions.json",
+          "sha256": "1764ca877b1555f2cb811d04e71316c97da9ac6fe7b89b26d9cfb0aeb2c90add",
+          "records": 96,
+          "bytes": 50850
+        },
+        {
+          "path": "src/data/categories.ts",
+          "sha256": "bbf1b69e747da99333a9f2ef1b3b04983f105f61515d32d978d8e5aa5cb95023",
+          "records": null,
+          "bytes": 18157
+        },
+        {
+          "path": "src/data/municipalities.ts",
+          "sha256": "3156ae89342f88d87850e186d8929ccb8c90cb0e44b776b4cd7a9446d5a98120",
+          "records": null,
+          "bytes": 10709
+        },
+        {
+          "path": "src/data/events.ts",
+          "sha256": "6f87b8191a64d5b24ad20f359de22982dfe797d27c0df8103fba4080915875c1",
+          "records": null,
+          "bytes": 30226
+        },
+        {
+          "path": "src/data/cravings.ts",
+          "sha256": "fc38b3560608599ae15b19b2554339c310aaec8bb17c217fff3c642b968bbbe3",
+          "records": null,
+          "bytes": 26649
+        },
+        {
+          "path": "src/data/hidden-gems.ts",
+          "sha256": "8f13a4e637071322d00df90449ffada37c7d99a94be4f1e42690c272125c7668",
+          "records": null,
+          "bytes": 1317
+        },
+        {
+          "path": "src/data/reliable-open-windows.ts",
+          "sha256": "d974786c064b85423edded873f59449ebbf07a45fd0414f9e087b99bcad028ea",
+          "records": null,
+          "bytes": 6759
+        },
+        {
+          "path": "src/lib/relevance.ts",
+          "sha256": "c81cd93694781be6b78f0af031d3a3411fbeffd4261498ded4d8758a0f5aa446",
+          "records": null,
+          "bytes": 11036
+        },
+        {
+          "path": "src/lib/integrations/closures.ts",
+          "sha256": "61715f77fbe1f2231fb8a88ef009df2650ee427566505b2bc0382a72f62a6ab4",
+          "records": null,
+          "bytes": 2608
+        },
+        {
+          "path": "src/lib/integrations/wikimedia.ts",
+          "sha256": "d3f3a3fad2cb76d10b631c55203063ffd37a0334c05f8df7001b0227a26a5562",
+          "records": null,
+          "bytes": 8185
+        },
+        {
+          "path": "src/data/business-info.json",
+          "sha256": "460370d2c65e13b5081d753307ab21481817e709d73530a120500e3704f40000",
+          "records": 142,
+          "bytes": 115622
+        },
+        {
+          "path": "src/data/field-notes.json",
+          "sha256": "f93ec6183931e12d0768516011c293b78ad84e9944ad6f2ece9e04246aa12df9",
+          "records": 83,
+          "bytes": 110115
+        },
+        {
+          "path": "src/data/course-info.json",
+          "sha256": "1de6fe255f70a9c3572f1d802a760830664a3868a3b8cdb06f1ef972feb8e2b4",
+          "records": 7,
+          "bytes": 1659
+        },
+        {
+          "path": "src/data/tags.ts",
+          "sha256": "712f9ac842706594b38e57a56779f8f49629fb2d73a10d1edb77fae693cdde09",
+          "records": null,
+          "bytes": 4451
+        },
+        {
+          "path": "src/data/loc-archive.ts",
+          "sha256": "68cb1cff1dc48a6877e6e85ae8d7d7f44d5f8d6f95fe9e68a253a88b13f972e6",
+          "records": null,
+          "bytes": 29529
+        },
+        {
+          "path": "public/images/seasons/aerial-manifest.json",
+          "sha256": "dfeef1d51f5c0fefd54f1da2b2b595f1055ea8fe23da74e08e6167a685618434",
+          "records": 104,
+          "bytes": 21539
+        },
+        {
+          "path": "src/data/place-refresh-identities.json",
+          "sha256": "07c8c3818114ef9736260b8566f419f514866c4db5c6cf1d606f5960616fe4eb",
+          "records": 1523,
+          "bytes": 176085
+        },
+        {
+          "path": "src/data/places-client.json",
+          "sha256": "c17288642b0127d84189fe8f415ee217ff98b7850909f3035d7c07529964287b",
+          "records": 1570,
+          "bytes": 2261417
+        },
+        {
+          "path": "src/data/places-client-hours.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "records": 0,
+          "bytes": 2
+        },
+        {
+          "path": "src/data/event-venue-photo-credits.json",
+          "sha256": "adb22e498465e6c21e1efafee6ec37f3a3e92ab44f4e6f0eec910d33ad9db4a7",
+          "records": 1328,
+          "bytes": 778650
+        }
+      ]
+    },
+    "sources": {
+      "promoted_at": "2026-08-27T16:50:28.671Z",
+      "artifacts": [
+        {
+          "path": "src/data/source-registry.generated.json",
+          "sha256": "96df7ded4bf3e161d5cf671b38dd26113b8b2c660c213084ab058d437160f3d4",
+          "records": 124,
+          "bytes": 80552
+        }
+      ]
+    },
+    "transit": {
+      "promoted_at": "2026-09-09T04:50:09.418Z",
+      "artifacts": [
+        {
+          "path": "src/data/transit.json",
+          "sha256": "bdcaf096f7917765ee30859e425f0d1d1c6acd87f4580728ffecb1975ce85a62",
+          "records": 8,
+          "bytes": 77283
+        },
+        {
+          "path": "src/data/transit-network.json",
+          "sha256": "e194bc0d306ac84eb1909ddb505d35ecdb249dc2674cd8411d12b36ca6aaaa9b",
+          "records": 2,
+          "bytes": 124887
+        },
+        {
+          "path": "src/data/transit-trips.json",
+          "sha256": "d97f996037050ed3097f1cb9e3fab1435df85e209061c413bac8af9f8d816bd4",
+          "records": 883,
+          "bytes": 99172
+        }
+      ]
+    },
+    "venue-events": {
+      "promoted_at": "2026-08-02T04:38:26Z",
+      "artifacts": [
+        {
+          "path": "src/data/venue-event-source-inventory.json",
+          "sha256": "c1620253be2f2ed936a1876552e153bcf0a9b8dd0913076510d846a1f1f388f1",
+          "records": 29,
+          "bytes": 17423
+        },
+        {
+          "path": "src/data/venue-event-source-state.json",
+          "sha256": "8f6544d1692e59d2baed262394ffa68e204fa05324fa55006494f44b0a0d84b3",
+          "records": 2,
+          "bytes": 3286
+        },
+        {
+          "path": "src/data/venue-events.json",
+          "sha256": "b9388f6baa467ba0021125980cc57a0e97ce8f80022b68a1e93bd52548041db8",
+          "records": 26,
+          "bytes": 15404
+        }
+      ]
+    },
+    "amenities": {
+      "promoted_at": "2026-08-23T00:29:36.000Z",
+      "artifacts": [
+        {
+          "path": "src/data/amenities.json",
+          "sha256": "d9efd6192e451c5708e013504f98cfeb8abb8c58cc7d3131c52b050605f1b2cf",
+          "records": 792,
+          "bytes": 108920
+        }
+      ]
+    }
+  }
+}

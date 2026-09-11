@@ -1,27 +1,67 @@
 "use client";
 
+import { townAccent } from "@/lib/townAccent";
 import { useEffect, useMemo, useState } from "react";
 import { useSavedList, useMounted, type SavedRef } from "@/hooks/useSaved";
 import { useFollowedSlugs } from "@/hooks/useFollows";
 import { useRecentPlaces, useClearRecentPlaces } from "@/hooks/useRecentPlaces";
+import { useAllNotes, type PlaceNote } from "@/hooks/useNotes";
+import { useAllSavedTags } from "@/hooks/useSavedTags";
+import { useBeenList } from "@/hooks/useBeenHere";
 // A2.8: SavedList no longer static-imports clientPlaceBySlug, so
 // /saved's client bundle no longer ships places-client.json (~2MB).
 // Place data is hydrated via /api/places/by-slugs on mount.
 import type { PlaceCardData } from "@/lib/loaders/places";
-import { EVENT_BY_SLUG } from "@/data/events";
+import { MAX_FOLLOWED_PLACES } from "@/lib/follows-contract";
+// Saved events hydrate the same way saved places do — via an API, not an
+// in-bundle index. The only event index a client could hold is the ~30-row
+// curated seed set in src/data/events.ts, and ingested/live slugs are
+// namespaced so they can never appear in it. Reading that map here meant
+// every event saved from a real feed silently vanished from this page.
+import type { EventWithMeta } from "@/lib/loaders/events";
+import type { EventsBySlugsResolution } from "@/lib/loaders/eventsBySlugs";
+import { normalizeRequestedEventSlugList } from "@/lib/events/eventSlugBatch";
 import PlaceCard from "@/components/place/PlaceCard";
-import EventCard from "@/components/event/EventCard";
+import MyTaps from "@/components/beer/MyTaps";
+import SavedWallet from "@/components/saved/SavedWallet";
+import SavedEventWallet from "@/components/saved/SavedEventWallet";
+import SavedTransitSection from "@/components/saved/SavedTransitSection";
+import { useSavedTransitBuses } from "@/components/transit/useSavedTransitBuses";
+import { useSavedTransitStops } from "@/components/transit/useSavedTransitStops";
+import KeepRadiusCard from "@/components/pwa/KeepRadiusCard";
+import { fmtClockShort } from "@/components/saved/walletFacts";
+import AppMapClient from "@/components/map/AppMapClient";
+import ShareButton from "@/components/place/ShareButton";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { getHomeMuni } from "@/lib/personalize";
 import Link from "next/link";
-import { Bookmark, Cloud, LogIn, MapPin, Sparkles, Calendar, UtensilsCrossed } from "lucide-react";
+import {
+  ArrowRight,
+  BusFront,
+  ChevronDown,
+  Layers,
+  MapPin,
+  Search,
+  Settings,
+} from "lucide-react";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
+import FilterChip from "@/components/ui/FilterChip";
+import { isOpenNow } from "@/lib/hours";
 import { haversineMeters } from "@/lib/geo";
+import { isEventToday } from "@/lib/eventWhenLabel";
+import { isUpcomingEvent } from "@/lib/events/visible";
+import Passport from "@/components/saved/Passport";
+import type { ReactNode } from "react";
+import { withBrowseReturnTo } from "@/lib/browse-return";
+import { useSavedJourney } from "./useSavedJourney";
 
-type SavedSortKey = "category" | "recent" | "az" | "distance";
+type SavedSortKey = "town" | "category" | "recent" | "az" | "distance" | "open";
 
 const SORT_OPTIONS: ReadonlyArray<SortOption<SavedSortKey>> = [
+  { key: "town", label: "By town", hint: "Group saved places by town" },
+  { key: "open", label: "Open now", hint: "What you can go to right now" },
   { key: "category", label: "By category", hint: "Group by what kind of place" },
   { key: "recent", label: "Recent", hint: "Most recently saved first" },
   { key: "az", label: "A→Z", hint: "Alphabetical by name" },
@@ -29,60 +69,347 @@ const SORT_OPTIONS: ReadonlyArray<SortOption<SavedSortKey>> = [
 ];
 
 const SAVED_SORT_STORAGE_KEY = "fr.saved-sort";
+const SAVED_VIEW_STORAGE_KEY = "fr.saved-view";
 
-type DecoratedEvent = ReturnType<typeof decorateEvent>;
+// Deterministic per-town accent so each town reads as its own colored
+// "chapter" of the field guide (matches the town grid on /places).
 
-function decorateEvent(e: NonNullable<(typeof EVENT_BY_SLUG)[string]>) {
+/**
+ * Build a /plan share token from a set of saved place slugs — the same
+ * PlanSpec the planner's shared-plan path decodes (`{ v:1, i, s:[{p}] }`,
+ * URL-safe base64 of JSON). Mirrored here ON PURPOSE: importing
+ * planner.ts would drag the ~2MB client place index into the Saved bundle
+ * (see the by-slugs note at the top of this file). Keep in sync with
+ * encodeSpec/PlanSpec in src/lib/integrations/planner.ts. `reconstructPlan`
+ * preserves stop ORDER, so the slugs go in the order we want them walked.
+ */
+function planTokenFromSaved(slugs: string[]): string {
+  const spec = {
+    v: 1,
+    i: { audience: "friends", vibe: "easy", duration_hours: 4 },
+    s: slugs.map((p) => ({ p })),
+  };
+  const json = JSON.stringify(spec);
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** /api/events/by-slugs returns rows already decorated at the loader
+ *  boundary (provenance, geo confidence, category and town names), so this
+ *  surface renders them rather than re-deriving anything. */
+type DecoratedEvent = EventWithMeta;
+
+/** Hydrate a bounded saved-event batch without putting personal state in a
+ * query string or risking browser/proxy URL limits. Exported for the focused
+ * client contract test. */
+export async function fetchSavedEventsHydration(
+  slugs: readonly unknown[],
+  signal?: AbortSignal,
+): Promise<EventsBySlugsResolution> {
+  const requested = normalizeRequestedEventSlugList(slugs);
+  const response = await fetch("/api/events/by-slugs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slugs: requested }),
+    signal,
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = (await response.json()) as {
+    events?: unknown;
+    resolvedSlugs?: unknown;
+    unresolvedSlugs?: unknown;
+    missingSlugs?: unknown;
+    degraded?: unknown;
+  };
+  if (!Array.isArray(data.events)) throw new Error("Invalid events response");
+  const events = data.events as EventWithMeta[];
+  const resolved = new Set(events.map((event) => event.slug));
+  // During an atomic deployment these fields arrive together. The fallback is
+  // intentionally conservative for an older cached API response: an omitted
+  // row remains unresolved rather than being misreported as deleted.
+  const unresolvedSlugs = Array.isArray(data.unresolvedSlugs)
+    ? normalizeRequestedEventSlugList(data.unresolvedSlugs)
+    : requested.filter((slug) => !resolved.has(slug));
+  const missingSlugs = Array.isArray(data.missingSlugs)
+    ? normalizeRequestedEventSlugList(data.missingSlugs)
+    : [];
+  const resolvedSlugs = Array.isArray(data.resolvedSlugs)
+    ? data.resolvedSlugs.flatMap((value) => {
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          return [];
+        }
+        const row = value as Record<string, unknown>;
+        const requestedSlug = normalizeRequestedEventSlugList([
+          row.requestedSlug,
+        ])[0];
+        const canonicalSlug = normalizeRequestedEventSlugList([
+          row.canonicalSlug,
+        ])[0];
+        return requestedSlug && canonicalSlug
+          ? [{ requestedSlug, canonicalSlug }]
+          : [];
+      })
+    : events.map((event) => ({
+        requestedSlug: event.slug,
+        canonicalSlug: event.slug,
+      }));
   return {
-    ...e,
-    distance_m: undefined,
-    category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
-    municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
+    events,
+    resolvedSlugs,
+    unresolvedSlugs,
+    missingSlugs,
+    degraded:
+      typeof data.degraded === "boolean"
+        ? data.degraded
+        : unresolvedSlugs.length > 0,
   };
 }
 
-/** Curated seeds for the empty state — six Frederick favorites that
- *  most visitors should know about. Picked by category breadth so the
- *  list shows the *shape* of the directory, not just food. Slugs match
- *  the canonical -town suffix form in places-client.json. */
-const EMPTY_SEEDS: Array<{ slug: string; reason: string }> = [
-  { slug: "monocacy-national-battlefield-frederick", reason: "The battle that saved Washington in 1864." },
-  { slug: "carroll-creek-linear-park-frederick", reason: "Downtown's water + art park." },
-  { slug: "olde-mother-brewing-frederick", reason: "Hometown brewery, year-round taproom." },
-  { slug: "schifferstadt-architectural-museum-frederick", reason: "The county's oldest house, still standing." },
-  { slug: "national-museum-civil-war-medicine-frederick", reason: "Small museum, big story." },
-  { slug: "sky-stage", reason: "Outdoor stage built inside a ruin." },
-];
+/** Existing row-only contract retained for tests and any small callers. */
+export async function fetchSavedEventsBySlugs(
+  slugs: readonly unknown[],
+  signal?: AbortSignal,
+): Promise<EventWithMeta[]> {
+  return (await fetchSavedEventsHydration(slugs, signal)).events;
+}
 
-export default function SavedList({ isSignedIn }: { isSignedIn: boolean }) {
+/**
+ * Reconcile one saved-event refresh without turning uncertainty into loss.
+ * Confirmed missing slugs are removed so a previously hydrated card cannot
+ * stay stale forever. Unresolved slugs are deliberately untouched, preserving
+ * the last known card while a provider or archive is temporarily unavailable.
+ */
+export function mergeSavedEventHydration(
+  previous: ReadonlyMap<string, EventWithMeta>,
+  result: EventsBySlugsResolution,
+): Map<string, EventWithMeta> {
+  const next = new Map(previous);
+  const resolved = new Set(result.events.map((event) => event.slug));
+  for (const slug of result.missingSlugs) {
+    // A malformed response must not let a status field override an event row
+    // delivered in the same payload. The row is the stronger evidence.
+    if (!resolved.has(slug)) next.delete(slug);
+  }
+  for (const event of result.events) next.set(event.slug, event);
+  const eventsByCanonical = new Map(
+    result.events.map((event) => [event.slug, event]),
+  );
+  for (const binding of result.resolvedSlugs) {
+    const event = eventsByCanonical.get(binding.canonicalSlug);
+    if (event) next.set(binding.requestedSlug, event);
+  }
+  return next;
+}
+
+/** A successful catalog answer can confirm an omitted slug; a failed
+ * request cannot. Keep previously loaded cards through a failed refresh. */
+export function mergeSavedPlaceHydration(
+  previous: ReadonlyMap<string, PlaceCardData>,
+  requested: readonly string[],
+  places: PlaceCardData[] | null,
+): Map<string, PlaceCardData> {
+  if (places === null) {
+    return new Map([...previous].map(([slug, place]) => [slug, {
+      ...place,
+      // A previously returned clock state is not proof of being open now.
+      open_status: { state: "unknown" as const },
+    }]));
+  }
+  const next = new Map(previous);
+  for (const slug of requested) next.delete(slug);
+  for (const place of places) next.set(place.slug, place);
+  return next;
+}
+
+/** Saved places, notes, and recent visits share the same request. Respect
+ * the API's per-request cap so a long collection is not mistaken for missing
+ * catalog entries. Sequential batches keep recovery traffic bounded. */
+export async function fetchSavedPlacesBySlugs(slugs: readonly string[], signal?: AbortSignal): Promise<PlaceCardData[]> {
+  const places: PlaceCardData[] = [];
+  for (let offset = 0; offset < slugs.length; offset += MAX_FOLLOWED_PLACES) {
+    const batch = slugs.slice(offset, offset + MAX_FOLLOWED_PLACES);
+    const response = await fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(batch.join(","))}`, { signal });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (!Array.isArray(data?.places)) throw new Error("Invalid places response");
+    places.push(...data.places);
+  }
+  return places;
+}
+
+export function SavedPlaceRefreshNotice({ unavailableCount, missingCount, onRetry, retrying }: {
+  unavailableCount: number;
+  missingCount: number;
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  if (unavailableCount === 0 && missingCount === 0) return null;
+  return (
+    <div role="status" className="space-y-2 border-y py-3 text-[13px] leading-relaxed" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
+      {unavailableCount > 0 && <p>We could not refresh {unavailableCount} saved place{unavailableCount === 1 ? "" : "s"}. Your saves are still here. Check current hours on the place page.</p>}
+      {missingCount > 0 && <p>{missingCount} saved place{missingCount === 1 ? " is" : "s are"} no longer listed. {missingCount === 1 ? "It remains" : "They remain"} saved on this device.</p>}
+      {unavailableCount > 0 && <button type="button" onClick={onRetry} disabled={retrying} className="tap-44 inline-flex items-center text-[13px] font-semibold underline underline-offset-4" style={{ color: "var(--app-brand-press)" }}>{retrying ? "Trying again…" : "Try again"}</button>}
+    </div>
+  );
+}
+
+export function SavedEventRefreshNotice({
+  unresolvedCount,
+  missingCount,
+}: {
+  unresolvedCount: number;
+  missingCount: number;
+}) {
+  if (unresolvedCount === 0 && missingCount === 0) return null;
+  return (
+    <div
+      role="status"
+      className="space-y-1 rounded-[var(--app-radius-sm)] border px-3 py-2 text-[12.5px] leading-relaxed"
+      style={{
+        borderColor: "var(--app-border)",
+        background: "var(--app-bg-sunken)",
+        color: "var(--app-ink-2)",
+      }}
+    >
+      {unresolvedCount > 0 && (
+        <p>
+          We could not refresh {unresolvedCount} saved event{unresolvedCount === 1 ? "" : "s"} right now. {unresolvedCount === 1 ? "It is" : "They are"} still saved.
+        </p>
+      )}
+      {missingCount > 0 && (
+        <p>
+          {missingCount} saved event{missingCount === 1 ? " is" : "s are"} no longer listed. {missingCount === 1 ? "It remains" : "They remain"} saved on this device.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Compact event date/time parts for the sv-evrow calendar plate,
+ *  rendered in Frederick's timezone regardless of the device. */
+function evParts(iso: string): { day: string; mon: string; time: string } | null {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return null;
+  const d = new Date(t);
+  const day = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", day: "numeric" }).format(d);
+  const mon = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short" }).format(d);
+  const time = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" })
+    .format(d)
+    .replace(":00 ", " ");
+  return { day, mon, time };
+}
+
+/** One compact saved-event row: date plate + serif title + mono where/when. */
+function EventRow({ event, today }: { event: DecoratedEvent; today: boolean }) {
+  const parts = evParts(event.starts_at);
+  const where = [today ? "Today" : null, event.venue_name || null, parts?.time ?? null]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <Link href={withBrowseReturnTo(`/events/${event.slug}`, "/my-radius")} className="sv-evrow tactile-interactive">
+      <span className="cal" aria-hidden>
+        <b>{parts?.day ?? ""}</b>
+        <span>{parts?.mon ?? ""}</span>
+      </span>
+      <span className="who">
+        <b>{event.title}</b>
+        {where && <span className={today ? "is-today" : undefined}>{where}</span>}
+      </span>
+      <span className="arr" aria-hidden><ArrowRight className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} /></span>
+    </Link>
+  );
+}
+
+/** The page masthead: title + a mono standfirst that carries the counts as
+ *  supporting detail, plus the 44px settings gear. Rendered by every branch
+ *  (skeleton, empty, full) so the page opens the same way in all three. */
+function Masthead({ stand }: { stand: ReactNode }) {
+  return (
+    <header className="sv-mast">
+      <div className="min-w-0">
+        <h1 id="saved-page-heading" tabIndex={-1}>
+          Saved
+        </h1>
+        <p className="sv-stand">{stand}</p>
+      </div>
+      <Link href="/settings" aria-label="Settings" className="sv-gear tactile tactile-interactive">
+        <Settings className="h-[17px] w-[17px]" strokeWidth={2} aria-hidden />
+      </Link>
+    </header>
+  );
+}
+
+export default function SavedList({
+  userId,
+  userEmail,
+  initialFollowSlugs,
+  initialFollowsTruncated = false,
+  initialPlaces = [],
+}: {
+  userId?: string | null;
+  userEmail?: string | null;
+  initialFollowSlugs?: string[];
+  initialFollowsTruncated?: boolean;
+  initialPlaces?: PlaceCardData[];
+}) {
   const mounted = useMounted();
-  const localItems = useSavedList();
-  const followed = useFollowedSlugs();
-  const confirmedPlaceCount = [...followed.accountSlugs].filter((slug) =>
-    followed.slugs.has(slug),
-  ).length;
-  const waitingPlaceCount = Math.max(0, followed.slugs.size - confirmedPlaceCount);
-  const items = useMemo<SavedRef[]>(() => {
-    const localPlaceIds = new Set(
-      localItems.filter((item) => item.type === "place").map((item) => item.id),
+  const items = useSavedList();
+  const {
+    stops: savedTransitStops,
+    remove: removeSavedTransitStop,
+  } = useSavedTransitStops();
+  const {
+    buses: savedTransitBuses,
+    remove: removeSavedTransitBus,
+  } = useSavedTransitBuses();
+  // ── Split-store fix (experience review, save-loop finding #1). Signed-in
+  // saves are written to the DB (useToggleFollow) while `items` is
+  // localStorage-only, so this page silently omitted DB follows: save on the
+  // place page, open Saved, gone (and a second device showed nothing). Every
+  // OTHER consumer (AppMap, FromYourSaved, PlanBuilder) already reads the
+  // auth-aware truth via useFollowedSlugs — merge it here too. When signed in
+  // and hydrated, DB membership WINS (an unfollow on another device removes
+  // the card here); saved_at keeps the local ref's stamp when we have it,
+  // else epoch (sorts oldest under "Recent": honest, we don't know when).
+  // While hydrating, and for anonymous users, local refs pass through
+  // untouched. Events, radii, and beer saves stay device-local by contract.
+  const followBootstrap = useMemo(
+    () => ({
+      user: userId ? { id: userId, email: userEmail ?? null } : null,
+      slugs: initialFollowSlugs,
+      truncated: initialFollowsTruncated,
+    }),
+    [initialFollowSlugs, initialFollowsTruncated, userEmail, userId],
+  );
+  const {
+    slugs: followedSlugs,
+    loading: followsLoading,
+    authed: followsAuthed,
+    truncated: followsTruncated,
+  } = useFollowedSlugs(followBootstrap);
+  const placeRefsAll = useMemo<SavedRef[]>(() => {
+    const local = items.filter((i) => i.type === "place");
+    if (!followsAuthed || followsLoading) return local;
+    const bySlug = new Map(local.map((i) => [i.id, i]));
+    return [...followedSlugs].map(
+      (slug) => bySlug.get(slug) ?? { type: "place" as const, id: slug, saved_at: "1970-01-01T00:00:00.000Z" },
     );
-    const accountOnlyPlaces: SavedRef[] = [...followed.slugs]
-      .filter((slug) => !localPlaceIds.has(slug))
-      .map((slug) => ({
-        type: "place",
-        id: slug,
-        // The account API does not expose a created timestamp. Keep remote-only
-        // items stable at the end of "Recent" rather than inventing recency.
-        saved_at: "1970-01-01T00:00:00.000Z",
-      }));
-    return [...localItems, ...accountOnlyPlaces];
-  }, [followed.slugs, localItems]);
+  }, [items, followedSlugs, followsAuthed, followsLoading]);
   // Soft signal — slugs the user has opened (PlaceSheet) but maybe
   // never bookmarked. Filtered to slugs still in the client place
   // index and to ones not already in the explicit Saved set so the
   // section never duplicates a card the user has already bookmarked.
   const recentSlugs = useRecentPlaces();
   const clearRecent = useClearRecentPlaces();
+  // The user's own margin notes ("great patio, ask for Maria") keyed by slug.
+  const notes = useAllNotes();
+  // Places the user tapped "Been here" on (the visited list). Same per-device
+  // localStorage + useSyncExternalStore store as notes/saved, so toggling on a
+  // place page updates the Visited section here live.
+  const beenSlugs = useBeenList();
+  // The user's personal lists ("date night", "takeout") keyed by slug, plus the
+  // currently selected list filter (null = show all).
+  const savedTags = useAllSavedTags();
 
   // Union of every slug this component might need: saved bookmarks,
   // recently viewed, and the empty-state seeds. We hand the whole set
@@ -91,57 +418,146 @@ export default function SavedList({ isSignedIn }: { isSignedIn: boolean }) {
   // identity check is reference-stable across renders.
   const { slugsToFetch, slugsKey } = useMemo(() => {
     const set = new Set<string>();
-    for (const i of items) if (i.type === "place") set.add(i.id);
+    for (const i of placeRefsAll) set.add(i.id);
     for (const s of recentSlugs) set.add(s);
-    for (const s of EMPTY_SEEDS) set.add(s.slug);
+    // Noted places too — a note can exist on a place the user never bookmarked,
+    // and its card must still resolve for the Notes section.
+    for (const s of Object.keys(notes)) set.add(s);
+    // Visited places too — "been here" can be set on a place that was never
+    // saved or noted, and its card must still resolve for the Visited section.
+    for (const s of beenSlugs) set.add(s);
     const slugsToFetch = Array.from(set);
     return { slugsToFetch, slugsKey: slugsToFetch.join(",") };
-  }, [items, recentSlugs]);
+  }, [placeRefsAll, recentSlugs, notes, beenSlugs]);
 
-  // null = not yet fetched (or pre-mount); empty Map = fetched with no
-  // matches. Distinguishing the two lets the render gate show a
-  // skeleton ONLY while the request is in flight, not when the user
-  // genuinely has nothing saved.
-  const [placesBySlug, setPlacesBySlug] = useState<Map<string, PlaceCardData> | null>(null);
+  // Start empty so a truly blank device can render its honest empty state in
+  // the server shell. When saved slugs hydrate, `placesPending` below detects
+  // missing records and swaps in the stable loading region until one request
+  // resolves them.
+  const [placesBySlug, setPlacesBySlug] = useState<Map<string, PlaceCardData>>(
+    () => new Map(initialPlaces.map((place) => [place.slug, place])),
+  );
+  // Which slugsKey the by-slugs request has ANSWERED (success or collapse).
+  // Pending must key off this, not off every slug being present in the map:
+  // the API quietly drops unknown slugs, so a single stale ref (a place
+  // later removed from the catalog) would otherwise pin the whole page on
+  // the loading skeleton forever.
+  const [resolvedKey, setResolvedKey] = useState<string | null>(
+    initialFollowSlugs ? initialFollowSlugs.join(",") : null,
+  );
+  const [placeRefreshFailed, setPlaceRefreshFailed] = useState(false);
+  const [missingPlaceSlugs, setMissingPlaceSlugs] = useState<string[]>([]);
+  const [placeRetry, setPlaceRetry] = useState(0);
+  const [placesRetrying, setPlacesRetrying] = useState(false);
 
   useEffect(() => {
     if (!mounted) return;
+    if (slugsToFetch.length === 0) {
+      return;
+    }
     const ctrl = new AbortController();
-    fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(slugsKey)}`, {
-      signal: ctrl.signal,
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((data: { places: PlaceCardData[] }) => {
-        const m = new Map<string, PlaceCardData>();
-        for (const p of data.places) m.set(p.slug, p);
-        setPlacesBySlug(m);
+    fetchSavedPlacesBySlugs(slugsKey.split(","), ctrl.signal)
+      .then((places) => {
+        const requested = slugsKey.split(",");
+        const returned = new Set(places.map((place) => place.slug));
+        setPlacesBySlug((previous) => mergeSavedPlaceHydration(previous, requested, places));
+        setMissingPlaceSlugs(requested.filter((slug) => !returned.has(slug)));
+        setPlaceRefreshFailed(false);
+        setPlacesRetrying(false);
+        setResolvedKey(slugsKey);
       })
       .catch((err) => {
-        // AbortError = navigated/unmounted; ignore. Anything else,
-        // collapse to an empty map so the UI keeps rendering rather
-        // than spinning forever.
+        // A failed source must not erase the cards already available.
         if (err && err.name !== "AbortError") {
-          setPlacesBySlug(new Map());
+          setPlacesBySlug((previous) => mergeSavedPlaceHydration(previous, [], null));
+          setPlaceRefreshFailed(true);
+          setPlacesRetrying(false);
+          setResolvedKey(slugsKey);
         }
       });
     return () => ctrl.abort();
-  }, [mounted, slugsKey, slugsToFetch.length]);
+  }, [mounted, slugsKey, slugsToFetch.length, placeRetry]);
+
+  // ── Saved events, hydrated the same way. Events are device-local by
+  // contract, so the local refs ARE the truth about which slugs to ask for;
+  // the server owns what each slug resolves to.
+  const eventSlugsToFetch = useMemo(
+    () =>
+      normalizeRequestedEventSlugList(
+        items.filter((i) => i.type === "event").map((i) => i.id),
+      ),
+    [items],
+  );
+
+  const [eventsBySlug, setEventsBySlug] = useState<Map<string, EventWithMeta>>(
+    () => new Map(),
+  );
+  // Unlike the place gate above, this records only that a FIRST answer has
+  // arrived. Saving another event must not blank a deck the reader is already
+  // looking at: the newly requested slug lands when it resolves, and every
+  // card already hydrated keeps rendering in the meantime.
+  const [eventsResolved, setEventsResolved] = useState(false);
+  const [unresolvedEventSlugs, setUnresolvedEventSlugs] = useState<string[]>([]);
+  const [missingEventSlugs, setMissingEventSlugs] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (eventSlugsToFetch.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- a device with no saved events has nothing to wait for; this releases the section's loading state
+      setEventsResolved(true);
+      return;
+    }
+    const ctrl = new AbortController();
+    fetchSavedEventsHydration(eventSlugsToFetch, ctrl.signal)
+      .then((result) => {
+        setEventsBySlug((previous) =>
+          mergeSavedEventHydration(previous, result),
+        );
+        setUnresolvedEventSlugs(result.unresolvedSlugs);
+        setMissingEventSlugs(result.missingSlugs);
+        setEventsResolved(true);
+      })
+      .catch((err) => {
+        // AbortError = navigated/unmounted; ignore. Any other failure keeps
+        // whatever already hydrated and releases the section, so a degraded
+        // events API costs the reader a card, never the whole page.
+        if (err && err.name !== "AbortError") {
+          setUnresolvedEventSlugs(eventSlugsToFetch);
+          setMissingEventSlugs([]);
+          setEventsResolved(true);
+        }
+      });
+    return () => ctrl.abort();
+  }, [mounted, eventSlugsToFetch]);
+
+  const { journey, updateJourney } = useSavedJourney(
+    mounted && !(Boolean(userId) && followsLoading) &&
+    (slugsToFetch.length === 0 || resolvedKey !== null) &&
+    (eventSlugsToFetch.length === 0 || eventsResolved),
+  );
+  const { activeList, organizerOpen, raisedSlug, showPast } = journey;
+  const setActiveList = (value: string | null) => updateJourney({ activeList: value });
+  const setRaisedSlug = (value: string | null) => updateJourney({ raisedSlug: value });
 
   // Persisted sort preference (defaults to "category" — the original
   // grouping behavior). Read on mount so SSR + first paint stay
   // consistent (mounted gate above already prevents server/client mismatch).
-  const [sort, setSort] = useState<SavedSortKey>(() => {
-    if (typeof window === "undefined") return "category";
+  const [sort, setSort] = useState<SavedSortKey>("town");
+  useEffect(() => {
     try {
       const saved = window.localStorage.getItem(SAVED_SORT_STORAGE_KEY);
-      if (saved === "category" || saved === "recent" || saved === "az" || saved === "distance") {
-        return saved;
+      // Validate against the live SORT_OPTIONS, not a hand-kept list — the old
+      // hardcoded check omitted "open", so choosing "Open now" silently failed
+      // to persist (2026-07-12 audit). Deriving it means a new sort can never
+      // desync again.
+      if (saved && SORT_OPTIONS.some((o) => o.key === saved)) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical post-mount hydration of a localStorage preference; SSR can't read localStorage
+        setSort(saved as SavedSortKey);
       }
     } catch {
       /* localStorage unavailable; keep default */
     }
-    return "category";
-  });
+  }, []);
   function setSortAndStore(next: SavedSortKey) {
     setSort(next);
     try {
@@ -151,39 +567,153 @@ export default function SavedList({ isSignedIn }: { isSignedIn: boolean }) {
     }
   }
 
+  // List vs map view of the Places section. Persisted like the sort so a user
+  // who prefers the map lands on it next time. The Mapbox canvas only mounts in
+  // map view (AppMapClient dynamic-imports AppMap), so list-view visitors never
+  // pay the map JS.
+  // Default to the WALLET fan (owner call 2026-07-02): saved places are a
+  // personal collection, so the "cards you carry" treatment leads; List + Map
+  // stay a tap away and a returning user's stored choice wins. Neither wallet
+  // nor list pays the map JS (only "map" dynamic-imports AppMap).
+  const [view, setView] = useState<"wallet" | "list" | "map">("wallet");
+  useEffect(() => {
+    try {
+      const v = window.localStorage.getItem(SAVED_VIEW_STORAGE_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- post-mount localStorage hydration of a view preference; SSR can't read it
+      if (v === "map" || v === "list" || v === "wallet") setView(v);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  function setViewAndStore(next: "wallet" | "list" | "map") {
+    setView(next);
+    try {
+      window.localStorage.setItem(SAVED_VIEW_STORAGE_KEY, next);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // The wallet's raised card, lifted here so the On-now running line can
+  // raise a card by name — the strip and the deck are one instrument.
+  // null = the wallet's default (top card).
+  function raiseCard(slug: string) {
+    setRaisedSlug(slug);
+    // Raising implies the wallet. Deliberately setView, not setViewAndStore:
+    // a chip tap shouldn't overwrite the user's stored view preference.
+    if (view !== "wallet") setView("wallet");
+    // Bring the raised card into view once the accordion margins settle.
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(() => {
+      document
+        .getElementById(`sw-slot-${slug}`)
+        ?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+    }, 60);
+  }
+
+  // Past saved events are kept (you saved them) but tucked behind a toggle so a
+  // months-old show never clutters the upcoming list.
+
   // The "distance" sort needs an origin. Read the user's home muni
   // from localStorage (the same key PreferencesPanel writes); fall
   // back to no-origin (places-without-geom safely sort last via the
   // Infinity sentinel below).
-  const [homeOrigin] = useState<{ lat: number; lng: number } | null>(() => {
-    if (typeof window === "undefined") return null;
+  const [homeOrigin, setHomeOrigin] = useState<{ lat: number; lng: number } | null>(null);
+  useEffect(() => {
     try {
-      const slug = window.localStorage.getItem("fr_home_muni");
+      // Use the canonical home-town source (getHomeMuni reads "fr:home-muni:v1");
+      // this used to read a stale "fr_home_muni" key that was never written, so
+      // the Distance sort silently tied every row at Infinity (audit 2026-07).
+      const slug = getHomeMuni();
       if (slug) {
         const m = MUNICIPALITY_BY_SLUG[slug];
-        if (m) return m.centroid;
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical post-mount hydration of a localStorage preference; SSR can't read localStorage
+        if (m) setHomeOrigin(m.centroid);
       }
     } catch {
       /* ignore */
     }
-    return null;
-  });
+  }, []);
 
-  const { places, events, byCategory, townTally } = useMemo(() => {
+  // Places the user has written a margin note on, freshest note first. Resolves
+  // each note's slug against the hydrated place map; a note whose place didn't
+  // resolve is simply skipped (never a broken card).
+  const notedPlaces = useMemo<Array<{ place: PlaceCardData; note: PlaceNote }>>(() => {
+    if (!placesBySlug) return [];
+    return Object.entries(notes)
+      .map(([slug, note]) => ({ place: placesBySlug.get(slug), note }))
+      .filter((x): x is { place: PlaceCardData; note: PlaceNote } => Boolean(x.place))
+      .sort((a, b) => (b.note.updated_at || "").localeCompare(a.note.updated_at || ""));
+  }, [notes, placesBySlug]);
+
+  // Places the user has marked "been here." Resolves each visited slug against
+  // the hydrated map; un-deduped from Saved/Notes on purpose — "I saved it",
+  // "I noted it", and "I've been" are distinct, so a place can honestly appear
+  // in more than one section.
+  const visitedPlaces = useMemo<PlaceCardData[]>(() => {
+    if (!placesBySlug) return [];
+    return beenSlugs
+      .map((slug) => placesBySlug.get(slug))
+      .filter((p): p is PlaceCardData => Boolean(p));
+  }, [beenSlugs, placesBySlug]);
+
+  // One render-stable "now" for the actionable lead (open-now + today's events).
+  // A single value per mount is plenty — Saved isn't a live ticker.
+  const now = useMemo(() => new Date(), []);
+
+  // ── ON NOW IN YOUR RADIUS — the actionable lead. Saved places OPEN right now
+  // (closing-soonest first, so the page reads as a "go" tool, not an archive),
+  // computed from open_status the by-slugs API already hydrates. Independent of
+  // the sort/list filter below — this is always "what of mine is live now".
+  const liveNowPlaces = useMemo<PlaceCardData[]>(() => {
+    if (!placesBySlug) return [];
+    const open = placeRefsAll
+      .map((i) => placesBySlug.get(i.id))
+      .filter((p): p is PlaceCardData => p !== undefined && isOpenNow(p.open_status));
+    return open.sort((a, b) => {
+      const ca = a.open_status.state === "open" || a.open_status.state === "closing-soon" ? a.open_status.closesAt ?? "99:99" : "99:99";
+      const cb = b.open_status.state === "open" || b.open_status.state === "closing-soon" ? b.open_status.closesAt ?? "99:99" : "99:99";
+      return ca.localeCompare(cb);
+    });
+  }, [placeRefsAll, placesBySlug]);
+
+  // Distinct personal lists across SAVED places, with counts, for the filter row.
+  const availableLists = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const i of placeRefsAll) {
+      for (const t of savedTags[i.id] ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [placeRefsAll, savedTags]);
+
+  // Derive the EFFECTIVE filter during render (not via a state-resetting effect):
+  // if the selected label no longer exists (its last place was unlabeled or
+  // unsaved), it resolves to null so the list can't get stuck showing nothing.
+  const effectiveList =
+    activeList && availableLists.some(([l]) => l === activeList) ? activeList : null;
+
+  const { places, events, byCategory, byTown, townTally } = useMemo(() => {
     if (!placesBySlug) {
       return {
         places: [] as PlaceCardData[],
-        events: [] as ReturnType<typeof decorateEvent>[],
+        events: [] as DecoratedEvent[],
         byCategory: new Map<string, PlaceCardData[]>(),
+        byTown: new Map<string, PlaceCardData[]>(),
         townTally: new Map<string, number>(),
       };
     }
     // Build (ref, place) tuples so we can sort by saved_at when the
     // user picks "Recent". Other sorts only need the place itself.
-    const placeRefs = items
-      .filter((i) => i.type === "place")
+    const placeRefs = placeRefsAll
       .map((i) => ({ ref: i, place: placesBySlug.get(i.id) }))
       .filter((x): x is { ref: typeof x.ref; place: PlaceCardData } => Boolean(x.place));
+
+    // Personal-list filter: when a list is selected, keep only saved places
+    // the user has labelled with it. Applied BEFORE sort + bucketing so every
+    // view (town/category/flat) honours the filter.
+    const visibleRefs = effectiveList
+      ? placeRefs.filter((x) => (savedTags[x.place.slug] ?? []).includes(effectiveList))
+      : placeRefs;
 
     // Apply the user's sort. "category" keeps the original recent-first
     // order before bucketing (so within each category, the freshest
@@ -191,12 +721,28 @@ export default function SavedList({ isSignedIn }: { isSignedIn: boolean }) {
     let sorted: typeof placeRefs;
     switch (sort) {
       case "az":
-        sorted = [...placeRefs].sort((a, b) =>
+        sorted = [...visibleRefs].sort((a, b) =>
           a.place.name.localeCompare(b.place.name, undefined, { sensitivity: "base" }),
         );
         break;
+      case "open":
+        // Open places first, the one closing soonest leading — the
+        // saved list as a "right now" tool, not a museum. Closed and
+        // unverified places keep their recency order below the fold.
+        sorted = [...visibleRefs].sort((a, b) => {
+          const oa = isOpenNow(a.place.open_status);
+          const ob = isOpenNow(b.place.open_status);
+          if (oa !== ob) return oa ? -1 : 1;
+          if (oa && ob) {
+            const ca = a.place.open_status.state === "open" || a.place.open_status.state === "closing-soon" ? a.place.open_status.closesAt : "99:99";
+            const cb = b.place.open_status.state === "open" || b.place.open_status.state === "closing-soon" ? b.place.open_status.closesAt : "99:99";
+            return ca.localeCompare(cb);
+          }
+          return +new Date(b.ref.saved_at) - +new Date(a.ref.saved_at);
+        });
+        break;
       case "distance":
-        sorted = [...placeRefs].sort((a, b) => {
+        sorted = [...visibleRefs].sort((a, b) => {
           const da = homeOrigin && a.place.geom ? haversineMeters(homeOrigin, a.place.geom) : Infinity;
           const db = homeOrigin && b.place.geom ? haversineMeters(homeOrigin, b.place.geom) : Infinity;
           return da - db;
@@ -205,18 +751,20 @@ export default function SavedList({ isSignedIn }: { isSignedIn: boolean }) {
       case "category":
       case "recent":
       default:
-        sorted = [...placeRefs].sort(
+        sorted = [...visibleRefs].sort(
           (a, b) => +new Date(b.ref.saved_at) - +new Date(a.ref.saved_at),
         );
         break;
     }
     const places = sorted.map((x) => x.place);
 
+    // Saved-order in, saved-order out. A slug the API could not resolve is
+    // simply absent; it is not rendered as a broken card and it does not
+    // block the ones that did resolve.
     const events = items
       .filter((i) => i.type === "event")
-      .map((i) => EVENT_BY_SLUG[i.id])
-      .filter(Boolean)
-      .map(decorateEvent);
+      .map((i) => eventsBySlug.get(i.id))
+      .filter((event): event is DecoratedEvent => Boolean(event));
 
     // Bucket places by their top-level category — gives the page a
     // "shape" so the user can scan what kind of Frederick they're
@@ -238,15 +786,76 @@ export default function SavedList({ isSignedIn }: { isSignedIn: boolean }) {
       townTally.set(p.municipality, (townTally.get(p.municipality) ?? 0) + 1);
     }
 
-    return { places, events, byCategory, townTally };
-  }, [items, placesBySlug, sort, homeOrigin]);
+    // Bucket places by town — the field-guide view ("what I'm keeping in
+    // Frederick, in Brunswick…"). Used when sort === "town" (default).
+    const byTown = new Map<string, PlaceCardData[]>();
+    for (const p of places) {
+      const arr = byTown.get(p.municipality) ?? [];
+      arr.push(p);
+      byTown.set(p.municipality, arr);
+    }
+
+    return { places, events, byCategory, byTown, townTally };
+  }, [items, eventsBySlug, placeRefsAll, placesBySlug, sort, homeOrigin, savedTags, effectiveList]);
+
+  // Saved events happening TODAY — the other half of the actionable lead. The
+  // full Events section below keeps the whole saved set; this is just "tonight".
+  const eventsToday = useMemo(
+    () =>
+      events.filter((event) => {
+        if (!isEventToday(event.starts_at, now)) return false;
+        return isUpcomingEvent(event, now);
+      }),
+    [events, now],
+  );
+
+  // Saved-event hygiene: upcoming (soonest first) vs past (most-recent first).
+  // A saved event whose end is behind us is "past" — kept, not deleted, but
+  // demoted so it stops cluttering the active list.
+  const { upcomingEvents, pastEvents } = useMemo(() => {
+    const up: DecoratedEvent[] = [];
+    const pa: DecoratedEvent[] = [];
+    for (const e of events) {
+      if (isUpcomingEvent(e, now)) up.push(e);
+      else pa.push(e);
+    }
+    up.sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+    pa.sort((a, b) => Date.parse(b.starts_at) - Date.parse(a.starts_at));
+    return { upcomingEvents: up, pastEvents: pa };
+  }, [events, now]);
+
+  // Shareable read-only "radius": the ordered saved PLACE slugs, encoded into a
+  // /radius/shared link. Places only (events are time-bound; a shared list is a
+  // "here's my Frederick" recommendation, which is about places).
+  // SCOPED to the active personal list: sharing your "date night" list used to
+  // ship your ENTIRE radius — the URL ignored the filter the screen showed.
+  const scopedSlugs = useMemo(
+    () =>
+      placeRefsAll
+        .map((i) => i.id)
+        .filter((slug) => !effectiveList || (savedTags[slug] ?? []).includes(effectiveList)),
+    [placeRefsAll, effectiveList, savedTags],
+  );
+  const shareUrl = useMemo(
+    () => (scopedSlugs.length > 0 ? `/radius/shared?p=${scopedSlugs.map(encodeURIComponent).join(",")}` : null),
+    [scopedSlugs],
+  );
+  // The missing bridge from "saved 20 places" to "planned my Saturday": when a
+  // personal list is active, one tap builds an itinerary from THAT list.
+  const listPlanHref = useMemo(
+    () =>
+      effectiveList && scopedSlugs.length >= 2
+        ? `/plan?p=${planTokenFromSaved(scopedSlugs.slice(0, 6))}`
+        : null,
+    [effectiveList, scopedSlugs],
+  );
 
   // Resolve recent slugs to PlaceCardData, drop ones now-saved (the
   // "Saved" sections already surface them) and ones not in the place
   // index. Capped to 6 so the row stays scannable.
   const savedSlugs = useMemo(
-    () => new Set(items.filter((i) => i.type === "place").map((i) => i.id)),
-    [items],
+    () => new Set(placeRefsAll.map((i) => i.id)),
+    [placeRefsAll],
   );
   const recentPlaces = useMemo<PlaceCardData[]>(() => {
     if (!placesBySlug || !recentSlugs.length) return [];
@@ -260,24 +869,82 @@ export default function SavedList({ isSignedIn }: { isSignedIn: boolean }) {
     return out;
   }, [recentSlugs, savedSlugs, placesBySlug]);
 
-  // Show the skeleton in two cases: before the device-local items
-  // resolve (mounted=false) AND while the /api/places/by-slugs round
-  // trip is in flight. Both windows are short; the matched layout
-  // avoids any jump when content arrives.
-  if (!mounted || placesBySlug === null) {
+  // saved_at per slug for the wallet stub's Saved cell. The epoch sentinel
+  // (a DB follow whose local stamp we never saw) is refused downstream by
+  // walletFacts.savedDateLabel, so it never prints as Jan 1 1970.
+  const savedAtBySlug = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const r of placeRefsAll) m[r.id] = r.saved_at;
+    return m;
+  }, [placeRefsAll]);
+
+  // saved_at per EVENT slug, for the event wallet stub's Saved cell. Events
+  // are device-local by contract, so the local ref's stamp is the truth.
+  const savedAtByEventSlug = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const i of items) if (i.type === "event") m[i.id] = i.saved_at;
+    return m;
+  }, [items]);
+
+  // The whole-page skeleton is for ARRIVAL only: the first paint on a device
+  // whose saved slugs have not resolved yet. It used to gate on the exact
+  // slug set (resolvedKey !== slugsKey), which meant every LATER save — tap
+  // save on a place page, come back here — blanked the entire page to
+  // skeleton while one slug fetched. Once anything has resolved, the page
+  // keeps rendering what it has and the new card simply appears when its
+  // fetch lands; the by-slugs effect above refetches on every change either
+  // way. The unknown-slug protection (task #45) is untouched: resolvedKey is
+  // still set on success AND on collapse, so a stale ref cannot pin arrival.
+  const placesPending = slugsToFetch.length > 0 && resolvedKey === null;
+  // Events resolve in their own section, NOT in the whole-page gate above.
+  // Their tail can reach the durable archive for a long-past save, and no
+  // reader should wait on that to see their places, notes, or transit saves.
+  const eventsPending = eventSlugsToFetch.length > 0 && !eventsResolved;
+  // The section renders whenever the device HAS saved events, even before any
+  // resolve, so it can own its own loading and failure states instead of
+  // disappearing and reappearing under the reader.
+  const hasSavedEvents = eventSlugsToFetch.length > 0;
+  // The server already knows whether this request belongs to an account.
+  // Use that signal to prevent a signed-in visitor from seeing the anonymous
+  // empty state while /api/follows is still hydrating. Anonymous visitors do
+  // not wait on the background auth check; after the one hydration frame,
+  // their device-local saves render immediately.
+  const hasAccountBootstrap = Boolean(userId) && initialFollowSlugs !== undefined;
+  const savedStatePending =
+    (!mounted && !hasAccountBootstrap) || (Boolean(userId) && followsLoading);
+  if (savedStatePending || placesPending) {
     return (
-      <div aria-busy="true" className="space-y-3">
-        <Skeleton.Block height={88} round="var(--app-radius-lg)" />
-        <Skeleton.Block height={56} round="var(--app-radius-md)" />
-        <Skeleton.Row />
-        <Skeleton.Row />
-        <Skeleton.Row />
+      <div aria-busy="true" className="space-y-4">
+        <Masthead stand="Loading saved places" />
+        <div className="space-y-3">
+          <Skeleton.Block height={46} round="var(--app-radius-sm)" />
+          <Skeleton.Block height={56} round="var(--app-radius-md)" />
+          <Skeleton.Row />
+          <Skeleton.Row />
+          <Skeleton.Row />
+        </div>
       </div>
     );
   }
 
-  if (items.length === 0) {
-    return <EmptyState placesBySlug={placesBySlug} isSignedIn={isSignedIn} />;
+  // Notes OR visited places alone are enough to skip the blank-journal empty
+  // state — a user can annotate or mark "been here" without bookmarking.
+  // (placesBySlug is resolved by here, so both lists are final — no flash.)
+  if (
+    items.length === 0 &&
+    placeRefsAll.length === 0 &&
+    notedPlaces.length === 0 &&
+    visitedPlaces.length === 0 &&
+    savedTransitStops.length === 0 &&
+    savedTransitBuses.length === 0
+  ) {
+    return (
+      <div className="space-y-4">
+        <Masthead stand="Places, events, buses, and stops you want to keep" />
+        <EmptyState />
+        <KeepRadiusCard variant="row" />
+      </div>
+    );
   }
 
   // Cluster signal: if ≥3 places are in one town, suggest a route.
@@ -288,213 +955,458 @@ export default function SavedList({ isSignedIn }: { isSignedIn: boolean }) {
     ? MUNICIPALITY_BY_SLUG[dominantTown[0]]
     : null;
 
-  return (
-    <div className="space-y-5">
-      {/* Personal hero — the "your Frederick" briefing. Stitches the
-          tallies into one editorial sentence; the bar of stat pills
-          underneath gives the at-a-glance read without a heavy 4-cell
-          dark stat block. */}
-      <section
-        aria-label="Your Frederick"
-        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 shadow-[var(--app-shadow-1)]"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(80% 110% at 100% 0%, color-mix(in srgb, var(--app-brand) 14%, transparent), transparent 60%)",
-          }}
-        />
-        <div className="relative space-y-2">
-          <div className="flex items-center gap-2">
-            <span
-              aria-hidden
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-              style={{
-                background: "color-mix(in srgb, var(--app-brand) 16%, transparent)",
-                color: "var(--app-brand)",
-              }}
-            >
-              <Bookmark className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-            </span>
-            <p
-              className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Your Frederick
-            </p>
-          </div>
-          <p
-            className="font-serif text-[20px] font-semibold leading-snug tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {summarySentence(places.length, events.length, townTally.size)}
-          </p>
-          <p className="text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
-            {isSignedIn
-              ? followed.status === "checking"
-                ? "Checking place sync…"
-                : followed.status === "offline"
-                  ? "Sync paused · on-device places are still safe"
-                  : waitingPlaceCount > 0
-                    ? `${waitingPlaceCount} ${waitingPlaceCount === 1 ? "place" : "places"} waiting to join your account`
-                    : "Places kept with your account · events and routes stay here"
-              : "Saved on this device"}
-          </p>
-        </div>
-      </section>
+  // Plan a day from the cluster: the dominant town's saved places (cap 6 — a
+  // day out, not a march), encoded into the planner's shared-plan token so
+  // /plan rebuilds them into a real itinerary. Order = current Places order.
+  const planClusterSlugs = dominantTown
+    ? (byTown.get(dominantTown[0]) ?? []).slice(0, 6).map((p) => p.slug)
+    : [];
+  const planHref =
+    planClusterSlugs.length >= 2 ? `/plan?p=${planTokenFromSaved(planClusterSlugs)}` : "/plan";
 
-      {!isSignedIn && places.length > 0 && (
-        <Link
-          href="/auth/login?next=/my-radius"
-          className="tactile tactile-interactive group flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition active:scale-[0.99]"
-          style={{ borderColor: "var(--app-border)" }}
+  // Masthead standfirst: the counts as supporting detail, never a headline.
+  // Places + towns only — events would overflow 390px, and the colophon's
+  // fin line already carries the full tally.
+  const townN = townTally.size;
+  const standParts: ReactNode[] = [];
+  if (places.length > 0) {
+    standParts.push(
+      <em key="p">{places.length} place{places.length === 1 ? "" : "s"}</em>,
+    );
+    if (townN > 1) standParts.push(<span key="t">{townN} towns</span>);
+  } else if (events.length > 0) {
+    standParts.push(<em key="e">{events.length} event{events.length === 1 ? "" : "s"}</em>);
+  }
+  const transitSavedCount =
+    savedTransitStops.length + savedTransitBuses.length;
+  const hasOrganizerContent =
+    items.length > 0 ||
+    placeRefsAll.length > 0 ||
+    notedPlaces.length > 0 ||
+    visitedPlaces.length > 0;
+  if (transitSavedCount > 0) {
+    standParts.push(
+      <span key="r">
+        {transitSavedCount} transit save{transitSavedCount === 1 ? "" : "s"}
+      </span>,
+    );
+  }
+  // Wallet is the calm default. Legacy stored "wallet" preferences map to the
+  // organizer's list view; Map only mounts after the person opens the advanced
+  // disclosure and explicitly keeps that preference.
+  const organizerView: "list" | "map" = view === "map" ? "map" : "list";
+
+  return (
+    <div className="space-y-4">
+      <Masthead
+        stand={
+          <>
+            {standParts.length > 0
+              ? standParts.map((part, i) => (
+                  <span key={i}>{i > 0 ? " · " : ""}{part}</span>
+                ))
+              : "Places and events you want to keep"}
+          </>
+        }
+      />
+
+      <SavedPlaceRefreshNotice
+        unavailableCount={placeRefreshFailed ? placeRefsAll.length : 0}
+        missingCount={placeRefreshFailed ? 0 : placeRefsAll.filter((place) => missingPlaceSlugs.includes(place.id)).length}
+        retrying={placesRetrying}
+        onRetry={() => { setPlacesRetrying(true); setPlaceRetry((value) => value + 1); }}
+      />
+
+      {followsTruncated && (
+        <p
+          role="status"
+          className="rounded-xl border px-3 py-2 text-[12px] leading-relaxed"
+          style={{
+            borderColor: "var(--app-border)",
+            background: "var(--app-bg-sunken)",
+            color: "var(--app-ink-2)",
+          }}
         >
-          <span
-            aria-hidden
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
-              color: "var(--app-brand)",
-            }}
-          >
-            <Cloud className="h-4 w-4" strokeWidth={2} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[13px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-              {places.length === 1
-                ? "Keep this place with you"
-                : `Keep these ${places.length} places with you`}
-            </span>
-            <span className="mt-0.5 block text-[11.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-              Use one sign-in email to see {places.length === 1 ? "it" : "them"} on another device. We add without replacing.
-            </span>
-          </span>
-          <span aria-hidden className="text-[14px] transition-transform group-hover:translate-x-0.5" style={{ color: "var(--app-ink-3)" }}>
-            →
-          </span>
-        </Link>
+          Showing your {MAX_FOLLOWED_PLACES} most recent saved places. Older
+          saves are still in your account.
+        </p>
       )}
 
-      {/* Smart suggestion strip — only when there's a real cluster. */}
-      {dominantMuni && (
-        <Link
-          href={`/plan?from=my-radius`}
-          className="group flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition active:scale-[0.99]"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <span
-            aria-hidden
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
-              color: "var(--app-cool)",
-            }}
-          >
-            <Sparkles className="h-4 w-4" strokeWidth={2} aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span
-              className="block text-[13px] font-semibold leading-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              {dominantTown![1]} of your Radius is in {dominantMuni.name}
-            </span>
-            <span className="block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
-              Build a route from these → Planner
-            </span>
-          </span>
-          <span
-            aria-hidden
-            className="text-[11px] font-bold transition-transform group-hover:translate-x-0.5"
+      {(liveNowPlaces.length > 0 || eventsToday.length > 0) && (
+        <section aria-labelledby="saved-useful-now" className="space-y-2">
+          <h2
+            id="saved-useful-now"
+            className="font-mono text-[10px] font-bold uppercase tracking-[0.12em]"
             style={{ color: "var(--app-ink-3)" }}
           >
-            →
-          </span>
-        </Link>
+            Useful now
+          </h2>
+          {/* Saved places open this minute, closing-soonest first; each name
+              raises its card in the wallet below. */}
+          {liveNowPlaces.length > 0 && (
+            <div className="sv-onnow" role="group" aria-label="Open right now">
+              <span className="sv-onnow-label">
+                <span aria-hidden className="sw-dot" />
+                Open
+              </span>
+              <div className="sv-onnow-scroll">
+                {liveNowPlaces.map((p) => {
+                  const allDay = p.open_status.state === "open" && p.open_status.allDay;
+                  const till =
+                    !allDay && (p.open_status.state === "open" || p.open_status.state === "closing-soon")
+                      ? fmtClockShort(p.open_status.closesAt)
+                      : null;
+                  const when = allDay ? "24 hours" : till ? `till ${till}` : "open now";
+                  return (
+                    <button
+                      key={p.slug}
+                      type="button"
+                      className="sv-onnow-chip"
+                      onClick={() => raiseCard(p.slug)}
+                      aria-label={`${p.name}, open now${allDay ? ", 24 hours" : till ? ` till ${till}` : ""}. Raise its card`}
+                    >
+                      <b>{p.name}</b>
+                      {when}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {eventsToday.length > 0 && (
+            <ul className="space-y-2">
+              {eventsToday.slice(0, 3).map((e) => (
+                <li key={`${e.slug}-${e.starts_at}`}>
+                  <EventRow event={e} today />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
 
-      {/* Places — grouped by top-level category when sort is "category"
-          (default), or rendered as a flat sorted list otherwise. The
-          sort dropdown sits next to the section label so a returning
-          user sees their current preference in one glance. */}
       {places.length > 0 && (
-        <section aria-label="Saved places" className="space-y-3">
-          <header className="flex items-center justify-between gap-3">
-            <div className="flex items-baseline gap-2.5">
-              <span
-                aria-hidden
-                className="block h-[3px] w-7 rounded-full"
-                style={{ background: "var(--app-cool)" }}
-              />
-              <h2
-                className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
-                style={{ color: "var(--app-cool)" }}
-              >
-                Places
-              </h2>
-              <span
-                className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
-                style={{
-                  background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
-                  color: "var(--app-cool)",
-                }}
-              >
-                {places.length}
-              </span>
-            </div>
-            <SortDropdown
-              options={SORT_OPTIONS}
-              value={sort}
-              onChange={setSortAndStore}
-            />
+        <section aria-labelledby="saved-places-heading" className="space-y-2.5">
+          <header className="flex items-baseline gap-2.5">
+            <h2
+              id="saved-places-heading"
+              className="text-[11px] font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--app-ink)" }}
+            >
+              Saved places
+            </h2>
+            <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+              {places.length}
+            </span>
           </header>
-          {sort === "category" ? (
-            <div className="space-y-5">
-              {[...byCategory.entries()]
-                .sort((a, b) => b[1].length - a[1].length)
-                .map(([catSlug, group]) => {
-                  const cat = CATEGORY_BY_SLUG[catSlug];
-                  const color = cat?.color ?? "var(--app-cool)";
-                  return (
-                    <section key={catSlug} className="space-y-2">
-                      <header className="flex items-baseline gap-2.5">
-                        <span
-                          aria-hidden
-                          className="block h-[3px] w-7 rounded-full"
-                          style={{ background: color }}
-                        />
+          <SavedWallet
+            places={places}
+            savedAt={savedAtBySlug}
+            openSlug={raisedSlug}
+            onOpenSlug={setRaisedSlug}
+          />
+        </section>
+      )}
+
+      {/* Upcoming remains part of the default page, before any organizer or
+          collection-history controls. */}
+      {(events.length > 0 || hasSavedEvents) && (
+        <section
+          aria-label="Upcoming saved events"
+          className="space-y-2"
+          aria-busy={eventsPending || undefined}
+        >
+          <header className="flex items-baseline gap-2.5">
+            <span
+              aria-hidden
+              className="block h-[3px] w-7 rounded-full"
+              style={{ background: "var(--app-brand)" }}
+            />
+            <h2
+              className="text-[11px] font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              Upcoming
+            </h2>
+            {!eventsPending && (
+              <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                {upcomingEvents.length}
+              </span>
+            )}
+          </header>
+          {eventsPending ? (
+            <div className="space-y-2">
+              <Skeleton.Block height={62} round="var(--app-radius-md)" />
+              <Skeleton.Block height={62} round="var(--app-radius-md)" />
+            </div>
+          ) : upcomingEvents.length > 0 ? (
+            <SavedEventWallet events={upcomingEvents} savedAt={savedAtByEventSlug} now={now} openSlug={journey.eventSlug} onOpenSlug={(eventSlug) => updateJourney({ eventSlug })} />
+          ) : events.length > 0 ? (
+            <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+              There are no upcoming events. Your saved events have all passed.
+            </p>
+          ) : unresolvedEventSlugs.length === 0 && missingEventSlugs.length === 0 ? (
+            // Defensive fallback for an invalid/legacy empty response. Normal
+            // misses now carry unresolved or missing status below.
+            <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+              We could not load your saved events right now. Reload the page to
+              try again.
+            </p>
+          ) : null}
+          {!eventsPending && (
+            <SavedEventRefreshNotice
+              unresolvedCount={unresolvedEventSlugs.length}
+              missingCount={missingEventSlugs.length}
+            />
+          )}
+          {pastEvents.length > 0 && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => updateJourney({ showPast: !showPast })}
+                className="tap-44 text-[11px] font-semibold underline-offset-2 hover:underline"
+                style={{ color: "var(--app-ink-3)" }}
+                aria-expanded={showPast}
+              >
+                {showPast ? "Hide" : "Show"} {pastEvents.length} past event{pastEvents.length === 1 ? "" : "s"}
+              </button>
+              {showPast && (
+                <div className="opacity-70">
+                  <SavedEventWallet
+                    events={pastEvents}
+                    savedAt={savedAtByEventSlug}
+                    now={now}
+                    startRaised={false}
+                    openSlug={journey.pastEventSlug}
+                    onOpenSlug={(pastEventSlug) => updateJourney({ pastEventSlug })}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Transit is useful personal context, but a delayed live feed must not
+          outrank the places and events the person explicitly came to Saved to
+          revisit. Keep it after those saves and collapse it when there is
+          already stronger organizer content on the page. */}
+      <SavedTransitSection
+        stops={savedTransitStops}
+        buses={savedTransitBuses}
+        collapsed={hasOrganizerContent}
+        onRemoveStop={(stop) => {
+          return removeSavedTransitStop(stop);
+        }}
+        onRemoveBus={(bus) => {
+          return removeSavedTransitBus(bus);
+        }}
+      />
+
+      <KeepRadiusCard variant="row" />
+
+      {hasOrganizerContent ? (
+      <details
+        id="saved-organizer"
+        open={organizerOpen}
+        onToggle={(event) => { if (event.currentTarget.open !== organizerOpen) updateJourney({ organizerOpen: event.currentTarget.open }); }}
+        className="group overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)]"
+        style={{ borderColor: "var(--app-border-strong)" }}
+      >
+        <summary className="tap-44 flex cursor-pointer list-none items-center gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+          <span
+            aria-hidden
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px]"
+            style={{
+              color: "var(--app-cool)",
+              background: "color-mix(in srgb, var(--app-cool) 11%, transparent)",
+            }}
+          >
+            <Layers className="h-4 w-4" strokeWidth={2.1} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              Organize and revisit
+            </span>
+            <span className="block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+              Lists, map, notes, visits, and sharing
+            </span>
+          </span>
+          <ChevronDown
+            className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
+            strokeWidth={2.25}
+            style={{ color: "var(--app-ink-3)" }}
+            aria-hidden
+          />
+        </summary>
+        <div className="space-y-5 border-t p-3" style={{ borderColor: "var(--app-border)" }}>
+
+      {places.length > 0 && (
+        <section aria-label="Organize saved places" className="space-y-3">
+          {/* The calm wallet is already above. This disclosed workspace offers
+              the two analytical views: grouped list or map. */}
+          <div className="flex items-center justify-between gap-2">
+            <div
+              role="tablist"
+              aria-label="Organize saved places as a list or map"
+              className="inline-flex rounded-full border p-0.5"
+              style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+            >
+              {(["list", "map"] as const).map((v) => {
+                const active = organizerView === v;
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setViewAndStore(v)}
+                    className="tap-44-y flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                    style={{
+                      background: active ? "var(--app-bg-elevated)" : "transparent",
+                      color: active ? "var(--app-ink)" : "var(--app-ink-3)",
+                      boxShadow: active ? "var(--app-edge), var(--app-hi)" : "none",
+                    }}
+                  >
+                    {v === "map" && <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
+                    {v === "list" ? "List" : "Map"}
+                  </button>
+                );
+              })}
+            </div>
+            {organizerView !== "map" && (
+              <SortDropdown
+                options={SORT_OPTIONS}
+                value={sort}
+                onChange={setSortAndStore}
+              />
+            )}
+          </div>
+
+          {/* Personal lists filter — the user's own labels ("date night",
+              "takeout") become one-tap collections. Only shows once at least
+              one saved place has been labelled (on the place page). */}
+          {availableLists.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <FilterChip label="All" active={effectiveList === null} onClick={() => setActiveList(null)} />
+              {availableLists.map(([label, n]) => (
+                <FilterChip
+                  key={label}
+                  label={label}
+                  count={n}
+                  active={effectiveList === label}
+                  onClick={() => setActiveList(effectiveList === label ? null : label)}
+                />
+              ))}
+              {listPlanHref && (
+                <Link
+                  href={listPlanHref}
+                  className="tap-44-y ml-auto inline-flex shrink-0 items-center gap-1 text-[13px] font-semibold"
+                  style={{ color: "var(--app-brand-press)" }}
+                >
+                  Plan this list
+                  <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                </Link>
+              )}
+            </div>
+          )}
+
+          {organizerView === "map" && organizerOpen ? (
+            (() => {
+              const mapPlaces = places.filter((p) => p.geom);
+              return mapPlaces.length > 0 ? (
+                <div
+                  className="relative h-[60vh] min-h-[360px] w-full overflow-hidden rounded-[var(--app-radius-lg)] border"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                  <AppMapClient places={mapPlaces} fullBleed />
+                </div>
+              ) : (
+                <p
+                  className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-8 text-center text-[13px]"
+                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+                >
+                  None of your saved places have a location to map yet.
+                </p>
+              );
+            })()
+          ) : sort === "town" || sort === "category" ? (
+            <div className="space-y-4">
+              {(sort === "town"
+                ? [...byTown.entries()]
+                    .sort((a, b) => b[1].length - a[1].length)
+                    .map(([slug, group]) => {
+                      const m = MUNICIPALITY_BY_SLUG[slug];
+                      return {
+                        key: slug,
+                        label: m?.name ?? slug,
+                        color: townAccent(slug),
+                        // The town's identity line — its one-liner fact,
+                        // else population — turns a header into a chapter.
+                        subtitle: m?.fact ?? (m ? `pop. ${m.population.toLocaleString()}` : null),
+                        group,
+                      };
+                    })
+                : [...byCategory.entries()]
+                    .sort((a, b) => b[1].length - a[1].length)
+                    .map(([catSlug, group]) => ({
+                      key: catSlug,
+                      label: CATEGORY_BY_SLUG[catSlug]?.name ?? catSlug,
+                      color: CATEGORY_BY_SLUG[catSlug]?.color ?? "var(--app-cool)",
+                      subtitle: null as string | null,
+                      group,
+                    }))
+              ).map(({ key, label, color, subtitle, group }) => (
+                <section key={key} className="space-y-2">
+                  {/* Chapter header — an accent-tinted band in the town's
+                      own color, with a serif name + count + identity line,
+                      so each section reads as its own page of the guide. */}
+                  <header
+                    className="flex items-center gap-2.5 rounded-[var(--app-radius-md)] px-3 py-2"
+                    style={{ background: `color-mix(in srgb, ${color} 10%, transparent)` }}
+                  >
+                    <span
+                      aria-hidden
+                      className="block h-7 w-1.5 shrink-0 rounded-full"
+                      style={{ background: color }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-2">
                         <h3
-                          className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
-                          style={{ color }}
+                          className="truncate font-serif text-[15px] font-semibold tracking-tight"
+                          style={{ color: "var(--app-ink)" }}
                         >
-                          {cat?.name ?? catSlug}
+                          {label}
                         </h3>
                         <span
-                          className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
-                          style={{
-                            background: `color-mix(in srgb, ${color} 14%, transparent)`,
-                            color,
-                          }}
+                          className="shrink-0 rounded-full px-1.5 text-[10px] font-bold tabular-nums"
+                          style={{ background: `color-mix(in srgb, ${color} 18%, transparent)`, color }}
                         >
                           {group.length}
                         </span>
-                      </header>
-                      <ul className="space-y-2">
-                        {group.map((p) => (
-                          <li key={p.slug}>
-                            <PlaceCard place={p} />
-                          </li>
-                        ))}
-                      </ul>
-                    </section>
-                  );
-                })}
+                      </div>
+                      {subtitle && (
+                        <p
+                          className="truncate text-[11px] leading-tight"
+                          style={{ color: "var(--app-ink-3)" }}
+                        >
+                          {subtitle}
+                        </p>
+                      )}
+                    </div>
+                  </header>
+                  <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                    {group.map((p) => (
+                      <li key={p.slug}>
+                        <PlaceCard place={p} />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
             </div>
           ) : (
-            <ul className="space-y-2">
+            <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
               {places.map((p) => (
                 <li key={p.slug}>
                   <PlaceCard place={p} />
@@ -505,12 +1417,93 @@ export default function SavedList({ isSignedIn }: { isSignedIn: boolean }) {
         </section>
       )}
 
-      {/* Recently viewed — soft signal. Surfaces places the user has
-          opened (via PlaceSheet) but hasn't explicitly bookmarked, so
-          returning users can pick a thread back up without having to
-          remember the exact name. Quieter visual weight than the
-          deliberate Saved sections above. Only renders when there's
-          something to show that isn't already in Saved. */}
+      {/* Plan-a-day — one ruled line, only when there's a real cluster. */}
+      {dominantMuni && (
+        <Link href={planHref} className="sv-planline">
+          <span className="txt">
+            <b>{dominantTown![1]} of your saves are in {dominantMuni.name}.</b>{" "}
+            String them into one day out.
+          </span>
+          <span className="go">Plan a day <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} /></span>
+        </Link>
+      )}
+
+      {/* Your notes — the user's own margin notes on places. A naturalist's
+          jottings ("great patio, ask for Maria"), shown under each place as an
+          accent-ruled note. Distinct from the verified Field Notes moat. */}
+      {notedPlaces.length > 0 && (
+        <section aria-label="Your notes" className="space-y-2">
+          <header className="flex items-baseline gap-2.5">
+            <span
+              aria-hidden
+              className="block h-[3px] w-7 rounded-full"
+              style={{ background: "var(--app-accent)" }}
+            />
+            <h2
+              className="text-[11px] font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--app-accent-press)" }}
+            >
+              Your notes
+            </h2>
+            <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+              {notedPlaces.length}
+            </span>
+          </header>
+          <ul className="space-y-2.5">
+            {notedPlaces.map(({ place, note }) => (
+              <li key={place.slug} className="space-y-1">
+                <PlaceCard place={place} />
+                <p
+                  className="ml-3 border-l-2 pl-2.5 font-serif text-[13px] italic leading-snug"
+                  style={{ borderColor: "var(--app-accent)", color: "var(--app-ink-2)" }}
+                >
+                  {note.text}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Visited — places the user tapped "Been here" on, from the place page.
+          Same calm slate accent as the toggle; a plain noun header to sit
+          alongside Places / Your notes / Events. */}
+      {visitedPlaces.length > 0 && (
+        <section aria-label="Visited" className="space-y-2">
+          <header className="flex items-baseline gap-2.5">
+            <span
+              aria-hidden
+              className="block h-[3px] w-7 rounded-full"
+              style={{ background: "var(--app-cool)" }}
+            />
+            <h2
+              className="text-[11px] font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--app-cool)" }}
+            >
+              Visited
+            </h2>
+            <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+              {visitedPlaces.length}
+            </span>
+          </header>
+          <ul className="space-y-2.5">
+            {visitedPlaces.map((place) => (
+              <li key={place.slug}>
+                <PlaceCard place={place} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Passport — the earned layer. Field-guide cancellation stamps derived
+          from real local signals (saves, been-here, notes, taps); presses the
+          first-earned date into each stamp. Self-hides for a brand-new user. */}
+      <Passport placesBySlug={placesBySlug} />
+
+      {/* Recently viewed — soft signal. Surfaces places the user has opened
+          (via PlaceSheet) but hasn't explicitly bookmarked. Quieter visual
+          weight than the deliberate Saved sections above. */}
       {recentPlaces.length > 0 && (
         <section aria-label="Recently viewed" className="space-y-2">
           <header className="flex items-baseline gap-2.5">
@@ -520,24 +1513,15 @@ export default function SavedList({ isSignedIn }: { isSignedIn: boolean }) {
               style={{ background: "var(--app-ink-3)" }}
             />
             <h2
-              className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+              className="text-[11px] font-bold uppercase tracking-[0.12em]"
               style={{ color: "var(--app-ink-3)" }}
             >
               Recently viewed
             </h2>
-            <span
-              className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
-              style={{
-                background: "color-mix(in srgb, var(--app-ink-3) 14%, transparent)",
-                color: "var(--app-ink-3)",
-              }}
-            >
-              {recentPlaces.length}
-            </span>
             <button
               type="button"
               onClick={clearRecent}
-              className="ml-auto text-[11px] font-semibold underline-offset-2 hover:underline"
+              className="tap-44 ml-auto text-[11px] font-semibold underline-offset-2 hover:underline"
               style={{ color: "var(--app-ink-3)" }}
             >
               Clear
@@ -553,190 +1537,88 @@ export default function SavedList({ isSignedIn }: { isSignedIn: boolean }) {
         </section>
       )}
 
-      {events.length > 0 && (
-        <section aria-label="Events in your Radius" className="space-y-2">
-          <header className="flex items-baseline gap-2.5">
-            <span
-              aria-hidden
-              className="block h-[3px] w-7 rounded-full"
-              style={{ background: "var(--app-brand)" }}
-            />
-            <h2
-              className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-brand)" }}
-            >
-              Events
-            </h2>
-            <span
-              className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
-              style={{
-                background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
-                color: "var(--app-brand)",
-              }}
-            >
-              {events.length}
-            </span>
-          </header>
-          <ul className="space-y-2">
-            {events.map((e: DecoratedEvent) => (
-              <li key={e.slug}>
-                <EventCard event={e} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {/* My taps — beers saved from the beer taste finder (/beer). Its own
+          store type in the shared saved system; self-hides when empty. */}
+      <MyTaps />
+
+      {/* Quiet utility colophon: sharing and place sync only. */}
+      <footer className="sv-colophon" aria-label="About this page">
+        <div className="inner">
+          {shareUrl && (
+            <div className="sv-colophon-row">
+              <span className="k">Share this list with a friend</span>
+              <ShareButton
+                title="My saved Frederick list"
+                text="Places I'm keeping an eye on in Frederick County"
+                url={shareUrl}
+                className="v tap-44-y inline-flex items-center gap-1 font-semibold"
+              />
+            </div>
+          )}
+          {!userEmail && (
+            <Link className="sv-colophon-row" href="/auth/login?next=/my-radius">
+              <span className="k">Keep saved places on your other devices</span>
+              <span className="v link">Magic link <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} /></span>
+            </Link>
+          )}
+        </div>
+        <p className="sv-colophon-fin">
+          {userEmail ? `Saved places synced as ${userEmail}` : "Saved on this device"}
+          {places.length > 0 && ` · ${places.length} place${places.length === 1 ? "" : "s"}`}
+          {events.length > 0 && (
+            userEmail
+              ? ` · ${events.length} device-only event${events.length === 1 ? "" : "s"}`
+              : ` · ${events.length} event${events.length === 1 ? "" : "s"}`
+          )}
+          {savedTransitStops.length > 0 &&
+            ` · ${savedTransitStops.length} stop${savedTransitStops.length === 1 ? "" : "s"}`}
+          {savedTransitBuses.length > 0 &&
+            ` · ${savedTransitBuses.length} bus${savedTransitBuses.length === 1 ? "" : "es"}`}
+          {userEmail && " · transit and taps stay on this device"}
+        </p>
+      </footer>
+        </div>
+      </details>
+      ) : null}
     </div>
   );
 }
 
-function summarySentence(placeN: number, eventN: number, townN: number): string {
-  if (placeN === 0 && eventN === 0) return "Start building your Radius.";
-  const parts: string[] = [];
-  if (placeN > 0) parts.push(`${placeN} place${placeN === 1 ? "" : "s"}`);
-  if (eventN > 0) parts.push(`${eventN} event${eventN === 1 ? "" : "s"}`);
-  let body = parts.join(" and ");
-  if (placeN > 0 && townN > 1) body += ` across ${townN} town${townN === 1 ? "" : "s"}`;
-  return `${body} in your Radius.`;
-}
 
-/**
- * EmptyState — the first impression when nothing's saved. We don't
- * leave the page bare; we treat it as a soft pitch for *what saving
- * is for* and prime the pump with six curated seeds the visitor can
- * tap to learn about. Each seed has a one-sentence "why" so the
- * empty page reads as editorial, not as a debug placeholder.
- */
-function EmptyState({
-  placesBySlug,
-  isSignedIn,
-}: {
-  placesBySlug: Map<string, PlaceCardData>;
-  isSignedIn: boolean;
-}) {
-  const seeds = EMPTY_SEEDS
-    .map((s) => ({ ...s, place: placesBySlug.get(s.slug) }))
-    .filter((s): s is typeof s & { place: PlaceCardData } => Boolean(s.place));
-
+/** Honest and never a dead end: one sentence, then the two places where saves
+ * begin. The app shell already exposes the rest of Radius. */
+export function EmptyState() {
   return (
-    <div className="space-y-5">
-      <section
-        aria-label="What is My Radius?"
-        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5 shadow-[var(--app-shadow-1)]"
-        style={{ borderColor: "var(--app-border)" }}
+    <div className="max-w-sm space-y-4 py-2">
+      <p
+        className="px-0.5 font-serif text-[18px] font-semibold leading-snug"
+        style={{ color: "var(--app-ink)" }}
       >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
+        Save a place, event, bus trip, or stop to keep it here for later.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href="/search"
+          className="tap-44 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[12.5px] font-semibold"
+          style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
+        >
+          <Search className="h-4 w-4" strokeWidth={2} aria-hidden />
+          Find something to save
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+        </Link>
+        <Link
+          href="/transit"
+          className="tap-44 inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-[12.5px] font-semibold"
           style={{
-            background:
-              "radial-gradient(80% 110% at 0% 0%, color-mix(in srgb, var(--app-brand) 16%, transparent), transparent 60%)",
+            borderColor: "var(--app-control-border)",
+            color: "var(--app-cool)",
+            background: "var(--app-bg-elevated-solid)",
           }}
-        />
-        <div className="relative space-y-2">
-          <span
-            aria-hidden
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-brand) 16%, transparent)",
-              color: "var(--app-brand)",
-            }}
-          >
-            <Bookmark className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          </span>
-          <p
-            className="font-serif text-[20px] font-semibold leading-snug tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            Start building your Radius.
-          </p>
-          <p className="text-[13px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-            Save the places you care about, and this page becomes your
-            personal view of Frederick County. Tap the bookmark on anything in
-            the field guide and it lands here — things you&apos;ve been meaning
-            to try, dates worth a return visit, or a short list to send a
-            friend who&apos;s coming through town.
-          </p>
-          {/* Three primary entry points so the empty page suggests three
-              different starting paths (explore the map, see what's on,
-              or follow a craving). The first is the brand-filled primary;
-              the other two are hairline pills so the visual hierarchy
-              still reads "one main move, two alternatives." */}
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Link
-              href="/map"
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
-              style={{ background: "var(--app-brand)", color: "white" }}
-            >
-              <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-              Explore nearby
-            </Link>
-            <Link
-              href="/events"
-              className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-            >
-              <Calendar className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-              Browse events
-            </Link>
-            <Link
-              href="/map?intent=eat"
-              className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-            >
-              <UtensilsCrossed className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-              Food and drink
-            </Link>
-          </div>
-          {!isSignedIn && (
-            <Link
-              href="/auth/login?next=/my-radius"
-              className="mt-3 inline-flex min-h-11 items-center gap-2 text-[12px] font-semibold underline-offset-4 hover:underline"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              <LogIn className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
-              Already keep places on another device? Sign in
-            </Link>
-          )}
-        </div>
-      </section>
-
-      {seeds.length > 0 && (
-        <section className="space-y-2">
-          <header className="flex items-baseline gap-2.5">
-            <span
-              aria-hidden
-              className="block h-[3px] w-7 rounded-full"
-              style={{ background: "var(--app-cool)" }}
-            />
-            <h2
-              className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-cool)" }}
-            >
-              Worth starting with
-            </h2>
-            <span
-              className="ml-auto text-[10px] italic"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Hand-picked · not yours yet
-            </span>
-          </header>
-          <ul className="space-y-2">
-            {seeds.map((s) => (
-              <li key={s.slug} className="space-y-1.5">
-                <p
-                  className="px-1 text-[11.5px] italic"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  {s.reason}
-                </p>
-                <PlaceCard place={s.place} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+        >
+          <BusFront className="h-4 w-4" strokeWidth={2} aria-hidden />
+          Find a bus or stop
+        </Link>
+      </div>
     </div>
   );
 }

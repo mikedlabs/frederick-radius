@@ -1,4 +1,9 @@
 const NPS_BASE = "https://developer.nps.gov/api/v1";
+const NPS_DEFAULT_TIMEOUT_MS = 5_000;
+// Today waits for park alerts before it can finish its lead civic card. Keep
+// that visitor-facing request inside a short budget so an unresponsive NPS
+// endpoint cannot hold the page open for the full integration timeout.
+const NPS_ALERTS_TIMEOUT_MS = 1_500;
 
 // Frederick County NPS units
 export const NPS_PARKS = {
@@ -29,18 +34,37 @@ export type NpsEvent = {
   url: string;
 };
 
-async function npsFetch<T>(path: string, params: Record<string, string>, revalidate = 1800): Promise<T | null> {
+type NpsFetchOptions = {
+  revalidate?: number;
+  timeoutMs?: number;
+};
+
+async function npsFetch<T>(
+  path: string,
+  params: Record<string, string>,
+  {
+    revalidate = 1800,
+    timeoutMs = NPS_DEFAULT_TIMEOUT_MS,
+  }: NpsFetchOptions = {},
+): Promise<T | null> {
   const key = process.env.NPS_API_KEY;
   if (!key) return null;
   const url = new URL(`${NPS_BASE}${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   url.searchParams.set("api_key", key);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(url.toString(), { next: { revalidate } });
+    const res = await fetch(url.toString(), {
+      signal: ctrl.signal,
+      next: { revalidate },
+    });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -63,7 +87,11 @@ const PARK_NAMES: Record<string, string> = {
 
 export async function getNpsAlerts(): Promise<NpsAlert[]> {
   const parkCodes = Object.values(NPS_PARKS).join(",");
-  const data = await npsFetch<AlertsResp>("/alerts", { parkCode: parkCodes, limit: "20" });
+  const data = await npsFetch<AlertsResp>(
+    "/alerts",
+    { parkCode: parkCodes, limit: "20" },
+    { timeoutMs: NPS_ALERTS_TIMEOUT_MS },
+  );
   if (!data?.data) return [];
   return data.data.map((a) => ({
     id: a.id,

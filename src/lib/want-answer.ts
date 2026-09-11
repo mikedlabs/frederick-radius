@@ -1,0 +1,1179 @@
+import "server-only";
+import {
+  CRAVINGS,
+  isPizzaPlace,
+  isPlaygroundPlace,
+  matchesCraving,
+  matchesCravingFacet,
+} from "@/data/cravings";
+import { CATEGORIES, CATEGORY_BY_SLUG } from "@/data/categories";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
+import { MEALS, isMealKey, matchMeal } from "@/lib/meal";
+import type { PlaceCardData } from "@/lib/loaders/places";
+import { knownFor } from "@/lib/cuisine";
+import {
+  formatHoursLine,
+  formatTime,
+  getOpenStatus,
+  type OpenStatus,
+} from "@/lib/hours";
+import { formatDistance, haversineMeters } from "@/lib/geo";
+import { mayAssertOpenState } from "@/lib/hours-freshness";
+import { mayAssertNoneOpen } from "@/lib/hours-availability";
+import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
+import {
+  coffeeIntentTier,
+  isChainName,
+  chainBrandKey,
+  keepOneLocationPerChain,
+  ratingSignal,
+} from "@/lib/category-ranking";
+import {
+  isLikelyOpenNow,
+  openingSoonFromStatus,
+  reliableOpeningSoon,
+} from "@/data/reliable-open-windows";
+import { mayUseLikelyOpenFallback } from "@/lib/likely-open";
+import {
+  compareDecisionEvaluations,
+  decisionOriginTrust,
+  evaluateDecision,
+  resolveDecisionAvailabilityPolicy,
+  type DecisionAvailabilityMode,
+  type DecisionAvailabilityState,
+  type DecisionFactor,
+  type DecisionReason,
+  type DecisionSet,
+} from "@/lib/decision/core";
+
+/**
+ * The want answer — "I want coffee" resolved to places, ranked for RIGHT
+ * NOW, shaped for the inline panel on /today.
+ *
+ * Answer-first, not a directory: ONE hero (the best open-now pick), a
+ * short "also open" list, and a folded "opens later" group. Reuses the
+ * exact vocabulary /nearby speaks — craving keys from data/cravings plus
+ * the meal keys — so every existing /nearby?c= deep link has an inline
+ * twin and the two surfaces can never rank from different taxonomies.
+ */
+
+// The generated client snapshot is also the smallest canonical public-place
+// snapshot on the server: already deduped, decorated, and stripped of the
+// detail-only enrichment arrays. Importing the full places loader here made a
+// 2 KB answer route carry roughly 9 MB of enrichment data into every cold
+// function. `npm run build:client-places` keeps this snapshot in sync.
+type WantPlaceSnapshot = PlaceCardData & {
+  want_match_category: string;
+  want_match_subcategories?: string[];
+};
+
+const WANT_PLACES = CLIENT_RAW as unknown as WantPlaceSnapshot[];
+
+export type WantRow = {
+  slug: string;
+  name: string;
+  /** The one mono fact: "Open until 9pm" / "Closing soon · 10pm" / "Opens 7am". */
+  fact: string;
+  /** "6 min walk" under ~20 minutes on foot, else "3.4 mi"; null without a fix. */
+  distance: string | null;
+  photo: string | null;
+  /** Town/municipality it sits in ("Brunswick", "Middletown"), so a glance
+   *  answers "which one, and where" without opening the sheet. */
+  where: string | null;
+  /** One short signature line: the curated known-for, else a clamped blurb
+   *  ("Wood-fired pies", "Third-wave roaster"). The field-guide detail. */
+  detail: string | null;
+  /** The single best VERIFIED insider tip (the moat's voice), when present. */
+  tip: string | null;
+  /** A standing deal hook ("Happy hour", "$1 oysters"), when present. */
+  deal: string | null;
+  /** Short, complete-sentence explanations from the same factors that ranked
+   * this row. Clients may show one or two; Ask receives the same evidence. */
+  why?: string[];
+  /** Structured copy of the reasons for other Radius decision surfaces. */
+  decisionReasons?: DecisionReason[];
+  /** An official provider action for intents that are decided somewhere other
+   *  than the venue's front door, such as choosing a movie and showtime. */
+  action?: {
+    label: string;
+    href: string;
+  };
+  /** Strength of the hours evidence behind this row's availability statement. */
+  confidence?: "confirmed" | "likely";
+  /** Present only for the bounded opening-soon lane. This is structured so a
+   * client can place the transition without parsing user-facing copy. */
+  opensInMinutes?: number;
+  /** Real routed travel context, added only when Radius has an explicit
+   *  device location and Mapbox Matrix answers within the request budget.
+   *  `distance` remains the compact display line so older clients degrade
+   *  cleanly; this evidence lets Ask explain why a nearby result moved up. */
+  travel?: {
+    mode: "walking";
+    minutes: number;
+    distanceMeters: number | null;
+  };
+};
+
+export type WantAnswer = {
+  key: string;
+  label: string;
+  rankingMode: "best-fit" | "open-now";
+  hero: WantRow | null;
+  also: WantRow[];
+  /** Complete open-now set for category tools that need an honest filter.
+   *  Included only for breweries so ordinary Today answers stay compact. */
+  open?: WantRow[];
+  /** One useful same-day transition within the next hour. Confirmed schedules
+   * win; the conservative curated fallback is always labeled likely. */
+  soon?: WantRow | null;
+  later: WantRow[];
+  /** How many more open-later places fold behind the "later" preview. */
+  laterMore: number;
+  /** The fallback list shown when nothing is open now (and nothing opens
+   *  later today) but the category still has places, e.g. farmers markets or
+   *  playgrounds that aren't hours-bound. Keeps the panel flowing down with
+   *  real places instead of a bare "nothing's open" line. Empty otherwise. */
+  notable: WantRow[];
+  total: number;
+  /** Whether an empty open lane may be reported as "nothing is open." False
+   *  when too few of these candidates can state an open or closed hour at
+   *  all, which makes the empty result a fact about our hours coverage
+   *  rather than about the county. */
+  mayAssertNoneOpen: boolean;
+  /** The deep-browse door — the same URL the sub-chip used to navigate to. */
+  browseHref: string;
+  /** Honest ranking/filter context shown in the panel. */
+  contextLabel: string;
+  contextSource: "town" | "device" | "home" | "ip" | "county" | "none";
+  fallbackReason: "outside-county" | "location-unavailable" | null;
+  /** Canonical decision output used by Today and Ask during the gradual
+   * cross-surface migration. Compatibility fields above remain for clients. */
+  decision?: DecisionSet<WantRow>;
+};
+
+export type WantAvailability = DecisionAvailabilityMode;
+
+function wantRowAvailability(
+  row: WantRow,
+  mode: WantAvailability,
+): DecisionAvailabilityState {
+  if (mode === "not-applicable") return "not-applicable";
+  if (row.confidence === "confirmed") return "confirmed-open";
+  if (/^(?:Closed|Opens )/i.test(row.fact)) return "confirmed-closed";
+  return "unknown";
+}
+
+function withWantDecision(
+  answer: Omit<WantAnswer, "decision">,
+  availability: WantAvailability,
+): WantAnswer {
+  const item = (row: WantRow) => ({
+    id: row.slug,
+    title: row.name,
+    value: row,
+    availability: wantRowAvailability(row, availability),
+    reasons:
+      row.decisionReasons ??
+      (row.why ?? []).map((label, index) => ({
+        id: `reason-${index + 1}`,
+        label,
+        evidenceIds: [],
+      })),
+  });
+  const lead = answer.hero ? item(answer.hero) : null;
+  return {
+    ...answer,
+    decision: {
+      status: lead ? "ready" : "insufficient",
+      lead,
+      alternatives: answer.also.map(item),
+      scope: {
+        label: answer.contextLabel,
+        source: answer.contextSource,
+        originTrust: decisionOriginTrust(answer.contextSource),
+      },
+      claimState: lead
+        ? answer.hero?.confidence === "confirmed"
+          ? "confirmed"
+          : "partial"
+        : "insufficient",
+      mayAssertNoneAvailable: answer.mayAssertNoneOpen,
+      totalCandidates: answer.total,
+    },
+  };
+}
+
+/** The slice of a decorated place the partition logic reads — kept minimal
+ *  and exported so the ranking rules are unit-testable with plain objects.
+ *  The presentation fields (municipality, known_for, tips…) are optional so
+ *  the pure ranking tests stay tiny; buildWantAnswer feeds the generated slim
+ *  public-place snapshot. */
+export type WantCandidate = {
+  slug: string;
+  name: string;
+  open_status: OpenStatus;
+  distance_m?: number;
+  feature_score: number;
+  google_photo_url?: string;
+  municipality?: string;
+  city?: string;
+  short_blurb?: string;
+  known_for?: string[];
+  field_note_tip?: string;
+  deal_hook?: string;
+  google_rating?: number;
+  google_rating_count?: number;
+  hidden_gem?: boolean;
+  local_favorite?: boolean;
+  /** Relevance bucket for a specific want. Undefined keeps the ordinary
+   * ranking unchanged; generic coffee uses it to put actual coffee
+   * destinations before incidental and boba matches. */
+  intent_fit_tier?: number;
+};
+
+/** The slice of a place a `refine` predicate can read — the narrowing seam
+ *  Ask Frederick uses for cuisine ("thai") and area ("downtown") filters.
+ *  `category` is the corrected want_match_category, same as the matcher sees. */
+export type WantRefinable = {
+  name: string;
+  category: string;
+  municipality?: string;
+  geom: { lng: number; lat: number };
+  short_blurb?: string;
+  primary_type?: string;
+  accessibility?: PlaceCardData["accessibility"];
+};
+
+const WALK_METERS_PER_MIN = 75; // ~2.8 mph, the app's walking assumption
+const WALKABLE_MAX_MIN = 20;
+
+function distanceLabel(m: number | undefined): string | null {
+  if (m == null || !Number.isFinite(m)) return null;
+  const walkMin = Math.max(1, Math.round(m / WALK_METERS_PER_MIN));
+  if (walkMin <= WALKABLE_MAX_MIN) return `${walkMin} min walk`;
+  return formatDistance(m);
+}
+
+function isOpenNow(s: OpenStatus): boolean {
+  return s.state === "open" || s.state === "closing-soon";
+}
+
+function opensLaterToday(s: OpenStatus): boolean {
+  return s.state === "closed" && Boolean(s.opensToday && s.opensAt);
+}
+
+/** The town a place sits in, for the row's "where". Use the normalized
+ *  POSTAL city ("Frederick"), NOT the municipality's editorial name
+ *  ("Downtown Frederick") — the editorial label overclaims for the many
+ *  City-of-Frederick places that aren't downtown (see placeName.ts, which
+ *  folds "downtown frederick" -> "Frederick" for exactly this reason). Fall
+ *  back to the municipality name only when a place has no clean city. */
+function townLabel(c: WantCandidate): string | null {
+  if (c.municipality && c.municipality !== "frederick") {
+    return MUNICIPALITY_BY_SLUG[c.municipality]?.name ?? c.city?.trim() ?? null;
+  }
+  const city = c.city?.trim();
+  if (city) return city;
+  return c.municipality ? MUNICIPALITY_BY_SLUG[c.municipality]?.name ?? null : null;
+}
+
+/** Clamp a signature to one tidy phrase: strip any stray em dash (voice
+ *  rule), cut at a word boundary, add an ellipsis when trimmed. */
+function clampPhrase(raw: string, max = 52): string {
+  const s = raw.replace(/\s*—\s*/g, ", ").trim();
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const sp = cut.lastIndexOf(" ");
+  return `${(sp > 20 ? cut.slice(0, sp) : cut).replace(/[,;:·\-\s]+$/, "")}…`;
+}
+
+/**
+ * Name-stripping can expose a sentence fragment ("Brewer's Alley has…" →
+ * "has…"), while a few inherited blurbs contain conversational filler.
+ * A blank detail is more useful than presenting either as Radius-authored
+ * copy.
+ */
+export function usefulFallbackSignature(raw: string | null): string | null {
+  const value = raw?.trim();
+  if (!value) return null;
+  if (/^[a-z]/.test(value)) return null;
+  if (/^(?:i|we|our|they|you)\b/i.test(value)) return null;
+  if (/\bsometimes\b.*\bsometimes\b/i.test(value)) return null;
+  return clampPhrase(value);
+}
+
+/** The one short field-guide signature for a place: the curated known-for
+ *  first, else a cleaned blurb sentence (knownFor), clamped. Null when we
+ *  have nothing honest to say. */
+function signatureOf(c: WantCandidate): string | null {
+  const curated = c.known_for?.[0]?.trim();
+  if (curated) return clampPhrase(curated);
+  const kf = knownFor({ name: c.name, short_blurb: c.short_blurb });
+  return usefulFallbackSignature(kf);
+}
+
+/** A price without the thing it buys is noise ("$2.75", "50% OFF"). */
+export function usefulDealHook(raw: string | undefined): string | null {
+  const value = raw?.trim();
+  if (!value) return null;
+  const contextWords = (value.match(/[A-Za-z][A-Za-z'-]*/g) ?? []).filter(
+    (word) => !/^(?:off|save|from|each|only)$/i.test(word),
+  );
+  return contextWords.length > 0 ? clampPhrase(value, 36) : null;
+}
+
+function toRow(
+  c: WantCandidate,
+  laneLater: boolean,
+  confidence?: WantRow["confidence"],
+  reasons: readonly DecisionReason[] = [],
+): WantRow {
+  const line = formatHoursLine(c.open_status);
+  return {
+    slug: c.slug,
+    name: c.name,
+    // Inside the "Opens later" group the "Closed · " prefix is redundant —
+    // the group heading already says it.
+    fact:
+      confidence === "likely"
+        ? "Likely open · check hours"
+        : laneLater
+          ? line.replace(/^Closed · /, "")
+          : line,
+    distance: distanceLabel(c.distance_m),
+    photo: c.google_photo_url ?? null,
+    where: townLabel(c),
+    detail: signatureOf(c),
+    tip: c.field_note_tip?.trim() || null,
+    deal: usefulDealHook(c.deal_hook),
+    why: reasons.map((reason) => reason.label),
+    decisionReasons: [...reasons],
+    confidence,
+  };
+}
+
+/**
+ * Rank + partition candidates. Open places lead, nearest first when a fix
+ * exists (feature score breaks ties and carries the no-fix ordering);
+ * closed-but-opens-today places sort by how soon the doors open. Pure, so
+ * the ranking rules live under unit tests.
+ */
+export function partitionWant(candidates: WantCandidate[]): {
+  open: WantCandidate[];
+  later: WantCandidate[];
+  /** Neither open now nor opening later today (closed another day, or no
+   *  posted hours). The notable-fallback pool, ranked like the open lane. */
+  other: WantCandidate[];
+  total: number;
+} {
+  const open = candidates.filter((c) => isOpenNow(c.open_status));
+  const later = candidates.filter((c) => opensLaterToday(c.open_status));
+  const other = candidates.filter(
+    (c) => !isOpenNow(c.open_status) && !opensLaterToday(c.open_status),
+  );
+
+  const byProximityThenScore = (a: WantCandidate, b: WantCandidate) => {
+    const fit = (b.intent_fit_tier ?? 0) - (a.intent_fit_tier ?? 0);
+    if (fit !== 0) return fit;
+    const da = a.distance_m ?? Infinity;
+    const db = b.distance_m ?? Infinity;
+    if (da !== db) return da - db;
+    return b.feature_score - a.feature_score;
+  };
+  open.sort(byProximityThenScore);
+  other.sort(byProximityThenScore);
+  later.sort((a, b) => {
+    const fit = (b.intent_fit_tier ?? 0) - (a.intent_fit_tier ?? 0);
+    if (fit !== 0) return fit;
+    const oa = a.open_status.state === "closed" ? a.open_status.opensAt ?? "99" : "99";
+    const ob = b.open_status.state === "closed" ? b.open_status.opensAt ?? "99" : "99";
+    return oa.localeCompare(ob);
+  });
+
+  return { open, later, other, total: candidates.length };
+}
+
+export type WantOpeningSoonCandidate = {
+  candidate: WantCandidate;
+  opensAt: string;
+  minutesUntil: number;
+  confidence: "confirmed" | "likely";
+};
+
+/**
+ * Select one opening transition without making a provider call. Fresh
+ * verified hours always outrank the curated fallback, even when the fallback
+ * opens a few minutes earlier. Within a confidence tier, the soonest opening
+ * wins; intent fit, local curation, proximity, and input order break ties.
+ */
+export function selectOpeningSoonCandidate(
+  candidates: readonly WantCandidate[],
+  now: Date,
+): WantOpeningSoonCandidate | null {
+  const compare = (
+    a: { candidate: WantCandidate; minutesUntil: number; index: number },
+    b: { candidate: WantCandidate; minutesUntil: number; index: number },
+  ) =>
+    a.minutesUntil - b.minutesUntil ||
+    (b.candidate.intent_fit_tier ?? 0) -
+      (a.candidate.intent_fit_tier ?? 0) ||
+    Number(Boolean(b.candidate.local_favorite)) -
+      Number(Boolean(a.candidate.local_favorite)) ||
+    (a.candidate.distance_m ?? Infinity) -
+      (b.candidate.distance_m ?? Infinity) ||
+    b.candidate.feature_score - a.candidate.feature_score ||
+    a.index - b.index;
+  const confirmed = candidates
+    .map((candidate, index) => {
+      const timing = openingSoonFromStatus(candidate.open_status, now);
+      return timing
+        ? { candidate, index, ...timing, confidence: "confirmed" as const }
+        : null;
+    })
+    .filter((match): match is NonNullable<typeof match> => Boolean(match))
+    .sort(compare)[0];
+  if (confirmed) {
+    return {
+      candidate: confirmed.candidate,
+      opensAt: confirmed.opensAt,
+      minutesUntil: confirmed.minutesUntil,
+      confidence: confirmed.confidence,
+    };
+  }
+
+  const likely = candidates
+    .map((candidate, index) => {
+      if (!mayUseLikelyOpenFallback(candidate.open_status)) return null;
+      const timing = reliableOpeningSoon(candidate.slug, now);
+      return timing
+        ? { candidate, index, ...timing, confidence: "likely" as const }
+        : null;
+    })
+    .filter((match): match is NonNullable<typeof match> => Boolean(match))
+    .sort(compare)[0];
+  if (!likely) return null;
+  return {
+    candidate: likely.candidate,
+    opensAt: likely.opensAt,
+    minutesUntil: likely.minutesUntil,
+    confidence: likely.confidence,
+  };
+}
+
+const ALSO_MAX = 4;
+const LATER_PREVIEW = 3;
+const NOTABLE_MAX = 6;
+
+const MOVIE_SHOWTIMES: Record<string, string> = {
+  "warehouse-cinemas-frederick-frederick":
+    "https://frederick.warehousecinemas.com/tickets-showtimes/",
+  "regal-westview-frederick":
+    "https://www.regmovies.com/theatres/regal-westview-1910",
+};
+
+/** Movie theaters are useful based on what is playing, not whether their
+ *  lobby has a conventional storefront-hours record. Keep the choice native,
+ *  then hand the volatile film/time inventory to each cinema's official site. */
+function toMovieRow(
+  candidate: WantCandidate,
+  preciseOrigin = false,
+): WantRow {
+  const row = toRow(
+    candidate,
+    false,
+    undefined,
+    wantDecisionReasons(candidate, preciseOrigin),
+  );
+  const href = MOVIE_SHOWTIMES[candidate.slug];
+  return {
+    ...row,
+    fact: "Choose a film and showtime.",
+    action: href
+      ? {
+          label: "Showtimes & tickets",
+          href,
+        }
+      : undefined,
+  };
+}
+
+function toOpeningSoonRow(
+  match: WantOpeningSoonCandidate,
+  reasons: readonly DecisionReason[] = [],
+): WantRow {
+  const row = toRow(match.candidate, false, match.confidence, reasons);
+  const time = formatTime(match.opensAt);
+  return {
+    ...row,
+    fact:
+      match.confidence === "confirmed"
+        ? `Opens soon · ${time}`
+        : `Likely opens at ${time} · check hours`,
+    opensInMinutes: match.minutesUntil,
+  };
+}
+
+/**
+ * Resolve a want key (craving or meal) to matcher + label + browse URL.
+ * Null for unknown keys, so the API can 400 instead of guessing.
+ */
+function resolveWant(
+  cKey: string,
+  facetKey: string | null,
+): {
+  label: string;
+  browseHref: string;
+  availability: WantAvailability;
+  match: (p: {
+    category: string;
+    name: string;
+    subcategories?: string[];
+    primary_type?: string;
+    short_blurb?: string;
+  }) => boolean;
+} | null {
+  // Category chips (/category/<slug>) answer inline too, not just the
+  // /nearby?c= cravings — so tapping "Bakeries" or "Pharmacies" flows the
+  // same list down in place. The key is prefixed "cat:" so it can't collide
+  // with a craving key. Matching mirrors the /category page exactly: the slug
+  // plus its child categories, by category or subcategory.
+  if (cKey.startsWith("cat:")) {
+    const slug = cKey.slice(4);
+    const cat = CATEGORY_BY_SLUG[slug];
+    if (!cat) return null;
+    const children = CATEGORIES.filter((x) => x.parent === slug).map((x) => x.slug);
+    const match = new Set<string>([slug, ...children]);
+    // Pizza mirrors rankPlaces' widened evidence (isPizzaPlace): most local
+    // pizzerias carry a "restaurant" category from Google, so category
+    // matching alone answered "pizza" with a fraction of the real list.
+    const wantsPizza = match.has("pizza");
+    const wantsPlayground = match.has("playground");
+    const availability: WantAvailability =
+      ["park", "playground", "trail", "outdoors"].includes(slug)
+        ? "not-applicable"
+        : ["library", "worship", "market"].includes(slug)
+          ? "bonus"
+          : "required";
+    return {
+      label: cat.name,
+      browseHref: `/category/${slug}`,
+      availability,
+      match: (p) =>
+        match.has(p.category) ||
+        (p.subcategories ?? []).some((s) => match.has(s)) ||
+        (wantsPizza && isPizzaPlace(p)) ||
+        (wantsPlayground && isPlaygroundPlace(p)),
+    };
+  }
+  if (isMealKey(cKey)) {
+    const meal = MEALS[cKey];
+    return {
+      label: meal.label,
+      browseHref: `/nearby?c=${cKey}`,
+      availability: "required",
+      match: (p) => matchMeal(meal, p),
+    };
+  }
+  const craving = CRAVINGS.find((c) => c.key === cKey);
+  if (!craving) return null;
+  const facet = facetKey ? craving.facets?.find((f) => f.key === facetKey) : null;
+  return {
+    label: facet?.label ?? craving.label,
+    browseHref: `/nearby?c=${cKey}${facet ? `&facet=${facet.key}` : ""}`,
+    availability: craving.availability ?? (craving.alwaysOpen ? "not-applicable" : "required"),
+    // A facet narrows the already-matched set, same as /nearby.
+    match: (p) =>
+      matchesCraving(craving, p) && (!facet || matchesCravingFacet(facet, p)),
+  };
+}
+
+function browseHrefForScope(href: string, municipality: string | null | undefined): string {
+  if (!municipality || !href.startsWith("/nearby?")) return href;
+  return `${href}&town=${encodeURIComponent(municipality)}`;
+}
+
+/**
+ * Pick the hero from an APPROXIMATE (IP-seeded) origin. A coarse centroid
+ * is honest enough to ORDER a list, but it must never CROWN one place "the
+ * answer": Frederick's IP geolocation habitually lands on the south-side
+ * corridor, which was promoting whatever chain sat nearest the centroid
+ * (a Reddit reviewer caught Chick-fil-A leading a downtown list, July
+ * 2026). Among the plausibly-near open places, the hero is the strongest
+ * PLACE (feature score = curation + quality), not the fluke nearest.
+ */
+export function approxHeroIndex(open: WantCandidate[]): number {
+  if (open.length <= 1) return 0;
+  const pool = Math.min(open.length, 10);
+  let best = 0;
+  const score = (candidate: WantCandidate) =>
+    candidate.feature_score + (candidate.intent_fit_tier ?? 0) * 10;
+  for (let i = 1; i < pool; i++) {
+    if (score(open[i]) > score(open[best])) best = i;
+  }
+  return best;
+}
+
+function wantDecisionFactors(
+  candidate: WantCandidate,
+  preciseOrigin: boolean,
+  includeAvailability = false,
+): DecisionFactor[] {
+  const proximity = preciseOrigin && candidate.distance_m != null
+    ? 10 / (1 + candidate.distance_m / 600)
+    : 0;
+  return [
+    {
+      id: "editorial-fit",
+      label: "Radius has stronger local evidence for this place.",
+      points: candidate.feature_score,
+      visible: false,
+    },
+    {
+      id: "intent-fit",
+      label: "Coffee is one of its main reasons to visit.",
+      points: (candidate.intent_fit_tier ?? 0) * 10,
+      reasonPriority: 80,
+      visible: (candidate.intent_fit_tier ?? 0) >= 2,
+      evidenceIds: ["radius-taxonomy"],
+    },
+    {
+      id: "local-favorite",
+      label: "Radius has this marked as a local favorite.",
+      points: candidate.local_favorite ? 1.5 : 0,
+      reasonPriority: 70,
+      visible: Boolean(candidate.local_favorite),
+      evidenceIds: candidate.local_favorite ? ["radius-curation"] : [],
+    },
+    {
+      id: "hidden-gem",
+      label: "It is a less obvious local option.",
+      points: candidate.hidden_gem ? 0.5 : 0,
+      reasonPriority: 40,
+      visible: Boolean(candidate.hidden_gem),
+      evidenceIds: candidate.hidden_gem ? ["radius-curation"] : [],
+    },
+    {
+      id: "review-evidence",
+      label: "It has substantial Google review history.",
+      points:
+        ratingSignal(candidate.google_rating, candidate.google_rating_count) *
+        0.75,
+      visible: (candidate.google_rating_count ?? 0) >= 30,
+      reasonPriority: 60,
+      evidenceIds:
+        (candidate.google_rating_count ?? 0) >= 30 ? ["google-places"] : [],
+    },
+    {
+      id: "chain-nudge",
+      label: "A local option receives the tie-breaker.",
+      points: isChainName(candidate.name) ? -0.75 : 0,
+      visible: false,
+    },
+    {
+      id: "proximity",
+      label: "It is close to your location.",
+      points: proximity,
+      reasonPriority: 90,
+      visible: proximity > 0,
+      evidenceIds: proximity > 0 ? ["decision-origin"] : [],
+    },
+    {
+      id: "availability",
+      label: "Its current hours show it open now.",
+      points:
+        includeAvailability && isOpenNow(candidate.open_status) ? 0.75 : 0,
+      visible: includeAvailability && isOpenNow(candidate.open_status),
+      reasonPriority: 100,
+      evidenceIds:
+        includeAvailability && isOpenNow(candidate.open_status)
+          ? ["verified-hours"]
+          : [],
+    },
+  ];
+}
+
+function evaluateWantCandidate(
+  candidate: WantCandidate,
+  preciseOrigin: boolean,
+  includeAvailability = false,
+) {
+  return evaluateDecision(
+    candidate,
+    wantDecisionFactors(candidate, preciseOrigin, includeAvailability),
+  );
+}
+
+export function wantDecisionReasons(
+  candidate: WantCandidate,
+  preciseOrigin: boolean,
+  includeAvailability = false,
+): DecisionReason[] {
+  return evaluateWantCandidate(
+    candidate,
+    preciseOrigin,
+    includeAvailability,
+  ).reasons;
+}
+
+/** Rank a timeless Ask decision by editorial fit. Current hours remain on the
+ * row, but they do not let an open chain beat the better local answer merely
+ * because the question was asked after breakfast service ended. */
+export function rankBestFit(candidates: WantCandidate[], preciseOrigin = false): WantCandidate[] {
+  return candidates
+    .map((candidate) => evaluateWantCandidate(candidate, preciseOrigin))
+    .sort((a, b) =>
+      compareDecisionEvaluations(a, b, (left, right) => {
+        const distanceDelta =
+          (left.distance_m ?? Infinity) - (right.distance_m ?? Infinity);
+        if (distanceDelta !== 0) return distanceDelta;
+        return left.name.localeCompare(right.name);
+      }),
+    )
+    .map((evaluation) => evaluation.candidate);
+}
+
+function hasUnknownAvailability(candidate: WantCandidate): boolean {
+  return (
+    candidate.open_status.state === "unknown" ||
+    candidate.open_status.state === "unverified"
+  );
+}
+
+function rankFlexibleBestFit(
+  candidates: WantCandidate[],
+  availability: WantAvailability,
+  preciseOrigin: boolean,
+): WantCandidate[] {
+  const includeAvailability = availability !== "not-applicable";
+  return candidates
+    .map((candidate) =>
+      evaluateWantCandidate(candidate, preciseOrigin, includeAvailability),
+    )
+    .sort((a, b) =>
+      compareDecisionEvaluations(a, b, (left, right) => {
+        const distanceDelta =
+          (left.distance_m ?? Infinity) - (right.distance_m ?? Infinity);
+        if (distanceDelta !== 0) return distanceDelta;
+        return left.name.localeCompare(right.name);
+      }),
+    )
+    .map((evaluation) => evaluation.candidate);
+}
+
+export type WantAvailabilityResolution = ReturnType<typeof partitionWant> & {
+  /** Places eligible to lead the answer under the current coverage policy. */
+  current: WantCandidate[];
+  /** True only when verified-hours coverage can support an open-only answer. */
+  hardAvailability: boolean;
+  rankingMode: WantAnswer["rankingMode"];
+  /** False for bonus/timeless intents even when their hours happen to be well-covered. */
+  mayAssertNoneOpen: boolean;
+};
+
+/**
+ * Resolve the availability policy before presentation.
+ *
+ * Current hours are a hard gate only when the intent actually requires them
+ * and enough of the matched set has trustworthy hours to support that
+ * judgment. With thin coverage, a confirmed-open place remains useful
+ * evidence, but it cannot erase a much closer place whose hours are simply
+ * unknown. Confirmed-closed places stay out of the lead pool either way.
+ */
+export function resolveWantAvailability(
+  candidates: WantCandidate[],
+  availability: WantAvailability,
+  preciseOrigin = false,
+): WantAvailabilityResolution {
+  const partitioned = partitionWant(candidates);
+  const coverageSupportsOpenOnly = mayAssertNoneOpen(
+    candidates.map((candidate) => candidate.open_status),
+  );
+  const policy = resolveDecisionAvailabilityPolicy({
+    requested: availability,
+    hasSufficientCoverage: coverageSupportsOpenOnly,
+    // An explicit right-now want still leads with the places Radius can prove
+    // open, while keeping unknown-hours matches visible when coverage is thin.
+    thinCoverageBehavior: "lead",
+  });
+  const { hardAvailability } = policy;
+
+  if (hardAvailability) {
+    return {
+      ...partitioned,
+      current: partitioned.open,
+      hardAvailability: true,
+      rankingMode: "open-now",
+      mayAssertNoneOpen: policy.mayAssertNoneOpen,
+    };
+  }
+
+  return {
+    ...partitioned,
+    // Thin coverage does not justify hiding unknown-hour places, but a place
+    // we can prove is open must still lead a right-now answer. Rank each
+    // confidence lane on its own, then place unknown hours after confirmed
+    // open results instead of letting proximity promote uncertainty above
+    // evidence.
+    current:
+      availability === "required"
+        ? [
+            ...rankFlexibleBestFit(
+              candidates.filter((candidate) =>
+                isOpenNow(candidate.open_status),
+              ),
+              availability,
+              preciseOrigin,
+            ),
+            ...rankFlexibleBestFit(
+              candidates.filter(hasUnknownAvailability),
+              availability,
+              preciseOrigin,
+            ),
+          ]
+        : rankFlexibleBestFit(
+            candidates.filter(
+              (candidate) =>
+                isOpenNow(candidate.open_status) ||
+                hasUnknownAvailability(candidate),
+            ),
+            availability,
+            preciseOrigin,
+          ),
+    hardAvailability: false,
+    rankingMode: "best-fit",
+    mayAssertNoneOpen: false,
+  };
+}
+
+export function buildWantAnswer(
+  cKey: string,
+  facetKey: string | null,
+  origin: { lng: number; lat: number } | null,
+  now: Date = new Date(),
+  opts?: {
+    approximateOrigin?: boolean;
+    municipality?: string | null;
+    contextLabel?: string;
+    contextSource?: WantAnswer["contextSource"];
+    fallbackReason?: WantAnswer["fallbackReason"];
+    rankingMode?: WantAnswer["rankingMode"];
+    /** Extra narrowing over the matched set (cuisine, area) — Ask Frederick's
+     *  seam. Runs after the want matcher, so it only ever subtracts. */
+    refine?: (p: WantRefinable) => boolean;
+  },
+): WantAnswer | null {
+  const want = resolveWant(cKey, facetKey);
+  if (!want) return null;
+
+  const candidates: WantCandidate[] = WANT_PLACES
+    .filter((p) => !opts?.municipality || p.municipality === opts.municipality)
+    .filter((p) =>
+      want.match({
+        // The generated want taxonomy is the human-reviewed discovery role.
+        // Raw Google categories can describe a secondary service (a popcorn
+        // market tagged restaurant, or a tea retailer tagged coffee) and were
+        // leaking those businesses into Today despite corrected fields being
+        // present in this snapshot.
+        category: p.want_match_category,
+        name: p.name,
+        subcategories: p.want_match_subcategories,
+        primary_type: p.primary_type,
+        short_blurb: p.short_blurb,
+      }),
+    )
+    .filter(
+      (p) =>
+        !opts?.refine ||
+        opts.refine({
+          name: p.name,
+          category: p.want_match_category,
+          municipality: p.municipality,
+          geom: p.geom,
+          short_blurb: p.short_blurb,
+          primary_type: (p as { primary_type?: string }).primary_type,
+          accessibility: p.accessibility,
+        }),
+    )
+    .map((p) => {
+      const mayAssertHours = mayAssertOpenState(
+        p.hours_verified,
+        p.hours_updated_at,
+        now,
+      ) && mayPublishVisitabilityHours(p.slug, p.hours, now);
+      return {
+        ...p,
+        intent_fit_tier:
+          cKey === "coffee"
+            ? coffeeIntentTier(p) - (isChainName(p.name) ? 1.5 : 0)
+            : undefined,
+        hours: mayAssertHours ? p.hours : undefined,
+        hours_verified: mayAssertHours,
+        // Keep "schedule exists but is stale" distinct from "Radius has no
+        // schedule." Both states stay out of open/closed claims, but the
+        // former can honestly say "Hours not confirmed" instead of implying
+        // that no hours were ever posted.
+        open_status: mayAssertHours
+          ? getOpenStatus(p.hours, { verified: true }, now)
+          : p.hours || p.hours_updated_at
+            ? { state: "unverified" as const }
+            : { state: "unknown" as const },
+        distance_m: origin ? haversineMeters(origin, p.geom) : undefined,
+      };
+    });
+
+  const preciseOrigin = Boolean(origin && !opts?.approximateOrigin);
+  const reasonsFor = (
+    candidate: WantCandidate,
+    includeAvailability = false,
+  ) => wantDecisionReasons(candidate, preciseOrigin, includeAvailability);
+  const availability = resolveWantAvailability(
+    candidates,
+    want.availability,
+    preciseOrigin,
+  );
+  const { open, later, other, total } = availability;
+  const requestedRankingMode = opts?.rankingMode;
+  const rankingMode =
+    requestedRankingMode ?? availability.rankingMode;
+  const noneOpenIsSayable =
+    requestedRankingMode === "best-fit"
+      ? false
+      : availability.mayAssertNoneOpen;
+  const openingSoonMatch =
+    requestedRankingMode === "best-fit" || want.availability === "not-applicable"
+      ? null
+      : selectOpeningSoonCandidate([...later, ...other], now);
+  const openingSoon = openingSoonMatch
+    ? toOpeningSoonRow(
+        openingSoonMatch,
+        reasonsFor(openingSoonMatch.candidate),
+      )
+    : null;
+  // An opening-soon place is already a complete answer. Keep it out of every
+  // generic fallback lane so the same business cannot appear twice in one
+  // short decision merely because its hours came from the curated fallback.
+  const laterWithoutOpeningSoon = later.filter(
+    (candidate) => candidate.slug !== openingSoon?.slug,
+  );
+  const otherWithoutOpeningSoon = other.filter(
+    (candidate) => candidate.slug !== openingSoon?.slug,
+  );
+
+  // "Movies" is not an open-now storefront question. Cinema hours do not
+  // answer which films are playing, and most theaters do not publish useful
+  // lobby hours through Places. Present every local cinema as a decision with
+  // a direct official showtimes action instead of an empty-state warning.
+  if (cKey === "movies") {
+    const ranked = rankBestFit(
+      candidates,
+      preciseOrigin,
+    );
+    return withWantDecision({
+      key: cKey,
+      label: want.label,
+      rankingMode: "best-fit",
+      hero: ranked[0] ? toMovieRow(ranked[0], preciseOrigin) : null,
+      also: ranked
+        .slice(1, ALSO_MAX + 1)
+        .map((candidate) => toMovieRow(candidate, preciseOrigin)),
+      soon: null,
+      later: [],
+      laterMore: 0,
+      notable: [],
+      total,
+      mayAssertNoneOpen: noneOpenIsSayable,
+      browseHref: browseHrefForScope(want.browseHref, opts?.municipality),
+      contextLabel: opts?.contextLabel ?? "Whole county",
+      contextSource: opts?.contextSource ?? "county",
+      fallbackReason: opts?.fallbackReason ?? null,
+    }, "not-applicable");
+  }
+
+  if (rankingMode === "best-fit") {
+    // An explicit best-fit request (Ask questions that are not about current
+    // availability) remains timeless. The automatic best-fit fallback caused
+    // by thin hours coverage is stricter: confirmed-closed places do not lead,
+    // and an open badge is attached only to a place that is truly open now.
+    const best =
+      requestedRankingMode === "best-fit"
+        ? rankBestFit(candidates, preciseOrigin)
+        : availability.current.filter(
+            (candidate) => candidate.slug !== openingSoon?.slug,
+          );
+    // Thin hours coverage can move an ordinary right-now request into this
+    // best-fit branch. Keep the same short-answer diversity rule used by the
+    // open-now branch so one chain cannot take the hero and repeat in the
+    // alternatives merely because fewer schedules are currently verifiable.
+    const bestHeroBrand = best[0] ? chainBrandKey(best[0].name) : null;
+    const diverseBest = best[0]
+      ? [
+          best[0],
+          ...keepOneLocationPerChain(
+            best.slice(1),
+            bestHeroBrand ? [bestHeroBrand] : undefined,
+          ),
+        ]
+      : [];
+    const rowForBestFit = (candidate: WantCandidate) =>
+      toRow(
+        candidate,
+        false,
+        isOpenNow(candidate.open_status) ? "confirmed" : undefined,
+        reasonsFor(candidate, requestedRankingMode !== "best-fit"),
+      );
+    const breweryCurrent =
+      cKey !== "breweries"
+        ? undefined
+        : open.length > 0
+          ? open.map((candidate) =>
+              toRow(
+                candidate,
+                false,
+                "confirmed",
+                reasonsFor(candidate, true),
+              ),
+            )
+          : otherWithoutOpeningSoon
+              .filter(
+                (candidate) =>
+                  mayUseLikelyOpenFallback(candidate.open_status) &&
+                  isLikelyOpenNow(candidate.slug, now),
+              )
+              .map((candidate) =>
+                toRow(
+                  candidate,
+                  false,
+                  "likely",
+                  reasonsFor(candidate),
+                ),
+              );
+    return withWantDecision({
+      key: cKey,
+      label: want.label,
+      rankingMode,
+      hero: diverseBest[0] ? rowForBestFit(diverseBest[0]) : null,
+      also: diverseBest.slice(1, ALSO_MAX + 1).map(rowForBestFit),
+      open: breweryCurrent,
+      soon: openingSoon,
+      later:
+        requestedRankingMode === "best-fit"
+          ? []
+          : laterWithoutOpeningSoon.slice(0, LATER_PREVIEW).map((candidate) =>
+              toRow(candidate, true),
+            ),
+      laterMore:
+        requestedRankingMode === "best-fit"
+          ? 0
+          : Math.max(0, laterWithoutOpeningSoon.length - LATER_PREVIEW),
+      notable:
+        requestedRankingMode === "best-fit" ||
+        diverseBest.length > 0 ||
+        laterWithoutOpeningSoon.length > 0
+          ? []
+          : otherWithoutOpeningSoon
+              .filter(
+                (candidate) =>
+                  !isOpenNow(candidate.open_status) &&
+                  !hasUnknownAvailability(candidate),
+              )
+              .slice(0, NOTABLE_MAX)
+              .map((candidate) => toRow(candidate, false)),
+      total,
+      mayAssertNoneOpen: noneOpenIsSayable,
+      browseHref: browseHrefForScope(want.browseHref, opts?.municipality),
+      contextLabel: opts?.contextLabel ?? "Whole county",
+      contextSource: opts?.contextSource ?? "county",
+      fallbackReason: opts?.fallbackReason ?? null,
+    }, want.availability);
+  }
+
+  // When nothing is open now AND nothing opens later today, but the category
+  // still has places (markets, playgrounds, or anything without posted
+  // hours), fall back to the notable set so the panel still flows down with
+  // real places instead of a dead "nothing's open" line.
+  const likely =
+    open.length === 0
+      ? otherWithoutOpeningSoon.filter(
+          (candidate) =>
+            mayUseLikelyOpenFallback(candidate.open_status) &&
+            isLikelyOpenNow(candidate.slug, now),
+        )
+      : [];
+  const current = open.length > 0 ? open : likely;
+  const currentConfidence: WantRow["confidence"] =
+    open.length > 0 ? "confirmed" : "likely";
+
+  const notable = current.length === 0 && laterWithoutOpeningSoon.length === 0
+    ? otherWithoutOpeningSoon
+        .slice(0, NOTABLE_MAX)
+        .map((candidate) =>
+          toRow(candidate, false, undefined, reasonsFor(candidate)),
+        )
+    : [];
+
+  const heroIdx = opts?.approximateOrigin ? approxHeroIndex(current) : 0;
+  // One location per chain, and the hero's brand is already spoken for.
+  //
+  // Without this, "coffee" answered with Starbucks, then Starbucks, Dunkin',
+  // Starbucks, Starbucks Coffee Company: four of five slots on one brand, in a
+  // county whose catalog holds 41 coffee places. The per-place chain penalties
+  // above are not enough on their own, because they push every location of a
+  // strong brand down by the same amount and leave their order intact.
+  //
+  // daypartPicks.ts has applied this rule to the server-rendered shelf all
+  // along. This is the path that REPLACES that shelf a moment later, so the
+  // rule had no effect on what anyone actually saw.
+  const heroBrand = current[heroIdx]
+    ? chainBrandKey(current[heroIdx].name)
+    : null;
+  const alsoPool = keepOneLocationPerChain(
+    current.filter((_, i) => i !== heroIdx),
+    heroBrand ? [heroBrand] : undefined,
+  );
+
+  return withWantDecision({
+    key: cKey,
+    label: want.label,
+    rankingMode,
+    hero: current[heroIdx]
+      ? toRow(
+          current[heroIdx],
+          false,
+          currentConfidence,
+          reasonsFor(current[heroIdx], currentConfidence === "confirmed"),
+        )
+      : null,
+    also: alsoPool
+      .slice(0, ALSO_MAX)
+      .map((candidate) =>
+        toRow(
+          candidate,
+          false,
+          currentConfidence,
+          reasonsFor(candidate, currentConfidence === "confirmed"),
+        ),
+      ),
+    open:
+      cKey === "breweries"
+        ? current.map((candidate) =>
+            toRow(
+              candidate,
+              false,
+              currentConfidence,
+              reasonsFor(candidate, currentConfidence === "confirmed"),
+            ),
+          )
+        : undefined,
+    soon: openingSoon,
+    later: laterWithoutOpeningSoon.slice(0, LATER_PREVIEW).map((c) => toRow(c, true)),
+    laterMore: Math.max(0, laterWithoutOpeningSoon.length - LATER_PREVIEW),
+    notable,
+    total,
+    mayAssertNoneOpen: noneOpenIsSayable,
+    browseHref: browseHrefForScope(want.browseHref, opts?.municipality),
+    contextLabel: opts?.contextLabel ?? "Whole county",
+    contextSource: opts?.contextSource ?? "county",
+    fallbackReason: opts?.fallbackReason ?? null,
+  }, want.availability);
+}

@@ -1,5 +1,7 @@
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { ReasonTone } from "@/components/ui/ReasonChip";
+import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
+import { isHiddenGem } from "@/data/hidden-gems";
 
 /**
  * Derive the small "why this is shown" reason chips for a place,
@@ -12,28 +14,65 @@ import type { ReasonTone } from "@/components/ui/ReasonChip";
  * Priority rationale:
  *   1. Open / verified open — answers "can I go right now?"
  *   2. Distance — answers "how much effort?"
- *   3. Top rated / local favorite — answers "is it good?"
- *   4. Recently verified — answers "is the data current?"
+ *   3. ONE intent reason (kid-friendly / free / near a landmark) —
+ *      answers "does this fit what I'm doing?" Capped to one so it never
+ *      crowds out the decision signals.
+ *   4. Top rated / local favorite — answers "is it good?"
+ *   5. Recently checked hours — answers "is the open status current?"
  */
 export type PlaceReason =
   | "verified_open"
   | "open_now"
+  | "hidden_gem"
   | "near"
   | "walkable"
+  | "kid_friendly"
+  | "dog_friendly"
+  | "free"
+  | "near_landmark"
   | "top_rated"
   | "local_favorite"
-  | "recently_verified";
+  | "hours_checked";
 
 export type PlaceReasonChip = { kind: PlaceReason; label: string; tone: ReasonTone };
 
-const WALK_NEAR_M = 400; // ~5 minute walk
-const WALK_OK_M = 1200; // ~15 minute walk
-const WALK_SPEED_M_PER_MIN = 80; // 4.8 km/h
+const NEAR_M = 1200;
 
 const TOP_RATED_MIN_STARS = 4.5;
 const TOP_RATED_MIN_COUNT = 50;
 const LOCAL_FAVORITE_MIN_FEATURE = 9;
 const FRESH_WITHIN_DAYS = 14;
+
+// Unambiguous kid destinations (category-level only — conservative; no
+// fuzzy "park is sort of kid-friendly" guessing).
+const KID_CATEGORIES: ReadonlySet<string> = new Set(["family", "playground"]);
+
+// Tiny curated landmark set — the locators a local actually uses. Downtown
+// coords are the real place geoms; Hood/Monocacy are well-known points.
+// "Near {x}" fires only within NEAR_LANDMARK_M of one of these.
+const NEAR_LANDMARK_M = 500;
+const LANDMARKS: ReadonlyArray<{ name: string } & LngLat> = [
+  { name: "Carroll Creek", lng: -77.4109, lat: 39.4137 },
+  { name: "Baker Park", lng: -77.4198, lat: 39.4170 },
+  { name: "the Weinberg", lng: -77.4124, lat: 39.4145 },
+  { name: "Hood College", lng: -77.3985, lat: 39.4235 },
+  { name: "Monocacy Battlefield", lng: -77.3905, lat: 39.3730 },
+];
+
+/** Nearest curated landmark within NEAR_LANDMARK_M, else null. Pure. */
+function nearestLandmark(geom: LngLat): { name: string } | null {
+  let best: { name: string } | null = null;
+  let bestD = NEAR_LANDMARK_M;
+  for (const lm of LANDMARKS) {
+    const d = haversineMeters(geom, { lng: lm.lng, lat: lm.lat });
+    if (d <= bestD) {
+      bestD = d;
+      best = { name: lm.name };
+    }
+  }
+  return best;
+}
+
 
 export function placeReasons(
   p: PlaceCardData,
@@ -51,20 +90,48 @@ export function placeReasons(
     }
   }
 
-  // 2. Distance — only when an origin was set on the loader.
-  if (typeof p.distance_m === "number") {
-    if (p.distance_m <= WALK_NEAR_M) {
-      const mins = Math.max(1, Math.round(p.distance_m / WALK_SPEED_M_PER_MIN));
-      out.push({ kind: "near", label: `${mins} min walk`, tone: "near" });
-    } else if (p.distance_m <= WALK_OK_M) {
-      out.push({ kind: "walkable", label: "Walkable", tone: "near" });
-    }
+  // 2. Hidden gem: a hand-curated local standout from src/data/hidden-gems.
+  // Placed high so this editorial "why you'd go" survives the 3-chip cap
+  // for the handful of places that earn it; it's the most distinctive
+  // single reason for those spots. Until now the curation never reached a
+  // screen — this is the wire-up.
+  if (isHiddenGem(p.slug)) {
+    out.push({ kind: "hidden_gem", label: "Hidden gem", tone: "rated" });
   }
 
-  // 3. Quality signal. Hand-picked seed places carry a high
-  // feature_score even when they don't have a Google rating; Google-
-  // sourced spots earn the "top rated" chip via stars + count.
-  if ((p.feature_score ?? 0) >= LOCAL_FAVORITE_MIN_FEATURE) {
+  // 3. Distance — only when an origin was set on the loader.
+  // The loader supplies straight-line distance, not a pedestrian route. A
+  // nearby point may sit across a river, railway, or road without a crossing.
+  if (typeof p.distance_m === "number" && Number.isFinite(p.distance_m) && p.distance_m >= 0 && p.distance_m <= NEAR_M) {
+    out.push({ kind: "near", label: `${formatDistance(p.distance_m)} away`, tone: "near" });
+  }
+
+  // 3. One intent reason — the single most useful "does this fit?" signal,
+  // derived from data we already have. Capped to ONE (kid-friendly →
+  // dog-friendly → free → near a landmark) so it never crowds out open /
+  // distance / quality. Dog-friendly is a real tag (from the discovered
+  // rows / Google amenities when present), not a guess, and it's a signal
+  // people specifically hunt for — so it outranks the weaker "Free"
+  // and "Near {landmark}" fillers. A park or trail may charge entry: only
+  // the catalog's explicit free tag supports a price claim.
+  if (KID_CATEGORIES.has(p.category)) {
+    out.push({ kind: "kid_friendly", label: "Kid-friendly", tone: "neutral" });
+  } else if ((p.tags ?? []).includes("dog-friendly")) {
+    out.push({ kind: "dog_friendly", label: "Dog-friendly", tone: "neutral" });
+  } else if ((p.tags ?? []).includes("free")) {
+    out.push({ kind: "free", label: "Free", tone: "free" });
+  } else {
+    const lm = nearestLandmark(p.geom);
+    if (lm) out.push({ kind: "near_landmark", label: `Near ${lm.name}`, tone: "near" });
+  }
+
+  // 4. Quality signal. The authoritative local-favorite flag (hand-pick
+  // in local-favorites.json, or the verified high-rating data proxy —
+  // see resolveLocalFavorite in the loader) is the same signal the
+  // visitor ranking blends, so the chip and the ranking never disagree.
+  // Curated seed places with a high feature_score but no Google profile
+  // still qualify. Otherwise a strong Google rating earns "Top rated".
+  if (p.local_favorite || (p.feature_score ?? 0) >= LOCAL_FAVORITE_MIN_FEATURE) {
     out.push({ kind: "local_favorite", label: "Local favorite", tone: "rated" });
   } else if (
     (p.google_rating ?? 0) >= TOP_RATED_MIN_STARS &&
@@ -73,13 +140,13 @@ export function placeReasons(
     out.push({ kind: "top_rated", label: "Top rated", tone: "rated" });
   }
 
-  // 4. Freshness — only worth surfacing if it's recent. A stale
-  // "verified March" chip would lower trust, not raise it.
-  if (p.last_verified_at) {
+  // 5. Hours freshness. A generic row timestamp must never imply that the
+  // hours were checked, so only the dedicated hours timestamp earns a chip.
+  if (p.hours_verified && p.hours_updated_at) {
     const daysOld =
-      (now.getTime() - Date.parse(p.last_verified_at)) / (24 * 3600_000);
-    if (daysOld <= FRESH_WITHIN_DAYS) {
-      out.push({ kind: "recently_verified", label: "Verified", tone: "verified" });
+      (now.getTime() - Date.parse(p.hours_updated_at)) / (24 * 3600_000);
+    if (daysOld >= 0 && daysOld <= FRESH_WITHIN_DAYS) {
+      out.push({ kind: "hours_checked", label: "Hours checked", tone: "verified" });
     }
   }
 

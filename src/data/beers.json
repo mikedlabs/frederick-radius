@@ -1,0 +1,1897 @@
+{
+  "breweries": [
+    {
+      "slug": "olde-mother-brewing-frederick",
+      "name": "Olde Mother Brewing",
+      "town": "frederick",
+      "focus": "Olde Mother is a downtown brewery with a broad rotating range anchored by hop-forward American IPAs, crisp lagers, and dessert stouts.",
+      "untappd": "https://untappd.com/OldeMotherBrewingCo",
+      "beers": [
+        {
+          "name": "Impressionist",
+          "style": "American IPA",
+          "family": "ipa",
+          "abv": 6.3,
+          "notes": "Impressionist is a fruit-forward IPA with a tropical, juicy character and only a gentle bitter edge.",
+          "flagship": true,
+          "rating": 3.8,
+          "untappd": "https://untappd.com/b/olde-mother-brewing-co-impressionist/2182704"
+        },
+        {
+          "name": "Hank",
+          "style": "American Light Lager",
+          "family": "lager-pilsner",
+          "abv": 4.6,
+          "notes": "Expect a light, clean, easy-drinking lager that stays crisp and refreshing.",
+          "flagship": true,
+          "rating": 3.59,
+          "untappd": "https://untappd.com/b/olde-mother-brewing-co-hank/3379079"
+        },
+        {
+          "name": "'86 IPA",
+          "style": "American IPA",
+          "family": "ipa",
+          "abv": 6,
+          "notes": "'86 IPA is a classic, drier American IPA leaning on resinous and citrus hop character.",
+          "flagship": true,
+          "rating": 3.73,
+          "untappd": "https://untappd.com/b/olde-mother-brewing-co-86-ipa/1849243"
+        },
+        {
+          "name": "Oatmeal Stout",
+          "style": "Oatmeal Stout",
+          "family": "stout-porter",
+          "abv": 5.6,
+          "notes": "Expect a smooth, moderate-strength stout with roasty coffee notes and a soft oat-driven body.",
+          "flagship": true,
+          "rating": 3.71,
+          "untappd": "https://untappd.com/b/olde-mother-brewing-co-oatmeal-stout/1296032"
+        },
+        {
+          "name": "Peelsner (Orange Peel Pilsner)",
+          "style": "Pilsner",
+          "family": "lager-pilsner",
+          "abv": 5,
+          "notes": "Peelsner (Orange Peel Pilsner) is a crisp pilsner brightened with Mandarina Bavaria hops and fresh orange zest for a citrusy snap.",
+          "flagship": true,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Callisto",
+          "style": "Dessert Oatmeal Stout",
+          "family": "stout-porter",
+          "abv": 6,
+          "notes": "Expect a rich, award-winning oatmeal stout layered with cocoa, coffee, and milk-chocolate sweetness.",
+          "flagship": false,
+          "rating": 3.83,
+          "untappd": "https://untappd.com/b/olde-mother-brewing-co-callisto/4555742"
+        },
+        {
+          "name": "Roasted Maple Stout",
+          "style": "American Stout",
+          "family": "stout-porter",
+          "abv": 7.8,
+          "notes": "Roasted Maple Stout is a full stout that opens with roast, turns toffee-sweet, and finishes with warm maple.",
+          "flagship": false,
+          "rating": 3.83,
+          "untappd": "https://untappd.com/b/olde-mother-brewing-co-roasted-maple-stout/1278169"
+        },
+        {
+          "name": "Dire Wolf",
+          "style": "Double IPA",
+          "family": "ipa",
+          "abv": 7.9,
+          "notes": "Expect a low-bitterness double IPA bursting with tropical citrus, mango, and papaya.",
+          "flagship": false,
+          "rating": 3.92,
+          "untappd": "https://untappd.com/b/olde-mother-brewing-co-dire-wolf/3038886"
+        },
+        {
+          "name": "El Matador",
+          "style": "Mexican Lager",
+          "family": "lager-pilsner",
+          "abv": 5.2,
+          "notes": "El Matador is a light, crisp Mexican-style lager built for easy, refreshing drinking.",
+          "flagship": false,
+          "rating": 3.78,
+          "untappd": "https://untappd.com/b/olde-mother-brewing-co-el-matador/4248533"
+        },
+        {
+          "name": "Portal Vision",
+          "style": "American IPA",
+          "family": "ipa",
+          "abv": 6.6,
+          "notes": "Expect a fruited IPA showing red currant, strawberry, and blackberry over a hoppy base.",
+          "flagship": false,
+          "rating": 3.72,
+          "untappd": "https://untappd.com/b/olde-mother-brewing-co-portal-vison/3216927"
+        },
+        {
+          "name": "Double Impressionist",
+          "style": "Hazy Double IPA",
+          "family": "ipa",
+          "abv": 9,
+          "notes": "Double Impressionist is a juice-forward hazy double IPA that hides its strength behind soft, ripe fruit.",
+          "flagship": false,
+          "rating": null,
+          "untappd": null
+        }
+      ]
+    },
+    {
+      "slug": "attaboy-beer-frederick",
+      "name": "Attaboy Beer",
+      "town": "frederick",
+      "focus": "Attaboy is a Frederick brewery known for juicy hazy IPAs and other hop-forward beer, alongside West Coast pilsners and barrel-aged sours.",
+      "untappd": "https://untappd.com/AttaboyBeer",
+      "beers": [
+        {
+          "name": "Guava No Guava",
+          "style": "New England / Hazy IPA",
+          "family": "wheat-hazy",
+          "abv": 6.8,
+          "notes": "Expect a soft, juicy hazy IPA leaning tropical with guava and grapefruit and a pillowy, low-bitterness body.",
+          "flagship": true,
+          "rating": 3.89,
+          "untappd": "https://untappd.com/b/attaboy-beer-guava-no-guava/2307827"
+        },
+        {
+          "name": "Juicemaster 5000",
+          "style": "Double Hazy IPA",
+          "family": "wheat-hazy",
+          "abv": 8.5,
+          "notes": "Juicemaster 5000 is a big hazy double IPA packed with passionfruit and navel-orange fruitiness over a smooth body.",
+          "flagship": true,
+          "rating": 3.96,
+          "untappd": null
+        },
+        {
+          "name": "Creek Life (Citra)",
+          "style": "XPA (Extra Pale Ale)",
+          "family": "pale-ale",
+          "abv": 5.6,
+          "notes": "Expect an easy-drinking extra pale ale bright with Citra citrus and mango and a clean, sessionable finish.",
+          "flagship": true,
+          "rating": 3.64,
+          "untappd": "https://untappd.com/b/attaboy-beer-creek-life-citra/1922628"
+        },
+        {
+          "name": "Fredhead Red",
+          "style": "Red IPA",
+          "family": "ipa",
+          "abv": 6.9,
+          "notes": "Fredhead Red is a red IPA balancing piney, resinous hops against a rich, lightly roasty caramel malt backbone.",
+          "flagship": true,
+          "rating": 3.61,
+          "untappd": "https://untappd.com/b/attaboy-beer-fredhead-red/1922687"
+        },
+        {
+          "name": "The Whistler",
+          "style": "West Coast IPA",
+          "family": "ipa",
+          "abv": 6.9,
+          "notes": "Expect an old-school West Coast IPA that is dry, piney and snappy with a crisp white-grape hop bite.",
+          "flagship": false,
+          "rating": 3.82,
+          "untappd": null
+        },
+        {
+          "name": "Wowdeedee",
+          "style": "West Coast Pilsner",
+          "family": "lager-pilsner",
+          "abv": 5.3,
+          "notes": "Wowdeedee is a hoppy West Coast-style pilsner with citrus and a piney snap over a crisp lager base.",
+          "flagship": false,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Backyard Fiesta",
+          "style": "Mexican Lager",
+          "family": "lager-pilsner",
+          "abv": 5,
+          "notes": "Expect a light, crisp Mexican-style lager with a subtle hint of lime that drinks clean and refreshing.",
+          "flagship": false,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Mr. Mustache",
+          "style": "Robust Porter",
+          "family": "stout-porter",
+          "abv": 6.7,
+          "notes": "Mr. Mustache is a robust porter with rich chocolate and toasty roasted-malt flavors and a smooth, full body.",
+          "flagship": false,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Mermaid Blood",
+          "style": "Hibiscus Blonde Ale",
+          "family": "specialty-other",
+          "abv": 5.8,
+          "notes": "Expect a hibiscus-infused blonde ale with tart cranberry and white-tea notes and a light, spritzy finish.",
+          "flagship": false,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Small Time",
+          "style": "Table Beer",
+          "family": "belgian-farmhouse",
+          "abv": 3.6,
+          "notes": "Small Time is a low-alcohol Belgian-style table beer with gentle lemony tartness, pear, and a whisper of funk.",
+          "flagship": false,
+          "rating": null,
+          "untappd": null
+        }
+      ]
+    },
+    {
+      "slug": "steinhardt-brewing-company-frederick",
+      "name": "Steinhardt Brewing Company",
+      "town": "frederick",
+      "focus": "Steinhardt specializes in old-world Belgian abbey ales and German lagers, with barrel-aged Flanders sours and stouts.",
+      "untappd": "https://untappd.com/SteinhardtBrewingCompany",
+      "beers": [
+        {
+          "name": "Three Wise Men",
+          "style": "Belgian Tripel",
+          "family": "belgian-farmhouse",
+          "abv": 9.5,
+          "notes": "Expect a golden abbey tripel with spicy Belgian yeast, orchard-fruit esters, and a smooth boozy-warm finish.",
+          "flagship": true,
+          "rating": 3.74,
+          "untappd": null
+        },
+        {
+          "name": "Four Horsemen",
+          "style": "Belgian Quadrupel",
+          "family": "belgian-farmhouse",
+          "abv": 10.6,
+          "notes": "Four Horsemen is a dark, rich quad layered with raisin, fig, and prune, ending full-bodied and warming.",
+          "flagship": true,
+          "rating": 3.93,
+          "untappd": null
+        },
+        {
+          "name": "Dubbel XX",
+          "style": "Belgian Dubbel",
+          "family": "belgian-farmhouse",
+          "abv": 8.3,
+          "notes": "Expect a malt-forward dubbel with caramel, dark stone fruit, and gentle clove-and-spice yeast notes.",
+          "flagship": true,
+          "rating": 3.72,
+          "untappd": null
+        },
+        {
+          "name": "Black Abbey",
+          "style": "Belgian Strong Dark Ale",
+          "family": "belgian-farmhouse",
+          "abv": 9.5,
+          "notes": "Black Abbey is a strong dark Belgian ale with plum, dark bread crust, and a warming, dried-fruit depth.",
+          "flagship": false,
+          "rating": 3.75,
+          "untappd": null
+        },
+        {
+          "name": "Orange Punch",
+          "style": "Belgian Strong Golden Ale",
+          "family": "belgian-farmhouse",
+          "abv": 8.6,
+          "notes": "Expect a bright golden strong ale with orange blossom honey and bitter orange peel over a dry Belgian finish.",
+          "flagship": false,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "What the Helles",
+          "style": "Munich Helles Lager",
+          "family": "lager-pilsner",
+          "abv": 5.3,
+          "notes": "What the Helles is a clean, soft-bodied German helles with light bready malt and a crisp, easy-drinking finish.",
+          "flagship": true,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Kolsch",
+          "style": "Kolsch",
+          "family": "lager-pilsner",
+          "abv": 5,
+          "notes": "Expect a delicate hybrid ale with light grainy sweetness and a subtle wine-like crispness, very clean.",
+          "flagship": true,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Vienna Lager",
+          "style": "Vienna Lager",
+          "family": "lager-pilsner",
+          "abv": 4.9,
+          "notes": "Vienna Lager is an amber lager with toasty, lightly caramel malt and a smooth, dry finish.",
+          "flagship": true,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Hefeweizen",
+          "style": "German Hefeweizen",
+          "family": "wheat-hazy",
+          "abv": 5.2,
+          "notes": "Expect a hazy wheat beer with classic banana and clove yeast character and a soft, fluffy body.",
+          "flagship": true,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Dunkel Weisse",
+          "style": "Dunkelweizen",
+          "family": "wheat-hazy",
+          "abv": 5.6,
+          "notes": "Dunkel Weisse is a dark wheat ale blending banana-clove yeast with toasty, bready malt.",
+          "flagship": false,
+          "rating": 3.74,
+          "untappd": null
+        },
+        {
+          "name": "Marzen",
+          "style": "Marzen / Oktoberfest Lager",
+          "family": "lager-pilsner",
+          "abv": 5.6,
+          "notes": "Expect a festive amber lager with rich toasted-bread malt and a clean, moderately dry finish.",
+          "flagship": false,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Pale Ale",
+          "style": "American Pale Ale",
+          "family": "pale-ale",
+          "abv": 5.5,
+          "notes": "Pale Ale is a balanced pale ale with light caramel malt and a modest citrus-pine hop bite.",
+          "flagship": true,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "El Dorado",
+          "style": "New England / Hazy IPA",
+          "family": "ipa",
+          "abv": 6.3,
+          "notes": "Expect a soft, hazy IPA showcasing El Dorado hops with candied stone fruit and low bitterness.",
+          "flagship": false,
+          "rating": 3.78,
+          "untappd": null
+        },
+        {
+          "name": "Great Cascades",
+          "style": "Double IPA",
+          "family": "ipa",
+          "abv": 8.3,
+          "notes": "Great Cascades is a bigger, hop-forward double IPA with piney, floral Cascade character and firm bitterness.",
+          "flagship": false,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Coco Loco",
+          "style": "Session Stout",
+          "family": "stout-porter",
+          "abv": 4.2,
+          "notes": "Expect a low-alcohol dark stout with roasty coffee and cocoa notes and a light, sessionable body.",
+          "flagship": true,
+          "rating": 3.7,
+          "untappd": null
+        },
+        {
+          "name": "Imperial Tupelo Stout",
+          "style": "Imperial Stout",
+          "family": "stout-porter",
+          "abv": 9.5,
+          "notes": "Imperial Tupelo Stout is a big imperial stout sweetened with tupelo honey, with rich roast, dark chocolate, and honeyed depth.",
+          "flagship": false,
+          "rating": 3.78,
+          "untappd": null
+        },
+        {
+          "name": "BA Imperial Tupelo Stout",
+          "style": "Barrel-Aged Imperial Stout",
+          "family": "stout-porter",
+          "abv": 9.5,
+          "notes": "Expect the Tupelo stout aged in bourbon barrels, adding vanilla, oak, and boozy caramel to its honeyed roast.",
+          "flagship": false,
+          "rating": 3.83,
+          "untappd": null
+        },
+        {
+          "name": "Framboise",
+          "style": "Flanders Red (raspberry)",
+          "family": "sour-wild",
+          "abv": 6.5,
+          "notes": "Framboise is a tart, oak-aged Flemish red soured with traditional cultures and layered with bright raspberry.",
+          "flagship": false,
+          "rating": 3.78,
+          "untappd": null
+        },
+        {
+          "name": "Kriek",
+          "style": "Flanders Red (cherry)",
+          "family": "sour-wild",
+          "abv": 6.5,
+          "notes": "Expect a puckering barrel-aged Flemish sour with tart cherry and a vinous, oaky backbone.",
+          "flagship": false,
+          "rating": 3.71,
+          "untappd": null
+        }
+      ]
+    },
+    {
+      "slug": "rockwell-brewery-frederick",
+      "name": "Rockwell Brewery",
+      "town": "frederick",
+      "focus": "Rockwell's music-themed lineup leans toward hazy and West Coast IPAs while also covering stouts, red ales, lagers, and fruited sours.",
+      "untappd": "https://untappd.com/w/rockwell-brewery/328472",
+      "beers": [
+        {
+          "name": "B.I.G. Juicy",
+          "style": "Hazy / New England IPA",
+          "family": "ipa",
+          "abv": 7.1,
+          "notes": "B.I.G. Juicy is a soft, juicy hazy IPA bursting with tropical and citrus fruit and a low-bitterness, pillowy finish.",
+          "flagship": true,
+          "rating": 3.84,
+          "untappd": "https://untappd.com/b/rockwell-brewery-b-i-g-juicy/2372783"
+        },
+        {
+          "name": "Rapture",
+          "style": "Blonde / Golden Ale",
+          "family": "pale-ale",
+          "abv": 5.4,
+          "notes": "Expect an easy-drinking, lightly malty golden ale that stays crisp and approachable.",
+          "flagship": true,
+          "rating": 3.47,
+          "untappd": "https://untappd.com/b/rockwell-brewery-rapture/1976272"
+        },
+        {
+          "name": "Bitchin' Camaro",
+          "style": "Milk / Sweet Stout",
+          "family": "stout-porter",
+          "abv": 6.3,
+          "notes": "Bitchin' Camaro is a smooth, full-bodied sweet stout with lactose creaminess and rich roasted chocolate and coffee.",
+          "flagship": true,
+          "rating": 3.72,
+          "untappd": "https://untappd.com/b/rockwell-brewery-bitchin-camaro/1976491"
+        },
+        {
+          "name": "Double Vision",
+          "style": "Double IPA",
+          "family": "ipa",
+          "abv": 8.7,
+          "notes": "Expect a big, resinous double IPA layering piney and citrus hops over a warming malt backbone.",
+          "flagship": true,
+          "rating": 3.68,
+          "untappd": "https://untappd.com/b/rockwell-brewery-double-vision/1976480"
+        },
+        {
+          "name": "Spacegrass",
+          "style": "American IPA",
+          "family": "ipa",
+          "abv": 7.2,
+          "notes": "Spacegrass is a classic American IPA balancing bright citrus and pine hop character against a clean malt base.",
+          "flagship": true,
+          "rating": 3.67,
+          "untappd": "https://untappd.com/b/rockwell-brewery-spacegrass/3131460"
+        },
+        {
+          "name": "Earth Rocker",
+          "style": "American IPA",
+          "family": "ipa",
+          "abv": 7.1,
+          "notes": "Expect a dank, hop-forward IPA with grapefruit and resinous pine and a firm bitter finish.",
+          "flagship": true,
+          "rating": 3.73,
+          "untappd": "https://untappd.com/b/rockwell-brewery-earth-rocker/2469730"
+        },
+        {
+          "name": "Dropkick Red",
+          "style": "Irish Red Ale",
+          "family": "amber-brown",
+          "abv": 6.8,
+          "notes": "Dropkick Red is a malty Irish-style red with caramel and toasted biscuit sweetness and a gently dry finish.",
+          "flagship": true,
+          "rating": 3.66,
+          "untappd": "https://untappd.com/b/rockwell-brewery-dropkick-red/2399235"
+        },
+        {
+          "name": "Speed of Darkness",
+          "style": "Irish Dry Stout",
+          "family": "stout-porter",
+          "abv": 5.4,
+          "notes": "Expect a lighter-bodied dry stout with roasted coffee bitterness and a crisp, easy-drinking finish.",
+          "flagship": true,
+          "rating": 3.64,
+          "untappd": "https://untappd.com/b/rockwell-brewery-speed-of-darkness/2559602"
+        },
+        {
+          "name": "Simple Life Lager",
+          "style": "American Lager",
+          "family": "lager-pilsner",
+          "abv": null,
+          "notes": "Simple Life Lager is a clean, crisp, light everyday lager built for easy sessionable drinking.",
+          "flagship": true,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Drinking With Dad",
+          "style": "German Pilsner",
+          "family": "lager-pilsner",
+          "abv": 5.3,
+          "notes": "Expect a crisp German pilsner with soft cracker malt and a snappy, lightly herbal hop bite.",
+          "flagship": false,
+          "rating": 3.47,
+          "untappd": "https://untappd.com/b/rockwell-brewery-drinking-with-dad/3762146"
+        },
+        {
+          "name": "Cherry Pie Fruited Sour",
+          "style": "Fruited Sour",
+          "family": "sour-wild",
+          "abv": 8.1,
+          "notes": "Cherry Pie Fruited Sour is a tart, jammy sour bursting with cherry and a pastry-like sweet-and-sour balance.",
+          "flagship": false,
+          "rating": 3.92,
+          "untappd": "https://untappd.com/b/rockwell-brewery-cherry-pie-fruited-sour/4313614"
+        },
+        {
+          "name": "Bad Leroy",
+          "style": "Imperial Brown Ale",
+          "family": "amber-brown",
+          "abv": 12.2,
+          "notes": "Expect a boozy, dessert-like imperial brown packed with dark caramel, toffee, and nutty richness.",
+          "flagship": false,
+          "rating": 3.8,
+          "untappd": "https://untappd.com/b/rockwell-brewery-bad-leroy/1977953"
+        }
+      ]
+    },
+    {
+      "slug": "monocacy-brewing-frederick",
+      "name": "Monocacy Brewing Company",
+      "town": "frederick",
+      "focus": "Monocacy has brewed in Frederick since 2012. Its core lineup covers rye pale ale, coffee stout, lager, and IPA, alongside fruited-sour and barrel-aged releases.",
+      "untappd": "https://untappd.com/monocacybrewingco",
+      "beers": [
+        {
+          "name": "Riot Rye",
+          "style": "Rye Pale Ale",
+          "family": "pale-ale",
+          "abv": 6.4,
+          "notes": "Riot Rye is an amber pale ale where firm hop bitterness is balanced by caramel malt and the dry, peppery snap of rye.",
+          "flagship": true,
+          "rating": 3.62,
+          "untappd": null
+        },
+        {
+          "name": "Brewtus",
+          "style": "Imperial Coffee Stout",
+          "family": "stout-porter",
+          "abv": 8.7,
+          "notes": "Expect a big, roasty imperial stout layered with locally roasted coffee and a bittersweet dark-chocolate finish.",
+          "flagship": true,
+          "rating": 3.93,
+          "untappd": "https://untappd.com/b/monocacy-brewing-company-brewtus/538209"
+        },
+        {
+          "name": "West Coast IPA",
+          "style": "West Coast IPA",
+          "family": "ipa",
+          "abv": 7.7,
+          "notes": "West Coast IPA is a clear, bracingly bitter IPA driven by piney, resinous, citrus-peel hops over a lean malt base.",
+          "flagship": true,
+          "rating": 3.75,
+          "untappd": "https://untappd.com/b/monocacy-brewing-company-west-coast-ipa/2594109"
+        },
+        {
+          "name": "Radiance",
+          "style": "Hazy Double IPA",
+          "family": "ipa",
+          "abv": 7.7,
+          "notes": "Expect a hazy golden double IPA bursting with juicy citrus hops, softened by flaked oats and light caramel malt.",
+          "flagship": true,
+          "rating": 3.77,
+          "untappd": null
+        },
+        {
+          "name": "H.L. Rex",
+          "style": "Session IPA",
+          "family": "ipa",
+          "abv": 3.7,
+          "notes": "H.L. Rex is a light, hop-forward session ale that stays aromatic and drinkable without much bitterness or heft.",
+          "flagship": true,
+          "rating": 3.27,
+          "untappd": null
+        },
+        {
+          "name": "Brewtiful Lager",
+          "style": "American Lager",
+          "family": "lager-pilsner",
+          "abv": 4.8,
+          "notes": "Expect a crisp, clean everyday lager with light bready malt and a gently dry, refreshing finish.",
+          "flagship": true,
+          "rating": 3.7,
+          "untappd": "https://untappd.com/b/monocacy-brewing-company-brewtiful-lager/3795292"
+        },
+        {
+          "name": "Gose of Althea",
+          "style": "Gose (fruited sour)",
+          "family": "sour-wild",
+          "abv": 3.3,
+          "notes": "Gose of Althea is a tart, pink-tinged gose balancing gentle salinity and coriander with floral hibiscus.",
+          "flagship": false,
+          "rating": 3.78,
+          "untappd": null
+        },
+        {
+          "name": "Barrel-Aged Brewtus",
+          "style": "BA Imperial Coffee Stout",
+          "family": "stout-porter",
+          "abv": 8.1,
+          "notes": "Expect the coffee stout deepened by barrel aging, adding oak, vanilla, and warming spirit.",
+          "flagship": false,
+          "rating": 4.12,
+          "untappd": "https://untappd.com/b/monocacy-brewing-company-barrel-aged-brewtus/3075809"
+        },
+        {
+          "name": "Hyperion's Chaos",
+          "style": "New England / Hazy IPA",
+          "family": "wheat-hazy",
+          "abv": 6.6,
+          "notes": "Hyperion's Chaos is a soft, opaque hazy IPA loaded with tropical and stone-fruit hop flavor and low bitterness.",
+          "flagship": false,
+          "rating": 3.88,
+          "untappd": null
+        }
+      ]
+    },
+    {
+      "slug": "brewers-alley-frederick",
+      "name": "Brewer's Alley",
+      "town": "frederick",
+      "focus": "Brewer's Alley opened in 1996 as Frederick's original modern brewpub and brews German and English house ales and lagers, including Kolsch, English IPA, stout, brown ale, and bock.",
+      "untappd": "https://untappd.com/brewersalley",
+      "beers": [
+        {
+          "name": "Kolsch",
+          "style": "Kolsch",
+          "family": "lager-pilsner",
+          "abv": 5.1,
+          "notes": "Expect a pale-gold, light-bodied ale that drinks crisp and clean with gentle bitterness and a dry finish.",
+          "flagship": true,
+          "rating": 3.44,
+          "untappd": "https://untappd.com/b/brewer-s-alley-kolsch/13892"
+        },
+        {
+          "name": "India Pale Ale",
+          "style": "English IPA",
+          "family": "ipa",
+          "abv": 5.8,
+          "notes": "India Pale Ale is a copper English-leaning IPA balancing bready malt against earthy, restrained hop bitterness.",
+          "flagship": true,
+          "rating": 3.38,
+          "untappd": "https://untappd.com/b/brewer-s-alley-india-pale-ale/28687"
+        },
+        {
+          "name": "Brickhouse Oatmeal Stout",
+          "style": "Oatmeal Stout",
+          "family": "stout-porter",
+          "abv": 6.7,
+          "notes": "Expect a dark, roasty stout with a silky oat mouthfeel and notes of coffee and dark chocolate.",
+          "flagship": true,
+          "rating": 3.64,
+          "untappd": "https://untappd.com/b/brewer-s-alley-brickhouse-oatmeal-stout/1415523"
+        },
+        {
+          "name": "Nut Brown Ale",
+          "style": "English Brown Ale",
+          "family": "amber-brown",
+          "abv": 5.5,
+          "notes": "Nut Brown Ale is a smooth, malt-forward brown ale with toasty, nutty caramel character and low bitterness.",
+          "flagship": true,
+          "rating": 3.53,
+          "untappd": "https://untappd.com/b/brewer-s-alley-nut-brown-ale/53373"
+        },
+        {
+          "name": "Resinator",
+          "style": "Double IPA",
+          "family": "ipa",
+          "abv": 8.4,
+          "notes": "Expect a big, resinous double IPA packed with piney, dank hop flavor over a warming malt backbone.",
+          "flagship": true,
+          "rating": 3.64,
+          "untappd": "https://untappd.com/b/brewer-s-alley-resinator/19207"
+        },
+        {
+          "name": "Czech Mate Pilsner",
+          "style": "Czech Pilsner",
+          "family": "lager-pilsner",
+          "abv": 4.9,
+          "notes": "Czech Mate Pilsner is a crisp golden pilsner with soft bready malt and a spicy, floral Saaz-style hop bite.",
+          "flagship": true,
+          "rating": 3.46,
+          "untappd": "https://untappd.com/b/brewer-s-alley-czech-mate-pilsner/364933"
+        },
+        {
+          "name": "Opera House Pale Ale",
+          "style": "American Pale Ale",
+          "family": "pale-ale",
+          "abv": 4.9,
+          "notes": "Expect an easygoing, sessionable pale ale with light citrus hop aroma and a clean, balanced finish.",
+          "flagship": true,
+          "rating": 3.37,
+          "untappd": "https://untappd.com/b/brewer-s-alley-opera-house-pale-ale/298511"
+        },
+        {
+          "name": "Scotch Ale",
+          "style": "Scotch Ale / Wee Heavy",
+          "family": "amber-brown",
+          "abv": 8.4,
+          "notes": "Scotch Ale is a rich, strong malty ale with deep caramel and toffee sweetness and a warming finish.",
+          "flagship": true,
+          "rating": 3.71,
+          "untappd": "https://untappd.com/b/brewer-s-alley-scotch-ale/87585"
+        },
+        {
+          "name": "NEIPA",
+          "style": "New England / Hazy IPA",
+          "family": "wheat-hazy",
+          "abv": 6.2,
+          "notes": "Expect a soft, hazy IPA bursting with juicy tropical and citrus hop flavor and low perceived bitterness.",
+          "flagship": true,
+          "rating": 3.72,
+          "untappd": "https://untappd.com/b/brewer-s-alley-neipa/5430008"
+        },
+        {
+          "name": "Belgian Wit",
+          "style": "Witbier",
+          "family": "wheat-hazy",
+          "abv": 5.1,
+          "notes": "Belgian Wit is a hazy, refreshing Belgian wheat beer with orange peel, coriander spice, and a soft citrusy tang.",
+          "flagship": true,
+          "rating": 3.54,
+          "untappd": "https://untappd.com/b/brewer-s-alley-belgian-wit/196490"
+        },
+        {
+          "name": "Smoked Porter",
+          "style": "Smoked Porter",
+          "family": "stout-porter",
+          "abv": 6.6,
+          "notes": "Expect a dark porter with smoky, campfire character woven through roasty chocolate malt.",
+          "flagship": true,
+          "rating": 3.7,
+          "untappd": "https://untappd.com/b/brewer-s-alley-smoked-porter/122199"
+        },
+        {
+          "name": "Highwheel Hefeweizen",
+          "style": "Hefeweizen",
+          "family": "wheat-hazy",
+          "abv": null,
+          "notes": "Highwheel Hefeweizen is a cloudy German-style wheat beer with signature banana and clove aromatics and a light, fluffy body.",
+          "flagship": true,
+          "rating": 3.68,
+          "untappd": "https://untappd.com/b/brewer-s-alley-highwheel-hefeweizen/3725837"
+        }
+      ]
+    },
+    {
+      "slug": "sandbox-brewhouse-frederick",
+      "name": "Sandbox Brewhouse",
+      "town": "frederick",
+      "focus": "Sandbox leans toward hazy and American IPAs, with rotating stouts, blonde ales, and a farmhouse saison.",
+      "untappd": "https://untappd.com/SandboxBrewhouse",
+      "beers": [
+        {
+          "name": "True Grit Hazy",
+          "style": "New England / Hazy IPA",
+          "family": "ipa",
+          "abv": 6,
+          "notes": "Expect a soft, juicy hazy IPA with tropical and citrus fruit and a smooth, low-bitterness finish.",
+          "flagship": true,
+          "rating": 3.74,
+          "untappd": "https://untappd.com/b/sandbox-brewhouse-true-grit-hazy/6182581"
+        },
+        {
+          "name": "New World Samurai",
+          "style": "American IPA",
+          "family": "ipa",
+          "abv": 8,
+          "notes": "New World Samurai is a bold, resinous West-Coast-leaning American IPA with piney citrus punch and a firm bitter backbone.",
+          "flagship": true,
+          "rating": 3.77,
+          "untappd": "https://untappd.com/b/sandbox-brewhouse-new-world-samurai/6182194"
+        },
+        {
+          "name": "Wanderlust",
+          "style": "Saison",
+          "family": "belgian-farmhouse",
+          "abv": 4.6,
+          "notes": "Expect a light, dry farmhouse saison with peppery yeast spice and a crisp, refreshing finish.",
+          "flagship": true,
+          "rating": 3.84,
+          "untappd": "https://untappd.com/b/sandbox-brewhouse-wanderlust/6182576"
+        },
+        {
+          "name": "Blackout!",
+          "style": "American Stout",
+          "family": "stout-porter",
+          "abv": 5.5,
+          "notes": "Blackout! is a roasty medium-bodied stout with coffee and dark-chocolate notes and a clean, dry finish.",
+          "flagship": true,
+          "rating": 3.86,
+          "untappd": "https://untappd.com/b/sandbox-brewhouse-blackout/6182564"
+        },
+        {
+          "name": "Bonnie's Blonde",
+          "style": "Blonde / Golden Ale",
+          "family": "lager-pilsner",
+          "abv": null,
+          "notes": "Expect an easy-drinking golden ale with light bready malt and a clean, approachable finish.",
+          "flagship": true,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Riversong",
+          "style": "Rye IPA",
+          "family": "ipa",
+          "abv": null,
+          "notes": "Riversong is a hoppy IPA layered with spicy rye character for a drier, peppery edge.",
+          "flagship": true,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Demons Run",
+          "style": "Triple IPA",
+          "family": "ipa",
+          "abv": 9.2,
+          "notes": "Expect a big, boozy triple IPA that hides its strength behind heavy hop and light malt sweetness.",
+          "flagship": false,
+          "rating": 4.02,
+          "untappd": "https://untappd.com/b/sandbox-brewhouse-demons-run/6386780"
+        },
+        {
+          "name": "Mayan Calendar",
+          "style": "Milk / Sweet Stout",
+          "family": "stout-porter",
+          "abv": 6,
+          "notes": "Mayan Calendar is a dessert-leaning sweet stout with chocolate, spice, and a smooth lactose-rounded body.",
+          "flagship": false,
+          "rating": 4.01,
+          "untappd": "https://untappd.com/b/sandbox-brewhouse-mayan-calendar/6575811"
+        },
+        {
+          "name": "Baby Tiger",
+          "style": "West Coast IPA",
+          "family": "ipa",
+          "abv": 7.6,
+          "notes": "Expect a crisp, dry West Coast IPA with grapefruit and light spice that drinks lighter than its strength.",
+          "flagship": false,
+          "rating": null,
+          "untappd": null
+        }
+      ]
+    },
+    {
+      "slug": "rak-brewing-co-frederick",
+      "name": "RAK Brewing Co",
+      "town": "frederick",
+      "focus": "RAK specializes in hazy and imperial IPAs, along with fruited smoothie sours and pastry stouts.",
+      "untappd": "https://untappd.com/RAKBrewingCo",
+      "beers": [
+        {
+          "name": "Kindness Kills",
+          "style": "New England / Hazy IPA",
+          "family": "ipa",
+          "abv": 6.8,
+          "notes": "Kindness Kills is a soft, juicy hazy IPA with tropical and citrus fruit character and a smooth, low-bitterness finish.",
+          "flagship": true,
+          "rating": 3.97,
+          "untappd": null
+        },
+        {
+          "name": "Gentlemen's Agreement",
+          "style": "New England / Hazy IPA",
+          "family": "ipa",
+          "abv": 6.6,
+          "notes": "Expect an approachable everyday hazy IPA with mellow citrus and stone-fruit notes and a rounded, pillowy body.",
+          "flagship": true,
+          "rating": 3.92,
+          "untappd": null
+        },
+        {
+          "name": "Brass Tacks",
+          "style": "American IPA",
+          "family": "ipa",
+          "abv": 6,
+          "notes": "Brass Tacks is a clean, straightforward American IPA with piney, resinous hops and a crisp bitter finish.",
+          "flagship": true,
+          "rating": 3.89,
+          "untappd": null
+        },
+        {
+          "name": "Untamed Wilderness",
+          "style": "Double Hazy IPA",
+          "family": "ipa",
+          "abv": 8,
+          "notes": "Expect a big, juicy double hazy IPA loaded with tropical fruit and a lush, full mouthfeel that hides its strength.",
+          "flagship": false,
+          "rating": 4.14,
+          "untappd": null
+        },
+        {
+          "name": "Double Cross",
+          "style": "Double Hazy IPA",
+          "family": "ipa",
+          "abv": 8.1,
+          "notes": "Double Cross is a pillowy double hazy IPA bursting with ripe mango and citrus and a smooth, soft finish.",
+          "flagship": false,
+          "rating": 4.15,
+          "untappd": null
+        },
+        {
+          "name": "King Ghidorah",
+          "style": "Triple IPA",
+          "family": "ipa",
+          "abv": 10.2,
+          "notes": "Expect a massive triple IPA with dense tropical and citrus hop flavor and a surprisingly smooth, boozy warmth.",
+          "flagship": false,
+          "rating": 4.15,
+          "untappd": null
+        },
+        {
+          "name": "Grapefruit Goddess",
+          "style": "Fruited IPA",
+          "family": "ipa",
+          "abv": 6.5,
+          "notes": "Grapefruit Goddess is a hoppy IPA layered with fresh grapefruit for a bright, zesty citrus punch.",
+          "flagship": false,
+          "rating": 4.08,
+          "untappd": null
+        },
+        {
+          "name": "Midday Sway",
+          "style": "Session IPA",
+          "family": "ipa",
+          "abv": 4.3,
+          "notes": "Expect a light, sessionable IPA with easygoing citrus hop flavor and a crisp, dry finish.",
+          "flagship": false,
+          "rating": 3.9,
+          "untappd": null
+        },
+        {
+          "name": "Stay Puffed Marshmallow",
+          "style": "Milkshake IPA",
+          "family": "ipa",
+          "abv": 7.4,
+          "notes": "Stay Puffed Marshmallow is a creamy milkshake IPA with sweet vanilla-marshmallow richness over soft tropical hops.",
+          "flagship": false,
+          "rating": 4.13,
+          "untappd": null
+        },
+        {
+          "name": "New Grounds Coffee Brown",
+          "style": "Coffee Brown Ale",
+          "family": "amber-brown",
+          "abv": 6.2,
+          "notes": "Expect a malty brown ale infused with coffee for roasty, chocolate-and-espresso depth.",
+          "flagship": false,
+          "rating": 4.04,
+          "untappd": null
+        },
+        {
+          "name": "Drunken Pineapple Upside-Down Cake",
+          "style": "Smoothie / Pastry Sour",
+          "family": "sour-wild",
+          "abv": 8,
+          "notes": "Drunken Pineapple Upside-Down Cake is a thick, dessert-like smoothie sour tasting of caramelized pineapple and sweet cake.",
+          "flagship": false,
+          "rating": 4.34,
+          "untappd": null
+        },
+        {
+          "name": "Dublin Drop",
+          "style": "Imperial Stout",
+          "family": "stout-porter",
+          "abv": 10.2,
+          "notes": "Expect a rich imperial stout with dark chocolate, roasted malt, and a warming boozy finish.",
+          "flagship": false,
+          "rating": 4.07,
+          "untappd": null
+        }
+      ]
+    },
+    {
+      "slug": "smoketown-brewing-brunswick",
+      "name": "Smoketown Brewing Station",
+      "town": "brunswick",
+      "focus": "Smoketown pours a broad lineup from a former Brunswick firehouse, with IPAs, lagers, and barrel-aged dark beer among its releases.",
+      "untappd": "https://untappd.com/SmoketownBrewingStation",
+      "beers": [
+        {
+          "name": "The Patsy",
+          "style": "New England / Hazy IPA",
+          "family": "ipa",
+          "abv": 6.2,
+          "notes": "The Patsy is a smooth, silky hazy IPA with soft juicy fruit character and low bitterness.",
+          "flagship": true,
+          "rating": 3.68,
+          "untappd": null
+        },
+        {
+          "name": "Potomac IPA",
+          "style": "English IPA",
+          "family": "ipa",
+          "abv": 7.4,
+          "notes": "Expect a fuller-bodied IPA blending Falconer's Flight and Citra for fruity, resinous hop character over solid malt.",
+          "flagship": true,
+          "rating": 3.61,
+          "untappd": null
+        },
+        {
+          "name": "Smokestack Black IPA",
+          "style": "Black IPA",
+          "family": "ipa",
+          "abv": 6.5,
+          "notes": "This beer pairs IPA bitterness with dark-roast smoothness and drinks lighter than its color suggests.",
+          "flagship": true,
+          "rating": 3.66,
+          "untappd": null
+        },
+        {
+          "name": "German Crossing Hefeweizen",
+          "style": "Hefeweizen",
+          "family": "wheat-hazy",
+          "abv": 5.2,
+          "notes": "Expect a classic wheat beer carrying banana, clove, vanilla, and a squeeze of lemon.",
+          "flagship": true,
+          "rating": 3.59,
+          "untappd": null
+        },
+        {
+          "name": "Berlin Brown Ale",
+          "style": "Brown Ale",
+          "family": "amber-brown",
+          "abv": 5.4,
+          "notes": "Berlin Brown Ale is a smooth, sweet-leaning brown ale finishing with creamy caramel.",
+          "flagship": true,
+          "rating": 3.58,
+          "untappd": null
+        },
+        {
+          "name": "Gandy Oatmeal Stout",
+          "style": "Oatmeal Stout",
+          "family": "stout-porter",
+          "abv": 6.1,
+          "notes": "Expect a silky oatmeal stout with coffee and chocolate aromas and a rounded, food-friendly body.",
+          "flagship": true,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Country Roads Pilsner",
+          "style": "Pilsner",
+          "family": "lager-pilsner",
+          "abv": 4.7,
+          "notes": "Country Roads Pilsner is a light, crisp, clean-drinking pilsner built for easy sessions.",
+          "flagship": true,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Das Kolsch",
+          "style": "Kolsch",
+          "family": "lager-pilsner",
+          "abv": 5.5,
+          "notes": "Expect a gently sweet, malty kolsch with subtle fruity aromatics and a soft finish.",
+          "flagship": true,
+          "rating": null,
+          "untappd": null
+        },
+        {
+          "name": "Walter's Spirit",
+          "style": "BA Imperial Porter",
+          "family": "stout-porter",
+          "abv": 11.5,
+          "notes": "Walter's Spirit is a rich porter aged 4+ months in bourbon barrels, drinking like a boozy chocolate-covered cherry.",
+          "flagship": false,
+          "rating": 3.96,
+          "untappd": null
+        },
+        {
+          "name": "My Best Girl",
+          "style": "Double Hazy IPA",
+          "family": "ipa",
+          "abv": 8.5,
+          "notes": "Expect a hazy double IPA loaded with citrus and passion fruit from Amarillo and Simcoe hops.",
+          "flagship": false,
+          "rating": 3.82,
+          "untappd": null
+        },
+        {
+          "name": "ROY G. BIV Power Sour",
+          "style": "Fruited Sour",
+          "family": "sour-wild",
+          "abv": 6.2,
+          "notes": "ROY G. BIV Power Sour is a tart, candy-bright fruited sour packed with layered fruit reminiscent of rainbow candy.",
+          "flagship": false,
+          "rating": 3.79,
+          "untappd": null
+        }
+      ]
+    },
+    {
+      "slug": "midnight-run-brewing",
+      "name": "Midnight Run Brewing",
+      "town": "frederick",
+      "focus": "Midnight Run rotates through hop-forward IPAs, imperial stouts, Belgian strong ales, and fruited sours.",
+      "untappd": "https://untappd.com/MidnightRunBrewing",
+      "beers": [
+        {
+          "name": "Clockwork",
+          "style": "Double IPA",
+          "family": "ipa",
+          "abv": 8.5,
+          "notes": "Expect a resinous, dank double IPA where citrus and tropical-fruit hop character rides on a firm bitter backbone.",
+          "flagship": true,
+          "rating": 3.85,
+          "untappd": "https://untappd.com/b/midnight-run-brewing-clockwork/1395907"
+        },
+        {
+          "name": "Timeloop",
+          "style": "American IPA",
+          "family": "ipa",
+          "abv": 8.5,
+          "notes": "Timeloop is a punchy American IPA balancing piney bitterness with bright citrus-peel hop flavor.",
+          "flagship": false,
+          "rating": 3.81,
+          "untappd": null
+        },
+        {
+          "name": "Spacestation Earth",
+          "style": "Hazy Double IPA",
+          "family": "ipa",
+          "abv": 8.4,
+          "notes": "Expect a soft, hazy double IPA bursting with juicy tropical and stone-fruit flavor and almost no bitterness.",
+          "flagship": false,
+          "rating": 4.01,
+          "untappd": null
+        },
+        {
+          "name": "Citra Solstice",
+          "style": "Double IPA",
+          "family": "ipa",
+          "abv": 8.3,
+          "notes": "Citra Solstice is a single-hop-driven double IPA showcasing Citra's grapefruit, lime, and passionfruit tones.",
+          "flagship": false,
+          "rating": 4.05,
+          "untappd": null
+        },
+        {
+          "name": "Halftime",
+          "style": "Double IPA",
+          "family": "ipa",
+          "abv": 8.2,
+          "notes": "Expect a big Citra double IPA layered with sweet candied-orange character over a smooth malt base.",
+          "flagship": false,
+          "rating": 4.03,
+          "untappd": "https://untappd.com/b/midnight-run-brewing-halftime/3195700"
+        },
+        {
+          "name": "The Black Disciple",
+          "style": "Imperial Stout",
+          "family": "stout-porter",
+          "abv": 12,
+          "notes": "The Black Disciple is a thick, boozy imperial stout heavy with roasted malt, dark chocolate, and dark-fruit richness.",
+          "flagship": false,
+          "rating": 3.93,
+          "untappd": null
+        },
+        {
+          "name": "American Darkness",
+          "style": "Coffee Stout",
+          "family": "stout-porter",
+          "abv": 7.7,
+          "notes": "Expect a roasty stout with strong brewed-coffee character and a dry, dark-chocolate finish.",
+          "flagship": false,
+          "rating": 3.92,
+          "untappd": null
+        },
+        {
+          "name": "The White Devil",
+          "style": "Belgian Strong Golden Ale",
+          "family": "belgian-farmhouse",
+          "abv": 12,
+          "notes": "The White Devil is a deceptively smooth Belgian golden with spicy-fruity yeast esters and dangerously hidden strength.",
+          "flagship": false,
+          "rating": 3.91,
+          "untappd": null
+        },
+        {
+          "name": "The Grape",
+          "style": "Fruited Sour",
+          "family": "sour-wild",
+          "abv": 9,
+          "notes": "Expect a tart, jammy fruited sour with bold grape flavor and a puckering finish.",
+          "flagship": false,
+          "rating": 4.02,
+          "untappd": null
+        }
+      ]
+    },
+    {
+      "slug": "prospect-point-brewing-frederick",
+      "name": "Prospect Point Brewing",
+      "town": "frederick",
+      "focus": "Prospect Point is a family-owned brewery on a 26-acre hop farm south of Frederick. Its lineup includes hazy and American IPAs, house lagers, stouts, and sours.",
+      "untappd": "https://untappd.com/ProspectPointBrewing",
+      "beers": [
+        {
+          "name": "Talk Hoppy To Me",
+          "style": "New England / Hazy IPA",
+          "family": "ipa",
+          "abv": 6.5,
+          "notes": "Talk Hoppy To Me is a soft, hazy IPA loaded with juicy tropical and citrus hop character and a smooth, low-bitterness finish.",
+          "flagship": true,
+          "rating": 3.85,
+          "untappd": null
+        },
+        {
+          "name": "Hop Dreams",
+          "style": "New England / Hazy IPA",
+          "family": "ipa",
+          "abv": 6.7,
+          "notes": "This hazy beer has a pillowy body with ripe stone-fruit and citrus hop flavors.",
+          "flagship": true,
+          "rating": 3.84,
+          "untappd": null
+        },
+        {
+          "name": "My Little Clementine",
+          "style": "New England / Hazy IPA",
+          "family": "ipa",
+          "abv": 7,
+          "notes": "My Little Clementine is a bright, orange-forward hazy IPA with sweet citrus and a juicy, rounded mouthfeel.",
+          "flagship": true,
+          "rating": 3.86,
+          "untappd": null
+        },
+        {
+          "name": "Golden Hour",
+          "style": "American IPA",
+          "family": "ipa",
+          "abv": 7.3,
+          "notes": "Expect a clean, golden American IPA with resinous pine and citrus hops over a firm, dry bitterness.",
+          "flagship": true,
+          "rating": 3.77,
+          "untappd": null
+        },
+        {
+          "name": "Yellow Fizzy Beer",
+          "style": "New Zealand Pilsner",
+          "family": "lager-pilsner",
+          "abv": 4.8,
+          "notes": "Yellow Fizzy Beer is a crisp, easy pilsner with a bright, slightly tropical New Zealand hop aroma and a clean finish.",
+          "flagship": true,
+          "rating": 3.63,
+          "untappd": null
+        },
+        {
+          "name": "LimeLight Cerveza",
+          "style": "Mexican Lager",
+          "family": "lager-pilsner",
+          "abv": 5.4,
+          "notes": "Expect a light, refreshing Mexican-style lager, smooth and crushable with a lime-friendly crispness.",
+          "flagship": true,
+          "rating": 3.83,
+          "untappd": null
+        },
+        {
+          "name": "Chocolate Thunder",
+          "style": "American Stout",
+          "family": "stout-porter",
+          "abv": 5.4,
+          "notes": "Chocolate Thunder is a roasty, medium-bodied stout with notes of dark chocolate and coffee and a smooth finish.",
+          "flagship": true,
+          "rating": 3.73,
+          "untappd": null
+        },
+        {
+          "name": "Irishman",
+          "style": "Irish Dry Stout",
+          "family": "stout-porter",
+          "abv": 4.8,
+          "notes": "Expect a sessionable dry Irish stout with bold roasted-barley flavor and a smooth, velvety finish.",
+          "flagship": false,
+          "rating": 3.83,
+          "untappd": null
+        },
+        {
+          "name": "Peach Nebula",
+          "style": "Fruited Sour",
+          "family": "sour-wild",
+          "abv": 6,
+          "notes": "Peach Nebula is a tart, juicy fruited sour bursting with ripe peach and a puckering, refreshing finish.",
+          "flagship": false,
+          "rating": null,
+          "untappd": null
+        }
+      ]
+    },
+    {
+      "slug": "brudr-bier-co-frederick",
+      "name": "Brudr Bier Co",
+      "town": "frederick",
+      "focus": "Brudr Bier is a small downtown Frederick brewery and arts space founded in 2024. Its lineup leans toward dry brut and farmhouse styles, with experimental lagers in rotation.",
+      "untappd": "https://untappd.com/w/bra-dr-bier-co/575990",
+      "beers": [
+        {
+          "name": "Brudr Brut",
+          "style": "Brut IPA",
+          "family": "ipa",
+          "abv": 6.5,
+          "notes": "Expect a bone-dry, extra-crisp IPA with light effervescence and a clean, champagne-like finish rather than heavy bitterness.",
+          "flagship": true,
+          "rating": null,
+          "untappd": "https://untappd.com/b/brudr-bier-co-brudr-brut/6260063"
+        },
+        {
+          "name": "Haus",
+          "style": "Saison / Farmhouse Ale",
+          "family": "belgian-farmhouse",
+          "abv": 6.8,
+          "notes": "Haus is a dry farmhouse saison with peppery, earthy yeast character and a light, quenching finish.",
+          "flagship": true,
+          "rating": null,
+          "untappd": "https://untappd.com/b/brudr-bier-co-haus/6700274"
+        },
+        {
+          "name": "Dog/House",
+          "style": "Saison / Farmhouse Ale",
+          "family": "belgian-farmhouse",
+          "abv": 7.4,
+          "notes": "Expect a slightly stronger farmhouse ale that stays dry and spicy, with fruity yeast esters over a crisp body.",
+          "flagship": true,
+          "rating": null,
+          "untappd": "https://untappd.com/b/brudr-bier-co-dog-house/6260052"
+        },
+        {
+          "name": "Dandelion Blonde",
+          "style": "Blonde Ale",
+          "family": "pale-ale",
+          "abv": 6.5,
+          "notes": "Dandelion Blonde is an easy-drinking golden ale with a soft malt base and a subtle floral, faintly herbal note from dandelion.",
+          "flagship": false,
+          "rating": null,
+          "untappd": "https://untappd.com/b/brudr-bier-co-dandelion-blonde/6706226"
+        },
+        {
+          "name": "Rice Amazake",
+          "style": "Japanese Rice Lager",
+          "family": "lager-pilsner",
+          "abv": null,
+          "notes": "Expect a light, clean rice lager with a delicate, subtly sweet grain character and a very dry, crisp body.",
+          "flagship": false,
+          "rating": null,
+          "untappd": "https://untappd.com/b/brudr-bier-co-rice-amazake/6705233"
+        }
+      ]
+    },
+    {
+      "slug": "springfield-manor-thurmont",
+      "name": "Springfield Manor",
+      "town": "thurmont",
+      "focus": "Springfield Manor uses a seven-barrel brewhouse and limestone spring water on a lavender estate. Its lineup covers IPAs, blonde ales, brown ales, amber ales, and fruit or dessert beer.",
+      "untappd": "https://untappd.com/SpringfieldManor",
+      "beers": [
+        {
+          "name": "Citrus IPA",
+          "style": "American IPA",
+          "family": "ipa",
+          "abv": 7.1,
+          "notes": "Citrus IPA is a bright, citrus-forward American IPA on internationally sourced hops with a firm bitter backbone.",
+          "flagship": true,
+          "rating": 3.49,
+          "untappd": null
+        },
+        {
+          "name": "Green Warrior",
+          "style": "American IPA",
+          "family": "ipa",
+          "abv": 7.1,
+          "notes": "Expect a resinous, piney American IPA with assertive hop bitterness and a dry finish.",
+          "flagship": true,
+          "rating": 3.59,
+          "untappd": null
+        },
+        {
+          "name": "Toasted Nut Job",
+          "style": "American Brown Ale",
+          "family": "amber-brown",
+          "abv": 6.3,
+          "notes": "Toasted Nut Job is a malty brown ale leaning nutty and toasty, echoing the estate's toasted-coconut character.",
+          "flagship": true,
+          "rating": 3.59,
+          "untappd": null
+        },
+        {
+          "name": "Brotherhood",
+          "style": "Hefeweizen",
+          "family": "wheat-hazy",
+          "abv": 5.6,
+          "notes": "Expect a soft German wheat beer with banana and clove notes and a cloudy, refreshing body.",
+          "flagship": false,
+          "rating": 3.62,
+          "untappd": "https://untappd.com/b/springfield-manor-winery-distillery-and-brewery-brotherhood/3198183"
+        },
+        {
+          "name": "Lock Box",
+          "style": "New England / Hazy IPA",
+          "family": "wheat-hazy",
+          "abv": 7,
+          "notes": "Lock Box is a juicy, soft-bodied hazy IPA with tropical and stone-fruit hop flavor and low bitterness.",
+          "flagship": false,
+          "rating": 3.88,
+          "untappd": null
+        },
+        {
+          "name": "Cheeky Taiheke",
+          "style": "New England / Hazy IPA",
+          "family": "wheat-hazy",
+          "abv": 7.1,
+          "notes": "Expect a hazy IPA showcasing New Zealand Taiheke hops with lime and tropical notes.",
+          "flagship": false,
+          "rating": 3.82,
+          "untappd": null
+        },
+        {
+          "name": "Country Nights",
+          "style": "Double IPA",
+          "family": "ipa",
+          "abv": 8.2,
+          "notes": "Country Nights is a big double IPA with concentrated hop flavor and a warming, boozy backbone.",
+          "flagship": false,
+          "rating": 3.88,
+          "untappd": null
+        },
+        {
+          "name": "O'Hagerty",
+          "style": "Irish Red Ale",
+          "family": "amber-brown",
+          "abv": 5.5,
+          "notes": "Expect a smooth Irish-style red ale with caramel malt sweetness and a lightly toasty finish.",
+          "flagship": false,
+          "rating": 3.8,
+          "untappd": "https://untappd.com/b/springfield-manor-winery-distillery-and-brewery-o-hagerty/3817553"
+        },
+        {
+          "name": "Empirical Theory",
+          "style": "Marzen",
+          "family": "lager-pilsner",
+          "abv": 6.5,
+          "notes": "Empirical Theory is a traditional Marzen with rich toasted-bread malt and a smooth lager finish.",
+          "flagship": false,
+          "rating": 3.64,
+          "untappd": null
+        },
+        {
+          "name": "Guilty Pleasure",
+          "style": "Golden Ale",
+          "family": "specialty-other",
+          "abv": 7,
+          "notes": "Expect a deceptively smooth, higher-strength golden ale that hides its strength behind an easy finish.",
+          "flagship": false,
+          "rating": 4.03,
+          "untappd": null
+        },
+        {
+          "name": "Sundae Special",
+          "style": "Dessert Golden Ale",
+          "family": "specialty-other",
+          "abv": 5.9,
+          "notes": "Sundae Special is a dessert-styled golden ale with sweet, ice-cream-like vanilla and confection notes.",
+          "flagship": false,
+          "rating": 4,
+          "untappd": null
+        },
+        {
+          "name": "Patio Beer: Creamsicle",
+          "style": "Fruit / Cream Ale",
+          "family": "specialty-other",
+          "abv": 6.5,
+          "notes": "Expect a creamy orange-and-vanilla fruit beer that tastes like a frozen creamsicle.",
+          "flagship": false,
+          "rating": 3.98,
+          "untappd": null
+        },
+        {
+          "name": "Milk Stout",
+          "style": "Milk / Sweet Stout",
+          "family": "stout-porter",
+          "abv": 5.5,
+          "notes": "Milk Stout is a smooth, creamy milk stout with roast, chocolate, and lactose sweetness.",
+          "flagship": false,
+          "rating": 3.59,
+          "untappd": null
+        }
+      ]
+    },
+    {
+      "slug": "freys-farm-mount-airy",
+      "name": "Frey's Brewing Company",
+      "town": "mount-airy",
+      "focus": "Frey's opened in 2012 as Frederick County's first farm brewery. It centers farmhouse ales and saisons while rotating through IPAs, stouts, and Belgian styles.",
+      "untappd": "https://untappd.com/FreysBrewing",
+      "beers": [
+        {
+          "name": "Farmer Armor",
+          "style": "Saison / Farmhouse Ale",
+          "family": "belgian-farmhouse",
+          "abv": 4.4,
+          "notes": "Expect a dry, lightly tart farmhouse saison with malty depth and peppery, spicy yeast character.",
+          "flagship": true,
+          "rating": 3.35,
+          "untappd": null
+        },
+        {
+          "name": "Made In FREYPAN",
+          "style": "Farmhouse Blonde",
+          "family": "pale-ale",
+          "abv": 4.1,
+          "notes": "Made In FREYPAN is an easy-drinking, lightly citrusy farmhouse blonde brewed with wheat and left unfiltered for a soft body.",
+          "flagship": true,
+          "rating": 3.29,
+          "untappd": null
+        },
+        {
+          "name": "Der Hopfenberger 5000",
+          "style": "Double IPA",
+          "family": "ipa",
+          "abv": 7.3,
+          "notes": "Expect a hop-heavy double IPA with juicy citrus and pine and a warming, boozy backbone.",
+          "flagship": false,
+          "rating": 3.77,
+          "untappd": null
+        },
+        {
+          "name": "Outlaw Horse Saloon",
+          "style": "Saison / Farmhouse Ale",
+          "family": "belgian-farmhouse",
+          "abv": 4.7,
+          "notes": "Outlaw Horse Saloon is a sessionable saison with bright citrus and peppery, rustic yeast character.",
+          "flagship": false,
+          "rating": 3.64,
+          "untappd": null
+        },
+        {
+          "name": "Dog Army Tank Party",
+          "style": "Belgian Dubbel",
+          "family": "belgian-farmhouse",
+          "abv": 7.3,
+          "notes": "Expect a malty dubbel with dark caramel, raisin, and fig over a soft, spicy yeast finish.",
+          "flagship": false,
+          "rating": 3.7,
+          "untappd": null
+        },
+        {
+          "name": "How Infantry Defeated Frankenstein",
+          "style": "Belgian Strong Golden Ale",
+          "family": "belgian-farmhouse",
+          "abv": 11,
+          "notes": "How Infantry Defeated Frankenstein is a potent golden Belgian ale with pear and clove yeast notes and a deceptively smooth, boozy warmth.",
+          "flagship": false,
+          "rating": 3.82,
+          "untappd": null
+        },
+        {
+          "name": "Heavy Breathing Betty",
+          "style": "Hefeweizen",
+          "family": "wheat-hazy",
+          "abv": 5.3,
+          "notes": "Expect a cloudy German-style wheat beer with banana and clove notes and a fluffy, soft finish.",
+          "flagship": false,
+          "rating": 3.44,
+          "untappd": null
+        },
+        {
+          "name": "The Fields of Freyerland",
+          "style": "Irish Dry Stout",
+          "family": "stout-porter",
+          "abv": 4.9,
+          "notes": "The Fields of Freyerland is a dry, sessionable Irish stout with roasted-grain bitterness and a light, crisp finish.",
+          "flagship": false,
+          "rating": 3.64,
+          "untappd": null
+        },
+        {
+          "name": "Gor De Gok",
+          "style": "Russian Imperial Stout",
+          "family": "stout-porter",
+          "abv": 10,
+          "notes": "Expect a big, viscous imperial stout with dark chocolate, roast, and boozy dark-fruit warmth.",
+          "flagship": false,
+          "rating": 3.63,
+          "untappd": null
+        },
+        {
+          "name": "Jenny's Sister",
+          "style": "American Barleywine",
+          "family": "specialty-other",
+          "abv": 9.5,
+          "notes": "Jenny's Sister is a rich, sticky barleywine with dark caramel, dried fruit, and warming boozy sweetness.",
+          "flagship": false,
+          "rating": 3.52,
+          "untappd": null
+        }
+      ]
+    },
+    {
+      "slug": "liquidity-aleworks-mount-airy",
+      "name": "Liquidity Aleworks",
+      "town": "mount-airy",
+      "focus": "Liquidity's downtown Main Street taproom rotates through hazy and hoppy IPAs, lagers, stouts, and fruited sours under a banking-inspired naming theme.",
+      "untappd": "https://untappd.com/LiquidityAleworks",
+      "beers": [
+        {
+          "name": "The Airy",
+          "style": "Unfiltered Pilsner",
+          "family": "lager-pilsner",
+          "abv": 5.4,
+          "notes": "Expect a soft, unfiltered pilsner built as an easygoing local session beer with light grain and a clean finish.",
+          "flagship": true,
+          "rating": 3.75,
+          "untappd": null
+        },
+        {
+          "name": "Main Street",
+          "style": "New England / Hazy IPA",
+          "family": "ipa",
+          "abv": 8,
+          "notes": "Main Street is a strong hazy IPA that stays juicy and soft despite the higher strength, with pillowy tropical hop character.",
+          "flagship": true,
+          "rating": 3.89,
+          "untappd": null
+        },
+        {
+          "name": "First National",
+          "style": "American Lager",
+          "family": "lager-pilsner",
+          "abv": 5.5,
+          "notes": "Expect a straightforward, crowd-pleasing American lager, crisp and lightly bready.",
+          "flagship": true,
+          "rating": 3.72,
+          "untappd": null
+        },
+        {
+          "name": "Bonus Pay IPA",
+          "style": "New England / Hazy IPA",
+          "family": "ipa",
+          "abv": 6.8,
+          "notes": "Bonus Pay IPA is a core hazy IPA with citrus-forward hops and gentle bitterness over a smooth body.",
+          "flagship": true,
+          "rating": 3.73,
+          "untappd": null
+        },
+        {
+          "name": "Death And Taxes",
+          "style": "Imperial Milk Stout",
+          "family": "stout-porter",
+          "abv": 9.1,
+          "notes": "Expect a rich, sweet imperial milk stout with lactose smoothness and dark chocolate depth.",
+          "flagship": false,
+          "rating": 3.98,
+          "untappd": null
+        },
+        {
+          "name": "I'd Have To Charge",
+          "style": "Milkshake IPA",
+          "family": "ipa",
+          "abv": 6,
+          "notes": "I'd Have To Charge is a creamy milkshake IPA where lactose and fruit soften the hops into a dessert-like glass.",
+          "flagship": false,
+          "rating": 3.99,
+          "untappd": null
+        },
+        {
+          "name": "Figgy Porter",
+          "style": "Porter",
+          "family": "stout-porter",
+          "abv": 5.9,
+          "notes": "Expect a moderate porter with dark fruit and roasted malt notes.",
+          "flagship": false,
+          "rating": 3.79,
+          "untappd": null
+        },
+        {
+          "name": "Holiday Pay",
+          "style": "Fruited Sour",
+          "family": "sour-wild",
+          "abv": 6,
+          "notes": "Holiday Pay is a tart fruited sour that is bright and juicy with a quick puckering finish.",
+          "flagship": false,
+          "rating": 3.93,
+          "untappd": null
+        }
+      ]
+    },
+    {
+      "slug": "milkhouse-brewery-mt-airy",
+      "name": "Milkhouse Brewery at Stillpoint Farm",
+      "town": "mount-airy",
+      "focus": "Milkhouse is Maryland's first farm brewery and uses Maryland-grown hops and other Stillpoint Farm ingredients in English, Irish, and farmhouse styles.",
+      "untappd": "https://untappd.com/MilkhouseBreweryAtStillpointFarm",
+      "beers": [
+        {
+          "name": "Stairway IPA",
+          "style": "English IPA",
+          "family": "ipa",
+          "abv": 7.2,
+          "notes": "Expect an English-leaning IPA with a big malt backbone balanced by earthy, citrus-and-spice hop bitterness.",
+          "flagship": true,
+          "rating": 3.52,
+          "untappd": null
+        },
+        {
+          "name": "Goldie's Best Bitter",
+          "style": "English Session Bitter",
+          "family": "amber-brown",
+          "abv": 4.2,
+          "notes": "Goldie's Best Bitter is a traditional low-strength English bitter with delicate earthy, spicy hops and an easy malt balance.",
+          "flagship": true,
+          "rating": 3.42,
+          "untappd": "https://untappd.com/b/milkhouse-brewery-at-stillpoint-farm-goldie-s-best-bitter/512516"
+        },
+        {
+          "name": "Dollyhyde Farmhouse Ale",
+          "style": "Saison / Farmhouse Ale",
+          "family": "belgian-farmhouse",
+          "abv": 4.5,
+          "notes": "Expect a light, refreshing farmhouse ale with gentle spice and a touch of orchard fruit.",
+          "flagship": true,
+          "rating": 3.48,
+          "untappd": null
+        },
+        {
+          "name": "Jimmy Nelly's Irish Red",
+          "style": "Irish Red Ale",
+          "family": "amber-brown",
+          "abv": 5.5,
+          "notes": "Jimmy Nelly's Irish Red is a malty Irish red with toasty caramel sweetness and a smooth, rounded finish.",
+          "flagship": true,
+          "rating": 3.62,
+          "untappd": null
+        },
+        {
+          "name": "Coppermine Creek Dry Stout",
+          "style": "Irish Dry Stout",
+          "family": "stout-porter",
+          "abv": 4.5,
+          "notes": "Expect a light-bodied dry stout with coffee and dark chocolate notes and a crisp, dry finish.",
+          "flagship": true,
+          "rating": 3.64,
+          "untappd": null
+        },
+        {
+          "name": "Green Farmer Pale Ale",
+          "style": "American Pale Ale",
+          "family": "pale-ale",
+          "abv": 5.9,
+          "notes": "Green Farmer Pale Ale is a farm-to-glass pale ale showcasing estate Maryland hops with a fresh, grassy-citrus character.",
+          "flagship": true,
+          "rating": 3.54,
+          "untappd": null
+        },
+        {
+          "name": "Homestead Hefeweizen",
+          "style": "German Hefeweizen",
+          "family": "wheat-hazy",
+          "abv": 5.5,
+          "notes": "Expect a cloudy wheat beer with the classic banana-and-clove yeast character and a soft body.",
+          "flagship": false,
+          "rating": 3.68,
+          "untappd": null
+        },
+        {
+          "name": "Biere De Garde Gold",
+          "style": "Biere de Garde",
+          "family": "belgian-farmhouse",
+          "abv": 6.2,
+          "notes": "Biere De Garde Gold is a golden French-style farmhouse keeping beer, malt-forward and toasty with a warming, clean finish.",
+          "flagship": false,
+          "rating": 3.66,
+          "untappd": "https://untappd.com/b/milkhouse-brewery-at-stillpoint-farm-biere-de-garde-gold/2778098"
+        }
+      ]
+    },
+    {
+      "slug": "red-shedman-farm-brewery-and-hop-yard-mount-airy",
+      "name": "Red Shedman Farm Brewery and Hop Yard",
+      "town": "mount-airy",
+      "focus": "Red Shedman is a farm brewery and hop yard on the Linganore Winecellars grounds, with hazy IPAs, porters, stouts, and sours in its lineup. It currently operates on Saturdays from a temporary location while rebuilding after a 2024 fire.",
+      "untappd": "https://untappd.com/RedShedmanFarmBrewery",
+      "beers": [
+        {
+          "name": "Cosmic Punch",
+          "style": "New England / Hazy IPA",
+          "family": "ipa",
+          "abv": 6.5,
+          "notes": "Expect a juicy hazy IPA driven by Citra and Mosaic with soft tropical fruit and low bitterness.",
+          "flagship": true,
+          "rating": 3.69,
+          "untappd": null
+        },
+        {
+          "name": "I Love Jucy",
+          "style": "New England / Hazy IPA",
+          "family": "ipa",
+          "abv": 6.3,
+          "notes": "I Love Jucy is a pillowy, fruit-forward hazy IPA that stays smooth and easy-drinking.",
+          "flagship": false,
+          "rating": 3.73,
+          "untappd": null
+        },
+        {
+          "name": "Grinder Espresso Stout",
+          "style": "Coffee Stout",
+          "family": "stout-porter",
+          "abv": 5.4,
+          "notes": "Expect a stout brewed with espresso for pronounced roasted coffee character over a moderate body.",
+          "flagship": false,
+          "rating": 3.71,
+          "untappd": null
+        },
+        {
+          "name": "Lights Out",
+          "style": "Oatmeal Stout",
+          "family": "stout-porter",
+          "abv": 4.9,
+          "notes": "Lights Out is a silky oatmeal stout with smooth roast and chocolate notes at an easy strength.",
+          "flagship": false,
+          "rating": 3.78,
+          "untappd": null
+        },
+        {
+          "name": "Starlight",
+          "style": "Blonde / Golden Ale",
+          "family": "pale-ale",
+          "abv": 5.1,
+          "notes": "Expect a light, approachable golden ale with soft malt and a mellow finish.",
+          "flagship": false,
+          "rating": 3.43,
+          "untappd": null
+        },
+        {
+          "name": "Pitchfork Pale Ale",
+          "style": "American Pale Ale",
+          "family": "pale-ale",
+          "abv": 6,
+          "notes": "Pitchfork Pale Ale is a classic American pale ale with balanced citrus-pine hops over clean malt.",
+          "flagship": false,
+          "rating": 3.53,
+          "untappd": null
+        },
+        {
+          "name": "Strawberry Rhubarb Gose",
+          "style": "Fruited Gose",
+          "family": "sour-wild",
+          "abv": 5.2,
+          "notes": "Expect a tart, lightly salted gose with strawberry-rhubarb fruit for a sweet-tart balance.",
+          "flagship": false,
+          "rating": 3.58,
+          "untappd": null
+        }
+      ]
+    }
+  ]
+}

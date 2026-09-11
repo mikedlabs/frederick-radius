@@ -67,9 +67,31 @@ export const liveEventSchema = z
     venue_name: z.string().min(2).max(160),
     address: z.string().max(220),
     geom: lngLatSchema,
+    /** True for date-only rows (iCal VALUE=DATE, Vibemap all-day). Zod
+     *  objects STRIP unknown keys, so leaving this out of the schema
+     *  silently deleted the flag the parsers set — every live-feed
+     *  all-day event then rendered its ET-noon anchor as a fake
+     *  "12:00 PM" clock instead of "All day", and Ask's evening filter
+     *  (`e.is_all_day || hour >= 16`) missed them. Keep in sync with
+     *  the optional fields on LiveEvent in ical-live.ts. */
+    is_all_day: z.boolean().optional(),
+    /** Positional-precision hint (see LiveEvent). Vouched per-event
+     *  coordinates (DFP Vibemap venue lat/lng) set "geocoded" so cards
+     *  may show a real distance; same strip risk as is_all_day. */
+    placement: z.enum(["geocoded", "venue"]).optional(),
+    attendance_mode: z.enum(["physical", "online", "mixed"]).optional(),
+    online_url: z.string().url().optional(),
+    /** Optional publisher-supplied ticket floor and event art. Keep these in
+     *  the runtime schema or Zod strips them after a feed parser maps them. */
+    price_text: z.string().max(120).optional(),
+    hero_image: z.string().url().optional(),
     municipality: z.string().min(2).max(40),
     category: z.string().max(40),
     organizer: z.string().max(120),
+    // MUST stay in sync with the FeedSpec source union in ical-live.ts. When it
+    // drifts, the parsed events from the missing sources fail validation and are
+    // SILENTLY DROPPED (city-frederick / fair / mount-airy / thurmont / parks
+    // were all being dropped here despite being wired feeds).
     source: z.enum([
       "dfp",
       "celebrate",
@@ -80,6 +102,25 @@ export const liveEventSchema = z
       "delaplaine",
       "ticketmaster",
       "bandsintown",
+      "seatgeek",
+      "eventbrite",
+      "fcpl",
+      "city-frederick",
+      "fair",
+      "mount-airy",
+      "thurmont",
+      "parks",
+      "heritage-frederick",
+      "monocacy",
+      "msd",
+      "mdcc",
+      "mount-st-marys",
+      "isf",
+      "elc",
+      "civil-war-med",
+      "maryland-ensemble",
+      "catoctin",
+      "fcc",
     ]),
     source_label: z.string().min(1).max(120),
     url: z.string().url(),
@@ -90,6 +131,8 @@ export const liveEventSchema = z
     status: z.enum(["scheduled", "cancelled", "postponed"]).default("scheduled"),
     /** When the row was pulled from its source. Server fills this. */
     last_verified_at: isoDateSchema,
+    /** When the publisher actually edited the record, when exposed. */
+    publisher_updated_at: isoDateSchema.optional(),
   })
   .refine((e) => Date.parse(e.ends_at) >= Date.parse(e.starts_at), {
     message: "ends_at before starts_at",

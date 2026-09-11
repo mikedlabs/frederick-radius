@@ -5,22 +5,37 @@ export const DAY_LABEL: Record<DayOfWeek, string> = {
   mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun",
 };
 
+// One formatter for the module's lifetime. Constructing Intl.DateTimeFormat
+// is the expensive part (ICU locale + zone lookup), and getOpenStatus runs
+// once per place in hot loops — the map's time scrubber calls it for every
+// scoped place on every tick, which measured 24-68ms per tick (hardware
+// dependent) with ~99% of it this redundant construction. Cached, the same
+// tick is ~1ms. Formatters are stateless after creation, so reuse is safe.
+const FREDERICK_CLOCK = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  weekday: "short",
+  hour12: false,
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+// A same-instant memo on top: the scrubber loop asks about the SAME instant
+// for every place in the pass, so day/minutes resolve once per distinct time.
+let lastClockMs = Number.NaN;
+let lastClockValue: { day: DayOfWeek; minutes: number } | null = null;
+
 function nowInFrederick(d: Date = new Date()): { day: DayOfWeek; minutes: number } {
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "short",
-    hour12: false,
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const parts = Object.fromEntries(fmt.formatToParts(d).map((p) => [p.type, p.value]));
+  if (d.getTime() === lastClockMs && lastClockValue) return lastClockValue;
+  const parts = Object.fromEntries(FREDERICK_CLOCK.formatToParts(d).map((p) => [p.type, p.value]));
   const dayMap: Record<string, DayOfWeek> = {
     Sun: "sun", Mon: "mon", Tue: "tue", Wed: "wed", Thu: "thu", Fri: "fri", Sat: "sat",
   };
   const day = dayMap[parts.weekday] ?? "mon";
   const hh = parseInt(parts.hour ?? "0", 10);
   const mm = parseInt(parts.minute ?? "0", 10);
-  return { day, minutes: hh * 60 + mm };
+  lastClockMs = d.getTime();
+  lastClockValue = { day, minutes: hh * 60 + mm };
+  return lastClockValue;
 }
 
 function parseHHMM(s: string): number {
@@ -29,11 +44,61 @@ function parseHHMM(s: string): number {
 }
 
 export type OpenStatus =
-  | { state: "open"; closesAt: string; closingSoon: boolean }
+  | { state: "open"; closesAt: string; closingSoon: boolean; allDay?: boolean }
   | { state: "closing-soon"; closesAt: string }
-  | { state: "closed"; opensAt?: string; opensDay?: DayOfWeek }
+  | { state: "closed"; opensAt?: string; opensDay?: DayOfWeek; opensToday?: boolean }
   | { state: "unverified" }
   | { state: "unknown" };
+
+/**
+ * An all-day / "open 24 hours" window: midnight to midnight, however the source
+ * encodes it (00:00–24:00, or 00:00–00:00). Detected explicitly so it renders
+ * as "Open 24 hours" instead of the nonsense "12am–12pm" that a naive
+ * open–close format produced (the Dog Park bug). A normal window that merely
+ * closes at midnight (e.g. 17:00–00:00) is NOT all-day and is left alone.
+ */
+export function isAllDayWindow(w: HoursWindow): boolean {
+  return w.open === "00:00" && (w.close === "24:00" || w.close === "00:00");
+}
+
+/** One day's windows as a display string: "Open 24 hours", a joined list of
+ *  "9am–5pm" ranges, or "Closed" when there are none. */
+export function formatWindows(windows: HoursWindow[]): string {
+  if (windows.length === 0) return "Closed";
+  if (windows.some(isAllDayWindow)) return "Open 24 hours";
+  return windows.map((w) => `${formatTime(w.open)}–${formatTime(w.close)}`).join(", ");
+}
+
+/**
+ * "Open right now" — the shared predicate behind every open-now count
+ * and filter (the map readout, the radius instrument, the browse filter).
+ * Centralized so the definition can never drift between surfaces: only
+ * verified-open states count. "unverified" and "unknown" never do, so a
+ * count built on this is always "at least N confirmed open" and never
+ * over-asserts.
+ */
+export function isOpenNow(status: OpenStatus): boolean {
+  return status.state === "open" || status.state === "closing-soon";
+}
+
+/**
+ * "Definitively closed right now" — true ONLY when the venue has verified
+ * hours that place `now` outside every window. Unknown or unverified hours
+ * return false: we never claim a venue is closed on evidence we don't have.
+ *
+ * The guard behind cross-table honesty (audit DQ-019 / FR-001): a happy hour
+ * or deal must not read "on now" when its venue is provably closed and would
+ * send someone to a locked door. Callers keep the promotion live when the
+ * venue state is merely unknown, so a real pour at a hours-less venue still
+ * shows.
+ */
+export function isClosedNow(
+  hours: Hours | undefined,
+  verified: boolean,
+  now: Date = new Date(),
+): boolean {
+  return getOpenStatus(hours, { verified }, now).state === "closed";
+}
 
 export function getOpenStatus(
   hours: Hours | undefined,
@@ -50,9 +115,28 @@ export function getOpenStatus(
     let close = parseHHMM(w.close);
     if (close <= open) close += 24 * 60;
     if (minutes >= open && minutes < close) {
+      // An open-24-hours window never "closes soon" and reads as all-day.
+      if (isAllDayWindow(w)) return { state: "open", closesAt: w.close, closingSoon: false, allDay: true };
       const left = close - minutes;
       const closingSoon = left <= 60;
       if (closingSoon) return { state: "closing-soon", closesAt: w.close };
+      return { state: "open", closesAt: w.close, closingSoon: false };
+    }
+  }
+
+  // Overnight spillover: a window that opened YESTERDAY and closes after
+  // midnight (close <= open, e.g. "11:00 AM – 1:00 AM") is still open in
+  // the early hours of today. The today-window loop above only catches
+  // the late-evening side of that range on the day it opens; without this
+  // a bar open "Fri 5 PM – 2 AM" reads as CLOSED at 1 AM Saturday. Check
+  // yesterday's overnight windows and honor the [00:00, close) tail.
+  const prevDay = DAYS[(DAYS.indexOf(day) + 6) % 7];
+  for (const w of hours[prevDay] ?? []) {
+    const open = parseHHMM(w.open);
+    const close = parseHHMM(w.close);
+    if (close <= open && minutes < close) {
+      const left = close - minutes;
+      if (left <= 60) return { state: "closing-soon", closesAt: w.close };
       return { state: "open", closesAt: w.close, closingSoon: false };
     }
   }
@@ -64,7 +148,7 @@ export function getOpenStatus(
     if (!windows || windows.length === 0) continue;
     if (i === 0) {
       const upcoming = windows.find((w) => parseHHMM(w.open) > minutes);
-      if (upcoming) return { state: "closed", opensAt: upcoming.open, opensDay: d };
+      if (upcoming) return { state: "closed", opensAt: upcoming.open, opensDay: d, opensToday: true };
     } else {
       return { state: "closed", opensAt: windows[0].open, opensDay: d };
     }
@@ -75,6 +159,9 @@ export function getOpenStatus(
 export function formatTime(hhmm: string): string {
   const [hStr, m] = hhmm.split(":");
   let h = parseInt(hStr, 10);
+  // "24:00" is midnight (end-of-day) — normalize to the 0-23 clock BEFORE the
+  // am/pm split, so it reads "12am", not the old "12pm" (the Dog Park bug).
+  if (h >= 24) h -= 24;
   const am = h < 12;
   if (h === 0) h = 12;
   else if (h > 12) h -= 12;
@@ -83,10 +170,14 @@ export function formatTime(hhmm: string): string {
 }
 
 export function formatHoursLine(status: OpenStatus): string {
-  if (status.state === "open") return `Open until ${formatTime(status.closesAt)}`;
+  if (status.state === "open") return status.allDay ? "Open 24 hours" : `Open until ${formatTime(status.closesAt)}`;
   if (status.state === "closing-soon") return `Closing soon · ${formatTime(status.closesAt)}`;
   if (status.state === "closed" && status.opensAt && status.opensDay) {
-    return `Closed · Opens ${DAY_LABEL[status.opensDay]} ${formatTime(status.opensAt)}`;
+    // Same-day reopen drops the day token: "Closed · Opens Tue 11am" read
+    // like a next-week wait when the doors open later TODAY.
+    return status.opensToday
+      ? `Closed · Opens ${formatTime(status.opensAt)}`
+      : `Closed · Opens ${DAY_LABEL[status.opensDay]} ${formatTime(status.opensAt)}`;
   }
   if (status.state === "closed") return "Closed";
   if (status.state === "unverified") return "Hours not confirmed";

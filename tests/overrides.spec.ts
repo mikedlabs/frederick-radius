@@ -27,9 +27,109 @@ describe("patchRecord", () => {
   it("overlays only the patched fields, identity otherwise", () => {
     const p = { slug: "x", name: "Old", category: "restaurant", short_blurb: "b" };
     expect(patchRecord(p, undefined)).toBe(p);
-    const out = patchRecord(p, { x: { name: "New", category: "cafe" } });
-    expect(out).toEqual({ slug: "x", name: "New", category: "cafe", short_blurb: "b" });
+    const out = patchRecord(p, {
+      x: { name: "New", category: "cafe", subcategories: ["restaurant"] },
+    });
+    expect(out).toEqual({
+      slug: "x",
+      name: "New",
+      category: "cafe",
+      subcategories: ["restaurant"],
+      short_blurb: "b",
+    });
     expect(p.name).toBe("Old"); // input not mutated
+  });
+
+  it("can explicitly clear an unsafe public blurb", () => {
+    const p = {
+      slug: "x",
+      name: "Example",
+      short_blurb: "100 Main Street Frederick, MD 21701 Directory copy.",
+    };
+
+    expect(
+      patchRecord(p, { x: { short_blurb: "" } }),
+    ).toEqual({
+      ...p,
+      short_blurb: "",
+    });
+  });
+
+  it("can add verified communication access and written contact", () => {
+    const p = { slug: "x", name: "Community center", tags: ["community"] };
+    const accessibility = {
+      communication: {
+        deaf_community: true,
+        written_contact: true,
+        source_url: "https://example.org/access",
+        verified_at: "2026-07-28",
+      },
+    };
+
+    expect(
+      patchRecord(p, {
+        x: {
+          email: "hello@example.org",
+          tags: ["community", "deaf-community"],
+          accessibility,
+        },
+      }),
+    ).toEqual({
+      ...p,
+      email: "hello@example.org",
+      tags: ["community", "deaf-community"],
+      accessibility,
+    });
+  });
+
+  it("only verifies a manual hours patch when it carries field-specific evidence", () => {
+    const p = {
+      slug: "x",
+      hours_verified: false,
+      updated_at: "2026-07-28T12:00:00.000Z",
+    };
+    const hours = {
+      mon: [{ open: "09:00", close: "17:00" }],
+    };
+
+    expect(patchRecord(p, { x: { hours } })).toEqual({
+      ...p,
+      hours,
+      hours_verified: false,
+    });
+    expect(
+      patchRecord(p, {
+        x: {
+          hours,
+          hours_updated_at: "2026-07-27T15:00:00.000Z",
+        },
+      }),
+    ).toEqual({
+      ...p,
+      hours,
+      hours_updated_at: "2026-07-27T15:00:00.000Z",
+      hours_verified: true,
+    });
+  });
+
+  it("does not let old verification evidence attach to a changed schedule", () => {
+    const p = {
+      slug: "x",
+      hours: {
+        mon: [{ open: "08:00", close: "16:00" }],
+      },
+      hours_verified: true,
+      hours_updated_at: "2026-07-01T12:00:00.000Z",
+    };
+    const replacement = {
+      mon: [{ open: "09:00", close: "17:00" }],
+    };
+
+    expect(patchRecord(p, { x: { hours: replacement } })).toEqual({
+      slug: "x",
+      hours: replacement,
+      hours_verified: false,
+    });
   });
 });
 
@@ -60,6 +160,7 @@ describe("nearDupeCandidates — finds the judgement tail the engine skips", () 
       new Set(["summitra", "sumittra-thai-cuisine"]),
     );
     expect(cands[0].score).toBeGreaterThan(0.3);
+    expect(cands[0].distance_m).toBeLessThan(10);
   });
 
   it("does NOT flag genuinely distinct close places", () => {
@@ -79,6 +180,24 @@ describe("nearDupeCandidates — finds the judgement tail the engine skips", () 
       rec({ slug: "a", name: "Summitra", municipality: "frederick", ...C }),
       rec({ slug: "b", name: "Sumittra", municipality: "thurmont", ...near(5) }),
       rec({ slug: "c", name: "Sumittra", municipality: "frederick", lng: -77.6, lat: 39.62 }),
+    ];
+    expect(nearDupeCandidates(recs)).toHaveLength(0);
+  });
+
+  it("does not turn neighboring features in different categories into shared-token duplicates", () => {
+    const recs = [
+      rec({
+        slug: "park-playground",
+        name: "New Market Community Park Playground",
+        category: "playground",
+        ...C,
+      }),
+      rec({
+        slug: "park-pavilion",
+        name: "New Market Community Park Pavilion",
+        category: "park",
+        ...near(20),
+      }),
     ];
     expect(nearDupeCandidates(recs)).toHaveLength(0);
   });

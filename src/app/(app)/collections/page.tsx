@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BookOpen } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarCheck } from "lucide-react";
 import { COLLECTIONS } from "@/data/collections";
 import PageBloom from "@/components/ui/PageBloom";
+import { PRODUCT_NAMES } from "@/lib/product-names";
 
 export const metadata: Metadata = {
-  title: "Collections",
-  description:
-    "Editorial collections of Frederick places, picked by a resident. Walkable date nights, rainy-day spots, kid energy burners, and more.",
+  alternates: { canonical: "/collections" },
+  title: PRODUCT_NAMES.localLists.pageTitle,
+  description: PRODUCT_NAMES.localLists.description,
 };
 
 /**
@@ -28,21 +29,42 @@ export default function CollectionsIndex() {
       <PageBloom variant="warm-cool" />
 
       <header className="space-y-2">
-        <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-          Collections
-        </p>
-        <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          Where a local would send you.
+        <h1 className="font-sans text-[clamp(2rem,8vw,3rem)] font-semibold leading-none tracking-[-0.035em]" style={{ color: "var(--app-ink)" }}>
+          Local lists
         </h1>
         <p
-          className="text-[15px] leading-relaxed text-pretty"
-          style={{ color: "var(--app-ink-2)" }}
+          className="text-[14px] leading-snug"
+          style={{ color: "var(--app-ink-3)" }}
         >
-          Picks from a downtown resident, grouped by the question you came in
-          with. None of these is a list of every option in town. Each one is
-          the short answer.
+          Local shortlists organized around a specific plan.
         </p>
       </header>
+
+      {/* The generator door — hand-picked lists below, a fresh plan here.
+          (July 2026 outside review: "it's static! …you could generate
+          different plans/paths." /plan already does; this is its front door.) */}
+      <Link
+        href="/plan"
+        className="tactile tactile-interactive group flex items-center gap-3 rounded-[var(--app-radius-lg)] border border-dashed bg-[var(--app-bg-sunken)] p-4"
+        style={{ borderColor: "var(--app-border-strong, var(--app-border))" }}
+      >
+        <span
+          aria-hidden
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+          style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)" }}
+        >
+          <CalendarCheck className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-sans text-[16px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+            Need a plan for today?
+          </span>
+          <span className="mt-0.5 block text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            Choose a mood and how long you have. The route changes each time.
+          </span>
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+      </Link>
 
       <ul className="grid gap-3">
         {COLLECTIONS.map((c) => (

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "sourceId": "seeclickfix-frederick-county",
+  "methodVersion": 1,
+  "generatedAt": "2026-07-23T04:55:35.788Z",
+  "window": {
+    "start": "2026-07-21T12:23:58.000Z",
+    "end": "2026-07-22T19:37:10.000Z",
+    "label": "Jul 21–22, 2026",
+    "kind": "snapshot"
+  },
+  "aggregate": {
+    "inputRecords": 20,
+    "acceptedRecords": 20,
+    "rejectedRecords": 0,
+    "duplicateRecords": 0,
+    "distinctDays": 2
+  },
+  "publication": {
+    "approved": false,
+    "reviewedAt": null,
+    "approvalBasis": null,
+    "note": "Publication is paused until the source reuse terms are reviewed for this product."
+  }
+}

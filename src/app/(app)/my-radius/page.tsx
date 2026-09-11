@@ -1,88 +1,77 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Settings, ChevronRight } from "lucide-react";
 import SavedList from "@/components/saved/SavedList";
-import RecentlyViewedRail from "@/components/saved/RecentlyViewedRail";
-import NotificationsNudge from "@/components/pwa/NotificationsNudge";
+import PageBloom from "@/components/ui/PageBloom";
 import { getServerUser } from "@/lib/auth";
+import { getDb } from "@/lib/db/client";
+import { readFollowedPlaceSnapshot } from "@/lib/follows.server";
+import { resolvePlacesBySlugs } from "@/lib/loaders/placesBySlugs";
+import { withDeadlineOutcome } from "@/lib/promise-deadline";
 
 export const metadata: Metadata = {
-  title: "My Radius",
+  robots: { index: false },
+  // Titled "Saved" to match the bottom-nav tab that opens this page —
+  // the tab label and the page title now agree (no "My Radius" eyebrow
+  // pointing at a tab called "Saved"). Route stays /my-radius.
+  title: "Saved",
   description:
-    "Your personal Frederick Radius — the places, events, and routes you're keeping an eye on.",
-  robots: { index: false, follow: false },
+    "Frederick Radius keeps your saved places, events, and routes together.",
 };
+
+const MY_RADIUS_FOLLOW_READ_DEADLINE_MS = 2_000;
 
 /**
  * /my-radius — the user's personal corner of the field guide.
  *
- * Saving remains useful without an account. When signed in, place saves are
- * merged with the account-backed set; saved events, routes, preferences, and
- * recents stay device-local and keep the same UI.
+ * Saved-page redesign (owner-approved, 2026-07-08): the page is one client
+ * composition. SavedList owns the masthead (title + mono standfirst with the
+ * counts + settings gear), the On-now running line, the wallet deck, and the
+ * almanac colophon footer — where the old standalone modules (Radius Points
+ * card, sign-in CTA strip, NotificationsNudge) are demoted to single ruled
+ * lines. The server's only jobs here are metadata and handing down the
+ * signed-in email for the standfirst/colophon framing.
  */
-export default async function MyRadiusPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ signed_out?: string }>;
-}) {
-  const params = await searchParams;
+export default async function MyRadiusPage() {
   const user = await getServerUser();
+  let initialFollowSlugs: string[] | undefined;
+  let initialFollowsTruncated = false;
+  if (user) {
+    try {
+      const db = getDb();
+      if (db) {
+        const outcome = await withDeadlineOutcome(
+          readFollowedPlaceSnapshot(db, user.id),
+          MY_RADIUS_FOLLOW_READ_DEADLINE_MS,
+        );
+        if (outcome.status === "fulfilled") {
+          initialFollowSlugs = outcome.value.slugs;
+          initialFollowsTruncated = outcome.value.truncated;
+        } else {
+          console.warn(
+            `[my-radius] follow bootstrap ${outcome.status} after ${MY_RADIUS_FOLLOW_READ_DEADLINE_MS}ms`,
+          );
+        }
+      }
+    } catch (error) {
+      console.warn(
+        "[my-radius] follow bootstrap unavailable:",
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+  const initialPlaces = initialFollowSlugs
+    ? resolvePlacesBySlugs(initialFollowSlugs)
+    : [];
+
   return (
-    <div className="space-y-5">
-      <header className="flex items-end justify-between gap-3">
-        <div>
-          <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-            {user ? "My Radius · places synced" : "My Radius · on this device"}
-          </p>
-          <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-            Your Frederick
-          </h1>
-        </div>
-        <Link
-          href="/settings"
-          aria-label="Settings"
-          className="tactile tactile-interactive inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full border px-3 text-[12px] font-semibold"
-          style={{
-            borderColor: "var(--app-border)",
-            background: "var(--app-bg-elevated)",
-            color: "var(--app-ink-2)",
-          }}
-        >
-          <Settings className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          Settings
-          <ChevronRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-        </Link>
-      </header>
-
-      {params.signed_out === "1" && (
-        <div
-          role="status"
-          className="rounded-[var(--app-radius-md)] border px-3.5 py-3 text-[12.5px]"
-          style={{
-            borderColor: "var(--app-border)",
-            background: "var(--app-bg-elevated)",
-            color: "var(--app-ink-2)",
-          }}
-        >
-          Sync stopped on this device. Your saved events, routes, settings, and
-          recent views are still here.
-        </div>
-      )}
-
-      <SavedList isSignedIn={Boolean(user)} />
-
-      {/* Recently viewed — device-local trail of the last 6 places
-          the user opened (via PlaceSheet OR direct /places/[slug]).
-          Self-hides when empty. Sits below the saved list because
-          the saved list is the user's intentional shortlist;
-          recents are passive context underneath. */}
-      <RecentlyViewedRail />
-
-      {/* Discreet doorway to /settings/notifications. The component
-          self-hides on browsers without PushManager, on already-
-          subscribed users, on blocked-permission users, and after
-          this session's dismissal. */}
-      <NotificationsNudge />
+    <div className="relative">
+      <PageBloom variant="warm-cool" />
+      <SavedList
+        userId={user?.id ?? null}
+        userEmail={user?.email ?? null}
+        initialFollowSlugs={initialFollowSlugs}
+        initialFollowsTruncated={initialFollowsTruncated}
+        initialPlaces={initialPlaces}
+      />
     </div>
   );
 }

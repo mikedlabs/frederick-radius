@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-16T20:27:27.979Z",
-  "count": 4,
+  "generated_at": "2026-07-23T05:38:17.440Z",
+  "count": 5,
   "closures": [
     {
       "name": "Ayse Meze Lounge",
@@ -9,10 +9,16 @@
       "source": "manual_denylist"
     },
     {
+      "name": "Cozy Restaurant",
+      "place_id": null,
+      "date_marked": null,
+      "source": "curated:closed_permanently"
+    },
+    {
       "name": "Firestone's Culinary Tavern",
       "place_id": null,
       "date_marked": null,
-      "source": "manual_denylist"
+      "source": "manual_denylist + curated:closed_permanently"
     },
     {
       "name": "Idiom Brewing Co.",

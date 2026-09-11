@@ -17,14 +17,25 @@ test("enriched places carry google_places hours provenance", () => {
   console.log(`${g.length} places stamped google_places, coverage ${(hoursCoverage(all) * 100).toFixed(1)}%`);
 });
 
-test("coverage is honest and the gate hides Open-now under the 60% bar", () => {
+test("coverage is honest and the gate follows the 60% bar", () => {
   const all = rankPlaces({});
   const cov = hoursCoverage(all);
-  assert.ok(cov >= 0 && cov < 0.6, "current coverage is well under the 60% bar");
-  // HOURS_GATE defaults on (owner directive, 2026-05-16). Under 60%
-  // verified-hours coverage the Open-now affordance hides in favor of
-  // an honest message. Set HOURS_GATE=0 for the always-show rollback.
-  assert.equal(shouldHideOpenNow(all), true);
+  assert.ok(cov >= 0 && cov <= 1, "current materialized coverage is a valid ratio");
+  assert.equal(
+    shouldHideOpenNow(all),
+    cov < 0.6,
+    "Open-now visibility follows current verified-hours coverage",
+  );
+
+  const lowCoverage = all.slice(0, 10).map((place, index) =>
+    index === 0
+      ? place
+      : { ...place, hours: undefined, hours_verified: false },
+  );
+  assert.ok(hoursCoverage(lowCoverage) < 0.6);
+  assert.equal(shouldHideOpenNow(lowCoverage), true);
   assert.equal(hoursCoverage([]), 0);
-  console.log(`gate active, coverage ${(cov * 100).toFixed(1)}% < 60% -> Open-now hidden`);
+  console.log(
+    `gate active, coverage ${(cov * 100).toFixed(1)}% -> Open-now ${cov >= 0.6 ? "available" : "hidden"}`,
+  );
 });

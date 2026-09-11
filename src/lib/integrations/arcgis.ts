@@ -8,11 +8,46 @@ type QueryResponse = {
   error?: { message: string };
 };
 
-export async function queryArcGIS(
+export type ArcGISOutcome = {
+  features: Feature[];
+  /** False when the service could not be READ. An `ok: true` with zero
+   *  features means the service answered and had nothing, which is a
+   *  completely different sentence to show a reader. */
+  ok: boolean;
+};
+
+/**
+ * Same query, but the caller learns whether it actually happened.
+ *
+ * The fail-soft `queryArcGIS` below collapses a refused connection, a non-ok
+ * status, an ArcGIS `data.error` payload and a genuine empty result into one
+ * `[]`. That is fine for a callsite that only wants rows, and wrong for any
+ * surface that tells a person what it knows: /markers rendered "The state and
+ * federal history layers aren't answering right now" over a build in which
+ * both services had answered fine, because an empty array was the only
+ * evidence it had.
+ */
+export async function queryArcGISOutcome(
   serviceUrl: string,
   params: Record<string, string> = {},
   revalidate = 86400,
-): Promise<Feature[]> {
+): Promise<ArcGISOutcome> {
+  const url = buildArcGISQueryUrl(serviceUrl, params);
+  try {
+    const res = await fetch(url, { next: { revalidate } });
+    if (!res.ok) return { features: [], ok: false };
+    const data = (await res.json()) as QueryResponse;
+    if (data.error) return { features: [], ok: false };
+    return { features: data.features ?? [], ok: true };
+  } catch {
+    return { features: [], ok: false };
+  }
+}
+
+function buildArcGISQueryUrl(
+  serviceUrl: string,
+  params: Record<string, string>,
+): string {
   const url = new URL(`${serviceUrl}/query`);
   const defaults: Record<string, string> = {
     where: "1=1",
@@ -22,17 +57,18 @@ export async function queryArcGIS(
     returnGeometry: "true",
     resultRecordCount: "500",
   };
-  for (const [k, v] of Object.entries({ ...defaults, ...params })) url.searchParams.set(k, v);
-
-  try {
-    const res = await fetch(url.toString(), { next: { revalidate } });
-    if (!res.ok) return [];
-    const data = (await res.json()) as QueryResponse;
-    if (data.error) return [];
-    return data.features ?? [];
-  } catch {
-    return [];
+  for (const [k, v] of Object.entries({ ...defaults, ...params })) {
+    url.searchParams.set(k, v);
   }
+  return url.toString();
+}
+
+export async function queryArcGIS(
+  serviceUrl: string,
+  params: Record<string, string> = {},
+  revalidate = 86400,
+): Promise<Feature[]> {
+  return (await queryArcGISOutcome(serviceUrl, params, revalidate)).features;
 }
 
 export type ArcGISPoint = {

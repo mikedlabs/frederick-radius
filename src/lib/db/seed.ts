@@ -111,6 +111,7 @@ export async function runSeed(): Promise<SeedSummary> {
       lng: p.geom.lng,
       lat: p.geom.lat,
       phone: p.phone ?? null,
+      email: p.email ?? null,
       website: p.website ?? null,
       hours: p.hours ?? null,
       price_band: p.price_band ?? null,
@@ -132,7 +133,7 @@ export async function runSeed(): Promise<SeedSummary> {
         city: p.city, postal_code: p.postal_code,
         municipality_slug: p.municipality,
         lng: p.geom.lng, lat: p.geom.lat,
-        phone: p.phone ?? null, website: p.website ?? null,
+        phone: p.phone ?? null, email: p.email ?? null, website: p.website ?? null,
         hours: p.hours ?? null, price_band: p.price_band ?? null,
         amenities: p.amenities ?? null, accessibility: p.accessibility ?? null,
         is_verified: p.is_verified, feature_score: p.feature_score,
@@ -222,7 +223,11 @@ export async function runSeed(): Promise<SeedSummary> {
     });
   }
 
-  await db.execute(sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
+  // pg_trgm lives in the dedicated `extensions` schema, never public (Supabase
+  // advisory; drizzle/0008_move_pg_trgm_out_of_public.sql does the move on an
+  // existing DB). On a fresh DB this creates it there directly.
+  await db.execute(sql`CREATE SCHEMA IF NOT EXISTS extensions`);
+  await db.execute(sql`CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions`);
 
   return {
     municipalities: MUNICIPALITIES.length,

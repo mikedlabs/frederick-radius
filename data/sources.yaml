@@ -1,9 +1,11 @@
 # Frederick Radius data source manifest.
 #
 # This file is the single source of truth for every data source the app
-# uses or plans to use. The daily worker only processes rows with
-# status: active. Other statuses are intentional gates:
-#   active           validated, schema and transform exist, worker runs it
+# uses or plans to use. The daily worker processes only active rows whose
+# collection owner is `pipeline`; runtime and workflow sources are refreshed
+# by their named owner. Other statuses are intentional gates:
+#   active           validated and used by the product. `collection` says who
+#                    refreshes it: pipeline, runtime, or workflow.
 #   scaffold         mapped from code, not yet wired to the worker; its
 #                    schema and transform are generated when it is
 #                    activated, through the diagnose-failure command
@@ -15,6 +17,19 @@
 # A row may set resolve_json_path. When present the worker fetches url,
 # reads that dotted path from the JSON response to get a second URL, then
 # fetches and stores that. This supports two step APIs such as NWS.
+#
+# rows_required is reserved for baseline datasets whose successful normalized
+# output cannot validly be empty. Do not use it for alerts, incidents, events,
+# seasonal schedules, or on-demand work where zero rows can be an honest result.
+# publication_applicability defaults to required. The only supported exception,
+# not_applicable, is for a bounded runtime lookup with on_demand cadence that
+# returns one validated response directly and intentionally creates no durable
+# artifact or bulk mirror. It must never be used to hide a stale, restricted,
+# empty, or unused snapshot.
+# Pipeline rows may set snapshot_cadence when the stored backup is refreshed at
+# a different rate from the upstream or request-time adapter.
+# change_cadence is reserved for feeds whose normalized payload is expected to
+# change within a known window. It detects a frozen-but-still-200 upstream.
 
 version: 1
 
@@ -30,11 +45,14 @@ sources:
     endpoint_type: rest_json
     format: json
     refresh_cadence: weekly
+    snapshot_cadence: daily
     license: open, attribution requested
     contact: https://www.openbrewerydb.org
     status: active
-    last_validated: null
-    last_success: null
+    collection: pipeline
+    rows_required: true
+    last_validated: 2026-07-23T04:55:34.946Z
+    last_success: 2026-07-23T04:55:34.946Z
     schema_file: schemas/open_brewery_db.json
     transform_file: transforms/open_brewery_db.ts
     notes: |
@@ -44,20 +62,24 @@ sources:
   - id: mdot_chart
     name: Maryland CHART Traffic Incidents
     owner: Maryland Department of Transportation
-    url: https://chart.maryland.gov/Incidents/GetIncidents
+    url: https://chartexp1.sha.maryland.gov/CHARTExportClientService/getEventMapDataJSON.do
     endpoint_type: rest_json
     format: json
     refresh_cadence: hourly
-    license: public domain, State of Maryland
+    snapshot_cadence: daily
+    license: no explicit reuse license found; official public CHART data feed; CHART site copyright reserved; attribution and republication review required
     contact: https://chart.maryland.gov
     status: active
-    last_validated: null
-    last_success: null
+    collection: pipeline
+    last_validated: 2026-07-23T04:55:35.450Z
+    last_success: 2026-07-23T04:55:35.450Z
     schema_file: schemas/mdot_chart.json
     transform_file: transforms/mdot_chart.ts
     notes: |
-      Statewide live incident feed, no key. The transform filters to
-      Frederick County and normalizes coordinates and times.
+      Statewide live incident feed, no key. The old
+      chart.maryland.gov/Incidents/GetIncidents URL became an HTML page;
+      this is CHART's current JSON export endpoint. The transform filters
+      to Frederick County and removes signal/camera maintenance noise.
 
   - id: seeclickfix
     name: SeeClickFix Frederick County 311
@@ -66,11 +88,13 @@ sources:
     endpoint_type: rest_json
     format: json
     refresh_cadence: hourly
+    snapshot_cadence: daily
     license: public read access
     contact: https://seeclickfix.com
     status: active
-    last_validated: 2026-05-18
-    last_success: null
+    collection: pipeline
+    last_validated: 2026-07-23T04:55:35.788Z
+    last_success: 2026-07-23T04:55:35.788Z
     schema_file: schemas/seeclickfix.json
     transform_file: transforms/seeclickfix.ts
     notes: |
@@ -88,11 +112,15 @@ sources:
     endpoint_type: rest_json
     format: json
     refresh_cadence: hourly
+    snapshot_cadence: daily
+    change_cadence: daily
     license: public domain
     contact: https://www.weather.gov/disclaimer
     status: active
-    last_validated: null
-    last_success: null
+    collection: pipeline
+    rows_required: true
+    last_validated: 2026-07-23T04:55:37.536Z
+    last_success: 2026-07-23T04:55:37.536Z
     schema_file: schemas/nws_forecast.json
     transform_file: transforms/nws_forecast.ts
     notes: |
@@ -106,11 +134,13 @@ sources:
     endpoint_type: rest_json
     format: json
     refresh_cadence: hourly
+    snapshot_cadence: daily
     license: public domain
     contact: https://www.weather.gov/disclaimer
     status: active
-    last_validated: null
-    last_success: null
+    collection: pipeline
+    last_validated: 2026-07-23T04:55:37.723Z
+    last_success: 2026-07-23T04:55:37.723Z
     schema_file: schemas/nws_alerts.json
     transform_file: transforms/nws_alerts.ts
     notes: |
@@ -124,36 +154,43 @@ sources:
   # ------------------------------------------------------------------ #
 
   - id: frederick_county_arcgis
-    name: Frederick County ArcGIS Services
+    name: Frederick County ArcGIS Services (legacy registry row)
     owner: Frederick County GIS
     url: https://maps.frederickcountymd.gov/arcgis/rest/services
     endpoint_type: arcgis_rest
     format: geojson
     refresh_cadence: weekly
-    license: public, Frederick County
+    license: publicly referenced; explicit reuse license absent
     contact: https://www.frederickcountymd.gov
-    status: scaffold
-    last_validated: null
+    status: pending_review
+    last_validated: 2026-07-28
     last_success: null
     schema_file: null
     transform_file: null
-    notes: Facilities, boundaries, and points of interest layers.
+    notes: |
+      The recorded host returns HTTP 404 and the former "public" license label
+      was unsupported. Do not use this generic row as evidence that a specific
+      County layer may be transformed or republished. Each exact service needs
+      its own rights review and ledger entry.
 
   - id: md_imap_arcgis
     name: Maryland iMAP Services
     owner: Maryland Department of Information Technology
-    url: https://geodata.md.gov/imap/rest/services
+    url: https://mdgeodata.md.gov/imap/rest/services
     endpoint_type: arcgis_rest
     format: geojson
     refresh_cadence: weekly
     license: public, State of Maryland
     contact: https://imap.maryland.gov
     status: scaffold
-    last_validated: null
+    last_validated: 2026-08-11
     last_success: null
     schema_file: null
     transform_file: null
-    notes: Parcels, physical boundaries, and state parks layers.
+    notes: |
+      Current Maryland iMAP service root. This generic catalog row is not
+      evidence that every layer is suitable for Radius; exact datasets still
+      need their own adapter, field allowlist, lifecycle rules, and product use.
 
   - id: osm_overpass
     name: OpenStreetMap via Overpass
@@ -164,12 +201,17 @@ sources:
     refresh_cadence: daily
     license: Open Database License
     contact: https://www.openstreetmap.org/copyright
-    status: scaffold
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: County business and amenity points. Heavy query, mirrors exist.
+    transform_file: src/lib/integrations/overpass.ts
+    notes: |
+      Runtime county amenity discovery. fetchOsmFrederick() queries a
+      failover list of Overpass mirrors, filters every row to the Frederick
+      County boundary, and powers public restrooms, water, bike parking,
+      benches, trash receptacles, and other map layers.
 
   - id: google_places
     name: Google Places
@@ -180,12 +222,16 @@ sources:
     refresh_cadence: weekly
     license: Google Places terms, attribution required
     contact: https://developers.google.com/maps
-    status: scaffold
-    last_validated: null
+    status: pending_review
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
     transform_file: null
-    notes: Enrichment only. Requires GOOGLE_PLACES_API_KEY.
+    notes: |
+      Place IDs are retained as provider identifiers. New enrichment, hours,
+      and status refreshes are paused behind a code-level policy hold
+      pending reviewed written authorization and a field-level provenance
+      migration. Credentials alone do not activate the workflow.
 
   - id: wikimedia_commons
     name: Wikimedia Commons
@@ -206,20 +252,33 @@ sources:
   - id: dfp_events
     name: Downtown Frederick Partnership
     owner: Downtown Frederick Partnership
-    url: https://downtownfrederick.org/upcoming-events
-    endpoint_type: scrape
+    url: https://downtownfrederick.org/wp-json/wp/v2/vibemap_event
+    endpoint_type: rest
     format: json
-    refresh_cadence: daily
+    refresh_cadence: hourly (request-time, 1h fetch cache)
     license: unknown, confirm with owner
     contact: https://downtownfrederick.org
-    status: scaffold
-    last_validated: null
-    last_success: null
+    status: active
+    collection: runtime
+    evidence_aliases: [dfp, dfp_ical]
+    last_validated: 2026-07-19
+    last_success: 2026-07-19
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/integrations/ical-live.ts
     notes: |
-      Scrape class. Events and a merchant directory. Expect this to be
-      one of the more fragile sources. License needs confirmation.
+      Live via the no-DB path in src/lib/integrations/ical-live.ts
+      (FEEDS, source "dfp", format "vibemap"). NOT a scrape: DFP's
+      WordPress runs the Vibemap plugin and exposes vibemap_event
+      through the standard public wp/v2 REST (robots.txt allows;
+      fetch-verified 2026-07-19: 383 rows, 153 in the 30-day window,
+      per-event venue name/address/lat/lng and real clock times). The
+      rows are DFP's curated downtown slice synced from Visit
+      Frederick, so each event links out to its visitfrederick.org
+      detail page. Their old ?ical=1 export is dead (page cache
+      serves HTML for any query string). Predicted recurring
+      instances that lost their clock time (00:00:00 + not all-day)
+      are dropped at parse for honesty. URL overridable with
+      DFP_VIBEMAP_URL.
 
   - id: celebrate_frederick
     name: Celebrate Frederick
@@ -231,6 +290,8 @@ sources:
     license: unknown, confirm with owner
     contact: https://celebratefrederick.com
     status: active
+    collection: runtime
+    evidence_aliases: [celebrate, celebrate_frederick]
     last_validated: 2026-05-26
     last_success: null
     schema_file: null
@@ -246,13 +307,15 @@ sources:
   - id: hood_college
     name: Hood College Calendar
     owner: Hood College
-    url: https://www.trumba.com/calendars/hood-college-events.ics
+    url: https://go.activecalendar.com/hood/page/ical/
     endpoint_type: ical
     format: json
     refresh_cadence: weekly
     license: public calendar
     contact: https://www.hood.edu
     status: active
+    collection: runtime
+    evidence_aliases: [hood]
     last_validated: 2026-05-18
     last_success: null
     schema_file: null
@@ -261,7 +324,8 @@ sources:
       Campus events. Live via the no-DB iCal path in
       src/lib/integrations/ical-live.ts (FEEDS, source "hood"),
       alongside the already-live Celebrate Frederick + Frederick
-      County feeds. Override the URL with HOOD_CALENDAR_URL.
+      County feeds. HOOD_CALENDAR_URL is an optional move-safe override,
+      not a credential.
 
   - id: frederick_county_calendar
     name: Frederick County Calendar
@@ -273,6 +337,8 @@ sources:
     license: public, Frederick County
     contact: https://www.frederickcountymd.gov
     status: active
+    collection: runtime
+    evidence_aliases: [county, frederick_county_calendar]
     last_validated: 2026-05-26
     last_success: null
     schema_file: null
@@ -288,6 +354,299 @@ sources:
       because the source's own category field bears no relation to the
       event (see feedCategory() in the transform).
 
+  - id: city_frederick_calendar
+    name: City of Frederick Calendar
+    owner: City of Frederick
+    url: https://www.cityoffrederickmd.gov/RSSFeed.aspx?ModID=58&CID=All-calendar.xml
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: hourly
+    license: public municipal calendar; source link retained
+    contact: https://www.cityoffrederickmd.gov
+    status: active
+    collection: runtime
+    evidence_aliases: [city-frederick]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Official CivicPlus calendar in the runtime event registry.
+
+  - id: great_frederick_fair_calendar
+    name: Great Frederick Fair Calendar
+    owner: The Great Frederick Fair
+    url: https://calendar.google.com/calendar/ical/gffcal%40gmail.com/public/basic.ics
+    endpoint_type: ical
+    format: ical
+    refresh_cadence: hourly
+    license: public organization calendar; source link retained
+    contact: https://thegreatfrederickfair.com
+    status: active
+    collection: runtime
+    evidence_aliases: [fair]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Fair and fairgrounds events in the runtime event registry.
+
+  - id: mount_airy_calendar
+    name: Town of Mount Airy Calendar
+    owner: Town of Mount Airy
+    url: https://www.mountairymd.gov/RSSFeed.aspx?ModID=58&CID=All-calendar.xml
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: hourly
+    license: public municipal calendar; source link retained
+    contact: https://www.mountairymd.gov
+    status: active
+    collection: runtime
+    evidence_aliases: [mount-airy]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Official CivicPlus calendar in the runtime event registry.
+
+  - id: thurmont_calendar
+    name: Town of Thurmont Calendar
+    owner: Town of Thurmont
+    url: https://www.thurmont.com/RSSFeed.aspx?ModID=58&CID=All-calendar.xml
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: hourly
+    license: public municipal calendar; source link retained
+    contact: https://www.thurmont.com
+    status: active
+    collection: runtime
+    evidence_aliases: [thurmont]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Official calendar; facility bookings and utility notices are filtered.
+
+  - id: heritage_frederick_calendar
+    name: Heritage Frederick Events
+    owner: Heritage Frederick
+    url: https://frederickhistory.org/events/?ical=1
+    endpoint_type: ical
+    format: ical
+    refresh_cadence: hourly
+    license: public organization calendar; source link retained
+    contact: https://frederickhistory.org
+    status: active
+    collection: runtime
+    evidence_aliases: [heritage-frederick]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: First-party history talks, tours, and exhibits.
+
+  - id: monocacy_brewing_calendar
+    name: Monocacy Brewing Events
+    owner: Monocacy Brewing Company
+    url: https://monocacybrewing.com/events/?ical=1
+    endpoint_type: ical
+    format: ical
+    refresh_cadence: hourly
+    license: public business calendar; source link retained
+    contact: https://monocacybrewing.com
+    status: active
+    collection: runtime
+    evidence_aliases: [monocacy]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: First-party taproom events in the runtime event registry.
+
+  - id: maryland_school_deaf_calendar
+    name: Maryland School for the Deaf Calendar
+    owner: Maryland School for the Deaf
+    url: https://www.msd.edu/apps/events/ical/
+    endpoint_type: ical
+    format: ical
+    refresh_cadence: hourly
+    license: public institutional calendar; source link retained
+    contact: https://www.msd.edu
+    status: active
+    collection: runtime
+    evidence_aliases: [msd]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Public campus events; internal meetings are filtered downstream.
+
+  - id: maryland_deaf_community_center_calendar
+    name: Maryland Deaf Community Center Events
+    owner: Maryland Deaf Community Center
+    url: https://www.deafmdcc.org/events
+    endpoint_type: html
+    format: wix-html
+    refresh_cadence: hourly
+    license: publicly accessible first-party calendar; no explicit reuse license stated; source and event links retained
+    contact: https://www.deafmdcc.org/
+    status: active
+    collection: runtime
+    evidence_aliases: [mdcc]
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: src/lib/integrations/event-schema.ts
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: |
+      Organizer-published event records are parsed from Wix's server-rendered
+      wix-warmup-data payload. Rows are deduplicated by publisher event id and
+      retain the first-party detail link. Source identity marks Deaf-community
+      programming but does not imply ASL interpretation, captions, or another
+      specific accommodation.
+
+  - id: delaplaine_calendar
+    name: Delaplaine Arts Center Events
+    owner: Delaplaine Arts Center
+    url: https://delaplaine.org/events/?ical=1
+    endpoint_type: ical
+    format: ical
+    refresh_cadence: hourly
+    license: public organization calendar; source link retained
+    contact: https://delaplaine.org
+    status: active
+    collection: runtime
+    evidence_aliases: [delaplaine]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: First-party arts classes and exhibits.
+
+  - id: islamic_society_frederick_calendar
+    name: Islamic Society of Frederick Calendar
+    owner: Islamic Society of Frederick
+    url: https://calendar.google.com/calendar/ical/c_c6114ad8fc9e85edfd02c33a366bc2b049ef9b8c41d8ddad0274956761a4a59f%40group.calendar.google.com/public/basic.ics
+    endpoint_type: ical
+    format: ical
+    refresh_cadence: hourly
+    license: public organization calendar; source link retained
+    contact: https://isfmd.org
+    status: active
+    collection: runtime
+    evidence_aliases: [isf]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: First-party faith-community events.
+
+  - id: evangelical_lutheran_calendar
+    name: Evangelical Lutheran Church Calendar
+    owner: Evangelical Lutheran Church, Frederick
+    url: https://www.twinspires.org/gencal.cfm?event_category=All
+    endpoint_type: ical
+    format: ical
+    refresh_cadence: hourly
+    license: public organization calendar; source link retained
+    contact: https://www.twinspires.org
+    status: active
+    collection: runtime
+    evidence_aliases: [elc]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: First-party public church events; recurring internal meetings are filtered.
+
+  - id: civil_war_medicine_events
+    name: National Museum of Civil War Medicine Events
+    owner: National Museum of Civil War Medicine
+    url: https://www.civilwarmed.org/wp-json/tribe/events/v1/events
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: public organization event API; source link retained
+    contact: https://www.civilwarmed.org
+    status: active
+    collection: runtime
+    evidence_aliases: [civil-war-med]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Tribe Events API; non-Maryland satellite events are filtered.
+
+  - id: maryland_ensemble_events
+    name: Maryland Ensemble Theatre Events
+    owner: Maryland Ensemble Theatre
+    url: https://marylandensemble.org/wp-json/tribe/events/v1/events
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: public organization event API; source link retained
+    contact: https://marylandensemble.org
+    status: active
+    collection: runtime
+    evidence_aliases: [maryland-ensemble]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Tribe Events API; venue-less online streams are filtered.
+
+  - id: catoctin_land_trust_events
+    name: Catoctin Land Trust Events
+    owner: Catoctin Land Trust
+    url: https://catoctinlandtrust.org/wp-json/tribe/events/v1/events
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: public organization event API; source link retained
+    contact: https://catoctinlandtrust.org
+    status: active
+    collection: runtime
+    evidence_aliases: [catoctin]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: First-party conservation events and outings.
+
+  - id: fcc_calendar
+    name: Frederick Community College Calendar
+    owner: Frederick Community College
+    url: https://api.calendar.moderncampus.net/pubcalendar/edb420ae-0d61-4c0c-90af-26e2dfad9adf/events
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: public institutional calendar; source link retained
+    contact: https://www.frederick.edu
+    status: active
+    collection: runtime
+    evidence_aliases: [fcc]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Modern Campus calendar with an explicit request-time date window.
+
+  - id: mount_st_marys_calendar
+    name: Mount St. Mary's University Events
+    owner: Mount St. Mary's University
+    url: https://api.presence.io/msmary/v1/events
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: public institutional calendar; source link retained
+    contact: https://msmary.edu
+    status: active
+    collection: runtime
+    evidence_aliases: [mount-st-marys]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Presence student-engagement API for public campus events.
+
   - id: airnow
     name: AirNow Air Quality
     owner: US EPA AirNow
@@ -297,12 +656,16 @@ sources:
     refresh_cadence: hourly
     license: AirNow terms, attribution required
     contact: https://www.airnow.gov
-    status: scaffold
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: Requires AIRNOW_API_KEY.
+    transform_file: src/lib/integrations/airnow.ts
+    notes: |
+      Active runtime integration used by Today and Pulse when
+      AIRNOW_API_KEY is configured. The adapter distinguishes a successful
+      empty observation from an unavailable response and rejects stale data.
 
   - id: nps
     name: National Park Service
@@ -313,8 +676,9 @@ sources:
     refresh_cadence: weekly
     license: public domain, NPS
     contact: https://www.nps.gov
-    status: scaffold
-    last_validated: 2026-05-26
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/nps.ts
@@ -324,19 +688,21 @@ sources:
       and Monocacy National Battlefield. Gated on NPS_API_KEY (free,
       server-only at developer.nps.gov/get-started). Absent the key,
       returns [] and the alert section silently skips NPS sources.
-      Status stays scaffold because the daily worker does not fetch
-      it — this is request-time.
+      This is active request-time data, so collection is runtime rather
+      than pipeline. NPS_API_KEY is required; without it the adapter is
+      intentionally unconfigured.
 
   - id: fcps_news
     name: Frederick County Public Schools News
     owner: Frederick County Public Schools
-    url: https://www.fcps.org/news.rss
+    url: https://www.fcps.org/syndication/rss.aspx?feed=datasummary&item_description=portlet_xml_summary&item_name=portlet_xml_title&item_pubdate=portlet_last_modified&key=%2FAAGY2FPAufgUrJw7OxqsYwSBXFdTp%2BBNc5BCpRcIw8jq5pyNj8YKVVG3nKyM4pYNB7knPKvIRZyPRd8wyu8lwgUC2E%3D&max_items=8&portal_id=74633453&serverid=74633369&target_object_id=74815149&userid=5&v=2.0
     endpoint_type: rss
     format: rss
     refresh_cadence: daily
     license: public
     contact: https://www.fcps.org
     status: active
+    collection: runtime
     last_validated: 2026-05-26
     last_success: null
     schema_file: null
@@ -354,62 +720,66 @@ sources:
     endpoint_type: rss
     format: rss
     refresh_cadence: hourly
-    license: usage limited, headlines only
+    license: public RSS endpoint; reuse terms not confirmed; headlines, publisher names, timestamps, and source links only
     contact: https://news.google.com
-    status: scaffold
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/news.ts
     notes: |
-      Integration coded (getLocalHeadlines), consumed by
-      LocalNewsStrip — but LocalNewsStrip is currently UNMOUNTED on
-      /now per the rebuild that decided news belongs on its own
-      surface, not the daily briefing. Code remains so a future news
-      route can light it up without re-implementing. Headlines + link
-      + timestamp only; never full text.
+      Active, keyless request-time integration. getLocalHeadlines() is
+      consumed by Pulse and the Radius reading deck. It reads four
+      Frederick-focused Google News RSS searches, keeps headline metadata
+      and outbound links only, rejects obvious obituary/property noise,
+      and never republishes article text. Live endpoint returned XML on
+      2026-07-30.
 
   - id: reddit_frederick
-    name: Reddit r/Frederick
+    name: Reddit r/FrederickMD community radar
     owner: Reddit
-    url: https://www.reddit.com/r/Frederick/top.rss
+    url: https://www.reddit.com/r/frederickmd/.rss
     endpoint_type: rss
     format: rss
     refresh_cadence: hourly
-    license: Reddit API terms
+    license: public RSS endpoint; Reddit terms apply; admin-only titles and links; reuse terms not confirmed
     contact: https://www.reddit.com
-    status: scaffold
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
-    transform_file: src/lib/integrations/reddit.ts
+    transform_file: src/lib/integrations/redditRadar.ts
     notes: |
-      Integration coded (getFrederickRedditPulse), consumed by
-      RedditPulse — but RedditPulse is currently UNMOUNTED on /now
-      per the rebuild that called the top posts "noisy subreddit
-      posts." Code remains so a future community-pulse surface can
-      light it up. OAuth optional via REDDIT_CLIENT_ID; falls back
-      to the unauthenticated .rss feed.
+      Active, keyless request-time source for the owner-only /admin/radar
+      review queue. Radius reads the official subreddit Atom feed, keeps
+      titles, timestamps, and outbound post links, and does not republish
+      comments or post bodies. It remains deliberately absent from public
+      recommendation surfaces because posts are unverified. Live endpoint
+      returned Atom on 2026-07-30.
 
   - id: firstenergy_outages
     name: FirstEnergy Outages, Potomac Edison
     owner: FirstEnergy
-    url: https://outages-mdwv.firstenergycorp.com/data/interval_generation_data/2/report.js
+    url: https://kubra.io/stormcenter/api/v1/stormcenters/6c715f0e-bbec-465f-98cc-0b81623744be/views/5ed3ddf1-3a6f-4cfd-8957-eba54b5baaad/currentState?preview=false
     endpoint_type: scrape
     format: json
     refresh_cadence: hourly
     license: unknown, confirm with owner
     contact: https://www.firstenergycorp.com
     status: active
+    collection: runtime
     last_validated: 2026-05-26
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/firstenergy.ts
     notes: |
-      Live runtime via getFrederickOutages() — consumed by /pulse and
-      LivePulse on /now. Public-data report.js endpoint (not a documented
-      API). Scrape-class: format may change without notice, so the
-      fetcher tolerates schema drift and returns [] on parse failure.
+      Live runtime via getFrederickOutagesResult() — consumed by /pulse and
+      LivePulse on /now. The KUBRA currentState document resolves the rotating
+      deployment and report path; the adapter does not pin a stale report.js.
+      Scrape-class: format may change without notice, so the fetcher marks the
+      source unavailable on schema drift instead of claiming zero outages.
       License from FirstEnergy is unconfirmed; we cite Potomac Edison
       in the /pulse Power tile as the source attribution.
 
@@ -422,12 +792,18 @@ sources:
     refresh_cadence: on_demand
     license: Google Maps terms
     contact: https://developers.google.com/maps
-    status: scaffold
+    status: pending_review
     last_validated: null
     last_success: null
     schema_file: null
     transform_file: null
-    notes: On demand only, not a batch source. Requires a key.
+    notes: |
+      Optional event-address fallback retained behind the Google Maps Platform
+      policy hold. Calls require reviewed written authorization, the platform
+      runtime switch, GOOGLE_GEOCODING_ENABLED=1, and a dedicated
+      GOOGLE_GEOCODING_API_KEY. The Places key is never a fallback. Successful
+      coordinates have a maximum 30-day cache and the official Frederick
+      County address service is checked first.
 
   - id: google_routes
     name: Google Routes
@@ -438,12 +814,263 @@ sources:
     refresh_cadence: on_demand
     license: Google Maps terms
     contact: https://developers.google.com/maps
-    status: scaffold
-    last_validated: null
+    status: pending_review
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
     transform_file: null
-    notes: On demand travel time, not a batch source. Requires a key.
+    notes: |
+      On-demand travel-time adapter retained behind a code-level policy hold.
+      It requires reviewed written authorization, the platform and Routes
+      switches, and a dedicated GOOGLE_ROUTES_API_KEY. It never falls back to
+      the Places key and does not persist route results.
+
+  - id: md_wzdx
+    name: Maryland Work Zone Data Exchange
+    owner: Maryland Department of Transportation
+    url: https://filter.ritis.org/wzdx_v4.1/mdot.geojson
+    endpoint_type: rest_json
+    format: geojson
+    refresh_cadence: realtime
+    license: CC0 1.0; declared in feed_info; publisher Maryland DOT SHA
+    contact: https://chart.maryland.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/mdot-wzdx.ts
+    notes: |
+      Keyless WZDx 4.1 feed used by the map Traffic view and road-status
+      answers. The runtime adapter keeps only current Frederick County work
+      zones and preserves provider confidence, schedule, and lane-impact
+      caveats. A work-zone row does not establish that a route is passable.
+
+  - id: md_sha_road_closures
+    name: Maryland SHA Active Road Closures
+    owner: Maryland Department of Transportation State Highway Administration
+    url: https://mdgeodata.md.gov/appdata/rest/services/SHA_RoadClosure/RoadClosureActive/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: realtime
+    snapshot_cadence: daily
+    change_cadence: realtime
+    license: official public-facing MDOT SHA service; attribution retained; endpoint does not state a standalone reuse license
+    contact: https://roads.maryland.gov/mdotsha/pages/index.aspx?PageId=813
+    status: active
+    collection: runtime
+    last_validated: 2026-08-11
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/md-road-closures.ts
+    notes: |
+      Keyless current and scheduled closure geometry under the existing Roads
+      view. The runtime adapter pages both official point and segment layers,
+      keeps only Frederick County FIPS 24021, joins them by the official GUID,
+      and distinguishes current, scheduled, stale, partial, and unavailable.
+      A failed or incomplete response never becomes an empty-roads claim.
+
+  - id: mdot_chart_tss
+    name: Maryland CHART Traffic Speed Sensors
+    owner: Maryland Department of Transportation
+    url: https://chartexp1.sha.maryland.gov/CHARTExportClientService/getTSSMapDataJSON.do
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: no explicit reuse license found; official public CHART data feed; CHART site copyright reserved; attribution and republication review required
+    contact: https://chart.maryland.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/mdot-road-feeds.ts
+    notes: |
+      Keyless CHART traffic-sensor observations. The runtime adapter keeps
+      current online sensors in Frederick County and reports their measured
+      speeds as device observations, not a route-safety determination.
+
+  - id: mdot_chart_travel
+    name: Maryland CHART Travel Times
+    owner: Maryland Department of Transportation
+    url: https://chartexp1.sha.maryland.gov/CHARTExportClientService/getTravelRouteDataJSON.do
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: no explicit reuse license found; official public CHART data feed; CHART site copyright reserved; attribution and republication review required
+    contact: https://chart.maryland.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/mdot-road-feeds.ts
+    notes: |
+      Keyless CHART route travel-time estimates derived from roadway sensors.
+      The runtime adapter keeps fresh Frederick County routes and labels the
+      values as computed estimates rather than guarantees.
+
+  - id: mdot_chart_dms
+    name: Maryland CHART Dynamic Message Signs
+    owner: Maryland Department of Transportation
+    url: https://chartexp1.sha.maryland.gov/CHARTExportClientService/getDMSMapDataJSON.do
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: no explicit reuse license found; official public CHART data feed; CHART site copyright reserved; attribution and republication review required
+    contact: https://chart.maryland.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/mdot-road-feeds.ts
+    notes: |
+      Keyless CHART highway-message-sign observations. The runtime adapter
+      keeps current Frederick County signs and the message text displayed by
+      the device without inferring an incident or closure.
+
+  - id: mdot_chart_rwis
+    name: Maryland CHART Road Weather Stations
+    owner: Maryland Department of Transportation
+    url: https://chartexp1.sha.maryland.gov/CHARTExportClientService/getRWISMapDataJSON.do
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: no explicit reuse license found; official public CHART data feed; CHART site copyright reserved; attribution and republication review required
+    contact: https://chart.maryland.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/mdot-road-feeds.ts
+    notes: |
+      Keyless CHART pavement and roadside weather-station observations. Each
+      value applies at the reporting station and does not establish conditions
+      along an entire route.
+
+  - id: mdot_chart_ips
+    name: Maryland CHART Road Conditions
+    owner: Maryland Department of Transportation
+    url: https://chartexp1.sha.maryland.gov/CHARTExportClientService/getIPSMapDataJSON.do
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: no explicit reuse license found; official public CHART data feed; CHART site copyright reserved; attribution and republication review required
+    contact: https://chart.maryland.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/mdot-road-feeds.ts
+    notes: |
+      Keyless CHART maintenance-shop area reports for interstate, primary,
+      and secondary roads. The runtime adapter preserves that broad scope and
+      never presents an area report as a road-specific safety claim.
+
+  - id: mdot_chart_sep
+    name: Maryland CHART Snow Emergency Status
+    owner: Maryland Department of Transportation
+    url: https://chartexp1.sha.maryland.gov/CHARTExportClientService/getSEPMapDataJSON.do
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: no explicit reuse license found; official public CHART data feed; CHART site copyright reserved; attribution and republication review required
+    contact: https://chart.maryland.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/mdot-road-feeds.ts
+    notes: |
+      Keyless CHART county snow-emergency declarations. The runtime adapter
+      keeps Frederick County's official declared or lifted state and does not
+      infer whether an individual road is safe.
+
+  - id: city_emergency_rss
+    name: City of Frederick Emergency Alerts
+    owner: City of Frederick
+    url: https://www.cityoffrederickmd.gov/RSSFeed.aspx?ModID=63&CID=City-Emergencies-4
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: realtime
+    license: publicly accessible RSS for subscription; no republication license stated; City content all rights reserved; canonical source link retained
+    contact: https://www.cityoffrederickmd.gov/AlertCenter.aspx?CID=City-Emergencies-4
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/official-alert-feeds.ts
+    notes: |
+      Keyless current-alert RSS for the City's emergency category. Presence in
+      the feed is the provider's active state. This narrow category is an
+      official signal, not complete City emergency coverage.
+
+  - id: county_health_alerts
+    name: Frederick County Health Department Alerts
+    owner: Frederick County Health Department
+    url: https://health.frederickcountymd.gov/RSSFeed.aspx?ModID=63&CID=Health-Notices-1
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: realtime
+    license: publicly accessible RSS for subscription; no republication license stated; Health Department content all rights reserved; canonical source link retained
+    contact: https://health.frederickcountymd.gov/AlertCenter.aspx
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/official-alert-feeds.ts
+    notes: |
+      Keyless current-alert RSS integration covering the Health Department's
+      Health Notices, Burn Ban, and Closings categories. Each category is
+      fetched independently. Together they remain narrower than complete
+      County public-health or emergency coverage.
+
+  - id: nws_lsr
+    name: NWS Baltimore/Washington Local Storm Reports
+    owner: NOAA National Weather Service
+    url: https://api.weather.gov/products/types/LSR/locations/LWX
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: NWS public domain unless specifically noted; identify NWS material; no endorsement; API disclaimer applies
+    contact: https://www.weather.gov/lwx
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/nws-local-storm-reports.ts
+    notes: |
+      Keyless index for recent Baltimore/Washington preliminary Local Storm
+      Report products. The runtime adapter follows official product URLs and
+      keeps only explicit Frederick County, Maryland observations. Reports are
+      preliminary observations and never substitute for active NWS warnings.
+
+  - id: nowcoast_lightning
+    name: NOAA nowCOAST Lightning Density
+    owner: NOAA nowCOAST / NWS-NCEP Ocean Prediction Center
+    url: https://nowcoast.noaa.gov/geoserver/observations/lightning_detection/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities
+    endpoint_type: wms
+    format: xml
+    refresh_cadence: realtime (about 15 minutes)
+    license: NOAA-derived Level 5 product appropriate for public distribution; WMS Fees NONE and AccessConstraints NONE; excludes raw NLDN and GLD360 data
+    contact: https://nowcoast.noaa.gov
+    status: active
+    collection: runtime
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/nowcoast-lightning.ts
+    notes: |
+      Keyless WMS capabilities and map layer for NOAA's 15-minute, 8 km
+      gridded lightning-density product. Radius renders density, never
+      individual strike pins, and keeps active NWS warnings authoritative.
 
   # ------------------------------------------------------------------ #
   # Pending review. Policy decision required before any fetch.          #
@@ -466,7 +1093,9 @@ sources:
     notes: |
       Public safety incident data. The project guidance calls for a
       strict privacy review of public safety layers. Do not fetch until
-      a human approves and the review is recorded here.
+      a human approves and the review is recorded here. Runtime activation
+      requires both PULSEPOINT_ENABLED=1 and PULSEPOINT_AGENCY_ID, so an
+      agency id alone cannot bypass this pending-review gate.
 
   # ------------------------------------------------------------------ #
   # Pending approval. Candidates for the discover-sources command.      #
@@ -496,14 +1125,338 @@ sources:
     endpoint_type: arcgis_hub
     format: geojson
     refresh_cadence: weekly
-    license: public, Frederick County
+    license: public catalog access; explicit item reuse license absent
     contact: https://www.frederickcountymd.gov
     status: pending_approval
     last_validated: null
     last_success: null
     schema_file: null
     transform_file: null
-    notes: ArcGIS Hub datasets, parcels and facilities.
+    notes: |
+      The Hub describes datasets as open and provides download/REST access, but
+      the Hub item has blank licenseInfo/accessInformation. County terms and
+      the Hub accuracy disclaimer still apply. Treat each exact dataset as
+      pending until reuse, transformation, caching, attribution, and commercial
+      display rights are confirmed in writing.
+
+  - id: fc_planning_projects
+    name: Frederick County Open Planning Applications
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/PlanningAndPermitting/PlanningProjects/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: daily
+    license: official public ArcGIS REST service; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcPlanningProjects.ts
+    notes: |
+      Radius reads allowlisted public fields from the live County service,
+      links back to the source, and does not offer a bulk mirror. This exact
+      layer is publicly reachable but is not listed in the County Hub catalog.
+      An open application is not evidence of approval, construction, or a
+      completion date.
+
+  - id: fc_address_points_complete
+    name: Frederick County Address Points Complete
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/Basemap/Addresses/MapServer/1
+    endpoint_type: arcgis_rest
+    format: json
+    refresh_cadence: on_demand
+    license: official public ArcGIS REST service; bounded exact attributed lookup only; no bulk mirror
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    publication_applicability: not_applicable
+    last_validated: 2026-08-23
+    last_success: 2026-08-23
+    schema_file: null
+    transform_file: src/lib/ingest/fc-address-lookup.ts
+    notes: |
+      The County layer exposes active address points, exact street fields,
+      unit fields, edit dates, and point geometry through standardized ArcGIS
+      queries. Radius's adapter requests one exact address at a time, caps the
+      result and response size, asks for WGS84 coordinates, and never mirrors
+      the layer. FREDERICK_COUNTY_GIS_ENABLED=0 stops every lookup and reports
+      the source as intentionally disabled rather than unavailable. Event,
+      scanner-incident, and scanner-hotspot geocoding now checks this official
+      source before any separately enabled paid fallback.
+
+  - id: fc_snow_command
+    name: Frederick County SnowCommand Routes
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/FeatureServices/SnowCommand/FeatureServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: realtime
+    license: official public ArcGIS REST service; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcSnowCommand.ts
+    notes: |
+      Radius reads allowlisted operational fields from the live County
+      service and never requests driver, vehicle, notes, or maintenance
+      fields. This exact layer is publicly reachable but is not listed in the
+      County Hub catalog. Route status is not proof a road is safe or passable.
+
+  - id: fc_parks_assets
+    name: Frederick County Public Park Assets
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/ParksAndRecreation/Assets/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: official public ArcGIS REST service; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcParkAssetsPublic.ts
+    notes: |
+      Radius requests only public-facing asset type, park, retirement, and
+      edit-date fields. It excludes inspection, cost, condition, staff,
+      ownership, and asset-tag fields. The exact layers are publicly reachable
+      but are not County Hub catalog items. A mapped asset does not prove
+      current availability.
+
+  - id: fc_high_water
+    name: Frederick County High-Water and Flood Context
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/DPW/High_Water_Areas/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: official public ArcGIS REST service; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcFloodRisk.ts
+    notes: |
+      Radius reads the public services live and labels them as static context,
+      not current conditions. The adapter also reads warning-sign and
+      past-rescue context from
+      https://fcgis.frederickcountymd.gov/server_pub/rest/services/PublicSafety/RoadwayFloodPoints/MapServer.
+      These exact layers are publicly reachable but are not listed in the
+      County Hub catalog. Static risk areas, warning signs, and past rescues
+      do not establish current flooding or a road closure.
+
+  - id: fc_food_truck_roster
+    name: Frederick County Licensed Mobile Units Roster
+    owner: Frederick County Health Department
+    url: https://health.frederickcountymd.gov/695/Mobile-UnitsFood-Trucks
+    endpoint_type: scrape
+    format: html
+    refresh_cadence: daily
+    license: publicly readable; written reuse approval required
+    contact: https://health.frederickcountymd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcFoodTruckRoster.ts
+    notes: |
+      The runtime adapter is implemented but disabled unless the master
+      FREDERICK_COUNTY_GIS_REUSE_APPROVED switch is 1 and
+      FREDERICK_COUNTY_GIS_APPROVED_SOURCES includes fc_food_truck_roster.
+      Keep this row pending until written reuse approval is recorded. It
+      discovers the official roster PDF but does not parse business rows at
+      request time; a license record does not establish today's location or
+      open status.
+
+  - id: fc_municipal_boundaries
+    name: Frederick County Municipal Boundaries
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/Basemap/Municipalities/MapServer/0
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: official County Open Data item; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcGis.ts
+    notes: |
+      The item belongs to the official County open-data group. Radius reads it
+      live, requests only the municipality name and geometry, credits the
+      County, and does not expose a bulk mirror. The map's county outline uses
+      Census TIGER rather than depending on this feed.
+
+  - id: fc_county_parks
+    name: Frederick County Park Points
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/ParksAndRecreation/Parks/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: official County Open Data item; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcGis.ts
+    notes: |
+      The named park-point item is in the official County open-data group.
+      Radius reads its public name, address, municipality, and point fields
+      live. The former committed point-and-polygon derivative remains removed.
+
+  - id: fc_park_trails
+    name: Frederick County Park Trail Geometry
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/ParksAndRecreation/Assets/MapServer/12
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: official public ArcGIS REST service; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcTrails.ts
+    notes: |
+      This exact layer is publicly reachable but is not present in the official
+      Hub catalog. Radius reads simplified display geometry live, attributes
+      the County, and does not offer the source as a download. The rich trail
+      list remains owner-reviewed rather than inferred from this sparse layer.
+
+  - id: fc_historic_cemeteries
+    name: Historic Cemeteries of Frederick County
+    owner: Frederick County Government
+    url: https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/HistoricCemeteries/FeatureServer/0
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: official County Open Data item; live attributed display
+    contact: https://www.frederickcountymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcCemeteries.ts
+    notes: |
+      The item belongs to the official County open-data group. Its access
+      information cites Jacob M. Holdcraft's cemetery research; Radius
+      preserves that credit, the County attribution, and the located versus
+      approximate distinction. The old committed derivative remains removed.
+
+  - id: fc_recreation_locations
+    name: Frederick County Parks and Recreation Locations
+    owner: Frederick County Government
+    url: https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0
+    endpoint_type: arcgis_rest
+    format: json
+    refresh_cadence: weekly
+    license: publicly readable; written data and attachment-photo reuse approval required
+    contact: https://www.recreater.com
+    status: pending_approval
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/fcRecLocations.ts
+    notes: |
+      The County dashboard exposes amenity points and attached images, but the
+      exact item carries no recorded reuse grant. Runtime and build pulls
+      require the two-step approval gate. Old committed staging files,
+      attachment URLs, amenity rollups, and GIS-only place rows were removed.
+
+  - id: fc_county_facilities
+    name: Frederick County Facilities Legacy Ingest
+    owner: Frederick County Government
+    url: https://maps.frederickcountymd.gov/arcgis/rest/services
+    endpoint_type: arcgis_rest
+    format: json
+    refresh_cadence: weekly
+    license: legacy host unavailable; explicit reuse license absent
+    contact: https://www.frederickcountymd.gov
+    status: pending_review
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/app/api/ingest/arcgis/route.ts
+    notes: |
+      The recorded host currently returns HTTP 404. The ingest endpoint is
+      disabled behind this exact approval id and must not write parks,
+      libraries, or fire stations until the County confirms a current source
+      and permitted reuse scope. Former committed map bundles were removed.
+
+  - id: fc_markets_overlay
+    name: Rejected Frederick County Farmers Market Static Overlay
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/Basemap/PointsOfInterest/MapServer/0
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: yearly
+    license: publicly readable; explicit transformed-redistribution license absent
+    contact: https://www.frederickcountymd.gov
+    status: pending_review
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      The former committed derivative was removed from public delivery.
+      Do not restore it until written reuse, transformation, caching,
+      attribution, and commercial-display rights are recorded.
+
+  - id: fc_bridges_overlay
+    name: Rejected Frederick County Bridges Static Overlay
+    owner: Frederick County Government
+    url: https://fcgis.frederickcountymd.gov/server_pub/rest/services/DPW/Bridges/MapServer/0
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: yearly
+    license: publicly readable; explicit transformed-redistribution license absent
+    contact: https://www.frederickcountymd.gov
+    status: pending_review
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      The former committed derivative had mixed County and Visit Frederick
+      provenance and was removed from public delivery. Any future layer needs
+      written County reuse terms and independently cleared descriptive copy.
+
+  - id: census_tiger_county_boundary
+    name: U.S. Census TIGERweb Frederick County Boundary
+    owner: U.S. Census Bureau
+    url: https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/9
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: yearly
+    license: public domain, U.S. Government work
+    contact: https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html
+    status: active
+    collection: workflow
+    last_validated: 2026-07-28
+    last_success: 2026-07-28
+    schema_file: null
+    transform_file: scripts/refresh-census-county-boundary.ts
+    notes: |
+      GEOID 24021, 2025 vintage. The full public-domain boundary powers the
+      lazy overlay endpoint; a display-simplified copy frames the Mapbox view.
+      This replaces the former transformed County GIS boundary.
 
   - id: kfdk_metars
     name: Frederick Municipal Airport METARs (KFDK)
@@ -515,28 +1468,54 @@ sources:
     license: US federal government open data, public domain
     contact: https://aviationweather.gov
     status: scaffold
-    last_validated: 2026-05-26
+    collection: null
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: src/lib/integrations/aviationweather.ts
+    transform_file: null
     notes: |
-      Live runtime integration, not a daily-worker source (same posture
-      as airnow + ticketmaster + mapillary_objects). getKfdkMetar()
-      reads the hourly METAR and the AlmanacFooter on /now surfaces a
-      dewpoint comfort label ("Sticky" / "Muggy" / "Oppressive" /
-      "Very dry") ONLY at the edges of the comfort spectrum — the
-      "comfortable" middle band is silent so we don't add noise on a
-      normal day.
+      Retired from runtime in the 2026-08 dead-code sweep: its only
+      consumer (the AlmanacFooter dewpoint comfort chip) had been
+      unmounted from /today for weeks, so the integration
+      (src/lib/integrations/aviationweather.ts) fetched for nobody and
+      was deleted with it. Both are in git history.
 
-      The signal it adds over the regional NWS forecast is DEWPOINT,
-      which the NWS hourly response doesn't expose cleanly. Dewpoint
-      maps to comfort better than temperature: 72°F at 50°F dewpoint
-      feels great; 72°F at 70°F dewpoint feels oppressive.
+      Kept as scaffold rather than dropped because the source itself is
+      still the right call if a surface wants dewpoint again: the signal
+      it adds over the regional NWS forecast is DEWPOINT, which the NWS
+      hourly response doesn't expose cleanly, and it needs no API key
+      (public-domain US federal data). The transforms/kfdk_metars.ts
+      snapshot transform and its spec remain for the pipeline.
 
-      No API key required (public-domain US federal data). 15-minute
-      revalidate cache via next/fetch. Failure is silent —
-      getKfdkMetar() returns null and the chip is hidden. Fully
-      inert when aviationweather.gov is unreachable.
+  - id: adsb_lol_rotorcraft
+    name: ADSB.lol — Frederick County Rotorcraft Observations
+    owner: ADSB.lol contributors
+    url: https://api.adsb.lol/v2/point/39.47/-77.38/22
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: realtime
+    license: Open Database License 1.0; attribution required
+    contact: https://adsb.lol
+    status: active
+    collection: runtime
+    evidence_aliases: [adsb-lol, rotorcraft]
+    last_validated: 2026-07-28
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/aviation/rotorcraft.ts
+    notes: |
+      A bounded public ADS-B point query supports the optional helicopter map
+      layer. The runtime route clips observations to Frederick County, removes
+      registrations and raw ICAO identifiers, omits privacy-flagged aircraft,
+      and uses public operator callsigns only inside the server to classify a
+      Maryland State Police observation. Trooper status is county-level only;
+      no callsign or position reaches the browser. FMH trajectories are reduced
+      to a fixed-heliport signal, never a moving aircraft point or a confirmed
+      landing. Other helicopter points are delayed and rounded to 0.01 degrees.
+      Public ADS-B reception is incomplete, so an empty response is never
+      described as grounded or clear.
+      ADSB.lol requests that production users make contact before depending on
+      the service; no API key is currently required.
 
   - id: cof_parking_occupancy
     name: City of Frederick parking deck occupancy
@@ -550,126 +1529,186 @@ sources:
     status: pending_review
     last_validated: null
     last_success: null
-    schema_file: null
-    transform_file: null
+    schema_file: pipeline/schemas_ts/cof_parking_occupancy.ts
+    transform_file: transforms/cof_parking_occupancy.ts
     notes: |
-      Live counts for the Court Street, Carroll Creek, and West Patrick
-      Street decks. Two gates block activation and are deliberately left
-      unresolved here rather than guessed: (1) a machine-readable
-      live-occupancy endpoint is not confirmed (the public parking page
-      exists; a documented feed has not been verified), so url is null
-      on purpose, no URL is invented; (2) licensing for redistributing
-      live counts is unconfirmed. Schema and transform are scaffolds
-      shaped to the common deck / available / capacity model and must be
-      validated against the real feed before activation. pending_review
-      by design.
+      Live counts for the downtown decks. The real-time source is the
+      "Park Frederick" app, powered by ParkZen (Android package
+      com.parkzen.frederick; ParkZen was acquired by Parking Guidance
+      Systems). There is NO free public web feed — the live layer is a
+      commercial vendor API, and the counts are CROWD-SOURCED estimates
+      (phone-motion / car-Bluetooth inference, ~96% claimed accuracy),
+      not garage gate-counts, so treat them as "about this full."
+
+      Two gates still block activation, left unresolved rather than
+      guessed: (1) a licensed machine-readable endpoint (ParkZen API,
+      or a City-provided feed) is not yet confirmed, so url is null on
+      purpose; (2) redistribution licensing is unconfirmed.
+
+      The APP-SIDE is already wired and DORMANT behind an explicit approval
+      boundary. Set PARKING_OCCUPANCY_ENABLED=1 only after the endpoint and
+      redistribution terms are confirmed, then set PARKING_OCCUPANCY_URL
+      (optionally PARKING_OCCUPANCY_KEY). The runtime loader
+      src/lib/integrations/parking-live.ts then lights up the /parking live
+      badges and the /api/cron/parking-alerts fanout. Disabled = graceful
+      no-op, no fabricated counts. (The predictive
+      /api/cron/parking-forecast nudge runs without this feed.) The pipeline schema/transform here remain the
+      batch-ingest mirror of that same model. pending_review by design.
 
   - id: transit_gtfs
     name: Frederick County TransIT GTFS
     owner: Frederick County TransIT
-    url: https://www.transit.land/feeds/f-dr0b-transitservicesoffrederickcounty
+    url: https://passio3.com/frederick/passioTransit/gtfs/google_transit.zip
     endpoint_type: gtfs
     format: gtfs
     refresh_cadence: weekly
-    license: public, Frederick County
-    contact: https://frederickcountymd.gov/transit
-    status: pending_approval
-    last_validated: null
-    last_success: null
+    license: public access; redistribution terms not stated
+    contact: https://www.frederickcountymd.gov/105/Transit-Services
+    status: active
+    collection: workflow
+    rows_required: true
+    last_validated: 2026-07-22
+    last_success: 2026-07-22
     schema_file: null
-    transform_file: null
-    notes: Nine bus routes. Static GTFS via Transitland.
+    transform_file: scripts/build-transit-gtfs.ts
+    notes: >-
+      Static GTFS published through the county's Passio system. Validated
+      2026-07-22: 17 fixed routes, 392 stops, and a service window from
+      2026-07-21 through 2026-08-21. Includes the 15 Connector introduced in the
+      county's July 6, 2026 service change. Realtime vehicle positions and
+      TripUpdates are separate feeds and must not inherit this snapshot date.
 
   - id: mta_marc_rt
     name: MTA MARC GTFS realtime
     owner: Maryland Transit Administration
-    url: https://feeds.mta.maryland.gov
+    url: https://mdotmta-gtfs-rt.s3.amazonaws.com/MARC+RT/
     endpoint_type: gtfs_rt
     format: gtfs_rt
     refresh_cadence: realtime
-    license: public, MTA
-    contact: https://www.mta.maryland.gov
-    status: pending_approval
-    last_validated: null
+    license: official public GTFS-realtime endpoints; reuse terms not confirmed; MTA attribution retained
+    contact: https://www.mta.maryland.gov/developer-resources
+    status: active
+    collection: runtime
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: Brunswick Line. May require a Swiftly or MTA key.
+    transform_file: src/lib/integrations/marcTrains.ts
+    notes: |
+      Active, keyless request-time integration. marcTrains.ts overlays the
+      official MARC TripUpdates feed on Radius's schedule-backed Brunswick
+      Line board and reads the official alert feed; marcVehicles.ts reads
+      the matching VehiclePositions feed for live train markers. All reads
+      filter to the Brunswick Line or Frederick County stations and fail
+      soft. TripUpdates and VehiclePositions returned decodable protobuf
+      payloads on 2026-07-30. No Swiftly credential is used.
 
   - id: visit_frederick
     name: Visit Frederick Events
     owner: Tourism Council of Frederick County
-    url: https://www.visitfrederick.org/events
-    endpoint_type: scrape
-    format: json
-    refresh_cadence: daily
-    license: unknown, confirm with owner
+    url: https://www.visitfrederick.org/event/rss/
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: on_demand (after written factual-reuse permission)
+    license: publisher factual reuse awaiting documented written permission
     contact: https://www.visitfrederick.org
     status: pending_approval
-    last_validated: null
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: Tourism events. Scrape or iCal, confirm before use.
+    transform_file: src/lib/integrations/visitfrederick.ts
+    notes: |
+      The bounded snapshot route and fixed-URL Firecrawl recovery are
+      activation-ready but deliberately unscheduled. Do not set
+      VISIT_FREDERICK_FACTS_REUSE_APPROVED=1, add a Vercel cron, or require
+      Visit Frederick evidence rows until written permission for factual reuse
+      is documented. The prepared path stores factual event fields only,
+      retains publisher links and attribution, and does not mirror publisher
+      prose or images.
 
-  # Sports games — owner: "people need to know about sports games".
-  # Registered as real candidates, NOT fabricated: none publishes a
-  # confirmed clean iCal/RSS, so per the no-ungated-data rule they
-  # stay pending until a feed + license is verified. Sports events
-  # that arrive via the already-live Celebrate/County/Hood feeds are
-  # already classified (ical-live CATEGORY_KEYWORDS "sports").
+  # Local sports schedules. These are separate from the general campus
+  # event feeds and run through the purpose-built local-sports adapter.
   - id: frederick_keys
     name: Frederick Keys (MLB Draft League)
     owner: Frederick Keys / MiLB
-    url: https://www.milb.com/frederick/schedule
-    endpoint_type: scrape
+    url: https://statsapi.mlb.com/api/v1/schedule?sportId=13&teamId=493
+    endpoint_type: rest_json
     format: json
-    refresh_cadence: daily
-    license: unknown, confirm with owner (MiLB terms)
+    refresh_cadence: hourly
+    license: public schedule API; display links return to the Frederick Keys
     contact: https://www.milb.com/frederick
-    status: pending_approval
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/integrations/frederickKeys.ts
     notes: |
-      Home games at Nymeo Field. No public iCal/RSS found; schedule is
-      a PDF + the MiLB site. Needs a resilient parser + license OK
-      before activation. Do NOT fabricate the schedule.
+      Active, keyless runtime schedule. The adapter keeps only games where
+      Frederick is the home team, maps official game status, and uses the
+      known Nymeo Field location. Ticketmaster may enrich a duplicate with
+      price and ticket data; the unified event spine collapses the pair.
   - id: hood_athletics
     name: Hood College Blazers Athletics
     owner: Hood College Athletics
-    url: https://hoodathletics.com/calendar
-    endpoint_type: ical
+    url: https://hoodathletics.com/services/responsive-calendar.ashx
+    endpoint_type: rest_json
     format: json
-    refresh_cadence: daily
-    license: public calendar, confirm export URL
+    refresh_cadence: hourly
+    license: first-party public schedule endpoint; reuse terms not confirmed; source links retained
     contact: https://hoodathletics.com
-    status: pending_approval
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/integrations/local-sports.ts
     notes: |
-      Separate from the Hood general Trumba feed (already active).
-      Uses ActiveCalendar (go.activecalendar.com/hood); an .ics export
-      likely exists but the exact URL is unconfirmed — promote once a
-      real export URL is verified, then add to ical-live FEEDS.
+      Active, keyless SIDEARM schedule integration, separate from Hood's
+      general campus calendar. Radius requests a bounded month window,
+      preserves home/away state, scores and official media links, and never
+      offers away-game tickets. Endpoint returned JSON on 2026-07-30.
+
+  - id: mount_athletics
+    name: Mount St. Mary's Mountaineers Athletics
+    owner: Mount St. Mary's Athletics
+    url: https://mountathletics.com/services/responsive-calendar.ashx
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: first-party public schedule endpoint; reuse terms not confirmed; source links retained
+    contact: https://mountathletics.com
+    status: active
+    collection: runtime
+    last_validated: 2026-07-30
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/local-sports.ts
+    notes: |
+      Active, keyless SIDEARM schedule integration. Radius requests a
+      bounded month window, preserves home/away state, scores and official
+      media links, and never offers away-game tickets. Endpoint returned
+      JSON on 2026-07-30.
+
   - id: fcc_athletics
     name: Frederick Community College Athletics
     owner: Frederick Community College
-    url: https://www.frederick.edu/athletics
-    endpoint_type: scrape
-    format: json
-    refresh_cadence: weekly
-    license: unknown, confirm with owner
-    contact: https://www.frederick.edu
-    status: pending_approval
-    last_validated: null
+    url: https://www.fccathletics.com/composite?print=rss
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: hourly
+    license: first-party public RSS schedule; reuse terms not confirmed; source links retained
+    contact: https://www.fccathletics.com
+    status: active
+    collection: runtime
+    last_validated: 2026-07-30
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: Cougars schedules. Feed format/license unconfirmed.
+    transform_file: src/lib/integrations/local-sports.ts
+    notes: |
+      Active, keyless PrestoSports RSS integration. The adapter preserves
+      home/away state and scores, treats an unpublished start time as TBA,
+      and retains the official schedule link. Endpoint returned RSS on
+      2026-07-30.
 
   - id: google_civic
     name: Google Civic Information
@@ -752,28 +1791,25 @@ sources:
       school districts. No owner name is exposed by the source.
 
   - id: fc_parks_trails
-    name: Frederick County Parks Trails (Cartegraph)
-    owner: Frederick County GIS
+    name: Rejected legacy Frederick County parks-trails source
+    owner: Frederick County, Colorado
     url: https://gis.frederickco.gov/arcgis/rest/services/Parks/Parks_Trails_Cartegraph/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson
     endpoint_type: arcgis_rest
     format: geojson
     refresh_cadence: monthly
-    license: public, Frederick County GIS open data
-    contact: https://gis-fcgmd.opendata.arcgis.com
-    status: scaffold
-    last_validated: null
+    license: wrong jurisdiction; explicit reuse license absent
+    contact: https://www.frederickco.gov
+    status: pending_review
+    last_validated: 2026-07-28
     last_success: null
     schema_file: schemas/fc_parks_trails.json
     transform_file: transforms/fc_parks_trails.ts
     notes: |
-      County-wide trails, the free data lever for the "missing parks
-      and trails" gap. Layer 0 (Parks Trails -Cartegraph, polyline) and
-      its field names are confirmed from live ArcGIS layer metadata, so
-      the schema and transform are real, not guessed. The sandbox cannot
-      reach ArcGIS, so this stays scaffold: the first CI/owner pipeline
-      run fetches one live response, the worker validates it against the
-      wired schema, and only then is it flipped to active. No fabricated
-      transform was shipped against an unprobed endpoint.
+      This host is Frederick County, Colorado. Its metadata references the
+      Town of Frederick and Colorado parks, and it must never be used as a
+      Frederick County, Maryland source. The runtime call that once referenced
+      this jurisdiction is now disabled. Keep the row only as a negative audit
+      trail so the endpoint cannot be mistaken for Maryland again.
 
   - id: cof_geocoder
     name: City of Frederick Address Locator
@@ -850,14 +1886,40 @@ sources:
     endpoint_type: arcgis_rest
     format: geojson
     refresh_cadence: monthly
-    license: local government, confirm attribution with City IT
+    license: City-published public GIS service; source link retained; no standalone reuse license found
     contact: Matt Bowman, mbowman@cityoffrederickmd.gov
-    status: pending_approval
-    last_validated: null
+    status: pending_review
+    last_validated: 2026-08-11
     last_success: null
     schema_file: null
     transform_file: null
-    notes: Bike network for the walkable, trail, and Plan experiences.
+    notes: |
+      The City advertises this service, but the ArcGIS endpoint currently
+      returns error 500 ("Could not generate or find MSD"). Keep it out of the
+      product until the City repairs the service and a live response is
+      validated. Do not infer bike routes from the broken endpoint.
+
+  - id: cof_sidewalks
+    name: City of Frederick Sidewalks and Ramps
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/Sidewalks/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: monthly
+    snapshot_cadence: monthly
+    change_cadence: monthly
+    license: City-published public GIS service; source link retained; no standalone reuse license found
+    contact: https://www.cityoffrederickmd.gov/1307/Maps-Apps
+    status: active
+    collection: runtime
+    last_validated: 2026-08-11
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/frederickCityMobility.ts
+    notes: |
+      Viewport-bounded runtime access to layers 0 (sidewalk ramps) and 2
+      (sidewalk lines). Ramps provide crossing context only; a mapped ramp or
+      sidewalk never claims a complete accessible route or current clearance.
 
   - id: cof_path_plan
     name: City of Frederick Path Plan
@@ -866,14 +1928,18 @@ sources:
     endpoint_type: arcgis_rest
     format: geojson
     refresh_cadence: quarterly
-    license: local government, confirm attribution with City IT
+    license: City-published public GIS service; source link retained; no standalone reuse license found
     contact: Matt Bowman, mbowman@cityoffrederickmd.gov
-    status: pending_approval
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-08-11
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: Planned path network, paired with bike paths and sidewalks.
+    transform_file: src/lib/integrations/frederickCityMobility.ts
+    notes: |
+      Viewport-bounded Path Plan layer. Only segments whose official STATUS is
+      EXISTING may inform a route. PLANNED, PROPOSED, DEV, and unknown records
+      remain visible planning context and are never treated as traversable.
 
   - id: cof_historic_district
     name: City of Frederick Historic District
@@ -946,14 +2012,18 @@ sources:
     endpoint_type: arcgis_rest
     format: geojson
     refresh_cadence: weekly
-    license: local government, confirm attribution with City IT
+    license: City-published public GIS service; source link retained; no standalone reuse license found
     contact: Matt Bowman, mbowman@cityoffrederickmd.gov
-    status: pending_approval
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-08-11
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: City projects, feeds a what is changing near you civic surface.
+    transform_file: src/lib/integrations/cityFrederickChanges.ts
+    notes: |
+      Official City project records under the existing What changed map scene.
+      Project stage is preserved; a planning-stage record is never presented
+      as active construction.
 
   - id: cof_development_review
     name: City of Frederick Development Review
@@ -962,14 +2032,18 @@ sources:
     endpoint_type: arcgis_rest
     format: geojson
     refresh_cadence: weekly
-    license: local government, confirm attribution with City IT
+    license: City-published public GIS service; source link retained; no standalone reuse license found
     contact: Matt Bowman, mbowman@cityoffrederickmd.gov
-    status: pending_approval
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-08-11
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: Active development and planning projects.
+    transform_file: src/lib/integrations/cityFrederickChanges.ts
+    notes: |
+      Official City development-review records under the existing What changed
+      scene. Pending means under review; complete does not by itself establish
+      approval, permitting, or construction.
 
   - id: cof_snow_removal
     name: City of Frederick Snow Removal
@@ -1106,16 +2180,15 @@ sources:
     license: Eventbrite API terms, requires OAuth token, attribution required
     contact: Eventbrite Platform / API
     status: pending_approval
-    last_validated: null
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/integrations/eventbrite.ts
     notes: |
-      Real-time ticketed + free events, location filterable — a primary
-      Live-Now feed for in-city happenings at businesses. OAuth token
-      required at activation; respect rate limits and attribution. Public
-      search was deprecated, so this needs an organizer/partner token —
-      flag for the Visit Frederick / DFP partner conversation.
+      The runtime adapter is wired but policy-gated. It requires an approved
+      partner/token posture recorded here, then EVENTBRITE_ENABLED=1 plus
+      EVENTBRITE_TOKEN. Eventbrite retired public area search, so Radius polls
+      only reviewed organizer ids and rejects rows without an in-county venue.
 
   - id: bandsintown
     name: Bandsintown — Live Music
@@ -1127,14 +2200,15 @@ sources:
     license: Bandsintown API terms, requires app id, attribution required
     contact: Bandsintown for Artists / API
     status: pending_approval
-    last_validated: null
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/integrations/bandsintown.ts
     notes: |
-      Live music at Frederick venues — fills the gap where shows are only
-      promoted on social. Query by venue/city; needs a free app id at
-      activation. Pairs with songkick for coverage redundancy.
+      The runtime adapter is wired but policy-gated. Activation requires an
+      approved API posture recorded here, then BANDSINTOWN_ENABLED=1 plus
+      BANDSINTOWN_APP_ID. The API is artist-scoped, so Radius queries only the
+      curated local/returning artist registry and keeps in-county coordinates.
 
   - id: ticketmaster
     name: Ticketmaster Discovery API
@@ -1145,25 +2219,36 @@ sources:
     refresh_cadence: hourly
     license: Ticketmaster Discovery API terms, requires API key, attribution required
     contact: https://developer.ticketmaster.com
-    status: scaffold
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/ticketmaster.ts
     notes: |
-      Live runtime integration, not a daily-worker source (same posture
-      as google_places and mapillary_objects). fetchTicketmasterMusic()
-      is wired into getLiveEvents() in src/lib/integrations/ical-live.ts,
-      so a real classification=Music geo search for Frederick County
-      drops straight into the live-events spine, the explorer, and the
-      map event pins. The owner is the activation: gated entirely on
-      TICKETMASTER_API_KEY (a free key from developer.ticketmaster.com,
-      server-only). Absent the key, fetchTicketmasterMusic() returns []
-      and this is fully inert, so it is safe to ship before the key is
-      set. status stays non-active so the worker never fetches it; this
-      is a request-time integration, not a pipeline source. schema_file
-      stays null by design: the normalizer in ticketmaster.ts is the
-      transform, covered by tests/ticketmaster.spec.ts.
+      Active request-time music and sports discovery, gated on
+      TICKETMASTER_API_KEY. Results are coordinate-filtered to Frederick
+      County, retain the ticket source URL, and join the unified event spine.
+      It is runtime-owned, so the daily pipeline never fetches it.
+
+  - id: seatgeek
+    name: SeatGeek Events
+    owner: SeatGeek
+    url: https://api.seatgeek.com/2/events
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: SeatGeek API terms, requires client id, attribution retained
+    contact: https://platform.seatgeek.com/
+    status: pending_approval
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/seatgeek.ts
+    notes: |
+      The area-discovery adapter is wired but policy-gated. Activation
+      requires approval recorded here, then SEATGEEK_ENABLED=1 plus
+      SEATGEEK_CLIENT_ID. It keeps only rows with in-county coordinates.
 
   - id: songkick
     name: Songkick — Concerts & Venues
@@ -1266,40 +2351,145 @@ sources:
   - id: fcpl_libraries
     name: Frederick County Public Libraries — Branches & Programs
     owner: Frederick County Public Libraries
-    url: https://www.fcpl.org/
-    endpoint_type: scrape
-    format: html
-    refresh_cadence: weekly
+    url: https://frederick.librarycalendar.com/events/feed/json
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: daily
     license: county government public information
     contact: Frederick County Public Libraries
-    status: pending_approval
-    last_validated: null
+    status: active
+    collection: workflow
+    evidence_aliases: [frederick.librarycalendar.com]
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/ingest/fcpl.ts
     notes: |
-      Branch hours + program calendar — free family Live-Now content and
-      a strong civic anchor per municipality. Look for a LibCal/Bibliocommons
-      events feed at activation (structured) before HTML scraping.
+      Active daily Vercel-cron ingest at /api/ingest/fcpl. The official
+      LibraryCalendar JSON feed is too large and slow for the request path,
+      so the workflow parses, time-budgets, upserts, records ingest health,
+      and revalidates the shared event cache.
 
   - id: fc_parks_rec
     name: Frederick County Parks & Recreation — Programs
     owner: Frederick County Parks & Recreation
-    url: https://www.recreater.com/
-    endpoint_type: scrape
-    format: html
-    refresh_cadence: weekly
+    url: https://www.recreater.com/RSSFeed.aspx?ModID=58&CID=All-calendar.xml
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: hourly
     license: county government public information
     contact: Frederick County Division of Parks and Recreation
-    status: pending_approval
-    last_validated: null
+    status: active
+    collection: runtime
+    evidence_aliases: [parks]
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/integrations/ical-live.ts
     notes: |
-      Rec programs, leagues, and park events — recurring location-aware
-      Live-Now content. Check for a registration-platform API
-      (CommunityPass/RecTrac) at activation before scraping.
+      Active official CivicPlus RSS calendar in the runtime live-event
+      registry (source "parks"). Program and ranger-event rows pass through
+      the shared public-event and facility-booking filters.
+
+  - id: fcvfra_events
+    name: Frederick County Volunteer Fire & Rescue Events
+    owner: Frederick County Volunteer Fire & Rescue Association
+    url: https://www.fcvfra.com/apps/public/events/
+    endpoint_type: scrape
+    format: html
+    refresh_cadence: daily
+    license: public association event listing; source link retained
+    contact: https://www.fcvfra.com
+    status: active
+    collection: workflow
+    evidence_aliases: [fcvfra.com]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/ingest/fcvfra.ts
+    notes: |
+      Active daily Vercel-cron ingest at /api/ingest/fcvfra. The deterministic
+      parser extracts public fire-company carnivals, bingo, and food events,
+      records run health, and revalidates the shared event cache.
+
+  - id: squarespace_venue_events
+    name: Venue Squarespace Event Feeds
+    owner: Participating Frederick venues
+    url: internal://src/data/live-music-venues
+    endpoint_type: registry
+    format: json
+    refresh_cadence: hourly
+    license: first-party public business event pages; source link retained
+    contact: Per-venue source registry
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/squarespace-live.ts
+    notes: |
+      Runtime reads only configured venue event pages with structured
+      Squarespace JSON and keeps each venue's source URL on the event.
+
+  - id: venue_event_extraction
+    name: Venue Event Extraction Workflow
+    owner: Frederick Radius
+    url: internal://config/venue-sources.json
+    endpoint_type: extraction_workflow
+    format: json
+    refresh_cadence: daily
+    license: source-specific; every output row retains its public source URL
+    contact: Frederick Radius product
+    status: active
+    collection: workflow
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: scripts/ingest-venue-events.ts
+    notes: |
+      Daily extraction from the reviewed venue registry. Deterministic feeds
+      are preferred; model extraction is limited to configured pages or images.
+      The workflow validates copy/provenance and opens a review PR.
+
+  - id: business_info_extraction
+    name: Business Website Information Workflow
+    owner: Frederick Radius
+    url: internal://config/business-info.json
+    endpoint_type: extraction_workflow
+    format: json
+    refresh_cadence: daily
+    license: source-specific; every output row retains the business website URL
+    contact: Frederick Radius product
+    status: active
+    collection: workflow
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: scripts/ingest-business-info.ts
+    notes: |
+      Request-capped extraction of known-for details, specials, reservation
+      links, and published hours from business-owned websites. Radius copy
+      checks run before the workflow opens a review PR.
+
+  - id: municipal_civic_extraction
+    name: Municipal Civic Information Workflow
+    owner: Frederick Radius
+    url: internal://config/municipal-civic-sources.json
+    endpoint_type: extraction_workflow
+    format: json
+    refresh_cadence: daily
+    license: municipal public information; source URL retained per field
+    contact: Frederick Radius product
+    status: active
+    collection: workflow
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: scripts/ingest-municipal-civic.ts
+    notes: |
+      Reads only configured official municipal pages, stamps source and
+      freshness per record, and opens a review PR instead of pushing generated
+      civic instructions directly to production.
 
   - id: usgs_water
     name: USGS — Monocacy River Water Data
@@ -1311,6 +2501,7 @@ sources:
     license: US federal government open data, public domain
     contact: USGS Water Resources
     status: active
+    collection: runtime
     last_validated: 2026-05-26
     last_success: null
     schema_file: null
@@ -1321,6 +2512,28 @@ sources:
       Pinned to Frederick County gauge site numbers in the
       integration. No key required (US federal public-domain data).
       Pairs with cof_floodplain (still pending) when that activates.
+
+  - id: fredscanner
+    name: Frederick Scanner Public Incidents
+    owner: Frederick Scanner
+    url: https://frederickscanner.com/fredscannerpro/tweets.html
+    endpoint_type: html
+    format: text
+    refresh_cadence: realtime
+    license: public incident page; non-medical public-safety details only
+    contact: https://www.frederickscanner.com/
+    status: active
+    collection: runtime
+    evidence_aliases: [frederick-scanner, fredscanner]
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/scannerIncidents.ts
+    notes: |
+      The runtime adapter reads the public incident page and falls back to the
+      public UMD RSS mirror. It applies the product's non-medical allowlist,
+      rejects malformed successful responses, and may use an owner-approved
+      Slack feed when both optional settings are configured.
 
   - id: frederick_news_post
     name: Frederick News-Post — Local News RSS
@@ -1379,20 +2592,17 @@ sources:
     format: json
     refresh_cadence: monthly
     license: |
-      Mapillary API terms; requires a free access token. Imagery is
-      CC-BY-SA; derived map-feature detections are openly licensed and
-      explicitly intended for OSM import. Confirm exact CC terms +
-      attribution string at activation.
+      Mapillary API terms; requires an access token. Map-feature use keeps
+      visible, linked Mapillary attribution. Imagery has separate CC BY-SA
+      attribution requirements and is not served by this integration.
     contact: Mapillary developer platform
     status: pending_approval
-    last_validated: null
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/integrations/mapillary.ts
     notes: |
-      The ToS-clean "use street imagery to find trash cans" path
-      (Google Street View forbids automated extraction; Mapillary is
-      purpose-built for it). map_features exposes CV-detected point
+      Mapillary's map_features API exposes CV-detected point
       objects with lat/lng; the waste class is object--trash-can
       (verify the exact value + bbox-filter against Frederick at
       activation — Mapillary coverage is itself capture-dependent, so
@@ -1405,75 +2615,47 @@ sources:
       (DPW data remains the most authoritative route). Needs a free
       token; never fabricate pins from low-confidence detections.
 
-      STATUS (2026-05-17): path (2) is VERIFIED + WIRED LIVE.
+      STATUS (2026-05-17): path (2) is VERIFIED + WIRED, but remains
+      policy-gated until the attribution/terms review is recorded here.
       src/lib/integrations/mapillary.ts → fetchMapillaryTrash() is
       called server-side in the map page and merged into AppMap's
       amenity layer (extraAmenities prop), so the secret never reaches
       the client. Token verified working; object--trash-can confirmed
       as the class with ~51 detections downtown. Gated ONLY on
-      MAPILLARY_TOKEN presence now (the old MAPILLARY_TRASH flag was
-      removed — the owner is the activation). mapillaryToken()
+      both MAPILLARY_ENABLED=1 and MAPILLARY_TOKEN. The explicit enable
+      flag records the policy decision; a stored token alone cannot activate
+      collection. mapillaryToken()
       sanitizes a trailing "|" / quotes / whitespace (a hand-pasted
       dotenv value commonly carries that — it was a multi-round red
       herring). PROD: MAPILLARY_TOKEN must be added to Vercel env for
-      the live site; absent it, fetchMapillaryTrash() returns [] and
-      this is fully inert. status stays non-active so fetch_all (no
-      token-auth) never tries to fetch it — this is a runtime
-      integration, not a pipeline source. schema_file/transform_file
-      stay null by design.
+      the live site only after MAPILLARY_ENABLED=1 records the explicit
+      activation; absent either setting, fetchMapillaryTrash() returns [].
+      Every Mapillary popup names
+      and links the source rather than mislabeling it as OpenStreetMap.
 
-  # ------------------------------------------------------------------ #
-  # Free modern POI base layers. Added 2026-05-30 after a live pull     #
-  # proved 17,319 county places at 80% match to the catalog, with 109   #
-  # free contact fills and 65 geocode-suspect flags. Use as an          #
-  # enrichment + validation layer, NOT a bulk import: net-new is        #
-  # dominated by the B2B/chain tail that isNonDiscoverable already       #
-  # suppresses. Neither carries opening hours (Google/owner stays the    #
-  # hours source). See DATA-STRATEGY-2026-05-30.md.                      #
-  # ------------------------------------------------------------------ #
-
-  - id: overture_places
-    name: Overture Maps — Places (Frederick County)
-    owner: Overture Maps Foundation
-    url: s3://overturemaps-us-west-2/release/2026-05-20.0/theme=places/type=place/
-    endpoint_type: s3_parquet
-    format: geoparquet
-    refresh_cadence: monthly
-    license: CDLA Permissive 2.0, attribution to Overture Maps Foundation
-    contact: https://docs.overturemaps.org/
+  - id: gasbuddy_frederick
+    name: GasBuddy — Frederick station gas prices
+    owner: GasBuddy (PDI Technologies)
+    url: https://www.gasbuddy.com/gasprices/maryland/frederick
+    endpoint_type: scrape
+    format: html
+    refresh_cadence: hourly
+    license: proprietary; user-submitted prices, licensed commercially (OPIS); no public API; scraping prohibited by ToS
+    contact: https://www.gasbuddy.com/business
     status: pending_approval
-    last_validated: 2026-05-30
-    last_success: 2026-05-30
-    schema_file: null
-    transform_file: scripts/overture/pull_and_reconcile.py
-    notes: |
-      Free, no key. DuckDB streams the county bbox from S3 in ~8s. Carries
-      name, category, website, phone, socials, address, confidence, and
-      operating_status — but NOT opening hours. Pinned to a dated release
-      here; the puller can instead read the STAC catalog to always get the
-      latest. Reconciliation (scripts/overture/pull_and_reconcile.py) emits
-      contact fills + geocode suspects into docs/audits/. Promote to active
-      once the fills are reviewed through the data:review + overrides flow.
-
-  - id: foursquare_os_places
-    name: Foursquare Open Source Places
-    owner: Foursquare
-    url: https://huggingface.co/datasets/foursquare/fsq-os-places
-    endpoint_type: parquet
-    format: parquet
-    refresh_cadence: monthly
-    license: Apache 2.0
-    contact: https://opensource.foursquare.com/os-places/
-    status: pending_approval
-    last_validated: null
+    collection: null
+    last_validated: 2026-08-05
     last_success: null
     schema_file: null
     transform_file: null
     notes: |
-      100M+ global POIs, 22 core attributes incl. tel, website, socials,
-      category labels, and date_closed (but NOT hours). Gated dataset on
-      Hugging Face; needs an access token. Use as a SECOND opinion to
-      cross-validate Overture (agreement between two independent open
-      sources is a strong confidence signal) and to backfill where Overture
-      is sparse. Same rule as Overture: enrichment + validation, never raw
-      bulk import. Filter to the county bbox at read time.
+      Owner ask (2026-08-05): surface Frederick gas prices in the app.
+      Phase 1 shipped the honest version: a "Gas prices" tool door that
+      OPENS GasBuddy's Frederick page in a new tab (outbound link only,
+      no data reuse — the description names GasBuddy so the door never
+      pretends the data is ours). This ledger row exists so the licensed
+      path is tracked, not forgotten: station-level data requires a
+      commercial agreement (GasBuddy business / OPIS). Do NOT scrape.
+      A public-domain alternative for a supporting number is the EIA
+      weekly Maryland average (state-level only, no station or county
+      granularity) — register it separately if we ever want it.

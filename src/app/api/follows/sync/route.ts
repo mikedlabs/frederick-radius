@@ -1,7 +1,17 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
-import { follows, user_profiles } from "@/lib/db/schema";
+import { user_profiles } from "@/lib/db/schema";
 import { getServerUserId } from "@/lib/auth";
+import {
+  MAX_FOLLOWED_PLACES,
+  normalizeFollowSlugs,
+} from "@/lib/follows-contract";
+import { syncFollowsWithinLimit } from "@/lib/follows.server";
+import {
+  hasJsonContentType,
+  isSameOriginMutationRequest,
+  readJsonBodyWithLimit,
+} from "@/lib/origin-check";
 
 /**
  * /api/follows/sync — one-shot bulk import of localStorage follows.
@@ -16,6 +26,19 @@ import { getServerUserId } from "@/lib/auth";
  * pre-signin localStorage follows from explicit post-signin ones.
  */
 export async function POST(req: NextRequest) {
+  if (!isSameOriginMutationRequest(req)) {
+    return NextResponse.json({ error: "forbidden-origin" }, { status: 403 });
+  }
+  if (!hasJsonContentType(req)) {
+    return NextResponse.json({ error: "content-type" }, { status: 415 });
+  }
+  const parsedBody = await readJsonBodyWithLimit(req, 64 * 1_024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      { status: parsedBody.error === "body-too-large" ? 413 : 400 },
+    );
+  }
   const userId = await getServerUserId();
   if (!userId) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
@@ -25,27 +48,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "database-unavailable" }, { status: 503 });
   }
 
-  let body: { slugs?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400 });
-  }
+  const body = parsedBody.value && typeof parsedBody.value === "object"
+    ? parsedBody.value as { slugs?: unknown }
+    : {};
   if (!Array.isArray(body.slugs)) {
     return NextResponse.json({ error: "slugs-must-be-array" }, { status: 400 });
   }
-  const slugs = (body.slugs as unknown[])
-    .filter((s): s is string => typeof s === "string")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0 && s.length <= 120);
+  // The browser sends most-recent first so a legacy device list larger than
+  // the account budget keeps the saves that are most likely to matter now.
+  const slugs = normalizeFollowSlugs(body.slugs as unknown[]);
 
   if (slugs.length === 0) {
-    return NextResponse.json({ ok: true, inserted: 0 });
+    return NextResponse.json({
+      ok: true,
+      inserted: 0,
+      acceptedSlugs: [],
+      skipped: 0,
+      atLimit: false,
+      limit: MAX_FOLLOWED_PLACES,
+    });
   }
-
-  // Cap sync at 500 to avoid pathological imports — far more than
-  // any real user's localStorage list and a sensible safety belt.
-  const capped = slugs.slice(0, 500);
 
   // Ensure profile exists before inserting follows.
   await db
@@ -53,16 +75,6 @@ export async function POST(req: NextRequest) {
     .values({ id: userId })
     .onConflictDoNothing({ target: user_profiles.id });
 
-  await db
-    .insert(follows)
-    .values(
-      capped.map((slug) => ({
-        user_id: userId,
-        place_slug: slug,
-        source: "synced" as const,
-      })),
-    )
-    .onConflictDoNothing({ target: [follows.user_id, follows.place_slug] });
-
-  return NextResponse.json({ ok: true, inserted: capped.length });
+  const result = await syncFollowsWithinLimit(db, userId, slugs);
+  return NextResponse.json({ ok: true, ...result });
 }

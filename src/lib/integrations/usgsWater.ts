@@ -19,8 +19,13 @@
  *    USGS site code and merge gage height + streamflow into one site.
  *  - USGS encodes "no reading" as the variable's noDataValue (e.g.
  *    -999999); those are dropped, never shown as a real level.
+ *  - Flood STAGE context (added 2026-06): six county gauges are NWS
+ *    forecast points with official flood thresholds (see floodStage.ts).
+ *    We attach those static, sourced thresholds so a surface can classify
+ *    the live reading against them — still NWS's classification, not ours.
  */
 import { resolveMunicipality } from "@/lib/connect";
+import { FLOOD_STAGES, type FloodStages } from "@/lib/integrations/floodStage";
 
 const ENDPOINT =
   "https://waterservices.usgs.gov/nwis/iv/?format=json" +
@@ -49,12 +54,21 @@ export type WaterSite = {
   observedAt?: string;
   /** Time-series history of gage height readings (newest last), when
    *  fetched via getFrederickWaterSitesWithHistory(). Each gauge
-   *  reports every ~15 min, so a 24h window has ~96 readings. */
+   *  reports every ~15 min, so 6h has ~24 and 24h has ~96 readings. */
   gageHistory?: Reading[];
   streamflowHistory?: Reading[];
+  /** NWS flood thresholds, present only for NWS forecast-point gauges. */
+  floodStages?: FloodStages;
   municipality: string;
   lng: number;
   lat: number;
+};
+
+export type WaterSitesResult = {
+  data: WaterSite[];
+  /** True only when USGS answered successfully. An empty successful payload
+   * remains distinct from a timeout, network failure, or non-2xx response. */
+  available: boolean;
 };
 
 type IvValue = { value?: unknown; dateTime?: unknown };
@@ -144,6 +158,7 @@ export function normalizeWaterSites(raw: unknown): WaterSite[] {
         id: code,
         name,
         river: riverOf(name),
+        floodStages: FLOOD_STAGES[code],
         municipality: resolveMunicipality({ lng, lat }).municipality.slug,
         lng,
         lat,
@@ -185,16 +200,23 @@ export async function getFrederickWaterSites(): Promise<WaterSite[]> {
 /**
  * Same as getFrederickWaterSites() but each WaterSite also carries
  * gageHistory / streamflowHistory arrays for the last `period`
- * window. Period is a USGS ISO-8601 duration: "P1D" = 1 day,
- * "P7D" = 7 days. The 24h variant returns ~96 readings per gauge
+ * window. Period is a USGS ISO-8601 duration: "PT6H" = 6 hours,
+ * "P1D" = 1 day, "P7D" = 7 days. The 24h variant returns ~96 readings per gauge
  * (every 15 min) and is what the /rivers dashboard sparklines render.
  *
  * History readings are sorted oldest-first so a sparkline can draw
  * left-to-right without re-sorting.
  */
 export async function getFrederickWaterSitesWithHistory(
-  period: "P1D" | "P7D" = "P1D",
+  period: "PT6H" | "P1D" | "P7D" = "P1D",
 ): Promise<WaterSite[]> {
+  return (await getFrederickWaterSitesWithHistoryResult(period)).data;
+}
+
+/** Health-aware history read for trust-sensitive surfaces such as Pulse. */
+export async function getFrederickWaterSitesWithHistoryResult(
+  period: "PT6H" | "P1D" | "P7D" = "P1D",
+): Promise<WaterSitesResult> {
   const endpoint = `${ENDPOINT}&period=${period}`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -204,10 +226,13 @@ export async function getFrederickWaterSitesWithHistory(
       headers: { Accept: "application/json" },
       next: { revalidate: 900 },
     });
-    if (!res.ok) return [];
-    return normalizeWaterSitesWithHistory(await res.json());
+    if (!res.ok) return { data: [], available: false };
+    return {
+      data: normalizeWaterSitesWithHistory(await res.json()),
+      available: true,
+    };
   } catch {
-    return [];
+    return { data: [], available: false };
   } finally {
     clearTimeout(timer);
   }
@@ -263,6 +288,7 @@ export function normalizeWaterSitesWithHistory(raw: unknown): WaterSite[] {
         id: code,
         name,
         river: riverOf(name),
+        floodStages: FLOOD_STAGES[code],
         municipality: resolveMunicipality({ lng, lat }).municipality.slug,
         lng,
         lat,
@@ -284,4 +310,24 @@ export function normalizeWaterSitesWithHistory(raw: unknown): WaterSite[] {
   return [...bySite.values()]
     .filter((x) => x.gageHeightFt != null || x.streamflowCfs != null)
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Trend direction over the last 4 readings vs the previous 4 — a cheap
+ * "rising / falling / steady" indicator without a statistical model. Returns
+ * null when there's not enough history. Shared by /rivers and the /pulse rivers
+ * tile so the two surfaces label the same gauge the same way.
+ */
+export function readingTrend(
+  history?: Reading[],
+): "rising" | "falling" | "steady" | null {
+  if (!history || history.length < 8) return null;
+  const recent = history.slice(-4).reduce((a, b) => a + b.value, 0) / 4;
+  const prior = history.slice(-8, -4).reduce((a, b) => a + b.value, 0) / 4;
+  const delta = recent - prior;
+  // Threshold = 1% of recent value, or 0.05 if recent is tiny.
+  const tol = Math.max(Math.abs(recent) * 0.01, 0.05);
+  if (delta > tol) return "rising";
+  if (delta < -tol) return "falling";
+  return "steady";
 }

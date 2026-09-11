@@ -1,8 +1,19 @@
 import {
-  pgTable, uuid, text, integer, real, boolean, jsonb,
+  pgTable, uuid, text, integer, real, boolean, jsonb, date,
   smallint, timestamp, index, uniqueIndex, doublePrecision,
+  check, customType, primaryKey,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import type { CommerceLink } from "@/lib/commerce/types";
+
+/**
+ * Stored PostGIS points are generated from the existing lng/lat columns in
+ * migration 0037. Keeping those scalar columns as the write contract means
+ * current ingesters remain unchanged while spatial reads gain a GiST index.
+ */
+const geographyPoint = customType<{ data: string; driverData: string }>({
+  dataType: () => "extensions.geography(Point, 4326)",
+});
 
 export const municipalities = pgTable(
   "municipalities",
@@ -24,9 +35,10 @@ export const municipalities = pgTable(
     hero_image: text("hero_image"),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
-  (t) => ({
-    slugIdx: uniqueIndex("municipalities_slug_idx").on(t.slug),
-  }),
+  // slug is already uniquely indexed by .unique() above (the
+  // municipalities_slug_unique constraint). An explicit
+  // uniqueIndex("municipalities_slug_idx") was a duplicate btree on the same
+  // column (Supabase duplicate-index advisory) — dropped via migration 0010.
 );
 
 export const categories = pgTable(
@@ -42,7 +54,8 @@ export const categories = pgTable(
     blurb: text("blurb"),
   },
   (t) => ({
-    slugIdx: uniqueIndex("categories_slug_idx").on(t.slug),
+    // slug: unique index supplied by .unique() (categories_slug_unique);
+    // the duplicate categories_slug_idx was dropped via migration 0010.
     parentIdx: index("categories_parent_idx").on(t.parent_slug),
   }),
 );
@@ -72,6 +85,14 @@ export const places = pgTable(
     municipality_slug: text("municipality_slug"),
     lng: doublePrecision("lng").notNull(),
     lat: doublePrecision("lat").notNull(),
+    location: geographyPoint("location")
+      .notNull()
+      .generatedAlwaysAs(
+        sql`extensions.st_setsrid(
+          extensions.st_makepoint("lng", "lat"),
+          4326
+        )::extensions.geography`,
+      ),
     phone: text("phone"),
     email: text("email"),
     website: text("website"),
@@ -81,6 +102,9 @@ export const places = pgTable(
     price_band: smallint("price_band"),
     amenities: jsonb("amenities").$type<string[]>(),
     accessibility: jsonb("accessibility"),
+    // Normalized commerce links (menu/order/reserve/delivery/catering). Future
+    // mirror of the file-based place `commerce_links`; not written at runtime yet.
+    commerce_links: jsonb("commerce_links").$type<CommerceLink[]>(),
     hero_image: text("hero_image"),
     is_verified: boolean("is_verified").default(false),
     verified_at: timestamp("verified_at", { withTimezone: true }),
@@ -96,12 +120,31 @@ export const places = pgTable(
     deleted_at: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => ({
-    slugIdx: uniqueIndex("places_slug_idx").on(t.slug),
+    // slug: unique index supplied by .unique() (places_slug_unique); the
+    // duplicate places_slug_idx was dropped via migration 0010.
     muniIdx: index("places_municipality_idx").on(t.municipality_slug),
     catIdx: index("places_category_idx").on(t.category_slug),
     lngLatIdx: index("places_lng_lat_idx").on(t.lng, t.lat),
+    locationIdx: index("places_location_gist_idx").using("gist", t.location),
   }),
 );
+
+/**
+ * One server-owned checksum proving that the active PostGIS mirror matches the
+ * exact public catalog shipped by a deployment. Spatial reads fail back to the
+ * in-memory path whenever this state is absent or its hash/count do not match.
+ */
+export const placeSpatialSyncState = pgTable("place_spatial_sync_state", {
+  catalog_key: text("catalog_key").primaryKey(),
+  catalog_hash: text("catalog_hash").notNull(),
+  place_count: integer("place_count").notNull(),
+  synced_at: timestamp("synced_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  countCheck: check(
+    "place_spatial_sync_state_count_check",
+    sql`${t.place_count} >= 0`,
+  ),
+}));
 
 export const events = pgTable(
   "events",
@@ -142,11 +185,116 @@ export const events = pgTable(
     deleted_at: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => ({
-    slugIdx: uniqueIndex("events_slug_idx").on(t.slug),
+    // slug: unique index supplied by .unique() (events_slug_unique); the
+    // duplicate events_slug_idx was dropped via migration 0010.
     timeIdx: index("events_starts_at_idx").on(t.starts_at),
     muniTimeIdx: index("events_muni_starts_idx").on(t.municipality_slug, t.starts_at),
   }),
 );
+
+/**
+ * Durable event routing. A publisher UID remains stable while titles and
+ * human-readable slugs change; aliases and snapshots keep shared/saved links
+ * useful after that churn. These tables are server-only with deny-all RLS.
+ */
+export const eventCanonicalRecords = pgTable(
+  "event_canonical_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    canonical_slug: text("canonical_slug").notNull(),
+    snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+    starts_at: timestamp("starts_at", { withTimezone: true }).notNull(),
+    ends_at: timestamp("ends_at", { withTimezone: true }),
+    event_status: text("event_status").notNull().default("scheduled"),
+    source_url: text("source_url"),
+    first_seen_at: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    last_seen_at: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    snapshot_at: timestamp("snapshot_at", { withTimezone: true }).notNull().defaultNow(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    slugUq: uniqueIndex("event_canonical_records_slug_uq").on(t.canonical_slug),
+    upcomingIdx: index("event_canonical_records_upcoming_idx")
+      .on(t.starts_at, t.id)
+      .where(sql`${t.event_status} = 'scheduled'`),
+    lastSeenIdx: index("event_canonical_records_last_seen_idx").on(t.last_seen_at),
+    slugCheck: check(
+      "event_canonical_records_slug_check",
+      sql`${t.canonical_slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'`,
+    ),
+    snapshotCheck: check(
+      "event_canonical_records_snapshot_object_check",
+      sql`jsonb_typeof(${t.snapshot}) = 'object'`,
+    ),
+    statusCheck: check(
+      "event_canonical_records_status_check",
+      sql`${t.event_status} in ('scheduled', 'cancelled', 'postponed')`,
+    ),
+    windowCheck: check(
+      "event_canonical_records_window_check",
+      sql`${t.ends_at} is null or ${t.ends_at} >= ${t.starts_at}`,
+    ),
+  }),
+);
+
+export const eventSourceIdentities = pgTable(
+  "event_source_identities",
+  {
+    source: text("source").notNull(),
+    source_uid: text("source_uid").notNull(),
+    canonical_event_id: uuid("canonical_event_id")
+      .notNull()
+      .references(() => eventCanonicalRecords.id, { onDelete: "cascade" }),
+    first_seen_at: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    last_seen_at: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    identityUq: uniqueIndex("event_source_identities_pk").on(t.source, t.source_uid),
+    eventIdx: index("event_source_identities_event_idx").on(t.canonical_event_id),
+  }),
+);
+
+export const eventSlugAliases = pgTable(
+  "event_slug_aliases",
+  {
+    slug: text("slug").primaryKey(),
+    canonical_event_id: uuid("canonical_event_id")
+      .notNull()
+      .references(() => eventCanonicalRecords.id, { onDelete: "cascade" }),
+    first_seen_at: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    last_seen_at: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    eventIdx: index("event_slug_aliases_event_idx").on(t.canonical_event_id),
+  }),
+);
+
+export const eventTombstones = pgTable("event_tombstones", {
+  canonical_event_id: uuid("canonical_event_id")
+    .primaryKey()
+    .references(() => eventCanonicalRecords.id, { onDelete: "cascade" }),
+  last_snapshot: jsonb("last_snapshot").$type<Record<string, unknown>>().notNull(),
+  reason: text("reason").notNull().default("source_gone"),
+  tombstoned_at: timestamp("tombstoned_at", { withTimezone: true }).notNull().defaultNow(),
+  source_last_seen_at: timestamp("source_last_seen_at", { withTimezone: true }),
+  expires_at: timestamp("expires_at", { withTimezone: true }),
+});
+
+/**
+ * Rolling hours refresh (data brief 4.3). The hours-refresh cron upserts
+ * one row per place per cycle; npm run refresh:hours pulls the table into
+ * src/data/places-hours-refresh.json, which the place loader merges over
+ * the static enrichment. refreshed_at is the verification date the
+ * freshness policy reads.
+ */
+export const placeHoursRefresh = pgTable("place_hours_refresh", {
+  slug: text("slug").primaryKey(),
+  placeId: text("place_id").notNull(),
+  weekdayHours: jsonb("weekday_hours").$type<string[] | null>(),
+  businessStatus: text("business_status"),
+  refreshedAt: timestamp("refreshed_at", { withTimezone: true }).notNull(),
+});
 
 export const dataSources = pgTable("data_sources", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -237,6 +385,59 @@ export const feed_snapshots = pgTable(
       t.source,
       t.taken_at,
     ),
+    takenIdx: index("feed_snapshots_taken_idx").on(t.taken_at),
+  }),
+);
+
+/**
+ * Compact current-state projection for feed health.
+ *
+ * `feed_snapshots` is the bounded historical audit trail. Public/admin health
+ * reads should not repeatedly scan that history just to learn the newest
+ * observation for each source, so the cron updates this one-row-per-source
+ * projection in the same transaction as the historical append.
+ */
+export const feed_source_health = pgTable(
+  "feed_source_health",
+  {
+    source: text("source").primaryKey(),
+    taken_at: timestamp("taken_at", { withTimezone: true }).notNull(),
+    count: integer("count").notNull(),
+    free_ratio: real("free_ratio").notNull(),
+    empty_desc_ratio: real("empty_desc_ratio").notNull(),
+    top_venue: jsonb("top_venue").$type<{ name: string; share: number } | null>(),
+    top_category: jsonb("top_category").$type<{ name: string; share: number } | null>(),
+    earliest: timestamp("earliest", { withTimezone: true }),
+    latest: timestamp("latest", { withTimezone: true }),
+    prior_snapshot: jsonb("prior_snapshot").$type<{
+      taken_at: string;
+      count: number;
+      free_ratio: number;
+      empty_desc_ratio: number;
+      top_venue: { name: string; share: number } | null;
+      top_category: { name: string; share: number } | null;
+      earliest: string | null;
+      latest: string | null;
+    } | null>(),
+    recent_mean_count: real("recent_mean_count").notNull(),
+    recent_observations: smallint("recent_observations").notNull().default(1),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    takenIdx: index("feed_source_health_taken_idx").on(t.taken_at),
+    countCheck: check("feed_source_health_count_check", sql`${t.count} >= 0`),
+    freeRatioCheck: check(
+      "feed_source_health_free_ratio_check",
+      sql`${t.free_ratio} >= 0 AND ${t.free_ratio} <= 1`,
+    ),
+    emptyDescriptionRatioCheck: check(
+      "feed_source_health_empty_desc_ratio_check",
+      sql`${t.empty_desc_ratio} >= 0 AND ${t.empty_desc_ratio} <= 1`,
+    ),
+    observationCheck: check(
+      "feed_source_health_observations_check",
+      sql`${t.recent_observations} BETWEEN 1 AND 84`,
+    ),
   }),
 );
 
@@ -264,10 +465,323 @@ export const push_subscriptions = pgTable(
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
     last_seen_at: timestamp("last_seen_at", { withTimezone: true }).defaultNow(),
+    // Per-device notification preferences + town targeting (0020). All
+    // nullable: null home_town = untargeted; null quiet_* = no quiet hours.
+    home_town: text("home_town"),
+    // Eastern-time quiet window, inclusive start .. exclusive end hour (0-23).
+    // Non-urgent pushes are held during the window; civic alerts bypass.
+    quiet_start: smallint("quiet_start"),
+    quiet_end: smallint("quiet_end"),
   },
   (t) => ({
     endpointIdx: uniqueIndex("push_subscriptions_endpoint_idx").on(t.endpoint),
     deviceIdx: index("push_subscriptions_device_idx").on(t.device_id),
+    homeTownIdx: index("push_subscriptions_home_town_idx").on(t.home_town),
+  }),
+);
+
+/**
+ * saved_events (critic-1) — device-scoped record of which push-enabled devices
+ * saved which event, so the "one hour before something you saved" reminder can
+ * reach exactly those devices. Keyed by the device's push-subscription
+ * `endpoint` (the same device key push_subscriptions uses; NO user_id — saves
+ * are device-local). Populated by /api/saved when an event is saved on a device
+ * that has push consent. RLS deny-all like every other table; only the
+ * BYPASSRLS server role touches it.
+ */
+/**
+ * beta_emails — the beta-access email list. One field on /beta, used to mint,
+ * send, and manage a personal access code. RLS deny-all like every table
+ * (server role only). Deleting the row and its labeled beta code fulfills a
+ * removal request.
+ */
+export const beta_emails = pgTable(
+  "beta_emails",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    source: text("source").notNull().default("beta_page"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    emailUq: uniqueIndex("beta_emails_email_uq").on(t.email),
+  }),
+);
+
+/**
+ * beta_codes — per-tester access codes. Replaces the single shared password as
+ * the way people come in, so each beta user's access can be managed internally
+ * and individually revoked (flip `revoked` and only that person is locked out).
+ * The shared BETA_PASSWORD stays as an owner master key alongside these, so we
+ * can never lock ourselves out. Third-party analytics receives only an
+ * aggregate beta-active event, never this code or its label.
+ *
+ * `code` is a readable slug (e.g. "frederick-ada7") the owner texts to a tester;
+ * `label` is who it's for ("Jane from the co-op"). `redeemed_at` is first unlock,
+ * `uses` counts redemptions (a person may unlock on phone + laptop),
+ * `last_seen_at` is refreshed by a once-per-session ping so the admin list shows
+ * who is actually active. RLS deny-all like every table — the BYPASSRLS server
+ * role owns all reads/writes; the edge middleware never touches the DB (it
+ * verifies a signed cookie), so the hot path stays fast.
+ */
+/**
+ * usage_counters — daily call counters for the paid upstreams (Google photos,
+ * Ask LLM, Mapbox). One row per (Eastern day, upstream); incremented fail-soft
+ * beside each paid fetch (lib/usage-meter.ts) and read by /admin/costs. RLS
+ * deny-all like every table; server role only.
+ */
+export const usage_counters = pgTable(
+  "usage_counters",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    day: date("day").notNull(),
+    upstream: text("upstream").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (t) => ({
+    dayUpstreamUq: uniqueIndex("usage_counters_day_upstream_uq").on(t.day, t.upstream),
+  }),
+);
+
+/**
+ * mapbox_search_sessions — hashed, server-owned Search Box lifecycle rows.
+ * No query, coordinate, suggestion, or retrieved place data is persisted.
+ * Closed rows are durable tombstones so a browser UUID cannot be reused after
+ * retrieve, the 180-second deadline, or the 50-suggestion ceiling.
+ */
+export const mapbox_search_sessions = pgTable(
+  "mapbox_search_sessions",
+  {
+    session_token_hash: text("session_token_hash").primaryKey(),
+    state: text("state").notNull().default("active"),
+    suggestion_count: integer("suggestion_count").notNull().default(0),
+    started_at: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+    closed_at: timestamp("closed_at", { withTimezone: true }),
+    retrieved_mapbox_id_hash: text("retrieved_mapbox_id_hash"),
+  },
+  (t) => ({
+    tokenHashCheck: check(
+      "mapbox_search_sessions_token_hash_check",
+      sql`${t.session_token_hash} ~ '^[0-9a-f]{64}$'`,
+    ),
+    retrievedHashCheck: check(
+      "mapbox_search_sessions_retrieved_hash_check",
+      sql`${t.retrieved_mapbox_id_hash} is null or ${t.retrieved_mapbox_id_hash} ~ '^[0-9a-f]{64}$'`,
+    ),
+    stateCheck: check(
+      "mapbox_search_sessions_state_check",
+      sql`${t.state} in ('active', 'retrieved', 'expired', 'suggestion_limit')`,
+    ),
+    suggestionCountCheck: check(
+      "mapbox_search_sessions_suggestion_count_check",
+      sql`${t.suggestion_count} between 0 and 50`,
+    ),
+    expiryCheck: check(
+      "mapbox_search_sessions_expiry_check",
+      sql`${t.expires_at} > ${t.started_at}`,
+    ),
+    closedStateCheck: check(
+      "mapbox_search_sessions_closed_state_check",
+      sql`(${t.state} = 'active' and ${t.closed_at} is null) or (${t.state} <> 'active' and ${t.closed_at} is not null)`,
+    ),
+  }),
+);
+
+export const beta_codes = pgTable(
+  "beta_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    label: text("label"),
+    revoked: boolean("revoked").notNull().default(false),
+    uses: integer("uses").notNull().default(0),
+    redeemed_at: timestamp("redeemed_at", { withTimezone: true }),
+    last_seen_at: timestamp("last_seen_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    codeUq: uniqueIndex("beta_codes_code_uq").on(t.code),
+  }),
+);
+
+/**
+ * NFC invite cards + per-member first-party analytics (migration 0030).
+ *
+ * Physical cards carry https://frederickradius.app/j/<code>. A tap validates the
+ * card, assigns the DEVICE an anonymous member (a random url-safe id in a signed
+ * httpOnly `fr_member` cookie), unlocks it past the beta wall the SAME signed way
+ * a redeemed per-user code does, and drops it at /today. In-app activity is then
+ * written to nfc_events so the owner can see, per card, who joined and what they
+ * do. The member cookie is HMAC-signed (so a member can only ever log against
+ * its own id) and grants NO access on its own — the fr_beta cookie is the access
+ * credential. Anonymous by default: name/email stay null unless volunteered, and
+ * opted_out stops all logging. Free-text (search/Ask query) is stripped before
+ * insert, so the behavioral log holds only page paths and categorical props. RLS
+ * deny-all like every table; the BYPASSRLS server role owns all reads/writes, so
+ * the anon key can never read a member's volunteered contact details or the log.
+ */
+export const nfc_cards = pgTable(
+  "nfc_cards",
+  {
+    code: text("code").primaryKey(),
+    label: text("label"),
+    batch: text("batch"),
+    active: boolean("active").notNull().default(true),
+    // Reserved for a future per-card cap; not enforced unless set.
+    max_members: integer("max_members"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    batchIdx: index("nfc_cards_batch_idx").on(t.batch),
+  }),
+);
+
+export const nfc_members = pgTable(
+  "nfc_members",
+  {
+    id: text("id").primaryKey(),
+    card_code: text("card_code").references(() => nfc_cards.code),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    last_seen_at: timestamp("last_seen_at", { withTimezone: true }),
+    name: text("name"),
+    email: text("email"),
+    opted_out: boolean("opted_out").notNull().default(false),
+  },
+  (t) => ({
+    cardIdx: index("nfc_members_card_idx").on(t.card_code),
+    createdIdx: index("nfc_members_created_idx").on(t.created_at),
+  }),
+);
+
+export const nfc_events = pgTable(
+  "nfc_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    member_id: text("member_id").references(() => nfc_members.id),
+    event: text("event").notNull(),
+    path: text("path"),
+    props: jsonb("props"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    memberCreatedIdx: index("nfc_events_member_created_idx").on(t.member_id, t.created_at),
+    createdIdx: index("nfc_events_created_idx").on(t.created_at),
+  }),
+);
+
+/**
+ * Privacy-safe product funnel rollup (migration 0043).
+ *
+ * One row represents one Eastern calendar day and a fixed categorical
+ * decision context. It intentionally has no visitor/member id, entity slug,
+ * route, query, answer, coordinates, or other free text. The public ingest
+ * atomically increments `count`; the admin decision page reads the rollup.
+ */
+export const decision_daily_aggregates = pgTable(
+  "decision_daily_aggregates",
+  {
+    day: date("day").notNull(),
+    surface: text("surface").notNull(),
+    stage: text("stage").notNull(),
+    entity_kind: text("entity_kind").notNull(),
+    position: text("position").notNull(),
+    action: text("action").notNull(),
+    count: integer("count").notNull().default(0),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({
+      name: "decision_daily_aggregates_pk",
+      columns: [t.day, t.surface, t.stage, t.entity_kind, t.position, t.action],
+    }),
+    countCheck: check("decision_daily_aggregates_count_check", sql`${t.count} >= 0`),
+    surfaceCheck: check(
+      "decision_daily_aggregates_surface_check",
+      sql`${t.surface} in ('today', 'ask', 'map', 'events', 'place', 'saved', 'compass', 'search')`,
+    ),
+    stageCheck: check(
+      "decision_daily_aggregates_stage_check",
+      sql`${t.stage} in ('impression', 'open', 'action', 'feedback')`,
+    ),
+    entityKindCheck: check(
+      "decision_daily_aggregates_entity_kind_check",
+      sql`${t.entity_kind} in ('place', 'event', 'answer', 'tool', 'amenity', 'route', 'source')`,
+    ),
+    positionCheck: check(
+      "decision_daily_aggregates_position_check",
+      sql`${t.position} in ('lead', 'alternative', 'result', 'detail', 'sheet', 'action_bar')`,
+    ),
+    actionCheck: check(
+      "decision_daily_aggregates_action_check",
+      sql`${t.action} in ('none', 'open', 'directions', 'call', 'email', 'website', 'menu', 'order', 'parking', 'reservation', 'ticket', 'save', 'share', 'helpful', 'not_relevant', 'wrong')`,
+    ),
+    stageActionCheck: check(
+      "decision_daily_aggregates_stage_action_check",
+      sql`(
+        (${t.stage} = 'impression' and ${t.action} = 'none') or
+        (${t.stage} = 'open' and ${t.action} = 'open') or
+        (${t.stage} = 'action' and ${t.action} in ('directions', 'call', 'email', 'website', 'menu', 'order', 'parking', 'reservation', 'ticket', 'save', 'share')) or
+        (${t.stage} = 'feedback' and ${t.action} in ('helpful', 'not_relevant', 'wrong'))
+      )`,
+    ),
+  }),
+);
+
+export const saved_events = pgTable(
+  "saved_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    endpoint: text("endpoint").notNull(),
+    event_slug: text("event_slug").notNull(),
+    canonical_event_id: uuid("canonical_event_id").references(
+      () => eventCanonicalRecords.id,
+      { onDelete: "set null" },
+    ),
+    canonical_event_slug: text("canonical_event_slug"),
+    event_snapshot: jsonb("event_snapshot").$type<Record<string, unknown>>(),
+    snapshot_at: timestamp("snapshot_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    endpointSlugUq: uniqueIndex("saved_events_endpoint_slug_uq").on(t.endpoint, t.event_slug),
+    slugIdx: index("saved_events_slug_idx").on(t.event_slug),
+    canonicalEventIdx: index("saved_events_canonical_event_idx")
+      .on(t.canonical_event_id)
+      .where(sql`${t.canonical_event_id} is not null`),
+  }),
+);
+
+/**
+ * commerce_link_reports — lightweight queue for "this order/menu/reserve link
+ * is broken." Unauthenticated + fail-soft like the other public write paths;
+ * RLS deny-all (all access is via the BYPASSRLS server role). Deliberately NOT
+ * folded into community_reports, which is a MAP layer — a broken link is place
+ * metadata, not a map pin, and must never surface as one. An admin queue can
+ * read this later; Phase 1 just captures it.
+ */
+export const commerce_link_reports = pgTable(
+  "commerce_link_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    place_slug: text("place_slug").notNull(),
+    place_name: text("place_name"),
+    /** The offending link's id when known, else its raw URL. */
+    link_ref: text("link_ref"),
+    url: text("url"),
+    provider: text("provider"),
+    link_type: text("link_type"),
+    issue_type: text("issue_type").notNull().default("broken_link"),
+    note: text("note"),
+    status: text("status").notNull().default("open"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    reviewed_at: timestamp("reviewed_at", { withTimezone: true }),
+  },
+  (t) => ({
+    placeIdx: index("commerce_link_reports_place_idx").on(t.place_slug),
+    statusIdx: index("commerce_link_reports_status_idx").on(t.status),
   }),
 );
 
@@ -289,10 +803,68 @@ export const push_log = pgTable(
     url: text("url"),
     sent_at: timestamp("sent_at", { withTimezone: true }).defaultNow(),
     sent_count: integer("sent_count").notNull().default(0),
+    // Notification clicks reported by the service worker (aggregate per send).
+    open_count: integer("open_count").notNull().default(0),
   },
   (t) => ({
     topicKeyIdx: uniqueIndex("push_log_topic_key_idx").on(t.topic, t.dedupe_key),
     sentAtIdx: index("push_log_sent_at_idx").on(t.sent_at),
+  }),
+);
+
+/**
+ * Archive of PUBLIC scanner incidents, one row per distinct call, banked by
+ * the scanner-archive cron so the ephemeral live feed becomes a history the
+ * trend surfaces can read. Only the same public, non-medical calls the live
+ * layer shows are ever written (the allowlist runs before insert), and the
+ * columns are already de-identified (kind + block-level location) — no units,
+ * radio codes, or personal detail. `dedupe_key` (kind|location|occurred_at)
+ * keeps the same call from banking twice across cron cycles. RLS deny-all,
+ * server-role only, matching the rest of the schema.
+ */
+export const scanner_incidents = pgTable(
+  "scanner_incidents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    dedupe_key: text("dedupe_key").notNull(),
+    kind: text("kind").notNull(),
+    location: text("location").notNull(),
+    road_impact: boolean("road_impact").notNull().default(false),
+    // When the call was dispatched (from the feed message timestamp).
+    occurred_at: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    inserted_at: timestamp("inserted_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    dedupeIdx: uniqueIndex("scanner_incidents_dedupe_idx").on(t.dedupe_key),
+    occurredIdx: index("scanner_incidents_occurred_idx").on(t.occurred_at),
+    kindIdx: index("scanner_incidents_kind_idx").on(t.kind),
+  }),
+);
+
+/**
+ * Search & Ask MISSES — the app's own record of what it was asked for and
+ * couldn't answer. One row each time a search returns nothing or an Ask
+ * answer lands with no real place to point at. `query_key` is the normalized
+ * form (lowercased, punctuation-stripped) so repeats group; `query` keeps a
+ * readable sample. This is the data-gaps flywheel: the honest, evidence-based
+ * answer to "what data is missing." Server-role only, RLS deny-all. Stores
+ * only the query text, its kind, and when — no visitor identifier.
+ */
+export const search_misses = pgTable(
+  "search_misses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Raw query as typed (trimmed, capped) — a readable sample for the board. */
+    query: text("query").notNull(),
+    /** Normalized grouping key (lowercased, punctuation-stripped, collapsed). */
+    query_key: text("query_key").notNull(),
+    /** 'search' (zero results) | 'ask' (answer with no grounded sources). */
+    kind: text("kind").notNull(),
+    occurred_at: timestamp("occurred_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    keyIdx: index("search_misses_key_idx").on(t.query_key),
+    occurredIdx: index("search_misses_occurred_idx").on(t.occurred_at),
   }),
 );
 
@@ -493,9 +1065,616 @@ export const business_updates = pgTable(
   }),
 );
 
-// Run once after migration:
-export const POSTGIS_NOTE = sql`-- pg_trgm + FTS indexes (run as raw SQL after migration):
--- CREATE EXTENSION IF NOT EXISTS pg_trgm;
--- CREATE INDEX places_name_trgm_idx ON places USING GIN (name gin_trgm_ops);
--- CREATE INDEX places_fts_idx ON places USING GIN (to_tsvector('english', coalesce(name,'') || ' ' || coalesce(description,'')));
--- CREATE INDEX events_fts_idx ON events USING GIN (to_tsvector('english', coalesce(title,'') || ' ' || coalesce(description,'')));`;
+/**
+ * Field-collected civic amenities — the /collect walkabout tool. A
+ * collector walks downtown with a phone, drops a pin on a trash can /
+ * water fountain / bench / EV charger / outlet / dog station, picks the
+ * type from a fixed list, and it lands here. The /map amenity layer
+ * merges these in (getFieldAmenities → Amenity shape → same kind→slug→
+ * icon path as the static OSM amenities), so a collected point appears
+ * on the live map immediately under its matching toggle.
+ *
+ * No FK to a users table (the app's collect tool is passcode-gated, not
+ * account-bound); `collected_by` is a free-text label the collector can
+ * set. `status` defaults to 'approved' (instant-publish) but exists so a
+ * future moderation pass can hide a point without deleting it. Writes go
+ * through /api/collect using the server postgres role; RLS is enabled
+ * with no policies so the anon key can't touch the table directly.
+ */
+export const field_amenities = pgTable(
+  "field_amenities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind").notNull(),
+    name: text("name"),
+    detail: text("detail"),
+    note: text("note"),
+    lng: doublePrecision("lng").notNull(),
+    lat: doublePrecision("lat").notNull(),
+    municipality: text("municipality"),
+    photo_url: text("photo_url"),
+    status: text("status").notNull().default("approved"),
+    source: text("source").notNull().default("field"),
+    collected_by: text("collected_by"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    statusIdx: index("field_amenities_status_idx").on(t.status),
+    lngLatIdx: index("field_amenities_lng_lat_idx").on(t.lng, t.lat),
+  }),
+);
+
+/**
+ * Community reports — the crowdsourced "community layer" (Phase 1). Distinct
+ * from field_amenities (permanent infrastructure): these are EPHEMERAL,
+ * observational reports — hazards (pothole, bad sidewalk, flooding), live
+ * conditions (parking full, trail muddy), tips, and local notes.
+ *
+ * Moderation model (Phase 1): a trusted submitter (valid COLLECT_PASSCODE)
+ * publishes immediately (status='approved'); everyone else's report lands
+ * 'pending' for /admin review. `expires_at` makes reports ephemeral so the map
+ * stays current and stale spam ages out on its own. `confirmations` backs the
+ * future Waze-style "still there?" voting.
+ *
+ * Writes flow through /api/reports using the server postgres role; RLS is
+ * enabled with NO policies so the anon key can't read/write it directly.
+ */
+export const community_reports = pgTable(
+  "community_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    category: text("category").notNull(), // hazard | condition | tip | note
+    subtype: text("subtype"), // pothole, parking_full, etc. (optional)
+    title: text("title"),
+    note: text("note"),
+    photo_url: text("photo_url"),
+    lng: doublePrecision("lng").notNull(),
+    lat: doublePrecision("lat").notNull(),
+    municipality: text("municipality"),
+    status: text("status").notNull().default("pending"), // pending | approved | rejected
+    source: text("source").notNull().default("community"),
+    reported_by: text("reported_by"),
+    confirmations: integer("confirmations").notNull().default(0),
+    expires_at: timestamp("expires_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    reviewed_at: timestamp("reviewed_at", { withTimezone: true }),
+  },
+  (t) => ({
+    statusIdx: index("community_reports_status_idx").on(t.status),
+    lngLatIdx: index("community_reports_lng_lat_idx").on(t.lng, t.lat),
+    expiresIdx: index("community_reports_expires_idx").on(t.expires_at),
+    createdIdx: index("community_reports_created_idx").on(t.created_at),
+  }),
+);
+
+/**
+ * Food-truck operator claims — the owner-approved gate on the beacon layer.
+ *
+ * A roaming truck's operator asks to claim their truck (by FoodTruck.slug);
+ * the request lands here as status='pending'. The owner approves it in
+ * /admin/food-trucks, which mints a random opaque `token` and stores it. That
+ * token is the capability credential: it is the ONLY thing that lets an
+ * operator drop a live beacon, and it is validated against an APPROVED row for
+ * that exact truck_slug on every write. Same no-account, no-FK posture as
+ * `submissions.manage_token`; RLS deny-all (server BYPASSRLS role only).
+ *
+ * `contact` is free text (email or phone) so the owner can reach the operator
+ * out of band before approving. `decided_at` stamps the approve/reject moment.
+ */
+export const food_truck_claims = pgTable(
+  "food_truck_claims",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    truck_slug: text("truck_slug").notNull(),
+    operator_name: text("operator_name").notNull(),
+    contact: text("contact").notNull(),
+    status: text("status").notNull().default("pending"), // pending | approved | rejected
+    // Null until approved; a random opaque capability token when approved.
+    token: text("token"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    decided_at: timestamp("decided_at", { withTimezone: true }),
+  },
+  (t) => ({
+    statusIdx: index("food_truck_claims_status_idx").on(t.status),
+    truckIdx: index("food_truck_claims_truck_idx").on(t.truck_slug),
+    // The token is looked up on every beacon write; unique so one token maps
+    // to exactly one claim. Partial so many pending rows (null token) coexist.
+    tokenUq: uniqueIndex("food_truck_claims_token_uq")
+      .on(t.token)
+      .where(sql`${t.token} is not null`),
+  }),
+);
+
+/**
+ * Food-truck live beacons — an approved operator's "I'm out here now" drop.
+ *
+ * Each row is a location + a self-expiring window. The honest-expiry invariant
+ * lives in the pure read layer (src/lib/food-trucks/beacon.ts): a beacon is
+ * only ever shown while `now` sits inside [started_at, expires_at). The write
+ * path (/api/food-trucks/beacon) CAPS expires_at server-side (max 8 hours out)
+ * so a stale beacon can never linger, county-locks the coordinates, and
+ * requires a valid token matching an approved claim for `truck_slug`.
+ *
+ * No FK to a trucks table — the roster is the static file src/data/food-trucks.ts
+ * and `truck_slug` is the loose string key (same posture as every other table
+ * here). RLS deny-all; every read/write goes through the BYPASSRLS server role.
+ */
+export const food_truck_beacons = pgTable(
+  "food_truck_beacons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    truck_slug: text("truck_slug").notNull(),
+    lat: doublePrecision("lat").notNull(),
+    lng: doublePrecision("lng").notNull(),
+    spot: text("spot"),
+    note: text("note"),
+    started_at: timestamp("started_at", { withTimezone: true }).notNull(),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    truckIdx: index("food_truck_beacons_truck_idx").on(t.truck_slug),
+    // The display loader reads "live now" = expires_at > now(); index it.
+    expiresIdx: index("food_truck_beacons_expires_idx").on(t.expires_at),
+  }),
+);
+
+/**
+ * Dear Frederick submissions — the public letter-submission intake.
+ *
+ * Dear Frederick is a community project of handwritten letters mailed to a PO
+ * box and published as CURATED static data (src/data/dear-frederick.ts). This
+ * table only captures DIGITAL submissions: a member of the public uploads a
+ * scan of a letter through /dear-frederick/submit, and it lands here pending
+ * for the owner to review in /admin/dear-frederick. Approving a row just marks
+ * it approved; the owner then transcribes it into the static file by hand, so
+ * publishing stays curated and the published letters are never DB-dynamic.
+ *
+ * `image_url` is the scan in Vercel Blob. `signature`, `contact`, and `note`
+ * are all optional (a signature defaults to "Anonymous" for display; `contact`
+ * is a private email/phone for owner follow-up and MUST NOT be public). No FK
+ * to a letters table — published letters are file-sourced and a submission may
+ * never be published. RLS deny-all; every read/write goes through the BYPASSRLS
+ * server role, so the anon key can never read a sender's contact details.
+ */
+export const dear_frederick_submissions = pgTable(
+  "dear_frederick_submissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    image_url: text("image_url").notNull(),
+    signature: text("signature"),
+    contact: text("contact"),
+    note: text("note"),
+    status: text("status").notNull().default("pending"), // pending | approved | rejected
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    decided_at: timestamp("decided_at", { withTimezone: true }),
+  },
+  (t) => ({
+    statusIdx: index("dear_frederick_submissions_status_idx").on(t.status),
+    createdIdx: index("dear_frederick_submissions_created_idx").on(t.created_at),
+  }),
+);
+
+// ════════════════════════════════════════════════════════════════════
+//                  Native restaurant menu data plane
+// ════════════════════════════════════════════════════════════════════
+//
+// These tables are the provider-neutral storage behind native menu reading
+// and item search. `place_slug` remains a loose key because the runtime place
+// catalog is file-sourced and can be ahead of the database mirror. The
+// hand-applied migration enables deny-all RLS for anon/authenticated; app reads
+// and all writes stay server-side through DATABASE_URL.
+
+export const menu_sources = pgTable(
+  "menu_sources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    place_slug: text("place_slug").notNull(),
+    provider: text("provider").notNull(),
+    source_kind: text("source_kind").notNull(),
+    source_key: text("source_key").notNull(),
+    source_label: text("source_label").notNull(),
+    source_url: text("source_url"),
+    external_merchant_id: text("external_merchant_id"),
+    provenance_method: text("provenance_method").notNull(),
+    provenance: jsonb("provenance")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    record_status: text("record_status").notNull().default("draft"),
+    verification_status: text("verification_status").notNull().default("unverified"),
+    freshness_status: text("freshness_status").notNull().default("unknown"),
+    content_hash: text("content_hash"),
+    source_updated_at: timestamp("source_updated_at", { withTimezone: true }),
+    checked_at: timestamp("checked_at", { withTimezone: true }),
+    valid_until: timestamp("valid_until", { withTimezone: true }),
+    published_at: timestamp("published_at", { withTimezone: true }),
+    last_error: text("last_error"),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    identityUq: uniqueIndex("menu_sources_identity_uq").on(
+      t.place_slug,
+      t.provider,
+      t.source_key,
+    ),
+    publicPlaceIdx: index("menu_sources_public_place_idx")
+      .on(t.place_slug, t.valid_until)
+      .where(
+        sql`${t.record_status} = 'published'
+          and ${t.verification_status} = 'verified'
+          and ${t.freshness_status} = 'current'`,
+      ),
+    providerCheck: check(
+      "menu_sources_provider_check",
+      sql`${t.provider} in (
+        'toast',
+        'square',
+        'clover',
+        'official_website',
+        'owner_upload',
+        'manual',
+        'other'
+      )`,
+    ),
+    kindCheck: check(
+      "menu_sources_kind_check",
+      sql`${t.source_kind} in (
+        'pos_api',
+        'official_html',
+        'official_pdf',
+        'owner_upload',
+        'manual'
+      )`,
+    ),
+    provenanceMethodCheck: check(
+      "menu_sources_provenance_method_check",
+      sql`${t.provenance_method} in (
+        'merchant_authorized',
+        'official_public_source',
+        'business_submission',
+        'manual_verification'
+      )`,
+    ),
+    statusCheck: check(
+      "menu_sources_record_status_check",
+      sql`${t.record_status} in ('draft', 'published', 'archived')`,
+    ),
+    verificationCheck: check(
+      "menu_sources_verification_status_check",
+      sql`${t.verification_status} in ('unverified', 'verified', 'rejected')`,
+    ),
+    freshnessCheck: check(
+      "menu_sources_freshness_status_check",
+      sql`${t.freshness_status} in ('unknown', 'current', 'stale', 'error')`,
+    ),
+    provenanceObjectCheck: check(
+      "menu_sources_provenance_object_check",
+      sql`jsonb_typeof(${t.provenance}) = 'object'`,
+    ),
+    validWindowCheck: check(
+      "menu_sources_valid_window_check",
+      sql`${t.valid_until} is null
+        or ${t.checked_at} is null
+        or ${t.valid_until} > ${t.checked_at}`,
+    ),
+    publishableCheck: check(
+      "menu_sources_publishable_check",
+      sql`${t.record_status} <> 'published'
+        or (
+          ${t.verification_status} = 'verified'
+          and ${t.freshness_status} = 'current'
+          and ${t.checked_at} is not null
+          and ${t.valid_until} is not null
+          and ${t.published_at} is not null
+          and ${t.valid_until} > ${t.checked_at}
+        )`,
+    ),
+  }),
+);
+
+export const native_menus = pgTable(
+  "native_menus",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    source_id: uuid("source_id")
+      .notNull()
+      .references(() => menu_sources.id, { onDelete: "cascade" }),
+    source_key: text("source_key").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    menu_type: text("menu_type").notNull().default("other"),
+    currency: text("currency").notNull().default("USD"),
+    canonical_url: text("canonical_url"),
+    provenance_url: text("provenance_url"),
+    provenance: jsonb("provenance")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    record_status: text("record_status").notNull().default("draft"),
+    freshness_status: text("freshness_status").notNull().default("unknown"),
+    content_hash: text("content_hash"),
+    source_updated_at: timestamp("source_updated_at", { withTimezone: true }),
+    checked_at: timestamp("checked_at", { withTimezone: true }),
+    valid_until: timestamp("valid_until", { withTimezone: true }),
+    published_at: timestamp("published_at", { withTimezone: true }),
+    sort_order: integer("sort_order").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    sourceKeyUq: uniqueIndex("native_menus_source_key_uq").on(t.source_id, t.source_key),
+    publicSourceIdx: index("native_menus_public_source_idx")
+      .on(t.source_id, t.sort_order, t.valid_until)
+      .where(
+        sql`${t.record_status} = 'published'
+          and ${t.freshness_status} = 'current'`,
+      ),
+    typeCheck: check(
+      "native_menus_type_check",
+      sql`${t.menu_type} in (
+        'main',
+        'breakfast',
+        'brunch',
+        'lunch',
+        'dinner',
+        'kids',
+        'drinks',
+        'dessert',
+        'happy_hour',
+        'catering',
+        'other'
+      )`,
+    ),
+    currencyCheck: check(
+      "native_menus_currency_check",
+      sql`${t.currency} ~ '^[A-Z]{3}$'`,
+    ),
+    statusCheck: check(
+      "native_menus_record_status_check",
+      sql`${t.record_status} in ('draft', 'published', 'archived')`,
+    ),
+    freshnessCheck: check(
+      "native_menus_freshness_status_check",
+      sql`${t.freshness_status} in ('unknown', 'current', 'stale', 'error')`,
+    ),
+    provenanceObjectCheck: check(
+      "native_menus_provenance_object_check",
+      sql`jsonb_typeof(${t.provenance}) = 'object'`,
+    ),
+    validWindowCheck: check(
+      "native_menus_valid_window_check",
+      sql`${t.valid_until} is null
+        or ${t.checked_at} is null
+        or ${t.valid_until} > ${t.checked_at}`,
+    ),
+    publishableCheck: check(
+      "native_menus_publishable_check",
+      sql`${t.record_status} <> 'published'
+        or (
+          ${t.freshness_status} = 'current'
+          and ${t.checked_at} is not null
+          and ${t.valid_until} is not null
+          and ${t.published_at} is not null
+          and ${t.valid_until} > ${t.checked_at}
+        )`,
+    ),
+  }),
+);
+
+export const menu_sections = pgTable(
+  "menu_sections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    menu_id: uuid("menu_id")
+      .notNull()
+      .references(() => native_menus.id, { onDelete: "cascade" }),
+    source_key: text("source_key").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    provenance_url: text("provenance_url"),
+    provenance: jsonb("provenance")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    record_status: text("record_status").notNull().default("draft"),
+    freshness_status: text("freshness_status").notNull().default("unknown"),
+    content_hash: text("content_hash"),
+    source_updated_at: timestamp("source_updated_at", { withTimezone: true }),
+    checked_at: timestamp("checked_at", { withTimezone: true }),
+    valid_until: timestamp("valid_until", { withTimezone: true }),
+    published_at: timestamp("published_at", { withTimezone: true }),
+    sort_order: integer("sort_order").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    menuKeyUq: uniqueIndex("menu_sections_menu_key_uq").on(t.menu_id, t.source_key),
+    publicMenuIdx: index("menu_sections_public_menu_idx")
+      .on(t.menu_id, t.sort_order, t.valid_until)
+      .where(
+        sql`${t.record_status} = 'published'
+          and ${t.freshness_status} = 'current'`,
+      ),
+    statusCheck: check(
+      "menu_sections_record_status_check",
+      sql`${t.record_status} in ('draft', 'published', 'archived')`,
+    ),
+    freshnessCheck: check(
+      "menu_sections_freshness_status_check",
+      sql`${t.freshness_status} in ('unknown', 'current', 'stale', 'error')`,
+    ),
+    provenanceObjectCheck: check(
+      "menu_sections_provenance_object_check",
+      sql`jsonb_typeof(${t.provenance}) = 'object'`,
+    ),
+    validWindowCheck: check(
+      "menu_sections_valid_window_check",
+      sql`${t.valid_until} is null
+        or ${t.checked_at} is null
+        or ${t.valid_until} > ${t.checked_at}`,
+    ),
+    publishableCheck: check(
+      "menu_sections_publishable_check",
+      sql`${t.record_status} <> 'published'
+        or (
+          ${t.freshness_status} = 'current'
+          and ${t.checked_at} is not null
+          and ${t.valid_until} is not null
+          and ${t.published_at} is not null
+          and ${t.valid_until} > ${t.checked_at}
+        )`,
+    ),
+  }),
+);
+
+export const menu_items = pgTable(
+  "menu_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    section_id: uuid("section_id")
+      .notNull()
+      .references(() => menu_sections.id, { onDelete: "cascade" }),
+    source_key: text("source_key").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    price_minor: integer("price_minor"),
+    price_currency: text("price_currency").notNull().default("USD"),
+    price_display: text("price_display"),
+    availability_status: text("availability_status").notNull().default("unknown"),
+    availability_evidence: text("availability_evidence")
+      .notNull()
+      .default("not_provided"),
+    availability_checked_at: timestamp("availability_checked_at", {
+      withTimezone: true,
+    }),
+    dietary_tags: text("dietary_tags")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    dietary_evidence: text("dietary_evidence").notNull().default("not_provided"),
+    allergen_statement: text("allergen_statement"),
+    calorie_count: integer("calorie_count"),
+    order_url: text("order_url"),
+    provenance_url: text("provenance_url"),
+    provenance: jsonb("provenance")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    record_status: text("record_status").notNull().default("draft"),
+    freshness_status: text("freshness_status").notNull().default("unknown"),
+    content_hash: text("content_hash"),
+    source_updated_at: timestamp("source_updated_at", { withTimezone: true }),
+    checked_at: timestamp("checked_at", { withTimezone: true }),
+    valid_until: timestamp("valid_until", { withTimezone: true }),
+    published_at: timestamp("published_at", { withTimezone: true }),
+    sort_order: integer("sort_order").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    sectionKeyUq: uniqueIndex("menu_items_section_key_uq").on(t.section_id, t.source_key),
+    publicSectionIdx: index("menu_items_public_section_idx")
+      .on(t.section_id, t.sort_order, t.valid_until)
+      .where(
+        sql`${t.record_status} = 'published'
+          and ${t.freshness_status} = 'current'`,
+      ),
+    searchIdx: index("menu_items_search_idx").using(
+      "gin",
+      sql`to_tsvector(
+        'english',
+        coalesce(${t.name}, '') || ' ' || coalesce(${t.description}, '')
+      )`,
+    ),
+    priceCheck: check(
+      "menu_items_price_minor_check",
+      sql`${t.price_minor} is null or ${t.price_minor} >= 0`,
+    ),
+    currencyCheck: check(
+      "menu_items_price_currency_check",
+      sql`${t.price_currency} ~ '^[A-Z]{3}$'`,
+    ),
+    calorieCheck: check(
+      "menu_items_calorie_count_check",
+      sql`${t.calorie_count} is null or ${t.calorie_count} >= 0`,
+    ),
+    availabilityCheck: check(
+      "menu_items_availability_status_check",
+      sql`${t.availability_status} in (
+        'unknown',
+        'available',
+        'unavailable',
+        'sold_out',
+        'seasonal'
+      )`,
+    ),
+    availabilityEvidenceCheck: check(
+      "menu_items_availability_evidence_check",
+      sql`${t.availability_evidence} in (
+        'not_provided',
+        'provider_api',
+        'business_submission',
+        'official_menu',
+        'manual_verification'
+      )`,
+    ),
+    availabilityClaimCheck: check(
+      "menu_items_availability_claim_check",
+      sql`${t.availability_status} = 'unknown'
+        or (
+          ${t.availability_evidence} <> 'not_provided'
+          and ${t.availability_checked_at} is not null
+        )`,
+    ),
+    dietaryEvidenceCheck: check(
+      "menu_items_dietary_evidence_check",
+      sql`${t.dietary_evidence} in (
+        'not_provided',
+        'provider_api',
+        'business_submission',
+        'official_menu',
+        'manual_verification'
+      )`,
+    ),
+    dietaryClaimCheck: check(
+      "menu_items_dietary_claim_check",
+      sql`(
+          cardinality(${t.dietary_tags}) = 0
+          and ${t.allergen_statement} is null
+          and ${t.calorie_count} is null
+        )
+        or ${t.dietary_evidence} <> 'not_provided'`,
+    ),
+    statusCheck: check(
+      "menu_items_record_status_check",
+      sql`${t.record_status} in ('draft', 'published', 'archived')`,
+    ),
+    freshnessCheck: check(
+      "menu_items_freshness_status_check",
+      sql`${t.freshness_status} in ('unknown', 'current', 'stale', 'error')`,
+    ),
+    provenanceObjectCheck: check(
+      "menu_items_provenance_object_check",
+      sql`jsonb_typeof(${t.provenance}) = 'object'`,
+    ),
+    validWindowCheck: check(
+      "menu_items_valid_window_check",
+      sql`${t.valid_until} is null
+        or ${t.checked_at} is null
+        or ${t.valid_until} > ${t.checked_at}`,
+    ),
+    publishableCheck: check(
+      "menu_items_publishable_check",
+      sql`${t.record_status} <> 'published'
+        or (
+          ${t.freshness_status} = 'current'
+          and ${t.checked_at} is not null
+          and ${t.valid_until} is not null
+          and ${t.published_at} is not null
+          and ${t.valid_until} > ${t.checked_at}
+        )`,
+    ),
+  }),
+);

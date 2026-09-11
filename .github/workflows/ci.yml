@@ -1,59 +1,211 @@
-name: ci
+name: CI
 
-# The mechanical quality gate. Runs on every PR and on push to main:
-# typecheck, lint, unit tests, and a production build. This is what
-# makes the two-agent handoff in AGENTS.md ("tests must pass before
-# committing") enforceable by a machine instead of by honor system.
+run-name: >-
+  ${{ inputs.automated_pr_token != '' && format('CI / automated {0}', inputs.automated_pr_token) || format('CI / {0}', github.ref_name) }}
+
+# The mechanical quality gate the repo was missing: typecheck, lint,
+# unit tests, and one production build on every PR. Vercel owns the one
+# post-merge build from main; rebuilding the same reviewed revision in Actions
+# spent runner minutes without adding another release decision.
+# Until now CI only ran editorial-style + data-freshness checks, so a
+# type error or failing test could land on main unnoticed — especially
+# risky with autonomous agents committing. A green check here is the
+# enforceable version of "tests must pass before committing."
 
 on:
-  pull_request: {}
-  push:
-    branches: [main]
-  workflow_dispatch: {}
+  pull_request:
+  # Bot-created pull requests use the repository token. GitHub holds their
+  # pull_request runs for manual approval, so the creating workflow explicitly
+  # dispatches these same secret-free gates on the allowlisted bot branch.
+  workflow_dispatch:
+    inputs:
+      automated_pr_branch:
+        description: Trusted bot branch validated by automated-pr-checks
+        required: false
+        type: string
+      automated_pr_head_sha:
+        description: Exact trusted bot head validated by automated-pr-checks
+        required: false
+        type: string
+      automated_pr_style_run_id:
+        description: Exact style workflow run paired by automated-pr-checks
+        required: false
+        type: string
+      automated_pr_token:
+        description: One-time correlation token for an automated PR gate pair
+        required: false
+        type: string
 
-permissions:
-  contents: read
-
+# Cancel superseded runs on the same ref so a rapid push series doesn't
+# queue stale builds.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
+    env:
+      # Automated publishers are already constrained to exact JSON/Markdown
+      # allowlists by automated-pr-checks and the status bridge. They need a
+      # data-release gate, not another full application/browser build. Vercel
+      # still builds the merged revision before it can reach Production.
+      AUTOMATED_DATA_PR: ${{ github.event_name == 'workflow_dispatch' && inputs.automated_pr_branch != '' && inputs.automated_pr_head_sha != '' && '1' || '0' }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version-file: .nvmrc
-          cache: npm
-
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
       - name: Install dependencies
-        # Prefer `npm ci` (reproducible, lockfile-exact). Falls back to
-        # `npm install` if the lockfile was authored under a different
-        # Node and reports drift. Once the lock is regenerated on the
-        # pinned Node (.nvmrc), drop the fallback so a lock mismatch
-        # fails the build loudly instead of healing silently.
-        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
-
+        run: npm ci
+      - name: Validate automated data dispatch identity
+        if: ${{ env.AUTOMATED_DATA_PR == '1' }}
+        env:
+          AUTOMATED_PR_BRANCH: ${{ inputs.automated_pr_branch }}
+          AUTOMATED_PR_HEAD_SHA: ${{ inputs.automated_pr_head_sha }}
+        run: |
+          set -euo pipefail
+          case "$AUTOMATED_PR_BRANCH" in
+            bot/*) ;;
+            *) echo "Refusing non-bot automated data branch: $AUTOMATED_PR_BRANCH"; exit 1 ;;
+          esac
+          test "$GITHUB_SHA" = "$AUTOMATED_PR_HEAD_SHA"
+          test "$GITHUB_REF" = "refs/heads/$AUTOMATED_PR_BRANCH"
+      - name: Enforce tracked-file size budget
+        run: npm run audit:repo-size
+      - name: Audit production dependencies
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        run: npm audit --omit=dev --audit-level=high
+      # The heap limit lives in the npm script, not here, so every caller
+      # gets it.
+      #
+      # tsc infers a literal type per entry of the committed JSON catalogs, so
+      # its memory tracks the DATA, not the code. A routine hours refresh that
+      # restores ~209 places' schedules is enough to push a COLD check past
+      # Node's ~2 GB default heap and abort with exit 134. Cold is the only
+      # mode that matters here: tsconfig sets incremental, but
+      # tsconfig.tsbuildinfo is gitignored, so a fresh CI checkout never has
+      # it while a developer's working copy almost always does. That gap is
+      # why this failed on every nightly data PR and passed for everyone
+      # locally, including on the very data that was failing.
       - name: Typecheck
-        run: npx tsc --noEmit
-
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        run: npm run typecheck
       - name: Lint
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: npm run lint
-
+      - name: Audit data-source registry
+        run: npm run audit:sources
+      - name: Audit automation ownership
+        run: npm run audit:automation
+      - name: Audit migration ledger
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        run: npm run db:audit
+      - name: Validate committed transit data
+        run: npm run validate:transit-data
+      - name: Validate automated data artifacts
+        if: ${{ env.AUTOMATED_DATA_PR == '1' }}
+        run: npm run test:data-artifacts
       - name: Unit tests
-        run: npm test
-
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        run: npm run test:all
       - name: Build
-        # Build with telemetry off and a dummy NWS UA so the build does
-        # not depend on secrets. Live features stay inert in CI; the
-        # build only needs to prove every route generates.
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        run: npm run build
+        env:
+          # Build must not require real secrets; the app is written to
+          # degrade when these are absent. Provide empty defaults so the
+          # build exercises the real code paths without external calls.
+          NEXT_TELEMETRY_DISABLED: "1"
+          # Next's route/type analysis crosses Node's ~2 GB default heap on a
+          # cold Linux runner. Keep enough headroom for the OS and Chromium.
+          NODE_OPTIONS: "--max-old-space-size=4096"
+      - name: Install Chromium
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        timeout-minutes: 10
+        run: npx playwright install --with-deps chromium
+      - name: Component workshop tests
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        run: npm run test:storybook
+      - name: Production browser and connected-journey gate
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        run: npm run test:release
         env:
           NEXT_TELEMETRY_DISABLED: "1"
-          NWS_USER_AGENT: "frederick-radius-ci (ci@frederickradius.app)"
-        run: npm run build
+          PW_PRODUCTION: "1"
+      - name: Exercise combined dependency failures and app upgrades
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        run: >-
+          npx playwright test
+          e2e/critical-dependency-chaos.spec.ts
+          e2e/service-worker-upgrade-contract.spec.ts
+          --project=chromium
+          --workers=1
+          --retries=1
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          PW_PRODUCTION: "1"
+      - name: Keep browser failure traces
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-browser-failure-traces
+          path: test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  attach-automated-pr-checks:
+    # Start the trusted status bridge only after the expensive CI gate ends.
+    # Style normally finishes before CI, so this short runner observes
+    # completed work instead of polling for the full production build.
+    needs: verify
+    if: >-
+      always() &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.automated_pr_branch != '' &&
+      inputs.automated_pr_head_sha != '' &&
+      inputs.automated_pr_style_run_id != '' &&
+      inputs.automated_pr_token != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Attach completed bot checks to the merge revision
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          AUTOMATED_PR_BRANCH: ${{ inputs.automated_pr_branch }}
+          AUTOMATED_PR_HEAD_SHA: ${{ inputs.automated_pr_head_sha }}
+          AUTOMATED_PR_STYLE_RUN_ID: ${{ inputs.automated_pr_style_run_id }}
+          AUTOMATED_PR_TOKEN: ${{ inputs.automated_pr_token }}
+        with:
+          script: |
+            const branch = process.env.AUTOMATED_PR_BRANCH;
+            const headSha = process.env.AUTOMATED_PR_HEAD_SHA;
+            const styleRunId = process.env.AUTOMATED_PR_STYLE_RUN_ID;
+            const dispatchToken = process.env.AUTOMATED_PR_TOKEN;
+            if (context.sha !== headSha) {
+              core.setFailed(`The dispatched CI revision moved: expected ${headSha}, got ${context.sha}.`);
+              return;
+            }
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'automated-pr-status-bridge.yml',
+              ref: 'main',
+              inputs: {
+                branch,
+                head_sha: headSha,
+                ci_run_id: String(context.runId),
+                style_run_id: styleRunId,
+                dispatch_token: dispatchToken,
+              },
+            });

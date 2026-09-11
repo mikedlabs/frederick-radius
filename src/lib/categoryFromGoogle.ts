@@ -52,8 +52,11 @@ const MAP: Record<string, string> = {
   ramen_restaurant: "restaurant",
   sushi_restaurant: "restaurant",
   vegetarian_restaurant: "restaurant",
-  ice_cream_shop: "restaurant",
-  dessert_shop: "restaurant",
+  // The guide has a first-class "Ice cream & treats" category; sending
+  // these to "restaurant" would hide every future-enriched scoop shop
+  // from it (found in the July 2026 category audit after the pizza gap).
+  ice_cream_shop: "ice-cream",
+  dessert_shop: "ice-cream",
   donut_shop: "bakery",
   // Lodging
   lodging: "lodging",
@@ -114,11 +117,13 @@ const MAP: Record<string, string> = {
   supermarket: "market",
   farm: "market",
   market: "market",
-  // Wellness
-  gym: "wellness",
-  fitness_center: "wellness",
+  // Wellness — fitness rolls into "Yoga & fitness"; personal care splits
+  // into its own browsable subcategories (massage / salon / spa) so a visitor
+  // can find a massage or a haircut instead of scanning one giant list.
+  gym: "yoga",
+  fitness_center: "yoga",
   yoga_studio: "yoga",
-  spa: "wellness",
+  spa: "spa",
   wellness_center: "wellness",
   // Transit / parking
   transit_station: "transit",
@@ -146,20 +151,20 @@ const MAP: Record<string, string> = {
   hospital: "wellness",
   physiotherapist: "wellness",
   chiropractor: "wellness",
-  hair_salon: "wellness",
-  beauty_salon: "wellness",
-  barber_shop: "wellness",
-  nail_salon: "wellness",
-  massage: "wellness",
-  tanning_studio: "wellness",
+  hair_salon: "salon",
+  beauty_salon: "salon",
+  barber_shop: "salon",
+  nail_salon: "salon",
+  massage: "massage",
+  tanning_studio: "spa",
   // Community → civic
   association_or_organization: "civic",
   non_profit_organization: "civic",
   community_center: "civic",
   // Practical → services
   bank: "services",
-  car_repair: "services",
-  car_wash: "services",
+  car_repair: "auto-care",
+  car_wash: "auto-care",
   laundry: "services",
   // Retail → shopping
   liquor_store: "shopping",
@@ -174,7 +179,7 @@ const MAP: Record<string, string> = {
   thrift_store: "shopping",
   home_improvement_store: "shopping",
   building_materials_store: "shopping",
-  tire_shop: "services",
+  tire_shop: "auto-care",
   gas_station: "services",
   body_art_service: "wellness", // tattoo / piercing
   swimming_pool: "wellness",
@@ -189,10 +194,13 @@ const MAP: Record<string, string> = {
   buffet_restaurant: "restaurant",
   food_court: "restaurant",
   brewpub: "brewery",
-  distillery: "brewery", // tagged via subcategory "distillery" at render
-  cidery: "brewery",
-  meadery: "brewery",
-  winery: "brewery",
+  // These have first-class Radius categories. Collapsing them into brewery
+  // made wineries appear on the beer page and left the dedicated wine and
+  // spirits routes incomplete.
+  distillery: "distillery",
+  cidery: "winery",
+  meadery: "winery",
+  winery: "winery",
   amusement_center: "family",
   amusement_park: "family",
   zoo: "family",
@@ -264,7 +272,7 @@ const MAP: Record<string, string> = {
   farmers_market: "market",
   garden_center: "shopping",
   // Wellness expansion
-  massage_spa: "wellness",
+  massage_spa: "massage",
   sports_school: "wellness",
   sports_club: "wellness",
   sports_activity_location: "wellness",

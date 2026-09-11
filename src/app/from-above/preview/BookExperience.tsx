@@ -10,6 +10,7 @@ import {
 import dynamic from "next/dynamic";
 import { motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
+import ExitChip from "@/components/from-above/ExitChip";
 
 /**
  * BookExperience — the /from-above coffee-table-book preview, now
@@ -120,9 +121,12 @@ export default function BookExperience({ cover, photos }: Props) {
 
   return (
     <main
+      id="main-content"
+      tabIndex={-1}
       className="relative isolate min-h-[100dvh] w-full overflow-hidden bg-black text-white"
       style={{ perspective: "1800px", perspectiveOrigin: "50% 50%" }}
     >
+      <h1 className="sr-only">From Above, a Frederick photography book</h1>
       {/* Soft background hue — same time-of-day-ish wash from the
           previous build, kept so the dark stage doesn't feel sterile
           when the book is mid-flight. */}
@@ -134,6 +138,11 @@ export default function BookExperience({ cover, photos }: Props) {
             "radial-gradient(120% 90% at 50% 0%, rgba(160,90,40,0.18), transparent 60%), radial-gradient(120% 90% at 50% 100%, rgba(50,80,140,0.18), transparent 60%)",
         }}
       />
+
+      {/* Persistent way back into the app — this route lives outside the
+          (app) group, so there's no TopBar to lean on. The FlipStage's
+          chapter chip sits one row below to keep the corner clear. */}
+      <ExitChip dark />
 
       {phase === "closed" || phase === "opening" ? (
         <CoverStage
@@ -332,7 +341,7 @@ const FlipStage = forwardRef<FlipBookHandle, FlipStageProps>(function FlipStage(
           so it doesn't get caught in the page-flip transform. */}
       <div
         key={`chap-${chapter.label}`}
-        className="fade-up pointer-events-none absolute left-[max(env(safe-area-inset-left),16px)] top-[max(env(safe-area-inset-top),16px)] flex items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.22em] backdrop-blur-md"
+        className="fade-up pointer-events-none absolute left-[max(env(safe-area-inset-left),16px)] top-[calc(max(env(safe-area-inset-top),16px)+44px)] flex items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.22em] backdrop-blur-md"
       >
         <span
           aria-hidden
@@ -409,7 +418,7 @@ const PageFrame = forwardRef<
 const EndPage = forwardRef<HTMLDivElement, { cover: string; onClose: () => void }>(
   function EndPage({ cover, onClose }, ref) {
     return (
-      <div ref={ref} className="grid h-full w-full place-items-center bg-[#0e0e0e] px-6">
+      <div ref={ref} className="grid h-full w-full place-items-center bg-[var(--app-ink,#0e0e0e)] px-6">
         <div className="w-full max-w-[360px] text-center">
           <div
             className="mx-auto mb-4 overflow-hidden rounded-[2px]"
@@ -432,7 +441,7 @@ const EndPage = forwardRef<HTMLDivElement, { cover: string; onClose: () => void 
             The hardcover. 152 photos. Six years of mornings and storms.
           </div>
           <a
-            href="https://miked.store"
+            href="https://www.miked.store"
             target="_blank"
             rel="noopener noreferrer"
             className="mt-5 grid w-full place-items-center rounded-full bg-white px-4 py-3 text-[14px] font-semibold tracking-tight text-black transition hover:bg-white/90"

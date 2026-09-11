@@ -1,8 +1,19 @@
 import type { Metadata } from "next";
-import { Mountain, Footprints, Bike, Dog, Accessibility, ExternalLink } from "lucide-react";
-import { getFrederickTrails, type Trail } from "@/lib/integrations/fcTrails";
+import Link from "next/link";
+import { Mountain, Footprints, Bike, Dog, ExternalLink, ArrowRight } from "lucide-react";
+import {
+  getFrederickTrails,
+  getFrederickTrailShapes,
+  type Trail,
+} from "@/lib/integrations/fcTrails";
+import { getCountyBoundary } from "@/lib/integrations/fcGis";
+import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { MAPBOX_TOKEN } from "@/lib/mapbox";
+import { Row, RowList, IconTile } from "@/components/ui/Row";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import TrailsMap from "@/components/trails/TrailsMap";
+
+const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
 export const metadata: Metadata = {
   // Orphan-by-design: this surface has real content but no
@@ -13,12 +24,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
   title: "Trails",
   description:
-    "Every maintained trail in Frederick County — park, surface, length, and what you can do on it. Live from Frederick County GIS.",
+    "Browse Frederick County trail details and see official county trail geometry on the map.",
 };
 
 // Trails change rarely; the integration revalidates weekly.
 export const revalidate = 604800;
 
+// Leading glyph reflects the trail's primary use (hike/bike/dog),
+// falling back to the mountain mark — a little variety in the row rail.
 const USE_ICON: Record<string, typeof Footprints> = {
   hiking: Footprints,
   "mountain biking": Bike,
@@ -26,132 +39,41 @@ const USE_ICON: Record<string, typeof Footprints> = {
   dogs: Dog,
 };
 
-/** Mapbox static-image URL centered on the trail's start point.
- *  Same outdoors style as /parks so the two surfaces read as one
- *  family. Lazy-loaded by the consuming <img>. */
-function mapPreviewUrl(lng: number, lat: number): string | null {
-  if (!MAPBOX_TOKEN || typeof lng !== "number" || typeof lat !== "number") {
-    return null;
-  }
-  return (
-    `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/` +
-    `pin-l+1E6B3A(${lng},${lat})/${lng},${lat},14/560x280@2x?` +
-    `access_token=${MAPBOX_TOKEN}`
-  );
-}
-
-function TrailCard({ t }: { t: Trail }) {
-  const meta = [
-    t.lengthMi ? `${t.lengthMi} mi` : null,
+/** One dense trail row: name + park/surface + length, taps to the map. */
+function TrailRow({ t }: { t: Trail }) {
+  const Icon = USE_ICON[t.uses[0] ?? ""] ?? Mountain;
+  const bits = [
+    t.park && t.park !== t.name ? t.park : null,
     t.surface || null,
     t.skill || null,
+    t.ada ? "ADA" : null,
   ].filter(Boolean);
-  const mapUrl = mapPreviewUrl(t.lng, t.lat);
   return (
-    <article
-      className="tactile tactile-interactive group relative flex flex-col overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] transition"
-      style={{
-        borderColor: "var(--app-border)",
-        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-      }}
-    >
-      {/* Terrain preview — Mapbox outdoors-v12 with a green pin at
-          the trailhead. Lazy-loaded so a hundred-card page doesn't
-          fire a hundred image fetches at once. */}
-      <div
-        className="relative aspect-[2/1] w-full overflow-hidden"
-        style={{
-          background:
-            "color-mix(in srgb, var(--app-positive) 8%, var(--app-bg-sunken))",
-        }}
-      >
-        {mapUrl ? (
-          <img
-            src={mapUrl}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div
-            aria-hidden
-            className="grid h-full w-full place-items-center"
-            style={{
-              background:
-                "linear-gradient(140deg, color-mix(in srgb, #1E6B3A 60%, white) 0%, #1E6B3A 100%)",
-            }}
-          >
-            <Mountain className="h-16 w-16 opacity-30" style={{ color: "white" }} />
-          </div>
-        )}
-        {/* Length chip top-left — primary fact people scan for */}
-        {t.lengthMi != null && (
-          <span
-            className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] backdrop-blur"
-            style={{ color: "var(--app-positive, #1E6B3A)" }}
-          >
-            <Mountain className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
-            {t.lengthMi} mi
-          </span>
-        )}
-        {/* Difficulty / surface chip top-right when present */}
-        {t.skill && (
-          <span
-            className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold capitalize backdrop-blur"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {t.skill}
-          </span>
-        )}
-      </div>
-
-      <a
-        href={`/map?focus=${t.lat},${t.lng}`}
-        className="flex flex-1 flex-col gap-1.5 px-3.5 pt-3 pb-3"
-      >
-        <span className="absolute inset-0" aria-hidden />
-        <span
-          className="block font-serif text-[16px] font-semibold leading-tight tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          {t.name}
-        </span>
-        {t.park && t.park !== t.name && (
-          <span
-            className="line-clamp-1 text-[12px]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            {t.park}
-          </span>
-        )}
-        <span
-          className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {meta.length > 0 && meta[0] !== `${t.lengthMi} mi` && <span>{meta.filter((m) => m !== `${t.lengthMi} mi`).join(" · ")}</span>}
-          {t.ada && (
-            <span className="inline-flex items-center gap-1">
-              <Accessibility className="h-3 w-3" strokeWidth={2} aria-hidden /> ADA
-            </span>
-          )}
-          {t.uses.map((u) => {
-            const Icon = USE_ICON[u];
-            return (
-              <span key={u} className="inline-flex items-center gap-1 capitalize">
-                {Icon && <Icon className="h-3 w-3" strokeWidth={2} aria-hidden />}
-                {u}
-              </span>
-            );
-          })}
-        </span>
-      </a>
-    </article>
+    <Row
+      href={`/map?at=${t.lat},${t.lng}`}
+      leading={<IconTile icon={Icon} tone="var(--app-positive)" />}
+      title={t.name}
+      subtitle={bits.length ? bits.join(" · ") : undefined}
+      meta={t.lengthMi != null ? `${t.lengthMi} mi` : undefined}
+    />
   );
 }
 
 export default async function TrailsPage() {
-  const trails = await getFrederickTrails();
+  // The list (curated), the map's trail geometry (county Parks GIS), and the
+  // county outline all load together; each degrades to empty on a feed hiccup
+  // so a slow county server never blocks the page.
+  const [trails, trailLines, countyBoundary] = await Promise.all([
+    getFrederickTrails(),
+    getFrederickTrailShapes().catch(() => EMPTY_FC),
+    getCountyBoundary().catch(() => EMPTY_FC),
+  ]);
+
+  // Tappable trailhead pins for the map: our own trail records (the trail
+  // category plus Sugarloaf, which is a natural area tagged with a trail).
+  const trailPoints = publicPlaces()
+    .filter((p) => p.category === "trail" || (p.subcategories ?? []).includes("trail"))
+    .map((p) => decoratePlace(p));
 
   const byMuni = new Map<string, Trail[]>();
   for (const t of trails) {
@@ -171,16 +93,49 @@ export default async function TrailsPage() {
     <div className="space-y-6">
       <header className="space-y-1.5">
         <p className="eyebrow">
-          Frederick County GIS · live
+          Frederick County GIS
         </p>
         <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
           Trails
         </h1>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Every maintained trail in the county — surface, length, and what
-          you can do on it. Tap one to see it on the map.
+          Compare known trail length, surface, and uses. The map draws the
+          county&apos;s official trail geometry where it is available.
         </p>
       </header>
+
+      <TrailsMap
+        places={trailPoints}
+        trailLines={trailLines}
+        countyBoundary={countyBoundary}
+        segmentCount={trailLines.features.length}
+      />
+
+      <Link
+        href="/collections/where-to-ride"
+        className="flex min-h-11 items-center gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-3 transition active:scale-[0.99]"
+        style={{
+          borderColor: "color-mix(in srgb, var(--app-brand-2) 35%, var(--app-border))",
+          background: "color-mix(in srgb, var(--app-brand-2) 7%, var(--app-bg-elevated))",
+        }}
+      >
+        <span
+          aria-hidden
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+          style={{ background: "color-mix(in srgb, var(--app-brand-2) 16%, transparent)", color: "var(--app-brand-2)" }}
+        >
+          <Bike className="h-4 w-4" strokeWidth={2.25} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            Where to ride
+          </span>
+          <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+            The best bike paths, from the C&amp;O towpath to the watershed singletrack.
+          </span>
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+      </Link>
 
       {trails.length === 0 ? (
         <section
@@ -189,8 +144,8 @@ export default async function TrailsPage() {
         >
           <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             We&rsquo;re rebuilding our connection to the county trail
-            layer. In the meantime, these three sources cover ~95% of
-            the trails locals use:
+            layer. Use these public trail sources while the feed is
+            unavailable:
           </p>
           <ul className="space-y-2">
             {[
@@ -202,7 +157,7 @@ export default async function TrailsPage() {
               {
                 href: "https://www.nps.gov/choh/index.htm",
                 title: "C&O Canal Towpath · NPS",
-                meta: "184 miles flat from Cumberland to Georgetown — Brunswick &amp; Point of Rocks segments",
+                meta: "184 miles flat from Cumberland to Georgetown. Brunswick &amp; Point of Rocks segments",
               },
               {
                 href: "https://www.frederickcountymd.gov/253/Trails",
@@ -221,9 +176,9 @@ export default async function TrailsPage() {
                   <span
                     aria-hidden
                     className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
-                    style={{ background: "color-mix(in srgb, var(--app-positive, #1E6B3A) 14%, transparent)" }}
+                    style={{ background: "color-mix(in srgb, var(--app-positive, #315A43) 14%, transparent)" }}
                   >
-                    <Mountain className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-positive, #1E6B3A)" }} />
+                    <Mountain className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-positive, #315A43)" }} />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
@@ -239,46 +194,40 @@ export default async function TrailsPage() {
             ))}
           </ul>
           <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-            The full searchable list returns once we&rsquo;ve wired the
-            new feed.
+            The searchable list will return when the feed reconnects.
           </p>
         </section>
       ) : (
         <>
           <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            <strong className="font-serif text-base font-semibold" style={{ color: "var(--app-positive, #1E6B3A)" }}>
+            <strong className="font-serif text-base font-semibold" style={{ color: "var(--app-positive, #315A43)" }}>
               {trails.length}
             </strong>{" "}
             trails across {groups.length} {groups.length === 1 ? "area" : "areas"}
           </p>
-          {groups.map((g) => (
-            <section key={g.slug} className="space-y-3">
-              <h2
-                className="font-serif text-lg font-semibold tracking-tight"
-                style={{ color: "var(--app-ink)" }}
-              >
-                {g.name}{" "}
-                <span
-                  className="text-[12px] font-normal"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  {g.list.length}
-                </span>
-              </h2>
-              {/* Photo-style grid with terrain preview per trail —
-                  same Mapbox outdoors-v12 family as /parks so the two
-                  aux surfaces read as one design system. */}
-              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Dense, collapsed-by-area — same field-guide treatment as
+              /parks so the two GIS surfaces read as one system. Largest
+              area open; the rest tuck away (choice persists). */}
+          {groups.map((g, i) => (
+            <CollapsibleSection
+              key={g.slug}
+              title={g.name}
+              count={g.list.length}
+              countLabel={g.list.length === 1 ? "trail" : "trails"}
+              headingLevel={2}
+              storageKey={`fr.trails.${g.slug}`}
+              defaultOpen={i === 0}
+            >
+              <RowList>
                 {g.list.map((t) => (
-                  <li key={t.id}>
-                    <TrailCard t={t} />
-                  </li>
+                  <TrailRow key={t.id} t={t} />
                 ))}
-              </ul>
-            </section>
+              </RowList>
+            </CollapsibleSection>
           ))}
           <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-            Data: Frederick County GIS open data, refreshed weekly.
+            Trail lines come from Frederick County GIS. Radius maintains the
+            descriptive list separately and links each record back to the map.
           </p>
         </>
       )}

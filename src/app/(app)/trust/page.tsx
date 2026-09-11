@@ -1,14 +1,20 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import Link from "next/link";
-import { ArrowLeft, Database, CheckCircle2, Sparkles, Users, AlertCircle } from "lucide-react";
+import { Database, CheckCircle2, Sparkles, Users, AlertCircle } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
 import CostTransparency from "@/components/trust/CostTransparency";
+import { publicDataSnapshot } from "@/lib/public-data-snapshot";
+import { getDb } from "@/lib/db/client";
+import { commerce_link_reports } from "@/lib/db/schema";
+import { count, eq } from "drizzle-orm";
 
 /**
  * /trust — the plain-English explanation of where the data comes
  * from, what the trust badges mean, and what we deliberately don't
  * do. Linked from the SourceBadge tooltips and the FreshnessChip
- * tooltips so a stranger who sees "Curated" or "Confirmed 3 days
+ * explanations so a stranger who sees "Radius reviewed" or "Checked 3 days
  * ago" can tap through and understand what the words actually mean.
  *
  * Sits inside the (app) route group so it carries the same chrome
@@ -18,26 +24,108 @@ import CostTransparency from "@/components/trust/CostTransparency";
  */
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/trust" },
   title: "Trust & data",
   description:
-    "Where the data comes from, what the badges mean, and what we don't do.",
+    "See where Frederick Radius data comes from and what its source labels mean.",
 };
 
-export default function TrustPage() {
+// The public counts are immutable for a promoted data version. Revalidation
+// can update the streamed correction line, but cannot silently change those
+// counts without a new reviewed release.
+export const revalidate = 86_400;
+
+const pct = (part: number, total: number): string =>
+  total === 0 ? "0%" : `${Math.round((part / total) * 100)}%`;
+
+/** Reader reports resolved as fixed — the public half of the correction
+ *  loop (/admin/link-reports is the private half). Fail-soft null: a
+ *  missing database must never break the trust page, and zero reports is
+ *  rendered as silence, not a hollow claim.
+ *
+ *  The wait is BOUNDED, and that bound is load-bearing. This page is
+ *  statically exported at build time, where Next allows each page 60
+ *  seconds. A database that refuses a connection throws and lands in the
+ *  catch below; a database that simply never answers does not, so an
+ *  unbounded await silently spends the whole export budget. That is not
+ *  hypothetical: every production deploy from 2c5a0e29 (2026-08-05, the
+ *  commit that added this query) through e83586c2 failed here, and the
+ *  app sat frozen on 2026-08-05's build for two days while ten merges
+ *  reported success. A slow database now costs a missing count, which is
+ *  exactly what this function already promised. */
+const REPORT_COUNT_BUDGET_MS = 5_000;
+
+async function fixedReportCount(): Promise<number | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const db = getDb();
+    if (!db) return null;
+    const query = db
+      .select({ n: count() })
+      .from(commerce_link_reports)
+      .where(eq(commerce_link_reports.status, "fixed"));
+    const rows = await Promise.race([
+      query,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), REPORT_COUNT_BUDGET_MS);
+      }),
+    ]);
+    if (!rows) return null;
+    const n = rows[0]?.n ?? 0;
+    return n > 0 ? n : null;
+  } catch {
+    return null;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+/** The one live-data line on an otherwise static page, streamed rather than
+ *  prerendered. connection() opts this subtree out of static generation, so
+ *  the database is never on the deploy path at all — the timeout above is
+ *  now the second line of defence rather than the only one. The page shell
+ *  still renders instantly from the build. */
+async function FixedReportLine() {
+  await connection();
+  const fixedReports = await fixedReportCount();
+  if (fixedReports === null) return null;
+  return (
+    <p
+      className="mt-2 text-[14px] leading-relaxed"
+      style={{ color: "var(--app-ink-2)" }}
+    >
+      So far, reader reports have led to{" "}
+      {fixedReports.toLocaleString("en-US")} fixed{" "}
+      {fixedReports === 1 ? "listing" : "listings"}.
+    </p>
+  );
+}
+
+export default async function TrustPage() {
+  const snapshot = publicDataSnapshot();
+  const placeCount = new Intl.NumberFormat("en-US").format(
+    snapshot.counts.activePublicPlaces.value,
+  );
+  const coverage = {
+    total: snapshot.counts.activePublicPlaces.value,
+    mapped: snapshot.counts.mappedPlaces.value,
+    hours: snapshot.counts.placesWithCurrentHours.value,
+    copy: snapshot.counts.placesWithDecisionCopy.value,
+    photo: snapshot.counts.placesWithPhoto.value,
+    action: snapshot.counts.placesWithAction.value,
+  };
+  const dataVersion = snapshot.dataVersion.slice("sha256:".length, 19);
+  const placePromotion = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeZone: "America/New_York",
+  }).format(new Date(snapshot.counts.activePublicPlaces.asOf));
+  const latestPromotion = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeZone: "America/New_York",
+  }).format(new Date(snapshot.lastSuccessfulDataPromotion));
   return (
     <div className="relative space-y-6">
       <PageBloom variant="cool" />
-
-      <nav aria-label="Breadcrumb" className="text-xs">
-        <Link
-          href="/today"
-          className="inline-flex items-center gap-1 hover:underline"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Back to Today
-        </Link>
-      </nav>
 
       <header className="space-y-2">
         <p
@@ -53,14 +141,32 @@ export default function TrustPage() {
           className="text-[16px] leading-relaxed text-pretty"
           style={{ color: "var(--app-ink-2)" }}
         >
-          A short, honest page. What we know, what we don&apos;t,
-          and how to tell the difference on every place card.
+          This page explains the difference between checked source data and
+          owner-supplied details.
         </p>
       </header>
 
+      <nav aria-label="Trust page sections" className="-mx-1 flex flex-wrap gap-1.5 px-1">
+        {[
+          ["Sources", "#sources"],
+          ["Badge meanings", "#badges"],
+          ["Send a correction", "#corrections"],
+        ].map(([label, href]) => (
+          <a
+            key={href}
+            href={href}
+            className="tap-44-y rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
+
       {/* Where the data comes from */}
       <section
-        className="rounded-[var(--app-radius-lg)] border p-5 space-y-3"
+        id="sources"
+        className="scroll-mt-24 rounded-[var(--app-radius-lg)] border p-5 space-y-3"
         style={{
           borderColor: "var(--app-border)",
           background: "var(--app-bg-elevated)",
@@ -77,31 +183,40 @@ export default function TrustPage() {
           style={{ color: "var(--app-ink-2)" }}
         >
           <li>
-            <strong style={{ color: "var(--app-ink)" }}>Our hand-picked set.</strong>{" "}
-            1,700+ Frederick County places we vetted by hand. The Saturday-only
-            bakery, the trail nobody talks about, the brewery that beats the
-            one downtown.
+            <strong style={{ color: "var(--app-ink)" }}>The place index.</strong>{" "}
+            {placeCount} records in the shipped place index, assembled from business,
+            government, community, and mapping sources. Automated quality checks
+            and review rules screen the index; we do not claim every listing was
+            individually vetted by hand.
           </li>
           <li>
-            <strong style={{ color: "var(--app-ink)" }}>Live event feeds.</strong>{" "}
+            <strong style={{ color: "var(--app-ink)" }}>Event feeds.</strong>{" "}
             Downtown Frederick Partnership, Celebrate Frederick, Hood College,
-            Frederick County government calendar. Pulled fresh, multiple times
-            a day.
+            Frederick County government calendar, plus ticketed listings from
+            Ticketmaster, Bandsintown, and the Weinberg Center. Radius checks
+            these feeds multiple times a day.
+          </li>
+          <li>
+            <strong style={{ color: "var(--app-ink)" }}>Google Places.</strong>{" "}
+            Adds business status, posted hours, phone numbers, ratings, and
+            photos. A source match is labeled &ldquo;Checked at source&rdquo;; it is
+            not the same thing as owner verification.
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Owner-claimed listings.</strong>{" "}
-            Businesses that have claimed their page and maintain their own
-            hours, specials, and details.
+            An &ldquo;Owner verified&rdquo; label is reserved for a business with an
+            approved, active ownership claim. A claim does not make third-party
+            ratings, reviews, or older details owner-supplied.
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>OpenStreetMap.</strong>{" "}
-            Used only for amenities (restrooms, water fountains, EV charging,
-            bike parking) where the public-utility data is reliable. Anything
-            from OpenStreetMap is labeled as unverified.
+            Used for amenities such as restrooms, water fountains, EV charging,
+            and bike parking. It is community-maintained mapping data and is
+            labeled by source; confirm anything important before relying on it.
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Resident submissions.</strong>{" "}
-            People who notice we&apos;re missing something and send it via{" "}
+            Residents can send a missing place through{" "}
             <Link
               href="/submit/place"
               className="underline"
@@ -109,13 +224,13 @@ export default function TrustPage() {
             >
               /submit/place
             </Link>
-            . Reviewed by hand before going live.
+            . Radius reviews each submission before publication.
           </li>
         </ul>
       </section>
 
       {/* What the badges mean */}
-      <section className="space-y-3">
+      <section id="badges" className="scroll-mt-24 space-y-3">
         <h2
           className="font-serif text-[20px] font-semibold tracking-tight"
           style={{ color: "var(--app-ink)" }}
@@ -173,17 +288,98 @@ export default function TrustPage() {
           className="font-serif text-[20px] font-semibold tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          What &ldquo;Confirmed&rdquo; means.
+          What &ldquo;Checked at source&rdquo; means.
         </h2>
         <p
           className="text-[14px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
-          A small chip on every place tells you when we last spot-checked
-          the basics. &ldquo;Confirmed 3 days ago&rdquo; means recent. &ldquo;Last confirmed
-          March 2025&rdquo; means stale, and we mark it that way. Confirmed is
-          weaker than verified by design. We&apos;d rather under-claim than
-          pretend.
+          A small chip records when Radius last checked available source details.
+          &ldquo;Checked at source · 3d ago&rdquo; is recent, while &ldquo;Last checked Mar
+          2025&rdquo; is stale. The chip does not mean the owner supplied or approved
+          the listing. &ldquo;Owner verified&rdquo; is reserved for an approved active claim.
+        </p>
+      </section>
+
+      {/* The measured state of the data — the same numbers the internal
+          coverage board runs, so the page proves what it claims. Honest
+          about gaps by construction: a low number renders as a low number. */}
+      <section
+        className="rounded-[var(--app-radius-lg)] border p-5 space-y-3"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-elevated)",
+        }}
+      >
+        <h2
+          className="font-serif text-[20px] font-semibold tracking-tight"
+          style={{ color: "var(--app-ink)" }}
+        >
+          The state of the data, measured.
+        </h2>
+        <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Active data release <code>{dataVersion}</code>. The latest successful
+          promotion was {latestPromotion}.
+        </p>
+        <ul
+          className="space-y-2.5 text-[14px] leading-relaxed"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          <li>
+            <strong style={{ color: "var(--app-ink)" }}>Mapped.</strong>{" "}
+            {coverage.mapped.toLocaleString("en-US")} of{" "}
+            {coverage.total.toLocaleString("en-US")} public places have usable
+            coordinates.
+          </li>
+          <li>
+            <strong style={{ color: "var(--app-ink)" }}>Hours.</strong>{" "}
+            {coverage.hours > 0 ? (
+              <>
+                {coverage.hours.toLocaleString("en-US")} of{" "}
+                {coverage.total.toLocaleString("en-US")} places (
+                {pct(coverage.hours, coverage.total)}) carry posted hours fresh
+                enough for an open-now answer. Everywhere else the app says it
+                does not know instead of guessing.
+              </>
+            ) : (
+              // Counted at the moment you load this page, not when the data was
+              // promoted. A posted schedule stops backing an open-now answer
+              // seven days after it was last checked, so this figure reaches
+              // zero if a refresh is not published for a week. Saying that
+              // plainly is the point of this page.
+              <>
+                No place currently carries hours checked recently enough to
+                back an open-now answer, so the app is saying it does not know
+                everywhere instead of guessing. A posted schedule stops
+                counting seven days after it was last verified, and the
+                published snapshot is now older than that.
+              </>
+            )}
+          </li>
+          <li>
+            <strong style={{ color: "var(--app-ink)" }}>Decision copy.</strong>{" "}
+            {coverage.copy.toLocaleString("en-US")} places ({pct(coverage.copy, coverage.total)})
+            carry specific, publishable copy that passed the shipped quality rules.
+          </li>
+          <li>
+            <strong style={{ color: "var(--app-ink)" }}>Photos.</strong>{" "}
+            {coverage.photo.toLocaleString("en-US")} places (
+            {pct(coverage.photo, coverage.total)}) carry a real photo from the
+            venue or its source listing.
+          </li>
+          <li>
+            <strong style={{ color: "var(--app-ink)" }}>A way to act.</strong>{" "}
+            {coverage.action.toLocaleString("en-US")} places (
+            {pct(coverage.action, coverage.total)}) carry a direct phone,
+            website, menu, ordering, or reservation detail stored with the
+            record.
+          </li>
+        </ul>
+        <p className="text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+          Place figures were measured from the shipped index when it was
+          promoted on {placePromotion}. Upcoming-event and source-health totals
+          are not shown because those runtime-only facts are not yet part of
+          the promoted snapshot.
         </p>
       </section>
 
@@ -204,7 +400,7 @@ export default function TrustPage() {
           What we don&apos;t do
         </p>
         <ul
-          className="space-y-1.5 text-[13.5px] leading-relaxed pt-1"
+          className="space-y-1.5 text-[14px] leading-relaxed pt-1"
           style={{ color: "var(--app-ink-2)" }}
         >
           <li>We don&apos;t invent hours when we don&apos;t know them.</li>
@@ -217,7 +413,8 @@ export default function TrustPage() {
 
       {/* Found something wrong */}
       <section
-        className="rounded-[var(--app-radius-lg)] border p-5"
+        id="corrections"
+        className="scroll-mt-24 rounded-[var(--app-radius-lg)] border p-5"
         style={{
           borderColor: "var(--app-border)",
           background: "var(--app-bg-elevated)",
@@ -241,22 +438,23 @@ export default function TrustPage() {
           >
             hello@frederickradius.app
           </a>{" "}
-          with what you saw and where. We read every message and fix
-          things by hand.
+          with what you saw and where, or use the report option beside a
+          place&apos;s ordering and menu links. We review correction messages
+          and update records by hand.
         </p>
+        <Suspense fallback={null}>
+          <FixedReportLine />
+        </Suspense>
       </section>
 
-      {/* What this thing actually costs to run. Civic credibility:
-          a resident who reached /trust to figure out where the data
-          comes from gets one more honest read here — "here's what
-          keeps it online." */}
+      {/* What it cost to build — the no-ads, no-investors civic read. */}
       <CostTransparency />
 
       <p
         className="pt-2 text-center text-[11px]"
         style={{ color: "var(--app-ink-3)" }}
       >
-        Made in Frederick, MD by Michael DeMattia, a downtown Frederick resident.
+        Frederick Radius is made locally in Frederick, Maryland, and is independent of local government.
       </p>
     </div>
   );
@@ -269,27 +467,33 @@ const BADGES: Array<{
   body: string;
 }> = [
   {
-    label: "Hand-picked",
-    color: "#A8462C",
+    label: "Radius reviewed",
+    color: "var(--app-brand-press)",
     icon: Sparkles,
-    body: "We picked this one ourselves. Vetted by hand, blurb written by a person, not auto-filled.",
+    body: "Selected or edited in Frederick Radius. Current facts may still combine multiple sources and can change.",
   },
   {
-    label: "Verified",
-    color: "#1E6B3A",
+    label: "Checked at source",
+    color: "var(--app-positive)",
     icon: CheckCircle2,
-    body: "Maintained directly by the owner. Hours, details, specials all come straight from them.",
+    body: "Basic details were matched or checked against the named source, with a checked-on date where available. This is not owner verification.",
   },
   {
-    label: "Community",
-    color: "#2F5470",
+    label: "Owner verified",
+    color: "var(--app-positive)",
+    icon: CheckCircle2,
+    body: "Reserved for a business with an approved, active ownership claim. It applies to owner-managed details, not third-party ratings or reviews.",
+  },
+  {
+    label: "Community source",
+    color: "var(--app-cool)",
     icon: Users,
-    body: "Submitted by a local or pulled from a public community feed. Reliable but not directly verified by us.",
+    body: "Submitted by a local or assembled from a public community or mapping source. Check important details with the linked source.",
   },
   {
-    label: "Official",
-    color: "#7E2C6F",
+    label: "Official source",
+    color: "var(--app-civic)",
     icon: Database,
-    body: "From an official county or government data feed. Refreshed on a schedule and never edited by us.",
+    body: "Imported from a government source. Frederick Radius may normalize or summarize it. The source agency does not operate or endorse this app; check the linked source for the current official record.",
   },
 ];

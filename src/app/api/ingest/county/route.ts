@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { ingestICal } from "@/lib/ingest/ical";
 import { verifyCronAuth } from "../_auth";
 
 export const runtime = "nodejs";
@@ -9,11 +8,12 @@ export const maxDuration = 60;
 export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
   if (auth) return auth;
-  const result = await ingestICal({
-    source_slug: "frederick_county_calendar",
-    url: "https://www.frederickcountymd.gov/RSSFeed.aspx?ModID=58&CID=All-calendar.xml",
-    defaultMunicipality: "frederick",
-    defaultVenueLatLng: { lng: -77.4109, lat: 39.4143 },
-  });
-  return NextResponse.json(result);
+
+  // The retired RSSFeed.aspx endpoint is RSS, not iCalendar. County events
+  // now use the category-specific CivicEngage iCalendar feeds, which are also
+  // the scheduled production path. Keep this authenticated legacy endpoint as
+  // a same-origin redirect so old operator bookmarks do useful work.
+  const target = new URL("/api/ingest/civicengage", request.url);
+  target.searchParams.set("only", "Frederick County");
+  return NextResponse.redirect(target, 307);
 }

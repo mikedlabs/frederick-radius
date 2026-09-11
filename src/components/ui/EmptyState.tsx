@@ -109,11 +109,11 @@ export default function EmptyState({
       {cta && (
         <Link
           href={cta.href}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold tactile tactile-interactive"
+          className="tap-44 mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold tactile tactile-interactive"
           style={{
             background:
-              tone === "brand" ? t.color : "var(--app-bg-elevated)",
-            color: tone === "brand" ? "white" : t.color,
+              tone === "brand" ? "var(--app-brand-press)" : "var(--app-bg-elevated)",
+            color: tone === "brand" ? "var(--app-on-brand)" : t.color,
             boxShadow: tone === "brand" ? "var(--app-shadow-1)" : undefined,
           }}
         >
@@ -124,7 +124,7 @@ export default function EmptyState({
         <div className="mt-3">
           <Link
             href={secondary.href}
-            className="text-[11.5px] underline-offset-2 hover:underline"
+            className="tap-44-y inline-flex text-[12px] underline-offset-2 hover:underline"
             style={{ color: "var(--app-ink-3)" }}
           >
             {secondary.label}

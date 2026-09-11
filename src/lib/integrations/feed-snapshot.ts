@@ -35,9 +35,10 @@
  * surface on `/admin/data-health` for human eyes, not paging.
  */
 
-import { getDb } from "@/lib/db/client";
-import { feed_snapshots } from "@/lib/db/schema";
-import { desc, lt } from "drizzle-orm";
+import { getDb, getSql } from "@/lib/db/client";
+import { feed_snapshots, feed_source_health } from "@/lib/db/schema";
+import { asc, desc, inArray, lt, sql as drizzleSql } from "drizzle-orm";
+import { withStatementTimeout } from "@/lib/db/statement-timeout";
 
 type Snapshot = {
   taken_at: string;
@@ -61,6 +62,31 @@ type SnapshotRow = Pick<
 
 const WINDOW = 5;
 const SNAPSHOTS = new Map<string, Snapshot[]>();
+
+function isUndefinedTableError(error: unknown): boolean {
+  let candidate: unknown = error;
+  const seen = new Set<unknown>();
+
+  while (
+    candidate !== null
+    && typeof candidate === "object"
+    && !seen.has(candidate)
+  ) {
+    seen.add(candidate);
+    if (
+      "code" in candidate
+      && (candidate as { code?: unknown }).code === "42P01"
+    ) {
+      return true;
+    }
+    candidate =
+      "cause" in candidate
+        ? (candidate as { cause?: unknown }).cause
+        : null;
+  }
+
+  return false;
+}
 
 function topByShare(values: string[]): { name: string; share: number } | null {
   if (values.length === 0) return null;
@@ -114,87 +140,214 @@ export function recordSnapshot(source: string, rows: SnapshotRow[]): void {
   buf.push(snap);
   while (buf.length > WINDOW) buf.shift();
   SNAPSHOTS.set(source, buf);
-  // Persist asynchronously — the request path is sync. Errors are
-  // intentionally swallowed so a transient DB blip doesn't bring
-  // down the events page; the next fetch retries on its own.
-  void persistSnapshot(source, snap);
 }
 
-/** Sources we've already warned about in this process. Without this,
- *  a missing table or other persistent error floods the dev console
- *  on every feed fetch — once per minute per source. */
-const warnedSources = new Set<string>();
-
-async function persistSnapshot(source: string, snap: Snapshot): Promise<void> {
+/**
+ * Persist one current snapshot per successful source.
+ *
+ * This is deliberately separate from `recordSnapshot()`: request-path feed
+ * assembly can run on many cold workers and must never write telemetry on an
+ * ordinary page view. The bounded data-health feed worker calls this every two
+ * hours after a fresh pull. That cadence stays inside the ledger's three-hour
+ * freshness window for hourly sources while capping growth to twelve rows per
+ * source per day and preserving cross-deploy anomaly history.
+ */
+async function persistCurrentSnapshotRows(
+  sources?: readonly string[],
+): Promise<number> {
   const db = getDb();
-  if (!db) return;
+  if (!db) return 0;
+  const allowed = sources ? new Set(sources) : null;
+  const values = [...SNAPSHOTS.entries()]
+    .filter(([source]) => !allowed || allowed.has(source))
+    .map(([source, buf]) => {
+      const snap = buf[buf.length - 1];
+      if (!snap) return null;
+      return {
+        source,
+        taken_at: new Date(snap.taken_at),
+        count: snap.count,
+        free_ratio: snap.free_ratio,
+        empty_desc_ratio: snap.empty_desc_ratio,
+        top_venue: snap.top_venue,
+        top_category: snap.top_category,
+        earliest: snap.earliest ? new Date(snap.earliest) : null,
+        latest: snap.latest ? new Date(snap.latest) : null,
+      };
+    })
+    .filter((value): value is NonNullable<typeof value> => value !== null);
+  if (values.length === 0) return 0;
+
+  const observedAt = new Date();
   try {
-    await db.insert(feed_snapshots).values({
-      source,
-      taken_at: new Date(snap.taken_at),
-      count: snap.count,
-      free_ratio: snap.free_ratio,
-      empty_desc_ratio: snap.empty_desc_ratio,
-      top_venue: snap.top_venue,
-      top_category: snap.top_category,
-      earliest: snap.earliest ? new Date(snap.earliest) : null,
-      latest: snap.latest ? new Date(snap.latest) : null,
+    await db.transaction(async (tx) => {
+      await tx.insert(feed_snapshots).values(values);
+      await tx
+        .insert(feed_source_health)
+        .values(
+          values.map((value) => ({
+            ...value,
+            prior_snapshot: null,
+            recent_mean_count: value.count,
+            recent_observations: 1,
+            updated_at: observedAt,
+          })),
+        )
+        .onConflictDoUpdate({
+          target: feed_source_health.source,
+          // Two cron invocations can overlap during a redeploy. Never allow the
+          // slower, older observation to roll the current projection backward.
+          setWhere: drizzleSql`
+            excluded.taken_at > ${feed_source_health.taken_at}
+          `,
+          set: {
+            // Preserve the prior complete observation before replacing the
+            // current row. Two observations are sufficient for the anomaly
+            // comparisons; the historical table remains available for audits.
+            prior_snapshot: drizzleSql`jsonb_build_object(
+              'taken_at', ${feed_source_health.taken_at},
+              'count', ${feed_source_health.count},
+              'free_ratio', ${feed_source_health.free_ratio},
+              'empty_desc_ratio', ${feed_source_health.empty_desc_ratio},
+              'top_venue', ${feed_source_health.top_venue},
+              'top_category', ${feed_source_health.top_category},
+              'earliest', ${feed_source_health.earliest},
+              'latest', ${feed_source_health.latest}
+            )`,
+            taken_at: drizzleSql`excluded.taken_at`,
+            count: drizzleSql`excluded.count`,
+            free_ratio: drizzleSql`excluded.free_ratio`,
+            empty_desc_ratio: drizzleSql`excluded.empty_desc_ratio`,
+            top_venue: drizzleSql`excluded.top_venue`,
+            top_category: drizzleSql`excluded.top_category`,
+            earliest: drizzleSql`excluded.earliest`,
+            latest: drizzleSql`excluded.latest`,
+            // Keep a bounded 84-observation mean (roughly seven days at the
+            // intended two-hour cadence) without querying historical rows.
+            recent_mean_count: drizzleSql`
+              (
+                ${feed_source_health.recent_mean_count}
+                * least(${feed_source_health.recent_observations}, 83)
+                + excluded.count
+              )
+              / least(${feed_source_health.recent_observations} + 1, 84)
+            `,
+            recent_observations: drizzleSql`
+              least(${feed_source_health.recent_observations} + 1, 84)
+            `,
+            updated_at: observedAt,
+          },
+        });
     });
+  } catch (error) {
+    if (!isUndefinedTableError(error)) throw error;
+
+    // The transaction above rolls its historical insert back when the
+    // projection relation is absent. Preserve the pre-0039 worker contract by
+    // writing the same bounded observation to feed_snapshots only.
+    await db.insert(feed_snapshots).values(values);
+  }
+  return values.length;
+}
+
+let warnedPersistFailure = false;
+export async function persistCurrentSnapshots(sources?: readonly string[]): Promise<number> {
+  try {
+    return await persistCurrentSnapshotRows(sources);
   } catch (err) {
-    // Telemetry-only write. A failure here doesn't affect the
-    // request path. We deliberately:
-    //   1. Downgrade to console.warn so Next.js dev overlay doesn't
-    //      render this as a red "Console Error" box. Production
-    //      observability (Sentry) still picks it up via its own
-    //      error capture if configured.
-    //   2. Only log ONCE per source per process, so a missing table
-    //      or persistent connection failure doesn't fill the console
-    //      with one row per fetch.
-    if (!warnedSources.has(source)) {
-      warnedSources.add(source);
+    // Telemetry-only write. A failure must not break the rest of the health
+    // report, and one warning per worker is enough to make it observable.
+    if (!warnedPersistFailure) {
+      warnedPersistFailure = true;
       console.warn(
-        `[feed-snapshot] persist failed (${source}) — telemetry only; further failures from this source suppressed:`,
+        "[feed-snapshot] cron persist failed — telemetry only; further failures in this worker suppressed:",
         err instanceof Error ? err.message : err,
       );
     }
+    return 0;
   }
 }
 
 /**
- * Loads the most recent N snapshots per source from the database into
- * the in-memory rolling buffer. Idempotent and safe to call multiple
- * times — repeats overwrite the buffer for each source with the latest
- * DB state, preserving the window ordering (oldest → newest).
+ * Cron worker variant: a failed telemetry write is phase-significant and must
+ * reject so the independently scheduled feed phase records a red heartbeat.
+ */
+export function persistCurrentSnapshotsStrict(
+  sources?: readonly string[],
+): Promise<number> {
+  return persistCurrentSnapshotRows(sources);
+}
+
+/**
+ * Loads the current and immediately prior snapshot per source from the compact
+ * database projection into the in-memory rolling buffer. Idempotent and safe
+ * to call multiple times.
  *
  * Called by `/admin/data-health` so the dashboard reflects history
  * across deploys / cold starts, not just fetches that happened in this
  * worker process. When the DB is unset (dev/local without DATABASE_URL),
  * this is a no-op and the in-memory buffer is the source of truth.
  *
- * If we already have an N-deep buffer for a source in this process,
- * we skip the load — the in-memory write path is more recent than any
- * read. This makes the call cheap on warm dashboards.
+ * If this process already holds a more recent observation, the database load
+ * does not replace it. This makes the call cheap and safe on warm dashboards.
  */
 let hydratedAt: number = 0;
 const HYDRATE_TTL_MS = 60_000;
 
-export async function hydrateSnapshots(): Promise<void> {
+async function hydrateSnapshotRows(): Promise<void> {
   const db = getDb();
   if (!db) return;
   // Throttle: at most once per minute per worker. The dashboard is
   // operator-facing, so a minute of staleness is fine and we avoid
   // hammering the DB on every render.
   if (Date.now() - hydratedAt < HYDRATE_TTL_MS) return;
+  const bySource = new Map<string, Snapshot[]>();
+
   try {
-    // Pull the most recent N snapshots across all sources in one query,
-    // then partition client-side. Cheap because the index covers it
-    // and N is small (WINDOW * sources ≈ 50 rows max).
+    // Read the one-row-per-source projection. This path stays constant-size
+    // even when the historical audit table contains hundreds of thousands of
+    // rows.
+    const rows = await db
+      .select()
+      .from(feed_source_health)
+      .orderBy(desc(feed_source_health.taken_at));
+    for (const r of rows) {
+      const current: Snapshot = {
+        taken_at: r.taken_at.toISOString(),
+        count: r.count,
+        free_ratio: r.free_ratio,
+        empty_desc_ratio: r.empty_desc_ratio,
+        top_venue: r.top_venue ?? null,
+        top_category: r.top_category ?? null,
+        earliest: r.earliest ? r.earliest.toISOString() : null,
+        latest: r.latest ? r.latest.toISOString() : null,
+      };
+      const prior = r.prior_snapshot;
+      const buf: Snapshot[] = [];
+      if (
+        prior
+        && typeof prior.taken_at === "string"
+        && Number.isFinite(Date.parse(prior.taken_at))
+        && Number.isFinite(prior.count)
+        && Number.isFinite(prior.free_ratio)
+        && Number.isFinite(prior.empty_desc_ratio)
+      ) {
+        buf.push(prior);
+      }
+      buf.push(current);
+      bySource.set(r.source, buf);
+    }
+  } catch (error) {
+    if (!isUndefinedTableError(error)) throw error;
+
+    // Migration 0039 is manual. Until it is installed, restore the bounded
+    // newest-first legacy hydrate instead of converting unrelated failures
+    // into an apparently healthy in-memory result.
     const rows = await db
       .select()
       .from(feed_snapshots)
       .orderBy(desc(feed_snapshots.taken_at))
       .limit(WINDOW * 20);
-    const bySource = new Map<string, Snapshot[]>();
     for (const r of rows) {
       const buf = bySource.get(r.source) ?? [];
       if (buf.length >= WINDOW) continue;
@@ -210,28 +363,43 @@ export async function hydrateSnapshots(): Promise<void> {
       });
       bySource.set(r.source, buf);
     }
-    // The query returned newest-first; reverse so the buffer is
-    // oldest → newest, matching the in-memory append order.
-    for (const [source, buf] of bySource) {
+    for (const buf of bySource.values()) {
       buf.reverse();
-      // Only seed the in-memory buffer if the current process hasn't
-      // already written a more-recent snapshot. Compare by timestamp:
-      // if our newest in-memory entry is at least as fresh as the DB
-      // tail, keep what we have.
-      const existing = SNAPSHOTS.get(source);
-      const existingNewest = existing?.[existing.length - 1]?.taken_at;
-      const dbNewest = buf[buf.length - 1]?.taken_at;
-      if (!existingNewest || (dbNewest && dbNewest > existingNewest)) {
-        SNAPSHOTS.set(source, buf);
-      }
     }
-    hydratedAt = Date.now();
+  }
+
+  for (const [source, buf] of bySource) {
+    // Only seed the in-memory buffer if the current process hasn't
+    // already written a more-recent snapshot. Compare by timestamp:
+    // if our newest in-memory entry is at least as fresh as the DB
+    // tail, keep what we have.
+    const existing = SNAPSHOTS.get(source);
+    const existingNewest = existing?.[existing.length - 1]?.taken_at;
+    const dbNewest = buf[buf.length - 1]?.taken_at;
+    if (!existingNewest || (dbNewest && dbNewest > existingNewest)) {
+      SNAPSHOTS.set(source, buf);
+    }
+  }
+  hydratedAt = Date.now();
+}
+
+export async function hydrateSnapshots(): Promise<void> {
+  try {
+    await hydrateSnapshotRows();
   } catch (err) {
     // Telemetry-only read. Hydration failure means the dashboard
     // shows in-memory window only — non-fatal. Warn (not error) so
     // dev console stays clean.
     console.warn("[feed-snapshot] hydrate failed (telemetry only):", err instanceof Error ? err.message : err);
   }
+}
+
+/**
+ * Cron-worker variant: query failures reject so a bounded phase cannot report
+ * a green heartbeat after silently falling back to process-local history.
+ */
+export function hydrateSnapshotsStrict(): Promise<void> {
+  return hydrateSnapshotRows();
 }
 
 /** Test-only: clear the throttle so a fresh hydrate fires next call. */
@@ -247,22 +415,228 @@ export function _resetHydrateThrottle(): void {
  * No-op when DB unavailable. Returns the row count deleted (0 when
  * DB unset) so the cron can report it.
  */
-export async function pruneOldSnapshots(days: number): Promise<number> {
+export const SNAPSHOT_PRUNE_BATCH_SIZE = 5_000;
+export const SNAPSHOT_COMPACTION_BATCH_SIZE = 2_000;
+export const SNAPSHOT_DUPLICATE_TELEMETRY_LIMIT = 5_001;
+
+export type FeedSnapshotStorageTelemetry = {
+  approximateRows: number;
+  totalBytes: number;
+  oldestAt: string | null;
+  newestAt: string | null;
+  rowsLast24Hours: number;
+  duplicateCandidates: number;
+  duplicateCountCapped: boolean;
+};
+
+/**
+ * Read storage pressure without an exact whole-table count.
+ *
+ * `feed_snapshots` once received request-path writes and grew beyond 700k
+ * rows. pg_stat_user_tables gives a cheap approximate total, while the
+ * duplicate probe stops after a small cap. This keeps the health board useful
+ * without turning telemetry itself into another slow query.
+ */
+export async function getFeedSnapshotStorageTelemetry(): Promise<FeedSnapshotStorageTelemetry | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    const [summary, duplicateRows] = await Promise.all([
+      sql`
+        SELECT coalesce(stats.n_live_tup, 0)::bigint AS approximate_rows,
+               pg_total_relation_size('feed_snapshots'::regclass)::bigint AS total_bytes,
+               (SELECT min(taken_at) FROM feed_snapshots) AS oldest_at,
+               (SELECT max(taken_at) FROM feed_snapshots) AS newest_at,
+               (
+                 SELECT count(*)::bigint
+                 FROM feed_snapshots
+                 WHERE taken_at >= now() - interval '24 hours'
+               ) AS rows_last_24_hours
+        FROM pg_stat_user_tables stats
+        WHERE stats.schemaname = 'public'
+          AND stats.relname = 'feed_snapshots'
+      `,
+      sql`
+        WITH candidates AS (
+          SELECT candidate.id
+          FROM feed_snapshots candidate
+          WHERE candidate.taken_at <
+                (date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
+            AND EXISTS (
+              SELECT 1
+              FROM feed_snapshots keeper
+              WHERE keeper.source = candidate.source
+                AND keeper.taken_at >=
+                    (date_trunc('day', candidate.taken_at AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
+                AND keeper.taken_at <
+                    ((date_trunc('day', candidate.taken_at AT TIME ZONE 'UTC') + interval '1 day') AT TIME ZONE 'UTC')
+                AND (
+                  keeper.taken_at > candidate.taken_at
+                  OR (
+                    keeper.taken_at = candidate.taken_at
+                    AND keeper.id > candidate.id
+                  )
+                )
+              LIMIT 1
+            )
+          ORDER BY candidate.taken_at ASC, candidate.id ASC
+          LIMIT ${SNAPSHOT_DUPLICATE_TELEMETRY_LIMIT}
+        )
+        SELECT count(*)::bigint AS duplicate_candidates
+        FROM candidates
+      `,
+    ]) as unknown as [
+      Array<{
+        approximate_rows: string | number;
+        total_bytes: string | number;
+        oldest_at: string | Date | null;
+        newest_at: string | Date | null;
+        rows_last_24_hours: string | number;
+      }>,
+      Array<{ duplicate_candidates: string | number }>,
+    ];
+    const row = summary[0];
+    if (!row) return null;
+    const approximateRows = Number(row.approximate_rows);
+    const totalBytes = Number(row.total_bytes);
+    const rowsLast24Hours = Number(row.rows_last_24_hours);
+    const duplicateCandidates = Number(
+      duplicateRows[0]?.duplicate_candidates ?? 0,
+    );
+    if (
+      ![approximateRows, totalBytes, rowsLast24Hours, duplicateCandidates]
+        .every((value) => Number.isFinite(value) && value >= 0)
+    ) {
+      throw new Error("Snapshot telemetry returned an invalid numeric value.");
+    }
+    return {
+      approximateRows,
+      totalBytes,
+      oldestAt: row.oldest_at ? new Date(row.oldest_at).toISOString() : null,
+      newestAt: row.newest_at ? new Date(row.newest_at).toISOString() : null,
+      rowsLast24Hours,
+      duplicateCandidates: Math.min(
+        duplicateCandidates,
+        SNAPSHOT_DUPLICATE_TELEMETRY_LIMIT - 1,
+      ),
+      duplicateCountCapped:
+        duplicateCandidates >= SNAPSHOT_DUPLICATE_TELEMETRY_LIMIT,
+    };
+  } catch (err) {
+    console.warn(
+      "[feed-snapshot] storage telemetry failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return null;
+  }
+}
+
+/**
+ * Delete only redundant snapshots from completed UTC days.
+ *
+ * A row is eligible only when a newer row exists for the same source and UTC
+ * day. That invariant preserves at least one snapshot per source per day even
+ * when a batch is interrupted or two workers overlap. Unlike age-based
+ * retention, duplicate compaction does not require a backup assumption
+ * because it never removes the day's sole historical observation.
+ *
+ * This helper is not called automatically. The operator can inspect telemetry
+ * first, then run bounded batches through the explicit maintenance script.
+ */
+export async function compactDuplicateSnapshots(
+  batchSize = SNAPSHOT_COMPACTION_BATCH_SIZE,
+): Promise<number> {
+  const sql = getSql();
+  if (!sql) return 0;
+  const limit = Math.max(
+    1,
+    Math.min(
+      Math.floor(batchSize),
+      SNAPSHOT_COMPACTION_BATCH_SIZE,
+    ),
+  );
+  try {
+    const deleted = (await sql`
+      WITH doomed AS MATERIALIZED (
+        SELECT candidate.id
+        FROM feed_snapshots candidate
+        WHERE candidate.taken_at <
+              (date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
+          AND EXISTS (
+            SELECT 1
+            FROM feed_snapshots keeper
+            WHERE keeper.source = candidate.source
+              AND keeper.taken_at >=
+                  (date_trunc('day', candidate.taken_at AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
+              AND keeper.taken_at <
+                  ((date_trunc('day', candidate.taken_at AT TIME ZONE 'UTC') + interval '1 day') AT TIME ZONE 'UTC')
+              AND (
+                keeper.taken_at > candidate.taken_at
+                OR (
+                  keeper.taken_at = candidate.taken_at
+                  AND keeper.id > candidate.id
+                )
+              )
+            LIMIT 1
+          )
+        ORDER BY candidate.taken_at ASC, candidate.id ASC
+        LIMIT ${limit}
+      )
+      DELETE FROM feed_snapshots target
+      USING doomed
+      WHERE target.id = doomed.id
+      RETURNING target.id
+    `) as unknown as Array<{ id: string }>;
+    return deleted.length;
+  } catch (err) {
+    console.warn(
+      "[feed-snapshot] duplicate compaction failed:",
+      err instanceof Error ? err.message : err,
+    );
+    // This helper is used only by the explicit operator maintenance command.
+    // Returning zero would make a failed DELETE indistinguishable from a
+    // successful no-op and let the command exit green after doing nothing.
+    throw err;
+  }
+}
+
+export async function pruneOldSnapshots(
+  days: number,
+  batchSize = SNAPSHOT_PRUNE_BATCH_SIZE,
+  statementTimeoutMs?: number,
+): Promise<number> {
   const db = getDb();
   if (!db) return 0;
   const cutoff = new Date(Date.now() - days * 86_400_000);
+  const limit = Math.max(1, Math.min(Math.floor(batchSize), SNAPSHOT_PRUNE_BATCH_SIZE));
   try {
-    const deleted = await db
-      .delete(feed_snapshots)
-      .where(lt(feed_snapshots.created_at, cutoff))
-      .returning({ id: feed_snapshots.id });
-    return deleted.length;
+    // Never issue an unbounded DELETE ... RETURNING against this telemetry
+    // table. A request-path write regression grew it past 700k rows and the
+    // old cleanup tried to delete and return every expired UUID in one
+    // statement, repeatedly hitting Supabase's statement timeout. `taken_at`
+    // is the retention clock and has the operational index added in migration
+    // 0031. Oldest-first batching makes every run useful without a long lock.
+    return await withStatementTimeout(db, statementTimeoutMs, async (executor) => {
+      const doomed = executor
+        .select({ id: feed_snapshots.id })
+        .from(feed_snapshots)
+        .where(lt(feed_snapshots.taken_at, cutoff))
+        .orderBy(asc(feed_snapshots.taken_at))
+        .limit(limit);
+      const deleted = await executor
+        .delete(feed_snapshots)
+        .where(inArray(feed_snapshots.id, doomed))
+        .returning({ id: feed_snapshots.id });
+      return deleted.length;
+    });
   } catch (err) {
-    // Prune is best-effort. Failure just means stale rows accumulate
-    // until the next successful run. Warn-level so the dev console
-    // stays clean.
-    console.warn("[feed-snapshot] prune failed (telemetry only):", err instanceof Error ? err.message : err);
-    return 0;
+    console.warn(
+      "[feed-snapshot] retention prune failed:",
+      err instanceof Error ? err.message : err,
+    );
+    // The cron decides whether a retention failure is release-significant.
+    // Propagate it so the health gate cannot report a successful no-op.
+    throw err;
   }
 }
 
@@ -285,7 +659,40 @@ export type Anomaly = {
     | "venue_concentrated"
     | "category_concentrated"
     | "empty_desc_spike"
-    | "empty_batch";
+    | "empty_batch"
+    // DB-health kinds (src/lib/quality/db-health.ts): an RLS-disabled public
+    // table, an ingest source that has gone stale, or health infrastructure
+    // that was unavailable. They share this shape so they ride the existing
+    // sendAnomalyAlert / dashboard rendering.
+    | "rls_unprotected"
+    | "schema_missing"
+    | "ingest_stale"
+    | "infrastructure_unavailable"
+    // Curated-freshness kinds (src/lib/quality/curated-freshness.ts): the
+    // data audit's core lesson was that committed snapshots and hand
+    // verifications rot SILENTLY — venue-events expired 25/25 with no signal.
+    // These make rot a red line on the same alert channel.
+    | "snapshot_expired"
+    | "verification_stale"
+    | "live_source_failed"
+    // End-to-end tripwires (src/lib/quality/tripwires.ts): the July 2026
+    // failure classes that degraded POLITELY and stayed invisible — every
+    // thumbnail app-wide fell back to the initials tile (rotated Google
+    // photo names), /transit rendered zero routes (upstream schema change),
+    // and the FCPL ingest died mid-run for two months. Each becomes a
+    // sampled daily check on the same alert channel.
+    | "photo_rot"
+    | "provider_budget_exhausted"
+    | "transit_empty"
+    | "events_empty"
+    | "events_sources_degraded"
+    | "tripwire_failed"
+    | "ask_degraded"
+    // Ask's private Postgres search index. Full-text coverage is required;
+    // optional direct-OpenAI vectors are monitored only when configured.
+    | "index_empty"
+    | "index_stale"
+    | "embedding_stale";
   detail: string;
 };
 

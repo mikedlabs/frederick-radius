@@ -1,5 +1,9 @@
+import { prioritizeAlerts } from "@/lib/alert-priority";
+import { createAbortDeadline } from "@/lib/promise-deadline";
+import { cache } from "react";
+
 const NWS = "https://api.weather.gov";
-const UA = "Frederick Radius (miked@madproductions.io)";
+const UA = "Frederick Radius (hello@frederickradius.app)";
 
 // SAME (FIPS) codes for the alerts we WANT to surface. Filtering by
 // `areaDesc` substring matching `/Frederick/i` was the prior bug: a
@@ -54,6 +58,43 @@ type AlertsResp = {
   features?: Array<{ properties: AlertProperties }>;
 };
 
+export type NwsAlertsResult = {
+  alerts: NwsAlert[];
+  /** False means the official feed failed; an empty successful response is
+   * available=true. Availability alone is not a freshness claim; safety copy
+   * must also validate checkedAt before saying that no alerts are active. */
+  available: boolean;
+  /** Timestamp carried by the successful upstream HTTP response. This is
+   * intentionally not `new Date()` at the call site: Next may serve a cached
+   * response, and safety surfaces need to know when NWS actually answered. */
+  checkedAt?: string;
+};
+
+function responseCheckedAt(response: Response): string | undefined {
+  const raw = response.headers.get("date");
+  if (!raw) return undefined;
+  const value = new Date(raw);
+  return Number.isFinite(value.getTime()) ? value.toISOString() : undefined;
+}
+
+/** NWS can keep several revisions of one still-active product in the active
+ * feed. Keep the newest revision per event/area/expiry so Today never shows an
+ * alarming "+8 more" count for eight copies of the same air-quality notice. */
+function dedupeRevisions(alerts: NwsAlert[]): NwsAlert[] {
+  const newest = new Map<string, NwsAlert>();
+  for (const alert of alerts) {
+    const key = `${alert.event.toLowerCase()}|${alert.area.toLowerCase()}|${alert.ends_at}`;
+    const previous = newest.get(key);
+    if (!previous || Date.parse(alert.starts_at) > Date.parse(previous.starts_at)) {
+      newest.set(key, alert);
+    }
+  }
+  const newestFirst = [...newest.values()].sort(
+    (a, b) => Date.parse(b.starts_at) - Date.parse(a.starts_at),
+  );
+  return prioritizeAlerts(newestFirst);
+}
+
 /**
  * Does this alert actually affect Frederick County, MD?
  *
@@ -84,16 +125,25 @@ function isForFrederickMD(p: AlertProperties): boolean {
   return false;
 }
 
-export async function getNwsAlerts(): Promise<NwsAlert[]> {
+async function loadNwsAlertsResult(
+  parentSignal?: AbortSignal,
+): Promise<NwsAlertsResult> {
+  // Hard 8s ceiling: api.weather.gov intermittently hangs on connect
+  // (prod runtime errors: connect ETIMEDOUT). The .catch below already
+  // fail-softs to [], but without an abort the request can tie up the
+  // notify-civic-alerts cron for the platform's full connect timeout. Fail
+  // fast instead so a slow NWS degrades to "no alerts this run", not a stall.
+  const deadline = createAbortDeadline(8_000, parentSignal);
   try {
     const res = await fetch(`${NWS}/alerts/active?area=MD`, {
       headers: { "User-Agent": UA, Accept: "application/geo+json" },
+      signal: deadline.signal,
       next: { revalidate: 600 },
     });
-    if (!res.ok) return [];
+    if (!res.ok) return { alerts: [], available: false };
     const data = (await res.json()) as AlertsResp;
     const features = data.features ?? [];
-    return features
+    const alerts = features
       .filter((f) => isForFrederickMD(f.properties))
       .map((f) => ({
         id: f.properties.id,
@@ -108,7 +158,33 @@ export async function getNwsAlerts(): Promise<NwsAlert[]> {
         area: f.properties.areaDesc,
         url: f.properties["@id"],
       }));
+    return {
+      alerts: dedupeRevisions(alerts),
+      available: true,
+      checkedAt: responseCheckedAt(res),
+    };
   } catch {
-    return [];
+    return { alerts: [], available: false };
+  } finally {
+    deadline.dispose();
   }
+}
+
+/**
+ * Today asks for the same active-alert result in its interruption banner,
+ * weather guidance, hero, and outdoor-safety checks. Share one promise for the
+ * lifetime of the Server Component render so a regeneration parses the NWS
+ * payload once. The underlying fetch still owns the cross-request 10-minute
+ * cache and its availability semantics.
+ */
+const getNwsAlertsResultForRequest = cache(loadNwsAlertsResult);
+
+export function getNwsAlertsResult(
+  signal?: AbortSignal,
+): Promise<NwsAlertsResult> {
+  return getNwsAlertsResultForRequest(signal);
+}
+
+export async function getNwsAlerts(): Promise<NwsAlert[]> {
+  return (await getNwsAlertsResult()).alerts;
 }

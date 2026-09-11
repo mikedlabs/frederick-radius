@@ -1,14 +1,18 @@
 import Link from "next/link";
 import Image from "next/image";
+// eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
+import { PHOTOGENIC_CATEGORIES } from "@/lib/photogenic";
 
 /**
  * "Looks like Frederick" — a six-tile photographic grid of real
  * places. The point is visual presence: a wall of recognizable
  * storefronts, parks, and stages that anchors the page in the
- * actual place. Each tile is a tap target to the place detail; no
- * captions over the photos so the imagery does the talking.
+ * actual place. Each tile is a tap target to the place detail. The
+ * name caption reveals on hover where a pointer exists, and stays on
+ * where hover never fires (touch) so nobody taps a tile blind.
  *
  * Selection is deterministic per day (rotating by date) so a
  * repeat visit feels curated, not random. Only places with a Google
@@ -21,26 +25,23 @@ import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
  * page shows coffee photos). Default: countywide ranked pool.
  */
 
-// Visual-feed whitelist. Per the design audits: PhotoMosaic was
-// surfacing parking decks, driving schools, and county offices —
-// destroying the curated feel. Only show categories someone would
-// want a photo of.
-const PHOTOGENIC_CATEGORIES: ReadonlySet<string> = new Set([
-  "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
-  "park", "trail", "outdoors", "playground",
-  "museum", "gallery", "theater", "music", "public-art",
-  "market", "lodging", "family",
-]);
+// Visual-feed whitelist now lives in @/lib/photogenic (shared with the
+// FunnelFlow topic grid) so the two never drift apart.
 
-function pickPhotos(count: number, dayIdx: number, pool: PlaceCardData[]) {
+export function pickPhotos(count: number, dayIdx: number, pool: PlaceCardData[]) {
   const withPhotos = pool.filter(
     (p) => p.google_photo_url && PHOTOGENIC_CATEGORIES.has(p.category),
   );
-  if (withPhotos.length === 0) return [];
-  // Rotate the start cursor by day so the wall is *different*
-  // photos from visit to visit, but stable within a day.
-  const start = ((dayIdx % withPhotos.length) + withPhotos.length) % withPhotos.length;
-  return Array.from({ length: count }, (_, i) => withPhotos[(start + i * 17) % withPhotos.length]);
+  const n = withPhotos.length;
+  if (n === 0) return [];
+  // Never repeat a place: cap to what's actually available (a sparse pool —
+  // e.g. a category after eligibility filtering — must show FEWER tiles, not
+  // the same photo six times — the "Looks like Family → Spinners ×6" bug).
+  // Rotate the start by day for visit-to-visit variety, then walk
+  // sequentially so every tile is a DISTINCT place.
+  const take = Math.min(count, n);
+  const start = ((dayIdx % n) + n) % n;
+  return Array.from({ length: take }, (_, i) => withPhotos[(start + i) % n]);
 }
 
 export default function PhotoMosaic({
@@ -70,8 +71,14 @@ export default function PhotoMosaic({
         >
           {p.google_photo_url && (
             <Image
-              src={p.google_photo_url}
-              alt={p.name}
+              // A mosaic tile paints at most ~240px, and `unoptimized` (the
+              // proxy is an opaque route Next cannot resize) makes the sizes
+              // hint inert — so each of the six tiles was fetching the full
+              // w=800 hero on every visit against a no-store route. Same
+              // missed-adopter narrowing as DaypartNeeds and PlaceCard.
+              src={proxyPhotoAtWidth(p.google_photo_url, 240)}
+              alt=""
+              unoptimized={p.google_photo_url.startsWith("/api/place-photo")}
               fill
               sizes="(max-width: 720px) 33vw, 240px"
               placeholder="blur"
@@ -79,13 +86,17 @@ export default function PhotoMosaic({
               className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
             />
           )}
+          {/* Name scrim: hover-reveal on pointer devices, ALWAYS on where
+              hover never fires (touch) — otherwise phone users tap six
+              anonymous tiles blind, with the name living only in the
+              aria-label. */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
           />
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-2 bottom-2 truncate text-[10px] font-semibold text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+            className="pointer-events-none absolute inset-x-2 bottom-2 truncate text-[10px] font-semibold text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
             style={{ textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}
           >
             {p.name}

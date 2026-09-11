@@ -44,7 +44,7 @@ export default function ManagePanel({
         setSubmitted(true);
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong.");
+        setError(err instanceof Error ? err.message : "We couldn’t send this update. Try again in a minute.");
       }
     });
   };
@@ -134,7 +134,7 @@ export default function ManagePanel({
       {error ? (
         <p
           className="rounded-[var(--app-radius-md)] px-3 py-2 text-sm"
-          style={{ background: "rgba(160,41,41,0.10)", color: "var(--app-danger)" }}
+          style={{ background: "color-mix(in srgb, var(--app-danger) 10%, transparent)", color: "var(--app-danger)" }}
         >
           {error}
         </p>
@@ -143,8 +143,8 @@ export default function ManagePanel({
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 py-3 text-sm font-semibold text-white shadow-[var(--app-shadow-1)] transition disabled:opacity-60"
-        style={{ background: "var(--app-brand)" }}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 py-3 text-sm font-semibold shadow-[var(--app-shadow-1)] transition disabled:opacity-60"
+        style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
       >
         <Megaphone className="h-4 w-4" strokeWidth={2.25} aria-hidden />
         {pending ? "Submitting…" : "Submit for review"}
@@ -184,7 +184,7 @@ function Field({
         type={type}
         required={required}
         placeholder={placeholder}
-        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2"
+        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />
     </label>
@@ -200,7 +200,7 @@ function Area({ name, label }: { name: string; label: string }) {
       <textarea
         name={name}
         rows={3}
-        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2"
+        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />
     </label>

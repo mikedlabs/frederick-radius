@@ -1,25 +1,30 @@
 /**
- * Time-of-day animated sky behind the Today hero — now also tinted by
- * the current weather so a rainy 8am doesn't get the same vibrant
- * peach sunrise as a clear 8am. The base palette is hour-driven; the
- * weather "mood" mixes a tint into all three stops.
+ * Time-of-day material behind the Today weather glance.
  *
- * Server-rendered: hour comes from America/New_York and weather is the
- * cached NWS hourly forecast (same fetch as AdaptiveGreeting; Next's
- * fetch cache dedupes the call).
+ * This component is intentionally synchronous. It is atmosphere, not a
+ * weather claim; the verified forecast, alerts, and air-quality state live in
+ * TodayCard. Waiting on NWS here used to hold the entire hero behind an extra
+ * provider deadline before those useful facts could even begin rendering.
  */
 
-import { getNwsForecast } from "@/lib/integrations/nws";
-import { FREDERICK_CENTER } from "@/lib/geo";
-
-// RidgeLine no longer mounted (see comment at the end of SkyHero
-// for context). Kept in the codebase at ./RidgeLine if we want to
-// resurrect a horizon silhouette later.
+// Two silhouette attempts have now been pulled from the SkyHero
+// bottom edge:
+//   1. RidgeLine (mountain horizon) — read as "wavy" instead of
+//      mountains. Kept at ./RidgeLine.tsx for reference.
+//   2. ClusteredSpires (downtown steeples) — the proportions read
+//      phallic in the rendered version, not as architecture. Kept
+//      at ./ClusteredSpires.tsx; if we revisit, a redesign needs
+//      wider tower bases, stepped belfry → spire silhouettes, and
+//      unambiguous cross finials (with horizontal arms) to break
+//      the "tall narrow shape" read.
+// The Frederick identity now lives in the COPY beats — the Monocacy
+// / Catoctin sun anchors in AlmanacFooter, the Carroll Creek / Market
+// Street / Catoctin trails proper nouns in BriefingLine. The sky
+// ends in its own bottom color and the first card below overlaps
+// cleanly into it (-mt-4 on the page wrapper).
 
 export type SkyTone = "light" | "dark";
 type Sky = { top: string; mid: string; bottom: string; tone: SkyTone };
-
-type SkyMood = "clear" | "partly" | "cloudy" | "rain" | "storm" | "fog" | "snow";
 
 /**
  * Server-safe helper for the current Eastern-time hour's sky tone.
@@ -81,78 +86,31 @@ function paletteForHour(h: number): Sky {
   // Golden hour (18–19)
   if (h >= 18 && h < 20) return { top: "#D88860", mid: "#E8A878", bottom: "#F5C898", tone: "light" };
   // Twilight (20–21)
-  if (h >= 20 && h < 22) return { top: "#3D3460", mid: "#7A5680", bottom: "#C97B7B", tone: "dark" };
+  // Twilight's bottom rose is deepened from #C97B7B. That stop failed AA under
+  // BOTH dark-tone foregrounds even at full opacity (3.07:1 on #FCFBF8, 2.75:1
+  // on cream) — the only stop in the whole palette that did, and the copy sits
+  // lowest in the gradient where it is worst. #8F575F reads 5.49:1 and 4.92:1.
+  // Every other dark stop already clears comfortably (5.85:1 and up).
+  if (h >= 20 && h < 22) return { top: "#3D3460", mid: "#7A5680", bottom: "#8F575F", tone: "dark" };
   // Night (22–2)
   return { top: "#0F1428", mid: "#1F2444", bottom: "#3A3458", tone: "dark" };
 }
 
-/** NWS shortForecast → high-level mood we can paint with. */
-function moodFromConditions(s: string, precip: number): SkyMood {
-  const cond = (s || "").toLowerCase();
-  if (/thunderstorm|t-?storm|severe/.test(cond)) return "storm";
-  if (/fog|mist|haze/.test(cond)) return "fog";
-  if (/snow|sleet|flurr|wintry|ice/.test(cond)) return "snow";
-  // Anything with rain/showers/drizzle in the forecast triggers a
-  // rainy sky, even when hedged ("Chance Rain Showers"). AdaptiveGreeting
-  // hedges its copy ("rainy" vs "chance of rain") so it doesn't claim
-  // active rain falsely — but the sky just needs to FEEL like the
-  // weather outside, and "rain in the description" is the right signal.
-  if (/\b(rain|showers?|drizzle)\b/.test(cond) || precip >= 40) return "rain";
-  if (/overcast|mostly cloudy|cloudy/.test(cond)) return "cloudy";
-  if (/partly|mostly sunny|few clouds/.test(cond)) return "partly";
-  // Default if conditions string is empty or unrecognized: keep base.
-  return "clear";
-}
-
-/** Parse #RRGGBB to a [r,g,b] triple in 0..255. Loose — assumes valid. */
-function hexToRgb(hex: string): [number, number, number] {
-  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
-  if (!m) return [0, 0, 0];
-  return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
-}
-function rgbToHex(rgb: [number, number, number]): string {
-  return "#" + rgb.map((n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0")).join("");
-}
-function mixHex(a: string, b: string, t: number): string {
-  const [ar, ag, ab] = hexToRgb(a);
-  const [br, bg, bb] = hexToRgb(b);
-  return rgbToHex([ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t]);
-}
-
-/**
- * Apply the weather mood to the time-of-day palette. Each mood has a
- * tint color we mix into all three stops at a strength. Clear/partly
- * leave the base palette alone (the time-of-day vibe wins on a nice
- * day); rain/storm/fog/snow pull the sky toward their characteristic
- * mood color.
- */
-function applyMood(sky: Sky, mood: SkyMood): Sky {
-  // Tint hex + how strongly to mix the base toward it.
-  const recipe: Record<SkyMood, { tint: string; t: number; tone?: SkyTone }> = {
-    clear:   { tint: "#000000", t: 0 },
-    partly:  { tint: "#9AA8B5", t: 0.12 },
-    cloudy:  { tint: "#7A828C", t: 0.32 },
-    rain:    { tint: "#3F526B", t: 0.42 },
-    storm:   { tint: "#1F1B2B", t: 0.55, tone: "dark" },
-    fog:     { tint: "#B6BCC4", t: 0.50 },
-    snow:    { tint: "#D6DEE8", t: 0.32 },
-  };
-  const r = recipe[mood];
-  if (r.t === 0) return sky;
-  return {
-    top: mixHex(sky.top, r.tint, r.t),
-    mid: mixHex(sky.mid, r.tint, r.t),
-    bottom: mixHex(sky.bottom, r.tint, r.t),
-    tone: r.tone ?? sky.tone,
-  };
-}
-
-export default async function SkyHero({
+export default function SkyHero({
   children,
   className = "",
+  fill = false,
 }: {
   children: React.ReactNode;
   className?: string;
+  /** Cinematic fold on mobile: grow the sky so it owns most of the first
+   *  screen, centering the weather glance in the gradient with a quiet
+   *  scroll cue at the bottom edge. `true` = tall (~72svh, the full
+   *  Apple-Weather fold); `"medium"` = ~55svh so the NEXT section still
+   *  peeks above the fold (drama without burying the answer). Resets to a
+   *  normal-height block at lg+ so the desktop two-column layout is
+   *  untouched. */
+  fill?: boolean | "medium";
 }) {
   const nyHour = parseInt(
     new Intl.DateTimeFormat("en-US", {
@@ -162,50 +120,68 @@ export default async function SkyHero({
     }).format(new Date()),
     10
   );
-  const base = paletteForHour(nyHour);
-
-  // Weather mood. Fetch is cached server-side; failure falls through
-  // to the time-only palette so the page never blocks on NWS.
-  let mood: SkyMood = "clear";
-  try {
-    const forecast = await getNwsForecast(FREDERICK_CENTER);
-    const now0 = forecast?.hourly?.[0];
-    if (now0) {
-      mood = moodFromConditions(now0.shortForecast, now0.probabilityOfPrecipitation ?? 0);
-    }
-  } catch {
-    // graceful: keep base palette
-  }
-  const sky = applyMood(base, mood);
+  const sky = paletteForHour(nyHour);
 
   return (
     <section
-      className={`sky-hero -mx-4 -mt-4 px-4 pb-4 pt-6 sm:rounded-b-[var(--app-radius-xl)] ${className}`}
+      className={`sky-hero overflow-hidden rounded-[var(--app-radius-lg)] px-4 py-4 ${
+        fill === "medium"
+          ? "flex min-h-[55svh] flex-col lg:!min-h-0 lg:block"
+          : fill
+            ? "flex min-h-[72svh] flex-col lg:!min-h-0 lg:block"
+            : ""
+      } ${className}`}
       style={
         {
           "--sky-top": sky.top,
           "--sky-mid": sky.mid,
           "--sky-bottom": sky.bottom,
-          color: sky.tone === "dark" ? "#F4F2EE" : "#1A1A1A",
+          color: sky.tone === "dark" ? "#FCFBF8" : "#11100C",
+          viewTransitionName: "radius-weather",
         } as React.CSSProperties
       }
       data-sky-tone={sky.tone}
-      data-sky-mood={mood}
+      data-sky-mood="time"
     >
-      {children}
-      {/* The RidgeLine silhouette (stylized Catoctin + Sugarloaf
-          horizon) was removed pre-launch — the user kept reading
-          its peaks as "wavy" rather than "mountains," even after
-          the bottom sky color was moved into the horizon-blue
-          family. Without the ridge, the sky ends in its own color
-          and the first card below overlaps cleanly into it
-          (the -mt-4 in /now/page.tsx makes the card top sit inside
-          the sky's bottom, so the visible transition is:
-          horizon-blue sky → rounded cream card top → page bg).
-          Local-recognition was a nice touch but it wasn't reading
-          to actual users; the simpler boundary wins. The RidgeLine
-          component is kept in src/components/today/ in case we ever
-          want to bring it back, but is no longer mounted. */}
+      {/* Fine film grain sits above the gradient but below content, giving
+          the sky material texture instead of a flat CSS wash. */}
+      <div aria-hidden className="sky-grain" />
+      {/* Fill mode centers the weather glance in the tall sky (the
+          Apple-Weather "city up top, temp in the field" composition);
+          on lg the wrapper is inert so the desktop card layout holds. */}
+      {fill ? (
+        <div className="flex flex-1 flex-col justify-center lg:block">
+          {children}
+        </div>
+      ) : (
+        children
+      )}
+
+      {/* Scroll cue — a quiet, tone-aware chevron at the bottom of the
+          fold that says "there's more below" without a label. Mobile
+          only; the desktop layout shows the next sections inline. */}
+      {fill && (
+        <div
+          aria-hidden
+          className="mt-4 flex shrink-0 justify-center pb-1 opacity-60 lg:hidden"
+        >
+          <svg
+            className="h-5 w-5 animate-bounce motion-reduce:animate-none"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.25"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </div>
+      )}
+      {/* No silhouette mounted here right now. See the import-area
+          comment for the history of attempts (mountains, spires).
+          Frederick identity lives in the AlmanacFooter + BriefingLine
+          copy until the silhouette gets a designed-from-scratch pass. */}
     </section>
   );
 }

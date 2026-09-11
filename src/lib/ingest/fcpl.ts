@@ -1,0 +1,389 @@
+/**
+ * FCPL — Frederick County Public Libraries event mapper.
+ *
+ * The library's `lc_calendar` JSON feed (frederick.librarycalendar.com/events/
+ * feed/json) is the #1 county-wide content target: ~1,700 programs across 8
+ * branches, filling every gap town (Brunswick, Myersville, Emmitsburg, …) that
+ * has no other machine-readable calendar. It is NOT live-fetched — the feed is
+ * unbounded (2.3MB, ~16s, date params ignored) and blows the 8s request budget
+ * — so it rides the DAILY CRON-INGEST path (/api/ingest/fcpl) into
+ * `ingested_events`, surfacing as the recurring-collapsed civic calendar on
+ * /events (story times become one "· 11 more dates" series, not 12 rows).
+ *
+ * This module is the PURE mapping layer (no fetch, no DB) so it can be unit
+ * tested against real records.
+ */
+import type { ParsedEvent } from "./parser";
+
+const SOURCE_DOMAIN = "frederick.librarycalendar.com";
+
+/** One raw record from the lc_calendar JSON feed (only the fields we use).
+ *  Free-text fields are typed `unknown`: in the wild the feed sometimes serves
+ *  an object/array/null where a string is expected, so every read goes through
+ *  asText()/fcplFieldString(). */
+export type FcplRaw = {
+  title?: unknown;
+  id?: string | number;
+  uuid?: string;
+  public?: boolean;
+  published?: boolean;
+  url?: unknown;
+  changed?: unknown;
+  start_date?: unknown;
+  end_date?: unknown;
+  timezone?: unknown;
+  branch?: unknown;
+  room?: unknown;
+  offsite_address?: unknown;
+  offsite_address_raw?: unknown;
+  program_type?: unknown;
+  age_group?: unknown;
+  description?: unknown;
+  program_description?: unknown;
+  image?: unknown;
+  imagealt?: unknown;
+};
+
+export type FcplBranchLocation = {
+  name: string;
+  municipality: string;
+  address: string;
+  match: RegExp;
+};
+
+/**
+ * Reviewed FCPL branch locations.
+ *
+ * The calendar feed names the branch and room but does not publish the branch
+ * street address on ordinary in-library programs. Supplying these reviewed
+ * addresses at the mapper boundary lets the existing geocode pipeline resolve
+ * a real destination instead of falling back to a town centroid. A source row
+ * that declares itself offsite never uses this registry.
+ */
+export const FCPL_BRANCH_LOCATIONS: readonly FcplBranchLocation[] = [
+  {
+    name: "C. Burr Artz Public Library",
+    municipality: "frederick",
+    address: "110 E Patrick St, Frederick, MD 21701",
+    match: /^c\.?\s*burr\s*artz\s+public\s+library$/i,
+  },
+  {
+    name: "Brunswick Branch Library",
+    municipality: "brunswick",
+    address: "915 N Maple Ave, Brunswick, MD 21716",
+    match: /^brunswick\s+branch\s+library$/i,
+  },
+  {
+    name: "Thurmont Regional Library",
+    municipality: "thurmont",
+    address: "76 E Moser Rd, Thurmont, MD 21788",
+    match: /^thurmont\s+regional\s+library$/i,
+  },
+  {
+    name: "Urbana Regional Library",
+    municipality: "urbana",
+    address: "9020 Amelung St, Frederick, MD 21704",
+    match: /^urbana\s+regional\s+library$/i,
+  },
+  {
+    name: "Myersville Community Library",
+    municipality: "myersville",
+    address: "8 Harp Pl, Myersville, MD 21773",
+    match: /^myersville\s+community\s+library$/i,
+  },
+  {
+    name: "Emmitsburg Branch Library",
+    municipality: "emmitsburg",
+    address: "300 S Seton Ave, Emmitsburg, MD 21727",
+    match: /^emmitsburg\s+branch\s+library$/i,
+  },
+  {
+    name: "Walkersville Branch Library",
+    municipality: "walkersville",
+    address: "2 S Glade Rd, Walkersville, MD 21793",
+    match: /^walkersville\s+branch\s+library$/i,
+  },
+  {
+    name: "Middletown Branch Library",
+    municipality: "middletown",
+    address: "31 E Green St, Middletown, MD 21769",
+    match: /^middletown\s+branch\s+library$/i,
+  },
+  {
+    name: "Edward F. Fry Memorial Library at Point of Rocks",
+    municipality: "brunswick",
+    address: "1635 Ballenger Creek Pike, Point of Rocks, MD 21777",
+    match: /^edward\s+f\.?\s*fry\s+memorial\s+library\s+at\s+point\s+of\s+rocks$/i,
+  },
+];
+
+const LOCATION_MUNICIPALITY: Array<[RegExp, string]> = [
+  [/\bbrunswick\b/i, "brunswick"],
+  [/\bthurmont\b/i, "thurmont"],
+  [/\burbana\b|\bijamsville\b/i, "urbana"],
+  [/\bmyersville\b/i, "myersville"],
+  [/\bemmitsburg\b/i, "emmitsburg"],
+  [/\bwalkersville\b/i, "walkersville"],
+  [/\bmiddletown\b/i, "middletown"],
+  [/\bmount\s+airy\b|\bmt\.?\s+airy\b/i, "mount-airy"],
+  [/\bwoodsboro\b/i, "woodsboro"],
+  [/\bpoint\s+of\s+rocks\b/i, "brunswick"],
+  [/\bfrederick\b/i, "frederick"],
+];
+
+const OFFSITE_STREET_LINE = /^\d{1,6}[a-z]?\s+\S+/i;
+const WEAK_OFFSITE_VALUE = /^(?:united\s+states|us|usa)$/i;
+
+export function fcplBranchLocation(
+  branchLabel: string,
+): FcplBranchLocation | null {
+  return FCPL_BRANCH_LOCATIONS.find((branch) =>
+    branch.match.test(branchLabel.trim()),
+  ) ?? null;
+}
+
+function decodeFcplText(value: string): string {
+  return value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&#0*39;|&apos;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#(\d+);/g, (_, code: string) =>
+      String.fromCodePoint(Number(code)),
+    );
+}
+
+type FcplResolvedLocation = {
+  rawLocation?: string;
+  municipality: string;
+};
+
+/**
+ * Turn the feed's branch/room/offsite fields into the existing
+ * `venue - street address` ingest contract.
+ *
+ * Offsite wins only when it contains a Maryland street address. A weak value
+ * such as "United States" is still an offsite signal, so it deliberately
+ * blocks the branch-address fallback rather than placing the event at the
+ * library. The row remains usable but area-level until the publisher supplies
+ * a real destination.
+ */
+export function fcplLocation(raw: Pick<
+  FcplRaw,
+  "branch" | "room" | "offsite_address" | "offsite_address_raw"
+>): FcplResolvedLocation {
+  const branchLabel = fcplFieldString(raw.branch);
+  const room = fcplFieldString(raw.room);
+  const offsiteText = decodeFcplText(fcplFieldString(raw.offsite_address));
+  const hasOffsiteSignal = Boolean(
+    offsiteText.trim() || fcplFieldString(raw.offsite_address_raw).trim(),
+  );
+
+  if (hasOffsiteSignal) {
+    const lines = offsiteText
+      .split(/\r?\n/)
+      .map((line) => line.replace(/\s+/g, " ").trim())
+      .filter((line) => line && !WEAK_OFFSITE_VALUE.test(line));
+    const streetIndex = lines.findIndex((line) =>
+      OFFSITE_STREET_LINE.test(line),
+    );
+    const hasMarylandAddress = lines.some((line) => /\bMD\b/i.test(line));
+
+    if (streetIndex >= 0 && hasMarylandAddress) {
+      const venue = lines.slice(0, streetIndex).join(" / ") || room || branchLabel;
+      const address = lines.slice(streetIndex).join(", ");
+      // The address is the location authority. The venue can contain a
+      // different town or county name (for example, a Frederick County program
+      // hosted in Walkersville), which must not override the published city.
+      const municipality = fcplMunicipality(address);
+      return {
+        rawLocation: [venue, address].filter(Boolean).join(" - ") || undefined,
+        municipality,
+      };
+    }
+
+    // The source says this is offsite but gives no trustworthy address. Do not
+    // silently pin it to the branch. Preserve the most specific published
+    // label available and let downstream confidence remain area-level.
+    return {
+      rawLocation: room || lines[0] || branchLabel || undefined,
+      municipality: fcplMunicipality(
+        [room, lines.join(" "), branchLabel].filter(Boolean).join(" "),
+      ),
+    };
+  }
+
+  const branch = fcplBranchLocation(branchLabel);
+  if (branch) {
+    const venue = [branch.name, room].filter(Boolean).join(", ");
+    return {
+      rawLocation: `${venue} - ${branch.address}`,
+      municipality: branch.municipality,
+    };
+  }
+
+  const fallbackLabel = [branchLabel, room].filter(Boolean).join(", ");
+  return {
+    rawLocation: fallbackLabel || undefined,
+    municipality: fcplMunicipality(branchLabel),
+  };
+}
+
+/** A feed value can be a plain string or a `{ "87": "Around the Community" }`
+ *  object; normalize either to a readable, "/"-joined string. */
+export function fcplFieldString(v: unknown): string {
+  if (v == null) return "";
+  if (typeof v === "string") return v.trim();
+  if (typeof v === "object") return Object.values(v as Record<string, unknown>).map(String).join(" / ").trim();
+  return String(v);
+}
+
+/** Map a branch label to its municipality slug. Unknown / multi-branch -> the
+ *  county seat (frederick), the honest county-wide fallback. */
+export function fcplMunicipality(branchLabel: string): string {
+  const matches = new Set(
+    LOCATION_MUNICIPALITY.filter(([re]) => re.test(branchLabel)).map(
+      ([, municipality]) => municipality,
+    ),
+  );
+  // Exactly one branch matched -> that town; zero or many (system-wide) -> seat.
+  return matches.size === 1 ? [...matches][0] : "frederick";
+}
+
+/** Infer an honest category from the program type + audience. Library programs
+ *  are mostly community learning; storytimes/kids -> family, wellness its own. */
+export function fcplCategory(programType: string, ageGroup: string): string {
+  const p = programType.toLowerCase();
+  const a = ageGroup.toLowerCase();
+  if (/storytime|tween|early start/.test(p) || /birth|elementary/.test(a)) return "family";
+  if (/wellness/.test(p)) return "wellness";
+  return "community";
+}
+
+/** Offset of an IANA timezone from UTC, in ms, at a given instant. */
+function tzOffsetMs(tz: string, date: Date): number {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz, hourCycle: "h23",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  });
+  const p = dtf.formatToParts(date).reduce<Record<string, string>>((a, x) => {
+    a[x.type] = x.value;
+    return a;
+  }, {});
+  const asIfUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+  return asIfUtc - date.getTime();
+}
+
+/** A free-text feed field is sometimes a non-string (object/array/null in the
+ *  wild lc_calendar data); take it only when it is genuinely a string. */
+function asText(v: unknown): string {
+  return typeof v === "string" ? v : "";
+}
+
+function fcplEventImage(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  try {
+    const url = new URL(value.trim());
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== SOURCE_DOMAIN ||
+      !url.pathname.startsWith("/sites/default/files/")
+    ) {
+      return undefined;
+    }
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function fcplEventImageAlt(value: unknown): string | undefined {
+  const cleaned = asText(value)
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned ? cleaned.slice(0, 300) : undefined;
+}
+
+/** Convert a local "YYYY-MM-DD HH:MM:SS" wall time in `tzid` to a UTC ISO
+ *  string. "2026-06-20 09:00:00" ET -> "2026-06-20T13:00:00.000Z" (EDT). */
+export function localToUtcIso(local: unknown, tzid = "America/New_York"): string | null {
+  const m = asText(local).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) return null;
+  const [, Y, Mo, D, H, Mi, S] = m;
+  const asUtc = Date.UTC(+Y, +Mo - 1, +D, +H, +Mi, +(S ?? "0"));
+  if (Number.isNaN(asUtc)) return null;
+  const off = tzOffsetMs(tzid, new Date(asUtc));
+  return new Date(asUtc - off).toISOString();
+}
+
+export type FcplMapped = { event: ParsedEvent; municipality: string; category: string };
+
+/** Map one raw feed record to a ParsedEvent + its municipality/category, or
+ *  null if it's not a usable public, future-dated, time-stamped program. */
+export function fcplMapOne(raw: FcplRaw, now: Date): FcplMapped | null {
+  if (raw.public === false || raw.published === false) return null;
+  const title = asText(raw.title).trim();
+  const uid = String(raw.id ?? raw.uuid ?? "").trim();
+  if (!title || !uid) return null;
+
+  const tzid = asText(raw.timezone) || "America/New_York";
+  const startsAtUtc = localToUtcIso(raw.start_date, tzid);
+  if (!startsAtUtc) return null;
+  if (Date.parse(startsAtUtc) < now.getTime()) return null; // past -> skip
+
+  const endsAtUtc = localToUtcIso(raw.end_date, tzid) ?? undefined;
+  const allDay = /\b00:00:00$/.test(asText(raw.start_date));
+
+  const location = fcplLocation(raw);
+  const municipality = location.municipality;
+  const category = fcplCategory(fcplFieldString(raw.program_type), fcplFieldString(raw.age_group));
+
+  // Use changed timestamp as the change-detection key (DTSTAMP analogue);
+  // fall back to start so re-runs still upsert idempotently.
+  const dtstamp = localToUtcIso(raw.changed, tzid) ?? startsAtUtc;
+  const heroImage = fcplEventImage(raw.image);
+
+  const event: ParsedEvent = {
+    uid,
+    summary: title,
+    description: (asText(raw.description) || asText(raw.program_description)).trim() || undefined,
+    sourceUrl: asText(raw.url).trim() || undefined,
+    heroImage,
+    heroImageAlt: heroImage ? fcplEventImageAlt(raw.imagealt) : undefined,
+    rawLocation: location.rawLocation,
+    startsAtUtc,
+    endsAtUtc,
+    tzid,
+    allDay,
+    dtstamp,
+    rawVevent: JSON.stringify(raw),
+  };
+  return { event, municipality, category };
+}
+
+/** How far ahead one nightly run ingests. The feed is unbounded (2,520
+ *  future rows measured Jul 2026, up 45% from the 1,736 the route was sized
+ *  for) and the run died growing into its 300s budget — silently, for two
+ *  months (Fandom Fest, added to the feed May 12, never arrived; the owner
+ *  found the gap holding the branch's paper flyer). 60 days ≈ 900 rows,
+ *  covers every surfaced horizon, and the DAILY re-run rolls the window
+ *  forward, so nothing is ever permanently missed. */
+export const FCPL_HORIZON_DAYS = 60;
+
+/** Map the whole feed, dropping non-public / past / unparseable rows and
+ *  rows beyond the ingest horizon. */
+export function fcplMapFeed(feed: unknown, now: Date, horizonDays: number = FCPL_HORIZON_DAYS): FcplMapped[] {
+  if (!Array.isArray(feed)) return [];
+  const horizonMs = now.getTime() + horizonDays * 24 * 60 * 60 * 1000;
+  const out: FcplMapped[] = [];
+  for (const raw of feed) {
+    const mapped = fcplMapOne(raw as FcplRaw, now);
+    if (mapped && Date.parse(mapped.event.startsAtUtc) <= horizonMs) out.push(mapped);
+  }
+  return out;
+}
+
+export const FCPL_SOURCE_DOMAIN = SOURCE_DOMAIN;

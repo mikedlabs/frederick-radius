@@ -1,0 +1,136 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { NextRequest } from "next/server";
+
+const mocks = vi.hoisted(() => ({
+  fetch: vi.fn(),
+  isOverPaidRequestBudget: vi.fn(),
+  isSameOriginRequest: vi.fn(),
+  isUnattributedRequest: vi.fn(),
+  photoUrl: vi.fn(),
+  reserveDailyUsage: vi.fn(),
+}));
+
+vi.mock("@/lib/integrations/google-places", () => ({
+  photoUrl: mocks.photoUrl,
+}));
+vi.mock("@/data/places", () => ({ PLACE_BY_SLUG: {} }));
+vi.mock("@/data/categories", () => ({ CATEGORY_BY_SLUG: {} }));
+vi.mock("@/lib/origin-check", () => ({
+  isOverPaidRequestBudget: mocks.isOverPaidRequestBudget,
+  isSameOriginRequest: mocks.isSameOriginRequest,
+  isUnattributedRequest: mocks.isUnattributedRequest,
+}));
+vi.mock("@/lib/usage-meter", () => ({
+  reserveDailyUsage: mocks.reserveDailyUsage,
+}));
+
+import { GET } from "./route";
+
+function request() {
+  const params = new URLSearchParams({
+    name: "places/test-place/photos/test-photo",
+    w: "800",
+  });
+  return new NextRequest(
+    `https://frederickradius.app/api/place-photo?${params.toString()}`,
+  );
+}
+
+describe("GET /api/place-photo daily budget", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv("GOOGLE_PHOTO_DAILY_CAP", "");
+    vi.stubGlobal("fetch", mocks.fetch);
+    mocks.isSameOriginRequest.mockReturnValue(true);
+    mocks.isUnattributedRequest.mockReturnValue(false);
+    mocks.isOverPaidRequestBudget.mockResolvedValue(false);
+    mocks.photoUrl.mockReturnValue("https://places.googleapis.test/photo");
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: true, count: 1 });
+    mocks.fetch.mockResolvedValue(
+      new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: { "Content-Type": "image/jpeg" },
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("rejects an unattributed request before any paid work", async () => {
+    mocks.isUnattributedRequest.mockReturnValue(true);
+
+    const response = await GET(request());
+
+    expect(response.status).toBe(403);
+    expect(mocks.isOverPaidRequestBudget).not.toHaveBeenCalled();
+    expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it("reserves the default spike-breaker budget before the paid fetch", async () => {
+    const response = await GET(request());
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/jpeg");
+    expect(response.headers.get("x-photo-fallback")).toBeNull();
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith("google_photo", 1_500);
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+    expect(mocks.reserveDailyUsage.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.fetch.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("returns artwork without fetching when the cap is exhausted", async () => {
+    vi.stubEnv("GOOGLE_PHOTO_DAILY_CAP", "7");
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: false, count: 7 });
+
+    const response = await GET(request());
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/svg+xml");
+    expect(response.headers.get("x-photo-fallback")).toBe("daily-cap");
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith("google_photo", 7);
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it("uses the safe default for a malformed cap", async () => {
+    vi.stubEnv("GOOGLE_PHOTO_DAILY_CAP", "100photos-private-value");
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: false, count: 1_500 });
+
+    const response = await GET(request());
+
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith("google_photo", 1_500);
+    expect(response.headers.get("x-photo-fallback")).toBe("daily-cap");
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["0", 1],
+    ["100000", 2_000],
+  ])("clamps a numeric cap of %s to %i", async (configured, expected) => {
+    vi.stubEnv("GOOGLE_PHOTO_DAILY_CAP", configured);
+
+    await GET(request());
+
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledWith(
+      "google_photo",
+      expected,
+    );
+  });
+
+  it("fails closed when the budget database is unavailable", async () => {
+    mocks.reserveDailyUsage.mockResolvedValue(null);
+
+    const response = await GET(request());
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/svg+xml");
+    expect(response.headers.get("x-photo-fallback")).toBe(
+      "budget-unavailable",
+    );
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+});

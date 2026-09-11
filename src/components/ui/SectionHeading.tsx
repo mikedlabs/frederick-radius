@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 /**
  * SectionHeading — the one strong category header, reused by Shelf and
  * the Radius results grid (and available to any future surface). A
- * tick + serif title + a quiet count, optional trailing action.
+ * tick + editorial title + a quiet count, optional trailing action.
  *
  * The tick color reads from `--section-accent` if a parent has set it
  * (so a whole route can theme its headings with one declaration on the
@@ -19,6 +19,7 @@ export default function SectionHeading({
   onCtaClick,
   trailing,
   accent,
+  size = "lg",
 }: {
   title: string;
   count?: number;
@@ -30,36 +31,57 @@ export default function SectionHeading({
   trailing?: React.ReactNode;
   /** Override the route accent for a single heading. */
   accent?: string;
+  /** Heading register. `lg` is the primary section title (Caslon 22 + full
+   *  tick); `sm` is the one lighter subhead register for secondary sections
+   *  (Public Sans 16 + a shorter tick), so hierarchy reads from type, not per-section
+   *  invention. */
+  size?: "lg" | "sm";
 }) {
   const tickColor = accent ?? "var(--section-accent, var(--app-brand))";
+  // The tick is decorative and keeps the true accent; the CTA is 12px TEXT
+  // and must hold 4.5:1 — the raw brand red (3.7:1 on cream) fails, so the
+  // text color is the accent pulled 40% toward ink (axe-verified, Jul 2026).
+  const ctaColor = `color-mix(in srgb, ${tickColor} 60%, var(--app-ink))`;
+  const small = size === "sm";
+  const hasTrailingAction = Boolean(trailing || onCtaClick || href);
   return (
-    <header className="flex items-end justify-between gap-3">
+    <header className="section-heading flex min-w-0 flex-wrap items-end gap-x-3 gap-y-1 min-[360px]:flex-nowrap">
       <h2
-        className="flex items-center gap-2 font-serif text-[22px] font-semibold leading-none tracking-tight"
+        className={`${small
+            ? "flex min-w-0 items-center gap-2 font-sans text-[16px] font-semibold leading-none tracking-tight"
+            : "flex min-w-0 items-center gap-2 font-serif text-[22px] leading-none tracking-tight"}${hasTrailingAction ? " max-[359px]:basis-full" : ""}`}
         style={{ color: "var(--app-ink)" }}
       >
         <span
           aria-hidden
-          className="inline-block h-4 w-1 rounded-full"
+          className={small ? "inline-block h-3 w-1 rounded-full" : "inline-block h-4 w-1 rounded-full"}
           style={{ background: tickColor }}
         />
         {title}
         {count !== undefined && (
           <span
-            className="text-base font-normal tabular-nums"
+            className={small ? "font-data text-sm font-normal" : "font-data text-base font-normal"}
             style={{ color: "var(--app-ink-3)" }}
           >
             {count}
           </span>
         )}
       </h2>
-      {trailing ??
-        (onCtaClick ? (
+      <span
+        aria-hidden
+        className="mb-[0.18rem] hidden h-px min-w-4 flex-1 min-[360px]:block"
+        style={{
+          background: `linear-gradient(90deg, color-mix(in srgb, ${tickColor} 34%, var(--app-border)), var(--app-border))`,
+        }}
+      />
+      {trailing ? (
+        <span className="max-[359px]:ml-auto">{trailing}</span>
+      ) : onCtaClick ? (
           <button
             type="button"
             onClick={onCtaClick}
-            className="inline-flex shrink-0 items-center gap-1 pb-0.5 text-xs font-semibold tracking-tight transition active:scale-[0.96]"
-            style={{ color: tickColor }}
+            className="tap-44-y -mx-1 inline-flex shrink-0 items-center gap-1 px-1 pb-0.5 text-xs font-semibold tracking-tight transition active:scale-[0.96] max-[359px]:ml-auto"
+            style={{ color: ctaColor }}
           >
             {cta}
           </button>
@@ -67,14 +89,14 @@ export default function SectionHeading({
           href && (
             <Link
               href={href}
-              className="inline-flex shrink-0 items-center gap-1 pb-0.5 text-xs font-semibold tracking-tight"
-              style={{ color: tickColor }}
+              className="tap-44-y -mx-1 inline-flex shrink-0 items-center gap-1 px-1 pb-0.5 text-xs font-semibold tracking-tight max-[359px]:ml-auto"
+              style={{ color: ctaColor }}
             >
               {cta}
               <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </Link>
           )
-        ))}
+        )}
     </header>
   );
 }

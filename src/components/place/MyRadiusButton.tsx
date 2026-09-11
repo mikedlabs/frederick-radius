@@ -1,20 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bookmark, BookmarkCheck, Loader2, X } from "lucide-react";
-import { useFollowedSlugs, useToggleFollow } from "@/hooks/useFollows";
+import { useIsFollowed, useToggleFollow, useFollowedSlugs } from "@/hooks/useFollows";
 import { useMounted } from "@/hooks/useSaved";
 import { haptic } from "@/lib/haptics";
+import {
+  isInstallPromptSuppressedPath,
+  isStandalone,
+} from "@/lib/pwa-display";
+import {
+  currentReturnBridgeState,
+  openReturnBridge,
+} from "@/lib/return-bridge";
 import { toast } from "sonner";
+import { trackDecision } from "@/lib/decision/telemetry";
 
 /**
  * MyRadiusButton — the prominent text-style follow CTA the user
  * spec'd for place detail pages.
  *
- * Three states (per the brief):
- *   - default (not followed)              "Add to My Radius"
- *   - followed                            "In My Radius"
+ * Three states:
+ *   - default (not followed)              "Save"
+ *   - followed                            "Saved"
  *   - followed + hover/long-press         "Remove"
+ * (Wording is literal — "Save"/"Saved" — to match the "Saved" nav tab +
+ * page. "My Radius" lingering on the button reintroduced the ambiguity the
+ * nav rename removed; the brand name isn't a verb.)
  *
  * Mobile UX:
  *   - The hover state doesn't exist on touch. To remove on mobile,
@@ -25,8 +37,13 @@ import { toast } from "sonner";
  *
  * Auth flow:
  *   - Signed in: tap → optimistic DB write via useToggleFollow.
- *   - Signed out: tap saves immediately on this device. My Radius later
- *     offers optional place sync; auth is continuity, never admission.
+ *   - Signed out: tap → saves to THIS DEVICE immediately (same silent
+ *     localStorage path as the sheet's icon SaveButton), and the toast
+ *     carries a quiet "sign in to keep it across devices" line. This CTA
+ *     used to redirect anonymous users to /auth/login instead of saving —
+ *     the app's most prominent save button punished the tap the icon
+ *     version rewarded, and cost an /api/auth/me round trip besides. A
+ *     save must never be a login wall; sync is the upsell, not the toll.
  *
  * Visual register:
  *   - Default: brand-filled pill (the call to action stands out).
@@ -42,20 +59,27 @@ export default function MyRadiusButton({
   name: string;
 }) {
   const mounted = useMounted();
-  const followState = useFollowedSlugs();
-  const isFollowed = followState.slugs.has(slug);
+  const isFollowed = useIsFollowed(slug);
+  const { authed } = useFollowedSlugs();
   const toggle = useToggleFollow(slug, "place_detail");
   const [busy, setBusy] = useState(false);
   const [hover, setHover] = useState(false);
+  const [optimisticFollowed, setOptimisticFollowed] = useState<boolean | null>(null);
+  const renderedFollowed = optimisticFollowed ?? isFollowed;
+  useEffect(() => {
+    if (optimisticFollowed === null || optimisticFollowed !== isFollowed) return;
+    setOptimisticFollowed(null);
+  }, [isFollowed, optimisticFollowed]);
 
   // Pre-mount: render a placeholder pill so SSR + hydration agree.
   if (!mounted) {
     return (
       <button
         type="button"
+        data-place-save={slug}
         aria-hidden
         tabIndex={-1}
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
+        className="tap-44 inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
         style={{
           borderColor: "var(--app-border)",
           background: "var(--app-bg-elevated)",
@@ -63,34 +87,56 @@ export default function MyRadiusButton({
         }}
       >
         <Bookmark className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-        Add to My Radius
+        Save
       </button>
     );
   }
 
   async function onClick() {
     if (busy) return;
+    const wasFollowed = renderedFollowed;
+    const returnState = currentReturnBridgeState();
+    const modalOpen = Boolean(
+      document.querySelector('[role="dialog"][aria-modal="true"]'),
+    );
+    const offerKeepAction =
+      !wasFollowed
+      && !isStandalone()
+      && !returnState.completed
+      && returnState.valueKind === null
+      && isInstallPromptSuppressedPath(window.location.pathname)
+      && !modalOpen;
+    setOptimisticFollowed(!wasFollowed);
     setBusy(true);
     try {
-      // Saving is local-first. Signed-in users update the shared remote cache;
-      // signed-out users update the same device-local list as the icon button.
-      // That consistency is deliberate: a useful action should never become an
-      // auth tollbooth.
+      // One code path with the sheet's SaveButton: the toggle itself is
+      // auth-aware (localStorage when anonymous, optimistic DB write when
+      // signed in), so the tap always succeeds instantly. Anonymous saves
+      // get a quiet sync upsell in the toast, never a login detour.
       const nowFollowed = await toggle();
-      if (nowFollowed === isFollowed) {
-        toast.error("Could not update My Radius just now", {
-          description: "Your existing saves are still safe.",
-        });
-        return;
-      }
+      setOptimisticFollowed(nowFollowed);
       haptic(nowFollowed ? "medium" : "light");
       if (nowFollowed) {
-        toast.success(`Saved to My Radius · ${name}`, {
-          description: followState.authed ? "Kept with your account." : "On this device.",
-          action: { label: "Undo", onClick: () => void toggle() },
+        trackDecision({
+          stage: "action",
+          surface: "place",
+          entityKind: "place",
+          entityId: slug,
+          position: "detail",
+          action: "save",
+        });
+        toast.success(`Saved · ${name}`, {
+          description: authed ? undefined : "On this device. Sign in to keep saves everywhere.",
+          duration: offerKeepAction ? 7000 : undefined,
+          action: offerKeepAction
+            ? { label: "Keep handy", onClick: openReturnBridge }
+            : { label: "Undo", onClick: () => void toggle() },
+          cancel: offerKeepAction
+            ? { label: "Undo", onClick: () => void toggle() }
+            : undefined,
         });
       } else {
-        toast(`Removed from My Radius · ${name}`, {
+        toast(`Removed from Saved · ${name}`, {
           action: { label: "Undo", onClick: () => void toggle() },
         });
       }
@@ -100,18 +146,19 @@ export default function MyRadiusButton({
   }
 
   // Visual variants
-  if (isFollowed) {
+  if (renderedFollowed) {
     const showRemove = hover && !busy;
     return (
       <button
         type="button"
+        data-place-save={slug}
         onClick={onClick}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
         disabled={busy}
         aria-pressed={true}
-        aria-label={`In My Radius — tap to remove ${name}`}
-        className="tactile tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
+        aria-label={busy ? `Saving ${name}` : `Saved. Tap to remove ${name}`}
+        className="tactile tactile-interactive inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
         style={{
           borderColor: showRemove ? "var(--app-danger)" : "var(--app-border)",
           background: "var(--app-bg-elevated)",
@@ -121,7 +168,7 @@ export default function MyRadiusButton({
         {busy ? (
           <>
             <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
-            …
+            Saving…
           </>
         ) : showRemove ? (
           <>
@@ -131,7 +178,7 @@ export default function MyRadiusButton({
         ) : (
           <>
             <BookmarkCheck className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-            In My Radius
+            Saved
           </>
         )}
       </button>
@@ -141,22 +188,23 @@ export default function MyRadiusButton({
   return (
     <button
       type="button"
+      data-place-save={slug}
       onClick={onClick}
       disabled={busy}
       aria-pressed={false}
-      aria-label={`Add ${name} to My Radius`}
-      className="tactile tactile-interactive tactile-glow-brand inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold text-white transition active:scale-[0.96] disabled:opacity-60"
-      style={{ background: "var(--app-brand)" }}
+      aria-label={busy ? `Removing ${name}` : `Save ${name}`}
+      className="tap-44-y tactile tactile-interactive tactile-glow-brand inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
+      style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
     >
       {busy ? (
         <>
           <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
-          …
+          Removing…
         </>
       ) : (
         <>
           <Bookmark className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          Add to My Radius
+          Save
         </>
       )}
     </button>

@@ -1,6 +1,21 @@
 import type { LngLat } from "@/lib/geo";
 import { easternWallToUtcISO } from "@/lib/tz";
 
+export type EventHeroImageAttribution = {
+  /** A place photograph documents the venue, not the event itself. */
+  kind: "venue";
+  venue_name: string;
+  provider: "google_maps";
+  /** Direct link to the individual source photo on Google Maps. */
+  source_uri: string;
+  flag_content_uri?: string;
+  authors: Array<{
+    display_name?: string;
+    uri?: string;
+    photo_uri?: string;
+  }>;
+};
+
 export type Event = {
   slug: string;
   title: string;
@@ -22,8 +37,29 @@ export type Event = {
   price_text?: string;
   ticket_url?: string;
   rsvp_url?: string;
+  /**
+   * How a user can attend. Physical is the default for legacy/curated rows;
+   * live adapters stamp online/mixed when the publisher exposes it or uses a
+   * recognized title/venue convention.
+   */
+  attendance_mode?: "physical" | "online" | "mixed";
+  /** Direct join, registration, or event page for online participation. */
+  online_url?: string;
   organizer?: string;
+  /**
+   * Presenting organization extracted from an "Organization-Event Name"
+   * feed title by the normalization layer (src/lib/events/normalize.ts).
+   * Rendered as a small presenter chip so the title reads as the event,
+   * not the org. Absent on titles with no org prefix.
+   */
+  presenter?: string;
   hero_image?: string;
+  /**
+   * Provenance for a venue photograph borrowed from the canonical place.
+   * Event-specific provider images are governed by their source adapter;
+   * Google venue photos must carry this record or visual surfaces fail closed.
+   */
+  hero_image_attribution?: EventHeroImageAttribution;
   /** Know-before-you-go: admission, what to drink, what to eat on site. */
   info?: { admission?: string; drinks?: string; food?: string };
   /**
@@ -55,21 +91,29 @@ export type Event = {
    */
   placement?: "venue" | "geocoded" | "needs_review";
   /**
-   * Canonical source page for a live/aggregated event (the feed item's
-   * own URL). Seed events leave this unset and link to the in-app detail
-   * instead; the detail route surfaces it as an "Official page" link so
-   * a feed event still has provenance and a path back to its organizer.
+   * Canonical source page for an event. Live rows use the feed item's own
+   * URL; curated rows may use a direct organizer page when it corroborates
+   * the specific event. Leave this unset when only a nearby or conflicting
+   * page is available. The detail route surfaces it as an "Official page."
    */
-  source_url?: string;
-  source: "dfp" | "celebrate" | "county" | "manual" | "seed";
+  source_url?: string | null;
+  source:
+    | "dfp" | "celebrate" | "county" | "manual" | "seed"
+    // Live feed sources flow through liveToCardEvent with their real
+    // names now. They were all hardcoded "manual" at that boundary,
+    // which let a Ticketmaster row claim first party curated trust.
+    | "hood" | "visit-frederick" | "weinberg" | "delaplaine"
+    | "fcpl" | "fcvfra" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick"
+    | "monocacy" | "msd" | "mdcc" | "mount-st-marys" | "isf" | "elc" | "civil-war-med" | "maryland-ensemble" | "catoctin" | "fcc"
+    | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "venue-extract" | "frederick-keys";
   is_verified: boolean;
   /**
    * ISO date for when this event was last editorially verified. Live
    * rows get the feed fetch time; seed/curated rows can set their own
-   * date when an editor confirms them. If absent, the loader defaults
-   * to the seed cohort date so the UI never shows "unknown freshness."
+   * date when an editor confirms them. When absent, the loader preserves
+   * that absence rather than assigning a cohort-wide verification date.
    */
-  last_verified_at?: string;
+  last_verified_at?: string | null;
 };
 
 // Day 0 of the seed calendar is 2026-05-14, an Eastern civil date.
@@ -95,15 +139,23 @@ const at = (offsetDays: number, hour: number, minute = 0): string => {
  * Hosted by Downtown Frederick Partnership at the Carroll Creek Amphitheater.
  * $5 cash admission, 21+ only, $7 drink tokens.
  *
- * Lineup verified via maximumcountry.com (Maximum Country 93.5 FM, the series'
- * media partner). Cross-referenced with downtownfrederick.org/aliveatfive.
+ * Season lineup verified via maximumcountry.com (Maximum Country 93.5 FM,
+ * the series' media partner). Same-week organizer changes override the season
+ * announcement and carry their own verification date below.
  */
 function aliveAtFiveSeason(): Event[] {
   // Per-week food-truck lineup goes in the optional `trucks` field on
   // each row. Update this list once a week as DFP announces who's at
   // Carroll Creek; the event detail page renders them as chips. Leave
   // the field omitted (or empty) for weeks that haven't been announced.
-  const LINEUP: Array<{ date: string; offset: number; band: string; trucks?: string[] }> = [
+  const LINEUP: Array<{
+    date: string;
+    offset: number;
+    band: string;
+    trucks?: string[];
+    sourceUrl?: string;
+    verifiedAt?: string;
+  }> = [
     { date: "2026-05-07", offset: -7,  band: "24K Event Band" },
     { date: "2026-05-14", offset: 0,   band: "The National Bohemians" },
     { date: "2026-05-21", offset: 7,   band: "Glamour Kitty" },
@@ -118,7 +170,17 @@ function aliveAtFiveSeason(): Event[] {
     { date: "2026-07-23", offset: 70,  band: "Stitch Early" },
     { date: "2026-07-30", offset: 77,  band: "Reverend Smackmaster" },
     { date: "2026-08-06", offset: 84,  band: "Ballistic Berry" },
-    { date: "2026-08-13", offset: 91,  band: "Conor & the Wild Hunt" },
+    {
+      date: "2026-08-13",
+      offset: 91,
+      band: "Freddie Long",
+      // DFP changed the published occurrence on Aug 12. The page slug still
+      // names the originally announced act, but the organizer's current title
+      // and lineup copy both name Freddie Long.
+      sourceUrl:
+        "https://downtownfrederick.org/vm-event/alive-five-conor-the-wild-hunt-americana-folk/",
+      verifiedAt: "2026-08-13T20:38:00.000Z",
+    },
     { date: "2026-08-20", offset: 98,  band: "My Chemical Bromance" },
     { date: "2026-08-27", offset: 105, band: "Kate Cosentino" },
     { date: "2026-09-03", offset: 112, band: "Pebble to Pearl" },
@@ -127,13 +189,13 @@ function aliveAtFiveSeason(): Event[] {
     { date: "2026-09-24", offset: 133, band: "Special Delivery Band" },
   ];
 
-  return LINEUP.map(({ date, offset, band, trucks }, idx) => {
+  return LINEUP.map(({ date, offset, band, trucks, sourceUrl, verifiedAt }, idx) => {
     const isOpener = idx === 0;
     const isFinale = idx === LINEUP.length - 1;
     const title = isOpener
-      ? `Alive @ Five — Opening Night · ${band}`
+      ? `Alive @ Five: Opening Night · ${band}`
       : isFinale
-      ? `Alive @ Five — Season Finale · ${band}`
+      ? `Alive @ Five: Season Finale · ${band}`
       : `Alive @ Five · ${band}`;
     return {
       slug: `alive-at-five-${date}`,
@@ -170,9 +232,11 @@ function aliveAtFiveSeason(): Event[] {
         food: "Rotating food vendors on site each week.",
       },
       ticket_url: "https://downtownfrederick.org/aliveatfive/",
+      source_url: sourceUrl ?? "https://downtownfrederick.org/aliveatfive/",
       organizer: "Downtown Frederick Partnership",
       source: "dfp",
       is_verified: true,
+      ...(verifiedAt ? { last_verified_at: verifiedAt } : {}),
       // hero_image intentionally omitted. The earlier SUMMER FIREWORKS
       // pick was the wrong shot — fireworks-over-Carroll-Creek is a
       // 4th-of-July image, not Alive @ Five. Falling through to
@@ -190,73 +254,72 @@ function aliveAtFiveSeason(): Event[] {
 
 export const EVENTS: Event[] = [
   {
-    slug: "first-friday-may-2026-frederick",
-    title: "First Friday — June Art Walk",
+    slug: "snallyfest-2026-kickoff",
+    title: "Snallyfest 2026: Kickoff Party",
     description:
-      "Downtown Frederick's monthly evening street festival. Galleries open late, sidewalks programmed with music, restaurants spill onto the patios. The Delaplaine and dozens of N Market shops host the headline openings.",
-    starts_at: iso(at(22, 17, 0)),
-    ends_at: iso(at(22, 21, 0)),
+      "Snallyfest opens Friday night at Sandbox Brewhouse. The fifth annual festival brings more than 30 bands to five downtown Frederick venues over two days.",
+    starts_at: iso(at(92, 19, 0)),
+    ends_at: iso(at(92, 22, 0)),
     timezone: "America/New_York",
-    is_recurring: true,
-    recurrence_text: "First Friday of every month",
-    venue_name: "Downtown Frederick",
-    address: "N Market St, Frederick, MD 21701",
-    geom: { lng: -77.4109, lat: 39.4165 },
+    venue_place_slug: "sandbox-brewhouse-frederick",
+    venue_name: "Sandbox Brewhouse",
+    address: "880 N East St, Frederick, MD 21701",
+    geom: { lng: -77.4028201, lat: 39.4248729 },
     municipality: "frederick",
-    category: "arts",
-    audience: ["adults", "groups", "kids-6-12"],
-    is_free: true,
-    organizer: "Downtown Frederick Partnership",
-    source: "dfp",
+    category: "music",
+    audience: ["adults", "kids-6-12", "groups"],
+    is_free: false,
+    price_text: "$25 weekend wristband · $10 Friday venue ticket",
+    ticket_url: "https://buytickets.at/braindeadlive/2322599",
+    organizer: "Brain Dead Live",
+    info: {
+      admission:
+        "$25 weekend wristband, $10 Friday venue ticket, or $40 wristband and T-shirt bundle. The festival is rain or shine, and tickets are nonrefundable.",
+    },
+    source_url: "https://snallyfest.com/",
+    source: "manual",
     is_verified: true,
+    last_verified_at: "2026-08-14T01:39:25.000Z",
   },
   {
-    slug: "carroll-creek-color-launch-2026",
-    title: "Color on the Creek — Opening Weekend",
+    slug: "snallyfest-2026-festival-day",
+    title: "Snallyfest 2026: Festival Day",
     description:
-      "The annual sailboat installation returns to Carroll Creek. 100+ illuminated mini sailboats designed by local artists and community groups float the linear park from June to September.",
-    starts_at: iso(at(18, 18, 0)),
-    ends_at: iso(at(20, 22, 0)),
+      "Saturday's Snallyfest lineup runs across Creek Stage, Sky Stage, the Eagles Club, and Cafe Nola. Creek Stage runs from 1 to 10pm, Sky Stage and the Eagles Club run from 4 to 10pm, and Cafe Nola runs from 9pm to 1:30am.",
+    starts_at: iso(at(93, 13, 0)),
+    ends_at: iso(at(94, 1, 30)),
     timezone: "America/New_York",
-    venue_place_slug: "carroll-creek-linear-park-frederick",
-    venue_name: "Carroll Creek Linear Park",
-    address: "Carroll Creek, Frederick, MD 21701",
-    geom: { lng: -77.4109, lat: 39.4137 },
+    venue_place_slug: "carroll-creek-outdoor-amphitheater",
+    venue_name: "Creek Stage + three downtown venues",
+    address: "Creek Stage at Carroll Creek Amphitheater, Frederick, MD 21701",
+    geom: { lng: -77.4087681, lat: 39.4126271 },
     municipality: "frederick",
-    category: "arts",
-    audience: ["adults", "groups", "kids-0-5", "kids-6-12"],
-    is_free: true,
-    organizer: "Color on the Creek",
-    source: "celebrate",
+    category: "music",
+    audience: ["adults", "kids-6-12", "groups"],
+    is_free: false,
+    price_text: "$25 weekend wristband · $10–$15 per venue",
+    ticket_url: "https://buytickets.at/braindeadlive/2322599",
+    organizer: "Brain Dead Live",
+    info: {
+      admission:
+        "$25 weekend wristband or $10–$15 per venue. The event is all ages except at Cafe Nola, which is 21 and over. The festival is rain or shine, and tickets are nonrefundable.",
+      drinks: "Sandbox Brewhouse provides beer at Creek Stage.",
+      food: "Grilled Cheese Please serves food at Creek Stage.",
+    },
+    source_url: "https://braindead.live/calendar/snallyfest2026",
+    source: "manual",
     is_verified: true,
-  },
-  {
-    slug: "saturday-farmers-market-frederick-2026-05-17",
-    title: "West Frederick Farmers Market",
-    description:
-      "Year-round Saturday market with 60+ vendors: produce, breads, flowers, ferments, and coffee. Rain or shine; pets welcome.",
-    starts_at: iso(at(3, 10, 0)),
-    ends_at: iso(at(3, 13, 0)),
-    timezone: "America/New_York",
-    is_recurring: true,
-    recurrence_text: "Every Saturday, year-round",
-    venue_name: "Frederick Fairgrounds",
-    address: "797 E Patrick St, Frederick, MD 21701",
-    geom: { lng: -77.3923, lat: 39.4147 },
-    municipality: "frederick",
-    category: "market",
-    audience: ["adults", "kids-0-5", "kids-6-12"],
-    is_free: true,
-    source: "celebrate",
-    is_verified: true,
+    last_verified_at: "2026-08-14T01:39:25.000Z",
   },
   {
     slug: "great-frederick-fair-2026",
     title: "The Great Frederick Fair",
     description:
-      "152nd annual county fair. Ten days of livestock shows, agricultural exhibits, midway rides, concerts on the grandstand, and the demolition derby on closing Saturday.",
-    starts_at: iso(at(125, 10, 0)),
-    ends_at: iso(at(134, 23, 0)),
+      "164th annual county fair. Nine days of livestock shows, agricultural exhibits, midway rides, concerts on the grandstand, and the demolition derby on closing Saturday.",
+    // Fri Sep 18 through Sat Sep 26, 2026 per thegreatfrederickfair.com/past-future/
+    // (164th edition; 2025 was the 163rd).
+    starts_at: iso(at(127, 10, 0)),
+    ends_at: iso(at(135, 23, 0)),
     timezone: "America/New_York",
     venue_name: "Frederick Fairgrounds",
     address: "797 E Patrick St, Frederick, MD 21701",
@@ -273,9 +336,11 @@ export const EVENTS: Event[] = [
     slug: "in-the-streets-frederick-2026",
     title: "In the Streets",
     description:
-      "Downtown's signature one-day street festival: live music on six stages, food trucks, an art village, a kids' zone on Baker Park, and a 5K to start the day.",
-    starts_at: iso(at(110, 11, 0)),
-    ends_at: iso(at(110, 21, 0)),
+      "Downtown's signature one-day street festival: live music, food trucks, an art village, a kids' zone, and the Market Street Mile to start the day. The Up The Creek Party carries the evening to 9pm.",
+    // Sat Sep 12, 2026 per celebratefrederick.com/events/in-the-street/
+    // (festival 11am-5pm; Market Street Mile 9am; Up The Creek Party 5-9pm).
+    starts_at: iso(at(121, 11, 0)),
+    ends_at: iso(at(121, 21, 0)),
     timezone: "America/New_York",
     venue_name: "Downtown Frederick (Market St)",
     address: "N Market St, Frederick, MD 21701",
@@ -285,6 +350,7 @@ export const EVENTS: Event[] = [
     audience: ["adults", "kids-0-5", "kids-6-12", "groups"],
     is_free: true,
     organizer: "Celebrate Frederick",
+    source_url: "https://www.celebratefrederick.com/calendar-event/in-the-street/",
     source: "celebrate",
     is_verified: true,
   },
@@ -292,9 +358,11 @@ export const EVENTS: Event[] = [
     slug: "brunswick-railroad-days-2026",
     title: "Brunswick Railroad Days",
     description:
-      "The town's signature heritage festival. Locomotives on display, working steam, a parade, the C&O Canal stretch lit up after dark, and the model railroad museum open late.",
-    starts_at: iso(at(140, 10, 0)),
-    ends_at: iso(at(141, 21, 0)),
+      "The town's signature heritage festival, 43rd annual. Locomotives on display, working steam, a parade down Potomac Street, C&O Canal walks, and the model railroad museum open both days.",
+    // Sat-Sun Oct 3-4, 2026, 10am-5pm both days, per brunswickmd.gov and
+    // brunswickrailroaddays.org ("Celebrating 43 years! October 3 & 4, 2026").
+    starts_at: iso(at(142, 10, 0)),
+    ends_at: iso(at(143, 17, 0)),
     timezone: "America/New_York",
     venue_name: "Downtown Brunswick",
     address: "W Potomac St, Brunswick, MD 21716",
@@ -326,7 +394,7 @@ export const EVENTS: Event[] = [
   },
   {
     slug: "weinberg-summer-concert-2026-05-16",
-    title: "Punch Brothers — Weinberg Center",
+    title: "Punch Brothers at the Weinberg Center",
     description:
       "Acoustic quintet led by Chris Thile in a single-night summer-tour stop at the Weinberg.",
     starts_at: iso(at(2, 20, 0)),
@@ -387,7 +455,7 @@ export const EVENTS: Event[] = [
   },
   {
     slug: "catoctin-ranger-hike-2026-05-18",
-    title: "Catoctin Ranger Hike — Cunningham Falls",
+    title: "Catoctin Ranger Hike: Cunningham Falls",
     description:
       "Free 90-minute ranger-led hike to the 78-foot falls. Stroller- and dog-friendly for the first half; sturdy footwear for the rocky finish.",
     starts_at: iso(at(4, 10, 0)),
@@ -453,27 +521,6 @@ export const EVENTS: Event[] = [
   // Lineup verified May 2026 via maximumcountry.com.
   ...aliveAtFiveSeason(),
   {
-    slug: "fourth-friday-may-2026-frederick",
-    title: "4th Friday Art Walk — Downtown",
-    description:
-      "Late-month gallery + studio walk through Downtown Frederick. Open studios at the Delaplaine, Sky Stage performances, shops open late on N Market and East Patrick.",
-    starts_at: iso(at(8, 17, 0)),
-    ends_at: iso(at(8, 21, 0)),
-    timezone: "America/New_York",
-    is_recurring: true,
-    recurrence_text: "Last Friday of every month",
-    venue_name: "Downtown Frederick",
-    address: "N Market St, Frederick, MD 21701",
-    geom: { lng: -77.4109, lat: 39.4165 },
-    municipality: "frederick",
-    category: "arts",
-    audience: ["adults", "groups", "kids-6-12"],
-    is_free: true,
-    organizer: "Downtown Frederick Partnership",
-    source: "dfp",
-    is_verified: true,
-  },
-  {
     slug: "frederick-festival-of-the-arts-2026",
     title: "Frederick Festival of the Arts",
     description:
@@ -495,7 +542,7 @@ export const EVENTS: Event[] = [
   },
   {
     slug: "baker-park-summer-concert-2026-06-07",
-    title: "Sunday at the Bandshell — Summer Concert Series",
+    title: "Sunday at the Bandshell: Summer Concert Series",
     description:
       "Free Sunday-evening concerts at the Joseph D. Baker Park bandshell. Curated by the Frederick Concert Band. Bring a blanket, picnic dinner.",
     starts_at: iso(at(24, 19, 0)),
@@ -512,37 +559,24 @@ export const EVENTS: Event[] = [
     audience: ["adults", "groups", "kids-6-12", "kids-0-5"],
     is_free: true,
     organizer: "City of Frederick",
+    source_url: "https://www.celebratefrederick.com/calendar-event/summer-concert-series-twentydollarprophet/",
     source: "celebrate",
     is_verified: true,
   },
-  {
-    slug: "maryland-wine-festival-linganore-2026",
-    title: "Maryland Wine Festival",
-    description:
-      "Maryland's largest wine festival, 40+ wineries pouring over a weekend in Mount Airy. Live music, food vendors, artisan market. 21+; tasting cup with admission.",
-    starts_at: iso(at(110, 11, 0)),
-    ends_at: iso(at(111, 18, 0)),
-    timezone: "America/New_York",
-    venue_place_slug: "linganore-winecellars-mount-airy",
-    venue_name: "Linganore Winecellars",
-    address: "13601 Glissans Mill Rd, Mount Airy, MD 21771",
-    geom: { lng: -77.1697, lat: 39.4061 },
-    municipality: "mount-airy",
-    category: "food",
-    audience: ["adults", "groups"],
-    is_free: false,
-    price_text: "$45 advance / $55 at the gate",
-    organizer: "Maryland Wineries Association",
-    source: "manual",
-    is_verified: true,
-  },
+  // The Maryland Wine Festival seed was removed 2026-07-10: the festival is
+  // held at the Carroll County Farm Museum in Westminster (Carroll County),
+  // not at Linganore, and its 2026 edition ran June 6 (marylandwine.com,
+  // carrollcountyfarmmuseum.org). Outside Frederick Radius coverage.
   {
     slug: "catoctin-colorfest-thurmont-2026",
     title: "Catoctin Colorfest",
     description:
       "Massive juried craft and art show in Thurmont, drawing 100,000+ visitors over the second weekend in October. 350+ vendors at Community Park, plus the Town Crafts Show, food and live music.",
-    starts_at: iso(at(146, 9, 0)),
-    ends_at: iso(at(147, 17, 0)),
+    // Sat-Sun Oct 10-11, 2026 per thurmont.com/2236/Colorfest ("Colorfest
+    // will be held October 10th & 11th, 2026"). colorfest.org's Oct 11-12
+    // is a stale year-bump of the 2025 dates (Sun-Mon is implausible).
+    starts_at: iso(at(149, 9, 0)),
+    ends_at: iso(at(150, 17, 0)),
     timezone: "America/New_York",
     venue_name: "Thurmont Community Park",
     address: "615 E Main St, Thurmont, MD 21788",
@@ -555,25 +589,10 @@ export const EVENTS: Event[] = [
     source: "manual",
     is_verified: true,
   },
-  {
-    slug: "brunswick-railroad-days-fall-2026",
-    title: "Brunswick Heritage Days",
-    description:
-      "Annual heritage festival celebrating Brunswick's railroad and canal history. Live music, model trains, C&O Canal walks, kids' rides, food vendors.",
-    starts_at: iso(at(106, 10, 0)),
-    ends_at: iso(at(107, 18, 0)),
-    timezone: "America/New_York",
-    venue_name: "Brunswick Square Park",
-    address: "100 W Potomac St, Brunswick, MD 21716",
-    geom: { lng: -77.6253, lat: 39.3148 },
-    municipality: "brunswick",
-    category: "family",
-    audience: ["adults", "groups", "kids-6-12", "kids-0-5"],
-    is_free: true,
-    organizer: "Brunswick Main Street",
-    source: "manual",
-    is_verified: true,
-  },
+  // "Brunswick Heritage Days" was removed 2026-07-10: no such festival
+  // exists. It duplicated Brunswick Railroad Days (the slug even said so)
+  // under an invented name with contradictory August dates. Brunswick's one
+  // heritage festival is Railroad Days, Oct 3-4, 2026 (seeded above).
   {
     slug: "fireworks-baker-park-2026-07-04",
     title: "Independence Day Fireworks at Baker Park",
@@ -591,6 +610,7 @@ export const EVENTS: Event[] = [
     audience: ["adults", "groups", "kids-6-12", "kids-0-5"],
     is_free: true,
     organizer: "Celebrate Frederick",
+    source_url: "https://www.celebratefrederick.com/calendar-event/fredericks-4th-an-independence-day-celebration-2/",
     source: "celebrate",
     is_verified: true,
   },
@@ -598,7 +618,7 @@ export const EVENTS: Event[] = [
     slug: "weinberg-cinema-series-2026-summer",
     title: "Classic Cinema at the Weinberg",
     description:
-      "The Weinberg's classic-movie series at $5/seat — big-screen, big-band orchestra, Vaudeville-era venue. June lineup includes North by Northwest, Casablanca, and Rear Window.",
+      "The Weinberg's $5 classic-movie series uses its big screen and historic theater. The June lineup includes North by Northwest, Casablanca, and Rear Window.",
     starts_at: iso(at(30, 19, 30)),
     ends_at: iso(at(30, 22, 0)),
     timezone: "America/New_York",
@@ -618,7 +638,7 @@ export const EVENTS: Event[] = [
   },
   {
     slug: "sky-stage-summer-residency-2026",
-    title: "Sky Stage — Open Mic Night",
+    title: "Sky Stage: Open Mic Night",
     description:
       "Open mic in the ruins-turned-art-installation at Sky Stage downtown. Sign up at 6:30, performances start at 7. Bring an instrument or read original work.",
     starts_at: iso(at(7, 18, 30)),
@@ -639,9 +659,14 @@ export const EVENTS: Event[] = [
   },
 ];
 
-export const EVENT_BY_SLUG = Object.fromEntries(
-  EVENTS.map((e) => [e.slug, e])
-) as Record<string, Event>;
+// Event slugs are read from public detail/summary/calendar URLs. A normal
+// object makes inherited keys such as `constructor` and `__proto__` look like
+// events, which sends malformed links into the event decorator as if they were
+// real rows. Use a dictionary with no prototype so unknown slugs stay absent.
+export const EVENT_BY_SLUG: Record<string, Event> = Object.assign(
+  Object.create(null) as Record<string, Event>,
+  Object.fromEntries(EVENTS.map((e) => [e.slug, e])),
+);
 
 export function upcomingEvents(now: Date, limit?: number): Event[] {
   const future = EVENTS.filter((e) => new Date(e.ends_at) >= now).sort(

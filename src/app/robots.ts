@@ -20,19 +20,22 @@ const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://frederickradius.app";
 //   - DiffBot, omgili
 //
 // Maintain this list as new training crawlers declare themselves.
+// TRAINING crawlers only. The original list also blocked ANSWER-ENGINE and
+// user-triggered fetch agents (OAI-SearchBot powers ChatGPT search citations,
+// ChatGPT-User fetches a page when a user asks about it, PerplexityBot powers
+// Perplexity answers, Claude-Web is Claude's user fetch) — "what's open in
+// Frederick tonight" is precisely the query moving to these assistants, and
+// blocking them handed the citation to visitfrederick.org and Yelp instead.
+// Those agents are now ALLOWED; the training opt-out below stays.
 const AI_TRAINING_USER_AGENTS = [
   "GPTBot",
-  "ChatGPT-User",
-  "OAI-SearchBot",
   "Google-Extended",
   "anthropic-ai",
   "ClaudeBot",
-  "Claude-Web",
   "CCBot",
   "FacebookBot",
   "Meta-ExternalAgent",
   "Bytespider",
-  "PerplexityBot",
   "cohere-ai",
   "Amazonbot",
   "Applebot-Extended",
@@ -54,6 +57,7 @@ export default function robots(): MetadataRoute.Robots {
         //   /submit/         — submission forms (no content)
         //   /welcome         — first-run onboarding (no content)
         //   /my-radius       — user-only state surface (renamed from /saved)
+        //   /collect         — passcode-gated field-collection tool (internal)
         disallow: [
           "/api/",
           "/admin/",
@@ -62,6 +66,8 @@ export default function robots(): MetadataRoute.Robots {
           "/submit/",
           "/welcome",
           "/my-radius",
+          "/collect",
+          "/report",
         ],
       },
       // AI-training opt-out. Each LLM crawler declares its own UA;

@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Frederick Radius — Declarative Disclosure Engine</title>
+<style>
+  :root{
+    --paper:#E5D8BF; --paper-2:#ECE5D5; --elevated:#F7F0E0; --sunken:#E1D5BF;
+    --border:#D6CDBB; --border-strong:rgba(26,24,21,.10);
+    --ink:#1A1815; --ink-2:#4A4844; --ink-3:#5C5A50;
+    --brand:#A03A22; --green:#2E3B2C; --gold:#C99632; --cool:#2F5470; --positive:#1E6B3A;
+    --r-sm:8px; --r-md:14px; --r-lg:22px;
+    --serif:ui-serif,Georgia,Cambria,"Times New Roman",Times,serif;
+    --sans:ui-sans-serif,system-ui,-apple-system,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --spring:cubic-bezier(.34,1.4,.5,1);
+    --edge:0 0 0 .5px var(--border-strong);
+    --hi:inset 0 1px 0 rgba(255,255,255,.5);
+    --elev-1:0 1px 2px rgba(26,24,21,.05);
+    --elev-2:0 1px 2px rgba(26,24,21,.05),0 8px 20px -10px rgba(26,24,21,.22);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.45}
+  .wrap{max-width:430px;margin:0 auto;padding:18px 16px 70px}
+  .doc-eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+  h1.t{font-family:var(--serif);font-size:25px;font-weight:600;letter-spacing:-.01em;margin:.3em 0 .2em}
+  .lede{color:var(--ink-3);font-size:13.5px;margin:0 0 16px}
+
+  .county{display:flex;gap:8px;margin-bottom:12px}
+  .county button{flex:1;padding:12px;border-radius:var(--r-md);border:1.5px solid var(--border);background:var(--elevated);
+    font-family:inherit;font-weight:700;font-size:13.5px;color:var(--ink-2);cursor:pointer;transition:all .25s var(--spring)}
+  .county button.on{color:#fff;border-color:transparent;box-shadow:var(--hi),0 6px 16px -7px var(--ink);background:var(--ink)}
+  .county button:active{transform:scale(.98)}
+
+  .ctx{background:var(--sunken);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 14px;box-shadow:var(--edge),var(--hi)}
+  .ctx .lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:7px}
+  .ctx-row{display:flex;gap:6px;margin-bottom:9px;align-items:center}
+  .ctx-row:last-child{margin-bottom:0}
+  .ctx-row .grp{font-size:11px;font-weight:600;color:var(--ink-3);width:48px;flex:0 0 auto}
+  .seg{display:inline-flex;background:var(--elevated);border:1px solid var(--border);border-radius:999px;padding:2px;gap:2px;flex-wrap:wrap}
+  .seg button{border:0;background:none;font-family:inherit;font-size:12px;font-weight:600;color:var(--ink-2);padding:5px 11px;border-radius:999px;cursor:pointer;transition:all .2s var(--spring);white-space:nowrap}
+  .seg button.on{background:var(--ink);color:var(--paper)}
+  .now-read{font-size:12px;color:var(--ink-3);margin:10px 0 16px;text-align:center;font-style:italic}
+
+  .stack{display:flex;flex-direction:column;gap:10px}
+  .card{background:var(--sunken);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;
+    box-shadow:var(--edge),var(--elev-1);transition:background .35s var(--spring),box-shadow .35s var(--spring),opacity .35s}
+  .card.open{background:var(--elevated);box-shadow:var(--edge),var(--hi),var(--elev-2)}
+  .card.demoted{opacity:.7}
+  .card.reorder{animation:slot .5s var(--spring)}
+  @keyframes slot{from{opacity:0;transform:translateY(12px) scale(.99)}to{opacity:1;transform:none}}
+  .head{display:flex;align-items:flex-start;gap:10px;width:100%;background:none;border:0;text-align:left;font-family:inherit;color:inherit;cursor:pointer;padding:13px 15px}
+  .head .tw{flex:1;min-width:0}
+  .topline{display:flex;align-items:center;gap:7px}
+  .eyebrow{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+  .ttl{font-family:var(--serif);font-size:17px;font-weight:600;margin:1px 0 0;line-height:1.15}
+  .chev{flex:0 0 auto;color:var(--ink-3);transition:transform .3s var(--spring);margin-top:2px}
+  .card.open .chev{transform:rotate(180deg);color:var(--accent,var(--brand))}
+  .reason{display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;
+    background:color-mix(in srgb,var(--accent,var(--brand)) 12%,transparent);color:var(--accent,var(--brand));animation:rise .4s var(--spring) backwards}
+  .reason::before{content:"✦";font-size:9px}
+  .body{display:none;padding:0 15px 15px}
+  .card.open .body{display:block}
+  .card.open .body>*{animation:rise .44s var(--spring) backwards}
+  .card.open .body>*:nth-child(2){animation-delay:.05s}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .fact{font-size:13.5px;color:var(--ink-2);margin:0}
+  .fact b{color:var(--ink)}
+  .pill-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:6px 11px;font-size:12.5px;font-weight:600;color:var(--ink-2);background:var(--elevated)}
+  .collapsed-note{font-size:11.5px;color:var(--ink-3);padding:0 15px 12px;font-style:italic}
+
+  /* tier + freshness — machine-readable trust, rendered by the engine */
+  .tier{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:999px;flex:0 0 auto}
+  .t-verified{background:color-mix(in srgb,var(--positive) 16%,transparent);color:var(--positive)}
+  .t-probable{background:color-mix(in srgb,var(--gold) 22%,transparent);color:#8a6a1e}
+  .t-unconfirmed{background:var(--sunken);color:var(--ink-3);border:1px solid var(--border)}
+  .fresh{font-size:10.5px;color:var(--ink-3);margin-left:auto;flex:0 0 auto}
+
+  /* the config panel — show that it's data, not code */
+  .cfg{margin-top:18px;border:1px dashed var(--border);border-radius:var(--r-md);overflow:hidden}
+  .cfg>button{width:100%;display:flex;justify-content:space-between;align-items:center;background:var(--sunken);border:0;font-family:inherit;
+    font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding:11px 14px;cursor:pointer}
+  .cfg pre{margin:0;padding:14px;background:#221f1b;color:#e8dcc4;font-family:var(--mono);font-size:11px;line-height:1.5;overflow-x:auto;max-height:340px;overflow-y:auto;display:none}
+  .cfg.open pre{display:block}
+  .cfg .k{color:#c9a06a}.cfg .s{color:#9bb37a}.cfg .n{color:#cf8a6b}.cfg .b{color:#7fa6c4}
+  .note{font-size:11.5px;color:var(--ink-3);text-align:center;margin-top:20px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="doc-eyebrow">Frederick Radius · Disclosure engine</p>
+  <h1 class="t">One engine. Any county. From config.</h1>
+  <p class="lede">No section below is hand-written. Each is a row in a <b>manifest</b> — source, trust tier, freshness, and the context rules that open it — rendered by a single engine. Switch counties to watch the <em>exact same code</em> become a different place from config alone. That's the future-proof part.</p>
+
+  <div class="county" id="county">
+    <button data-c="frederick" class="on">Frederick County</button>
+    <button data-c="carroll">Carroll County</button>
+  </div>
+
+  <div class="ctx">
+    <div class="lbl">Context (would come from clock · NWS · geolocation)</div>
+    <div class="ctx-row"><span class="grp">Time</span>
+      <div class="seg" data-axis="time">
+        <button data-v="morning">Weekday AM</button>
+        <button data-v="midday" class="on">Midday</button>
+        <button data-v="fri-eve">Fri evening</button>
+      </div></div>
+    <div class="ctx-row"><span class="grp">Sky</span>
+      <div class="seg" data-axis="weather">
+        <button data-v="clear" class="on">Clear</button>
+        <button data-v="rain">Raining</button>
+      </div></div>
+    <div class="ctx-row"><span class="grp">Near</span>
+      <div class="seg" data-axis="near" id="near-seg"></div></div>
+  </div>
+  <p class="now-read" id="now-read"></p>
+
+  <div class="stack" id="stack"></div>
+
+  <div class="cfg" id="cfg">
+    <button onclick="document.getElementById('cfg').classList.toggle('open')">▾ The manifest (this is the whole config) <span id="cfg-count"></span></button>
+    <pre id="cfg-pre"></pre>
+  </div>
+
+  <p class="note">The engine never decides <em>what</em> is true — the manifest declares the source &amp; tier, and the gate is enforced in one place: <b>Verified</b> may assert and auto-open, <b>Unconfirmed</b> can never. New civic source → add a row. New county → swap the manifest.</p>
+</div>
+
+<script>
+/* ────────────────────────────────────────────────────────────────────
+   THE ENGINE — ~40 lines. It knows nothing about Frederick. It reads a
+   manifest + a context and decides open / order / reason / trust.
+   ──────────────────────────────────────────────────────────────────── */
+const TIER_RANK={verified:3,probable:2,unconfirmed:1};
+function matches(preds, ctx){            // ["time:morning","weather:rain"]
+  return (preds||[]).some(p=>{
+    if(p==="always")return true;
+    const [axis,val]=p.split(":");
+    return ctx[axis]===val;
+  });
+}
+function fill(tpl, facts){ return (tpl||"").replace(/\{(\w+)\}/g,(_,k)=>facts?.[k] ?? ""); }
+function decide(card, ctx){
+  const assertable = TIER_RANK[card.tier] >= TIER_RANK.probable;   // the gate
+  let open = card.alwaysOpen===true;
+  let reason = null;
+  if(assertable && matches(card.opensWhen, ctx)){ open=true; reason=fill(card.reason, card.facts); }
+  // unconfirmed never auto-opens or asserts — it states its own honesty
+  if(!assertable) reason = "Not confirmed — won't assert";
+  let weight = card.weightBase ?? 50;
+  if(matches(card.boostWhen, ctx)) weight += 30;
+  if(matches(card.demoteWhen, ctx)) weight -= 45;
+  return { open, reason, weight, assertable };
+}
+function freshLabel(days){
+  if(days==null)return "";
+  if(days<=1)return "updated today";
+  if(days<=14)return "updated "+days+"d ago";
+  return "as of "+Math.round(days/7)+"w ago";
+}
+
+/* ────────────────────────────────────────────────────────────────────
+   THE MANIFESTS — pure data. Two counties, identical engine.
+   ──────────────────────────────────────────────────────────────────── */
+const MANIFESTS={
+  frederick:{
+    label:"Frederick County",
+    towns:{downtown:"Downtown Frederick", brunswick:"Brunswick"},
+    cards:[
+      { id:"recycling", eyebrow:"Civic", title:"Recycling & trash", source:"City of Frederick GIS",
+        tier:"verified", freshnessDays:1, weightBase:40, opensWhen:["time:morning"],
+        reason:"It's morning — pickup is {nextPickup}", facts:{nextPickup:"Thursday"},
+        body:`<p class="fact"><b>Next pickup: Thursday, June 5.</b> Yard waste resumes the same day.</p>
+              <div class="pill-row"><span class="pill">🗑️ Trash · Thu</span><span class="pill">♻️ Recycling · Thu</span></div>` },
+      { id:"tonight", eyebrow:"What's on", title:"Tonight", source:"Celebrate Frederick",
+        tier:"verified", freshnessDays:1, weightBase:42, opensWhen:["time:fri-eve"],
+        reason:"It's Friday evening — here's tonight",
+        body:`<p class="fact"><b>First Saturday: In the Streets</b> · Market St · 5–9 PM · free</p>
+              <p class="fact">Live music — Olde Mother · 8 PM</p>` },
+      { id:"indoor", eyebrow:"Good right now", title:"Cozy & indoor", source:"Google hours",
+        tier:"probable", freshnessDays:18, weightBase:35, opensWhen:["weather:rain"],
+        reason:"It's raining — indoor picks first",
+        body:`<p class="fact">Warm, dry, open now (hours aging — verify).</p>
+              <div class="pill-row"><span class="pill">☕ Cafe Nola</span><span class="pill">📚 Curious Iguana</span></div>` },
+      { id:"patios", eyebrow:"Good right now", title:"Patios & outdoors", source:"curated",
+        tier:"verified", freshnessDays:3, weightBase:38, opensWhen:["weather:clear"], demoteWhen:["weather:rain"],
+        reason:"Clear skies — patios are calling",
+        body:`<div class="pill-row"><span class="pill">🍺 Olde Mother patio</span><span class="pill">🌳 Baker Park</span><span class="pill">💧 Carroll Creek</span></div>` },
+      { id:"town", eyebrow:"Your town", title:"{town}", source:"curated", tier:"verified", freshnessDays:5,
+        weightBase:36, opensWhen:["always"], reason:"You're near {town}", dynamic:"town",
+        bodyByNear:{
+          downtown:`<p class="fact">Historic core — Market Street, the spires, Carroll Creek, First Saturday.</p><div class="pill-row"><span class="pill">🎨 Delaplaine</span><span class="pill">💧 Carroll Creek</span></div>`,
+          brunswick:`<p class="fact">The Potomac river town — railroad heritage, the C&O towpath.</p><div class="pill-row"><span class="pill">🚂 B&O Museum</span><span class="pill">🚶 C&O Towpath</span></div>` } },
+      { id:"foodtruck", eyebrow:"Submitted", title:"Taco truck on Patrick St?", source:"community submission",
+        tier:"unconfirmed", freshnessDays:0, weightBase:18, opensWhen:["always"],
+        body:`<p class="fact">Resident-submitted, not yet vetted. Shown, but never stated as fact.</p>` },
+    ]
+  },
+  carroll:{
+    label:"Carroll County",
+    towns:{westminster:"Westminster", sykesville:"Sykesville"},
+    cards:[
+      { id:"recycling", eyebrow:"Civic", title:"Recycling & trash", source:"Carroll County DPW",
+        tier:"verified", freshnessDays:2, weightBase:40, opensWhen:["time:morning"],
+        reason:"It's morning — pickup is {nextPickup}", facts:{nextPickup:"Friday"},
+        body:`<p class="fact"><b>Next pickup: Friday, June 6.</b> Single-stream recycling.</p>
+              <div class="pill-row"><span class="pill">🗑️ Trash · Fri</span><span class="pill">♻️ Recycling · Fri</span></div>` },
+      { id:"tonight", eyebrow:"What's on", title:"Tonight", source:"Downtown Westminster",
+        tier:"verified", freshnessDays:1, weightBase:42, opensWhen:["time:fri-eve"],
+        reason:"It's Friday evening — here's tonight",
+        body:`<p class="fact"><b>Westminster Flower & Jazz Festival</b> · Main St · 5–9 PM</p>` },
+      { id:"indoor", eyebrow:"Good right now", title:"Cozy & indoor", source:"Google hours",
+        tier:"probable", freshnessDays:21, weightBase:35, opensWhen:["weather:rain"],
+        reason:"It's raining — indoor picks first",
+        body:`<div class="pill-row"><span class="pill">☕ Birdie's</span><span class="pill">🏛️ Carroll Arts Center</span></div>` },
+      { id:"patios", eyebrow:"Good right now", title:"Patios & outdoors", source:"curated",
+        tier:"verified", freshnessDays:4, weightBase:38, opensWhen:["weather:clear"], demoteWhen:["weather:rain"],
+        reason:"Clear skies — patios are calling",
+        body:`<div class="pill-row"><span class="pill">🌊 Piney Run Park</span><span class="pill">🚂 Sykesville Main St</span></div>` },
+      { id:"town", eyebrow:"Your town", title:"{town}", source:"curated", tier:"verified", freshnessDays:5,
+        weightBase:36, opensWhen:["always"], reason:"You're near {town}", dynamic:"town",
+        bodyByNear:{
+          westminster:`<p class="fact">The county seat — Main Street, McDaniel College, the Carroll Arts Center.</p><div class="pill-row"><span class="pill">🎭 Carroll Arts</span><span class="pill">🎓 McDaniel</span></div>`,
+          sykesville:`<p class="fact">"Coolest Small Town" — the restored B&O station and a walkable Main Street.</p><div class="pill-row"><span class="pill">🚂 Old Main Line</span><span class="pill">🍽️ Main Street</span></div>` } },
+    ]
+  }
+};
+
+/* ──────────────────────────────────────────────────────────────────── */
+let county="frederick";
+let ctx={time:"midday",weather:"clear",near:"downtown"};
+
+function townKeys(){ return Object.keys(MANIFESTS[county].towns); }
+function buildNearSeg(){
+  const seg=document.getElementById('near-seg');
+  const keys=townKeys();
+  if(!keys.includes(ctx.near)) ctx.near=keys[0];
+  seg.innerHTML=keys.map(k=>`<button data-v="${k}" class="${k===ctx.near?'on':''}">${MANIFESTS[county].towns[k]}</button>`).join('');
+}
+
+function readout(){
+  const t={morning:"Weekday, 8 AM",midday:"Tuesday, 1 PM","fri-eve":"Friday, 6 PM"}[ctx.time];
+  const w={clear:"clear skies",rain:"rain"}[ctx.weather];
+  return `It's ${t} · ${w} · near ${MANIFESTS[county].towns[ctx.near]}.`;
+}
+
+function bodyFor(card){
+  if(card.dynamic==="town") return card.bodyByNear[ctx.near]||"";
+  return card.body||"";
+}
+
+function render(){
+  document.getElementById('now-read').textContent=readout();
+  const M=MANIFESTS[county];
+  const rows=M.cards.map(card=>{
+    const d=decide(card, ctx);
+    const title=fill(card.title.replace("{town}",M.towns[ctx.near]), card.facts);
+    return {card,d,title};
+  }).sort((a,b)=>b.d.weight-a.d.weight);
+
+  document.getElementById('stack').innerHTML=rows.map(({card,d,title})=>{
+    const accent = card.tier==="unconfirmed" ? "var(--ink-3)" :
+      ({recycling:"var(--positive)",tonight:"var(--brand)",indoor:"var(--cool)",patios:"var(--green)",town:"var(--gold)"}[card.id]||"var(--brand)");
+    const demoted = !d.open && d.weight<25 ? " demoted":"";
+    const reason = d.reason ? `<div class="reason">${d.reason}</div>`:"";
+    const note = (!d.open && card.demoteWhen && matches(card.demoteWhen,ctx)) ? `<div class="collapsed-note">Tucked away — context says not now.</div>`:"";
+    return `<section class="card reorder${d.open?' open':''}${demoted}" style="--accent:${accent}">
+      <button class="head" onclick="this.closest('.card').classList.toggle('open')">
+        <div class="tw">
+          <div class="topline">
+            <span class="eyebrow">${card.eyebrow}</span>
+            <span class="tier t-${card.tier}">${card.tier}</span>
+            <span class="fresh">${freshLabel(card.freshnessDays)}</span>
+          </div>
+          <div class="ttl">${title}</div>
+          ${reason}
+        </div>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      ${note}
+      <div class="body">${bodyFor(card)}</div>
+    </section>`;
+  }).join('');
+
+  renderConfig();
+}
+
+function renderConfig(){
+  const M=MANIFESTS[county];
+  document.getElementById('cfg-count').textContent=`· ${M.cards.length} cards`;
+  // show only the decision-relevant fields, body stripped → reads as pure config
+  const view=M.cards.map(c=>({id:c.id,source:c.source,tier:c.tier,freshnessDays:c.freshnessDays,
+    weightBase:c.weightBase,opensWhen:c.opensWhen,...(c.demoteWhen?{demoteWhen:c.demoteWhen}:{}),reason:c.reason}));
+  const json=JSON.stringify(view,null,2)
+    .replace(/"(\w+)":/g,'<span class="k">"$1"</span>:')
+    .replace(/: "([^"]*)"/g,': <span class="s">"$1"</span>')
+    .replace(/: (\d+)/g,': <span class="n">$1</span>');
+  document.getElementById('cfg-pre').innerHTML=json;
+}
+
+// wiring
+document.getElementById('county').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  county=b.dataset.c;
+  document.querySelectorAll('#county button').forEach(x=>x.classList.toggle('on',x===b));
+  buildNearSeg(); render();
+});
+document.querySelectorAll('.seg[data-axis]').forEach(seg=>{
+  if(seg.id==="near-seg")return; // built dynamically, handled below
+  seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    seg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+    ctx[seg.dataset.axis]=b.dataset.v; render();});
+});
+document.getElementById('near-seg').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  document.querySelectorAll('#near-seg button').forEach(x=>x.classList.toggle('on',x===b));
+  ctx.near=b.dataset.v; render();
+});
+
+buildNearSeg(); render();
+</script>
+</body>
+</html>

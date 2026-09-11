@@ -1,0 +1,65 @@
+name: Visual contract candidates
+
+# Visual references are captured on one known Linux/Chromium host before they
+# become a blocking comparison. This workflow is manual so it adds no routine
+# Actions cost and cannot make pull requests flaky while the first references
+# are being reviewed.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Capture candidates, or compare after Linux baselines are committed
+        required: true
+        default: capture
+        type: choice
+        options:
+          - capture
+          - compare
+
+permissions:
+  contents: read
+
+concurrency:
+  group: visual-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Chromium
+        timeout-minutes: 10
+        run: npx playwright install --with-deps chromium
+
+      - name: Run visual contracts
+        run: npm run test:visual:${{ inputs.mode }}
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Upload review images and pixel diffs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: visual-contract-${{ inputs.mode }}-${{ github.run_id }}
+          path: |
+            visual-contract-candidates/*.png
+            test-results/**/*-actual.png
+            test-results/**/*-diff.png
+            test-results/**/*-expected.png
+          if-no-files-found: warn
+          retention-days: 7

@@ -1,43 +1,14 @@
 /**
- * Frederick County Parks & Open Space — runtime integration.
+ * Frederick County parks.
  *
- * The county runs a public ArcGIS layer of every park and open-space
- * area (Parks/POS_Areas_Cartegraph, layer 1). The app surfaced trails
- * but never the parks themselves — this fills that gap. Fetched
- * server-side at request time with a weekly revalidate (same pattern as
- * fcTrails/transitFrederick — Vercel's server reaches ArcGIS even though
- * local CI can't), normalized to a typed Park. Graceful []: a feed
- * hiccup never throws into a page, and nothing is fabricated.
- *
- * HONEST SOURCING NOTES (confirmed live against the layer, 2026-05):
- *  - Native SR is WKID 2876 (MD State Plane, ftUS); outSR=4326 makes
- *    ArcGIS reproject to WGS84 lon/lat for us.
- *  - Only ~81 of the polygons carry a real Park_name — the rest are
- *    "N/A" landscape-easement parcels (noise). We require a real name
- *    server-side AND in code; we never fall back to the parcel SUBNAME.
- *  - The AMENITIES column holds a planning classification
- *    ("WITHOUT ADEQUATE AMENITIES"), not a user-facing amenity list, so
- *    it is deliberately NOT surfaced — showing it would mislead.
- *  - Big parks span several polygons sharing one Park_name; we collapse
- *    to one card per park, summing acreage and taking the representative
- *    point from the largest polygon.
+ * The public list is owner-reviewed Maryland data. An older integration
+ * mistakenly queried Frederick County, Colorado before falling back to this
+ * list. The runtime request is intentionally gone; the pure normalizer remains
+ * only so legacy fixtures and any future, rights-cleared Maryland replacement
+ * can be validated without network access.
  */
 import { resolveMunicipality } from "@/lib/connect";
 
-// Real ArcGIS attributes confirmed live. Server-side WHERE drops the
-// unnamed "N/A" parcels so the payload is tiny; we still re-filter in
-// code (the feed has "N/A", "NONE", blanks). Geometry is heavily
-// simplified — we only ever derive a representative point from it.
-const OUT_FIELDS = [
-  "OBJECTID", "Park_name", "Type", "TYPE_2",
-  "Ownership", "Maintained", "OWNER_MAINT_TOWN", "Acreage",
-].join(",");
-const WHERE = "Park_name<>'N/A' AND Park_name IS NOT NULL";
-const ENDPOINT =
-  "https://gis.frederickco.gov/arcgis/rest/services/Parks/POS_Areas_Cartegraph/MapServer/1/query" +
-  `?where=${encodeURIComponent(WHERE)}&outFields=${encodeURIComponent(OUT_FIELDS)}` +
-  "&outSR=4326&geometryPrecision=5&maxAllowableOffset=0.002&f=geojson";
-const TIMEOUT_MS = 15_000;
 // Frederick County bbox [south, west, north, east].
 const BBOX: [number, number, number, number] = [39.265, -77.7, 39.745, -77.15];
 
@@ -205,27 +176,6 @@ export function normalizeParks(raw: unknown): Park[] {
 }
 
 export async function getFrederickParks(): Promise<Park[]> {
-  // The live ENDPOINT points at gis.frederickco.gov — turns out
-  // that's Frederick, COLORADO, not MD. Every feature gets dropped
-  // by the MD bbox filter. Keeping the fetch in place so a fix-up
-  // to the right MD endpoint flows through unchanged; falling back
-  // to the curated list keeps the page useful in the meantime.
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  let live: Park[] = [];
-  try {
-    const res = await fetch(ENDPOINT, {
-      signal: ctrl.signal,
-      headers: { Accept: "application/json" },
-      next: { revalidate: 604800 },
-    });
-    if (res.ok) live = normalizeParks(await res.json());
-  } catch {
-    /* feed hiccup / wrong endpoint — fall through to curated */
-  } finally {
-    clearTimeout(timer);
-  }
-  if (live.length > 0) return live;
   const { CURATED_PARKS } = await import("@/data/curated-parks");
   return CURATED_PARKS;
 }

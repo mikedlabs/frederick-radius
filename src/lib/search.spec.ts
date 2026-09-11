@@ -1,0 +1,675 @@
+import { describe, it, expect, vi } from "vitest";
+import { isEventSearchIntent, qualifiedSearch, search } from "./search";
+import type { Event } from "@/data/events";
+import { coffeeIntentTier } from "@/lib/category-ranking";
+
+/**
+ * Guards the natural-language relevance of the shared search core, which the
+ * Ask box feeds raw ("i need a hotel"). The bug (owner catch, Jul 2026): a lone
+ * "i" prefix-matched every place starting with "I", so the Ask source cards
+ * were Ibiza Cafe, In Fit, Inbloom, Iglesia La Luz Del Mundo... a mixed bag
+ * with one actual hotel. normalize now drops single-char + filler tokens, and a
+ * lodging intent boosts the lodging category.
+ */
+describe("search — natural-language 'i need a hotel'", () => {
+  const hits = search("i need a hotel", 8);
+  const places = hits.filter((h) => h.type === "place") as Extract<
+    ReturnType<typeof search>[number],
+    { type: "place" }
+  >[];
+
+  it("returns at least one place", () => {
+    expect(places.length).toBeGreaterThan(0);
+  });
+
+  it("leads with a lodging place, not an incidental 'I' name match", () => {
+    // The top place must be lodging (the intent boost + the killed 'i' noise).
+    expect(places[0]?.place.category).toBe("lodging");
+  });
+
+  it("does not surface the old junk (cafe / gym / jewelry / faith) in the top hits", () => {
+    const cats = new Set(places.map((p) => p.place.category));
+    for (const junk of ["cafe", "coffee", "gym", "jewelry", "faith"]) {
+      expect(cats.has(junk)).toBe(false);
+    }
+  });
+});
+
+describe("search — normalize drops noise but keeps real keywords", () => {
+  it("a plain keyword still works", () => {
+    const hits = search("coffee", 5);
+    expect(hits.some((h) => h.type === "place")).toBe(true);
+  });
+
+  it("filler-only queries return nothing rather than everything", () => {
+    // "i need a" is pure filler + a single char -> no terms -> no hits.
+    expect(search("i need a", 5)).toHaveLength(0);
+  });
+
+  it("does not treat Frederick location language as evidence for unknown terms", () => {
+    const { hits } = qualifiedSearch(
+      "Where can I buy zxqv quux near Frederick?",
+      12,
+      undefined,
+      { origin: { lng: -77.4109, lat: 39.4137 } },
+    );
+    expect(hits).toHaveLength(0);
+  });
+
+  it("does not invent a fuzzy result from unrelated multi-word fragments", () => {
+    expect(search("zzzxxyy-no-match", 5)).toHaveLength(0);
+  });
+
+  it("does not turn a two-letter conversational fragment into nearby names", () => {
+    const query = "qzxv no such thing 999";
+
+    expect(search(query, 5)).toHaveLength(0);
+    expect(
+      qualifiedSearch(query, 5, undefined, {
+        origin: { lng: -77.4105, lat: 39.4143 },
+      }).hits,
+    ).toHaveLength(0);
+  });
+
+  it("still finds a real business whose name contains the ignored word No", () => {
+    expect(
+      search("New Market Grange No.", 5).some(
+        (hit) =>
+          hit.type === "place" && hit.place.slug === "new-market-grange-no-362-new-market",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps event intent when every query word is conversational", () => {
+    expect(isEventSearchIntent("things to do")).toBe(true);
+    expect(
+      search("things to do", 5).some((hit) => hit.type === "event"),
+    ).toBe(true);
+    expect(
+      search("things to do tonight", 5, [{
+        slug: "tonights-event", title: "Jazz", category: "music", description: "A jazz concert.",
+        venue_name: "Creek Stage", starts_at: "2099-07-15T23:00:00Z", ends_at: "2099-07-16T01:00:00Z",
+        municipality: "frederick", geom: { lng: -77.41, lat: 39.41 }, is_free: true,
+      } as Event], { now: new Date("2099-07-15T16:00:00Z") }).some((hit) => hit.type === "event"),
+    ).toBe(true);
+  });
+
+  it("keeps useful one-word and complete multi-word typo recovery", () => {
+    expect(
+      search("brewrey near me", 5).some((hit) => hit.type === "place"),
+    ).toBe(true);
+    expect(
+      search("carrol creek", 5).some(
+        (hit) =>
+          hit.type === "place" &&
+          hit.place.slug === "carroll-creek-linear-park-frederick",
+      ),
+    ).toBe(true);
+  });
+
+  it("still resolves a real business name that includes Frederick", () => {
+    expect(
+      search("Frederick Bodywork", 5).some(
+        (hit) => hit.type === "place" && hit.place.slug === "frederick-bodywork",
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("qualifiedSearch — event intent survives location language", () => {
+  const concert: Event = {
+      slug: "future-live-show",
+      title: "Live Jazz on the Creek",
+      description: "A live music performance.",
+      starts_at: "2099-07-15T23:00:00.000Z",
+      ends_at: "2099-07-16T01:00:00.000Z",
+      timezone: "America/New_York",
+      venue_name: "Creek Stage",
+      address: "1 Market St",
+      geom: { lng: -77.4105, lat: 39.4143 },
+      municipality: "frederick",
+      category: "music",
+      audience: [],
+      is_free: true,
+      source: "manual",
+      is_verified: true,
+  };
+
+  const context = {
+      origin: { lng: -77.4105, lat: 39.4143 },
+      municipality: "frederick",
+  };
+
+  for (const query of ["events near me", "live music near me", "concerts near me", "open mic near me"]) {
+    it(`keeps live events for '${query}' without padding with arbitrary nearest places`, () => {
+      const { hits } = qualifiedSearch(query, 20, [concert], context);
+      expect(hits.some((hit) => hit.type === "event" && hit.event.slug === concert.slug)).toBe(true);
+      const placeNames = hits.flatMap((hit) => hit.type === "place" ? [hit.place.name] : []);
+      expect(placeNames).not.toContain("PNC Bank");
+    });
+  }
+
+  it("ranks geo-precise events nearest-first when the query says near me", () => {
+    const far = {
+      ...concert,
+      slug: "far-live-show",
+      title: "Live Jazz Far Away",
+      geom: { lng: -77.62, lat: 39.31 },
+      municipality: "brunswick",
+    };
+    const { hits } = qualifiedSearch("events near me", 20, [far, concert], {
+      origin: context.origin,
+    });
+    const events = hits.flatMap((hit) => hit.type === "event" ? [hit.event.slug] : []);
+    expect(events.slice(0, 2)).toEqual([concert.slug, far.slug]);
+  });
+
+  it("keeps mixed event and place results in one relevance order", () => {
+    const { hits } = qualifiedSearch("live music near me", 20, [concert], context);
+    expect(
+      hits.every(
+        (hit, index) => index === 0 || hits[index - 1].score >= hit.score,
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("qualifiedSearch — natural category plurals", () => {
+  it("parses the conversational query and never returns unverified restaurants as open", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-15T16:00:00.000Z"));
+    try {
+      const { hits, meta } = qualifiedSearch("restaurants open now near me", 20, undefined, {
+        origin: { lng: -77.4105, lat: 39.4143 },
+      });
+      const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+      expect(meta.qualifiers).toMatchObject({
+        cleanedQuery: "restaurant",
+        openNow: true,
+        nearMe: true,
+      });
+      expect(places.every((place) => place.category === "restaurant")).toBe(true);
+      expect(
+        places.every((place) =>
+          place.open_status.state === "open" ||
+          place.open_status.state === "closing-soon"
+        ),
+      ).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("qualifiedSearch — strict daily-utility categories", () => {
+  const downtown = {
+    origin: { lng: -77.4105, lat: 39.4143 },
+    municipality: "frederick",
+    contextLabel: "your location",
+  } as const;
+
+  it("returns only gas-station records for a nearest gas query", () => {
+    const { hits, meta } = qualifiedSearch(
+      "Where is the nearest gas station?",
+      12,
+      undefined,
+      downtown,
+    );
+    const places = hits.flatMap((hit) =>
+      hit.type === "place" ? [hit.place] : [],
+    );
+
+    expect(meta.qualifiers.strictPlaceKind).toBe("gas-station");
+    expect(places.length).toBeGreaterThan(0);
+    expect(
+      places.every((place) => place.primary_type === "gas_station"),
+    ).toBe(true);
+  });
+
+  it("does not treat a bank record as proof of an ATM", () => {
+    const { hits, meta } = qualifiedSearch(
+      "Where is the nearest ATM?",
+      12,
+      undefined,
+      downtown,
+    );
+    const places = hits.flatMap((hit) =>
+      hit.type === "place" ? [hit.place] : [],
+    );
+
+    expect(meta.qualifiers.strictPlaceKind).toBe("atm");
+    expect(places).toEqual([]);
+  });
+});
+
+describe("search — short utility intents do not leak prefix coincidences", () => {
+  it("keeps ER's first ten results on emergency care", () => {
+    const top = search("ER", 10);
+    expect(top[0]).toMatchObject({ type: "page", page: { href: "/emergency" } });
+    expect(
+      top.every((hit) =>
+        hit.type === "page"
+          ? hit.page.href === "/emergency"
+          : hit.type === "place" &&
+            /\b(?:hospital|emergency room|emergency department)\b/i.test(
+              `${hit.place.name} ${hit.place.short_blurb ?? ""}`,
+            ),
+      ),
+    ).toBe(true);
+    expect(
+      top.some(
+        (hit) => hit.type === "place" && /\burgent care\b/i.test(hit.place.name),
+      ),
+    ).toBe(false);
+    expect(top.some((hit) => hit.type === "place" && /erica/i.test(hit.place.name))).toBe(false);
+  });
+
+  it("keeps EV's first ten results on explicit charging evidence", () => {
+    const top = search("EV", 10);
+    expect(top.length).toBeGreaterThan(0);
+    expect(
+      top.every(
+        (hit) =>
+          hit.type === "place" &&
+          /\bev\b.*\bcharg/i.test(
+            `${hit.place.name} ${hit.place.short_blurb ?? ""}`,
+          ),
+      ),
+    ).toBe(true);
+    expect(top.some((hit) => hit.type === "place" && /evangelical/i.test(hit.place.name))).toBe(false);
+  });
+
+  it("answers UPS with the shipping guide and no padded place rows", () => {
+    const top = search("UPS", 10);
+    expect(top).toEqual([
+      expect.objectContaining({
+        type: "page",
+        page: expect.objectContaining({ href: "/shipping" }),
+      }),
+    ]);
+  });
+});
+
+describe("search — generic coffee means a coffee destination", () => {
+  it("fills the first ten with dedicated coffee matches, not boba or incidental coffee", () => {
+    const topPlaces = search("coffee", 10).flatMap((hit) =>
+      hit.type === "place" ? [hit.place] : [],
+    );
+    expect(topPlaces).toHaveLength(10);
+    expect(topPlaces.every((place) => coffeeIntentTier(place) === 3)).toBe(true);
+    expect(topPlaces.some((place) => /boba|tea emporium/i.test(place.name))).toBe(false);
+  });
+
+  it("preserves a specific boba search", () => {
+    const top = search("boba", 5);
+    expect(top[0]).toMatchObject({
+      type: "place",
+      place: { slug: "market-street-boba-beans" },
+    });
+  });
+});
+
+describe("qualifiedSearch — Ask uses place context by default", () => {
+  const gravelAndGrind = { lng: -77.40955, lat: 39.42165 };
+
+  it("puts a nearby place that satisfies every concept ahead of a generic chain", () => {
+    const { hits } = qualifiedSearch("coffee and bikes", 12, undefined, {
+      origin: gravelAndGrind,
+      municipality: "frederick",
+      contextLabel: "your location",
+      canShowDistance: true,
+    });
+    const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(places[0]?.slug).toBe("gravel-and-grind-frederick");
+    expect(places[0]?.distance_m).toBeLessThan(50);
+    const lead = hits.find((hit) => hit.type === "place");
+    expect(lead?.type === "place" ? lead.conceptCoverage : null).toEqual({ matched: 2, total: 2 });
+    expect(places.findIndex((place) => /^starbucks\b/i.test(place.name))).toBeGreaterThan(0);
+  });
+
+  it("understands ordinary plurals when the curated tag is singular", () => {
+    const places = search("coffee and bikes", 12)
+      .flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(places[0]?.slug).toBe("gravel-and-grind-frederick");
+  });
+
+  it("does not treat the action verb in a natural compound request as another concept", () => {
+    const { hits } = qualifiedSearch(
+      "Where can I get coffee and browse bikes near downtown Frederick?",
+      12,
+      undefined,
+      {
+        origin: gravelAndGrind,
+        municipality: "frederick",
+        contextLabel: "Downtown Frederick",
+        canShowDistance: true,
+      },
+    );
+    const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(places[0]?.slug).toBe("gravel-and-grind-frederick");
+    const lead = hits.find((hit) => hit.type === "place");
+    expect(lead?.type === "place" ? lead.conceptCoverage : null).toEqual({
+      matched: 2,
+      total: 2,
+    });
+  });
+
+  it("uses location for an ordinary relevant query without requiring the word nearest", () => {
+    const places = qualifiedSearch("coffee", 12, undefined, {
+      origin: gravelAndGrind,
+      municipality: "frederick",
+      contextLabel: "your location",
+      canShowDistance: true,
+    }).hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(places[0]?.distance_m).toBeLessThan(1_000);
+  });
+
+  it("puts the strong independent coffee match at the reader's feet ahead of farther chains", () => {
+    const places = qualifiedSearch("coffee", 12, undefined, {
+      origin: { lng: -77.4108, lat: 39.4143 },
+      municipality: "frederick",
+      contextLabel: "your location",
+      canShowDistance: true,
+    }).hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(places[0]?.slug).toBe("cafe-nola");
+    const nolaIndex = places.findIndex((place) => place.slug === "cafe-nola");
+    const chainIndex = places.findIndex((place) => /^starbucks\b/i.test(place.name));
+    expect(nolaIndex).toBeGreaterThanOrEqual(0);
+    expect(chainIndex).toBeGreaterThan(nolaIndex);
+  });
+
+  it("keeps a chain at the reader's exact location prominent", () => {
+    const places = qualifiedSearch("coffee", 12, undefined, {
+      origin: { lng: -77.41064, lat: 39.41556 },
+      municipality: "frederick",
+      contextLabel: "your location",
+      canShowDistance: true,
+    }).hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(places[0]?.slug).toBe("starbucks-844");
+    expect(places[0]?.distance_m).toBe(0);
+  });
+
+  it("hard-filters an unconstrained search to the selected town", () => {
+    const { hits, meta } = qualifiedSearch("MZ Art Studio", 12, undefined, {
+      origin: { lng: -77.3523, lat: 39.3276 },
+      municipality: "urbana",
+      contextLabel: "Urbana",
+      canShowDistance: false,
+    });
+    const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(meta.qualifiers.constrained).toBe(false);
+    expect(places.length).toBeGreaterThan(0);
+    expect(places.every((place) => place.municipality === "urbana")).toBe(true);
+  });
+
+  it("answers a downtown breakfast-sandwich request with downtown matches, not Brunswick", () => {
+    const { hits, meta } = qualifiedSearch(
+      "Where can I get a breakfast sandwich?",
+      12,
+      undefined,
+      {
+        origin: { lng: -77.4109, lat: 39.4137 },
+        contextLabel: "Near you",
+      },
+    );
+    const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(meta.qualifiers).toMatchObject({
+      compoundIntent: "breakfast-sandwich",
+      categoryLabel: "a breakfast sandwich",
+    });
+    expect(meta.contextLabel).toBe("Near you");
+    expect(places[0]?.slug).toBe("beans-bagels-frederick");
+    expect(places[0]?.distance_m).toBeLessThan(250);
+    expect(places.slice(0, 3).some((place) => place.municipality === "brunswick")).toBe(false);
+    expect(places.slice(0, 3).some((place) => place.category === "pizza")).toBe(false);
+  });
+
+  it("does not let reservation language or proximity invent steak matches", () => {
+    const { hits, meta } = qualifiedSearch(
+      "i want a steak dinner tonight use open table to make a rev for 7:30pm tonight",
+      12,
+      undefined,
+      {
+        origin: { lng: -77.4109, lat: 39.4137 },
+        municipality: "frederick",
+        contextLabel: "Downtown Frederick",
+      },
+    );
+    const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(meta.qualifiers.cleanedQuery).toBe("a steak dinner");
+    // The Japanese steakhouses, Oscar's wood-fired steak menu, and Avery's
+    // grille all carry explicit steak evidence in reviewed place data. The
+    // cleaned request must return only those real matches, never a nearby
+    // restaurant promoted by the reservation wording alone.
+    expect(places.map((place) => place.slug)).toEqual([
+      "miyako-japanese-steak-and-seafood-frederick",
+      "oscars-alehouse",
+      "matsutake-sushi-and-steak-frederick",
+      "averys-maryland-grille-frederick",
+    ]);
+    expect(places.every((place) => place.category === "restaurant")).toBe(true);
+  });
+});
+
+describe("qualifiedSearch — county regions are real geographic constraints", () => {
+  const query = "I've eaten pretty much all of DTF, central and eastern Frederick. But you don't hear about the other parts of the county. Curious if there are good spots in the northern or western portion of the county?";
+
+  it("returns dining places from north and west, never central Frederick", () => {
+    const { hits, meta } = qualifiedSearch(query, 20, undefined, {
+      origin: { lng: -77.4105, lat: 39.4143 },
+      municipality: "frederick",
+      contextLabel: "Downtown Frederick",
+    });
+    const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+    const municipalities = new Set(places.map((place) => place.municipality));
+
+    expect(meta.qualifiers).toMatchObject({ categoryKey: "food", regions: ["north", "west"] });
+    expect(meta.contextLabel).toBe("North + West Frederick County");
+    expect(places.length).toBeGreaterThan(0);
+    expect(municipalities.has("frederick")).toBe(false);
+    expect([...municipalities].some((town) => ["thurmont", "emmitsburg", "woodsboro", "walkersville"].includes(town))).toBe(true);
+    expect([...municipalities].some((town) => ["middletown", "myersville", "brunswick", "burkittsville", "rosemont"].includes(town))).toBe(true);
+    expect(places.every((place) => ["restaurant", "food-truck", "pizza"].includes(place.category))).toBe(true);
+  });
+
+  it("removes direction words before ranking so North Frederick names cannot hijack the answer", () => {
+    const { hits } = qualifiedSearch("Take me somewhere worth the drive north or west of Frederick", 12, undefined, {
+      origin: { lng: -77.4105, lat: 39.4143 },
+    });
+    const names = hits.flatMap((hit) => hit.type === "place" ? [hit.place.name] : []);
+    expect(names).not.toContain("North Frederick Elementary School Pta");
+    expect(names.every((name) => !/elementary school pta/i.test(name))).toBe(true);
+  });
+});
+
+describe("search — word boundaries protect meaning", () => {
+  it("does not treat read as evidence inside Threaded, bread, or ready", () => {
+    const { hits } = qualifiedSearch(
+      "quiet patio where I can read",
+      20,
+      undefined,
+      { origin: { lng: -77.4105, lat: 39.4143 } },
+    );
+    const names = hits.flatMap((hit) => hit.type === "place" ? [hit.place.name] : []);
+    expect(names).toContain("The Wine Kitchen on the Creek");
+    expect(names).not.toContain("Threaded by Melissa");
+    expect(names).not.toContain("H Mart Frederick");
+  });
+
+  // Intent triggers used to match as bare substrings, so every one of them
+  // also fired inside a longer word. "validate parking" is the worst of them
+  // in a county app that HAS a parking section: the "date" inside "validate"
+  // handed the whole page to date-night restaurants.
+  const DATE_NIGHT = ["Hootch & Banter", "The Wine Kitchen on the Creek"];
+
+  it.each(["validate parking", "update my address", "candidate forum"])(
+    "does not read date-night intent out of the letters in %s",
+    (query) => {
+      const { hits } = qualifiedSearch(query, 20, undefined, {
+        origin: { lng: -77.4109, lat: 39.4137 },
+      });
+      const names = hits.flatMap((hit) => (hit.type === "place" ? [hit.place.name] : []));
+      for (const restaurant of DATE_NIGHT) expect(names).not.toContain(restaurant);
+    },
+  );
+
+  it("answers validate parking with parking", () => {
+    const { hits } = qualifiedSearch("validate parking", 12, undefined, {
+      origin: { lng: -77.4109, lat: 39.4137 },
+    });
+    const places = hits.flatMap((hit) => (hit.type === "place" ? [hit.place] : []));
+    expect(places[0]?.category).toBe("parking");
+  });
+
+  it("does not read rainy-day intent out of drainage or training", () => {
+    for (const query of ["drainage", "training gym"]) {
+      const { hits } = qualifiedSearch(query, 20, undefined, {
+        origin: { lng: -77.4109, lat: 39.4137 },
+      });
+      const names = hits.flatMap((hit) => (hit.type === "place" ? [hit.place.name] : []));
+      expect(names).not.toContain("Endangered Species Theatre Project");
+    }
+  });
+
+  // The boundary is alphanumeric-only on purpose, so a hyphen still reads as
+  // a break. These are the triggers the fix must NOT break.
+  it("still fires a real trigger, including hyphenated and punctuated ones", () => {
+    const origin = { lng: -77.4109, lat: 39.4137 };
+    const leadCategory = (query: string) => {
+      const { hits } = qualifiedSearch(query, 12, undefined, { origin });
+      const places = hits.flatMap((hit) => (hit.type === "place" ? [hit.place] : []));
+      return places[0]?.category;
+    };
+
+    expect(["park", "playground", "family"]).toContain(leadCategory("kid-friendly things to do"));
+    expect(["park", "playground", "family"]).toContain(leadCategory("kid friendly"));
+    expect(leadCategory("i want a date.")).toBe("restaurant");
+    expect(leadCategory("oil change")).toBe("auto-care");
+    expect(leadCategory("hotel")).toBe("lodging");
+  });
+});
+
+describe("search — recurring local decision misses", () => {
+  it("treats a place to read as a library intent, not the word Place in a business name", () => {
+    const places = qualifiedSearch(
+      "quiet place to read",
+      12,
+      undefined,
+      { origin: { lng: -77.4105, lat: 39.4143 } },
+    ).hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(places.length).toBeGreaterThan(0);
+    expect(places[0]?.category).toBe("library");
+    expect(places.every((place) => place.category === "library")).toBe(true);
+    expect(places.some((place) => /antiques|happy place/i.test(place.name))).toBe(false);
+  });
+
+  it("honors a named town before the current-location context", () => {
+    const result = qualifiedSearch(
+      "Where can I get tacos in Brunswick?",
+      12,
+      undefined,
+      {
+        origin: { lng: -77.4105, lat: 39.4143 },
+        municipality: "frederick",
+        contextLabel: "Downtown Frederick",
+      },
+    );
+    const places = result.hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(result.meta.contextLabel).toBe("Brunswick");
+    expect(places[0]?.name).toBe("Adele's Tex Mex");
+    expect(places.every((place) => place.municipality === "brunswick")).toBe(true);
+  });
+
+  it("keeps a broad food-in-town request broad after applying the town scope", () => {
+    const places = qualifiedSearch("food in Brunswick", 12).hits.flatMap((hit) =>
+      hit.type === "place" ? [hit.place] : [],
+    );
+
+    expect(places.length).toBeGreaterThan(3);
+    expect(places.every((place) => place.municipality === "brunswick")).toBe(true);
+    expect(places.some((place) => place.category === "restaurant")).toBe(true);
+    expect(places.some((place) => ["auto-care", "services"].includes(place.category))).toBe(false);
+  });
+
+  it("requires both dog-friendly and patio evidence instead of combining partial matches", () => {
+    const places = search("dog-friendly patio", 12).flatMap((hit) =>
+      hit.type === "place" ? [hit.place] : [],
+    );
+
+    expect(places.map((place) => place.slug)).toContain("smoketown-brewing-brunswick");
+    expect(places.map((place) => place.slug)).not.toContain("carroll-creek-linear-park-frederick");
+    expect(places.map((place) => place.slug)).not.toContain("the-wine-kitchen-on-the-creek-frederick");
+  });
+
+  it("routes phone charging to mapped power without presenting an EV charger", () => {
+    const hits = search("phone charging", 12);
+
+    expect(hits[0]).toMatchObject({
+      type: "page",
+      page: { href: "/amenities" },
+    });
+    expect(hits.some((hit) => hit.type === "place" && /\bev\b/i.test(hit.place.name))).toBe(false);
+  });
+
+  it("keeps a movie request on actual cinemas", () => {
+    const places = search("movies", 12).flatMap((hit) =>
+      hit.type === "place" ? [hit.place] : [],
+    );
+
+    expect(places.length).toBeGreaterThan(0);
+    expect(places.every((place) => place.category === "theater")).toBe(true);
+  });
+});
+
+/**
+ * App-page registry hits — the app's own guides answer their nouns.
+ * "public restroom" → Amenities, "post office" → Shipping: before this,
+ * those queries could only return fuzzy place matches.
+ */
+describe("search — app-page guides", () => {
+  const topPage = (q: string) => {
+    const h = search(q, 10).find((x) => x.type === "page");
+    return h?.type === "page" ? h.page.href : null;
+  };
+  const pageHrefs = (q: string) =>
+    search(q, 30).flatMap((hit) => hit.type === "page" ? [hit.page.href] : []);
+
+  it("everyday needs resolve to the right guide", () => {
+    expect(topPage("public restroom")).toBe("/amenities");
+    expect(topPage("post office")).toBe("/shipping");
+    expect(topPage("power outage")).toBe("/pulse");
+    expect(topPage("happy hour")).toBe("/happy-hour");
+    expect(topPage("covered bridges")).toBe("/markers");
+  });
+
+  it("the guide leads its own noun above keyword place matches", () => {
+    const hits = search("brunch", 10);
+    const pageIdx = hits.findIndex((h) => h.type === "page" && h.page.href === "/brunch");
+    expect(pageIdx).toBeGreaterThanOrEqual(0);
+    const firstPlaceIdx = hits.findIndex((h) => h.type === "place");
+    if (firstPlaceIdx >= 0) expect(pageIdx).toBeLessThan(firstPlaceIdx);
+  });
+
+  it("indexes the working tools that were previously missing from global search", () => {
+    expect(pageHrefs("map layers")).toContain("/map");
+    expect(pageHrefs("event calendar")).toContain("/events/calendar");
+    expect(pageHrefs("quiet hours")).toContain("/settings/notifications");
+    expect(pageHrefs("missing place")).toContain("/submit/place");
+    expect(pageHrefs("field note")).toContain("/report");
+  });
+
+  it("unrelated queries surface no page rows", () => {
+    expect(search("pizza", 10).some((h) => h.type === "page")).toBe(false);
+  });
+});

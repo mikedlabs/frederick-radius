@@ -1,0 +1,179 @@
+name: Automated PR checks
+
+# GitHub holds pull_request workflows created by GITHUB_TOKEN for manual
+# approval. Data generators call this tiny, isolated workflow after their
+# allowlisted PR branch changes. It receives no source API secrets, does not
+# check out or execute repository code, and can only start the existing CI and
+# style workflows on a bot/* branch. CI starts the trusted status bridge after
+# its expensive gate finishes, so a second runner is not billed for the full
+# build. The bridge validates the completed jobs and attaches their conclusions
+# to the PR merge SHA evaluated by the strict main-branch ruleset.
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: Bot pull-request branch that needs the normal gates
+        required: true
+        type: string
+      head_sha:
+        description: Exact PR head commit created by the isolated publisher
+        required: true
+        type: string
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch CI and style gates
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          AUTOMATED_PR_BRANCH: ${{ inputs.branch }}
+          AUTOMATED_PR_HEAD_SHA: ${{ inputs.head_sha }}
+        with:
+          script: |
+            const branch = process.env.AUTOMATED_PR_BRANCH;
+            const expectedHead = process.env.AUTOMATED_PR_HEAD_SHA;
+            const allowedByBranch = {
+              'bot/marc-schedule-refresh': ['src/data/marc-schedule.json'],
+              'bot/data-steward': [
+                'docs/coverage-scorecard.md',
+                'docs/hours-refresh-review.md',
+                'src/data/data-release.json',
+                'src/data/event-venue-photo-credits.json',
+                'src/data/place-refresh-identities.json',
+                'src/data/places-client-hours.json',
+                'src/data/places-client.json',
+                'src/data/places-hours-refresh.json',
+              ],
+              'bot/transit-steward': [
+                'src/data/data-release.json',
+                'src/data/transit-network.json',
+                'src/data/transit-trips.json',
+                'src/data/transit.json',
+              ],
+              'bot/curated-place-enrichment': [
+                'audit/google-enrichment-attempts.json',
+                'src/data/data-release.json',
+                'src/data/event-venue-photo-credits.json',
+                'src/data/place-refresh-identities.json',
+                'src/data/places-client-hours.json',
+                'src/data/places-client.json',
+                'src/data/places-enrichment.json',
+              ],
+              'bot/business-info-refresh': [
+                'src/data/business-info.json',
+                'src/data/data-release.json',
+                'src/data/descriptions.json',
+                'src/data/event-venue-photo-credits.json',
+                'src/data/places-client-hours.json',
+                'src/data/places-client.json',
+              ],
+              'bot/municipal-civic-refresh': ['src/data/municipal-civic.json'],
+              'bot/venue-event-refresh': [
+                'src/data/data-release.json',
+                'src/data/venue-event-source-inventory.json',
+                'src/data/venue-event-source-state.json',
+                'src/data/venue-events.json',
+              ],
+              'bot/google-photo-attribution-backfill': [
+                'docs/coverage-scorecard.md',
+                'src/data/data-release.json',
+                'src/data/event-venue-photo-credits.json',
+                'src/data/place-refresh-identities.json',
+                'src/data/places-client-hours.json',
+                'src/data/places-client.json',
+                'src/data/places-enrichment.json',
+              ],
+              'bot/official-commerce-link-refresh': [
+                'src/data/business-info.json',
+                'src/data/data-release.json',
+                'src/data/event-venue-photo-credits.json',
+                'src/data/places-client-hours.json',
+                'src/data/places-client.json',
+              ],
+            };
+            const allowlist = allowedByBranch[branch];
+            if (!allowlist || !/^[0-9a-f]{40}$/.test(expectedHead || '')) {
+              core.setFailed(`Refusing to dispatch checks for an unexpected branch or head: ${String(branch)}`);
+              return;
+            }
+            const ref = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `heads/${branch}`,
+            });
+            if (ref.data.object.sha !== expectedHead) {
+              core.setFailed(`Bot branch moved before checks were dispatched: ${branch}`);
+              return;
+            }
+            const comparison = await github.rest.repos.compareCommitsWithBasehead({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              basehead: `main...${expectedHead}`,
+              per_page: 100,
+            });
+            if (comparison.data.behind_by !== 0) {
+              core.setFailed(`Bot branch is behind main by ${comparison.data.behind_by} commit(s). Regenerate from the current main branch before running code.`);
+              return;
+            }
+            const changed = (comparison.data.files || []).map((file) => file.filename);
+            const unexpected = changed.filter((path) => !allowlist.includes(path));
+            if (changed.length === 0 || unexpected.length > 0) {
+              core.setFailed(`Bot branch changed files outside its allowlist: ${unexpected.join(', ') || 'no changed files'}`);
+              return;
+            }
+            const dispatchToken = require('crypto').randomUUID();
+            // Start the fast voice gate first and discover the exact run it
+            // created. The later bridge receives run IDs, not a broad time
+            // window, so a delayed queue cannot be mistaken for another run.
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'style.yml',
+              ref: branch,
+              inputs: {
+                automated_pr_head_sha: expectedHead,
+                automated_pr_token: dispatchToken,
+              },
+            });
+            let styleRun = null;
+            for (let attempt = 0; attempt < 15; attempt += 1) {
+              const runs = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'style.yml',
+                branch,
+                event: 'workflow_dispatch',
+                per_page: 30,
+              });
+              styleRun = runs.data.workflow_runs.find((run) =>
+                run.head_sha === expectedHead &&
+                run.head_branch === branch &&
+                run.head_repository?.full_name === `${context.repo.owner}/${context.repo.repo}` &&
+                run.display_title === `style / automated ${dispatchToken}`
+              );
+              if (styleRun) break;
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+            }
+            if (!styleRun) {
+              core.setFailed('The exact style run did not appear after dispatch. No CI run was started.');
+              return;
+            }
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'ci.yml',
+              ref: branch,
+              inputs: {
+                automated_pr_branch: branch,
+                automated_pr_head_sha: expectedHead,
+                automated_pr_style_run_id: String(styleRun.id),
+                automated_pr_token: dispatchToken,
+              },
+            });

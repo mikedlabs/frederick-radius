@@ -1,0 +1,23 @@
+# Operating-system files
+.DS_Store
+Thumbs.db
+
+# Local editors
+.idea/
+.vscode/
+*.swp
+
+# Environment and credentials
+.env
+.env.*
+!.env.example
+
+# Dependencies, generated output, and local tooling
+node_modules/
+build/
+dist/
+coverage/
+.cache/
+.tmp/
+.vercel/
+*.log

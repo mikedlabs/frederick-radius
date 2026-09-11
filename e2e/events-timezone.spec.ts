@@ -11,6 +11,11 @@ import { test, expect } from "@playwright/test";
  */
 test("events list renders New York times, not UTC", async ({ page }) => {
   await page.goto("/events");
+  // The event board streams behind a Suspense boundary while the live feeds
+  // resolve. Wait for the board contract, not the static footer shell.
+  await expect(
+    page.getByRole("heading", { name: "Events in Frederick County" }),
+  ).toBeAttached({ timeout: 20_000 });
   const body = await page.locator("body").innerText();
 
   // Times are 12-hour AM/PM, never a bare 24-hour or ISO fragment.

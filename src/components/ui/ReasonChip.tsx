@@ -26,25 +26,26 @@ export type ReasonTone =
   | "rated"
   | "neutral";
 
-const TONE_TOKENS: Record<ReasonTone, { color: string; bg: string }> = {
+const TONE_TOKENS: Record<ReasonTone, { color: string; bg: string; dot?: boolean }> = {
   open: {
-    color: "var(--app-positive)",
-    bg: "color-mix(in srgb, var(--app-positive) 14%, transparent)",
+    color: "var(--state-open)",
+    bg: "var(--state-open-bg)",
+    dot: true, // a live cue for "open now"
   },
   near: {
     color: "var(--app-cool)",
-    bg: "color-mix(in srgb, var(--app-cool) 12%, transparent)",
+    bg: "color-mix(in srgb, var(--app-cool) 16%, transparent)",
   },
   verified: {
-    color: "var(--app-brand-2)",
-    bg: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)",
+    color: "var(--app-positive)",
+    bg: "color-mix(in srgb, var(--app-positive) 16%, transparent)",
   },
   free: {
-    color: "var(--app-positive)",
-    bg: "color-mix(in srgb, var(--app-positive) 14%, transparent)",
+    color: "var(--app-cool)",
+    bg: "color-mix(in srgb, var(--app-cool) 16%, transparent)",
   },
   rated: {
-    color: "var(--app-accent)",
+    color: "var(--app-accent-press)",
     bg: "color-mix(in srgb, var(--app-accent) 20%, transparent)",
   },
   neutral: {
@@ -67,9 +68,22 @@ export default function ReasonChip({
   const t = TONE_TOKENS[tone];
   return (
     <span
-      className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-tight ${className}`}
-      style={{ background: t.bg, color: t.color, ...style }}
+      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-tight ${className}`}
+      style={{
+        background: t.bg,
+        color: t.color,
+        // Hairline ring in the tone's own hue so the chip reads as a made
+        // token on the cream card, not washed-out tinted text.
+        boxShadow:
+          tone === "neutral"
+            ? "inset 0 0 0 1px var(--app-border)"
+            : `inset 0 0 0 1px color-mix(in srgb, ${t.color} 32%, transparent)`,
+        ...style,
+      }}
     >
+      {t.dot && (
+        <span aria-hidden className="inline-block h-[5px] w-[5px] rounded-full" style={{ background: t.color }} />
+      )}
       {label}
     </span>
   );

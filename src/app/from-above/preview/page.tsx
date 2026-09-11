@@ -14,6 +14,7 @@ import BookExperience from "./BookExperience";
 // truth is the actual extracted asset list.
 
 export const metadata: Metadata = {
+  robots: { index: false },
   title: "From above · Frederick Radius",
   description:
     "Six years of drone photography over Downtown Frederick, organized by season. Open the book.",

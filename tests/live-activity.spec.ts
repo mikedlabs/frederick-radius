@@ -16,13 +16,13 @@ describe("isHappeningNow (now injected, pure)", () => {
   it("false after the event has ended", () => {
     expect(isHappeningNow(iso(plus(-5 * H)), iso(plus(-2 * H)), NOW)).toBe(false);
   });
-  it("defaults to start + 3h when ends_at is missing", () => {
-    expect(isHappeningNow(iso(plus(-2 * H)), undefined, NOW)).toBe(true); // within 3h
-    expect(isHappeningNow(iso(plus(-4 * H)), undefined, NOW)).toBe(false); // past 3h
+  it("fails closed when ends_at is missing", () => {
+    expect(isHappeningNow(iso(plus(-2 * H)), undefined, NOW)).toBe(false);
+    expect(isHappeningNow(iso(plus(-4 * H)), undefined, NOW)).toBe(false);
   });
-  it("falls back to +3h when ends_at is invalid or <= start (bad feed data)", () => {
-    expect(isHappeningNow(iso(plus(-H)), "not-a-date", NOW)).toBe(true);
-    expect(isHappeningNow(iso(plus(-H)), iso(plus(-2 * H)), NOW)).toBe(true);
+  it("fails closed when ends_at is invalid or <= start", () => {
+    expect(isHappeningNow(iso(plus(-H)), "not-a-date", NOW)).toBe(false);
+    expect(isHappeningNow(iso(plus(-H)), iso(plus(-2 * H)), NOW)).toBe(false);
   });
   it("false for an unparseable start", () => {
     expect(isHappeningNow("garbage", iso(plus(H)), NOW)).toBe(false);
@@ -51,12 +51,12 @@ describe("buildActivities — Live now is temporal", () => {
     expect(live?.label).toBe("Live now");
   });
 
-  it("stays back-compatible: a time-less live event is left to the caller", () => {
+  it("does not let a time-less live-feed row make a live claim", () => {
     const out = buildActivities({
       liveEvents: [base],
       upcomingEvents: [],
       now: NOW,
     });
-    expect(out.find((a) => a.kind === "live-event")?.label).toBe("Live now");
+    expect(out.find((a) => a.kind === "live-event")).toBeUndefined();
   });
 });

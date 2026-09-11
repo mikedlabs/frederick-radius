@@ -1,0 +1,152 @@
+[
+  {
+    "name": "7th Sister",
+    "town": "Frederick",
+    "address": "228 N Market St",
+    "days": "Sat-Sun",
+    "hours": "11am-3pm",
+    "sourceUrl": "https://www.7thsister.com/brunch-menu/",
+    "confidence": "high",
+    "note": "The restaurant's site lists a dedicated brunch menu from 11am to 3pm on Saturday and Sunday.",
+    "slug": "7th-sister"
+  },
+  {
+    "name": "Hootch & Banter",
+    "town": "Frederick",
+    "address": "49 S Market St",
+    "days": "Sat-Sun",
+    "hours": "11am-2:45pm",
+    "sourceUrl": "https://hootchandbanter.com/",
+    "confidence": "high",
+    "note": "The brunch menu lists $7 mimosas and $25 pitchers.",
+    "slug": "hootch-and-banter-frederick"
+  },
+  {
+    "name": "JoJo's Restaurant & Tap House",
+    "town": "Frederick",
+    "address": "16-18 E Patrick St",
+    "days": "Sat-Sun",
+    "hours": "10am-3pm",
+    "sourceUrl": "https://jojosrestauranttaphouse.com/menu/",
+    "confidence": "high",
+    "note": "The menu lists brunch food and cocktails from 10am to 3pm on Saturday and Sunday.",
+    "slug": "jojos-restaurant-tap-house"
+  },
+  {
+    "name": "Bushwaller's",
+    "town": "Frederick",
+    "address": "209 N Market St",
+    "days": "Sun",
+    "hours": "11am-3pm",
+    "sourceUrl": "https://www.bushwallers.com/menu",
+    "confidence": "high",
+    "note": "Sunday brunch includes an Irish breakfast, chicken and waffles, and Irish coffee.",
+    "slug": "bushwaller-irish-pub-frederick"
+  },
+  {
+    "name": "Showroom",
+    "town": "Frederick",
+    "address": "882 N East St",
+    "days": "Daily",
+    "hours": "8am-4pm",
+    "sourceUrl": "https://www.showroomfrederick.com/about",
+    "confidence": "high",
+    "note": "Brunch runs daily from 8am to 4pm, with chicken and waffles, biscuits and gravy, and steak and eggs on the menu.",
+    "slug": "showroom-frederick"
+  },
+  {
+    "name": "Dutch's Daughter",
+    "town": "Frederick",
+    "address": "581 Himes Ave",
+    "days": "Sun",
+    "hours": "10am-2pm",
+    "sourceUrl": "http://www.dutchsdaughter.com/wp-content/uploads/2025/10/UPDATEDBRUNCHMENU2025.pdf",
+    "confidence": "high",
+    "note": "The award-winning Sunday brunch buffet costs $46.95 and includes carved prime rib, crab omelets, and French toast.",
+    "slug": "dutchs-daughter-frederick"
+  },
+  {
+    "name": "The Wine Kitchen on the Creek",
+    "town": "Frederick",
+    "address": "50 Carroll Creek Linear Park",
+    "days": "Sun",
+    "hours": "from 11am",
+    "sourceUrl": "https://www.thewinekitchen.com/menus",
+    "confidence": "medium",
+    "note": "The venue opens at 11am on Sunday but does not post an exact brunch window.",
+    "slug": "the-wine-kitchen-frederick"
+  },
+  {
+    "name": "Firebirds Wood Fired Grill",
+    "town": "Frederick",
+    "address": "5201 Buckeystown Pike",
+    "days": "Sat-Sun",
+    "hours": "from 10am",
+    "sourceUrl": "https://firebirdsrestaurants.com/frederick/menu/weekend-brunch",
+    "confidence": "high",
+    "note": "Weekend brunch starts at 10am, with baked French toast, shrimp and grits, and a brunch burger on the menu.",
+    "slug": "firebirds-wood-fired-grill-frederick"
+  },
+  {
+    "name": "Mariachi Restaurant",
+    "town": "Frederick",
+    "address": "5854 Urbana Pike",
+    "days": "Sat-Sun",
+    "hours": "until 3pm",
+    "sourceUrl": "https://www.mariachirestaurant.com/",
+    "confidence": "high",
+    "note": "Weekend brunch and brunch cocktails are available until 3pm near the Frederick-Urbana border."
+  },
+  {
+    "name": "Wilcom's Inn",
+    "town": "Monrovia",
+    "address": "11234 Fingerboard Rd",
+    "days": "Sat-Sun",
+    "hours": "10:30am-3pm",
+    "sourceUrl": "https://www.wilcoms.com/menu?menu=brunch-menu-1",
+    "confidence": "high",
+    "note": "The weekend brunch buffet costs $45 for adults and $20 for children, with mimosas, Bloody Marys, and sangria available."
+  },
+  {
+    "name": "Atlantic Grille",
+    "town": "Urbana",
+    "address": "3531 John Simmons St",
+    "days": "Sun",
+    "hours": "see source",
+    "sourceUrl": "https://atlanticgrilleurbana.com/brunch/",
+    "confidence": "medium",
+    "note": "Sunday brunch includes scrambled eggs, home fries, and 14-inch pancakes, but exact hours are not posted."
+  },
+  {
+    "name": "Vintage",
+    "town": "New Market",
+    "address": "8 W Main St",
+    "days": "Sun",
+    "hours": "10am-1pm",
+    "sourceUrl": "http://www.vintage-eats.com",
+    "confidence": "high",
+    "note": "The Sunday brunch buffet runs from 10am to 1pm, and the lunch menu begins at noon.",
+    "slug": "vintage-restaurant-new-market"
+  },
+  {
+    "name": "BOLDER 144",
+    "town": "Mount Airy",
+    "address": "17004 Frederick Road",
+    "days": "Sun",
+    "hours": "11am-2pm",
+    "sourceUrl": "https://www.facebook.com/bolder144/",
+    "confidence": "high",
+    "note": "The restaurant's Facebook page lists Sunday brunch specials from 11am to 2pm."
+  },
+  {
+    "name": "Memories Charcoal House",
+    "town": "Mount Airy",
+    "address": "403 E Ridgeville Blvd",
+    "days": "Sun",
+    "hours": "until 2pm",
+    "sourceUrl": "https://memoriescharcoalhouse.com/",
+    "confidence": "high",
+    "note": "Sunday Social Brunch runs until 2pm with a rotating menu and $5 Bloody Marys or mimosas.",
+    "slug": "memories-charcoal-house-mount-airy"
+  }
+]

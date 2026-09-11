@@ -27,7 +27,17 @@
  * with a `vitest-claim-` prefix, and the afterAll hook deletes only
  * those rows.
  */
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
+
+// This integration test calls a Server Action outside Next's request runtime.
+// Give it the same local request headers a browser-driven test would carry.
+vi.mock("next/headers", () => ({
+  headers: async () =>
+    new Headers({
+      host: "localhost:3000",
+      "x-forwarded-proto": "http",
+    }),
+}));
 
 const TEST_DB_URL = process.env.TEST_DATABASE_URL;
 
@@ -81,7 +91,10 @@ describeIfDb("business claim flow (integration)", () => {
       owner_email: TEST_EMAIL_1,
       owner_phone: "(240) 555-0142",
       note: "Test submission from vitest — safe to delete.",
+      contact_fax: "",
     });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.message);
     expect(typeof result.token).toBe("string");
 
     // 2. The row should exist as a pending business_claim.
@@ -174,6 +187,7 @@ describeIfDb("business claim flow (integration)", () => {
       owner_email: TEST_EMAIL_2,
       owner_phone: "(240) 555-0199",
       note: "Should be rejected.",
+      contact_fax: "",
     });
 
     const rows = await db

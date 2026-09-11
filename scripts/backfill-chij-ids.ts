@@ -13,7 +13,7 @@
  *
  *   1. For each record where `google_place_id` is NOT in ChIJ form:
  *      • Skip if no real address (e.g. just "Frederick").
- *      • Run resolveAndEnrich({ name, address, lat, lng }).
+ *      • Run resolveAndEnrich({ name, address, lat, lng }, "lean").
  *   2. Accept the match ONLY IF:
  *      • Google's display_name fuzzy-matches our name (token Jaccard
  *        ≥ 0.5 OR one is a prefix of the other), AND
@@ -23,12 +23,14 @@
  *      a human review pass.
  *
  * Modes:
- *   --dry-run    No API calls; prints what would be tried. Free.
- *   --plan       1 API call to confirm credentials work, then plan-only.
- *   --run        Live run. Costs Google Places API budget.
- *   --limit N    Only process the first N candidates (for sampling).
+ *   default / --dry-run / --plan
+ *                No API calls or writes; prints what would be tried. Free.
+ *   --live --confirm --limit N
+ *                Confirmed paid run with one global request ceiling across
+ *                both source files. The immutable per-run maximum is 500.
  *
- * Run: GOOGLE_PLACES_API_KEY=… npm exec tsx scripts/backfill-chij-ids.ts -- --dry-run
+ * Preview: npm exec tsx scripts/backfill-chij-ids.ts
+ * Live: GOOGLE_PLACES_API_KEY=… npm exec tsx scripts/backfill-chij-ids.ts -- --live --confirm --limit 100
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -37,6 +39,14 @@ import {
   googlePlacesConfigured,
   type PlaceEnrichment,
 } from "@/lib/integrations/google-places";
+import {
+  assertManualGoogleArgs,
+  createManualGoogleCallBudget,
+  googleCostPreview,
+  parseManualGoogleRun,
+  type ManualGoogleCallBudget,
+  type ManualGoogleRun,
+} from "./lib/manual-google-run";
 
 // ── env: best-effort .env.local loader so the script runs with a
 //        plain `tsx` invocation ──────────────────────────────────────
@@ -55,25 +65,6 @@ function loadEnvLocal() {
   } catch {
     /* best-effort */
   }
-}
-loadEnvLocal();
-
-// ── flags ─────────────────────────────────────────────────────────
-const argv = new Set(process.argv.slice(2));
-const arg = (k: string) => {
-  const i = process.argv.indexOf(k);
-  return i >= 0 ? process.argv[i + 1] : undefined;
-};
-const DRY = argv.has("--dry-run");
-const PLAN = argv.has("--plan");
-const RUN = argv.has("--run");
-const LIMIT = Number(arg("--limit") ?? Infinity);
-
-if (!DRY && !PLAN && !RUN) {
-  console.error(
-    "Pick a mode: --dry-run (free), --plan (1 call), or --run (live).",
-  );
-  process.exit(1);
 }
 
 const CHIJ_RE = /^ChIJ[A-Za-z0-9_-]+$/;
@@ -149,6 +140,21 @@ type Verdict =
       distance_m?: number;
     };
 
+// A rejected candidate, recorded for the human review pass. Mirrors the
+// object pushed in patchFile(); fields are sourced from Row, the failing
+// Verdict branch, and the Google candidate (PlaceEnrichment).
+type UncertainRecord = {
+  slug: string;
+  name: string;
+  address?: string;
+  geom?: { lat: number; lng: number };
+  reason: Extract<Verdict, { ok: false }>["reason"];
+  google_distance_m?: number;
+  google_candidate_id?: PlaceEnrichment["google_place_id"];
+  google_candidate_name?: PlaceEnrichment["display_name"];
+  google_candidate_address?: PlaceEnrichment["formatted_address"];
+};
+
 async function verify(row: Row): Promise<Verdict> {
   if (!row.geom) return { ok: false, reason: "no-geom" };
   if (!isRealAddress(row.address)) return { ok: false, reason: "no-real-address" };
@@ -157,7 +163,7 @@ async function verify(row: Row): Promise<Verdict> {
     address: `${row.address}, Frederick County, MD`,
     lat: row.geom.lat,
     lng: row.geom.lng,
-  });
+  }, "lean");
   if (!enr || !enr.google_place_id) return { ok: false, reason: "no-google-result" };
   const distance =
     enr.lat != null && enr.lng != null
@@ -188,8 +194,9 @@ function detectPretty(text: string): boolean {
 
 async function patchFile(
   filePath: string,
-  ranOnce: { done: boolean },
-): Promise<{ resolved: number; uncertain: unknown[]; skipped: number; calls: number }> {
+  run: ManualGoogleRun,
+  callBudget: ManualGoogleCallBudget,
+): Promise<{ resolved: number; uncertain: UncertainRecord[]; skipped: number; calls: number }> {
   const original = readFileSync(filePath, "utf8");
   const pretty = detectPretty(original);
   const rows = JSON.parse(original) as Row[];
@@ -203,24 +210,38 @@ async function patchFile(
   let resolved = 0;
   let skipped = 0;
   let calls = 0;
-  const uncertain: unknown[] = [];
+  const uncertain: UncertainRecord[] = [];
 
   for (const { r, i } of candidates) {
-    // Sample-mode cap covers BOTH files combined.
-    if (resolved + uncertain.length + skipped + (LIMIT === Infinity ? 0 : 0) >= LIMIT) break;
-    if (PLAN && ranOnce.done) {
-      // Plan mode: 1 API call total across the run.
+    const preflight = !r.geom
+      ? ({ ok: false, reason: "no-geom" } as const)
+      : !isRealAddress(r.address)
+        ? ({ ok: false, reason: "no-real-address" } as const)
+        : null;
+    if (preflight) {
+      uncertain.push({
+        slug: r.slug,
+        name: r.name,
+        address: r.address,
+        geom: r.geom,
+        reason: preflight.reason,
+      });
       skipped++;
       continue;
     }
-    if (DRY) {
-      // No API call; just count what we would have tried.
+
+    // This one budget instance is created outside the file loop. A batch can
+    // never spend `limit` against each source independently.
+    if (!callBudget.reserve()) break;
+    if (run.dryRun) {
       skipped++;
       continue;
     }
-    const verdict = await verify(r);
+
+    // Count the provider attempt before awaiting it. A thrown/network failure
+    // still consumed the reserved request and must remain inside the ceiling.
     calls++;
-    ranOnce.done = true;
+    const verdict = await verify(r);
     if (verdict.ok) {
       rows[i] = { ...r, google_place_id: verdict.chij };
       resolved++;
@@ -242,7 +263,7 @@ async function patchFile(
     }
   }
 
-  if (RUN && resolved > 0) {
+  if (run.live && resolved > 0) {
     const out = pretty
       ? JSON.stringify(rows, null, 2) + (original.endsWith("\n") ? "\n" : "")
       : JSON.stringify(rows);
@@ -254,22 +275,50 @@ async function patchFile(
 }
 
 async function main() {
-  if ((PLAN || RUN) && !googlePlacesConfigured()) {
-    console.error("GOOGLE_PLACES_API_KEY missing — aborting.");
-    process.exit(1);
-  }
-  console.log("ChIJ backfill", {
-    mode: DRY ? "dry-run" : PLAN ? "plan" : "run",
-    limit: LIMIT === Infinity ? "(none)" : LIMIT,
+  const args = process.argv.slice(2);
+  assertManualGoogleArgs(args);
+  const run = parseManualGoogleRun(args, {
+    defaultLimit: 100,
+    maxLimit: 500,
   });
-
-  const ranOnce = { done: false };
-  const totals = { resolved: 0, uncertain: [] as unknown[], skipped: 0, calls: 0 };
-  for (const path of [
+  const paths = [
     "src/data/places-dfp.json",
     "src/data/places-discovered.json",
-  ]) {
-    const r = await patchFile(resolve(path), ranOnce);
+  ];
+  const callableCandidates = paths.reduce((total, path) => {
+    const rows = JSON.parse(readFileSync(resolve(path), "utf8")) as Row[];
+    return total + rows.filter(
+      (row) =>
+        row.google_place_id &&
+        !CHIJ_RE.test(row.google_place_id) &&
+        row.geom &&
+        isRealAddress(row.address),
+    ).length;
+  }, 0);
+  const plannedCalls = Math.min(callableCandidates, run.limit);
+  console.log("ChIJ backfill", {
+    mode: run.dryRun ? "dry-run" : "live",
+    hardRequestCeiling: run.limit,
+  });
+  console.log(`Callable candidates across both files: ${callableCandidates}`);
+  console.log(googleCostPreview({
+    calls: plannedCalls,
+    pricePerThousandUsd: 40,
+    sku: "Text Search Enterprise + Atmosphere",
+  }));
+  if (run.dryRun) {
+    console.log("No API calls or files will be changed.");
+  } else {
+    loadEnvLocal();
+    if (!googlePlacesConfigured()) {
+      throw new Error("GOOGLE_PLACES_API_KEY missing — aborting, $0 spent.");
+    }
+  }
+
+  const callBudget = createManualGoogleCallBudget(run.limit);
+  const totals = { resolved: 0, uncertain: [] as UncertainRecord[], skipped: 0, calls: 0 };
+  for (const path of paths) {
+    const r = await patchFile(resolve(path), run, callBudget);
     totals.resolved += r.resolved;
     totals.uncertain.push(...r.uncertain);
     totals.skipped += r.skipped;
@@ -277,29 +326,43 @@ async function main() {
   }
 
   console.log("\n=== ChIJ backfill summary ===");
+  console.log(`Request slots planned/reserved: ${callBudget.used}/${callBudget.limit}`);
   console.log(`API calls made:    ${totals.calls}`);
   console.log(`Resolved + saved:  ${totals.resolved}`);
-  console.log(`Uncertain:         ${totals.uncertain.length}  (in audit/chij-backfill-uncertain.json)`);
+  console.log(
+    `Uncertain:         ${totals.uncertain.length}` +
+      (run.live
+        ? "  (in audit/chij-backfill-uncertain.json)"
+        : "  (preview only; no audit file written)"),
+  );
   console.log(`Skipped:           ${totals.skipped}`);
 
-  writeFileSync(
-    resolve("audit/chij-backfill-uncertain.json"),
-    JSON.stringify(
-      {
-        generated: new Date().toISOString(),
-        mode: DRY ? "dry-run" : PLAN ? "plan" : "run",
-        summary: {
-          api_calls: totals.calls,
-          resolved: totals.resolved,
-          uncertain: totals.uncertain.length,
-          skipped: totals.skipped,
+  if (run.live) {
+    writeFileSync(
+      resolve("audit/chij-backfill-uncertain.json"),
+      JSON.stringify(
+        {
+          generated: new Date().toISOString(),
+          mode: "live",
+          summary: {
+            request_ceiling: callBudget.limit,
+            reserved_requests: callBudget.used,
+            api_calls: totals.calls,
+            resolved: totals.resolved,
+            uncertain: totals.uncertain.length,
+            skipped: totals.skipped,
+          },
+          uncertain: totals.uncertain,
         },
-        uncertain: totals.uncertain,
-      },
-      null,
-      2,
-    ),
-  );
+        null,
+        2,
+      ),
+    );
+  } else {
+    console.log(
+      "Run with --live --confirm --limit N after reviewing this plan.",
+    );
+  }
 }
 
 main().catch((e) => {

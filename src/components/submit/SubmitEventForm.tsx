@@ -2,10 +2,26 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { submitEventAction, type SubmitEventInput } from "./actions";
+import BotTrapFields from "./BotTrapFields";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { TOP_CATEGORIES } from "@/data/categories";
+
+const EVENT_FIELD_MAX_LENGTHS: Record<string, number> = {
+  title: 160,
+  organizer: 160,
+  starts_at: 32,
+  ends_at: 32,
+  venue_name: 160,
+  address: 240,
+  description: 4_000,
+  price_text: 80,
+  ticket_url: 2_048,
+  photo_url: 2_048,
+  submitter_name: 120,
+  submitter_email: 254,
+};
 
 export default function SubmitEventForm() {
   const [submitted, setSubmitted] = useState(false);
@@ -39,20 +55,35 @@ export default function SubmitEventForm() {
       price_text: String(data.get("price_text") ?? ""),
       ticket_url: String(data.get("ticket_url") ?? ""),
       organizer: String(data.get("organizer") ?? ""),
+      photo_url: String(data.get("photo_url") ?? ""),
+      photo_permission: data.get("photo_permission") === "on",
       submitter_email: String(data.get("submitter_email") ?? ""),
       submitter_name: String(data.get("submitter_name") ?? ""),
+      contact_fax: String(data.get("contact_fax") ?? ""),
     };
     if (!input.title || !input.starts_at || !input.submitter_email) {
       setError("Title, start time, and your email are required.");
       return;
     }
+    if (!/^\S+@\S+\.\S+$/.test(input.submitter_email)) {
+      setError("Enter a valid email so we can follow up about this event.");
+      return;
+    }
+    if (input.photo_url && !input.photo_permission) {
+      setError("Please confirm that we have permission to display the photo you shared.");
+      return;
+    }
     startTransition(async () => {
       try {
-        await submitEventAction(input);
+        const result = await submitEventAction(input);
+        if (!result.ok) {
+          setError(result.message);
+          return;
+        }
         setSubmitted(true);
         setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong");
+      } catch {
+        setError("We couldn’t submit this event. Try again in a minute.");
       }
     });
   };
@@ -64,15 +95,16 @@ export default function SubmitEventForm() {
         <div className="mx-auto grid h-12 w-12 place-items-center rounded-full" style={{ background: "var(--app-positive)" }}>
           <Check className="h-6 w-6 text-white" strokeWidth={2.5} aria-hidden />
         </div>
-        <h2 className="font-serif text-xl font-semibold" style={{ color: "var(--app-ink)" }}>Thanks — submitted</h2>
-        <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>We&apos;ll review and reach out within 3 business days.</p>
-        <Link href="/" className="inline-block text-sm font-semibold" style={{ color: "var(--app-cool)" }}>Back to Frederick Radius →</Link>
+        <h2 className="font-serif text-xl font-semibold" style={{ color: "var(--app-ink)" }}>Thanks, submitted</h2>
+        <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>We review submissions and reply within three business days.</p>
+        <Link href="/" className="inline-flex min-h-11 items-center text-sm font-semibold" style={{ color: "var(--app-cool)" }}>Back to Frederick Radius <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5" strokeWidth={2.25} /></Link>
       </div>
     );
   }
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="mt-6 space-y-4">
+    <form ref={formRef} onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
+      <BotTrapFields />
       <Field name="title" label="Event title" required placeholder="Punch Brothers at the Weinberg" />
       <Field name="organizer" label="Organizer" placeholder="Weinberg Center for the Arts" />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -88,17 +120,36 @@ export default function SubmitEventForm() {
         <Field name="price_text" label="Price" placeholder="$45–$85, or leave blank if free" />
         <Field name="ticket_url" label="Ticket / RSVP URL" placeholder="https://…" />
       </div>
-      <label className="inline-flex items-center gap-2 text-sm" style={{ color: "var(--app-ink-2)" }}>
+      <label className="inline-flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--app-ink-2)" }}>
         <input type="checkbox" name="is_free" className="h-4 w-4" />
         Free admission
       </label>
+      <fieldset className="space-y-3 rounded-[var(--app-radius-md)] border p-3.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
+        <legend className="px-1 text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+          Event photo <span className="font-normal" style={{ color: "var(--app-ink-3)" }}>(optional)</span>
+        </legend>
+        <p id="event-photo-help" className="text-[11.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+          Share one public image link from your website or cloud storage. We review it with the event; it does not publish automatically.
+        </p>
+        <Field
+          name="photo_url"
+          label="Photo link"
+          type="url"
+          placeholder="https://…"
+          describedBy="event-photo-help"
+        />
+        <label className="flex min-h-11 items-start gap-2 py-1 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          <input type="checkbox" name="photo_permission" className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>I own this photo or have permission for Frederick Radius to display it.</span>
+        </label>
+      </fieldset>
       <div className="space-y-1.5 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
         <p className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>About you</p>
         <Field name="submitter_name" label="Your name" />
         <Field name="submitter_email" label="Your email" required type="email" />
       </div>
       {error && (
-        <p className="rounded-[var(--app-radius-md)] px-3 py-2 text-sm" style={{ background: `${"#A02929"}1A`, color: "var(--app-danger)" }}>
+        <p role="alert" className="rounded-[var(--app-radius-md)] px-3 py-2 text-sm" style={{ background: "var(--app-danger-tint-14)", color: "var(--app-danger)" }}>
           {error}
         </p>
       )}
@@ -106,23 +157,42 @@ export default function SubmitEventForm() {
         type="submit"
         disabled={pending}
         className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 py-3 text-sm font-semibold text-white shadow-[var(--app-shadow-1)] transition disabled:opacity-60"
-        style={{ background: "var(--app-brand)" }}
+        style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
       >
         {pending ? "Submitting…" : "Submit event"}
       </button>
+      <p className="text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+        Every submission is reviewed by hand before it appears. Your email is not shown publicly.
+      </p>
     </form>
   );
 }
 
-function Field({ name, label, required, type = "text", placeholder }: { name: string; label: string; required?: boolean; type?: string; placeholder?: string }) {
+function Field({
+  name,
+  label,
+  required,
+  type = "text",
+  placeholder,
+  describedBy,
+}: {
+  name: string;
+  label: string;
+  required?: boolean;
+  type?: string;
+  placeholder?: string;
+  describedBy?: string;
+}) {
   return (
     <label className="block space-y-1">
       <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>
-        {label}{required && <span style={{ color: "var(--app-brand)" }}>*</span>}
+        {label}{required && <span aria-hidden style={{ color: "var(--app-brand-press)" }}> *</span>}
       </span>
       <input
         name={name} type={type} required={required} placeholder={placeholder}
-        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2"
+        maxLength={EVENT_FIELD_MAX_LENGTHS[name]}
+        aria-describedby={describedBy}
+        className="block min-h-11 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />
     </label>
@@ -135,7 +205,8 @@ function Textarea({ name, label, rows = 3 }: { name: string; label: string; rows
       <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>{label}</span>
       <textarea
         name={name} rows={rows}
-        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2"
+        maxLength={EVENT_FIELD_MAX_LENGTHS[name]}
+        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />
     </label>
@@ -148,7 +219,7 @@ function Select({ name, label, options }: { name: string; label: string; options
       <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>{label}</span>
       <select
         name={name} defaultValue=""
-        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2"
+        className="block min-h-11 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       >
         <option value="">Pick one…</option>

@@ -14,12 +14,73 @@
  * the loader wires in, plus the near-dupe DETECTOR the
  * `npm run data:review` tool uses to find the Summitra-class problems
  * for a human to approve. No data imports → isomorphic, testable.
+ * (The `Hours` import below is type-only, so it is erased at compile and
+ * keeps this module data-free.)
  */
+
+import type { Hours, PlaceAccessibility } from "@/data/places";
+import type { LngLat } from "@/lib/geo";
+import type { CommerceLink } from "@/lib/commerce/types";
 
 export type PatchFields = {
   name?: string;
   category?: string;
+  /** Additional real roles a place serves without replacing its primary one.
+   *  Example: a deli can also be a coffee stop, and a cafe can also answer a
+   *  food request. These feed the canonical multi-category intent matcher. */
+  subcategories?: string[];
+  tags?: string[];
   short_blurb?: string;
+  /** Human-confirmed contact and location corrections. These fields take
+   * precedence over stale scrape data and automated coordinate snapping. */
+  address?: string;
+  postal_code?: string;
+  city?: string;
+  website?: string;
+  phone?: string;
+  email?: string;
+  geom?: LngLat;
+  accessibility?: PlaceAccessibility;
+  /**
+   * Keep a human-confirmed destination in discovery even when providers have
+   * no rating, photo, or editorial summary. This bypasses only the thin-media
+   * gate; operational, relevance, placement, and seasonal checks still apply.
+   */
+  includeWithoutMedia?: boolean;
+  /** Remap an out-of-vocabulary / wrong municipality slug to a valid one (the
+   *  unincorporated communities Jefferson, Ijamsville, etc. have no town page,
+   *  so a place tagged with them silently drops from every municipality filter). */
+  municipality?: string;
+  /** Null the MISATTRIBUTED Google rating + review count: this slug was enriched
+   *  with another (co-located/same-address) business's Google listing, so its
+   *  rating belongs to a different business. Verified per-place by web check
+   *  (2026-06-20 phantom-ratings sweep). */
+  clearGoogle?: boolean;
+  /** Null the misattributed hero photo (it shows the OTHER business). */
+  clearPhoto?: boolean;
+  /** QUARANTINE the whole Google enrichment record: this slug was bound to a
+   *  DIFFERENT business's Google listing (wrong-business sweep, 2026-07-07 UX
+   *  audit P0 — e.g. a restaurant rendering a law office's hours, phone, and
+   *  photos under a "Confirmed" badge). The loader treats the slug as
+   *  unenriched: curated data stays; every Google-derived field (hours,
+   *  status, rating, review, photos, geom snap, category-from-type) drops.
+   *  Stronger than clearGoogle+clearPhoto, which null only rating/photo.
+   *  Remove after re-enriching the slug with the CORRECT listing. */
+  clearEnrichment?: boolean;
+  /** Replace the derived (Google-parsed) weekly hours with a hand-verified
+   *  schedule. Patches win over the automated parser by design, so this is the
+   *  fix for a "PM entered as AM" close typo (e.g. a restaurant Google reports
+   *  as closing at 10:00). Provide the COMPLETE corrected week — it replaces
+   *  the whole `hours` object, not a single day. */
+  hours?: Hours;
+  /** ISO timestamp when the patched schedule itself was checked against a
+   *  first-party source. Required before a manual hours patch may support
+   *  open/closed claims; a general record edit timestamp is not evidence that
+   *  the hours were rechecked. */
+  hours_updated_at?: string;
+  /** Curated commerce links (menu / order / reserve / delivery / catering).
+   *  Owner- or editor-provided; wins over the legacy flat *_url fields. */
+  commerce_links?: CommerceLink[];
 };
 
 export type Overrides = {
@@ -77,7 +138,42 @@ export function patchRecord<T extends { slug: string }>(
   const out: T = { ...p };
   if (x.name) (out as Record<string, unknown>).name = x.name;
   if (x.category) (out as Record<string, unknown>).category = x.category;
-  if (x.short_blurb) (out as Record<string, unknown>).short_blurb = x.short_blurb;
+  if (x.subcategories) (out as Record<string, unknown>).subcategories = x.subcategories;
+  if (x.tags) (out as Record<string, unknown>).tags = x.tags;
+  if (x.short_blurb !== undefined) {
+    (out as Record<string, unknown>).short_blurb = x.short_blurb;
+  }
+  if (x.address) (out as Record<string, unknown>).address = x.address;
+  if (x.postal_code) (out as Record<string, unknown>).postal_code = x.postal_code;
+  if (x.city) (out as Record<string, unknown>).city = x.city;
+  if (x.website) (out as Record<string, unknown>).website = x.website;
+  if (x.phone) (out as Record<string, unknown>).phone = x.phone;
+  if (x.email) (out as Record<string, unknown>).email = x.email;
+  if (x.geom) (out as Record<string, unknown>).geom = x.geom;
+  if (x.accessibility) {
+    (out as Record<string, unknown>).accessibility = x.accessibility;
+  }
+  if (x.municipality) (out as Record<string, unknown>).municipality = x.municipality;
+  // hours runs here (before applyEnrichment) so the loader's
+  // `p.hours ?? parseGoogleHours(...)` precedence picks the curated schedule
+  // over the typo'd Google parse — no change to applyEnrichment needed.
+  if (x.hours) {
+    (out as Record<string, unknown>).hours = x.hours;
+    if (x.hours_updated_at) {
+      (out as Record<string, unknown>).hours_updated_at = x.hours_updated_at;
+      (out as Record<string, unknown>).hours_verified = true;
+    } else {
+      // The schedule changed, so verification evidence attached to the old
+      // schedule cannot carry forward. Keep the replacement private from
+      // open/closed claims until this exact set of hours is checked.
+      (out as Record<string, unknown>).hours_verified = false;
+      delete (out as Record<string, unknown>).hours_updated_at;
+    }
+  }
+  if (x.commerce_links) (out as Record<string, unknown>).commerce_links = x.commerce_links;
+  // clearGoogle / clearPhoto are applied in decoratePlace AFTER applyEnrichment
+  // (which re-derives google_rating/photo from the raw enrichment, so nulling
+  // them here would be clobbered).
   return out;
 }
 
@@ -133,6 +229,9 @@ export type DupeRecord = {
   name: string;
   source?: string;
   municipality?: string;
+  /** The shipped primary category. Shared-token candidates in different
+   * categories are usually neighboring features, not duplicate records. */
+  category?: string;
   lng: number;
   lat: number;
 };
@@ -142,6 +241,7 @@ export type DupeCandidate = {
   b: DupeRecord;
   score: number; // 0..1, higher = more likely the same place
   why: string;
+  distance_m: number;
 };
 
 function metersBetween(
@@ -195,9 +295,10 @@ export function nearDupeCandidates(
           const nb = norm(q.name);
           if (nb.length < 3) continue;
           if (na === nb) continue; // exact → the auto engine handles it
+          const distance_m = metersBetween(r, q);
           if (
             (r.municipality ?? "") !== (q.municipality ?? "") ||
-            metersBetween(r, q) > maxM
+            distance_m > maxM
           ) {
             continue;
           }
@@ -212,6 +313,7 @@ export function nearDupeCandidates(
             .split(" ")
             .slice(0, short.split(" ").length)
             .join(" ");
+          const exactPrefix = short === longHead;
           const lev = Math.min(
             levenshtein(short, long, 4),
             levenshtein(short, longHead, 4),
@@ -220,16 +322,22 @@ export function nearDupeCandidates(
           const tol = short.length <= 6 ? 1 : short.length <= 12 ? 2 : 3;
           let score = 0;
           let why = "";
-          if (lev <= tol) {
+          if (exactPrefix) {
+            score = 0.75;
+            why = "one name extends the other";
+          } else if (lev <= tol) {
             score = 1 - lev / (tol + 2);
             why = `name typo (edit distance ${lev})`;
-          } else if (jac >= 0.6) {
+          } else if (
+            jac >= 0.6 &&
+            (!r.category || !q.category || r.category === q.category)
+          ) {
             score = jac;
             why = `shared name tokens (${jac.toFixed(2)})`;
           }
           if (score > 0) {
             seen.add(key);
-            out.push({ a: r, b: q, score, why });
+            out.push({ a: r, b: q, score, why, distance_m });
           }
         }
       }

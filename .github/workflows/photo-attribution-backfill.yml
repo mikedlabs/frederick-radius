@@ -1,0 +1,137 @@
+name: Google photo attribution backfill
+
+# Manual and request-capped on purpose. Legacy Google photo resource names are
+# not published until the exact per-photo source metadata is refreshed. This
+# workflow advances a reviewed batch, rebuilds the public snapshot, and opens a
+# PR; it never spends or deploys on a schedule.
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Maximum Google Place Details requests (1-500)
+        required: true
+        default: "100"
+
+permissions: {}
+
+concurrency:
+  group: google-photo-attribution-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Require reviewed Google authorization
+        env:
+          GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL: ${{ vars.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL }}
+          GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED: ${{ vars.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED }}
+        run: |
+          if [ "$GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL" != "written-google-authorization-confirmed" ] || [ "$GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED" != "1" ]; then
+            echo "::error title=Google policy hold::Record reviewed written authorization in the exact repository variables before refreshing Google photo metadata."
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+
+      - name: Validate request ceiling
+        env:
+          REQUEST_LIMIT: ${{ inputs.limit }}
+        run: |
+          case "$REQUEST_LIMIT" in
+            ''|*[!0-9]*) echo "limit must be an integer"; exit 1 ;;
+          esac
+          if [ "$REQUEST_LIMIT" -lt 1 ] || [ "$REQUEST_LIMIT" -gt 500 ]; then
+            echo "limit must be between 1 and 500"
+            exit 1
+          fi
+
+      - name: Refresh exact photo metadata
+        env:
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL: ${{ vars.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL }}
+          GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED: ${{ vars.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED }}
+          REQUEST_LIMIT: ${{ inputs.limit }}
+        run: npm run backfill:photo-attributions -- --limit "$REQUEST_LIMIT" --live --confirm
+
+      - name: Rebuild public place data
+        run: |
+          npm run build:client-places
+          npm run coverage:scorecard
+
+      - name: Test photo policy
+        run: npx vitest run src/lib/google-photo-backfill.spec.ts src/lib/google-photo-policy.spec.ts src/lib/loaders/places-client-photo-policy.spec.ts
+
+      - name: Promote reviewed place artifacts
+        run: npm run data:release:write -- --stream places
+
+      - name: Stage exact photo outputs
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/google-photo-attribution-output"
+          install -D -m 0644 src/data/places-enrichment.json "$root/src/data/places-enrichment.json"
+          install -D -m 0644 src/data/place-refresh-identities.json "$root/src/data/place-refresh-identities.json"
+          install -D -m 0644 src/data/places-client.json "$root/src/data/places-client.json"
+          install -D -m 0644 src/data/places-client-hours.json "$root/src/data/places-client-hours.json"
+          install -D -m 0644 src/data/event-venue-photo-credits.json "$root/src/data/event-venue-photo-credits.json"
+          install -D -m 0644 src/data/data-release.json "$root/src/data/data-release.json"
+          install -D -m 0644 docs/coverage-scorecard.md "$root/docs/coverage-scorecard.md"
+      - name: Upload exact photo outputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: google-photo-attribution-output
+          path: ${{ runner.temp }}/google-photo-attribution-output
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: backfill
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/publish-automated-pr.yml
+    with:
+      artifact: google-photo-attribution-output
+      base_sha: ${{ github.sha }}
+      branch: bot/google-photo-attribution-backfill
+      allowed_paths: |
+        src/data/places-enrichment.json
+        src/data/place-refresh-identities.json
+        src/data/places-client.json
+        src/data/places-client-hours.json
+        src/data/event-venue-photo-credits.json
+        src/data/data-release.json
+        docs/coverage-scorecard.md
+      commit_message: "data: backfill exact Google photo attribution"
+      title: "data: restore attributable business photos"
+      body: |
+        Request-capped Google photo metadata refresh.
+
+        This updates only photo resource names and their exact Google Maps
+        attribution records, then rebuilds the slim public place snapshot.
+        Review the coverage diff and spot-check photo attribution before
+        merging.
+
+  checks:
+    needs: publish
+    if: ${{ needs.publish.outputs.pr_operation == 'created' || needs.publish.outputs.pr_operation == 'updated' }}
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/automated-pr-checks.yml
+    with:
+      branch: ${{ needs.publish.outputs.pr_branch }}
+      head_sha: ${{ needs.publish.outputs.pr_head_sha }}

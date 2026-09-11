@@ -1,0 +1,265 @@
+{
+  "schema_version": 2,
+  "note": "Production state ledger for hand-managed migrations. effects_present records observable production effects only; it does not claim the SQL file ran or assign an execution time. See drizzle/README.md.",
+  "migrations": [
+    {
+      "file": "0000_adorable_roxanne_simpson.sql",
+      "sha256": "61dbe7e916c72a53c339e5fcd1f4be9df7ab38d5f95c0256073744df8ce23ba1",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0001_event_ingestion.sql",
+      "sha256": "c4daa36bab0a3c6660603927b69964ab121618e74f3bd7646236024775c27143",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0002_feed_snapshots.sql",
+      "sha256": "daedbfa76ce5d09362f937a6801a1be9ff2da11950188aadb9761b5e38b63033",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0003_push_subscriptions.sql",
+      "sha256": "ff21e9951d7c3d88ee83b22f2cdfcaa69f3dbced99ebfbf200083f9452b8bbbe",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0004_push_log.sql",
+      "sha256": "aecc554de3584cc4b0fb408d26c663f45b7be1bc342eb6d2a8ac1fdb28bfd8a7",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0005_friendly_marten_broadcloak.sql",
+      "sha256": "7029bd538ab211ce3d95d27cac902f2c69ea372e13464d6f30057f684b669177",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0006_robust_miss_america.sql",
+      "sha256": "51a1db97ff81e2682061bf28dc61dc11227f878fb9d07f724feebc87b6af6fe1",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0007_enable_rls.sql",
+      "sha256": "5acf075f8f6dcf8c2f946a98bb8ddd5ae30e1ac527b641e675dd41be920b8b75",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0008_move_pg_trgm_out_of_public.sql",
+      "sha256": "86bf2c0fa08349747cd6cc70631aa2dd4624886f25f88bd92dc91c26591e4174",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0009_enable_rls_all_public.sql",
+      "sha256": "95e62651eb0f9d93cf5f7746db7d10a28bdad531306087912e26412d4068a255",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0010_drop_duplicate_slug_indexes.sql",
+      "sha256": "5e01ddc14eee6d664a353e045783a12c39da7486a5b42a64dcbd9e40d11eb105",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0011_index_ingested_events_raw_event_id.sql",
+      "sha256": "6157997971bd6dbee96b9c45e591a35c40f16bb70bd3bd70e2038666db33f32c",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0012_enable_rls_field_amenities.sql",
+      "sha256": "d1b6dde69c8ff87e59a1abea3eb15b950dd02a88bed1f6938ad86cbb0146c9cb",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0013_saved_events.sql",
+      "sha256": "5836d57a5145c50c9ebf8a31fb3446167387a11146cd79fa171f95b32af13f49",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0014_commerce_link_reports.sql",
+      "sha256": "f3bfeed66ce138dbc88db08b302c222ce07372dceecf29d190dadc409128f0ca",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0015_beta_emails.sql",
+      "sha256": "efa672f011935a2eb01c89df96634a04f8a2539fbbca001e542312c7957e2d88",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0016_beta_codes.sql",
+      "sha256": "cbce4c1224ea335d516a439ca68c2b78a0e1441139cd6a0309fd16bba681112f",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0017_usage_counters.sql",
+      "sha256": "0af6d7917ca4dff049539c3d243d7b9bad40ad6270aa266241c57813fc0a5a7d",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0018_curation_decisions.sql",
+      "sha256": "e6d53459f9a3426c5d3f12ba731d9af185429f4fcd8bd9f61cbf8d3cd03a1187",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0019_field_notes.sql",
+      "sha256": "8b44986e3522996f776a0a691a0786fab4b3f4cd1dc93713645ddabc2d2ab36d",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0020_push_prefs.sql",
+      "sha256": "9c2f3c0ccdf79cd2aa738297c5bc48c0d276bbaf0abaa2524e9f97370e327978",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0021_push_log_open_count.sql",
+      "sha256": "a161120c5f1bf9d243ff4be04acc21cc80eb218eb7d245d12f478ea8e786c887",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0022_lock_unused_storage_bucket.sql",
+      "sha256": "b7fac5d11f21f4b4e280a77610fef5f6d148301197067c29e3f62f3c5f385289",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0023_redact_beta_signup_push_logs.sql",
+      "sha256": "8edca16d91bea4f778da5a1b55e36aee03a35a405df24756615f14d280e9f166",
+      "production_state": "migration_recorded",
+      "migration_record": "redact_beta_signup_push_logs",
+      "note": "Supabase migration history records redact_beta_signup_push_logs at version 20260731114719. A live verification found zero remaining beta-signup owner-alert bodies outside the generic redacted copy."
+    },
+    {
+      "file": "0024_place_hours_refresh.sql",
+      "sha256": "3ed19cf92083d101d79900af3984b9e06a0a32268518439739e3d4a390d66219",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0025_radius_search_documents.sql",
+      "sha256": "bd6f617a8194fd26adcb76bfe181ef46977702201dee9f62a744978a609a2dad",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0026_food_truck_beacons.sql",
+      "sha256": "a88a14db1c7bd85a0314149b7637fb41005fd3f076dd4c4cc939ec7d5cb65e87",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0027_dear_frederick_submissions.sql",
+      "sha256": "40266ff4fd963b44c72d8ec48e1a19a756543a7a9b35b6508d9e532f2bcc7069",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0028_scanner_incidents.sql",
+      "sha256": "b9751175de65360feec1d342dc6dcf210dc50e5768320a28d396bd9c3d470a03",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0029_search_misses.sql",
+      "sha256": "6b0b9cd82f5244fb90a83e541ef72fea54297b1a6b244088e881ce33a61a85fb",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0030_nfc_cards.sql",
+      "sha256": "ef24aee23d029aab8db3fb86f7bc0ad998bb4c509e4e50e57885344204f9e8f1",
+      "production_state": "effects_present",
+      "note": "The NFC tables, RLS posture, and expected indexes now exist. Two nfc_events indexes were absent during the live audit and were added by 0031, so this state does not claim 0030 itself ran in full."
+    },
+    {
+      "file": "0031_operational_indexes.sql",
+      "sha256": "89dc897cacb2b8123b18d6ac9219cc6e133b9038f7ecfc7fbf67eb9b10d2f9c1",
+      "production_state": "migration_recorded",
+      "migration_record": "operational_indexes",
+      "note": "Supabase migration history records operational_indexes, and a live check confirmed all three indexes defined by this file."
+    },
+    {
+      "file": "0032_harden_public_default_privileges.sql",
+      "sha256": "85b13358f8d2e6d7731ea38a910c93f2cd81211fde5351d8c045d22ec9eeec78",
+      "production_state": "effects_absent",
+      "note": "A live migration attempt was rejected because the normal project-admin connection cannot change defaults owned by Supabase's managed supabase_admin role. Existing public objects remain fail-closed; ask Supabase support or use a future elevated dashboard control before claiming this default-policy hardening is active."
+    },
+    {
+      "file": "0033_radius_search_embedding_optional.sql",
+      "sha256": "daed4b4e5eccf85f08363954290895836b28e1e71da6050a60c6b11c89ea2218",
+      "production_state": "effects_present",
+      "note": "Applied to production through the Supabase management migration tool on 2026-07-27."
+    },
+    {
+      "file": "0034_expose_place_hours_refresh_read_only.sql",
+      "sha256": "cbf8858b44d17b446c40cced86edb186095d3a961b6545c29878d812d6f15732",
+      "production_state": "effects_present",
+      "note": "Applied and verified in production through the Supabase management migration tool on 2026-07-27. Anon has column-level SELECT on the five public snapshot fields, one SELECT-only RLS policy, and no write privileges."
+    },
+    {
+      "file": "0035_ingested_event_media.sql",
+      "sha256": "9f6f4885d83c52ebaa6d75693f58eee0effc4d394fde252d9b6bb2d907038e53",
+      "production_state": "migration_recorded",
+      "migration_record": "ingested_event_media",
+      "note": "Supabase migration history records ingested_event_media at version 20260731114720. A live check confirmed both publisher-media columns exist while ingested_events remains RLS-protected from anon and authenticated roles."
+    },
+    {
+      "file": "0036_native_menus.sql",
+      "sha256": "d4e9ebfb0c0c50bc3b53551b0c8ad4c845c6d28d590c8c94bd2a84dcb39c30b5",
+      "production_state": "migration_recorded",
+      "migration_record": "native_menus",
+      "note": "Supabase migration history records native_menus at version 20260731114505. A live check confirmed all four tables, expected indexes and constraints, deny-by-default RLS, no anon/authenticated SELECT, and intended service-role CRUD access."
+    },
+    {
+      "file": "0037_places_postgis.sql",
+      "sha256": "efd1db8293018937ac3291b229e6ec3dd2635224f1893f8be05ec543c55aa542",
+      "production_state": "migration_recorded",
+      "migration_record": "add_places_postgis_spatial_index_and_sync_guard",
+      "note": "Supabase migration history records add_places_postgis_spatial_index_and_sync_guard at version 20260729145527. A live check confirmed PostGIS 3.3.7 in extensions, the generated geography column, validated coordinate constraint, ready GiST index, deny-by-default sync-state table, and enabled invalidation trigger."
+    },
+    {
+      "file": "0038_event_identity_archive.sql",
+      "sha256": "a02faac9e07c03bb04c442a7d0d0f3ee7f7333de648ead2fee66a5214575c8ab",
+      "production_state": "migration_recorded",
+      "migration_record": "event_identity_archive",
+      "note": "Supabase migration history records event_identity_archive at version 20260730024552 and the follow-up ensure_event_identity_archive_contract_20260730 at version 20260730044808. A live check confirmed all four archive tables exist with RLS enabled."
+    },
+    {
+      "file": "0039_feed_source_health_rollups.sql",
+      "sha256": "f5b56e8964cbbd0f7ba26bd7d26b160231beb04d1e93e568e860c059d0e79841",
+      "production_state": "migration_recorded",
+      "migration_record": "feed_source_health_rollups",
+      "note": "Supabase migration history records feed_source_health_rollups at version 20260730031339. A live check confirmed the RLS-protected projection exists and contains current source-health rows."
+    },
+    {
+      "file": "0040_public_event_archive_by_slug.sql",
+      "sha256": "801eeab0947bad1c917e5f3a76c6411eb86637f2d3dd59ee0c07029ef928fe88",
+      "production_state": "migration_recorded",
+      "migration_record": "public_event_archive_by_slug",
+      "note": "Supabase migration history records public_event_archive_by_slug at version 20260804022701. Live checks confirmed the exact-slug RPC returns only canonical_slug and snapshot, invalid slugs return no rows, anon and authenticated cannot select the archive tables, and only the function is executable."
+    },
+    {
+      "file": "0041_data_truth_foundation.sql",
+      "sha256": "4b95d322f614acc7ea5f095b838681a6c892c7806caffad542e406b3ffed3ca3",
+      "production_state": "migration_recorded",
+      "migration_record": "data_truth_foundation",
+      "note": "Supabase migration history records data_truth_foundation at version 20260812193905. Live verification confirmed all four tables, their expected indexes, RLS enabled, and no anon/authenticated grants."
+    },
+    {
+      "file": "0042_data_truth_least_privilege.sql",
+      "sha256": "3d54f1f4fe54911cb8f5c1f9ac5355ac49c3e0cf5fd4092e49ed5562de30ee45",
+      "production_state": "migration_recorded",
+      "migration_record": "data_truth_least_privilege",
+      "note": "Supabase migration history records data_truth_least_privilege at version 20260812194058. Live verification confirmed service_role has only SELECT and INSERT on append-only evidence tables, narrow column UPDATE grants, and CRUD on resolved_field_state."
+    },
+    {
+      "file": "0043_decision_daily_aggregates.sql",
+      "sha256": "cb6b51be1615fba5d43ebd26af886d6c1463f7aa0c71e3d2495aa7f8bc18018d",
+      "production_state": "migration_recorded",
+      "migration_record": "decision_daily_aggregates",
+      "note": "Supabase migration history records decision_daily_aggregates at version 20260812200141. Live verification confirmed the composite primary key and categorical constraints, RLS enabled, no PUBLIC/anon/authenticated grants, service_role SELECT and INSERT, and column-only UPDATE on count and updated_at."
+    },
+    {
+      "file": "0044_data_truth_fk_indexes.sql",
+      "sha256": "6ea77fa7081e72ed67ab1b3f90c7ccefe298bc526e7d5358e205a927dabc6a55",
+      "production_state": "migration_recorded",
+      "migration_record": "data_truth_fk_indexes",
+      "note": "Supabase migration history records data_truth_fk_indexes at version 20260823001324. Live verification confirmed all three partial/composite foreign-key support indexes with the expected definitions."
+    },
+    {
+      "file": "0045_mapbox_search_sessions.sql",
+      "sha256": "f846910df2644224aba1e0875496981a56b1ce12191112cb6b9506ff0a72876f",
+      "production_state": "unverified",
+      "note": "Recorded from the repository; production has not been checked."
+    }
+  ]
+}

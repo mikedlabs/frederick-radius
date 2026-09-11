@@ -31,6 +31,8 @@
  * a renamed place can't break a collection page.
  */
 
+import { HIDDEN_GEM_SLUGS } from "@/data/hidden-gems";
+
 export type CollectionDef = {
   /** URL slug; lives at /collections/<slug>. */
   slug: string;
@@ -49,10 +51,20 @@ export type CollectionDef = {
 
 export const COLLECTIONS: CollectionDef[] = [
   {
+    // Sourced from the curated HIDDEN_GEM_SLUGS (one source of truth, shared
+    // with the place card's "Hidden gem" chip + the /guide rail).
+    slug: "hidden-gems",
+    title: "Small finds",
+    blurb:
+      "These are the smaller places a resident is likely to send a visitor before the usual names.",
+    accent: "var(--app-accent)",
+    places: [...HIDDEN_GEM_SLUGS],
+  },
+  {
     slug: "frederick-without-a-plan",
     title: "Frederick without a plan",
     blurb:
-      "An unscripted downtown afternoon. Start with coffee, walk the creek, end with a beer. The path bends; the answer is yes.",
+      "This downtown route starts with coffee and follows the creek before ending near a taproom. Each stop is a short walk from the last.",
     accent: "var(--app-brand)",
     places: [
       "dublin-roasters-frederick",
@@ -67,7 +79,7 @@ export const COLLECTIONS: CollectionDef[] = [
     slug: "walkable-date-night",
     title: "Walkable date night",
     blurb:
-      "Start with a cup, walk the creek at golden hour, find a small-plates dinner, finish with a quiet drink. Everything is one block apart.",
+      "Start near Carroll Creek, then walk to dinner and a quiet drink. The stops stay within a few downtown blocks.",
     accent: "var(--app-brand)",
     places: [
       "frederick-coffee-company-frederick",
@@ -78,10 +90,15 @@ export const COLLECTIONS: CollectionDef[] = [
     ],
   },
   {
+    // Expanded 2026-07-20 (same audit as kid-energy-burners): the list was
+    // six downtown, adult-leaning stops. Adds kid-friendly indoor energy
+    // (trampolines, skating, pinball, pottery, bowling in three towns) and
+    // two museums, so a wet Saturday with kids has real answers county-wide.
+    // Every slug verified against places-client.json.
     slug: "rainy-day-frederick",
-    title: "Rainy day Frederick",
+    title: "Indoors in Frederick",
     blurb:
-      "When the sky won't cooperate. Indoor places that make a wet afternoon better, not worse, with the right amount of room and the right amount of quiet.",
+      "These indoor stops work when rain, heat, smoke, or bad air changes the day.",
     accent: "var(--app-cool)",
     places: [
       "national-museum-civil-war-medicine-frederick",
@@ -90,18 +107,111 @@ export const COLLECTIONS: CollectionDef[] = [
       "c-burr-artz-public-library-frederick",
       "the-curious-iguana-frederick",
       "hidden-hills-farm-vineyard-frederick",
+      "urban-air-adventure-park-frederick",
+      "skate-frederick",
+      "spinners-pinball-arcade",
+      "i-made-this-pottery-frederick",
+      "rose-hill-manor-park-museums-frederick",
+      "brunswick-heritage-museum",
+      "walkersville-bowling-center-inc-walkersville",
+      "mount-airy-bowling-lanes-mount-airy",
     ],
   },
   {
+    // Rebuilt 2026-07-20 (owner: "doesnt show all the things frederick
+    // county has to offer" - the list was three downtown stops). Now a
+    // county-wide sweep: playgrounds, adventure parks, petting farms, the
+    // big slide at Rocky Ridge, and a town park in nearly every town.
+    // Every slug verified against places-client.json (operational).
     slug: "kid-energy-burners",
     title: "Kid energy burners",
     blurb:
-      "Where to send a four-year-old when the four walls are closing in. Open space, real running room, and a parking spot you can actually find.",
+      "These places give kids real room to run, climb, and wear themselves out. The list reaches every corner of the county, so one of them is close to you.",
     accent: "var(--app-brand-2)",
     places: [
       "baker-park-frederick",
+      "sophie-madigans-playground-frederick",
+      "urban-air-adventure-park-frederick",
+      "catoctin-wildlife-preserve-thurmont",
+      "the-big-slide-mount-tabor-park-at-rocky-ridge-thurmont",
+      "cunningham-falls-state-park-thurmont",
+      "adventure-park-usa-new-market",
+      "gaver-farm-new-market",
+      "green-meadows-petting-farm-ijamsville",
+      "urbana-district-park-new-market",
+      "brunswick-city-park-brunswick",
+      "middletown-park-middletown",
+      "fountain-rock-nature-center-walkersville",
+      "greenbrier-state-park-myersville",
+      "e-eugene-myers-community-park-emmitsburg",
+      "prospect-park-mount-airy",
+    ],
+  },
+  {
+    // Beer around Frederick — the county's breweries and taprooms as one
+    // trail. Every stop is a real, currently-open beer brewery (not a winery,
+    // distillery, meadery, or cidery): each was web-verified operational in
+    // July 2026 before shipping, because a guide that sends you to a closed
+    // taproom (see Idiom Brewing, closed Feb 2026) loses trust. Order is
+    // walk-then-drive: downtown Frederick's walkable core first, then the
+    // outlying-town breweries in Brunswick and Mount Airy. Flood Zone
+    // (Union Bridge) was verified open but sits in Carroll County, so it is
+    // out of scope and excluded.
+    slug: "beer-around-frederick",
+    title: "Beer around Frederick",
+    blurb:
+      "Start downtown, where the taprooms are close enough to walk between. When you're ready, drive out to Brunswick and the farm breweries around Mount Airy.",
+    accent: "var(--app-accent)",
+    places: [
+      "brewers-alley-frederick",
+      "olde-mother-brewing-frederick",
+      "steinhardt-brewing-company-frederick",
+      "attaboy-beer-frederick",
+      "rockwell-brewery-frederick",
+      "midnight-run-brewing",
+      "monocacy-brewing-frederick",
+      "sandbox-brewhouse-frederick",
+      "rak-brewing-co-frederick",
+      "prospect-point-brewing-frederick",
+      "brudr-bier-co-frederick",
+      "smoketown-brewing-brunswick",
+      "liquidity-aleworks-mount-airy",
+      "milkhouse-brewery-mt-airy",
+      "red-shedman-farm-brewery-and-hop-yard-mount-airy",
+    ],
+  },
+  {
+    // LGBTQ+ Frederick — CURATED, never auto-detected. We hold no
+    // "LGBTQ-friendly" data attribute, and guessing which venues are welcoming
+    // would be worse than saying nothing. So this is hand-verified only: it
+    // starts with The Frederick Center (the county's LGBTQ+ community hub) and
+    // grows as the owner/community confirms welcoming + LGBTQ-owned spaces.
+    // Add verified place slugs below (unknown slugs are skipped by the renderer).
+    slug: "lgbtq-frederick",
+    title: "LGBTQ+ Frederick",
+    blurb:
+      "The Frederick Center anchors this list. Other spaces appear only after we can verify that they are welcoming.",
+    accent: "var(--app-accent)",
+    places: [
+      "the-frederick-center",
+      // Add owner/community-verified welcoming + LGBTQ-owned venues here.
+    ],
+  },
+  {
+    slug: "where-to-ride",
+    title: "Where to ride",
+    blurb:
+      "These are the county's bike paths, from the flat C&O towpath and the paved creek trails downtown to the singletrack up in the watershed.",
+    accent: "var(--app-brand-2)",
+    places: [
+      "c-and-o-canal-brunswick",
+      "ballenger-creek-trail-frederick",
       "carroll-creek-linear-park-frederick",
-      "monocacy-national-battlefield-frederick",
+      "thurmont-trolley-trail-thurmont",
+      "monocacy-river-trail-frederick",
+      "frederick-watershed-frederick",
+      "gambrill-state-park-trailhead-middletown",
+      "emmitsburg-new-beginner-loops-biking-trail-emmitsburg",
     ],
   },
 ];

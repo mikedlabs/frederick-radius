@@ -15,7 +15,7 @@
 
 import type { OpenStatus } from "@/lib/hours";
 
-export type TrustLevel = "verified" | "official" | "likely" | "unconfirmed";
+export type TrustLevel = "verified" | "likely" | "unconfirmed";
 
 export type TrustSignal = {
   level: TrustLevel;
@@ -29,30 +29,94 @@ export type TrustSignal = {
 
 /** Structural subset of an event — EventWithMeta satisfies it. */
 export type EventTrustInput = {
-  source: "dfp" | "celebrate" | "county" | "manual" | "seed";
+  /** Any adapter source. The label branches below name the sources they
+   *  know; everything else reads as a live feed row. */
+  source: string;
   is_verified: boolean;
 };
 
-const SOURCE_BASIS: Record<EventTrustInput["source"], string> = {
-  dfp: "From the Downtown Frederick Partnership calendar",
-  celebrate: "From Celebrate Frederick",
-  county: "From the Frederick County calendar",
-  manual: "Aggregated from a live feed",
-  seed: "Picked by Frederick Radius",
+const PUBLISHER_SOURCE_BASIS: Readonly<Record<string, string>> = {
+  dfp: "Published by Downtown Frederick Partnership",
+  celebrate: "Published by Celebrate Frederick",
+  hood: "Published by Hood College",
+  "visit-frederick": "Published by Visit Frederick",
+  weinberg: "Published by the Weinberg Center",
+  delaplaine: "Published by Delaplaine Arts Center",
+  fair: "Published by The Great Frederick Fair",
+  "heritage-frederick": "Published by Heritage Frederick",
+  monocacy: "Published by Monocacy Brewing",
+  fcvfra: "Published by the Frederick County Volunteer Fire and Rescue Association",
+  mdcc: "Published by the Maryland Deaf Community Center",
+  "mount-st-marys": "Published by Mount St. Mary's University",
+  isf: "Published by the Islamic Society of Frederick",
+  elc: "Published by Evangelical Lutheran Church",
+  "civil-war-med": "Published by the National Museum of Civil War Medicine",
+  "maryland-ensemble": "Published by Maryland Ensemble Theatre",
+  catoctin: "Published by Catoctin Land Trust",
+  fcc: "Published by Frederick Community College",
+  "frederick-keys": "Published by the Frederick Keys",
 };
 
-/** Trust for an event, from its provenance and verification flag. */
+const GOVERNMENT_SOURCE_BASIS: Readonly<Record<string, string>> = {
+  county: "Published by Frederick County Government",
+  fcpl: "Published by Frederick County Public Libraries",
+  "city-frederick": "Published by the City of Frederick",
+  "mount-airy": "Published by the Town of Mount Airy",
+  thurmont: "Published by the Town of Thurmont",
+  parks: "Published by Frederick County Parks and Recreation",
+  msd: "Published by the Maryland School for the Deaf",
+};
+
+function sourceBasis(
+  sources: Readonly<Record<string, string>>,
+  source: string,
+): string | undefined {
+  return Object.prototype.hasOwnProperty.call(sources, source)
+    ? sources[source]
+    : undefined;
+}
+
+/** Trust for an event, from its provenance and verification flag.
+ *  A source's own calendar is a publisher listing, not a Radius partnership.
+ *  Government calendars are named as government listings without implying
+ *  that the agency operates or endorses Radius. Radius-reviewed rows remain
+ *  editorial, and all other live rows keep the existing fail-soft language. */
 export function eventTrust(e: EventTrustInput): TrustSignal {
-  if (e.is_verified) {
-    return { level: "verified", label: "Verified", basis: "Verified by Frederick Radius" };
-  }
   if (e.source === "seed") {
-    return { level: "verified", label: "Hand-picked", basis: SOURCE_BASIS.seed };
+    return {
+      level: "verified",
+      label: "Radius reviewed",
+      basis: "Selected and reviewed by Frederick Radius",
+    };
   }
-  if (e.source === "dfp" || e.source === "celebrate" || e.source === "county") {
-    return { level: "official", label: "Official", basis: SOURCE_BASIS[e.source] };
+  const governmentBasis = sourceBasis(GOVERNMENT_SOURCE_BASIS, e.source);
+  if (governmentBasis) {
+    return {
+      level: "verified",
+      label: "Government listing",
+      basis: governmentBasis,
+    };
   }
-  return { level: "likely", label: "Live", basis: SOURCE_BASIS.manual };
+  const publisherBasis = sourceBasis(PUBLISHER_SOURCE_BASIS, e.source);
+  if (publisherBasis) {
+    return {
+      level: "verified",
+      label: "Publisher listing",
+      basis: publisherBasis,
+    };
+  }
+  // manual / live feed
+  return e.is_verified
+    ? {
+        level: "verified",
+        label: "Checked at source",
+        basis: "Checked by Frederick Radius against the source",
+      }
+    : {
+        level: "likely",
+        label: "Live",
+        basis: "Aggregated from a live feed",
+      };
 }
 
 /**
@@ -67,8 +131,8 @@ export function placeHoursTrust(status: OpenStatus): TrustSignal {
     case "closed":
       return {
         level: "verified",
-        label: "Verified",
-        basis: "Confirmed against verified hours",
+        label: "Checked at source",
+        basis: "Checked against posted hours",
       };
     case "unverified":
       return {
@@ -117,7 +181,10 @@ export function formatChecked(iso: string | undefined, nowMs: number = Date.now(
 /** Brand token per level, resolved by the chip component. */
 export const TRUST_COLOR: Record<TrustLevel, string> = {
   verified: "var(--app-positive)",
-  official: "var(--app-cool)",
-  likely: "var(--app-warning)",
+  // Calm provenance, not caution: "Live" (feed) and "Likely open" rows are
+  // normal states, so they ride the muted ink tone instead of warning-amber.
+  // Amber is reserved for genuinely stale/unconfirmed signals. (TRUST_COLOR is
+  // consumed only by TrustChip; the label carries likely-vs-unconfirmed.)
+  likely: "var(--app-ink-3)",
   unconfirmed: "var(--app-ink-3)",
 };

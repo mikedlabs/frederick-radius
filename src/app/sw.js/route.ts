@@ -1,3 +1,6 @@
+
+import { PLATFORM_BRAND } from "@/lib/platform-brand";
+
 /**
  * /sw.js — the service worker, served dynamically so the CACHE_VERSION
  * embedded inside it bumps on every deploy.
@@ -42,11 +45,11 @@ const SW_SOURCE = (version: string) => `/**
  * Served dynamically by app/sw.js/route.ts so CACHE_VERSION bumps
  * on every deploy.
  *
- * Safety-first by design: navigations are NETWORK-FIRST. The cache
- * and the offline page are only ever a fallback when the network
- * actually fails. A bad deploy or a stale cache can therefore never
- * trap a user on a broken page — the worst case offline is the
- * explicit /offline screen, and online always shows live content.
+ * Safety-first by design: navigations are NETWORK-FIRST. Cached HTML
+ * is only ever a fallback when the network actually fails. The two
+ * exact Fair routes may use one explicitly warmed public Fair page;
+ * everything else receives /offline. A stale cache can therefore
+ * never replace live content while the visitor is online.
  *
  * CACHE_VERSION is the build's deployment id, embedded at response
  * time. When a new deploy lands, this string changes → the SW file's
@@ -58,6 +61,127 @@ const CACHE_VERSION = "fr-${version}";
 const STATIC_CACHE = CACHE_VERSION + "-static";
 const IMAGE_CACHE = CACHE_VERSION + "-img";
 const OFFLINE_URL = "/offline";
+const FAIR_CANONICAL_URL = "/moments/great-frederick-fair-2026";
+const FAIR_MAP_DATA_URL = "/data/fair/great-frederick-fair-2026-map.geojson";
+const FAIR_FALLBACK_PATHS = new Set(["/fair", FAIR_CANONICAL_URL]);
+const MAX_PAGE_STATIC_ASSETS = 40;
+
+function cacheControlForbidsStorage(response) {
+  const value = (response.headers.get("cache-control") || "").toLowerCase();
+  return value.includes("private") || value.includes("no-store");
+}
+
+function isCacheableResponse(response) {
+  return Boolean(
+    response &&
+      response.ok &&
+      response.type === "basic" &&
+      !response.redirected &&
+      !cacheControlForbidsStorage(response),
+  );
+}
+
+async function cachePageStaticAssets(assetSource, cache, credentials) {
+  if (typeof assetSource.text !== "function") return;
+  let html = "";
+  try {
+    html = await assetSource.text();
+  } catch {
+    return;
+  }
+  const paths = [];
+  const seen = new Set();
+  const pattern = /(?:src|href)=["']([^"']*\\/_next\\/static\\/[^"']+)["']/g;
+  let match;
+  while ((match = pattern.exec(html)) && paths.length < MAX_PAGE_STATIC_ASSETS) {
+    try {
+      const assetUrl = new URL(match[1], self.location.origin);
+      if (
+        assetUrl.origin === self.location.origin &&
+        assetUrl.pathname.startsWith("/_next/static/") &&
+        !seen.has(assetUrl.href)
+      ) {
+        seen.add(assetUrl.href);
+        paths.push(assetUrl.href);
+      }
+    } catch {}
+  }
+  await Promise.all(
+    paths.map(async (assetUrl) => {
+      try {
+        const asset = await fetch(assetUrl, {
+          // Next build assets are content-hashed and immutable. Let the
+          // browser's HTTP cache satisfy a warm request when it already has
+          // the exact file instead of forcing another network download.
+          cache: "default",
+          credentials,
+        });
+        if (isCacheableResponse(asset)) await cache.put(assetUrl, asset);
+      } catch {}
+    }),
+  );
+}
+
+async function cacheOfflineFallback() {
+  const response = await fetch(OFFLINE_URL, {
+    cache: "reload",
+    credentials: "same-origin",
+  });
+  if (!isCacheableResponse(response)) return;
+
+  // A beta/auth redirect must never be stored under the /offline key.
+  const finalUrl = new URL(response.url);
+  if (finalUrl.origin !== self.location.origin || finalUrl.pathname !== OFFLINE_URL) return;
+
+  const cache = await caches.open(STATIC_CACHE);
+  const assetSource = response.clone();
+  await cache.put(OFFLINE_URL, response);
+
+  // The cached HTML is useful by itself, but the IndexedDB handoff and Retry
+  // button need the offline route's content-hashed JS/CSS. Cache only the
+  // same-origin immutable assets named by this generic page, with a hard cap.
+  // This does not cache another navigation or any personalized response.
+  await cachePageStaticAssets(assetSource, cache, "same-origin");
+}
+
+async function cacheFairFallback() {
+  // Fair is a public, static event workspace. Warm it only on an explicit
+  // request from a visitor already on one of the two exact Fair routes, and
+  // omit cookies so a personalized or beta response can never enter storage.
+  const response = await fetch(FAIR_CANONICAL_URL, {
+    cache: "reload",
+    credentials: "omit",
+  });
+  if (!isCacheableResponse(response)) return;
+
+  const finalUrl = new URL(response.url);
+  const canonicalUrl = new URL(FAIR_CANONICAL_URL, self.location.origin);
+  if (finalUrl.href !== canonicalUrl.href) return;
+
+  const cache = await caches.open(STATIC_CACHE);
+  const assetSource = response.clone();
+  await cache.put(FAIR_CANONICAL_URL, response);
+  await cachePageStaticAssets(assetSource, cache, "omit");
+
+  // The owned Fair map reads this committed snapshot after hydration. Keep it
+  // beside the Fair shell so the map remains useful when fairgrounds service
+  // is congested or a visitor loses connectivity after the initial visit.
+  try {
+    const mapResponse = await fetch(FAIR_MAP_DATA_URL, {
+      cache: "reload",
+      credentials: "omit",
+    });
+    if (!isCacheableResponse(mapResponse)) return;
+
+    const finalMapUrl = new URL(mapResponse.url);
+    const expectedMapUrl = new URL(FAIR_MAP_DATA_URL, self.location.origin);
+    if (finalMapUrl.href !== expectedMapUrl.href) return;
+
+    await cache.put(FAIR_MAP_DATA_URL, mapResponse);
+  } catch {
+    // A map-data failure must not discard the successfully warmed Fair shell.
+  }
+}
 
 self.addEventListener("install", (event) => {
   // Do NOT call skipWaiting() here. We want a freshly deployed SW
@@ -65,9 +189,34 @@ self.addEventListener("install", (event) => {
   // the user with an update toast. The user (or closing all tabs)
   // triggers activation via the SKIP_WAITING message below.
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((c) => c.add(OFFLINE_URL)),
+    // Non-fatal: a transient non-200 on /offline during install must not
+    // abort the SW install (which would disable offline support). The runtime
+    // navigate handler re-fetches /offline on demand.
+    cacheOfflineFallback().catch(() => {}),
   );
 });
+
+async function purgeLegacyRuntimeEntries() {
+  // A same-version worker may inherit HTML cached by an older version of this
+  // file. Keep only the explicit offline fallbacks and immutable build assets.
+  const cache = await caches.open(STATIC_CACHE);
+  const keys = await cache.keys();
+  await Promise.all([
+    ...keys.map((request) => {
+      const pathname = new URL(request.url).pathname;
+      if (
+        pathname === OFFLINE_URL ||
+        pathname === FAIR_CANONICAL_URL ||
+        pathname === FAIR_MAP_DATA_URL ||
+        pathname.startsWith("/_next/static/")
+      ) return undefined;
+      return cache.delete(request);
+    }),
+    // Clear any same-version image cache created by the older worker. Public
+    // images will refill; a formerly cacheable personalized image must not.
+    caches.delete(IMAGE_CACHE),
+  ]);
+}
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
@@ -80,6 +229,7 @@ self.addEventListener("activate", (event) => {
             .map((k) => caches.delete(k)),
         ),
       )
+      .then(() => purgeLegacyRuntimeEntries())
       .then(() => self.clients.claim()),
   );
 });
@@ -89,15 +239,8 @@ self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "CLEAR_CACHES") {
     caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
   }
-  if (event.data && event.data.type === "CLEAR_PRIVATE_NAVIGATIONS") {
-    caches.open(STATIC_CACHE).then(async (cache) => {
-      const requests = await cache.keys();
-      await Promise.all(
-        requests
-          .filter((request) => isPrivateNavigation(new URL(request.url)))
-          .map((request) => cache.delete(request)),
-      );
-    });
+  if (event.data && event.data.type === "CACHE_FAIR") {
+    event.waitUntil(cacheFairFallback().catch(() => {}));
   }
 });
 
@@ -109,28 +252,66 @@ function isImage(req, url) {
   );
 }
 
-const PRIVATE_NAVIGATION_PREFIXES = [
-  "/auth",
-  "/my-radius",
-  "/settings",
+const PRIVATE_PATH_PREFIXES = [
   "/admin",
+  "/auth",
+  "/beta",
+  "/settings",
+  "/my-radius",
+  "/collect",
   "/business/manage",
 ];
+const PUBLIC_IMAGE_API_PREFIXES = ["/api/place-photo", "/api/static-map", "/api/og"];
+const CAPABILITY_QUERY_KEYS = new Set([
+  "code",
+  "token",
+  "key",
+  "secret",
+  "signature",
+  "sig",
+  "endpoint",
+  "passcode",
+  "manage_token",
+]);
 
-function isPrivateNavigation(url) {
-  return (
-    url.search.length > 0 ||
-    PRIVATE_NAVIGATION_PREFIXES.some(
-      (prefix) => url.pathname === prefix || url.pathname.startsWith(prefix + "/"),
-    )
-  );
+function matchesPathPrefix(pathname, prefix) {
+  return pathname === prefix || pathname.startsWith(prefix + "/");
 }
 
-function responseCanBeCached(response) {
-  if (!response || !response.ok) return false;
-  const cacheControl = (response.headers.get("cache-control") || "").toLowerCase();
-  return !cacheControl.includes("private") && !cacheControl.includes("no-store");
+function isSensitiveRequest(request, url) {
+  if (request.headers.has("authorization") || request.cache === "no-store") return true;
+  if (PRIVATE_PATH_PREFIXES.some((prefix) => matchesPathPrefix(url.pathname, prefix))) return true;
+  for (const key of url.searchParams.keys()) {
+    if (CAPABILITY_QUERY_KEYS.has(key.toLowerCase())) return true;
+  }
+
+  // API responses are private by default. Only the three image-proxy routes
+  // are intentionally public and eligible for the image cache.
+  if (
+    url.pathname.startsWith("/api/") &&
+    !PUBLIC_IMAGE_API_PREFIXES.some((prefix) => matchesPathPrefix(url.pathname, prefix))
+  ) {
+    return true;
+  }
+  return false;
 }
+
+/**
+ * Bound the public image cache to its newest MAX entries (FIFO by insertion
+ * order; Cache keys() returns insertion order). Fire-and-forget after each
+ * put; never blocks a response.
+ */
+function trimCache(name, max) {
+  caches.open(name).then(async (cache) => {
+    const keys = await cache.keys();
+    let excess = keys.length - max;
+    for (let i = 0; i < keys.length && excess > 0; i++) {
+      cache.delete(keys[i]);
+      excess--;
+    }
+  }).catch(() => {});
+}
+const MAX_IMAGE_ENTRIES = 150;
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
@@ -139,29 +320,69 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return; // never touch cross-origin
 
-  // 1. Navigations: NETWORK-FIRST. Live content always wins.
-  if (request.mode === "navigate") {
-    // Auth, personalized pages, and any URL carrying query state are strictly
-    // network-only. Cache Storage survives sign-out, so storing their HTML
-    // could expose an email, a one-time auth code, or a private list later on a
-    // shared device. They fall back only to the generic offline screen.
-    if (isPrivateNavigation(url)) {
-      event.respondWith(
-        fetch(request).catch(async () => await caches.match(OFFLINE_URL)),
-      );
-      return;
-    }
+  // /admin is Basic-Auth gated in middleware. When a SW mediates the fetch,
+  // several engines (Safari, installed PWAs, some Chromium contexts) suppress
+  // the browser's credential prompt: the user gets the bare 401 body instead
+  // of a login dialog and the page "never loads". Let the browser own every
+  // /admin request natively; the admin surface needs no offline support.
+  if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) return;
 
+  // 1. Navigations stay network-only. The two exact, query-free Fair routes
+  // may fall back to the deliberately warmed public Fair HTML; every other
+  // route gets only the generic offline page. No navigation response is ever
+  // written here because it may vary by login, cookies, location, or a
+  // capability URL even when its pathname looks public.
+  if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
-        .then((res) => {
-          if (responseCanBeCached(res)) {
-            const copy = res.clone();
-            caches.open(STATIC_CACHE).then((c) => c.put(request, copy)).catch(() => {});
+        .catch(async () => {
+          if (url.search === "" && FAIR_FALLBACK_PATHS.has(url.pathname)) {
+            const fair = await caches.match(FAIR_CANONICAL_URL);
+            if (fair) {
+              // Preserve the online route contract. Serving canonical App
+              // Router HTML under /fair can hydrate against the wrong URL;
+              // redirect first, then the canonical offline request receives
+              // the cached page on its own path.
+              if (url.pathname === "/fair") {
+                return Response.redirect(FAIR_CANONICAL_URL, 302);
+              }
+              return fair;
+            }
+          }
+          return (await caches.match(OFFLINE_URL)) || Response.error();
+        }),
+    );
+    return;
+  }
+
+  // Authenticated, personalized, API, and capability-bearing requests never
+  // enter any runtime cache. Let the browser perform its normal network fetch.
+  if (isSensitiveRequest(request, url)) return;
+
+  // The owned Fair map snapshot is tied to the current application release.
+  // Revalidate it before reading the warmed copy so an older active worker
+  // cannot pair a newly deployed shell with stale map data. The cached copy is
+  // still the offline fallback.
+  if (url.pathname === FAIR_MAP_DATA_URL && url.search === "") {
+    event.respondWith(
+      fetch(request, { cache: "no-cache" })
+        .then(async (res) => {
+          const expectedUrl = new URL(FAIR_MAP_DATA_URL, self.location.origin);
+          if (
+            isCacheableResponse(res) &&
+            new URL(res.url).href === expectedUrl.href
+          ) {
+            try {
+              const cache = await caches.open(STATIC_CACHE);
+              await cache.put(FAIR_MAP_DATA_URL, res.clone());
+            } catch {}
           }
           return res;
         })
-        .catch(async () => (await caches.match(request)) || (await caches.match(OFFLINE_URL))),
+        .catch(async () => {
+          const fallback = await caches.match(FAIR_MAP_DATA_URL);
+          return fallback || Response.error();
+        }),
     );
     return;
   }
@@ -173,8 +394,10 @@ self.addEventListener("fetch", (event) => {
         (hit) =>
           hit ||
           fetch(request).then((res) => {
-            const copy = res.clone();
-            caches.open(STATIC_CACHE).then((c) => c.put(request, copy)).catch(() => {});
+            if (isCacheableResponse(res)) {
+              const copy = res.clone();
+              caches.open(STATIC_CACHE).then((c) => c.put(request, copy)).catch(() => {});
+            }
             return res;
           }),
       ),
@@ -189,7 +412,9 @@ self.addEventListener("fetch", (event) => {
         const hit = await cache.match(request);
         const net = fetch(request)
           .then((res) => {
-            if (res && res.status === 200) cache.put(request, res.clone());
+            if (isCacheableResponse(res)) {
+              cache.put(request, res.clone()).then(() => trimCache(IMAGE_CACHE, MAX_IMAGE_ENTRIES)).catch(() => {});
+            }
             return res;
           })
           .catch(() => hit);
@@ -203,8 +428,43 @@ self.addEventListener("fetch", (event) => {
 });
 
 /* ─────────────────────────────────────────────────────
- * Web Push — opt-in notifications.
+ * Web Push: opt-in notifications.
  * ───────────────────────────────────────────────────── */
+function hasUnsafeRedirectCharacters(value) {
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if (value[i] === "\\\\" || code <= 31 || code === 127) return true;
+  }
+  return false;
+}
+
+function safeNavigationTarget(raw) {
+  if (typeof raw !== "string") return "/today";
+  if (hasUnsafeRedirectCharacters(raw)) return "/today";
+  const candidate = raw.trim();
+  if (!candidate.startsWith("/") || candidate.startsWith("//")) return "/today";
+
+  let inspected = candidate;
+  for (let i = 0; i < 4; i++) {
+    try {
+      const decoded = decodeURIComponent(inspected);
+      if (decoded === inspected) break;
+      inspected = decoded;
+    } catch {
+      return "/today";
+    }
+  }
+  if (inspected.startsWith("//") || hasUnsafeRedirectCharacters(inspected)) return "/today";
+
+  try {
+    const parsed = new URL(candidate, self.location.origin);
+    if (parsed.origin !== self.location.origin || parsed.pathname.startsWith("//")) return "/today";
+    return parsed.pathname + parsed.search + parsed.hash;
+  } catch {
+    return "/today";
+  }
+}
+
 self.addEventListener("push", (event) => {
   let payload = {};
   try {
@@ -214,21 +474,35 @@ self.addEventListener("push", (event) => {
   }
   const title = payload.title || "Frederick Radius";
   const body = payload.body || "";
-  const url = payload.url || "/today";
+  const url = safeNavigationTarget(payload.url);
   const options = {
     body,
-    icon: payload.icon || "/icons/icon-192.png",
-    badge: payload.badge || "/icons/badge-72.png",
+    icon: payload.icon || "${PLATFORM_BRAND.icons.push}",
+    badge: payload.badge || "${PLATFORM_BRAND.icons.badge}",
     tag: payload.tag,
-    data: { url },
+    data: { url, n: payload.n },
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/today";
-  event.waitUntil(
+  const url = safeNavigationTarget(event.notification.data && event.notification.data.url);
+  // POST is deliberate: this endpoint changes aggregate state, and a
+  // same-origin POST carries the Origin evidence required by the server's CSRF
+  // guard. Keep the request inside waitUntil as well; a worker may otherwise
+  // be terminated before a fire-and-forget attribution ping leaves the device.
+  const n = event.notification.data && event.notification.data.n;
+  const opened = n
+    ? fetch("/api/push/opened?n=" + encodeURIComponent(n), {
+        method: "POST",
+        mode: "same-origin",
+        credentials: "same-origin",
+        cache: "no-store",
+        keepalive: true,
+      }).catch(() => undefined)
+    : Promise.resolve(undefined);
+  const navigation =
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clients) => {
@@ -239,8 +513,8 @@ self.addEventListener("notificationclick", (event) => {
         const first = clients[0];
         if (first && "navigate" in first) return first.navigate(url).then(() => first.focus());
         return self.clients.openWindow(url);
-      }),
-  );
+      });
+  event.waitUntil(Promise.all([opened, navigation]));
 });
 `;
 

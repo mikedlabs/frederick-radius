@@ -11,11 +11,24 @@
 import { unstable_cache } from "next/cache";
 import { getSql } from "@/lib/db/client";
 import { isVenueStatusNonEvent, isRoutineRecurringClass } from "@/lib/event-noise";
+import { cleanFeedText, formatAddress } from "@/lib/format/text";
+import {
+  normalizeTitle,
+  etYear,
+  cleanDescription,
+  cleanVenueName,
+  clampDescription,
+} from "@/lib/events/normalize";
+import { hasImplausibleStartTime } from "@/lib/events/visible";
 
 // Phase 1.6: drop venue open-status and routine recurring class/work
 // sessions. Default ON by owner directive (2026-05-16: "ship
 // everything"). Set RADIUS_EVENT_NOISE_FILTER=0 to disable.
 const EVENT_NOISE_FILTER = process.env.RADIUS_EVENT_NOISE_FILTER !== "0";
+
+// Sources whose category is set deliberately at the mapper boundary (not the
+// unreliable county catid mapping), so it's safe to keep + surface.
+const RELIABLE_CATEGORY_DOMAINS = new Set(["frederick.librarycalendar.com", "fcvfra.com"]);
 
 export type IngestedOccurrence = {
   sourceUid: string;
@@ -23,19 +36,30 @@ export type IngestedOccurrence = {
   endsAtUtc: string | null;
   allDay: boolean;
   sourceUrl: string | null;
+  /** Last successful normalized-source refresh for archive provenance. */
+  verifiedAt: string | null;
 };
 
 export type IngestedSeries = {
   /** stable key for routing/expansion */
   key: string;
   title: string;
+  /** Presenting org split from an "Org-Event" title by normalizeTitle. */
+  presenter?: string;
   venueName: string | null;
   address: string | null;
   municipality: string;
+  /** Ingest source domain (e.g. fcvfra.com, frederick.librarycalendar.com) —
+   *  lets a consumer scope to a source (the rails-lift includes only the
+   *  library + fire-company sources; everything else stays civic-only). */
+  sourceDomain: string;
   category: string | null;
   lat: number | null;
   lng: number | null;
   description: string | null;
+  /** Publisher-provided event artwork retained by scheduled JSON ingesters. */
+  heroImage: string | null;
+  heroImageAlt: string | null;
   /** future occurrences, soonest first */
   occurrences: IngestedOccurrence[];
   /** convenience: occurrences.length */
@@ -47,6 +71,7 @@ export type IngestedSeries = {
 
 type Row = {
   source_uid: string;
+  source_domain: string;
   source_url: string | null;
   title: string;
   description: string | null;
@@ -59,7 +84,16 @@ type Row = {
   lng: string | null;
   municipality: string;
   category: string | null;
+  hero_image: string | null;
+  hero_image_alt: string | null;
+  updated_at: string | Date | null;
 };
+
+function verifiedTimestamp(value: Row["updated_at"]): string | null {
+  if (!value) return null;
+  const parsed = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : null;
+}
 
 function seriesKeyOf(r: Row): string {
   const title = r.title.trim().toLowerCase().replace(/\s+/g, " ");
@@ -70,20 +104,45 @@ function seriesKeyOf(r: Row): string {
 async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
   const sql = getSql();
   if (!sql) return [];
-  // Future + slightly-past (started today) events only.
+  // Future + slightly-past events, plus any event whose stated end is still in
+  // the window. The end branch is load-bearing for all-day rows: they start at
+  // local midnight, so a start-only cutoff dropped them after 6 AM and erased
+  // day two of every multi-day span.
   const since = new Date(Date.now() - 6 * 3600_000).toISOString();
   let rows: Row[];
   try {
     rows = (await sql<Row[]>`
-      select source_uid, source_url, title, description, starts_at_utc, ends_at_utc,
-             all_day, venue_name, address, lat, lng, municipality, category
+      select source_uid, source_domain, source_url, title, description, starts_at_utc, ends_at_utc,
+             all_day, venue_name, address, lat, lng, municipality, category,
+             hero_image, hero_image_alt, updated_at
       from ingested_events
       where starts_at_utc >= ${since}
+         or ends_at_utc >= ${since}
       order by starts_at_utc asc
       limit ${limit}
     `) as unknown as Row[];
   } catch {
     return [];
+  }
+
+  rows = rows.filter(
+    (row) =>
+      !hasImplausibleStartTime({
+        title: row.title,
+        starts_at: row.starts_at_utc,
+        ends_at: row.ends_at_utc,
+        category: row.category,
+        is_all_day: row.all_day,
+      }),
+  );
+
+  // Sanitize the venue at the SOURCE row so BOTH the series key and the
+  // displayed venue use clean values — a feed that dumped its description
+  // into the LOCATION field (the Bee City subcommittee) must leak into
+  // neither. cleanVenueName nulls a junk venue; the key then falls back to
+  // address/empty.
+  for (const r of rows) {
+    r.venue_name = cleanVenueName(r.venue_name);
   }
 
   const groups = new Map<string, Row[]>();
@@ -98,26 +157,47 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
   for (const [key, rs] of groups) {
     rs.sort((a, b) => +new Date(a.starts_at_utc) - +new Date(b.starts_at_utc));
     const head = rs[0];
+    // Sanitize at this read boundary, never in SeriesCard. Title gets
+    // entity-decoded + presenter-split + hyphen/year-cleaned; venue and
+    // description get decoded; the address also gets its concatenated
+    // suffix-into-city repaired.
+    const { presenter, title } = normalizeTitle(head.title, {
+      year: etYear(head.starts_at_utc),
+    });
     series.push({
       key,
-      title: head.title,
-      venueName: head.venue_name,
-      address: head.address,
+      title,
+      presenter,
+      venueName: head.venue_name, // already cleaned + junk-nulled above
+      address: head.address ? formatAddress(cleanFeedText(head.address)) : null,
       municipality: head.municipality,
+      sourceDomain: head.source_domain,
       // Phase 1.5: the county catid mapping is unreliable (birthday
       // parties, theatre, and tasting rooms all arrive as "Workforce
       // Services"). Quarantine the surfaced label until the upstream
       // mapping is rebuilt. The raw value remains in ingested_events.
-      category: null,
+      // FCPL + FCVFRA set their category at the mapper boundary (library
+      // program type / "community"), so keep theirs — only the county
+      // catid mess is quarantined.
+      category: RELIABLE_CATEGORY_DOMAINS.has(head.source_domain) ? head.category : null,
       lat: head.lat != null ? Number(head.lat) : null,
       lng: head.lng != null ? Number(head.lng) : null,
-      description: head.description,
+      // cleanDescription also dedupes repeated sentences (municipal CMS
+      // feeds repeat whole paragraphs); the clamp keeps a 2,000-char
+      // pricing/sponsorship dump from becoming a wall of text on any
+      // surface (June-9 review §5, the techfrederick example).
+      description: head.description
+        ? clampDescription(cleanDescription(head.description), 320) || null
+        : null,
+      heroImage: head.hero_image,
+      heroImageAlt: head.hero_image_alt,
       occurrences: rs.map((r) => ({
         sourceUid: r.source_uid,
         startsAtUtc: r.starts_at_utc,
         endsAtUtc: r.ends_at_utc,
         allDay: r.all_day,
         sourceUrl: r.source_url,
+        verifiedAt: verifiedTimestamp(r.updated_at),
       })),
       count: rs.length,
       nextStart: head.starts_at_utc,
@@ -138,7 +218,13 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
 /** ISR-cached (1h) — the cron refreshes the data daily, hourly is plenty. */
 export const getIngestedSeries = unstable_cache(
   async (limit = 4000) => loadUpcoming(limit),
-  ["ingested-series-v1"],
+  // v7: cleanTitle now strips trailing embedded weekday/date/time fragments
+  // and de-shouts ALL-CAPS titles — the cached series titles change.
+  // v6: splitPresenter paren/digit guards changed how titles normalize —
+  // shape change must invalidate the persisted cache (the #509 lesson). The
+  // deploy SHA is a second key segment so a forgotten version bump still
+  // auto-busts on deploy.
+  ["ingested-series-v8", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 3600, tags: ["ingested-events"] }
 );
 

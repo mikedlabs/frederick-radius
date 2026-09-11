@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { horizonOf, groupByHorizon, type HorizonBounds } from "@/lib/eventHorizon";
+import { horizonOf, groupByHorizon, buildHorizonBounds, type HorizonBounds } from "@/lib/eventHorizon";
+import { easternParts } from "@/lib/tz";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -21,21 +22,40 @@ const ev = (slug: string, startsInMs: number, durMs = 2 * HOUR) => ({
 });
 
 describe("horizonOf", () => {
-  it("flags feed-live and currently-running events as live", () => {
-    expect(horizonOf(ev("concert-live", 5 * DAY), bounds)).toBe("live");
+  it("requires a trustworthy end for live and keeps unknown-end starts under Today", () => {
+    // A feed-live flag cannot override a degenerate END. The event remains
+    // discoverable under Today during its bounded visibility window.
+    expect(horizonOf(ev("concert-live", -HOUR, 0), bounds)).toBe("today");
     expect(horizonOf(ev("running", -HOUR, 3 * HOUR), bounds)).toBe("live");
+    expect(horizonOf(ev("concert-live", 5 * DAY), bounds)).not.toBe("live"); // future → never live
   });
 
   it("buckets today, weekend, this-week, and later", () => {
     expect(horizonOf(ev("tonight", 6 * HOUR), bounds)).toBe("today");
     expect(horizonOf(ev("sat", 2 * DAY), bounds)).toBe("weekend"); // Sat
-    expect(horizonOf(ev("nextwed", 6 * DAY), bounds)).toBe("week");
+    // On Thursday, next Wednesday is after the upcoming weekend. Calling it
+    // "Later this week" would put a later date before the weekend shelf.
+    expect(horizonOf(ev("nextwed", 6 * DAY), bounds)).toBe("later");
     expect(horizonOf(ev("nextmonth", 30 * DAY), bounds)).toBe("later");
   });
 
   it("drops past, non-live events", () => {
     expect(horizonOf(ev("over", -2 * DAY), bounds)).toBe(null);
   });
+  it("an all-day event TODAY reads as today, never live (the 3 AM Senior Yoga bug)", () => {
+    // Started at midnight, spans the whole day: the old gate kept it in
+    // "Happening now" through the middle of the night.
+    expect(horizonOf({ ...ev("allday", -12 * HOUR, 24 * HOUR), is_all_day: true }, bounds)).toBe("today");
+  });
+
+  it("an all-day event whose day has passed is gone", () => {
+    expect(horizonOf({ ...ev("allday-past", -30 * HOUR, 20 * HOUR), is_all_day: true }, bounds)).toBe(null);
+  });
+
+  it("a FUTURE all-day event still lands in its dated bucket", () => {
+    expect(horizonOf({ ...ev("allday-sat", 2 * DAY, 24 * HOUR), is_all_day: true }, bounds)).toBe("weekend");
+  });
+
 });
 
 describe("groupByHorizon", () => {
@@ -43,7 +63,7 @@ describe("groupByHorizon", () => {
     const events = [
       ev("nextmonth", 30 * DAY),
       ev("tonight", 5 * HOUR),
-      ev("concert-live", 5 * DAY),
+      ev("concert-live", -HOUR, 3 * HOUR), // confirmed running → the "live" group
       ev("sat", 2 * DAY),
       ev("over", -3 * DAY),
       ev("nextwed", 6 * DAY),
@@ -53,7 +73,6 @@ describe("groupByHorizon", () => {
       "live",
       "today",
       "weekend",
-      "week",
       "later",
     ]);
     const total = groups.reduce((n, g) => n + g.events.length, 0);
@@ -65,5 +84,68 @@ describe("groupByHorizon", () => {
     const groups = groupByHorizon([ev("tonight", 3 * HOUR)], bounds);
     expect(groups).toHaveLength(1);
     expect(groups[0].key).toBe("today");
+  });
+});
+
+describe("buildHorizonBounds — weekend window contains today on Fri/Sat/Sun", () => {
+  // Walk 14 consecutive June 2026 days at ~noon Eastern (EDT = UTC-4, so
+  // 16:00Z). June has no DST change, so the window math is clean.
+  const noonET = (dayOfMonth: number) => new Date(Date.UTC(2026, 5, dayOfMonth, 16, 0));
+
+  it("always returns a Fri 17:00 → Mon 00:00 ET window", () => {
+    for (let i = 1; i <= 14; i++) {
+      const b = buildHorizonBounds(noonET(i));
+      const s = easternParts(new Date(b.weekendStart));
+      const e = easternParts(new Date(b.weekendEnd));
+      expect(s.weekday).toBe(5); // Friday
+      expect(s.hour).toBe(17); // 5pm
+      expect(e.weekday).toBe(1); // Monday
+      expect(e.hour).toBe(0); // midnight
+      expect(b.weekendEnd - b.weekendStart).toBe(55 * 3_600_000); // Fri 5pm → Mon 0:00
+    }
+  });
+
+  it("on Sat/Sun the window already started (the next-weekend bug guard)", () => {
+    for (let i = 1; i <= 14; i++) {
+      const now = noonET(i);
+      const b = buildHorizonBounds(now);
+      const wd = easternParts(now).weekday;
+      if (wd === 6 || wd === 0) {
+        // Sat or Sun: weekendStart is BEHIND now (the old daysToFri math put
+        // it a week ahead — this is the regression that must never return).
+        expect(b.weekendStart).toBeLessThanOrEqual(b.now);
+        expect(b.weekendEnd).toBeGreaterThan(b.now);
+      }
+    }
+  });
+
+  it("on Fri the window starts today; Mon-Thu it points to the upcoming Friday", () => {
+    for (let i = 1; i <= 14; i++) {
+      const now = noonET(i);
+      const b = buildHorizonBounds(now);
+      const wd = easternParts(now).weekday;
+      if (wd === 5) {
+        // Friday noon: window starts later today (Fri 5pm).
+        expect(easternParts(new Date(b.weekendStart)).day).toBe(easternParts(now).day);
+        expect(b.weekendStart).toBeGreaterThan(b.now);
+      } else if (wd >= 1 && wd <= 4) {
+        // Mon-Thu: the upcoming Friday, within the next 7 days.
+        expect(b.weekendStart).toBeGreaterThan(b.now);
+        expect(b.weekendStart).toBeLessThan(b.now + 7 * DAY);
+      }
+    }
+  });
+
+  it("next24 is the next Eastern midnight (end of today, never tomorrow's events)", () => {
+    const b = buildHorizonBounds(noonET(3));
+    const e = easternParts(new Date(b.next24));
+    expect(e.hour).toBe(0);
+    expect(b.next24).toBeGreaterThan(b.now);
+    expect(b.next24).toBeLessThanOrEqual(b.now + DAY);
+  });
+
+  it("passes the live set straight through", () => {
+    const live = new Set(["x"]);
+    expect(buildHorizonBounds(noonET(3), live).live).toBe(live);
   });
 });

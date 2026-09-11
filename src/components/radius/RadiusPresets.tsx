@@ -60,7 +60,7 @@ export default function RadiusPresets({
   return (
     <section aria-label="Quick presets" className="space-y-2">
       <p
-        className="px-1 text-[10.5px] font-bold uppercase tracking-[0.12em]"
+        className="px-1 text-[11px] font-bold uppercase tracking-[0.12em]"
         style={{ color: "var(--app-ink-3)" }}
       >
         Quick picks
@@ -105,7 +105,7 @@ export default function RadiusPresets({
                   {p.label}
                 </span>
                 <span
-                  className="text-[10.5px]"
+                  className="text-[11px]"
                   style={{ color: "var(--app-ink-3)" }}
                 >
                   {p.blurb}

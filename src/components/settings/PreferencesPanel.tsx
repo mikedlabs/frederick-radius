@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Compass,
-  Home,
   MapPin,
   Sparkles,
   Bell,
@@ -20,16 +19,34 @@ import {
   ShoppingBag,
   Heart,
   Hotel,
+  Users,
+  Route,
 } from "lucide-react";
-import { useMode, resetModeState, type Mode } from "@/hooks/useMode";
+import KeepRadiusCard from "@/components/pwa/KeepRadiusCard";
+import { resetModeState } from "@/hooks/useMode";
+import { ACCENTS } from "@/data/categories";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import {
   getHomeMuni,
   setHomeMuni,
   getInterests,
   setInterests,
+  getCommunityNotes,
+  setCommunityNotes,
 } from "@/lib/personalize";
 import { haptic } from "@/lib/haptics";
+import { BRAND } from "@/lib/brand";
+import {
+  cancelPendingReturnBridgeValue,
+  shouldSignalHomeAreaValue,
+  signalReturnBridgeValue,
+} from "@/lib/return-bridge";
+import {
+  askFitSummary,
+  readAskFitContext,
+  writeAskFitContext,
+  type AskFitContext,
+} from "@/lib/ask/fit";
 
 /**
  * PreferencesPanel — the editable settings hub.
@@ -56,12 +73,12 @@ const INTEREST_OPTIONS: Array<{
   Icon: typeof Utensils;
   color: string;
 }> = [
-  { slug: "food", label: "Food & Drink", Icon: Utensils, color: "#A8462C" },
-  { slug: "outdoors", label: "Parks & Trails", Icon: Trees, color: "#1E6B3A" },
-  { slug: "arts", label: "Arts & Culture", Icon: Palette, color: "#7E2C6F" },
-  { slug: "family", label: "Family", Icon: Baby, color: "#C99632" },
-  { slug: "sports", label: "Sports", Icon: Activity, color: "#0F8A5F" },
-  { slug: "shopping", label: "Shopping", Icon: ShoppingBag, color: "#B26B00" },
+  { slug: "food", label: "Eat & drink", Icon: Utensils, color: ACCENTS.terracotta },
+  { slug: "outdoors", label: "Parks & Trails", Icon: Trees, color: ACCENTS.catoctin },
+  { slug: "arts", label: "Arts & Culture", Icon: Palette, color: ACCENTS.plum },
+  { slug: "family", label: "Family", Icon: Baby, color: ACCENTS.family },
+  { slug: "sports", label: "Sports", Icon: Activity, color: BRAND.colors.creek },
+  { slug: "shopping", label: "Shopping", Icon: ShoppingBag, color: BRAND.colors.functionalAmber },
   { slug: "wellness", label: "Wellness", Icon: Heart, color: "#A02929" },
   { slug: "lodging", label: "Lodging", Icon: Hotel, color: "#5B1E55" },
 ];
@@ -72,13 +89,14 @@ const INTEREST_LABEL: Record<string, string> = Object.fromEntries(
 
 export default function PreferencesPanel() {
   const router = useRouter();
-  const { mode, setMode, mounted } = useMode();
 
   // Local state mirrors localStorage. We seed it after mount to stay
   // SSR-safe and update both at once on every change.
   const [muni, setMuni] = useState<string | null>(null);
   const [interests, setInterestsState] = useState<Set<string>>(new Set());
   const [muniEditing, setMuniEditing] = useState(false);
+  const [communityOn, setCommunityOn] = useState(true);
+  const [fit, setFit] = useState<AskFitContext>({});
 
   useEffect(() => {
     // SSR-safe: server renders the initial null/empty, the stored
@@ -87,21 +105,19 @@ export default function PreferencesPanel() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMuni(getHomeMuni());
     setInterestsState(new Set(getInterests()));
+    setCommunityOn(getCommunityNotes());
+    setFit(readAskFitContext());
   }, []);
 
-  const changeMode = useCallback(
-    (m: Mode) => {
-      if (m === mode) return;
-      haptic("light");
-      setMode(m);
-    },
-    [mode, setMode],
-  );
-
   const changeMuni = useCallback((slug: string | null) => {
+    const previous = getHomeMuni();
     haptic("light");
     setMuni(slug);
     setHomeMuni(slug);
+    if (shouldSignalHomeAreaValue(previous, slug)) {
+      signalReturnBridgeValue("home-area");
+    }
+    if (!slug) cancelPendingReturnBridgeValue("home-area");
     setMuniEditing(false);
   }, []);
 
@@ -116,6 +132,38 @@ export default function PreferencesPanel() {
     });
   }, []);
 
+  const toggleCommunity = useCallback(() => {
+    haptic("light");
+    setCommunityOn((prev) => {
+      const next = !prev;
+      setCommunityNotes(next);
+      return next;
+    });
+  }, []);
+
+  const changeFit = useCallback(<K extends keyof AskFitContext>(
+    key: K,
+    value: AskFitContext[K] | undefined,
+  ) => {
+    haptic("light");
+    setFit((previous) => {
+      const next = { ...previous, [key]: value };
+      return writeAskFitContext(next);
+    });
+  }, []);
+
+  const toggleAccess = useCallback((value: "wheelchair" | "communication") => {
+    haptic("light");
+    setFit((previous) => {
+      const access = new Set(previous.accessibility ?? []);
+      if (access.has(value)) access.delete(value);
+      else access.add(value);
+      const next: AskFitContext = { ...previous, accessibility: [...access] };
+      if (access.size === 0) next.accessibility = undefined;
+      return writeAskFitContext(next);
+    });
+  }, []);
+
   const reset = useCallback(() => {
     if (
       typeof window === "undefined" ||
@@ -126,7 +174,10 @@ export default function PreferencesPanel() {
       return;
     haptic("medium");
     setHomeMuni(null);
+    cancelPendingReturnBridgeValue("home-area");
     setInterests([]);
+    writeAskFitContext({});
+    setFit({});
     resetModeState();
     document.cookie = "fr_onboarded=; path=/; max-age=0; samesite=lax";
     router.replace("/welcome");
@@ -134,48 +185,6 @@ export default function PreferencesPanel() {
 
   return (
     <div className="space-y-4">
-      {/* PERSONA */}
-      <SectionShell title="You're using Radius as" icon="persona">
-        <div className="grid grid-cols-2 gap-2">
-          {(["visitor", "resident"] as const).map((m) => {
-            const active = mounted && mode === m;
-            const Icon = m === "visitor" ? Compass : Home;
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => changeMode(m)}
-                aria-pressed={active}
-                className="flex w-full items-center gap-2.5 rounded-xl border p-3 text-left text-[13px] font-semibold transition active:scale-[0.99]"
-                style={{
-                  borderColor: active ? "var(--app-brand)" : "var(--app-border)",
-                  background: active
-                    ? "color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated))"
-                    : "var(--app-bg-elevated)",
-                  color: "var(--app-ink)",
-                }}
-              >
-                <Icon className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-                <span className="capitalize">{m}</span>
-                {active && (
-                  <Check
-                    className="ml-auto h-4 w-4 shrink-0"
-                    strokeWidth={3}
-                    aria-hidden
-                    style={{ color: "var(--app-brand)" }}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
-        <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-          {mode === "visitor"
-            ? "Food, arts, and where to park. Downtown-weighted."
-            : "What's open, what's closed, and civic happenings across the county."}
-        </p>
-      </SectionShell>
-
       {/* HOME MUNICIPALITY */}
       <SectionShell title="Your spot" icon="muni">
         {!muniEditing ? (
@@ -253,7 +262,65 @@ export default function PreferencesPanel() {
           </div>
         )}
         <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-          Seeds the Radius preset and the Today header.
+          Sets where Today and the Map start from.
+        </p>
+      </SectionShell>
+
+      {/* FIT DEFAULTS — kept in Settings instead of adding another filter row
+          to Ask. Every value is an explicit enum; no notes or location data. */}
+      <SectionShell title="What fits" icon="fit">
+        <details className="group">
+          <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl border px-3 py-2.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
+            <span className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              {askFitSummary(fit) ?? "No defaults set"}
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+          </summary>
+          <div className="mt-3 space-y-4">
+            <FitChoices
+              label="Nearby"
+              value={fit.travelMode}
+              choices={[[undefined, "Any distance"], ["walk", "Keep it walkable"]]}
+              onChange={(value) => changeFit("travelMode", value as AskFitContext["travelMode"])}
+            />
+            <FitChoices
+              label="Walking"
+              value={fit.walkingTolerance}
+              choices={[[undefined, "Flexible"], ["short", "Shorter"], ["moderate", "Moderate"]]}
+              onChange={(value) => changeFit("walkingTolerance", value as AskFitContext["walkingTolerance"])}
+            />
+            <FitChoices
+              label="Going with"
+              value={fit.family}
+              choices={[[undefined, "Anyone"], ["young-kids", "Young kids"], ["school-age", "School-age"], ["teens", "Teens"]]}
+              onChange={(value) => changeFit("family", value as AskFitContext["family"])}
+            />
+            <FitChoices
+              label="Budget"
+              value={fit.budget}
+              choices={[[undefined, "Flexible"], ["free", "Free"], ["value", "Good value"]]}
+              onChange={(value) => changeFit("budget", value as AskFitContext["budget"])}
+            />
+            <div>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>Access</p>
+              <div className="flex flex-wrap gap-2">
+                {([[
+                  "wheelchair",
+                  "Wheelchair access",
+                ], ["communication", "Communication access"]] as const).map(([value, label]) => {
+                  const on = fit.accessibility?.includes(value) ?? false;
+                  return (
+                    <button key={value} type="button" aria-pressed={on} onClick={() => toggleAccess(value)} className="tap-44-y rounded-full border px-3 py-2 text-[12px] font-semibold" style={{ borderColor: on ? "var(--app-brand)" : "var(--app-border)", background: on ? "color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated))" : "var(--app-bg-elevated)", color: "var(--app-ink)" }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </details>
+        <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+          Ask uses these as quiet defaults. What you type always wins, and no notes or location history are stored.
         </p>
       </SectionShell>
 
@@ -306,11 +373,42 @@ export default function PreferencesPanel() {
         </ul>
         <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
           {interests.size === 0
-            ? "Nothing picked yet. Pre-expands matching sections on Radius."
+            ? "You have not picked anything yet. Your choices determine what leads on Today."
             : `${interests.size} picked: ${[...interests]
                 .map((s) => INTEREST_LABEL[s])
                 .filter(Boolean)
                 .join(", ")}.`}
+        </p>
+      </SectionShell>
+
+      {/* COMMUNITY NOTES — one topic-neutral switch for the whole quiet
+          community layer on Today (Pride Month, Sunday places of worship). */}
+      <SectionShell title="Community notes" icon="community">
+        <div
+          className="flex items-center justify-between gap-3 rounded-xl border p-3"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+        >
+          <span className="min-w-0 flex-1 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            {communityOn ? "Showing" : "Hidden"}
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={communityOn}
+            aria-label="Show community notes"
+            onClick={toggleCommunity}
+            className="tap-44 relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+            style={{ background: communityOn ? "var(--app-brand)" : "color-mix(in srgb, var(--app-ink) 22%, transparent)" }}
+          >
+            <span
+              className="inline-block h-5 w-5 rounded-full bg-white transition-transform"
+              style={{ transform: communityOn ? "translateX(22px)" : "translateX(2px)", boxShadow: "var(--app-elev-1)" }}
+            />
+          </button>
+        </div>
+        <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+          Today can show relevant cultural observances and community resources.
+          Turn this off to hide those notes.
         </p>
       </SectionShell>
 
@@ -339,10 +437,10 @@ export default function PreferencesPanel() {
               className="block text-[14px] font-semibold"
               style={{ color: "var(--app-ink)" }}
             >
-              Notifications
+              Alerts & feedback
             </span>
             <span className="block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-              Civic alerts, saved-event reminders, specials.
+              Choose local alerts, quiet hours, and phone feedback.
             </span>
           </span>
         </span>
@@ -354,12 +452,14 @@ export default function PreferencesPanel() {
         />
       </Link>
 
+      <KeepRadiusCard id="keep-radius" openFromHash />
+
       {/* RESET */}
       <button
         type="button"
         onClick={reset}
-        className="mt-2 inline-flex items-center gap-1.5 self-start text-[12px] font-medium"
-        style={{ color: "var(--app-warning)" }}
+        className="mt-2 inline-flex min-h-11 items-center gap-1.5 self-start text-[12px] font-medium"
+        style={{ color: "var(--app-warning-press)" }}
       >
         <RotateCcw className="h-3 w-3" strokeWidth={2.25} aria-hidden />
         Reset and re-do the welcome flow
@@ -374,17 +474,21 @@ function SectionShell({
   children,
 }: {
   title: string;
-  icon: "persona" | "muni" | "interests";
+  icon: "persona" | "muni" | "interests" | "community" | "fit";
   children: React.ReactNode;
 }) {
   const Icon =
-    icon === "persona" ? Compass : icon === "muni" ? MapPin : Sparkles;
+    icon === "persona" ? Compass : icon === "muni" ? MapPin : icon === "community" ? Users : icon === "fit" ? Route : Sparkles;
   const tint =
     icon === "persona"
       ? "var(--app-brand)"
       : icon === "muni"
         ? "var(--app-cool)"
-        : "var(--app-positive)";
+        : icon === "community"
+          ? "var(--app-brand-2)"
+          : icon === "fit"
+            ? "var(--app-cool)"
+          : "var(--app-positive)";
   return (
     <section
       className="rounded-[var(--app-radius-lg)] border p-4"
@@ -404,5 +508,33 @@ function SectionShell({
       </header>
       {children}
     </section>
+  );
+}
+
+function FitChoices({
+  label,
+  value,
+  choices,
+  onChange,
+}: {
+  label: string;
+  value?: string;
+  choices: ReadonlyArray<readonly [string | undefined, string]>;
+  onChange: (value: string | undefined) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>{label}</legend>
+      <div className="flex flex-wrap gap-2">
+        {choices.map(([choice, choiceLabel]) => {
+          const on = value === choice;
+          return (
+            <button key={choice ?? "any"} type="button" aria-pressed={on} onClick={() => onChange(choice)} className="tap-44-y rounded-full border px-3 py-2 text-[12px] font-semibold" style={{ borderColor: on ? "var(--app-brand)" : "var(--app-border)", background: on ? "color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated))" : "var(--app-bg-elevated)", color: "var(--app-ink)" }}>
+              {choiceLabel}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }

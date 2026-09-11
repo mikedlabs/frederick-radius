@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "sources": {
+    "bentztown": {
+      "inputs": {
+        "https://www.bandsintown.com/v/10444653-bentztown": {
+          "contentHash": "fbabfa0ac1efeb228b6993f398634208c60af58003144619b053e799db655ec2",
+          "finalUrl": "https://www.bandsintown.com/v/10444653-bentztown",
+          "method": "render",
+          "extractorVersion": "venue-events-text-v1",
+          "outcome": "empty"
+        }
+      }
+    },
+    "bushwallers": {
+      "inputs": {
+        "https://static.wixstatic.com/media/cea4fa_1a264cc4ca314aa38da0b0cdde2adab9~mv2.png": {
+          "contentHash": "24e74e0c74f111172e345152d46f036d32ee74652a5f9a8df96692404b497abb",
+          "finalUrl": "https://static.wixstatic.com/media/cea4fa_1a264cc4ca314aa38da0b0cdde2adab9~mv2.png",
+          "method": "image",
+          "extractorVersion": "venue-events-image-v1",
+          "outcome": "events"
+        }
+      }
+    },
+    "jojos": {
+      "inputs": {
+        "https://jojosrestauranttaphouse.com/events.php": {
+          "contentHash": "05f79b7a850dd990e7988382b015581605d44044df4bf28491ee647c35b418d2",
+          "finalUrl": "https://jojosrestauranttaphouse.com/events.php",
+          "method": "render",
+          "extractorVersion": "venue-events-text-v1",
+          "outcome": "empty"
+        }
+      }
+    },
+    "new-spire": {
+      "inputs": {
+        "https://weinbergcenter.org/our-venues/new-spire-arts/": {
+          "contentHash": "1df69ef9788a00d0a99d335f4503ec3f985970bbeeae0254cde3be388bcefe27",
+          "finalUrl": "https://weinbergcenter.org/our-venues/new-spire-arts/",
+          "method": "render",
+          "extractorVersion": "venue-events-text-v1",
+          "outcome": "events"
+        }
+      }
+    },
+    "sky-stage": {
+      "inputs": {
+        "https://www.skystagefrederick.com/?format=json": {
+          "contentHash": "a47d26ad18150855a6f69574f1f4989e77f32dab79c6cb579e79b725e1ed2ee3",
+          "finalUrl": "https://www.skystagefrederick.com/?format=json",
+          "method": "render",
+          "extractorVersion": "venue-events-text-v1",
+          "outcome": "empty"
+        },
+        "https://www.skystagefrederick.com/project/calendar/": {
+          "contentHash": "73d8b2e706b222a8883bbe089a825be477efc9eff3a60ba88efd0ceeba0257dd",
+          "finalUrl": "https://www.skystagefrederick.com/project/calendar/",
+          "method": "render",
+          "extractorVersion": "venue-events-text-v1",
+          "outcome": "empty"
+        }
+      }
+    },
+    "the-frederick-center": {
+      "inputs": {
+        "https://www.thefrederickcenter.org/events": {
+          "contentHash": "59b3891be99bd406d44a89aca34808f4fe4e5c952a54dcd5e2bc47b6defccc32",
+          "finalUrl": "https://thefrederickcenter.org/events/",
+          "method": "fetch",
+          "extractorVersion": "venue-events-text-v1",
+          "outcome": "events"
+        }
+      }
+    },
+    "weinberg-center": {
+      "inputs": {
+        "https://weinbergcenter.org/performances/": {
+          "contentHash": "3a95e1cd277b79b83bab904548d19a12621f6235b0bb8726d0b721b16ee7f90a",
+          "finalUrl": "https://weinbergcenter.org/performances/",
+          "method": "render",
+          "extractorVersion": "venue-events-text-v1",
+          "outcome": "events"
+        }
+      }
+    }
+  }
+}

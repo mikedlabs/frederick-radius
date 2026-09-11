@@ -2,12 +2,11 @@
 
 import { motion } from "framer-motion";
 import { X, Zap } from "lucide-react";
-import { DEMOGRAPHICS } from "@/data/city-data-engine";
 
 /**
  * SCENE 3: THE NOISE VS. THE SIGNAL
  * Visual metaphor: Chaotic fragmented apps dissolve into a single Radius line
- * Copy: "One ecosystem for [X] residents"
+ * Copy: one useful starting point for a local day
  */
 export default function Scene03_NoiseToSignal() {
     // Fragmented app icons (representing the chaos)
@@ -29,7 +28,7 @@ export default function Scene03_NoiseToSignal() {
                     The <span className="text-red-500">Problem</span>
                 </h2>
                 <p className="text-gray-400 text-xl font-light">
-                    Information scattered across endless platforms
+                    Local information is split across too many sources.
                 </p>
             </motion.div>
 
@@ -120,7 +119,7 @@ export default function Scene03_NoiseToSignal() {
                             </h1>
                         </div>
                         <div className="text-xl text-gray-400 font-light">
-                            One clean signal. Zero noise.
+                            One clear starting point.
                         </div>
                     </motion.div>
 
@@ -132,14 +131,13 @@ export default function Scene03_NoiseToSignal() {
                         transition={{ delay: 4.5, duration: 1 }}
                     >
                         <p className="text-4xl font-light text-white leading-relaxed">
-                            One ecosystem for{" "}
+                            One useful place to start your{" "}
                             <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-amber-400 bg-clip-text text-transparent font-semibold">
-                                {DEMOGRAPHICS.population.total.toLocaleString()}+
+                                Frederick day
                             </span>{" "}
-                            residents
                         </p>
                         <div className="mt-6 pt-6 border-t border-white/10 text-gray-400 text-lg">
-                            Every business. Every event. Every update. One beautiful interface.
+                            Places and events share one interface, with source links where details matter.
                         </div>
                     </motion.div>
                 </div>

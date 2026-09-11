@@ -1,5 +1,8 @@
-import { describe, it, expect } from "vitest";
-import { normalizeWaterSites } from "@/lib/integrations/usgsWater";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import {
+  getFrederickWaterSitesWithHistoryResult,
+  normalizeWaterSites,
+} from "@/lib/integrations/usgsWater";
 
 // Real USGS Instantaneous Values JSON shape (confirmed live against
 // countyCd=24021). Each site appears once per parameter; coords for
@@ -138,5 +141,41 @@ describe("normalizeWaterSites", () => {
     expect(normalizeWaterSites(null)).toEqual([]);
     expect(normalizeWaterSites({})).toEqual([]);
     expect(normalizeWaterSites({ value: { timeSeries: "nope" } })).toEqual([]);
+  });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("getFrederickWaterSitesWithHistoryResult", () => {
+  it("preserves a successful empty USGS response as available", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ value: { timeSeries: [] } }), {
+        status: 200,
+      }),
+    ));
+
+    await expect(
+      getFrederickWaterSitesWithHistoryResult("PT6H"),
+    ).resolves.toEqual({ data: [], available: true });
+  });
+
+  it("marks a failed USGS response unavailable instead of returning a quiet zero", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
+      new Response("upstream error", { status: 503 }),
+    ));
+
+    await expect(
+      getFrederickWaterSitesWithHistoryResult("PT6H"),
+    ).resolves.toEqual({ data: [], available: false });
+  });
+
+  it("marks a rejected USGS request unavailable", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network")));
+
+    await expect(
+      getFrederickWaterSitesWithHistoryResult("PT6H"),
+    ).resolves.toEqual({ data: [], available: false });
   });
 });

@@ -1,0 +1,124 @@
+import { describe, it, expect } from "vitest";
+import { eventWhenLabel, isEventToday } from "@/lib/eventWhenLabel";
+
+// Now = Monday June 15 2026, 7:00 PM Eastern (EDT, UTC-4).
+const now = new Date("2026-06-15T19:00:00-04:00");
+const todayEvt = "2026-06-15T20:00:00-04:00"; // Mon 8 PM
+const todayNoonEvt = "2026-06-15T12:00:00-04:00"; // Mon 12 PM
+const tomorrowEvt = "2026-06-16T19:00:00-04:00"; // Tue
+const wedEvt = "2026-06-17T19:00:00-04:00"; // Wed
+const at4am = new Date("2026-06-15T04:18:00-04:00"); // the Jul-8 audit's overnight render hour
+const at10am = new Date("2026-06-15T10:00:00-04:00");
+
+describe("eventWhenLabel — honest 'when' (labels by the EVENT's clock, not the viewer's band)", () => {
+  it("labels a same-day evening event 'Tonight' whatever hour the page is opened", () => {
+    expect(eventWhenLabel(todayEvt, now)).toBe("Tonight");
+    expect(eventWhenLabel(todayEvt, at10am)).toBe("Tonight");
+    expect(eventWhenLabel(todayEvt, at4am)).toBe("Tonight");
+  });
+  it("labels a same-day DAYTIME event 'Today', even at 4 AM (was stamped TONIGHT by the late band)", () => {
+    expect(eventWhenLabel(todayNoonEvt, at4am)).toBe("Today");
+    expect(eventWhenLabel(todayNoonEvt, now)).toBe("Today");
+  });
+  it("5 PM is the evening boundary (matches the shared daypart)", () => {
+    expect(eventWhenLabel("2026-06-15T17:00:00-04:00", at10am)).toBe("Tonight");
+    expect(eventWhenLabel("2026-06-15T16:59:00-04:00", at10am)).toBe("Today");
+  });
+  it("labels a next-day event 'Tomorrow' even in the evening", () => {
+    expect(eventWhenLabel(tomorrowEvt, now)).toBe("Tomorrow");
+  });
+  it("labels a 2-3 day-out event by weekday — never 'Tonight' (the Jason Hannan bug)", () => {
+    expect(eventWhenLabel(wedEvt, now)).toBe("Wednesday");
+  });
+});
+
+describe("isEventToday", () => {
+  it("is true only for the same Eastern calendar day", () => {
+    expect(isEventToday(todayEvt, now)).toBe(true);
+    expect(isEventToday(tomorrowEvt, now)).toBe(false);
+    expect(isEventToday(wedEvt, now)).toBe(false);
+  });
+});
+
+// ── isEventLiveNow — the shared "Live now" gate (beta-reviewer catch:
+// noon events with end-of-day end stamps read "Live now" at 11 PM) ──
+import {
+  isEventLiveNow,
+  MAX_LIVE_SESSION_MS,
+  startedEventTimingDisclosure,
+} from "@/lib/eventWhenLabel";
+
+describe("isEventLiveNow", () => {
+  const at = (iso: string) => new Date(iso);
+
+  it("treats an end-of-day sentinel as unknown, never as proof of live status", () => {
+    const e = { starts_at: "2026-07-08T12:00:00-04:00", ends_at: "2026-07-08T23:59:00-04:00" };
+    expect(isEventLiveNow(e, at("2026-07-08T23:00:00-04:00"))).toBe(false);
+    expect(isEventLiveNow(e, at("2026-07-08T15:00:00-04:00"))).toBe(false);
+  });
+
+  it("trusts a sane stated end as-is", () => {
+    const e = { starts_at: "2026-07-08T19:00:00-04:00", ends_at: "2026-07-08T22:00:00-04:00" };
+    expect(isEventLiveNow(e, at("2026-07-08T21:30:00-04:00"))).toBe(true);
+    expect(isEventLiveNow(e, at("2026-07-08T22:01:00-04:00"))).toBe(false);
+  });
+
+  it("never claims an event is live when its end time is missing", () => {
+    const e = { starts_at: "2026-07-08T19:00:00-04:00" };
+    expect(isEventLiveNow(e, at("2026-07-08T20:00:00-04:00"))).toBe(false);
+    expect(isEventLiveNow(e, at("2026-07-08T21:01:00-04:00"))).toBe(false);
+  });
+
+  it("never marks all-day rows live (they are 'today', not 'this minute')", () => {
+    const e = { starts_at: "2026-07-08T00:00:00-04:00", ends_at: "2026-07-08T23:59:00-04:00", is_all_day: true };
+    expect(isEventLiveNow(e, at("2026-07-08T15:00:00-04:00"))).toBe(false);
+  });
+
+  it("a multi-day range listing dies at the session cap, not its range end", () => {
+    const e = { starts_at: "2026-07-01T10:00:00-04:00", ends_at: "2026-07-20T18:00:00-04:00" };
+    expect(isEventLiveNow(e, at("2026-07-10T14:00:00-04:00"))).toBe(false);
+    // opening hours of day one, inside the cap: honest to call running.
+    expect(isEventLiveNow(e, at("2026-07-01T12:00:00-04:00"))).toBe(true);
+  });
+
+  it("a future start is never live", () => {
+    const e = { starts_at: "2026-07-08T19:00:00-04:00", ends_at: "2026-07-08T22:00:00-04:00" };
+    expect(isEventLiveNow(e, at("2026-07-08T18:59:00-04:00"))).toBe(false);
+  });
+
+  it("cap constant stays a real single-session bound", () => {
+    expect(MAX_LIVE_SESSION_MS).toBe(8 * 3_600_000);
+  });
+});
+
+describe("startedEventTimingDisclosure", () => {
+  const atTime = (iso: string) => new Date(iso);
+
+  it("states the known start and unknown end after the event begins", () => {
+    expect(
+      startedEventTimingDisclosure(
+        {
+          starts_at: "2026-07-30T09:15:00-04:00",
+          ends_at: "2026-07-30T23:59:00-04:00",
+        },
+        atTime("2026-07-30T11:31:00-04:00"),
+      ),
+    ).toBe("Started at 9:15 AM · end time unavailable");
+  });
+
+  it("stays quiet before the start and for events with a real end", () => {
+    const unknownEnd = { starts_at: "2026-07-30T19:00:00-04:00" };
+    expect(
+      startedEventTimingDisclosure(
+        unknownEnd,
+        atTime("2026-07-30T18:59:00-04:00"),
+      ),
+    ).toBeNull();
+    expect(
+      startedEventTimingDisclosure(
+        { ...unknownEnd, ends_at: "2026-07-30T21:00:00-04:00" },
+        atTime("2026-07-30T20:00:00-04:00"),
+      ),
+    ).toBeNull();
+  });
+});

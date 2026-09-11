@@ -1,23 +1,31 @@
 "use client";
 
+import Image from "next/image";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
+import { usePlacePhoto } from "@/components/place/usePlacePhoto";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import OpenClosedDot from "./OpenClosedDot";
 import { formatDistance } from "@/lib/geo";
 import SaveButton from "@/components/saved/SaveButton";
-import { getLandmarkPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
-import PlacePhoto from "./PlacePhoto";
 import { usePlaceSheet } from "./PlaceSheetProvider";
 import { haptic } from "@/lib/haptics";
 import PlaceStatus from "./PlaceStatus";
 import { knownFor } from "@/lib/cuisine";
-import { Star } from "lucide-react";
+import { Star, NotebookPen, PawPrint } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
-import CategoryGraphic from "@/components/ui/CategoryGraphic";
 import SourceBadge from "./SourceBadge";
-import { ReasonChipRow } from "@/components/ui/ReasonChip";
-import { placeReasons } from "@/lib/place-reasons";
-import { BeenHereIndicator } from "./BeenHereIndicator";
+import FieldNoteTag, { DealHookTag } from "./FieldNoteTag";
+import { ReasonChipRow, type ReasonTone } from "@/components/ui/ReasonChip";
+import { placeReasons, type PlaceReasonChip } from "@/lib/place-reasons";
+
+/**
+ * PlaceCard — the shared business card across browse and recommendation
+ * surfaces. A verified, individually attributable place photo leads when one
+ * is available; the category mark is the fallback. The canonical loader has
+ * already removed shared, mismatched, or unattributed images.
+ */
 
 /**
  * "What people rave about" — only when there is a real Google rating
@@ -42,107 +50,367 @@ function Rave({
     >
       <Star className="h-3 w-3" strokeWidth={0} fill="var(--app-warning)" aria-hidden />
       {rating.toFixed(1)}
-      <span className="font-normal" style={{ color: "var(--app-ink-3)" }}>
-        ({count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count})
-      </span>
+      <span className="text-xs font-normal" translate="no">Google Maps</span>
     </span>
   );
 }
 
-const GLYPH_BY_CATEGORY: Record<string, string> = {
-  coffee: "☕", restaurant: "🍽", brewery: "🍺", bar: "🍸", bakery: "🥐",
-  pizza: "🍕", park: "🌳", trail: "⛰", playground: "🛝", museum: "🏛",
-  gallery: "🎨", theater: "🎭", music: "🎵", library: "📚", market: "🛒",
-  antiques: "🪑", "book-store": "📖", yoga: "🧘", lodging: "🏨", parking: "🅿️",
-  pharmacy: "💊", hardware: "🔧", government: "🏛", "public-safety": "🚓",
-  voting: "🗳", transit: "🚆", arts: "🎭", outdoors: "🌲", family: "👨‍👩‍👧",
-  shopping: "🛍", wellness: "💆", civic: "🏛", services: "🛠", food: "🍽",
-  worship: "⛪",
+/**
+ * Tactile status chips for the result cards. Same tone vocabulary +
+ * color tokens as ReasonChip, but dressed in the front-door tile's
+ * "made" language. Restyle only — every chip here comes straight from
+ * placeReasons(), so no badge is ever invented.
+ */
+const CHIP_TONE: Record<ReasonTone, { color: string; tint: string; edge: string; dot?: boolean }> = {
+  open:     { color: "var(--app-positive)", tint: "var(--app-positive-tint-14)", edge: "color-mix(in srgb, var(--app-positive) 26%, transparent)", dot: true },
+  near:     { color: "var(--app-cool)",     tint: "var(--app-cool-tint-14)",     edge: "color-mix(in srgb, var(--app-cool) 24%, transparent)" },
+  verified: { color: "var(--app-positive)",  tint: "color-mix(in srgb, var(--app-positive) 14%, transparent)", edge: "color-mix(in srgb, var(--app-positive) 26%, transparent)" },
+  free:     { color: "var(--app-positive)", tint: "var(--app-positive-tint-14)", edge: "color-mix(in srgb, var(--app-positive) 26%, transparent)" },
+  rated:    { color: "var(--app-accent-press)",   tint: "color-mix(in srgb, var(--app-accent) 20%, transparent)",  edge: "color-mix(in srgb, var(--app-accent) 34%, transparent)" },
+  neutral:  { color: "var(--app-ink-2)",    tint: "var(--app-ink-tint-6)",       edge: "var(--app-ink-tint-12)" },
 };
 
-function glyphFor(slug: string): string {
-  return GLYPH_BY_CATEGORY[slug] ?? "📍";
+function StatusChip({ label, tone = "neutral" }: { label: string; tone?: ReasonTone }) {
+  const t = CHIP_TONE[tone];
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] font-semibold leading-none tracking-tight"
+      style={{
+        color: t.color,
+        background: t.tint,
+        boxShadow: `inset 0 0 0 1px ${t.edge}, inset 0 1px 0 rgba(255,255,255,0.45)`,
+      }}
+    >
+      {t.dot && (
+        <span aria-hidden className="inline-block h-[5px] w-[5px] rounded-full" style={{ background: t.color }} />
+      )}
+      {label}
+    </span>
+  );
+}
+
+function StatusChipRow({ reasons, className = "" }: { reasons: PlaceReasonChip[]; className?: string }) {
+  if (reasons.length === 0) return null;
+  return (
+    <span className={`inline-flex flex-wrap items-center gap-1.5 ${className}`} aria-label="Reasons this is shown">
+      {reasons.map((r, i) => (
+        <StatusChip key={`${r.label}-${i}`} label={r.label} tone={r.tone} />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * The category mark — the leading visual token that replaces the imported
+ * photo. A tinted, light-catching rounded square holding the category's
+ * own icon. Small and typographic by design: it signals *type* at a glance
+ * without pretending to be a photograph of the place. The single source of
+ * "place imagery" in browse.
+ */
+function CategoryMark({
+  category,
+  color,
+  size = 44,
+}: {
+  category: string;
+  color: string;
+  size?: number;
+}) {
+  return (
+    <div
+      aria-hidden
+      className="flex shrink-0 items-center justify-center rounded-[var(--app-radius-md)]"
+      style={{
+        height: size,
+        width: size,
+        // Quiet, low-tint chip — it signals type without competing with the
+        // title. Down a long list the eye reads the names, not a column of
+        // saturated blocks (the "supports, not dominates" rule).
+        background: `color-mix(in srgb, ${color} 11%, var(--app-bg-elevated-solid))`,
+        color,
+        boxShadow: "inset 0 0 0 1px color-mix(in srgb, " + color + " 16%, transparent)",
+      }}
+    >
+      <CategoryIcon
+        slug={category}
+        strokeWidth={1.75}
+        className="opacity-80"
+        style={{ color, height: Math.round(size * 0.44), width: Math.round(size * 0.44) }}
+      />
+    </div>
+  );
+}
+
+/**
+ * Thumb — the leading visual on a browse card. Shows the place's real
+ * Google photo (the same curated, de-twinned source as the detail page;
+ * PHOTO_SUPPRESS has already nulled shared/duplicate photos so we never
+ * show a wrong one) and falls back to the calm category mark when a place
+ * has no photo. "Real photo when we have a good one, type mark when we
+ * don't" — visual, but never a fabricated or mismatched image.
+ */
+function Thumb({
+  place,
+  category,
+  color,
+  size,
+  lazyPhoto = false,
+}: {
+  place: PlaceCardData;
+  category: string;
+  color: string;
+  size: number;
+  /** Hydrate the photo on scroll when the surface withheld inline URLs
+   *  (slimForNearby strips them — they were ~64% of /nearby's transfer).
+   *  Resolution goes through /api/places/by-slugs, so the suppression
+   *  verdicts keep applying; the glyph carries "not yet" and "none" alike. */
+  lazyPhoto?: boolean;
+}) {
+  const { photoUrl, anchorRef } = usePlacePhoto(
+    place.slug,
+    place.google_photo_url,
+    lazyPhoto,
+  );
+  if (photoUrl) {
+    // Narrow the proxy URL to the size actually painted. places-client.json
+    // stores one URL per place at w=800, the size a hero needs, and proxy
+    // responses render `unoptimized` because Next cannot resize an opaque
+    // route — which also makes the `sizes` hint below inert for them. So a
+    // 40px thumbnail was downloading the full 800px asset, dozens of times
+    // per scroll across every list surface. PlaceMedallion has done this for
+    // a while; the card thumbs were simply missed.
+    const src = proxyPhotoAtWidth(photoUrl, size);
+    return (
+      <div
+        ref={anchorRef}
+        className="relative shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
+        style={{ height: size, width: size, boxShadow: "inset 0 0 0 1px var(--app-ink-tint-8)" }}
+      >
+        <Image
+          src={src}
+          alt=""
+          fill
+          unoptimized={src.startsWith("/api/place-photo")}
+          sizes={`${size}px`}
+          placeholder="blur"
+          blurDataURL={PAPER_CREAM_BLUR}
+          className="object-cover"
+        />
+      </div>
+    );
+  }
+  return (
+    <div ref={anchorRef} className="shrink-0" style={{ height: size, width: size }}>
+      <CategoryMark category={category} color={color} size={size} />
+    </div>
+  );
 }
 
 export default function PlaceCard({
   place,
   compact = false,
   variant = "row",
+  // Default OFF for dense-list variants (row/tile/grid), where a repeated
+  // badge becomes "chip soup" down the margin; ON for the prominent
+  // answer/feature lead. Override explicitly anywhere it's wanted.
+  showSource = variant === "answer" || variant === "feature",
+  neutral = false,
+  lazyPhoto = false,
 }: {
   place: PlaceCardData;
   compact?: boolean;
-  variant?: "row" | "feature" | "tile" | "grid";
+  variant?: "row" | "feature" | "tile" | "grid" | "answer";
+  /** Hydrate the photo on scroll; set by surfaces that withhold inline
+   *  photo URLs from their payload (see Thumb). */
+  lazyPhoto?: boolean;
+  /** Show the source/trust badge. Defaults by variant (off in dense lists,
+   *  on for the lead); the full trust tier still lives on the detail sheet. */
+  showSource?: boolean;
+  /** Neutral mode (the /map in-view list): drop the editorial "why" reason
+   *  chips (Local favorite, Hidden gem, Top rated, Near {landmark}, walk time)
+   *  so the card just reflects the place — name, category, open/closed — with
+   *  no app-chosen verdicts. Open/closed still shows via PlaceStatus. */
+  neutral?: boolean;
+  /** Legacy: extra photos for the old answer photo strip. The shared card uses
+   *  the canonical hero only; kept in the type so existing callers compile. */
+  galleryPhotos?: string[];
 }) {
   const cat = CATEGORY_BY_SLUG[place.category];
-  const color = cat?.color ?? "#1A1A1A";
-  const glyph = glyphFor(place.category);
-  const photo = getLandmarkPhoto(place.slug);
-  // Priority: Google Places photo (real, current) → seed hero_image → Wikimedia
-  const photoUrl = place.google_photo_url ?? place.hero_image ?? (photo ? wikimediaUrl(photo.file, 800) : null);
+  const color = cat?.color ?? "var(--app-brand)";
   const { openSheet } = usePlaceSheet();
   const openDetail = () => { haptic("light"); openSheet(place); };
+  // Chain locations often share the same visible name. Give every card action
+  // enough location context for voice control and screen readers to distinguish
+  // the downtown result from the one across the county.
+  const actionName = place.address
+    ? `${place.name} at ${place.address}`
+    : place.city
+      ? `${place.name} in ${place.city}`
+      : place.name;
   // "Known for" — the real descriptive blurb, or null for DFP filler.
   const kf = knownFor(place);
+  // Neutral mode drops the editorial "why" chips entirely (the /map list is a
+  // reflection of the map, not a ranked pick); open/closed still shows via the
+  // variant's PlaceStatus.
+  const reasons = neutral ? [] : placeReasons(place);
+  // Where the card ALSO renders an explicit open indicator (the tile's
+  // status dot, the feature/answer PlaceStatus line), the leading "Open"
+  // reason chip just echoes it. Drop it there so the two visible chips
+  // carry NEW signal (a walk time, Local favorite) instead of repeating
+  // the dot. Row/grid keep the full set — there the chip is the ONLY
+  // open signal, so removing it would lose information.
+  const nonOpenReasons = reasons.filter(
+    (r) => r.kind !== "open_now" && r.kind !== "verified_open",
+  );
 
-  if (variant === "feature" && photoUrl) {
+  // ── FEATURE — the prominent promoted lead (Today "Worth a look", a
+  // category page lead). Text-led: a larger category mark, a serif title,
+  // the why-chips, open status, and distance when we have it. A category
+  // accent rail ties it to its type without a photo banner.
+  if (variant === "feature") {
     return (
       <article
         className="tactile tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
+        style={{ boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
       >
+        <div aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: color }} />
         <button
           type="button"
           onClick={openDetail}
-          aria-label={`View ${place.name} details`}
+          aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
-          <div className="relative h-40 w-full overflow-hidden bg-[var(--app-bg-sunken)]">
-            <PlacePhoto
-              src={photoUrl}
-              alt={photo?.alt ?? place.name}
-              glyph={glyph}
-              color={color}
-              sizes="(min-width: 640px) 50vw, 100vw"
-              className="transition-transform duration-500 group-hover:scale-105"
-              rounded="0"
-            />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+          <div className="flex items-start gap-3 p-4 pl-5">
+            <Thumb place={place} category={place.category} color={color} size={52} lazyPhoto={lazyPhoto} />
+            <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
-                <h3 className="truncate font-serif text-lg font-semibold tracking-tight">
+                <h3 className="min-w-0 flex-1 truncate font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
                   {place.name}
                 </h3>
                 {place.distance_m !== undefined && (
-                  <span className="ml-auto whitespace-nowrap text-xs tabular-nums opacity-90">
+                  <span className="shrink-0 whitespace-nowrap text-xs tabular-nums" style={{ color: "var(--app-ink-3)" }}>
                     {formatDistance(place.distance_m)}
                   </span>
                 )}
               </div>
-              <p className="mt-0.5 truncate text-xs opacity-90">
-                {cat?.name ?? place.category} · {place.known_for?.[0] ?? place.short_blurb}
-                <BeenHereIndicator slug={place.slug} />
+              <p className="mt-0.5 truncate text-xs" style={{ color: "var(--app-ink-3)" }}>
+                {cat?.name ?? place.category}
+                {(place.known_for?.[0] ?? kf) && (
+                  <> · <span style={{ color: "var(--app-ink-2)" }}>{place.known_for?.[0] ?? kf}</span></>
+                )}
               </p>
-            </div>
-            <div className="absolute right-2 top-2 rounded-full bg-white/85 px-1.5 py-0.5 backdrop-blur">
-              <OpenClosedDot status={place.open_status} />
+              {place.field_note_tip && (
+                <p className="mt-1.5 flex gap-1.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                  <NotebookPen className="mt-[2px] h-3 w-3 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+                  <span className="line-clamp-2">{place.field_note_tip}</span>
+                </p>
+              )}
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <PlaceStatus status={place.open_status} className="!text-[12px]" />
+                {place.deal_hook ? <DealHookTag label={place.deal_hook} /> : place.field_notes && !place.field_note_tip ? <FieldNoteTag /> : null}
+                {nonOpenReasons.length > 0 ? (
+                  <StatusChipRow reasons={nonOpenReasons} />
+                ) : (
+                  <Rave rating={place.google_rating} count={place.google_rating_count} />
+                )}
+              </div>
             </div>
           </div>
         </button>
+        <div className="absolute right-2.5 top-2.5 z-10">
+          <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
+        </div>
       </article>
     );
   }
 
-  // Fixed-width, photo-forward tile for horizontal shelves. Crafted the
-  // same whether or not a photo exists — most DFP places have none, so a
-  // tonal category panel stands in so a shelf never looks broken.
+  // ── ANSWER — the funnel's lead pick. Keeps the full honest signal block
+  // (open + closing time, why-chips, rating, price, the attributed review
+  // snippet) — the richest text card we have — now headed by a category
+  // mark instead of a photo banner. No imported imagery.
+  if (variant === "answer") {
+    const loved = (place.customers_loved ?? []).slice(0, 3);
+    return (
+      <article
+        className="tactile tactile-e3 tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)]"
+        style={{
+          backgroundColor: "var(--app-bg-elevated-solid)",
+          backgroundImage: "var(--app-paper-light)",
+        }}
+      >
+        <div aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: color }} />
+        <button
+          type="button"
+          onClick={openDetail}
+          aria-label={`View ${actionName} details`}
+          className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+        >
+          <div className="space-y-2.5 p-4">
+            <div className="flex items-start gap-3">
+              <Thumb place={place} category={place.category} color={color} size={48} lazyPhoto={lazyPhoto} />
+              <div className="min-w-0 flex-1">
+                {/* pr-9 clears the absolutely-positioned SaveButton (36px at
+                    right-2.5) so the ml-auto distance never renders under it. */}
+                <div className="flex items-center gap-2 pr-9">
+                  <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color }}>
+                    {cat?.name ?? place.category}
+                  </span>
+                  {place.distance_m !== undefined && (
+                    <span className="ml-auto shrink-0 text-[11px] font-semibold tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                      {formatDistance(place.distance_m)}
+                    </span>
+                  )}
+                </div>
+                <h3 className="display-3 mt-0.5 text-balance leading-[1.12]" style={{ color: "var(--app-ink)" }}>
+                  {place.name}
+                </h3>
+              </div>
+            </div>
+            {kf && (
+              <p className="text-body" style={{ color: "var(--app-ink-2)" }}>
+                {kf}
+              </p>
+            )}
+            {/* The decision row: open + closing time, rating, price. */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <PlaceStatus status={place.open_status} />
+              <Rave rating={place.google_rating} count={place.google_rating_count} />
+              {place.price_band && (
+                <span className="text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
+                  {"$".repeat(place.price_band)}
+                </span>
+              )}
+              {place.field_notes && !place.field_note_tip && <FieldNoteTag />}
+            </div>
+            {nonOpenReasons.length > 0 && <StatusChipRow reasons={nonOpenReasons} />}
+            {/* Voice line, in priority order: the VERIFIED field note (the moat's
+                own intel) leads over a Google review snippet, which leads over the
+                "Loved for" tag list. One voice, never stacked. */}
+            {place.field_note_tip ? (
+              <p className="flex gap-1.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                <NotebookPen className="mt-[2px] h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+                <span className="line-clamp-2">{place.field_note_tip}</span>
+              </p>
+            ) : loved.length > 0 ? (
+              <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>Loved for</span>{" "}
+                {loved.join(" · ")}
+              </p>
+            ) : null}
+          </div>
+        </button>
+        <div className="absolute right-2.5 top-2.5 z-10">
+          <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
+        </div>
+      </article>
+    );
+  }
+
+  // ── TILE — fixed-width card for horizontal shelves. Text-led: a category
+  // mark + open dot header, the name, type/known-for/distance, and chips. A
+  // category color band along the bottom is the through-line that ties cards
+  // to their type (a line, not a photo).
   if (variant === "tile") {
-    // Bottom-left "on-photo" status pill: the highest-priority
-    // placeReason ("Open · closes 9 PM", "Verified", etc) doubles
-    // as the Airbnb-style "Guest favorite" chip riding on the
-    // image. Picking the first reason keeps a single signal
-    // surfaced where the photo gradient is already paying for it.
-    const reasons = placeReasons(place);
-    const onPhotoReason = reasons[0];
-    const bodyReasons = reasons.slice(1);
     return (
       <article
         className="tactile tactile-interactive group relative w-[244px] shrink-0 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
@@ -154,317 +422,180 @@ export default function PlaceCard({
         <button
           type="button"
           onClick={openDetail}
-          aria-label={`View ${place.name} details`}
+          aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
-          {/* Photo banner — 160 → 180px (more cinematic, room for
-              top + bottom chips without crowding the upper image). */}
-          <div className="relative h-[180px] w-full overflow-hidden bg-[var(--app-bg-sunken)]">
-            {photoUrl ? (
-              <>
-                <PlacePhoto
-                  src={photoUrl}
-                  alt={photo?.alt ?? place.name}
-                  glyph={glyph}
-                  color={color}
-                  sizes="244px"
-                  className="transition-transform duration-[600ms] ease-out group-hover:scale-[1.06]"
-                  rounded="0"
-                />
-                {/* Stronger bottom gradient pulls the on-photo status
-                    pill off the image cleanly; the upper image stays
-                    bright. Same recipe as EventCard tile. */}
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0"
-                  style={{
-                    background:
-                      "linear-gradient(180deg, rgba(0,0,0,0.30) 0%, transparent 35%, transparent 55%, rgba(0,0,0,0.65) 100%)",
-                  }}
-                />
-              </>
-            ) : (
-              <CategoryGraphic
-                category={place.category}
-                seed={place.slug}
-                className="absolute inset-0 transition-transform duration-[600ms] ease-out group-hover:scale-[1.04]"
-              />
-            )}
-            {/* Category chip — top-left. Glass treatment on photos,
-                soft tint when no photo. */}
-            {cat && (
-              <span
-                className="absolute left-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]"
-                style={{
-                  background: photoUrl ? color : `color-mix(in srgb, ${color} 22%, var(--app-bg-elevated))`,
-                  color: photoUrl ? "white" : color,
-                  boxShadow: photoUrl
-                    ? "0 2px 6px -1px rgba(0,0,0,0.30)"
-                    : "none",
-                }}
-              >
-                {cat.name}
+          <div className="space-y-2 p-3.5 pb-4">
+            <div className="flex items-center gap-2.5">
+              <Thumb place={place} category={place.category} color={color} size={40} lazyPhoto={lazyPhoto} />
+              <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color }}>
+                {cat?.name ?? place.category}
               </span>
-            )}
-            {/* On-photo status pill, bottom-left. The Airbnb "Guest
-                favorite" pattern — the single most useful decision
-                signal sits ON the photo so the user reads it without
-                scanning the body. */}
-            {photoUrl && onPhotoReason && (
-              <span
-                className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                style={{
-                  background: "rgba(255,255,255,0.95)",
-                  color: "var(--app-ink)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  boxShadow: "0 2px 6px -1px rgba(0,0,0,0.30)",
-                }}
-              >
-                {onPhotoReason.label}
+              <span className="ml-auto">
+                <OpenClosedDot status={place.open_status} />
               </span>
-            )}
-            {/* Category color band along the bottom edge — the
-                through-line that ties cards to their type. */}
-            <div
-              aria-hidden
-              className="absolute inset-x-0 bottom-0 h-[3px]"
-              style={{ background: color }}
-            />
-          </div>
-          <div className="space-y-1 p-3.5">
-            <div className="flex items-baseline gap-2">
-              <h3
-                className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-tight"
-                style={{ color: "var(--app-ink)" }}
-              >
-                {place.name}
-              </h3>
-              {/* SourceBadge — surfaces trust tier (Curated / Verified
-                  / Community / Official). Self-hides when there's no
-                  honest claim. */}
-              <SourceBadge place={place} size="sm" />
             </div>
-            <p
-              className="truncate text-[12px]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {cat?.name ?? place.category}
+            <h3 className="text-[15px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+              {place.name}
+            </h3>
+            {/* Subtitle no longer echoes the category — the uppercase
+                header already states it. Lead with what's NEW (known-for),
+                then distance; nothing repeated. */}
+            <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
               {place.known_for?.[0] && (
-                <>
-                  {" · "}
-                  <span style={{ color: "var(--app-ink-2)" }}>
-                    {place.known_for[0]}
-                  </span>
-                </>
+                <span style={{ color: "var(--app-ink-2)" }}>{place.known_for[0]}</span>
               )}
               {place.distance_m !== undefined && (
-                <> · {formatDistance(place.distance_m)}</>
+                <>{place.known_for?.[0] ? " · " : ""}{formatDistance(place.distance_m)}</>
               )}
-              <BeenHereIndicator slug={place.slug} />
             </p>
-            {/* Body reasons — REMAINING reasons after the on-photo
-                pill (or all reasons when no photo to ride on). Falls
-                back to the legacy status+rating row if placeReasons
-                returns empty. */}
-            {(() => {
-              const remaining = photoUrl ? bodyReasons : reasons;
-              return remaining.length > 0 ? (
-                <ReasonChipRow reasons={remaining} className="pt-0.5" />
-              ) : !photoUrl && reasons.length === 0 ? (
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                  <PlaceStatus status={place.open_status} className="!text-[12px]" />
-                  <Rave
-                    rating={place.google_rating}
-                    count={place.google_rating_count}
-                    className="!text-[12px]"
-                  />
-                </div>
-              ) : null;
-            })()}
+            {place.deal_hook ? <DealHookTag label={place.deal_hook} compact /> : place.field_notes ? <FieldNoteTag compact /> : null}
+            {nonOpenReasons.length > 0 ? (
+              <ReasonChipRow reasons={nonOpenReasons.slice(0, 2)} className="pt-0.5" />
+            ) : (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <PlaceStatus status={place.open_status} className="!text-[12px]" />
+                <Rave rating={place.google_rating} count={place.google_rating_count} className="!text-[12px]" />
+              </div>
+            )}
           </div>
+          <div aria-hidden className="h-[3px] w-full" style={{ background: color }} />
         </button>
-        <div className="absolute right-2 top-2 z-10">
-          <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
+        {showSource && (
+          <div className="absolute right-2 top-2 z-10">
+            <SourceBadge place={place} size="sm" />
+          </div>
+        )}
+        <div className="absolute bottom-2 right-2 z-10">
+          <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
         </div>
       </article>
     );
   }
 
-  // Fluid compact card for a responsive grid — fills its cell, small
-  // image, tight text. Roughly a third the footprint of `tile`, so a
-  // 2-up grid shows ~6 places per fold instead of ~1.5.
+  // ── GRID — compact responsive cell. Leading category mark, tight text,
+  // chips. ~a third the footprint of a tile.
   if (variant === "grid") {
     return (
-      <article
-        className="tactile tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)]"
-      >
+      <article className="tactile tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)]">
         <button
           type="button"
           onClick={openDetail}
-          aria-label={`View ${place.name} details`}
+          aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
-          <div className="relative h-[88px] w-full overflow-hidden bg-[var(--app-bg-sunken)]">
-            {photoUrl ? (
-              <>
-                <PlacePhoto
-                  src={photoUrl}
-                  alt={photo?.alt ?? place.name}
-                  glyph={glyph}
-                  color={color}
-                  sizes="50vw"
-                  className="transition-transform duration-500 ease-out group-hover:scale-105"
-                  rounded="0"
-                />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 to-transparent" />
-              </>
-            ) : (
-              <div
-                aria-hidden
-                className="flex h-full w-full items-center justify-center"
-                style={{
-                  background: `radial-gradient(120% 120% at 30% 20%, ${color}2e, ${color}0a 70%)`,
-                  color,
-                }}
-              >
-                <CategoryIcon slug={place.category} strokeWidth={1.75} className="h-8 w-8 opacity-90" style={{ color }} />
-              </div>
-            )}
-            <div
-              aria-hidden
-              className="absolute inset-x-0 bottom-0 h-[2px]"
-              style={{ background: color }}
-            />
-          </div>
-          <div className="space-y-0.5 px-2.5 py-2">
-            <h3
-              className="truncate text-[13.5px] font-semibold tracking-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              {place.name}
-            </h3>
-            <p
-              className="truncate text-[11px]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {cat?.name ?? place.category}
-              {place.distance_m !== undefined && (
-                <> · {formatDistance(place.distance_m)}</>
-              )}
-              <BeenHereIndicator slug={place.slug} />
-            </p>
-            {/* Reason chips — "Open now · 4 min walk · Verified" —
-                the decision context the brief asks for. Derived from
-                fields the loader already produces, capped at 3 per
-                card. Falls back to the old status/rating row if the
-                chip producer returns nothing (e.g. a place with no
-                open_status, no distance, and no recent verify). */}
-            {(() => {
-              const reasons = placeReasons(place);
-              return reasons.length > 0 ? (
-                <ReasonChipRow reasons={reasons} className="pt-0.5" />
+          <div className="flex items-start gap-2.5 p-2.5">
+            <Thumb place={place} category={place.category} color={color} size={40} lazyPhoto={lazyPhoto} />
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <h3 className="line-clamp-2 text-[14px] font-semibold leading-[1.2] tracking-tight" style={{ color: "var(--app-ink)" }}>
+                {place.name}
+              </h3>
+              <p className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                {cat?.name ?? place.category}
+                {place.distance_m !== undefined && <> · {formatDistance(place.distance_m)}</>}
+              </p>
+              {place.deal_hook ? <DealHookTag label={place.deal_hook} compact /> : place.field_notes ? <FieldNoteTag compact /> : null}
+              {reasons.length > 0 ? (
+                <ReasonChipRow reasons={reasons.slice(0, 2)} className="pt-0.5" />
               ) : (
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <PlaceStatus status={place.open_status} className="!text-[11px]" />
-                  <Rave
-                    rating={place.google_rating}
-                    count={place.google_rating_count}
-                    className="!text-[11px]"
-                  />
+                  <Rave rating={place.google_rating} count={place.google_rating_count} className="!text-[11px]" />
                 </div>
-              );
-            })()}
+              )}
+            </div>
           </div>
+          <div aria-hidden className="h-[2px] w-full" style={{ background: color }} />
         </button>
       </article>
     );
   }
 
+  // ── ROW (default) — the dense list card. Leading category mark, name,
+  // type/known-for, distance, and chips. The workhorse of every list.
+  // The title leads; a quiet 42px mark anchors the left; chips capped at 2
+  // so a long list scans as names, not a wall of pills. Tighter vertical
+  // rhythm shortens the page without crowding.
+  // One tight signal line: open status, rating, price, and a compact
+  // field-notes / deal marker inline — no full-width badge row, no per-card
+  // commerce button (both lived their own row and made the card tall; the
+  // commerce action lives on the place page's action bar). The card is now
+  // name → type → one meta line, so a list scans as names, not boxes.
+  const rowReasons = reasons.slice(0, 2);
+  const inlineTag = place.deal_hook ? (
+    <DealHookTag label={place.deal_hook} compact />
+  ) : place.field_notes ? (
+    <FieldNoteTag compact />
+  ) : null;
   return (
     <article
-      className="tactile tactile-interactive group relative flex items-stretch gap-3.5 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3"
+      className="tactile tactile-interactive tactile-e2 group relative flex items-stretch gap-2.5 overflow-hidden rounded-[var(--app-radius-lg)] py-2 pl-3.5 pr-2.5"
       style={{
-        borderColor: "var(--app-border)",
-        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+        // Field-guide "pass" material: the warm paper texture behind the
+        // existing emboss (--app-hi/--app-edge from .tactile), with a category
+        // color cap down the left edge — the same color-band language the
+        // feature/answer/tile variants already carry, now on the workhorse row.
+        backgroundColor: "var(--app-bg-elevated-solid)",
+        backgroundImage: "var(--app-paper-light)",
       }}
     >
-      {photoUrl ? (
-        <div
-          className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
-          style={{
-            // Inner ring + soft drop so the thumbnail reads as a
-            // physical object on the card, matching the EventCard
-            // tile's date-pill register.
-            boxShadow:
-              "0 2px 6px -1px rgba(20,20,18,0.18), inset 0 0 0 1px rgba(20,20,18,0.10)",
-          }}
-        >
-          <PlacePhoto
-            src={photoUrl}
-            alt={photo?.alt ?? place.name}
-            glyph={glyph}
-            color={color}
-            sizes="72px"
-          />
-          {/* Category color hairline along the bottom — same
-              through-line as the tile variant, just thinner. */}
-          <div
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-[3px]"
+        style={{ background: color }}
+      />
+      <button
+        type="button"
+        onClick={openDetail}
+        aria-label={`View ${actionName} details`}
+        className="absolute inset-0 z-0 rounded-[var(--app-radius-lg)] text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-inset"
+      />
+      <div className="pointer-events-none relative z-10 self-center">
+        <Thumb place={place} category={place.category} color={color} size={46} lazyPhoto={lazyPhoto} />
+      </div>
+      <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col justify-center">
+        <div className="flex items-start gap-2">
+          <span
             aria-hidden
-            className="absolute inset-x-0 bottom-0 h-[2px]"
-            style={{ background: color }}
-          />
-        </div>
-      ) : (
-        <div
-          aria-hidden
-          className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[var(--app-radius-md)]"
-          style={{
-            background: `linear-gradient(145deg, ${color}2e, ${color}0c)`,
-            color,
-            boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.08)",
-          }}
-        >
-          <CategoryIcon slug={place.category} strokeWidth={1.75} className="h-7 w-7 opacity-90" style={{ color }} />
-        </div>
-      )}
-      <div className="flex min-w-0 flex-1 flex-col justify-center">
-        <div className="flex items-baseline gap-2">
-          <button
-            type="button"
-            onClick={openDetail}
-            aria-label={`View ${place.name} details`}
-            className="truncate text-left text-[15px] font-semibold tracking-tight outline-none focus-visible:underline"
+            className="line-clamp-1 min-w-0 flex-1 text-[15px] font-semibold leading-[1.2] tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            <span className="absolute inset-0" aria-hidden />
             {place.name}
-          </button>
-          {/* SourceBadge — same trust tier surfacing as the detail
-              page, set inline next to the name. Self-hides when
-              there's nothing honest to claim. */}
-          <SourceBadge place={place} size="sm" />
+          </span>
+          {showSource && <SourceBadge place={place} size="sm" />}
           {place.distance_m !== undefined && (
-            <span className="ml-auto whitespace-nowrap text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            <span className="ml-auto mt-[1px] shrink-0 whitespace-nowrap text-[12px] font-medium tabular-nums" style={{ color: "var(--app-ink-3)" }}>
               {formatDistance(place.distance_m)}
             </span>
           )}
         </div>
-        <p className="mt-1 truncate text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          {cat?.name ?? place.category}
-          {kf && <> · {kf}</>}
-          <BeenHereIndicator slug={place.slug} />
+        <p className="mt-0.5 flex items-center gap-1 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          {(place.tags ?? []).includes("dog-friendly") && (
+            <PawPrint
+              className="h-3 w-3 shrink-0"
+              strokeWidth={2.25}
+              style={{ color: "var(--app-brand-2)" }}
+              aria-label="Dog-friendly"
+            />
+          )}
+          <span className="truncate">
+            {cat?.name ?? place.category}
+            {kf && <> · {kf}</>}
+          </span>
         </p>
-        {!compact && (() => {
-          // Reason chips on the row variant — same producer as grid +
-          // tile. Falls back to the legacy status / rating / price row
-          // only if placeReasons() returns nothing.
-          const reasons = placeReasons(place);
-          if (reasons.length > 0) {
-            return <ReasonChipRow reasons={reasons} className="mt-2" />;
-          }
-          return (
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        {place.market_day && (
+          <p className="mt-0.5 truncate text-[12px] font-medium" style={{ color: "var(--app-brand-press)" }}>
+            {place.market_day}{place.market_hours ? ` · ${place.market_hours}` : ""}
+          </p>
+        )}
+        {!compact && (
+          rowReasons.length > 0 ? (
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <StatusChipRow reasons={rowReasons} />
+              {inlineTag}
+            </div>
+          ) : (
+            <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <PlaceStatus status={place.open_status} />
               <Rave rating={place.google_rating} count={place.google_rating_count} />
               {place.price_band && (
@@ -472,12 +603,13 @@ export default function PlaceCard({
                   {"$".repeat(place.price_band)}
                 </span>
               )}
+              {inlineTag}
             </div>
-          );
-        })()}
+          )
+        )}
       </div>
       <div className="relative z-10 self-start">
-        <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
+        <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
       </div>
     </article>
   );

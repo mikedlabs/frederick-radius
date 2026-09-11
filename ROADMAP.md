@@ -1,7 +1,15 @@
 # Frederick Radius — Roadmap
 
-**Last updated:** 2026-05-26 by the dev team during the Phase 1 doc refresh.
+**Last updated:** 2026-06-04 — added the differentiation roadmap (the moat + the love).
 **Cadence:** updated when a phase ships or scope shifts. Companion to [`AUDIT.md`](./AUDIT.md).
+
+> **Currency note (2026-06-09):** ~40 PRs landed June 9 (#492–#533): both
+> June-9 external review remediations (events pipeline + text normalization,
+> hard 404s, hero/photo repair, count unification, /open-now, freshness
+> guard, SEO/JSON-LD, tap targets, payload windowing, cron feed repair).
+> CLAUDE.md is now the source of truth for the shipped design system and
+> pipeline rules; read it before this document.
+
 
 This is the honest list. No vague "soon." Three columns:
 
@@ -91,6 +99,42 @@ The architecture overhaul (Pushes 1–7) shipped May 26. The next work is making
 - AI itinerary builder (mentioned in early strategy; not committed)
 - Real-time event status (cancelled / postponed surfacing)
 - User accounts (currently anonymous-first via localStorage + cookies)
+
+---
+
+## Differentiation features — the moat + the love
+
+> Why someone deletes Yelp/Google Maps for *this*. Not feature parity —
+> the things a national app structurally cannot do for a single county.
+> Sequenced; each item carries its **data-confidence gate** answer (source,
+> freshness, behavior when data is missing) per `UX_REDO.md`. Items needing
+> data *acquisition* (not engineering) are flagged ⛏.
+
+### Moat 1 — Identity no competitor can fake (the "alive" layer)
+
+| Feature | Status | Next move · gate |
+|---|---|---|
+| **The living radius** — reachability-as-geometry: everything within a walk/bike/drive in the time you have; the county reorganizes around the ring. The signature. | 🟡 Isochrone API live; ring components half-built. **Interactive prototype: `docs/living-radius-demo.html`.** | Wire the prototype to `/api/isochrone` + real client places; the ring doubles as the loading/brand motif. Gate: reach reflects real isochrone travel time, never straight-line dressed as a drive; origin is real geolocation or a clearly-stated assumed center. |
+| **A home that's genuinely alive** — looks different at 7am vs sunset vs first snow; seasonal intelligence (foliage peak, First Saturday, creek sailboats up). | 🟡 Daypart sky + SunCountdown shipping. | Add a seasonal/event-state layer. Gate: every "it's happening" claim is sourced + dated; no faked seasonal state. |
+| **Radius Stories** — short photographic local context, hyperlocal. | ⚪ (photo-forward grid #419 is the seed) | Curate a story rail. Gate: real, attributed imagery; no stock. |
+
+### Moat 2 — Indispensable utility nobody else bothers with
+
+| Feature | Status | Next move · gate |
+|---|---|---|
+| **"New here?" mover onboarding** — trash day for *your* address, library card, DMV, your councilmember, the good coffee in walking distance. The highest-loyalty moment, unserved. | ⚪ (`/welcome` is a 2-step seed) | Compose civic moat + radius + the Ask into one flow. ⛏ Needs collection-schedule + districting data. Gate: every civic fact sourced (County/City) + fresh; "not confirmed" beats a confident lie. |
+| **The county heartbeat** — a "right now" pulse: live music tonight, food trucks out now, creek/flood level, AQI, MARC delays, outages. | 🟡 Feeds wired (`pulsepoint`, `transitFrederick`, `marcTrains`, `seeclickfix`, `usgsWater`). | Compose one "right now" surface. Gate: each row cites source + freshness; nothing labeled "now" that is stale. |
+| **Civic-moat answers by address** — recycling/trash, government hours, "when does X happen." | ⚪ | ⛏ Acquire collection-schedule + GIS. Gate: address-keyed, provenance on every answer. |
+
+### Moat 3 — The network effect (compounds without us)
+
+| Feature | Status | Next move · gate |
+|---|---|---|
+| **Community supply side** — food trucks posting today's spot, businesses posting tonight's special/happy-hour, residents adding events. Keeps data fresher than Google's; creates ownership. | 🟡 `/submit` + business claim/manage exist; review queue weak; no SMTP. | Strengthen the review queue + claim loop; wire SMTP. Gate: submitted = Unconfirmed tier until vetted; never asserts facts. |
+| **Generated, shareable plans** — "A perfect Saturday downtown" from open-now + weather + walking distance, shared as an OG card. | ⚪ (`/plan`, `/weekend`, `/api/og` are the seeds) | Compose a plan generator. Gate: only open/verified places; honest when a slot can't be filled. |
+| **Self-guided trails + passport** — history/mural/ghost walks, Beverage Trail passport with a stamp loop. | 🟡 `fcArtTour`, `history.ts`, beverage trail data exist. | Add turn-by-turn + passport state. Gate: route facts sourced; no invented history. |
+
+**Recommended order:** (1) wire the **living radius** to real data — cheapest signature win, infra exists, creates word of mouth; (2) the **Ask as universal fallback** across surfaces (see `/api/ask` + AI Gateway); (3) one **civic-moat answer end-to-end** (recycling-by-address) to prove the provenance pattern; then Moat 3 for the compounding loop.
 
 ---
 

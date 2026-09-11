@@ -1,12 +1,57 @@
 {
-  "generated_at": "2026-09-11T16:01:37.708Z",
-  "departures": [
-    {
-      "stop_id": "11944",
-      "stop_name": "FREDERICK MARC eb",
-      "departure_time": "05:00:00",
-      "headsign": "UNION STATION",
-      "service_days": [
+  "source": "https://feeds.mta.maryland.gov/gtfs/marc",
+  "feedDate": null,
+  "generatedAt": "2026-08-02",
+  "staticFeed": {
+    "sourceUrl": "https://feeds.mta.maryland.gov/gtfs/marc",
+    "fetchedOn": "2026-08-02",
+    "serviceWindowStart": "2022-11-14",
+    "serviceWindowEnd": "2026-12-31"
+  },
+  "stations": 8,
+  "departures": 58,
+  "calendar": {
+    "102": {
+      "days": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      "start": "20221114",
+      "end": "20261231"
+    },
+    "103": {
+      "days": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "start": "20221114",
+      "end": "20261231"
+    },
+    "104": {
+      "days": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "start": "20221114",
+      "end": "20261231"
+    },
+    "101P": {
+      "days": [
         1,
         1,
         1,
@@ -14,112 +59,945 @@
         1,
         0,
         0
+      ],
+      "start": "20221114",
+      "end": "20261231"
+    },
+    "101PF": {
+      "days": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "start": "20240429",
+      "end": "20261231"
+    },
+    "101PMT": {
+      "days": [
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0
+      ],
+      "start": "20240429",
+      "end": "20261231"
+    },
+    "101C": {
+      "days": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0
+      ],
+      "start": "20221114",
+      "end": "20261231"
+    },
+    "101B": {
+      "days": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0
+      ],
+      "start": "20221114",
+      "end": "20261231"
+    },
+    "101PennR": {
+      "days": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "start": "20221114",
+      "end": "20261231"
+    },
+    "101CamdenR": {
+      "days": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "start": "20221114",
+      "end": "20261231"
+    },
+    "101BrunswickR": {
+      "days": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "start": "20221114",
+      "end": "20261231"
+    },
+    "101PennRP": {
+      "days": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "start": "20221114",
+      "end": "20261231"
+    },
+    "101CamdenRP": {
+      "days": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "start": "20221114",
+      "end": "20261231"
+    },
+    "101BrunswickRP": {
+      "days": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "start": "20221114",
+      "end": "20261231"
+    },
+    "103Normal": {
+      "days": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "start": "20221114",
+      "end": "20261231"
+    },
+    "103Amtrak": {
+      "days": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "start": "20221114",
+      "end": "20261231"
+    },
+    "Bruns25Special": {
+      "days": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "start": "20250206",
+      "end": "20261231"
+    },
+    "101C_848REG": {
+      "days": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0
+      ],
+      "start": "20221114",
+      "end": "20261231"
+    },
+    "101CamdenO": {
+      "days": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "start": "20260626",
+      "end": "20260626"
+    }
+  },
+  "exceptions": {
+    "20250101": {
+      "added": [],
+      "removed": [
+        "101P",
+        "101C",
+        "101B",
+        "101PMT"
       ]
     },
-    {
-      "stop_id": "11945",
-      "stop_name": "MONOCACY MARC eb",
-      "departure_time": "05:06:00",
-      "headsign": "UNION STATION",
-      "service_days": [
-        1,
-        1,
-        1,
-        1,
-        1,
-        0,
-        0
+    "20250106": {
+      "added": [],
+      "removed": [
+        "101P",
+        "101C",
+        "101B",
+        "101PMT"
       ]
     },
-    {
-      "stop_id": "11944",
-      "stop_name": "FREDERICK MARC eb",
-      "departure_time": "06:05:00",
-      "headsign": "UNION STATION",
-      "service_days": [
-        1,
-        1,
-        1,
-        1,
-        1,
-        0,
-        0
+    "20250107": {
+      "added": [
+        "101PennR",
+        "101CamdenR",
+        "101BrunswickR"
+      ],
+      "removed": [
+        "101P",
+        "101C",
+        "101B"
       ]
     },
-    {
-      "stop_id": "11944",
-      "stop_name": "FREDERICK MARC eb",
-      "departure_time": "06:05:00",
-      "headsign": "UNION STATION",
-      "service_days": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
+    "20250206": {
+      "added": [
+        "101BrunswickR",
+        "Bruns25Special"
+      ],
+      "removed": [
+        "101B"
       ]
     },
-    {
-      "stop_id": "11945",
-      "stop_name": "MONOCACY MARC eb",
-      "departure_time": "06:12:00",
-      "headsign": "UNION STATION",
-      "service_days": [
-        1,
-        1,
-        1,
-        1,
-        1,
-        0,
-        0
+    "20250212": {
+      "added": [
+        "101PennR",
+        "101CamdenR",
+        "101BrunswickR"
+      ],
+      "removed": [
+        "101P",
+        "101C",
+        "101B"
       ]
     },
-    {
-      "stop_id": "11945",
-      "stop_name": "MONOCACY MARC eb",
-      "departure_time": "06:12:00",
-      "headsign": "UNION STATION",
-      "service_days": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
+    "20250217": {
+      "added": [
+        "101PennR",
+        "101CamdenR",
+        "101BrunswickR"
+      ],
+      "removed": [
+        "101P",
+        "101C",
+        "101B"
       ]
     },
-    {
-      "stop_id": "11944",
-      "stop_name": "FREDERICK MARC eb",
-      "departure_time": "07:10:00",
-      "headsign": "UNION STATION",
-      "service_days": [
-        1,
-        1,
-        1,
-        1,
-        1,
-        0,
-        0
+    "20250526": {
+      "added": [],
+      "removed": [
+        "101PMT",
+        "101P",
+        "101C",
+        "101B"
       ]
     },
-    {
-      "stop_id": "11945",
-      "stop_name": "MONOCACY MARC eb",
-      "departure_time": "07:17:00",
-      "headsign": "UNION STATION",
-      "service_days": [
-        1,
-        1,
-        1,
-        1,
-        1,
-        0,
-        0
+    "20250607": {
+      "added": [
+        "102Special"
+      ],
+      "removed": []
+    },
+    "20250614": {
+      "added": [
+        "102Special"
+      ],
+      "removed": []
+    },
+    "20250620": {
+      "added": [
+        "101PennR",
+        "101CamdenR"
+      ],
+      "removed": [
+        "101P",
+        "101C",
+        "101B"
+      ]
+    },
+    "20250704": {
+      "added": [
+        "102"
+      ],
+      "removed": [
+        "101P",
+        "101C",
+        "101B",
+        "101PF"
+      ]
+    },
+    "20250901": {
+      "added": [],
+      "removed": [
+        "101P",
+        "101C",
+        "101B",
+        "101PMT"
+      ]
+    },
+    "20251013": {
+      "added": [
+        "101PennR",
+        "101CamdenR",
+        "101BrunswickR"
+      ],
+      "removed": [
+        "101P",
+        "101C",
+        "101B"
+      ]
+    },
+    "20251127": {
+      "added": [],
+      "removed": [
+        "101P",
+        "101C",
+        "101B",
+        "101PMT"
+      ]
+    },
+    "20251128": {
+      "added": [
+        "102"
+      ],
+      "removed": [
+        "101P",
+        "101C",
+        "101B",
+        "101PF"
+      ]
+    },
+    "20251224": {
+      "added": [
+        "101PennR",
+        "101CamdenR",
+        "101BrunswickR"
+      ],
+      "removed": [
+        "101P",
+        "101C",
+        "101B"
+      ]
+    },
+    "20251225": {
+      "added": [],
+      "removed": [
+        "101P",
+        "101C",
+        "101B",
+        "101PMT"
+      ]
+    },
+    "20251226": {
+      "added": [
+        "101PennR",
+        "101CamdenR",
+        "101BrunswickR"
+      ],
+      "removed": [
+        "101P",
+        "101C",
+        "101B"
+      ]
+    },
+    "20251231": {
+      "added": [
+        "101PennR",
+        "101CamdenR",
+        "101BrunswickR"
+      ],
+      "removed": [
+        "101P",
+        "101C",
+        "101B"
+      ]
+    },
+    "20260101": {
+      "added": [],
+      "removed": [
+        "101P",
+        "101C",
+        "101B",
+        "101PMT"
+      ]
+    },
+    "20260119": {
+      "added": [
+        "101PennR",
+        "101CamdenR",
+        "101BrunswickR"
+      ],
+      "removed": [
+        "101P",
+        "101C",
+        "101B"
+      ]
+    },
+    "20260125": {
+      "added": [],
+      "removed": [
+        "103",
+        "103Normal"
+      ]
+    },
+    "20260126": {
+      "added": [],
+      "removed": [
+        "101P",
+        "101C",
+        "101B",
+        "101PMT"
+      ]
+    },
+    "20260127": {
+      "added": [
+        "103",
+        "103Normal"
+      ],
+      "removed": [
+        "101P",
+        "101C",
+        "101B",
+        "101PMT"
+      ]
+    },
+    "20260128": {
+      "added": [
+        "101PennR",
+        "101CamdenR",
+        "101BrunswickR"
+      ],
+      "removed": [
+        "101P",
+        "101C",
+        "101B",
+        "101PMT"
+      ]
+    },
+    "20260216": {
+      "added": [
+        "101PennR",
+        "101CamdenR",
+        "101BrunswickR"
+      ],
+      "removed": [
+        "101P",
+        "101C",
+        "101B"
+      ]
+    },
+    "20260223": {
+      "added": [
+        "102",
+        "101CamdenR",
+        "101BrunswickR"
+      ],
+      "removed": [
+        "101P",
+        "101C",
+        "101B",
+        "101PF"
+      ]
+    },
+    "20260525": {
+      "added": [],
+      "removed": [
+        "101P",
+        "101C",
+        "101B",
+        "101PMT"
+      ]
+    },
+    "20260626": {
+      "added": [
+        "101CamdenO"
+      ],
+      "removed": [
+        "101C_848REG"
+      ]
+    },
+    "20260702": {
+      "added": [
+        "104"
+      ],
+      "removed": []
+    },
+    "20260703": {
+      "added": [
+        "101PennR",
+        "101CamdenR",
+        "101BrunswickR"
+      ],
+      "removed": [
+        "104",
+        "101P",
+        "101C",
+        "101B"
       ]
     }
-  ]
+  },
+  "stops": {
+    "11943": [
+      {
+        "t": "04:50",
+        "min": 290,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train870"
+      },
+      {
+        "t": "05:40",
+        "min": 340,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train872"
+      },
+      {
+        "t": "05:40",
+        "min": 340,
+        "svc": "101BrunswickR",
+        "head": "UNION STATION",
+        "trip": "Train872R"
+      },
+      {
+        "t": "06:08",
+        "min": 368,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train874"
+      },
+      {
+        "t": "06:40",
+        "min": 400,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train876"
+      },
+      {
+        "t": "06:40",
+        "min": 400,
+        "svc": "Bruns25Special",
+        "head": "UNION STATION",
+        "trip": "Train876S"
+      },
+      {
+        "t": "07:07",
+        "min": 427,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train878"
+      },
+      {
+        "t": "07:07",
+        "min": 427,
+        "svc": "101BrunswickR",
+        "head": "UNION STATION",
+        "trip": "Train878R"
+      },
+      {
+        "t": "07:45",
+        "min": 465,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train880"
+      },
+      {
+        "t": "07:45",
+        "min": 465,
+        "svc": "101BrunswickR",
+        "head": "UNION STATION",
+        "trip": "Train880R"
+      }
+    ],
+    "11944": [
+      {
+        "t": "05:00",
+        "min": 300,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train890"
+      },
+      {
+        "t": "06:05",
+        "min": 365,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train892"
+      },
+      {
+        "t": "06:05",
+        "min": 365,
+        "svc": "101BrunswickR",
+        "head": "UNION STATION",
+        "trip": "Train892R"
+      },
+      {
+        "t": "07:10",
+        "min": 430,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train894"
+      }
+    ],
+    "11945": [
+      {
+        "t": "05:06",
+        "min": 306,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train890"
+      },
+      {
+        "t": "06:12",
+        "min": 372,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train892"
+      },
+      {
+        "t": "06:12",
+        "min": 372,
+        "svc": "101BrunswickR",
+        "head": "UNION STATION",
+        "trip": "Train892R"
+      },
+      {
+        "t": "07:17",
+        "min": 437,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train894"
+      }
+    ],
+    "11946": [
+      {
+        "t": "05:00",
+        "min": 300,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train870"
+      },
+      {
+        "t": "05:51",
+        "min": 351,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train872"
+      },
+      {
+        "t": "05:51",
+        "min": 351,
+        "svc": "101BrunswickR",
+        "head": "UNION STATION",
+        "trip": "Train872R"
+      },
+      {
+        "t": "06:19",
+        "min": 379,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train874"
+      },
+      {
+        "t": "06:50",
+        "min": 410,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train876"
+      },
+      {
+        "t": "06:50",
+        "min": 410,
+        "svc": "Bruns25Special",
+        "head": "UNION STATION",
+        "trip": "Train876S"
+      },
+      {
+        "t": "07:17",
+        "min": 437,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train878"
+      },
+      {
+        "t": "07:17",
+        "min": 437,
+        "svc": "101BrunswickR",
+        "head": "UNION STATION",
+        "trip": "Train878R"
+      },
+      {
+        "t": "07:55",
+        "min": 475,
+        "svc": "101B",
+        "head": "UNION STATION",
+        "trip": "Train880"
+      },
+      {
+        "t": "07:56",
+        "min": 476,
+        "svc": "101BrunswickR",
+        "head": "UNION STATION",
+        "trip": "Train880R"
+      }
+    ],
+    "11970": [
+      {
+        "t": "14:33",
+        "min": 873,
+        "svc": "104",
+        "head": "BRUNSWICK",
+        "trip": "Train871"
+      },
+      {
+        "t": "16:28",
+        "min": 988,
+        "svc": "101B",
+        "head": "MARTINSBURG",
+        "trip": "Train873"
+      },
+      {
+        "t": "17:28",
+        "min": 1048,
+        "svc": "101B",
+        "head": "MARTINSBURG",
+        "trip": "Train875"
+      },
+      {
+        "t": "17:28",
+        "min": 1048,
+        "svc": "101BrunswickR",
+        "head": "MARTINSBURG",
+        "trip": "Train875R"
+      },
+      {
+        "t": "18:04",
+        "min": 1084,
+        "svc": "101B",
+        "head": "BRUNSWICK",
+        "trip": "Train877"
+      },
+      {
+        "t": "18:04",
+        "min": 1084,
+        "svc": "101BrunswickR",
+        "head": "BRUNSWICK",
+        "trip": "Train877R"
+      },
+      {
+        "t": "18:46",
+        "min": 1126,
+        "svc": "101B",
+        "head": "MARTINSBURG",
+        "trip": "Train879"
+      },
+      {
+        "t": "19:20",
+        "min": 1160,
+        "svc": "101B",
+        "head": "MARTINSBURG",
+        "trip": "Train881"
+      },
+      {
+        "t": "19:20",
+        "min": 1160,
+        "svc": "101BrunswickR",
+        "head": "MARTINSBURG",
+        "trip": "Train881R"
+      },
+      {
+        "t": "20:23",
+        "min": 1223,
+        "svc": "101B",
+        "head": "MARTINSBURG",
+        "trip": "Train883"
+      },
+      {
+        "t": "20:23",
+        "min": 1223,
+        "svc": "Bruns25Special",
+        "head": "MARTINSBURG",
+        "trip": "Train883S"
+      }
+    ],
+    "11971": [
+      {
+        "t": "17:19",
+        "min": 1039,
+        "svc": "101B",
+        "head": "FREDERICK",
+        "trip": "Train891"
+      },
+      {
+        "t": "18:49",
+        "min": 1129,
+        "svc": "101B",
+        "head": "FREDERICK",
+        "trip": "Train893"
+      },
+      {
+        "t": "18:49",
+        "min": 1129,
+        "svc": "101BrunswickR",
+        "head": "FREDERICK",
+        "trip": "Train893R"
+      },
+      {
+        "t": "20:11",
+        "min": 1211,
+        "svc": "101B",
+        "head": "FREDERICK",
+        "trip": "Train895"
+      }
+    ],
+    "11972": [
+      {
+        "t": "17:29",
+        "min": 1049,
+        "svc": "101B",
+        "head": "FREDERICK",
+        "trip": "Train891"
+      },
+      {
+        "t": "18:59",
+        "min": 1139,
+        "svc": "101B",
+        "head": "FREDERICK",
+        "trip": "Train893"
+      },
+      {
+        "t": "18:59",
+        "min": 1139,
+        "svc": "101BrunswickR",
+        "head": "FREDERICK",
+        "trip": "Train893R"
+      },
+      {
+        "t": "20:21",
+        "min": 1221,
+        "svc": "101B",
+        "head": "FREDERICK",
+        "trip": "Train895"
+      }
+    ],
+    "11973": [
+      {
+        "t": "15:04",
+        "min": 904,
+        "svc": "104",
+        "head": "BRUNSWICK",
+        "trip": "Train871"
+      },
+      {
+        "t": "16:51",
+        "min": 1011,
+        "svc": "101B",
+        "head": "MARTINSBURG",
+        "trip": "Train873"
+      },
+      {
+        "t": "17:38",
+        "min": 1058,
+        "svc": "101B",
+        "head": "MARTINSBURG",
+        "trip": "Train875"
+      },
+      {
+        "t": "17:38",
+        "min": 1058,
+        "svc": "101BrunswickR",
+        "head": "MARTINSBURG",
+        "trip": "Train875R"
+      },
+      {
+        "t": "18:28",
+        "min": 1108,
+        "svc": "101B",
+        "head": "BRUNSWICK",
+        "trip": "Train877"
+      },
+      {
+        "t": "18:28",
+        "min": 1108,
+        "svc": "101BrunswickR",
+        "head": "BRUNSWICK",
+        "trip": "Train877R"
+      },
+      {
+        "t": "18:57",
+        "min": 1137,
+        "svc": "101B",
+        "head": "MARTINSBURG",
+        "trip": "Train879"
+      },
+      {
+        "t": "19:30",
+        "min": 1170,
+        "svc": "101B",
+        "head": "MARTINSBURG",
+        "trip": "Train881"
+      },
+      {
+        "t": "19:30",
+        "min": 1170,
+        "svc": "101BrunswickR",
+        "head": "MARTINSBURG",
+        "trip": "Train881R"
+      },
+      {
+        "t": "20:47",
+        "min": 1247,
+        "svc": "101B",
+        "head": "MARTINSBURG",
+        "trip": "Train883"
+      },
+      {
+        "t": "20:47",
+        "min": 1247,
+        "svc": "Bruns25Special",
+        "head": "MARTINSBURG",
+        "trip": "Train883S"
+      }
+    ]
+  }
 }

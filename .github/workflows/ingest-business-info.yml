@@ -1,0 +1,279 @@
+name: Ingest business deep-info
+run-name: Ingest business deep-info (firecrawl=${{ vars.BUSINESS_FIRECRAWL_FETCH_FALLBACK || '0' }}, cap=${{ vars.BUSINESS_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }})
+
+# Reads each food/drink place's own website (URLs already on file in
+# places-enrichment.json) and extracts what Google misses — known-for,
+# happy hours, specials, published hours — into src/data/business-info.json.
+# Incremental + batched, so it works through the ~600 eligible businesses
+# a chunk at a time and refreshes stale entries.
+#
+# Uses a standard Anthropic API key dedicated to this workflow in the GitHub
+# Data Enrichment environment. Never use an Anthropic Admin API key here.
+# Tuning: config/business-info.json
+
+on:
+  schedule:
+    - cron: "0 8 * * *" # daily 08:00 UTC — a batch per day, refresh-aware
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Businesses to read (normal max 60; reviewed backfill max 100)"
+        required: false
+        default: "60"
+      reviewed_backfill:
+        description: "I reviewed this backfill and approve a limit above 60"
+        required: false
+        type: boolean
+        default: false
+      refresh_open_review:
+        description: "I want to replace the currently open business-info review with a fresh paid run"
+        required: false
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: ${{ vars.BUSINESS_FIRECRAWL_FETCH_FALLBACK == '1' && 'operator-firecrawl-fallback-budget' || 'ingest-business-info' }}
+  cancel-in-progress: false
+
+jobs:
+  review-gate:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      should_run: ${{ steps.review.outputs.should_run }}
+      review_url: ${{ steps.review.outputs.review_url }}
+    steps:
+      - name: Pause paid extraction while its review is open
+        id: review
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          REFRESH_OPEN_REVIEW: ${{ inputs.refresh_open_review || 'false' }}
+        with:
+          script: |
+            const branch = 'bot/business-info-refresh';
+            const override = process.env.REFRESH_OPEN_REVIEW === 'true';
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              base: 'main',
+              per_page: 100,
+            });
+            const review = pulls.find((pull) =>
+              pull.head?.ref === branch &&
+              pull.head?.repo?.full_name === `${context.repo.owner}/${context.repo.repo}`
+            );
+
+            if (review && !override) {
+              core.notice(`Skipping paid extraction while review PR #${review.number} is open: ${review.html_url}`);
+              core.summary
+                .addHeading('Business enrichment paused')
+                .addRaw(`Review PR [#${review.number}](${review.html_url}) before spending on another batch.\n`)
+                .addRaw('Use the manual refresh_open_review override only when replacing that review is intentional.\n');
+              await core.summary.write();
+              core.setOutput('should_run', 'false');
+              core.setOutput('review_url', review.html_url);
+              return;
+            }
+
+            if (review && override) {
+              core.notice(`Manual override accepted; paid extraction may update review PR #${review.number}.`);
+            }
+            core.setOutput('should_run', 'true');
+            core.setOutput('review_url', review?.html_url || '');
+
+  ingest:
+    needs: review-gate
+    if: ${{ needs.review-gate.outputs.should_run == 'true' }}
+    runs-on: ubuntu-latest
+    # Healthy runs finish in 8–12 minutes. A 30-minute ceiling leaves more
+    # than twice that range while stopping a stalled runner long before the
+    # two-hour incident observed on 2026-08-19.
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+    environment: "Data Enrichment"
+    # Opt the JS actions into Node 24 now (GitHub forces it June 16 2026);
+    # clears the Node-20 deprecation warning. Job-level env is valid YAML
+    # (unlike the top-level block that broke parsing before).
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+    outputs:
+      artifact_name: ${{ steps.artifact-name.outputs.name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Verify extractor secret
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_BUSINESS_INFO_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error title=Missing business extractor key::Add ANTHROPIC_BUSINESS_INFO_API_KEY to the GitHub Data Enrichment environment."
+            exit 1
+          fi
+      - run: npm ci
+      - name: Verify business copy boundary before paid extraction
+        run: npm test -- tests/business-info-copy.spec.ts tests/style-lint.spec.ts
+      - name: Install Chromium (for the render fallback on JS-only sites)
+        timeout-minutes: 10
+        run: npx playwright install --with-deps chromium
+      - name: Validate optional Firecrawl fallback
+        env:
+          FIRECRAWL_FETCH_FALLBACK: ${{ vars.BUSINESS_FIRECRAWL_FETCH_FALLBACK || '0' }}
+          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.BUSINESS_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}
+        run: |
+          case "$FIRECRAWL_FETCH_FALLBACK" in
+            0) ;;
+            1) ;;
+            *)
+              echo "::error title=Invalid Firecrawl setting::FIRECRAWL_FETCH_FALLBACK must be 0 or 1."
+              exit 1
+              ;;
+          esac
+          case "$FIRECRAWL_FALLBACK_MAX_REQUESTS" in
+            ''|*[!0-9]*)
+              echo "::error title=Invalid Firecrawl request cap::Use 1 or 2."
+              exit 1
+              ;;
+          esac
+          if [ "$FIRECRAWL_FALLBACK_MAX_REQUESTS" -lt 1 ] || [ "$FIRECRAWL_FALLBACK_MAX_REQUESTS" -gt 2 ]; then
+            echo "::error title=Invalid Firecrawl request cap::Use 1 or 2."
+            exit 1
+          fi
+      - name: Enforce shared Firecrawl fallback budget
+        id: firecrawl-budget
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          CURRENT_WORKFLOW_FILE: ingest-business-info.yml
+          FIRECRAWL_FETCH_FALLBACK: ${{ vars.BUSINESS_FIRECRAWL_FETCH_FALLBACK || '0' }}
+          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.BUSINESS_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}
+          FIRECRAWL_LEGACY_DISABLED_RUN_IDS: ${{ vars.FIRECRAWL_LEGACY_DISABLED_RUN_IDS || '' }}
+        with:
+          script: |
+            const { enforceFirecrawlFallbackBudget } = require("./scripts/lib/firecrawl-fallback-budget.cjs");
+            await enforceFirecrawlFallbackBudget({ github, context, core });
+      - name: Verify enabled Firecrawl fallback secret
+        if: ${{ success() && steps.firecrawl-budget.outputs.allowed == 'true' && steps.firecrawl-budget.outputs.enabled == 'true' }}
+        env:
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+        run: |
+          if [ -z "$FIRECRAWL_API_KEY" ]; then
+            echo "::error title=Missing FIRECRAWL_API_KEY::The Firecrawl fallback passed its shared budget gate, but the Data Enrichment environment has no key."
+            exit 1
+          fi
+      - name: Extract business deep-info
+        if: ${{ success() && steps.firecrawl-budget.outputs.allowed == 'true' }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_BUSINESS_INFO_API_KEY }}
+          FIRECRAWL_API_KEY: ${{ steps.firecrawl-budget.outputs.allowed == 'true' && steps.firecrawl-budget.outputs.enabled == 'true' && secrets.FIRECRAWL_API_KEY || '' }}
+          FIRECRAWL_FETCH_FALLBACK: ${{ vars.BUSINESS_FIRECRAWL_FETCH_FALLBACK || '0' }}
+          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.BUSINESS_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}
+          INGEST_LIMIT: ${{ inputs.limit || '60' }}
+          REVIEWED_BACKFILL: ${{ inputs.reviewed_backfill || 'false' }}
+        run: |
+          case "$INGEST_LIMIT" in
+            ''|*[!0-9]*)
+              echo "::error title=Invalid ingest limit::The limit must be a whole number."
+              exit 1
+              ;;
+          esac
+          if [ "$INGEST_LIMIT" -lt 1 ] || [ "$INGEST_LIMIT" -gt 100 ]; then
+            echo "::error title=Invalid ingest limit::Use a value from 1 through 100."
+            exit 1
+          fi
+          case "$REVIEWED_BACKFILL" in
+            true|false) ;;
+            *)
+              echo "::error title=Invalid backfill confirmation::reviewed_backfill must be true or false."
+              exit 1
+              ;;
+          esac
+          if [ "$INGEST_LIMIT" -gt 60 ] && [ "$REVIEWED_BACKFILL" != "true" ]; then
+            echo "::error title=Backfill review required::Normal runs are capped at 60. Check reviewed_backfill to approve a reviewed batch of up to 100."
+            exit 1
+          fi
+          npm run ingest:business -- --limit="$INGEST_LIMIT"
+      - name: Build description review queue
+        run: npm run descriptions:candidates
+      - name: Summarize description review queue
+        run: npm run descriptions:review -- --github-summary >> "$GITHUB_STEP_SUMMARY"
+      # Commits pushed with GITHUB_TOKEN do not start another workflow run.
+      # business-info.json contains Radius-authored prose, so gate it here.
+      - name: Verify Radius-authored copy
+        run: npm run style:lint
+      - name: Rebuild public place artifacts
+        run: npm run build:client-places
+      - name: Promote reviewed place-page facts
+        run: npm run data:release:write -- --stream places
+      - name: Stage exact review files
+        run: |
+          set -euo pipefail
+          install -D -m 0644 src/data/business-info.json "$RUNNER_TEMP/automated-pr-output/src/data/business-info.json"
+          install -D -m 0644 src/data/descriptions.json "$RUNNER_TEMP/automated-pr-output/src/data/descriptions.json"
+          install -D -m 0644 src/data/event-venue-photo-credits.json "$RUNNER_TEMP/automated-pr-output/src/data/event-venue-photo-credits.json"
+          install -D -m 0644 src/data/places-client-hours.json "$RUNNER_TEMP/automated-pr-output/src/data/places-client-hours.json"
+          install -D -m 0644 src/data/places-client.json "$RUNNER_TEMP/automated-pr-output/src/data/places-client.json"
+          install -D -m 0644 src/data/data-release.json "$RUNNER_TEMP/automated-pr-output/src/data/data-release.json"
+
+      - name: Pin review artifact name to this generator attempt
+        id: artifact-name
+        env:
+          ARTIFACT_NAME: business-info-review-${{ github.run_id }}-${{ github.run_attempt }}
+        run: echo "name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Upload isolated review artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.artifact-name.outputs.name }}
+          path: ${{ runner.temp }}/automated-pr-output
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: ingest
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/publish-automated-pr.yml
+    with:
+      artifact: ${{ needs.ingest.outputs.artifact_name }}
+      base_sha: ${{ github.sha }}
+      branch: bot/business-info-refresh
+      allowed_paths: |
+        src/data/business-info.json
+        src/data/data-release.json
+        src/data/descriptions.json
+        src/data/event-venue-photo-credits.json
+        src/data/places-client-hours.json
+        src/data/places-client.json
+      commit_message: "data: refresh business deep-info (automated)"
+      title: "data: refresh business information"
+      body: |
+        Automated business website extraction refresh.
+
+        The workflow ran the Radius copy checks before opening this PR.
+        Review source links, hours or specials, and generated description
+        candidates before merging.
+
+  checks:
+    needs: publish
+    if: ${{ needs.publish.outputs.pr_operation == 'created' || needs.publish.outputs.pr_operation == 'updated' }}
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/automated-pr-checks.yml
+    with:
+      branch: ${{ needs.publish.outputs.pr_branch }}
+      head_sha: ${{ needs.publish.outputs.pr_head_sha }}

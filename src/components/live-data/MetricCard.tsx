@@ -26,6 +26,7 @@ export default function MetricCard({
   unit,
   trend,
   trendStroke = "var(--app-cool)",
+  animatedTrend = false,
   accent = "var(--app-cool)",
   status,
   meta,
@@ -46,6 +47,8 @@ export default function MetricCard({
   trend?: number[];
   /** Color for the sparkline line + fill. */
   trendStroke?: string;
+  /** Animate the sparkline (draw-in + live beacon) on mount. */
+  animatedTrend?: boolean;
   /** Color for the top accent bar + chip backgrounds. */
   accent?: string;
   /** Optional status pill text bottom-left of the card. */
@@ -85,13 +88,13 @@ export default function MetricCard({
         )}
         <div className="space-y-0.5">
           <h3
-            className="font-serif text-[18px] font-semibold leading-tight tracking-tight"
+            className="font-serif text-[18px] leading-tight tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
             {title}
           </h3>
           {subtitle && (
-            <p className="text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+            <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
               {subtitle}
             </p>
           )}
@@ -103,14 +106,14 @@ export default function MetricCard({
         <div className="flex items-end gap-3">
           <p className="flex items-baseline gap-1.5">
             <span
-              className="font-serif text-[34px] font-semibold leading-none tabular-nums"
+              className="font-data text-[34px] font-semibold leading-none"
               style={{ color: "var(--app-ink)" }}
             >
               {value}
             </span>
             {unit && (
               <span
-                className="text-[12px] font-semibold"
+                className="font-data text-[12px] font-semibold"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 {unit}
@@ -122,14 +125,14 @@ export default function MetricCard({
               className="ml-auto flex-1"
               style={{ color: trendStroke, maxWidth: 130 }}
             >
-              <Sparkline values={trend} width={130} height={36} />
+              <Sparkline values={trend} width={130} height={36} animated={animatedTrend} />
             </span>
           )}
         </div>
 
         {meta && (
           <p
-            className="text-[11px] tabular-nums"
+            className="font-data text-[11px]"
             style={{ color: "var(--app-ink-3)" }}
           >
             {meta}

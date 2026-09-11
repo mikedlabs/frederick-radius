@@ -1,61 +1,45 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
-import { decoratePlace, publicPlacesByMunicipality } from "@/lib/loaders/places";
-import PlaceList from "@/components/place/PlaceList";
+import { decoratePlace, publicPlacesByMunicipality, slimForList } from "@/lib/loaders/places";
+import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
+import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
-import PhotoMosaic from "@/components/today/PhotoMosaic";
-import PageBloom from "@/components/ui/PageBloom";
-import SectionHeading from "@/components/ui/SectionHeading";
 import Image from "next/image";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
+import { getTownPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import TownStrip from "@/components/municipality/TownStrip";
+import TownAlmanac from "@/components/municipality/TownAlmanac";
+import AerialBeat from "@/components/place/AerialBeat";
 import StayDeepLinks from "@/components/municipality/StayDeepLinks";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import LivingHere from "@/components/municipality/LivingHere";
+import { municipalCivicFor } from "@/lib/loaders/municipalCivic";
+import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 
 export const revalidate = 600;
 
 /**
- * Town page — rebuilt to three answers instead of seven sections.
+ * Town page — answer-first, dense, field-guide (redesign).
  *
- * Per the architecture review: a town page should answer "what's
- * here / what's happening / how to get there" — not be a four-cell
- * stat dashboard with parallel browse rails.
+ * The page answers "what's this town like, and what's worth going for?" —
+ * NOT "list every place." Spine, top → bottom:
+ *   1. Curated SeasonalPhoto hero — a quiet {type} · Frederick County tag,
+ *      the town name, and ONE short blurb. No pop./est. metadata lead.
+ *   2. A town-scoped ask/search pill — the first action.
+ *   3. A field-guide locator line (mono caps centroid coordinates).
+ *   4. Worth your time — the LEAD answer: a glow-lead selected card + a
+ *      2-up grid of compact cells, then a demoted "All places →" link.
+ *   5. Sibling-town nav (TownStrip) as a slim row.
+ *   6. Upcoming events (honest empty-state preserved).
+ *   7. Living here — civic + town links merged into ONE demoted block.
+ *   8. StayDeepLinks footer.
  *
- * New spine:
- *   1. Photo hero — name + blurb + type/era/population overlay
- *   2. One-line description
- *   3. Worth your time — top 8 places (grid by default)
- *   4. Looks like {town} — photo mosaic (4+ photo-backed places)
- *   5. Upcoming in {town} — max 4 events (empty state shows the
- *      submit-an-event door + a nearby fallback)
- *
- * What got cut
- *   - StatStrip (Places / Verified / Categories / Events counts) —
- *     generic numbers without signal
- *   - "Around {town}" category-tile row — duplicate browse axis;
- *     the place list and the global /category/[slug] surfaces already
- *     do this work
- *
- * The page is about the town, not about the directory's shape.
+ * Sections still self-hide when empty (honest empty states). Layout/visual
+ * only — the data loaders below are unchanged.
  */
-
-/**
- * Per-town hero photo overrides — hand-curated "this is THE photo of
- * {town}" slug map. Used when the auto-pick keeps landing on a
- * restaurant interior that doesn't say "this is the town."
- *
- * Add a town here only after verifying the override place actually
- * has a recognizable photo (district park, train station, main
- * street, town hall) AND it's in places-client.json.
- */
-const HERO_OVERRIDES: Record<string, string> = {
-  // Urbana → District Park instead of "Monocacy Crossing Restaurant"
-  // (a Frederick-side restaurant that DFP filed under Urbana).
-  urbana: "urbana-district-park-new-market",
-};
 
 export async function generateStaticParams() {
   return MUNICIPALITIES.map((m) => ({ municipality: m.slug }));
@@ -70,6 +54,7 @@ export async function generateMetadata(
   return {
     title: `${m.name}, Maryland`,
     description: m.description,
+    alternates: { canonical: `/m/${municipality}` },
     openGraph: {
       title: m.name,
       description: m.hero_blurb,
@@ -85,65 +70,129 @@ export default async function MunicipalityPage(
   const m = MUNICIPALITY_BY_SLUG[municipality];
   if (!m) notFound();
 
+  // A curated CC/PD photo OF this town wins the hero over the generic seasonal
+  // county photography; null until one is approved (then the town shows itself).
+  const townPhoto = getTownPhoto(m.slug);
+
   const places = publicPlacesByMunicipality(m.slug)
-    .map((p) => decoratePlace(p, m.centroid))
+    .map((p) => slimForList(decoratePlace(p, m.centroid)))
     .sort((a, b) => b.feature_score - a.feature_score);
 
-  const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 4);
-  const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
+  // "Worth your time" is a destination-led reel that ranks differently
+  // from the raw feature_score order. Two fixes for audit T4 — the page
+  // promised breweries/
+  // arts but led with Crossfits, training studios, and a meeting house:
+  //   1. isRecommendable drops pure institutions (a no-op today since these
+  //      rows lack a Google primary_type, but it future-proofs the surface
+  //      and keeps it consistent with every other recommendation surface).
+  //   2. Destinations (food/arts/outdoors/shops) sort ABOVE personal-service
+  //      and civic/utility categories (wellness/services/worship…). Within
+  //      each group, feature_score still orders. A stable sort keeps it
+  //      deterministic. Down-rank, never delete — a thin town still fills.
+  // Evidence floor for a "worth your time" claim: a real rating with a
+  // handful of reviews, or a human curation flag. The 2026-06 audit
+  // caught a travel agency, a wig shop, and a funeral home leading this
+  // module at night: all tagged shopping, none with rating evidence,
+  // all sorting as "not closed" because their hours are unknown. A tier,
+  // not a filter, so a thin town still fills (down-rank, never delete).
+  const hasEvidence = (p: (typeof places)[number]) =>
+    p.hidden_gem ||
+    p.local_favorite ||
+    ((p.google_rating ?? 0) >= 4.0 && (p.google_rating_count ?? 0) >= 5);
+  const worthYourTime = places
+    .filter(isRecommendable)
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => {
+      // 1) Destinations (food/arts/outdoors/shops) over personal-service +
+      //    civic/utility — so a CrossFit box or therapy office never leads a
+      //    town's "worth your time" (audit §1).
+      const da = isDestinationCategory(a.p.category) ? 0 : 1;
+      const db = isDestinationCategory(b.p.category) ? 0 : 1;
+      if (da !== db) return da - db;
+      // 2) Places with rating evidence or curation outrank the phone-book
+      //    tail regardless of hours, so junk can never lead on data gaps.
+      const ea = hasEvidence(a.p) ? 0 : 1;
+      const eb = hasEvidence(b.p) ? 0 : 1;
+      if (ea !== eb) return ea - eb;
+      // 3) Among those, three open tiers: verified open, unknown, closed.
+      //    The old two-tier sort (closed last) let unknown-hours places
+      //    rank EQUAL to open ones, which surfaced the tail at 11 PM when
+      //    every real destination had closed (2026-06 audit).
+      const tier = (s: (typeof a.p)["open_status"]["state"]) =>
+        s === "closed" ? 2 : s === "open" || s === "closing-soon" ? 0 : 1;
+      const ca = tier(a.p.open_status.state);
+      const cb = tier(b.p.open_status.state);
+      if (ca !== cb) return ca - cb;
+      // 4) Then feature_score, with the original (proximity-aware) order as a
+      //    deterministic tiebreak.
+      return b.p.feature_score - a.p.feature_score || a.i - b.i;
+    })
+    .map((x) => x.p);
 
-  // Town hero — each town gets its OWN identifiable photo instead of
-  // a generic rotating aerial. The picker has three tiers:
-  //
-  //   1. HERO_OVERRIDES — hand-curated "this is THE photo of {town}"
-  //      mapping by slug. Used when the auto-pick keeps landing on a
-  //      restaurant interior that doesn't say "this is the town"
-  //      (Urbana → district park instead of "Monocacy Crossing").
-  //   2. The top-scored photographed place WHOSE name actually
-  //      references the town (e.g. "Urbana Library Farmers' Market",
-  //      "Brunswick Railroad Bridge"). Better signal than the raw
-  //      feature_score winner, since DFP rolls plenty of restaurants
-  //      from neighboring towns under each municipality slug.
-  //   3. The top-scored photographed place in the town, as before.
-  //
-  // SeasonalPhoto remains the last-resort fallback for towns with no
-  // photographed places.
-  const placesWithPhotos = places.filter((p) => p.google_photo_url);
-  const override = HERO_OVERRIDES[m.slug];
-  const overrideHero = override
-    ? placesWithPhotos.find((p) => p.slug === override) ?? null
-    : null;
-  const townNameRe = new RegExp(`\\b${m.name}\\b`, "i");
-  const namedHero = placesWithPhotos.find((p) => townNameRe.test(p.name)) ?? null;
-  const heroPlace = overrideHero ?? namedHero ?? placesWithPhotos[0] ?? null;
-  const heroPhotoUrl = heroPlace?.google_photo_url ?? null;
+  // The lead pick gets the glow; the next handful fill a compact 2-up grid.
+  const lead = worthYourTime[0];
+  const grid = worthYourTime.slice(1, 5);
+
+  const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 3);
+  const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
+  // Buried-civic answers for this town (trash/recycling, hall, permits…),
+  // null until the extraction agent populates it. The block self-hides.
+  const civic = municipalCivicFor(m.slug);
+
+  // Structured data (June-9 audit P2): the town as a schema.org Place +
+  // a BreadcrumbList, so town pages join the knowledge graph like the
+  // place/event details already do.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Place",
+    name: `${m.name}, Maryland`,
+    description: m.description,
+    geo: { "@type": "GeoCoordinates", latitude: m.centroid.lat, longitude: m.centroid.lng },
+    containedInPlace: { "@type": "AdministrativeArea", name: "Frederick County, Maryland" },
+  };
 
   return (
-    <div className="relative space-y-6">
-      <PageBloom variant="single" />
+    <div className="relative space-y-5 sm:space-y-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: jsonLdScript(
+            breadcrumbJsonLd([
+              { name: "Towns", path: "/towns" },
+              { name: m.name, path: `/m/${m.slug}` },
+            ]),
+          ),
+        }}
+      />
+      <nav aria-label="Breadcrumb">
+        <Link
+          href="/towns"
+          className="tap-44 inline-flex items-center gap-1.5 text-[12.5px] font-medium hover:underline"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+          All towns
+        </Link>
+      </nav>
 
-      {/* Sibling-town nav — horizontal pill strip with the active
-          town pinned first. Pre-launch the only way to switch towns
-          was via /browse + search; this lets a user jump directly
-          between municipalities while staying in the town-page
-          mental model. */}
-      <TownStrip activeSlug={m.slug} />
-
-      {/* Photo hero — the place as a place, not a row. The image
-          carries identity; the overlay carries facts. */}
-      <header className="relative -mx-4 -mt-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
+      {/* 1 — Town hero. CURATED imagery only (Photo Policy, Phase 3): our
+          own seasonal county photography, never a random place's Google
+          photo. The overlay leads with a quiet {type} tag, the name, and
+          ONE blurb — the pop./est. metadata lead is gone. */}
+      <header className="relative overflow-hidden rounded-[var(--app-radius-lg)]">
         <div className="relative h-52 w-full sm:h-72">
-          {heroPhotoUrl ? (
+          {townPhoto ? (
             <Image
-              src={heroPhotoUrl}
-              alt={`${heroPlace?.name ?? m.name} in ${m.name}, MD`}
+              src={wikimediaUrl(townPhoto.file, 1200)}
+              alt={townPhoto.alt}
               fill
-              sizes="(max-width: 720px) 100vw, 720px"
               priority
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              unoptimized
-              className="object-cover"
+              sizes="(max-width: 720px) 100vw, 720px"
+              className="absolute inset-0 object-cover"
             />
           ) : (
             <SeasonalPhoto
@@ -155,24 +204,17 @@ export default async function MunicipalityPage(
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
-          {heroPlace && (
-            <span
-              className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold backdrop-blur"
-              style={{
-                background: "rgba(255,255,255,0.18)",
-                color: "white",
-                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
-              }}
-            >
-              Photo · {heroPlace.name}
-            </span>
+          {townPhoto && (
+            <p className="absolute right-2 top-2 z-10 font-mono text-[9px] tracking-wide text-white/70">
+              {townPhoto.author} · {townPhoto.license} · Wikimedia
+            </p>
           )}
           <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/75">
-              {m.type} · est. {m.est} · pop. {m.population.toLocaleString()}
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75">
+              {m.type === "city" ? "City" : m.type === "town" ? "Town" : m.type === "village" ? "Village" : "Community"} · Frederick County
             </p>
             <h1 className="font-serif text-[34px] font-semibold leading-tight tracking-tight text-white sm:text-[40px]">
-              {m.name}, Maryland
+              {m.name}
             </h1>
             <p className="font-serif text-[15px] italic leading-snug text-white/90 sm:text-[16px]">
               {m.hero_blurb}
@@ -181,47 +223,98 @@ export default async function MunicipalityPage(
         </div>
       </header>
 
-      {/* The one-line context. The full description is in metadata for
-          SEO; this is the human read. */}
-      <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-        {m.description}
-      </p>
+      {/* Town switching belongs near the town identity, not near the footer. */}
+      <TownStrip activeSlug={m.slug} />
 
-      {/* Worth your time — the answer to "what's here." Top 8 by
-          feature score; grid-by-default so a scroll feels like a
-          gallery, not a list. */}
-      <section className="space-y-2.5">
-        <SectionHeading title="Worth your time" />
-        <PlaceList
-          places={places.slice(0, 8)}
-          initialLayout="grid"
-          emptyMessage={`We're still seeding places for ${m.name}. Check back soon, or submit a place you love.`}
-        />
-      </section>
+      {/* 2 — Town-scoped search bar removed (owner call): it stacked a second
+          search field directly under the global header search. The "All places
+          in {town}" link in Worth-your-time below already pre-fills a
+          town-scoped browse, so the redundant slab came out. */}
 
-      {/* Photo wall — the page-level identity beat. A column of
-          pictures of a real place. Only renders when there are enough
-          photo-backed places to fill it. */}
-      {placesWithPhotos.length >= 4 && (
+      {/* 4 — Worth your time: the LEAD answer — the PLACES lead the page now
+          (owner call: open with what's actionable + visual, not the town's
+          history). A glow-lead selected card, then a compact 2-up grid of
+          cells, then a demoted "all places" link. */}
+      {lead ? (
         <section className="space-y-3">
-          <SectionHeading title={`Looks like ${m.name}`} />
-          <PhotoMosaic places={placesWithPhotos} />
+          <div className="flex items-baseline gap-2.5">
+            <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+              Start here
+            </h2>
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+              in {m.name}
+            </span>
+          </div>
+
+          {/* The selected pick — glow-lead. */}
+          <div
+            className="rounded-[var(--app-radius-lg)]"
+            style={{ boxShadow: "0 16px 36px -20px color-mix(in srgb, var(--app-brand) 55%, transparent)" }}
+          >
+            <PlaceCard place={lead} variant="answer" />
+          </div>
+
+          {/* Compact 2-up grid of the next handful. */}
+          {grid.length > 0 && (
+            <ul className="grid grid-cols-2 gap-2">
+              {grid.map((p) => (
+                <li key={p.slug}>
+                  <PlaceCard place={p} variant="grid" />
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* Demoted directory door — NOT the inline browse chrome. Search
+              is the canonical "see everything" surface; pre-fill the town. */}
+          <Link
+            href={`/search?q=${encodeURIComponent(m.name)}`}
+            className="tap-44 inline-flex items-center gap-1 text-[13px] font-semibold"
+            style={{ color: "var(--app-brand-press)" }}
+          >
+            All places in {m.name}
+            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+          </Link>
         </section>
+      ) : (
+        <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+          No places are listed for {m.name} yet. Check back later, or{" "}
+          <Link href="/submit/place" className="font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-brand-press)" }}>
+            submit a place you love
+          </Link>
+          .
+        </p>
       )}
 
-      {/* Upcoming — answer to "what's happening." Kept tight (max 4);
-          empty state surfaces the submit door + a nearby fallback. */}
+      {/* Cliff notes: the verified almanac (one-liner + FAQ + fun facts +
+          local insight) — what the town IS, set BELOW the place reel now so
+          the visual answer leads and the history is here for the curious. */}
+      <TownAlmanac slug={m.slug} townName={m.name} />
+
+      {/* "{Town} from above" — the nearest geotagged drone shot. Only towns
+          the aerial archive covers render this; everywhere else self-hides. */}
+      <AerialBeat lat={m.centroid.lat} lng={m.centroid.lng} label={m.name} maxMeters={1500} />
+
+      {/* Upcoming — "what's happening." Kept tight (max 3); empty state
+          surfaces the submit door + a nearby fallback. */}
       {(upcomingEvents.length > 0 || BY_TOWN_ENABLED) && (
         <section className="space-y-2.5">
-          <SectionHeading
-            title={`Upcoming in ${m.name}`}
-            href={BY_TOWN_ENABLED ? `/events?view=town&m=${m.slug}` : "/events"}
-            cta="All events"
-          />
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+              Upcoming in {m.name}
+            </h2>
+            <Link
+              href={BY_TOWN_ENABLED ? `/events?view=town&m=${m.slug}` : "/events"}
+              className="tap-44 inline-flex items-center text-[13px] font-semibold"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              All events <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
+            </Link>
+          </div>
           {upcomingEvents.length > 0 ? (
-            <ul className="space-y-2">
+            <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
               {upcomingEvents.map((e) => (
-                <li key={e.slug}><EventCard event={e} /></li>
+                <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>
               ))}
             </ul>
           ) : (
@@ -230,37 +323,39 @@ export default async function MunicipalityPage(
               style={{ borderColor: "var(--app-border)" }}
             >
               <p className="text-sm font-medium" style={{ color: "var(--app-ink-2)" }}>
-                Nothing on the calendar for {m.name} yet — it runs on word of mouth.
+                Nothing is listed for {m.name} yet.
               </p>
               <Link
                 href={`/submit/event?m=${m.slug}`}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
+                className="tap-44 inline-flex items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
                 style={{ background: "var(--app-brand)" }}
               >
                 Submit an event for {m.name}
               </Link>
               {nearbyEvents.length > 0 && (
-                <div className="space-y-2 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-                    Happening near {m.name}
-                  </p>
-                  <ul className="space-y-2">
-                    {nearbyEvents.slice(0, 3).map((e) => (
-                      <li key={e.slug}><EventCard event={e} /></li>
-                    ))}
-                  </ul>
-                </div>
+                <p className="border-t pt-3 text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+                  Nearby:{" "}
+                  <Link
+                    href="/events"
+                    className="font-semibold underline-offset-2 hover:underline"
+                    style={{ color: "var(--app-ink-2)" }}
+                  >
+                    {nearbyEvents[0].title} and more nearby <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
+                  </Link>
+                </p>
               )}
             </div>
           )}
         </section>
       )}
 
-      {/* Footer card — visitor's "where do I sleep?" answer in one
-          tap. Three platform search deep links, pre-filtered to the
-          town. Not an affiliate program; the URLs are clean. A
-          curated local-rental list will land here later. */}
-      <StayDeepLinks townName={m.name} townSlug={m.slug} />
+      {/* 7 — Living here. CivicCard + TownLinks merged into ONE demoted
+          block low on the page, with an IconStamp squircle and one heading.
+          Self-hides when the town has neither civic data nor a verified site. */}
+      <LivingHere slug={m.slug} townName={m.name} civic={civic} />
+
+      {/* 8 — Footer card — the visitor's "where do I sleep?" answer. */}
+      <StayDeepLinks townName={m.name} townSlug={m.slug} compact />
     </div>
   );
 }

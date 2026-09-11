@@ -1,0 +1,93 @@
+{
+  "blendabowl": {
+    "file": "/food-truck-marks/blendabowl.png",
+    "source": "http://static1.squarespace.com/static/67c7479a3614e34e668c7f58/t/6849d99c53c6e200f3f7e704/1749670300229/food+truck+%283%29.png?format=1500w",
+    "sourcePage": "https://www.blendabowlfrederickft.com/",
+    "fetched": "2026-07-23",
+    "plate": "light"
+  },
+  "blues-bbq": {
+    "file": "/food-truck-marks/blues-bbq.png",
+    "source": "https://bluesbbqco.com/wp-content/uploads/2026/01/802afe8f-faa8-4810-a4af-10211f860986-300x138.png",
+    "sourcePage": "https://bluesbbqco.com/",
+    "fetched": "2026-07-23",
+    "plate": "dark"
+  },
+  "dop-pizza": {
+    "file": "/food-truck-marks/dop-pizza.png",
+    "source": "https://static.wixstatic.com/media/2cfa2c_9324dbfe90a64d5791d082270cf4b312~mv2.png",
+    "sourcePage": "https://www.doppizza.co/",
+    "fetched": "2026-07-23",
+    "plate": "dark"
+  },
+  "the-garage": {
+    "file": "/food-truck-marks/the-garage.png",
+    "source": "https://static.wixstatic.com/media/c70b46_245ac2bbe4e5476cbfe7b364b4a801d1~mv2.jpg",
+    "sourcePage": "https://www.thegaragemd.com/",
+    "fetched": "2026-07-23",
+    "plate": "light"
+  },
+  "gravel-and-grind": {
+    "file": "/food-truck-marks/gravel-and-grind.png",
+    "source": "https://images.squarespace-cdn.com/content/v1/5e9e3f99a252394abd1b2a2b/1620132170309-KD6JFS3BN9TW7HIH4HFG/Logo+bitmap+4-4-21.png?format=1500w",
+    "sourcePage": "https://www.gravelandgrind.com/gravel-and-grind-events-2",
+    "fetched": "2026-07-23",
+    "plate": "light"
+  },
+  "grilled-cheese-please": {
+    "file": "/food-truck-marks/grilled-cheese-please.png",
+    "source": "https://img1.wsimg.com/isteam/ip/61aa6f57-d3ec-4870-958f-0beb23163549/Official%20Logo%20GCP-3-4d9561f.png",
+    "sourcePage": "https://grilledcheeseplease.online/schedule",
+    "fetched": "2026-07-23",
+    "plate": "light"
+  },
+  "in10se-bbq": {
+    "file": "/food-truck-marks/in10se-bbq.png",
+    "source": "https://static.wixstatic.com/media/06a785_8c1cdfae1246434dbd4380973a34959a~mv2_d_2778_1269_s_2.png",
+    "sourcePage": "https://www.in10sebbq.com/",
+    "fetched": "2026-07-23",
+    "plate": "light"
+  },
+  "maytas-peruvian": {
+    "file": "/food-truck-marks/maytas-peruvian.png",
+    "source": "https://static.wixstatic.com/media/768b8a_5b5b2bea76374ad7957714e0391d051c~mv2.jpeg",
+    "sourcePage": "https://www.maytacuisine.com/",
+    "fetched": "2026-07-23",
+    "plate": "light"
+  },
+  "mls-ragin-cajun": {
+    "file": "/food-truck-marks/mls-ragin-cajun.png",
+    "source": "https://images.squarespace-cdn.com/content/v1/6978162d27574f0ff148772f/22a04c53-e675-4b31-9628-18ea7fae8478/Ragin-Cajun-Logo-Final-White.png?format=1500w",
+    "sourcePage": "https://www.mlsragincajun.com/",
+    "fetched": "2026-07-23",
+    "plate": "dark"
+  },
+  "sabor-de-cuba": {
+    "file": "/food-truck-marks/sabor-de-cuba.png",
+    "source": "https://img1.wsimg.com/isteam/ip/14678077-eaa0-48eb-9761-c9b35f5f47a5/logo%20original%20cuba.jpg/:/rs=h:132,cg:true,m/qt=q:95",
+    "sourcePage": "https://sabordecubarestaurant.com/experience",
+    "fetched": "2026-07-23",
+    "plate": "light"
+  },
+  "traditional-authentic-mexican": {
+    "file": "/food-truck-marks/traditional-authentic-mexican.png",
+    "source": "https://traditional.mx/apple-touch-icon.png",
+    "sourcePage": "https://traditional.mx/",
+    "fetched": "2026-07-23",
+    "plate": "dark"
+  },
+  "kona-ice-frederick": {
+    "file": "/food-truck-marks/kona-ice-frederick.png",
+    "source": "https://www.kona-ice.com/wp-content/uploads/2023/03/cropped-favicon-180x180.png",
+    "sourcePage": "https://www.kona-ice.com/local-site/kona-ice-of-frederick-county-md/",
+    "fetched": "2026-07-23",
+    "plate": "light"
+  },
+  "kotei-kids-shaved-ice": {
+    "file": "/food-truck-marks/kotei-kids-shaved-ice.png",
+    "source": "https://koteikidsshavedice.com/wp-content/uploads/2022/09/cropped-favicon.png",
+    "sourcePage": "https://koteikidsshavedice.com/",
+    "fetched": "2026-07-23",
+    "plate": "light"
+  }
+}

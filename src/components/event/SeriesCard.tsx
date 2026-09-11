@@ -5,6 +5,7 @@ import { Repeat, ChevronDown, MapPin, ExternalLink, CalendarPlus } from "lucide-
 import { haptic } from "@/lib/haptics";
 import type { IngestedSeries } from "@/lib/loaders/ingested";
 import { formatEventDate, formatEventTime, eventDateParts } from "@/lib/format/eventTime";
+import DatePlate from "@/components/event/DatePlate";
 
 function fmtDate(iso: string, allDay: boolean): string {
   return allDay
@@ -27,28 +28,30 @@ export default function SeriesCard({ series }: { series: IngestedSeries }) {
   const [open, setOpen] = useState(false);
   const next = series.occurrences[0];
   const more = series.occurrences.slice(1);
+  const nextDate = eventDateParts(next.startsAtUtc);
 
   return (
     <article
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
-      style={{ borderColor: "var(--app-border)" }}
+      className="overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
+      style={{ boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
     >
       <div className="flex items-start gap-3 p-3">
-        {/* Date block */}
-        <div
-          className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-md)] border"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
-          aria-hidden
-        >
-          <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--app-brand)" }}>
-            {eventDateParts(next.startsAtUtc).monthShort}
-          </span>
-          <span className="font-serif text-xl font-semibold leading-none" style={{ color: "var(--app-ink)" }}>
-            {eventDateParts(next.startsAtUtc).day}
-          </span>
-        </div>
+        <DatePlate
+          month={nextDate.monthShort}
+          day={nextDate.day}
+          weekday={nextDate.weekdayShort}
+          accent="var(--app-brand)"
+        />
 
         <div className="min-w-0 flex-1">
+          {series.presenter && (
+            <p
+              className="text-[10px] font-bold uppercase tracking-[0.1em]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              {series.presenter}
+            </p>
+          )}
           <h3 className="text-[15px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
             {series.title}
           </h3>
@@ -59,14 +62,14 @@ export default function SeriesCard({ series }: { series: IngestedSeries }) {
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {series.category && (
               <span
-                className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
+                className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
                 style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}
               >
                 {series.category}
               </span>
             )}
             <span
-              className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
+              className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
               style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}
             >
               {series.municipality}
@@ -75,8 +78,8 @@ export default function SeriesCard({ series }: { series: IngestedSeries }) {
               <button
                 type="button"
                 onClick={() => { haptic("light"); setOpen((v) => !v); }}
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                style={{ background: "var(--app-brand)1A", color: "var(--app-brand)" }}
+                className="tap-44 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                style={{ background: "var(--app-brand-tint-14)", color: "var(--app-brand-press)" }}
                 aria-expanded={open}
               >
                 <Repeat className="h-3 w-3" strokeWidth={2.5} aria-hidden />
@@ -109,7 +112,7 @@ export default function SeriesCard({ series }: { series: IngestedSeries }) {
                   href={o.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] font-medium"
+                  className="inline-flex min-h-11 items-center gap-1 text-[11px] font-medium"
                   style={{ color: "var(--app-cool)" }}
                 >
                   Details <ExternalLink className="h-3 w-3" aria-hidden />
@@ -127,7 +130,7 @@ export default function SeriesCard({ series }: { series: IngestedSeries }) {
 
       {/* Footer actions */}
       <div
-        className="flex items-center justify-between border-t px-4 py-2 text-[11px]"
+        className="flex min-h-11 items-center justify-between gap-3 border-t px-4 text-[11px]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
       >
         <span className="inline-flex items-center gap-1">
@@ -138,8 +141,8 @@ export default function SeriesCard({ series }: { series: IngestedSeries }) {
             href={next.sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 font-medium"
-            style={{ color: "var(--app-brand)" }}
+            className="inline-flex min-h-11 shrink-0 items-center gap-1 font-medium"
+            style={{ color: "var(--app-brand-press)" }}
           >
             <CalendarPlus className="h-3 w-3" aria-hidden /> Event page
           </a>

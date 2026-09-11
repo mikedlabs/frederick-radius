@@ -1,0 +1,7 @@
+{
+  "_doc": "Seasonal place gates. Keyed by place slug; months are 1-indexed (Jan=1, Dec=12). A place listed here is HIDDEN from public listings whenever the current month is NOT in its months array. /places/<slug> still resolves (so shared links + sitemap entries don't 404), but the place won't appear in /map, /places, /m/<muni>, search, etc. Add entries here when a place is genuinely seasonal — not for places that just have winter hours.",
+  "sailing-through-the-winter-solstice": {
+    "label": "Carroll Creek sailboats — Nov–early Feb",
+    "months": [11, 12, 1, 2]
+  }
+}

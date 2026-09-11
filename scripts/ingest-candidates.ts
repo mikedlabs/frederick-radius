@@ -13,10 +13,10 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { publicPlaces } from "@/lib/loaders/places";
-import { resolveMunicipality } from "@/lib/connect";
+import { resolveFrederickMunicipality } from "@/lib/location";
 import { isNonDiscoverable } from "@/lib/relevance";
 import { haversineMeters } from "@/lib/geo";
-import { FREDERICK_COUNTY_BBOX } from "@/lib/integrations/overpass";
+import { placementRejectionReason } from "@/lib/placement-trust";
 
 type Candidate = {
   google_place_id?: string;
@@ -43,11 +43,11 @@ function nameHit(a: string, b: string): boolean {
 
 const IN = new URL("../src/data/discovered-candidates.json", import.meta.url).pathname;
 const OUT = new URL("../src/data/discovered-clean.json", import.meta.url).pathname;
+const REJECTED = new URL("../src/data/discovered-placement-rejected.json", import.meta.url).pathname;
 
 function main() {
   const quiet = process.argv.includes("--quiet");
   const raw = JSON.parse(readFileSync(IN, "utf8")) as Candidate[];
-  const [s, w, n, e] = FREDERICK_COUNTY_BBOX; // [south, west, north, east]
 
   // Spatial index of existing public places for dedupe.
   const existing: Record<string, { nm: string; lat: number; lng: number }[]> = {};
@@ -72,23 +72,57 @@ function main() {
   const drop = { noName: 0, noCoord: 0, outOfCounty: 0, nonDiscoverable: 0, dupExisting: 0, dupSelf: 0 };
   const selfIdx: Record<string, { nm: string; lat: number; lng: number }[]> = {};
   const clean: Array<Candidate & { lat: number; lng: number; municipality: string }> = [];
+  const rejectedPlacement: Array<{
+    reason: string;
+    source_address: string;
+    candidate: Candidate;
+  }> = [];
 
   for (const c of raw) {
     const name = (c.name ?? "").trim();
     if (!name) { drop.noName++; continue; }
     const lat = c.location?.latitude, lng = c.location?.longitude;
     if (typeof lat !== "number" || typeof lng !== "number") { drop.noCoord++; continue; }
-    if (lat < s || lat > n || lng < w || lng > e) { drop.outOfCounty++; continue; }
+    const reason = placementRejectionReason({ lng, lat });
+    const municipality = reason
+      ? null
+      : resolveFrederickMunicipality({ lng, lat });
+    if (reason || !municipality) {
+      drop.outOfCounty++;
+      rejectedPlacement.push({
+        reason: reason ?? "outside-county-area",
+        source_address: c.address ?? "",
+        candidate: c,
+      });
+      continue;
+    }
     if (isNonDiscoverable(c.primary_type)) { drop.nonDiscoverable++; continue; }
     const nm = normName(name);
     if (collides(existing, nm, lat, lng)) { drop.dupExisting++; continue; }
     if (collides(selfIdx, nm, lat, lng)) { drop.dupSelf++; continue; }
     (selfIdx[cell(lat, lng)] ??= []).push({ nm, lat, lng });
-    const muni = resolveMunicipality({ lng, lat });
-    clean.push({ ...c, lat, lng, municipality: muni.municipality.slug });
+    clean.push({
+      ...c,
+      lat,
+      lng,
+      municipality: municipality.municipality.slug,
+    });
   }
 
   writeFileSync(OUT, JSON.stringify(clean, null, 2));
+  writeFileSync(
+    REJECTED,
+    JSON.stringify(
+      {
+        generated_at: new Date().toISOString(),
+        source: "discovered-candidates.json",
+        count: rejectedPlacement.length,
+        rows: rejectedPlacement,
+      },
+      null,
+      2,
+    ),
+  );
 
   if (!quiet) {
     const byMuni: Record<string, number> = {};
@@ -108,7 +142,8 @@ function main() {
     console.log(`  CLEAN NEW PLACES: ${clean.length}`);
     console.log(`\n  by town: ${top(byMuni, 14)}`);
     console.log(`\n  top types: ${top(byType, 18)}`);
-    console.log(`\n  wrote src/data/discovered-clean.json (review artifact — NOT merged)\n`);
+    console.log(`\n  wrote src/data/discovered-clean.json (review artifact — NOT merged)`);
+    console.log(`  retained ${rejectedPlacement.length} placement rejection(s) in src/data/discovered-placement-rejected.json\n`);
   }
 }
 

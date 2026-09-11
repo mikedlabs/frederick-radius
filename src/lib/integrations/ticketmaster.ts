@@ -17,9 +17,16 @@
  */
 import type { LngLat } from "@/lib/geo";
 import type { LiveEvent } from "@/lib/integrations/ical-live";
+import { deriveEventStatus, stripStatusMarker, type EventStatus } from "@/lib/event-status";
 import { resolveMunicipality } from "@/lib/connect";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/integrations/overpass";
 import { MUNICIPALITIES } from "@/data/municipalities";
+import {
+  eventAdapterDisabled,
+  eventAdapterFailed,
+  eventAdapterOk,
+  type EventAdapterResult,
+} from "@/lib/integrations/event-adapter-result";
 
 const ENDPOINT = "https://app.ticketmaster.com/discovery/v2/events.json";
 const FETCH_TIMEOUT_MS = 15_000;
@@ -41,10 +48,106 @@ type TmEvent = {
   id?: string;
   name?: string;
   url?: string;
-  dates?: { start?: { dateTime?: string; localDate?: string; localTime?: string } };
+  /** Ticketmaster's editorial blurb for the event, when the promoter wrote one. */
+  info?: string;
+  /** Logistics note ("doors at 7", "clear bag policy"). Real information for
+   *  a person deciding to go; joined after info. */
+  pleaseNote?: string;
+  dates?: {
+    start?: { dateTime?: string; localDate?: string; localTime?: string };
+    status?: { code?: string };
+  };
   priceRanges?: Array<{ min?: number }>;
-  _embedded?: { venues?: TmVenue[] };
+  images?: Array<{ url?: string; width?: number; ratio?: string }>;
+  _embedded?: {
+    venues?: TmVenue[];
+    /** The bill: headliner plus support. The event name usually carries the
+     *  headliner; names beyond the first are the support acts. */
+    attractions?: Array<{ name?: string }>;
+  };
 };
+
+/** The support acts as one plain sentence, or undefined when the bill is just
+ *  the headliner. The first attraction is the headliner the title already
+ *  names; repeating it would say the same thing twice. */
+export function tmLineupSentence(
+  attractions: NonNullable<TmEvent["_embedded"]>["attractions"],
+): string | undefined {
+  const names = (attractions ?? [])
+    .map((a) => a?.name?.trim())
+    .filter((name): name is string => Boolean(name));
+  if (names.length < 2) return undefined;
+  const support = names.slice(1);
+  return `With ${support.join(", ")}.`;
+}
+
+/** Description from the fields Ticketmaster actually publishes: the editorial
+ *  blurb, the logistics note, and the support lineup, joined as sentences.
+ *  Empty when the promoter wrote nothing — never fabricated. */
+export function tmDescription(ev: TmEvent): string {
+  return [ev.info?.trim(), ev.pleaseNote?.trim(), tmLineupSentence(ev._embedded?.attractions)]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
+/** "From $28" / "From $28.50" — only when the feed publishes a real floor
+ *  above zero (zero means free and is_free already owns that). */
+export function ticketFloorText(min: number | undefined): string | undefined {
+  if (typeof min !== "number" || !Number.isFinite(min) || min <= 0) return undefined;
+  return `From $${Number.isInteger(min) ? min : min.toFixed(2)}`;
+}
+
+/**
+ * Hosts next.config.ts allowlists for event hero images. The adapters
+ * emit hero_image ONLY for these, so an unexpected CDN in a feed
+ * response silently drops the image rather than crashing next/image
+ * (an off-list host throws at render). Keep in sync with next.config.
+ */
+export const EVENT_IMAGE_HOSTS: ReadonlySet<string> = new Set([
+  "s1.ticketm.net",
+  "seatgeek.com",
+]);
+
+export function allowedEventImage(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" && EVENT_IMAGE_HOSTS.has(u.hostname) ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Best card image from Ticketmaster's size ladder: prefer 16:9 near the
+ *  card's ~640px render width, fall back to the widest image of any ratio.
+ *  Only allowlisted hosts survive. Undefined when nothing usable. */
+export function pickTmImage(images: TmEvent["images"]): string | undefined {
+  const usable = (images ?? []).filter(
+    (i) => allowedEventImage(i?.url) && (i.width ?? 0) >= 300,
+  );
+  if (usable.length === 0) return undefined;
+  const wide = usable.filter((i) => i.ratio === "16_9");
+  const pool = wide.length > 0 ? wide : usable;
+  const scored = [...pool].sort(
+    (a, b) => Math.abs((a.width ?? 0) - 640) - Math.abs((b.width ?? 0) - 640),
+  );
+  return scored[0]?.url;
+}
+
+/**
+ * Lifecycle status for a Ticketmaster row. The structured
+ * dates.status.code is authoritative when it says cancelled/postponed;
+ * "rescheduled" means a NEW date is set and dates.start already carries
+ * it, so the event is still on. Title sniff fills the gap for venues
+ * that only edit the name (same fallback the iCal lane uses).
+ */
+function tmStatus(ev: TmEvent): EventStatus {
+  const code = (ev.dates?.status?.code ?? "").trim().toLowerCase();
+  if (code === "cancelled" || code === "canceled") return "cancelled";
+  if (code === "postponed") return "postponed";
+  return deriveEventStatus(ev.name ?? "");
+}
 
 function inCounty(lat: number, lng: number): boolean {
   const [s, w, n, e] = FREDERICK_COUNTY_BBOX; // [south, west, north, east]
@@ -91,10 +194,11 @@ export function normalizeTicketmaster(raw: unknown): LiveEvent[] {
     const geom: LngLat = { lng, lat };
     const municipality = municipalityFor(v?.city?.name, geom);
     const minPrice = ev.priceRanges?.[0]?.min;
+    const status = tmStatus(ev);
     out.push({
       id: `tm-${ev.id}`,
-      title: ev.name,
-      description: "",
+      title: status === "scheduled" ? ev.name : stripStatusMarker(ev.name),
+      description: tmDescription(ev),
       starts_at: start,
       ends_at: start,
       venue_name: v?.name ?? "Live music",
@@ -107,7 +211,9 @@ export function normalizeTicketmaster(raw: unknown): LiveEvent[] {
       source_label: "Ticketmaster",
       url: ev.url ?? "",
       is_free: typeof minPrice === "number" && minPrice === 0,
-      status: "scheduled" as const,
+      price_text: ticketFloorText(minPrice),
+      hero_image: pickTmImage(ev.images),
+      status,
       last_verified_at: new Date().toISOString(),
     });
   }
@@ -120,9 +226,11 @@ export function normalizeTicketmaster(raw: unknown): LiveEvent[] {
  * query (Ticketmaster requires apikey as a param) — server-only module,
  * so it never reaches the client.
  */
-export async function fetchTicketmasterMusic(): Promise<LiveEvent[]> {
+export async function fetchTicketmasterMusicResult(): Promise<
+  EventAdapterResult<LiveEvent>
+> {
   const key = (process.env.TICKETMASTER_API_KEY ?? "").trim();
-  if (!key) return [];
+  if (!key) return eventAdapterDisabled();
   const url =
     `${ENDPOINT}?apikey=${encodeURIComponent(key)}` +
     `&classificationName=Music&sort=date,asc&size=100&unit=miles` +
@@ -131,13 +239,18 @@ export async function fetchTicketmasterMusic(): Promise<LiveEvent[]> {
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(url, { signal: ctrl.signal, headers: { Accept: "application/json" } });
-    if (!res.ok) return [];
-    return normalizeTicketmaster(await res.json());
+    if (!res.ok) return eventAdapterFailed();
+    return eventAdapterOk(normalizeTicketmaster(await res.json()));
   } catch {
-    return []; // network/abort/parse — degrade silently, never fabricate
+    return eventAdapterFailed();
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Legacy data-only facade. Health-aware callers should use the Result form. */
+export async function fetchTicketmasterMusic(): Promise<LiveEvent[]> {
+  return (await fetchTicketmasterMusicResult()).items;
 }
 
 /**
@@ -157,9 +270,11 @@ export async function fetchTicketmasterMusic(): Promise<LiveEvent[]> {
  * tournament, vs.) to "sports" too, but a Keys vs. Salem game whose
  * title doesn't trip any of those would otherwise read as "music."
  */
-export async function fetchTicketmasterSports(): Promise<LiveEvent[]> {
+export async function fetchTicketmasterSportsResult(): Promise<
+  EventAdapterResult<LiveEvent>
+> {
   const key = (process.env.TICKETMASTER_API_KEY ?? "").trim();
-  if (!key) return [];
+  if (!key) return eventAdapterDisabled();
   const url =
     `${ENDPOINT}?apikey=${encodeURIComponent(key)}` +
     `&classificationName=Sports&sort=date,asc&size=100&unit=miles` +
@@ -168,12 +283,17 @@ export async function fetchTicketmasterSports(): Promise<LiveEvent[]> {
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(url, { signal: ctrl.signal, headers: { Accept: "application/json" } });
-    if (!res.ok) return [];
+    if (!res.ok) return eventAdapterFailed();
     const events = normalizeTicketmaster(await res.json());
-    return events.map((e) => ({ ...e, category: "sports" }));
+    return eventAdapterOk(events.map((e) => ({ ...e, category: "sports" })));
   } catch {
-    return [];
+    return eventAdapterFailed();
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Legacy data-only facade. Health-aware callers should use the Result form. */
+export async function fetchTicketmasterSports(): Promise<LiveEvent[]> {
+  return (await fetchTicketmasterSportsResult()).items;
 }

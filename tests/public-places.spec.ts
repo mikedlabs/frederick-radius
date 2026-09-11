@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  canonicalBusinessStatusRefreshCandidates,
   publicPlaces,
   radiusPlaces,
   publicPlaceBySlug,
@@ -8,6 +9,8 @@ import {
 } from "@/lib/loaders/places";
 import { PLACES } from "@/data/places";
 import { isKnownClosed } from "@/lib/integrations/closures";
+import { MANUAL_PLACE_STATUS_OVERRIDES } from "@/lib/place-status-overrides";
+import { publishablePlaceWebsite } from "@/lib/place-website-policy";
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
 
 /**
@@ -62,6 +65,135 @@ describe("publicPlaces (canonical public set)", () => {
 
   it("radiusPlaces() is an exact back-compat alias of publicPlaces()", () => {
     expect(slugsOf(radiusPlaces())).toEqual(slugsOf(publicPlaces()));
+  });
+
+  it("never presents a directory or marketplace as a place website", () => {
+    for (const place of publicPlaces()) {
+      if (place.website) {
+        expect(
+          publishablePlaceWebsite(place.website, place.name),
+        ).toBe(place.website);
+      }
+    }
+    expect(publicPlaceBySlug("starbucks-844")?.website).toBeUndefined();
+    expect(publicPlaceBySlug("visit-frederick")?.website).toBe(
+      "https://www.visitfrederick.org/",
+    );
+  });
+});
+
+describe("canonicalBusinessStatusRefreshCandidates", () => {
+  const providerClosedSlug = "mon-bon-croissant";
+
+  it("keeps a provider-hidden closure eligible for reopening checks", () => {
+    const place = PLACES.find((row) => row.slug === providerClosedSlug);
+    expect(place).toBeDefined();
+    expect(isOperational(place!)).toBe(false);
+    expect(publicPlaces().some((row) => row.slug === providerClosedSlug)).toBe(
+      false,
+    );
+    expect(
+      canonicalBusinessStatusRefreshCandidates().some(
+        (row) => row.slug === providerClosedSlug,
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps a reviewed operational correction public and eligible for recheck", () => {
+    const place = PLACES.find((row) => row.slug === providerClosedSlug);
+    expect(place).toBeDefined();
+    const previous = MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug];
+    MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug] = {
+      status: "operational",
+      effective_at: "2026-07-26",
+      review_after: "2099-08-02",
+      source: "https://example.com/official-location",
+      note: "Test-only first-party operational correction.",
+    };
+    try {
+      expect(isOperational(place!)).toBe(true);
+      expect(publicPlaceBySlug(providerClosedSlug)).toBeDefined();
+      expect(
+        canonicalBusinessStatusRefreshCandidates().some(
+          (row) => row.slug === providerClosedSlug,
+        ),
+      ).toBe(true);
+    } finally {
+      if (previous) {
+        MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug] = previous;
+      } else {
+        delete MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug];
+      }
+    }
+  });
+
+  it("excludes manual safety closures and the known-closed denylist", () => {
+    const previous = MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug];
+    MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug] = {
+      status: "closed_temporarily",
+      effective_at: "2026-07-26",
+      review_after: "2026-08-02",
+      source: "https://example.com/official-closure",
+      note: "Test-only safety closure.",
+    };
+    try {
+      expect(
+        canonicalBusinessStatusRefreshCandidates().some(
+          (row) => row.slug === providerClosedSlug,
+        ),
+      ).toBe(false);
+    } finally {
+      if (previous) {
+        MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug] = previous;
+      } else {
+        delete MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug];
+      }
+    }
+
+    const candidateSlugs = new Set(
+      canonicalBusinessStatusRefreshCandidates().map((row) => row.slug),
+    );
+    expect(candidateSlugs.has("the-cozy-creamery-thurmont")).toBe(false);
+    for (const place of PLACES.filter((row) => isKnownClosed(row.name))) {
+      expect(candidateSlugs.has(place.slug)).toBe(false);
+    }
+  });
+
+  it("keeps future or invalid manual closures eligible for provider recheck", () => {
+    const previous = MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug];
+    try {
+      MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug] = {
+        status: "closed_temporarily",
+        effective_at: "2099-01-01",
+        review_after: "2099-01-31",
+        source: "https://example.com/official-closure",
+        note: "Test-only future closure.",
+      };
+      expect(
+        canonicalBusinessStatusRefreshCandidates(
+          new Date("2026-08-01T12:00:00Z"),
+        ).some((row) => row.slug === providerClosedSlug),
+      ).toBe(true);
+
+      MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug] = {
+        status: "closed_permanently",
+        effective_at: "2026-07-31",
+        review_after: "2026-08-31",
+        source: "not-a-url",
+        note: "",
+      };
+      expect(
+        canonicalBusinessStatusRefreshCandidates(
+          new Date("2026-08-01T12:00:00Z"),
+        ).some((row) => row.slug === providerClosedSlug),
+      ).toBe(true);
+    } finally {
+      if (previous) {
+        MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug] = previous;
+      } else {
+        delete MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug];
+      }
+    }
   });
 });
 

@@ -1,16 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Map, { Marker, Popup, NavigationControl } from "react-map-gl/mapbox";
-import type { Map as GLMap } from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+import { ArrowRight } from "lucide-react";
+import Map, { Marker, Popup, NavigationControl, AttributionControl } from "react-map-gl/maplibre";
+import "maplibre-gl/dist/maplibre-gl.css";
 import Link from "next/link";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { FREDERICK_CENTER } from "@/lib/geo";
-import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
-
-import { MAPBOX_TOKEN } from "@/lib/mapbox";
-const STYLE_URL = "mapbox://styles/mapbox/dark-v11";
+import { useFrederickFlavorStyle } from "@/components/map/useFrederickFlavorStyle";
 
 export type EventPin = {
   slug: string;
@@ -23,7 +20,7 @@ export type EventPin = {
 /**
  * Center + zoom for the current pin set. A heuristic (not fitBounds) so a
  * single event or a tight cluster never degenerates into a max-zoom jump,
- * and so the county-wide "all events" view frames all twelve towns.
+ * and so the county-wide "all events" view frames all twelve municipalities.
  */
 function viewFor(events: EventPin[]): { longitude: number; latitude: number; zoom: number } {
   if (events.length === 0) {
@@ -60,6 +57,10 @@ export default function EventsMapInner({
   const view = useMemo(() => viewFor(events), [events]);
   const [selected, setSelected] = useState<string | null>(null);
   const active = events.find((e) => e.slug === selected) ?? null;
+  // The self-hosted county basemap, in the app's own paper palette. This
+  // surface used to wear Mapbox dark-v11 — a stock style that made the
+  // events map the one product surface with a different identity.
+  const mapStyle = useFrederickFlavorStyle();
 
   return (
     <div
@@ -67,16 +68,15 @@ export default function EventsMapInner({
       style={{ borderColor: "var(--app-border)", height }}
     >
       <Map
-        mapboxAccessToken={MAPBOX_TOKEN}
         initialViewState={view}
-        mapStyle={STYLE_URL}
+        mapStyle={mapStyle}
         style={{ width: "100%", height: "100%" }}
-        attributionControl={true}
+        attributionControl={false}
         dragRotate={false}
         touchPitch={false}
-        onLoad={(e) => applyFrederickPalette(e.target as unknown as GLMap)}
         onClick={() => setSelected(null)}
       >
+        <AttributionControl compact position="bottom-right" />
         <NavigationControl position="top-right" showCompass={false} />
         {events.map((e) => {
           const color = CATEGORY_BY_SLUG[e.category]?.color ?? "var(--app-brand)";
@@ -127,16 +127,16 @@ export default function EventsMapInner({
               href={`/events/${active.slug}`}
               className="block max-w-[200px] px-1 py-0.5"
             >
-              <span className="block text-[13px] font-semibold leading-snug" style={{ color: "#0A0A0A" }}>
+              <span className="block text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink, #221C15)" }}>
                 {active.title}
               </span>
               {active.venue_name && (
-                <span className="mt-0.5 block text-[11px]" style={{ color: "#4A4A48" }}>
+                <span className="mt-0.5 block text-[11px]" style={{ color: "var(--app-ink-2, #4A4A48)" }}>
                   {active.venue_name}
                 </span>
               )}
-              <span className="mt-1 block text-[11px] font-semibold" style={{ color: "var(--app-brand)" }}>
-                View event →
+              <span className="mt-1 block text-[11px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+                View event <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
               </span>
             </Link>
           </Popup>

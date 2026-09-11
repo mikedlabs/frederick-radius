@@ -1,0 +1,82 @@
+{
+  "_doc": "Sources for the municipal civic extraction agent (scripts/ingest-municipal-civic.ts). For each town, list official gov page URL(s) to extract from. The agent fetches each URL, has Claude pull structured civic fields (town hall, public works, trash/recycling, permits, police non-emergency, utilities) with source + freshness, and writes src/data/municipal-civic.json. Towns with empty `urls` are skipped. URLs verified live (HTTP 200 via plain fetch) May 2026 except where noted. The agent validates at fetch time, logs failures, and NEVER fabricates: it only extracts from fetched pages.",
+  "towns": [
+    {
+      "slug": "brunswick",
+      "name": "Brunswick",
+      "searchHint": "City of Brunswick MD official government website",
+      "urls": ["https://brunswickmd.gov/publicworks", "https://brunswickmd.gov/"],
+      "note": "Public Works page carries trash/recycling + the Frederick County recycling contact."
+    },
+    {
+      "slug": "thurmont",
+      "name": "Thurmont",
+      "searchHint": "Town of Thurmont MD official website",
+      "urls": ["https://www.thurmont.com/2143/Government", "https://www.thurmont.com/2170/General-Recycling-Information"],
+      "note": "615 E. Main St. CivicEngage; Government + Recycling pages have town office contact, trash/recycling, yard waste."
+    },
+    {
+      "slug": "middletown",
+      "name": "Middletown",
+      "searchHint": "Town of Middletown MD official website",
+      "urls": ["https://www.middletown.md.us/"],
+      "note": "Burgess & Commissioners, 31 W. Main St, 301-371-6171. Homepage carries contact + meeting schedule."
+    },
+    {
+      "slug": "walkersville",
+      "name": "Walkersville",
+      "searchHint": "Town of Walkersville MD official website",
+      "urls": ["https://www.walkersvillemd.gov/"],
+      "note": "Town Hall, 21 W. Frederick St, 301-845-4500."
+    },
+    {
+      "slug": "emmitsburg",
+      "name": "Emmitsburg",
+      "searchHint": "Town of Emmitsburg MD official website",
+      "urls": ["https://www.emmitsburgmd.gov/", "https://www.emmitsburgmd.gov/residents/null/trash/index.php"],
+      "note": "Town Office, 300A S. Seton Ave, 301-600-6300. Trash path is CMS-generated; agent skips if it 404s."
+    },
+    {
+      "slug": "new-market",
+      "name": "New Market",
+      "searchHint": "Town of New Market MD official website",
+      "urls": ["https://www.townofnewmarket.org/contacts-directory", "https://www.townofnewmarket.org/"],
+      "note": "Town Hall, 40 South Alley. NOTE: 403s a plain fetch (scraper-blocked) — needs render support or a partnership; agent will log+skip until then."
+    },
+    {
+      "slug": "mount-airy",
+      "name": "Mount Airy",
+      "searchHint": "Town of Mount Airy MD official website",
+      "urls": ["https://mountairymd.gov/27/Government-Services", "https://www.mountairymd.gov/205/Trash-Yard-Waste-Recycling"],
+      "note": "CivicEngage. Government Services + Trash/Yard Waste/Recycling pages."
+    },
+    {
+      "slug": "myersville",
+      "name": "Myersville",
+      "searchHint": "Town of Myersville MD official website",
+      "urls": ["https://myersville.org/government"],
+      "note": "Town Hall, 301 Main St, 301-293-4281."
+    },
+    {
+      "slug": "woodsboro",
+      "name": "Woodsboro",
+      "searchHint": "Town of Woodsboro MD official website",
+      "urls": ["https://woodsboro.org/"],
+      "note": "Burgess + 4 commissioners (~1,000 residents). Homepage carries contacts + meetings."
+    },
+    {
+      "slug": "burkittsville",
+      "name": "Burkittsville",
+      "searchHint": "Town of Burkittsville MD official website",
+      "urls": ["https://burkittsville-md.gov/government/", "https://burkittsville-md.gov/contact-us/"],
+      "note": "Historic village. townoffice@burkittsville-md.gov, 301-969-0326, PO Box 485."
+    },
+    {
+      "slug": "rosemont",
+      "name": "Rosemont",
+      "searchHint": "Village of Rosemont MD Frederick County",
+      "urls": ["https://sites.google.com/site/rosemontmd/home"],
+      "note": "Tiny village (~272). Google Sites is JS-rendered, so a plain fetch may return little; may need render. 240-409-5450."
+    }
+  ]
+}

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, ChevronRight, Cloud, Mail } from "lucide-react";
+import { ChevronRight, LogOut, Mail } from "lucide-react";
 import PreferencesPanel from "@/components/settings/PreferencesPanel";
+import DataBackup from "@/components/settings/DataBackup";
 import PageBloom from "@/components/ui/PageBloom";
 import { getServerUser } from "@/lib/auth";
 
@@ -19,10 +20,10 @@ import { getServerUser } from "@/lib/auth";
  */
 
 export const metadata: Metadata = {
+  robots: { index: false },
   title: "Settings",
   description:
-    "How Frederick Radius is tuned for you. Persona, where you're anchored, what you're into, and what you hear from us.",
-  robots: { index: false, follow: false },
+    "Choose how Frederick Radius uses your home area and interests, and manage your account.",
 };
 
 export default async function SettingsPage() {
@@ -31,27 +32,22 @@ export default async function SettingsPage() {
     <div className="relative space-y-5">
       <PageBloom variant="cool" />
       <header className="space-y-2">
-        <Link
-          href="/today"
-          className="inline-flex items-center gap-1 text-[12px] font-semibold"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          Back
-        </Link>
+        {/* No page-level Back — the TopBar already renders a ChevronLeft
+            back control for every deep (non-tab) page like Settings, and it
+            prefers real history over a hardcoded /today (2026-07 shell-
+            hardening P6: two stacked Back affordances). */}
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
           Settings
         </p>
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          How we&apos;re tuned for you.
+          Settings
         </h1>
         <p
           className="text-[14px] leading-relaxed text-pretty"
           style={{ color: "var(--app-ink-2)" }}
         >
-          Every pick here changes what surfaces on Today and Radius.
-          Nothing here is required. Place sync is optional; the rest stays on
-          this device.
+          Change what leads on Today and the Map. Preferences stay on this
+          device, while signing in syncs saved places.
         </p>
       </header>
 
@@ -66,46 +62,45 @@ export default async function SettingsPage() {
         style={{ borderColor: "var(--app-border)" }}
       >
         {user ? (
-          <Link href="/settings/sync" className="group flex min-h-11 items-center gap-3">
-            <span
-              aria-hidden
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-              style={{
-                background: "color-mix(in srgb, var(--app-positive) 13%, transparent)",
-                color: "var(--app-positive)",
-              }}
-            >
-              <Cloud className="h-4 w-4" strokeWidth={2} />
-            </span>
+          <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p
-                className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
-                style={{ color: "var(--app-positive)" }}
+                className="text-[11px] font-bold uppercase tracking-[0.12em]"
+                style={{ color: "var(--app-ink-3)" }}
               >
-                Place sync is on
+                Account
               </p>
               <p
                 className="mt-1 truncate font-serif text-[16px] font-semibold leading-tight"
                 style={{ color: "var(--app-ink)" }}
               >
-                Sync & privacy
+                {user.email ?? "Signed in"}
               </p>
               <p
-                className="mt-1 text-[11.5px]"
+                className="mt-1 text-[12px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
-                {user.email ?? "Signed in"} · See what travels between devices.
+                Your saved places sync across your devices.
               </p>
             </div>
-            <ChevronRight
-              className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
-              style={{ color: "var(--app-ink-3)" }}
-              aria-hidden
-            />
-          </Link>
+            <form action="/auth/signout" method="post">
+              <button
+                type="submit"
+                className="tactile tactile-interactive tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+                style={{
+                  borderColor: "var(--app-border)",
+                  background: "var(--app-bg-sunken)",
+                  color: "var(--app-ink-2)",
+                }}
+              >
+                <LogOut className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                Sign out
+              </button>
+            </form>
+          </div>
         ) : (
           <Link
-            href="/auth/login?next=/settings/sync"
+            href="/auth/login?next=/settings"
             className="group flex min-h-11 items-center gap-3"
           >
             <span
@@ -123,25 +118,32 @@ export default async function SettingsPage() {
                 className="block text-[13px] font-semibold leading-tight"
                 style={{ color: "var(--app-ink)" }}
               >
-                Keep your places across devices
+                Sign in to sync saved places
               </span>
               <span
-                className="block text-[11.5px]"
+                className="block text-[12px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
-                One sign-in email. Only places in My Radius are synced.
+                Use a magic link to keep saved places on every device.
               </span>
             </span>
-            <ChevronRight
-              className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
-              style={{ color: "var(--app-ink-3)" }}
+            <span
               aria-hidden
-            />
+              className="transition-transform group-hover:translate-x-0.5"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+            </span>
           </Link>
         )}
       </section>
 
       <PreferencesPanel />
+
+      {/* Device-only data escape hatch: download / restore the fr:*
+          localStorage set as a plain JSON file. Sits below preferences —
+          it's insurance, not a daily control. */}
+      <DataBackup />
     </div>
   );
 }

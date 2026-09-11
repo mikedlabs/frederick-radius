@@ -1,0 +1,107 @@
+{
+  "_doc": "Venue registry for scripts/ingest-venue-events.ts. Each venue declares a `method` for how its events are collected: `feed` = a structured Squarespace ?format=json events collection, parsed deterministically with no model call; `weinberg` = the official Weinberg calendar's bounded Load More endpoint, parsed deterministically and filtered by its own venue taxonomy; `image` = the calendar is published only as a graphic, read with Claude vision from `imageUrl`; `render` = JS-rendered or 403s a bare fetch, so the page is loaded in a headless browser (Playwright) and the text handed to the model; `fetch` = static HTML handed to the model. Social-only sources (Instagram/Facebook) are not scraped. The agent validates completeness at fetch time and never fabricates: a failed or partial fetch leaves prior data untouched.",
+  "venues": [
+    {
+      "slug": "banyan",
+      "name": "The Banyan",
+      "category": "music",
+      "method": "feed",
+      "urls": [
+        "https://www.thebanyanmd.com/livemusic"
+      ],
+      "note": "216 E. Patrick St. Squarespace — its events collection serves clean JSON at /livemusic?format=json (upcoming[] with title + ms-epoch startDate/endDate + fullUrl). Parsed deterministically, no model call. Verified May 2026."
+    },
+    {
+      "slug": "weinberg-center",
+      "name": "Weinberg Center for the Arts",
+      "category": "theater",
+      "method": "weinberg",
+      "venueFilter": "weinberg-center",
+      "urls": [
+        "https://weinbergcenter.org/performances/?venue=weinberg-center"
+      ],
+      "note": "Historic 1926 theater. Read every card through the official site's bounded Load More endpoint, filtered to Weinberg Center. This deterministic path does not use a model or a discovery provider."
+    },
+    {
+      "slug": "sky-stage",
+      "name": "Sky Stage",
+      "category": "arts",
+      "method": "render",
+      "urls": [
+        "https://www.skystagefrederick.com/?format=json",
+        "https://www.skystagefrederick.com/project/calendar/"
+      ],
+      "note": "Open-air FAC venue, 59 S. Carroll St. Programmed by the Frederick Arts Council; its own /project/calendar/ page is an empty JS widget. Try the Squarespace site feed first, then render the homepage. Events also syndicate to the county CivicEngage calendar (frederickcountymd.gov) and Eventbrite — see docs/EXTRACTION_PLATFORM.md for the aggregator path if direct collection stays thin."
+    },
+    {
+      "slug": "new-spire",
+      "name": "New Spire Arts",
+      "category": "theater",
+      "method": "weinberg",
+      "venueFilter": "new-spire-arts",
+      "urls": [
+        "https://weinbergcenter.org/performances/?venue=new-spire-arts"
+      ],
+      "note": "15 W. Patrick St. Managed by the Weinberg Center. Read every card through the official site's bounded Load More endpoint, filtered to New Spire Arts."
+    },
+    {
+      "slug": "bushwallers",
+      "name": "Bushwaller's",
+      "category": "music",
+      "method": "image",
+      "imageUrl": "https://static.wixstatic.com/media/cea4fa_1a264cc4ca314aa38da0b0cdde2adab9~mv2.png",
+      "urls": [
+        "https://www.bushwallers.com/events"
+      ],
+      "note": "Oldest Irish pub in Frederick, 209 N. Market St. Live music upstairs. Wix site publishes the monthly lineup ONLY as a calendar PNG (no text, no feed) — read it with Claude vision from imageUrl. The image is a month graphic; refresh imageUrl when they post a new month (filename like 2026May.png). Verified May 2026."
+    },
+    {
+      "slug": "cellar-door",
+      "name": "Cellar Door",
+      "category": "music",
+      "method": "render",
+      "urls": [
+        "https://www.cellardoorfrederick.com/entertainment-1"
+      ],
+      "note": "5 E. Church St. Squarespace entertainment page. Posts a RECURRING weekly schedule (Open Mic Tue, Karaoke Thu, DJ Fri/Sat, Comedy Sun) rather than dated one-off shows, so the model extracts only what carries a real date; expect few or none. Render → model."
+    },
+    {
+      "slug": "bentztown",
+      "name": "Bentztown",
+      "category": "music",
+      "method": "render",
+      "urls": [
+        "https://www.bandsintown.com/v/10444653-bentztown"
+      ],
+      "note": "6 S. Bentz St. Southern food + bourbon + live-music stage. Its OWN site (bentztown.com) is CAPTCHA-walled — un-scrapable, verified May 2026. Read the lineup from its Bandsintown venue page instead: no CAPTCHA, ~33 upcoming shows with real dates, render. Bandsintown also carries Weinberg + other Frederick venues — a primary aggregator per docs/EXTRACTION_PLATFORM.md."
+    },
+    {
+      "slug": "jojos",
+      "name": "JoJo's Restaurant & Tap House",
+      "category": "music",
+      "method": "render",
+      "urls": [
+        "https://jojosrestauranttaphouse.com/events.php"
+      ],
+      "note": "16-18 E. Patrick St. Dining, happy hour & live music. Custom PHP site (SDP Technology) with a server-rendered events.php — render → model. Verified the domain + events page exist May 2026 (previous config had no URL). If events.php proves thin, they also post on Facebook (social-only fallback)."
+    },
+    {
+      "slug": "derby-new-market",
+      "name": "The Derby (New Market)",
+      "category": "music",
+      "method": "render",
+      "urls": [],
+      "note": "Live music Wed–Sat. Posts on Instagram/Facebook (@thederbymd) — social-only; needs the partnership/vision path, not blind scraping. URL left empty until a non-social source exists."
+    },
+    {
+      "slug": "the-frederick-center",
+      "name": "The Frederick Center",
+      "category": "community",
+      "method": "fetch",
+      "urls": [
+        "https://www.thefrederickcenter.org/events"
+      ],
+      "note": "The county's LGBTQ+ community hub, 5 E 2nd St. WordPress page lists upcoming events as static server-rendered HTML (ICS Calendar Pro widget hides its feed behind wp-admin AJAX, so no machine feed). Events are TFC programming (Queer Craft Night, Queeraoke, drag bingo fundraisers); some fundraisers happen at partner venues like Steinhardt Brewing. Skip events whose location is disclosed only to registered participants (e.g. Pink Drinks at a private home) rather than pinning them to the center. Verified Jul 2026."
+    }
+  ]
+}

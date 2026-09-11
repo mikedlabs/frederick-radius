@@ -4,7 +4,27 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 
-export default function SearchInput({ defaultValue = "" }: { defaultValue?: string }) {
+function searchHref(query: string, returnTo?: string, scope?: string, kind?: string): string {
+  const params = new URLSearchParams();
+  if (query) params.set("q", query);
+  if (returnTo) params.set("returnTo", returnTo);
+  if (scope) params.set("in", scope);
+  if (kind) params.set("kind", kind);
+  const suffix = params.toString();
+  return suffix ? `/search?${suffix}` : "/search";
+}
+
+export default function SearchInput({
+  defaultValue = "",
+  returnTo,
+  scope,
+  kind,
+}: {
+  defaultValue?: string;
+  returnTo?: string;
+  scope?: string;
+  kind?: string;
+}) {
   const router = useRouter();
   const [q, setQ] = useState(defaultValue);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -19,24 +39,28 @@ export default function SearchInput({ defaultValue = "" }: { defaultValue?: stri
       onSubmit={(e) => {
         e.preventDefault();
         const next = q.trim();
-        router.push(next ? `/search?q=${encodeURIComponent(next)}` : "/search");
+        router.push(searchHref(next, returnTo, scope, kind));
       }}
-      className="flex items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3"
-      style={{ borderColor: "var(--app-border)" }}
+      className="search-field-shell flex items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3"
+      style={{ borderColor: "var(--app-control-border)" }}
     >
+      <label htmlFor="site-search-input" className="sr-only">
+        Search Frederick County
+      </label>
       <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />
       <input
+        id="site-search-input"
         ref={inputRef}
         type="search"
         name="q"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search Frederick — places, events, parking…"
+        placeholder="Find places, events, towns, tools"
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck={false}
-        className="w-full bg-transparent py-2.5 text-[15px] outline-none placeholder:text-[color:var(--app-ink-3)]"
+        className="w-full bg-transparent py-3 text-[16px] outline-none placeholder:text-[color:var(--app-ink-3)]"
         style={{ color: "var(--app-ink)" }}
       />
       {q && (
@@ -44,9 +68,9 @@ export default function SearchInput({ defaultValue = "" }: { defaultValue?: stri
           type="button"
           onClick={() => {
             setQ("");
-            router.push("/search");
+            router.push(searchHref("", returnTo, scope, kind));
           }}
-          className="rounded px-1 text-xs"
+          className="tap-44 rounded px-1 text-xs"
           style={{ color: "var(--app-ink-3)" }}
         >
           Clear

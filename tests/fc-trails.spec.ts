@@ -93,4 +93,20 @@ describe("trailShapesFC (geometry foundation)", () => {
   it("returns empty FC for junk", () => {
     expect(trailShapesFC({})).toEqual({ type: "FeatureCollection", features: [] });
   });
+  it("reads the MD Park-Trails schema (ParkName / PavementClassification) for the map overlay", () => {
+    const md = {
+      features: [
+        {
+          geometry: { type: "LineString", coordinates: [[-77.41, 39.41], [-77.40, 39.42]] },
+          properties: { ParkName: "Old National Pike Park", FunctionalClassification: "Nature Trail", PavementClassification: "Unpaved Trail" },
+        },
+      ],
+    };
+    const fc = trailShapesFC(md);
+    expect(fc.features).toHaveLength(1);
+    const p = fc.features[0].properties as { name: string; surface: string; park: string };
+    expect(p.name).toBe("Old National Pike Park");
+    expect(p.surface).toBe("Unpaved Trail");
+    expect(p.park).toBe("Old National Pike Park");
+  });
 });

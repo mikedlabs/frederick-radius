@@ -1,8 +1,11 @@
-import Image from "next/image";
-import { photoForCategory, unsplashUrl } from "@/lib/photos";
 import { getLandmarkPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import CategoryIcon from "@/components/place/CategoryIcon";
+import { currentSkyPalette } from "@/components/today/SkyHero";
+import { nextSunHint } from "@/lib/sun";
+import { FREDERICK_CENTER } from "@/lib/geo";
+import PlaceHeroMedia from "@/components/place/PlaceHeroMedia";
+import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 
 type Props = {
   slug: string;
@@ -14,43 +17,86 @@ type Props = {
   priority?: boolean;
   /** Real Google photo (proxied, key-safe). Wins over generic stock. */
   photoSrc?: string;
+  photoAttribution?: GooglePhotoAttribution;
+  googleMapsUri?: string;
 };
 
-const GLYPH: Record<string, string> = {
-  coffee: "☕", restaurant: "🍽", brewery: "🍺", bar: "🍸", bakery: "🥐",
-  pizza: "🍕", park: "🌳", trail: "⛰", museum: "🏛", gallery: "🎨",
-  theater: "🎭", music: "🎵", library: "📚", market: "🛒", antiques: "🪑",
-  yoga: "🧘", lodging: "🏨", parking: "🅿️", "book-store": "📖",
-  "public-safety": "🚒", government: "🏛", playground: "🛝",
-};
-
-function resolvePhotoSrc(slug: string, category: string, width: number) {
+/**
+ * Real imagery only: a curated Wikimedia landmark photo, or nothing. The
+ * old third tier — generic Unsplash category stock — is gone (June-9 deep
+ * audit P0-3): every URL it built was malformed (Unsplash page slugs where
+ * the CDN expects hashed filenames), so each hero paid a guaranteed 404 and
+ * rendered an empty box. No photo now means the designed field-guide plate
+ * below renders alone — honest, on-brand, zero dead requests.
+ */
+function resolvePhotoSrc(slug: string, width: number) {
   const wm = getLandmarkPhoto(slug);
-  if (wm) {
-    return { src: wikimediaUrl(wm.file, width), alt: wm.alt, kind: "wikimedia" as const };
-  }
-  const u = photoForCategory(category, slug);
-  return { src: unsplashUrl(u, width), alt: u.alt, kind: "unsplash" as const };
+  if (wm) return { src: wikimediaUrl(wm.file, width), alt: wm.alt, preferCurated: Boolean(wm.preferCurated) };
+  return null;
 }
 
 export default function PlaceHero({
-  slug, name, category, blurb,
+  slug, name, category,
   aspectRatio = "16/10", size = "hero", priority = false, photoSrc,
+  photoAttribution, googleMapsUri,
 }: Props) {
   const cat = CATEGORY_BY_SLUG[category];
-  const color = cat?.color ?? "#A8462C";
+  // Vermilion brand fallback for uncategorized places. Kept as a literal
+  // (not var(--app-brand)) because `color` is consumed in hex-alpha concat
+  // below (`${color}26`), which a CSS var cannot satisfy.
+  const color = cat?.color ?? "#B5462B";
   const width = size === "hero" ? 1200 : 600;
   const height = size === "hero" ? 700 : 400;
-  const glyph = GLYPH[category] ?? "📍";
-  const resolved = resolvePhotoSrc(slug, category, width);
-  // Real Google photo of the actual business beats generic category stock.
-  const src = photoSrc ?? resolved.src;
-  const alt = photoSrc ? name : resolved.alt;
+  const resolved = resolvePhotoSrc(slug, width);
+  // Real Google photo of the actual business beats a landmark photo — unless
+  // the curated entry is preferCurated (the Google hero is wrong/weak for this
+  // landmark, verified per-place), which then wins.
+  let src: string | null;
+  let alt: string;
+  if (resolved?.preferCurated) {
+    src = resolved.src;
+    alt = resolved.alt;
+  } else if (photoSrc) {
+    src = photoSrc;
+    alt = name;
+  } else {
+    src = resolved?.src ?? null;
+    alt = resolved?.alt ?? "";
+  }
+
+  // The Living Frame (hero + real photo only): a soft time-of-day wash echoing
+  // the SkyHero, plus a warm corner glow during golden hour, both computed
+  // server-side. Deliberately subtle (a low-alpha soft-light wash), so a
+  // slightly-stale ISR render reads as atmosphere, never a claimed clock.
+  const livingFrame = size === "hero" && Boolean(src);
+  const now = new Date();
+  const sky = livingFrame ? currentSkyPalette(now) : null;
+  const golden =
+    livingFrame && nextSunHint(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng)?.label === "Golden hour now";
+
+  // Photoless places don't get to reserve photo real estate. The designed
+  // plate renders instantly (server component, no client boot), but at the
+  // full 16/10 aspect it held a phone-viewport-eating void with one glyph in
+  // the middle — the beta trust audit read it as an empty placeholder. With
+  // no photo the hero collapses to a short identity band: same plate, same
+  // category pill, a quarter of the height, and the place name is on screen
+  // from the first paint.
+  const hasPhoto = Boolean(src);
+  const usesGooglePhoto = Boolean(photoSrc && !resolved?.preferCurated);
 
   return (
     <div
-      className="relative w-full overflow-hidden"
-      style={{ aspectRatio }}
+      data-place-hero
+      data-place-hero-size={size}
+      // The detail-page hero is clamped to ~half the viewport height so a
+      // 16/10 ratio at full width can't swallow a short LANDSCAPE-phone
+      // screen — at 844×390 the un-capped hero rendered 455px tall (taller
+      // than the viewport), pushing the place name and everything below it
+      // off-screen. The cap never binds in portrait (16/10 of phone width
+      // is well under 52vh), so it only kicks in where the bug lived. The
+      // card variant keeps its exact aspect for list layouts.
+      className={`relative w-full overflow-hidden${size === "hero" && hasPhoto ? " max-h-[38vh]" : ""}`}
+      style={hasPhoto ? { aspectRatio } : { height: size === "hero" ? 148 : 96 }}
     >
       {/* Gradient fallback — always rendered behind the photo so 404s look intentional */}
       <div
@@ -60,97 +106,94 @@ export default function PlaceHero({
           background: `linear-gradient(135deg, ${color}26 0%, ${color}12 40%, var(--app-bg-sunken) 100%)`,
         }}
       />
-      {/* Topographic-feel overlay (very subtle) */}
-      <svg
-        aria-hidden
-        viewBox="0 0 600 400"
-        preserveAspectRatio="xMidYMid slice"
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.07 }}
-      >
-        <defs>
-          <radialGradient id={`r-${slug}`} cx="50%" cy="50%" r="60%">
-            <stop offset="0%" stopColor={color} stopOpacity="0.0" />
-            <stop offset="100%" stopColor={color} stopOpacity="1" />
-          </radialGradient>
-        </defs>
-        {[40, 90, 140, 200, 260, 320].map((r) => (
-          <circle key={r} cx="320" cy="200" r={r} fill="none" stroke={color} strokeWidth="0.6" />
-        ))}
-        <rect width="600" height="400" fill={`url(#r-${slug})`} />
-      </svg>
-
-      {/* The hero photo runs through Vercel's image optimizer so
-       *  every device gets a WebP at its true pixel size instead of
-       *  a 800x downloaded 12MB JPEG. `unoptimized` was set to skip
-       *  the optimizer, which was the cause of the 14s LCP on
-       *  /places/[slug]. The source is the same-origin /api/place-
-       *  photo proxy, which already strips the API key.
-       *
-       *  `placeholder="blur"` with a paper-cream data URL keeps the
-       *  hero from popping in cold; the load reads as a calm fade. */}
-      <Image
-        src={src}
-        alt={alt}
-        width={width}
-        height={height}
-        priority={priority}
-        sizes={size === "hero" ? "(max-width: 720px) 100vw, 720px" : "(max-width: 720px) 50vw, 360px"}
-        placeholder="blur"
-        blurDataURL={PAPER_CREAM_BLUR}
-        className="absolute inset-0 h-full w-full object-cover"
-        // View Transitions pair-up: a tile on /now's WorthALook rail
-        // carries the same name, so the browser morphs that thumbnail
-        // into this full hero on navigation (Apple-Photos style). The
-        // detail page only paints one hero per slug, so the name is
-        // guaranteed unique on this surface. Only applied on the hero
-        // variant — the card-size variant lives inside lists where a
-        // shared name would collide.
-        style={size === "hero" ? { viewTransitionName: `place-photo-${slug}` } : undefined}
-      />
-
-      {/* Soft gradient darkening at bottom for text legibility */}
+      {/* Soft radial sheen — a single gentle focal glow behind the centered
+          emblem (replaces the old concentric "target ring" stamp, which read
+          as a map crosshair, not a field-guide mark). No motif, just light. */}
       <div
         aria-hidden
         style={{
-          position: "absolute", inset: 0,
-          background: "linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.55) 100%)",
+          position: "absolute",
+          inset: 0,
+          background: `radial-gradient(58% 58% at 50% 44%, color-mix(in srgb, ${color} 16%, transparent) 0%, transparent 72%)`,
         }}
       />
 
-      {/* Category pill + glyph */}
-      <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider shadow-[var(--app-shadow-1)] backdrop-blur"
-           style={{ color }}>
-        <span aria-hidden>{glyph}</span> {cat?.name ?? category}
+      {/* Designed field-guide plate — the deliberate hero for a place with
+          no real photograph (the common case). A single category emblem
+          centered over the contour gradient: a specimen mark, not an empty
+          box. The place name is NOT repeated here — the <h1> sits directly
+          below the hero and carries it, so a name on the plate too would be
+          a duplicate title (the same reason the photo hero has no overlay). */}
+      <div className="fg-plate absolute inset-0 z-0 grid place-items-center">
+          {/* The engraved category glyph, pressed into a tactile seal — the
+              field-guide specimen mark, drawn in the category's ink (woodcut
+              vector via CategoryIcon, never an emoji). The .fg-plate corner
+              registration ticks frame the hero like a printed plate. */}
+          <span
+            aria-hidden
+            className="grid place-items-center rounded-[var(--app-radius-md)]"
+            style={{
+              // Sized for the SHORT photoless band (148px hero / 96px card),
+              // not the old full-aspect void — the seal reads as a mark on a
+              // plate, with room for the category pill above it.
+              width: size === "hero" ? 68 : 48,
+              height: size === "hero" ? 68 : 48,
+              background: `color-mix(in srgb, ${color} 13%, var(--app-bg-elevated-solid))`,
+              boxShadow: "0 1px 0 rgba(255,255,255,0.6) inset, var(--app-edge)",
+              color,
+            }}
+          >
+            <CategoryIcon
+              slug={category}
+              className={size === "hero" ? "h-9 w-9" : "h-6 w-6"}
+              strokeWidth={1.25}
+            />
+          </span>
       </div>
 
-      {/* Name overlay */}
-      {size === "hero" && (
-        <div className="absolute inset-x-3 bottom-3 text-white">
-          <h2 className="font-serif text-2xl font-semibold leading-tight tracking-tight drop-shadow">
-            {name}
-          </h2>
-          {blurb && (
-            <p className="mt-1 line-clamp-2 text-[13px] leading-snug opacity-95 drop-shadow">
-              {blurb}
-            </p>
-          )}
-        </div>
-      )}
+      {src ? (
+        <PlaceHeroMedia
+          key={src}
+          src={src}
+          alt={alt}
+          width={width}
+          height={height}
+          size={size}
+          priority={priority}
+          usesGooglePhoto={usesGooglePhoto}
+          photoAttribution={photoAttribution}
+          googleMapsUri={googleMapsUri}
+          skyTop={sky?.top}
+          skyBottom={sky?.bottom}
+          golden={golden}
+        />
+      ) : null}
+
+      {/* Category pill — engraved glyph + label (woodcut vector, no emoji) */}
+      <div className="absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider shadow-[var(--app-shadow-1)] backdrop-blur"
+           style={{ color }}>
+        <CategoryIcon slug={category} className="h-3.5 w-3.5" strokeWidth={1.75} /> {cat?.name ?? category}
+      </div>
+
+      {/* No name overlay on a PHOTO hero: the place's <h1> + address sit on
+          the card directly below, so painting the name on the photo too
+          was a duplicate title. (The no-photo plate above shows the name
+          because there is no photo competing with it.) */}
     </div>
   );
 }
 
 export function PhotoCredit({
-  category, slug, hasGooglePhoto,
-}: { category: string; slug: string; hasGooglePhoto?: boolean }) {
-  if (hasGooglePhoto) {
-    return (
-      <p className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-        Photos via Google
-      </p>
-    );
-  }
+  slug, hasGooglePhoto,
+}: { slug: string; hasGooglePhoto?: boolean }) {
   const wm = getLandmarkPhoto(slug);
+  // A preferCurated entry overrides the Google hero in PlaceHero, so credit the
+  // curated source even when a Google photo exists. Otherwise Google wins.
+  if (hasGooglePhoto && !wm?.preferCurated) {
+    // Google attribution is rendered directly on the photo container above,
+    // where it remains visible and unambiguously attached to that content.
+    return null;
+  }
   if (wm) {
     return (
       <p className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
@@ -159,6 +202,7 @@ export function PhotoCredit({
           href={wm.source_url}
           target="_blank"
           rel="noopener noreferrer"
+          className="tap-44-y inline-flex items-center"
           style={{ color: "var(--app-ink-2)" }}
         >
           {wm.author}
@@ -168,6 +212,7 @@ export function PhotoCredit({
           href="https://commons.wikimedia.org"
           target="_blank"
           rel="noopener noreferrer"
+          className="tap-44-y inline-flex items-center"
           style={{ color: "var(--app-ink-2)" }}
         >
           Wikimedia Commons
@@ -175,27 +220,7 @@ export function PhotoCredit({
       </p>
     );
   }
-  const photo = photoForCategory(category, slug);
-  return (
-    <p className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-      Hero photo:{" "}
-      <a
-        href={photo.photographer_url + "?utm_source=frederick_radius&utm_medium=referral"}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ color: "var(--app-ink-2)" }}
-      >
-        {photo.photographer}
-      </a>{" "}
-      on{" "}
-      <a
-        href="https://unsplash.com?utm_source=frederick_radius&utm_medium=referral"
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ color: "var(--app-ink-2)" }}
-      >
-        Unsplash
-      </a>
-    </p>
-  );
+  // No Google photo and no Wikimedia landmark → the hero is our own designed
+  // field-guide plate, not a third-party photo, so there is nothing to credit.
+  return null;
 }

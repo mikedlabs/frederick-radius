@@ -1,0 +1,60 @@
+name: UX browser audit
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ux-browser-audit
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-ux:
+    name: Mobile UX
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Build the production app once
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          # Next's route/type analysis crosses Node's ~2 GB default heap on a
+          # cold Linux runner, exactly as ci.yml already documents at its own
+          # build steps. The axe gate remains pinned at zero violations.
+          NODE_OPTIONS: "--max-old-space-size=4096"
+      - name: Install Chromium
+        timeout-minutes: 10
+        run: npx playwright install --with-deps chromium
+      - name: Run mobile UX and safe-interaction audit
+        # Leave enough of the job budget for Playwright to flush traces and for
+        # the artifact step below to upload them when the audit times out.
+        run: >-
+          timeout --signal=TERM 30m
+          npx playwright test
+          e2e/ux-audit.spec.ts
+          e2e/safe-interaction-crawler.spec.ts
+          --project=chromium
+          --workers=2
+          --retries=1
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          PW_PRODUCTION: "1"
+      - name: Keep failure traces
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ux-browser-failure-traces
+          path: test-results
+          if-no-files-found: ignore
+          retention-days: 7

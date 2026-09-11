@@ -1,24 +1,29 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import Image from "next/image";
-import { Landmark, Calendar, Sparkles, Users, ExternalLink } from "lucide-react";
-import { HISTORY, historyTopics, type HistoryEntry } from "@/data/history";
+import { Landmark, Calendar, Sparkles, Users, ExternalLink, ArrowRight } from "lucide-react";
+import { HISTORY, historyTopics, type HistoryEntry, type HistoryImage } from "@/data/history";
 import PageBloom from "@/components/ui/PageBloom";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import DecorativeDivider from "@/components/ui/DecorativeDivider";
 import HistoryTimeline from "@/components/history/HistoryTimeline";
 import { eraForYear } from "@/lib/history-era";
+import { ACCENTS } from "@/data/categories";
+import { CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED } from "@/lib/feature-access";
+import ArchiveDoorway from "@/components/archive/ArchiveDoorway";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/history" },
   title: "History",
   description:
     "Frederick County in moments and facts. Barbara Fritchie, Monocacy, the 1864 Ransom, Camp David, the Clustered Spires, Mt St Mary's, the C&O Canal.",
 };
 
 const KIND_META: Record<HistoryEntry["kind"], { label: string; icon: typeof Landmark; color: string }> = {
-  moment: { label: "Moment", icon: Calendar, color: "#A8462C" },
-  person: { label: "Person", icon: Users, color: "#7E2C6F" },
-  fact: { label: "Did you know", icon: Sparkles, color: "#2F5470" },
+  moment: { label: "Moment", icon: Calendar, color: ACCENTS.terracotta },
+  person: { label: "Person", icon: Users, color: ACCENTS.plum },
+  fact: { label: "Did you know", icon: Sparkles, color: ACCENTS.slate },
 };
 
 function formatYear(e: HistoryEntry): string | null {
@@ -39,11 +44,18 @@ function formatYear(e: HistoryEntry): string | null {
  * file, no CMS, no live feed. Every entry has a real source where
  * authoritative reference exists; nothing is fabricated.
  */
-export default async function HistoryPage() {
+export default async function HistoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ topic?: string }>;
+}) {
   const topics = historyTopics();
-  const momentCount = HISTORY.filter((h) => h.kind === "moment").length;
-  const personCount = HISTORY.filter((h) => h.kind === "person").length;
-  const factCount = HISTORY.filter((h) => h.kind === "fact").length;
+  const { topic: topicParam } = await searchParams;
+  // The topic filter is a real, shareable server filter now (was a dead row
+  // of chips). Only an actual tag activates it; anything else falls back to
+  // the unfiltered page.
+  const topic = topicParam && topics.some((t) => t.tag === topicParam) ? topicParam : null;
+  const inTopic = (h: HistoryEntry) => !topic || h.tags.includes(topic);
 
   // Hero "did you know" – rotates daily so a return visitor sees a
   // different fact each morning. Deterministic per day; never random
@@ -54,14 +66,64 @@ export default async function HistoryPage() {
   const heroFact = facts[((dayIdx % facts.length) + facts.length) % facts.length];
 
   // Sort moments newest-first (most recent on top) so the page reads
-  // from "this happened here recently" back to founding.
-  const moments = HISTORY.filter((h) => h.kind === "moment").sort(
+  // from "this happened here recently" back to founding. When a topic is
+  // active, every section narrows to entries carrying that tag.
+  const moments = HISTORY.filter((h) => h.kind === "moment" && inTopic(h)).sort(
     (a, b) => (b.year ?? 0) - (a.year ?? 0),
   );
-  const people = HISTORY.filter((h) => h.kind === "person").sort(
+  const people = HISTORY.filter((h) => h.kind === "person" && inTopic(h)).sort(
     (a, b) => (a.year ?? 0) - (b.year ?? 0),
   );
-  const rest = HISTORY.filter((h) => h.kind === "fact" && h.slug !== heroFact.slug);
+  // When filtering, the hero fact isn't special, so keep every matching fact.
+  const rest = HISTORY.filter((h) => h.kind === "fact" && inTopic(h) && (topic ? true : h.slug !== heroFact.slug));
+  // The unfiltered page is a browse surface, not an archive dump. Keep two
+  // facts in the reading flow and fold the rest behind one explicit action.
+  // A topic filter remains fully expanded because every result is relevant.
+  const visibleFacts = topic ? rest : rest.slice(0, 2);
+  const hiddenFacts = topic ? [] : rest.slice(2);
+
+  const topicFilters = (
+    <section aria-label="Filter by topic" className="-mx-4 px-4">
+      <ul className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <li className="shrink-0">
+          <Link
+            href="/history"
+            aria-current={topic ? undefined : "true"}
+            className="tap-44-y inline-flex min-w-11 items-center justify-center rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+            style={
+              topic
+                ? { borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }
+                : { borderColor: "var(--app-ink)", background: "var(--app-ink)", color: "var(--app-bg-elevated-solid)" }
+            }
+          >
+            All
+          </Link>
+        </li>
+        {topics.slice(0, 14).map((t) => {
+          const on = topic === t.tag;
+          return (
+            <li key={t.tag} className="shrink-0">
+              <Link
+                href={`/history?topic=${t.tag}`}
+                aria-current={on ? "true" : undefined}
+                className="tap-44-y inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+                style={
+                  on
+                    ? { borderColor: "var(--app-accent-press)", background: "var(--app-accent-press)", color: "var(--app-on-brand, #fff)" }
+                    : { borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }
+                }
+              >
+                #{t.tag}
+                <span className="rounded-full px-0.5 text-[10px] tabular-nums" style={{ color: on ? "rgba(255,255,255,0.75)" : "var(--app-ink-3)" }}>
+                  {t.count}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
 
   return (
     <div className="relative space-y-6">
@@ -73,7 +135,7 @@ export default async function HistoryPage() {
           word. The serif "A place with stories." overlay sits on
           top of a soft dark gradient at the bottom so it stays
           readable on any rotation pick. */}
-      <header className="relative -mx-4 overflow-hidden sm:mx-0 sm:rounded-[var(--app-radius-lg)]">
+      <header className="relative overflow-hidden rounded-[var(--app-radius-lg)]">
         <div className="relative h-56 w-full sm:h-64" aria-hidden>
           <SeasonalPhoto
             season="auto"
@@ -91,36 +153,28 @@ export default async function HistoryPage() {
           />
         </div>
         <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
-          <p className="eyebrow text-white/85">Frederick County · since 1748</p>
-          <h1 className="font-serif text-[34px] font-semibold leading-[1.02] tracking-tight text-white sm:text-[40px]">
+          <p className="eyebrow" style={{ color: "rgba(255,255,255,0.9)" }}>Frederick County · since 1748</p>
+          <h1 className="font-editorial text-[34px] leading-[1.02] tracking-tight text-white sm:text-[40px]">
             A place with stories.
           </h1>
-          <p
-            className="text-[11px] tabular-nums text-white/85"
-          >
-            <span className="font-semibold text-white">{momentCount}</span> moments ·{" "}
-            <span className="font-semibold text-white">{personCount}</span> people ·{" "}
-            <span className="font-semibold text-white">{factCount}</span> facts
+          <p className="max-w-[30rem] text-[13px] leading-snug text-white/85">
+            The moments, the people, and the plain facts that made the place.
           </p>
         </div>
       </header>
-      <p
-        className="text-[14px] leading-relaxed text-pretty"
-        style={{ color: "var(--app-ink-2)" }}
-      >
-        The county is older than the country. Cannonballs from a foundry
-        here armed the Continental Army; a 95-year-old flag-waver in town
-        ended up in a Whittier poem; a battle south of the city saved
-        Washington. These are the moments and the small details. The
-        stuff a docent might tell you walking past the marker.
-      </p>
+
+      {/* Put the user's first useful choice before the editorial material.
+          On a compact phone the filters now arrive on the first screen. */}
+      {topicFilters}
 
       {/* The timeline ribbon — instant visual identity. Tells the
           visitor "this is a museum, not an essay" before they read a
           word, and gives every tick a deep-link to the entry below. */}
       <HistoryTimeline />
 
-      {/* Hero: today's "did you know" fact. */}
+      {/* Hero: today's "did you know" fact. Hidden while a topic filter is
+          active so the filtered results lead instead of an unrelated fact. */}
+      {!topic && (
       <section
         aria-label="Today's fact"
         className="tactile tactile-feature relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-5"
@@ -135,7 +189,7 @@ export default async function HistoryPage() {
             }}
           >
             <Sparkles className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-            Today&apos;s Fact
+            Today&apos;s fact
           </span>
         </div>
         <h2
@@ -156,32 +210,17 @@ export default async function HistoryPage() {
           </p>
         )}
       </section>
+      )}
 
-      {/* Topic filter. Non-interactive on first ship; informational chips
-          so users see the topic shape of the page. A real filter is the
-          next step once a search/topic state exists. */}
-      <section aria-label="Topics" className="-mx-1 flex flex-wrap gap-1.5 px-1">
-        {topics.slice(0, 12).map((t) => (
-          <span
-            key={t.tag}
-            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
-            style={{
-              background: "var(--app-bg-elevated)",
-              color: "var(--app-ink-2)",
-              border: "1px solid var(--app-border)",
-            }}
-          >
-            #{t.tag}
-            <span
-              className="rounded-full px-1 text-[9px] tabular-nums"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {t.count}
-            </span>
-          </span>
-        ))}
-      </section>
+      {topic && moments.length + people.length + rest.length === 0 && (
+        <p className="rounded-[var(--app-radius-md)] border px-3.5 py-4 text-center text-[13px]" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}>
+          There are no entries tagged <span className="font-semibold">#{topic}</span> yet.{" "}
+          <Link href="/history" className="underline" style={{ color: "var(--app-cool)" }}>Show all</Link>.
+        </p>
+      )}
 
+      {moments.length > 0 && (
+      <>
       <DecorativeDivider variant="asterism" />
 
       {/* Big moments. Dated events, newest first — now a horizontal
@@ -204,7 +243,7 @@ export default async function HistoryPage() {
             Moments
           </h2>
           <p className="text-[10px] uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-            {moments.length} dated events · swipe →
+            {moments.length} dated events · swipe <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
           </p>
         </header>
         <div className="-mx-4 px-4">
@@ -219,7 +258,11 @@ export default async function HistoryPage() {
           </ol>
         </div>
       </section>
+      </>
+      )}
 
+      {people.length > 0 && (
+      <>
       <DecorativeDivider variant="wave" />
 
       {/* People */}
@@ -237,13 +280,27 @@ export default async function HistoryPage() {
             Frederick people
           </h2>
         </header>
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <ul
+          className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
+          aria-label="Frederick people"
+          tabIndex={0}
+        >
           {people.map((p) => (
-            <HistoryArticle key={p.slug} entry={p} idx={0} compact />
+            <HistoryArticle
+              key={p.slug}
+              entry={p}
+              idx={0}
+              compact
+              className="w-[82vw] max-w-[300px] shrink-0 snap-start [&>article]:h-full sm:w-auto sm:max-w-none"
+            />
           ))}
         </ul>
       </section>
+      </>
+      )}
 
+      {rest.length > 0 && (
+      <>
       <DecorativeDivider variant="sun" />
 
       {/* The rest of the facts (excluding today's hero) */}
@@ -262,11 +319,62 @@ export default async function HistoryPage() {
           </h2>
         </header>
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {rest.map((f) => (
+          {visibleFacts.map((f) => (
             <HistoryArticle key={f.slug} entry={f} idx={0} compact />
           ))}
         </ul>
+        {hiddenFacts.length > 0 && (
+          <details className="group border-t pt-1" style={{ borderColor: "var(--app-border)" }}>
+            <summary
+              className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-3 py-2 text-[13px] font-semibold [&::-webkit-details-marker]:hidden"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              <span className="group-open:hidden">
+                Show {hiddenFacts.length} more {hiddenFacts.length === 1 ? "fact" : "facts"}
+              </span>
+              <span className="hidden group-open:inline">Show fewer facts</span>
+              <span
+                aria-hidden
+                className="font-mono text-[16px] leading-none transition-transform group-open:rotate-45"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                +
+              </span>
+            </summary>
+            <ul className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2">
+              {hiddenFacts.map((f) => (
+                <HistoryArticle key={f.slug} entry={f} idx={0} compact />
+              ))}
+            </ul>
+          </details>
+        )}
       </section>
+      </>
+      )}
+
+      <ArchiveDoorway />
+
+      {/* History on the ground — reciprocal cross-link to /markers (which
+          links back here for the stories). Gives the orphaned markers page a
+          real doorway from its most natural neighbor. */}
+      <Link
+        href="/markers"
+        className="tactile-interactive flex items-center gap-3.5 rounded-[var(--app-radius-md)] border p-3.5"
+        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
+      >
+        <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-accent-press) 14%, transparent)", color: "var(--app-accent-press)" }}>
+          <Landmark className="h-5 w-5" strokeWidth={1.9} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-serif text-[16px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            History on the ground
+          </span>
+          <span className="mt-0.5 block text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            Read the inscription on every roadside marker and find the landmarks and covered bridges.
+          </span>
+        </span>
+        <ArrowRight aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
+      </Link>
 
       <footer
         className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
@@ -275,7 +383,7 @@ export default async function HistoryPage() {
         Sources: National Park Service · Library of Congress · Maryland
         Historical Trust · Frederick County Public Libraries. Got a story
         we should add?{" "}
-        <a className="underline" style={{ color: "var(--app-cool)" }} href="mailto:hello@frederickradius.com">
+        <a className="tap-44 inline-flex underline" style={{ color: "var(--app-cool)" }} href="mailto:hello@frederickradius.app">
           Tell us
         </a>
         .
@@ -333,7 +441,7 @@ function HistoryMomentCard({ entry, idx }: { entry: HistoryEntry; idx: number })
             you which period it lives in. */}
         {era && (
           <span
-            className="absolute left-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] backdrop-blur"
+            className="absolute left-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] backdrop-blur"
             style={{
               background: "rgba(0,0,0,0.45)",
               color: "white",
@@ -353,6 +461,7 @@ function HistoryMomentCard({ entry, idx }: { entry: HistoryEntry; idx: number })
           </span>
         )}
       </div>
+      {entry.image && <HistoryImageAttribution image={entry.image} />}
       <div className="space-y-1.5 p-3.5">
         <h3
           className="font-serif text-[17px] font-semibold leading-tight tracking-tight"
@@ -361,7 +470,7 @@ function HistoryMomentCard({ entry, idx }: { entry: HistoryEntry; idx: number })
           {entry.title}
         </h3>
         <p
-          className="text-[12.5px] leading-relaxed text-pretty"
+          className="text-[13px] leading-relaxed text-pretty"
           style={{
             color: "var(--app-ink-2)",
             display: "-webkit-box",
@@ -372,7 +481,7 @@ function HistoryMomentCard({ entry, idx }: { entry: HistoryEntry; idx: number })
         >
           {entry.body}
         </p>
-        {(entry.place || entry.source_url) && (
+        {(entry.place || entry.source_url || (entry.geom && typeof entry.year === "number")) && (
           <div className="flex flex-wrap items-center gap-2 pt-1">
             {entry.place && (
               <span
@@ -383,12 +492,30 @@ function HistoryMomentCard({ entry, idx }: { entry: HistoryEntry; idx: number })
                 {entry.place}
               </span>
             )}
+            {/* The Aerial Time Machine join: a located, dated moment links
+                straight into the orthoimagery scrubber at ITS spot in ITS
+                era. The scrubber's earliest layer is 1958, so the link only
+                renders for 1958+ moments — "see this block in 1864" would
+                land on imagery a century late, which breaks the promise. */}
+            {CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED &&
+              entry.geom &&
+              typeof entry.year === "number" &&
+              entry.year >= 1958 && (
+              <Link
+                href={`/from-above/time-machine?lng=${entry.geom.lng}&lat=${entry.geom.lat}&year=${entry.year}&zoom=16.5`}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold"
+                style={{ color: "var(--app-cool)" }}
+              >
+                See this block in {entry.year}
+              </Link>
+            )}
             {entry.source_url && (
               <a
                 href={entry.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold"
+                aria-label={`Open ${entry.source_label ?? "the source"} for ${entry.title}`}
+                className="tap-44-y ml-auto inline-flex items-center gap-1 text-[11px] font-semibold"
                 style={{ color: "var(--app-cool)" }}
               >
                 {entry.source_label ?? "Source"}
@@ -406,10 +533,12 @@ function HistoryArticle({
   entry,
   idx,
   compact = false,
+  className = "",
 }: {
   entry: HistoryEntry;
   idx: number;
   compact?: boolean;
+  className?: string;
 }) {
   const meta = KIND_META[entry.kind];
   const Icon = meta.icon;
@@ -422,7 +551,7 @@ function HistoryArticle({
   const era = typeof entry.year === "number" ? eraForYear(entry.year) : null;
   const stripeColor = era?.color ?? meta.color;
   return (
-    <li id={`h-${entry.slug}`} className="scroll-mt-24">
+    <li id={`h-${entry.slug}`} className={`scroll-mt-24 ${className}`}>
       <article
         className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4 pl-5"
         style={{ "--section-accent": meta.color } as React.CSSProperties}
@@ -445,9 +574,31 @@ function HistoryArticle({
           }}
         />
         <div className="relative">
+          {/* Photo leads the card when the entry has one (public-domain /
+              licensed only) — turns the People + Facts grids from text
+              blocks into a picture wall. Era-gradient cards (no image) keep
+              their accent bloom, so the grid still feels like one family. */}
+          {entry.image && (
+            <>
+              <div className="relative h-28 w-full overflow-hidden rounded-t-[var(--app-radius-md)]">
+                <Image
+                  src={entry.image.src}
+                  alt={entry.image.alt ?? ""}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 320px"
+                  placeholder="blur"
+                  blurDataURL={PAPER_CREAM_BLUR}
+                  style={{ objectFit: "cover" }}
+                />
+              </div>
+              <div className="mb-3 overflow-hidden rounded-b-[var(--app-radius-md)]">
+                <HistoryImageAttribution image={entry.image} />
+              </div>
+            </>
+          )}
           <div className="flex items-center gap-2">
             <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
               style={{
                 background: `color-mix(in srgb, ${meta.color} 18%, transparent)`,
                 color: meta.color,
@@ -466,7 +617,7 @@ function HistoryArticle({
             )}
             {era && (
               <span
-                className="text-[9px] font-bold uppercase tracking-[0.1em]"
+                className="text-[10px] font-bold uppercase tracking-[0.1em]"
                 style={{ color: `color-mix(in srgb, ${era.color} 70%, var(--app-ink-2))` }}
               >
                 · {era.label}
@@ -482,7 +633,7 @@ function HistoryArticle({
             {entry.title}
           </h3>
           <p
-            className="mt-1.5 text-[13.5px] leading-relaxed text-pretty"
+            className="mt-1.5 text-[14px] leading-relaxed text-pretty"
             style={{ color: "var(--app-ink-2)" }}
           >
             {entry.body}
@@ -502,7 +653,8 @@ function HistoryArticle({
                 href={entry.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold"
+                aria-label={`Open ${entry.source_label ?? "the source"} for ${entry.title}`}
+                className="tap-44-y ml-auto inline-flex items-center gap-1 text-[11px] font-semibold"
                 style={{ color: "var(--app-cool)" }}
               >
                 {entry.source_label ?? "Source"}
@@ -513,5 +665,36 @@ function HistoryArticle({
         </div>
       </article>
     </li>
+  );
+}
+
+function HistoryImageAttribution({ image }: { image: HistoryImage }) {
+  return (
+    <p
+      className="px-3 py-1.5 text-[9.5px] leading-snug"
+      style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}
+    >
+      Photo: {" "}
+      <a
+        href={image.source_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Photo credit: ${image.creator}; ${image.alt ?? "Frederick history image"}`}
+        className="underline underline-offset-2"
+      >
+        {image.creator}
+      </a>{" "}
+      · {" "}
+      <a
+        href={image.license.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Photo license ${image.license.label}; ${image.alt ?? "Frederick history image"}`}
+        className="underline underline-offset-2"
+      >
+        {image.license.label}
+      </a>{" "}
+      · {image.modifications}
+    </p>
   );
 }

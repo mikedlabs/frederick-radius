@@ -1,29 +1,53 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Footprints, Bike, Car, MapPin, ChevronDown, Locate } from "lucide-react";
+import { ArrowRight, Bike, Car, ChevronDown, ChevronUp, Compass, Footprints, Locate, Map as MapIcon, MapPin } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
 import RadiusMap from "./RadiusMap";
 import RadiusPresets from "./RadiusPresets";
-import BestNearbyMoves from "./BestNearbyMoves";
+import MapControlSheet, { SNAP_COLLAPSED, SNAP_HALF } from "./MapControlSheet";
+import { resolveMunicipality } from "@/lib/location";
+import { useClientPlaces } from "@/hooks/useClientPlaces";
+import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 // Read the same slim, pre-decorated set the rest of the app uses on
 // the client. The previous shape (places passed in via props from
 // radius/page) inlined ~4MB of redundant JSON into the SSR HTML for
-// every cold visit — the bundle ALREADY ships places-client.json, so
-// the server payload was a pure duplicate. clientPlaces() returns
-// the same canonical operational set, decorated, cached as a const.
-import { clientPlaces } from "@/lib/loaders/places-client";
+// every cold visit. We now neither ship it in HTML nor static-import
+// it: places-client.json (~1.5MB) is the single biggest blob on the
+// default /map route, and parsing it on the main thread before the
+// map can paint is the dominant cold-load cost. It's loaded lazily
+// after mount (see the effect below) via dynamic import, so the map
+// canvas and controls paint first and the place set streams in.
 import type { PlaceCardData } from "@/lib/loaders/places";
 // TYPE ONLY: the points arrive as a server prop (radius/page →
 // allAmenities()), so this client component never imports the loader
 // or amenities.json — same loader-free discipline as places.
 import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
+import WithinReach from "./WithinReach";
+import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { cuisineFacets, cuisinesOf } from "@/lib/cuisine";
+import { isOpenNow } from "@/lib/hours";
+import { mayAssertNoneOpen } from "@/lib/hours-availability";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { formatEventTime, eventDateParts } from "@/lib/format/eventTime";
 import { MUNICIPALITIES } from "@/data/municipalities";
-import { minutesToMeters, haversineMeters, type TravelMode, formatDistance } from "@/lib/geo";
+import {
+  minutesToMeters,
+  haversineMeters,
+  isInsideFrederickCounty,
+  type TravelMode,
+  formatDistance,
+} from "@/lib/geo";
+import { roundCoord } from "@/lib/walkTime";
+import { radiusResultLine } from "@/components/map/mapContent";
+import {
+  collectReachPolygons,
+  isPointWithinReach,
+  type ReachBoundaryStatus,
+} from "./reach";
 
 // Center options: ALL 12 municipalities (Frederick first = default) +
 // a couple of landmark points. A dropdown, not a hidden horizontal
@@ -87,64 +111,6 @@ const MODE_VERB: Record<TravelMode, string> = {
   distance: "reach",
 };
 
-// ── Reachable-radius helpers ─────────────────────────────────────
-// Tiny self-contained point-in-polygon so we don't pull in @turf for
-// a 12-line ray-casting algorithm. Inputs are [lng,lat] tuples to
-// match GeoJSON's coordinate ordering.
-
-/**
- * Flatten a Mapbox Isochrone FeatureCollection into a list of raw
- * polygon rings (one per polygon — outer ring only; isochrone
- * polygons don't have holes in practice). Handles both Polygon and
- * MultiPolygon geometries so a fractured reachable area still works.
- */
-function collectPolygons(fc: GeoJSON.FeatureCollection): number[][][] {
-  const out: number[][][] = [];
-  for (const f of fc.features) {
-    const g = f.geometry;
-    if (!g) continue;
-    if (g.type === "Polygon") {
-      if (g.coordinates[0]) out.push(g.coordinates[0] as number[][]);
-    } else if (g.type === "MultiPolygon") {
-      for (const poly of g.coordinates) {
-        if (poly[0]) out.push(poly[0] as number[][]);
-      }
-    }
-  }
-  return out;
-}
-
-/**
- * Ray-casting point-in-polygon. Returns true if [lng,lat] lies inside
- * the polygon ring. Standard horizontal-ray odd-crossing test.
- */
-function pointInPolygon(pt: [number, number], ring: number[][]): boolean {
-  const x = pt[0];
-  const y = pt[1];
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const xi = ring[i][0];
-    const yi = ring[i][1];
-    const xj = ring[j][0];
-    const yj = ring[j][1];
-    // Edge crosses the horizontal ray at y if endpoints are on
-    // opposite sides AND the intersection x is to the right of the
-    // test point. Toggling `inside` on each crossing gives the
-    // odd-rule winding count.
-    const intersect =
-      yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
-    if (intersect) inside = !inside;
-  }
-  return inside;
-}
-
-function pointInAnyPolygon(pt: [number, number], polys: number[][][]): boolean {
-  for (const ring of polys) {
-    if (pointInPolygon(pt, ring)) return true;
-  }
-  return false;
-}
-
 /**
  * Oxford-comma list. "a, b, and c" — used by the sentence-form summary
  * so the headline reads as plain English instead of a UI label.
@@ -166,7 +132,25 @@ const SORT_KEY = "fr:radius:sort:v1";
 const PEEK: Record<ViewMode, number> = { grid: 8, list: 10 };
 const FOOD_GROUP = "food";
 
-// Local label + glyph table for the 6 curated amenity kinds, in
+// Geolocation cache + dismiss keys, hoisted so they're stable refs
+// across renders (the lint rule wants them out of the effect's
+// dependency array). Cache key matches useGeolocation's so the two
+// share a single sessionStorage entry — they're orthogonal entry
+// points into the same "where am I" state.
+const GEO_CACHE_KEY = "fr_geo_v1";
+const GEO_CACHE_TTL_MS = 1000 * 60 * 30; // 30 min — same as the hook
+const GEO_PROMPT_DISMISS_KEY = "fr:geo-prompt-dismissed:v1";
+const MAX_FINE_TUNE_MINUTES = 30;
+
+type GeoStatus =
+  | "idle"
+  | "loading"
+  | "granted"
+  | "denied"
+  | "unavailable"
+  | "out-of-county";
+
+// Local label + glyph table for the curated amenity kinds, in
 // most-asked-for order. Kept here (not imported from the loader) so
 // this client component stays loader-free; the points themselves
 // arrive as a server prop. Glyphs match the map's amenity language.
@@ -177,21 +161,70 @@ const AMENITY_META: { kind: AmenityKind; label: string; glyph: string }[] = [
   { kind: "bike_parking", label: "Bike parking", glyph: "\u{1F6B2}" },
   { kind: "picnic", label: "Picnic spots", glyph: "\u{1FA91}" },
   { kind: "playground", label: "Playgrounds", glyph: "\u{1F6DD}" },
+  { kind: "water", label: "Drinking water", glyph: "\u{1F4A7}" },
+  { kind: "trash", label: "Trash cans", glyph: "\u{1F5D1}" },
+  { kind: "recycling", label: "Recycling", glyph: "\u{267B}\u{FE0F}" },
+  { kind: "bench", label: "Benches", glyph: "\u{1FA91}" },
+  { kind: "dog_waste", label: "Dog stations", glyph: "\u{1F43E}" },
+  { kind: "dog_park", label: "Dog parks", glyph: "\u{1F43E}" },
+  { kind: "water_access", label: "Water access", glyph: "\u{1F6F6}" },
+  { kind: "bike_repair", label: "Bike repair", glyph: "\u{1F6E0}\u{FE0F}" },
 ];
+
+/** Slim upcoming-event shape the reach view filters by location. Kept
+ *  minimal on purpose — the radius surface is deliberately lean, so we
+ *  pass only what a compact "happening within reach" row needs. */
+export type RadiusEventPin = {
+  slug: string;
+  title: string;
+  startsAt: string;
+  venueName: string | null;
+  lng: number;
+  lat: number;
+  category: string;
+};
 
 export default function RadiusBuilder({
   amenities = [],
+  events = [],
 }: {
   amenities?: Amenity[];
+  /** Upcoming events with coordinates; filtered to the chosen reach and
+   *  shown as a compact "happening within reach" section. */
+  events?: RadiusEventPin[];
 }) {
-  // Places source: client-bundled, slim, already-decorated. Reading
-  // here instead of taking via props removes ~4MB from /radius's SSR
-  // HTML payload — the data was ALREADY on the client; the prop was
-  // duplicating it as a serialized RSC payload. (Pre-2026-05-23.)
-  const places: PlaceCardData[] = clientPlaces();
+  const searchParams = useSearchParams();
+  // Places source: client-bundled, slim, already-decorated — but
+  // loaded LAZILY (see useClientPlaces) so the 1.5MB JSON parse stays
+  // off the critical path. The map paints, the reach controls are
+  // interactive, and the place set fills in a tick later. Until then
+  // `places` is empty (the reach simply lists nothing yet) and
+  // `placesReady` drives a quiet "finding places…" affordance instead
+  // of a false "nothing here."
+  const { places, ready: placesReady } = useClientPlaces();
+  // Tapping a place marker opens the same PlaceSheet bottom sheet the
+  // browse map and the result cards use — one detail surface, everywhere.
+  const { openSheet } = usePlaceSheet();
+  const placesBySlug = useMemo(
+    () => new Map(places.map((p) => [p.slug, p])),
+    [places],
+  );
   const [presetIdx, setPresetIdx] = useState(0);
   const [mode, setMode] = useState<TravelMode>("walk");
-  const [minutes, setMinutes] = useState(10);
+  const [minutes, setMinutes] = useState(() => {
+    const requested = Number(searchParams.get("minutes"));
+    return Number.isInteger(requested) && requested >= 1 && requested <= 30
+      ? requested
+      : 10;
+  });
+  // Fine-tune disclosure: the exact mode + minutes controls are folded
+  // away by default so the one-tap presets lead and the card stays calm.
+  // The minority who want an exact reach open it; everyone else never
+  // sees a slider they don't need.
+  const [fineTuneOpen, setFineTuneOpen] = useState(false);
+  // Map Control Sheet snap state. Opens collapsed (radar state + count
+  // peek); "Adjust" / drag lifts it to the working / browse states.
+  const [snap, setSnap] = useState<number | string | null>(SNAP_COLLAPSED);
   // Onboarding handoff: if the user picked a home municipality on
   // /welcome, jump to that preset on first paint instead of MUNI_PRESETS[0].
   // SSR-safe: server renders index 0, client overrides after mount.
@@ -259,6 +292,10 @@ export default function RadiusBuilder({
   // full directory view). User-flow fix: the old default landed on
   // a 6-section, 8-card-each wall before you could find your bucket.
   const [seeAll, setSeeAll] = useState(false);
+  // "Open now" filter — tap the open-now count to narrow the whole
+  // radius view (map dots, list, best-moves, counts) to places we can
+  // confirm are open. A toggle, so a second tap restores everything.
+  const [openOnly, setOpenOnly] = useState(false);
   const toggleExpand = (key: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -269,24 +306,157 @@ export default function RadiusBuilder({
 
   // "Use my location" — a custom center the user can opt into via
   // browser geolocation. Falls through to the preset list when null.
-  // Stored only in component state (not localStorage) so a returning
-  // user always sees the preset they last picked, not a stale GPS.
+  //
+  // The Radius redesign (May 2026) made this the SOUL of /map, but the
+  // experience still anchored on town centroids until a user discovered
+  // the small Locate button. Proposal A makes it the obvious first
+  // move: surface a one-tap invite on first visit, hydrate a fresh
+  // session-cached position so returning users skip the prompt, and
+  // gracefully handle denied + out-of-county states instead of failing
+  // silently.
   const [myLoc, setMyLoc] = useState<{ lng: number; lat: number } | null>(null);
   const [myLocLabel, setMyLocLabel] = useState<string>("Your location");
-  const [locating, setLocating] = useState(false);
+  const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
+  const [promptDismissed, setPromptDismissed] = useState(false);
+
+  // Hydrate cached position + dismiss state on mount. SSR-safe: the
+  // server renders the idle state; the client overlays the cache if
+  // it's still fresh. A returning user inside the 30-min TTL skips
+  // the prompt entirely and lands on their own coordinates.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(GEO_CACHE_KEY);
+      if (raw) {
+        const cached = JSON.parse(raw) as {
+          lng: number;
+          lat: number;
+          label?: string;
+          timestamp: number;
+        };
+        if (Date.now() - cached.timestamp <= GEO_CACHE_TTL_MS) {
+          const inCounty = isInsideFrederickCounty(cached.lat, cached.lng);
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe: server renders idle; the client hydrates sessionStorage which is unavailable during SSR
+          setMyLoc({ lng: cached.lng, lat: cached.lat });
+          setMyLocLabel(cached.label || "Your location");
+          setGeoStatus(inCounty ? "granted" : "out-of-county");
+        } else {
+          sessionStorage.removeItem(GEO_CACHE_KEY);
+        }
+      }
+    } catch {
+      // sessionStorage unavailable — fall through to idle
+    }
+    try {
+      if (localStorage.getItem(GEO_PROMPT_DISMISS_KEY) === "1") {
+        setPromptDismissed(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const requestMyLocation = () => {
-    if (!("geolocation" in navigator)) return;
-    setLocating(true);
+    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
+      setGeoStatus("unavailable");
+      return;
+    }
+    setGeoStatus("loading");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setMyLoc({ lng: pos.coords.longitude, lat: pos.coords.latitude });
-        setMyLocLabel("Your location");
-        setLocating(false);
+        const lng = pos.coords.longitude;
+        const lat = pos.coords.latitude;
+        const inCounty = isInsideFrederickCounty(lat, lng);
+        const hit = resolveMunicipality({ lng, lat });
+        // Inside a town → "Walkers Wood Park, MD"-style local label.
+        // In-county but not in a town → just "Your location" (the dots
+        // tell the story; we don't need to claim a neighborhood).
+        // Out of county → "Near {nearest town}" so the user knows the
+        // app sees them at the right distance.
+        const label = inCounty
+          ? hit.inside
+            ? `${hit.municipality.name}, MD`
+            : "Your location"
+          : `Near ${hit.municipality.name}`;
+        setMyLoc({ lng, lat });
+        setMyLocLabel(label);
+        setGeoStatus(inCounty ? "granted" : "out-of-county");
+        try {
+          sessionStorage.setItem(
+            GEO_CACHE_KEY,
+            JSON.stringify({
+              lng,
+              lat,
+              accuracy: pos.coords.accuracy,
+              label,
+              timestamp: Date.now(),
+            }),
+          );
+        } catch {
+          // sessionStorage unavailable — non-fatal
+        }
       },
-      () => setLocating(false),
-      { enableHighAccuracy: true, timeout: 8000 },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          setGeoStatus("denied");
+        } else {
+          // Timeout / position unavailable — return to idle so the
+          // user can try again. We don't surface a hard error; the
+          // preset dropdown is still the working fallback.
+          setGeoStatus("idle");
+        }
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
     );
   };
+
+  // Answer-first start: if browser geolocation permission is ALREADY
+  // granted (zero prompt risk) and no cached position seeded the center,
+  // locate automatically — /map opens on the user's actual surroundings
+  // with no taps to value. A user who never granted is never prompted;
+  // denied and unavailable states are untouched. The cache-hydration
+  // effect above runs first (same mount pass), so a fresh cache wins and
+  // this effect sees its sessionStorage entry and stands down.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("permissions" in navigator)) return;
+    try {
+      // Any cache entry means a position this session already handled.
+      if (sessionStorage.getItem(GEO_CACHE_KEY)) return;
+    } catch {
+      // sessionStorage unavailable — the permissions query still works.
+    }
+    let cancelled = false;
+    navigator.permissions
+      .query({ name: "geolocation" })
+      .then((status) => {
+        if (!cancelled && status.state === "granted") requestMyLocation();
+      })
+      .catch(() => {
+        // Permissions API unsupported — keep the tap-to-locate path.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Snap the center to the nearest municipality for an out-of-county
+  // user — surfaces the closest sensible jumping-off point.
+  const snapToNearestMuni = () => {
+    if (!myLoc) return;
+    const hit = resolveMunicipality(myLoc);
+    const idx = PRESETS.findIndex((p) => p.slug === `m-${hit.municipality.slug}`);
+    if (idx > -1) {
+      setMyLoc(null);
+      setMyLocLabel("Your location");
+      setGeoStatus("idle");
+      setPresetIdx(idx);
+    }
+  };
+
+  // Derived flag — show the big invite card only when there's no
+  // location yet, the user hasn't dismissed the prompt, and we're not
+  // mid-fetch. The control-card button stays available throughout.
+  const showGeoPrompt =
+    geoStatus === "idle" && !promptDismissed && !myLoc;
 
   const presetCenter = PRESETS[presetIdx];
   const center = myLoc ? { ...presetCenter, label: myLocLabel, lng: myLoc.lng, lat: myLoc.lat } : presetCenter;
@@ -297,16 +467,21 @@ export default function RadiusBuilder({
   // streets — not the straight-line circle, which lies whenever there's
   // a creek, a hill, a one-way, or a railroad in the way. Fetched as a
   // GeoJSON FeatureCollection from /api/isochrone, which proxies + caches
-  // the Mapbox Isochrone API. While loading or on error, isochrone is
-  // null and we fall back to the haversine circle filter below.
+  // the Mapbox Isochrone API. The status stays explicit because null means
+  // a straight-line circle, not a routed boundary.
   const [isochrone, setIsochrone] = useState<GeoJSON.FeatureCollection | null>(null);
+  const [reachBoundaryStatus, setReachBoundaryStatus] =
+    useState<ReachBoundaryStatus>("loading");
   useEffect(() => {
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear previous isochrone when center or time radius changes
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: clear the previous isochrone the moment center/mode/minutes change so the map doesn't show last query's polygon while the new one is fetching
     setIsochrone(null);
+    setReachBoundaryStatus("loading");
     const params = new URLSearchParams({
-      lng: String(center.lng),
-      lat: String(center.lat),
+      // Exact device coordinates stay in browser memory. The isochrone
+      // request uses the same ~100m privacy grid as routed walk times.
+      lng: String(roundCoord(center.lng)),
+      lat: String(roundCoord(center.lat)),
       mode,
       minutes: String(minutes),
     });
@@ -314,11 +489,30 @@ export default function RadiusBuilder({
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (cancelled) return;
-        if (d?.ok && d.geojson) setIsochrone(d.geojson);
+        if (
+          d?.ok &&
+          d.geojson &&
+          collectReachPolygons(d.geojson).length > 0
+        ) {
+          setIsochrone(d.geojson);
+          setReachBoundaryStatus("street");
+        } else {
+          setReachBoundaryStatus("distance");
+        }
       })
-      .catch(() => { /* keep null — falls back to circle */ });
+      .catch(() => {
+        if (!cancelled) setReachBoundaryStatus("distance");
+      });
     return () => { cancelled = true; };
   }, [center.lng, center.lat, mode, minutes]);
+
+  // The reachable polygons, derived once from the isochrone and shared
+  // by the place filter AND the events filter so both judge "within
+  // reach" by the exact same boundary. Null until the isochrone loads.
+  const reachPolys = useMemo(
+    () => (isochrone ? collectReachPolygons(isochrone) : null),
+    [isochrone],
+  );
 
   const inside = useMemo(() => {
     // When the isochrone is loaded, filter by ACTUAL reachability
@@ -329,19 +523,69 @@ export default function RadiusBuilder({
       ...p,
       distance_m: haversineMeters({ lng: center.lng, lat: center.lat }, p.geom),
     }));
-    const polys = isochrone ? collectPolygons(isochrone) : null;
-    const filtered = polys && polys.length > 0
-      ? withDistance.filter((p) => pointInAnyPolygon([p.geom.lng, p.geom.lat], polys))
-      : withDistance.filter((p) => (p.distance_m ?? Infinity) <= meters);
+    const filtered = withDistance.filter((p) =>
+      isPointWithinReach({
+        point: [p.geom.lng, p.geom.lat],
+        distanceMeters: p.distance_m ?? Infinity,
+        maxDistanceMeters: meters,
+        polygons: reachPolys,
+      }),
+    );
     return filtered.sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
-  }, [places, center.lng, center.lat, meters, isochrone]);
+  }, [places, center.lng, center.lat, meters, reachPolys]);
 
-  // Complete, taxonomy-driven grouping: every in-radius place lands in
+  // "Open now" inside the radius — the app's headline pillar, applied
+  // to the reach instrument. Counts ONLY places we can confirm are open
+  // (verified hours → "open" or "closing-soon"); "unverified"/"unknown"
+  // are never counted, so the number never over-asserts. Free to compute
+  // — `inside` already carries open_status, no extra data fetch.
+  const openNowCount = useMemo(
+    () => inside.filter((p) => isOpenNow(p.open_status)).length,
+    [inside],
+  );
+  const mayReportNoneOpen = useMemo(
+    () => mayAssertNoneOpen(inside.map((place) => place.open_status)),
+    [inside],
+  );
+
+  // What the view actually shows. When the open-now filter is on, it's
+  // the confirmed-open subset; otherwise it's everything in the radius.
+  // Drives the map dots, the grouped list, best-moves, and the counts,
+  // so every surface agrees on what's being shown.
+  const displayedInside = useMemo(
+    () => (openOnly ? inside.filter((p) => isOpenNow(p.open_status)) : inside),
+    [inside, openOnly],
+  );
+
+  // Events within the same reach, judged by the SAME isochrone/circle as
+  // places so "within reach" means one thing. Soonest-first, because an
+  // event's value is time-sensitive — the next thing matters most.
+  const eventsInReach = useMemo(() => {
+    if (events.length === 0) return [];
+    const withDistance = events.map((e) => ({
+      ...e,
+      distance_m: haversineMeters(
+        { lng: center.lng, lat: center.lat },
+        { lng: e.lng, lat: e.lat },
+      ),
+    }));
+    const within = withDistance.filter((event) =>
+      isPointWithinReach({
+        point: [event.lng, event.lat],
+        distanceMeters: event.distance_m,
+        maxDistanceMeters: meters,
+        polygons: reachPolys,
+      }),
+    );
+    return within.sort((a, b) => +new Date(a.startsAt) - +new Date(b.startsAt));
+  }, [events, center.lng, center.lat, meters, reachPolys]);
+
+  // Complete, taxonomy-driven grouping: every shown place lands in
   // exactly one group, ordered by the category tree. Σ group counts ===
-  // inside.length (the completeness invariant).
+  // displayedInside.length (the completeness invariant).
   const groups = useMemo(() => {
     const byKey = new Map<string, PlaceCardData[]>();
-    for (const p of inside) {
+    for (const p of displayedInside) {
       const k = groupKeyFor(p.category);
       const arr = byKey.get(k);
       if (arr) arr.push(p);
@@ -363,7 +607,7 @@ export default function RadiusBuilder({
         const d = groupOrder(a.key) - groupOrder(b.key);
         return d !== 0 ? d : b.items.length - a.items.length;
       });
-  }, [inside, sort]);
+  }, [displayedInside, sort]);
 
   // Cuisine facets from the food group's actual contents, so the chip
   // row only ever offers cuisines that are genuinely nearby.
@@ -380,26 +624,44 @@ export default function RadiusBuilder({
   // color so the map can color dots by category and surface a place
   // preview when one is tapped — a generic mode-tinted dot was anonymous;
   // a category-colored dot tells a story at a glance.
-  const insideDots = useMemo(
+  // Controlled discovery: the map plots only the BEST ~18 reachable
+  // places (by editorial feature_score), not all ~500 — a confetti of
+  // dots reads as a mess and buries the signal. The full set still lives
+  // in the results list + the "Within reach" outcomes; the map's job is
+  // to show the reach + the highlights, not every point.
+  // The MAP shows the WHOLE county — the radius is a lens, not a fence.
+  // The old behavior clipped the map to the reach AND capped it at 18
+  // dots, so a newcomer was actively hidden from the brewery one town
+  // over — the opposite of a discovery app's job. Now every county place
+  // is plotted; `inReach` carries the emphasis so RadiusMap can draw the
+  // close ones bright + labeled and keep the rest quietly visible. The
+  // LIST below still focuses on what's within reach — it's the map that
+  // should never hide the county.
+  const reachSlugs = useMemo(
+    () => new Set(inside.map((p) => p.slug)),
+    [inside],
+  );
+  const countyDots = useMemo(
     () =>
-      inside.map((p) => ({
+      places.map((p) => ({
         lng: p.geom.lng,
         lat: p.geom.lat,
         slug: p.slug,
         name: p.name,
         category: p.category,
         category_color: CATEGORY_BY_SLUG[p.category]?.color,
+        inReach: reachSlugs.has(p.slug),
+        score: p.feature_score ?? 0,
       })),
-    [inside],
+    [places, reachSlugs],
   );
 
   // (`edgePlace` — the place at the far edge — was used in the
   // floating ribbon, removed pre-launch per review §12. Trivia, not
   // a decision tool. The variable is gone too.)
 
-  // Amenities inside the same radius — "what's within X" now genuinely
-  // includes the restrooms / Wi-Fi / EV / bike / picnic / playgrounds,
-  // not just businesses. Same haversine + center + meters as places.
+  // Amenities use the same street polygon (or clearly labeled distance
+  // fallback) as places and events, so "within reach" has one meaning.
   const insideAmenities = useMemo(() => {
     return amenities
       .map((a) => ({
@@ -409,9 +671,27 @@ export default function RadiusBuilder({
           { lng: a.lng, lat: a.lat },
         ),
       }))
-      .filter((a) => a.distance_m <= meters)
+      .filter((amenity) =>
+        isPointWithinReach({
+          point: [amenity.lng, amenity.lat],
+          distanceMeters: amenity.distance_m,
+          maxDistanceMeters: meters,
+          polygons: reachPolys,
+        }),
+      )
       .sort((a, b) => a.distance_m - b.distance_m);
-  }, [amenities, center.lng, center.lat, meters]);
+  }, [amenities, center.lng, center.lat, meters, reachPolys]);
+
+  // Distance-ascending inside list for the "Within reach" strip. WithinReach
+  // picks the FIRST match per kind as "nearest", so it needs true distance
+  // order regardless of the user's chosen result sort (rating / A-Z).
+  const reachInput = useMemo(
+    () =>
+      [...displayedInside].sort(
+        (a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity),
+      ),
+    [displayedInside],
+  );
 
   // Grouped by kind in the most-asked-for order; only kinds that
   // actually have a point inside the radius. Nearest stays first.
@@ -428,231 +708,606 @@ export default function RadiusBuilder({
     })).filter((g) => g.list.length > 0);
   }, [insideAmenities]);
 
+  // The control card (center + travel mode + radius slider) extracted to
+  // a variable so it can render directly UNDER the map — the instrument
+  // leads, the results follow. (Was buried below the results; that was
+  // the "controls are backwards" problem.)
+  const controlCard = (
+    <section className="space-y-2 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-2.5 shadow-[var(--app-shadow-1)]"
+             style={{ borderColor: "var(--app-border)" }}>
+      {/* Center — a dropdown with every municipality + landmarks
+          PLUS a "Use my location" button so the user has a real
+          custom-center path. */}
+      <div className="flex items-center gap-2">
+        <span
+          aria-hidden
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+          style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand)" }}
+        >
+          <MapPin className="h-4 w-4" strokeWidth={2} aria-hidden />
+        </span>
+        <div className="relative min-w-0 flex-1">
+          <label htmlFor="center-select" className="sr-only">Center point</label>
+          <select
+            id="center-select"
+            value={myLoc ? -1 : presetIdx}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              if (v >= 0) {
+                setMyLoc(null);
+                setPresetIdx(v);
+              }
+            }}
+            className="w-full appearance-none rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] py-2 pl-3 pr-9 text-[14px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+          >
+            {myLoc && (
+              <option value={-1}>{myLocLabel}</option>
+            )}
+            <optgroup label="Municipalities">
+              {PRESETS.map((p, i) =>
+                p.kind === "muni" ? (
+                  <option key={p.slug} value={i}>{p.label}</option>
+                ) : null,
+              )}
+            </optgroup>
+            <optgroup label="Landmarks">
+              {PRESETS.map((p, i) =>
+                p.kind === "poi" ? (
+                  <option key={p.slug} value={i}>{p.label}</option>
+                ) : null,
+              )}
+            </optgroup>
+          </select>
+          <ChevronDown
+            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2"
+            strokeWidth={2.25}
+            style={{ color: "var(--app-ink-3)" }}
+            aria-hidden
+          />
+        </div>
+      </div>
+
+      {/* Quick picks — the PRIMARY radius control. One tap sets both the
+          travel mode and the minutes for the common cases, so most users
+          never touch a mode toggle or a slider. */}
+      <RadiusPresets
+        mode={mode}
+        minutes={minutes}
+        onPick={(m, min) => {
+          setMode(m);
+          setMinutes(min);
+        }}
+      />
+
+      {/* Fine-tune — the exact mode + minutes, folded away by default.
+          The instrument is still here for the user who wants a precise
+          reach; it just stops competing with the presets that cover the
+          common cases. */}
+      <button
+        type="button"
+        onClick={() => setFineTuneOpen((v) => !v)}
+        aria-expanded={fineTuneOpen}
+        className="flex w-full items-center justify-between rounded-[var(--app-radius-md)] px-1 py-1 text-[12px] font-semibold"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        <span>Fine-tune the reach</span>
+        <ChevronDown
+          className={`h-4 w-4 transition-transform ${fineTuneOpen ? "rotate-180" : ""}`}
+          strokeWidth={2.25}
+          aria-hidden
+        />
+      </button>
+      {fineTuneOpen && (
+        <div className="space-y-2">
+          {/* Mode + distance read as one instrument. */}
+          <div
+            role="group"
+            aria-label="Travel mode"
+            className="grid grid-cols-3 rounded-[var(--app-radius-md)] border p-0.5"
+            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+          >
+            {MODES.map(({ mode: m, label, icon: Icon }) => {
+              const active = m === mode;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => {
+                    setMode(m);
+                    setMinutes((current) =>
+                      Math.min(current, MAX_FINE_TUNE_MINUTES),
+                    );
+                  }}
+                  aria-pressed={active}
+                  className="flex items-center justify-center gap-1.5 rounded-[calc(var(--app-radius-md)-3px)] py-1.5 text-[13px] font-semibold transition-colors"
+                  style={{
+                    background: active ? "var(--app-brand)" : "transparent",
+                    color: active ? "#fff" : "var(--app-ink-2)",
+                  }}
+                >
+                  <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Slider — single row, inline minute display. */}
+          <div>
+            <input
+              id="minutes-slider"
+              aria-label={`${minutes} minutes`}
+              type="range"
+              min={3}
+              max={MAX_FINE_TUNE_MINUTES}
+              step={1}
+              value={minutes}
+              onChange={(e) => setMinutes(Number(e.target.value))}
+              className="w-full"
+              style={{ accentColor: "var(--app-brand)" }}
+            />
+            <div className="-mt-0.5 flex justify-between text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+              <span>3 min</span>
+              <span>{MAX_FINE_TUNE_MINUTES} min</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+
   return (
-    <div className="space-y-3">
+    <div className="relative">
+      {/* First-visit invite card — the soul of the Radius redesign.
+          Showing "what's around you" is the most useful thing this
+          page can do, so we lead with it. Brand-orange CTA, soft
+          gradient, dismissable. Persists the dismiss across visits
+          via localStorage; the Locate button in the control card
+          remains the quiet always-on opt-in path for users who
+          dismissed the card but later change their mind. */}
+      {/* (The location invite is now a small map-native control floating
+          on the map itself — see the locate button inside the map
+          container below. No bar above the map.) */}
+
+      {/* Out-of-county banner — granted but outside Frederick County.
+          We still show the user's location on the map (so they can see
+          how far they are), but we surface the closest in-county town
+          as a one-tap fix so they're not stranded on an empty radius. */}
+      {geoStatus === "out-of-county" && myLoc && (() => {
+        const hit = resolveMunicipality(myLoc);
+        const distMi = (hit.distance_m / 1609.344).toFixed(1);
+        return (
+          <div
+            className="flex items-start gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-2.5"
+            style={{
+              borderColor: "var(--app-border)",
+              background:
+                "color-mix(in srgb, var(--app-ink-3) 6%, var(--app-bg-elevated))",
+            }}
+          >
+            <Compass
+              className="mt-0.5 h-4 w-4 shrink-0"
+              strokeWidth={2}
+              style={{ color: "var(--app-ink-3)" }}
+              aria-hidden
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                You&rsquo;re about {distMi} mi outside Frederick County.
+              </p>
+              <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+                The whole app is built for the county. Closest town from you is {hit.municipality.name}. Want to center there?
+              </p>
+              <button
+                type="button"
+                onClick={snapToNearestMuni}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold transition active:scale-[0.96]"
+                style={{
+                  background: "var(--app-bg-elevated)",
+                  color: "var(--app-brand-press)",
+                  border: "1px solid color-mix(in srgb, var(--app-brand) 50%, var(--app-border))",
+                }}
+              >
+                <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                Center on {hit.municipality.name}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Denied banner — quiet, brief, with a clear "how to fix" line.
+          Self-dismisses the moment the user successfully grants
+          permission (geoStatus moves to granted/out-of-county). */}
+      {geoStatus === "denied" && (
+        <div
+          className="flex items-start gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-2.5"
+          style={{
+            borderColor: "var(--app-border)",
+            background:
+              "color-mix(in srgb, var(--app-ink-3) 6%, var(--app-bg-elevated))",
+          }}
+        >
+          <Compass
+            className="mt-0.5 h-4 w-4 shrink-0"
+            strokeWidth={2}
+            style={{ color: "var(--app-ink-3)" }}
+            aria-hidden
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              Radius could not access your location.
+            </p>
+            <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+              Enable it in your browser settings, or pick a center below.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Map + floating ribbon. Wrapped in a relative container so the
           stats can overlay the map bottom (Apple Maps pattern). The
           previous standalone ribbon section ate ~50px and pushed the
           slider further from the map. */}
-      <div className="relative">
+      <div className="relative" style={{ height: "calc(100dvh - 7.5rem)" }}>
         <RadiusMap
+          height="100%"
           mode={mode}
           meters={meters}
           center={{ lng: center.lng, lat: center.lat }}
           centerLabel={center.label}
-          insidePlaces={insideDots}
+          places={countyDots}
+          events={eventsInReach.map((e) => ({
+            lng: e.lng,
+            lat: e.lat,
+            slug: e.slug,
+            title: e.title,
+          }))}
           reachable={isochrone}
           onCenterChange={(next) => {
             setMyLoc(next);
             setMyLocLabel("Pinned point");
           }}
+          onSelectPlace={(slug) => {
+            const p = placesBySlug.get(slug);
+            if (p) openSheet(p);
+          }}
         />
-        {/* Floating ribbon — overlays the map's bottom edge. Same
-            information as the old standalone strip in 1/3 the page
-            height because it borrows the map's space. */}
         <div
-          className="pointer-events-none absolute inset-x-3 bottom-3 z-20"
-          aria-hidden
+          aria-live="polite"
+          className="pointer-events-none absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-semibold shadow-[var(--app-shadow-1)]"
+          style={{
+            zIndex: "var(--z-map-control)",
+            color: "var(--app-ink-2)",
+            background: "color-mix(in srgb, var(--app-bg-elevated) 94%, transparent)",
+            border: "1px solid var(--app-border)",
+          }}
         >
-          <div
-            className="pointer-events-auto flex items-center gap-2.5 rounded-full px-3.5 py-2 text-[12px] shadow-[var(--app-shadow-2)] backdrop-blur"
-            style={{
-              background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
-              border: "1px solid var(--app-border)",
-            }}
-          >
-            <span
-              className="inline-flex items-center gap-1 font-semibold tabular-nums"
-              style={{ color: "var(--app-ink)" }}
-            >
-              <span className="font-serif text-[15px]">{minutes}</span>
-              {/* "min walk" / "min bike" / "min drive" — the verb is
-                  what makes the time interval mean something. Without
-                  it, "10 min" reads as ambient and the user has to
-                  infer the mode from elsewhere. */}
-              <span className="text-[10px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-                min {mode} · {formatDistance(meters)}
-              </span>
-            </span>
-            <span className="h-3 w-px" style={{ background: "var(--app-border)" }} aria-hidden />
-            <span
-              className="inline-flex items-center gap-1 font-semibold tabular-nums"
-              style={{ color: "var(--app-ink)" }}
-            >
-              <span className="font-serif text-[15px]">{inside.length.toLocaleString()}</span>
-              {/* "places in radius" rather than just "places" — answers
-                  the stranger's "of what?" without forcing them to
-                  trace back to the page name. */}
-              <span className="text-[10px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-                {`${inside.length === 1 ? "place" : "places"} in radius`}
-              </span>
-            </span>
-            {/* "farthest: Hill House Bed and Breakfast" was here.
-                Removed pre-launch (review §12): the user needs the
-                best nearby thing at the top of /radius, not the
-                farthest. Keep the count + mode + distance; cut the
-                trivia. */}
-          </div>
+          {reachBoundaryStatus === "street"
+            ? "Street-aware reach"
+            : reachBoundaryStatus === "loading"
+              ? "Checking streets · distance estimate"
+              : "Distance estimate · streets unavailable"}
         </div>
-      </div>
+        {/* Floating stats ribbon removed in the radar redesign — it
+            overlaid the map's bottom edge and competed with the camera
+            controls. The reach summary (places · open now · walk time)
+            now lives in the calm sheet header below the map. */}
 
-      {/* Best nearby moves — three curated "you should do this right
-          now" tiles (coffee within reach, public restroom, park
-          within reach) derived from the same inside list as the
-          grid below. Pre-launch review §4: /radius needs to feel
-          assistive, not directory-style. Self-hides each tile when
-          there's no match in the current radius — so dialing all
-          the way down doesn't render a row of empty placeholders. */}
-      <BestNearbyMoves
-        places={inside}
-        amenities={insideAmenities}
-        mode={mode}
-      />
-
-      {/* Compact control card — center + mode + slider in one tight
-          stack so the entire instrument fits under the map in one
-          mobile viewport. */}
-      <section className="space-y-2.5 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)]"
-               style={{ borderColor: "var(--app-border)" }}>
-        {/* Center — a dropdown with every municipality + landmarks
-            PLUS a "Use my location" button so the user has a real
-            custom-center path. Obvious, fully reachable. */}
-        <div className="flex items-center gap-2">
-          <span
-            aria-hidden
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-            style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand)" }}
-          >
-            <MapPin className="h-4 w-4" strokeWidth={2} aria-hidden />
-          </span>
-          <div className="relative min-w-0 flex-1">
-            <label htmlFor="center-select" className="sr-only">Center point</label>
-            <select
-              id="center-select"
-              value={myLoc ? -1 : presetIdx}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                if (v >= 0) {
-                  setMyLoc(null);
-                  setPresetIdx(v);
-                }
-              }}
-              className="w-full appearance-none rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] py-2 pl-3 pr-9 text-[14px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-            >
-              {myLoc && (
-                <option value={-1}>{myLocLabel}</option>
-              )}
-              <optgroup label="Municipalities">
-                {PRESETS.map((p, i) =>
-                  p.kind === "muni" ? (
-                    <option key={p.slug} value={i}>{p.label}</option>
-                  ) : null,
-                )}
-              </optgroup>
-              <optgroup label="Landmarks">
-                {PRESETS.map((p, i) =>
-                  p.kind === "poi" ? (
-                    <option key={p.slug} value={i}>{p.label}</option>
-                  ) : null,
-                )}
-              </optgroup>
-            </select>
-            <ChevronDown
-              className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2"
-              strokeWidth={2.25}
-              style={{ color: "var(--app-ink-3)" }}
-              aria-hidden
-            />
-          </div>
-          {/* Use my location — geolocation override for "what's near
-              ME right now" without picking a preset. Once set, it
-              shows in the dropdown as "Your location" and persists
-              until the user picks a different center. */}
+        {/* On-map locate control — small + map-native, replacing the bar
+            that used to sit above the map. A compact invite until the user
+            opts in, then a quiet active recenter button. Floats clear of the
+            sheet's collapsed peek. */}
+        {showGeoPrompt ? (
           <button
             type="button"
             onClick={requestMyLocation}
-            aria-pressed={Boolean(myLoc)}
-            aria-busy={locating || undefined}
-            title={myLoc ? "Using your location" : "Center on your location"}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border transition active:scale-[0.94]"
+            className="tactile tactile-interactive fixed right-4 inline-flex items-center gap-1.5 rounded-full py-2 pl-3 pr-3.5 text-[13px] font-semibold text-white shadow-[var(--app-shadow-2)] transition active:scale-[0.96]"
+            style={{ background: "var(--app-brand)", bottom: `calc(${SNAP_COLLAPSED} + 16px)`, zIndex: "var(--z-map-control)" }}
+          >
+            <Locate className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+            Use my location
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={requestMyLocation}
+            aria-label={myLoc ? "Recenter on your location" : "Use my location"}
+            className="tactile tap-44 fixed right-4 grid h-11 w-11 place-items-center rounded-full shadow-[var(--app-shadow-2)] transition active:scale-[0.94]"
             style={{
-              borderColor: myLoc ? "var(--app-brand)" : "var(--app-border)",
-              background: myLoc
-                ? "color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated))"
-                : "var(--app-bg-elevated)",
+              bottom: `calc(${SNAP_COLLAPSED} + 16px)`,
+              zIndex: "var(--z-map-control)",
+              background: "var(--app-bg-elevated)",
               color: myLoc ? "var(--app-brand)" : "var(--app-ink-2)",
             }}
           >
-            <Locate
-              className="h-4 w-4"
-              strokeWidth={myLoc ? 2.5 : 2}
-              fill={myLoc ? "currentColor" : "none"}
-              aria-hidden
-            />
+            <Locate className="h-[18px] w-[18px]" strokeWidth={2.25} fill={myLoc ? "currentColor" : "none"} aria-hidden />
           </button>
-        </div>
+        )}
 
-        {/* Mode + distance read as one instrument. */}
-        <div
-          role="group"
-          aria-label="Travel mode"
-          className="grid grid-cols-3 rounded-[var(--app-radius-md)] border p-0.5"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
-        >
-          {MODES.map(({ mode: m, label, icon: Icon }) => {
-            const active = m === mode;
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                aria-pressed={active}
-                className="flex items-center justify-center gap-1.5 rounded-[calc(var(--app-radius-md)-3px)] py-1.5 text-[13px] font-semibold transition-colors"
-                style={{
-                  background: active ? "var(--app-brand)" : "transparent",
-                  color: active ? "#fff" : "var(--app-ink-2)",
-                }}
+      </div>
+
+      {/* ── MAP CONTROL SHEET — the radar's controls + results, collapsed
+          over the live map. The summary (radar state + count) stays in the
+          collapsed peek; the controls and results reveal as the sheet is
+          dragged up (or via "Adjust"). The map is the canvas; the sheet
+          explains what matters. */}
+      <MapControlSheet
+        activeSnap={snap}
+        onSnapChange={setSnap}
+        onHandleTap={() => setSnap(snap === SNAP_COLLAPSED ? SNAP_HALF : SNAP_COLLAPSED)}
+        summary={
+          // The WHOLE header is the tap target: tapping anywhere on the
+          // peek lifts the sheet to the working controls (and taps it
+          // back down when open). The old design only responded to a tiny
+          // ~24px "Adjust" pill — under the 44px minimum and easy to miss
+          // — or to a drag that fought the map. One big honest target,
+          // with the pill kept as a visual affordance (a span, not a
+          // nested button).
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSnap(snap === SNAP_COLLAPSED ? SNAP_HALF : SNAP_COLLAPSED)}
+              aria-expanded={snap !== SNAP_COLLAPSED}
+              aria-label={snap === SNAP_COLLAPSED ? "Adjust the radius" : "Done adjusting"}
+              className="tap-44 flex min-h-11 min-w-0 flex-1 items-center justify-between gap-2 text-left"
+            >
+              <div className="min-w-0 leading-tight">
+                <p className="truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                  {minutes}-min {MODE_VERB[mode]} · {center.label}
+                </p>
+                {!placesReady ? (
+                  <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                    Finding places…
+                  </p>
+                ) : (
+                  <p className="truncate text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                    {radiusResultLine(
+                      inside.length,
+                      openNowCount,
+                      openOnly,
+                      mayReportNoneOpen,
+                    )}
+                  </p>
+                )}
+              </div>
+              <span
+                className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-[12px] font-semibold"
+                style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)", color: "var(--app-ink-2)" }}
               >
-                <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
-                {label}
-              </button>
-            );
-          })}
+                {snap === SNAP_COLLAPSED ? "Adjust" : "Done"}
+                {snap === SNAP_COLLAPSED ? (
+                  <ChevronUp className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                )}
+              </span>
+            </button>
+            <a
+              href="/map?mode=browse"
+              aria-label="Back to county map"
+              onClick={(event) => {
+                if (
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                ) {
+                  return;
+                }
+                event.preventDefault();
+                window.history.pushState(null, "", "/map?mode=browse");
+                window.dispatchEvent(new PopStateEvent("popstate"));
+              }}
+              className="tactile tactile-interactive inline-flex min-h-11 min-w-[52px] shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-sm)] px-1 text-[9px] font-semibold leading-none"
+              style={{
+                background: "var(--app-bg-elevated-solid)",
+                boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
+                color: "var(--app-ink-2)",
+              }}
+            >
+              <MapIcon className="mb-1 h-4 w-4" strokeWidth={2.1} aria-hidden />
+              County map
+            </a>
+          </div>
+        }
+      >
+        {controlCard}
+
+      {/* ── WITHIN REACH — the calm sheet lead. A neutral "Within reach of
+          {center}" heading + a one-line reach summary, then the places you can
+          actually get to. No "best" verdict and no single place pre-selected
+          for you: the reader sees what's reachable and picks. */}
+      <section aria-label={`Within reach of ${center.label}`} className="space-y-3">
+        <div>
+          <h2
+            className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Within reach of {center.label}
+          </h2>
+          <p className="mt-1 text-[13px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            {radiusResultLine(
+              inside.length,
+              openNowCount,
+              openOnly,
+              mayReportNoneOpen,
+            )}
+          </p>
         </div>
 
-        {/* Slider — single row, inline minute display. Range labels
-            tucked below at 10px so they don't add height. */}
-        <div>
-          <input
-            id="minutes-slider"
-            aria-label={`${minutes} minutes`}
-            type="range"
-            min={3}
-            max={mode === "walk" ? 30 : mode === "bike" ? 20 : 15}
-            step={1}
-            value={minutes}
-            onChange={(e) => setMinutes(Number(e.target.value))}
-            className="w-full"
-            style={{ accentColor: "var(--app-brand)" }}
-          />
-          <div className="-mt-0.5 flex justify-between text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-            <span>3 min</span>
-            <span>{mode === "walk" ? 30 : mode === "bike" ? 20 : 15} min</span>
+        {/* Open status is the first decision after "what is reachable," not a
+            filter buried below events and category catalogs. Keep it beside
+            the answer it changes so a closed lead place never feels chosen
+            for the user. */}
+        {(openNowCount > 0 || openOnly) && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setOpenOnly((v) => !v)}
+              aria-pressed={openOnly}
+              className="tactile tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold transition active:scale-[0.96]"
+              style={{
+                background: openOnly ? "var(--app-positive)" : "var(--app-bg-elevated)",
+                color: openOnly ? "white" : "var(--app-ink-2)",
+                border: `1px solid ${openOnly ? "var(--app-positive)" : "var(--app-border)"}`,
+              }}
+            >
+              <span
+                aria-hidden
+                className="h-2 w-2 rounded-full"
+                style={{ background: openOnly ? "white" : "var(--app-positive)" }}
+              />
+              {openOnly ? "Showing open places" : `Show ${openNowCount.toLocaleString("en-US")} open now`}
+            </button>
+            {openOnly && (
+              <button
+                type="button"
+                onClick={() => setOpenOnly(false)}
+                className="tap-44 text-[12px] font-medium underline-offset-2 hover:underline"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                Show all {inside.length.toLocaleString("en-US")}
+              </button>
+            )}
           </div>
-        </div>
+        )}
+
+        {/* A filtered-to-zero state belongs next to the status switch that
+            caused it, where recovery is immediate. */}
+        {placesReady && openOnly && displayedInside.length === 0 && (
+          <p
+            className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-[13px]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+          >
+            {mayReportNoneOpen
+              ? "No place inside this radius is open right now."
+              : "No place inside this radius has current hours showing it open."}{" "}
+            <button
+              type="button"
+              onClick={() => setOpenOnly(false)}
+              className="font-semibold underline underline-offset-2"
+              style={{ color: "var(--app-brand)" }}
+            >
+              Show all {inside.length.toLocaleString("en-US")}
+            </button>
+          </p>
+        )}
+
+        {placesReady && displayedInside[0] && (
+          // The lead place renders as a feature card — shown clearly, but no
+          // longer wrapped in the brand "selected" glow that framed it as the
+          // app's single pick. (No wrapping <button>: the feature variant
+          // renders its own button to open the place sheet.)
+          <PlaceCard place={displayedInside[0]} variant="feature" />
+        )}
+
+        {/* Within reach — the LIVE nearest-of-each-kind for the current
+            radius (coffee 4m, park 7m…), tappable into the place sheet.
+            Revived from the orphaned WithinReach primitive; the static
+            5-icon nav row it replaces surfaced no radius data at all and
+            just linked out to /amenities, /category, /events, /transit.
+            Self-hides kinds with no match (and the whole strip when
+            nothing's reachable), and recomputes on every slider/center
+            change. Minutes render in mono (the data voice). */}
+        <WithinReach
+          places={reachInput}
+          amenities={insideAmenities}
+          mode={mode}
+          originLng={center.lng}
+          originLat={center.lat}
+          boundaryStatus={reachBoundaryStatus}
+        />
       </section>
 
-      {/* Quick-pick chips — one tap sets BOTH mode and minutes for
-          the six most-asked-for combinations. */}
-      <RadiusPresets
-        mode={mode}
-        minutes={minutes}
-        onPick={(m, n) => {
-          setMode(m);
-          setMinutes(n);
-        }}
-      />
+
+      {/* (The control card now renders at the TOP of the Map Control Sheet,
+          right under the summary, so the working state leads with the
+          instrument.) */}
+
+      {/* (The old "Within reach" nearest-of-kind row was folded into the
+          Best-near sheet lead + the compact utility row above, so the
+          page leads with one clear answer instead of two stacked
+          outcome rows.) */}
+
+      {/* Happening within reach — upcoming events whose venue falls
+          inside the SAME reach as the places above. Soonest-first;
+          events are the time-sensitive half of "what's worth your
+          time," so they lead the results next to the best-nearby tiles.
+          The radius instrument used to answer "what PLACES can I reach";
+          this completes it with "what's HAPPENING within reach." */}
+      {eventsInReach.length > 0 && (
+        <section className="space-y-2">
+          <SectionHeading title="Happening within reach" count={eventsInReach.length} />
+          <ul className="space-y-2">
+            {eventsInReach.slice(0, 5).map((e) => {
+              const parts = eventDateParts(e.startsAt);
+              return (
+                <li key={`${e.slug}-${e.startsAt}`}>
+                  <Link
+                    href={`/events/${e.slug}`}
+                    className="tactile tactile-interactive flex items-center gap-3 rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] px-3 py-2.5 transition active:scale-[0.99]"
+                    style={{ border: "1px solid var(--app-border)" }}
+                  >
+                    <div
+                      className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-sm)]"
+                      style={{ background: "var(--app-bg-sunken)" }}
+                      aria-hidden
+                    >
+                      <span
+                        className="text-[10px] font-bold uppercase tracking-wide"
+                        style={{ color: "var(--app-brand-press)" }}
+                      >
+                        {parts.monthShort}
+                      </span>
+                      <span
+                        className="font-sans text-[15px] font-semibold leading-none"
+                        style={{ color: "var(--app-ink)" }}
+                      >
+                        {parts.day}
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className="truncate text-[14px] font-semibold leading-tight"
+                        style={{ color: "var(--app-ink)" }}
+                      >
+                        {e.title}
+                      </p>
+                      <p
+                        className="mt-0.5 truncate text-[12px]"
+                        style={{ color: "var(--app-ink-3)" }}
+                      >
+                        {formatEventTime(e.startsAt)}
+                        {e.venueName ? ` · ${e.venueName}` : ""} · {formatDistance(e.distance_m)}
+                      </p>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          {eventsInReach.length > 5 && (
+            <Link
+              href="/events"
+              className="inline-flex items-center gap-1 text-[12px] font-semibold"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              All {eventsInReach.length} within reach on the events page <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
+            </Link>
+          )}
+        </section>
+      )}
+
+      {/* Control card now renders UP near the map (see {controlCard}
+          right under the map ribbon) — controls lead, results follow. */}
+
+      {/* (Quick-pick chips removed — they presumed the user wanted a
+          specific time radius up front, which isn't how people think.
+          The mode + slider above are the control; the radius defaults
+          to a sensible 10-min walk and the user adjusts if they care.) */}
 
       {/* Category tile grid — the new landing for the lower half.
           Compact, colorful, scannable. Tap a tile to expand JUST
@@ -663,8 +1318,9 @@ export default function RadiusBuilder({
           a numeric count. The count moves below as the secondary line.
           Implicitly responds to a quick-pick tap too: the sentence
           rewrites the moment mode/minutes change. */}
+
       {groups.length > 0 && (
-        <section aria-label="Categories in radius" className="space-y-3">
+        <section aria-label="Categories within reach" className="space-y-3">
           <header className="flex items-end justify-between gap-2">
             <div className="min-w-0 flex-1">
               <p
@@ -682,7 +1338,7 @@ export default function RadiusBuilder({
                     .slice(0, 4)
                     .map((g) => g.label.toLowerCase());
                   if (tops.length === 0) {
-                    return `${inside.length} place${inside.length === 1 ? "" : "s"} within this radius.`;
+                    return `${displayedInside.length} place${displayedInside.length === 1 ? "" : "s"} within this radius.`;
                   }
                   return `You're within a ${minutes}-minute ${MODE_VERB[mode]} of ${formatList(tops)}.`;
                 })()}
@@ -697,7 +1353,7 @@ export default function RadiusBuilder({
                     creates multiple text nodes that screen readers
                     and text extractors concatenate with whitespace,
                     rendering "488 place s · 11 categor ies." */}
-                {`${inside.length.toLocaleString()} ${inside.length === 1 ? "place" : "places"} · ${groups.length} ${groups.length === 1 ? "category" : "categories"}`}
+                {`${displayedInside.length.toLocaleString()} ${displayedInside.length === 1 ? "place" : "places"} · ${groups.length} ${groups.length === 1 ? "category" : "categories"}`}
               </p>
             </div>
             <button
@@ -721,7 +1377,7 @@ export default function RadiusBuilder({
           </header>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {groups.map((g) => {
-              const color = CATEGORY_BY_SLUG[g.key]?.color ?? "#A8462C";
+              const color = CATEGORY_BY_SLUG[g.key]?.color ?? ACCENTS.terracotta;
               const isOpen = expanded.has(g.key) || seeAll;
               return (
                 <button
@@ -744,7 +1400,7 @@ export default function RadiusBuilder({
                   />
                   <span className="relative min-w-0 flex-1 truncate">
                     <span
-                      className="block font-serif text-[14px] font-semibold leading-tight tracking-tight"
+                      className="block font-sans text-[14px] font-semibold leading-tight tracking-tight"
                       style={{ color: "var(--app-ink)" }}
                     >
                       {g.label}
@@ -818,7 +1474,7 @@ export default function RadiusBuilder({
                 className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-[12px]"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
               >
-                No {activeCuisine ? "matching" : ""} spots in this group inside the radius.
+                There are no {activeCuisine ? "matching" : ""} spots in this group inside the radius.
               </p>
             ) : view === "grid" ? (
               <div className="grid grid-cols-2 gap-3">
@@ -839,7 +1495,7 @@ export default function RadiusBuilder({
                 type="button"
                 onClick={() => toggleExpand(g.key)}
                 className="inline-flex items-center gap-1.5 text-[13px] font-semibold transition active:opacity-70"
-                style={{ color: "var(--app-brand)" }}
+                style={{ color: "var(--app-brand-press)" }}
               >
                 <ChevronDown
                   className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
@@ -938,9 +1594,10 @@ export default function RadiusBuilder({
       {inside.length === 0 && insideAmenities.length === 0 && (
         <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-sm"
            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-          Nothing inside this radius. Move the slider, change the mode, or pick a different center.
+          There are no places inside this radius. Widen or move the radius to try again.
         </p>
       )}
+      </MapControlSheet>
     </div>
   );
 }

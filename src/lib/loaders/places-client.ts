@@ -1,6 +1,20 @@
 import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { haversineMeters, type LngLat } from "@/lib/geo";
+import { getOpenStatus } from "@/lib/hours";
+import { isHoursFresh } from "@/lib/hours-freshness";
+import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
+import { publishablePlaceWebsite } from "@/lib/place-website-policy";
+
+type ClientPlaceData = PlaceCardData & {
+  /** Build-time policy stamped by build-client-places. This avoids reading a
+   * private server env var from a browser bundle while still aging strict
+   * schedules out during a long-lived deployment. */
+  hours_policy_strict?: boolean;
+  /** Build-time verdict from the canonical loader. Rich author/source data is
+   * hydrated only when a photo is opened, not repeated across the catalog. */
+  google_photo_policy_passed?: true;
+};
 
 /**
  * CLIENT-SAFE place data. Imports ONLY the slim, pre-decorated
@@ -13,7 +27,26 @@ import { haversineMeters, type LngLat } from "@/lib/geo";
  * cards never read are dropped. `import type` of PlaceCardData is
  * erased, so this module pulls in zero loader code.
  */
-const ALL_CLIENT_PLACES = CLIENT_RAW as unknown as PlaceCardData[];
+export function withoutUnpublishableGooglePhoto(
+  place: ClientPlaceData,
+): ClientPlaceData {
+  const photo = place.google_photo_url;
+  if (!photo) return place;
+  return place.google_photo_policy_passed
+    ? place
+    : { ...place, google_photo_url: undefined };
+}
+
+const ALL_CLIENT_PLACES = (CLIENT_RAW as unknown as ClientPlaceData[])
+  .map(withoutUnpublishableGooglePhoto)
+  // Keep checked-in or long-lived generated catalogs behind the same trust
+  // boundary as the canonical server loader. The build also cleans this field,
+  // but runtime enforcement prevents an older artifact from leaking a
+  // directory link before it is regenerated.
+  .map((place) => ({
+    ...place,
+    website: publishablePlaceWebsite(place.website, place.name),
+  }));
 
 /** Hide places Google or our manual curation has marked closed. The
  *  server's `isOperational` filter is the source of truth, but client
@@ -28,7 +61,7 @@ function isOpen(p: PlaceCardData): boolean {
 const CLIENT_PLACES = ALL_CLIENT_PLACES.filter(isOpen);
 
 const BY_SLUG: Record<string, PlaceCardData> = (() => {
-  const m: Record<string, PlaceCardData> = {};
+  const m = Object.create(null) as Record<string, PlaceCardData>;
   // Detail lookups CAN return a closed place (its detail page should
   // still render with a clear "Closed permanently" label) — but the
   // discovery surfaces below only see operational rows.
@@ -36,29 +69,67 @@ const BY_SLUG: Record<string, PlaceCardData> = (() => {
   return m;
 })();
 
+/**
+ * Recompute open-now at call time from the shipped structured `hours`, so
+ * the client never renders a stale build-time "Open until 9". Places with
+ * no hours resolve to { state: "unknown" } exactly as before. Cheap: the
+ * slim set now carries the COMPACT { mon: [{ open, close }] } schedule (a
+ * few hundred bytes), not the heavy google_hours strings that were
+ * dropped to keep this bundle small.
+ */
+function withLiveStatus(p: ClientPlaceData): PlaceCardData {
+  const now = new Date();
+  const mayAssertHours = Boolean(
+    p.hours_verified &&
+      p.hours &&
+      (!p.hours_policy_strict || isHoursFresh(p.hours_updated_at, now)) &&
+      mayPublishVisitabilityHours(p.slug, p.hours, now),
+  );
+  return {
+    ...p,
+    hours: mayAssertHours ? p.hours : undefined,
+    hours_verified: mayAssertHours,
+    open_status: getOpenStatus(
+      mayAssertHours ? p.hours : undefined,
+      { verified: mayAssertHours },
+      now,
+    ),
+  };
+}
+
 export function clientPlaces(): PlaceCardData[] {
-  return CLIENT_PLACES;
+  return CLIENT_PLACES.map(withLiveStatus);
 }
 
 export function clientPlaceBySlug(slug: string): PlaceCardData | undefined {
-  return BY_SLUG[slug];
+  const p = BY_SLUG[slug];
+  return p ? withLiveStatus(p) : undefined;
 }
 
 /**
  * Client-safe placesWithinRadius: same shape/contract, over the slim
- * already-decorated set. The only difference vs the server loader is
- * open_status is the build-time value (recomputing it live needs the
- * per-place hours arrays, which were intentionally dropped to keep
- * this 2MB instead of 12MB — an honest tradeoff for a UI hint).
+ * already-decorated set. open_status is recomputed live (withLiveStatus)
+ * now that the compact structured hours ship in the slim bundle, so the
+ * radius readout's open-now matches the server's.
  */
 export function clientPlacesWithinRadius(
   origin: LngLat,
   meters: number,
+  spatialDistances?: ReadonlyMap<string, number>,
 ): PlaceCardData[] {
-  return CLIENT_PLACES.map((p) => ({
-    ...p,
-    distance_m: haversineMeters(origin, p.geom),
-  }))
-    .filter((p) => (p.distance_m ?? Infinity) <= meters)
-    .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
+  return CLIENT_PLACES.flatMap((p) => {
+    const distance = spatialDistances
+      ? spatialDistances.get(p.slug)
+      : haversineMeters(origin, p.geom);
+    // A trusted PostGIS map contains only rows inside the requested radius.
+    // Missing slugs are therefore outside the result, not an unknown distance.
+    if (distance === undefined || !Number.isFinite(distance) || distance > meters) {
+      return [];
+    }
+    return [{ ...withLiveStatus(p), distance_m: distance }];
+  }).sort(
+    (a, b) =>
+      (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity) ||
+      a.slug.localeCompare(b.slug),
+  );
 }

@@ -1,14 +1,12 @@
 /**
- * Mapbox public token, resolved once.
+ * Browser-safe Mapbox token.
  *
- * NEXT_PUBLIC_MAPBOX_TOKEN takes precedence, so setting it in Vercel
- * cleanly supersedes this committed fallback with no conflict or
- * rotation issue. The fallback exists only because the env var was not
- * set in Vercel production, which left the entire map blank. A Mapbox
- * "pk." token is publishable by design (it ships in the client bundle
- * wherever the map renders), so this is not a secret leak; still,
- * moving it to Vercel env and rotating it when convenient is cleaner.
+ * A publishable `pk.` token necessarily ships in the client bundle, but it
+ * must still be a dedicated URL-restricted credential supplied at build time.
+ * Never put a live fallback in source: a token in git history cannot be
+ * rotated by changing Vercel and can be reused from an unrelated website.
+ * Server-side APIs use mapbox-server.ts instead, so geocoding and routing can
+ * be controlled independently of map rendering.
  */
 export const MAPBOX_TOKEN =
-  process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
-  "pk.eyJ1IjoibWlrZS0tZCIsImEiOiJjbWc4ajU5MTEwN3l1MmlwcmJvZ2VjejV6In0.ma_LGFI0RCGfj42DnNUCcA";
+  process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim() ?? "";

@@ -5,9 +5,10 @@ import NotificationsCard from "@/components/settings/NotificationsCard";
 import PageBloom from "@/components/ui/PageBloom";
 
 export const metadata: Metadata = {
-  title: "Notifications",
+  robots: { index: false },
+  title: "Alerts & feedback",
   description:
-    "Choose what you hear from Frederick Radius. Civic alerts, saved event reminders, daily briefing.",
+    "Choose which Frederick Radius alerts appear and whether this device uses phone feedback.",
 };
 
 export default function NotificationsSettingsPage() {
@@ -17,7 +18,7 @@ export default function NotificationsSettingsPage() {
       <header className="space-y-2">
         <Link
           href="/settings"
-          className="inline-flex items-center gap-1 text-[12px] font-semibold"
+          className="inline-flex min-h-11 items-center gap-1 text-[12px] font-semibold"
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
@@ -27,12 +28,11 @@ export default function NotificationsSettingsPage() {
           Settings
         </p>
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          Notifications
+          Alerts & feedback
         </h1>
         <p className="text-[14px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-          Get a quiet ping when something you care about happens. Topics
-          are off until you turn them on, and you can disconnect from
-          this device anytime.
+          Choose what this phone should tell you, when it should stay quiet,
+          and whether actions should feel tactile.
         </p>
       </header>
 
@@ -47,12 +47,11 @@ export default function NotificationsSettingsPage() {
         }}
       >
         <p className="font-semibold" style={{ color: "var(--app-ink-2)" }}>
-          What we send
+          You stay in control
         </p>
         <p className="mt-1">
-          Only the topics you turn on. Nothing else. We don&apos;t send
-          marketing, growth nags, or pings outside the bands you pick.
-          You can unsubscribe in one tap.
+          Alert choices and quiet hours apply to this device. Urgent civic
+          alerts can bypass quiet hours only when civic alerts are on.
         </p>
       </section>
     </div>

@@ -1,33 +1,27 @@
 /**
- * Frederick County Parks & Trails — runtime integration.
+ * Frederick County Parks & Trails.
  *
- * The county runs a public ArcGIS layer of every maintained trail
- * (Parks/Parks_Trails_Cartegraph). The app had NO trail data at all —
- * this is the single biggest "missing data" gap. Fetched server-side
- * at request time with a weekly revalidate (the same pattern as
- * overpass/news — Vercel's server reaches ArcGIS even though local CI
- * can't), normalized to a typed Trail. Graceful []: a feed hiccup
- * never throws into a page, and nothing is fabricated.
- *
- * Field names are the exact ArcGIS attributes confirmed live in PR #23.
+ * The detailed list is an owner-reviewed Maryland set. An older integration
+ * accidentally queried Frederick, Colorado, then discarded every result at the
+ * Maryland bounding box. Keeping that dead request made a curated list look
+ * "live" and added a needless network failure to every cold render. The list
+ * now says what it is. The separate line-geometry accessor below reads the
+ * correct public Maryland layer at runtime without committing a mirrored copy.
  */
 import { resolveMunicipality } from "@/lib/connect";
+import { frederickCountySourceEnabled } from "@/lib/integrations/fcCountySource";
 
-// Only the fields we use + heavily simplified geometry: the raw layer
-// with outFields=* and full polylines is ~3.4MB (over Next's 2MB
-// fetch-cache limit → would never cache). We only need a representative
-// point, so maxAllowableOffset crushes the geometry and the payload
-// drops well under the limit, keeping the weekly revalidate cheap.
-const OUT_FIELDS = [
-  "OBJECTID", "Trail_Name", "Park_Name", "Trail_System", "Trail_Desc",
-  "Status", "Surface_Type", "Trail_Length_FT", "ADA_Accessible", "Hiking",
-  "Road_Cycling", "Mtn_Biking", "Equestrian", "Dogs_Allowed", "Paved",
-  "Owned_By", "Trail_SkillLevel",
-].join(",");
-const ENDPOINT =
-  "https://gis.frederickco.gov/arcgis/rest/services/Parks/Parks_Trails_Cartegraph/FeatureServer/0/query" +
-  `?where=1%3D1&outFields=${encodeURIComponent(OUT_FIELDS)}` +
-  "&outSR=4326&geometryPrecision=5&maxAllowableOffset=0.002&f=geojson";
+// MAP-OVERLAY source. The map needs trail
+// GEOMETRY, and the correct MD host carries it: ParksAndRecreation/Assets layer
+// 12 (Park Trails) = 200 named polyline segments, verified in the MD bbox, ~59KB
+// simplified (well under Next's 2MB fetch-cache limit). Its attributes are
+// Cartegraph asset fields (ParkName / FunctionalClassification), which are too
+// sparse for the rich /trails LIST (that stays curated) but are exactly enough
+// to draw the trails on the map — fixing an overlay that was silently empty.
+const SHAPES_ENDPOINT =
+  "https://fcgis.frederickcountymd.gov/server_pub/rest/services/ParksAndRecreation/Assets/MapServer/12/query" +
+  "?where=1%3D1&outFields=ParkName,FunctionalClassification,PavementClassification" +
+  "&outSR=4326&geometryPrecision=5&maxAllowableOffset=0.0003&f=geojson";
 const TIMEOUT_MS = 15_000;
 // Frederick County bbox [south, west, north, east].
 const BBOX: [number, number, number, number] = [39.265, -77.7, 39.745, -77.15];
@@ -83,6 +77,19 @@ function midpoint(coords: unknown): [number, number] | null {
   return Number.isFinite(lng) && Number.isFinite(lat) ? [lng, lat] : null;
 }
 
+/** Collapse the county's messy surface strings to paved | unpaved | unknown. */
+export function pavedClass(surface: string | undefined): "paved" | "unpaved" | "unknown" {
+  const s = (surface ?? "").toLowerCase();
+  if (!s) return "unknown";
+  if (s.includes("unpaved") || s.includes("natural") || s.includes("dirt") || s.includes("gravel")) {
+    return "unpaved";
+  }
+  if (s.includes("paved") || s.includes("bridge") || s.includes("asphalt") || s.includes("concrete")) {
+    return "paved";
+  }
+  return "unknown";
+}
+
 /**
  * Pure: ArcGIS GeoJSON FeatureCollection → Trail[]. Drops nameless,
  * geometry-less, and out-of-county features (never guessed). Exported
@@ -136,28 +143,6 @@ export function normalizeTrails(raw: unknown): Trail[] {
 }
 
 export async function getFrederickTrails(): Promise<Trail[]> {
-  // The live ENDPOINT above points at gis.frederickco.gov — turns out
-  // that's Frederick, COLORADO. Every feature falls outside the
-  // Frederick County, MD bbox and gets dropped, so the live fetch
-  // returns []. Keeping the fetch in place so a fix-up to the right
-  // MD endpoint flows through unchanged; falling back to the curated
-  // list keeps the page useful in the meantime.
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  let live: Trail[] = [];
-  try {
-    const res = await fetch(ENDPOINT, {
-      signal: ctrl.signal,
-      headers: { Accept: "application/json" },
-      next: { revalidate: 604800 },
-    });
-    if (res.ok) live = normalizeTrails(await res.json());
-  } catch {
-    /* feed hiccup / wrong endpoint — fall through to curated */
-  } finally {
-    clearTimeout(timer);
-  }
-  if (live.length > 0) return live;
   const { CURATED_TRAILS } = await import("@/data/curated-trails");
   return CURATED_TRAILS;
 }
@@ -171,6 +156,8 @@ export type TrailLineFC = {
   features: Array<{ type: "Feature"; geometry: unknown; properties: Record<string, unknown> }>;
 };
 
+import { slimGeometryFC } from "@/lib/geo/slim-geometry";
+
 export function trailShapesFC(raw: unknown): TrailLineFC {
   const feats = (raw as { features?: ArcFeature[] })?.features;
   const out: TrailLineFC["features"] = [];
@@ -181,16 +168,30 @@ export function trailShapesFC(raw: unknown): TrailLineFC {
       const t = g?.type;
       if (t !== "LineString" && t !== "MultiLineString") continue;
       const p = f?.properties ?? {};
-      const name = str(p.Trail_Name) ?? str(p.Park_Name);
+      // Accept the MD Park-Trails (ParkName) shape OR the legacy Cartegraph
+      // (Trail_Name/Park_Name) shape, so the overlay works regardless of source
+      // and the unit test for either schema stays valid.
+      const park = str(p.ParkName) ?? str(p.Park_Name);
+      const name = str(p.Trail_Name) ?? park;
       if (!name) continue;
       const pt = midpoint(g?.coordinates);
       if (!pt) continue;
       const [lng, lat] = pt;
       if (lat < s || lat > n || lng < w || lng > e) continue;
+      const surface = str(p.PavementClassification) ?? str(p.Surface_Type) ?? "";
       out.push({
         type: "Feature",
         geometry: g,
-        properties: { name, surface: str(p.Surface_Type) ?? "", park: str(p.Park_Name) ?? "" },
+        properties: {
+          name,
+          surface,
+          // Normalized surface class the map colors on: paved (smooth, good
+          // for bikes / strollers / wheelchairs), unpaved (dirt / natural), or
+          // unknown. The county feed spells it several ways ("Paved Trail",
+          // "Paved", a "PAved" typo, "Bridge") plus blanks — collapse them here.
+          paved: pavedClass(surface),
+          park: park ?? "",
+        },
       });
     }
   }
@@ -198,16 +199,22 @@ export function trailShapesFC(raw: unknown): TrailLineFC {
 }
 
 export async function getFrederickTrailShapes(): Promise<TrailLineFC> {
+  if (!frederickCountySourceEnabled("fc_park_trails")) {
+    return { type: "FeatureCollection", features: [] };
+  }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(ENDPOINT, {
+    const res = await fetch(SHAPES_ENDPOINT, {
       signal: ctrl.signal,
       headers: { Accept: "application/json" },
       next: { revalidate: 604800 },
     });
     if (!res.ok) return { type: "FeatureCollection", features: [] };
-    return trailShapesFC(await res.json());
+    // Display-slimming (payload audit 2026-07-02): same treatment as the
+    // transit shapes — 5-decimal coords, ~9 m tolerance. Trails are drawn,
+    // not measured; applied here so the normalizer test stays source-true.
+    return slimGeometryFC(trailShapesFC(await res.json()), { decimals: 5, tolerance: 0.00008 });
   } catch {
     return { type: "FeatureCollection", features: [] };
   } finally {

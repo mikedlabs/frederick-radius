@@ -26,7 +26,6 @@ import {
   Dog,
   ParkingCircle,
   Bike,
-  Toilet,
   Sun,
   Music,
   ShoppingBag,
@@ -37,6 +36,7 @@ import {
   CheckCircle2,
   type LucideIcon,
 } from "lucide-react";
+import RestroomMark from "@/components/icons/RestroomMark";
 
 type AmenityMeta = {
   /** Lucide icon component. */
@@ -55,7 +55,7 @@ const AMENITY_META: Record<string, AmenityMeta> = {
   "dog-friendly": { icon: Dog, label: "Dogs OK" },
   "parking-lot": { icon: ParkingCircle, label: "Parking" },
   "bike-rack": { icon: Bike, label: "Bike" },
-  restroom: { icon: Toilet, label: "Restroom" },
+  restroom: { icon: RestroomMark, label: "Restroom" },
   patio: { icon: Sun, label: "Patio" },
   "live-music": { icon: Music, label: "Live music" },
   takeout: { icon: ShoppingBag, label: "Takeout" },
@@ -91,7 +91,7 @@ export default function PlaceAmenityIcons({
   return (
     <section aria-label="Amenities">
       <h2 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>
-        What you&apos;ll find
+        What you&rsquo;ll find
       </h2>
       <ul
         // grid-cols layout instead of a wrapped flex row keeps every
@@ -118,7 +118,7 @@ export default function PlaceAmenityIcons({
                 <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
               </span>
               <span
-                className="text-center text-[10.5px] font-semibold leading-tight tracking-tight"
+                className="text-center text-[11px] font-semibold leading-tight tracking-tight"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 {m.label}

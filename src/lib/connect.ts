@@ -34,6 +34,7 @@
 
 import { type Municipality } from "@/data/municipalities";
 import { haversineMeters, type LngLat } from "@/lib/geo";
+import { isOpenNow } from "@/lib/hours";
 // A2.6: this module is server-side only (it's used by /api/nearby and
 // other route handlers). Client surfaces that need the lightweight
 // point → municipality utilities import from `@/lib/location` directly
@@ -41,10 +42,15 @@ import { haversineMeters, type LngLat } from "@/lib/geo";
 import { clientPlacesWithinRadius } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import {
+  applyLivePlaceEvidenceMap,
+  type LivePlaceEvidence,
+} from "@/lib/live-place-evidence";
+import {
   eventsLive,
   eventsNext24h,
   type EventWithMeta,
 } from "@/lib/loaders/events";
+import { isGeoPrecise } from "@/lib/events/geo-confidence";
 import { locations, type Location } from "@/lib/locations";
 import {
   resolveMunicipality,
@@ -108,6 +114,17 @@ export type NearbyOptions = {
   radiusM?: number;
   /** Cap per list (places / upcoming). Live events are never capped out. */
   limit?: number;
+  /**
+   * Optional, checksum-verified PostGIS distances for places inside radiusM.
+   * When absent, the existing in-memory Haversine path remains authoritative.
+   */
+  placeDistances?: ReadonlyMap<string, number>;
+  /**
+   * Optional current database evidence, loaded by the server route under a
+   * short deadline. Keeping the merge pure preserves deterministic ranking
+   * tests and lets every database failure fall back to the shipped snapshot.
+   */
+  placeEvidence?: ReadonlyMap<string, LivePlaceEvidence>;
 };
 
 /**
@@ -147,7 +164,7 @@ export type NearbyContext = {
   };
 };
 
-const DEFAULT_RADIUS_M = 19_312; // ~12 miles
+export const DEFAULT_NEARBY_RADIUS_M = 19_312; // ~12 miles
 
 function withinRadius<T extends { distance_m?: number }>(
   rows: T[],
@@ -168,30 +185,52 @@ function withinRadius<T extends { distance_m?: number }>(
  * honest as the rest of the app. Pure given `opts.now`.
  */
 export function nearbyNow(origin: LngLat, opts: NearbyOptions): NearbyContext {
-  const radiusM = opts.radiusM ?? DEFAULT_RADIUS_M;
+  const radiusM = opts.radiusM ?? DEFAULT_NEARBY_RADIUS_M;
   const limit = opts.limit ?? 8;
   const now = opts.now;
 
   const hit = resolveMunicipality(origin);
 
-  // placesWithinRadius already: dedupes, drops closed, stamps distance.
-  const openPlaces = clientPlacesWithinRadius(origin, radiusM)
-    .filter((p) => p.open_status.state !== "closed")
+  // placesWithinRadius already dedupes and stamps distance. Its unknown-hours
+  // rows remain useful elsewhere, but this contract is specifically named
+  // `openPlaces` and the Today section labels it "Open near you." Keep only
+  // recently confirmed open/closing-soon rows so an hours gap is never shown
+  // as an availability claim.
+  const nearbyPlaces = clientPlacesWithinRadius(
+    origin,
+    radiusM,
+    opts.placeDistances,
+  );
+  const openPlaces = applyLivePlaceEvidenceMap(
+    nearbyPlaces,
+    opts.placeEvidence ?? new Map(),
+    now,
+  )
+    .filter(
+      (place) =>
+        place.is_operational !== "closed_permanently" &&
+        place.is_operational !== "closed_temporarily",
+    )
+    .filter((p) => isOpenNow(p.open_status))
     .slice(0, limit);
 
   // eventsLive / eventsNext24h are county-wide and venue-closed-safe but
   // unanchored to a point; re-stamp distance from the user and bound it.
+  // A distance-led module ("within reach") is a reachability promise, so
+  // only addressable events qualify — an area-centroid event has no
+  // honest distance to bound or sort by (audit #2 P1).
   const stamp = (e: EventWithMeta): EventWithMeta => ({
     ...e,
     distance_m: haversineMeters(origin, e.geom),
   });
 
-  const liveEvents = withinRadius(eventsLive(now).map(stamp), radiusM).sort(
-    (a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0),
-  );
+  const liveEvents = withinRadius(
+    eventsLive(now).filter(isGeoPrecise).map(stamp),
+    radiusM,
+  ).sort((a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0));
 
   const upcomingEvents = withinRadius(
-    eventsNext24h(now).map(stamp),
+    eventsNext24h(now).filter(isGeoPrecise).map(stamp),
     radiusM,
   )
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))

@@ -1,3 +1,5 @@
+import COUNTY_RING from "@/data/county-ring.json";
+
 export type LngLat = { lng: number; lat: number };
 
 export const EARTH_RADIUS_M = 6_371_000;
@@ -79,6 +81,19 @@ export const FREDERICK_COUNTY_BBOX = {
   east: -77.150,
 };
 
+/**
+ * Fetch/build envelope for Radius's full guide area. The guide intentionally
+ * includes the incorporated Town of Mount Airy, which straddles the
+ * Frederick/Carroll line and reaches east of the county-only bbox. Callers
+ * must still pass returned points through `isInFrederickCountyArea` (or the
+ * municipality resolver); this larger rectangle is a collection envelope,
+ * not permission to publish arbitrary Carroll County records.
+ */
+export const FREDERICK_GUIDE_BBOX = {
+  ...FREDERICK_COUNTY_BBOX,
+  east: -77.130,
+} as const;
+
 export function isInsideFrederickCounty(lat: number, lng: number): boolean {
   return (
     Number.isFinite(lat) &&
@@ -91,12 +106,79 @@ export function isInsideFrederickCounty(lat: number, lng: number): boolean {
 }
 
 /**
+ * The real county outline, simplified from the public-domain U.S. Census
+ * TIGERweb boundary. The bbox test above passes places in Washington and
+ * Carroll County (Smithsburg sits inside the box but 8km outside the
+ * county), which let 79 out-of-county records survive into discovery
+ * surfaces. The 2026-06 redesign audit caught a Smithsburg bar served
+ * as the guide's "Best match" for a downtown Frederick user.
+ */
+const RING: ReadonlyArray<readonly [number, number]> = COUNTY_RING as [number, number][];
+
+function pointInCountyRing(lng: number, lat: number): boolean {
+  let inside = false;
+  let j = RING.length - 1;
+  for (let i = 0; i < RING.length; i++) {
+    const [xi, yi] = RING[i];
+    const [xj, yj] = RING[j];
+    if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+    j = i;
+  }
+  return inside;
+}
+
+// Mount Airy is the one reviewed municipality in this guide that intentionally
+// straddles the Frederick/Carroll line. Keep its published town extent as the
+// explicit exception instead of buffering every mile of the county border.
+const MOUNT_AIRY_TOWN_BBOX = {
+  west: -77.18,
+  south: 39.355,
+  east: -77.13,
+  north: 39.4,
+} as const;
+
+function isInMountAiryTownArea(lng: number, lat: number): boolean {
+  return (
+    lng >= MOUNT_AIRY_TOWN_BBOX.west &&
+    lng <= MOUNT_AIRY_TOWN_BBOX.east &&
+    lat >= MOUNT_AIRY_TOWN_BBOX.south &&
+    lat <= MOUNT_AIRY_TOWN_BBOX.north
+  );
+}
+
+/**
+ * Polygon-accurate county membership plus the reviewed Mount Airy town
+ * exception. A blanket border buffer is not safe: it admitted Boonsboro,
+ * Smithsburg, Fort Ritchie, Damascus, and other outside places as "in the
+ * county" merely because they sat near the line.
+ */
+export function isInFrederickCountyArea(lng: number, lat: number): boolean {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  // Fast-path rejector: the bbox stays padded enough to reach the reviewed
+  // Carroll-side portion of Mount Airy.
+  const PAD = 0.02;
+  if (
+    lat < FREDERICK_COUNTY_BBOX.south - PAD ||
+    lat > FREDERICK_COUNTY_BBOX.north + PAD ||
+    lng < FREDERICK_COUNTY_BBOX.west - PAD ||
+    lng > FREDERICK_COUNTY_BBOX.east + PAD
+  ) {
+    return false;
+  }
+  if (pointInCountyRing(lng, lat)) return true;
+  return isInMountAiryTownArea(lng, lat);
+}
+
+/**
  * A coordinate is "valid" for the app when it has finite numbers AND
- * lands inside the county bbox. (0, 0) or any default fallback fails
- * by construction. Callers use this at loader boundaries to drop
+ * lands inside the county (real outline plus the reviewed Mount Airy
+ * town exception, not just the bbox). (0, 0) or any default fallback fails by
+ * construction. Callers use this at loader boundaries to drop
  * mis-positioned rows from public surfaces.
  */
 export function isValidCoord(coord: { lng: number; lat: number } | null | undefined): boolean {
   if (!coord) return false;
-  return isInsideFrederickCounty(coord.lat, coord.lng);
+  return isInFrederickCountyArea(coord.lng, coord.lat);
 }

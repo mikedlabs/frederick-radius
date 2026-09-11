@@ -73,13 +73,10 @@ function escapeText(s: string): string {
   return s.replace(/[\\,;]/g, "\\$&").replace(/\r?\n/g, "\\n");
 }
 
-export function buildIcs(input: IcsInput): string {
+/** The VEVENT block for one event — shared by the single-event download
+ *  and the multi-event subscription feeds. */
+function veventLines(input: IcsInput): string[] {
   const lines: string[] = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//Frederick Radius//Events//EN",
-    "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
     "BEGIN:VEVENT",
     `UID:${input.uid}@frederickradius.app`,
     `DTSTAMP:${utcStamp(new Date().toISOString())}`,
@@ -116,6 +113,41 @@ export function buildIcs(input: IcsInput): string {
   if (loc) lines.push(`LOCATION:${escapeText(loc)}`);
   if (input.url) lines.push(`URL:${input.url}`);
 
-  lines.push("END:VEVENT", "END:VCALENDAR");
-  return lines.join("\r\n");
+  lines.push("END:VEVENT");
+  return lines;
+}
+
+export function buildIcs(input: IcsInput): string {
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Frederick Radius//Events//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    ...veventLines(input),
+    "END:VCALENDAR",
+  ].join("\r\n");
+}
+
+/**
+ * A SUBSCRIBABLE calendar: many VEVENTs under one X-WR-CALNAME, with the
+ * refresh hints Apple/Google/Outlook honor (REFRESH-INTERVAL is RFC 7986;
+ * X-PUBLISHED-TTL is the de-facto legacy spelling). Subscribed via a
+ * webcal:// link, the calendar app re-fetches on its own — the county's
+ * events keep themselves current on the user's own calendar.
+ */
+export function buildIcsFeed(name: string, inputs: IcsInput[]): string {
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Frederick Radius//Events//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    `X-WR-CALNAME:${escapeText(name)}`,
+    "X-WR-TIMEZONE:America/New_York",
+    "REFRESH-INTERVAL;VALUE=DURATION:PT6H",
+    "X-PUBLISHED-TTL:PT6H",
+    ...inputs.flatMap(veventLines),
+    "END:VCALENDAR",
+  ].join("\r\n");
 }

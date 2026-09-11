@@ -1,0 +1,139 @@
+{
+  "_doc": "A narrow, first-party allowlist for candidate-only change detection. Source Watch fetches only these exact public URLs, never follows returned links, never publishes findings, and never treats a page change as verified truth. Page text remains local and transient; tracked output contains hashes, source URLs, compact metadata, and review candidates only.",
+  "version": 1,
+  "mode": "candidate-only",
+  "limits": {
+    "maxSources": 15,
+    "maxCreditsPerRun": 14,
+    "maxCreditsPerMonth": 450,
+    "timeoutMs": 30000
+  },
+  "sources": [
+    {
+      "id": "downtown-frederick-events",
+      "name": "Downtown Frederick Partnership events",
+      "url": "https://downtownfrederick.org/events/",
+      "category": "major-events",
+      "provenance": "first-party",
+      "purpose": "Detect material schedule or status changes on the Partnership's own downtown event board.",
+      "rightsPosture": "Observe and link only; do not republish page prose or media."
+    },
+    {
+      "id": "celebrate-frederick-events",
+      "name": "Celebrate Frederick events",
+      "url": "https://www.celebratefrederick.com/events/",
+      "category": "major-events",
+      "provenance": "first-party",
+      "purpose": "Watch the organizer page for major City event changes, including seasonal festivals and concerts.",
+      "rightsPosture": "Observe and link only; do not republish page prose or media."
+    },
+    {
+      "id": "great-frederick-fair-schedule",
+      "name": "The Great Frederick Fair schedule",
+      "url": "https://thegreatfrederickfair.com/schedule/",
+      "category": "major-events",
+      "provenance": "first-party",
+      "purpose": "Detect schedule changes on the Fair's official event schedule.",
+      "rightsPosture": "Observe and link only; do not republish page prose, PDFs, or media."
+    },
+    {
+      "id": "visit-frederick-events",
+      "name": "Visit Frederick events",
+      "url": "https://www.visitfrederick.org/events/",
+      "category": "major-events",
+      "provenance": "first-party",
+      "purpose": "Watch the county destination organization's public event board for material changes.",
+      "rightsPosture": "Discovery and review only; existing publisher feeds remain the preferred ingestion path."
+    },
+    {
+      "id": "weinberg-performances",
+      "name": "Weinberg Center performances",
+      "url": "https://weinbergcenter.org/performances/",
+      "category": "venue",
+      "provenance": "first-party",
+      "purpose": "Use Firecrawl's rendered-page path for a first-party performance page that rejects a basic fetch.",
+      "rightsPosture": "Observe and link only; do not republish descriptions, artwork, or ticketing content."
+    },
+    {
+      "id": "sky-stage-calendar",
+      "name": "Sky Stage calendar",
+      "url": "https://www.skystagefrederick.com/project/calendar/",
+      "category": "venue",
+      "provenance": "first-party",
+      "purpose": "Watch the Frederick Arts Council venue's JavaScript-backed calendar page.",
+      "rightsPosture": "Observe and link only; do not republish descriptions or media."
+    },
+    {
+      "id": "delaplaine-events",
+      "name": "Delaplaine Arts Center events",
+      "url": "https://delaplaine.org/events/",
+      "category": "venue",
+      "provenance": "first-party",
+      "purpose": "Detect material changes on the arts center's own event page.",
+      "rightsPosture": "Observe and link only; the existing first-party calendar feed remains preferred."
+    },
+    {
+      "id": "maryland-ensemble-events",
+      "name": "Maryland Ensemble Theatre events",
+      "url": "https://marylandensemble.org/events/",
+      "category": "venue",
+      "provenance": "first-party",
+      "purpose": "Detect material changes on the theatre's own event page.",
+      "rightsPosture": "Observe and link only; the existing first-party events API remains preferred."
+    },
+    {
+      "id": "frederick-center-events",
+      "name": "The Frederick Center events",
+      "url": "https://thefrederickcenter.org/events/",
+      "category": "community-events",
+      "provenance": "first-party",
+      "purpose": "Watch the local nonprofit's public event page without touching private-location or registration-only details.",
+      "rightsPosture": "Observe public changes and link only; never infer or publish undisclosed locations."
+    },
+    {
+      "id": "mdcc-deaf-community-events",
+      "name": "Maryland Deaf Community Center events",
+      "url": "https://www.deafmdcc.org/events",
+      "category": "community-events",
+      "provenance": "first-party",
+      "purpose": "Watch the organizer's public event page for Deaf-community programming changes.",
+      "rightsPosture": "Observe and link only; never infer accessibility accommodations that are not explicitly stated."
+    },
+    {
+      "id": "city-emergency-alerts",
+      "name": "City of Frederick emergency alerts",
+      "url": "https://www.cityoffrederickmd.gov/AlertCenter.aspx?CID=City-Emergencies-4",
+      "category": "civic",
+      "provenance": "government",
+      "purpose": "Detect changes on the City's public CivicEngage emergency-alert page as a review signal.",
+      "rightsPosture": "Candidate-only cross-check; the official RSS feed remains authoritative for runtime display."
+    },
+    {
+      "id": "county-health-alerts",
+      "name": "Frederick County Health Department alerts",
+      "url": "https://health.frederickcountymd.gov/AlertCenter.aspx",
+      "category": "civic",
+      "provenance": "government",
+      "purpose": "Detect changes on the Health Department's public CivicEngage alert center as a review signal.",
+      "rightsPosture": "Candidate-only cross-check; official category RSS feeds remain authoritative."
+    },
+    {
+      "id": "county-connector-schedules",
+      "name": "Frederick County Connector schedules",
+      "url": "https://www.frederickcountymd.gov/199/Connector-Schedules",
+      "category": "transit",
+      "provenance": "government",
+      "purpose": "Detect posted transit schedule or document changes on the County's official page.",
+      "rightsPosture": "Candidate-only cross-check; review linked documents and effective dates before any data update."
+    },
+    {
+      "id": "county-food-truck-roster",
+      "name": "Frederick County licensed mobile units roster",
+      "url": "https://health.frederickcountymd.gov/695/Mobile-UnitsFood-Trucks",
+      "category": "food-trucks",
+      "provenance": "government",
+      "purpose": "Detect roster-page changes on the Health Department's official licensed mobile-units page.",
+      "rightsPosture": "Review signal only. Written reuse approval is still required before publishing roster-derived records."
+    }
+  ]
+}

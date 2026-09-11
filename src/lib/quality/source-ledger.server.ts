@@ -1,0 +1,370 @@
+import "server-only";
+import SOURCE_REGISTRY_RAW from "@/data/source-registry.generated.json" with { type: "json" };
+import { getSql } from "@/lib/db/client";
+import { feedStatuses } from "@/lib/integrations/feed-registry";
+import { bundledSourceArtifactEvidence } from "./source-artifact-evidence";
+import {
+  buildSourceLedger,
+  type SourceConfigurationEvidence,
+  type SourceEvidence,
+  type SourceManifestEntry,
+  type SourceLedgerRow,
+} from "./source-ledger";
+
+const SOURCE_REGISTRY = SOURCE_REGISTRY_RAW as SourceManifestEntry[];
+
+type RawSql = NonNullable<ReturnType<typeof getSql>>;
+
+function isUndefinedTableError(error: unknown): boolean {
+  let candidate: unknown = error;
+  const seen = new Set<unknown>();
+
+  while (
+    candidate !== null
+    && typeof candidate === "object"
+    && !seen.has(candidate)
+  ) {
+    seen.add(candidate);
+    if (
+      "code" in candidate
+      && (candidate as { code?: unknown }).code === "42P01"
+    ) {
+      return true;
+    }
+    candidate =
+      "cause" in candidate
+        ? (candidate as { cause?: unknown }).cause
+        : null;
+  }
+
+  return false;
+}
+
+function configurationEvidence(): SourceConfigurationEvidence[] {
+  const statuses = feedStatuses();
+  return [...statuses.keyed, ...statuses.keyless].flatMap((feed) =>
+    (feed.sourceIds ?? []).map((sourceId) => ({
+      sourceId,
+      configured: feed.configured,
+      keyless: feed.keyless,
+      missingSettings: feed.missingEnvs,
+    })),
+  );
+}
+
+function manifestEvidence(): SourceEvidence[] {
+  return SOURCE_REGISTRY.flatMap((source) => {
+    if (!source.manifestLastSuccess) return [];
+    return [{
+      sourceKey: source.id,
+      kind: "manifest" as const,
+      attemptedAt: source.manifestLastSuccess,
+      outcome: "success" as const,
+      succeededAt: source.manifestLastSuccess,
+      // The manifest proves collection and validation. Publication is
+      // deliberately separate and must come from an ingest or artifact.
+      publishedAt: null,
+      recordCount: null,
+    }];
+  });
+}
+
+async function snapshotEvidence(
+  sql: RawSql,
+  sourceKeys: string[],
+): Promise<SourceEvidence[]> {
+  type SnapshotEvidenceRow = {
+    source: string;
+    taken_at: string | Date;
+    count: number;
+  };
+
+  let rows: SnapshotEvidenceRow[];
+  try {
+    rows = (await sql`
+      WITH wanted(source) AS (
+        SELECT unnest(${sourceKeys}::text[])
+      )
+      SELECT wanted.source,
+             health.taken_at,
+             health.count
+      FROM wanted
+      JOIN feed_source_health health
+        ON health.source = wanted.source
+    `) as unknown as SnapshotEvidenceRow[];
+  } catch (error) {
+    if (!isUndefinedTableError(error)) throw error;
+
+    // Migration 0039 is installed manually. Keep the health surface and its
+    // worker compatible during a code-first rollout, but only for PostgreSQL's
+    // exact undefined-table signal. Permission and query failures must remain
+    // visible to strict monitoring callers.
+    rows = (await sql`
+      WITH wanted(source) AS (
+        SELECT unnest(${sourceKeys}::text[])
+      )
+      SELECT wanted.source,
+             latest.taken_at,
+             latest.count
+      FROM wanted
+      JOIN LATERAL (
+        SELECT taken_at, count
+        FROM feed_snapshots
+        WHERE feed_snapshots.source = wanted.source
+        ORDER BY taken_at DESC, id DESC
+        LIMIT 1
+      ) latest ON true
+    `) as unknown as SnapshotEvidenceRow[];
+  }
+
+  return rows.map((row) => {
+    const at = new Date(row.taken_at).toISOString();
+    return {
+      sourceKey: row.source,
+      kind: "feed_snapshot",
+      attemptedAt: at,
+      outcome: "success",
+      succeededAt: at,
+      publishedAt: at,
+      recordCount: Number(row.count),
+    };
+  });
+}
+
+async function ingestEvidence(
+  sql: RawSql,
+  sourceKeys: string[],
+): Promise<SourceEvidence[]> {
+  const rows = (await sql`
+    WITH wanted(source) AS (
+      SELECT unnest(${sourceKeys}::text[])
+    )
+    SELECT wanted.source,
+           latest.started_at AS latest_started_at,
+           latest.ended_at AS latest_ended_at,
+           latest.status AS latest_status,
+           latest.records_in AS latest_records_in,
+           latest.records_failed AS latest_records_failed,
+           latest.error AS latest_error,
+           operational.started_at AS operational_started_at,
+           operational.ended_at AS operational_ended_at,
+           operational.status AS operational_status,
+           operational.records_in AS operational_records_in,
+           operational.records_failed AS operational_records_failed,
+           operational.error AS operational_error,
+           success.started_at AS success_started_at,
+           success.ended_at AS success_ended_at,
+           success.records_in AS success_records_in
+    FROM wanted
+    LEFT JOIN LATERAL (
+      SELECT started_at, ended_at, status, records_in, records_failed, error
+      FROM ingest_runs
+      WHERE ingest_runs.source_slug = wanted.source
+      ORDER BY started_at DESC, id DESC
+      LIMIT 1
+    ) latest ON true
+    LEFT JOIN LATERAL (
+      SELECT started_at, ended_at, status, records_in, records_failed, error
+      FROM ingest_runs
+      WHERE ingest_runs.source_slug = wanted.source
+        AND records_in IS NOT NULL
+      ORDER BY started_at DESC, id DESC
+      LIMIT 1
+    ) operational ON true
+    LEFT JOIN LATERAL (
+      SELECT started_at, ended_at, records_in
+      FROM ingest_runs
+      WHERE ingest_runs.source_slug = wanted.source
+        AND status = 'ok'
+        AND ended_at IS NOT NULL
+        AND coalesce(records_failed, 0) = 0
+        AND records_in IS NOT NULL
+      ORDER BY started_at DESC, id DESC
+      LIMIT 1
+    ) success ON true
+    WHERE latest.started_at IS NOT NULL
+       OR operational.started_at IS NOT NULL
+       OR success.started_at IS NOT NULL
+  `) as unknown as Array<{
+    source: string;
+    latest_started_at: string | Date | null;
+    latest_ended_at: string | Date | null;
+    latest_status: string | null;
+    latest_records_in: number | null;
+    latest_records_failed: number | null;
+    latest_error: string | null;
+    operational_started_at: string | Date | null;
+    operational_ended_at: string | Date | null;
+    operational_status: string | null;
+    operational_records_in: number | null;
+    operational_records_failed: number | null;
+    operational_error: string | null;
+    success_started_at: string | Date | null;
+    success_ended_at: string | Date | null;
+    success_records_in: number | null;
+  }>;
+
+  return rows.flatMap((row): SourceEvidence[] => {
+    const items: SourceEvidence[] = [];
+    const latestStartedAt = row.latest_started_at
+      ? new Date(row.latest_started_at).toISOString()
+      : null;
+    const latestEndedAt = row.latest_ended_at
+      ? new Date(row.latest_ended_at).toISOString()
+      : null;
+    if (latestStartedAt) {
+      const reachabilityProbe = row.latest_records_in === null;
+      const completeSuccess =
+        row.latest_status === "ok" &&
+        latestEndedAt !== null &&
+        Number(row.latest_records_failed ?? 0) === 0;
+      items.push({
+        sourceKey: row.source,
+        kind: reachabilityProbe ? "reachability_probe" : "ingest_run",
+        attemptedAt: latestStartedAt,
+        outcome: completeSuccess
+          ? "success"
+          : row.latest_status === "running"
+            ? "running"
+            : "failure",
+        succeededAt:
+          completeSuccess && !reachabilityProbe ? latestEndedAt : null,
+        publishedAt:
+          completeSuccess && !reachabilityProbe ? latestEndedAt : null,
+        recordCount:
+          completeSuccess && row.latest_records_in !== null
+            ? Number(row.latest_records_in)
+            : null,
+        error: completeSuccess ? null : row.latest_error ?? row.latest_status,
+      });
+    }
+
+    const operationalStartedAt = row.operational_started_at
+      ? new Date(row.operational_started_at).toISOString()
+      : null;
+    const operationalEndedAt = row.operational_ended_at
+      ? new Date(row.operational_ended_at).toISOString()
+      : null;
+    if (operationalStartedAt && operationalStartedAt !== latestStartedAt) {
+      const completeSuccess =
+        row.operational_status === "ok" &&
+        operationalEndedAt !== null &&
+        Number(row.operational_records_failed ?? 0) === 0;
+      items.push({
+        sourceKey: row.source,
+        kind: "ingest_run",
+        attemptedAt: operationalStartedAt,
+        outcome: completeSuccess
+          ? "success"
+          : row.operational_status === "running"
+            ? "running"
+            : "failure",
+        succeededAt: completeSuccess ? operationalEndedAt : null,
+        publishedAt: completeSuccess ? operationalEndedAt : null,
+        recordCount: completeSuccess
+          ? Number(row.operational_records_in)
+          : null,
+        error: completeSuccess
+          ? null
+          : row.operational_error ?? row.operational_status,
+      });
+    }
+
+    const successStartedAt = row.success_started_at
+      ? new Date(row.success_started_at).toISOString()
+      : null;
+    const successEndedAt = row.success_ended_at
+      ? new Date(row.success_ended_at).toISOString()
+      : null;
+    if (
+      successStartedAt &&
+      successEndedAt &&
+      successStartedAt !== latestStartedAt &&
+      successStartedAt !== operationalStartedAt
+    ) {
+      items.push({
+        sourceKey: row.source,
+        kind: "ingest_run",
+        attemptedAt: successStartedAt,
+        outcome: "success",
+        succeededAt: successEndedAt,
+        publishedAt: successEndedAt,
+        recordCount:
+          row.success_records_in === null
+            ? null
+            : Number(row.success_records_in),
+      });
+    }
+    return items;
+  });
+}
+
+export async function getSourceHealthLedger(
+  options: {
+    now?: Date;
+    /**
+     * Ephemeral evidence produced during this same health request. It is never
+     * loaded from the manifest, database, or bundled artifacts; runtime probes
+     * therefore cannot become a permanent health lease.
+     */
+    currentEvidence?: readonly SourceEvidence[];
+    /**
+     * Monitoring callers need evidence-query failures to remain failures.
+     * The admin page defaults to fail-soft so one missing operational table
+     * does not take down the whole dashboard.
+     */
+    strictDatabaseEvidence?: boolean;
+  } = {},
+): Promise<SourceLedgerRow[]> {
+  const evidence = [
+    ...manifestEvidence(),
+    ...bundledSourceArtifactEvidence(),
+    ...(options.currentEvidence ?? []),
+  ];
+  let sql: RawSql | null = null;
+  try {
+    sql = getSql();
+  } catch (error) {
+    if (options.strictDatabaseEvidence) throw error;
+    console.warn(
+      "[source-ledger] database client initialization failed:",
+      error instanceof Error ? error.message : error,
+    );
+  }
+
+  if (sql) {
+    const sourceKeys = [
+      ...new Set(
+        SOURCE_REGISTRY.flatMap((source) => [
+          source.id,
+          ...source.evidenceAliases,
+        ]),
+      ),
+    ];
+    const failSoft = async (
+      label: "snapshot" | "ingest",
+      task: Promise<SourceEvidence[]>,
+    ): Promise<SourceEvidence[]> => {
+      if (options.strictDatabaseEvidence) return task;
+      return task.catch((error) => {
+        console.warn(
+          `[source-ledger] ${label} evidence query failed:`,
+          error instanceof Error ? error.message : error,
+        );
+        return [];
+      });
+    };
+    const [snapshots, ingests] = await Promise.all([
+      failSoft("snapshot", snapshotEvidence(sql, sourceKeys)),
+      failSoft("ingest", ingestEvidence(sql, sourceKeys)),
+    ]);
+    evidence.push(...snapshots, ...ingests);
+  }
+
+  return buildSourceLedger(
+    SOURCE_REGISTRY,
+    evidence,
+    configurationEvidence(),
+    options.now ?? new Date(),
+  );
+}

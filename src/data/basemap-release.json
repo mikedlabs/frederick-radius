@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "release_id": "frederick-county-20260722-v1",
+  "promoted_at": "2026-08-06T00:00:00Z",
+  "bbox": [-77.75, 39.15, -77.05, 39.75],
+  "materialized_at_build": false,
+  "assets": [
+    {
+      "path": "public/basemap/frederick-county.pmtiles",
+      "sha256": "28a6e6b2d04aade5be0021fbfb8abe6b98cefe4560fb10e4b677fca2dae43019",
+      "bytes": 29515026,
+      "source_url": "https://build.protomaps.com/20260722.pmtiles",
+      "materializer": "pmtiles extract --bbox=-77.75,39.15,-77.05,39.75"
+    },
+    {
+      "path": "public/basemap/sprites/v4/light.json",
+      "sha256": "bfac76cf7ed5c2aa2992695904056a1c6b07785b7fd20e6c640cb44fd6244a2e",
+      "bytes": 3549,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/sprites/v4/light.json"
+    },
+    {
+      "path": "public/basemap/sprites/v4/light.png",
+      "sha256": "b6a34640917bdc57d0bd080836db33376371a3312ebe7b849045268015de3481",
+      "bytes": 16174,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/sprites/v4/light.png"
+    },
+    {
+      "path": "public/basemap/sprites/v4/light@2x.json",
+      "sha256": "1fb5b123fbe35d2e1f6ac171513ce01df89e671273a417ee89c44886a4c132f0",
+      "bytes": 3579,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/sprites/v4/light@2x.json"
+    },
+    {
+      "path": "public/basemap/sprites/v4/light@2x.png",
+      "sha256": "23f6e9df27c2e9a14385763980a24e3608966bfc8192a106058bc2ca959ab563",
+      "bytes": 28852,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/sprites/v4/light@2x.png"
+    },
+    {
+      "path": "public/basemap/fonts/Noto Sans Regular/0-255.pbf",
+      "sha256": "62c6d49b15fa836eb6aa45e259c7ca6762f44b011b09e47776efbe4a6db1b397",
+      "bytes": 76044,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/fonts/Noto%20Sans%20Regular/0-255.pbf"
+    },
+    {
+      "path": "public/basemap/fonts/Noto Sans Regular/256-511.pbf",
+      "sha256": "2eca7561f9f566bcacfda5dd04fb5880baec1328ec0f5484678289a13994de8a",
+      "bytes": 127726,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/fonts/Noto%20Sans%20Regular/256-511.pbf"
+    },
+    {
+      "path": "public/basemap/fonts/Noto Sans Regular/512-767.pbf",
+      "sha256": "6abc80badad0e823e228ab739515be257c8b33bc68bb077dd873030e9b2d143a",
+      "bytes": 94728,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/fonts/Noto%20Sans%20Regular/512-767.pbf"
+    },
+    {
+      "path": "public/basemap/fonts/Noto Sans Regular/8192-8447.pbf",
+      "sha256": "8ea977a587352fe31b4159ffdbc9a40be79056f2472017c742ea1e4a931864b9",
+      "bytes": 64220,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/fonts/Noto%20Sans%20Regular/8192-8447.pbf"
+    },
+    {
+      "path": "public/basemap/fonts/Noto Sans Medium/0-255.pbf",
+      "sha256": "ba2f0118dd024e3041b158e5f9eb49bc0a658019f53f458e9f5c0b8efcd79b91",
+      "bytes": 77628,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/fonts/Noto%20Sans%20Medium/0-255.pbf"
+    },
+    {
+      "path": "public/basemap/fonts/Noto Sans Medium/256-511.pbf",
+      "sha256": "d5e801a1a5b1d409d3298c3a1e1ca76328e2314a751078833a618620e8e66e4d",
+      "bytes": 129635,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/fonts/Noto%20Sans%20Medium/256-511.pbf"
+    },
+    {
+      "path": "public/basemap/fonts/Noto Sans Medium/512-767.pbf",
+      "sha256": "985e56060887a8e774fdf62ec4619f26bd44d264fcb837d315023f87d768f8e2",
+      "bytes": 96169,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/fonts/Noto%20Sans%20Medium/512-767.pbf"
+    },
+    {
+      "path": "public/basemap/fonts/Noto Sans Medium/8192-8447.pbf",
+      "sha256": "cc38e4956207f0edba1aaf749b61e8f6f1678ef1ad443d32ee285b21d0eb67aa",
+      "bytes": 65101,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/fonts/Noto%20Sans%20Medium/8192-8447.pbf"
+    },
+    {
+      "path": "public/basemap/fonts/Noto Sans Italic/0-255.pbf",
+      "sha256": "43edfca91c285ba1226f09d5e74d68e1473a088c517f02a5212ff6ccb10037dc",
+      "bytes": 79344,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/fonts/Noto%20Sans%20Italic/0-255.pbf"
+    },
+    {
+      "path": "public/basemap/fonts/Noto Sans Italic/256-511.pbf",
+      "sha256": "a6f9f6574c86a4a28aba630ca1017857ceadd2370ed32a1293c35f819ab9bd60",
+      "bytes": 132976,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/fonts/Noto%20Sans%20Italic/256-511.pbf"
+    },
+    {
+      "path": "public/basemap/fonts/Noto Sans Italic/512-767.pbf",
+      "sha256": "5849298255f12639422a8b8ef32927b1ac49d59f725afaa6cbaf51550a5752fe",
+      "bytes": 96460,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/fonts/Noto%20Sans%20Italic/512-767.pbf"
+    },
+    {
+      "path": "public/basemap/fonts/Noto Sans Italic/8192-8447.pbf",
+      "sha256": "5dc4e6680116fef01be024e272859d130262613c7e634409a590e5d50ad124ae",
+      "bytes": 52891,
+      "source_url": "https://cdn.jsdelivr.net/gh/protomaps/basemaps-assets@028c18f713baecad011301ff7a69acc39bcc2ae7/fonts/Noto%20Sans%20Italic/8192-8447.pbf"
+    }
+  ]
+}

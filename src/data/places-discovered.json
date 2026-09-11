@@ -275,25 +275,6 @@
     "updated_at": "2026-05-20"
   },
   {
-    "slug": "back-street-brews-coffee-tea-house-brunswick",
-    "name": "Back Street Brews Coffee & Tea House",
-    "category": "coffee",
-    "short_blurb": "Coffee in Brunswick.",
-    "address": "11 E Pennsylvania Ave, Lovettsville, VA 20180",
-    "city": "Brunswick",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "brunswick",
-    "geom": {
-      "lng": -77.6375961,
-      "lat": 39.2730162
-    },
-    "website": "http://www.facebook.com/backstreetbrews",
-    "google_place_id": "ChIJe61Ako4etokRSPGx3Fvkfoc",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
     "slug": "whistle-punk-farm-delicatessen-brunswick",
     "name": "Whistle Punk Farm Delicatessen",
     "category": "coffee",
@@ -532,25 +513,6 @@
     "website": "https://orders.sheetz.com/findASheetz/store/200",
     "phone": "(240) 451-6637",
     "google_place_id": "ChIJU8YFKHC4yYkRyhG45DIAEyI",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
-    "slug": "deja-brew-at-miney-branch-emmitsburg",
-    "name": "Deja Brew at Miney Branch",
-    "category": "coffee",
-    "short_blurb": "Coffee in Emmitsburg.",
-    "address": "815 Waynesboro Pike, Fairfield, PA 17320",
-    "city": "Emmitsburg",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "emmitsburg",
-    "geom": {
-      "lng": -77.371696,
-      "lat": 39.7353909
-    },
-    "website": "https://dejabrewcb.com/",
-    "google_place_id": "ChIJF2_WSc2xyYkR8SynaESDk44",
     "feature_score": 5,
     "updated_at": "2026-05-20"
   },
@@ -2367,26 +2329,6 @@
     "updated_at": "2026-05-20"
   },
   {
-    "slug": "dave-janes-crabhouse-emmitsburg",
-    "name": "Dave & Jane's Crabhouse",
-    "category": "restaurant",
-    "short_blurb": "Family-run destination specializing in steamed crabs & other seafood served in a casual environment.",
-    "address": "2989 Tract Rd, Fairfield, PA 17320",
-    "city": "Emmitsburg",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "emmitsburg",
-    "geom": {
-      "lng": -77.339709,
-      "lat": 39.720953099999996
-    },
-    "website": "http://www.daveandjanes.com/",
-    "phone": "(717) 642-6574",
-    "google_place_id": "ChIJ-7M6g-awyYkRWeTploKWNN0",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
     "slug": "cafe-au-bouchon-emmitsburg",
     "name": "Cafe Au Bouchon",
     "category": "restaurant",
@@ -2548,7 +2490,7 @@
   {
     "slug": "verilife-dispensary-new-market",
     "name": "Verilife Dispensary",
-    "category": "coffee",
+    "category": "shopping",
     "short_blurb": "Coffee in New Market.",
     "address": "11717 Old National Pike #16, New Market, MD 21774",
     "city": "New Market",
@@ -2682,26 +2624,6 @@
     "website": "https://www.mammaangelamtairymd.com/",
     "phone": "(301) 829-1575",
     "google_place_id": "ChIJk_4l4pAsyIkR6ND4WRWtFtk",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
-    "slug": "lu-joes-restaurant-lounge-mount-airy",
-    "name": "Lu & Joe's Restaurant & Lounge",
-    "category": "restaurant",
-    "short_blurb": "Kitschy, old-school joint featuring weekly karaoke nights & booth seating plus Thai & American fare.",
-    "address": "1024 Ridge Rd, Mt Airy, MD 21771",
-    "city": "Mount Airy",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "mount-airy",
-    "geom": {
-      "lng": -77.1812276,
-      "lat": 39.3449476
-    },
-    "website": "http://www.luandjoe.com/",
-    "phone": "(301) 831-5577",
-    "google_place_id": "ChIJ0Sxs9loryIkRRuKuDQEoqY8",
     "feature_score": 5,
     "updated_at": "2026-05-20"
   },
@@ -3065,46 +2987,6 @@
     "updated_at": "2026-05-20"
   },
   {
-    "slug": "1836-kitchen-and-taproom-brunswick",
-    "name": "1836 Kitchen and Taproom",
-    "category": "restaurant",
-    "short_blurb": "Restaurants in Brunswick.",
-    "address": "34 E Broad Way, Lovettsville, VA 20180",
-    "city": "Brunswick",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "brunswick",
-    "geom": {
-      "lng": -77.63592299999999,
-      "lat": 39.271696
-    },
-    "website": "https://www.1836kitchenandtaproom.com/",
-    "phone": "(540) 668-5835",
-    "google_place_id": "ChIJic8M0Y0etokRXMJtwarbccI",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
-    "slug": "el-pitayo-mexican-restaurant-brunswick",
-    "name": "El Pitayo Mexican Restaurant",
-    "category": "restaurant",
-    "short_blurb": "Restaurants in Brunswick.",
-    "address": "5 Town Center Dr, Lovettsville, VA 20180",
-    "city": "Brunswick",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "brunswick",
-    "geom": {
-      "lng": -77.640087,
-      "lat": 39.274451899999995
-    },
-    "website": "https://elpitayomexican.com/",
-    "phone": "(540) 668-5037",
-    "google_place_id": "ChIJv2jwbHsftokRrWsl2p2n438",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
     "slug": "papa-johns-pizza-brunswick",
     "name": "Papa Johns Pizza",
     "category": "pizza",
@@ -3121,26 +3003,6 @@
     "website": "https://locations.papajohns.com/united-states/md/21716/brunswick/1201-dutchmans-creek-drive?utm_source=gmb&utm_medium=organic&y_source=1_MTA2OTA1NTMtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D",
     "phone": "(301) 679-7272",
     "google_place_id": "ChIJTanbWEXhyYkRPBDIm897i48",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
-    "slug": "rodeos-mexican-grill-brunswick",
-    "name": "Rodeo's Mexican Grill",
-    "category": "restaurant",
-    "short_blurb": "Restaurants in Brunswick.",
-    "address": "26 E Broad Way D, Lovettsville, VA 20180",
-    "city": "Brunswick",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "brunswick",
-    "geom": {
-      "lng": -77.63678329999999,
-      "lat": 39.27242340000001
-    },
-    "website": "http://rodeoslovettsville.com/",
-    "phone": "(540) 822-4400",
-    "google_place_id": "ChIJx8Ul6ncftokR8aTetVGG7uA",
     "feature_score": 5,
     "updated_at": "2026-05-20"
   },
@@ -3301,26 +3163,6 @@
     "website": "https://chouseinn.com/on-site-catering/",
     "phone": "(301) 447-2366",
     "google_place_id": "ChIJtXUsLhqxyYkRSLqh6SjRJWU",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
-    "slug": "frontier-bar-b-q-emmitsburg",
-    "name": "Frontier Bar B Q",
-    "category": "restaurant",
-    "short_blurb": "Restaurants in Emmitsburg.",
-    "address": "801 Waynesboro Pike, Fairfield, PA 17320",
-    "city": "Emmitsburg",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "emmitsburg",
-    "geom": {
-      "lng": -77.3705938,
-      "lat": 39.7350241
-    },
-    "website": "http://www.frontierbarbq.com/",
-    "phone": "(717) 642-0030",
-    "google_place_id": "ChIJPZX7nIawyYkR2ez-3iadXbM",
     "feature_score": 5,
     "updated_at": "2026-05-20"
   },
@@ -3858,29 +3700,6 @@
     ]
   },
   {
-    "slug": "michaux-brewing-company-thurmont",
-    "name": "Michaux Brewing Company",
-    "category": "brewery",
-    "short_blurb": "Breweries in Thurmont.",
-    "address": "11657 Buchanan Trail E, Waynesboro, PA 17268",
-    "city": "Thurmont",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "thurmont",
-    "geom": {
-      "lng": -77.5251723,
-      "lat": 39.7384713
-    },
-    "website": "http://michauxbrewing.com/",
-    "phone": "(717) 765-7474",
-    "google_place_id": "ChIJm-tFAw-9yYkRpJKSya7TdJI",
-    "feature_score": 5,
-    "updated_at": "2026-05-20",
-    "tags": [
-      "dog-friendly"
-    ]
-  },
-  {
     "slug": "flood-zone-marketplace-brewery-woodsboro",
     "name": "Flood Zone Marketplace & Brewery",
     "category": "brewery",
@@ -4383,29 +4202,6 @@
     ]
   },
   {
-    "slug": "stockyard-brewery-rosemont",
-    "name": "Stockyard Brewery",
-    "category": "brewery",
-    "short_blurb": "Breweries in Rosemont.",
-    "address": "12428 Mountain Rd, Lovettsville, VA 20180",
-    "city": "Rosemont",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "rosemont",
-    "geom": {
-      "lng": -77.6873631,
-      "lat": 39.270784899999995
-    },
-    "website": "https://stockyardbrewery.com/",
-    "phone": "(540) 524-2739",
-    "google_place_id": "ChIJNX4ak0gdtokRk_spVZ3l1iE",
-    "feature_score": 5,
-    "updated_at": "2026-05-20",
-    "tags": [
-      "dog-friendly"
-    ]
-  },
-  {
     "slug": "puerto-rico-distillery-brunswick",
     "name": "Puerto Rico Distillery",
     "category": "brewery",
@@ -4614,51 +4410,6 @@
     },
     "website": "https://distillerylaneciderworks.com/",
     "google_place_id": "ChIJTYE9xSThyYkR9bFws5MLN7A",
-    "feature_score": 5,
-    "updated_at": "2026-05-20",
-    "tags": [
-      "dog-friendly"
-    ]
-  },
-  {
-    "slug": "flying-ace-farm-brunswick",
-    "name": "Flying Ace Farm",
-    "category": "brewery",
-    "short_blurb": "Breweries in Brunswick.",
-    "address": "40950 Flying Ace Ln, Lovettsville, VA 20180",
-    "city": "Brunswick",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "brunswick",
-    "geom": {
-      "lng": -77.5827865,
-      "lat": 39.2770791
-    },
-    "website": "http://www.flyingacefarm.com/",
-    "phone": "(540) 579-2007",
-    "google_place_id": "ChIJK2PlEN0ftokRck_Rsxf1rX8",
-    "feature_score": 5,
-    "updated_at": "2026-05-20",
-    "tags": [
-      "dog-friendly"
-    ]
-  },
-  {
-    "slug": "cool-spring-distillery-rosemont",
-    "name": "Cool Spring Distillery",
-    "category": "brewery",
-    "short_blurb": "Breweries in Rosemont.",
-    "address": "37871 Nicewarner Ln, Lovettsville, VA 20180",
-    "city": "Rosemont",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "rosemont",
-    "geom": {
-      "lng": -77.6907894,
-      "lat": 39.2770413
-    },
-    "website": "https://www.facebook.com/CSDguy/?http_ref=eyJyIjoiaHR0cHM6XC9cL3d3dy5nb29nbGUuY29tXC8iLCJ0cyI6IjE3NjI2MjU0MzUwMjkifQ%3D%3D",
-    "google_place_id": "ChIJyUEFYQAdtokRlomSivVPmPw",
     "feature_score": 5,
     "updated_at": "2026-05-20",
     "tags": [
@@ -4882,29 +4633,6 @@
     },
     "website": "http://www.61vineyard.com/",
     "google_place_id": "ChIJ9eOKQpvVyYkRI9eZBZUlTKU",
-    "feature_score": 5,
-    "updated_at": "2026-05-20",
-    "tags": [
-      "dog-friendly"
-    ]
-  },
-  {
-    "slug": "hiddencroft-vineyards-llc-brunswick",
-    "name": "Hiddencroft Vineyards, LLC",
-    "category": "brewery",
-    "short_blurb": "Breweries in Brunswick.",
-    "address": "12202 Axline Rd, Lovettsville, VA 20180",
-    "city": "Brunswick",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "brunswick",
-    "geom": {
-      "lng": -77.6743712,
-      "lat": 39.2717455
-    },
-    "website": "http://www.hiddencroftvineyards.com/",
-    "phone": "(540) 535-5367",
-    "google_place_id": "ChIJGzbhbDgctokR3MKy0qJxmMY",
     "feature_score": 5,
     "updated_at": "2026-05-20",
     "tags": [
@@ -7555,26 +7283,6 @@
     "updated_at": "2026-05-20"
   },
   {
-    "slug": "georges-mill-farm-artisan-cheese-brunswick",
-    "name": "Georges Mill Farm Artisan Cheese",
-    "category": "market",
-    "short_blurb": "Markets in Brunswick.",
-    "address": "11873 Georges Mill Rd, Lovettsville, VA 20180",
-    "city": "Brunswick",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "brunswick",
-    "geom": {
-      "lng": -77.66369069999999,
-      "lat": 39.2891178
-    },
-    "website": "https://www.georgesmillcheese.com/",
-    "phone": "(571) 442-7444",
-    "google_place_id": "ChIJFxAEwNEdtokRKxZ77SvvDU4",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
     "slug": "frog-hollow-schoolmasters-homestead-myersville",
     "name": "Frog Hollow Schoolmaster's Homestead",
     "category": "market",
@@ -7591,26 +7299,6 @@
     "website": "http://froghollowhomestead.com/",
     "phone": "(540) 819-7154",
     "google_place_id": "ChIJuYW27y_oyYkRmUDhjrRViws",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
-    "slug": "lovettsville-co-op-market-brunswick",
-    "name": "Lovettsville Co-op Market",
-    "category": "market",
-    "short_blurb": "Markets in Brunswick.",
-    "address": "11 Town Center Dr suite 150, Lovettsville, VA 20180",
-    "city": "Brunswick",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "brunswick",
-    "geom": {
-      "lng": -77.64036879999999,
-      "lat": 39.2747854
-    },
-    "website": "https://lovettsvillemarket.coop/",
-    "phone": "(540) 579-8070",
-    "google_place_id": "ChIJoSr6xDEftokRLo_8vM9SpvI",
     "feature_score": 5,
     "updated_at": "2026-05-20"
   },
@@ -8278,26 +7966,6 @@
     "updated_at": "2026-05-20"
   },
   {
-    "slug": "lovettsville-historical-society-museum-brunswick",
-    "name": "Lovettsville Historical Society & Museum",
-    "category": "museum",
-    "short_blurb": "Museums in Brunswick.",
-    "address": "4 E Pennsylvania Ave, Lovettsville, VA 20180",
-    "city": "Brunswick",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "brunswick",
-    "geom": {
-      "lng": -77.6384897,
-      "lat": 39.2736678
-    },
-    "website": "http://www.lovettsvillehistoricalsociety.org/",
-    "phone": "(540) 822-9194",
-    "google_place_id": "ChIJQToyw44etokR1Z1hU9k5Gm8",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
     "slug": "eastside-artists-gallery-frederick",
     "name": "Eastside Artists' Gallery",
     "category": "gallery",
@@ -8688,25 +8356,6 @@
     "website": "https://msmary.edu/academics/majors-minors/visual-and-performing-arts.html",
     "phone": "(301) 447-5308",
     "google_place_id": "ChIJp-xjIj-3yYkRhPla_KqOUOw",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
-    "slug": "tomantolinartwood-emmitsburg",
-    "name": "TomAntolinArtWood",
-    "category": "gallery",
-    "short_blurb": "Galleries in Emmitsburg.",
-    "address": "66 Waynesboro Pike, Fairfield, PA 17320",
-    "city": "Emmitsburg",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "emmitsburg",
-    "geom": {
-      "lng": -77.3521426,
-      "lat": 39.720631499999996
-    },
-    "phone": "(717) 752-9355",
-    "google_place_id": "ChIJRQz5U3OxyYkRqi7S1JR5QG8",
     "feature_score": 5,
     "updated_at": "2026-05-20"
   },
@@ -13556,28 +13205,6 @@
     "updated_at": "2026-05-20"
   },
   {
-    "slug": "pleasant-valley-park-burkittsville",
-    "name": "Pleasant Valley Park",
-    "category": "park",
-    "short_blurb": "Parks in Burkittsville.",
-    "address": "3199 Gapland Rd, Rohrersville, MD 21779",
-    "city": "Burkittsville",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "burkittsville",
-    "geom": {
-      "lng": -77.657899,
-      "lat": 39.402163
-    },
-    "phone": "(240) 313-2700",
-    "google_place_id": "ChIJVxOE1E3jyYkRrwM8K_gHWpk",
-    "feature_score": 5,
-    "updated_at": "2026-05-20",
-    "tags": [
-      "dog-friendly"
-    ]
-  },
-  {
     "slug": "cambridge-farms-park-burkittsville",
     "name": "Cambridge Farms Park",
     "category": "park",
@@ -13891,26 +13518,6 @@
     "website": "https://www.washcolibrary.org/using-the-library/locations-hours",
     "phone": "(301) 432-5723",
     "google_place_id": "ChIJLxUQbUnvyYkRR7suvVFd9As",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
-    "slug": "lovettsville-library-brunswick",
-    "name": "Lovettsville Library",
-    "category": "library",
-    "short_blurb": "Libraries in Brunswick.",
-    "address": "12 N Light St, Lovettsville, VA 20180",
-    "city": "Brunswick",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "brunswick",
-    "geom": {
-      "lng": -77.63551799999999,
-      "lat": 39.274252
-    },
-    "website": "https://library.loudoun.gov/Lovettsville",
-    "phone": "(703) 737-8050",
-    "google_place_id": "ChIJ-V_XDowetokRmCByuLdrKCM",
     "feature_score": 5,
     "updated_at": "2026-05-20"
   },
@@ -14942,46 +14549,6 @@
     "updated_at": "2026-05-20"
   },
   {
-    "slug": "pen-mar-antique-market-thurmont",
-    "name": "Pen Mar Antique Market",
-    "category": "shopping",
-    "short_blurb": "Shopping in Thurmont.",
-    "address": "11870 Buchanan Trail E, Waynesboro, PA 17268",
-    "city": "Thurmont",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "thurmont",
-    "geom": {
-      "lng": -77.5217861,
-      "lat": 39.7377389
-    },
-    "website": "https://m.facebook.com/pages/category/Antique-Store/Pen-Mar-Antique-Market-1086252628185374/",
-    "phone": "(717) 387-5179",
-    "google_place_id": "ChIJQ-3q37W9yYkRB_HbSCJHMuo",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
-    "slug": "bowdens-the-farm-emmitsburg",
-    "name": "Bowden's The Farm",
-    "category": "shopping",
-    "short_blurb": "Shopping in Emmitsburg.",
-    "address": "1042 Bullfrog Rd, Fairfield, PA 17320",
-    "city": "Emmitsburg",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "emmitsburg",
-    "geom": {
-      "lng": -77.28687339999999,
-      "lat": 39.743701099999996
-    },
-    "website": "http://www.gettysburgantiques.com/",
-    "phone": "(717) 387-3978",
-    "google_place_id": "ChIJXWCAMYixyYkRy85fE-Ud68Q",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
     "slug": "cotton-co-vintage-boutique-marketplace-woodsboro",
     "name": "Cotton & Co Vintage Boutique & Marketplace",
     "category": "shopping",
@@ -15232,26 +14799,6 @@
     "website": "http://www.vintagelumber.com/",
     "phone": "(301) 845-2500",
     "google_place_id": "ChIJB0ejqcrOyYkRfsWNwQmORfw",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
-    "slug": "willows-vintage-charm-brunswick",
-    "name": "Willows Vintage Charm",
-    "category": "shopping",
-    "short_blurb": "Shopping in Brunswick.",
-    "address": "3 S Berlin Pike, Lovettsville, VA 20180",
-    "city": "Brunswick",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "brunswick",
-    "geom": {
-      "lng": -77.6393162,
-      "lat": 39.273561099999995
-    },
-    "website": "https://www.facebook.com/Willowsvintagecharm-271903163692815/",
-    "phone": "(540) 326-6506",
-    "google_place_id": "ChIJ47Q_K-sftokRLxI4SoRg3CA",
     "feature_score": 5,
     "updated_at": "2026-05-20"
   },
@@ -15951,26 +15498,6 @@
     "updated_at": "2026-05-20"
   },
   {
-    "slug": "good-stretch-yoga-brunswick",
-    "name": "Good Stretch Yoga",
-    "category": "yoga",
-    "short_blurb": "Yoga & Fitness in Brunswick.",
-    "address": "39090 Dobbins Farm Ln, Lovettsville, VA 20180",
-    "city": "Brunswick",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "brunswick",
-    "geom": {
-      "lng": -77.6492947,
-      "lat": 39.2798667
-    },
-    "website": "https://goodstretchyoga.com/",
-    "phone": "(703) 798-7703",
-    "google_place_id": "ChIJA6P7IswftokRH-KAdwt8Ga8",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
     "slug": "unrivaled-iron-gym-frederick",
     "name": "Unrivaled Iron Gym",
     "category": "wellness",
@@ -16645,25 +16172,6 @@
     "updated_at": "2026-05-20"
   },
   {
-    "slug": "wilds-edge-fitness-brunswick",
-    "name": "Wild's Edge Fitness",
-    "category": "wellness",
-    "short_blurb": "Wellness in Brunswick.",
-    "address": "27 S Loudoun St, Lovettsville, VA 20180",
-    "city": "Brunswick",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "brunswick",
-    "geom": {
-      "lng": -77.6388687,
-      "lat": 39.269197299999995
-    },
-    "website": "http://www.wildsedgefitness.com/",
-    "google_place_id": "ChIJRT8dDzoftokRsSP2mDaQ25E",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
     "slug": "frederick-fit-body-boot-camp-frederick",
     "name": "Frederick Fit Body Boot Camp",
     "category": "wellness",
@@ -17083,26 +16591,6 @@
     "updated_at": "2026-05-20"
   },
   {
-    "slug": "georges-mill-farm-bed-breakfast-brunswick",
-    "name": "Georges Mill Farm Bed & Breakfast",
-    "category": "lodging",
-    "short_blurb": "Quaint rooms with antique furniture in an informal guesthouse set in an 1800s home on a farm.",
-    "address": "11867 Georges Mill Rd, Lovettsville, VA 20180",
-    "city": "Brunswick",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "brunswick",
-    "geom": {
-      "lng": -77.66322890000001,
-      "lat": 39.287790199999996
-    },
-    "website": "http://airbnb.com/h/georgesmillfarm",
-    "phone": "(540) 822-5224",
-    "google_place_id": "ChIJM753gdEdtokR1WL15C3DXPk",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
     "slug": "the-treehouse-camp-at-maple-tree-llc-burkittsville",
     "name": "The Treehouse Camp At Maple Tree LLC",
     "category": "park",
@@ -17181,26 +16669,6 @@
     "website": "https://www.choicehotels.com/maryland/emmitsburg/sleep-inn-hotels/md142?mc=llgoxxpx",
     "phone": "(301) 447-0031",
     "google_place_id": "ChIJearaAzqxyYkR0Apme4KaC-k",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
-    "slug": "cobblestone-hotel-suites-waynesboro-thurmont",
-    "name": "Cobblestone Hotel & Suites - Waynesboro",
-    "category": "lodging",
-    "short_blurb": "Classic rooms with fridges & microwaves in a business hotel with an indoor pool & fitness center.",
-    "address": "12695 Washington Twp Blvd, Waynesboro, PA 17268",
-    "city": "Thurmont",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "thurmont",
-    "geom": {
-      "lng": -77.52716819999999,
-      "lat": 39.7441253
-    },
-    "website": "http://www.staycobblestone.com/pa/waynesboro/",
-    "phone": "(717) 765-0034",
-    "google_place_id": "ChIJUwu6ybC9yYkRwx6bqkl7ze8",
     "feature_score": 5,
     "updated_at": "2026-05-20"
   },
@@ -17284,25 +16752,6 @@
     "website": "https://www.airbnb.com/rooms/20771959",
     "phone": "(301) 865-3318",
     "google_place_id": "ChIJddemycHTyYkRblWUxEblMnI",
-    "feature_score": 5,
-    "updated_at": "2026-05-20"
-  },
-  {
-    "slug": "mary-penn-bed-breakfast-emmitsburg",
-    "name": "Mary-Penn Bed & Breakfast",
-    "category": "lodging",
-    "short_blurb": "Lodging in Emmitsburg.",
-    "address": "716 Mason Dixon Rd, Gettysburg, PA 17325",
-    "city": "Emmitsburg",
-    "state": "MD",
-    "postal_code": "",
-    "municipality": "emmitsburg",
-    "geom": {
-      "lng": -77.23421859999999,
-      "lat": 39.719918199999995
-    },
-    "phone": "(717) 334-5055",
-    "google_place_id": "ChIJfwahaPuyyYkR2TqOd59AXgg",
     "feature_score": 5,
     "updated_at": "2026-05-20"
   },
@@ -21376,5 +20825,717 @@
     "google_place_id": "ChIJG5ZNWQTbyYkRVmfyvT7BzkI",
     "feature_score": 5,
     "updated_at": "2026-05-20"
+  },
+  {
+    "slug": "que-chivo-pupuseria-restaurant-frederick",
+    "name": "Que Chivo Pupuseria & Restaurant",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Downtown Frederick.",
+    "address": "200 Amber Dr, Frederick, MD 21702",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4111996,
+      "lat": 39.448114499999996
+    },
+    "website": "http://quechivopupuseria.com/",
+    "phone": "(240) 575-9583",
+    "google_place_id": "ChIJzWOwgTPbyYkRiCq09saJKlU",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "grace-of-india-frederick",
+    "name": "Grace of India",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Downtown Frederick.",
+    "address": "3531 John Simmons St, Frederick, MD 21704",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.3527532,
+      "lat": 39.3310587
+    },
+    "website": "http://graceofindiafrederick.com/",
+    "phone": "(301) 874-5000",
+    "google_place_id": "ChIJX1YsgQrXyYkRjmNMhrHTwHw",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "clay-oven-restaurant-frederick",
+    "name": "Clay Oven Restaurant",
+    "category": "restaurant",
+    "short_blurb": "Colorful, homey place offering a familiar variety of Indian specialties, plus takeout & delivery.",
+    "address": "1170 W Patrick St, Frederick, MD 21702",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4495347,
+      "lat": 39.4175602
+    },
+    "website": "https://clayovenrestaurants.com/?utm_source=google",
+    "phone": "(301) 631-2004",
+    "google_place_id": "ChIJa4_91J7byYkRgB2OdNvPrG4",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "akira-ramen-sushi-izakaya-ijamsville",
+    "name": "Akira Ramen Sushi & Izakaya",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Frederick County.",
+    "address": "3290 Bennett Creek Ave Unit D, Urbana, MD 21704",
+    "city": "Frederick County",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "ijamsville",
+    "geom": {
+      "lng": -77.3526029,
+      "lat": 39.3232129
+    },
+    "website": "http://www.akiraramenurbana.com/",
+    "phone": "(240) 341-7177",
+    "google_place_id": "ChIJN1ZdldfXyYkRpcwCkv02qaQ",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "tropix-pots-cuisines-bar-grill-caribbean-authentic-cuisine-frederick",
+    "name": "Tropix Pots Cuisines Bar & Grill - Caribbean Authentic Cuisine",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Downtown Frederick.",
+    "address": "490 Prospect Blvd, Frederick, MD 21701",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4301254,
+      "lat": 39.4059868
+    },
+    "website": "http://tropixpotscuisines.com/",
+    "phone": "(240) 877-4858",
+    "google_place_id": "ChIJWdmAwQfbyYkRB_MsmS19E_c",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "modern-asia-frederick",
+    "name": "Modern Asia",
+    "category": "restaurant",
+    "short_blurb": "Unassuming sit-down eatery with a broad Pan-Asian menu spanning curries & pho to lo mein.",
+    "address": "1306 W Patrick St, Frederick, MD 21703",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4545366,
+      "lat": 39.417326599999996
+    },
+    "website": "https://modernasiaonline.com/",
+    "phone": "(301) 732-5193",
+    "google_place_id": "ChIJrS3-vZvbyYkR9a4RpwTMQtE",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "rice-thai-bistro-frederick",
+    "name": "Rice Thai Bistro",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Downtown Frederick.",
+    "address": "181 Thomas Johnson Dr, Frederick, MD 21702",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.40847,
+      "lat": 39.4414261
+    },
+    "website": "https://www.ricethaibistro-fd.com/",
+    "phone": "(301) 329-5199",
+    "google_place_id": "ChIJQ6i_LNzbyYkRRqKGDCJdu4s",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "kittiwat-thai-kitchen-frederick",
+    "name": "Kittiwat Thai Kitchen",
+    "category": "restaurant",
+    "short_blurb": "Thai spot serving modern & classic dishes in a sunny space with big windows & industrial ceilings.",
+    "address": "5205 Presidents Ct, Frederick, MD 21703",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4163888,
+      "lat": 39.377472
+    },
+    "website": "https://kittiwat.com/?utm_source=google",
+    "phone": "(301) 631-0999",
+    "google_place_id": "ChIJh6XhEYfZyYkRwvuXuuuuBRc",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "cafe-bueno-frederick",
+    "name": "Cafe Bueno",
+    "category": "restaurant",
+    "short_blurb": "Compact Mexican joint serving homestyle cooking in a colorful space with ethnic decor touches.",
+    "address": "255 E 4th St, Frederick, MD 21701",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4047897,
+      "lat": 39.4189102
+    },
+    "website": "https://cafebuenofrederick.com/?utm_source=google",
+    "phone": "(301) 620-8858",
+    "google_place_id": "ChIJ97n0sfXayYkRspg7D_vHGXo",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "the-inn-at-stone-manor-middletown",
+    "name": "The Inn at Stone Manor",
+    "category": "lodging",
+    "short_blurb": "Charming suites in a circa-1700s manor house-turned-refined B&B offering a garden & afternoon tea.",
+    "address": "5820 Carroll Boyer Rd, Middletown, MD 21769",
+    "city": "Middletown",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "middletown",
+    "geom": {
+      "lng": -77.5547172,
+      "lat": 39.395507599999995
+    },
+    "website": "https://www.innatstonemanor.com/",
+    "phone": "(301) 371-0099",
+    "google_place_id": "ChIJv_Uaxf3dyYkROYWiBIxYqC0",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "peace-and-plenty-new-market",
+    "name": "Peace and Plenty",
+    "category": "lodging",
+    "short_blurb": "Lodging in New Market.",
+    "address": "Peace and Plenty, MD 21774",
+    "city": "New Market",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "new-market",
+    "geom": {
+      "lng": -77.2516495,
+      "lat": 39.412602799999995
+    },
+    "website": "https://www.airbnb.com/rooms/45968654",
+    "google_place_id": "ChIJrfB1tlrSyYkRGTnQMuHtpc0",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "lodging-at-first-stop-brunswick-brunswick",
+    "name": "Lodging at First Stop Brunswick",
+    "category": "lodging",
+    "short_blurb": "Lodging in Brunswick.",
+    "address": "2 E Potomac St, Brunswick, MD 21716",
+    "city": "Brunswick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "brunswick",
+    "geom": {
+      "lng": -77.62671879999999,
+      "lat": 39.3127725
+    },
+    "website": "https://firststopbrunswick.com/",
+    "phone": "(571) 477-0880",
+    "google_place_id": "ChIJi6KSfbQftokRQCxZ0TjQtl4",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "the-wedgewood-inn-frederick",
+    "name": "The Wedgewood Inn",
+    "category": "lodging",
+    "short_blurb": "Lodging in Downtown Frederick.",
+    "address": "3 W 2nd St, Frederick, MD 21701",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.41115239999999,
+      "lat": 39.416725899999996
+    },
+    "website": "https://thewedgewoodinn.com/",
+    "phone": "(301) 898-2198",
+    "google_place_id": "ChIJ8Ym87DvbyYkReBKaN0JhGc0",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "welcome-to-the-rusty-rose-restored-farmhouse-feel-in-the-hea-jefferson",
+    "name": "Welcome to the Rusty Rose-Restored Farmhouse feel in the heart of Jefferson, MD",
+    "category": "lodging",
+    "short_blurb": "Lodging in Frederick County.",
+    "address": "Jefferson, MD 21755",
+    "city": "Frederick County",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "jefferson",
+    "geom": {
+      "lng": -77.53692629999999,
+      "lat": 39.359119400000004
+    },
+    "website": "https://www.us.despegar.com/hotels/h-4998372",
+    "google_place_id": "ChIJiePxT0jeyYkR-uCsGzttzm4",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "dutchs-daughter-frederick",
+    "name": "Dutch's Daughter",
+    "category": "restaurant",
+    "short_blurb": "This upscale American choice offers a genteel dining room & a casual downstairs bar, The Dungeon.",
+    "address": "581 Himes Ave, Frederick, MD 21703",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4370885,
+      "lat": 39.4079395
+    },
+    "website": "http://www.dutchsdaughter.com/",
+    "phone": "(301) 668-9500",
+    "google_place_id": "ChIJqWdysLvbyYkRB5YyVLiNarc",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "thai-meric-eatery-bar-frederick",
+    "name": "Thai Meric Eatery & Bar",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Downtown Frederick.",
+    "address": "1170 W Patrick St Ste E, Frederick, MD 21703",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4495077,
+      "lat": 39.4175453
+    },
+    "website": "https://www.thaimeric.com/",
+    "phone": "(240) 651-0998",
+    "google_place_id": "ChIJESDAocjbyYkRY9uN6AsiLRU",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "woodsboro-tavern-woodsboro",
+    "name": "Woodsboro Tavern",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Woodsboro.",
+    "address": "10730 Woodsboro Rd, Woodsboro, MD 21798",
+    "city": "Woodsboro",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "woodsboro",
+    "geom": {
+      "lng": -77.3151319,
+      "lat": 39.5289231
+    },
+    "website": "https://www.facebook.com/p/Woodsboro-Tavern-100071971296244/",
+    "google_place_id": "ChIJSylHprTOyYkRqJ2OUSuBAqU",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "pumpernickel-rye-urbana",
+    "name": "Pumpernickel + Rye",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Urbana.",
+    "address": "3538 Urbana Pike, Urbana, MD 21704",
+    "city": "Urbana",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "urbana",
+    "geom": {
+      "lng": -77.3550317,
+      "lat": 39.326951300000005
+    },
+    "website": "https://pumpandrye.com/",
+    "phone": "(240) 397-9600",
+    "google_place_id": "ChIJR8YmNVHXyYkR1jv871y28yU",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "elk-run-winery-mount-airy",
+    "name": "Elk Run Winery",
+    "category": "brewery",
+    "short_blurb": "Breweries in Mount Airy.",
+    "address": "15113 Liberty Rd, Mt Airy, MD 21771",
+    "city": "Mount Airy",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "mount-airy",
+    "geom": {
+      "lng": -77.13596199999999,
+      "lat": 39.465519
+    },
+    "website": "https://elkrun.com/",
+    "phone": "(410) 775-2513",
+    "google_place_id": "ChIJN64f700yyIkRHBxNtEYXHJ8",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "catoctin-creek-aqueduct-co-canal-jefferson",
+    "name": "Catoctin Creek Aqueduct | C&O Canal",
+    "category": "trail",
+    "short_blurb": "Trails in Frederick County.",
+    "address": "Chesapeake and Ohio Canal Towpath, Jefferson, MD 21755",
+    "city": "Frederick County",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "jefferson",
+    "geom": {
+      "lng": -77.5686123,
+      "lat": 39.311076899999996
+    },
+    "website": "https://www.nps.gov/places/catoctin-aqueduct.htm",
+    "phone": "(301) 600-2888",
+    "google_place_id": "ChIJB0wczv0ftokREapSAhESvSQ",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "vesuvius-italian-wine-bar-urbana",
+    "name": "Vesuvius Italian & Wine Bar",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Urbana.",
+    "address": "3290 Bennett Creek Ave Unit A, Frederick, MD 21704",
+    "city": "Urbana",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "urbana",
+    "geom": {
+      "lng": -77.3526232,
+      "lat": 39.3235555
+    },
+    "website": "http://vesuviusitalianwinebar.com/",
+    "phone": "(240) 341-4020",
+    "google_place_id": "ChIJbaRrdgDXyYkRi_Buk7ZpgbM",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "ekiben-frederick",
+    "name": "Ekiben",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Downtown Frederick.",
+    "address": "500 N Market St, Frederick, MD 21701",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.409986,
+      "lat": 39.420435999999995
+    },
+    "website": "https://ekibenbaltimore.com/",
+    "google_place_id": "ChIJVXW4eADbyYkR8rSdaX5MxOE",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "wonder-frederick-urbana",
+    "name": "Wonder Frederick",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Urbana.",
+    "address": "5473 Urbana Pike, Frederick, MD 21704",
+    "city": "Urbana",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "urbana",
+    "geom": {
+      "lng": -77.3997492,
+      "lat": 39.382070399999996
+    },
+    "website": "https://www.wonder.com/food-delivery-locations/frederick",
+    "phone": "(855) 818-5755",
+    "google_place_id": "ChIJW3yMIAjbyYkRGjOqSOAmBLQ",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "ledo-pizza-ijamsville",
+    "name": "Ledo Pizza",
+    "category": "pizza",
+    "short_blurb": "Local favorite since 1955 for pies with a unique flaky, rectangular crust & Italian standards.",
+    "address": "10162 Old National Pike suite 200, Ijamsville, MD 21754",
+    "city": "Frederick County",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "ijamsville",
+    "geom": {
+      "lng": -77.3110975,
+      "lat": 39.3921269
+    },
+    "website": "https://ledopizza.com/store/md-lake-linganore/",
+    "phone": "(301) 882-2811",
+    "google_place_id": "ChIJoYmtt7_RyYkR6qLLtSx81EI",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "chick-fil-a-frederick",
+    "name": "Chick-fil-A",
+    "category": "restaurant",
+    "short_blurb": "Fast-food chain serving chicken sandwiches & nuggets along with salads & sides.",
+    "address": "5308 New Design Rd, Frederick, MD 21703",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.42177099999999,
+      "lat": 39.379574
+    },
+    "website": "https://www.chick-fil-a.com/locations/md/ballenger-creek?utm_source=google&utm_medium=gmb",
+    "phone": "(301) 637-7836",
+    "google_place_id": "ChIJcZgA7jLbyYkRZ-UOoCbu6ds",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "summers-farm-middletown",
+    "name": "Summers Farm",
+    "category": "market",
+    "short_blurb": "Markets in Middletown.",
+    "address": "7503 Hollow Rd, Middletown, MD 21769",
+    "city": "Middletown",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "middletown",
+    "geom": {
+      "lng": -77.51669059999999,
+      "lat": 39.438908999999995
+    },
+    "website": "http://www.summersfarm.com/",
+    "phone": "(301) 304-3031",
+    "google_place_id": "ChIJFV5mRHfcyYkRPpS-Htymk_w",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "magnolia-meadow-farms-thurmont",
+    "name": "Magnolia Meadow Farms",
+    "category": "market",
+    "short_blurb": "Markets in Thurmont.",
+    "address": "13001 Creagerstown Rd, Thurmont, MD 21788",
+    "city": "Thurmont",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "thurmont",
+    "geom": {
+      "lng": -77.37904689999999,
+      "lat": 39.5887799
+    },
+    "website": "http://www.magnoliameadowfarms.com/",
+    "phone": "(301) 606-4086",
+    "google_place_id": "ChIJZ_8HPNjHyYkR4AcrfbBuRI8",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "historic-roddy-road-covered-bridge-thurmont",
+    "name": "Historic Roddy Road Covered Bridge",
+    "category": "civic",
+    "short_blurb": "Civic & Public in Thurmont.",
+    "address": "14760 Roddy Rd, Thurmont, MD 21788",
+    "city": "Thurmont",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "thurmont",
+    "geom": {
+      "lng": -77.3937119,
+      "lat": 39.6409539
+    },
+    "website": "http://www.visitfrederick.org/members/view/297",
+    "phone": "(301) 600-1646",
+    "google_place_id": "ChIJNdoLij24yYkR6P4BkDbjsp0",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "historic-utica-covered-bridge-thurmont",
+    "name": "Historic Utica Covered Bridge",
+    "category": "civic",
+    "short_blurb": "Civic & Public in Thurmont.",
+    "address": "7720 Utica Rd, Thurmont, MD 21788",
+    "city": "Thurmont",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "thurmont",
+    "geom": {
+      "lng": -77.3976871,
+      "lat": 39.525228999999996
+    },
+    "website": "https://www.visitfrederick.org/listing/utica-mills-covered-bridge/284/",
+    "phone": "(301) 600-4047",
+    "google_place_id": "ChIJrw0IcOnFyYkRKCgf3r_QHCI",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "new-market-historic-district-new-market",
+    "name": "New Market Historic District",
+    "category": "antiques",
+    "short_blurb": "Antiques in New Market.",
+    "address": "New Market Historic District, New Market, MD 21774",
+    "city": "New Market",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "new-market",
+    "geom": {
+      "lng": -77.26840659999999,
+      "lat": 39.3831329
+    },
+    "website": "https://www.townofnewmarket.org/",
+    "google_place_id": "ChIJTfzk5MHTyYkRzy_v7_zOUw4",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "brunswick-main-street-brunswick",
+    "name": "Brunswick Main Street",
+    "category": "civic",
+    "short_blurb": "Civic & Public in Brunswick.",
+    "address": "1 W Potomac St, Brunswick, MD 21716",
+    "city": "Brunswick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "brunswick",
+    "geom": {
+      "lng": -77.6270504,
+      "lat": 39.3131061
+    },
+    "website": "https://brunswickmainstreet.org/",
+    "phone": "(301) 834-7500 ext. 124",
+    "google_place_id": "ChIJBQLi9AAftokRnxnxCBH6HfQ",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "east-main-street-middletown",
+    "name": "East Main Street",
+    "category": "services",
+    "short_blurb": "Services in Middletown.",
+    "address": "E Main St, Middletown, MD 21769",
+    "city": "Middletown",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "middletown",
+    "geom": {
+      "lng": -77.5358251,
+      "lat": 39.4410526
+    },
+    "website": "https://mainstreetmiddletown.org/",
+    "google_place_id": "ChIJI6jMsQ3dyYkR2Z1yq0riXlY",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "mount-airy-historic-district-mount-airy-2",
+    "name": "Mount Airy Historic District",
+    "category": "services",
+    "short_blurb": "Services in Mount Airy.",
+    "address": "Mount Airy Historic District, Mt Airy, MD 21771",
+    "city": "Mount Airy",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "mount-airy",
+    "geom": {
+      "lng": -77.1546566,
+      "lat": 39.3765852
+    },
+    "website": "https://www.mountairymainstreet.org/",
+    "google_place_id": "ChIJq12ENvEsyIkRji5or4Eg-qo",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "starbucks-coffee-company-urbana",
+    "name": "Starbucks Coffee Company",
+    "category": "coffee",
+    "short_blurb": "Welcoming coffeehouse with handcrafted coffee, espresso & tea, plus breakfast, lunch & pastries.",
+    "address": "3260 Bennett Creek Ave, Frederick, MD 21704",
+    "city": "Urbana",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "urbana",
+    "geom": {
+      "lng": -77.3527,
+      "lat": 39.32237
+    },
+    "phone": "(227) 231-0061",
+    "google_place_id": "ChIJbyP8JEDXyYkRF2bRMQK6_w0",
+    "feature_score": 5,
+    "updated_at": "2026-07-16"
+  },
+  {
+    "slug": "dunkin-urbana",
+    "name": "Dunkin'",
+    "category": "coffee",
+    "short_blurb": "Long-running chain serving signature breakfast items & a variety of coffee drinks.",
+    "address": "8925 Fingerboard Rd, Frederick, MD 21704",
+    "city": "Urbana",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "urbana",
+    "geom": {
+      "lng": -77.34797499999999,
+      "lat": 39.3248945
+    },
+    "website": "https://locations.dunkindonuts.com/en/md/frederick/8925-fingerboard-rd/345177?utm_source=google&utm_medium=local&utm_campaign=localmaps&utm_content=345177&y_source=1_MTIxMTA3OTItNzE1LWxvY2F0aW9uLndlYnNpdGU%3D",
+    "phone": "(301) 810-5103",
+    "google_place_id": "ChIJSVo5RaLXyYkRBVKRFepdkLk",
+    "feature_score": 5,
+    "updated_at": "2026-07-16"
+  },
+  {
+    "slug": "panera-bread-urbana",
+    "name": "Panera Bread",
+    "category": "coffee",
+    "short_blurb": "Coffee in Urbana.",
+    "address": "3266 Bennett Creek Ave, Urbana, MD 21704",
+    "city": "Urbana",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "urbana",
+    "geom": {
+      "lng": -77.3541001,
+      "lat": 39.322964899999995
+    },
+    "website": "https://www.panerabread.com/en-us/cafe/locations/md/urbana/3266-bennett-creek-ave?utm_medium=local&utm_source=google&utm_campaign=dpm-dist&utm_term=203844&utm_content=main",
+    "phone": "(240) 436-2130",
+    "google_place_id": "ChIJL4wqN37XyYkR_MU3ildDf9U",
+    "feature_score": 5,
+    "updated_at": "2026-07-16"
   }
 ]

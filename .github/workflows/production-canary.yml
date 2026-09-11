@@ -1,0 +1,181 @@
+name: Production apex canary
+
+# Vercel's Git integration reports successful deployments through GitHub's
+# deployment_status event. Only production promotions reach this job. The
+# canary then checks the public apex alias, not the deployment preview URL.
+#
+# The public check retries before recovery so a brief alias/CDN propagation
+# delay cannot roll back a healthy release. If all attempts fail after a real
+# production promotion, the workflow validates the immediately preceding
+# production deployment and asks Vercel to restore it. That recovery step needs
+# the repository secret VERCEL_TOKEN; read-only canary runs do not.
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Public production origin
+        required: false
+        default: https://frederickradius.app
+      expected_sha:
+        description: Commit the apex alias must be serving
+        required: false
+
+concurrency:
+  # Runs from the same trigger supersede older copies of themselves.
+  group: production-apex-canary-${{ github.event_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  apex:
+    name: Apex matches promoted commit
+    # A FAILED production promotion is checked too, deliberately. Vercel only
+    # reports state 'success' when a build works, so gating on success meant
+    # the one event that mattered — the build that died — skipped this job
+    # silently. A failed build leaves the apex serving an older commit, which
+    # is exactly the drift this canary exists to name.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        (
+          github.event.deployment_status.state == 'success' ||
+          github.event.deployment_status.state == 'failure' ||
+          github.event.deployment_status.state == 'error'
+        ) &&
+        github.event.deployment.environment == 'Production' &&
+        github.event.deployment.creator.login == 'vercel[bot]'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HAS_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # External deployment checks use recovery code from the trusted
+          # default branch. Manual checks verify their own ref.
+          ref: ${{ github.event_name == 'deployment_status' && 'main' || github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Verify the real production alias
+        shell: bash
+        run: |
+          set +e
+          status=1
+          for attempt in 1 2 3; do
+            echo "Production canary attempt ${attempt} of 3"
+            node scripts/prod-audit.mjs
+            status=$?
+            if [ "$status" -eq 0 ]; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              sleep 20
+            fi
+          done
+          exit "$status"
+        env:
+          BASE_URL: ${{ inputs.base_url || vars.PRODUCTION_URL || 'https://frederickradius.app' }}
+          EXPECTED_SHA: ${{ inputs.expected_sha || github.event.deployment.sha || github.sha }}
+          REQUIRE_EXPECTED_SHA: "1"
+          CANARY_TIMEOUT_MS: "25000"
+
+      - name: Install Vercel recovery client
+        if: >-
+          failure() &&
+          github.event_name == 'deployment_status' &&
+          env.HAS_VERCEL_TOKEN == 'true'
+        run: npm install --global vercel@54.0.0
+
+      - name: Restore the last healthy production deployment
+        if: >-
+          failure() &&
+          github.event_name == 'deployment_status' &&
+          env.HAS_VERCEL_TOKEN == 'true'
+        run: node scripts/rollback-production.mjs
+        env:
+          BASE_URL: ${{ vars.PRODUCTION_URL || 'https://frederickradius.app' }}
+          EXPECTED_SHA: ${{ github.event.deployment.sha }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_SCOPE: ${{ vars.VERCEL_SCOPE || 'mikedlab' }}
+          VERCEL_PROJECT: ${{ vars.VERCEL_PROJECT || 'frederick-radius' }}
+          CANARY_TIMEOUT_MS: "25000"
+
+      - name: Report unavailable automatic recovery
+        if: >-
+          failure() &&
+          github.event_name == 'deployment_status' &&
+          env.HAS_VERCEL_TOKEN != 'true'
+        run: >-
+          echo "::error title=Automatic recovery is not configured::The production canary failed, but this repository has no VERCEL_TOKEN secret. Restore the last healthy deployment in Vercel and add a scoped token before relying on automatic recovery."
+
+  # A red workflow run is a log entry. This turns it into a message, using the
+  # same open-one-issue / close-on-recovery lifecycle the data pipelines use.
+  alert:
+    name: Tell someone the apex drifted
+    needs: apex
+    if: always() && needs.apex.result != 'skipped' && needs.apex.result != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          APEX_RESULT: ${{ needs.apex.result }}
+          EXPECTED_SHA: ${{ inputs.expected_sha || github.event.deployment.sha || github.sha }}
+          BASE_URL: ${{ inputs.base_url || vars.PRODUCTION_URL || 'https://frederickradius.app' }}
+        with:
+          script: |
+            const lifecycle = require('./scripts/lib/automated-data-issue.cjs');
+            const expected = (process.env.EXPECTED_SHA || '').slice(0, 12);
+            const baseUrl = process.env.BASE_URL;
+
+            if (process.env.APEX_RESULT === 'success') {
+              await lifecycle.closeRecovered({
+                github,
+                context,
+                family: 'deploy',
+                recoveryMessage: `The apex is serving ${expected} again.`,
+              });
+              return;
+            }
+
+            // Read what the apex actually serves, so the issue names both
+            // sides of the drift instead of only the expectation.
+            let serving = 'unknown (the apex did not answer)';
+            try {
+              const res = await fetch(`${baseUrl}/sw.js?canary=${Date.now()}`);
+              const text = await res.text();
+              const match = text.match(/CACHE_VERSION\s*=\s*["']fr-([a-f0-9]{6,40})/i);
+              if (match) serving = match[1].slice(0, 12);
+            } catch (error) {
+              serving = `unreadable (${error.message})`;
+            }
+
+            await lifecycle.upsertFailure({
+              github,
+              context,
+              family: 'deploy',
+              body: [
+                'The public site is not serving the current default branch.',
+                '',
+                `- Expected commit: \`${expected}\``,
+                `- Apex is serving: \`${serving}\``,
+                '',
+                'Every merge after this point ships nothing until it is resolved.',
+                'Check the most recent production deployment in Vercel: a build',
+                'that fails leaves the previous one live, and the merge still',
+                'reports success on GitHub.',
+              ].join('\n'),
+            });

@@ -1,0 +1,103 @@
+import {
+  Activity,
+  Archive,
+  Beer,
+  Bike,
+  Bookmark,
+  BusFront,
+  CalendarCheck,
+  CalendarDays,
+  Camera,
+  Car,
+  Coffee,
+  Compass,
+  Dog,
+  Fuel,
+  Download,
+  History,
+  Landmark,
+  Map,
+  MapPin,
+  Music,
+  Package,
+  ParkingCircle,
+  PawPrint,
+  Plane,
+  Plug,
+  Route,
+  Search,
+  Settings,
+  Sigma,
+  Sparkles,
+  Store,
+  Tag,
+  Trash2,
+  Trees,
+  Truck,
+  UtensilsCrossed,
+  Waves,
+  Wifi,
+  type LucideIcon,
+} from "lucide-react";
+import RestroomMark from "@/components/icons/RestroomMark";
+import type { RadiusToolIcon } from "@/data/radius-tools";
+
+/**
+ * The one map from a tool's declared icon name to its glyph.
+ *
+ * This table existed verbatim in both RadiusToolbox and CompassHub. Two
+ * copies of a 37-entry lookup is two places to forget when a tool declares a
+ * new icon, and the third surface that needed it was the moment to stop
+ * copying. Every surface that renders RADIUS_TOOLS reads this.
+ */
+export const TOOL_ICONS: Record<RadiusToolIcon, LucideIcon> = {
+  activity: Activity,
+  archive: Archive,
+  beer: Beer,
+  bike: Bike,
+  bookmark: Bookmark,
+  bus: BusFront,
+  calendar: CalendarDays,
+  "calendar-check": CalendarCheck,
+  camera: Camera,
+  car: Car,
+  coffee: Coffee,
+  compass: Compass,
+  dog: Dog,
+  fuel: Fuel,
+  download: Download,
+  history: History,
+  landmark: Landmark,
+  map: Map,
+  "map-pin": MapPin,
+  music: Music,
+  package: Package,
+  parking: ParkingCircle,
+  paw: PawPrint,
+  plane: Plane,
+  plug: Plug,
+  route: Route,
+  search: Search,
+  settings: Settings,
+  sigma: Sigma,
+  sparkles: Sparkles,
+  store: Store,
+  tag: Tag,
+  toilet: RestroomMark,
+  trash: Trash2,
+  trees: Trees,
+  truck: Truck,
+  utensils: UtensilsCrossed,
+  waves: Waves,
+  wifi: Wifi,
+};
+
+/** Brand token per tool tone, so a key's colour comes from the registry
+ *  rather than from whatever each surface happened to pick. */
+export const TOOL_TONE_COLOR = {
+  brand: "var(--app-brand)",
+  civic: "var(--app-cool)",
+  cool: "var(--app-cool)",
+  positive: "var(--app-brand-2)",
+  accent: "var(--app-accent)",
+} as const;

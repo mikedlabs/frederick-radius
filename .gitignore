@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/storybook-static/
+/visual-contract-candidates/
 
 # next.js
 /.next/
@@ -37,8 +39,17 @@ yarn-error.log*
 # vercel
 .vercel
 
-# local dev tooling
-.claude/
+# local dev tooling — the SHARED agent config is checked in on purpose
+# (slash commands, subagents, permissions, hooks), so the whole team and every
+# agent session get the same inner loops. Only machine-local and scratch state
+# stays out.
+.claude/*
+!.claude/agents/
+!.claude/commands/
+!.claude/settings.json
+!.claude/launch.json
+.claude/settings.local.json
+.claude/worktrees/
 
 # typescript
 *.tsbuildinfo
@@ -49,6 +60,7 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+/.playwright-cli/
 
 # data pipeline: raw and clean snapshots live on the data-snapshots
 # branch, never on main, to keep history small.
@@ -64,9 +76,61 @@ scripts/find-duplicates-report.json
 # Lighthouse / perf audit snapshots: local-only, do not commit
 .perf/
 scripts/.lighthouse/
-# Lighthouse / perf audit snapshots: local-only, do not commit
-.perf/
-scripts/.lighthouse/
 .env*.local
 /index.mjs
 /index.ts
+
+# Visual-verification output (scripts/screenshots.mjs)
+screenshots/
+
+# Local-only UX simulation harness + its screenshot output (scratch)
+ux-sim.mjs
+ux-shots/
+
+# Local browser-audit captures and generated quality reports
+/output/
+/tmp/
+__pycache__/
+
+# Generated mockup renders (reproducible from the .html + render script)
+.mockups/render/
+.mockups/*.built.html
+
+# Historical design explorations and generated review evidence are archived
+# outside the production repository. Their source scripts remain reproducible.
+/.mockups/
+/design-log/
+/design-review/probes/
+/public/brand/campaign/*
+!/public/brand/campaign/cartographic-ripple-background.png
+
+# Scratch render / audit / smoke scripts (agent + local Playwright runs)
+/_*.mjs
+/audit*.mjs
+/*-run.mjs
+/*_tmp.mjs
+/.render-*.mjs
+.city-maps/
+audit-reports/
+
+# Generated data-review outputs. Keep the compact vendor rights manifest, but
+# regenerate these local reports instead of committing snapshots.
+/audit/chij-backfill-uncertain.json
+/audit/dfp-mash-followup.json
+/audit/dfp-mash-verification.json
+/audit/dfp-sample-50.json
+/audit/photo-twins.json
+/audit/suspected-duplicates.csv
+# Vendor media downloads are a local rights-review queue. The compact source
+# manifest is tracked; original website files are deliberately not deployed.
+/audit/vendor-media/downloads/
+# Design-review evidence: the report is tracked; the ~68MB of PNG captures
+# are regenerable and stay out of git history.
+design-review/screenshots/
+# Closure-detector output: a local review artifact, regenerated each run.
+scripts/reports/
+# Deterministic, self-hosted viewer bundles generated before dev/build.
+/public/fair-viewer-assets/
+# The county PMTiles extract, sprites, and glyphs are intentionally tracked
+# promoted artifacts. Application builds verify their release manifest and do
+# not download or regenerate them. See ADR-002 and `npm run basemap:verify`.

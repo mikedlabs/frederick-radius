@@ -1,0 +1,4 @@
+{
+  "_doc": "Public art layer (data brief 6.5), the signature map asset. Each entry is one geocoded piece. Fields: id, title, artist, year, lat, lng, photo_url, photo_credit, source_url, status (active or removed). Seeded from the Visit Frederick Public Art Trail and Frederick Arts Council commissions, with photography from the MAD archive, credited. Ships empty: the pieces and their photos are owner and Frederick Arts Council human work (Phase 4 item 2). Add entries here and the overlay renders them on the next deploy; status removed hides a piece without losing its record. Do not invent entries.",
+  "pieces": []
+}

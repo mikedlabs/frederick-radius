@@ -1,0 +1,317 @@
+name: Data steward
+
+# Nightly data steward. Probes the critical feeds (informational), then
+# runs the committed-artifact refresh scripts that keep the app's local
+# data fresh: the rolling hours snapshot, including Google business status.
+# Transit GTFS moved to transit-steward.yml on 2026-08-18 — sharing a run made
+# a failing transit snapshot paint the hours pipeline red for six days while it
+# was in fact succeeding nightly.
+# When the paid hours writer is explicitly authorized, hours failures are
+# release-significant and fail loudly. The Google writer runs once in Vercel;
+# this workflow only materializes its read-only Supabase snapshot, avoiding a
+# second paid status-only sweep over the same identities. With policy authority
+# absent, the job is intentionally skipped instead of asking the NAS to publish
+# a writer that is not authorized to run.
+
+on:
+  schedule:
+    # 09:17 UTC nightly (~4-5 AM Eastern). The ordering is load-bearing:
+    # "Pull rolling hours snapshot" reads rows written by Vercel's 08:00 UTC
+    # /api/cron/hours-refresh job. This used to run before the writer, so fresh
+    # hours never reached the review PR. Minute 17 also avoids GitHub's busy
+    # top-of-hour scheduling window. Production health grades the last merged
+    # artifact; it does not pretend a still-unreviewed PR is already deployed.
+    - cron: "17 9 * * *"
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: data-steward
+  cancel-in-progress: false
+
+jobs:
+  steward:
+    # This job exists only to publish the paid Google hours writer's output.
+    # Missing policy authority is an intentional hold, not a broken NAS run.
+    if: ${{ github.ref == 'refs/heads/main' && vars.HOURS_REFRESH_CRON == '1' && vars.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL == 'written-google-authorization-confirmed' && vars.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED == '1' }}
+    # The generator is trusted-main, read-only, and receives browser-safe
+    # Supabase variables only. Keep publication and PR mutation on the hosted
+    # reusable workflow below so the persistent NAS never receives write
+    # credentials.
+    runs-on: [self-hosted, radius-data]
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    outputs:
+      artifact_name: ${{ steps.artifact-name.outputs.name }}
+      review_required: ${{ steps.hours-review.outputs.review_required }}
+      public_additions: ${{ steps.hours-review.outputs.public_additions }}
+      public_removals: ${{ steps.hours-review.outputs.public_removals }}
+      newly_closed: ${{ steps.hours-review.outputs.newly_closed }}
+      reopenings: ${{ steps.hours-review.outputs.reopenings }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Name missing prerequisites before the refresh script fails. Variable
+      # values are never printed. `continue-on-error` preserves the independent
+      # diagnostics below; the final enforcement step still turns the job red.
+      - name: Check hours snapshot configuration
+        id: hours-config
+        continue-on-error: true
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          missing=()
+          if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
+            missing+=("NEXT_PUBLIC_SUPABASE_URL")
+          fi
+          if [ -z "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" ]; then
+            missing+=("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
+          fi
+          if [ "${#missing[@]}" -gt 0 ]; then
+            joined=$(IFS=", "; echo "${missing[*]}")
+            echo "::error title=Hours snapshot is not configured::Add these browser-safe GitHub repository variables: $joined"
+            exit 1
+          fi
+          echo "The hours snapshot will use Supabase's read-only anon Data API path."
+
+      # Build the accepted provider identity set before reading the live hours
+      # and business-status snapshot. Public places-client.json intentionally
+      # omits closed and off-season rows, so it cannot safely validate the
+      # database snapshot without creating a closure/reopening feedback loop.
+      - name: Rebuild canonical place refresh identities
+        run: npm run build:place-refresh-identities
+
+      # Materialize the server cron's place_hours_refresh table into the
+      # committed snapshot. The Vercel writer requests weekday hours and Google
+      # business status in the same Place Details call, so running the separate
+      # status-only GitHub sweep here would duplicate paid requests without
+      # improving freshness.
+      - name: Pull rolling hours snapshot
+        id: hours-snapshot
+        continue-on-error: true
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+        run: npm run refresh:hours
+
+      # Rebuild the exact public snapshot and enforce critical safety gates.
+      # High-severity coverage debt is reported separately below: it must stay
+      # visible, but it cannot prevent an incremental refresh PR from opening.
+      - name: Rebuild public place snapshot
+        run: npm run build:client-places
+
+      # Hold unreviewed status changes back INSIDE the artifact, so a decision
+      # that needs a human stops one slug instead of the county. The review
+      # gate below used to withhold auto-merge from the whole nightly PR on
+      # any unreviewed flag; one flagged market then stalled ~1,500 rows of
+      # fresh hours for days, and the artifact's oldest rows sit ~14 hours
+      # from the 7-day publishing cliff at steady state — that arithmetic is
+      # the August blackout. Held slugs keep yesterday's reviewed values and
+      # are listed at the top of docs/hours-refresh-review.md every night
+      # until evidence in place-status-overrides.json releases them.
+      - name: Hold unreviewed status changes at their reviewed values
+        id: holdback
+        run: npm run steward:holdback -- --report "$RUNNER_TEMP/hours-holdback.json"
+
+      # A splice changed the source artifact, so the derived snapshot must be
+      # rebuilt from the spliced base or the review would still see the held
+      # changes in the client data.
+      - name: Rebuild the snapshot from the spliced base
+        if: ${{ steps.holdback.outputs.held == 'true' }}
+        run: npm run build:client-places
+
+      # Keep the checked-in scorecard on the same snapshot as the generated
+      # client data. Without this step the review document can describe an old
+      # catalog and an obsolete refresh cycle even while the bot PR is current.
+      - name: Refresh coverage scorecard
+        run: npm run coverage:scorecard
+
+      # Reduce a large generated-data diff to the status decisions a person
+      # needs to inspect. The script compares HEAD with the rebuilt worktree,
+      # writes a manifest into the PR, and exposes compact counts below.
+      - name: Build hours refresh review manifest
+        id: hours-review
+        env:
+          HOURS_HOLDBACK_MANIFEST: ${{ runner.temp }}/hours-holdback.json
+        run: npm run review:hours-refresh
+
+      - name: Flag status changes for manual review
+        if: ${{ steps.hours-review.outputs.review_required == 'true' }}
+        env:
+          PUBLIC_ADDITIONS: ${{ steps.hours-review.outputs.public_additions }}
+          PUBLIC_REMOVALS: ${{ steps.hours-review.outputs.public_removals }}
+          NEWLY_CLOSED: ${{ steps.hours-review.outputs.newly_closed }}
+        run: |
+          echo "::warning title=Hours refresh needs place-status review::$PUBLIC_REMOVALS public removal(s), $PUBLIC_ADDITIONS public addition(s), and $NEWLY_CLOSED new closed-status transition(s). Read docs/hours-refresh-review.md before merging."
+
+      - name: Publish hours refresh review summary
+        if: ${{ always() }}
+        run: |
+          if [ -f docs/hours-refresh-review.md ]; then
+            cat docs/hours-refresh-review.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Enforce critical data gates
+        run: npm run gates
+
+      - name: Report high-severity data debt
+        continue-on-error: true
+        run: npm run gates -- --fail-high
+
+      - name: Promote reviewed place artifacts
+        if: ${{ steps.hours-config.outcome == 'success' && steps.hours-snapshot.outcome == 'success' }}
+        run: npm run data:release:write -- --stream places
+
+      # Move only the reviewed output boundary into runner storage. The
+      # credentialed publisher receives no generator worktree or source keys.
+      - name: Stage exact core outputs
+        if: ${{ steps.hours-config.outcome == 'success' && steps.hours-snapshot.outcome == 'success' }}
+        env:
+          ARTIFACT_ROOT: ${{ runner.temp }}/data-steward-core-output
+        run: |
+          set -euo pipefail
+          for path in \
+            src/data/place-refresh-identities.json \
+            src/data/places-hours-refresh.json \
+            src/data/places-client.json \
+            src/data/places-client-hours.json \
+            src/data/event-venue-photo-credits.json \
+            src/data/data-release.json \
+            docs/coverage-scorecard.md \
+            docs/hours-refresh-review.md
+          do
+            install -D -m 0644 "$path" "$ARTIFACT_ROOT/$path"
+          done
+
+      # Pin the upload name to the attempt that actually generated it. A
+      # failed-jobs-only rerun skips this successful job, so its publisher must
+      # consume this preserved output instead of recomputing run_attempt.
+      - name: Pin core artifact name to this generator attempt
+        id: artifact-name
+        if: ${{ steps.hours-config.outcome == 'success' && steps.hours-snapshot.outcome == 'success' }}
+        env:
+          ARTIFACT_NAME: data-steward-core-output-${{ github.run_id }}-${{ github.run_attempt }}
+        run: echo "name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Upload exact core outputs
+        if: ${{ steps.hours-config.outcome == 'success' && steps.hours-snapshot.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.artifact-name.outputs.name }}
+          path: ${{ runner.temp }}/data-steward-core-output
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Write core refresh summary
+        if: ${{ always() }}
+        run: |
+          {
+            echo "## Core place refresh"
+            echo ""
+            echo "| Check | Outcome |"
+            echo "| --- | --- |"
+            echo "| Hours snapshot configuration | ${{ steps.hours-config.outcome }} |"
+            echo "| Hours + business-status snapshot pull | ${{ steps.hours-snapshot.outcome }} |"
+            echo ""
+            echo "The GitHub hours pull should use browser-safe \`NEXT_PUBLIC_SUPABASE_URL\` and \`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY\` repository variables, not a privileged database secret."
+            echo "A healthy writer still requires reviewed Google authorization, \`GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED=1\`, \`HOURS_REFRESH_CRON=1\`, \`GOOGLE_PLACES_API_KEY\`, \`DATABASE_URL\`, and \`CRON_SECRET\` in Vercel Production."
+            echo "Apply \`drizzle/0024_place_hours_refresh.sql\` and \`drizzle/0034_expose_place_hours_refresh_read_only.sql\` in Supabase before enabling the paid Vercel cron and public pull."
+            echo "Repository Settings → Actions → General must allow GitHub Actions to create pull requests."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # `continue-on-error` above is diagnostic sequencing, not a relaxed
+      # release policy. Fail after the independent work and PR handoff so the
+      # Actions summary names every missing prerequisite in one run.
+      - name: Enforce core place refresh results
+        if: ${{ always() && (steps.hours-config.outcome != 'success' || steps.hours-snapshot.outcome != 'success') }}
+        run: |
+          echo "Hours snapshot configuration: ${{ steps.hours-config.outcome }}"
+          echo "Hours + business-status snapshot pull: ${{ steps.hours-snapshot.outcome }}"
+          echo "The core place snapshot must succeed. Check the named step logs and repository configuration."
+          exit 1
+
+  # Transit uses public feeds and must refresh independently of Google or
+  # database availability. A failure in the place-data job cannot stop the
+  # rolling GTFS snapshot from reaching a reviewable PR.
+  steward-publish:
+    needs: steward
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/publish-automated-pr.yml
+    with:
+      artifact: ${{ needs.steward.outputs.artifact_name }}
+      base_sha: ${{ github.sha }}
+      branch: bot/data-steward
+      allowed_paths: |
+        src/data/place-refresh-identities.json
+        src/data/places-hours-refresh.json
+        src/data/places-client.json
+        src/data/places-client-hours.json
+        src/data/event-venue-photo-credits.json
+        src/data/data-release.json
+        docs/coverage-scorecard.md
+        docs/hours-refresh-review.md
+      commit_message: "data: nightly steward refresh (automated)"
+      title: "data: nightly steward refresh"
+      # The review manifest already decides whether a person is needed. When it
+      # says no public removals and no new closures, the diff is regenerated
+      # artifacts and there is nothing to judge — so let it merge on green
+      # rather than expire waiting. Anything flagged still stops for a human.
+      auto_merge: ${{ needs.steward.outputs.review_required == 'false' }}
+      body: |
+        Automated nightly refresh from the data-steward workflow.
+
+        Ran: build:place-refresh-identities, refresh:hours,
+        build:client-places, coverage:scorecard, the hours-change review,
+        and the data-quality gates. The rolling
+        hours snapshot includes Google's latest business status for each
+        refreshed identity. Transit refresh runs in its own workflow
+        (transit-steward.yml).
+        Critical gates block this PR; existing high-severity coverage debt
+        remains visible without blocking an incremental refresh. Review the
+        diff before merging.
+
+        Hours change review:
+        - Manual review required: ${{ needs.steward.outputs.review_required }}
+        - Public additions: ${{ needs.steward.outputs.public_additions }}
+        - Public removals: ${{ needs.steward.outputs.public_removals }}
+        - Newly closed provider statuses: ${{ needs.steward.outputs.newly_closed }}
+        - Reopenings: ${{ needs.steward.outputs.reopenings }}
+
+        Read `docs/hours-refresh-review.md` before merging. Public additions,
+        removals, and new closure transitions are never hidden inside the
+        generated JSON diff.
+
+        Review checklist:
+        - [ ] I checked every public addition and removal in the manifest.
+        - [ ] I verified each newly closed public place against a current first-party or official source.
+        - [ ] I confirmed the coverage gain and unmatched-row count are reasonable.
+
+  steward-checks:
+    needs: steward-publish
+    if: ${{ needs.steward-publish.outputs.pr_operation == 'created' || needs.steward-publish.outputs.pr_operation == 'updated' }}
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/automated-pr-checks.yml
+    with:
+      branch: ${{ needs.steward-publish.outputs.pr_branch }}
+      head_sha: ${{ needs.steward-publish.outputs.pr_head_sha }}

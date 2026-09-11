@@ -14,7 +14,9 @@ export const HIDDEN_GEM_SLUGS: ReadonlySet<string> = new Set([
   "brunswick-heritage-museum", // small, deep, easy to overlook
   "lebherz-oil-and-vinegar-frederick", // a tasting shop locals guard
   "dublin-roasters-frederick", // beloved roaster off the main drag
-  "the-cozy-creamery-thurmont", // Thurmont creamery with real local lore
+  // "the-cozy-creamery-thurmont" was removed 2026-07-10: the Cozy closed in
+  // 2014, the complex was demolished, and the site is now a car dealership.
+  // No creamery replaced it (Thurmont Historical Society, Baltimore Sun).
   "smoketown-brewing-brunswick", // a Brunswick firehouse-turned-brewery
 ]);
 

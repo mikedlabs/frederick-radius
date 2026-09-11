@@ -1,0 +1,499 @@
+/**
+ * Database-health probes for the nightly data-health cron + admin dashboard.
+ *
+ * These read the RAW-SQL ingestion/security surface that is deliberately NOT
+ * modeled in src/lib/db/schema.ts (the ingestion tables + RLS posture live
+ * only in the hand-applied migrations — see drizzle/README.md), so they go
+ * through the raw postgres-js handle (getSql) rather than Drizzle.
+ *
+ * Dashboard-only readers remain FAIL-SOFT so an admin page can still render
+ * without a database. The nightly cron uses evaluateDbHealth(), which is
+ * deliberately status-aware: missing configuration or a failed query becomes
+ * an explicit infrastructure anomaly instead of an all-clear empty result.
+ */
+import "server-only";
+import { getSql } from "@/lib/db/client";
+import type { Anomaly } from "@/lib/integrations/feed-snapshot";
+import {
+  DATA_HEALTH_FEEDS_RUN,
+  DATA_HEALTH_RETENTION_RUN,
+  EVENT_ARCHIVE_RUN,
+} from "@/lib/quality/data-health-phases";
+import civicSources from "@/../config/civicengage_sources.json" with { type: "json" };
+
+type RawSql = NonNullable<ReturnType<typeof getSql>>;
+
+const REQUIRED_RUNTIME_TABLES = [
+  // Native menus (0036).
+  "menu_sources",
+  "native_menus",
+  "menu_sections",
+  "menu_items",
+  // Durable event identity (0038).
+  "event_canonical_records",
+  "event_source_identities",
+  "event_slug_aliases",
+  "event_tombstones",
+  // Current source-health projection (0039).
+  "feed_source_health",
+] as const;
+
+export type DbHealthStatus = "available" | "unavailable";
+export type DbHealthUnavailableReason = "not_configured" | "query_failed";
+export type DbHealthEvaluation = {
+  status: DbHealthStatus;
+  reason: DbHealthUnavailableReason | null;
+  anomalies: Anomaly[];
+};
+
+/**
+ * Source-side watermark for the paid Google hours handoff. This is collection
+ * evidence only: callers must compare it with the bundled artifact before
+ * claiming the data reached users.
+ *
+ * The strict error behavior is intentional. The data-health reporter wraps
+ * this read in its own deadline and turns failure into an explicit unknown
+ * publication state rather than a false zero or an all-clear.
+ */
+export async function getLatestHoursRefreshAt(): Promise<string | null> {
+  const sql = getSql();
+  if (!sql) {
+    throw new Error("Database is not configured for the hours publication check.");
+  }
+  const rows = (await sql`
+    SELECT max(refreshed_at) AS latest_refreshed_at
+    FROM place_hours_refresh
+  `) as unknown as Array<{ latest_refreshed_at: string | Date | null }>;
+  const value = Array.isArray(rows) ? rows[0]?.latest_refreshed_at : null;
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime())) {
+    throw new Error("The hours collection watermark is not a valid timestamp.");
+  }
+  return parsed.toISOString();
+}
+
+function infrastructureUnavailable(
+  reason: DbHealthUnavailableReason,
+): DbHealthEvaluation {
+  return {
+    status: "unavailable",
+    reason,
+    anomalies: [
+      {
+        source: "database",
+        kind: "infrastructure_unavailable",
+        detail:
+          reason === "not_configured"
+            ? "Database health could not be evaluated because no database connection URL is configured."
+            : "Database health could not be evaluated because a required health query failed. Check the data-health cron logs and database connectivity.",
+      },
+    ],
+  };
+}
+
+async function queryRlsUnprotectedTables(sql: RawSql): Promise<string[]> {
+  const rows = (await sql`
+    SELECT c.relname
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relkind = 'r'
+      AND c.relrowsecurity = false
+    ORDER BY c.relname
+  `) as unknown as Array<{ relname: string }>;
+  return rows.map((r) => r.relname);
+}
+
+async function queryMissingRuntimeTables(sql: RawSql): Promise<string[]> {
+  const rows = (await sql`
+    SELECT required.table_name
+    FROM unnest(${[...REQUIRED_RUNTIME_TABLES]}::text[])
+      AS required(table_name)
+    WHERE to_regclass('public.' || required.table_name) IS NULL
+    ORDER BY required.table_name
+  `) as unknown as Array<{ table_name: string }>;
+  return rows.map((row) => row.table_name);
+}
+
+/**
+ * mig-6 — RLS-coverage guard. The security model is deny-all RLS on every
+ * public table (drizzle/0007, 0009): all reads/writes go through Drizzle on a
+ * BYPASSRLS role, never the public anon/PostgREST role. A table hand-added
+ * WITHOUT `ENABLE ROW LEVEL SECURITY` silently re-opens the anon read/write
+ * hole. Returns the names of any public base table with RLS disabled.
+ */
+export async function findRlsUnprotectedTables(): Promise<string[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  try {
+    return await queryRlsUnprotectedTables(sql);
+  } catch (err) {
+    console.warn(
+      "[db-health] RLS coverage check failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return [];
+  }
+}
+
+/** mig-6, as alert-shaped anomalies for the cron's existing Slack path. */
+export async function findRlsAnomalies(): Promise<Anomaly[]> {
+  const tables = await findRlsUnprotectedTables();
+  return tables.map((t) => ({
+    source: t,
+    kind: "rls_unprotected" as const,
+    detail: `public.${t} has RLS DISABLED — the anon/PostgREST role can read/write it. Run "ALTER TABLE public.${t} ENABLE ROW LEVEL SECURITY;" in the Supabase SQL editor.`,
+  }));
+}
+
+/**
+ * Migration-readiness guard for code paths that otherwise fail soft to empty
+ * data. Keeping this in the connected nightly check prevents an unapplied
+ * event-archive, native-menu, or source-health migration from looking like a
+ * healthy feature that simply has no records.
+ */
+export async function findMissingRuntimeTables(): Promise<string[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  try {
+    return await queryMissingRuntimeTables(sql);
+  } catch (err) {
+    console.warn(
+      "[db-health] runtime schema check failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return [];
+  }
+}
+
+/** A source that exists in ingested_events but hasn't refreshed within this
+ *  many hours is treated as stale (a daily cron that has silently died). */
+const INGEST_STALE_HOURS = 36;
+const INGEST_RUNNING_GRACE_MS = 10 * 60_000;
+const ACTIVE_CIVIC_SOURCE_DOMAINS = civicSources
+  .filter((source) => source.enabled)
+  .map((source) => source.domain);
+const ACTIVE_EVENT_HEALTH_SOURCES = [
+  ...ACTIVE_CIVIC_SOURCE_DOMAINS.map((domain) => ({
+    sourceDomain: domain,
+    runSlug: `civicengage:${domain}`,
+  })),
+  {
+    sourceDomain: "frederick.librarycalendar.com",
+    runSlug: "frederick.librarycalendar.com",
+  },
+  { sourceDomain: "fcvfra.com", runSlug: "fcvfra.com" },
+  {
+    sourceDomain: "CivicEngage aggregate",
+    runSlug: "civicengage:aggregate",
+  },
+];
+
+async function queryStaleIngestSources(
+  sql: RawSql,
+  maxAgeHours: number,
+): Promise<Anomaly[]> {
+  const sourceDomains = ACTIVE_EVENT_HEALTH_SOURCES.map(
+    (source) => source.sourceDomain,
+  );
+  const runSlugs = ACTIVE_EVENT_HEALTH_SOURCES.map(
+    (source) => source.runSlug,
+  );
+  const rows = (await sql`
+    WITH active_sources AS (
+      SELECT *
+      FROM unnest(
+        ${sourceDomains}::text[],
+        ${runSlugs}::text[]
+      ) AS source(source_domain, run_slug)
+    ),
+    event_sources AS (
+      SELECT source_domain, max(updated_at) AS last_event_update
+      FROM ingested_events
+      GROUP BY source_domain
+    )
+    SELECT active_sources.source_domain,
+           event_sources.last_event_update,
+           latest_run.started_at AS last_run,
+           latest_run.ended_at AS last_run_ended,
+           latest_run.status AS last_run_status,
+           latest_run.records_failed AS last_run_records_failed,
+           latest_run.error AS last_run_error
+    FROM active_sources
+    LEFT JOIN event_sources
+      ON event_sources.source_domain = active_sources.source_domain
+    LEFT JOIN LATERAL (
+      SELECT started_at, ended_at, status, records_failed, error
+      FROM ingest_runs
+      WHERE source_slug = active_sources.run_slug
+      ORDER BY started_at DESC
+      LIMIT 1
+    ) latest_run ON true
+  `) as unknown as Array<{
+    source_domain: string;
+    last_event_update: string | Date | null;
+    last_run: string | Date | null;
+    last_run_ended: string | Date | null;
+    last_run_status: string | null;
+    last_run_records_failed: number | null;
+    last_run_error: string | null;
+  }>;
+  const cutoff = Date.now() - maxAgeHours * 3_600_000;
+  const out: Anomaly[] = [];
+  for (const r of rows) {
+    const lastRunMs = r.last_run ? new Date(r.last_run).getTime() : 0;
+    const lastEventMs = r.last_event_update
+      ? new Date(r.last_event_update).getTime()
+      : 0;
+    const lastMs = lastRunMs || lastEventMs;
+    const failedRecords = Number(r.last_run_records_failed ?? 0);
+    const runningTooLong =
+      r.last_run_status === "running" &&
+      Date.now() - lastRunMs > INGEST_RUNNING_GRACE_MS;
+    const incompleteOk =
+      r.last_run_status === "ok" && r.last_run_ended === null;
+
+    // A successful unchanged ingest is still a healthy refresh. Conversely,
+    // a fresh failed, partial, or orphaned heartbeat must not be hidden by an
+    // older event row. records_failed is authoritative even when an older
+    // route accidentally stamped the status "ok".
+    if (
+      lastRunMs >= cutoff &&
+      (r.last_run_status === "error" ||
+        r.last_run_status === "partial" ||
+        failedRecords > 0 ||
+        runningTooLong ||
+        incompleteOk)
+    ) {
+      const reason =
+        runningTooLong
+          ? "still marked running after the route deadline"
+          : incompleteOk
+            ? "marked ok without a completion timestamp"
+            : failedRecords > 0
+              ? `${failedRecords} records failed`
+              : r.last_run_error || r.last_run_status || "failed";
+      out.push({
+        source: r.source_domain,
+        kind: "live_source_failed",
+        detail: `Latest ingest heartbeat is not healthy: ${reason}.`,
+      });
+      continue;
+    }
+
+    if (lastMs < cutoff) {
+      const ageH = lastMs ? Math.round((Date.now() - lastMs) / 3_600_000) : null;
+      out.push({
+        source: r.source_domain,
+        kind: "ingest_stale",
+        detail: ageH
+          ? `No ingest heartbeat in ~${ageH}h (last signal ${new Date(lastMs).toISOString()}); the cron for this source may be dead.`
+          : `Active source has neither an ingest heartbeat nor event data — ingest may never have completed.`,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * ING-5 — dead-feed freshness. Flags any ingest source whose newest
+ * `ingested_events` row is older than `maxAgeHours` (a CivicEngage/FCPL/FCVFRA
+ * cron that quietly stopped writing — the DFP/Hood-style silent retirement).
+ * Returns alert-shaped anomalies; empty when the table is empty or unavailable.
+ */
+export async function findStaleIngestSources(
+  maxAgeHours = INGEST_STALE_HOURS,
+): Promise<Anomaly[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  try {
+    return await queryStaleIngestSources(sql, maxAgeHours);
+  } catch (err) {
+    console.warn(
+      "[db-health] ingest staleness check failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return [];
+  }
+}
+
+/**
+ * Cron-facing database evaluation. Every required probe must complete before
+ * the database can be called available; otherwise the cron cannot distinguish
+ * healthy data from checks that never ran.
+ */
+export async function evaluateDbHealth(
+  maxAgeHours = INGEST_STALE_HOURS,
+): Promise<DbHealthEvaluation> {
+  let sql: RawSql | null;
+  try {
+    sql = getSql();
+  } catch (err) {
+    console.error(
+      "[db-health] database client initialization failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return infrastructureUnavailable("query_failed");
+  }
+
+  if (!sql) return infrastructureUnavailable("not_configured");
+
+  try {
+    // One at a time. The pool is max: 1 (Supavisor), so these do not overlap;
+    // under contention the losers sit in the connection queue until a caller's
+    // deadline fires and the whole evaluation is then reported "unavailable" —
+    // which the nightly reporter turns into a 503 and a skipped heartbeat.
+    const rlsTables = await queryRlsUnprotectedTables(sql);
+    const missingRuntimeTables = await queryMissingRuntimeTables(sql);
+    const staleIngestAnomalies = await queryStaleIngestSources(sql, maxAgeHours);
+    return {
+      status: "available",
+      reason: null,
+      anomalies: [
+        ...rlsTables.map(
+          (table): Anomaly => ({
+            source: table,
+            kind: "rls_unprotected",
+            detail: `public.${table} has RLS DISABLED — the anon/PostgREST role can read/write it. Run "ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY;" in the Supabase SQL editor.`,
+          }),
+        ),
+        ...(missingRuntimeTables.length > 0
+          ? [
+              {
+                source: "database schema",
+                kind: "schema_missing" as const,
+                detail:
+                  "Required runtime tables are missing: " +
+                  missingRuntimeTables
+                    .map((table) => `public.${table}`)
+                    .join(", ") +
+                  ". Apply and verify the matching migration before relying on these features.",
+              },
+            ]
+          : []),
+        ...staleIngestAnomalies,
+      ],
+    };
+  } catch (err) {
+    console.error(
+      "[db-health] required health query failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return infrastructureUnavailable("query_failed");
+  }
+}
+
+export type IngestRunSummary = {
+  source: string;
+  status: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  recordsIn: number;
+  recordsUpserted: number;
+  recordsFailed: number;
+  error: string | null;
+  /** Last run older than 36h (the source's cron may have stopped firing).
+   *  Computed here, not in the page, so the server component render stays pure. */
+  stale: boolean;
+};
+
+const INGEST_STALE_MS = 36 * 3_600_000;
+const ACTIVE_INGEST_RUN_SOURCES = new Set([
+  "tripwires",
+  DATA_HEALTH_FEEDS_RUN,
+  DATA_HEALTH_RETENTION_RUN,
+  EVENT_ARCHIVE_RUN,
+  ...ACTIVE_EVENT_HEALTH_SOURCES.map((source) => source.runSlug),
+]);
+
+/**
+ * obs-2 read side — the most recent `ingest_runs` row per source, so the admin
+ * dashboard shows whether each cron-driven ingest succeeded, when, and how many
+ * rows it wrote. The (source_slug, started_at) index backs the per-source
+ * latest lookup. Fail-soft to [].
+ */
+export async function getRecentIngestRuns(): Promise<IngestRunSummary[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  try {
+    const rows = (await sql`
+      SELECT DISTINCT ON (source_slug)
+             source_slug, status, started_at, ended_at,
+             records_in, records_upserted, records_failed, error
+      FROM ingest_runs
+      ORDER BY source_slug, started_at DESC
+    `) as unknown as Array<{
+      source_slug: string;
+      status: string | null;
+      started_at: string | Date | null;
+      ended_at: string | Date | null;
+      records_in: number | null;
+      records_upserted: number | null;
+      records_failed: number | null;
+      error: string | null;
+    }>;
+    const nowMs = Date.now();
+    return rows.filter((r) => ACTIVE_INGEST_RUN_SOURCES.has(r.source_slug)).map((r) => {
+      const startedMs = r.started_at ? new Date(r.started_at).getTime() : 0;
+      return {
+        source: r.source_slug,
+        status: r.status,
+        startedAt: r.started_at ? new Date(r.started_at).toISOString() : null,
+        endedAt: r.ended_at ? new Date(r.ended_at).toISOString() : null,
+        recordsIn: Number(r.records_in ?? 0),
+        recordsUpserted: Number(r.records_upserted ?? 0),
+        recordsFailed: Number(r.records_failed ?? 0),
+        error: r.error,
+        stale: !startedMs || nowMs - startedMs > INGEST_STALE_MS,
+      };
+    });
+  } catch (err) {
+    console.warn(
+      "[db-health] ingest-runs summary failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return [];
+  }
+}
+
+export type UnparseableSummary = {
+  source: string;
+  count: number;
+  sample: string | null;
+};
+
+/**
+ * obs-3 — surface the `unparseable_locations` queue. The ingest pipeline logs
+ * every location it could not geocode here (per drizzle/0001) but nothing ever
+ * reads it, so geocode-quality failures accumulate invisibly. Returns a
+ * per-source count + most-recent sample for the admin dashboard.
+ */
+export async function getUnparseableLocationSummary(
+  limit = 12,
+): Promise<UnparseableSummary[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  try {
+    const rows = (await sql`
+      SELECT source_domain,
+             count(*)::int AS n,
+             (array_agg(raw_location ORDER BY seen_at DESC))[1] AS sample
+      FROM unparseable_locations
+      GROUP BY source_domain
+      ORDER BY count(*) DESC
+      LIMIT ${limit}
+    `) as unknown as Array<{ source_domain: string; n: number; sample: string | null }>;
+    return rows.map((r) => ({
+      source: r.source_domain,
+      count: Number(r.n),
+      sample: r.sample,
+    }));
+  } catch (err) {
+    console.warn(
+      "[db-health] unparseable summary failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return [];
+  }
+}

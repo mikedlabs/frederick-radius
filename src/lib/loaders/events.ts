@@ -6,12 +6,22 @@ import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG, type Municipality } from "@/data/
 // (which static-imports the ~12MB enrichment into the bundle).
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { haversineMeters, type LngLat } from "@/lib/geo";
+import { stampEventProvenance, type EventProvenance } from "@/lib/provenance";
+import { eventGeoConfidence, type GeoConfidence } from "@/lib/events/geo-confidence";
 import { isKnownClosed } from "@/lib/integrations/closures";
+import { easternParts, easternDayKey, easternWallToUtcISO } from "@/lib/tz";
+import { isEventLiveNow } from "@/lib/eventWhenLabel";
+import { isUpcomingEvent } from "@/lib/events/visible";
 import {
   partitionEvents,
   logPlacementWarnings,
   type Placement,
 } from "@/lib/validation/placement";
+import { cleanDescription } from "@/lib/events/normalize";
+import {
+  eventAttendanceMode,
+  hasPhysicalAttendance,
+} from "@/lib/events/attendance";
 
 /**
  * Systemic guard: never surface an event whose venue is a known-closed
@@ -114,27 +124,42 @@ export const BY_TOWN_ENABLED = process.env.RADIUS_EVENTS_BY_TOWN !== "0";
  */
 const NEAR_TOWN_RADIUS_M = 16_000;
 
-export type EventWithMeta = Event & {
+export type EventWithMeta = Omit<Event, "source_url" | "last_verified_at"> &
+  EventProvenance & {
+  /** Publisher record edit time; unlike a fetch time, this can settle copy. */
+  publisher_updated_at?: string | null;
   distance_m?: number;
+  /** How well we know the position. A distance is only ever stamped for
+   *  "venue_match"/"exact_address"; "area"/"unknown" list without one. */
+  geo_confidence: GeoConfidence;
   category_name: string;
   municipality_name: string;
 };
 
-/**
- * Default verification date for seed/curated rows that don't carry
- * their own. The intent is "this season's editorial sweep" — bump
- * this constant when the editor re-walks the seed set so the UI
- * stops claiming stale data is fresh. Per-row dates always win.
- */
-const SEED_VERIFIED_AT = "2026-05-14T00:00:00Z";
-
 function decorate(e: Event, origin?: LngLat): EventWithMeta {
+  const attendance_mode = eventAttendanceMode(e);
+  const physical = hasPhysicalAttendance({ ...e, attendance_mode });
+  const geo_confidence = physical ? eventGeoConfidence(e) : "unknown";
+  const precise = geo_confidence === "venue_match" || geo_confidence === "exact_address";
   return {
     ...e,
-    distance_m: origin ? haversineMeters(origin, e.geom) : undefined,
+    attendance_mode,
+    // Description cleaned at the loader boundary so a feed's raw metadata
+    // dump ("Event date: … Event Time: … Location: …") never reaches a card
+    // reason, the detail body, or an OG/meta blurb — one strip, every
+    // surface, instead of a render-time patch per component.
+    description: cleanDescription(e.description),
+    // A distance is a promise: only stamp it when the coordinate is
+    // addressable. An area-centroid event still lists, but never claims
+    // "113 ft away" (audit #2 P1). See lib/events/geo-confidence.
+    distance_m: origin && precise && physical ? haversineMeters(origin, e.geom) : undefined,
+    geo_confidence,
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
     municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
-    last_verified_at: e.last_verified_at ?? SEED_VERIFIED_AT,
+    // Provenance (event side): keep a missing per-row verification date
+    // explicitly null. A cohort date is not evidence that this event was
+    // checked, and silently adding one made stale curated rows look fresh.
+    ...stampEventProvenance(e),
   };
 }
 
@@ -175,8 +200,240 @@ function venuesMatch(a: string, b: string): boolean {
 }
 
 /**
- * Drops live or county-feed events that duplicate a curated event.
- * Curated always wins (P0-4). A live event is a duplicate when:
+ * Some publishers lead a recurring program with the series name and put the
+ * week's performer after punctuation ("Alive @ Five · Conor & the Wild
+ * Hunt"). A second feed can carry stale performer copy for the same program.
+ * Title similarity cannot catch that conflict, but a substantial shared
+ * series prefix plus the same venue and clock can. Keep this intentionally
+ * narrow: the prefix must name a recognizable series, not a generic word such
+ * as "music" or "trivia".
+ */
+function recurringSeriesLabel(title: string): string | null {
+  const prefix =
+    title.split(/(?:\s+[·|–—]\s*|\s*:\s*|\s+-\s+)/u, 1)[0]?.trim() ?? "";
+  return normLoose(prefix).length >= 8 ? prefix : null;
+}
+
+function recurringSeriesTitle(title: string): string | null {
+  const prefix = recurringSeriesLabel(title);
+  return prefix ? normLoose(prefix) : null;
+}
+
+function sameRecurringSeries(a: EventWithMeta, b: EventWithMeta): boolean {
+  const aSeries = recurringSeriesTitle(a.title);
+  const bSeries = recurringSeriesTitle(b.title);
+  return Boolean(
+    aSeries &&
+      bSeries &&
+      aSeries === bSeries &&
+      (a.is_recurring || b.is_recurring),
+  );
+}
+
+const SERIES_OCCURRENCE_TOLERANCE_MS = 5 * 60 * 1000;
+
+function sameRecurringSeriesOccurrence(
+  a: EventWithMeta,
+  b: EventWithMeta,
+): boolean {
+  return (
+    sameRecurringSeries(a, b) &&
+    Math.abs(+new Date(a.starts_at) - +new Date(b.starts_at)) <=
+      SERIES_OCCURRENCE_TOLERANCE_MS
+  );
+}
+
+function sameEventVenue(a: EventWithMeta, b: EventWithMeta): boolean {
+  if (
+    a.venue_place_slug &&
+    b.venue_place_slug
+  ) {
+    return a.venue_place_slug === b.venue_place_slug;
+  }
+  if (venuesMatch(a.venue_name, b.venue_name)) return true;
+  const precise = new Set(["venue_match", "exact_address"]);
+  return (
+    precise.has(a.geo_confidence) &&
+    precise.has(b.geo_confidence) &&
+    haversineMeters(a.geom, b.geom) <= 50
+  );
+}
+
+function editorialVerificationTime(event: EventWithMeta): number {
+  // Live adapters stamp last_verified_at with fetch time. That proves the row
+  // was retrieved, not that its title was changed by the publisher. Only an
+  // editorially verified row may use this timestamp to settle a copy conflict.
+  if (!event.is_verified || !event.last_verified_at) return 0;
+  const value = +new Date(event.last_verified_at);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function publisherUpdateTime(event: EventWithMeta): number {
+  if (!event.publisher_updated_at) return 0;
+  const value = +new Date(event.publisher_updated_at);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function isDirectDfpEventUrl(value: string | null | undefined): boolean {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "https:" &&
+      url.hostname === "downtownfrederick.org" &&
+      url.pathname.startsWith("/vm-event/")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function recurringSeriesDetail(title: string): string | null {
+  // The last strong separator names the changing occurrence detail. This
+  // keeps "Opening Night" as series copy while extracting the actual act
+  // from "Alive @ Five: Opening Night · Old Act".
+  const strong = title.match(/.*(?:\s+[·|–—]\s*|\s+-\s+)(.+)$/u);
+  if (strong?.[1]?.trim()) return strong[1].trim();
+  const colon = title.match(/.*:\s*(.+)$/u);
+  return colon?.[1]?.trim() || null;
+}
+
+const normPerformer = (value: string) =>
+  normLoose(value.replaceAll("&", " and "));
+
+function correctRecurringDescription(
+  current: EventWithMeta,
+  correction: EventWithMeta,
+): string {
+  const oldDetail = recurringSeriesDetail(current.title);
+  const newDetail = recurringSeriesDetail(correction.title);
+  if (
+    oldDetail &&
+    newDetail &&
+    normPerformer(oldDetail) !== normPerformer(newDetail) &&
+    normPerformer(current.description).includes(normPerformer(oldDetail))
+  ) {
+    const escaped = oldDetail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const exact = new RegExp(escaped, "gi");
+    if (exact.test(current.description)) {
+      return current.description.replace(exact, newDetail);
+    }
+
+    // The description may spell "&" as "and" or vary punctuation. Remove
+    // only the sentence that names the stale performer, then rebuild that one
+    // factual sentence from the current structured title.
+    const remaining = current.description
+      .split(/(?<=[.!?])\s+/u)
+      .filter(
+        (sentence) =>
+          !normPerformer(sentence).includes(normPerformer(oldDetail)),
+      )
+      .join(" ")
+      .trim();
+    const series = recurringSeriesLabel(current.title) ?? "this event";
+    const lead = `${newDetail} headlines ${series}.`;
+    return remaining ? `${lead} ${remaining}` : lead;
+  }
+  // A publisher excerpt can still contain stale prose even when its title is
+  // current. Only use it when Radius has no description of its own.
+  return current.description || correction.description;
+}
+
+/**
+ * Apply a newer first-party structured correction to the matching curated
+ * occurrence without throwing away the richer Radius record around it.
+ *
+ * This is deliberately narrow. Today the only qualifying source is DFP's
+ * WordPress/Vibemap registry because it supplies a real publisher modification
+ * time. A fresh fetch timestamp is never enough. We require an exact occurrence
+ * match or one unambiguous series occurrence on the same local day.
+ */
+export function applyOfficialPublisherUpdates(
+  curated: EventWithMeta[],
+  live: EventWithMeta[],
+): EventWithMeta[] {
+  return curated.map((current) => {
+    const currentEvidence = editorialVerificationTime(current);
+    const eligible = live.filter(
+      (candidate) =>
+        candidate.source === "dfp" &&
+        current.source === "dfp" &&
+        !candidate.is_verified &&
+        publisherUpdateTime(candidate) > currentEvidence,
+    );
+    const exact = eligible.filter(
+      (candidate) =>
+        (Boolean(current.source_url) &&
+          isDirectDfpEventUrl(current.source_url) &&
+          current.source_url === candidate.source_url &&
+          sameRecurringSeries(current, candidate)) ||
+        (sameEventVenue(current, candidate) &&
+          sameRecurringSeriesOccurrence(current, candidate)),
+    );
+    const sameSeriesDay = eligible.filter(
+      (candidate) =>
+        sameRecurringSeries(current, candidate) &&
+        easternDayKey(new Date(current.starts_at)) ===
+          easternDayKey(new Date(candidate.starts_at)),
+    );
+    const curatedSeriesDay = curated.filter(
+      (candidate) =>
+        candidate.source === "dfp" &&
+        sameRecurringSeries(current, candidate) &&
+        easternDayKey(new Date(current.starts_at)) ===
+          easternDayKey(new Date(candidate.starts_at)),
+    );
+    // A single structured occurrence on the same local day can safely carry
+    // a last-minute time or venue move. Multiple sessions are ambiguous and
+    // require an exact URL/venue/time match or human review.
+    const correction = (exact.length > 0
+      ? exact
+      : sameSeriesDay.length === 1 && curatedSeriesDay.length === 1
+        ? sameSeriesDay
+        : [])
+      .sort((a, b) => publisherUpdateTime(b) - publisherUpdateTime(a))[0];
+
+    if (!correction) return current;
+    const venueMoved = !venuesMatch(current.venue_name, correction.venue_name);
+    const canApplyVenue =
+      !venueMoved || correction.geo_confidence === "exact_address";
+
+    return {
+      ...current,
+      // These are factual fields owned by the organizer. Keep Radius-only
+      // admission notes, recurrence copy, venue relationship, and imagery.
+      title: correction.title,
+      description: correctRecurringDescription(current, correction),
+      starts_at: correction.starts_at,
+      ends_at: correction.ends_at,
+      status: correction.status,
+      venue_name: canApplyVenue ? correction.venue_name : current.venue_name,
+      address:
+        canApplyVenue && correction.address
+          ? correction.address
+          : current.address,
+      venue_place_slug:
+        canApplyVenue && venueMoved ? undefined : current.venue_place_slug,
+      geom:
+        canApplyVenue && correction.geo_confidence === "exact_address"
+          ? correction.geom
+          : current.geom,
+      organizer: correction.organizer || current.organizer,
+      source_url: current.source_url ?? correction.source_url,
+      publisher_updated_at: correction.publisher_updated_at,
+      last_verified_at: correction.publisher_updated_at ?? current.last_verified_at,
+      geo_confidence:
+        canApplyVenue && correction.geo_confidence === "exact_address"
+          ? correction.geo_confidence
+          : current.geo_confidence,
+    };
+  });
+}
+
+/**
+ * Drops live or county-feed events that duplicate a curated event. The
+ * curated row wins because live-feed last_verified_at is fetch time, not a
+ * publisher-change timestamp. A live event is a duplicate when:
  *
  *   1. starts within 60 minutes AND venues + titles both match
  *      (conservative, requires all three signals — original P0-4 rule)
@@ -200,16 +457,17 @@ export function dedupeLiveAgainstCurated(
       const within = Math.abs(+new Date(c.starts_at) - lt) <= 60 * 60 * 1000;
       if (!within) return false;
       // Path 1: conservative all-three-signal match
-      if (venuesMatch(c.venue_name, l.venue_name) && titlesMatch(c.title, l.title)) {
-        return true;
-      }
+      let duplicate =
+        venuesMatch(c.venue_name, l.venue_name) && titlesMatch(c.title, l.title);
+      // Same recurring program, same place, same clock. The performer suffix
+      // may conflict because one source has not picked up a lineup change.
+      duplicate ||=
+        sameEventVenue(c, l) && sameRecurringSeriesOccurrence(c, l);
       // Path 2: strong title match — venue divergence is OK because
       // municipal feeds use generic placeholders ("Frederick County
       // Calendar") that won't match the curated specific venue.
-      if (titlesMatchStrong(c.title, l.title)) {
-        return true;
-      }
-      return false;
+      duplicate ||= titlesMatchStrong(c.title, l.title);
+      return duplicate;
     });
   });
 }
@@ -223,8 +481,10 @@ export function dedupeLiveAgainstCurated(
  * ingested as curated). Both rendered, same physical event.
  *
  * Picks the BETTER version from each cluster:
- *   - Has hero_image > no hero_image (richer card)
- *   - Has description > no description
+ *   - Editorial verification over live-feed retrieval
+ *   - Newer editorial verification evidence next
+ *   - Then hero_image > no hero_image (richer card)
+ *   - Then description > no description
  *   - Otherwise keep the earlier entry (stable)
  */
 export function dedupeCuratedClusters(events: EventWithMeta[]): EventWithMeta[] {
@@ -234,14 +494,32 @@ export function dedupeCuratedClusters(events: EventWithMeta[]): EventWithMeta[] 
     const dupeIdx = out.findIndex((kept) => {
       const kt = +new Date(kept.starts_at);
       if (Math.abs(kt - t) > 60 * 60 * 1000) return false;
-      return titlesMatchStrong(kept.title, e.title);
+      return (
+        titlesMatchStrong(kept.title, e.title) ||
+        (sameEventVenue(kept, e) &&
+          sameRecurringSeriesOccurrence(kept, e))
+      );
     });
     if (dupeIdx === -1) {
       out.push(e);
       continue;
     }
-    // Pick the richer record between the two.
+    // Human/editor verification outranks live-feed fetch freshness. A live
+    // adapter's timestamp only says when we retrieved the row and must never
+    // undo a confirmed last-minute act, cancellation, or time correction.
     const kept = out[dupeIdx];
+    if (Boolean(e.is_verified) !== Boolean(kept.is_verified)) {
+      if (e.is_verified) out[dupeIdx] = e;
+      continue;
+    }
+    // Between two editorially verified rows, the newer editorial check wins.
+    const challengerVerified = editorialVerificationTime(e);
+    const keptVerified = editorialVerificationTime(kept);
+    if (challengerVerified !== keptVerified) {
+      if (challengerVerified > keptVerified) out[dupeIdx] = e;
+      continue;
+    }
+    // With equal/unknown verification evidence, pick the richer record.
     const challengerScore =
       (e.hero_image ? 2 : 0) + (e.description ? 1 : 0);
     const keptScore =
@@ -272,7 +550,14 @@ export function getEventBySlug(slug: string): (EventWithMeta & { venue_place_nam
  */
 export function seriesKey(e: Event): string {
   if (!e.is_recurring) return `__one_off__${e.slug}`;
-  const base = e.title.split(/\s+[·—–-]\s+/)[0].trim().toLowerCase();
+  const base = e.title
+    .split(/\s+[·—–-]\s+/)[0]
+    // Curated publisher lineups sometimes label the first/final occurrence
+    // before the performer separator ("Series: Season Finale · Artist").
+    // Those labels describe an occurrence, not a new series identity.
+    .replace(/:\s*(?:opening night|season finale)\s*$/i, "")
+    .trim()
+    .toLowerCase();
   return `${base}@@${(e.venue_name || "").toLowerCase()}`;
 }
 
@@ -295,60 +580,64 @@ export function getEventSeries(slug: string, now: Date = new Date()): EventWithM
       (x) =>
         x.slug !== slug &&
         seriesKey(x) === key &&
-        new Date(x.ends_at) >= now
+        isUpcomingEvent(x, now)
     )
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((x) => decorate(x));
 }
 
-/** All events on a given calendar day (local America/New_York). */
+/** All events on a given calendar day (America/New_York).
+ *  Compares Eastern day-keys, not server-local Date parts — otherwise a
+ *  late-evening Eastern event (stored as next-day UTC) lands on the
+ *  wrong day on a UTC production server. */
 export function eventsOnDay(day: Date): EventWithMeta[] {
-  const y = day.getFullYear();
-  const m = day.getMonth();
-  const d = day.getDate();
+  const key = easternDayKey(day);
   return EVENTS
-    .filter((e) => {
-      const s = new Date(e.starts_at);
-      return s.getFullYear() === y && s.getMonth() === m && s.getDate() === d;
-    })
+    .filter((e) => easternDayKey(new Date(e.starts_at)) === key)
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
 }
 
 export function eventsLive(now: Date = new Date()): EventWithMeta[] {
-  return EVENTS
-    .filter((e) => {
-      const start = new Date(e.starts_at);
-      const end = new Date(e.ends_at);
-      return start <= now && end >= now;
-    })
-    .map((e) => decorate(e));
+  // The shared liveness gate (eventWhenLabel.isEventLiveNow): trusting the
+  // stated end unconditionally kept a noon event with an end-of-day stamp
+  // "Live now" at 11 PM (beta-reviewer catch, Jul 2026).
+  return EVENTS.filter((e) => isEventLiveNow(e, now)).map((e) => decorate(e));
 }
 
 export function eventsNext24h(now: Date = new Date()): EventWithMeta[] {
-  const end = new Date(now);
-  end.setHours(end.getHours() + 24);
+  // Current events plus starts in the rolling 24h window. Using the shared
+  // visibility rule matters at the boundary: a start-only 10 AM event gets
+  // its assumed runtime instead of disappearing at 10:00. Absolute-time
+  // arithmetic keeps the window DST- and timezone-safe.
+  const end = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   return EVENTS
     .filter((e) => {
       const s = new Date(e.starts_at);
-      return s >= now && s < end;
+      return Number.isFinite(s.getTime()) && s < end && isUpcomingEvent(e, now);
     })
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
 }
 
 export function eventsWeekend(now: Date = new Date()): EventWithMeta[] {
-  const dow = now.getDay();
-  const friday = new Date(now);
-  friday.setDate(friday.getDate() + ((5 - dow + 7) % 7));
-  friday.setHours(17, 0, 0, 0);
-  const monday = new Date(friday);
-  monday.setDate(monday.getDate() + 3);
-  monday.setHours(0, 0, 0, 0);
+  // Weekend = upcoming Fri 17:00 → Mon 00:00, all America/New_York.
+  // The old version used server-local getDay()/setHours(17), so on a
+  // UTC production server the window was ~Fri 1 PM → Sun 8 PM Eastern
+  // (the P0 date-window bug). Build the boundaries as Eastern wall
+  // times converted to the correct UTC instants instead.
+  const et = easternParts(now);
+  const daysToFri = (5 - et.weekday + 7) % 7;
+  // Walk the Eastern calendar by constructing a noon-UTC date and
+  // re-reading its Eastern parts, so month/year rollover is correct.
+  const friBase = easternParts(new Date(Date.UTC(et.year, et.month - 1, et.day + daysToFri, 12)));
+  const monBase = easternParts(new Date(Date.UTC(et.year, et.month - 1, et.day + daysToFri + 3, 12)));
+  const friStart = Date.parse(easternWallToUtcISO(friBase.year, friBase.month, friBase.day, 17, 0));
+  const monStart = Date.parse(easternWallToUtcISO(monBase.year, monBase.month, monBase.day, 0, 0));
   return EVENTS
     .filter((e) => {
-      const s = new Date(e.starts_at);
-      return s >= friday && s < monday;
+      const s = +new Date(e.starts_at);
+      return s >= friStart && s < monStart;
     })
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
@@ -356,14 +645,14 @@ export function eventsWeekend(now: Date = new Date()): EventWithMeta[] {
 
 export function eventsInMunicipality(slug: string, futureOnly = true, now: Date = new Date()): EventWithMeta[] {
   return EVENTS
-    .filter((e) => e.municipality === slug && (!futureOnly || new Date(e.ends_at) >= now))
+    .filter((e) => e.municipality === slug && (!futureOnly || isUpcomingEvent(e, now)))
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
 }
 
 export function allUpcoming(now: Date = new Date(), limit?: number): EventWithMeta[] {
   const out = EVENTS
-    .filter((e) => new Date(e.ends_at) >= now)
+    .filter((e) => isUpcomingEvent(e, now))
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
   return limit ? out.slice(0, limit) : out;
@@ -377,7 +666,7 @@ export function allUpcoming(now: Date = new Date(), limit?: number): EventWithMe
  */
 export function civicUpcoming(now: Date = new Date(), limit?: number): EventWithMeta[] {
   const out = EVENTS_CIVIC
-    .filter((e) => new Date(e.ends_at) >= now)
+    .filter((e) => isUpcomingEvent(e, now))
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
   return limit ? out.slice(0, limit) : out;
@@ -391,43 +680,12 @@ export function isCivicEvent(e: Pick<Event, "category">): boolean {
   return isCivic(e);
 }
 
-export function formatEventWhen(e: Event): string {
-  const start = new Date(e.starts_at);
-  const end = new Date(e.ends_at);
-  const sameDay = start.toDateString() === end.toDateString();
-  const dateFmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-  const timeFmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-  if (sameDay) {
-    return `${dateFmt.format(start)} · ${timeFmt.format(start)}–${timeFmt.format(end)}`;
-  }
-  return `${dateFmt.format(start)} – ${dateFmt.format(end)}`;
-}
-
-export function eventDateBlock(e: Event): { weekday: string; day: string; month: string; time: string } {
-  const start = new Date(e.starts_at);
-  const tz = "America/New_York";
-  return {
-    weekday: new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short" }).format(start),
-    day: new Intl.DateTimeFormat("en-US", { timeZone: tz, day: "numeric" }).format(start),
-    month: new Intl.DateTimeFormat("en-US", { timeZone: tz, month: "short" }).format(start).toUpperCase(),
-    time: new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    }).format(start),
-  };
-}
+// Pure date formatters moved to src/lib/events/format.ts (data-free) so
+// client components can import them WITHOUT dragging this module's
+// places-client static import into their bundle (the 1.8 MB /events chunk
+// leak). Re-exported here so existing SERVER callers are untouched — client
+// components must import from "@/lib/events/format" directly.
+export { formatEventWhen, eventDateBlock } from "@/lib/events/format";
 
 export type TownEvents = {
   municipality: Municipality;
@@ -438,7 +696,13 @@ export type TownEvents = {
 /**
  * Upcoming events near a town centroid, excluding events already in that
  * town. This backs the "happening near <town>" fallback so an empty town
- * is never a dead end. Distance is measured from the town centroid.
+ * is never a dead end.
+ *
+ * The centroid-to-event distance is used to FILTER and ORDER the
+ * fallback (a coarse "neighbor" measure, fine at the ~10-mile scale), but
+ * it is computed internally — the rendered `distance_m` stays gated by
+ * geo confidence in decorate(), so an area-centroid event shows up in
+ * the list without claiming a precise distance (audit #2 P1).
  */
 export function nearTown(
   slug: string,
@@ -447,15 +711,18 @@ export function nearTown(
 ): EventWithMeta[] {
   const m = MUNICIPALITY_BY_SLUG[slug];
   if (!m) return [];
+  const centroid = m.centroid;
   return EVENTS
-    .filter((e) => e.municipality !== slug && new Date(e.ends_at) >= now)
-    .map((e) => decorate(e, m.centroid))
-    .filter((e) => (e.distance_m ?? Infinity) <= NEAR_TOWN_RADIUS_M)
-    .sort((a, b) => {
-      const d = (a.distance_m ?? 0) - (b.distance_m ?? 0);
-      return d !== 0 ? d : +new Date(a.starts_at) - +new Date(b.starts_at);
-    })
-    .slice(0, limit);
+    .filter((e) => e.municipality !== slug && isUpcomingEvent(e, now))
+    .map((e) => ({ e, near_m: haversineMeters(centroid, e.geom) }))
+    .filter((x) => x.near_m <= NEAR_TOWN_RADIUS_M)
+    .sort((a, b) =>
+      a.near_m !== b.near_m
+        ? a.near_m - b.near_m
+        : +new Date(a.e.starts_at) - +new Date(b.e.starts_at),
+    )
+    .slice(0, limit)
+    .map((x) => decorate(x.e, centroid));
 }
 
 /**

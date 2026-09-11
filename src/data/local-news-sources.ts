@@ -30,6 +30,12 @@ export type LocalNewsSource = {
    *  in the rail so the eye can sort by source at a glance. Values
    *  are CSS color tokens, not raw hex, so theme swaps work. */
   accent: string;
+  /** Editorial scope. "frederick" sources are Frederick-local — every
+   *  item is kept. "regional" sources (statewide or a neighboring county)
+   *  are kept ONLY when an item explicitly matches Frederick County
+   *  relevance (see FREDERICK_RELEVANCE in local-news.ts), so "What's new
+   *  in Frederick" never fills with Montgomery/statewide stories. */
+  scope: "frederick" | "regional";
 };
 
 export const LOCAL_NEWS_SOURCES: LocalNewsSource[] = [
@@ -39,6 +45,7 @@ export const LOCAL_NEWS_SOURCES: LocalNewsSource[] = [
     feedUrl: "https://www.fredericknewspost.com/search/?f=rss&t=article&l=25&s=start_time&sd=desc",
     homeUrl: "https://www.fredericknewspost.com/",
     accent: "var(--app-brand)",
+    scope: "frederick",
   },
   {
     id: "maryland-matters",
@@ -46,6 +53,7 @@ export const LOCAL_NEWS_SOURCES: LocalNewsSource[] = [
     feedUrl: "https://www.marylandmatters.org/feed/",
     homeUrl: "https://www.marylandmatters.org/",
     accent: "var(--app-cool)",
+    scope: "regional",
   },
   {
     // Discovered via Patch's own May 28 newsletter — they cite
@@ -59,6 +67,7 @@ export const LOCAL_NEWS_SOURCES: LocalNewsSource[] = [
     feedUrl: "https://mocoshow.com/feed/",
     homeUrl: "https://mocoshow.com/",
     accent: "var(--app-accent)",
+    scope: "regional",
   },
   {
     // WFMD 930 AM — Frederick's long-running local radio station.
@@ -72,6 +81,7 @@ export const LOCAL_NEWS_SOURCES: LocalNewsSource[] = [
     feedUrl: "https://wfmd.com/category/local-news/feed/",
     homeUrl: "https://wfmd.com/",
     accent: "var(--app-warm)",
+    scope: "frederick",
   },
   // Patch itself is intentionally NOT here. As of May 2026 their
   // town-level RSS endpoints either 404 or return 0 items — they

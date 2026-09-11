@@ -1,6 +1,9 @@
 name: style
 
-# STYLE.md guard. The prior external audit found em dashes shipped on
+run-name: >-
+  ${{ inputs.automated_pr_token != '' && format('style / automated {0}', inputs.automated_pr_token) || format('style / {0}', github.ref_name) }}
+
+# Voice guard. The prior external audit found em dashes shipped on
 # /plan because nothing mechanical enforced the editorial rules. This
 # job runs the rule-based lint on every pull request and fails the PR
 # on any violation. See docs/briefs/2026-05-18-external-audit-actions.md
@@ -8,32 +11,49 @@ name: style
 
 on:
   pull_request: {}
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      automated_pr_head_sha:
+        description: Exact trusted bot head validated by automated-pr-checks
+        required: false
+        type: string
+      automated_pr_token:
+        description: One-time correlation token for an automated PR gate pair
+        required: false
+        type: string
 
 permissions:
   contents: read
 
+# A new PR commit makes the prior voice scan obsolete. Do not pay for both.
+concurrency:
+  group: style-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   style-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version-file: ".nvmrc"
           cache: npm
 
       - name: Install dependencies
-        # `npm install` instead of `npm ci` — different local Node
-        # versions (the project is currently maintained on Node 25)
-        # resolve transitive deps (notably esbuild via Vite peerDeps)
-        # slightly differently from Node 20 in CI, which `npm ci` flags
-        # as a lock mismatch. `style:lint` is rule-based and doesn't
-        # need bit-exact deps; tolerate the drift and unblock merge.
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
-      - name: STYLE.md lint
+      - name: Voice lint
         run: npm run style:lint
+
+      - name: Brand color lint
+        run: npm run lint:colors
+
+      - name: Layer scale lint
+        run: npm run lint:zindex

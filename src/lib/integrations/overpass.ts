@@ -2,12 +2,11 @@
  * Overpass API — OpenStreetMap business + POI data.
  * Free, no key, attribution required (we credit on the map).
  *
- * We query within a Frederick County bbox for:
- *  - amenity (food, drink, civic, transit, lodging, services)
- *  - shop (retail of every kind)
- *  - tourism (museums, galleries, viewpoints, attractions)
- *  - leisure (parks, playgrounds, sports)
- *  - office (professional services)
+ * We query within a Frederick County bbox for the stable OSM context Radius
+ * actually publishes: civic places, parks, public art, parking, and public
+ * amenities. Commercial OSM records were retired from the map because their
+ * closure state is not trustworthy; continuing to download every shop and
+ * office only made the useful public-infrastructure query time out.
  *
  * Returns a normalized OsmPlace[] keyed by OSM id.
  */
@@ -37,6 +36,12 @@ export type OsmPlace = {
   brand?: string;
   wheelchair?: "yes" | "no" | "limited";
   outdoor_seating?: boolean;
+  /** Reference photo URL — set only for field-collected amenities (osm_id
+   *  prefixed "field:"), surfaced in the map popup. */
+  photo?: string;
+  /** Real observation/submission time carried by first-party map records.
+   *  OSM responses omit it; community reports use it for freshness. */
+  observed_at?: string;
 };
 
 type OverpassElement = {
@@ -50,31 +55,45 @@ type OverpassElement = {
 
 type OverpassResponse = { elements: OverpassElement[] };
 
+export type OsmFetchOutcome = {
+  places: OsmPlace[];
+  availability: "current" | "empty" | "unavailable";
+  attemptedEndpoints: number;
+};
+
+type OsmFetchOptions = {
+  fetchImpl?: typeof fetch;
+  endpoints?: readonly string[];
+  endpointTimeoutMs?: number;
+};
+
 const QUERY = (bbox: [number, number, number, number]) => `
 [out:json][timeout:90];
 (
-  // Businesses (commercial — these may close; user opts in to see them on map)
-  node["amenity"~"^(restaurant|cafe|bar|pub|fast_food|food_court|biergarten|nightclub|ice_cream|bakery|cinema|theatre|library|community_centre|fire_station|police|townhall|courthouse|post_office|pharmacy|hospital|clinic|dentist|veterinary|fuel|bank|atm|car_wash|car_rental|bicycle_rental|charging_station|parking|parking_entrance|place_of_worship|school|university|college|kindergarten|childcare)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
-  node["shop"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
-  node["tourism"~"^(museum|gallery|attraction|viewpoint|artwork|hotel|motel|guest_house|hostel|information|picnic_site|theme_park|zoo)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
-  node["leisure"~"^(park|playground|sports_centre|fitness_centre|pitch|swimming_pool|garden|dog_park|nature_reserve|stadium|track|marina)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
-  node["office"~"^(government|nonprofit|company|coworking|estate_agent|insurance|lawyer|accountant)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
+  // One element scan for the stable civic and micro-amenity set. The nwr
+  // replaces the old repeated node/way scans that made a modest county query
+  // expensive enough to miss the client deadline.
+  nwr["amenity"~"^(library|fire_station|police|townhall|courthouse|post_office|university|college|parking|parking_entrance|toilets|drinking_water|waste_basket|dog_waste_bin|recycling|water_point|shower|bench|picnic_table|bicycle_parking|bicycle_repair_station|defibrillator|shelter|bbq|fountain|public_bookcase|telephone|charging_station)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
+  nwr["office"="government"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
+  nwr["tourism"~"^(museum|artwork|picnic_site)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
+  nwr["leisure"~"^(park|playground|garden|dog_park|nature_reserve)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
 
-  // Public-infrastructure amenities (these don't "close" — stable infrastructure)
-  node["amenity"~"^(toilets|drinking_water|waste_basket|dog_waste_bin|recycling|water_point|shower|bench|picnic_table|bicycle_parking|bicycle_repair_station|defibrillator|shelter|bbq|fountain|public_bookcase|telephone|atm)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
+  // Alternative tagging used for drinking points without amenity=water.
+  node["drinking_water"="yes"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
   // Public/free WiFi access points
   node["internet_access"~"^(wlan|yes|free)$"]["internet_access:fee"!~"yes"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
-
-  // Way geometries (buildings/areas)
-  way["amenity"~"^(restaurant|cafe|bar|pub|cinema|theatre|library|community_centre|fire_station|police|townhall|courthouse|post_office|pharmacy|hospital|university|college|school|place_of_worship|parking|toilets)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
-  way["shop"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
-  way["tourism"~"^(museum|gallery|attraction|viewpoint|hotel|motel|guest_house|theme_park|zoo|picnic_site)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
-  way["leisure"~"^(park|playground|sports_centre|swimming_pool|garden|nature_reserve|stadium|dog_park)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
 );
 out center tags;
-`.replace(/\n\s*/g, " ");
+`
+  // Strip QL line comments BEFORE collapsing newlines. Overpass QL treats
+  // "//" as a comment to end-of-line, so flattening first turns the very
+  // first "// ..." into a comment that swallows the entire single-lined
+  // query and Overpass answers HTTP 400 (reproduced; audit FR-003). Removing
+  // each comment on its own line first keeps the query intact.
+  .replace(/\/\/[^\n]*/g, "")
+  .replace(/\n\s*/g, " ");
 
-function mapTagToCategory(tags: Record<string, string>): { category_slug: string; osm_tag: string } | null {
+export function mapTagToCategory(tags: Record<string, string>): { category_slug: string; osm_tag: string } | null {
   const a = tags.amenity, s = tags.shop, t = tags.tourism, l = tags.leisure, o = tags.office;
   if (a === "restaurant" || a === "fast_food" || a === "food_court") return { category_slug: "restaurant", osm_tag: "amenity=" + a };
   if (a === "cafe" || a === "ice_cream") return { category_slug: "coffee", osm_tag: "amenity=" + a };
@@ -104,7 +123,8 @@ function mapTagToCategory(tags: Record<string, string>): { category_slug: string
   // Public-infrastructure amenities (stable — don't go stale)
   if (a === "toilets") return { category_slug: "restroom", osm_tag: "amenity=toilets" };
   if (a === "charging_station") return { category_slug: "ev-charging", osm_tag: "amenity=charging_station" };
-  if (a === "drinking_water" || a === "water_point" || a === "fountain") return { category_slug: "water", osm_tag: "amenity=" + a };
+  if ((a === "drinking_water" || a === "water_point" || tags.drinking_water === "yes") && tags.natural !== "spring" && tags.access !== "customers") return { category_slug: "water", osm_tag: a ? "amenity=" + a : "drinking_water=yes" };
+  if (a === "waste_basket" && tags.waste === "dog_excrement") return { category_slug: "dog-waste", osm_tag: "amenity=waste_basket,waste=dog_excrement" };
   if (a === "waste_basket") return { category_slug: "trash", osm_tag: "amenity=waste_basket" };
   if (a === "recycling") return { category_slug: "recycling", osm_tag: "amenity=recycling" };
   if (a === "dog_waste_bin") return { category_slug: "dog-waste", osm_tag: "amenity=dog_waste_bin" };
@@ -174,73 +194,119 @@ const OVERPASS_ENDPOINTS = [
   "https://overpass.private.coffee/api/interpreter",
 ];
 
-export async function fetchOsmFrederick(): Promise<OsmPlace[]> {
-  const body = `data=${encodeURIComponent(QUERY(FREDERICK_COUNTY_BBOX))}`;
+const OVERPASS_PRIMARY_TIMEOUT_MS = 12_000;
+const OVERPASS_FALLBACK_TIMEOUT_MS = 8_000;
 
-  let data: OverpassResponse | null = null;
-  for (const endpoint of OVERPASS_ENDPOINTS) {
+function normalizeOverpassResponse(data: OverpassResponse): OsmPlace[] {
+  const out: OsmPlace[] = [];
+  const seen = new Set<string>();
+
+  for (const el of data.elements) {
+    const tags = el.tags ?? {};
+    const mapped = mapTagToCategory(tags);
+    if (!mapped) continue;
+
+    const rawName = tags.name?.trim();
+    let name = rawName;
+    if (!name) {
+      if (!UNNAMED_OK.has(mapped.category_slug)) continue;
+      name = UNNAMED_LABELS[mapped.category_slug] ?? mapped.category_slug;
+    }
+    if (SKIP_NAMES.has(name)) continue;
+    if (isKnownClosed(name)) continue;
+
+    const lat = el.type === "node" ? el.lat : el.center?.lat;
+    const lng = el.type === "node" ? el.lon : el.center?.lon;
+    if (typeof lat !== "number" || typeof lng !== "number") continue;
+
+    const key = `${name}-${Math.round(lat * 1000)}-${Math.round(lng * 1000)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    out.push({
+      osm_id: `${el.type}/${el.id}`,
+      name,
+      category_slug: mapped.category_slug,
+      osm_tag: mapped.osm_tag,
+      lng,
+      lat,
+      address: joinAddress(tags),
+      city: tags["addr:city"],
+      postal_code: tags["addr:postcode"],
+      phone: tags.phone ?? tags["contact:phone"],
+      website: tags.website ?? tags["contact:website"],
+      opening_hours: tags.opening_hours,
+      cuisine: tags.cuisine,
+      brand: tags.brand,
+      wheelchair: tags.wheelchair as OsmPlace["wheelchair"],
+      outdoor_seating: tags.outdoor_seating === "yes",
+    });
+  }
+
+  return out;
+}
+
+/**
+ * Fetch the county OSM layer while preserving the difference between a real
+ * empty response and an upstream outage. Each volunteer endpoint owns its
+ * timeout. Reusing one AbortSignal here makes every backup request fail as
+ * soon as the first host consumes the shared deadline.
+ */
+export async function fetchOsmFrederickOutcome(
+  options: OsmFetchOptions = {},
+): Promise<OsmFetchOutcome> {
+  const body = `data=${encodeURIComponent(QUERY(FREDERICK_COUNTY_BBOX))}`;
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const endpoints = options.endpoints ?? OVERPASS_ENDPOINTS;
+
+  let attemptedEndpoints = 0;
+  let sawValidEmptyResponse = false;
+  for (const endpoint of endpoints) {
+    attemptedEndpoints += 1;
     try {
-      const res = await fetch(endpoint, {
+      const endpointTimeoutMs = options.endpointTimeoutMs
+        ?? (attemptedEndpoints === 1
+          ? OVERPASS_PRIMARY_TIMEOUT_MS
+          : OVERPASS_FALLBACK_TIMEOUT_MS);
+      const res = await fetchImpl(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Accept": "application/json",
+          // The primary public mirror rejects anonymous programmatic POSTs
+          // with HTTP 406. Identify this read-only civic client per Overpass
+          // usage guidance so the healthy endpoint is actually usable.
+          "User-Agent": "FrederickRadius/1.0 (https://frederickradius.app)",
+        },
         body,
+        // A fresh signal is load-bearing: once an AbortSignal fires it can
+        // never be reused, including by the next fallback endpoint.
+        signal: AbortSignal.timeout(endpointTimeoutMs),
       });
       if (!res.ok) continue;
-      data = (await res.json()) as OverpassResponse;
-      break;
+      const data = (await res.json()) as Partial<OverpassResponse>;
+      if (!Array.isArray(data.elements)) continue;
+      const places = normalizeOverpassResponse(data as OverpassResponse);
+      if (places.length > 0) {
+        return { places, availability: "current", attemptedEndpoints };
+      }
+      // An empty response can be real, but the full county query should not
+      // make a second healthy mirror irrelevant. Try the remaining mirrors
+      // and carry the honest empty state only when every mirror agrees/fails.
+      sawValidEmptyResponse = true;
     } catch {
       continue;
     }
   }
-  if (!data) return [];
 
-  try {
-    const out: OsmPlace[] = [];
-    const seen = new Set<string>();
+  return {
+    places: [],
+    availability: sawValidEmptyResponse ? "empty" : "unavailable",
+    attemptedEndpoints,
+  };
+}
 
-    for (const el of data.elements) {
-      const tags = el.tags ?? {};
-      const mapped = mapTagToCategory(tags);
-      if (!mapped) continue;
-
-      const rawName = tags.name?.trim();
-      let name = rawName;
-      if (!name) {
-        if (!UNNAMED_OK.has(mapped.category_slug)) continue;
-        name = UNNAMED_LABELS[mapped.category_slug] ?? mapped.category_slug;
-      }
-      if (SKIP_NAMES.has(name)) continue;
-      if (isKnownClosed(name)) continue;
-
-      const lat = el.type === "node" ? el.lat : el.center?.lat;
-      const lng = el.type === "node" ? el.lon : el.center?.lon;
-      if (typeof lat !== "number" || typeof lng !== "number") continue;
-
-      const key = `${name}-${Math.round(lat * 1000)}-${Math.round(lng * 1000)}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-
-      out.push({
-        osm_id: `${el.type}/${el.id}`,
-        name,
-        category_slug: mapped.category_slug,
-        osm_tag: mapped.osm_tag,
-        lng,
-        lat,
-        address: joinAddress(tags),
-        city: tags["addr:city"],
-        postal_code: tags["addr:postcode"],
-        phone: tags.phone ?? tags["contact:phone"],
-        website: tags.website ?? tags["contact:website"],
-        opening_hours: tags.opening_hours,
-        cuisine: tags.cuisine,
-        brand: tags.brand,
-        wheelchair: tags.wheelchair as OsmPlace["wheelchair"],
-        outdoor_seating: tags.outdoor_seating === "yes",
-      });
-    }
-    return out;
-  } catch {
-    return [];
-  }
+/** Legacy fail-soft array API used by callers that do not need provenance. */
+export async function fetchOsmFrederick(): Promise<OsmPlace[]> {
+  return (await fetchOsmFrederickOutcome()).places;
 }

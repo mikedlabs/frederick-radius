@@ -1,37 +1,216 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
-import { MapPin } from "lucide-react";
+import {
+  Component,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import type { PlaceCardData } from "@/lib/loaders/places";
-import PlaceCard from "@/components/place/PlaceCard";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
+import type { FoodTruckMapPin, MapPinPlace, MarcStationPin, TransitStopPin } from "./types";
+import { haversineMeters } from "@/lib/geo";
+import { isOpenNow } from "@/lib/hours";
+import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
+import type { ParkingPin } from "@/lib/map/parking";
+import MapLoadingScene from "./MapLoadingScene";
+import MapList from "./MapList";
+import type { SmartMapDefault } from "@/lib/map/smartDefaults";
+import type { MapSceneContext } from "./AppMap";
 
-const AppMap = dynamic(() => import("./AppMap"), {
-  ssr: false,
-  loading: () => (
-    <div
-      className="grid h-[78vh] place-items-center rounded-[var(--app-radius-lg)] border"
-      style={{ borderColor: "var(--app-border)" }}
-    >
-      <p className="text-sm" style={{ color: "var(--app-ink-3)" }}>Loading map…</p>
-    </div>
-  ),
-});
+const EMBEDDED_MAP_HEIGHT = "78vh";
+const APP_MAP_CHUNK_TIMEOUT_MS = 15_000;
+
+let appMapChunkReady = false;
+let appMapModulePromise: Promise<typeof import("./AppMap")> | null = null;
+const appMapChunkReadyListeners = new Set<() => void>();
+
+function markAppMapChunkReady() {
+  appMapChunkReady = true;
+  for (const listener of appMapChunkReadyListeners) listener();
+  appMapChunkReadyListeners.clear();
+}
+
+function subscribeToAppMapChunkReady(listener: () => void) {
+  if (appMapChunkReady) {
+    listener();
+    return () => undefined;
+  }
+  appMapChunkReadyListeners.add(listener);
+  return () => appMapChunkReadyListeners.delete(listener);
+}
+
+function loadAppMapModule() {
+  if (!appMapModulePromise) {
+    appMapModulePromise = import("./AppMap")
+      .then((module) => {
+        markAppMapChunkReady();
+        return module;
+      })
+      .catch((error) => {
+        // A later reload or remount must be able to retry a failed chunk.
+        appMapModulePromise = null;
+        throw error;
+      });
+  }
+  return appMapModulePromise;
+}
 
 /**
- * Map + a results list synced to the viewport. Pan/zoom the map → the list
- * below shows exactly what's in view, nearest-center first, tappable
- * (opens the place sheet). This turns a wall of pins into something you
- * can actually browse.
+ * Start the interactive map download from the static page shell. The dynamic
+ * renderer below reuses this exact promise, so map code and the committed
+ * place snapshot arrive in parallel instead of starting one after the other.
  */
-export type { CivicPin, MapLineFC, EventPin } from "./types";
-import type { CivicPin, MapLineFC, EventPin } from "./types";
+export function warmAppMapChunk() {
+  void loadAppMapModule().catch(() => {
+    // AppMapClient owns the visible timeout and readable recovery surface.
+    // Warmup is speculative, so it must not create an unhandled rejection.
+  });
+}
+
+class MapChunkBoundary extends Component<
+  {
+    children: ReactNode;
+    onFailure: () => void;
+    fallback: ReactNode;
+  },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch() {
+    this.props.onFailure();
+  }
+
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return this.props.fallback;
+  }
+}
+
+const AppMap = dynamic(
+  () => loadAppMapModule(),
+  {
+  ssr: false,
+  // The visible Frederick-specific scene is rendered by this light wrapper,
+  // outside the deferred Mapbox chunk. This placeholder only reserves the
+  // embedded map's space while that chunk arrives.
+  loading: () => (
+    <div
+      data-map-dynamic-loading
+      aria-hidden="true"
+      className="relative h-full w-full overflow-hidden rounded-[var(--app-radius-lg)]"
+    />
+  ),
+  },
+);
+
+/**
+ * Shared interactive map shell. The full browse map keeps its result area
+ * stable while somebody pans, then accepts the new camera through one
+ * contextual action. Embedded subject maps continue to settle immediately.
+ */
+export type {
+  CivicPin,
+  MapLineFC,
+  EventPin,
+  CemeteryPin,
+  BrowseDockInfo,
+  RoadWorkZoneFC,
+  FloodContextFC,
+  SnowRouteFC,
+} from "./types";
+import {
+  EMPTY_FLOOD_CONTEXT_FC,
+  EMPTY_ROAD_WORK_ZONE_FC,
+  EMPTY_SNOW_ROUTE_FC,
+  type CivicPin,
+  type MapLineFC,
+  type EventPin,
+  type CemeteryPin,
+  type BrowseDockInfo,
+  type RoadWorkZoneFC,
+  type FloodContextFC,
+  type SnowRouteFC,
+} from "./types";
 import type { OsmPlace } from "@/lib/integrations/overpass";
-import type { Amenity } from "@/lib/loaders/amenities";
+import type {
+  MapLayerGroup,
+  MapLayerSourceHealth,
+} from "./deferredBrowseLayers";
 
 const EMPTY_FC: MapLineFC = { type: "FeatureCollection", features: [] };
+
+export function MapLoadFailure({
+  height,
+  places,
+  events,
+  trailLineOnly = false,
+}: {
+  height: CSSProperties["height"];
+  places: MapPinPlace[];
+  events: EventPin[];
+  trailLineOnly?: boolean;
+}) {
+  const hasRows = places.length > 0 || events.length > 0;
+  const title = trailLineOnly
+    ? "The interactive trail map did not load."
+    : "The map did not finish loading.";
+  const detail = trailLineOnly
+    ? "The trail guide on this page still works. Reload to try the interactive lines again."
+    : hasRows
+      ? "You can still open the places and events here, or reload the map."
+      : "The rest of this page still works. Reload to try the map again.";
+
+  return (
+    <div
+      className="w-full overflow-y-auto"
+      style={{ height, background: "var(--app-bg-sunken)" }}
+      data-map-chunk-failure
+    >
+      <div
+        role="alert"
+        className="mx-auto max-w-[680px] px-6 py-8 text-center"
+      >
+        <p className="font-serif text-lg font-semibold" style={{ color: "var(--app-ink)" }}>
+          {title}
+        </p>
+        <p className="mt-1 text-sm" style={{ color: "var(--app-ink-2)" }}>
+          {detail}
+        </p>
+        <button
+          type="button"
+          className="tap-44 mt-4 min-h-11 rounded-full border px-4 text-sm font-semibold"
+          style={{
+            borderColor: "var(--app-border-strong)",
+            background: "var(--app-bg-elevated)",
+            color: "var(--app-ink)",
+          }}
+          onClick={() => window.location.reload()}
+        >
+          Reload map
+        </button>
+      </div>
+      {hasRows && !trailLineOnly && (
+        <MapList
+          places={places}
+          events={events}
+          userLoc={null}
+          failureMode
+          onPick={(place) => window.location.assign(`/places/${place.slug}`)}
+          onPickEvent={(event) => window.location.assign(`/events/${event.slug}`)}
+        />
+      )}
+    </div>
+  );
+}
 
 export default function AppMapClient({
   places,
@@ -39,15 +218,47 @@ export default function AppMapClient({
   extraAmenities = [],
   amenities = [],
   trailLines = EMPTY_FC,
+  trailsLayerDefault = false,
   transitLines = EMPTY_FC,
+  municipalBoundaries = EMPTY_FC,
+  countyBoundary = EMPTY_FC,
+  cemeteries = [],
+  parking = [],
   events = [],
+  transitStops = [],
+  marcStations = [],
+  foodTruckPins = [],
+  roadWorkZones = EMPTY_ROAD_WORK_ZONE_FC,
+  floodContext = EMPTY_FLOOD_CONTEXT_FC,
+  snowRoutes = EMPTY_SNOW_ROUTE_FC,
   fullBleed = false,
+  smartDefault = null,
+  sceneContext,
+  recenterToKnownLocation = false,
+  pinpointDefault = false,
+  initialCenter,
+  initialZoom,
+  initialBounds,
+  initialBoundsPadding,
+  cameraMinZoom,
+  cameraMaxBounds,
+  compactSubjectMap = false,
+  initialAmenityGroups,
+  dock,
+  activeSlugs = null,
+  showSearchControls = true,
+  mapLayerSourceHealth,
+  onLayerDemand,
+  children,
 }: {
   /** Already decorated server-side (map/page → publicPlaces().map
    *  (decoratePlace)). The client must NOT re-import the loader: it
    *  drags the ~12MB places-enrichment.json into the browser bundle
    *  and the map never loads. */
-  places: PlaceCardData[];
+  // MapPinPlace: the pin-field subset. Full PlaceCardData satisfies it
+  // structurally, so SavedList / radius mode pass their full records as-is;
+  // /map browse passes the slim set and the sheet hydrates on tap.
+  places: MapPinPlace[];
   civic?: CivicPin[];
   /** Server-fetched amenity points (e.g. Mapillary trash) merged into
    *  the map's amenity layer — keeps the secret token server-side. */
@@ -57,234 +268,323 @@ export default function AppMapClient({
   amenities?: Amenity[];
   /** Server-fetched toggleable line overlays (#3). */
   trailLines?: MapLineFC;
+  /** Open the Trails layer ON at first paint (the /trails surface). */
+  trailsLayerDefault?: boolean;
   transitLines?: MapLineFC;
+  /** County GIS municipal boundary polygons — quiet always-on outline. */
+  municipalBoundaries?: MapLineFC;
+  /** County boundary polygon — the quiet always-on county edge (6.1). */
+  countyBoundary?: MapLineFC;
+  /** Historic cemeteries (county GIS heritage points) — the opt-in
+   *  overlay behind the Layers panel; OFF by default. */
+  cemeteries?: CemeteryPin[];
+  /** Downtown parking garages (static metadata + live availability) — the
+   *  opt-in Parking layer, forwarded to AppMap. Empty on embeds. */
+  parking?: ParkingPin[];
   /** Upcoming events as photo pins — passed through to AppMap. The
    *  /map page filters to "happening soon" server-side so this stays a
    *  small (≤30 item) array. */
   events?: EventPin[];
+  /** Bus-stop dots + MARC stations for the Transit layer (phase 3).
+   *  Forwarded to AppMap; empty on embeds. */
+  transitStops?: TransitStopPin[];
+  marcStations?: MarcStationPin[];
+  /** Operator-confirmed, self-expiring food-truck pins. */
+  foodTruckPins?: FoodTruckMapPin[];
+  /** Official WZDx work-zone geometry, shown under the existing Traffic view. */
+  roadWorkZones?: RoadWorkZoneFC;
+  /** Public County high-water context; static, attributed, and not a live alert. */
+  floodContext?: FloodContextFC;
+  /** Current County SnowCommand route-operation reports. */
+  snowRoutes?: SnowRouteFC;
   /** Full-bleed canvas: the map fills the parent, no card border, no
    *  "In view" list below. The map IS the page. The synced list lives
    *  in a slide-up sheet inside the map area instead. */
   fullBleed?: boolean;
+  /** Map program phase 1: the moment-aware cold-open default, passed
+   *  through to AppMap on the full-bleed browse map only. */
+  smartDefault?: SmartMapDefault;
+  sceneContext?: MapSceneContext;
+  /** Center the camera (and measure list distances) from the user's
+   *  last-known location when we already have a cached fix — so the
+   *  list reads closest-first "from where you're standing." Never
+   *  prompts; falls back to the city center. */
+  recenterToKnownLocation?: boolean;
+  /** Pinpoint-first: open the browse map clean (no pins) until the user
+   *  adds a category. Set when browsing with no server-side intent. */
+  pinpointDefault?: boolean;
+  /** Seed the camera here (e.g. a /map?at=lat,lng deep-link from a park or
+   *  trail row) instead of the county default. Forwarded to AppMap, whose
+   *  initialZoom (14) frames it. Undefined -> AppMap's county default. */
+  initialCenter?: [number, number];
+  /** Scope-aware opening zoom (county overview vs town/street framing). */
+  initialZoom?: number;
+  /** Optional first-paint extent. The main map uses this for a responsive
+   *  whole-county opening instead of guessing one zoom for every screen. */
+  initialBounds?: [[number, number], [number, number]];
+  /** Padding around a supplied first-paint extent. Subject maps do not have
+   *  the browse dock, so they can use the map area more efficiently. */
+  initialBoundsPadding?:
+    | number
+    | { top: number; right: number; bottom: number; left: number };
+  /** Browse-only camera constraints; embeds keep AppMap's tighter defaults. */
+  cameraMinZoom?: number;
+  cameraMaxBounds?: [[number, number], [number, number]];
+  /** A small, single-subject overview (for example, every brewery). Pins are
+   *  clustered at county zoom, remain tappable, and skip irrelevant controls. */
+  compactSubjectMap?: boolean;
+  /** Amenity-tray group keys to pre-activate (a /map?amenity=restroom
+   *  deep-link from /amenities or /today). Forwarded to AppMap. */
+  initialAmenityGroups?: string[];
+  /** Browse-view state + counts for the map dock (/map browse only).
+   *  Forwarded to AppMap; absent on embeds, which stay dock-less. */
+  dock?: BrowseDockInfo;
+  /** Slugs matching the active What/Open-now filter — the map fades the
+   *  rest instead of removing them. Forwarded to AppMap. */
+  activeSlugs?: string[] | null;
+  /** Dock-less embeds normally inherit the full map search deck. Set false
+   *  when the surrounding page already defines the map's single purpose
+   *  (for example, breweries or trails). Locate and camera controls remain. */
+  showSearchControls?: boolean;
+  /** Browse-only request path for optional provider-backed layer groups. */
+  mapLayerSourceHealth?: Partial<
+    Record<MapLayerGroup, MapLayerSourceHealth>
+  >;
+  onLayerDemand?: (groups: readonly MapLayerGroup[]) => void;
+  /** Overlay content for the map column. (Historically the intent-chip
+   *  strip; the dock replaced it — the slot stays for future overlays.) */
+  children?: ReactNode;
 }) {
-  const [inView, setInView] = useState<string[]>([]);
-  const [focus, setFocus] = useState<{ slug: string; n: number } | null>(null);
+  // Keep the branded map scene in this light wrapper, outside the deferred
+  // Mapbox bundle. That makes it part of the initial HTML instead of waiting
+  // several seconds for the large GL chunk before showing any map content.
+  const [mapVisualReady, setMapVisualReady] = useState(false);
+  const [mapChunkLoaded, setMapChunkLoaded] = useState(appMapChunkReady);
+  const [mapChunkFailed, setMapChunkFailed] = useState(false);
+  const hasReportedMapVisualReady = useRef(false);
+  const handleMapVisualReady = useCallback(() => {
+    if (hasReportedMapVisualReady.current) return;
+    hasReportedMapVisualReady.current = true;
+    setMapVisualReady(true);
+  }, []);
+  const handleMapChunkFailure = useCallback(() => {
+    setMapChunkFailed(true);
+    handleMapVisualReady();
+  }, [handleMapVisualReady]);
 
-  const bySlug = useMemo(() => {
-    const m = new Map<string, PlaceCardData>();
-    for (const p of places) m.set(p.slug, p);
-    return m;
-  }, [places]);
+  useEffect(() => {
+    if (mapChunkLoaded || mapChunkFailed) return;
+    const unsubscribe = subscribeToAppMapChunkReady(() => {
+      setMapChunkLoaded(true);
+    });
+    const timeout = window.setTimeout(
+      handleMapChunkFailure,
+      APP_MAP_CHUNK_TIMEOUT_MS,
+    );
+    return () => {
+      unsubscribe();
+      window.clearTimeout(timeout);
+    };
+  }, [handleMapChunkFailure, mapChunkFailed, mapChunkLoaded]);
 
-  // Already decorated server-side; only attach the viewport-relative
-  // distance here (pure, no loader/JSON in the client bundle).
-  const results = useMemo(
-    () =>
-      inView
-        .map((slug) => bySlug.get(slug))
-        .filter((p): p is PlaceCardData => Boolean(p))
-        .map((p) => ({ ...p, distance_m: haversineMeters(FREDERICK_CENTER, p.geom) })),
-    [inView, bySlug]
-  );
+  const trailLineOnlyFailure =
+    trailsLayerDefault &&
+    places.length === 0 &&
+    events.length === 0 &&
+    trailLines.features.length > 0;
 
-  // Full-bleed: the map fills the parent, the "In view" list lives
-  // inside a slide-up bottom drawer that the user can collapse to a
-  // peek. Standard mobile maps pattern (Apple Maps, Google Maps).
+  // The in-view list panel (the desktop side pane + the mobile slide-up
+  // "60 places · N open now · N events nearby" drawer) was removed per the
+  // owner: the map IS the page. Tap a pin for its card; no bottom panel
+  // narrating what's in view. Just the map with the chips/mode-toggle overlaid.
   if (fullBleed) {
     return (
       <div className="relative h-full w-full">
-        <AppMap
-          places={places}
-          onPlacesInView={setInView}
-          focus={focus}
-          civic={civic}
-          extraAmenities={extraAmenities}
-          amenities={amenities}
-          trailLines={trailLines}
-          transitLines={transitLines}
-          events={events}
-          fullBleed
-        />
-        <InViewDrawer
-          results={results}
-          onPick={(slug) =>
-            setFocus((f) => ({ slug, n: (f?.n ?? 0) + 1 }))
+        <MapLoadingScene height="100%" ready={mapVisualReady} />
+        {children}
+        {mapChunkFailed ? (
+          <MapLoadFailure
+            height="100%"
+            places={places}
+            events={events}
+            trailLineOnly={trailLineOnlyFailure}
+          />
+        ) : (
+        <MapChunkBoundary
+          onFailure={handleMapChunkFailure}
+          fallback={
+            <MapLoadFailure
+              height="100%"
+              places={places}
+              events={events}
+              trailLineOnly={trailLineOnlyFailure}
+            />
           }
-        />
+        >
+          <AppMap
+            places={places}
+            civic={civic}
+            extraAmenities={extraAmenities}
+            amenities={amenities}
+            trailLines={trailLines}
+            trailsLayerDefault={trailsLayerDefault}
+            transitLines={transitLines}
+            municipalBoundaries={municipalBoundaries}
+            countyBoundary={countyBoundary}
+            cemeteries={cemeteries}
+            parking={parking}
+            events={events}
+            transitStops={transitStops}
+            marcStations={marcStations}
+            foodTruckPins={foodTruckPins}
+            roadWorkZones={roadWorkZones}
+            floodContext={floodContext}
+            snowRoutes={snowRoutes}
+            fullBleed
+            recenterToKnownLocation={recenterToKnownLocation}
+            pinpointDefault={pinpointDefault}
+            initialCenter={initialCenter}
+            initialZoom={initialZoom}
+            initialBounds={initialBounds}
+            initialBoundsPadding={initialBoundsPadding}
+            cameraMinZoom={cameraMinZoom}
+            cameraMaxBounds={cameraMaxBounds}
+            compactSubjectMap={compactSubjectMap}
+            initialAmenityGroups={initialAmenityGroups}
+            dock={dock}
+            activeSlugs={activeSlugs}
+            showSearchControls={showSearchControls}
+            onVisualReady={handleMapVisualReady}
+            smartDefault={smartDefault}
+            sceneContext={sceneContext}
+            mapLayerSourceHealth={mapLayerSourceHealth}
+            onLayerDemand={onLayerDemand}
+          />
+        </MapChunkBoundary>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      <AppMap places={places} onPlacesInView={setInView} focus={focus} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} events={events} />
-
-      <section className="space-y-2">
-        <div className="flex items-baseline justify-between">
-          <h2 className="inline-flex items-center gap-1.5 font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            <MapPin className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
-            In view
-          </h2>
-          <span className="text-xs tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-            {results.length === 0
-              ? "Loading viewport…"
-              : `${results.length} place${results.length === 1 ? "" : "s"}`}
-          </span>
-        </div>
-
-        {results.length === 0 ? (
-          <p
-            className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-          >
-            Showing Downtown Frederick. As you pan or zoom, places in
-            view list here — coffee, restaurants, parks, civic
-            buildings, the whole county.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {results.map((p) => (
-              <li
-                key={p.slug}
-                onClickCapture={() => setFocus((f) => ({ slug: p.slug, n: (f?.n ?? 0) + 1 }))}
-              >
-                <PlaceCard place={p} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+    <div className="relative overflow-hidden" style={{ height: EMBEDDED_MAP_HEIGHT }}>
+      <MapLoadingScene
+        height={EMBEDDED_MAP_HEIGHT}
+        ready={mapVisualReady}
+      />
+      {mapChunkFailed ? (
+        <MapLoadFailure
+          height={EMBEDDED_MAP_HEIGHT}
+          places={places}
+          events={events}
+          trailLineOnly={trailLineOnlyFailure}
+        />
+      ) : (
+      <MapChunkBoundary
+        onFailure={handleMapChunkFailure}
+        fallback={
+          <MapLoadFailure
+            height={EMBEDDED_MAP_HEIGHT}
+            places={places}
+            events={events}
+            trailLineOnly={trailLineOnlyFailure}
+          />
+        }
+      >
+        <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} foodTruckPins={foodTruckPins} roadWorkZones={roadWorkZones} floodContext={floodContext} snowRoutes={snowRoutes} height={EMBEDDED_MAP_HEIGHT} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} initialBoundsPadding={initialBoundsPadding} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} compactSubjectMap={compactSubjectMap} initialAmenityGroups={initialAmenityGroups} showSearchControls={showSearchControls} onVisualReady={handleMapVisualReady} />
+      </MapChunkBoundary>
+      )}
     </div>
   );
 }
 
 /**
- * InViewDrawer — slide-up bottom drawer inside the full-bleed map.
- * Three snap states (peek / half / full) tracked client-side. Peek
- * shows just the count + a grab handle; half + full reveal the
- * synced "places in view" list scrollable. Same shape as Apple Maps.
+ * Sort comparator for the in-view places list. NEUTRAL by design — it is a
+ * reflection of what's on the map, NOT a "best in view" ranking. There is no
+ * editorial/quality (feature_score) tier, so the app never picks winners. Two
+ * factual tiers:
+ *   1. Open now beats closed — a closed place is no help to someone here now.
+ *   2. Nearer beats farther.
+ * Pure + total, so both presentations sort identically. Exported for tests.
  */
-function InViewDrawer({
-  results,
-  onPick,
-}: {
-  results: PlaceCardData[];
-  onPick: (slug: string) => void;
-}) {
-  const [snap, setSnap] = useState<"peek" | "half" | "full">("peek");
-  const heights: Record<typeof snap, string> = {
-    peek: "100px",
-    half: "55%",
-    full: "82%",
-  };
+export function rankInView(a: PlaceCardData, b: PlaceCardData): number {
+  const ao = isOpenNow(a.open_status) ? 1 : 0;
+  const bo = isOpenNow(b.open_status) ? 1 : 0;
+  if (ao !== bo) return bo - ao;
+  return (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
+}
 
-  // Category mix for the peek pill — shows the dominant categories
-  // in the visible viewport as colored dots sized by share. Lets the
-  // user read "mostly food + arts" at a glance without expanding.
-  const categoryMix = useMemo(() => {
-    if (results.length === 0) return [];
-    const counts = new Map<string, number>();
-    for (const p of results) counts.set(p.category, (counts.get(p.category) ?? 0) + 1);
-    return [...counts.entries()]
-      .map(([slug, count]) => ({
-        slug,
-        count,
-        color: CATEGORY_BY_SLUG[slug]?.color ?? "#A8462C",
-        name: CATEGORY_BY_SLUG[slug]?.name ?? slug,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6);
-  }, [results]);
+/** An amenity decorated with its distance from the nearest visible place. */
+export type UsefulAmenity = Amenity & { distance_m: number };
 
-  return (
-    <div
-      className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-screen-md flex-col rounded-t-[var(--app-radius-xl)] bg-[var(--app-bg-elevated)] tactile-e3"
-      style={{
-        height: heights[snap],
-        transition: "height 280ms var(--app-ease-spring)",
-        paddingBottom: "env(safe-area-inset-bottom, 0px)",
-      }}
-    >
-      <button
-        type="button"
-        onClick={() =>
-          setSnap((s) => (s === "peek" ? "half" : s === "half" ? "full" : "peek"))
-        }
-        aria-label={snap === "full" ? "Collapse list" : "Expand list"}
-        className="flex shrink-0 cursor-grab flex-col items-center justify-center gap-1.5 pb-2.5 pt-2.5"
-      >
-        <span
-          aria-hidden
-          className="h-1 w-10 rounded-full"
-          style={{ background: "rgba(0,0,0,0.18)" }}
-        />
-        <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
-          {results.length === 0
-            ? "Showing Downtown Frederick"
-            : `${results.length} place${results.length === 1 ? "" : "s"} in view`}
-        </p>
-        {/* Category mix row — visible only in peek state. Each dot is
-            a category present in the visible viewport; size scales
-            with that category's share of the total visible places.
-            Gives the user a "what's here" read without expanding. */}
-        {snap === "peek" && categoryMix.length > 0 && (
-          <span
-            aria-hidden
-            className="flex items-center gap-1.5"
-            title={categoryMix.map((c) => `${c.name} · ${c.count}`).join("\n")}
-          >
-            {categoryMix.map((c) => {
-              // 6–14px range — biggest dot for the dominant category.
-              const top = categoryMix[0].count;
-              const size = Math.max(6, Math.min(14, Math.round(6 + (c.count / top) * 8)));
-              return (
-                <span
-                  key={c.slug}
-                  className="inline-block rounded-full"
-                  style={{
-                    width: size,
-                    height: size,
-                    background: c.color,
-                    boxShadow: `0 0 0 1.5px ${c.color}22`,
-                  }}
-                />
-              );
-            })}
-          </span>
-        )}
-      </button>
-      {snap !== "peek" && (
-        <ul
-          className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3"
-          style={{
-            // The drawer sits on top of the mapbox-gl canvas, which by
-            // default claims vertical pan gestures for the map camera.
-            // touch-action: pan-y reserves vertical pans for native
-            // scroll inside the list; overscroll-behavior: contain
-            // stops the bounce from chaining back to the body / map.
-            touchAction: "pan-y",
-            overscrollBehavior: "contain",
-            WebkitOverflowScrolling: "touch",
-          }}
-          onTouchStart={(e) => e.stopPropagation()}
-          onTouchMove={(e) => e.stopPropagation()}
-        >
-          {results.length === 0 ? (
-            <li
-              className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-            >
-              Pan or zoom. Places here list above. Tap any to see details.
-            </li>
-          ) : (
-            results.map((p) => (
-              <li key={p.slug} onClickCapture={() => onPick(p.slug)}>
-                <PlaceCard place={p} />
-              </li>
-            ))
-          )}
-        </ul>
-      )}
-    </div>
-  );
+/**
+ * The "Useful nearby" set: practical infrastructure (restrooms, water,
+ * EV, bike parking, Wi-Fi, playgrounds…) within a short walk of what's
+ * currently in view. Mirrors eventsNearVisiblePlaces — an amenity counts
+ * if it sits within `maxMeters` of ANY visible place — but then keeps
+ * only the NEAREST one per kind, so the row reads as a checklist of what's
+ * handy ("restroom · water · EV") rather than a stack of identical pins.
+ * Tighter radius than events (800m vs 1.5km): "useful nearby" should mean
+ * a genuinely short walk. Nearest-kind first. Exported for unit tests.
+ *
+ * Data limits worth knowing: parking is a place *category*, not an
+ * amenity, so it shows up in the places list, not here; transit stops
+ * aren't in the AmenityKind set yet (docs/BACKLOG.md), so transit is
+ * absent until that data is plumbed in.
+ */
+export function amenitiesNearVisiblePlaces(
+  amenities: Amenity[],
+  visible: { geom: { lng: number; lat: number } }[],
+  maxMeters = 800,
+): UsefulAmenity[] {
+  if (amenities.length === 0 || visible.length === 0) return [];
+  // Nearest match per kind.
+  const best = new Map<AmenityKind, UsefulAmenity>();
+  for (const a of amenities) {
+    if (!Number.isFinite(a.lng) || !Number.isFinite(a.lat)) continue;
+    let nearest = Infinity;
+    for (const p of visible) {
+      const d = haversineMeters({ lng: a.lng, lat: a.lat }, p.geom);
+      if (d < nearest) nearest = d;
+    }
+    if (nearest > maxMeters) continue;
+    const cur = best.get(a.kind);
+    if (!cur || nearest < cur.distance_m) {
+      best.set(a.kind, { ...a, distance_m: nearest });
+    }
+  }
+  return [...best.values()].sort((x, y) => x.distance_m - y.distance_m);
+}
+
+/**
+ * Filter events to those near the visible viewport. We use the set of
+ * places currently in view as a proxy for the viewport: an event is
+ * "nearby" if its venue sits within 1.5km of ANY place the user can
+ * see. This works without plumbing a separate onEventsInView signal
+ * out of AppMap, and degrades sensibly when the viewport is sparse
+ * (zero visible places → no nearby events, which is the right answer:
+ * if the user can't see anything to do, they can't see anywhere to
+ * go either).
+ *
+ * Exported for unit tests (the in-view panel that consumed it at runtime was
+ * removed; the helper is kept for the test contract + future reuse).
+ */
+export function eventsNearVisiblePlaces(
+  events: EventPin[],
+  visible: { geom: { lng: number; lat: number } }[],
+  maxMeters = 1500,
+): EventPin[] {
+  if (events.length === 0 || visible.length === 0) return [];
+  const out: EventPin[] = [];
+  for (const e of events) {
+    if (!Number.isFinite(e.lng) || !Number.isFinite(e.lat)) continue;
+    for (const p of visible) {
+      const d = haversineMeters({ lng: e.lng, lat: e.lat }, p.geom);
+      if (d <= maxMeters) {
+        out.push(e);
+        break; // matched at least one — don't double-add
+      }
+    }
+  }
+  return out;
 }

@@ -1,0 +1,210 @@
+"use client";
+
+import Link, { useLinkStatus } from "next/link";
+import { Loader2 } from "lucide-react";
+import type { CSSProperties, ReactNode } from "react";
+import { haptic } from "@/lib/haptics";
+
+/**
+ * Pill — the canonical compact selector.
+ *
+ * One primitive for the "tap to narrow / pivot" control that was
+ * hand-rolled ~40 times across the app with five slightly different
+ * stylings (the events QUICK chips, type/town facets, TimeToggle,
+ * FilterChip, RightNowStrip…). Same press feel, same tonal vocabulary,
+ * one place to tune.
+ *
+ * Renders a <button> by default; pass `href` to render a Next <Link>
+ * (with an automatic pending spinner during navigation, the
+ * MapModeToggle behavior, so a slow route never feels "stuck"). The
+ * Full capsules are reserved for this job: selected facets, compact filters,
+ * and toggles. Navigation and ordinary actions use the flatter button/row
+ * vocabulary instead.
+ *
+ * Tones:
+ *   brand      — brand fill (the default "selected facet")
+ *   cool       — cool fill (town / place lane)
+ *   ink        — ink fill on paper text (TimeToggle's "when?" lane)
+ *   prominent  — a stronger brick selection, without a decorative gradient
+ */
+
+type Tone = "brand" | "cool" | "ink" | "prominent";
+
+// Light-text fills use --app-brand-press (the AA-safe darker vermilion): white
+// on plain --app-brand is only 4.17:1 (fails AA for the small pill label).
+const ACTIVE_BG: Record<Tone, string> = {
+  brand: "var(--app-brand-press)",
+  cool: "var(--app-cool)",
+  ink: "var(--app-ink)",
+  prominent: "var(--app-brand-press)",
+};
+const ACTIVE_FG: Record<Tone, string> = {
+  brand: "var(--app-on-brand)",
+  cool: "var(--app-on-brand)",
+  ink: "var(--app-bg)",
+  prominent: "var(--app-on-brand)",
+};
+
+type PillProps = {
+  children: ReactNode;
+  active?: boolean;
+  tone?: Tone;
+  /** A PRE-RENDERED icon element, e.g. `icon={<Zap className="h-3.5 w-3.5" />}`.
+   *  It's a ReactNode (not a component function) on purpose: Pill is a
+   *  client component, and a server-component caller (TimeToggle,
+   *  MapTimeChips) cannot pass a function across the RSC boundary —
+   *  but it CAN pass an already-rendered element. */
+  icon?: ReactNode;
+  /** Trailing count badge (tabular, tone-aware). */
+  count?: number;
+  size?: "sm" | "md";
+  /** For chip rows that live INSIDE a shared elevated/glass container
+   *  (e.g. the map time strip): inactive chips are transparent with no
+   *  per-chip elevation, so they read as one connected control. */
+  bare?: boolean;
+  href?: string;
+  onClick?: () => void;
+  "aria-label"?: string;
+  title?: string;
+  className?: string;
+  style?: CSSProperties;
+};
+
+function CountBadge({ count, active, tone }: { count: number; active: boolean; tone: Tone }) {
+  const onInk = active && tone === "ink";
+  return (
+    <span
+      className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums"
+      style={{
+        background: active
+          ? `color-mix(in srgb, ${onInk ? "var(--app-bg)" : "var(--app-on-brand)"} 22%, transparent)`
+          : "color-mix(in srgb, var(--app-ink) 8%, transparent)",
+        color: active ? ACTIVE_FG[tone] : "var(--app-ink-3)",
+      }}
+    >
+      {count}
+    </span>
+  );
+}
+
+/** Shared inner content. `spinner` swaps the leading icon for a
+ *  loading glyph (link path only — see LinkBody). */
+function Body({
+  icon,
+  children,
+  count,
+  active,
+  tone,
+  spinner = false,
+}: {
+  icon?: ReactNode;
+  children: ReactNode;
+  count?: number;
+  active: boolean;
+  tone: Tone;
+  spinner?: boolean;
+}) {
+  return (
+    <>
+      {spinner ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" strokeWidth={2.25} aria-hidden />
+      ) : (
+        icon
+      )}
+      {children}
+      {typeof count === "number" && count > 0 && (
+        <CountBadge count={count} active={active} tone={tone} />
+      )}
+    </>
+  );
+}
+
+/** Link-only body: reads useLinkStatus() (valid only inside a <Link>)
+ *  so the pill shows a spinner the instant its navigation starts. */
+function LinkBody(props: {
+  icon?: ReactNode;
+  children: ReactNode;
+  count?: number;
+  active: boolean;
+  tone: Tone;
+}) {
+  const { pending } = useLinkStatus();
+  return <Body {...props} spinner={pending} />;
+}
+
+export default function Pill({
+  children,
+  active = false,
+  tone = "brand",
+  icon,
+  count,
+  size = "md",
+  bare = false,
+  href,
+  onClick,
+  className = "",
+  style,
+  ...rest
+}: PillProps) {
+  const pad = size === "sm" ? "px-3 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]";
+  // tap-44-y supplies the one shared 44px vertical target. Keeping a second
+  // pseudo-element here made neighboring pills compete for the same tap.
+  // tap-pop: chips push OUT under the finger and spring back on release
+  // (owner ask, 2026-07-22) — cards press in, chips pop out.
+  const base =
+    `tap-44-y tap-pop inline-flex shrink-0 items-center gap-1.5 rounded-full font-semibold tracking-tight transition ${pad}`;
+  const inactiveCls = active || bare ? "" : "border border-[var(--app-border-strong)]";
+  const cls = `${base} ${inactiveCls} ${className}`.trim();
+  const fillStyle: CSSProperties = active
+    ? {
+        background: ACTIVE_BG[tone],
+        color: ACTIVE_FG[tone],
+        transitionTimingFunction: "var(--app-ease-spring)",
+      }
+    : {
+        background: bare ? "transparent" : "var(--app-bg-elevated)",
+        color: "var(--app-ink-2)",
+        transitionTimingFunction: "var(--app-ease-spring)",
+      };
+  const merged = { ...fillStyle, ...style };
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        aria-current={active ? "page" : undefined}
+        className={cls}
+        style={merged}
+        onClick={() => {
+          haptic("light");
+          onClick?.();
+        }}
+        aria-label={rest["aria-label"]}
+        title={rest.title}
+      >
+        <LinkBody icon={icon} count={count} active={active} tone={tone}>
+          {children}
+        </LinkBody>
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        haptic("light");
+        onClick?.();
+      }}
+      aria-pressed={active}
+      className={cls}
+      style={merged}
+      aria-label={rest["aria-label"]}
+      title={rest.title}
+    >
+      <Body icon={icon} count={count} active={active} tone={tone}>
+        {children}
+      </Body>
+    </button>
+  );
+}

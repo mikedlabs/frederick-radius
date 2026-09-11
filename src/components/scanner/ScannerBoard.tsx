@@ -1,0 +1,324 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Radio } from "lucide-react";
+import type { ScannerIncident } from "@/lib/integrations/scannerIncidents";
+import { haptic } from "@/lib/haptics";
+
+/**
+ * ScannerBoard — the interactive half of /scanner. Server-rendered incidents
+ * seed it; then it polls /api/scanner/feed live, so the board updates like a
+ * real scanner without a reload. Kind chips filter the list (with live counts),
+ * and a pulse dot shows it's current. Still only ever public, non-medical calls
+ * — the allowlist ran server-side.
+ */
+
+const POLL_MS = 45_000;
+/** A multi-post call updated within this window is still being worked. */
+const ACTIVE_MS = 12 * 60 * 1000;
+
+const KIND_TONE: Record<string, string> = {
+  Crash: "var(--app-brand)",
+  "Pedestrian struck": "var(--app-brand)",
+  "Vehicle fire": "var(--app-brand-press)",
+  "Wires down": "#B4712A",
+  "Gas leak": "#B4712A",
+  Hazmat: "#B4712A",
+  "Structure fire": "var(--app-brand-press)",
+  "Outside fire": "#B4712A",
+  "Water rescue": "var(--app-cool)",
+  Rescue: "var(--app-cool)",
+  Medevac: "var(--app-brand-press)",
+  Flooding: "var(--app-cool)",
+};
+const toneOf = (kind: string) => KIND_TONE[kind] ?? "var(--app-brand)";
+
+function agoLabel(iso: string, now: number): string {
+  const mins = Math.max(0, Math.round((now - Date.parse(iso)) / 60000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  return `${Math.round(mins / 60)}h ago`;
+}
+
+/** A call is "active" when it has posted more than once and its latest post is
+ *  recent — the honest, unit-free sign that units are still on it. */
+function isActive(inc: ScannerIncident, now: number): boolean {
+  return inc.updates > 1 && now > 0 && now - Date.parse(inc.at) < ACTIVE_MS;
+}
+
+function incidentKey(incident: ScannerIncident): string {
+  // `at` is the latest dispatch post and changes as an existing call receives
+  // updates. Keep identity tied to the call's first report so an update does
+  // not masquerade as a brand-new incident or fire another attention cue.
+  return `${incident.kind}:${incident.location}:${incident.firstAt}`;
+}
+
+function IncidentRow({
+  inc,
+  now,
+  isNew,
+}: {
+  inc: ScannerIncident;
+  now: number;
+  isNew: boolean;
+}) {
+  const active = isActive(inc, now);
+  const tone = toneOf(inc.kind);
+  return (
+    <div
+      className={`flex items-center gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-3 ${
+        isNew ? "pop-in" : ""
+      }`}
+      data-new-report={isNew ? "true" : undefined}
+      style={{
+        borderColor: active || isNew ? tone : "var(--app-border)",
+        background: isNew
+          ? `color-mix(in srgb, ${tone} 7%, var(--app-bg-elevated))`
+          : "var(--app-bg-elevated)",
+        boxShadow: isNew
+          ? `0 0 0 3px color-mix(in srgb, ${tone} 9%, transparent)`
+          : undefined,
+      }}
+    >
+      <span
+        aria-hidden
+        className={`h-2.5 w-2.5 shrink-0 rounded-full ${active ? "motion-safe:animate-pulse" : ""}`}
+        style={{ background: tone }}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-1.5 text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+          <span className="truncate">{inc.kind}</span>
+          {isNew && (
+            <span
+              className="shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold uppercase leading-none tracking-wide text-white"
+              style={{ background: tone }}
+            >
+              New
+            </span>
+          )}
+          {active && (
+            <span
+              className="shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold uppercase leading-none tracking-wide text-white"
+              style={{ background: tone }}
+            >
+              Active
+            </span>
+          )}
+        </p>
+        <p className="mt-0.5 truncate text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          {inc.location}
+        </p>
+        {inc.updates > 1 && now > 0 && (
+          <p className="mt-1 font-mono text-[10.5px] uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
+            Updated {agoLabel(inc.at, now)} · {inc.updates} updates
+          </p>
+        )}
+      </div>
+      <span className="shrink-0 font-mono text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+        {inc.time}
+      </span>
+    </div>
+  );
+}
+
+export default function ScannerBoard({
+  initial,
+  initialAvailable,
+}: {
+  initial: ScannerIncident[];
+  initialAvailable: boolean;
+}) {
+  const [incidents, setIncidents] = useState<ScannerIncident[]>(initial);
+  const [available, setAvailable] = useState(initialAvailable);
+  const [kind, setKind] = useState<string | null>(null);
+  const [newIds, setNewIds] = useState<Set<string>>(new Set());
+  // Wall-clock now (ms) for "updated X ago" / active detection, stamped on poll
+  // and a slow tick so no Date.now() runs during render (react-hooks purity).
+  const [nowMs, setNowMs] = useState(0);
+  const knownIds = useRef(new Set(initial.map(incidentKey)));
+  const firstRefresh = useRef(true);
+  const clearNewTimer = useRef<number | null>(null);
+
+  // Poll the live feed. Keeps the last good set on a hiccup.
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const r = await fetch("/api/scanner/feed", { cache: "no-store" });
+        const d = (await r.json()) as {
+          status?: "available" | "unavailable";
+          incidents?: ScannerIncident[];
+        };
+        if (!r.ok || d.status !== "available") {
+          if (alive) setAvailable(false);
+          return;
+        }
+        if (alive && Array.isArray(d.incidents)) {
+          const nextKeys = new Set(d.incidents.map(incidentKey));
+          if (!firstRefresh.current) {
+            const fresh = [...nextKeys].filter(
+              (key) => !knownIds.current.has(key),
+            );
+            if (fresh.length > 0 && document.visibilityState === "visible") {
+              setNewIds(new Set(fresh));
+              haptic("warning");
+              if (clearNewTimer.current) {
+                window.clearTimeout(clearNewTimer.current);
+              }
+              clearNewTimer.current = window.setTimeout(
+                () => setNewIds(new Set()),
+                5_000,
+              );
+            }
+          }
+          firstRefresh.current = false;
+          knownIds.current = nextKeys;
+          setIncidents(d.incidents);
+          setAvailable(true);
+          setNowMs(Date.now());
+        }
+      } catch {
+        if (alive) setAvailable(false);
+      }
+    };
+    load();
+    const poll = setInterval(load, POLL_MS);
+    const tick = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => {
+      alive = false;
+      clearInterval(poll);
+      clearInterval(tick);
+      if (clearNewTimer.current) window.clearTimeout(clearNewTimer.current);
+    };
+  }, []);
+
+  // Counts per kind, for the filter chips.
+  const counts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const i of incidents) m.set(i.kind, (m.get(i.kind) ?? 0) + 1);
+    return m;
+  }, [incidents]);
+
+  const kinds = useMemo(() => [...counts.keys()].sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0)), [counts]);
+  const shown = kind ? incidents.filter((i) => i.kind === kind) : incidents;
+  const activeCount = useMemo(() => incidents.filter((i) => isActive(i, nowMs)).length, [incidents, nowMs]);
+
+  return (
+    <div className="space-y-3">
+      {/* Status line — count + a live pulse. */}
+      <div className="flex items-center justify-between gap-3 px-0.5">
+        <p className="text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
+          <span className="font-mono font-semibold tabular-nums" style={{ color: "var(--app-ink)" }}>
+            {incidents.length}
+          </span>{" "}
+          {incidents.length === 1 ? "public call" : "public calls"} in the last 12 hours
+          {activeCount > 0 && (
+            <>
+              {" · "}
+              <span className="font-semibold" style={{ color: "var(--app-brand-press)" }}>
+                {activeCount} active
+              </span>
+            </>
+          )}
+        </p>
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: available ? "var(--app-brand-press)" : "var(--app-ink-3)" }}>
+          <span
+            aria-hidden
+            className={`h-2 w-2 rounded-full ${available ? "motion-safe:animate-pulse" : ""}`}
+            style={{ background: available ? "var(--app-brand)" : "var(--app-ink-3)" }}
+          />
+          {available ? "Live" : "Unavailable"}
+        </span>
+      </div>
+
+      {!available && incidents.length > 0 && (
+        <div
+          role="status"
+          className="rounded-[var(--app-radius-md)] border px-3.5 py-3 text-[12.5px] leading-relaxed"
+          style={{
+            borderColor: "var(--app-border)",
+            background: "var(--app-bg-sunken)",
+            color: "var(--app-ink-2)",
+          }}
+        >
+          Live updates are temporarily unavailable. These are the last calls
+          Radius verified, not a current all-clear.
+        </div>
+      )}
+
+      {/* Kind filter chips (only when there's a mix to filter). */}
+      {kinds.length > 1 && (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              haptic("light");
+              setKind(null);
+            }}
+            aria-pressed={kind === null}
+            className={`min-h-11 rounded-full px-3 text-[12px] font-semibold transition ${kind === null ? "text-white" : "border"}`}
+            style={kind === null ? { background: "var(--app-ink)" } : { borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
+          >
+            All {incidents.length}
+          </button>
+          {kinds.map((k) => {
+            const on = kind === k;
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => {
+                  haptic("light");
+                  setKind(on ? null : k);
+                }}
+                aria-pressed={on}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold transition"
+                style={on ? { background: toneOf(k), color: "#fff" } : { border: "1px solid var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
+              >
+                <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: on ? "#fff" : toneOf(k) }} />
+                {k}
+                <span className="font-mono tabular-nums" style={{ color: on ? "rgba(255,255,255,0.85)" : "var(--app-ink-3)" }}>
+                  {counts.get(k)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {shown.length > 0 ? (
+        <div className="space-y-2">
+          {shown.map((inc) => (
+            <IncidentRow
+              key={incidentKey(inc)}
+              inc={inc}
+              now={nowMs}
+              isNew={newIds.has(incidentKey(inc))}
+            />
+          ))}
+        </div>
+      ) : (
+        <div
+          className="rounded-[var(--app-radius-lg)] border p-6 text-center"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+        >
+          <Radio className="mx-auto h-6 w-6" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+          <p className="mt-2 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            {kind
+              ? `No ${kind.toLowerCase()} calls right now`
+              : available
+                ? "Nothing on the public wire right now"
+                : "Live dispatch is temporarily unavailable"}
+          </p>
+          <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+            {kind
+              ? "Try another kind, or clear the filter."
+              : available
+                ? "Crashes, wires down, fires, and other public calls appear here as they are dispatched."
+                : "Radius could not verify the live source. This is not an all-clear; try again shortly or use the credited source below."}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}

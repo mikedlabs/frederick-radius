@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import Pill from "@/components/ui/Pill";
 
 /**
  * TownStrip — sibling-town nav for /m/[slug] pages.
@@ -40,25 +40,17 @@ export default function TownStrip({ activeSlug }: { activeSlug: string }) {
       >
         Towns
       </span>
-      {ordered.map((m) => {
-        const isActive = m.slug === activeSlug;
-        return (
-          <Link
-            key={m.slug}
-            href={`/m/${m.slug}`}
-            aria-current={isActive ? "page" : undefined}
-            className="inline-flex shrink-0 items-center rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-tight transition active:scale-[0.97]"
-            style={{
-              background: isActive ? "var(--app-brand)" : "var(--app-bg-elevated)",
-              color: isActive ? "#fff" : "var(--app-ink-2)",
-              border: `1px solid ${isActive ? "var(--app-brand)" : "var(--app-border)"}`,
-              boxShadow: isActive ? "var(--app-shadow-1)" : "none",
-            }}
-          >
-            {m.name}
-          </Link>
-        );
-      })}
+      {ordered.map((m) => (
+        <Pill
+          key={m.slug}
+          tone="brand"
+          size="sm"
+          href={`/m/${m.slug}`}
+          active={m.slug === activeSlug}
+        >
+          {m.name}
+        </Pill>
+      ))}
     </nav>
   );
 }

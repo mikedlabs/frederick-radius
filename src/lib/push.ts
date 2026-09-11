@@ -19,6 +19,7 @@
  */
 import "server-only";
 import webpush, { type PushSubscription, type SendResult } from "web-push";
+import { parsePushSubscription, WEB_PUSH_TIMEOUT_MS } from "@/lib/push-security";
 
 // Re-export the client-safe pieces so server code can import topic
 // labels from a single place (`@/lib/push`) without ever leaking the
@@ -36,6 +37,9 @@ export type PushPayload = {
   badge?: string;
   /** Optional icon URL — the primary notification image. */
   icon?: string;
+  /** Open-attribution id (a push_log row id). The service worker pings
+   *  /api/push/opened?n=<id> on click so we can count opens per send. */
+  n?: string;
 };
 
 let _configured = false;
@@ -63,9 +67,18 @@ export async function sendPush(
   sub: PushSubscription,
   payload: PushPayload,
 ): Promise<SendResult | null> {
+  // Validate again at the final outbound boundary. This protects delivery from
+  // legacy/bad rows that may predate the request-route validation and prevents
+  // the endpoint from becoming an SSRF primitive.
+  const validated = parsePushSubscription(sub);
+  if (!validated) throw new Error("invalid_subscription");
   if (!configurePush()) return null;
   try {
-    const res = await webpush.sendNotification(sub, JSON.stringify(payload));
+    const res = await webpush.sendNotification(validated, JSON.stringify(payload), {
+      // web-push destroys the underlying HTTPS request when its socket timeout
+      // fires, so a stalled provider cannot pin a serverless invocation.
+      timeout: WEB_PUSH_TIMEOUT_MS,
+    });
     return res;
   } catch (err) {
     const status = (err as { statusCode?: number }).statusCode;

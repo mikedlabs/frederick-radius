@@ -16,6 +16,7 @@ import {
 import { useMode, type Mode } from "@/hooks/useMode";
 import { setInterests } from "@/lib/personalize";
 import { haptic } from "@/lib/haptics";
+import { BRAND } from "@/lib/brand";
 
 /**
  * WelcomeFlow — the first-run onboarding funnel, cut to two steps.
@@ -62,9 +63,9 @@ const MOOD_TILES: Array<{
   Icon: typeof Coffee;
   color: string;
 }> = [
-  { slug: "food", label: "Eat & drink", caption: "Coffee, brewery, dinner",  Icon: Coffee, color: "#A8462C" },
-  { slug: "outdoors", label: "Outdoors", caption: "Parks, trails, water",     Icon: Trees,  color: "#1E6B3A" },
-  { slug: "family",   label: "With kids", caption: "Family-friendly spots",   Icon: Baby,   color: "#C99632" },
+  { slug: "food", label: "Eat & drink", caption: "Coffee, brewery, dinner",  Icon: Coffee, color: BRAND.colors.brick },
+  { slug: "outdoors", label: "Outdoors", caption: "Parks, trails, water",     Icon: Trees,  color: "#315A43" },
+  { slug: "family",   label: "With kids", caption: "Family-friendly spots",   Icon: Baby,   color: BRAND.colors.ridge },
 ];
 
 export default function WelcomeFlow() {
@@ -73,7 +74,7 @@ export default function WelcomeFlow() {
   const [chosenMood, setChosenMood] = useState<string | null>(null);
 
   // Hard navigation, not router.replace — middleware reads the cookie
-  // on every /now request, and a client-side router push can race
+  // on every request, and a client-side router push can race
   // document.cookie on some Safari/cache states.
   function goToNow(): void {
     window.location.assign("/today");
@@ -135,8 +136,8 @@ export default function WelcomeFlow() {
           style={{ color: "var(--app-ink-3)" }}
         >
           {step === 1
-            ? "Pick one. We'll tilt your home page toward it. You can change it later."
-            : "Just tells us how to phrase things. No account needed. This choice stays on this device."}
+            ? "Choose one to personalize your home page. You can change it later."
+            : "Your answer only changes how Radius phrases recommendations, and it stays on this device."}
         </p>
       </header>
 
@@ -171,7 +172,7 @@ export default function WelcomeFlow() {
                       {m.label}
                     </span>
                     <span
-                      className="block text-[12.5px]"
+                      className="block text-[13px]"
                       style={{ color: "var(--app-ink-3)" }}
                     >
                       {m.caption}
@@ -214,8 +215,8 @@ export default function WelcomeFlow() {
               >
                 Yes, I live here
               </span>
-              <span className="block text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
-                Resident view — familiar names, no orientation copy
+              <span className="block text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+                Uses familiar local names with less explanation.
               </span>
             </span>
             <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
@@ -244,8 +245,8 @@ export default function WelcomeFlow() {
               >
                 Just visiting
               </span>
-              <span className="block text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
-                Visitor view — context-rich, a little more orientation
+              <span className="block text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+                Adds more context to help you get oriented.
               </span>
             </span>
             <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
@@ -283,7 +284,7 @@ export default function WelcomeFlow() {
 
       {step === 1 && (
         <div
-          className="mt-12 border-t pt-6 text-[12.5px]"
+          className="mt-12 border-t pt-6 text-[13px]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
           <p className="inline-flex items-center gap-1.5">
@@ -294,7 +295,7 @@ export default function WelcomeFlow() {
               className="font-semibold underline-offset-2 hover:underline"
               style={{ color: "var(--app-brand)" }}
             >
-              Claim or add your listing →
+              Claim or add your listing <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           </p>
         </div>

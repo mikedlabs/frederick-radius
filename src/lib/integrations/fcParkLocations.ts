@@ -1,36 +1,15 @@
 /**
- * Frederick County official park LOCATIONS — runtime enrichment for
- * the /parks page.
+ * Frederick County park-location enrichment.
  *
- * The county runs a second, cleaner ArcGIS layer (Park_Locations) of
- * the official park POINTS: real street ADDRESS, a tidy TYPE
- * ("Mini Park", "Natural Area", "Golf Course", …), and an official
- * county detail-page URL. The shipped /parks page is built on the
- * POS_Areas polygons (acreage, planning types) — this layer does NOT
- * replace it; it ENRICHES it: where a park name matches exactly, the
- * card gains a real address + the official county link.
- *
- * HONEST SOURCING (confirmed live against the layer, 2026-05):
- *  - Native SR is WKID 2876 (MD State Plane, ftUS); outSR=4326 makes
- *    ArcGIS reproject to WGS84 lon/lat (same as the trails/parks/art
- *    layers that already ship correctly).
- *  - The column literally named AMENITIES is NOT an amenity list — it
- *    holds the official detail-page URL (e.g.
- *    frederickco.gov/Facilities/Facility/Details/…), sometimes an
- *    external site, sometimes blank. We expose it as `detailsUrl`
- *    only when it is a real http(s) link.
- *  - Matching is EXACT normalized-name only (uppercase, alphanumeric,
- *    optional symmetric trailing-"PARK" strip) — never fuzzy
- *    containment. A wrong join would put the wrong address on a park,
- *    which is worse than no address; conservatism is the point.
+ * The former runtime URL used `gis.frederickco.gov`, which is Frederick
+ * County, Colorado—not Frederick County, Maryland. The Maryland bounding-box
+ * check happened to discard every record, but the request and source comments
+ * were still wrong. Runtime enrichment now adapts the verified Maryland
+ * County park-points feed. The old pure normalizer remains for fixture and
+ * regression coverage.
  */
+import { getCountyParks } from "@/lib/integrations/fcGis";
 
-const OUT_FIELDS = ["OBJECTID", "PARK_NAME", "ADDRESS", "TYPE", "AMENITIES"].join(",");
-const ENDPOINT =
-  "https://gis.frederickco.gov/arcgis/rest/services/Park_Locations/MapServer/0/query" +
-  `?where=1%3D1&outFields=${encodeURIComponent(OUT_FIELDS)}` +
-  "&outSR=4326&geometryPrecision=5&resultRecordCount=2000&f=geojson";
-const TIMEOUT_MS = 15_000;
 // Frederick County bbox [south, west, north, east].
 const BBOX: [number, number, number, number] = [39.265, -77.7, 39.745, -77.15];
 
@@ -126,21 +105,15 @@ export function normalizeParkLocations(raw: unknown): ParkLocation[] {
 }
 
 export async function getFrederickParkLocations(): Promise<ParkLocation[]> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(ENDPOINT, {
-      signal: ctrl.signal,
-      headers: { Accept: "application/json" },
-      next: { revalidate: 604800 }, // parks change rarely
-    });
-    if (!res.ok) return [];
-    return normalizeParkLocations(await res.json());
-  } catch {
-    return []; // feed hiccup / network — degrade silently, never fabricate
-  } finally {
-    clearTimeout(timer);
-  }
+  const parks = await getCountyParks();
+  return parks.map((park, index) => ({
+    id: `fc-md-park-${index + 1}`,
+    name: park.name,
+    norm: normParkName(park.name),
+    address: park.address,
+    lng: park.lng,
+    lat: park.lat,
+  }));
 }
 
 /**

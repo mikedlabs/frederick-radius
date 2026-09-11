@@ -1,13 +1,1512 @@
 {
   "fold": {
+    "the-cadillac-counselor": "brooks-behavioral-health-services-llc",
+    "frederick-eagles-club": "eagles-aeire-1067",
+    "fraternal-order-of-eagles-4": "eagles-aeire-1067",
+    "frederick-performing-arts": "new-spire-arts",
+    "wash-dry-and-fold": "4th-street-laundromat",
+    "bell-tower-baker-park": "joseph-dill-baker-memorial-carillon-bell-tower",
+    "staley-field": "staley-park",
+    "the-goddess-group": "the-home-of-everything-frederick",
+    "wa-tolbard-heating-and-air-conditioning": "w-a-tolbard-heating-and-ac-llc",
+    "elks-w-all-saints-street": "mountain-city-lodge",
+    "redmans-club": "improved-order-of-redmens-chippewa-tribe-19",
+    "the-historical-society-of-frederick-county": "heritage-frederick",
+    "liberty-gas-station": "east-street-liberty",
+    "artomaticfrederick": "y-arts-center",
+    "taco-daddy-cantina-tequila-bar": "agave-137-tequila-bar-and-kitchen",
     "summitra": "sumittra-thai-cuisine",
-    "tagthe-artists-gallery": "tagthe-artists-gallery-frederick"
+    "jraymonds-steakhouse": "wye-oak-tavern-frederick",
+    "mirage-cafe-grill-restaurant": "bloom-asian-haus",
+    "fountain-rock": "brewers-alley-frederick",
+    "lucky-corner-vietnamese-cuisine": "tin-corner",
+    "deannadashhairstudio": "dash-hair-studio",
+    "worthington-antiques": "emporium-antiques",
+    "bbt-arena": "ronald-j-volpe-athletic-center",
+    "manhattan-mens-grooming-lounge": "new-york-new-york-hair-salon-spa",
+    "roros-mexican-grill-and-cantina": "plaza-mexico",
+    "the-trolley-stop-brunswick": "potomac-street-grill-brunswick",
+    "perfect-truffle": "rare-morsel",
+    "red-canyon-toll-house": "red-canyon-physical-therapy",
+    "tenth-wards-wedding-event-venue": "tenth-ward-distilling-company",
+    "moms-kitchen-thurmont": "thurmont-kountry-kitchen-thurmont",
+    "food-lion-bakery-thurmont": "food-lion-thurmont",
+    "safeway-bakery-middletown": "safeway-middletown",
+    "enforme-interactive": "celerate",
+    "cvs-thurmont": "cvs-pharmacy-thurmont"
   },
-  "remove": [],
-  "keepApart": [],
+  "remove": [
+    "brunswick-crossing-brunswick",
+    "drug-detox-frederick",
+    "addiction-rehab-frederick",
+    "freez-king",
+    "white-star-lunch-n-ette",
+    "cyclefit-frederick",
+    "manoushe",
+    "south-market-creamery-frederick",
+    "subway-197",
+    "thatsa-wrapp-frederick",
+    "frederick-county-public-schools",
+    "ms-caitlins-school",
+    "square-corner",
+    "olives-italian",
+    "downtown-hotel-at-carroll-creek",
+    "all-american-lawn-landscape-llc-walkersville",
+    "hgm-lawncare-and-services-llc-myersville",
+    "richly-dunn-furniture-repair-and-refinishing-mount-airy",
+    "bad-hair-day",
+    "hill-house-bed-and-breakfast",
+    "serenity-tearoom-fine-dining",
+    "the-alley-wagon",
+    "top-secret-tap-room-thurmont",
+    "caudles-free-library-woodsboro",
+    "catoctin-creek-llc-myersville",
+    "acacia-house-frederick",
+    "tabu-frederick",
+    "el-rancho-frederick",
+    "shekinah-glory-deliverance-ministry",
+    "francis-scott-key-memorial-foundation",
+    "mackies-southern-bbq"
+  ],
+  "keepApart": [
+    "clarity-psychotherapy",
+    "cm3-solutions",
+    "drewskiithebarber",
+    "frederick-magic-theater-lounge-frederick",
+    "healing-circles-wellness-center",
+    "immersion-active",
+    "isabellas-taverna-tapas-bar-frederick",
+    "lifecycle-fitness-studio-frederick",
+    "marianne-riley-psychotherapy",
+    "mdtix",
+    "new-hope-cafe",
+    "tattoo-alchemy",
+    "the-healing-temple",
+    "the-inkery",
+    "united-states-postal-service-66",
+    "wastlers-barber-shop",
+    "rockwell-brewery-frederick",
+    "rockwell-brewery-frederick-2",
+    "baker-park-frederick",
+    "baker-park-bandshell"
+  ],
   "patch": {
+    "beans-in-the-belfry-brunswick": {
+      "website": "https://beansinthebelfry.com/"
+    },
+    "whistle-punk-farm-delicatessen-brunswick": {
+      "category": "restaurant",
+      "website": "https://whistlepunkfarm.com/"
+    },
+    "maryland-school-for-the-deaf": {
+      "category": "community",
+      "tags": [
+        "deaf-community",
+        "asl"
+      ],
+      "address": "101 Clarke Pl",
+      "city": "Frederick",
+      "postal_code": "21701",
+      "phone": "240-575-2966",
+      "website": "https://www.msd.edu/",
+      "accessibility": {
+        "communication": {
+          "deaf_community": true,
+          "asl_environment": true,
+          "source_url": "https://www.msd.edu/apps/pages/index.jsp?pREC_ID=2690688&type=d&uREC_ID=1090021",
+          "verified_at": "2026-07-28",
+          "notes": "Maryland School for the Deaf says its Frederick campus is an ASL- and English-rich environment."
+        }
+      }
+    },
+    "maryland-deaf-center": {
+      "name": "Maryland Deaf Community Center",
+      "category": "community",
+      "tags": [
+        "deaf-community",
+        "asl"
+      ],
+      "address": "720 N East St",
+      "city": "Frederick",
+      "postal_code": "21701",
+      "phone": "240-560-5028",
+      "email": "info@deafmdcc.org",
+      "website": "https://www.deafmdcc.org/",
+      "geom": {
+        "lng": -77.4025511,
+        "lat": 39.4238076
+      },
+      "accessibility": {
+        "communication": {
+          "deaf_community": true,
+          "asl_environment": true,
+          "written_contact": true,
+          "videophone": true,
+          "source_url": "https://www.deafmdcc.org/contact",
+          "verified_at": "2026-07-28",
+          "notes": "The center publishes email and telephone/videophone contact methods."
+        }
+      }
+    },
+    "bjorlee-museum": {
+      "category": "museum",
+      "includeWithoutMedia": true,
+      "subcategories": [
+        "museum",
+        "history"
+      ],
+      "tags": [
+        "deaf-community"
+      ],
+      "address": "101 Clarke Pl",
+      "city": "Frederick",
+      "postal_code": "21701"
+    },
+    "currys-kitchen-brunswick": {
+      "name": "Adele's Tex Mex",
+      "category": "restaurant",
+      "subcategories": [
+        "mexican",
+        "latin"
+      ],
+      "tags": [
+        "tacos",
+        "pupusas",
+        "tex-mex",
+        "salvadoran"
+      ],
+      "address": "640 Souder Rd",
+      "city": "Brunswick",
+      "postal_code": "21716",
+      "phone": "301-834-3400",
+      "website": "https://www.facebook.com/adelestexmex/",
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "clearPhoto": true
+    },
+    "mackies-southern-bbq": {
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "clearPhoto": true
+    },
+    "eagles-aeire-1067": {
+      "category": "civic"
+    },
+    "first-baptist-church-5": {
+      "name": "First Baptist Church of Frederick",
+      "category": "worship",
+      "address": "7040 Bowers Rd",
+      "postal_code": "21702",
+      "phone": "(301) 473-8283",
+      "geom": {
+        "lng": -77.4787098,
+        "lat": 39.4307442
+      }
+    },
+    "bloom-health-np": {
+      "name": "Bloom Aesthetics & Wellness",
+      "category": "spa",
+      "address": "3 College Ave, Suite 8"
+    },
+    "he-vox-lounge": {
+      "name": "The Vox Lounge",
+      "category": "music",
+      "address": "228 N Market St",
+      "short_blurb": ""
+    },
+    "swinging-bridge": {
+      "category": "civic",
+      "short_blurb": ""
+    },
+    "kindred-nutrition": {
+      "name": "Kindred Nutrition & Kinetics",
+      "category": "wellness",
+      "address": "810 Toll House Ave",
+      "geom": {
+        "lng": -77.4138803,
+        "lat": 39.4259123
+      },
+      "short_blurb": ""
+    },
+    "north-market-farmers-market": {
+      "name": "Frederick City Market",
+      "category": "market",
+      "address": "622 N Market St",
+      "website": "http://frederickcitymarket.com/",
+      "geom": {
+        "lng": -77.4097129,
+        "lat": 39.4222301
+      }
+    },
+    "frederick-station": {
+      "category": "transit"
+    },
+    "wye-oak-tavern-frederick": {
+      "commerce_links": [
+        {
+          "provider": "opentable",
+          "type": "reservation",
+          "url": "https://www.opentable.com/r/wye-oak-tavern-frederick",
+          "source": "curated",
+          "last_verified_at": "2026-07-17",
+          "notes": "OpenTable profile checked 2026-07-17: bookable, address matches 211 E Church St."
+        }
+      ]
+    },
+    "the-tasting-room-frederick": {
+      "short_blurb": "This North Market restaurant serves New American dishes and keeps an extensive wine list.",
+      "website": "https://www.trrestaurant.com/",
+      "commerce_links": [
+        {
+          "provider": "opentable",
+          "type": "reservation",
+          "url": "https://www.opentable.com/the-tasting-room",
+          "source": "curated",
+          "last_verified_at": "2026-07-17",
+          "notes": "OpenTable profile checked 2026-07-17: bookable, address matches 101 N Market St."
+        }
+      ]
+    },
+    "madrones": {
+      "address": "7810 Wormans Mill Rd",
+      "city": "Frederick",
+      "postal_code": "21701",
+      "phone": "(240) 439-4010",
+      "website": "https://madrones.net/",
+      "geom": {
+        "lng": -77.397003,
+        "lat": 39.446694
+      },
+      "short_blurb": "This Wormans Mill restaurant serves burgers, steaks, seafood, Sunday brunch, and craft beer."
+    },
+    "monocacy-crossing-restaurant-frederick": {
+      "commerce_links": [
+        {
+          "provider": "opentable",
+          "type": "reservation",
+          "url": "https://www.opentable.com/r/monocacy-crossing-frederick",
+          "source": "curated",
+          "last_verified_at": "2026-07-17",
+          "notes": "OpenTable profile checked 2026-07-17: bookable, address matches 4424A Urbana Pike."
+        }
+      ]
+    },
+    "showroom-frederick": {
+      "commerce_links": [
+        {
+          "provider": "opentable",
+          "type": "reservation",
+          "url": "https://www.opentable.com/r/showroom-frederick",
+          "source": "curated",
+          "last_verified_at": "2026-07-17",
+          "notes": "OpenTable profile checked 2026-07-17: bookable, address matches 882 N East St."
+        }
+      ]
+    },
+    "sabor-de-cuba-restaurant-frederick": {
+      "commerce_links": [
+        {
+          "provider": "opentable",
+          "type": "reservation",
+          "url": "https://www.opentable.com/r/sabor-de-cuba",
+          "source": "curated",
+          "last_verified_at": "2026-07-17",
+          "notes": "OpenTable profile checked 2026-07-17: bookable, address matches 9 E Patrick St."
+        }
+      ]
+    },
+    "firebirds-wood-fired-grill-frederick": {
+      "commerce_links": [
+        {
+          "provider": "opentable",
+          "type": "reservation",
+          "url": "https://www.opentable.com/r/firebirds-wood-fired-grill-frederick",
+          "source": "curated",
+          "last_verified_at": "2026-07-17",
+          "notes": "OpenTable profile checked 2026-07-17: bookable, address matches 5201 Buckeystown Pike."
+        }
+      ]
+    },
+    "urbana-library-farmers-market-new-market": {
+      "city": "Urbana",
+      "municipality": "urbana",
+      "category": "market"
+    },
+    "urbana-district-park-new-market": {
+      "city": "Urbana"
+    },
+    "pumpernickel-rye-urbana": {
+      "subcategories": [
+        "coffee"
+      ]
+    },
+    "panera-bread-urbana": {
+      "subcategories": [
+        "restaurant"
+      ]
+    },
+    "musket-ridge-golf-club-myersville": {
+      "category": "golf"
+    },
+    "green-meadows-petting-farm-ijamsville": {
+      "category": "agritourism"
+    },
+    "catoctin-mountain-orchard-thurmont": {
+      "category": "agritourism"
+    },
+    "scenic-view-orchard-thurmont": {
+      "category": "agritourism"
+    },
+    "pryors-orchards-thurmont": {
+      "category": "agritourism"
+    },
+    "gaver-farm-new-market": {
+      "category": "agritourism"
+    },
+    "england-acres-farm-and-market-new-market": {
+      "category": "agritourism"
+    },
+    "bold-love-farm-and-bakery-mount-airy": {
+      "category": "agritourism",
+      "subcategories": [
+        "bakery"
+      ]
+    },
+    "pleasant-hill-produce-walkersville": {
+      "category": "agritourism"
+    },
+    "grape-creek-farm-llc-walkersville": {
+      "category": "agritourism"
+    },
+    "sycamore-spring-farm-frederick": {
+      "category": "agritourism"
+    },
+    "take-root-frederick": {
+      "category": "agritourism"
+    },
+    "moon-valley-farm-woodsboro": {
+      "category": "agritourism"
+    },
+    "good-hope-farmstead-woodsboro": {
+      "category": "agritourism"
+    },
+    "rocky-glade-farms-woodsboro": {
+      "category": "agritourism"
+    },
+    "groffs-content-farm-emmitsburg": {
+      "category": "agritourism"
+    },
+    "good-soil-farm-llc-emmitsburg": {
+      "category": "agritourism"
+    },
+    "needwood-farms-burkittsville": {
+      "category": "agritourism"
+    },
+    "country-pleasures-farm-burkittsville": {
+      "category": "agritourism"
+    },
+    "plant-path-nursery-burkittsville": {
+      "category": "agritourism"
+    },
+    "dahlia-den-and-gardens-middletown": {
+      "category": "agritourism"
+    },
+    "valley-view-acres-middletown": {
+      "category": "agritourism"
+    },
+    "valley-ho-farm-middletown": {
+      "category": "agritourism"
+    },
+    "linganore-winecellars-mount-airy": {
+      "category": "winery"
+    },
+    "baskin-robbins-brunswick": {
+      "category": "ice-cream"
+    },
+    "cold-stone-creamery-frederick": {
+      "category": "ice-cream"
+    },
+    "ritas-italian-ice-frozen-custard-frederick": {
+      "category": "ice-cream"
+    },
+    "brusters-real-ice-cream-frederick": {
+      "category": "ice-cream"
+    },
+    "dairy-queen-treat-frederick": {
+      "category": "ice-cream"
+    },
+    "sweetfrog-frederick": {
+      "category": "ice-cream"
+    },
+    "swirls-of-frederick-frederick": {
+      "category": "ice-cream"
+    },
+    "abbraccio-gelato-middletown": {
+      "category": "ice-cream"
+    },
+    "jimmie-cone-mount-airy": {
+      "category": "ice-cream"
+    },
+    "jessicas-snowballs-mount-airy": {
+      "category": "ice-cream"
+    },
+    "cows-cones-myersville": {
+      "category": "ice-cream"
+    },
+    "the-depot-frozen-custard-brunswick": {
+      "category": "ice-cream"
+    },
+    "north-market-pop-shop-frederick": {
+      "category": "ice-cream"
+    },
+    "sweeties": {
+      "category": "ice-cream"
+    },
+    "hoffman-brothers-ice-cream": {
+      "category": "ice-cream"
+    },
+    "frederick-fudge-ice-cream": {
+      "category": "ice-cream"
+    },
+    "sweet-babes-creamery-2-walkersville": {
+      "category": "ice-cream"
+    },
+    "sweet-babes-creamery-new-market": {
+      "category": "ice-cream"
+    },
+    "glamourview-creamery-woodsboro": {
+      "category": "ice-cream"
+    },
+    "ripleighs-creamery-emmitsburg": {
+      "category": "ice-cream"
+    },
+    "happy-cow-creamery-woodsboro": {
+      "category": "ice-cream"
+    },
+    "rocky-point-creamery-brunswick": {
+      "category": "ice-cream"
+    },
+    "little-red-barn-ice-cream-cafe-burkittsville": {
+      "category": "ice-cream"
+    },
+    "sweethaus-treats-walkersville": {
+      "category": "ice-cream"
+    },
+    "rare-morsel": {
+      "category": "ice-cream"
+    },
+    "candy-kitchen-6": {
+      "name": "Candy Kitchen",
+      "category": "ice-cream"
+    },
+    "zoes-chocolate-company": {
+      "name": "Zoe's Chocolate Company",
+      "category": "ice-cream"
+    },
+    "gateway-candyland-thurmont": {
+      "category": "ice-cream"
+    },
+    "emmitsburg-senior-center-emmitsburg": {
+      "category": "civic"
+    },
+    "black-ankle-vineyards-mount-airy": {
+      "category": "winery"
+    },
+    "loew-vineyards-mount-airy": {
+      "category": "winery"
+    },
+    "catoctin-breeze-vineyard-thurmont": {
+      "category": "winery"
+    },
+    "springfield-manor-thurmont": {
+      "category": "winery",
+      "subcategories": [
+        "winery",
+        "food",
+        "distillery",
+        "brewery"
+      ]
+    },
+    "links-bridge-vineyards-thurmont": {
+      "category": "winery"
+    },
+    "orchid-cellar-meadery-middletown": {
+      "category": "winery"
+    },
+    "mazzaroth-vineyard-middletown": {
+      "category": "winery"
+    },
+    "six-wicket-vineyards-myersville": {
+      "category": "winery"
+    },
+    "new-market-plains-vineyards-new-market": {
+      "category": "winery"
+    },
+    "hidden-hills-farm-vineyard-frederick": {
+      "category": "winery"
+    },
+    "willow-oaks-craft-cider-and-wine-burkittsville": {
+      "category": "winery"
+    },
+    "celebration-cellars-winery-walkersville": {
+      "category": "winery"
+    },
+    "red-heifer-winery-thurmont": {
+      "category": "winery"
+    },
+    "elk-run-winery-mount-airy": {
+      "category": "winery"
+    },
+    "mcclintock-distillery": {
+      "category": "distillery"
+    },
+    "tenth-ward-distilling-company": {
+      "category": "distillery"
+    },
+    "dragon-distillery-frederick": {
+      "category": "distillery"
+    },
+    "rosie-cheeks-distillery-woodsboro": {
+      "category": "distillery"
+    },
+    "puerto-rico-distillery-brunswick": {
+      "category": "distillery"
+    },
+    "fordham-lee-distillery-middletown": {
+      "category": "distillery"
+    },
+    "crown-rose-estate-weddings-and-distillery-brunswick": {
+      "category": "distillery"
+    },
+    "lima-soul-restaurant-frederick": {
+      "hours": {
+        "wed": [
+          {
+            "open": "17:00",
+            "close": "22:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "17:00",
+            "close": "22:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "17:00",
+            "close": "22:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "12:00",
+            "close": "22:00"
+          }
+        ],
+        "sun": [
+          {
+            "open": "12:00",
+            "close": "21:00"
+          }
+        ]
+      }
+    },
+    "walkers-village-shopping-center-walkersville": {
+      "hours": {
+        "mon": [
+          {
+            "open": "10:00",
+            "close": "21:30"
+          }
+        ],
+        "tue": [
+          {
+            "open": "10:00",
+            "close": "21:30"
+          }
+        ],
+        "wed": [
+          {
+            "open": "10:00",
+            "close": "00:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "10:00",
+            "close": "00:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "10:00",
+            "close": "00:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "10:00",
+            "close": "21:30"
+          }
+        ],
+        "sun": [
+          {
+            "open": "10:00",
+            "close": "21:30"
+          }
+        ]
+      }
+    },
+    "happiness-is-balance-frederick-md": {
+      "hours": {
+        "mon": [
+          {
+            "open": "12:00",
+            "close": "20:00"
+          }
+        ],
+        "tue": [
+          {
+            "open": "12:00",
+            "close": "20:00"
+          }
+        ],
+        "thu": [
+          {
+            "open": "12:00",
+            "close": "20:00"
+          }
+        ],
+        "fri": [
+          {
+            "open": "12:00",
+            "close": "20:00"
+          }
+        ],
+        "sat": [
+          {
+            "open": "10:00",
+            "close": "16:00"
+          }
+        ]
+      }
+    },
+    "community-bridge": {
+      "clearEnrichment": true,
+      "clearGoogle": true
+    },
+    "immersion-active": {
+      "clearEnrichment": true,
+      "clearGoogle": true
+    },
+    "red-winged-blackbird-records": {
+      "clearEnrichment": true,
+      "clearGoogle": true
+    },
+    "the-healing-temple": {
+      "clearEnrichment": true,
+      "clearGoogle": true
+    },
+    "frederick-county-coalition-for-the-homeless": {
+      "clearEnrichment": true,
+      "clearGoogle": true
+    },
+    "new-hope-cafe": {
+      "clearEnrichment": true,
+      "clearGoogle": true
+    },
+    "hydro-designs": {
+      "clearEnrichment": true,
+      "clearGoogle": true
+    },
+    "the-inkery": {
+      "clearEnrichment": true,
+      "clearGoogle": true
+    },
+    "liberty-community-church-inc": {
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "clearPhoto": true
+    },
+    "ananda-shala-yoga": {
+      "clearEnrichment": true,
+      "clearGoogle": true
+    },
+    "jkw-beauty": {
+      "address": "8 N East St",
+      "category": "wellness",
+      "website": "https://jkwbeauty.com/"
+    },
+    "tin-corner": {
+      "category": "restaurant",
+      "short_blurb": "Vietnamese restaurant on North Market Street serving pho, rice dishes, noodles, and house specialties.",
+      "website": "https://tincornerfrederick.com/"
+    },
+    "post-office-4": {
+      "category": "services"
+    },
+    "united-states-postal-service-66": {
+      "category": "services"
+    },
+    "united-states-postal-service-woodsboro": {
+      "category": "services"
+    },
+    "new-market-united-methodist-church-new-market": {
+      "category": "worship"
+    },
+    "welcome-to-the-rusty-rose-restored-farmhouse-feel-in-the-hea-jefferson": {
+      "municipality": "middletown"
+    },
+    "catoctin-creek-aqueduct-co-canal-jefferson": {
+      "municipality": "brunswick"
+    },
+    "ledo-pizza-ijamsville": {
+      "municipality": "urbana"
+    },
+    "alice-mccormick-acupuncture": {
+      "category": "wellness"
+    },
+    "allied-counseling-group": {
+      "category": "wellness"
+    },
+    "authentic-barber-company": {
+      "category": "services"
+    },
+    "be-u-nails-spa": {
+      "category": "services"
+    },
+    "best-kept-secret-hair-salon": {
+      "category": "salon",
+      "address": "2060 Yellow Springs Rd Ste 105",
+      "geom": {
+        "lng": -77.4365616,
+        "lat": 39.4413109
+      }
+    },
+    "brooks-behavioral-health-services-llc": {
+      "category": "wellness"
+    },
+    "city-park-psychological-services-associates-llc": {
+      "category": "wellness"
+    },
+    "clarity-psychotherapy": {
+      "category": "wellness"
+    },
     "crash-and-catharsis-rage-factory": {
       "category": "wellness"
+    },
+    "crystal-visions-massage": {
+      "category": "wellness"
+    },
+    "crystallume-medspa": {
+      "category": "spa"
+    },
+    "dahlia-noir-salon": {
+      "category": "services"
+    },
+    "davita-ballenger-creek-dialysis": {
+      "category": "wellness"
+    },
+    "drewskiithebarber": {
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "category": "services"
+    },
+    "east-patrick-barbershop": {
+      "category": "services"
+    },
+    "frederick-cosmetic-family-dentistry": {
+      "category": "wellness"
+    },
+    "frederick-dental-solutions": {
+      "category": "wellness"
+    },
+    "frederick-dentures-and-orthodontics": {
+      "category": "wellness"
+    },
+    "freestate-auto-repair-inc": {
+      "category": "services"
+    },
+    "gentlemens-choice-barber-stylist-rt-40-w": {
+      "category": "services"
+    },
+    "hampton-massage": {
+      "category": "wellness"
+    },
+    "in-fit-personal-training-studio": {
+      "category": "services"
+    },
+    "indigo-bloom-counseling": {
+      "category": "wellness"
+    },
+    "kens-automotive-transmission": {
+      "category": "services"
+    },
+    "kindway-counseling": {
+      "category": "wellness"
+    },
+    "krietz-auto-repair-sales-detailing": {
+      "category": "services"
+    },
+    "la-villa-nails": {
+      "clearEnrichment": true,
+      "category": "services"
+    },
+    "lohmanflynn-counseling-llc": {
+      "clearEnrichment": true,
+      "category": "wellness"
+    },
+    "maria-hawkins-aesthetics": {
+      "category": "wellness"
+    },
+    "marianne-riley-psychotherapy": {
+      "clearGoogle": true,
+      "category": "wellness"
+    },
+    "mcclellan-veterinary-clinic": {
+      "category": "services"
+    },
+    "meadows-farms-nurseries-and-landscape-frederick": {
+      "category": "services"
+    },
+    "michabel-salon-and-spa": {
+      "category": "services"
+    },
+    "monocacy-health-partners-dental-clinic": {
+      "category": "wellness"
+    },
+    "new-york-new-york-hair-salon-spa": {
+      "category": "services"
+    },
+    "om-chakra-holistic-healing-and-massage-center": {
+      "clearGoogle": true,
+      "category": "wellness"
+    },
+    "pain-management-massage-studio": {
+      "category": "wellness"
+    },
+    "psychiatric-guidance": {
+      "category": "wellness"
+    },
+    "quince-orchard-psychotherapy": {
+      "name": "Orchard Mental Health Group",
+      "address": "10 N Jefferson St Unit 202",
+      "website": "https://orchardmentalhealth.com/",
+      "geom": {
+        "lng": -77.4207553,
+        "lat": 39.4132905
+      },
+      "category": "wellness"
+    },
+    "red-canyon-physical-therapy": {
+      "category": "wellness"
+    },
+    "rose-nails-spa": {
+      "category": "services"
+    },
+    "safe-harbor-christian-counseling": {
+      "category": "wellness"
+    },
+    "sam-wong-salon": {
+      "category": "services"
+    },
+    "sandy-spring-bank-frederick-financial-center": {
+      "category": "services"
+    },
+    "savoir-salon": {
+      "category": "services"
+    },
+    "second-story-massage": {
+      "category": "wellness"
+    },
+    "shaestheticsss": {
+      "category": "spa"
+    },
+    "six-east-salon-and-spa": {
+      "category": "services"
+    },
+    "skips-auto-repair": {
+      "category": "services",
+      "name": "Skip's Auto Repair"
+    },
+    "soft-images-salon-frederick-maryland": {
+      "category": "services"
+    },
+    "structures-salon-and-spa": {
+      "category": "services"
+    },
+    "the-affiliated-barbershop": {
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "category": "services"
+    },
+    "the-space-between-psychotherapy-llc-for-telehealth": {
+      "category": "wellness"
+    },
+    "unique-studio-hair-salon": {
+      "category": "services"
+    },
+    "verbena-salon-spa": {
+      "category": "spa"
+    },
+    "vital-sources-psychological-services": {
+      "category": "wellness"
+    },
+    "wastlers-barber-shop": {
+      "category": "services",
+      "name": "Wastler's Barber Shop"
+    },
+    "bill-and-earls-auto-services-center": {
+      "name": "Bill and Earl's Auto Services Center"
+    },
+    "brewers-alley-frederick": {
+      "category": "restaurant",
+      "subcategories": [
+        "restaurant",
+        "bar",
+        "brewery"
+      ]
+    },
+    "oscars-alehouse": {
+      "name": "Oscar's Alehouse"
+    },
+    "charleys-restaurant": {
+      "name": "Charley's Restaurant"
+    },
+    "bellisarios-pizza": {
+      "name": "Bellisario's Pizza"
+    },
+    "uncle-ralphs-bakery": {
+      "name": "Uncle Ralph's Bakery"
+    },
+    "hinzis-kitchen": {
+      "name": "Hinzi's Kitchen"
+    },
+    "rosatis-pizza-5": {
+      "name": "Rosati's Pizza"
+    },
+    "wags-restaurant": {
+      "name": "Wag's Restaurant"
+    },
+    "mcclintocks-back-bar": {
+      "name": "McClintock's Back Bar"
+    },
+    "jojos-restaurant-tap-house": {
+      "name": "JoJo's Restaurant Tap House"
+    },
+    "keeney-and-basford-funeral-homes": {
+      "category": "services"
+    },
+    "lough-memorials": {
+      "category": "services"
+    },
+    "frederick-police-department": {
+      "category": "public-safety"
+    },
+    "upper-echelon-auto-service": {
+      "category": "services"
+    },
+    "simply-clean-automotive-detailing": {
+      "category": "services"
+    },
+    "w-a-tolbard-heating-and-ac-llc": {
+      "category": "services"
+    },
+    "sos-safe-ride": {
+      "name": "SOS Safe Ride",
+      "category": "services"
+    },
+    "cruise-holidays": {
+      "category": "services"
+    },
+    "shift-work-play": {
+      "category": "services"
+    },
+    "lc-stylez": {
+      "category": "services"
+    },
+    "bloom-asian-haus": {
+      "category": "restaurant"
+    },
+    "mazako": {
+      "category": "restaurant"
+    },
+    "smokers-paradise-mount-airy-mount-airy": {
+      "category": "shopping"
+    },
+    "aquatic-training-consulting-services": {
+      "category": "wellness"
+    },
+    "frederick-childrens-chorus": {
+      "category": "music"
+    },
+    "true-standard-distilling": {
+      "category": "distillery"
+    },
+    "pj-gilligan-dry-goods-mercantile-co-burkittsville": {
+      "category": "shopping"
+    },
+    "celerate": {
+      "category": "services"
+    },
+    "cm3-solutions": {
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "clearPhoto": true,
+      "category": "services"
+    },
+    "overlook-park-brunswick": {
+      "clearPhoto": true
+    },
+    "memorial-grounds": {
+      "category": "park"
+    },
+    "edward-p-thomas-memorial-pool-playground": {
+      "category": "playground"
+    },
+    "acacia-house-frederick": {
+      "clearEnrichment": true
+    },
+    "tabu-frederick": {
+      "clearEnrichment": true
+    },
+    "el-rancho-frederick": {
+      "clearEnrichment": true
+    },
+    "the-gw-team-of-compass": {
+      "clearEnrichment": true
+    },
+    "grasshopper-print-shop": {
+      "clearEnrichment": true
+    },
+    "best-of-business-listings": {
+      "clearEnrichment": true
+    },
+    "mrs-sophia-wilmot-rn-msn-crnp-family-nurse-practitioner": {
+      "clearEnrichment": true
+    },
+    "nicole-holovach": {
+      "clearEnrichment": true
+    },
+    "sa-design-art-tattoo": {
+      "clearEnrichment": true
+    },
+    "aleman-team": {
+      "clearEnrichment": true
+    },
+    "fmh-regional-cancer-therapy-center": {
+      "clearEnrichment": true
+    },
+    "hwy-15": {
+      "clearEnrichment": true
+    },
+    "laura-michie": {
+      "clearEnrichment": true
+    },
+    "nicklas-sinton": {
+      "clearEnrichment": true
+    },
+    "cranberryjade-services-middletown-md": {
+      "clearEnrichment": true
+    },
+    "harper-associates": {
+      "clearEnrichment": true
+    },
+    "leroux-winik-llc": {
+      "clearEnrichment": true
+    },
+    "city-of-frederick-parking-department": {
+      "clearEnrichment": true
+    },
+    "fresh-coat-painters-of-frederick": {
+      "clearEnrichment": true
+    },
+    "cafe-anglais-british-tearoom": {
+      "clearEnrichment": true
+    },
+    "frederick-county-families-first": {
+      "clearEnrichment": true
+    },
+    "cmt-african-hair": {
+      "clearEnrichment": true
+    },
+    "fcps-maryland": {
+      "clearEnrichment": true
+    },
+    "law-office-of-steven-selzer": {
+      "clearEnrichment": true
+    },
+    "parent-resource-center": {
+      "clearEnrichment": true
+    },
+    "rotary-club": {
+      "clearEnrichment": true
+    },
+    "charles-attorney-frey-at-law": {
+      "clearEnrichment": true
+    },
+    "xpoxy": {
+      "clearEnrichment": true
+    },
+    "pride-on-the-patio": {
+      "clearEnrichment": true
+    },
+    "john-hanson-national-memorial": {
+      "clearEnrichment": true
+    },
+    "mdtix": {
+      "clearEnrichment": true
+    },
+    "mmci": {
+      "clearEnrichment": true
+    },
+    "alive-five": {
+      "clearEnrichment": true
+    },
+    "municipal-office-annex": {
+      "clearEnrichment": true
+    },
+    "city-of-frederick-hpc": {
+      "clearEnrichment": true
+    },
+    "dr-ritu-goel": {
+      "clearEnrichment": true
+    },
+    "bhangers": {
+      "clearEnrichment": true
+    },
+    "slam-snowcones": {
+      "clearEnrichment": true
+    },
+    "the-downtown-dip": {
+      "clearEnrichment": true
+    },
+    "advanced-biofuels-usa": {
+      "clearEnrichment": true
+    },
+    "ohair-salon-and-spa": {
+      "clearEnrichment": true
+    },
+    "skin-care-shop": {
+      "clearEnrichment": true
+    },
+    "baker-park-6": {
+      "clearEnrichment": true
+    },
+    "american-air-llc": {
+      "clearEnrichment": true
+    },
+    "rice-tire": {
+      "clearEnrichment": true
+    },
+    "south-frederick-arboretum": {
+      "clearEnrichment": true
+    },
+    "the-cozy-creamery-thurmont": {
+      "clearEnrichment": true
+    },
+    "emporium-antiques": {
+      "category": "antiques"
+    },
+    "emmitsburg-antique-mall-emmitsburg": {
+      "category": "antiques"
+    },
+    "ben-gue-antiques-gifts-mount-airy": {
+      "category": "antiques"
+    },
+    "antiques-n-ole-stuff-brunswick": {
+      "category": "antiques"
+    },
+    "fleshmans-antiques-new-market": {
+      "category": "antiques"
+    },
+    "old-glory-antique-market-place-frederick": {
+      "category": "antiques"
+    },
+    "cannon-hill-place-antiques-frederick": {
+      "category": "antiques"
+    },
+    "frederick-antiques-online-frederick": {
+      "category": "antiques"
+    },
+    "cozy-house-of-curiosity-antiques-vintage-collectibles-thurmont": {
+      "category": "antiques"
+    },
+    "swans-antiques-emmitsburg": {
+      "category": "antiques"
+    },
+    "r-p-brady-antiques-new-market": {
+      "category": "antiques"
+    },
+    "robert-esterly-antiques-new-market": {
+      "category": "antiques"
+    },
+    "dibs-authentic-antiques-frederick": {
+      "category": "antiques"
+    },
+    "cafe-nola": {
+      "category": "restaurant",
+      "subcategories": [
+        "cafe",
+        "coffee"
+      ]
+    },
+    "frederick-health-hospital": {
+      "category": "wellness",
+      "website": "https://www.frederickhealth.org/locations/frederick-health-hospital-hospital/"
+    },
+    "frederick-county-public-defender": {
+      "category": "government"
+    },
+    "fifty-fifty-smash-burger": {
+      "name": "BackSlash Burger",
+      "category": "restaurant",
+      "website": "https://www.backslashburger.com/",
+      "phone": "301-300-2562"
+    },
+    "trailhead-myersville": {
+      "name": "Appalachian Trail at Turners Gap"
+    },
+    "bollingers-restaurant-and-uncle-dirtys-brew-works-thurmont": {
+      "subcategories": [
+        "brewery"
+      ]
+    },
+    "10tavern-thurmont": {
+      "subcategories": [
+        "bar"
+      ]
+    },
+    "habanero-mexican-food-bar-grill-new-market": {
+      "subcategories": [
+        "bar"
+      ]
+    },
+    "vesuvius-italian-wine-bar-urbana": {
+      "subcategories": [
+        "bar"
+      ]
+    },
+    "jubilee-foods-emmitsburg": {
+      "subcategories": [
+        "grocery"
+      ]
+    },
+    "trouts-market-woodsboro": {
+      "subcategories": [
+        "grocery"
+      ]
+    },
+    "superfoods-cafe-market-mount-airy": {
+      "subcategories": [
+        "grocery"
+      ]
+    },
+    "myersville-market-crown-gas-station-myersville": {
+      "subcategories": [
+        "grocery"
+      ]
+    },
+    "starbucks-844": {
+      "name": "Starbucks"
+    },
+    "starbucks-842": {
+      "name": "Starbucks"
+    },
+    "subway-196": {
+      "name": "Subway"
+    },
+    "7-eleven-154": {
+      "name": "7-Eleven"
+    },
+    "db-liquors-walkersville-md-21793-walkersville": {
+      "name": "D&B Liquors"
+    },
+    "rockwell-brewery-frederick": {
+      "name": "Rockwell Brewery"
+    },
+    "rockwell-brewery-frederick-2": {
+      "name": "Rockwell Brewery Riverside"
+    },
+    "pistarros": {
+      "subcategories": [
+        "pizza"
+      ]
+    },
+    "south-mountain-creamery-middletown": {
+      "subcategories": [
+        "food",
+        "ice-cream"
+      ]
+    },
+    "lil-cakes-creamery-new-market": {
+      "subcategories": [
+        "ice-cream"
+      ]
+    },
+    "moo-cow-creamerywalnut-ridge-farm-middletown": {
+      "subcategories": [
+        "ice-cream"
+      ]
+    },
+    "roggenart-european-bakery-bistro-cafe-frederick": {
+      "subcategories": [
+        "bakery"
+      ]
+    },
+    "ggs-pastry-shop-mount-airy": {
+      "subcategories": [
+        "bakery"
+      ]
+    },
+    "tous-les-jours-bakery-cafe-frederick": {
+      "subcategories": [
+        "coffee"
+      ]
+    },
+    "juno-bakery-cafe-frederick": {
+      "subcategories": [
+        "coffee"
+      ]
+    },
+    "artistangle-gallery": {
+      "subcategories": [
+        "gallery"
+      ]
+    },
+    "myron-martin-peace-hollow-farm-market-burkittsville": {
+      "subcategories": [
+        "market"
+      ]
+    },
+    "walkersville-community-park-playground-walkersville": {
+      "subcategories": [
+        "playground"
+      ]
+    },
+    "sapporo-ii-japanese-restaurant": {
+      "name": "Sapporo II Japanese Restaurant"
+    },
+    "7th-sister": {
+      "category": "restaurant",
+      "subcategories": [
+        "bar"
+      ],
+      "commerce_links": [
+        {
+          "provider": "website",
+          "type": "reservation",
+          "url": "https://7thsister.com/reservations",
+          "source": "imported",
+          "last_verified_at": "2026-05-31T18:17:34.525Z",
+          "notes": "The business publishes this link on its official website."
+        }
+      ]
+    },
+    "c-and-o-canal-brunswick": {
+      "category": "trail"
+    },
+    "appalachian-bodywork": {
+      "category": "massage"
+    },
+    "growwith-abi": {
+      "category": "services",
+      "website": "https://growwithabi.com/",
+      "phone": "+1 (301) 732-9191",
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "clearPhoto": true
+    },
+    "sho-lung-dojo-martial-arts": {
+      "category": "yoga"
+    },
+    "sonus-center": {
+      "name": "Sonus Hearing Care Professionals",
+      "category": "wellness",
+      "website": "https://sonusfrederick.com/",
+      "phone": "301-663-0553"
+    },
+    "frederick-county-public-school": {
+      "name": "Frederick County Public Schools",
+      "category": "government",
+      "address": "191 S East St",
+      "city": "Frederick",
+      "postal_code": "21701",
+      "phone": "227-203-3277",
+      "website": "https://www.fcps.org/connect_with_fcps",
+      "geom": {
+        "lng": -77.4063916,
+        "lat": 39.4106025
+      },
+      "includeWithoutMedia": true,
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "clearPhoto": true
+    },
+    "outreach-healthcare-frederick": {
+      "name": "Outreach Recovery",
+      "category": "wellness",
+      "address": "196 Thomas Johnson Dr, Ste 201",
+      "city": "Frederick",
+      "postal_code": "21702",
+      "phone": "410-800-4466",
+      "website": "https://outreachrecovery.com/locations/",
+      "geom": {
+        "lng": -77.4086981,
+        "lat": 39.4393257
+      },
+      "includeWithoutMedia": true,
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "clearPhoto": true
+    },
+    "the-frederick-center": {
+      "category": "civic"
+    },
+    "care-of-self-center": {
+      "category": "wellness",
+      "website": "https://www.careofselfcenter.com/",
+      "phone": "301-818-8100"
+    },
+    "william-r-talley-recreation-center": {
+      "category": "yoga",
+      "website": "https://www.cityoffrederickmd.gov/Facilities/Facility/Details/William-R-Talley-Recreation-Center-143",
+      "phone": "301-600-1492",
+      "tags": [
+        "indoor",
+        "fitness",
+        "basketball",
+        "volleyball",
+        "public-restroom",
+        "water-fountain"
+      ]
+    },
+    "bank-of-america-13": {
+      "category": "services"
+    },
+    "brow-studio-by-les": {
+      "category": "salon"
+    },
+    "clubhouse-kids-at-monocacy-valley-montessori-public-school": {
+      "category": "family",
+      "website": "https://www.clubhousekidsonline.com/contact.html",
+      "phone": "301-685-5100",
+      "clearEnrichment": true,
+      "clearGoogle": true,
+      "clearPhoto": true
+    },
+    "aveda": {
+      "category": "salon"
+    },
+    "frederick-county-department-of-planning-development-review": {
+      "name": "Frederick County Department of Development Review and Planning",
+      "category": "government",
+      "website": "https://www.frederickcountymd.gov/7969/Development-Review",
+      "phone": "301-600-1138"
+    },
+    "the-original-popcorn-house": {
+      "subcategories": []
     }
   }
 }

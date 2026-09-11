@@ -1,4 +1,5 @@
 import { BedDouble, ExternalLink } from "lucide-react";
+import IconStamp from "@/components/ui/IconStamp";
 
 /**
  * StayDeepLinks — a small "Where to stay" card with pre-filtered
@@ -30,9 +31,11 @@ import { BedDouble, ExternalLink } from "lucide-react";
 export default function StayDeepLinks({
   townName,
   townSlug,
+  compact = false,
 }: {
   townName: string;
   townSlug: string;
+  compact?: boolean;
 }) {
   // URL builders. Each platform has a slightly different shape:
   //   - Airbnb: free-text town search via path slug
@@ -61,7 +64,7 @@ export default function StayDeepLinks({
     {
       label: "VRBO",
       href: vrboUrl,
-      sub: vrboTownPath === "frederick" ? "Frederick destination page" : "Frederick County destination",
+      sub: vrboTownPath === "frederick" ? "Frederick rentals page" : "Frederick County rentals",
     },
     {
       label: "Booking.com",
@@ -70,6 +73,35 @@ export default function StayDeepLinks({
     },
   ];
 
+  if (compact) {
+    return (
+      <section aria-labelledby="stay-deeplinks-heading" className="space-y-2 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
+        <div className="flex items-center gap-2">
+          <BedDouble className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
+          <h3 id="stay-deeplinks-heading" className="text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            Staying in {townName}?
+          </h3>
+        </div>
+        <ul className="flex flex-wrap gap-2">
+          {links.map((link) => (
+            <li key={link.label}>
+              <a
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tap-44 inline-flex items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+              >
+                {link.label}
+                <ExternalLink className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
   return (
     <section
       aria-labelledby="stay-deeplinks-heading"
@@ -77,19 +109,12 @@ export default function StayDeepLinks({
       style={{ borderColor: "var(--app-border)" }}
     >
       <header className="flex items-start gap-3">
-        <span
-          aria-hidden
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-          style={{
-            background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
-            color: "var(--app-cool)",
-          }}
-        >
-          <BedDouble className="h-4 w-4" strokeWidth={2} aria-hidden />
-        </span>
+        <IconStamp accent="var(--app-cool)" size="md">
+          <BedDouble aria-hidden />
+        </IconStamp>
         <div className="min-w-0 flex-1">
           <p
-            className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+            className="text-[11px] font-bold uppercase tracking-[0.12em]"
             style={{ color: "var(--app-ink-3)" }}
           >
             Where to stay
@@ -99,14 +124,14 @@ export default function StayDeepLinks({
             className="font-serif text-[18px] font-semibold leading-snug tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            Find a place in {townName}.
+            Find a place to stay in {townName}.
           </h2>
           <p
-            className="mt-1 text-[12.5px] leading-relaxed"
+            className="mt-1 text-[13px] leading-relaxed"
             style={{ color: "var(--app-ink-2)" }}
           >
-            Tap a platform — search opens pre-filtered to {townName}, Maryland.
-            We don&apos;t take a cut (yet); these are clean search links.
+            Tap a platform. Search opens pre-filtered to {townName}, Maryland.
+            We don&apos;t take a cut; these are clean search links.
           </p>
         </div>
       </header>
@@ -148,15 +173,6 @@ export default function StayDeepLinks({
           </li>
         ))}
       </ul>
-
-      <p
-        className="mt-3 text-[10.5px]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        A hand-picked &ldquo;Where to stay in {townName}&rdquo; list is in
-        the works — local B&amp;Bs, downtown rentals, the spots that don&apos;t
-        always surface on the big platforms.
-      </p>
     </section>
   );
 }

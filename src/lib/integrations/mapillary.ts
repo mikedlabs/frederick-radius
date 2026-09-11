@@ -75,7 +75,10 @@ export function mapillaryToken(): string {
 }
 
 export function mapillaryConfigured(): boolean {
-  return mapillaryToken().split("|").length === 3;
+  return (
+    process.env.MAPILLARY_ENABLED === "1" &&
+    mapillaryToken().split("|").length === 3
+  );
 }
 
 type MapillaryFeature = {
@@ -163,6 +166,7 @@ async function fetchTile(
 }
 
 export async function fetchMapillaryTrash(): Promise<OsmPlace[]> {
+  if (process.env.MAPILLARY_ENABLED !== "1") return [];
   const token = mapillaryToken();
   if (token.split("|").length !== 3) return []; // no/!valid token → inert
 

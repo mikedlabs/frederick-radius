@@ -1,40 +1,76 @@
 /**
- * Real walk + drive minutes from downtown Frederick to a point.
- *   /api/travel-time?lat=39.41&lng=-77.41
- * Cached 1h at the edge. Returns {} if Routes API isn't configured so the
- * caller can silently hide the chip.
+ * Real walk + drive minutes from a consented user origin to a point.
+ *
+ * POST keeps the origin out of URLs and access logs. User-specific route
+ * results bypass Radius's persistent application cache, and the response is
+ * never cacheable.
  */
 import { NextRequest } from "next/server";
-import { travelTimes } from "@/lib/integrations/google-routes";
-import { FREDERICK_CENTER } from "@/lib/geo";
-import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
+import { privateTravelTimes } from "@/lib/integrations/google-routes";
+import { isInFrederickCountyArea } from "@/lib/geo";
+import {
+  hasJsonContentType,
+  isRateLimited,
+  isSameOriginMutationRequest,
+  readJsonBodyWithLimit,
+} from "@/lib/origin-check";
 
 export const runtime = "nodejs";
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  // Paid upstream (Google Routes) — block hotlinking.
-  if (!isSameOriginRequest(req)) {
-    return new Response("Forbidden", { status: 403 });
+const NO_STORE = { "Cache-Control": "private, no-store" };
+
+function json(body: unknown, status = 200): Response {
+  return Response.json(body, { status, headers: NO_STORE });
+}
+
+export async function POST(req: NextRequest) {
+  if (!isSameOriginMutationRequest(req)) {
+    return json({ error: "forbidden-origin" }, 403);
   }
-  // Travel time renders on every place sheet open; 60/min is comfortable.
-  if (await isRateLimited(req, "travel-time", 60, 60)) {
-    return new Response("Too Many Requests", { status: 429 });
+  // This is an explicit tap, not an automatic request on every sheet open.
+  if (await isRateLimited(req, "travel-time", 30, 60)) {
+    return Response.json(
+      { error: "rate-limited" },
+      {
+        status: 429,
+        headers: { ...NO_STORE, "Retry-After": "60" },
+      },
+    );
   }
-  const lat = parseFloat(req.nextUrl.searchParams.get("lat") || "");
-  const lng = parseFloat(req.nextUrl.searchParams.get("lng") || "");
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return Response.json({ error: "bad coords" }, { status: 400 });
+  if (!hasJsonContentType(req)) {
+    return json({ error: "unsupported-media-type" }, 415);
   }
-  // Sanity-bound to the Frederick County region
-  if (lat < 39.0 || lat > 39.8 || lng < -78.0 || lng > -77.0) {
-    return Response.json({}, { status: 200 });
+  const parsed = await readJsonBodyWithLimit(req, 1_024);
+  if (!parsed.ok) {
+    return json(
+      { error: parsed.error },
+      parsed.error === "body-too-large" ? 413 : 400,
+    );
   }
-  const t = await travelTimes(
-    { lat: FREDERICK_CENTER.lat, lng: FREDERICK_CENTER.lng },
-    { lat, lng }
-  );
-  return Response.json(t, {
-    headers: { "Cache-Control": "public, max-age=3600, s-maxage=3600" },
-  });
+  const body = parsed.value && typeof parsed.value === "object"
+    ? parsed.value as Record<string, unknown>
+    : {};
+  const lat = Number(body.lat);
+  const lng = Number(body.lng);
+  const fromLat = Number(body.fromLat);
+  const fromLng = Number(body.fromLng);
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    !Number.isFinite(fromLat) ||
+    !Number.isFinite(fromLng)
+  ) {
+    return json({ error: "bad-coordinates" }, 400);
+  }
+  if (
+    !isInFrederickCountyArea(lng, lat) ||
+    !isInFrederickCountyArea(fromLng, fromLat)
+  ) {
+    return json({});
+  }
+  return json(await privateTravelTimes(
+    { lat: fromLat, lng: fromLng },
+    { lat, lng },
+  ));
 }

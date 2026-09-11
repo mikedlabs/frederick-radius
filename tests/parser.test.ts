@@ -58,7 +58,8 @@ t("all-day event flagged + anchored to NY midnight UTC", () => {
   assert.equal(e.allDay, true);
   // 2027-07-04 midnight America/New_York (EDT, -4) → 04:00Z
   assert.equal(e.startsAtUtc, "2027-07-04T04:00:00.000Z");
-  assert.equal(e.endsAtUtc, undefined);
+  // With no DTEND, RFC all-day semantics default to the next local midnight.
+  assert.equal(e.endsAtUtc, "2027-07-05T04:00:00.000Z");
 });
 
 t("dtstamp captured for change detection", () => {

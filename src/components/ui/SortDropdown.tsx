@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ArrowDownAZ, Check, ChevronDown } from "lucide-react";
 
 /**
@@ -60,6 +60,8 @@ export default function SortDropdown<K extends string = string>({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const choicesId = useId();
   const current = options.find((o) => o.key === value) ?? options[0];
 
   // Outside-click + Escape closes the menu. Bound only while open
@@ -72,7 +74,10 @@ export default function SortDropdown<K extends string = string>({
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -85,13 +90,14 @@ export default function SortDropdown<K extends string = string>({
   return (
     <div ref={ref} className={`relative inline-block ${className}`}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-haspopup="listbox"
         aria-expanded={open}
+        aria-controls={choicesId}
         aria-label={`${label}: ${current?.label ?? ""}`}
         title={label}
-        className="inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 py-1 text-[12px] font-semibold transition active:scale-[0.97]"
+        className="tap-44 inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 py-1 text-[12px] font-semibold transition active:scale-[0.97]"
         style={{
           borderColor: "var(--app-border)",
           color: "var(--app-ink-2)",
@@ -106,7 +112,7 @@ export default function SortDropdown<K extends string = string>({
         <span className="hidden sm:inline" style={{ color: "var(--app-ink-3)" }}>
           {label}:
         </span>
-        <span>{current?.label ?? "—"}</span>
+        <span>{current?.label ?? "Not set"}</span>
         <ChevronDown
           className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`}
           strokeWidth={2.5}
@@ -117,9 +123,10 @@ export default function SortDropdown<K extends string = string>({
 
       {open && (
         <div
-          role="listbox"
+          id={choicesId}
+          role="group"
           aria-label={label}
-          className={`absolute z-50 mt-1 min-w-[180px] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-1 shadow-[var(--app-shadow-2)] ${
+          className={`absolute z-[var(--z-dropdown)] mt-1 min-w-[180px] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-1 shadow-[var(--app-shadow-2)] ${
             align === "right" ? "right-0" : "left-0"
           }`}
           style={{ borderColor: "var(--app-border)" }}
@@ -130,15 +137,17 @@ export default function SortDropdown<K extends string = string>({
               <button
                 key={opt.key}
                 type="button"
-                role="option"
-                aria-selected={active}
+                aria-pressed={active}
                 onClick={() => {
                   onChange(opt.key);
                   setOpen(false);
+                  triggerRef.current?.focus();
                 }}
-                className="flex w-full items-start gap-2 px-3 py-1.5 text-left text-[12.5px] transition-colors hover:bg-[var(--app-bg-sunken)]"
+                className="flex min-h-[44px] w-full items-start gap-2 px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--app-bg-sunken)]"
                 style={{
-                  color: active ? "var(--app-brand)" : "var(--app-ink)",
+                  // Brick on its own 10% tint is 3.83:1 at 13px. The pressed
+                  // token is the text-on-light signal (5.80:1 on that ground).
+                  color: active ? "var(--app-brand-press)" : "var(--app-ink)",
                   background: active
                     ? "color-mix(in srgb, var(--app-brand) 10%, transparent)"
                     : "transparent",
@@ -158,7 +167,7 @@ export default function SortDropdown<K extends string = string>({
                   <span className="block leading-tight">{opt.label}</span>
                   {opt.hint && (
                     <span
-                      className="block text-[10.5px] leading-tight"
+                      className="block text-[11px] leading-tight"
                       style={{ color: "var(--app-ink-3)" }}
                     >
                       {opt.hint}

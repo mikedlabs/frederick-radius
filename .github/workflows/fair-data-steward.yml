@@ -1,0 +1,52 @@
+name: Fair data steward
+
+# Review-only acquisition of current Fair schedule, exhibitor, and floorplan
+# candidates. The NAS does the provider reads and parsing. This workflow never
+# writes repository contents or promotes data to the public app.
+on:
+  schedule:
+    - cron: "37 0,12 * * *"
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: fair-data-steward
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: [self-hosted, radius-data]
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Collect review-only Fair data candidate
+        env:
+          FAIR_DATA_REPORT_DIR: ${{ runner.temp }}/fair-data-candidate
+        run: npm run fair:data:collect -- --live
+
+      - name: Upload private review candidate
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fair-data-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/fair-data-candidate
+          if-no-files-found: error
+          retention-days: 3

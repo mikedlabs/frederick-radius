@@ -3,6 +3,9 @@ import { CalendarDays } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import EmptyState from "@/components/ui/EmptyState";
+import { eventDecisionLocation } from "@/lib/events/decision-facts";
+import { eventDateBlock } from "@/lib/events/format";
+import { isDateOnlyEventAnchor, isEventEnded } from "@/lib/eventWhenLabel";
 
 /**
  * A mobile agenda — the calendar that actually helps on a phone. Only
@@ -54,7 +57,7 @@ export default function EventAgenda({
   for (const e of [...events].sort(
     (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
   )) {
-    if (+new Date(e.starts_at) < now - 12 * 3_600_000) continue; // skip stale
+    if (isEventEnded(e, new Date(now))) continue;
     const np = nyParts(e.starts_at);
     let d = byKey.get(np.key);
     if (!d) {
@@ -69,7 +72,7 @@ export default function EventAgenda({
     return (
       <EmptyState
         icon={CalendarDays}
-        title="Nothing on the calendar in this range."
+        title="No events are on the calendar in this range."
         body="Try a wider time window from the chips above, or jump to the weekend."
         cta={{ label: "See this weekend", href: "/events?lens=weekend" }}
       />
@@ -96,7 +99,7 @@ export default function EventAgenda({
               const cat = CATEGORY_BY_SLUG[e.category];
               return (
                 <li
-                  key={e.slug}
+                  key={`${e.slug}-${e.starts_at}`}
                   className={i > 0 ? "border-t" : ""}
                   style={{ borderColor: "var(--app-border)" }}
                 >
@@ -106,16 +109,16 @@ export default function EventAgenda({
                   >
                     <span
                       className="w-14 shrink-0 text-[12px] font-semibold tabular-nums"
-                      style={{ color: "var(--app-brand)" }}
+                      style={{ color: "var(--app-brand-press)" }}
                     >
-                      {nyTime(e.starts_at)}
+                      {e.is_all_day || isDateOnlyEventAnchor(e) ? eventDateBlock(e).time : nyTime(e.starts_at)}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                      <span className="block line-clamp-2 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
                         {e.title}
                       </span>
-                      <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                        {e.venue_name}
+                      <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                        {eventDecisionLocation(e)}
                       </span>
                     </span>
                     {cat && (

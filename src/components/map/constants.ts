@@ -6,10 +6,11 @@
  * effects beyond `loadCachedOsm` / `saveCachedOsm` which touch
  * sessionStorage on the client only.
  */
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as GLMap } from "mapbox-gl";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import type { Amenity } from "@/lib/loaders/amenities";
 import type { LngLat } from "@/lib/geo";
+import { mapCameraDuration } from "@/lib/motion";
 
 export const OSM_CACHE_KEY = "fr:osm-frederick:v1";
 export const OSM_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -41,6 +42,10 @@ export const AMENITY_CATEGORIES = new Set<string>([
   "restroom", "water", "trash", "recycling", "dog-waste",
   "bench", "picnic", "bike-parking", "bike-repair",
   "defibrillator", "shelter", "wifi", "ev-charging",
+  // Moderated, expiring community reports use the amenity source and its
+  // grouped visibility controls, even though they are time-sensitive context
+  // rather than physical amenities.
+  "report-hazard", "report-condition", "report-tip", "report-note",
   // A playground is an amenity people look for, not a business — it
   // rides the amenity tray/layer, not the place cluster.
   "playground",
@@ -62,6 +67,21 @@ export const AMENITY_KIND_TO_CAT: Record<Amenity["kind"], string> = {
   playground: "playground",
   pool: "pool",
   river_gauge: "river-gauge",
+  dog_park: "dog-park",
+  water_access: "water-access",
+  // Field-collected kinds → existing/new marker slugs. trash, recycling,
+  // water, bench, dog-waste already have buckets + icons; dog-water and
+  // outlet are the two genuinely new marks (see categoryMarkers.ts).
+  // "other" falls through bucketOf to the generic pin.
+  trash: "trash",
+  recycling: "recycling",
+  water: "water",
+  bench: "bench",
+  dog_waste: "dog-waste",
+  dog_water: "dog-water",
+  outlet: "outlet",
+  bike_repair: "bike-repair",
+  other: "other",
 };
 
 /**
@@ -75,27 +95,42 @@ export const AMENITY_GROUPS: {
   label: string;
   glyph: string;
   cats: string[];
+  /** Registered as a filter ahead of its data — the tray renders it dimmed
+   *  and disabled with a "soon" tag instead of an empty toggle that does
+   *  nothing when tapped. Drop this once the points are collected. */
+  comingSoon?: boolean;
 }[] = [
   { key: "restroom", label: "Restrooms", glyph: "\u{1F6BB}", cats: ["restroom"] },
   { key: "water", label: "Water", glyph: "\u{1F4A7}", cats: ["water"] },
   { key: "trash", label: "Trash", glyph: "\u{1F5D1}", cats: ["trash", "recycling"] },
-  { key: "dog", label: "Dog stations", glyph: "\u{1F43E}", cats: ["dog-waste"] },
+  // Dog stations — bag dispensers (dog-waste) + dog water (dog-water).
+  // No longer "coming soon": the /collect field tool populates these.
+  { key: "dog", label: "Dog needs", glyph: "\u{1F43E}", cats: ["dog-waste", "dog-water", "dog-park"] },
   { key: "wifi", label: "Wifi", glyph: "\u{1F4F6}", cats: ["wifi"] },
   { key: "ev", label: "EV charging", glyph: "\u{26A1}", cats: ["ev-charging"] },
+  // Power outlets — outdoor/public AC outlets people can charge at.
+  // Populated by the /collect field tool.
+  { key: "outlet", label: "Outlets", glyph: "\u{1F50C}", cats: ["outlet"] },
   { key: "bike", label: "Bike", glyph: "\u{1F6B2}", cats: ["bike-parking", "bike-repair"] },
   { key: "seating", label: "Sit & picnic", glyph: "\u{1FA91}", cats: ["bench", "picnic"] },
   { key: "play", label: "Playgrounds", glyph: "\u{1F6DD}", cats: ["playground"] },
-  // Pools — added May 2026 as a registered map filter. The "pool"
-  // amenity category is wired into the loader's AmenityKind union
-  // and filter UI; point data is empty until verified city/county/Y
-  // pool addresses + coords are collected. Layer appears in the
-  // filter row immediately so the affordance is discoverable.
-  { key: "pool", label: "Pools", glyph: "\u{1F3CA}", cats: ["pool"] },
+  { key: "water_access", label: "Water access", glyph: "\u{1F6F6}", cats: ["water-access"] },
   // River gauges — USGS sites surfaced as a map layer so the
   // "Rivers & creeks" data isn't trapped on /rivers alone. Tap a
   // gauge pin to jump to /rivers for live readings + trend.
   { key: "river_gauge", label: "Gauges", glyph: "\u{1F30A}", cats: ["river-gauge"] },
   { key: "safety", label: "AED & shelter", glyph: "\u{2795}", cats: ["defibrillator", "shelter"] },
+  // Catch-all for field-collected points that don't fit a fixed type
+  // (the /collect tool's "Other" option, described in the note).
+  { key: "other", label: "Other", glyph: "\u{1F4CD}", cats: ["other"] },
+  // Crowdsourced community reports (the /report layer): hazards, live
+  // conditions, tips, and notes. One toggle for the whole community layer.
+  {
+    key: "community",
+    label: "Community",
+    glyph: "\u{26A0}\u{FE0F}",
+    cats: ["report-hazard", "report-condition", "report-tip", "report-note"],
+  },
 ];
 
 export const EMPTY_FC = {
@@ -146,14 +181,20 @@ export const CAM_EASE = (t: number) =>
  * it, so tapping a result or a search hit glides instead of snapping.
  */
 export function smoothFocus(
-  map: MapboxMap,
+  map: GLMap,
   center: [number, number],
   opts?: { minZoom?: number; maxStep?: number },
 ) {
   const cur = map.getZoom();
   const want = Math.max(cur, opts?.minZoom ?? 14.5);
   const zoom = Math.min(want, cur + (opts?.maxStep ?? 2.2));
-  map.easeTo({ center, zoom, duration: 900, easing: CAM_EASE, essential: true });
+  map.easeTo({
+    center,
+    zoom,
+    duration: mapCameraDuration("focus"),
+    easing: CAM_EASE,
+    essential: true,
+  });
 }
 
 export function isTrustedOsm(p: OsmPlace): boolean {
@@ -178,7 +219,7 @@ export function loadCachedOsm(): OsmPlace[] | null {
 }
 
 export function saveCachedOsm(data: OsmPlace[]) {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || data.length === 0) return;
   try {
     window.sessionStorage.setItem(
       OSM_CACHE_KEY,
@@ -191,23 +232,84 @@ export function saveCachedOsm(data: OsmPlace[]) {
 
 export const FREDERICK: [number, number] = [-77.4105, 39.4143];
 
-// Base style chosen so applyFrederickPalette() can do its thing.
-// dark-v11 is a simple legacy style with predictable layer naming —
-// the System-Black palette in applyFrederickPalette walks every
-// layer and rewrites paint, which works cleanly on dark-v11 but is
-// largely no-op on Standard (Standard's layer IDs don't match the
-// palette's substring rules + Standard's own atmospheric sky fights
-// the override). We tried dark-v11 RAW once and it read as generic
-// nightlife app — the palette is what turns it into Frederick.
-// Pairs with the dark app shell, makes the Monocacy + Carroll Creek
-// pop in civic blue, and lets the Catoctin hillshade register.
+// Camera leash for the county map. Frederick County spans roughly
+// lat 39.15–39.72, lng -77.76 to -77.0; this box adds a comfortable
+// buffer so the user can pan to (and just past) every edge — including
+// a "Near me" recenter from a town near the line — but can't drift off
+// into empty Pennsylvania / the Atlantic, which only burns tile
+// fetches and loses the place. Format: [[west, south], [east, north]].
 //
-// The custom Frederick Radius Mapbox Studio style (P2-1) replaces
-// this when designed; until then light-v11 + applyFrederickPalette
-// is the "designed for here" path that costs no dashboard work.
-// Switched from dark-v11 (System Black era) to light-v11 in PR 7+:
-// the rest of the brand is paper-cream, so the map should be too.
-export const STYLE_URL = "mapbox://styles/mapbox/light-v11";
+// County lock (data brief 6.2): the map carries the county identity, so
+// panning can never wander out of Frederick County. The brief's nominal
+// box is [[-77.68, 39.20], [-77.10, 39.72]], but 11 real county-edge
+// pins (Myersville, Burkittsville, Rosemont) sit just west of -77.68, so
+// these bounds are derived from the actual pin extent plus a roughly 4
+// mile margin: tight enough to lock to the county, wide enough that no
+// real place is unreachable. The boundary OUTLINE drawn on the map still
+// comes from the county GIS dataset; this is only the pan clamp.
+export const FREDERICK_MAX_BOUNDS: [[number, number], [number, number]] = [
+  [-77.76, 39.21],
+  [-77.09, 39.78],
+];
+
+/**
+ * Corner-pair bounds → the flat [W, S, E, N] tuple used by several map props.
+ *
+ * The app's own convention is the nested corner-pair form — it is what the
+ * component props, the county fit target, and the landscape leash all speak,
+ * and the GL renderers accept it directly or as this flat tuple. Convert at
+ * that one boundary rather than restating every pair of
+ * numbers in two shapes, which is how a pan leash and a validation check
+ * drift apart.
+ */
+export function toFlatBounds(
+  bounds: [[number, number], [number, number]],
+): [number, number, number, number] {
+  return [bounds[0][0], bounds[0][1], bounds[1][0], bounds[1][1]];
+}
+
+/** The county pan leash, ready for `maxBounds`. */
+export const FREDERICK_MAX_BOUNDS_FLAT = toFlatBounds(FREDERICK_MAX_BOUNDS);
+
+/** Tight county extent used as a camera FIT target. This is deliberately
+ * separate from validation bounds and from the looser browse-map pan leash. */
+export const FREDERICK_COUNTY_BOUNDS: [[number, number], [number, number]] = [
+  [-77.70, 39.20],
+  [-77.08, 39.74],
+];
+
+/** The browse map needs breathing room around the county. Using the tight
+ * county extent as both fit target and maxBounds makes the camera zoom back in on
+ * mismatched screen shapes, clipping the very county we asked it to show. */
+export const FREDERICK_BROWSE_MAX_BOUNDS: [[number, number], [number, number]] = [
+  [-78.35, 38.75],
+  [-76.45, 40.20],
+];
+
+/** Narrow-phone minimum for the browse map only. Other embedded maps retain
+ * the stronger county-lock minimum below. */
+export const FREDERICK_BROWSE_MIN_ZOOM = 6.8;
+
+// Zoom clamp (6.2): embedded maps remain locally framed at minZoom 9. The
+// main browse map supplies its own responsive lower minimum.
+export const FREDERICK_MIN_ZOOM = 9;
+export const FREDERICK_MAX_ZOOM = 19;
+
+/**
+ * Is a coordinate inside the county pan bounds? (6.2) Used by the
+ * geolocation flow: a user outside the county is recentered on downtown
+ * Frederick rather than flown out of the locked area. Pure, so it is
+ * unit tested. Reads the same FREDERICK_MAX_BOUNDS the map clamps to, so
+ * the check and the leash can never disagree.
+ */
+export function isInFrederickCounty(lng: number, lat: number): boolean {
+  const [[w, s], [e, n]] = FREDERICK_MAX_BOUNDS;
+  return lng >= w && lng <= e && lat >= s && lat <= n;
+}
+
+// Main immersive surfaces use the Mapbox field-guide style; small locator and
+// event surfaces retain the self-hosted PMTiles flavor. Renderer-specific
+// style configuration therefore lives beside each renderer, not here.
 
 // ── Curated-vs-OSM dedupe ───────────────────────────────────────────
 // The map renders our curated set AND the live OSM layer; anything in

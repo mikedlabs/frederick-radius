@@ -10,12 +10,27 @@ import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
 import { PLACES } from "@/data/places";
 import { isNonDiscoverable } from "@/lib/relevance";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
-import { haversineMeters } from "@/lib/geo";
+import { haversineMeters, isValidCoord } from "@/lib/geo";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import {
+  decisionCopyCounts,
+  hasUsefulDecisionCopy,
+} from "@/lib/quality/coverage";
+import { isDirectoryTemplateBlurb } from "./lib/audit-copy";
+import {
+  hasCategoryDisposition,
+  type CategoryDispositionPatch,
+} from "./lib/category-disposition";
 import ENRICH from "@/data/places-enrichment.json" with { type: "json" };
+import OVERRIDES from "@/data/places-overrides.json" with { type: "json" };
 
 const COUNTY = { s: 39.265, w: -77.7, n: 39.745, e: -77.15 };
 const enr = ENRICH as Record<string, { primary_type?: string; editorial_summary?: string }>;
+const categoryPatches = (
+  OVERRIDES as {
+    patch?: Record<string, CategoryDispositionPatch>;
+  }
+).patch ?? {};
 
 function norm(s: string): string {
   return (s || "")
@@ -26,6 +41,8 @@ const cell = (lat: number, lng: number) => `${Math.round(lat * 80)},${Math.round
 const ex = (a: string[], n = 6) => a.slice(0, n).join(" | ") + (a.length > n ? ` … +${a.length - n}` : "");
 
 function main() {
+  const detailed = process.argv.includes("--details");
+  const detailLimit = detailed ? Number.MAX_SAFE_INTEGER : 8;
   const pub = publicPlaces();
   const dec = pub.map((p) => decoratePlace(p));
   console.log(`\n=== FREDERICK RADIUS DATA AUDIT ===`);
@@ -71,18 +88,35 @@ function main() {
   }
 
   // 2. COORDINATES
-  const offCounty = pub.filter((p) => {
+  // The box is intentionally only a quick audit aid. The production check is
+  // the county outline plus its documented 1.5 km municipality-straddle
+  // buffer, so Mount Airy-area records can sit beyond one edge of this box.
+  const outsideAuditBox = pub.filter((p) => {
     const { lat, lng } = p.geom;
     return lat < COUNTY.s || lat > COUNTY.n || lng < COUNTY.w || lng > COUNTY.e;
   });
+  const invalidCountyCoord = pub.filter((p) => !isValidCoord(p.geom));
   const nullIsland = pub.filter((p) => Math.abs(p.geom.lat) < 0.5 && Math.abs(p.geom.lng) < 0.5);
   const coordClump: Record<string, string[]> = {};
   for (const p of pub) (coordClump[`${p.geom.lat.toFixed(5)},${p.geom.lng.toFixed(5)}`] ??= []).push(p.name);
   const stackedCoords = Object.entries(coordClump).filter(([, v]) => v.length >= 4);
 
   // 3. CATEGORY / RELEVANCE
-  const relevanceLeak = pub.filter((p) => isNonDiscoverable(enr[p.slug]?.primary_type));
-  const catDisagree = pub.filter((p) => {
+  // A human category correction to civic means the record is intentionally
+  // public even when Google classifies the underlying organization as a
+  // generic service. Keep the audit focused on accidental discovery leaks,
+  // not useful government and community centers rescued by an override.
+  const relevanceLeak = pub.filter(
+    (p) => p.category !== "civic" && isNonDiscoverable(enr[p.slug]?.primary_type),
+  );
+  // Compare Google's suggestion with the category the app actually ships,
+  // not the raw pre-decoration category. `decoratePlace` applies the same
+  // Google correction and human override precedence used by every public
+  // surface. Comparing against `publicPlaces()` directly produced hundreds
+  // of false alarms for corrections that were already live.
+  const catDisagree = dec.filter((p) => {
+    const humanDecision = categoryPatches[p.slug];
+    if (hasCategoryDisposition(humanDecision)) return false;
     const fromG = categoryFromPrimaryType(enr[p.slug]?.primary_type);
     return fromG && fromG !== p.category;
   });
@@ -95,11 +129,25 @@ function main() {
     (p) => p.is_operational === "closed_permanently" || p.is_operational === "closed_temporarily",
   );
 
-  // 6. REQUIRED FIELDS
-  const missing = pub.filter((p) => !p.name?.trim() || !p.short_blurb?.trim() || !p.category);
+  // 6. REQUIRED FIELDS. A permanent Radius description is valuable, but it is
+  // not a structural requirement: honest silence is better than unattributed
+  // provider prose. Report those two states separately.
+  const missingStructural = dec.filter(
+    (p) => !p.slug?.trim() || !p.name?.trim() || !p.category,
+  );
 
-  // 7. BLURBS — placeholder "<Cat> in <Town>." vs real
-  const placeholder = dec.filter((p) => /^[\w &/'-]+ in [\w .'-]+\.$/.test(p.short_blurb || "")).length;
+  // 7. PUBLIC COPY
+  const blurbCounts = decisionCopyCounts(dec);
+  const directoryTemplates = dec.filter((place) =>
+    isDirectoryTemplateBlurb(place, blurbCounts),
+  ).length;
+  const usefulDescriptions = dec.filter((place) =>
+    hasUsefulDecisionCopy(place, blurbCounts),
+  );
+  const missingOrUnusableDescriptions = dec.length - usefulDescriptions.length;
+  const unprovenancedDescriptions = usefulDescriptions.filter(
+    (place) => !place.description_source,
+  );
 
   // 8. ENRICHMENT integrity
   const slugs = new Set(PLACES.map((p) => p.slug));
@@ -114,26 +162,55 @@ function main() {
     console.log(`${sev} ${label.padEnd(42)} ${n}`);
   console.log(`\n--- FINDINGS (severity) ---`);
   F("Duplicate candidates (name≈ & ≤120m)", dupPairs.length, dupPairs.length > 50 ? "🔴" : dupPairs.length ? "🟠" : "🟢");
-  F("Out-of-county coordinates", offCounty.length, offCounty.length ? "🔴" : "🟢");
+  F("Invalid county coordinates", invalidCountyCoord.length, invalidCountyCoord.length ? "🔴" : "🟢");
+  F("Accepted beyond coarse audit box", outsideAuditBox.length, "ℹ️");
   F("Null-island (0,0) coords", nullIsland.length, nullIsland.length ? "🔴" : "🟢");
   F("Coordinate clumps (≥4 identical)", stackedCoords.length, stackedCoords.length > 5 ? "🟠" : "🟢");
   F("Relevance-hidden type still public", relevanceLeak.length, relevanceLeak.length ? "🟠" : "🟢");
   F("Category disagrees w/ Google type", catDisagree.length, catDisagree.length > 100 ? "🟠" : "🟢");
   F("Unknown municipality", badMuni.length, badMuni.length ? "🔴" : "🟢");
   F("Closed place leaked into public", closedLeak.length, closedLeak.length ? "🔴" : "🟢");
-  F("Missing name/blurb/category", missing.length, missing.length ? "🔴" : "🟢");
-  F("Placeholder blurbs", placeholder, placeholder > 800 ? "🟠" : "🟢");
+  F("Missing structural place fields", missingStructural.length, missingStructural.length ? "🔴" : "🟢");
+  F(
+    "Missing or unusable Radius description",
+    missingOrUnusableDescriptions,
+    missingOrUnusableDescriptions > pub.length / 2 ? "🟠" : "🟢",
+  );
+  F(
+    "Useful copy without provenance",
+    unprovenancedDescriptions.length,
+    unprovenancedDescriptions.length ? "🔴" : "🟢",
+  );
+  F(
+    "Directory-template blurbs",
+    directoryTemplates,
+    directoryTemplates > 0 ? "🟠" : "🟢",
+  );
   F("Orphan enrichment rows (no place)", orphanEnr.length, orphanEnr.length > 200 ? "🟠" : "🟢");
   F("Duplicate raw slugs", dupSlugs.length, dupSlugs.length ? "🔴" : "🟢");
-  console.log(`(context: ${withEditorial} real Google blurbs; ${pub.length - placeholder} non-placeholder)`);
+  console.log(
+    `(context: ${usefulDescriptions.length} useful permanent descriptions; ` +
+    `${withEditorial} attributed Google summaries remain available as provider context)`,
+  );
 
   console.log(`\n--- EXAMPLES ---`);
   if (dupPairs.length) console.log(`dupes: ${ex(dupPairs, 12)}`);
-  if (offCounty.length) console.log(`off-county: ${ex(offCounty.map((p) => `${p.name}(${p.geom.lat.toFixed(3)},${p.geom.lng.toFixed(3)})`))}`);
+  if (invalidCountyCoord.length) console.log(`invalid-county: ${ex(invalidCountyCoord.map((p) => `${p.name}(${p.geom.lat.toFixed(3)},${p.geom.lng.toFixed(3)})`))}`);
+  if (outsideAuditBox.length) console.log(`accepted-border: ${ex(outsideAuditBox.map((p) => `${p.name}(${p.geom.lat.toFixed(3)},${p.geom.lng.toFixed(3)})`))}`);
   if (stackedCoords.length) console.log(`coord-clumps: ${ex(stackedCoords.map(([c, v]) => `${c}×${v.length}`))}`);
   if (relevanceLeak.length) console.log(`B2B-leak: ${ex(relevanceLeak.map((p) => `${p.name}[${enr[p.slug]?.primary_type}]`))}`);
   if (badMuni.length) console.log(`bad-muni: ${ex(badMuni.map((p) => `${p.name}=${p.municipality}`))}`);
-  if (catDisagree.length) console.log(`cat≠Google: ${ex(catDisagree.slice(0, 8).map((p) => `${p.name} ${p.category}→${categoryFromPrimaryType(enr[p.slug]?.primary_type)}`))}`);
+  if (catDisagree.length) {
+    console.log(
+      `cat≠Google: ${ex(
+        catDisagree.map(
+          (p) =>
+            `${p.slug}\t${p.name}\t${p.category}→${categoryFromPrimaryType(enr[p.slug]?.primary_type)}`,
+        ),
+        detailLimit,
+      )}`,
+    );
+  }
   console.log("");
 }
 

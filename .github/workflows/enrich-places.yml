@@ -1,0 +1,290 @@
+name: Enrich places (Google)
+
+# Manual refresh of the curated editorial places against Google Places.
+#
+# History: the monthly schedule was paused because the GitHub secret resolved
+# EMPTY (#1468). The secret existed the whole time — its stored value was an
+# empty string, which is why the run logs printed a bare "GOOGLE_PLACES_API_KEY:"
+# instead of the "***" GitHub substitutes for a real value. Re-set on
+# 2026-08-19, and a dispatch that same day proved the credential path: the run
+# cleared the gate and reached the script's planning boundary rather than
+# stopping on the credential.
+#
+# The default scope is now `needs-enrichment`, and `slugs` reaches exact
+# records by name. Every paid run also supplies a finite 1-500 request ceiling;
+# the script prints the exact SKU/list-price exposure before making a call.
+#
+# The script only writes with --live --confirm --limit N. DFP's long tail is
+# enriched on demand elsewhere.
+
+on:
+  # The former monthly schedule is intentionally paused while Google Maps
+  # Platform reuse is under policy review. Keeping this manual avoids both an
+  # unattended paid call and a GitHub Actions run that can only fail the hold.
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: "Which places to enrich."
+        required: false
+        type: choice
+        default: "needs-enrichment"
+        options:
+          - needs-enrichment
+          - slugs
+          - all-curated
+      slugs:
+        description: "Comma-separated slugs. Only used when scope=slugs."
+        required: false
+        default: ""
+      limit:
+        description: "Maximum Google requests for this reviewed batch (1-500)."
+        required: false
+        default: "100"
+      refresh_open_review:
+        description: "I want to replace the currently open Google enrichment review with a fresh paid run"
+        required: false
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: enrich-curated-places
+  cancel-in-progress: false
+
+jobs:
+  review-gate:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      should_run: ${{ steps.review.outputs.should_run }}
+      review_url: ${{ steps.review.outputs.review_url }}
+    steps:
+      - name: Pause paid enrichment while its review is open
+        id: review
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          REFRESH_OPEN_REVIEW: ${{ inputs.refresh_open_review || 'false' }}
+        with:
+          script: |
+            const branch = 'bot/curated-place-enrichment';
+            const override = process.env.REFRESH_OPEN_REVIEW === 'true';
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              base: 'main',
+              per_page: 100,
+            });
+            const review = pulls.find((pull) =>
+              pull.head?.ref === branch &&
+              pull.head?.repo?.full_name === `${context.repo.owner}/${context.repo.repo}`
+            );
+
+            if (review && !override) {
+              core.notice(`Skipping paid Google enrichment while review PR #${review.number} is open: ${review.html_url}`);
+              core.summary
+                .addHeading('Google enrichment paused')
+                .addRaw(`Review PR [#${review.number}](${review.html_url}) before paying to resolve the same gap again.\n`)
+                .addRaw('Use the manual refresh_open_review override only when replacing that review is intentional.\n');
+              await core.summary.write();
+              core.setOutput('should_run', 'false');
+              core.setOutput('review_url', review.html_url);
+              return;
+            }
+
+            if (review && override) {
+              core.notice(`Manual override accepted; paid Google enrichment may update review PR #${review.number}.`);
+            }
+            core.setOutput('should_run', 'true');
+            core.setOutput('review_url', review?.html_url || '');
+
+  enrich:
+    needs: review-gate
+    if: ${{ needs.review-gate.outputs.should_run == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    outputs:
+      has_work: ${{ steps.result.outputs.has_work }}
+    steps:
+      - name: Require Google enrichment configuration
+        env:
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL: ${{ vars.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL }}
+          GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED: ${{ vars.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED }}
+        run: |
+          if [ "$GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL" != "written-google-authorization-confirmed" ] || [ "$GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED" != "1" ]; then
+            echo "::error title=Google policy hold::Record reviewed written authorization in the exact repository variables before running paid enrichment."
+            exit 1
+          fi
+          if [ -z "$GOOGLE_PLACES_API_KEY" ]; then
+            echo "::error title=Missing GOOGLE_PLACES_API_KEY::Add the repository secret before running curated-place enrichment."
+            exit 1
+          fi
+      - name: Validate immutable request ceiling
+        env:
+          REQUEST_LIMIT: ${{ inputs.limit || '100' }}
+        run: |
+          case "$REQUEST_LIMIT" in
+            ''|*[!0-9]*) echo "::error title=Invalid request limit::limit must be an integer from 1 to 500."; exit 1 ;;
+          esac
+          if [ "$REQUEST_LIMIT" -lt 1 ] || [ "$REQUEST_LIMIT" -gt 500 ]; then
+            echo "::error title=Invalid request limit::limit must be between 1 and 500."
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - run: npm ci
+      - name: Enrich curated places (cost-capped)
+        id: enrich_places
+        env:
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL: ${{ vars.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL }}
+          GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED: ${{ vars.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED }}
+          SCOPE: ${{ inputs.scope }}
+          SLUGS: ${{ inputs.slugs }}
+          REQUEST_LIMIT: ${{ inputs.limit || '100' }}
+        run: |
+          case "${SCOPE:-needs-enrichment}" in
+            slugs)
+              if [ -z "$SLUGS" ]; then
+                echo "::error title=No slugs given::scope=slugs requires the slugs input."
+                exit 1
+              fi
+              npm run enrich -- --slug "$SLUGS" --live --confirm --limit "$REQUEST_LIMIT"
+              ;;
+            all-curated)
+              npm run enrich -- --live --confirm --limit "$REQUEST_LIMIT"
+              ;;
+            needs-enrichment)
+              npm run enrich -- --needs-enrichment --live --confirm --limit "$REQUEST_LIMIT"
+              ;;
+            *)
+              echo "::error title=Unknown enrichment scope::Refusing to fall back from scope '$SCOPE' to a paid default."
+              exit 1
+              ;;
+          esac
+      - name: Detect and preserve paid-call results
+        id: result
+        if: always()
+        run: |
+          data_changed=false
+          attempts_changed=false
+          if [ -n "$(git status --porcelain -- src/data/places-enrichment.json)" ]; then
+            data_changed=true
+          fi
+          if [ -n "$(git status --porcelain -- audit/google-enrichment-attempts.json)" ]; then
+            attempts_changed=true
+          fi
+          if [ "$data_changed" = true ] || [ "$attempts_changed" = true ]; then
+            has_work=true
+          else
+            has_work=false
+          fi
+          echo "data_changed=$data_changed" >> "$GITHUB_OUTPUT"
+          echo "attempts_changed=$attempts_changed" >> "$GITHUB_OUTPUT"
+          echo "has_work=$has_work" >> "$GITHUB_OUTPUT"
+      - name: Stage paid-call recovery checkpoint
+        if: always() && steps.result.outputs.has_work == 'true'
+        run: |
+          root="$RUNNER_TEMP/curated-place-enrichment-output"
+          install -D -m 0644 src/data/places-enrichment.json "$root/src/data/places-enrichment.json"
+          if [ -f audit/google-enrichment-attempts.json ]; then
+            install -D -m 0644 audit/google-enrichment-attempts.json "$root/audit/google-enrichment-attempts.json"
+          fi
+      - name: Rebuild public place snapshot
+        if: steps.enrich_places.outcome == 'success' && steps.result.outputs.data_changed == 'true'
+        run: npm run build:client-places
+
+      - name: Enforce critical data gates
+        if: steps.enrich_places.outcome == 'success' && steps.result.outputs.data_changed == 'true'
+        run: npm run gates
+
+      - name: Report high-severity data debt
+        if: steps.enrich_places.outcome == 'success' && steps.result.outputs.data_changed == 'true'
+        continue-on-error: true
+        run: npm run gates -- --fail-high
+
+      - name: Promote reviewed place artifacts
+        if: steps.enrich_places.outcome == 'success' && steps.result.outputs.data_changed == 'true'
+        run: npm run data:release:write -- --stream places
+
+      - name: Stage exact enrichment outputs
+        if: steps.enrich_places.outcome == 'success' && steps.result.outputs.has_work == 'true'
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/curated-place-enrichment-output"
+          # The publisher intentionally requires the artifact to match its
+          # allowlist exactly. Copy the complete reviewed set even when only
+          # the attempts ledger changed; git will still publish only the
+          # actual diff. This preserves paid no-match work without widening
+          # the automated-PR boundary.
+          install -D -m 0644 audit/google-enrichment-attempts.json "$root/audit/google-enrichment-attempts.json"
+          install -D -m 0644 src/data/places-enrichment.json "$root/src/data/places-enrichment.json"
+          install -D -m 0644 src/data/place-refresh-identities.json "$root/src/data/place-refresh-identities.json"
+          install -D -m 0644 src/data/places-client.json "$root/src/data/places-client.json"
+          install -D -m 0644 src/data/places-client-hours.json "$root/src/data/places-client-hours.json"
+          install -D -m 0644 src/data/event-venue-photo-credits.json "$root/src/data/event-venue-photo-credits.json"
+          install -D -m 0644 src/data/data-release.json "$root/src/data/data-release.json"
+      - name: Upload exact enrichment outputs
+        # This is the workflow's single artifact upload. On a successful run
+        # it contains the exact publish allowlist. If a later build/gate fails,
+        # it still carries the paid-call checkpoint staged above for recovery.
+        if: always() && steps.result.outputs.has_work == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: curated-place-enrichment-output
+          path: ${{ runner.temp }}/curated-place-enrichment-output
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: enrich
+    if: ${{ needs.enrich.result == 'success' && needs.enrich.outputs.has_work == 'true' }}
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/publish-automated-pr.yml
+    with:
+      artifact: curated-place-enrichment-output
+      base_sha: ${{ github.sha }}
+      branch: bot/curated-place-enrichment
+      allowed_paths: |
+        audit/google-enrichment-attempts.json
+        src/data/places-enrichment.json
+        src/data/place-refresh-identities.json
+        src/data/places-client.json
+        src/data/places-client-hours.json
+        src/data/event-venue-photo-credits.json
+        src/data/data-release.json
+      commit_message: "data: refresh Google enrichment for curated places (automated)"
+      title: "data: refresh curated place enrichment"
+      body: |
+        Cost-capped monthly Google enrichment refresh for curated places.
+
+        The workflow rebuilt the public place snapshot and enforced
+        critical data gates. High-severity coverage debt is reported in the
+        workflow without blocking an incremental review PR. Review closures,
+        hours, contact details, and photo attribution before merging.
+
+  checks:
+    needs: publish
+    if: ${{ needs.publish.outputs.pr_operation == 'created' || needs.publish.outputs.pr_operation == 'updated' }}
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/automated-pr-checks.yml
+    with:
+      branch: ${{ needs.publish.outputs.pr_branch }}
+      head_sha: ${{ needs.publish.outputs.pr_head_sha }}

@@ -35,9 +35,16 @@ test("applyDedup folds duplicates into canonicals (curated wins)", () => {
 });
 
 test("a folded duplicate maps to a canonical that exists", () => {
+  const sourceSlugs = new Set(PLACES.map((place) => place.slug));
   for (const [slug, v] of Object.entries(map)) {
     if (v.canonical === slug) continue;
-    assert.ok(map[v.canonical], `${slug} canonical ${v.canonical} must itself be an entry`);
+    // Canonicals can be explicit self-entries in the generated map or raw
+    // singleton records that did not need a dedup-map entry. Both are real
+    // destinations; requiring only the former produced a false failure.
+    assert.ok(
+      map[v.canonical] || sourceSlugs.has(v.canonical),
+      `${slug} canonical ${v.canonical} must exist in the map or source inventory`,
+    );
   }
   console.log("all folded slugs point to a real canonical");
 });

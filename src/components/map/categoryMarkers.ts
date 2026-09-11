@@ -6,20 +6,26 @@
  * it stays sharp at small marker size, where thin line icons would muddy
  * and emoji render inconsistently per device).
  *
- * Served via the `styleimagemissing` event so it survives style reloads
- * and mount ordering. Drawn at 2x for retina crispness.
+ * Served through the renderer's missing-image resolver so it survives style
+ * reloads and mount ordering. Drawn at 2x for retina crispness.
  */
-import type { Map as GLMap } from "mapbox-gl";
+import type { ExpressionSpecification, Map as GLMap } from "mapbox-gl";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { BRAND } from "@/lib/brand";
 
-const DEFAULT_COLOR = "#A8462C";
+const DEFAULT_COLOR = BRAND.colors.brick;
+const INSTALLED_MAPS = new WeakSet<GLMap>();
 
 type Bucket =
   | "food" | "brewery" | "wine" | "bar" | "coffee" | "bakery"
   | "outdoors" | "arts" | "music" | "family" | "library" | "shopping"
   | "wellness" | "civic" | "services" | "lodging" | "transit" | "parking"
   | "restroom" | "water" | "trash" | "recycle" | "dogwaste" | "bench"
-  | "bike" | "aed" | "shelter" | "picnic" | "wifi" | "ev" | "publicart" | "pin";
+  | "bike" | "aed" | "shelter" | "picnic" | "wifi" | "ev" | "publicart"
+  | "outlet" | "dogwater"
+  // Community-report buckets (the /report crowdsourced layer).
+  | "rhazard" | "rcond" | "rtip" | "rnote"
+  | "pin";
 
 // Consumer drink/food categories get their OWN mark, not one generic
 // fork. A brewery, winery, bar, coffee shop, and bakery should read
@@ -30,6 +36,7 @@ const BUCKET: Record<string, Bucket> = {
   bakery: "bakery", bar: "bar", brewery: "brewery", coffee: "coffee",
   winery: "wine", wine: "wine", cidery: "wine", distillery: "wine",
   outdoors: "outdoors", park: "outdoors", trail: "outdoors", playground: "outdoors",
+  "dog-park": "outdoors", "water-access": "outdoors",
   arts: "arts", museum: "arts", gallery: "arts", theater: "arts", music: "music",
   family: "family",
   library: "library", "book-store": "library",
@@ -54,7 +61,14 @@ const BUCKET: Record<string, Bucket> = {
   shelter: "shelter",
   wifi: "wifi",
   "ev-charging": "ev",
+  outlet: "outlet",
+  "dog-water": "dogwater",
   "public-art": "publicart",
+  // Community reports.
+  "report-hazard": "rhazard",
+  "report-condition": "rcond",
+  "report-tip": "rtip",
+  "report-note": "rnote",
 };
 
 export function bucketOf(slug: string): Bucket {
@@ -63,23 +77,146 @@ export function bucketOf(slug: string): Bucket {
   return (parent && BUCKET[parent]) || "pin";
 }
 
-/** Cluster tint per macro bucket — a glance tells you what an area is. */
+/** Cluster tint per macro bucket — a glance tells you what an area is.
+ *
+ *  ALIGNED TO THE CANONICAL CATEGORY PALETTE (src/data/categories.ts). This
+ *  map had drifted to pre-May-2026 brand hexes (old brick #A03A22, old slate
+ *  #2F5470, old gold #C99632), so the same taproom showed a vermilion accent
+ *  rail on its card and an old-brick dot on the map — the cross-surface color
+ *  contract (card accent == pin family) was broken for six top categories.
+ *  Category-named buckets take their category's exact hex; amenity/report
+ *  buckets (no category entry) keep hand-set values in the same palette.
+ *  Water-ish amenities split to Creek slate #4A7090 so eight different civic
+ *  things stop sharing one identical blue. Keep in sync with categories.ts. */
 export const BUCKET_COLOR: Record<Bucket, string> = {
-  food: "#A8462C", brewery: "#C99632", wine: "#6E2233", bar: "#7E1F1F",
-  coffee: "#8B5A2B", bakery: "#C9852B", music: "#9B3F8A",
-  outdoors: "#1E6B3A", arts: "#7E2C6F", family: "#B26B00",
-  library: "#2F5470", shopping: "#B26B00", wellness: "#A02929",
-  civic: "#2F5470", services: "#4A4A48", lodging: "#5B3A8F",
-  transit: "#2F5470", parking: "#4A4A48",
-  restroom: "#2F5470", water: "#2F5470", trash: "#4A4A48", recycle: "#1E6B3A",
-  dogwaste: "#1E6B3A", bench: "#4A4A48", bike: "#1E6B3A", aed: "#A02929",
-  shelter: "#4A4A48", picnic: "#1E6B3A", wifi: "#2F5470", ev: "#1E6B3A",
-  publicart: "#9B3F8A",
+  food: BRAND.colors.brick, brewery: BRAND.colors.functionalAmber, wine: "#6B2D5A", bar: "#7E1F1F",
+  coffee: "#8B5A2B", bakery: BRAND.colors.functionalAmber, music: BRAND.colors.plum,
+  outdoors: BRAND.colors.forest, arts: BRAND.colors.plum, family: BRAND.colors.functionalAmber,
+  library: BRAND.colors.creek, shopping: BRAND.colors.functionalAmber, wellness: "#A02929",
+  civic: BRAND.colors.creek, services: "#4A4A48", lodging: "#5B1E55",
+  transit: BRAND.colors.creek, parking: "#4A4A48",
+  restroom: BRAND.colors.creek, water: "#4A7090", trash: "#4A4A48", recycle: BRAND.colors.forest,
+  dogwaste: BRAND.colors.forest, bench: "#4A4A48", bike: BRAND.colors.forest, aed: "#A02929",
+  shelter: "#4A4A48", picnic: BRAND.colors.forest, wifi: BRAND.colors.creek, ev: BRAND.colors.forest,
+  publicart: BRAND.colors.plum,
+  outlet: "#4A4A48", dogwater: "#4A7090",
+  rhazard: "#C2410C", rcond: BRAND.colors.creek, rtip: "#B07A1E", rnote: "#7A7975",
   pin: "#7A7975",
 };
 
+/** Macro FAMILIES for the cluster dominant-color tally. clusterProperties
+ *  used to count only 5 raw buckets (food/outdoors/arts/shopping/civic), so
+ *  breweries, wineries, coffee and 15 other buckets counted toward NOTHING:
+ *  an all-brewery cluster fell to the mx==0 vermilion fallback, and two
+ *  restaurants outvoted ten breweries — broken exactly where Frederick is
+ *  most distinctive. Every curated-place bucket now rolls into one of eight
+ *  families; the tally + tint expressions in AppMap read this one table. */
+export const CLUSTER_FAMILIES: ReadonlyArray<{
+  key: string;
+  label: string;
+  buckets: readonly Bucket[];
+  color: string;
+}> = [
+  { key: "cf_food", label: "Food", buckets: ["food", "bakery"], color: BRAND.colors.brick },
+  { key: "cf_drink", label: "Drink", buckets: ["brewery", "wine", "bar"], color: BRAND.colors.functionalAmber },
+  { key: "cf_coffee", label: "Coffee", buckets: ["coffee"], color: "#8B5A2B" },
+  { key: "cf_outdoors", label: "Outdoors", buckets: ["outdoors"], color: BRAND.colors.forest },
+  { key: "cf_culture", label: "Culture", buckets: ["arts", "music", "publicart", "family", "library"], color: BRAND.colors.plum },
+  { key: "cf_shops", label: "Shops", buckets: ["shopping"], color: BRAND.colors.functionalAmber },
+  { key: "cf_services", label: "Services", buckets: ["services", "wellness", "lodging"], color: BRAND.colors.mutedInk },
+  { key: "cf_civic", label: "Civic", buckets: ["civic", "transit", "parking"], color: BRAND.colors.creek },
+];
+
+/** Supercluster reductions generated from the same family table that paints
+ * the marks. This prevents taxonomy changes from quietly falling back to one
+ * generic county color. */
+export function curatedClusterProperties(): Record<string, unknown[]> {
+  return Object.fromEntries(
+    CLUSTER_FAMILIES.map((family) => [
+      family.key,
+      [
+        "+",
+        [
+          "case",
+          [
+            "in",
+            ["get", "bucket"],
+            ["literal", [...family.buckets]],
+          ],
+          1,
+          0,
+        ],
+      ],
+    ]),
+  );
+}
+
+function dominantFamilyCondition(familyKey: string): unknown[] {
+  const ownCount = ["coalesce", ["get", familyKey], 0];
+  return [
+    "all",
+    [">", ownCount, 0],
+    ...CLUSTER_FAMILIES.filter((family) => family.key !== familyKey).map(
+      (family) => [
+        ">=",
+        ownCount,
+        ["coalesce", ["get", family.key], 0],
+      ],
+    ),
+  ];
+}
+
+/** Mapbox expression selecting the family with the most places. Ties follow
+ * the stable family order above, so cluster color never flickers between
+ * frames at the same zoom. */
+export function curatedClusterColorExpression(
+  fallback = BRAND.colors.creek,
+): ExpressionSpecification {
+  return [
+    "case",
+    ...CLUSTER_FAMILIES.flatMap((family) => [
+      dominantFamilyCondition(family.key),
+      family.color,
+    ]),
+    fallback,
+  ] as ExpressionSpecification;
+}
+
+/** A short semantic label for accessible hover/click descriptions and the
+ * town-level cluster face. */
+export function curatedClusterLabelExpression(
+  fallback = "Places",
+): ExpressionSpecification {
+  return [
+    "case",
+    ...CLUSTER_FAMILIES.flatMap((family) => [
+      dominantFamilyCondition(family.key),
+      family.label,
+    ]),
+    fallback,
+  ] as ExpressionSpecification;
+}
+
+export function dominantClusterFamilyLabel(
+  properties: Readonly<Record<string, unknown>>,
+): string | null {
+  let winner: (typeof CLUSTER_FAMILIES)[number] | null = null;
+  let winnerCount = 0;
+  for (const family of CLUSTER_FAMILIES) {
+    const count = Number(properties[family.key] ?? 0);
+    if (Number.isFinite(count) && count > winnerCount) {
+      winner = family;
+      winnerCount = count;
+    }
+  }
+  return winner?.label ?? null;
+}
+
 function colorOf(slug: string): string {
   if (slug === "_default") return DEFAULT_COLOR;
+  // Community-report slugs aren't in the place taxonomy; take the disc color
+  // from their bucket so a hazard reads caution-orange, not brand vermilion.
+  if (slug.startsWith("report-")) return BUCKET_COLOR[bucketOf(slug)] ?? DEFAULT_COLOR;
   const c = CATEGORY_BY_SLUG[slug];
   return c?.color ?? (c?.parent ? CATEGORY_BY_SLUG[c.parent]?.color : undefined) ?? DEFAULT_COLOR;
 }
@@ -337,6 +474,55 @@ function drawIcon(ctx: CanvasRenderingContext2D, b: Bucket, x: number, y: number
       ctx.closePath();
       ctx.fill();
       break;
+    case "outlet": { // wall socket: rounded plate + two prong slots
+      rr(-7, -8, 14, 16, 4); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      ctx.fillRect(-3.4, -4, 1.8, 5);
+      ctx.fillRect(1.6, -4, 1.8, 5);
+      ctx.beginPath(); ctx.arc(0, 4, 1.3, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      break;
+    }
+    case "dogwater": // paw above a water bowl
+      ctx.beginPath(); ctx.ellipse(0, -3.5, 3.2, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+      for (const [tx, ty] of [[-3.6, -7.4], [-1.2, -9.2], [1.2, -9.2], [3.6, -7.4]] as const) {
+        ctx.beginPath(); ctx.arc(tx, ty, 1.5, 0, Math.PI * 2); ctx.fill();
+      }
+      // bowl
+      ctx.beginPath();
+      ctx.moveTo(-7, 2.5); ctx.lineTo(7, 2.5);
+      ctx.lineTo(4.5, 9); ctx.lineTo(-4.5, 9);
+      ctx.closePath(); ctx.fill();
+      break;
+    case "rhazard": // warning triangle with a bang
+      ctx.beginPath();
+      ctx.moveTo(0, -8.5); ctx.lineTo(9.5, 8); ctx.lineTo(-9.5, 8);
+      ctx.closePath(); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      ctx.fillRect(-1.2, -3.5, 2.4, 6.5);
+      ctx.beginPath(); ctx.arc(0, 5.4, 1.3, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      break;
+    case "rcond": // info "i" disc
+      ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath(); ctx.arc(0, -3.6, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(-1.4, -1, 2.8, 6.5);
+      ctx.restore();
+      break;
+    case "rtip": // lightbulb
+      ctx.beginPath(); ctx.arc(0, -3, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(-3, 2.5, 6, 2.4);
+      ctx.fillRect(-2.2, 5.4, 4.4, 2.2);
+      ctx.fillRect(-1.6, 8, 3.2, 1.8);
+      break;
+    case "rnote": // speech bubble
+      rr(-9, -8, 18, 13, 4); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-3, 5); ctx.lineTo(2, 5); ctx.lineTo(-5, 10); ctx.closePath(); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      for (const dx of [-4, 0, 4]) { ctx.beginPath(); ctx.arc(dx, -1.5, 1.1, 0, Math.PI * 2); ctx.fill(); }
+      ctx.restore();
+      break;
     case "publicart": // ring sculpture on a pedestal
       ctx.lineWidth = 2.4;
       ctx.beginPath(); ctx.arc(0, -2, 5.4, 0, Math.PI * 2); ctx.stroke();
@@ -399,21 +585,22 @@ function addOne(map: GLMap, id: string): void {
   }
 }
 
-/**
- * Wire up category markers. The styleimagemissing handler is the
- * guarantee; the eager pass just avoids a one-frame flash.
- */
+/** Wire up category markers. The eager pass prevents a blank first frame;
+ * styleimagemissing remains the safety net for categories added later. */
 export function installCategoryMarkers(map: GLMap): void {
+  if (INSTALLED_MAPS.has(map)) return;
+  INSTALLED_MAPS.add(map);
+
   const addAll = () => {
     addOne(map, "cat-_default");
     for (const slug of Object.keys(CATEGORY_BY_SLUG)) addOne(map, `cat-${slug}`);
   };
-  map.on("styleimagemissing", (e: { id: string }) => {
-    if (e.id && e.id.startsWith("cat-")) addOne(map, e.id);
+  map.on("styleimagemissing", (event: { id: string }) => {
+    if (event.id?.startsWith("cat-")) addOne(map, event.id);
   });
   // Mapbox loads its style asynchronously after onLoad, which clears
   // images added before the style settled. Re-add on every style load
   // (idempotent via hasImage) so category icons survive.
   map.on("style.load", addAll);
-  addAll();
+  if (map.isStyleLoaded()) addAll();
 }

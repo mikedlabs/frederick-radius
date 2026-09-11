@@ -14,7 +14,9 @@
  */
 export type SkyVariant =
   | "Sun"
+  | "Moon"
   | "CloudSun"
+  | "CloudMoon"
   | "Cloud"
   | "CloudRain"
   | "CloudSnow"
@@ -56,7 +58,7 @@ export default function AnimatedSkyGlyph({
                   y1={y1}
                   x2={x2}
                   y2={y2}
-                  stroke="var(--app-accent)"
+                  stroke="var(--sky-sun-color)"
                   strokeWidth={2.2}
                   strokeLinecap="round"
                 />
@@ -64,7 +66,7 @@ export default function AnimatedSkyGlyph({
             })}
           </svg>
           <svg viewBox="0 0 100 100" className="sky-core" aria-hidden>
-            <circle cx={50} cy={50} r={20} fill="var(--app-accent)" />
+            <circle cx={50} cy={50} r={20} fill="var(--sky-sun-color)" />
             <circle cx={50} cy={50} r={20} fill="url(#sun-glow)" />
             <defs>
               <radialGradient id="sun-glow" cx={0.45} cy={0.4}>
@@ -76,8 +78,36 @@ export default function AnimatedSkyGlyph({
         </>
       )}
 
-      {/* CloudSun — a small cloud drifts in front of the sun. */}
-      {variant === "CloudSun" && (
+      {/* Moon variants — a crescent for clear/partly NIGHT, so a clear
+          night renders the moon instead of a rotating sun. Static (no
+          rays): the moon doesn't need motion. */}
+      {(variant === "Moon" || variant === "CloudMoon") && (
+        <svg viewBox="0 0 100 100" className="sky-core" aria-hidden>
+          <defs>
+            <radialGradient id="moon-glow" cx={0.42} cy={0.38}>
+              <stop offset={0} stopColor="#fff" stopOpacity={0.45} />
+              <stop offset={1} stopColor="#fff" stopOpacity={0} />
+            </radialGradient>
+            <mask id="moon-mask">
+              <rect width={100} height={100} fill="black" />
+              <circle cx={50} cy={50} r={20} fill="white" />
+              <circle cx={61} cy={43} r={17} fill="black" />
+            </mask>
+          </defs>
+          <circle cx={50} cy={50} r={20} fill="#E9E3D2" mask="url(#moon-mask)" />
+          <circle cx={50} cy={50} r={20} fill="url(#moon-glow)" mask="url(#moon-mask)" />
+          {variant === "Moon" && (
+            <>
+              <circle cx={80} cy={28} r={1.7} fill="#E9E3D2" />
+              <circle cx={86} cy={41} r={1.1} fill="#E9E3D2" />
+              <circle cx={74} cy={20} r={1} fill="#E9E3D2" />
+            </>
+          )}
+        </svg>
+      )}
+
+      {/* CloudSun / CloudMoon — a small cloud drifts in front. */}
+      {(variant === "CloudSun" || variant === "CloudMoon") && (
         <svg viewBox="0 0 100 100" className="sky-cloud sky-cloud--small" aria-hidden>
           <g fill="var(--app-bg-elevated-solid)" stroke="var(--app-ink-3)" strokeWidth={1.5}>
             <circle cx={42} cy={68} r={11} />

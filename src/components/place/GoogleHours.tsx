@@ -45,7 +45,7 @@ export default function GoogleHours({ lines }: { lines: string[] }) {
                 {day}
               </span>
               <span
-                className="tabular-nums"
+                className="font-mono tabular-nums"
                 style={{
                   color: isToday ? "var(--app-ink)" : "var(--app-ink-3)",
                   fontWeight: isToday ? 600 : 400,

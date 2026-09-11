@@ -30,7 +30,7 @@ export default function Scene04_FourPillars() {
                         The Four <span className="bg-gradient-to-r from-violet-400 to-amber-400 bg-clip-text text-transparent">Pillars</span>
                     </h2>
                     <p className="text-gray-400 text-xl font-light">
-                        Everything you need, beautifully unified
+                        What is working, what is being tested, and what remains a concept
                     </p>
                 </motion.div>
             </div>
@@ -43,7 +43,7 @@ export default function Scene04_FourPillars() {
                     return (
                         <motion.div
                             key={pillar.id}
-                            className="group relative backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-8 hover:bg-white/10 transition-all duration-500 overflow-hidden cursor-pointer"
+                            className="group relative backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-8 hover:bg-white/10 transition-all duration-500 overflow-hidden"
                             initial={{ opacity: 0, y: 40, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             transition={{
@@ -75,7 +75,9 @@ export default function Scene04_FourPillars() {
 
                             {/* Stats Badge */}
                             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20">
-                                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                                <div
+                                    className={`w-2 h-2 rounded-full ${pillar.stats === "Concept only" ? "bg-amber-300" : "bg-violet-300"}`}
+                                />
                                 <span className="text-sm text-gray-300 font-medium">{pillar.stats}</span>
                             </div>
 

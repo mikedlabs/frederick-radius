@@ -1,0 +1,225 @@
+import { stampEventProvenance } from "@/lib/provenance";
+import { audienceFromText } from "@/lib/events/audienceSignals";
+import RAW from "@/data/venue-events.json" with { type: "json" };
+import type { EventWithMeta } from "@/lib/loaders/events";
+import { resolveReviewedEventVenue } from "@/lib/events/venue-resolver";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { FREDERICK_CENTER } from "@/lib/geo";
+import { cleanFeedText, formatAddress } from "@/lib/format/text";
+import { normalizeTitle, etYear, cleanEventSlug } from "@/lib/events/normalize";
+import { eventGeoConfidence } from "@/lib/events/geo-confidence";
+import { inferredNonMusicCategory } from "@/lib/events/live-music";
+import {
+  eventAttendanceMode,
+  isLikelyEventActionUrl,
+} from "@/lib/events/attendance";
+import { isUpcomingEvent } from "@/lib/events/visible";
+
+/**
+ * Venue events — produced by the extraction agent
+ * (scripts/ingest-venue-events.ts) for venues whose lineups live only on
+ * their own site (The Banyan, The Derby, Sky Stage…). Read side: feeds
+ * the events surfaces + the "ask Frederick" answer engine. Each row
+ * carries source + fetchedAt so the UI can show provenance + freshness.
+ * Starts empty; never fabricated. Event titles, venue names, and source
+ * excerpts remain publisher-owned fields; ordinary feed-boundary cleanup does
+ * not turn them into Radius copy. Descriptions identify whether they are
+ * publisher excerpts or short Radius summaries, so editorial checks never
+ * rewrite an organizer's wording.
+ */
+
+export type VenueEvent = {
+  title: string;
+  starts_at: string;
+  ends_at?: string;
+  description?: string;
+  description_origin?: "source-excerpt" | "radius-summary";
+  price?: string;
+  ticket_url?: string;
+  attendance_mode?: "physical" | "online" | "mixed";
+  online_url?: string;
+  venue_slug: string;
+  venue_name: string;
+  category?: string;
+  source: {
+    url: string;
+    fetchedAt: string;
+    /** Present on records refreshed by the provenance-aware extractor. */
+    requestedUrl?: string;
+    /** Present on records refreshed by the provenance-aware extractor. */
+    finalUrl?: string;
+  };
+};
+
+const DATA = RAW as unknown as VenueEvent[];
+
+/** All ingested venue events. */
+export function venueEvents(): VenueEvent[] {
+  return DATA;
+}
+
+/** Future venue events, soonest first. */
+export function upcomingVenueEvents(now: Date = new Date()): VenueEvent[] {
+  return DATA.filter((e) => {
+    const ms = Date.parse(e.starts_at);
+    return Number.isFinite(ms) && isUpcomingEvent(e, now);
+  }).sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+}
+
+/**
+ * Resolve a scraped venue to its place record. The ingest slug is often a
+ * SHORTENED form ("weinberg-center") of the full place slug
+ * ("weinberg-center-for-the-arts-frederick"), and the scraped name can
+ * drop the town ("Weinberg Center for the Arts" vs the place's
+ * "…Frederick"). The old exact-slug-only lookup missed those, so the
+ * event lost both its venue's coordinates AND its borrowable photo — the
+ * cause of venue events rendering as photoless cards on a US county app.
+ * The shared resolver accepts only an exact canonical slug, reviewed alias,
+ * or unique exact normalized name. Prefix matching used to be convenient but
+ * was not strong enough to move a map pin; fuzzy matching now remains confined
+ * to the precision-gated thumbnail path.
+ */
+function resolveVenuePlace(slug: string, name: string) {
+  return resolveReviewedEventVenue({
+    venue_place_slug: slug,
+    venue_name: name,
+  })?.place;
+}
+
+/**
+ * Adapt one ingested venue event to the EventWithMeta shape the event
+ * card, detail page, and the unified /events feed consume — the same
+ * boundary normalization liveToCardEvent does for iCal/Ticketmaster
+ * feeds. The venue's own place record (resolved by slug) supplies the
+ * geo + address + municipality so the event sits correctly on the map
+ * and in range/distance math; an unresolved venue falls back to the
+ * downtown center so it still appears rather than vanishing.
+ *
+ * Without this, scraped venue lineups populate venue-events.json but
+ * never reach a screen — the gap that made the "places + events fused"
+ * wedge inert.
+ */
+function venueEventToCard(e: VenueEvent): EventWithMeta {
+  const place = resolveVenuePlace(e.venue_slug, e.venue_name);
+  const geom = place?.geom ?? FREDERICK_CENTER;
+  const municipality = place?.municipality ?? "frederick";
+  // The "music" fallback is earned by the source (these are live-music
+  // venue lineups) — but only for titles that could BE music. A yoga or
+  // trivia night on a taproom's feed falls back to the venue's own
+  // category, then "community", so it never inherits a music claim it
+  // didn't make (Jul-8 audit: "Yoga in the Taproom" under "Live music
+  // tonight").
+  const category =
+    inferredNonMusicCategory(e.title)
+    ?? e.category
+    ?? place?.category
+    ?? "music";
+  const { presenter, title } = normalizeTitle(e.title, { year: etYear(e.starts_at) });
+  const slug = cleanEventSlug({ presenter, title, startsAt: e.starts_at });
+  // Venue pages rarely expose a publisher event UID. Venue + occurrence time
+  // is the stable identity we do have: it stays distinct across recurring
+  // dates and survives a later title edit that changes the human-facing slug.
+  const parsedStart = Date.parse(e.starts_at);
+  const sourceId = `venue:${e.venue_slug}:${
+    Number.isFinite(parsedStart)
+      ? new Date(parsedStart).toISOString()
+      : e.starts_at.trim()
+  }`;
+  const isFree = e.price ? /free|no cover/i.test(e.price) : false;
+  const attendance_mode = eventAttendanceMode({
+    title,
+    venue_name: e.venue_name,
+    address: place?.address,
+    attendance_mode: e.attendance_mode,
+    online_url: e.online_url,
+    ticket_url: e.ticket_url,
+    source_url: e.source.url,
+  });
+  const online_url =
+    attendance_mode !== "physical"
+      ? [e.online_url, e.ticket_url, e.source.url].find((value) =>
+          isLikelyEventActionUrl(value),
+        )
+      : undefined;
+  const physical = attendance_mode !== "online";
+  // A resolved venue gives us the real Place geom → placement "venue"
+  // (precise). The FREDERICK_CENTER fallback is the Frederick centroid,
+  // so an unresolved venue resolves to "area" and never claims a distance.
+  const placement = physical && place ? ("venue" as const) : undefined;
+  return {
+    slug,
+    title,
+    presenter,
+    description: cleanFeedText(e.description ?? ""),
+    starts_at: e.starts_at,
+    ends_at: e.ends_at ?? e.starts_at,
+    timezone: "America/New_York",
+    is_all_day: false,
+    is_recurring: false,
+    venue_place_slug: physical ? place?.slug : undefined,
+    placement,
+    hero_image: physical ? place?.google_photo_url : undefined,
+    venue_name:
+      attendance_mode === "online" ? "Online" : cleanFeedText(e.venue_name),
+    address:
+      attendance_mode === "online"
+        ? ""
+        : formatAddress(cleanFeedText(place?.address ?? "")),
+    geom,
+    municipality,
+    category,
+    audience: audienceFromText(e.title, e.description),
+    is_free: isFree,
+    price_text: e.price,
+    ticket_url: e.ticket_url,
+    attendance_mode,
+    online_url,
+    // "venue-extract", not "manual": these lineups are extracted from
+    // venue sites programmatically, so they carry the scraped tier until
+    // a person or a ticketing API confirms them.
+    source: "venue-extract",
+    is_verified: false,
+    // source_url and last_verified_at come from the stamp below.
+    ...stampEventProvenance(
+      {
+        slug,
+        source: "venue-extract",
+        source_id: sourceId,
+        source_url: e.source.url,
+        last_verified_at: e.source.fetchedAt,
+      },
+    ),
+    category_name: CATEGORY_BY_SLUG[category]?.name ?? category,
+    municipality_name: MUNICIPALITY_BY_SLUG[municipality]?.name ?? municipality,
+    distance_m: undefined,
+    geo_confidence:
+      attendance_mode === "online"
+        ? "unknown"
+        : eventGeoConfidence({ placement, geom }),
+  };
+}
+
+/**
+ * Upcoming venue events as feed-ready cards. The /events page folds
+ * these into its unified, deduped, time-sorted set so a venue with a
+ * band tonight shows up alongside curated + live-feed events. Empty
+ * until the agent runs; never fabricated.
+ */
+export function venueEventsAsCards(now: Date = new Date()): EventWithMeta[] {
+  return upcomingVenueEvents(now).map(venueEventToCard);
+}
+
+/**
+ * Adapt an ARBITRARY set of VenueEvents to feed-ready cards — the same
+ * place-resolution + boundary normalization venueEventsAsCards applies to the
+ * committed venue-events.json, but for rows sourced at runtime (the
+ * Squarespace `?format=json` lineups in squarespace-live.ts). Sorted soonest
+ * first; the caller (unifiedEvents) handles the time-sanity guard + dedupe.
+ */
+export function venueEventsToCards(events: VenueEvent[]): EventWithMeta[] {
+  return events
+    .slice()
+    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
+    .map(venueEventToCard);
+}

@@ -49,12 +49,12 @@ export default function PlacePhoto({
       src={src}
       alt={alt}
       fill
+      unoptimized={src.startsWith("/api/place-photo")}
       sizes={sizes}
       placeholder="blur"
       blurDataURL={PAPER_CREAM_BLUR}
       className={`object-cover ${className}`}
       onError={() => setFailed(true)}
-      unoptimized
     />
   );
 }

@@ -1,5 +1,16 @@
-import { NextResponse } from "next/server";
-import { nearbyNow } from "@/lib/connect";
+import { after, NextResponse } from "next/server";
+import { DEFAULT_NEARBY_RADIUS_M, nearbyNow } from "@/lib/connect";
+import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
+import {
+  postgisNearbyMode,
+  postgisNearbyPlaceDistances,
+} from "@/lib/spatial/place-spatial-index";
+import { roundCoord } from "@/lib/walkTime";
+import { clientPlacesWithinRadius } from "@/lib/loaders/places-client";
+import {
+  loadLivePlaceEvidence,
+  MAX_LIVE_PLACE_EVIDENCE_SLUGS,
+} from "@/lib/loaders/livePlaceEvidence";
 
 /**
  * GET /api/nearby?lng=&lat=&limit=&radiusM=
@@ -25,9 +36,24 @@ function clamp(n: number, min: number, max: number): number {
 }
 
 export async function GET(request: Request) {
+  if (!isSameOriginRequest(request)) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  if (await isRateLimited(request, "nearby", 120, 60)) {
+    return new Response("Too Many Requests", {
+      status: 429,
+      headers: { "Retry-After": "60" },
+    });
+  }
+
   const url = new URL(request.url);
-  const lng = Number(url.searchParams.get("lng"));
-  const lat = Number(url.searchParams.get("lat"));
+  const lngRaw = url.searchParams.get("lng");
+  const latRaw = url.searchParams.get("lat");
+  // Number(null) and Number("") are both 0. Without checking the raw values
+  // first, a request missing either required coordinate was accepted as (0,0)
+  // and returned a confident-looking empty Frederick result.
+  const lng = lngRaw?.trim() ? Number(lngRaw) : NaN;
+  const lat = latRaw?.trim() ? Number(latRaw) : NaN;
 
   if (
     !Number.isFinite(lng) ||
@@ -51,10 +77,99 @@ export async function GET(request: Request) {
     ? clamp(Math.floor(radiusRaw), 500, 80_000)
     : undefined;
 
-  const ctx = nearbyNow(
-    { lng, lat },
-    { now: new Date(), limit, ...(radiusM ? { radiusM } : {}) },
-  );
+  // Legitimate clients already snap before sending. Re-round here so a
+  // handcrafted request cannot make an exact location part of the response
+  // or explode the public edge-cache key space.
+  const approximateOrigin = { lng: roundCoord(lng), lat: roundCoord(lat) };
+  if (lng !== approximateOrigin.lng || lat !== approximateOrigin.lat) {
+    const canonical = new URL(request.url);
+    canonical.searchParams.set("lng", String(approximateOrigin.lng));
+    canonical.searchParams.set("lat", String(approximateOrigin.lat));
+    return NextResponse.redirect(canonical, {
+      status: 307,
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
+  const now = new Date();
+  const effectiveRadiusM = radiusM ?? DEFAULT_NEARBY_RADIUS_M;
+  const baseOptions = {
+    now,
+    limit,
+    ...(radiusM ? { radiusM } : {}),
+  };
+  const mode = postgisNearbyMode();
+  // Start the current-evidence read while the optional PostGIS lookup runs.
+  // Haversine is sufficient for choosing the bounded candidate set; PostGIS
+  // remains authoritative for final distances when its verified mirror is on.
+  const evidenceCandidates = clientPlacesWithinRadius(
+    approximateOrigin,
+    effectiveRadiusM,
+  )
+    .slice(0, MAX_LIVE_PLACE_EVIDENCE_SLUGS)
+    .map((place) => place.slug);
+  const evidencePromise = loadLivePlaceEvidence(evidenceCandidates);
+  let distances: Map<string, number> | null = null;
+
+  if (mode === "on") {
+    distances = await postgisNearbyPlaceDistances(
+      approximateOrigin,
+      effectiveRadiusM,
+    );
+  }
+  const placeEvidence = await evidencePromise;
+  const ctx = nearbyNow(approximateOrigin, {
+    ...baseOptions,
+    ...(distances ? { placeDistances: distances } : {}),
+    placeEvidence,
+  });
+
+  if (mode === "shadow") {
+    // Shadow work cannot change the response or add latency. It records only
+    // aggregate parity—never the query origin, place slugs, or raw distances.
+    after(async () => {
+      const distances = await postgisNearbyPlaceDistances(
+        approximateOrigin,
+        effectiveRadiusM,
+      );
+      if (!distances) {
+        console.info("[postgis-nearby-shadow]", {
+          available: false,
+          baselinePlaceCount: ctx.openPlaces.length,
+        });
+        return;
+      }
+      const shadow = nearbyNow(approximateOrigin, {
+        ...baseOptions,
+        placeDistances: distances,
+        placeEvidence,
+      });
+      const baselinePlaces = ctx.openPlaces;
+      const shadowPlaces = shadow.openPlaces;
+      const shadowBySlug = new Map(
+        shadowPlaces.map((place) => [place.slug, place.distance_m]),
+      );
+      const distanceDeltas = baselinePlaces.flatMap((place) => {
+        const shadowDistance = shadowBySlug.get(place.slug);
+        return typeof place.distance_m === "number" &&
+          typeof shadowDistance === "number"
+          ? [Math.abs(place.distance_m - shadowDistance)]
+          : [];
+      });
+      console.info("[postgis-nearby-shadow]", {
+        available: true,
+        baselinePlaceCount: baselinePlaces.length,
+        shadowPlaceCount: shadowPlaces.length,
+        sameFirstPlace:
+          (baselinePlaces[0]?.slug ?? null) ===
+          (shadowPlaces[0]?.slug ?? null),
+        samePlaceOrder:
+          baselinePlaces.map((place) => place.slug).join("\0") ===
+          shadowPlaces.map((place) => place.slug).join("\0"),
+        maxDistanceDeltaM:
+          distanceDeltas.length > 0 ? Math.max(...distanceDeltas) : null,
+      });
+    });
+  }
 
   return NextResponse.json(ctx, {
     headers: {

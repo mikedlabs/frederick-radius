@@ -60,7 +60,7 @@ async function main() {
   if (!noGeo) {
     console.log(`\nGeocoding…`);
     const g = await geocodePending(sql, 3000);
-    console.log(`  cache-seeded ${g.seeded} · from-cache ${g.fromCache} · from-api ${g.fromApi} · failed ${g.failed}`);
+    console.log(`  cache-seeded ${g.seeded} · from-cache ${g.fromCache} · from-official ${g.fromOfficial} · from-google ${g.fromApi} · failed ${g.failed}`);
   }
 
   const counts = await sql<{ municipality: string; n: number; geo: number }[]>`

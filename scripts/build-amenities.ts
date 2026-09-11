@@ -8,15 +8,24 @@
  * deduped, municipality-resolved. Pure transform, nothing fetched.
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import { resolveMunicipality } from "@/lib/connect";
+import { resolveFrederickMunicipality } from "@/lib/location";
+import { FREDERICK_GUIDE_BBOX } from "@/lib/geo";
 
 const DIR = new URL("../src/data/osm-amenities/", import.meta.url).pathname;
 const OUT = new URL("../src/data/amenities.json", import.meta.url).pathname;
-// Frederick County bbox [south, west, north, east].
-const BBOX: [number, number, number, number] = [39.265, -77.7, 39.745, -77.15];
+// Full Radius guide envelope [south, west, north, east], including the
+// reviewed Carroll-side portion of incorporated Mount Airy. Every point is
+// still filtered through resolveFrederickMunicipality below.
+const BBOX: [number, number, number, number] = [
+  FREDERICK_GUIDE_BBOX.south,
+  FREDERICK_GUIDE_BBOX.west,
+  FREDERICK_GUIDE_BBOX.north,
+  FREDERICK_GUIDE_BBOX.east,
+];
 
 type AmenityKind =
-  | "restroom" | "ev_charging" | "wifi" | "bike_parking" | "picnic" | "playground";
+  | "restroom" | "ev_charging" | "wifi" | "bike_parking" | "picnic" | "playground"
+  | "water" | "trash" | "recycling" | "bench" | "dog_waste" | "bike_repair";
 type Amenity = {
   id: string;
   kind: AmenityKind;
@@ -28,7 +37,7 @@ type Amenity = {
 };
 type Props = Record<string, string | undefined>;
 
-const FILES: Record<AmenityKind, string> = {
+const FILES: Partial<Record<AmenityKind, string>> = {
   restroom: "public_restrooms.geojson",
   ev_charging: "ev_charging.geojson",
   wifi: "wifi_hotspots.geojson",
@@ -43,6 +52,12 @@ const KIND_LABEL: Record<AmenityKind, string> = {
   bike_parking: "Bike parking",
   picnic: "Picnic area",
   playground: "Playground",
+  water: "Drinking water",
+  trash: "Trash receptacle",
+  recycling: "Recycling drop-off",
+  bench: "Bench",
+  dog_waste: "Dog waste station",
+  bike_repair: "Bike repair station",
 };
 
 function centroid(geom: { type?: string; coordinates?: unknown } | undefined): [number, number] | null {
@@ -87,6 +102,19 @@ function detailFor(kind: AmenityKind, p: Props): string | undefined {
   } else if (kind === "playground") {
     if (p.surface) parts.push(p.surface);
     if (yes(p.wheelchair)) parts.push("Accessible");
+  } else if (kind === "water") {
+    if (p.bottle === "yes") parts.push("Bottle fill");
+    if (p.indoor === "yes") parts.push("Indoors");
+    if (p.wheelchair === "yes") parts.push("Accessible");
+  } else if (kind === "bench") {
+    if (p.backrest === "yes") parts.push("Backrest");
+    if (p.seats) parts.push(`${p.seats} seats`);
+  } else if (kind === "recycling") {
+    if (p.recycling_type === "centre") parts.push("Recycling center");
+    else if (p.recycling_type === "container") parts.push("Collection container");
+  } else if (kind === "bike_repair") {
+    if (p.service_bicycle_pump === "yes") parts.push("Air pump");
+    if (p.service_bicycle_tools === "yes") parts.push("Tools");
   }
   return parts.length ? parts.join(" · ") : undefined;
 }
@@ -99,7 +127,7 @@ const counts: Record<string, number> = {};
 for (const kind of Object.keys(FILES) as AmenityKind[]) {
   let fc: { features?: Array<{ geometry?: { type?: string; coordinates?: unknown }; properties?: Props }> };
   try {
-    fc = JSON.parse(readFileSync(DIR + FILES[kind], "utf8"));
+    fc = JSON.parse(readFileSync(DIR + FILES[kind]!, "utf8"));
   } catch {
     continue;
   }
@@ -109,6 +137,8 @@ for (const kind of Object.keys(FILES) as AmenityKind[]) {
     if (!pt) continue;
     const [lng, lat] = pt;
     if (lat < s || lat > n || lng < w || lng > e) continue;
+    const municipality = resolveFrederickMunicipality({ lng, lat });
+    if (!municipality) continue;
     const id = `${kind}-${p._osm_type ?? "n"}-${p._osm_id ?? `${lng.toFixed(6)},${lat.toFixed(6)}`}`;
     if (seen.has(id)) continue;
     seen.add(id);
@@ -117,12 +147,77 @@ for (const kind of Object.keys(FILES) as AmenityKind[]) {
       kind,
       name: p.name?.trim() || KIND_LABEL[kind],
       detail: detailFor(kind, p),
-      municipality: resolveMunicipality({ lng, lat }).municipality.slug,
+      municipality: municipality.municipality.slug,
       lng,
       lat,
     });
     counts[kind] = (counts[kind] ?? 0) + 1;
   }
+}
+
+function publicUtilityKinds(p: Props): AmenityKind[] {
+  const kinds = new Set<AmenityKind>();
+  const amenity = p.amenity;
+  if (amenity === "toilets") kinds.add("restroom");
+  if (amenity === "waste_basket" && p.waste === "dog_excrement") kinds.add("dog_waste");
+  else if (amenity === "waste_basket") kinds.add("trash");
+  if (amenity === "dog_waste_bin") kinds.add("dog_waste");
+  if (amenity === "recycling") kinds.add("recycling");
+  if (amenity === "bench") kinds.add("bench");
+  if (amenity === "bicycle_repair_station") kinds.add("bike_repair");
+  if (amenity === "drinking_water" || amenity === "water_point" || p.drinking_water === "yes") {
+    kinds.add("water");
+  }
+  return [...kinds];
+}
+
+function isSafePublicUtility(p: Props): boolean {
+  const isWater = p.amenity === "drinking_water" || p.amenity === "water_point" || p.drinking_water === "yes";
+  if (!isWater) return true;
+  // Snapshots can outlive the importer that produced them. Re-apply the
+  // potable-water guard here so a stale pull cannot turn a natural spring or
+  // customer-only fixture into a public drinking-water recommendation.
+  if (p.natural === "spring" || p.access === "customers") return false;
+  if (p.drinking_water === "yes" && p._osm_type && p._osm_type !== "n" && p.amenity !== "toilets") return false;
+  return true;
+}
+
+try {
+  const publicUtilities = JSON.parse(readFileSync(DIR + "public_utilities.geojson", "utf8")) as {
+    features?: Array<{ geometry?: { type?: string; coordinates?: unknown }; properties?: Props }>;
+  };
+  for (const feature of publicUtilities.features ?? []) {
+    const properties = feature.properties ?? {};
+    if (!isSafePublicUtility(properties)) continue;
+    const kinds = publicUtilityKinds(properties);
+    const point = centroid(feature.geometry);
+    if (kinds.length === 0 || !point) continue;
+    const [lng, lat] = point;
+    if (lat < s || lat > n || lng < w || lng > e) continue;
+    const municipality = resolveFrederickMunicipality({ lng, lat });
+    if (!municipality) continue;
+    // One real fixture may serve more than one job. A Myersville facility is
+    // explicitly tagged both toilets and drinking_water=yes; reducing it to a
+    // single kind made the restroom disappear from the map. Emit one stable
+    // typed row per supported role so either user intent can find it.
+    for (const kind of kinds) {
+      const id = `${kind}-${properties._osm_type ?? "n"}-${properties._osm_id ?? `${lng.toFixed(6)},${lat.toFixed(6)}`}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      out.push({
+        id,
+        kind,
+        name: properties.name?.trim() || KIND_LABEL[kind],
+        detail: detailFor(kind, properties),
+        municipality: municipality.municipality.slug,
+        lng,
+        lat,
+      });
+      counts[kind] = (counts[kind] ?? 0) + 1;
+    }
+  }
+} catch {
+  // A fresh checkout can still build from the six original static layers.
 }
 
 out.sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));

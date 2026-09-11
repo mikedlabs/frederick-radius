@@ -1,0 +1,149 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+
+import { fairTransitTravelSummary } from "@/data/fair/great-frederick-fair-2026-transit";
+
+import FairTravelPanel from "./FairTravelPanel";
+import type { FairDayArrivalView } from "./types";
+
+const options: FairDayArrivalView[] = [
+  {
+    id: "arrival-drive",
+    planChoice: "drive",
+    label: "Drive and park",
+    summary:
+      "Use I-70 Exit 56. A free accessible Fair shuttle runs from Lot D to Gate 4A.",
+    paymentLabel: "$15 infield or $10 in Lots A through D.",
+    returnLabel: "Return to your saved parking lot",
+    returnSummary: "Save the lot and entrance you used before entering.",
+    officialInfoUrl: "https://example.com/fair-parking",
+  },
+  {
+    id: "arrival-transit",
+    planChoice: "transit",
+    label: "County Transit",
+    summary: fairTransitTravelSummary(),
+    paymentLabel: "County Transit is fare-free.",
+    returnLabel: "Recheck County Transit before leaving",
+    returnSummary: "No Fair-date arrival time is confirmed.",
+    officialInfoUrl: "https://example.com/county-transit",
+  },
+  {
+    id: "arrival-drop-off",
+    planChoice: "drop-off",
+    label: "Drop-off",
+    summary: "The official guidance identifies Gate 4A for drop-off.",
+    paymentLabel: "No parking payment applies.",
+    returnLabel: "Meet your driver at Gate 4A",
+    returnSummary: "Confirm the return point with your driver before entering.",
+    officialInfoUrl: "https://example.com/fair-dropoff",
+  },
+];
+
+function render(
+  selected: FairDayArrivalView | null,
+  eventPhase: "pre-fair" | "fair-day" = "pre-fair",
+  ready = false,
+  selectedDate = "2026-09-18",
+) {
+  return renderToStaticMarkup(
+    createElement(FairTravelPanel, {
+      options,
+      selected,
+      selectedDate,
+      eventPhase,
+      ready,
+      onSelect: vi.fn(),
+      onReadyChange: vi.fn(),
+    }),
+  );
+}
+
+describe("FairTravelPanel", () => {
+  it("presents three mode-first choices and waits for one selection", () => {
+    const html = render(null);
+
+    expect(html).toContain("Drive / Park");
+    expect(html).toContain("County Transit");
+    expect(html).toContain("Drop-off");
+    expect(html.match(/type="radio"/g)).toHaveLength(3);
+    expect(html).toContain("data-fair-travel-modes");
+    expect(html.match(/data-fair-travel-choice=/g)).toHaveLength(3);
+    expect(html).toContain("Fare-free; verify Fair-day service");
+    expect(html).toContain(
+      '<span class="sr-only">Fare-free; verify Fair-day service</span>',
+    );
+    expect(html).toContain(
+      'class="mt-0.5 hidden text-[12px] leading-snug sm:block"',
+    );
+    expect(html).toMatch(
+      /class="mt-0\.5 hidden text-\[12px\] leading-snug sm:block"[^>]*aria-hidden="true"[^>]*>Fare-free; verify Fair-day service<\/span>/,
+    );
+    expect(html).not.toContain("sm:not-sr-only");
+    expect(html).toContain("Choose a travel mode to see only the steps you need.");
+    expect(html).not.toContain("Open Radius Transit");
+    expect(html).not.toContain("Device-only car memory");
+  });
+
+  it("shows only the selected transit subflow and keeps its limits prominent", () => {
+    const html = render(options[1]);
+
+    expect(html).toContain("County Transit is fare-free.");
+    expect(html).toContain("East Patrick Street at Fairground Center");
+    expect(html).toContain("6:17 AM through 9:17 PM");
+    expect(html).toContain("scheduled times, not live arrivals");
+    expect(html).not.toContain('href="/transit"');
+    expect(html).toContain('href="https://example.com/county-transit"');
+    expect(html).toContain("Check official County Transit");
+    expect(html).toContain("I checked Fair-date service");
+    expect(html).toContain(
+      "Use the published schedule as planning context and recheck County Transit before leaving.",
+    );
+    expect(html).not.toContain("$15 infield");
+    expect(html).not.toContain("Meet your driver at Gate 4A");
+  });
+
+  it("shows the shared published no-service state for a weekend Fair day", () => {
+    const html = render(options[1], "pre-fair", false, "2026-09-19");
+
+    expect(html).toContain(
+      "does not publish East Frederick Shuttle or Route 15 service",
+    );
+  });
+
+  it("offers the device-only car memory only while the Fair is underway", () => {
+    const beforeFair = render(options[0], "pre-fair");
+    const duringFair = render(options[0], "fair-day");
+
+    expect(beforeFair).toContain("Check official parking details");
+    expect(beforeFair).not.toContain("Device-only car memory");
+    expect(duringFair).toContain("Device-only car memory");
+    expect(duringFair).toContain("Save my location");
+    expect(duringFair).not.toContain("Check official parking details");
+  });
+
+  it("keeps the confirmed drop-off and return facts together", () => {
+    const html = render(options[2]);
+
+    expect(html).toContain("The official guidance identifies Gate 4A for drop-off.");
+    expect(html).toContain("Meet your driver at Gate 4A");
+    expect(html).toContain("Confirm the return point with your driver before entering.");
+    expect(html).toContain("Confirm official drop-off details");
+    expect(html).not.toContain("Fair-date service and arrival times are not confirmed");
+  });
+
+  it("shows a reversible local ready state only after explicit confirmation", () => {
+    const notReady = render(options[0]);
+    const ready = render(options[0], "pre-fair", true);
+
+    expect(notReady).toContain("Use this driving plan");
+    expect(notReady).not.toContain(
+      "This travel and return plan is marked ready on this device.",
+    );
+    expect(ready).toContain(
+      "This travel and return plan is marked ready on this device.",
+    );
+    expect(ready).toContain("Mark travel plan not ready");
+  });
+});

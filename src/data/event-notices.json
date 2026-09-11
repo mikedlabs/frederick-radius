@@ -1,0 +1,21 @@
+{
+  "_how_to": [
+    "Owner override for event cancellations and postponements. This is the fast path when an organizer announces on social media and no feed carries the change (the Alive @ Five heat cancellation, 2026-07-02).",
+    "Add a notice below, commit to main, and the deploy (~3 min) does the rest: a red banner on the event page, the event drops off What's on, and a Heads up item leads /today.",
+    "slug: the event's URL path after /events/ (open the event in the app and copy it from the address bar).",
+    "status: cancelled | postponed | advisory. advisory shows the headline and note WITHOUT calling the event off (moved indoors, delayed start, expect crowds).",
+    "headline: the one-line news for /today, e.g. 'Alive @ Five is cancelled tonight'. note: one sentence of detail, shown under the headline and on the event page.",
+    "source_url: where the organizer announced it. expires: the last Eastern day (YYYY-MM-DD) the notice shows; the day after, it retires itself. For a one-night cancellation, use the event's own date.",
+    "From a phone: github.com > this file > pencil icon > edit > commit to main. Nothing else to do."
+  ],
+  "notices": [
+    {
+      "slug": "alive-at-five-2026-08-20",
+      "status": "cancelled",
+      "headline": "Alive @ Five is cancelled tonight",
+      "note": "Downtown Frederick Partnership called off the August 20 show because of the weather.",
+      "source_url": "https://downtownfrederick.org/aliveatfive/",
+      "expires": "2026-08-20"
+    }
+  ]
+}

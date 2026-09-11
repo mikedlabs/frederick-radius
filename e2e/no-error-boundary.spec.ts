@@ -30,11 +30,14 @@ import { test, expect } from "@playwright/test";
 const PUBLIC_ROUTES = [
   "/today",
   "/events",
-  "/radius",
+  "/parks",
   "/history",
   "/about",
+  "/access",
   "/tonight",
   "/discover",
+  "/transit",
+  "/compass",
   "/m/frederick",
   "/category/food",
 ] as const;
@@ -54,14 +57,17 @@ test.describe("no ErrorBoundary fallback on first paint", () => {
         },
       ]);
 
-      const response = await page.goto(route);
+      const response = await page.goto(route, {
+        waitUntil: "domcontentloaded",
+      });
       expect(response?.status(), `${route} should not 4xx/5xx`).toBeLessThan(400);
 
-      // Wait for window.onload, then give client-side React a beat to
-      // run effects + commit (a useSyncExternalStore loop manifests
-      // during this window). `networkidle` doesn't work on routes that
-      // embed a Mapbox map — tile fetches never stop.
-      await page.waitForLoadState("load");
+      // The fallback is a React render failure, so wait for the real document
+      // and main surface instead of the browser's full `load` event. A slow
+      // image or third-party asset must not turn this render-health guard into
+      // a network-completion test.
+      await expect(page.locator("main").first()).toBeVisible();
+      await expect(page.locator("main h1").first()).toBeVisible();
       await page.waitForTimeout(1500);
 
       // ErrorBoundary.tsx renders a single distinctive headline. If it's

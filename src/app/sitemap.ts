@@ -1,27 +1,58 @@
 import type { MetadataRoute } from "next";
 import { publicPlaces } from "@/lib/loaders/places";
-import { EVENTS } from "@/data/events";
+import { allUpcoming } from "@/lib/loaders/events";
+import { venueEventsAsCards } from "@/lib/loaders/venueEvents";
+import { upcomingArchivedEventRoutes } from "@/lib/events/event-identity";
 import { MUNICIPALITIES } from "@/data/municipalities";
-import { CATEGORIES } from "@/data/categories";
+import { CATEGORIES, categoryRouteOverride, isAmenityCategory } from "@/data/categories";
+import { COLLECTIONS } from "@/data/collections";
+import { CIVIC_MOMENTS } from "@/data/civic-moments";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://frederickradius.app";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export const revalidate = 3600;
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
+  // Only canonical, indexable, 200-status URLs (T2). The root "/" 307s to
+  // /today (the answer surface is now the home entry), and /now + /radius +
+  // /guide 308-redirect — listing a redirect in the sitemap is the bug, so
+  // it stays out. /today is priority 1 and /ask is the canonical decision tool.
   const top: MetadataRoute.Sitemap = [
-    { url: `${BASE}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
-    { url: `${BASE}/now`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${BASE}/today`, lastModified: now, changeFrequency: "hourly", priority: 1 },
+    { url: `${BASE}/ask`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE}/map`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
+    { url: `${BASE}/compass`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/events`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
-    { url: `${BASE}/radius`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/open-now`, lastModified: now, changeFrequency: "hourly", priority: 0.8 },
+    { url: `${BASE}/live-music`, lastModified: now, changeFrequency: "hourly", priority: 0.7 },
+    { url: `${BASE}/beer`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    // Keys schedule + county sports events turn over daily in season.
+    { url: `${BASE}/sports`, lastModified: now, changeFrequency: "daily", priority: 0.6 },
+    // Field Notes moat content surfaces — verified, self-canonical, indexable.
+    { url: `${BASE}/happy-hour`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
+    { url: `${BASE}/brunch`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
+    { url: `${BASE}/deals`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
+    { url: `${BASE}/collections`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/nonprofits`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/history`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/archive`, lastModified: now, changeFrequency: "monthly", priority: 0.65 },
     { url: `${BASE}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
-    // /tonight, /discover, /markets, /historic, /art, /amenities all
-    // 301 to canonical homes (next.config.ts) and are intentionally
-    // dropped from the sitemap so crawlers index the canonical paths.
-    // /my-radius is user-state, not content; intentionally excluded.
-    // /submit, /welcome, /settings are forms/onboarding, disallowed
-    // in robots.ts so they don't need a sitemap entry either.
+    // Public content surfaces with self-canonicals: the directory index and
+    // county-reference pages for amenities, contacts, and communication access.
+    { url: `${BASE}/places`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
+    { url: `${BASE}/amenities`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${BASE}/parks`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${BASE}/contacts`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/access`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/pulse`, lastModified: now, changeFrequency: "hourly", priority: 0.75 },
+    { url: `${BASE}/signals`, lastModified: now, changeFrequency: "daily", priority: 0.65 },
+    // Mobile-vendor roster (roaming trucks live here, not in the places catalog).
+    { url: `${BASE}/food-trucks`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
+    // Dropped: "/now" (308→/today), "/radius" (308→
+    // /map?mode=radius) — never list a redirect. /trails remains noindex;
+    // /my-radius is user-state; /submit, /welcome, /settings,
+    // /business, /pitch, /from-above now carry robots:{index:false}.
   ];
   const places = publicPlaces().map((p) => ({
     url: `${BASE}/places/${p.slug}`,
@@ -29,9 +60,40 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: "weekly" as const,
     priority: 0.8,
   }));
-  const events = EVENTS.map((e) => ({
-    url: `${BASE}/events/${e.slug}`,
-    lastModified: now,
+  // Event window (T2): only current/upcoming within ~60 days, so the
+  // sitemap doesn't bloat with expired events. lastModified = the event's
+  // own start, not a single build timestamp.
+  const nowMs = +now;
+  const WINDOW_MS = 60 * 864e5;
+  const fallbackEvents = [...allUpcoming(now), ...venueEventsAsCards(now)];
+  const archivedEvents = await upcomingArchivedEventRoutes({
+    now,
+    horizonDays: 60,
+    timeoutMs: 700,
+  });
+  const eventRoutes = new Map<
+    string,
+    { slug: string; startsAt: string; lastModified: string }
+  >();
+  for (const event of fallbackEvents) {
+    const t = Date.parse(event.starts_at);
+    if (!Number.isFinite(t) || t < nowMs - 864e5 || t > nowMs + WINDOW_MS) continue;
+    eventRoutes.set(event.slug, {
+      slug: event.slug,
+      startsAt: event.starts_at,
+      lastModified: event.last_verified_at ?? event.starts_at,
+    });
+  }
+  for (const event of archivedEvents) {
+    eventRoutes.set(event.slug, {
+      slug: event.slug,
+      startsAt: event.startsAt,
+      lastModified: event.lastModifiedAt,
+    });
+  }
+  const events = [...eventRoutes.values()].map((event) => ({
+    url: `${BASE}/events/${event.slug}`,
+    lastModified: new Date(event.lastModified),
     changeFrequency: "daily" as const,
     priority: 0.7,
   }));
@@ -41,11 +103,37 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: "weekly" as const,
     priority: 0.85,
   }));
-  const cats = CATEGORIES.map((c) => ({
-    url: `${BASE}/category/${c.slug}`,
+  const cats = CATEGORIES
+    // Cross-surface categories redirect to their real answer (events, map,
+    // food-truck roster, etc.), so never list those redirects as pages.
+    .filter((c) => !categoryRouteOverride(c.slug))
+    // Amenity categories (restrooms, Wi-Fi, benches…) redirect to /amenities and
+    // hold zero places; utility categories (voting) are seasonal/empty. Neither
+    // is a browsable directory, so keep both out of the index (audit DQ-016).
+    .filter((c) => !isAmenityCategory(c.slug) && c.kind !== "utility")
+    .map((c) => ({
+      url: `${BASE}/category/${c.slug}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.6,
+    }));
+  // Editorial collections — each /collections/[slug] is self-canonical and
+  // indexable, but only the /collections index was listed, so the individual
+  // collection pages never entered the sitemap. (audit SEO finding)
+  const collections = COLLECTIONS.map((c) => ({
+    url: `${BASE}/collections/${c.slug}`,
     lastModified: now,
     changeFrequency: "weekly" as const,
     priority: 0.6,
   }));
-  return [...top, ...munis, ...cats, ...places, ...events];
+  // Civic-moment hubs (/moments/[slug]) — closed, prerendered set, indexable,
+  // self-canonical. High-intent timely content ("the Fourth in Frederick
+  // County") that was never advertised to crawlers. (audit 2026-07)
+  const moments = CIVIC_MOMENTS.map((m) => ({
+    url: `${BASE}/moments/${m.slug}`,
+    lastModified: now,
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
+  return [...top, ...munis, ...cats, ...collections, ...moments, ...places, ...events];
 }

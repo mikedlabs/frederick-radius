@@ -1,0 +1,47 @@
+name: Feed health
+
+# Daily tripwire for the critical external feeds the app reads (transit
+# GTFS, county rec FeatureServer, city GIS, town homepages). The script
+# probes each endpoint and exits non-zero only when a CRITICAL feed is
+# down, so this job goes red exactly when a feed has moved or died — the
+# signal an upstream change broke ingest before users notice. Add an
+# alert (Slack/email) on this workflow's failure if you want a page.
+
+on:
+  # The deployed collectors persist source health in Supabase and the nightly
+  # data-health reporter owns the alert. Keep this deeper all-source probe as
+  # an operator diagnostic instead of paying GitHub to re-probe the same URLs.
+  workflow_dispatch: {}
+
+concurrency:
+  group: feed-health
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # No `|| true` here — a critical feed being down MUST fail the job.
+      - name: Check feed health
+        env:
+          # Optional. Without it the NPS adapter is honestly reported as not
+          # configured; the workflow still checks every public/keyless source.
+          # The probe sends the value in a header and never prints it.
+          NPS_API_KEY: ${{ secrets.NPS_API_KEY }}
+        run: npm run feed:health

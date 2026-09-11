@@ -25,6 +25,20 @@
 
 const HOME_MUNI_KEY = "fr:home-muni:v1";
 const INTERESTS_KEY = "fr:interests:v1";
+const COMMUNITY_NOTES_KEY = "fr:community-notes:v1";
+const EVENTS_TOWN_KEY = "fr:events-town:v1";
+const OFFLINE_PREFERENCES_CHANGE_EVENT = "fr:offline-preferences-change";
+
+function signalOfflinePreferenceChange(): void {
+  if (
+    typeof window === "undefined"
+    || typeof window.dispatchEvent !== "function"
+    || typeof Event !== "function"
+  ) {
+    return;
+  }
+  window.dispatchEvent(new Event(OFFLINE_PREFERENCES_CHANGE_EVENT));
+}
 
 function safeStorage(): Storage | null {
   try {
@@ -67,6 +81,37 @@ export function setHomeMuni(slug: string | null): void {
     }
   } catch {
     // document.cookie can throw on locked-down setups. Fail silent.
+  }
+  signalOfflinePreferenceChange();
+}
+
+/**
+ * Last town filter used on the /events board — restored as the board's
+ * default scope on the next visit (a URL ?m= still wins). Distinct from
+ * HOME municipality on purpose: this is browsing scope ("I keep checking
+ * Brunswick's calendar"), not identity, so changing it never re-anchors
+ * the map or the near-you ranking. Device-local, no cookie mirror —
+ * /events parses its view client-side.
+ */
+export function getEventsTown(): string | null {
+  const ls = safeStorage();
+  if (!ls) return null;
+  try {
+    const v = ls.getItem(EVENTS_TOWN_KEY);
+    return v && v.length > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setEventsTown(slug: string | null): void {
+  const ls = safeStorage();
+  if (!ls) return;
+  try {
+    if (slug === null || slug === "") ls.removeItem(EVENTS_TOWN_KEY);
+    else ls.setItem(EVENTS_TOWN_KEY, slug);
+  } catch {
+    // localStorage may be full or disabled. Fail silent.
   }
 }
 
@@ -139,8 +184,37 @@ export function setInterests(slugs: string[]): void {
   } catch {
     // ignore
   }
+  signalOfflinePreferenceChange();
 }
 
 export function hasOnboardingPrefs(): boolean {
   return getHomeMuni() !== null || getInterests().length > 0;
+}
+
+/**
+ * Whether the quiet "community notes" layer on Today (Pride Month, Sunday
+ * places of worship, and any future community beat) is shown. ON by default.
+ * One topic-neutral switch governs the WHOLE layer, never a single community,
+ * so turning it off is "I don't want these notes," not "hide that group."
+ * Stored only when OFF ("0") so the default stays implicit.
+ */
+export function getCommunityNotes(): boolean {
+  const ls = safeStorage();
+  if (!ls) return true;
+  try {
+    return ls.getItem(COMMUNITY_NOTES_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+export function setCommunityNotes(enabled: boolean): void {
+  const ls = safeStorage();
+  if (!ls) return;
+  try {
+    if (enabled) ls.removeItem(COMMUNITY_NOTES_KEY);
+    else ls.setItem(COMMUNITY_NOTES_KEY, "0");
+  } catch {
+    // ignore
+  }
 }

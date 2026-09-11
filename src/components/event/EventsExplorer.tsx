@@ -1,76 +1,301 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  Search,
-  List as ListIcon,
-  CalendarDays,
-  Map as MapIcon,
-  X,
-  ChevronDown,
-  SlidersHorizontal,
-  Music,
-  Palette,
-  Apple,
-  Baby,
-  Trees,
-  Utensils,
-  Theater,
-  Activity,
-  ShoppingBag,
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { featuredEventSlugs } from "@/lib/events/featured";
+import Link from "next/link";
+import { ArrowRight, CalendarDays, ChevronDown, LocateFixed, X } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
+import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
-import SpotlightHero from "@/components/event/SpotlightHero";
+import EventsBoardDock, { type ViewKey, type EventSortKey } from "@/components/event/EventsBoardDock";
 import SectionHeading from "@/components/ui/SectionHeading";
-import { groupByHorizon } from "@/lib/eventHorizon";
-import { toQuery, type ViewState, type When } from "@/lib/view-state";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import { isUtilityEvent } from "@/lib/event-kind";
+import { groupByHorizon, isRangeListing } from "@/lib/eventHorizon";
+import {
+  collapseLaterSeries,
+  type EventBrowseSummary,
+} from "@/lib/events/browsePayload";
+import {
+  eventIntentOf,
+  eventDaypart,
+  isForKids,
+  isRecurringEvent,
+  INTENT_BY_ID,
+  type IntentId,
+} from "@/lib/events/intents";
+import { isLgbtqEvent } from "@/lib/events/lgbtq";
+import { hasDeafCommunityOrCommunicationAccess } from "@/lib/events/communication-access";
+import { type Daypart } from "@/lib/daypart";
+import { parseViewState, toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
+import type { EventSourceHealth } from "@/lib/loaders/unifiedEvents";
+import { getEventsTown, setEventsTown } from "@/lib/personalize";
+import {
+  getScope,
+  parseScope,
+  scopeToParam,
+  scopeTownSlug,
+  setScope,
+  subscribeScopeChange,
+  SCOPE_PARAM,
+  type Scope,
+} from "@/lib/scope";
+import { isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { hasPhysicalAttendance } from "@/lib/events/attendance";
+import { eventCardVisual, type EventCardVisual } from "@/components/event/eventVisuals";
+import {
+  horizonLeadVariant,
+  primaryLeadPrecedesInterestRail,
+} from "@/components/event/eventsExplorerLayout";
+import { compareForLead } from "@/lib/events/lead-rank";
+import {
+  compareEventsForDecision,
+  eventsWithDecisionDistance,
+} from "@/lib/events/decision-rank";
+import {
+  GEOLOCATION_CHANGE_EVENT,
+  readCachedPosition,
+  useGeolocation,
+} from "@/hooks/useGeolocation";
+import type { LngLat } from "@/lib/geo";
 
-function CategoryIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
-  switch (name) {
-    case "Music":
-      return <Music className={className} style={style} />;
-    case "Palette":
-      return <Palette className={className} style={style} />;
-    case "Apple":
-      return <Apple className={className} style={style} />;
-    case "Baby":
-      return <Baby className={className} style={style} />;
-    case "Trees":
-      return <Trees className={className} style={style} />;
-    case "Utensils":
-      return <Utensils className={className} style={style} />;
-    case "Theater":
-      return <Theater className={className} style={style} />;
-    case "Activity":
-      return <Activity className={className} style={style} />;
-    case "ShoppingBag":
-      return <ShoppingBag className={className} style={style} />;
-    default:
-      return <CalendarDays className={className} style={style} />;
-  }
+export type TimeKey = "all" | "today" | "weekend" | "week";
+
+/** A device-relative ranking must see the complete event population before it
+ * can honestly say "near you." Town and category filters already trigger the
+ * continuation through `anyFilter`; near-me has no town slug, so it needs an
+ * explicit contract of its own. */
+export function eventScopeNeedsCompleteData(scope: Scope | null): boolean {
+  return scope === "nearme";
 }
 
-type TimeKey = "all" | "today" | "weekend" | "week";
+export function nearbyEventsWhereLabel({
+  hasOrigin,
+  dataComplete,
+  loading,
+  failed,
+}: {
+  hasOrigin: boolean;
+  dataComplete: boolean;
+  loading: boolean;
+  failed: boolean;
+}): string {
+  if (!hasOrigin) return "Near me needs location";
+  if (dataComplete) return "Ranked near you";
+  if (failed) return "Nearby ranking unavailable";
+  if (loading) return "Ranking nearby events…";
+  return "Nearby results are partial";
+}
+
+// The eight intent ids, for the ?intent= URL codec. Mirrors IntentId in
+// lib/events/intents.ts (civic included — it's tucked in the rail, not
+// absent from the taxonomy, and a shared link to it must still restore).
+const INTENT_IDS: IntentId[] = [
+  "music", "arts", "food", "family", "sports", "outdoors", "community", "civic",
+];
+
+// Time-of-day facet — the four Eastern dayparts (shared with /today's
+// reorder spine), surfaced here as a composable filter (?tod=). Single
+// label per bucket so the chip reads plainly.
+const DAYPARTS: Array<{ key: Daypart; label: string }> = [
+  { key: "morning", label: "Morning" },
+  { key: "midday", label: "Midday" },
+  { key: "evening", label: "Evening" },
+  { key: "late", label: "Late" },
+];
+const DAYPART_KEYS: Daypart[] = DAYPARTS.map((d) => d.key);
+
+// Editorial hierarchy by TYPE, not just time: the grouped list leads
+// with draws (music, food, arts, family) and tucks civic business into a
+// quiet tail. The draw/utility call is the app-wide rule in
+// lib/event-kind.ts (taxonomy kind + a keyword net for mistagged feeds),
+// so Today / events / map can never drift on what counts as "utility."
+
+// The view lens (List / Compact / Agenda / Map) and sort options now live
+// in the masthead-dock (EventsBoardDock) — how you look at the filtered
+// set, kept visually apart from the filter caption. ViewKey / EventSortKey
+// are imported from there so both surfaces speak one vocabulary.
 
 type Props = {
+  /** Bounded, server-rendered preview. The full collection loads on intent. */
   events: EventWithMeta[];
   liveSlugs: string[];
   categories: { slug: string; name: string }[];
   towns: { slug: string; name: string }[];
+  summary: EventBrowseSummary;
+  sourceHealth: EventSourceHealth;
   /** Server-computed boundaries (avoids client TZ math + hydration drift). */
   nowISO: string;
   next24ISO: string;
-  tonightStartISO: string;
-  tonightEndISO: string;
   weekendStartISO: string;
   weekendEndISO: string;
-  /** Deep-link view, parsed server-side so first paint matches the URL. */
-  initialView?: ViewState;
 };
+
+type BrowseResponse = {
+  events: EventWithMeta[];
+  liveSlugs?: string[];
+  generatedAt: string;
+  sourceHealth?: EventSourceHealth;
+};
+
+type ReconciledBrowseResponse = {
+  events: EventWithMeta[];
+  liveSlugs: string[];
+  sourceHealth: EventSourceHealth;
+  dataComplete: boolean;
+};
+
+function eventIdentity(event: Pick<EventWithMeta, "slug" | "starts_at">): string {
+  return `${event.slug}@@${event.starts_at}`;
+}
+
+/**
+ * A deferred browse response is authoritative only when its source health is
+ * healthy. A degraded response is still useful for adding events that did
+ * arrive, but it must never erase a trustworthy server-rendered snapshot just
+ * because one or more calendars timed out.
+ *
+ * Missing health metadata also fails closed: the endpoint contract promises
+ * it, so an unlabelled response cannot honestly be treated as complete.
+ */
+export function reconcileBrowseResponse(
+  currentEvents: EventWithMeta[],
+  currentLiveSlugs: string[],
+  payload: BrowseResponse,
+): ReconciledBrowseResponse {
+  if (!Array.isArray(payload.events)) {
+    throw new Error("Events response was incomplete");
+  }
+
+  const sourceHealth = payload.sourceHealth ?? {
+    degraded: true,
+    unavailable: [],
+  };
+  const nextLiveSlugs = Array.isArray(payload.liveSlugs) ? payload.liveSlugs : [];
+
+  if (!sourceHealth.degraded) {
+    return {
+      events: payload.events,
+      liveSlugs: nextLiveSlugs,
+      sourceHealth,
+      dataComplete: true,
+    };
+  }
+
+  const merged = new Map<string, EventWithMeta>();
+  for (const event of currentEvents) merged.set(eventIdentity(event), event);
+  // Successfully loaded rows may carry a correction, so they win on identity
+  // while rows omitted by the degraded fetch remain available.
+  for (const event of payload.events) merged.set(eventIdentity(event), event);
+
+  return {
+    events: [...merged.values()],
+    liveSlugs: [...new Set([...currentLiveSlugs, ...nextLiveSlugs])],
+    sourceHealth,
+    // Keep the continuation open so a later user retry can replace this
+    // merged snapshot once every calendar answers.
+    dataComplete: false,
+  };
+}
+
+export function eventGroupRenderState({
+  summaryCount,
+  loadedCount,
+  dataComplete,
+  anyFilter,
+  sourceDegraded,
+  hasLead,
+  peek,
+}: {
+  summaryCount?: number;
+  loadedCount: number;
+  dataComplete: boolean;
+  anyFilter: boolean;
+  sourceDegraded: boolean;
+  hasLead: boolean;
+  peek: number;
+}): { groupCount: number; totalRest: number; canExpand: boolean } {
+  // A healthy bounded preview can use the server's complete summary. Once a
+  // live source is degraded, that summary is no longer a defensible total:
+  // use only the rows still available in memory so the horizon headings agree
+  // with the masthead's partial-results count.
+  const groupCount = !dataComplete && !anyFilter && !sourceDegraded
+    ? Math.max(summaryCount ?? 0, loadedCount)
+    : loadedCount;
+  const totalRest = Math.max(0, groupCount - (hasLead ? 1 : 0));
+  return {
+    groupCount,
+    totalRest,
+    canExpand: totalRest > peek,
+  };
+}
+
+export function initialBrowseIsComplete(
+  loadedCount: number,
+  summaryCount: number,
+  sourceHealth: Pick<EventSourceHealth, "degraded">,
+): boolean {
+  return loadedCount >= summaryCount && !sourceHealth.degraded;
+}
+
+export function eventsMastheadCountState({
+  loadedCount,
+  summaryCount,
+  dataComplete,
+  anyFilter,
+  sourceDegraded,
+}: {
+  loadedCount: number;
+  summaryCount: number;
+  dataComplete: boolean;
+  anyFilter: boolean;
+  sourceDegraded: boolean;
+}): { eventCount: number; complete: boolean; usesCompleteSummary: boolean } {
+  const usesCompleteSummary =
+    !dataComplete && !anyFilter && !sourceDegraded;
+  return {
+    eventCount: usesCompleteSummary ? summaryCount : loadedCount,
+    complete: dataComplete || usesCompleteSummary,
+    usesCompleteSummary,
+  };
+}
+
+export function eventsForDefaultList({
+  events,
+  view,
+  sort,
+  anyFilter,
+  bounds,
+}: {
+  events: EventWithMeta[];
+  view: ViewKey;
+  sort: EventSortKey;
+  anyFilter: boolean;
+  bounds: Parameters<typeof collapseLaterSeries>[1];
+}): EventWithMeta[] {
+  return view === "list" && sort === "recommended" && !anyFilter
+    ? collapseLaterSeries(events, bounds)
+    : events;
+}
+
+export function eventsBrowseRequest(forceRefresh = false): {
+  url: string;
+  init: RequestInit;
+} {
+  return {
+    // The explicit refresh URL has its own cache key, so it cannot receive a
+    // degraded response still resident under the normal browse URL. The API
+    // marks this response no-store as the second half of the contract.
+    url: forceRefresh ? "/api/events/browse?refresh=1" : "/api/events/browse",
+    init: {
+      headers: { Accept: "application/json" },
+      ...(forceRefresh ? { cache: "no-store" as const } : {}),
+    },
+  };
+}
 
 // Facet <-> shared ViewState. Search text is intentionally excluded: a
 // lens is a structural view, not an ephemeral query, and the confirmed
@@ -81,92 +306,508 @@ const timeToWhen = (t: TimeKey): When | undefined =>
 const whenToTime = (w?: When): TimeKey =>
   w === "today" || w === "weekend" || w === "week" ? w : "all";
 
+// One-off Eastern-day key (YYYY-MM-DD) for the day filter. Mirrors
+// the helper in WeekStrip so the explorer matches its tile keys.
+function dayKeyEastern(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
+/**
+ * Time-lens membership uses event overlap, not just a future start. The old
+ * `starts_at >= now` check made a 10 AM card disappear from Today/This week
+ * as soon as it began. Source feeds may omit or zero out an end, so the shared
+ * lifecycle rule supplies the same assumed runtime used by live badges.
+ */
+export function eventMatchesTimeWindow(
+  event: Pick<EventWithMeta, "starts_at" | "ends_at" | "is_all_day">,
+  time: TimeKey,
+  bounds: {
+    now: number;
+    next24: number;
+    weekendStart: number;
+    weekendEnd: number;
+  },
+): boolean {
+  const nowDate = new Date(bounds.now);
+  if (isEventEnded(event, nowDate)) return false;
+  if (time === "all") return true;
+
+  const start = Date.parse(event.starts_at);
+  if (!Number.isFinite(start)) return false;
+  const live = isEventLiveNow(event, nowDate);
+  const startedToday =
+    start <= bounds.now &&
+    dayKeyEastern(event.starts_at) === dayKeyEastern(nowDate.toISOString());
+  if (time === "today") {
+    return startedToday || (start >= bounds.now && start < bounds.next24);
+  }
+  if (time === "weekend") {
+    const weekendIsNow =
+      bounds.now >= bounds.weekendStart && bounds.now < bounds.weekendEnd;
+    return (
+      ((live || startedToday) && weekendIsNow) ||
+      (start >= bounds.weekendStart && start < bounds.weekendEnd)
+    );
+  }
+  return (
+    live ||
+    startedToday ||
+    (start >= bounds.now && start < bounds.now + 7 * 86_400_000)
+  );
+}
+
+// Chronological sort key. An IN-PROGRESS date-range listing (isRangeListing —
+// an exhibit, a series a feed flattened to one long window) sorts by its
+// CLOSING date, not its months-old starts_at anchor: "through Jul 5" sits
+// beside July 5's dated events (closing-soonest is the honest urgency)
+// instead of a 2022 first-day anchor dragging it to the top of every list.
+function chronoKey(e: EventWithMeta, nowISO: string): number {
+  const t = +new Date(e.starts_at);
+  return isRangeListing(e) && t <= Date.parse(nowISO) ? +new Date(e.ends_at) : t;
+}
+
 export default function EventsExplorer({
   events,
   liveSlugs,
   categories,
   towns,
+  summary,
+  sourceHealth,
   nowISO,
   next24ISO,
-  tonightStartISO,
-  tonightEndISO,
   weekendStartISO,
   weekendEndISO,
-  initialView,
 }: Props) {
-  const [cat, setCat] = useState<string | null>(initialView?.cats?.[0] ?? null);
-  const [time, setTime] = useState<TimeKey>(whenToTime(initialView?.when));
-  const [town, setTown] = useState<string | null>(initialView?.municipality ?? null);
+  // The server renders this bounded preview. The full compact corpus is kept
+  // out of React Flight and fetched only after explicit browsing intent.
+  const [eventPool, setEventPool] = useState(events);
+  const [currentLiveSlugs, setCurrentLiveSlugs] = useState(liveSlugs);
+  const [dataComplete, setDataComplete] = useState(
+    initialBrowseIsComplete(events.length, summary.totalCount, sourceHealth),
+  );
+  const [loadingAll, setLoadingAll] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const requestRef = useRef<Promise<void> | null>(null);
+  const eventPoolRef = useRef(events);
+  const liveSlugsRef = useRef(liveSlugs);
+
+  // Server-safe defaults let this Client Component emit useful static HTML.
+  // URL and device preferences are applied after hydration, then mirrored
+  // without using router query hooks (which would CSR-bail the whole board).
+  const [urlReady, setUrlReady] = useState(false);
+  const [cat, setCat] = useState<string | null>(null);
+  const [time, setTime] = useState<TimeKey>("all");
+  const [town, setTown] = useState<string | null>(null);
+  const [activeScope, setActiveScope] = useState<Scope | null>(null);
+  const [intent, setIntent] = useState<IntentId | null>(null);
+  const [sub, setSub] = useState<string | null>(null);
+  const [day, setDay] = useState<string | null>(null);
+  const [currentSourceHealth, setCurrentSourceHealth] = useState(sourceHealth);
   const [q, setQ] = useState("");
-  const [view, setView] = useState<"list" | "calendar" | "map">("list");
-  // Presentation only (NOT ViewState/lens/deeplink): the facet panel is
-  // collapsed by default so the page leads with events, not controls.
-  const [showFilters, setShowFilters] = useState(false);
+  const [view, setView] = useState<ViewKey>("list");
   const [freeOnly, setFreeOnly] = useState(false);
+  // Happy-hour-only toggle — URL-synced via ?happy=1. Predicate is a
+  // title/venue regex (no formal "happy hour" category in the schema).
+  // Added May 2026 in response to a competing iOS-only events app that
+  // led with happy hours; this surfaces the same use case from a
+  // broader product without bolting on a new event type.
+  const [happyOnly, setHappyOnly] = useState(false);
+  // ── Composable sub-facets (overhaul wave 3) — orthogonal to the intent
+  // and to each other, each backed by a field that already exists on the
+  // event and a pure predicate in lib/events/intents.ts. All URL-synced so
+  // "free evening music for kids this weekend" is one shareable query.
+  // Time of day (?tod=) — single Eastern daypart bucket via eventDaypart().
+  const [tod, setTod] = useState<Daypart | null>(null);
+  // Kid-friendly (?kids=1) — audience includes kids-0-5 / kids-6-12.
+  const [kidsOnly, setKidsOnly] = useState(false);
+  // LGBTQ+ community (?lgbtq=1) — isLgbtqEvent: conservative title match
+  // (Pride/queer/drag-performance contexts) or a verified community venue
+  // (The Frederick Center). Same composable-facet contract as the rest.
+  const [lgbtqOnly, setLgbtqOnly] = useState(false);
+  // Deaf-community programming and communication access (?access=1).
+  // This is deliberately conservative: the shared predicate only matches
+  // facts stated by the publisher (ASL, captions, assistive listening,
+  // interpreter by request) or an event published by the Maryland School
+  // for the Deaf. Radius never guesses that an accommodation is available.
+  const [communicationAccessOnly, setCommunicationAccessOnly] = useState(false);
+  // Recurring (?recurring=1) — repeats on a schedule (weekly series, etc.).
+  const [recurringOnly, setRecurringOnly] = useState(false);
+  // Recommended is the discovery-first default: distinctive draws lead each
+  // human time window, while Soonest remains one tap away for strict agenda
+  // order. A→Z and Venue switch to a flat directory view.
+  const [sort, setSort] = useState<EventSortKey>("recommended");
+  const geolocation = useGeolocation();
+  const [deviceOrigin, setDeviceOrigin] = useState<LngLat | null>(null);
+
+  // Events participates in the same consented location cache as Today, Ask,
+  // Search, and Map. A same-tab location change needs an explicit event; the
+  // browser storage event does not fire in the tab that made the change.
+  useEffect(() => {
+    const refresh = () => setDeviceOrigin(readCachedPosition());
+    refresh();
+    window.addEventListener(GEOLOCATION_CHANGE_EVENT, refresh);
+    return () => window.removeEventListener(GEOLOCATION_CHANGE_EVENT, refresh);
+  }, []);
+
+  const applyBrowserState = useCallback(() => {
+    const params = new URLSearchParams(window.location.search);
+    const parsed = parseViewState(params);
+    const lens = params.get("lens");
+    const intentParam = params.get("intent");
+    const todParam = params.get("tod");
+    const sortParam = params.get("sort");
+    const dayParam = params.get("d");
+    const bool = (key: string) => {
+      const value = params.get(key)?.toLowerCase();
+      return value === "true" || value === "1";
+    };
+
+    setCat(parsed.cats?.[0] ?? null);
+    setTime(
+      lens === "all" || lens === "today" || lens === "weekend" || lens === "week"
+        ? lens
+        : whenToTime(parsed.when),
+    );
+    // Canonical ?in= wins, then legacy ?m= (upgraded on the next URL write),
+    // then the shared scope. A remembered Events-only town is the final
+    // backwards-compatible fallback. Crucially, explicit near-me/county
+    // scopes clear the remembered town instead of silently pinning it.
+    const explicitScope = parseScope(params.get(SCOPE_PARAM));
+    const legacyTown = parsed.municipality && MUNICIPALITY_BY_SLUG[parsed.municipality]
+      ? parsed.municipality
+      : null;
+    const storedScope = getScope();
+    const remembered = getEventsTown();
+    const resolvedScope = explicitScope
+      ?? (legacyTown ? `town:${legacyTown}` as Scope : null)
+      ?? storedScope
+      ?? (remembered && MUNICIPALITY_BY_SLUG[remembered]
+        ? `town:${remembered}` as Scope
+        : null);
+    setActiveScope(resolvedScope);
+    setTown(scopeTownSlug(resolvedScope));
+    if (explicitScope || legacyTown) setScope(resolvedScope);
+    setIntent(INTENT_IDS.includes(intentParam as IntentId) ? intentParam as IntentId : null);
+    setSub(params.get("sub"));
+    setDay(dayParam && /^\d{4}-\d{2}-\d{2}$/.test(dayParam) ? dayParam : null);
+    setFreeOnly(bool("free"));
+    setHappyOnly(bool("happy"));
+    setTod(DAYPART_KEYS.includes(todParam as Daypart) ? todParam as Daypart : null);
+    setKidsOnly(bool("kids"));
+    setLgbtqOnly(bool("lgbtq"));
+    setCommunicationAccessOnly(bool("access"));
+    setRecurringOnly(bool("recurring"));
+    setSort(
+      sortParam === "time" || sortParam === "az" || sortParam === "venue"
+        ? sortParam
+        : "recommended",
+    );
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    // Run after the hydrated default paint. This preserves useful static HTML
+    // and avoids a synchronous effect cascade while still applying deep links
+    // before a person can meaningfully interact.
+    queueMicrotask(() => {
+      if (!active) return;
+      applyBrowserState();
+      setUrlReady(true);
+    });
+    window.addEventListener("popstate", applyBrowserState);
+    const unsubscribeScope = subscribeScopeChange((nextScope) => {
+      setActiveScope(nextScope);
+      setTown(scopeTownSlug(nextScope));
+    });
+    return () => {
+      active = false;
+      window.removeEventListener("popstate", applyBrowserState);
+      unsubscribeScope();
+    };
+  }, [applyBrowserState]);
+
+  const chooseTown = useCallback((nextTown: string | null) => {
+    const nextScope: Scope = nextTown ? `town:${nextTown}` : "county";
+    setActiveScope(nextScope);
+    setTown(nextTown);
+    setScope(nextScope);
+  }, []);
+
+  useEffect(() => {
+    if (urlReady) setEventsTown(town);
+  }, [town, urlReady]);
+
+  const ensureAllEvents = useCallback((forceRefresh = false): Promise<void> => {
+    if (dataComplete) return Promise.resolve();
+    if (requestRef.current) return requestRef.current;
+
+    setLoadingAll(true);
+    setLoadError(null);
+    const browseRequest = eventsBrowseRequest(forceRefresh);
+    const request = fetch(browseRequest.url, browseRequest.init)
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Events request failed (${response.status})`);
+        const payload = await response.json() as BrowseResponse;
+        const reconciled = reconcileBrowseResponse(
+          eventPoolRef.current,
+          liveSlugsRef.current,
+          payload,
+        );
+        eventPoolRef.current = reconciled.events;
+        liveSlugsRef.current = reconciled.liveSlugs;
+        setEventPool(reconciled.events);
+        setCurrentLiveSlugs(reconciled.liveSlugs);
+        setCurrentSourceHealth(reconciled.sourceHealth);
+        setDataComplete(reconciled.dataComplete);
+      })
+      .catch(() => {
+        setLoadError("Couldn’t load the rest of the calendar. Try again.");
+      })
+      .finally(() => {
+        requestRef.current = null;
+        setLoadingAll(false);
+      });
+    requestRef.current = request;
+    return request;
+  }, [dataComplete]);
+
   // Which horizon groups are expanded past their scannable peek.
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
-  const toggleGroup = (k: string) =>
+  const toggleGroup = (k: string) => {
+    if (!openGroups.has(k) && !dataComplete) void ensureAllEvents();
     setOpenGroups((prev) => {
       const next = new Set(prev);
       if (next.has(k)) next.delete(k);
       else next.add(k);
       return next;
     });
+  };
 
-  const live = useMemo(() => new Set(liveSlugs), [liveSlugs]);
+  const live = useMemo(() => new Set(currentLiveSlugs), [currentLiveSlugs]);
   const now = +new Date(nowISO);
+  const nearMeActive = eventScopeNeedsCompleteData(activeScope);
+  const contentFilterActive =
+    cat !== null || intent !== null || sub !== null || town !== null ||
+    time !== "all" || q.trim() !== "" || freeOnly || happyOnly ||
+    tod !== null || kidsOnly || lgbtqOnly || communicationAccessOnly ||
+    recurringOnly || day !== null;
+  const anyActiveControl = contentFilterActive || nearMeActive;
 
-  const filtered = useMemo(() => {
+  const decisionEventPool = useMemo(
+    () =>
+      nearMeActive && deviceOrigin
+        ? eventsWithDecisionDistance(eventPool, deviceOrigin)
+        : eventPool,
+    [deviceOrigin, eventPool, nearMeActive],
+  );
+
+  // Stage 1 — everything EXCEPT the category dimension (intent / sub /
+  // exact cat). The canonical filter sheet applies those choices in stage 2
+  // so they compose cleanly with time, town, access, and search.
+  const baseFiltered = useMemo(() => {
     const term = q.trim().toLowerCase();
-    return events.filter((e) => {
-      const t = +new Date(e.starts_at);
-      if (time === "today") {
-        const start = +new Date(tonightStartISO);
-        const end = +new Date(tonightEndISO);
-        if (!(t >= start && t < end)) {
-          const endsAt = +new Date(e.ends_at);
-          if (!(endsAt > start && t <= start)) {
-            return false;
-          }
-        }
-      }
-      if (
-        time === "weekend" &&
-        !(t >= +new Date(weekendStartISO) && t < +new Date(weekendEndISO))
-      )
-        return false;
-      if (time === "week" && !(t >= now && t < now + 7 * 864e5)) return false;
-      if (cat && e.category !== cat) return false;
+    return decisionEventPool.filter((e) => {
+      // FINISHED events never render, on ANY path. The horizon grouping
+      // already dropped them, but the flat paths — the week ribbon's ?d= day
+      // view, search results, the A-Z/venue sorts — filtered by start-day
+      // only, so tapping "today" at 11 PM listed the whole day's ended
+      // events as if they were still worth your time. One gate here covers
+      // every mode. (All-day events run to the end of their Eastern day.)
+      if (!eventMatchesTimeWindow(e, day ? "all" : time, {
+        now,
+        next24: +new Date(next24ISO),
+        weekendStart: +new Date(weekendStartISO),
+        weekendEnd: +new Date(weekendEndISO),
+      })) return false;
+      // Day filter wins over time-window filters when both are set.
+      if (day && dayKeyEastern(e.starts_at) !== day) return false;
       if (town && e.municipality !== town) return false;
       if (freeOnly && !e.is_free) return false;
+      if (tod && eventDaypart(e) !== tod) return false;
+      if (kidsOnly && !isForKids(e)) return false;
+      if (lgbtqOnly && !isLgbtqEvent(e)) return false;
+      if (
+        communicationAccessOnly &&
+        !hasDeafCommunityOrCommunicationAccess(e)
+      ) return false;
+      if (recurringOnly && !isRecurringEvent(e)) return false;
+      if (happyOnly) {
+        // Match against title + venue + description so we catch both
+        // event-level happy hours ("Tuesday happy hour at X") and the
+        // venue-level recurring lineups some publishers tag this way.
+        const hay = `${e.title} ${e.venue_name ?? ""} ${e.description ?? ""}`;
+        if (!/\bhappy\s*hour\b/i.test(hay)) return false;
+      }
       if (
         term &&
-        !`${e.title} ${e.venue_name ?? ""} ${e.category_name ?? ""}`
+        !`${e.title} ${e.venue_name ?? ""} ${e.category_name ?? ""} ${e.description ?? ""} ${e.organizer ?? ""} ${e.source}`
           .toLowerCase()
           .includes(term)
       )
         return false;
       return true;
     });
-  }, [events, time, cat, town, q, freeOnly, now, tonightStartISO, tonightEndISO, weekendStartISO, weekendEndISO]);
+  }, [decisionEventPool, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
 
-  // Group the filtered list into human horizons so the default view is
+  // Stage 2 — the category dimension (intent roll-up + sub + the legacy
+  // exact-cat from the Type drawer / deep-links), then the chosen sort.
+  // Recommended and Soonest both retain the human time horizons. A→Z and
+  // Venue are deliberate directory modes and render as flat lists below.
+  // Owner-featured slugs float to the top of Recommended. Resolved once per
+  // mount; the JSON is tiny and day-keyed, so a session never needs to poll.
+  const [featured] = useState(() => featuredEventSlugs(new Date()));
+
+  const filtered = useMemo(() => {
+    const sortFn = (a: EventWithMeta, b: EventWithMeta): number => {
+      if (sort === "recommended") {
+        return nearMeActive && deviceOrigin
+          ? compareEventsForDecision(a, b, featured)
+          : compareForLead(a, b, featured);
+      }
+      if (sort === "az")
+        return (a.title ?? "").localeCompare(b.title ?? "", undefined, { sensitivity: "base" });
+      if (sort === "venue") {
+        const va = (a.venue_name ?? "").toLowerCase();
+        const vb = (b.venue_name ?? "").toLowerCase();
+        // Within a venue, fall through to chronological so a venue
+        // cluster reads top-to-bottom as a venue schedule.
+        if (va !== vb) return va.localeCompare(vb);
+      }
+      return chronoKey(a, nowISO) - chronoKey(b, nowISO);
+    };
+    return baseFiltered
+      .filter((e) => {
+        if (intent && eventIntentOf(e) !== intent) return false;
+        if (sub && e.category !== sub) return false;
+        if (cat && e.category !== cat) return false;
+        return true;
+      })
+      .sort(sortFn);
+  }, [baseFiltered, intent, sub, cat, sort, nowISO, featured, nearMeActive, deviceOrigin]);
+
+  // A healthy server snapshot knows the complete unfiltered totals even
+  // though the first React payload contains only a bounded preview. Once a
+  // query narrows that preview—or a source reports degradation—the board can
+  // only claim what is currently loaded. This prevents a partial 27/3 result
+  // from presenting itself like a countywide total before the continuation
+  // replaces it with (for example) 838/10.
+  const mastheadCount = eventsMastheadCountState({
+    loadedCount: filtered.length,
+    summaryCount: summary.totalCount,
+    dataComplete,
+    anyFilter: contentFilterActive,
+    sourceDegraded: currentSourceHealth.degraded,
+  });
+  const filteredTownCount = useMemo(
+    () => new Set(filtered.map((event) => event.municipality).filter(Boolean)).size,
+    [filtered],
+  );
+
+  // A recovered continuation can contain towns/categories that were absent
+  // from a degraded server snapshot. Rebuild the facet vocabulary from the
+  // current pool so the count and filter sheet recover together.
+  const availableTowns = useMemo(() => {
+    const bySlug = new Map(towns.map((item) => [item.slug, item]));
+    for (const event of eventPool) {
+      if (!event.municipality) continue;
+      bySlug.set(event.municipality, {
+        slug: event.municipality,
+        name:
+          MUNICIPALITY_BY_SLUG[event.municipality]?.name ??
+          event.municipality_name ??
+          event.municipality,
+      });
+    }
+    return [...bySlug.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [eventPool, towns]);
+  const availableCategories = useMemo(() => {
+    const bySlug = new Map(categories.map((item) => [item.slug, item]));
+    for (const event of eventPool) {
+      if (!event.category) continue;
+      bySlug.set(event.category, {
+        slug: event.category,
+        name: event.category_name ?? event.category,
+      });
+    }
+    return [...bySlug.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [categories, eventPool]);
+  const mastheadTownCount = mastheadCount.usesCompleteSummary
+    ? availableTowns.length
+    : filteredTownCount;
+
+  // Collapse repeated series only for the untouched Recommended list. The
+  // master `filtered` collection deliberately keeps every dated occurrence so
+  // Calendar, day links, map, search, and explicit filters can reach them.
+  const defaultListEvents = useMemo(
+    () =>
+      eventsForDefaultList({
+        events: filtered,
+        view,
+        sort,
+        anyFilter: contentFilterActive,
+        bounds: {
+          now,
+          next24: +new Date(next24ISO),
+          weekendStart: +new Date(weekendStartISO),
+          weekendEnd: +new Date(weekendEndISO),
+          live,
+        },
+      }),
+    [
+      contentFilterActive,
+      filtered,
+      live,
+      next24ISO,
+      now,
+      sort,
+      view,
+      weekendEndISO,
+      weekendStartISO,
+    ],
+  );
+
+  // Split the visible default-list set by TYPE so the grouped list leads with what
+  // people actually come for; civic business sinks into a quiet tail
+  // below (still one tap away). Only the default "list" view splits —
+  // the Compact / Calendar / Map lenses keep the full set, since those
+  // are deliberate "show me everything" modes.
+  const crowdFiltered = useMemo(
+    () => defaultListEvents.filter((e) => !isUtilityEvent(e)),
+    [defaultListEvents],
+  );
+  const utilityFiltered = useMemo(
+    () => defaultListEvents.filter((e) => isUtilityEvent(e)),
+    [defaultListEvents],
+  );
+
+  // Group the CROWD list into human horizons so the default view is
   // navigable at a glance instead of a 400-row chronological scroll.
   const horizonGroups = useMemo(
     () =>
-      groupByHorizon(filtered, {
+      groupByHorizon(crowdFiltered, {
         now,
         next24: +new Date(next24ISO),
         weekendStart: +new Date(weekendStartISO),
         weekendEnd: +new Date(weekendEndISO),
         live,
       }),
-    [filtered, now, next24ISO, weekendStartISO, weekendEndISO, live],
+    [crowdFiltered, now, next24ISO, weekendStartISO, weekendEndISO, live],
   );
 
   const mapPins = useMemo(
     () =>
-      filtered.map((e) => ({
+      filtered
+        .filter(
+          (e) =>
+            hasPhysicalAttendance(e) &&
+            (e.geo_confidence === "venue_match" || e.geo_confidence === "exact_address"),
+        )
+        .map((e) => ({
         slug: e.slug,
         title: e.title,
         geom: e.geom,
@@ -179,344 +820,691 @@ export default function EventsExplorer({
   const viewState = useMemo<ViewState>(
     () => ({
       cats: cat ? [cat] : undefined,
-      municipality: town ?? undefined,
       when: timeToWhen(time),
     }),
-    [cat, town, time],
+    [cat, time],
   );
 
-  // Mirror the structural view into the URL (deep-linkable, shareable).
-  // Initial state is parsed server-side (initialView), so no hydrate
-  // effect is needed. history.replaceState, not router navigation:
-  // filtering is fully client-side, so re-running the page's live-feed
-  // loaders would be wasteful. Search text stays out of the URL by design.
+  // Mirror the complete shareable filter state into the URL. This uses the
+  // History API directly so the page remains a static, server-rendered route;
+  // browser back/forward is restored by applyBrowserState's popstate listener.
+  // Search text and the visual mode stay local by design.
   useEffect(() => {
-    const qs = toQuery(viewState);
-    const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    if (!urlReady) return;
+    const sp = new URLSearchParams(window.location.search);
+    for (const key of [
+      "cats", "m", SCOPE_PARAM, "when", "d", "lens", "tod", "intent", "sub",
+      "free", "happy", "kids", "lgbtq", "access", "recurring", "sort",
+    ]) sp.delete(key);
+    const structural = new URLSearchParams(toQuery(viewState));
+    for (const [k, v] of structural) sp.set(k, v);
+    if (activeScope) sp.set(SCOPE_PARAM, scopeToParam(activeScope));
+    if (day) sp.set("d", day);
+    if (time !== "all") sp.set("lens", time);
+    if (tod) sp.set("tod", tod);
+    if (intent) sp.set("intent", intent);
+    if (sub) sp.set("sub", sub);
+    if (freeOnly) sp.set("free", "true");
+    if (happyOnly) sp.set("happy", "true");
+    if (kidsOnly) sp.set("kids", "true");
+    if (lgbtqOnly) sp.set("lgbtq", "true");
+    if (communicationAccessOnly) sp.set("access", "true");
+    if (recurringOnly) sp.set("recurring", "true");
+    if (sort !== "recommended") sp.set("sort", sort);
+    const full = sp.toString();
+    const url = full ? `${window.location.pathname}?${full}` : window.location.pathname;
     window.history.replaceState(null, "", url);
-  }, [viewState]);
+  }, [viewState, activeScope, day, time, tod, intent, sub, freeOnly, happyOnly, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly, sort, urlReady]);
 
-  const anyFilter =
-    cat !== null || town !== null || time !== "all" || q.trim() !== "" || freeOnly;
-  // Count only the panel facets (search is its own visible field).
-  const filterCount = (cat !== null ? 1 : 0) + (town !== null ? 1 : 0);
+  // The bounded preview is sufficient for the default list. Every operation
+  // that promises a complete answer promotes the cached continuation exactly
+  // once. Fetch is deduplicated by requestRef.
+  useEffect(() => {
+    if (!urlReady || dataComplete) return;
+    if (anyActiveControl || view !== "list" || sort !== "recommended" || openGroups.size > 0) {
+      queueMicrotask(() => void ensureAllEvents());
+    }
+  }, [anyActiveControl, dataComplete, ensureAllEvents, openGroups, sort, urlReady, view]);
+
   const clear = () => {
     setCat(null);
-    setTown(null);
+    setIntent(null);
+    setSub(null);
+    chooseTown(null);
+    setDay(null);
     setTime("all");
     setQ("");
     setFreeOnly(false);
+    setHappyOnly(false);
+    setTod(null);
+    setKidsOnly(false);
+    setLgbtqOnly(false);
+    setCommunicationAccessOnly(false);
+    setRecurringOnly(false);
   };
 
-  // One-tap intent chips — what people actually open an events page
-  // for. They drive the existing state; the deeper facets stay in the
-  // Filters drawer so the main area leads with these, not controls.
-  const QUICK: { key: string; label: string; on: boolean; toggle: () => void }[] = [
-    { key: "tonight", label: "Tonight", on: time === "today", toggle: () => setTime(time === "today" ? "all" : "today") },
-    { key: "weekend", label: "This weekend", on: time === "weekend", toggle: () => setTime(time === "weekend" ? "all" : "weekend") },
-    { key: "free", label: "Free", on: freeOnly, toggle: () => setFreeOnly((v) => !v) },
-  ];
+  // Active facets as one-tap "drop this" relaxations — the honest empty
+  // state names exactly what's narrowing the list and lets the user widen
+  // one constraint at a time instead of a blunt "Clear all". Built in the
+  // order a user is most likely to want to relax (the sharpest filters
+  // first). Labels resolve to the human name, not the raw slug.
+  const relaxations: { key: string; label: string; drop: () => void }[] = [];
+  if (intent) relaxations.push({ key: "intent", label: INTENT_BY_ID[intent].label, drop: () => { setIntent(null); setSub(null); } });
+  if (sub) relaxations.push({ key: "sub", label: categories.find((c) => c.slug === sub)?.name ?? sub, drop: () => setSub(null) });
+  if (cat) relaxations.push({ key: "cat", label: categories.find((c) => c.slug === cat)?.name ?? cat, drop: () => setCat(null) });
+  if (tod) relaxations.push({ key: "tod", label: DAYPARTS.find((d) => d.key === tod)?.label ?? tod, drop: () => setTod(null) });
+  if (kidsOnly) relaxations.push({ key: "kids", label: "Kid-friendly", drop: () => setKidsOnly(false) });
+  if (lgbtqOnly) relaxations.push({ key: "lgbtq", label: "LGBTQ+", drop: () => setLgbtqOnly(false) });
+  if (communicationAccessOnly) relaxations.push({ key: "access", label: "Deaf community & access", drop: () => setCommunicationAccessOnly(false) });
+  if (recurringOnly) relaxations.push({ key: "recurring", label: "Recurring", drop: () => setRecurringOnly(false) });
+  if (freeOnly) relaxations.push({ key: "free", label: "Free", drop: () => setFreeOnly(false) });
+  if (happyOnly) relaxations.push({ key: "happy", label: "Happy hour", drop: () => setHappyOnly(false) });
+  // Resolve the town name from the canonical municipality vocab, not just the
+  // event-derived towns list — a town with zero matching events would
+  // otherwise render as its raw slug ("burkittsville") in the zero state.
+  if (town) relaxations.push({ key: "town", label: towns.find((t) => t.slug === town)?.name ?? MUNICIPALITY_BY_SLUG[town]?.name ?? town, drop: () => chooseTown(null) });
+  if (time !== "all") relaxations.push({ key: "time", label: time === "today" ? "Today" : time === "weekend" ? "This weekend" : "This week", drop: () => setTime("all") });
+  if (day) relaxations.push({ key: "day", label: "That day", drop: () => setDay(null) });
 
+  const primaryHorizon = horizonGroups[0];
+  const primaryLead = primaryHorizon?.events[0] ?? null;
+  const showPrimaryLeadBeforeRail = primaryLeadPrecedesInterestRail({
+    view,
+    sort,
+    resultCount: filtered.length,
+    horizonCount: horizonGroups.length,
+  });
+
+  // Sheet boundary: a plain tap on any event link below opens the
+  // EventSheet in place (essentials without a page navigation; the
+  // full page stays one tap away and every anchor stays real).
+  // Modified clicks and unknown slugs fall through to navigation.
   return (
-    <div className="space-y-6">
-      {/* Spotlight Hero Carousel - Flagship focal point at the top */}
-      {!anyFilter && view === "list" && (
-        <div className="stagger-item">
-          <SpotlightHero events={events} />
+    <div
+      data-events-interaction-ready={urlReady ? "true" : "false"}
+      data-events-complete={dataComplete ? "true" : "false"}
+      aria-busy={!urlReady || loadingAll}
+    >
+      {!urlReady ? (
+        <section
+          data-events-restoring-view
+          role="status"
+          aria-live="polite"
+          className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)]"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <div className="flex items-center gap-3 border-b px-4 py-4" style={{ borderColor: "var(--app-border)" }}>
+            <span
+              aria-hidden
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+              style={{
+                background: "var(--app-brand-tint-6)",
+                color: "var(--app-brand-press)",
+              }}
+            >
+              <CalendarDays className="h-5 w-5" strokeWidth={1.8} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[15px] font-extrabold tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+                Setting your local view
+              </p>
+              <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                Radius is restoring your town, time, and event filters.
+              </p>
+            </div>
+          </div>
+          <div aria-hidden className="space-y-3 p-4">
+            <div className="h-10 animate-pulse rounded-full bg-[var(--app-bg-sunken)] motion-reduce:animate-none" />
+            <div className="h-48 animate-pulse rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] motion-reduce:animate-none" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="h-20 animate-pulse rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] motion-reduce:animate-none" />
+              <div className="h-20 animate-pulse rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] motion-reduce:animate-none" />
+            </div>
+          </div>
+        </section>
+      ) : null}
+      <noscript>
+        <p className="rounded-[var(--app-radius-md)] border p-4 text-[13px]" style={{ borderColor: "var(--app-border)" }}>
+          Turn on JavaScript to restore local event filters and browse the interactive calendar.
+        </p>
+      </noscript>
+      <div data-events-personalized-view hidden={!urlReady}>
+      <EventSheetBoundary events={eventPool} fetchFull className="space-y-3">
+      {/* The masthead-dock — the almanac nameplate, one filter doorway, the
+          mono count line, and the display controls. What, When, and Where stay
+          inside the filter sheet instead of occupying the results horizon.
+          Every filter param and the results engine below are untouched: the
+          dock is pure control chrome over this
+          component's state. Saved events live on /my-radius now, so there's
+          no saved rail above the first event — the board leads with events. */}
+      <EventsBoardDock
+        nowISO={nowISO}
+        dayCounts={summary.dayCounts}
+        filteredCount={mastheadCount.eventCount}
+        resultTownCount={mastheadTownCount}
+        countComplete={mastheadCount.complete}
+        categories={availableCategories}
+        towns={availableTowns}
+        whereLabel={
+          nearMeActive
+            ? nearbyEventsWhereLabel({
+                hasOrigin: Boolean(deviceOrigin),
+                dataComplete,
+                loading: loadingAll,
+                failed: Boolean(loadError),
+              })
+            : null
+        }
+        intent={intent}
+        setIntent={setIntent}
+        sub={sub}
+        setSub={setSub}
+        cat={cat}
+        setCat={setCat}
+        lens={time}
+        setLens={setTime}
+        tod={tod}
+        setTod={setTod}
+        day={day}
+        setDay={setDay}
+        town={town}
+        setTown={chooseTown}
+        q={q}
+        setQ={setQ}
+        freeOnly={freeOnly}
+        setFreeOnly={setFreeOnly}
+        happyOnly={happyOnly}
+        setHappyOnly={setHappyOnly}
+        kidsOnly={kidsOnly}
+        setKidsOnly={setKidsOnly}
+        lgbtqOnly={lgbtqOnly}
+        setLgbtqOnly={setLgbtqOnly}
+        communicationAccessOnly={communicationAccessOnly}
+        setCommunicationAccessOnly={setCommunicationAccessOnly}
+        recurringOnly={recurringOnly}
+        setRecurringOnly={setRecurringOnly}
+        anyFilter={anyActiveControl}
+        clear={clear}
+        view={view}
+        setView={setView}
+        sort={sort}
+        setSort={setSort}
+      />
+
+      {nearMeActive && !deviceOrigin ? (
+        <section
+          role="status"
+          aria-label="Location needed for nearby events"
+          className="flex min-w-0 items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5"
+          style={{
+            borderColor: "var(--app-border)",
+            background: "var(--app-bg-elevated-solid)",
+          }}
+        >
+          <LocateFixed
+            aria-hidden
+            className="h-4 w-4 shrink-0"
+            strokeWidth={2.2}
+            style={{ color: "var(--app-brand-press)" }}
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              {geolocation.state.status === "denied"
+                ? "Location is blocked for this site."
+                : geolocation.state.status === "unavailable"
+                  ? "This device cannot share a location."
+                  : geolocation.state.status === "error"
+                    ? "Radius could not read your location."
+                    : "Use your location to rank nearby events."}
+            </span>
+            <span className="mt-0.5 block text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              {geolocation.state.status === "denied"
+                ? "Allow location in your browser, or choose a town under Where."
+                : geolocation.state.status === "unavailable"
+                  ? "Choose a town under Where to narrow the countywide board."
+                  : geolocation.state.status === "error"
+                    ? "Try again, or choose a town under Where."
+                    : "Until then, the board stays countywide and does not claim a distance."}
+            </span>
+          </span>
+          {geolocation.state.status !== "denied" &&
+          geolocation.state.status !== "unavailable" ? (
+            <button
+              type="button"
+              onClick={() => geolocation.request()}
+              disabled={geolocation.state.status === "loading"}
+              className="tap-44-y inline-flex min-h-11 shrink-0 items-center px-1 text-[11px] font-semibold disabled:opacity-55"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              {geolocation.state.status === "loading"
+                ? "Locating…"
+                : geolocation.state.status === "error"
+                  ? "Try again"
+                  : "Use location"}
+            </button>
+          ) : null}
+        </section>
+      ) : null}
+
+      {showPrimaryLeadBeforeRail && primaryLead && (
+        <div data-events-primary-lead="before-interest">
+          <PromotedEvent
+            event={primaryLead}
+            visual={eventCardVisual(primaryLead)}
+            live={live.has(primaryLead.slug)}
+            priorityImage
+            nowISO={nowISO}
+          />
         </div>
       )}
 
-      {/* Visual Category Exploration Rail */}
-      <div className="stagger-item">
-        <div className="-mx-4 px-4 overflow-x-auto flex gap-5 pb-3 scrollbar-none" role="group" aria-label="Explore by category">
-          {categories.map((c) => {
-            const isSelected = cat === c.slug;
-            const catData = CATEGORY_BY_SLUG[c.slug];
-            const accentColor = catData?.color ?? "var(--app-brand)";
-            const iconName = catData?.icon ?? "CalendarDays";
-
-            return (
-              <button
-                key={c.slug}
-                type="button"
-                onClick={() => setCat(isSelected ? null : c.slug)}
-                className="flex flex-col items-center gap-1.5 shrink-0 select-none outline-none group cursor-pointer"
-                aria-pressed={isSelected}
-              >
-                <div
-                  className="h-14 w-14 rounded-full flex items-center justify-center border transition-all duration-300 relative shadow-[var(--app-shadow-1)] hover:scale-105 active:scale-95"
-                  style={{
-                    background: isSelected
-                      ? `color-mix(in srgb, ${accentColor} 12%, var(--app-bg-elevated))`
-                      : "var(--app-bg-elevated)",
-                    borderColor: isSelected ? accentColor : "var(--app-border)",
-                    boxShadow: isSelected ? `0 0 12px 0 color-mix(in srgb, ${accentColor} 20%, transparent)` : undefined,
-                  }}
-                >
-                  <CategoryIcon
-                    name={iconName}
-                    className="h-[22px] w-[22px] transition-transform duration-300 group-hover:scale-110"
-                    style={{ color: isSelected ? accentColor : "var(--app-ink-3)" }}
-                  />
-                </div>
-                <span
-                  className="text-[10px] font-bold tracking-wider uppercase text-center max-w-[70px] truncate"
-                  style={{ color: isSelected ? "var(--app-ink)" : "var(--app-ink-2)" }}
-                >
-                  {c.name}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Quick intent — the lead affordance. One tap for what people
-          actually want; deeper facets stay tucked in Filters. */}
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Quick filters">
-        {QUICK.map((c) => (
-          <button
-            key={c.key}
-            type="button"
-            onClick={c.toggle}
-            aria-pressed={c.on}
-            className={`rounded-full px-3.5 py-2 text-[13px] font-semibold transition active:scale-[0.94] ${c.on ? "" : "tactile tactile-interactive"}`}
-            style={{
-              background: c.on
-                ? "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))"
-                : "var(--app-bg-elevated)",
-              color: c.on ? "white" : "var(--app-ink-2)",
-              boxShadow: c.on ? "var(--app-elev-2)" : undefined,
-              transitionTimingFunction: "var(--app-ease-spring)",
-            }}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Search + view toggle */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
-            style={{ color: "var(--app-ink-3)" }}
-            aria-hidden
-          />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search events, venues…"
-            aria-label="Search events"
-            className="tactile w-full rounded-full py-2.5 pl-9 pr-3 text-sm"
-            style={{
-              background: "var(--app-bg-elevated)",
-              color: "var(--app-ink)",
-            }}
-          />
-        </div>
-        <div
-          className="tactile inline-flex shrink-0 overflow-hidden rounded-full"
-          role="tablist"
-          aria-label="View"
-        >
-          {(
-            [
-              ["list", ListIcon, "List"],
-              ["calendar", CalendarDays, "Agenda"],
-              ["map", MapIcon, "Map"],
-            ] as const
-          ).map(([key, Icon, label]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={view === key}
-              onClick={() => setView(key)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold"
-              style={{
-                background: view === key ? "var(--app-brand)" : "var(--app-bg-elevated)",
-                color: view === key ? "white" : "var(--app-ink-2)",
-              }}
-            >
-              <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* One Filters button instead of an always-on facet wall, so the
-          page leads with events. The facets (type/town) tuck into a
-          panel. State / ViewState / lens / deeplink wiring is unchanged
-          — this is purely how the controls are presented. */}
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setShowFilters((v) => !v)}
-          aria-expanded={showFilters}
-          aria-controls="evt-filter-panel"
-          className="tactile inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition"
+      {currentSourceHealth.degraded && (
+        <details
+          className="group rounded-[var(--app-radius-md)] border px-3 text-[12px] leading-relaxed"
           style={{
-            background:
-              filterCount > 0
-                ? "color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated))"
-                : "var(--app-bg-elevated)",
-            color: filterCount > 0 ? "var(--app-brand)" : "var(--app-ink-2)",
+            borderColor: "color-mix(in srgb, var(--app-warning) 35%, var(--app-border))",
+            background: "color-mix(in srgb, var(--app-warning) 7%, var(--app-bg-elevated))",
+            color: "var(--app-ink-2)",
           }}
         >
-          <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-          Filters
-          {filterCount > 0 && (
-            <span
-              className="inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
-              style={{ background: "var(--app-brand)" }}
-            >
-              {filterCount}
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 font-semibold">
+            <span>Why these results are partial</span>
+            <ChevronDown
+              className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
+              strokeWidth={2.2}
+              aria-hidden
+            />
+          </summary>
+          <div className="flex items-start justify-between gap-3 border-t py-3" style={{ borderColor: "var(--app-border)" }}>
+            <span>
+              {!dataComplete
+                ? "Some live calendars did not answer. Radius kept the last available events instead of treating missing feeds as empty."
+                : "Some live calendars did not answer. This board only includes events Radius could confirm."}
             </span>
-          )}
-          <ChevronDown
-            className="h-3.5 w-3.5 transition-transform"
-            strokeWidth={2.25}
-            style={{ transform: showFilters ? "rotate(180deg)" : "none", color: "var(--app-ink-3)" }}
-            aria-hidden
-          />
-        </button>
-        <span className="ml-auto text-xs" style={{ color: "var(--app-ink-3)" }}>
-          {filtered.length} {filtered.length === 1 ? "event" : "events"}
-          {anyFilter && (
-            <button
-              type="button"
-              onClick={clear}
-              className="ml-2 inline-flex items-center gap-1 font-semibold"
-              style={{ color: "var(--app-brand)" }}
-            >
-              <X className="h-3 w-3" aria-hidden /> Clear
-            </button>
-          )}
-        </span>
-      </div>
+            {!dataComplete && (
+              <button
+                type="button"
+                onClick={() => void ensureAllEvents(true)}
+                className="tap-44-y inline-flex min-h-11 shrink-0 items-center font-semibold underline"
+                style={{ color: "var(--app-cool)" }}
+              >
+                Check again
+              </button>
+            )}
+          </div>
+        </details>
+      )}
 
-      {showFilters && (
-        <div
-          id="evt-filter-panel"
-          className="tactile flex flex-wrap items-center gap-2 rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] p-2.5"
+      {loadingAll && (
+        <p
+          role="status"
+          className="rounded-[var(--app-radius-md)] px-3 py-2 text-center text-[12px]"
+          style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}
         >
-          <div className="relative">
-            <label htmlFor="evt-cat" className="sr-only">Filter by type</label>
-            <select
-              id="evt-cat"
-              value={cat ?? ""}
-              onChange={(e) => setCat(e.target.value || null)}
-              className="appearance-none rounded-full border bg-[var(--app-bg-elevated)] py-2 pl-3.5 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-            >
-              <option value="">All types</option>
-              {categories.map((c) => (
-                <option key={c.slug} value={c.slug}>{c.name}</option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-          </div>
-          <div className="relative">
-            <label htmlFor="evt-town" className="sr-only">Filter by town</label>
-            <select
-              id="evt-town"
-              value={town ?? ""}
-              onChange={(e) => setTown(e.target.value || null)}
-              className="appearance-none rounded-full border bg-[var(--app-bg-elevated)] py-2 pl-3.5 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-            >
-              <option value="">All towns</option>
-              {towns.map((t) => (
-                <option key={t.slug} value={t.slug}>{t.name}</option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-          </div>
+          Loading the complete calendar…
+        </p>
+      )}
+      {loadError && (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-3 py-2 text-[12px]"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+        >
+          <span>{loadError}</span>
+          <button
+            type="button"
+            onClick={() => void ensureAllEvents(true)}
+            className="tap-44-y inline-flex min-h-11 shrink-0 items-center font-semibold underline"
+            style={{ color: "var(--app-cool)" }}
+          >
+            Retry
+          </button>
         </div>
       )}
 
       {/* Results */}
+      <div aria-busy={loadingAll} className="space-y-3">
       {view === "calendar" ? (
         <EventAgenda events={filtered} nowMs={now} />
       ) : view === "map" ? (
         <EventsMap events={mapPins} />
-      ) : filtered.length === 0 ? (
-        <p
-          className="rounded-[var(--app-radius-lg)] border px-4 py-8 text-center text-sm"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+      ) : view === "compact" && filtered.length > 0 ? (
+        // Compact "Rolodex" mode — flat list of 48px rows, no horizon
+        // grouping, no feature card. Capped at 200 since each row is
+        // ~⅕ the height of a feature card. The user is here for
+        // density, not browsing.
+        <ol
+          className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
+          style={{
+            borderColor: "var(--app-border)",
+            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+          }}
         >
-          No events match these filters yet.
-          {anyFilter && (
-            <button type="button" onClick={clear} className="ml-1 font-semibold" style={{ color: "var(--app-brand)" }}>
-              Clear filters
-            </button>
+          {filtered.slice(0, 200).map((e) => (
+            <li key={`${e.slug}-${e.starts_at}`}>
+              <EventCard event={e} variant="compact" nowISO={nowISO} />
+            </li>
+          ))}
+          {filtered.length > 200 && (
+            <li
+              className="px-3 py-3 text-center text-[11px]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Showing the first 200. Tighten filters or switch to the calendar view for the long tail.
+            </li>
           )}
-        </p>
+        </ol>
+      ) : filtered.length === 0 ? (
+        // Composed empty state — soft category-tinted block, serif line,
+        // one quiet sentence, primary action. Replaces the bare bordered
+        // text-only message.
+        <div
+          className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] px-6 py-10 text-center"
+          style={{
+            background:
+              "radial-gradient(80% 60% at 30% 20%, color-mix(in srgb, var(--section-accent, var(--app-brand)) 14%, var(--app-bg-elevated)), var(--app-bg-elevated))",
+          }}
+        >
+          <span
+            aria-hidden
+            className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full"
+            style={{
+              background: "color-mix(in srgb, var(--section-accent, var(--app-brand)) 22%, var(--app-bg-elevated))",
+              color: "var(--section-accent, var(--app-brand))",
+            }}
+          >
+            <CalendarDays className="h-6 w-6" strokeWidth={1.5} />
+          </span>
+          <h3
+            className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Nothing fits these filters
+          </h3>
+          <p
+            className="mx-auto mt-1 max-w-xs text-[13px] text-pretty"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            {relaxations.length > 0
+              ? "Drop a filter to widen the search. The list updates the moment something matches."
+              : "Try a wider time window or fewer types. The list updates as soon as something matches."}
+          </p>
+          {/* Honest relaxations — name each active filter and let the user
+              widen ONE at a time, sharpest first. Beats a blunt "Clear all"
+              when only one constraint is the culprit. */}
+          {relaxations.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+              {relaxations.map((r) => (
+                <button
+                  key={r.key}
+                  type="button"
+                  onClick={r.drop}
+                  className="tap-44-y inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold tactile tactile-interactive"
+                  style={{
+                    background: "var(--app-bg-elevated)",
+                    color: "var(--app-ink-2)",
+                    boxShadow: "inset 0 0 0 1px var(--app-border)",
+                  }}
+                >
+                  <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+                  {r.label}
+                </button>
+              ))}
+              {relaxations.length > 1 && (
+                <button
+                  type="button"
+                  onClick={clear}
+                  className="tap-44-y inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold tactile tactile-interactive"
+                  style={{ background: "var(--app-bg-elevated)", color: "var(--section-accent, var(--app-brand))" }}
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ) : sort === "az" || sort === "venue" ? (
+        // User-driven sort (A→Z or by venue): drop the horizon
+        // grouping so the order the user chose is the order they see.
+        // Capped at 100 to keep the page snappy; the rest are reachable
+        // by tightening filters or switching to the calendar/map view.
+        // grid-cols-1 (minmax(0,1fr)) clamps the mobile track to the container
+        // — a bare `grid` leaves an auto track that a card with a wide
+        // min-content (one long unbroken token) stretches past the page edge
+        // (397px track in a 358px column, Jul-9 mobile audit).
+        <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+          {filtered.slice(0, 100).map((e) => (
+            <li key={`${e.slug}-${e.starts_at}`}>
+              <EventCard event={e} nowISO={nowISO} />
+            </li>
+          ))}
+          {filtered.length > 100 && (
+            <li
+              className="pt-2 text-center text-[11px]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Showing the first 100. Use filters or the calendar view to narrow further.
+            </li>
+          )}
+        </ul>
       ) : (
         // Grouped by human time horizon — "what's on now / today / this
         // weekend / later" — so the page is navigable at a glance, not
         // a 400-row chronological scroll. Each group shows a scannable
         // peek and expands in place; nothing is hidden.
-        <div className="space-y-6">
-          {horizonGroups.map((g) => {
+        <div className="space-y-4">
+          {horizonGroups.map((g, groupIdx) => {
             const isOpen = openGroups.has(g.key);
-            const PEEK = 9;
-            const shown = isOpen ? g.events : g.events.slice(0, PEEK);
-
-            // Immediate horizon groups are "Live now" (live) and "Today" (today).
-            // Under default view (no filter active) and when showing list view,
-            // render them as a horizontal scrolling shelf-rail.
-            const isImmediate = g.key === "live" || g.key === "today";
-            const renderAsShelf = !anyFilter && view === "list" && isImmediate;
-
+            const EXPANDED_CAP = 40;
+            // Every horizon gets one lead. The immediate horizon earns the
+            // full poster; later windows use the restrained glance card, whose
+            // own resolver allows only safe thumbnails or a category seal.
+            const lead = g.events[0] ?? null;
+            const leadVariant = horizonLeadVariant(groupIdx);
+            const leadMovedBeforeRail =
+              groupIdx === 0 && showPrimaryLeadBeforeRail;
+            const leadVisual =
+              lead && leadVariant === "feature" ? eventCardVisual(lead) : null;
+            const rest = lead ? g.events.slice(1) : g.events;
+            const PEEK = leadVariant === "feature" ? 2 : 3;
+            const { groupCount, totalRest, canExpand } = eventGroupRenderState({
+              summaryCount: summary.horizonCounts[g.key],
+              loadedCount: g.events.length,
+              dataComplete,
+              anyFilter: contentFilterActive,
+              sourceDegraded: currentSourceHealth.degraded,
+              hasLead: Boolean(lead),
+              peek: PEEK,
+            });
+            // When the sole event in the first horizon has already moved
+            // above the interest rail, do not leave an empty "Today 1"
+            // heading directly above the next horizon. That visual orphan
+            // made Wednesday's first card look mislabeled as today.
+            if (leadMovedBeforeRail && totalRest === 0) return null;
+            const preview = rest.slice(0, PEEK);
+            const expanded = isOpen ? rest.slice(PEEK, EXPANDED_CAP) : [];
+            const overflow = isOpen ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
             return (
               <section key={g.key} className="space-y-3">
-                <SectionHeading title={g.label} count={g.events.length} />
-                {renderAsShelf ? (
-                  <div className="-mx-4 px-4">
-                    <div className="shelf-rail gap-4 pb-2">
-                      {g.events.map((e) => (
-                        <div key={e.slug} className="w-[280px] shrink-0">
-                          <EventCard event={e} variant="tile" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
+                <SectionHeading title={g.label} count={groupCount} />
+                {lead && !leadMovedBeforeRail && leadVariant === "feature" ? (
+                  <PromotedEvent
+                    event={lead}
+                    visual={leadVisual}
+                    live={live.has(lead.slug)}
+                    priorityImage
+                    nowISO={nowISO}
+                  />
+                ) : lead && !leadMovedBeforeRail ? (
+                  <EventCard
+                    event={lead}
+                    variant="glance"
+                    live={live.has(lead.slug)}
+                    nowISO={nowISO}
+                  />
+                ) : null}
+                {totalRest > 0 && (
                   <>
-                    <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      {shown.map((e) => (
-                        <div key={e.slug} className="relative">
-                          <EventCard event={e} variant="tile" />
-                        </div>
-                      ))}
-                    </div>
-                    {g.events.length > PEEK && (
-                      <button
-                        type="button"
-                        onClick={() => toggleGroup(g.key)}
-                        className="inline-flex items-center gap-1.5 text-[13px] font-semibold transition active:opacity-70"
-                        style={{ color: "var(--app-brand)" }}
-                      >
-                        <ChevronDown
-                          className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                          strokeWidth={2.25}
-                          aria-hidden
-                        />
-                        {isOpen
-                          ? "Show fewer"
-                          : `Show all ${g.events.length} · ${g.label.toLowerCase()}`}
-                      </button>
+                    {preview.length > 0 && (
+                      <CompactEventList events={preview} live={live} nowISO={nowISO} />
+                    )}
+                    {expanded.length > 0 && (
+                      <div className="reveal-up">
+                        <CompactEventList events={expanded} live={live} nowISO={nowISO} />
+                      </div>
+                    )}
+                    {/* Only when the window holds MORE than the default peek —
+                        otherwise the peek already shows everything. */}
+                    {canExpand && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isOpen && !dataComplete) void ensureAllEvents();
+                            else toggleGroup(g.key);
+                          }}
+                          aria-expanded={isOpen}
+                          disabled={isOpen && loadingAll}
+                          className="tactile tactile-interactive flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-4 py-2.5 text-[13px] font-semibold"
+                          style={{
+                            borderColor: "var(--app-border)",
+                            background: "var(--app-bg-elevated)",
+                            color: "var(--app-cool)",
+                          }}
+                        >
+                          {isOpen && !dataComplete
+                            ? loadingAll
+                              ? "Loading more…"
+                              : "Try loading more"
+                            : isOpen
+                              ? "Show fewer"
+                              : "Show more"}
+                          <ChevronDown
+                            className="h-4 w-4 transition-transform"
+                            strokeWidth={2.25}
+                            style={{ transform: isOpen ? "rotate(180deg)" : "none" }}
+                            aria-hidden
+                          />
+                        </button>
+                        {overflow > 0 && (
+                          <div className="px-1 pt-1 text-center">
+                            <Link
+                              href="/events/calendar"
+                              className="tap-44 inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
+                              style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
+                            >
+                              {dataComplete ? `${overflow} more on the calendar` : "See more on the calendar"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
+                            </Link>
+                          </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}
               </section>
             );
           })}
+
+          {/* ── Civic & meetings — the utility tail. Council / NAC /
+              commission business, kept OUT of the main flow (it's not
+              what most people come for) but one tap away for the people
+              who want it. Sits just above the page's "Official calendars"
+              municipal-series block, so all the civic-utility weight
+              lives together at the bottom. */}
+          {utilityFiltered.length > 0 && (
+            <CollapsibleSection
+              title="Civic & meetings"
+              count={!dataComplete && !contentFilterActive ? summary.utilityCount : utilityFiltered.length}
+              storageKey="fr.events.civic"
+              defaultOpen={false}
+              className="[&>button]:min-h-11"
+            >
+              <ol
+                className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
+                style={{ borderColor: "var(--app-border)" }}
+              >
+                {utilityFiltered.slice(0, 80).map((e) => (
+                  <li key={`${e.slug}-${e.starts_at}`}>
+                    <EventCard event={e} variant="compact" nowISO={nowISO} />
+                  </li>
+                ))}
+                {!dataComplete && summary.utilityCount > utilityFiltered.length && (
+                  <li className="p-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => void ensureAllEvents()}
+                      className="tap-44-y px-3 text-[12px] font-semibold underline"
+                      style={{ color: "var(--app-cool)" }}
+                    >
+                      Load all {summary.utilityCount} civic events
+                    </button>
+                  </li>
+                )}
+              </ol>
+            </CollapsibleSection>
+          )}
         </div>
       )}
+      </div>
+      </EventSheetBoundary>
+      </div>
     </div>
+  );
+}
+
+function CompactEventList({
+  events,
+  live,
+  nowISO,
+}: {
+  events: EventWithMeta[];
+  live: ReadonlySet<string>;
+  nowISO: string;
+}) {
+  if (events.length === 0) return null;
+  return (
+    <ol
+      className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
+      style={{
+        borderColor: "var(--app-border)",
+        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+      }}
+    >
+      {events.map((event) => (
+        <li key={`${event.slug}-${event.starts_at}`}>
+          <EventCard
+            event={event}
+            variant="compact"
+            live={live.has(event.slug)}
+            nowISO={nowISO}
+          />
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function PromotedEvent({
+  event,
+  visual,
+  priorityImage,
+  live,
+  nowISO,
+}: {
+  event: EventWithMeta;
+  visual: EventCardVisual | null;
+  priorityImage: boolean;
+  live: boolean;
+  nowISO: string;
+}) {
+  return (
+    <EventCard
+      event={event}
+      variant="feature"
+      live={live}
+      nowISO={nowISO}
+      priorityImage={priorityImage}
+      visual={visual ?? undefined}
+    />
   );
 }

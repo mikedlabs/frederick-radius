@@ -1,48 +1,52 @@
 import Link from "next/link";
+import { CalendarDays } from "lucide-react";
 import { MUNICIPALITIES } from "@/data/municipalities";
-import { publicPlacesByMunicipality } from "@/lib/loaders/places";
+// eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { eventsInMunicipality } from "@/lib/loaders/events";
+import { townAccent } from "@/lib/townAccent";
 
-// A deterministic System-Black accent per town so the grid reads as
-// distinct tiles, not one grey list.
-const ACCENTS = ["#A8462C", "#2F5470", "#1E6B3A", "#7E2C6F", "#B07A1E", "#3F5E8F"];
-function accentFor(slug: string): string {
-  let h = 0;
-  for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) | 0;
-  return ACCENTS[Math.abs(h) % ACCENTS.length];
-}
-
-// "Live this week" window — anything starting in the next 7 days.
-// Tighter than "all upcoming" because the strip is a weekly briefing,
-// not a calendar dump: a town with a concert tonight should pop, a
-// town with one event 3 months out should not.
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-function eventsThisWeek(slug: string, now: Date): number {
-  const horizon = now.getTime() + WEEK_MS;
-  return eventsInMunicipality(slug, true, now).filter((e) => {
-    const t = Date.parse(e.starts_at);
-    return Number.isFinite(t) && t <= horizon;
-  }).length;
+// Short, alive day label for a town's next event: Today / Tomorrow, then
+// the weekday. Keeps the "featured move" line time-sensitive.
+function dayLabel(iso: string, now: Date): string {
+  const d = new Date(iso);
+  const key = (dt: Date) =>
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(dt);
+  if (key(d) === key(now)) return "Today";
+  if (key(d) === key(new Date(now.getTime() + 86_400_000))) return "Tomorrow";
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+  }).format(d);
 }
 
 /**
- * All 12 towns as a visual tile grid (not a row of pills): each tile
- * carries the town name, the hero blurb, and — when a town has events
- * starting in the next 7 days — a small "live this week" chip so the
- * county reads as places + activity, not just a directory list.
+ * All 13 municipalities as a visual tile grid, ORDERED BY POPULATION —
+ * the city first, down to the smallest village. Each tile carries:
+ *   • the town name + its population (the ordering, made legible),
+ *   • a one-line interesting fact (the town's identity), and
+ *   • its next event as a time-stamped "move" when something's on (alive).
+ * A quiet town just omits the move line — its fact still says who it is.
  */
 export default function MunicipalityStrip() {
   const now = new Date();
-  const towns = MUNICIPALITIES.map((m) => ({
-    ...m,
-    count: publicPlacesByMunicipality(m.slug).length,
-    weekEvents: eventsThisWeek(m.slug, now),
-  })).sort((a, b) => b.count - a.count);
+  const towns = MUNICIPALITIES.map((m) => {
+    // Soonest upcoming event = the town's next "move". One read per town.
+    const next =
+      eventsInMunicipality(m.slug, true, now)
+        .filter((e) => Number.isFinite(Date.parse(e.starts_at)))
+        .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))[0] ?? null;
+    return { ...m, next };
+  }).sort((a, b) => b.population - a.population);
 
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
       {towns.map((m) => {
-        const accent = accentFor(m.slug);
+        const accent = townAccent(m.slug);
         return (
           <Link
             key={m.slug}
@@ -55,6 +59,8 @@ export default function MunicipalityStrip() {
               className="absolute inset-y-0 left-0 w-1"
               style={{ background: accent }}
             />
+            {/* Name + population — the town and its size, so the grid's
+                population ordering is legible, not just implied. */}
             <div className="flex items-baseline gap-2">
               <span
                 className="min-w-0 flex-1 truncate text-[14px] font-semibold tracking-tight"
@@ -62,37 +68,43 @@ export default function MunicipalityStrip() {
               >
                 {m.name}
               </span>
-              {/* Live-this-week chip — only renders when a town has
-                  events starting in the next 7 days. Quiet
-                  positive-tinted text + dot, no border or filled pill,
-                  so it reads as a signal not a button. Hidden entirely
-                  when zero (silence is the honest cue). */}
-              {m.weekEvents > 0 && (
-                <span
-                  className="inline-flex shrink-0 items-center gap-1 text-[10px] font-medium"
-                  style={{ color: "var(--app-positive)" }}
-                  aria-label={`${m.weekEvents} ${m.weekEvents === 1 ? "event" : "events"} this week`}
-                >
-                  <span
-                    aria-hidden
-                    className="inline-block h-1.5 w-1.5 rounded-full"
-                    style={{ background: "var(--app-positive)" }}
-                  />
-                  {m.weekEvents} on
-                </span>
-              )}
+              <span
+                className="shrink-0 text-[10px] tabular-nums"
+                style={{ color: "var(--app-ink-3)" }}
+                aria-label={`Population ${m.population.toLocaleString()}`}
+              >
+                {m.population.toLocaleString()}
+              </span>
             </div>
-            {/* The hero_blurb already lives on each municipality
-                (used on /m/[slug] and search results). Surfacing it
-                here makes the strip read as editorial rather than
-                a list of names. Falls back to the place count if a
-                town doesn't have a blurb yet. */}
+            {/* The interesting fact — short, the town's identity. */}
             <span
-              className="block truncate text-[11px] leading-snug"
+              className="mt-0.5 block truncate text-[11px] leading-snug"
               style={{ color: "var(--app-ink-3)" }}
             >
-              {m.hero_blurb || (m.count > 0 ? `${m.count} ${m.count === 1 ? "place" : "places"}` : m.type)}
+              {m.fact}
             </span>
+            {/* Next event as a time-stamped move — only when something's
+                on, so the card answers "what's the move here?" (E2). */}
+            {m.next && (
+              <span
+                className="mt-1 flex items-center gap-1 text-[11px] leading-snug"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                <CalendarDays
+                  className="h-3 w-3 shrink-0"
+                  strokeWidth={2.25}
+                  style={{ color: accent }}
+                  aria-hidden
+                />
+                <span className="min-w-0 truncate">
+                  <span className="font-semibold" style={{ color: accent }}>
+                    {dayLabel(m.next.starts_at, now)}
+                  </span>
+                  {" · "}
+                  {m.next.title}
+                </span>
+              </span>
+            )}
           </Link>
         );
       })}

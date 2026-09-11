@@ -1,18 +1,6 @@
 {
-  "note": "Pre-existing STYLE.md debt. Burn down, owner-reviewed; do not grow.",
-  "generated": "2026-05-25T19:37:33.126Z",
-  "count": 11,
-  "entries": [
-    "src/app/(app)/trail/page.tsx|craft|Maryland's leading craft beverage region — winer…",
-    "src/app/(app)/trail/page.tsx|craft|…County, MD — Maryland's craft beverage capital.",
-    "src/components/marketing/scenes/IntroScene.tsx|ecosystem|…A unified digital ecosystem connecting 12 communiti…",
-    "src/components/marketing/scenes/Scene03_NoiseToSignal.tsx|ecosystem|…One ecosystem for",
-    "src/components/marketing/scenes/Scene07_Ecosystem.tsx|ecosystem|…r personas. One unified ecosystem.",
-    "src/data/events.ts|craft|Massive juried craft and art show in Thurmon…",
-    "src/data/places.ts|craft|Brunswick's craft brewery in a restored f…",
-    "src/data/places.ts|craft|Downtown craft brewery in a 1909 fireh…",
-    "src/data/places.ts|craft|Frederick's flagship craft brewery — flagship IPA,…",
-    "src/data/places.ts|craft|…goods, prepared foods, craft beer, ferments.",
-    "src/data/places.ts|hidden gem|…ils and aged balsamics. Hidden gem on East Patrick."
-  ]
+  "note": "No current voice debt. New violations must not be baselined without owner review.",
+  "generated": "2026-07-17T18:20:00.000Z",
+  "count": 0,
+  "entries": []
 }

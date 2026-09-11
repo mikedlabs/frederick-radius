@@ -1,83 +1,17 @@
-# AGENTS.md — Multi-Agent Coordination File
+# Frederick Radius — agent guide
 
-This file is read by both **Antigravity** (long-horizon planning, research, data integrations)
-and **Claude Code** (fast inline edits, UI components, debugging) before starting work.
+**The agent guide for this repo is [`CLAUDE.md`](./CLAUDE.md). Read that.**
 
-Always check this file first. Update it when you start or finish a task.
+This file exists only because several tools look for `AGENTS.md` by convention.
+It deliberately holds no rules of its own, so there is exactly one source of
+truth and the two can never drift.
 
----
+That drift already happened once: this file was a copy of an older `CLAUDE.md`
+and kept asserting a design system the app had replaced — Fraunces, Inter, and
+JetBrains Mono, with a "Creek blue" palette. The shipped type is **Libre Caslon
+Display** (wordmark and rare editorial moments) and **Public Sans** (everything
+else: titles, body, nav, controls, labels, times, distances, tabular numerals),
+defined in `src/app/fonts.ts`. Any agent that trusted this file was designing
+against a typeface stack that no longer exists.
 
-## 🔴 Currently In Progress
-_Update this section when starting work. Clear it when done._
-
-| Agent | Working On | Files Touched | Started |
-|-------|-----------|---------------|---------|
-| — | — | — | — |
-
----
-
-## ✅ Division of Labor
-
-### Antigravity handles:
-- Data integrations (`src/lib/integrations/`)
-- New API research and implementation
-- Multi-file coordinated changes
-- Architecture decisions and implementation plans
-- Git commits at end of each session
-
-### Claude Code handles:
-- Fast UI component edits
-- Debugging specific TypeScript/lint errors
-- One-file quick fixes
-- Running scripts, tests, and builds
-- Styling and layout tweaks
-
----
-
-## 🚫 Do Not Touch Simultaneously
-_Files currently "owned" by one agent — wait for them to commit first._
-
-_(empty — safe to edit)_
-
----
-
-## 📋 Shared Task Queue
-_Mike drops tasks here. Agents pull from it._
-
-### Next Up
-- [x] MARC Train next departures widget (Antigravity — GTFS static parse)
-- [x] EPA UV Index on Now page (Antigravity)
-- [ ] Thin blurb fix for 886 placeholder descriptions (TBD)
-
-### Backlog
-- [ ] Eventbrite venue-targeted event search (Antigravity)
-- [ ] Google Pollen API (Antigravity — Maps Platform key already available)
-- [ ] Frederick County Agenda Center RSS → civic card (Antigravity)
-- [ ] FCPS academic calendar iCal on /events (Antigravity)
-- [ ] Building permits feed on news rail (Antigravity)
-- [ ] FEMA flood zone overlay on /browse map (Antigravity)
-
----
-
-## 🔑 Key Rules
-
-1. **Commit before switching agents.** Never leave uncommitted work when handing off.
-2. **Check `git log --oneline -5` before starting.** Know what the other agent just did.
-3. **Claim a file before editing it.** Add it to the "Do Not Touch Simultaneously" section above.
-4. **One agent at a time per file.** If in doubt, ask Mike.
-5. **Tests must pass before committing.** Run `npx tsc --noEmit` minimum.
-
----
-
-## 🗺️ Where Things Live
-
-| Domain | Path | Owner |
-|--------|------|-------|
-| Event feeds | `src/lib/integrations/ical-live.ts` | Antigravity |
-| Data integrations | `src/lib/integrations/*.ts` | Antigravity |
-| News sources | `src/data/local-news-sources.ts` | Antigravity |
-| UI components | `src/components/**` | Claude Code |
-| App pages | `src/app/**` | Either (claim it first) |
-| Scripts | `scripts/**` | Antigravity |
-| Data files | `src/data/*.ts` | Antigravity |
-| Styles | `src/app/globals.css` | Claude Code |
+If you are about to add a rule here, add it to `CLAUDE.md` instead.

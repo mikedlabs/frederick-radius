@@ -1,0 +1,18 @@
+/**
+ * Some GL renderers open compact attribution on first render and wait
+ * for a drag before minimizing it. On a touch-first map that leaves the legal
+ * copy over the most useful part of the HUD until someone happens to pan.
+ *
+ * Keep the standard control and its accessible toggle, but start it in the
+ * same compact state MapLibre reaches after the first interaction.
+ */
+export function collapseInitialMapAttribution(container: HTMLElement): boolean {
+  const attribution = container.querySelector<HTMLElement>(
+    ".maplibregl-ctrl-attrib.maplibregl-compact, .mapboxgl-ctrl-attrib.mapboxgl-compact",
+  );
+  if (!attribution) return false;
+
+  attribution.classList.remove("maplibregl-compact-show");
+  attribution.classList.remove("mapboxgl-compact-show");
+  return true;
+}
