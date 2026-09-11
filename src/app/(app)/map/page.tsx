@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
+import { publicPlaces, decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
@@ -174,6 +174,10 @@ const CLIENT_PLACES_FOR_DEDUPE = (
   }>
 ).map((p) => ({ name: p.name, category: p.category, geom: p.geom }));
 
+import { FAIR_MAP_POIS, FAIRGROUNDS_BBOX, FAIRGROUNDS_CENTER } from "@/data/fair";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+
 export default async function MapPage({
   searchParams,
 }: {
@@ -193,8 +197,49 @@ export default async function MapPage({
   // fetch traffic / fixit / mapillary / trails / transit lines /
   // event feeds when we're going to render RadiusBuilder.
   const earlyParams = await searchParams;
-  const mode: "radius" | "browse" =
-    earlyParams.mode === "browse" ? "browse" : "radius";
+  const mode: "radius" | "browse" | "fair" =
+    earlyParams.mode === "fair" ? "fair" : earlyParams.mode === "browse" ? "browse" : "radius";
+
+  if (mode === "fair") {
+    // 1. Convert FairPOI to a shape that AppMapClient + InViewDrawer expects (PlaceCardData-like)
+    // The Drawer needs slug, name, category, geom, address, city, etc.
+    const fairPlaces = FAIR_MAP_POIS.map((poi) => ({
+      slug: `fair-${poi.id}`,
+      name: poi.name,
+      category: "attraction", // Use attraction as a fallback for color
+      geom: poi.geom,
+      address: poi.description || "The Great Frederick Fair",
+      city: "Frederick",
+      open_status: { state: "open" as const },
+      source: "manual",
+      is_operational: true,
+      distance_m: 0,
+    })) as unknown as PlaceCardData[];
+
+    return (
+      <div className="-mx-4 -mt-4 relative" style={{ marginBottom: "calc(-6rem - env(safe-area-inset-bottom, 0px))", height: "calc(100dvh - 56px - env(safe-area-inset-top, 0px))" }}>
+        {/* Floating back button */}
+        <div className="absolute left-3 top-3 z-40 sm:left-4 sm:top-4">
+          <Link
+            href="/fair"
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition tactile-e2 active:scale-[0.96]"
+            style={{
+              background: "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
+              color: "var(--app-ink)",
+              backdropFilter: "blur(12px) saturate(1.15)",
+              WebkitBackdropFilter: "blur(12px) saturate(1.15)",
+              border: "1px solid var(--app-border)",
+              boxShadow: "var(--app-elev-1)",
+            }}
+          >
+            <ArrowLeft className="h-4 w-4" strokeWidth={2.25} />
+            Back to Hub
+          </Link>
+        </div>
+        <AppMapClient places={fairPlaces} fullBleed />
+      </div>
+    );
+  }
 
   if (mode === "radius") {
     // Radius mode: minimal SSR payload (just amenities) — RadiusBuilder

@@ -45,8 +45,8 @@ _(empty — safe to edit)_
 _Mike drops tasks here. Agents pull from it._
 
 ### Next Up
-- [ ] MARC Train next departures widget (Antigravity — GTFS static parse)
-- [ ] EPA UV Index on Now page (Antigravity)
+- [x] MARC Train next departures widget (Antigravity — GTFS static parse)
+- [x] EPA UV Index on Now page (Antigravity)
 - [ ] Thin blurb fix for 886 placeholder descriptions (TBD)
 
 ### Backlog

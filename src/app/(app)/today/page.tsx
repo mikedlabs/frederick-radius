@@ -30,9 +30,11 @@ import WeeklySummary from "@/components/today/WeeklySummary";
 import WeatherMore from "@/components/today/WeatherMore";
 import WeatherMoreGrid from "@/components/today/WeatherMoreGrid";
 import BetaIntroCard from "@/components/today/BetaIntroCard";
+import MajorEventTakeover from "@/components/today/MajorEventTakeover";
 import WorthALook from "@/components/today/WorthALook";
 import FromAboveCta from "@/components/today/FromAboveCta";
 import PartnerAppsRow from "@/components/today/PartnerAppsRow";
+import MarcDepartures from "@/components/today/MarcDepartures";
 // CreekHairline removed in the pleasant-layout pass — it was a
 // decorative divider between weather/discovery and action; the
 // reorder makes the divider unnecessary.
@@ -299,6 +301,8 @@ export default async function HomePage({
         <BetaIntroCard />
       </div>
 
+      <MajorEventTakeover />
+
       {/* RESPONSIVE SPLIT (desktop only):
        *   mobile  : everything stacks single-column (space-y-6).
        *   lg+     : two-column grid — LEFT carries the day/weather
@@ -464,6 +468,9 @@ export default async function HomePage({
 
       {/* MoodTiles — what do you need right now, with sub-tile expand. */}
       <MoodTiles />
+
+      {/* Next MARC Train to DC */}
+      <MarcDepartures />
 
       {/* PartnerAppsRow — ParkMobile + OpenTable. */}
       <PartnerAppsRow />

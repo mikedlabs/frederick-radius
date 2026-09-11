@@ -1,4 +1,9 @@
-import { PLACES } from "@/data/places";
+import fs from "fs";
+
+let content = fs.readFileSync("src/components/today/BriefingLine.tsx", "utf-8");
+
+// We will overwrite BriefingLine.tsx with an AI-driven approach.
+const newBriefingLine = `import { PLACES } from "@/data/places";
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { getOpenStatus } from "@/lib/hours";
 import { getNwsForecast } from "@/lib/integrations/nws";
@@ -45,12 +50,12 @@ function nextNotableEvent(now: Date) {
 
 // Caching the AI response by hour to prevent cost spikes
 const getAiBriefing = unstable_cache(
-  async (time: string, weather: string, openPlaces: number, eventSummary: string, majorEventContext: string) => {
+  async (time: string, weather: string, openPlaces: number, eventSummary: string) => {
     try {
       const { text } = await generateText({
         model: openai("gpt-4o-mini"),
         system: "You are a friendly, hyper-local guide for Frederick County, MD. Your job is to write a single-sentence daily briefing for the user based on the time of day, weather, open places, and next big event. Keep it under 20 words. No emojis.",
-        prompt: `Write a one sentence briefing given these facts: Time: ${time}, Weather: ${weather}, ${openPlaces} places open, Next Event: ${eventSummary}. ${majorEventContext}`
+        prompt: \`Write a one sentence briefing given these facts: Time: \${time}, Weather: \${weather}, \${openPlaces} places open, Next Event: \${eventSummary}.\`
       });
       return text;
     } catch (e) {
@@ -72,7 +77,7 @@ export default async function BriefingLine() {
   try {
     const fc = await getNwsForecast(FREDERICK_CENTER);
     if (fc && fc.hourly.length > 0) {
-       weatherSummary = `${fc.hourly[0].temperature}°F and ${fc.hourly[0].shortForecast}`;
+       weatherSummary = \`\${fc.hourly[0].temperature}°F and \${fc.hourly[0].shortForecast}\`;
     }
   } catch (e) {
     // Ignore weather failure
@@ -80,27 +85,10 @@ export default async function BriefingLine() {
 
   let eventSummary = "None soon";
   if (next) {
-    eventSummary = `'${next.event.title}' is ${next.live ? 'happening now' : 'coming up soon'}`;
+    eventSummary = \`'\${next.event.title}' is \${next.live ? 'happening now' : 'coming up soon'}\`;
   }
 
-  // Major Event Context
-  let majorEventContext = "";
-  try {
-    // We import dynamically or just rely on the static import if we added it
-    const { getActiveMajorEvent } = await import("@/data/major-events");
-    const activeMajor = getActiveMajorEvent(now);
-    if (activeMajor) {
-      if (activeMajor.isLive) {
-        majorEventContext = `CRITICAL FACT: ${activeMajor.event.title} is happening right now. You MUST mention it in your briefing.`;
-      } else {
-        majorEventContext = `CRITICAL FACT: ${activeMajor.event.title} starts in ${activeMajor.daysOut} days. Keep this in mind.`;
-      }
-    }
-  } catch (e) {
-    console.error("Failed to load major event context", e);
-  }
-
-  const aiText = await getAiBriefing(band, weatherSummary, openCount, eventSummary, majorEventContext);
+  const aiText = await getAiBriefing(band, weatherSummary, openCount, eventSummary);
 
   if (!aiText) {
     return (
@@ -120,3 +108,7 @@ export default async function BriefingLine() {
     </p>
   );
 }
+`;
+
+fs.writeFileSync("src/components/today/BriefingLine.tsx", newBriefingLine);
+console.log("Patched BriefingLine.tsx with AI integration");

@@ -1,0 +1,125 @@
+{
+  "generated_at": "2026-09-11T16:01:37.708Z",
+  "departures": [
+    {
+      "stop_id": "11944",
+      "stop_name": "FREDERICK MARC eb",
+      "departure_time": "05:00:00",
+      "headsign": "UNION STATION",
+      "service_days": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "stop_id": "11945",
+      "stop_name": "MONOCACY MARC eb",
+      "departure_time": "05:06:00",
+      "headsign": "UNION STATION",
+      "service_days": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "stop_id": "11944",
+      "stop_name": "FREDERICK MARC eb",
+      "departure_time": "06:05:00",
+      "headsign": "UNION STATION",
+      "service_days": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "stop_id": "11944",
+      "stop_name": "FREDERICK MARC eb",
+      "departure_time": "06:05:00",
+      "headsign": "UNION STATION",
+      "service_days": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "stop_id": "11945",
+      "stop_name": "MONOCACY MARC eb",
+      "departure_time": "06:12:00",
+      "headsign": "UNION STATION",
+      "service_days": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "stop_id": "11945",
+      "stop_name": "MONOCACY MARC eb",
+      "departure_time": "06:12:00",
+      "headsign": "UNION STATION",
+      "service_days": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "stop_id": "11944",
+      "stop_name": "FREDERICK MARC eb",
+      "departure_time": "07:10:00",
+      "headsign": "UNION STATION",
+      "service_days": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "stop_id": "11945",
+      "stop_name": "MONOCACY MARC eb",
+      "departure_time": "07:17:00",
+      "headsign": "UNION STATION",
+      "service_days": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0
+      ]
+    }
+  ]
+}

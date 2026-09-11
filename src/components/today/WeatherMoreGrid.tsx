@@ -7,9 +7,11 @@ import {
   Eye,
   Moon,
   Thermometer,
+  Sun as SunIcon,
 } from "lucide-react";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { getKfdkMetar, dewpointComfort } from "@/lib/integrations/aviationweather";
+import { getEPAUVIndex } from "@/lib/integrations/epa-uv";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import {
   sunTimes,
@@ -65,9 +67,10 @@ function compassPoint(deg: number): string {
 }
 
 export default async function WeatherMoreGrid() {
-  const [forecast, metar] = await Promise.all([
+  const [forecast, metar, uvIndex] = await Promise.all([
     getNwsForecast(FREDERICK_CENTER).catch(() => null),
     getKfdkMetar().catch(() => null),
+    getEPAUVIndex().catch(() => null),
   ]);
 
   const now = new Date();
@@ -140,6 +143,24 @@ export default async function WeatherMoreGrid() {
           </svg>
           <p className="mt-1 text-[11px] tabular-nums opacity-70">
             Sunrise {clockLabel(sun.sunrise)}
+          </p>
+        </MoreTile>
+      )}
+
+      {/* ── UV INDEX ──────────────────────────────────────────────── */}
+      {uvIndex !== null && (
+        <MoreTile
+          eyebrow="UV Index"
+          eyebrowIcon={<SunIcon className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
+        >
+          <p className="font-serif text-[26px] font-semibold leading-none tabular-nums">
+            {uvIndex}
+          </p>
+          <p className="mt-1 text-[10.5px] uppercase tracking-wide opacity-70">
+            {uvIndex <= 2 ? "Low" : uvIndex <= 5 ? "Moderate" : uvIndex <= 7 ? "High" : uvIndex <= 10 ? "Very High" : "Extreme"}
+          </p>
+          <p className="mt-3 text-[11.5px] leading-snug opacity-80">
+            {uvIndex <= 2 ? "No protection needed." : uvIndex <= 5 ? "Sun protection recommended." : "Extra protection needed. Avoid sun around midday."}
           </p>
         </MoreTile>
       )}

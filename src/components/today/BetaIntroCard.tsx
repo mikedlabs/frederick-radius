@@ -26,7 +26,7 @@ import BottomDrawer from "@/components/ui/BottomDrawer";
  * popup to everyone.
  */
 
-const KEY = "fr:beta-intro-dismissed:v7";
+const KEY = "fr:beta-intro-dismissed:v8";
 const FEEDBACK_EMAIL = "miked@madproductions.io";
 const FEEDBACK_SUBJECT = "Frederick Radius feedback";
 
@@ -42,8 +42,6 @@ export default function BetaIntroCard() {
         setOpen(true);
       }
     } catch {
-      // localStorage unavailable — open as a one-time fallback so
-      // the user at least sees the intro once.
       setOpen(true);
     }
     setMounted(true);
@@ -63,7 +61,6 @@ export default function BetaIntroCard() {
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
     if (!next) {
-      // Treat any close (X / drag-down / backdrop tap) as a dismiss.
       try {
         window.localStorage.setItem(KEY, "true");
       } catch {
@@ -85,12 +82,8 @@ export default function BetaIntroCard() {
       open={open}
       onOpenChange={handleOpenChange}
       title="Welcome to Frederick Radius"
-      subtitle="Beta · May 2026"
+      subtitle="Public Beta · September"
     >
-      {/* Close X — absolute, top-right of the drawer body. Replaces
-          the old "Got it" outline button so the only secondary
-          action is the X (Vaul's drag-down and backdrop tap still
-          work). Same tap-target size as iOS sheet dismiss. */}
       <button
         type="button"
         onClick={dismiss}
@@ -105,9 +98,6 @@ export default function BetaIntroCard() {
       </button>
 
       <div className="relative overflow-hidden">
-        {/* Decorative blooms — soft brand-color glow in two corners,
-            behind everything. Adds depth + a "this place is ours"
-            warmth without competing with the copy. */}
         <span
           aria-hidden
           className="pointer-events-none absolute -right-12 -top-16 h-56 w-56 rounded-full"
@@ -126,9 +116,6 @@ export default function BetaIntroCard() {
         />
 
         <div className="relative space-y-4 px-5 py-5">
-          {/* Compass crest + Beta pill — visual anchor that ties the
-              card to the product's "compass for Frederick County"
-              tagline. Brand-color tint, glass-pill backing. */}
           <div className="flex items-start justify-between gap-3">
             <span
               aria-hidden
@@ -153,7 +140,7 @@ export default function BetaIntroCard() {
                 className="inline-block h-1.5 w-1.5 rounded-full"
                 style={{ background: "var(--app-brand)" }}
               />
-              Beta · May 2026
+              Public Beta
             </p>
           </div>
 
@@ -165,54 +152,50 @@ export default function BetaIntroCard() {
               className="font-serif text-[19px] font-semibold leading-snug tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              I have lived in Downtown Frederick for nearly 10 years,
-              and I still find out about things after they happen.
-            </p>
-
-            <p>That is part of why I built Frederick Radius.</p>
-
-            <p>
-              Frederick County and the city are connected in real
-              life, but the information around them is scattered
-              across too many places. Events get buried. Business
-              updates disappear. Local services are not always easy
-              to find. Visitors ask the same questions. Residents
-              do too.
+              We are officially in Public Beta! Thanks for being an early user.
             </p>
 
             <p>
-              Frederick Radius is an early web app built to bring
-              more of those pieces together for the county and the
-              city.
+              Frederick Radius is an evolving web app built to bring the county and the city together. 
+              Since our early testing in May, we've added a ton of new features based on your feedback:
             </p>
 
-            <p>
-              There is nothing to download. It works right in your
-              browser.
-            </p>
+            <ul className="list-disc pl-4 space-y-1">
+              <li><strong>The Great Frederick Fair Hub:</strong> Schedules, headliners, and an interactive fairgrounds map.</li>
+              <li><strong>Major Events Takeovers:</strong> Never miss tentpole events like <em>In the Streets</em> or <em>Color on the Creek</em>.</li>
+              <li><strong>Live Events Integration:</strong> Ticketmaster, Bandsintown, and local venue calendars synced to the map.</li>
+              <li><strong>Map Modes:</strong> Toggle between "Browse" (everything) and "Radius" (isochrone travel times).</li>
+            </ul>
 
             <p>
-              This is still beta, and it will keep changing. I would
-              love to know what you think.
+              This is just the beginning. I would love to know what you think of the new features!
             </p>
           </div>
 
-          <a
-            href={mailto}
-            className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold transition active:scale-[0.98]"
-            style={{
-              background: "var(--app-brand)",
-              color: "white",
-              boxShadow: "var(--app-brand-glow)",
-            }}
-          >
-            <MessageSquare className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            Send feedback
-            <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          </a>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2">
+            <a
+              href={mailto}
+              className="inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-[13px] font-semibold transition active:scale-[0.98]"
+              style={{
+                background: "var(--app-brand)",
+                color: "white",
+                boxShadow: "var(--app-brand-glow)",
+              }}
+            >
+              <MessageSquare className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+              Send feedback
+            </a>
+            
+            <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-medium" style={{ background: "color-mix(in srgb, var(--app-ink) 4%, transparent)", color: "var(--app-ink-2)" }}>
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-white shadow-sm border" style={{ borderColor: "var(--app-border)" }}>
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+              </span>
+              <span>Tap <strong>Share</strong> then <strong>Add to Home Screen</strong> for the app experience</span>
+            </div>
+          </div>
 
           <p
-            className="pt-1 text-[12px] italic"
+            className="pt-2 text-[12px] italic"
             style={{ color: "var(--app-ink-3)" }}
           >
             Made by Michael DeMattia, a downtown Frederick resident.
