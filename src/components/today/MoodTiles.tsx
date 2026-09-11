@@ -57,6 +57,27 @@ function gradientFor(color: string, active: boolean): string {
 export default function MoodTiles() {
   const [openIntent, setOpenIntent] = useState<IntentKey | null>(null);
 
+  // Time-of-day context for sorting moods
+  const hour = new Date().getHours();
+  const isMorning = hour >= 5 && hour < 11;
+  const isEvening = hour >= 16 || hour < 4;
+
+  // Contextual Sort:
+  // Morning: Coffee, Outdoors, Eat, Family, Restroom, Parking
+  // Evening: Eat, Parking, Outdoors, Coffee, Restroom, Family
+  // Default: Eat, Coffee, Outdoors, Family, Parking, Restroom
+  const sortedMoods = [...MOODS].sort((a, b) => {
+    if (isMorning) {
+      const order = ["Coffee", "Outdoors", "Eat", "With kids", "Restroom", "Parking"];
+      return order.indexOf(a.label) - order.indexOf(b.label);
+    }
+    if (isEvening) {
+      const order = ["Eat", "Parking", "Outdoors", "Coffee", "Restroom", "With kids"];
+      return order.indexOf(a.label) - order.indexOf(b.label);
+    }
+    return 0; // Keep default
+  });
+
   const activeIntent =
     openIntent ? INTENTS.find((i) => i.key === openIntent) ?? null : null;
   const activeMood = activeIntent
@@ -67,118 +88,108 @@ export default function MoodTiles() {
   return (
     <section aria-label="What do you need right now">
       <h2 className="eyebrow mb-2.5" style={{ color: "var(--app-ink-3)" }}>
-        What do you need right now
+        {isMorning ? "Start your morning" : isEvening ? "Evening plans" : "What do you need right now"}
       </h2>
 
-      {/* 6-up grid — 3 on mobile, 6 in a single row from sm+ up.
-          Every tile is the same compact square shape; intents carry
-          saturated brand colors, utilities sit in muted civic colors
-          so the row reads as one cohesive control surface. */}
-      <ul className="reveal-up grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {MOODS.map((m) => {
-          const Icon = m.icon;
-          const expandable = Boolean(m.intentKey);
-          const isActive = expandable && openIntent === m.intentKey;
-          const isDimmed = openIntent !== null && !isActive;
-          const tileBody = (
-            <>
-              {/* Soft white scatter — bottom-right corner for a hint
-                  of depth on the gradient. */}
-              <span
-                aria-hidden
-                className="absolute -right-3 -bottom-3 h-12 w-12 rounded-full"
-                style={{
-                  background:
-                    "radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 70%)",
-                }}
-              />
-
-              {/* Larger white glass icon pill with refined glassmorphism. */}
-              <span
-                aria-hidden
-                className="grid h-10 w-10 place-items-center rounded-full"
-                style={{
-                  background: "rgba(255,255,255,0.75)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                  boxShadow:
-                    "0 4px 12px -2px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.9)",
-                }}
-              >
-                <Icon
-                  className="h-[18px] w-[18px]"
-                  strokeWidth={1.5}
-                  style={{ color: m.color }}
-                />
-              </span>
-
-              <span
-                className="block max-w-full truncate text-[11px] font-semibold leading-none text-white"
-                style={{ textShadow: "0 1px 2px rgba(0,0,0,0.35)" }}
-              >
-                {m.label}
-              </span>
-
-              {isActive && (
+      {/* Swipe carousel using shelf-rail for momentum scrolling */}
+      <div className="-mx-4 px-4">
+        <ul className="reveal-up shelf-rail gap-2 pb-1">
+          {sortedMoods.map((m) => {
+            const Icon = m.icon;
+            const expandable = Boolean(m.intentKey);
+            const isActive = expandable && openIntent === m.intentKey;
+            const isDimmed = openIntent !== null && !isActive;
+            const tileBody = (
+              <>
+                {/* Soft white scatter */}
                 <span
                   aria-hidden
-                  className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full"
+                  className="absolute -right-3 -bottom-3 h-12 w-12 rounded-full"
                   style={{
-                    background: "rgba(0,0,0,0.5)",
-                    backdropFilter: "blur(8px)",
-                    WebkitBackdropFilter: "blur(8px)",
+                    background:
+                      "radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 70%)",
                   }}
+                />
+
+                {/* Premium glass icon pill */}
+                <span
+                  aria-hidden
+                  className="glass-premium grid h-10 w-10 place-items-center rounded-full"
                 >
-                  <X className="h-2 w-2 text-white" strokeWidth={2.5} />
+                  <Icon
+                    className="h-[18px] w-[18px]"
+                    strokeWidth={1.5}
+                    style={{ color: m.color }}
+                  />
                 </span>
-              )}
-            </>
-          );
 
-          const tileClass =
-            "tactile tactile-interactive relative flex aspect-square w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-[var(--app-radius-md)] border p-1.5 text-center transition active:scale-[0.96]";
-          const tileStyle = {
-            borderColor: isActive
-              ? `color-mix(in srgb, ${m.color} 60%, black)`
-              : "var(--app-border)",
-            background: gradientFor(m.color, isActive),
-            boxShadow: isActive
-              ? `var(--app-elev-2), 0 0 0 1.5px ${m.color}, 0 8px 18px -8px color-mix(in srgb, ${m.color} 50%, transparent)`
-              : `var(--app-elev-1), 0 3px 8px -4px color-mix(in srgb, ${m.color} 28%, transparent)`,
-            opacity: isDimmed ? 0.55 : 1,
-          };
-
-          return (
-            <li key={m.label}>
-              {expandable ? (
-                <button
-                  type="button"
-                  onClick={() => setOpenIntent(isActive ? null : (m.intentKey ?? null))}
-                  aria-expanded={isActive}
-                  aria-controls={isActive ? "mood-sub-tiles" : undefined}
-                  aria-label={`${m.label} — ${m.nudge}`}
-                  className={tileClass}
-                  style={tileStyle}
+                <span
+                  className="block max-w-full truncate text-[11px] font-semibold leading-none text-white"
+                  style={{ textShadow: "0 1px 2px rgba(0,0,0,0.35)" }}
                 >
-                  {tileBody}
-                </button>
-              ) : (
-                <Link
-                  href={m.href}
-                  aria-label={`${m.label} — ${m.nudge}`}
-                  className={tileClass}
-                  style={tileStyle}
-                >
-                  {tileBody}
-                </Link>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+                  {m.label}
+                </span>
 
-      {/* Sub-intent expand strip — unchanged behavior; visual tinted
-          with the active tile's color. */}
+                {isActive && (
+                  <span
+                    aria-hidden
+                    className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full"
+                    style={{
+                      background: "rgba(0,0,0,0.5)",
+                      backdropFilter: "blur(8px)",
+                      WebkitBackdropFilter: "blur(8px)",
+                    }}
+                  >
+                    <X className="h-2 w-2 text-white" strokeWidth={2.5} />
+                  </span>
+                )}
+              </>
+            );
+
+            const tileClass =
+              "tactile tactile-interactive relative flex aspect-square w-[90px] shrink-0 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-[var(--app-radius-md)] border p-1.5 text-center transition active:scale-[0.94]";
+            const tileStyle = {
+              borderColor: isActive
+                ? `color-mix(in srgb, ${m.color} 60%, black)`
+                : "var(--app-border)",
+              background: gradientFor(m.color, isActive),
+              boxShadow: isActive
+                ? `var(--app-elev-2), 0 0 0 1.5px ${m.color}, 0 8px 18px -8px color-mix(in srgb, ${m.color} 50%, transparent)`
+                : `var(--app-elev-1), 0 3px 8px -4px color-mix(in srgb, ${m.color} 28%, transparent)`,
+              opacity: isDimmed ? 0.55 : 1,
+            };
+
+            return (
+              <li key={m.label}>
+                {expandable ? (
+                  <button
+                    type="button"
+                    onClick={() => setOpenIntent(isActive ? null : (m.intentKey ?? null))}
+                    aria-expanded={isActive}
+                    aria-controls={isActive ? "mood-sub-tiles" : undefined}
+                    aria-label={`${m.label} — ${m.nudge}`}
+                    className={tileClass}
+                    style={tileStyle}
+                  >
+                    {tileBody}
+                  </button>
+                ) : (
+                  <Link
+                    href={m.href}
+                    aria-label={`${m.label} — ${m.nudge}`}
+                    className={tileClass}
+                    style={tileStyle}
+                  >
+                    {tileBody}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      {/* Sub-intent expand strip */}
       {activeIntent && activeMood && activeSubIntents.length > 0 && (
         <div
           id="mood-sub-tiles"

@@ -448,39 +448,66 @@ export default async function HomePage({
         {/* ── RIGHT column: the action stack ─────────────────── */}
         <div className="space-y-6">
 
-      {/* SPINE REORDER (cleanup pass):
-       *
-       *   weather (left, above on mobile) → MOOD → PARTNER APPS →
-       *   DISCOVERY (WorthALook) → events → from above
-       *
-       * Earlier passes carried two more surfaces here —
-       * RightNowStrip ("On deck") and PrimaryActionCard ("Plan
-       * tonight"). Both were retired: the events section +
-       * TimeToggle below already cover the "what's happening
-       * tonight" job; the MoreSheet's Tools cluster carries Plan,
-       * Within Reach, and Pulse. Keeping these on /now meant the
-       * page repeated itself across three scroll-screens.
-       *
-       * On desktop, this column rides alongside the weather column
-       * — both visible without scrolling. On mobile, it stacks
-       * after the weather block.
+      {/* SPINE REORDER (contextual pass):
+       * Action stack order now shifts based on time of day.
+       * Morning (5a-11a): Commute & News & Coffee (Marc -> Moods -> News -> Partners -> Look)
+       * Evening (4p-4a): Dinner & Plans (Partners -> Moods -> Look -> Marc -> News)
+       * Afternoon (11a-4p): Default (Moods -> Marc -> Partners -> Look -> News)
        */}
+      {(() => {
+        const hour = now.getHours();
+        const isMorning = hour >= 5 && hour < 11;
+        const isEvening = hour >= 16 || hour < 4;
 
-      {/* MoodTiles — what do you need right now, with sub-tile expand. */}
-      <MoodTiles />
+        const MoodsBlock = <MoodTiles />;
+        const MarcBlock = <MarcDepartures />;
+        const PartnersBlock = <PartnerAppsRow />;
+        const LookBlock = (
+          <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
+            <WorthALook />
+          </Suspense>
+        );
+        const NewsBlock = (
+          <Suspense fallback={null}>
+            <LocalNewsRail />
+          </Suspense>
+        );
 
-      {/* Next MARC Train to DC */}
-      <MarcDepartures />
+        if (isMorning) {
+          return (
+            <>
+              {MarcBlock}
+              {MoodsBlock}
+              {NewsBlock}
+              {PartnersBlock}
+              {LookBlock}
+            </>
+          );
+        }
 
-      {/* PartnerAppsRow — ParkMobile + OpenTable. */}
-      <PartnerAppsRow />
+        if (isEvening) {
+          return (
+            <>
+              {PartnersBlock}
+              {MoodsBlock}
+              {LookBlock}
+              {MarcBlock}
+              {NewsBlock}
+            </>
+          );
+        }
 
-      {/* Worth a look today — the page's surprise-me block now lives
-          AFTER the action surfaces, so it earns return visits without
-          burying the actually-useful answers above it. */}
-      <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
-        <WorthALook />
-      </Suspense>
+        // Default / Afternoon
+        return (
+          <>
+            {MoodsBlock}
+            {MarcBlock}
+            {PartnersBlock}
+            {LookBlock}
+            {NewsBlock}
+          </>
+        );
+      })()}
 
       {/* When? — the brand-defining temporal control. Pivots the
        *  events section between Now / Tonight / Tomorrow / Weekend.
@@ -531,15 +558,6 @@ export default async function HomePage({
           </p>
         )}
       </DismissibleSection>
-
-      {/* Local news — RSS headlines from Patch / FNP / MD Matters
-          via getLocalNews(). Headlines + attribution + relative
-          timestamp; every card links OUT to the publisher. The
-          server component self-hides when every source errored,
-          so we never show a broken "Local news" section. */}
-      <Suspense fallback={null}>
-        <LocalNewsRail />
-      </Suspense>
 
       {/* From Above — the page's quiet exit beat. After the daily
           utility surfaces (weather + events + places) finish their
