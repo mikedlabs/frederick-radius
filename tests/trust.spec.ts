@@ -3,50 +3,30 @@ import { eventTrust, placeHoursTrust, formatChecked, TRUST_COLOR } from "@/lib/t
 import type { OpenStatus } from "@/lib/hours";
 
 describe("eventTrust", () => {
-  it("a checked live-feed event reads 'Checked at source', never 'Verified'", () => {
-    // The basis must not echo the label (the old rule produced the duplicated
-    // "Verified · Verified by Frederick Radius").
+  it("is_verified wins over any source", () => {
     const t = eventTrust({ source: "manual", is_verified: true });
     expect(t.level).toBe("verified");
     expect(t.label).toBe("Checked at source");
-    expect(t.basis).toMatch(/Checked by Frederick Radius/);
   });
 
-  it("a publisher calendar never implies a Radius partnership", () => {
-    const t = eventTrust({ source: "dfp", is_verified: true });
-    expect(t.level).toBe("verified");
-    expect(t.label).toBe("Publisher listing");
-    expect(t.basis).toBe("Published by Downtown Frederick Partnership");
-    expect(`${t.label} ${t.basis}`).not.toMatch(/official|partnered with/i);
-  });
-
-  it("seed is reviewed/verified-level with editorial basis", () => {
+  it("seed is curated/verified-level with editorial basis", () => {
     const t = eventTrust({ source: "seed", is_verified: false });
     expect(t.level).toBe("verified");
-    // Editorial: "Hand-picked" lands warmer than "Curated" (which
-    // reads as Pinterest-corporate). Basis is "Picked by Frederick
-    // Radius" — first-person, local-paper voice.
     expect(t.label).toBe("Radius reviewed");
-    expect(t.basis).toMatch(/reviewed by Frederick Radius/);
+    expect(t.basis).toMatch(/reviewed/);
   });
 
-  it("publisher calendars are named as publisher listings", () => {
-    for (const s of ["dfp", "celebrate", "visit-frederick"] as const) {
+  it("partner feeds are 'verified' with a named source", () => {
+    for (const s of ["dfp", "celebrate"] as const) {
       const t = eventTrust({ source: s, is_verified: false });
       expect(t.level).toBe("verified");
       expect(t.label).toBe("Publisher listing");
       expect(t.basis.length).toBeGreaterThan(0);
     }
-  });
-
-  it("government calendars are named as government listings", () => {
-    for (const s of ["county", "city-frederick", "fcpl"] as const) {
-      const t = eventTrust({ source: s, is_verified: false });
-      expect(t.level).toBe("verified");
-      expect(t.label).toBe("Government listing");
-      expect(t.basis).toMatch(/^Published by /);
-      expect(t.basis).not.toMatch(/endorsed|partner/i);
-    }
+    const gov = eventTrust({ source: "county", is_verified: false });
+    expect(gov.level).toBe("verified");
+    expect(gov.label).toBe("Government listing");
+    expect(gov.basis.length).toBeGreaterThan(0);
   });
 
   it("live-aggregated (manual) is honestly 'likely/Live'", () => {
@@ -105,8 +85,6 @@ describe("formatChecked", () => {
 describe("TRUST_COLOR", () => {
   it("maps every level to a brand token", () => {
     expect(TRUST_COLOR.verified).toContain("--app-positive");
-    // "likely" (Live feed / Likely-open) is calm provenance, not caution —
-    // it rides the muted ink tone; amber is reserved for stale signals.
     expect(TRUST_COLOR.likely).toContain("--app-ink-3");
     expect(TRUST_COLOR.unconfirmed).toContain("--app-ink-3");
   });

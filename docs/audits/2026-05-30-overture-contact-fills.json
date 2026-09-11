@@ -1,0 +1,1101 @@
+{
+  "generated": "2026-05-30",
+  "release": "2026-05-20.0",
+  "fills": [
+    {
+      "slug": "dr-atul-purohit",
+      "name": "Dr Atul Purohit",
+      "website": "http://drpurohitdds.com/",
+      "overture_match": "Dr Atul Purohit",
+      "dist_m": 43
+    },
+    {
+      "slug": "crossroads-valley-church",
+      "name": "Crossroads Valley Church",
+      "website": "http://www.crossroadsvalley.org",
+      "overture_match": "Crossroads Valley Church",
+      "dist_m": 16
+    },
+    {
+      "slug": "gallery-322",
+      "name": "Gallery 322",
+      "phone": "+12408157777",
+      "overture_match": "Gallery 322",
+      "dist_m": 4
+    },
+    {
+      "slug": "hwy-15",
+      "name": "Hwy 15",
+      "website": "https://en.wikipedia.org/wiki/Interstate_15",
+      "overture_match": "Hwy 15",
+      "dist_m": 0
+    },
+    {
+      "slug": "whiskey-ridge-farm",
+      "name": "Whiskey Ridge Farm",
+      "phone": "+13016066039",
+      "overture_match": "Whiskey Ridge Farm",
+      "dist_m": 0
+    },
+    {
+      "slug": "ibiza-cafe",
+      "name": "Ibiza Cafe",
+      "phone": "+13019647151",
+      "overture_match": "Ibiza Cafe",
+      "dist_m": 6
+    },
+    {
+      "slug": "studio-509",
+      "name": "Studio 509",
+      "website": "http://509hair.com/",
+      "overture_match": "Studio 509",
+      "dist_m": 5
+    },
+    {
+      "slug": "frederick-pump-track",
+      "name": "Frederick Pump Track",
+      "website": "http://www.frederickbicyclecoalition.com/",
+      "overture_match": "Frederick Pump Track",
+      "dist_m": 6
+    },
+    {
+      "slug": "elks-w-all-saints-street",
+      "name": "Elks W All Saints Street",
+      "website": "www.superpages.com/bp/frederick-md/mountain-city-lodge-L0080115999.htm",
+      "overture_match": "Elks W All Saints Street",
+      "dist_m": 8
+    },
+    {
+      "slug": "mccurdy-field",
+      "name": "Mccurdy Field",
+      "phone": "+13016629688",
+      "overture_match": "McCurdy Field",
+      "dist_m": 20
+    },
+    {
+      "slug": "east-street-liberty",
+      "name": "East Street Liberty",
+      "website": "http://www.exxonstations.com/",
+      "overture_match": "East Street Liberty",
+      "dist_m": 1
+    },
+    {
+      "slug": "sweet-clover",
+      "name": "Sweet Clover",
+      "phone": "+13014569917",
+      "overture_match": "Sweet Clover",
+      "dist_m": 0
+    },
+    {
+      "slug": "blue-elephant",
+      "name": "Blue Elephant",
+      "phone": "+12404400600",
+      "overture_match": "Blue Elephant Art Center",
+      "dist_m": 0
+    },
+    {
+      "slug": "comptroller-treasury",
+      "name": "Comptroller Treasury",
+      "website": "http://www.comp.state.md.us",
+      "overture_match": "Comptroller Treasury",
+      "dist_m": 21
+    },
+    {
+      "slug": "esthetics-by-addie",
+      "name": "Esthetics by Addie",
+      "website": "https://www.vagaro.com/ffbeautyco",
+      "phone": "+12405809483",
+      "overture_match": "Esthetics by Addie",
+      "dist_m": 0
+    },
+    {
+      "slug": "born-of-a-legacy-tattoo",
+      "name": "Born of a Legacy Tattoo",
+      "website": "https://born-of-a-legacy-tattoo.myspreadshop.com/",
+      "overture_match": "Born of a legacy tattoo",
+      "dist_m": 8
+    },
+    {
+      "slug": "frederick-armory",
+      "name": "Frederick Armory",
+      "phone": "+13016623461",
+      "overture_match": "Frederick Armory",
+      "dist_m": 6
+    },
+    {
+      "slug": "tierra-y-taza-frederick",
+      "name": "Tierra y Taza",
+      "website": "https://docs.google.com/forms/d/1nwg55JTrTVSbna5wWL-qAqRbG6VCIePjYRY5H1LN31s/edit?usp=drivesdk",
+      "overture_match": "Tierra y Taza",
+      "dist_m": 2
+    },
+    {
+      "slug": "back-street-brews-coffee-tea-house-brunswick",
+      "name": "Back Street Brews Coffee & Tea House",
+      "phone": "+17039459171",
+      "overture_match": "Back Street Brews Coffee & Tea House",
+      "dist_m": 5
+    },
+    {
+      "slug": "whistle-stop-coffee-walkersville",
+      "name": "Whistle Stop Coffee",
+      "website": "https://whistlestopcoffee.istoremerch.com/index.jsf",
+      "overture_match": "Whistle Stop Coffee",
+      "dist_m": 2
+    },
+    {
+      "slug": "burkittsville-historic-district-burkittsville",
+      "name": "Burkittsville Historic District",
+      "website": "http://en.wikipedia.org/wiki/Burkittsville_Historic_District",
+      "overture_match": "Burkittsville Historic District",
+      "dist_m": 0
+    },
+    {
+      "slug": "simply-asia-thurmont",
+      "name": "Simply Asia",
+      "website": "http://www.simplyasiamd.com/",
+      "overture_match": "Simply Asia",
+      "dist_m": 6
+    },
+    {
+      "slug": "palms-emmitsburg",
+      "name": "Palms",
+      "website": "http://www.palmsresort.com",
+      "overture_match": "Palms",
+      "dist_m": 8
+    },
+    {
+      "slug": "carleo-italian-pizza-emmitsburg",
+      "name": "Carleo Italian Pizza",
+      "website": "http://www.eatinfrederick.com",
+      "overture_match": "Carleo Italian Pizza",
+      "dist_m": 9
+    },
+    {
+      "slug": "nenas-curbside-cafe-myersville",
+      "name": "Nena's Curbside Cafe",
+      "website": "http://nenascurbsidecafe.com/",
+      "overture_match": "Nena's Curbside Cafe",
+      "dist_m": 12
+    },
+    {
+      "slug": "averys-maryland-grille-frederick",
+      "name": "Avery's Maryland Grille",
+      "phone": "+13012282722",
+      "overture_match": "Avery's Maryland Grille",
+      "dist_m": 12
+    },
+    {
+      "slug": "walkersville-wine-spirits-walkersville",
+      "name": "Walkersville Wine & Spirits",
+      "website": "http://www.brewers-alley.com",
+      "overture_match": "Walkersville Wine and Spirits",
+      "dist_m": 6
+    },
+    {
+      "slug": "liquidity-aleworks-mount-airy",
+      "name": "Liquidity Aleworks",
+      "phone": "+13017031165",
+      "overture_match": "Liquidity Aleworks",
+      "dist_m": 10
+    },
+    {
+      "slug": "red-shedman-farm-brewery-and-hop-yard-mount-airy",
+      "name": "Red Shedman Farm Brewery and Hop Yard",
+      "website": "https://redshedman.com/",
+      "overture_match": "Red Shedman Farm Brewery and Hop Yard",
+      "dist_m": 6
+    },
+    {
+      "slug": "new-market-liquors-new-market",
+      "name": "New Market Liquors",
+      "website": "http://www.newmarketliquors.com/",
+      "overture_match": "New Market Liquors",
+      "dist_m": 7
+    },
+    {
+      "slug": "country-spirits-inc-thurmont",
+      "name": "Country Spirits Inc",
+      "website": "http://on.fb.me/ryXY8X",
+      "overture_match": "Country Spirits",
+      "dist_m": 6
+    },
+    {
+      "slug": "61-vineyard-mount-airy",
+      "name": "61 Vineyard",
+      "phone": "+13012532832",
+      "overture_match": "61 Vineyard",
+      "dist_m": 23
+    },
+    {
+      "slug": "the-yellow-house-myersville",
+      "name": "The Yellow House",
+      "website": "https://www.chamberofcommerce.com/boonsboro-md/34192937-yellow-house",
+      "overture_match": "The Yellow House",
+      "dist_m": 10
+    },
+    {
+      "slug": "deliciosa-bakery-inc-frederick",
+      "name": "Deliciosa Bakery Inc",
+      "website": "https://deliciosa-bakery-md.hub.biz/",
+      "overture_match": "Deliciosa Bakery",
+      "dist_m": 14
+    },
+    {
+      "slug": "sabor-casero-bakery-frederick-frederick",
+      "name": "Sabor Casero Bakery Frederick",
+      "website": "http://www.saborcaserobakery.com",
+      "overture_match": "Sabor Casero Bakery",
+      "dist_m": 20
+    },
+    {
+      "slug": "brick-block-cakes-walkersville",
+      "name": "Brick Block Cakes",
+      "website": "https://ueni.com/en-us/b/brick-block-cakes-and-more",
+      "overture_match": "Brick Block Cakes LLC",
+      "dist_m": 21
+    },
+    {
+      "slug": "potomac-street-creamery-myersville",
+      "name": "Potomac Street Creamery",
+      "website": "http://www.eatinfrederick.com",
+      "overture_match": "Potomac Street Creamery",
+      "dist_m": 3
+    },
+    {
+      "slug": "highs-gas-station-thurmont",
+      "name": "High's Gas Station",
+      "website": "https://highs.com/",
+      "overture_match": "High's Gas Station",
+      "dist_m": 7
+    },
+    {
+      "slug": "field-fresh-farmers-market-frederick",
+      "name": "Field Fresh Farmers Market",
+      "phone": "+13016761236",
+      "overture_match": "Field Fresh Farmers Market",
+      "dist_m": 6
+    },
+    {
+      "slug": "middletown-farmers-market-middletown",
+      "name": "Middletown Farmers' Market",
+      "phone": "+13015241035",
+      "overture_match": "Middletown Farmers' Market",
+      "dist_m": 4
+    },
+    {
+      "slug": "rolling-green-farm-market-new-market",
+      "name": "Rolling Green Farm Market",
+      "website": "http://rolling-market.jany.io",
+      "overture_match": "Rolling Green Farm Market",
+      "dist_m": 14
+    },
+    {
+      "slug": "eaters-acres-farm-kitchen-walkersville",
+      "name": "Eaters Acres Farm & Kitchen",
+      "website": "https://eatersacres.com/",
+      "overture_match": "Eaters Acres Farm & Kitchen",
+      "dist_m": 1
+    },
+    {
+      "slug": "moon-valley-farm-woodsboro",
+      "name": "Moon Valley Farm",
+      "phone": "+14102070241",
+      "overture_match": "Moon Valley Farm",
+      "dist_m": 5
+    },
+    {
+      "slug": "washington-county-farmers-market-myersville",
+      "name": "Washington County Farmers Market",
+      "phone": "+13012712149",
+      "overture_match": "Washington County Farmers Market",
+      "dist_m": 14
+    },
+    {
+      "slug": "barbara-fritchie-house-frederick",
+      "name": "Barbara Fritchie House",
+      "phone": "(301) 698-0630",
+      "overture_match": "Barbara Fritchie House",
+      "dist_m": 11
+    },
+    {
+      "slug": "bill-moran-museum-middletown",
+      "name": "Bill Moran Museum",
+      "phone": "+13013716916",
+      "overture_match": "Bill Moran Museum",
+      "dist_m": 5
+    },
+    {
+      "slug": "beaver-creek-school-museum-myersville",
+      "name": "Beaver Creek School Museum",
+      "phone": "+13017970006",
+      "overture_match": "Beaver Creek School Museum",
+      "dist_m": 5
+    },
+    {
+      "slug": "boonsboro-historical-society-myersville",
+      "name": "Boonsboro Historical Society",
+      "phone": "(301) 432-5889",
+      "overture_match": "Boonsboro Historical Society",
+      "dist_m": 9
+    },
+    {
+      "slug": "eastside-artists-gallery-frederick",
+      "name": "Eastside Artists' Gallery",
+      "phone": "+13016685422",
+      "overture_match": "Eastside Gallery",
+      "dist_m": 9
+    },
+    {
+      "slug": "griffin-art-center-frederick",
+      "name": "Griffin Art Center",
+      "website": "http://www.griffinartcenter.com",
+      "overture_match": "Griffin Art Center",
+      "dist_m": 14
+    },
+    {
+      "slug": "van-gilder-pottery-burkittsville",
+      "name": "van Gilder Pottery",
+      "phone": "(301) 799-9260",
+      "overture_match": "van Gilder Pottery",
+      "dist_m": 9
+    },
+    {
+      "slug": "pleasant-valley-studios-rosemont",
+      "name": "Pleasant Valley Studios",
+      "website": "http://www.pleasantvalleystudios.com/",
+      "overture_match": "Pleasant Valley Studios",
+      "dist_m": 1
+    },
+    {
+      "slug": "thurmont-event-complex-thurmont",
+      "name": "Thurmont Event Complex",
+      "phone": "+13012717550",
+      "overture_match": "Thurmont Event Complex",
+      "dist_m": 7
+    },
+    {
+      "slug": "the-lewistown-social-club-walkersville",
+      "name": "The Lewistown Social Club",
+      "phone": "+12406745149",
+      "overture_match": "The Lewistown Social Club",
+      "dist_m": 28
+    },
+    {
+      "slug": "rohrersville-band-hall-burkittsville",
+      "name": "Rohrersville Band Hall",
+      "phone": "+15109019372",
+      "overture_match": "Rohrersville Band",
+      "dist_m": 3
+    },
+    {
+      "slug": "jbk-theater-frederick",
+      "name": "JBK Theater",
+      "website": "http://www.frederick.edu/our_campus/jbk.aspx",
+      "phone": "+13018462513",
+      "overture_match": "JBK Theater",
+      "dist_m": 1
+    },
+    {
+      "slug": "mmpac-mid-maryland-performing-arts-center-frederick",
+      "name": "MMPAC - Mid Maryland Performing Arts Center",
+      "phone": "(301) 694-5105",
+      "overture_match": "Mid Maryland Performing Arts Center",
+      "dist_m": 1
+    },
+    {
+      "slug": "woodsboro-park-woodsboro",
+      "name": "Woodsboro Park",
+      "website": "http://www.woodsboro.org",
+      "overture_match": "Woodsboro Park",
+      "dist_m": 13
+    },
+    {
+      "slug": "max-kehne-memorial-park-frederick",
+      "name": "Max Kehne Memorial Park",
+      "website": "http://www.cityoffrederick.com/Facilities/Facility/Details/Max-Kehne-Park-122",
+      "overture_match": "Max Kehne Memorial Park",
+      "dist_m": 24
+    },
+    {
+      "slug": "brunswick-marc-train-parking-lot-brunswick",
+      "name": "Brunswick MARC train parking lot",
+      "phone": "+13018347622",
+      "overture_match": "Brunswick MARC Train Parking Lot",
+      "dist_m": 9
+    },
+    {
+      "slug": "brunswick-sports-complex-brunswick",
+      "name": "Brunswick Sports Complex",
+      "website": "http://sportscomplex.placeweb.site/",
+      "overture_match": "Brunswick Sports Complex",
+      "dist_m": 10
+    },
+    {
+      "slug": "railroad-view-park-formerly-the-bo-ymca-brunswick",
+      "name": "Railroad View Park, formerly the B&O YMCA",
+      "website": "http://www.brunswickrailpark.com/",
+      "overture_match": "Railroad View Park",
+      "dist_m": 8
+    },
+    {
+      "slug": "eyler-road-park-thurmont",
+      "name": "Eyler Road Park",
+      "phone": "+13012717313",
+      "overture_match": "Eyler Road Park",
+      "dist_m": 2
+    },
+    {
+      "slug": "thurmont-square-park-thurmont",
+      "name": "Thurmont Square Park",
+      "phone": "(301) 271-7422",
+      "overture_match": "Thurmont Community Park",
+      "dist_m": 56
+    },
+    {
+      "slug": "wiles-branch-park-pavillion-middletown",
+      "name": "Wiles Branch Park Pavillion",
+      "website": "http://www.middletown.md.us/index.asp?Type=B_BASIC",
+      "overture_match": "Wiles Branch Park",
+      "dist_m": 120
+    },
+    {
+      "slug": "emmitsburg-memorial-park-emmitsburg",
+      "name": "Emmitsburg Memorial Park",
+      "phone": "+13016006300",
+      "overture_match": "Emmitsburg Memorial Park",
+      "dist_m": 52
+    },
+    {
+      "slug": "new-market-community-park-pavilion-new-market",
+      "name": "New Market Community Park Pavilion",
+      "phone": "(301) 865-5544",
+      "overture_match": "New Market Community Park",
+      "dist_m": 30
+    },
+    {
+      "slug": "new-market-community-park-playground-new-market",
+      "name": "New Market Community Park Playground",
+      "phone": "(301) 865-5544",
+      "overture_match": "New Market Community Park",
+      "dist_m": 49
+    },
+    {
+      "slug": "weverton-cliffs-rosemont",
+      "name": "Weverton Cliffs",
+      "website": "http://www.hikingupward.com/OMH/CandOCanalWeavertonCliff",
+      "overture_match": "Weverton Cliffs",
+      "dist_m": 0
+    },
+    {
+      "slug": "high-rock-thurmont",
+      "name": "High Rock",
+      "phone": "+13017914767",
+      "overture_match": "High Rock",
+      "dist_m": 2
+    },
+    {
+      "slug": "annapolis-rock-black-rock-cliff-trailhead-myersville",
+      "name": "Annapolis Rock & Black Rock Cliff Trailhead",
+      "phone": "+13017914767",
+      "overture_match": "Annapolis Rock & Black Rock Cliff Trailhead",
+      "dist_m": 12
+    },
+    {
+      "slug": "rivermist-park-frederick",
+      "name": "Rivermist Park",
+      "phone": "+13016001492",
+      "overture_match": "Rivermist Park",
+      "dist_m": 1
+    },
+    {
+      "slug": "thurston-griggs-trail-myersville",
+      "name": "Thurston Griggs Trail",
+      "website": "http://www.alltrails.com/trail/us/maryland/thurston-griggs-to-appalachain-trail-to-black-rock",
+      "overture_match": "Thurston Griggs Trail",
+      "dist_m": 1
+    },
+    {
+      "slug": "clerestory-park-walkersville",
+      "name": "Clerestory Park",
+      "phone": "+13016001493",
+      "overture_match": "Clerestory Park",
+      "dist_m": 36
+    },
+    {
+      "slug": "pleasant-valley-park-burkittsville",
+      "name": "Pleasant Valley Park",
+      "website": "http://washco-md.net/parks_facilities/p-PleasantValleyPark.shtm",
+      "overture_match": "Pleasant Valley Park",
+      "dist_m": 4
+    },
+    {
+      "slug": "cambridge-farms-park-burkittsville",
+      "name": "Cambridge Farms Park",
+      "website": "http://www.cambridgefarmsmd.net",
+      "overture_match": "Cambridge Farms Park",
+      "dist_m": 29
+    },
+    {
+      "slug": "dirt-cheap-thurmont",
+      "name": "Dirt Cheap",
+      "website": "http://www.ilovedirtcheap.com",
+      "overture_match": "Dirt Cheap",
+      "dist_m": 12
+    },
+    {
+      "slug": "fleshmans-antiques-new-market",
+      "name": "Fleshman's Antiques",
+      "website": "http://fleshmanantiques.wix.com/fleshmanantiques",
+      "overture_match": "Fleshman's Antiques",
+      "dist_m": 5
+    },
+    {
+      "slug": "cannon-hill-place-antiques-frederick",
+      "name": "Cannon Hill Place Antiques",
+      "phone": "13016959304",
+      "overture_match": "Cannon Hill Place",
+      "dist_m": 51
+    },
+    {
+      "slug": "gathered-goods-frederick",
+      "name": "Gathered Goods",
+      "website": "http://www.gatheredgoodsfrederick.com/",
+      "overture_match": "Gathered Goods",
+      "dist_m": 9
+    },
+    {
+      "slug": "cozy-house-of-curiosity-antiques-vintage-collectibles-thurmont",
+      "name": "Cozy House of Curiosity Antiques Vintage & Collectibles",
+      "website": "http://www.cozyhouseofcuriosity.com/",
+      "overture_match": "Cozy House of Curiosity",
+      "dist_m": 34
+    },
+    {
+      "slug": "boonsboro-antiques-myersville",
+      "name": "Boonsboro Antiques",
+      "website": "http://www.BoonsboroAntiques.com/",
+      "overture_match": "Boonsboro Antiques",
+      "dist_m": 30
+    },
+    {
+      "slug": "gaylas-new-market",
+      "name": "Gayla's",
+      "phone": "+13018651350",
+      "overture_match": "Gayla's",
+      "dist_m": 16
+    },
+    {
+      "slug": "buckeye-motel-frederick",
+      "name": "Buckeye Motel",
+      "website": "http://diningguide.com",
+      "overture_match": "Buckeye Restaurant",
+      "dist_m": 8
+    },
+    {
+      "slug": "rambler-motel-thurmont",
+      "name": "Rambler Motel",
+      "website": "http://www.rambler-motel.com",
+      "overture_match": "Rambler Motel",
+      "dist_m": 3
+    },
+    {
+      "slug": "mary-penn-bed-breakfast-emmitsburg",
+      "name": "Mary-Penn Bed & Breakfast",
+      "website": "http://www.mary-pennbb.com/",
+      "overture_match": "The Mary-Penn Bed and Breakfast",
+      "dist_m": 2
+    },
+    {
+      "slug": "budget-inn-mount-airy",
+      "name": "Budget Inn",
+      "website": "http://www.budgetinn.com",
+      "overture_match": "Budget Inn",
+      "dist_m": 3
+    },
+    {
+      "slug": "discovery-homeowners-association-inc-walkersville",
+      "name": "Discovery Homeowners Association, Inc.",
+      "website": "http://www.discoveryhomeowners.com/",
+      "overture_match": "Discovery Homeowners Association",
+      "dist_m": 11
+    },
+    {
+      "slug": "gaver-farm-new-market",
+      "name": "Gaver Farm",
+      "phone": "+13018653515",
+      "overture_match": "Gaver Farm",
+      "dist_m": 26
+    },
+    {
+      "slug": "gardners-helping-gardners-mount-airy",
+      "name": "Gardner\u2019s Helping Gardners",
+      "phone": "+14109800736",
+      "overture_match": "Gardner\u2019s Helping Gardners",
+      "dist_m": 1
+    },
+    {
+      "slug": "hgm-lawncare-and-services-llc-myersville",
+      "name": "HGM Lawncare and Services, LLC",
+      "website": "http://hgmlawncare.com/",
+      "overture_match": "HGM Lawncare and Services",
+      "dist_m": 12
+    },
+    {
+      "slug": "valley-ho-farm-middletown",
+      "name": "Valley Ho Farm",
+      "phone": "+13013716277",
+      "overture_match": "Valley Ho Farm",
+      "dist_m": 8
+    },
+    {
+      "slug": "first-baptist-church-maryland-center-middletown",
+      "name": "First Baptist Church, Maryland CENTER",
+      "phone": "+13014738283",
+      "overture_match": "First Baptist Church",
+      "dist_m": 5
+    },
+    {
+      "slug": "mt-olivet-baptist-church-brunswick",
+      "name": "Mt Olivet Baptist Church",
+      "website": "https://www.mtolivetbaptist-oh.org",
+      "overture_match": "Mt Olivet Baptist Church",
+      "dist_m": 1
+    },
+    {
+      "slug": "first-baptist-church-thurmont-thurmont",
+      "name": "First Baptist Church-Thurmont",
+      "website": "http://www.fbcthurmont.org/",
+      "overture_match": "First Baptist Church",
+      "dist_m": 18
+    },
+    {
+      "slug": "graceham-moravian-church-thurmont",
+      "name": "Graceham Moravian Church",
+      "website": "http://www.gracehammoravian.org/",
+      "overture_match": "Graceham Moravian Church",
+      "dist_m": 4
+    },
+    {
+      "slug": "apostolic-lighthouse-united-middletown",
+      "name": "Apostolic Lighthouse United",
+      "website": "http://www.fredericklighthouse.org/",
+      "overture_match": "Apostolic Lighthouse United",
+      "dist_m": 8
+    },
+    {
+      "slug": "iglesia-palabra-viva-walkersville",
+      "name": "Iglesia palabra viva",
+      "website": "http://www.ipvivamaryland.com/",
+      "phone": "+13017889040",
+      "overture_match": "Iglesia Palabra Viva - Frederick",
+      "dist_m": 1
+    },
+    {
+      "slug": "chapel-of-the-immaculate-conception-emmitsburg",
+      "name": "Chapel of the Immaculate Conception",
+      "website": "https://www.msmary.edu/.../news-archive/2013/7-19-13ICChapelfire.html",
+      "overture_match": "Chapel of the Immaculate Conception",
+      "dist_m": 10
+    },
+    {
+      "slug": "emmitsburg-presbyterian-church-emmitsburg",
+      "name": "Emmitsburg Presbyterian Church",
+      "phone": "+13014472413",
+      "overture_match": "Emmitsburg Presbyterian Church",
+      "dist_m": 12
+    },
+    {
+      "slug": "eylers-valley-chapel-thurmont",
+      "name": "Eyler's Valley Chapel",
+      "phone": "+13012711104",
+      "overture_match": "Eyler's Valley Chapel",
+      "dist_m": 0
+    },
+    {
+      "slug": "simpson-methodist-episcopal-church-new-market",
+      "name": "Simpson Methodist Episcopal Church",
+      "phone": "+13013001246",
+      "overture_match": "Simpson Methodist Episcopal Church",
+      "dist_m": 15
+    },
+    {
+      "slug": "light-of-christ-lutheran-church-new-market",
+      "name": "Light Of Christ Lutheran Church",
+      "website": "https://lightofchristchurch.org/",
+      "phone": "3018291215",
+      "overture_match": "Light Of Christ Lutheran Church",
+      "dist_m": 15
+    },
+    {
+      "slug": "harmony-church-of-the-brethren-myersville",
+      "name": "Harmony Church of the Brethren",
+      "website": "http://www.brethren.org/church/20260-Harmony.html",
+      "overture_match": "Harmony Church of the Brethren",
+      "dist_m": 9
+    },
+    {
+      "slug": "rocky-hill-church-woodsboro",
+      "name": "Rocky Hill Church",
+      "phone": "+13018456733",
+      "overture_match": "Grace Rocky Hill Lutheran Church",
+      "dist_m": 6
+    },
+    {
+      "slug": "st-johns-united-church-of-christ-woodsboro",
+      "name": "St Johns United Church of Christ",
+      "phone": "(301) 845-7703",
+      "overture_match": "St Johns United Church of God",
+      "dist_m": 29
+    },
+    {
+      "slug": "iglesia-de-dios-pentecostal-betesda-woodsboro",
+      "name": "Iglesia De Dios Pentecostal Betesda",
+      "phone": "+12404409681",
+      "overture_match": "Iglesia De Dios Pentecostal Betesda",
+      "dist_m": 1
+    },
+    {
+      "slug": "luther-chapel-at-petersville-brunswick",
+      "name": "Luther Chapel at Petersville",
+      "website": "http://lutherchapel.com/",
+      "overture_match": "Luther Chapel at Petersville",
+      "dist_m": 5
+    },
+    {
+      "slug": "bethel-united-methodist-church-burkittsville",
+      "name": "Bethel United Methodist Church",
+      "website": "http://www.rohrersvillebethel.com/",
+      "overture_match": "Bethel United Methodist Church",
+      "dist_m": 6
+    }
+  ],
+  "closures": [],
+  "suspects": [
+    {
+      "slug": "cunningham-falls-state-park-thurmont",
+      "name": "Cunningham Falls State Park",
+      "nearest_overture_m": 545
+    },
+    {
+      "slug": "south-mountain-creamery-middletown",
+      "name": "South Mountain Creamery",
+      "nearest_overture_m": 4400
+    },
+    {
+      "slug": "springfield-manor-thurmont",
+      "name": "Springfield Manor Winery, Distillery & Brewery",
+      "nearest_overture_m": 319
+    },
+    {
+      "slug": "heartly-house",
+      "name": "Heartly House",
+      "nearest_overture_m": 473
+    },
+    {
+      "slug": "marianne-riley-psychotherapy",
+      "name": "Marianne Riley Psychotherapy",
+      "nearest_overture_m": 262
+    },
+    {
+      "slug": "vital-sources-psychological-services",
+      "name": "Vital Sources Psychological Services",
+      "nearest_overture_m": 656
+    },
+    {
+      "slug": "the-healing-temple",
+      "name": "The Healing Temple",
+      "nearest_overture_m": 820
+    },
+    {
+      "slug": "drewskiithebarber",
+      "name": "Drewskiithebarber",
+      "nearest_overture_m": 488
+    },
+    {
+      "slug": "frederick-cosmetic-family-dentistry",
+      "name": "Frederick Cosmetic Family Dentistry",
+      "nearest_overture_m": 3031
+    },
+    {
+      "slug": "francis-scott-key-memorial-foundation",
+      "name": "Francis Scott Key Memorial Foundation",
+      "nearest_overture_m": 688
+    },
+    {
+      "slug": "old-hat-vintage-clothing",
+      "name": "Old Hat Vintage Clothing",
+      "nearest_overture_m": 289
+    },
+    {
+      "slug": "vitality-protein-smoothie-bar",
+      "name": "Vitality Protein Smoothie Bar",
+      "nearest_overture_m": 436
+    },
+    {
+      "slug": "mount-olivet-cemetery",
+      "name": "Mount Olivet Cemetery",
+      "nearest_overture_m": 841
+    },
+    {
+      "slug": "drug-detox-frederick",
+      "name": "Drug Detox Frederick",
+      "nearest_overture_m": 1363
+    },
+    {
+      "slug": "simply-clean-automotive-detailing",
+      "name": "Simply Clean Automotive Detailing",
+      "nearest_overture_m": 1090
+    },
+    {
+      "slug": "the-affiliated-barbershop",
+      "name": "The Affiliated Barbershop",
+      "nearest_overture_m": 523
+    },
+    {
+      "slug": "frederick-dental-solutions",
+      "name": "Frederick Dental Solutions",
+      "nearest_overture_m": 6311
+    },
+    {
+      "slug": "addiction-rehab-frederick",
+      "name": "Addiction Rehab Frederick",
+      "nearest_overture_m": 1385
+    },
+    {
+      "slug": "jraymonds-steakhouse",
+      "name": "Jraymonds Steakhouse",
+      "nearest_overture_m": 437
+    },
+    {
+      "slug": "cranberryjade-services-middletown-md",
+      "name": "CranberryJade Services",
+      "nearest_overture_m": 11933
+    },
+    {
+      "slug": "harper-associates",
+      "name": "Harper Associates",
+      "nearest_overture_m": 862
+    },
+    {
+      "slug": "frederick-gastroenterology-associates",
+      "name": "Frederick Gastroenterology Associates",
+      "nearest_overture_m": 3539
+    },
+    {
+      "slug": "canapes-catering",
+      "name": "Canapes Catering",
+      "nearest_overture_m": 2377
+    },
+    {
+      "slug": "authentic-barber-company",
+      "name": "Authentic Barber Company",
+      "nearest_overture_m": 501
+    },
+    {
+      "slug": "the-inkery",
+      "name": "The Inkery",
+      "nearest_overture_m": 294
+    },
+    {
+      "slug": "the-space-between-psychotherapy-llc-for-telehealth",
+      "name": "The Space Between Psychotherapy LLC for Telehealth",
+      "nearest_overture_m": 728
+    },
+    {
+      "slug": "ryans-krispy-cuts",
+      "name": "Ryans Krispy Cuts",
+      "nearest_overture_m": 2442
+    },
+    {
+      "slug": "sailing-through-the-winter-solstice",
+      "name": "Sailing Through the Winter Solstice",
+      "nearest_overture_m": 455
+    },
+    {
+      "slug": "skinfinite-solutions-wellness-spa",
+      "name": "Skinfinite Solutions Wellness Spa",
+      "nearest_overture_m": 5665
+    },
+    {
+      "slug": "bad-hair-day",
+      "name": "Bad Hair Day",
+      "nearest_overture_m": 784
+    },
+    {
+      "slug": "new-york-new-york-hair-salon-spa",
+      "name": "New York New York Hair Salon Spa",
+      "nearest_overture_m": 700
+    },
+    {
+      "slug": "maryland-deaf-center",
+      "name": "Maryland Deaf Center",
+      "nearest_overture_m": 601
+    },
+    {
+      "slug": "hodson-whitaker-art-galleries-at-hood-college",
+      "name": "Hodson Whitaker Art Galleries at Hood College",
+      "nearest_overture_m": 434
+    },
+    {
+      "slug": "alive-five",
+      "name": "Alive Five",
+      "nearest_overture_m": 311
+    },
+    {
+      "slug": "shekinah-glory-deliverance-ministry",
+      "name": "Shekinah Glory Deliverance Ministry",
+      "nearest_overture_m": 665
+    },
+    {
+      "slug": "coin-exchange",
+      "name": "Coin Exchange",
+      "nearest_overture_m": 529
+    },
+    {
+      "slug": "city-of-frederick-hpc",
+      "name": "City of Frederick Hpc",
+      "nearest_overture_m": 367
+    },
+    {
+      "slug": "slam-snowcones",
+      "name": "Slam Snowcones",
+      "nearest_overture_m": 9218
+    },
+    {
+      "slug": "frederick-surgical-center",
+      "name": "Frederick Surgical Center",
+      "nearest_overture_m": 460
+    },
+    {
+      "slug": "ohair-salon-and-spa",
+      "name": "Ohair Salon and Spa",
+      "nearest_overture_m": 1811
+    },
+    {
+      "slug": "kids-care-pediatrics",
+      "name": "Kids Care Pediatrics",
+      "nearest_overture_m": 2000
+    },
+    {
+      "slug": "serenity-tearoom",
+      "name": "Serenity Tearoom",
+      "nearest_overture_m": 335
+    },
+    {
+      "slug": "serenity-tearoom-fine-dining",
+      "name": "Serenity Tearoom Fine Dining",
+      "nearest_overture_m": 888
+    },
+    {
+      "slug": "orchid-oasis-day-spa-llc",
+      "name": "Orchid Oasis Day Spa LLC",
+      "nearest_overture_m": 3460
+    },
+    {
+      "slug": "holistic-family-medicine_dolma-johanison-lac",
+      "name": "Holistic Family Medicine_dolma Johanison Lac",
+      "nearest_overture_m": 504
+    },
+    {
+      "slug": "ananda-shala-yoga",
+      "name": "Ananda Shala Yoga",
+      "nearest_overture_m": 467
+    },
+    {
+      "slug": "alekos-middletown",
+      "name": "Aleko's",
+      "nearest_overture_m": 2541
+    },
+    {
+      "slug": "fordham-lee-distillery-middletown",
+      "name": "Fordham Lee Distillery",
+      "nearest_overture_m": 3395
+    },
+    {
+      "slug": "dairy-queen-treat-frederick",
+      "name": "Dairy Queen (Treat)",
+      "nearest_overture_m": 7387
+    },
+    {
+      "slug": "a-plus-myersville",
+      "name": "A Plus",
+      "nearest_overture_m": 29656
+    },
+    {
+      "slug": "good-hope-farmstead-woodsboro",
+      "name": "Good Hope Farmstead",
+      "nearest_overture_m": 5667
+    },
+    {
+      "slug": "middletown-public-library-middletown",
+      "name": "Middletown Public Library",
+      "nearest_overture_m": 265
+    },
+    {
+      "slug": "overlook-park-brunswick",
+      "name": "Overlook Park",
+      "nearest_overture_m": 18387
+    },
+    {
+      "slug": "rivers-edge-trails-brunswick",
+      "name": "Rivers Edge Trails",
+      "nearest_overture_m": 1317
+    },
+    {
+      "slug": "gambrill-state-park-middletown",
+      "name": "Gambrill State Park",
+      "nearest_overture_m": 328
+    },
+    {
+      "slug": "ballenger-creek-trail-frederick",
+      "name": "Ballenger Creek Trail",
+      "nearest_overture_m": 420
+    },
+    {
+      "slug": "frederick-municipal-forest-myersville",
+      "name": "Frederick Municipal Forest",
+      "nearest_overture_m": 1922
+    },
+    {
+      "slug": "walkersville-watershed-walkersville",
+      "name": "Walkersville Watershed",
+      "nearest_overture_m": 258
+    },
+    {
+      "slug": "brandartyoga-frederick",
+      "name": "BrandArtYoga",
+      "nearest_overture_m": 843
+    },
+    {
+      "slug": "cvs-thurmont",
+      "name": "CVS",
+      "nearest_overture_m": 20012
+    },
+    {
+      "slug": "hearth-and-home-mercantile-frederick",
+      "name": "Hearth and Home Mercantile",
+      "nearest_overture_m": 12163
+    },
+    {
+      "slug": "vintage-lumber-woodsboro",
+      "name": "Vintage Lumber",
+      "nearest_overture_m": 716
+    },
+    {
+      "slug": "mount-st-marys-university-emmitsburg",
+      "name": "Mount St. Mary's University",
+      "nearest_overture_m": 274
+    },
+    {
+      "slug": "catoctin-creek-llc-myersville",
+      "name": "Catoctin Creek LLC",
+      "nearest_overture_m": 22519
+    },
+    {
+      "slug": "cornerstone-fellowship-church-frederick",
+      "name": "Cornerstone Fellowship Church",
+      "nearest_overture_m": 3155
+    }
+  ]
+}

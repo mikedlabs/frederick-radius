@@ -2,7 +2,20 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getDb } from "@/lib/db/client";
 import { user_profiles } from "@/lib/db/schema";
-import { safeRedirectPath } from "@/lib/safe-redirect";
+import { sanitizeRedirectPath } from "@/lib/auth-routing";
+
+const NO_STORE_HEADERS = {
+  "Cache-Control": "private, no-cache, no-store, must-revalidate, max-age=0",
+  Pragma: "no-cache",
+  Expires: "0",
+};
+
+function loginErrorRedirect(req: NextRequest, error: string, next: string) {
+  const destination = new URL("/auth/login", req.url);
+  destination.searchParams.set("error", error);
+  destination.searchParams.set("next", next);
+  return NextResponse.redirect(destination, { headers: NO_STORE_HEADERS });
+}
 
 /**
  * /auth/callback — completes the magic-link sign-in.
@@ -28,16 +41,22 @@ import { safeRedirectPath } from "@/lib/safe-redirect";
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
-  const next = safeRedirectPath(url.searchParams.get("next"), "/my-radius");
+  const next = sanitizeRedirectPath(url.searchParams.get("next"));
 
   if (!code) {
-    return NextResponse.redirect(new URL("/auth/login?error=missing_code", req.url));
+    return loginErrorRedirect(req, "missing_code", next);
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error || !data?.user) {
-    return NextResponse.redirect(new URL("/auth/login?error=expired", req.url));
+  let userId: string;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error || !data?.user) {
+      return loginErrorRedirect(req, "expired", next);
+    }
+    userId = data.user.id;
+  } catch {
+    return loginErrorRedirect(req, "unavailable", next);
   }
 
   // Upsert profile row. ON CONFLICT DO NOTHING keeps existing
@@ -49,7 +68,7 @@ export async function GET(req: NextRequest) {
     if (db) {
       await db
         .insert(user_profiles)
-        .values({ id: data.user.id })
+        .values({ id: userId })
         .onConflictDoNothing({ target: user_profiles.id });
     }
   } catch (err) {
@@ -59,5 +78,7 @@ export async function GET(req: NextRequest) {
     console.error("[auth/callback] profile upsert failed:", err);
   }
 
-  return NextResponse.redirect(new URL(next, req.url));
+  return NextResponse.redirect(new URL(next, req.url), {
+    headers: NO_STORE_HEADERS,
+  });
 }

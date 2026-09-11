@@ -1,40 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
-import { verifyAdminRequestOrigin } from "@/lib/security/admin-request";
+import { isProtectedPath, loginUrlFor } from "@/lib/auth-routing";
+import { updateSession, type SessionUpdate } from "@/lib/supabase/proxy";
 
-/**
- * Request proxy: admin protection plus public-session refresh.
- *
- *   1. /admin/*   — Basic Auth (P0-5 interim gate). Fails CLOSED:
- *                   if ADMIN_USER / ADMIN_PASSWORD aren't configured,
- *                   /admin is unreachable. Set both env vars to
- *                   enable. Edge-safe (Web `atob`, no Node crypto).
- *
- *   2. Fair entry routes — direct public pass-through. The public Fair
- *                   experience does not read session state, so `/fair` and
- *                   its canonical 2026 moment skip Supabase entirely. This
- *                   keeps the surge path cacheable and avoids refresh work
- *                   even when a visitor happens to carry a session cookie.
- *
- *   3. Everywhere else — Supabase session refresh. Short-lived
- *                   access tokens (~1h) get silently refreshed on
- *                   each request that carries a session cookie.
- *                   Logged-out users pass through with no change.
- *                   Does NOT enforce auth; pages decide whether
- *                   they need a signed-in user via getServerUser().
- *
- *   4. Static + image paths — skipped via the matcher below so the
- *                   middleware doesn't intercept _next/image, _next/
- *                   static, or asset requests.
- *
- * Onboarding redirect was REMOVED in the pre-launch pass. The persona
- * affordance survives as an in-page chip on /now which a returning
- * user can opt into when they want to.
- *
- * The public beta wall was removed for launch. BETA_PASSWORD may remain
- * configured for legacy invite tooling, but it must never block a public
- * route here.
- */
+/** Keep the existing fail-closed Basic Auth boundary around the admin tools. */
 function unauthorized(): NextResponse {
   return new NextResponse("Authentication required.", {
     status: 401,
@@ -49,39 +17,13 @@ function isAdminPath(pathname: string): boolean {
   return pathname === "/admin" || pathname.startsWith("/admin/");
 }
 
-function isFairPublicFastPath(pathname: string): boolean {
-  return (
-    pathname === "/fair" || pathname === "/moments/great-frederick-fair-2026"
-  );
-}
+function adminBasicAuth(request: NextRequest): NextResponse | null {
+  const expectedUser = process.env.ADMIN_USER;
+  const expectedPassword = process.env.ADMIN_PASSWORD;
+  if (!expectedUser || !expectedPassword) return unauthorized();
 
-/**
- * Constant-time string equality for edge (Web Crypto, no Node `crypto`).
- * Compares SHA-256 digests of the two inputs: the digests are fixed 32-byte
- * length regardless of input, so this leaks neither the credential length nor
- * (via an early `!==` exit) how many leading characters matched — closing the
- * timing side-channel the old `u !== user || p !== pass` compare left open.
- */
-async function timingSafeEqualStr(a: string, b: string): Promise<boolean> {
-  const enc = new TextEncoder();
-  const [da, db] = await Promise.all([
-    crypto.subtle.digest("SHA-256", enc.encode(a)),
-    crypto.subtle.digest("SHA-256", enc.encode(b)),
-  ]);
-  const va = new Uint8Array(da);
-  const vb = new Uint8Array(db);
-  let diff = 0;
-  for (let i = 0; i < va.length; i++) diff |= va[i] ^ vb[i];
-  return diff === 0;
-}
-
-async function adminBasicAuth(req: NextRequest): Promise<NextResponse | null> {
-  const user = process.env.ADMIN_USER;
-  const pass = process.env.ADMIN_PASSWORD;
-  if (!user || !pass) return unauthorized();
-
-  const header = req.headers.get("authorization");
-  if (!header || !header.startsWith("Basic ")) return unauthorized();
+  const header = request.headers.get("authorization");
+  if (!header?.startsWith("Basic ")) return unauthorized();
 
   let decoded: string;
   try {
@@ -90,40 +32,56 @@ async function adminBasicAuth(req: NextRequest): Promise<NextResponse | null> {
     return unauthorized();
   }
 
-  // Compare the whole `user:pass` pair in constant time (ADMIN_USER carries no
-  // colon, so the reconstructed expected value is canonical). A mismatch in
-  // either field fails identically, with no per-character timing leak.
-  if (!(await timingSafeEqualStr(decoded, `${user}:${pass}`))) return unauthorized();
-  return null; // pass-through
-}
-
-export async function proxy(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-
-  if (isAdminPath(pathname)) {
-    const block = await adminBasicAuth(req);
-    if (block) return block;
-    const crossOrigin = verifyAdminRequestOrigin(req);
-    if (crossOrigin) return crossOrigin;
-    // Admin paths skip Supabase session refresh — the admin surface
-    // is its own world.
-    return NextResponse.next();
+  const separator = decoded.indexOf(":");
+  if (separator < 0) return unauthorized();
+  if (
+    decoded.slice(0, separator) !== expectedUser ||
+    decoded.slice(separator + 1) !== expectedPassword
+  ) {
+    return unauthorized();
   }
 
-  // These two Fair entry points are wholly public and session-independent.
-  // Skip Supabase even for visitors carrying cookies so a fair-day surge does
-  // not spend latency or backend capacity refreshing an unused session.
-  if (isFairPublicFastPath(pathname)) return NextResponse.next();
+  return null;
+}
 
-  // Every public route is open. Refresh Supabase session state when a cookie is
-  // present, then pass through unchanged for logged-out visitors.
-  return await updateSession(req);
+function protectedRouteRedirect(request: NextRequest, session: SessionUpdate) {
+  const loginUrl = loginUrlFor(request.url);
+  loginUrl.searchParams.set(
+    "reason",
+    session.authState === "unavailable"
+      ? "verification_unavailable"
+      : session.hadSessionCookie
+        ? "session_ended"
+        : "sign_in_required",
+  );
+
+  const redirect = NextResponse.redirect(loginUrl);
+  session.response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+  redirect.headers.set(
+    "Cache-Control",
+    "private, no-cache, no-store, must-revalidate, max-age=0",
+  );
+  redirect.headers.set("Pragma", "no-cache");
+  redirect.headers.set("Expires", "0");
+  return redirect;
+}
+
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (isAdminPath(pathname)) {
+    return adminBasicAuth(request) ?? NextResponse.next();
+  }
+
+  const session = await updateSession(request);
+  if (isProtectedPath(pathname) && session.authState !== "authenticated") {
+    return protectedRouteRedirect(request, session);
+  }
+
+  return session.response;
 }
 
 export const config = {
-  // Run on everything EXCEPT static assets + API images. The browser
-  // makes a lot of `/_next/static/*` requests; skipping them avoids
-  // running the session refresh logic on every chunk.
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|images/|api/place-photo|api/og).*)",
   ],
