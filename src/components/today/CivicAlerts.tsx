@@ -1,9 +1,11 @@
 import { AlertTriangle, Info, AlertCircle, Clock } from "lucide-react";
 import { getNwsAlerts, type NwsAlert } from "@/lib/integrations/nws-alerts";
 import { getNpsAlerts, type NpsAlert } from "@/lib/integrations/nps";
+import { getAirQuality, pickWorstAqi } from "@/lib/integrations/airnow";
+import { FREDERICK_CENTER } from "@/lib/geo";
 
 type UnifiedAlert = {
-  source: "NWS" | "NPS";
+  source: "NWS" | "NPS" | "EPA";
   severity: "info" | "advisory" | "warning" | "emergency";
   title: string;
   /** Short one-line tail under the title (e.g. "Until 8:00 PM" or
@@ -110,8 +112,22 @@ const STYLES = {
  * card balloon to half the viewport. This is the fix.
  */
 export default async function CivicAlerts() {
+  const aqiObs = await getAirQuality(FREDERICK_CENTER).catch(() => null);
+  const worstAqi = aqiObs ? pickWorstAqi(aqiObs) : null;
+
   const [nws, nps] = await Promise.all([getNwsAlerts(), getNpsAlerts()]);
   const alerts = normalize(nws, nps);
+  
+  if (worstAqi && worstAqi.category.id >= 3) {
+    alerts.unshift({
+      source: "EPA",
+      severity: worstAqi.category.id >= 4 ? "warning" : "advisory",
+      title: `Air Quality: ${worstAqi.category.name}`,
+      tail: `AQI is ${worstAqi.aqi}. Limit prolonged outdoor exertion.`,
+      scope: "Frederick Area",
+      url: "https://www.airnow.gov/"
+    });
+  }
   if (alerts.length === 0) return null;
 
   return (

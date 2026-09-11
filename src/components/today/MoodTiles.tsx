@@ -93,22 +93,21 @@ export default function MoodTiles() {
                 }}
               />
 
-              {/* Smaller white glass icon pill — sized for the tighter
-                  tile footprint. */}
+              {/* Larger white glass icon pill with refined glassmorphism. */}
               <span
                 aria-hidden
-                className="grid h-8 w-8 place-items-center rounded-full"
+                className="grid h-10 w-10 place-items-center rounded-full"
                 style={{
-                  background: "rgba(255,255,255,0.96)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
+                  background: "rgba(255,255,255,0.75)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
                   boxShadow:
-                    "0 2px 6px -1px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.7)",
+                    "0 4px 12px -2px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.9)",
                 }}
               >
                 <Icon
-                  className="h-[16px] w-[16px]"
-                  strokeWidth={2.25}
+                  className="h-[18px] w-[18px]"
+                  strokeWidth={1.5}
                   style={{ color: m.color }}
                 />
               </span>

@@ -145,7 +145,7 @@ export default async function WeeklyForecast() {
           return (
             <li
               key={d.key}
-              className="grid items-center gap-2.5 px-1 py-2.5"
+              className="grid items-center gap-2 px-1 py-1.5"
               style={{
                 gridTemplateColumns: "44px 22px 34px 1fr 34px 32px",
                 borderTop: "1px solid var(--app-border)",

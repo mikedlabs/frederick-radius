@@ -8,9 +8,13 @@ import {
   Bus,
   Mountain,
   Settings as SettingsIcon,
-    ShieldCheck,
+  ShieldCheck,
   Waves,
   TreeDeciduous,
+  Megaphone,
+  Store,
+  CalendarPlus,
+  CircleParking,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
@@ -55,17 +59,21 @@ type Item = {
 // All three action verbs have better, more-contextual homes than a
 // hidden drawer; the drawer no longer needs a Tools section.
 
+
+const COMMUNITY: Item[] = [
+  { href: "/submit/event", label: "Submit Event", description: "Add a local event to the calendar", icon: CalendarPlus, color: "var(--app-brand)" },
+  { href: "/submit/place", label: "Add Place",    description: "Submit a missing food truck, shop, or park", icon: Store, color: "var(--app-accent)" },
+  { href: "/claim",        label: "Claim Page",   description: "Claim your business to manage hours and details", icon: Megaphone, color: "var(--app-positive)" },
+];
+
 const USEFUL: Item[] = [
-  { href: "/amenities", label: "Amenities", description: "Restrooms, water, wifi, EV charging, bike parking", icon: Wrench,        color: "var(--app-brand)" },
+  { href: "/map?mode=browse&intent=civic&sub=parking", label: "Parking", description: "City garages and street parking rules", icon: CircleParking, color: "var(--app-brand)" },
+  { href: "/map?mode=browse&intent=civic", label: "Amenities", description: "Restrooms, water, wifi, EV charging, bike parking", icon: Wrench,        color: "var(--app-brand-2)" },
   { href: "/contacts",  label: "Contacts",  description: "City and county department directory",              icon: Building2,     color: "var(--app-ink-2)" },
-  { href: "/transit",   label: "Transit",   description: "TransIT bus routes and stops",                      icon: Bus,           color: "var(--app-cool)" },
-  { href: "/trails",    label: "Trails",    description: "200+ miles of hikes, towpaths, and rail-trails",    icon: Mountain,      color: "var(--app-positive)" },
-  { href: "/parks",     label: "Parks",     description: "Public parks across all 12 municipalities",          icon: TreeDeciduous, color: "var(--app-brand-2)" },
-  // "Water" tile collapsed into Rivers (May 2026 IA cleanup). The
-  // /water page redirected to /rivers because both rendered the same
-  // USGS gauge data; the intended "drinking fountains" surface lives
-  // under the Pools/Amenities map filter when curated data lands.
-  { href: "/rivers",    label: "Rivers & creeks", description: "Live USGS gauges · gage height + flow + 24-hour trend", icon: Waves, color: "var(--app-cool)" },
+  { href: "/map?mode=browse&intent=civic&sub=transit",   label: "Transit",   description: "TransIT bus routes and stops",                      icon: Bus,           color: "var(--app-cool)" },
+  { href: "/map?mode=browse&intent=outdoor&sub=trails",    label: "Trails",    description: "200+ miles of hikes, towpaths, and rail-trails",    icon: Mountain,      color: "var(--app-positive)" },
+  { href: "/map?mode=browse&intent=outdoor&sub=parks",     label: "Parks",     description: "Public parks across all 12 municipalities",          icon: TreeDeciduous, color: "var(--app-brand-2)" },
+  { href: "/map?mode=browse&intent=outdoor",    label: "Rivers & creeks", description: "Live USGS gauges · gage height + flow + 24-hour trend", icon: Waves, color: "var(--app-cool)" },
 ];
 
 const APP: Item[] = [
@@ -101,6 +109,7 @@ export default function MoreSheet({
             surface to live on. APP closes out the sheet so About,
             Trust, Settings stay reachable. */}
 
+        <IconCluster heading="Locals & Business" items={COMMUNITY} onClose={close} columns={3} />
         <IconCluster heading="Useful" items={USEFUL} onClose={close} columns={4} />
         <IconCluster heading="App" items={APP} onClose={close} columns={3} />
       </div>

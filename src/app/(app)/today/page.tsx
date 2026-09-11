@@ -37,7 +37,11 @@ import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 // decorative divider between weather/discovery and action; the
 // reorder makes the divider unnecessary.
 
-import { allUpcoming, eventsLive } from "@/lib/loaders/events";
+import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, type EventWithMeta } from "@/lib/loaders/events";
+import { getLiveEvents } from "@/lib/integrations/ical-live";
+import { fetchTicketmasterMusic } from "@/lib/integrations/ticketmaster";
+import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
+import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { easternWallToUtcISO } from "@/lib/tz";
 
@@ -74,6 +78,8 @@ import { easternWallToUtcISO } from "@/lib/tz";
  *   • MunicipalityStrip                    — towns reachable via /m
  *   • DecorativeDivider variants           — visual filler
  */
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
 };
@@ -101,14 +107,14 @@ const NON_PUBLIC_EVENT = /\b(board|council|commission|hearing|workshop|rehearsal
  *  photo-backed AND non-administrative is happening in the next 3
  *  days, we'd rather show no hero than lie about freshness. */
 const FEATURED_EVENT_WINDOW_HOURS = 72;
-function pickFeaturedEvent(now: Date) {
+function pickFeaturedEvent(now: Date, allEvents: EventWithMeta[]) {
   const windowEnd = now.getTime() + FEATURED_EVENT_WINDOW_HOURS * 3_600_000;
   // withVenueThumbs borrows each event's venue photo onto hero_image
   // when the event has no image of its own. Without this, Alive @ Five
   // (and any other DFP event without a hardcoded photo) lost out to
   // the "must have hero_image" check below and missed the photo path
   // /events shows. Cheap on a small list — just a slug lookup per event.
-  const upcoming = withVenueThumbs(allUpcoming(now)).filter(
+  const upcoming = withVenueThumbs(allEvents).filter(
     (e) =>
       !NON_PUBLIC_EVENT.test(e.title ?? "") &&
       Date.parse(e.starts_at) <= windowEnd,
@@ -163,17 +169,21 @@ function easternDayAt(base: { year: number; month: number; day: number }, offset
 // specific question, not as a generic feed. All boundaries are
 // computed in America/New_York so a UTC production server agrees with
 // a Frederick user about what "tonight" means.
-function eventsForMode(mode: TodayTimeMode, now: Date) {
+function eventsForMode(mode: TodayTimeMode, now: Date, allEvents: EventWithMeta[]) {
   const nowMs = now.getTime();
   const et = easternParts(now);
 
   if (mode === "now") {
     // Live right now OR starting in the next 90 minutes.
-    const inNext90 = allUpcoming(now).filter((e) => {
+    const inNext90 = allEvents.filter((e) => {
       const ms = new Date(e.starts_at).getTime() - nowMs;
       return ms >= 0 && ms <= 90 * 60_000;
     });
-    return { title: "Happening now", items: [...eventsLive(now), ...inNext90] };
+    const happeningNow = allEvents.filter(e => new Date(e.starts_at).getTime() <= nowMs && new Date(e.ends_at).getTime() >= nowMs);
+    // Deduplicate against inNext90 just in case
+    const nowSlugs = new Set(happeningNow.map(e => e.slug));
+    const next90Unique = inNext90.filter(e => !nowSlugs.has(e.slug));
+    return { title: "Happening now", items: [...happeningNow, ...next90Unique] };
   }
 
   let title: string;
@@ -208,7 +218,7 @@ function eventsForMode(mode: TodayTimeMode, now: Date) {
     // withVenueThumbs again here — the Upcoming shelf cards need the
     // venue photo too, otherwise an Alive @ Five tile sits as a
     // text-only card next to events that DO carry a hero image.
-    items: withVenueThumbs(allUpcoming(now)).filter((e) => {
+    items: withVenueThumbs(allEvents).filter((e) => {
       const ms = Date.parse(e.starts_at);
       return Number.isFinite(ms) && ms >= startMs && ms <= endMs;
     }),
@@ -223,13 +233,32 @@ export default async function HomePage({
   const { t } = await searchParams;
   const now = new Date();
 
-  const featuredEvent = pickFeaturedEvent(now);
+  // 1. Fetch live events
+  const curatedUpcoming = allUpcoming(now);
+  const [{ events: liveEventsRaw }, tmEvents, bitEvents] = await Promise.all([
+    getLiveEvents(60),
+    fetchTicketmasterMusic().catch(() => []),
+    fetchBandsintownForArtists([]).catch(() => []),
+  ]);
+
+  // 2. Dedupe and merge
+  const liveCards = dedupeLiveAgainstCurated(
+    [...liveEventsRaw, ...tmEvents, ...bitEvents].map(liveToCardEvent),
+    curatedUpcoming
+  );
+  const bySlug = new Map<string, EventWithMeta>();
+  for (const e of [...curatedUpcoming, ...liveCards]) {
+    if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
+  }
+  const allMerged = [...bySlug.values()].sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
+
+  const featuredEvent = pickFeaturedEvent(now, allMerged);
   // Pre-compute per-mode counts so the chip strip shows "Tonight · 3"
   // without forcing a click into an empty surface — AND so the default
   // mode picker below can land on a window that actually has events.
   const counts: Partial<Record<TodayTimeMode, number>> = {};
   for (const m of ["now", "tonight", "tomorrow", "weekend"] as const) {
-    counts[m] = eventsForMode(m, now).items.length;
+    counts[m] = eventsForMode(m, now, allMerged).items.length;
   }
   // Default mode: previously hard-wired to "now" which is empty most
   // of the day. Now we pick the first populated window in priority
@@ -245,7 +274,7 @@ export default async function HomePage({
   const mode: TodayTimeMode = isTodayTimeMode(t) ? t : pickDefaultMode();
   // Per-mode event window — title + items both come from one helper
   // so chip and rendered section never disagree.
-  const slice = eventsForMode(mode, now);
+  const slice = eventsForMode(mode, now, allMerged);
   // Filter out the featured event so it doesn't appear twice in the
   // shelf below the hero. Only show the featured hero when the active
   // slice actually contains it.

@@ -148,6 +148,7 @@ const CIVIC = new Set([
   "voting",
   "transit",
   "civic",
+  "parking",
 ]);
 
 export const INTENTS: Intent[] = [
@@ -286,6 +287,8 @@ export const INTENTS: Intent[] = [
       { key: "public-safety", type: "category", label: "Public safety", icon: "ShieldCheck", match: (p) => p.category === "public-safety" },
       { key: "voting",        type: "category", label: "Voting",        icon: "Vote",        match: (p) => p.category === "voting" },
       { key: "worship",       type: "category", label: "Worship",       icon: "Church",      match: (p) => p.category === "worship" },
+      { key: "parking",       type: "category", label: "Parking",       icon: "Truck",       match: (p) => p.category === "parking" },
+      { key: "transit",       type: "category", label: "Transit",       icon: "Truck",       match: (p) => p.category === "transit" },
     ],
   },
 ];
