@@ -1,3 +1,5 @@
+import path from "node:path";
+import sharp from "sharp";
 import { describe, it, expect } from "vitest";
 import { CIVIC_MOMENTS, activeMoment, momentBySlug } from "./civic-moments";
 
@@ -31,6 +33,44 @@ describe("momentBySlug", () => {
       "Radius is an independent local guide. Fair details come from official Fair sources linked below.",
     );
   });
+
+  it("keeps the finished In The Streets photograph attributed and correctly sized", () => {
+    const streets = momentBySlug("in-the-street-2026");
+    expect(streets?.spotlightImage).toEqual({
+      src: "/images/moments/in-the-streets-2024-mike-d.jpg",
+      alt: "A packed Market Street during In The Streets in downtown Frederick, photographed in 2024.",
+      credit: "Photograph by Mike D · In The Streets 2024",
+      width: 1920,
+      height: 1078,
+    });
+    expect(streets?.spotlightDirectionsUrl).toBe(
+      "https://www.google.com/maps/search/?api=1&query=Market%20Street%2C%20Frederick%2C%20MD",
+    );
+  });
+
+  it("ships the In The Streets image without private capture metadata", async () => {
+    const metadata = await sharp(
+      path.join(process.cwd(), "public/images/moments/in-the-streets-2024-mike-d.jpg"),
+    ).metadata();
+
+    expect([metadata.width, metadata.height]).toEqual([1920, 1078]);
+    expect(metadata.exif).toBeUndefined();
+    expect(metadata.iptc).toBeUndefined();
+    expect(metadata.xmp).toBeUndefined();
+  });
+
+  it("puts the In The Streets day in chronological order", () => {
+    const timeline = momentBySlug("in-the-street-2026")?.sections.find(
+      (section) => section.heading === "Today's timeline",
+    );
+
+    expect(timeline?.items.map((item) => item.title)).toEqual([
+      "Market Street Mile",
+      "In The Streets festival",
+      "Craft Beverage Experience",
+      "Up The Creek party",
+    ]);
+  });
 });
 
 describe("data integrity (a bad hand-edit fails here)", () => {
@@ -45,8 +85,18 @@ describe("data integrity (a bad hand-edit fails here)", () => {
         expect(fact.label.trim().length).toBeGreaterThan(0);
         expect(fact.value.trim().length).toBeGreaterThan(0);
       }
+      if (m.spotlightImage) {
+        expect(m.spotlightImage.src).toMatch(/^\/images\/moments\/.+\.(?:jpg|jpeg|webp)$/);
+        expect(m.spotlightImage.alt.trim().length).toBeGreaterThan(0);
+        expect(m.spotlightImage.credit.trim().length).toBeGreaterThan(0);
+        expect(m.spotlightImage.width).toBeGreaterThan(0);
+        expect(m.spotlightImage.height).toBeGreaterThan(0);
+      }
       if (m.spotlightSourceUrl) {
         expect(m.spotlightSourceUrl).toMatch(/^https?:\/\//);
+      }
+      if (m.spotlightDirectionsUrl) {
+        expect(m.spotlightDirectionsUrl).toMatch(/^https?:\/\//);
       }
     }
   });

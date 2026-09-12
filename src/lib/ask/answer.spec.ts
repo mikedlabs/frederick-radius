@@ -1193,10 +1193,22 @@ describe("askFrederick structured answers", () => {
   });
 
   it("keeps live-music source cards limited to actual calendar events", async () => {
-    const result = await askFrederick("What live music is happening tonight?", downtown);
-    expect(result.sources.every((source) => source.href.startsWith("/events/"))).toBe(true);
-    expect(result.sources.every((source) => source.category === "music")).toBe(true);
-    expect(result.sources.some((source) => /yoga|meeting|playground/i.test(source.name))).toBe(false);
+    // This is a fixture-quality test, not a current-calendar check. Pin the
+    // reviewed promoted event set so a legitimate seasonal festival cannot
+    // make an exact music-category assertion depend on the real clock.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-13T22:00:00.000Z"));
+    vi.stubEnv("RADIUS_DATA_MODE", "promoted");
+    try {
+      const result = await askFrederick("What live music is happening tonight?", downtown);
+      expect(result.sources.length).toBeGreaterThan(0);
+      expect(result.sources.every((source) => source.href.startsWith("/events/"))).toBe(true);
+      expect(result.sources.every((source) => source.category === "music")).toBe(true);
+      expect(result.sources.some((source) => /yoga|meeting|playground/i.test(source.name))).toBe(false);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.useRealTimers();
+    }
   });
 
   it("can anchor a plan on a real place named in the request", async () => {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Sparkles, Flag, TriangleAlert, Star, Info, ExternalLink, CloudSun } from "lucide-react";
 import { CIVIC_MOMENTS, momentBySlug, type MomentItem, type MomentItemKind } from "@/data/civic-moments";
 import FairDayPage from "@/components/fair/FairDayPage";
@@ -27,9 +28,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const m = momentBySlug(slug);
   if (!m) notFound();
-  // The Fair has a distinctive owned photograph, so a shared link should lead
-  // with the actual experience instead of the generic civic-moment card. Other
-  // moments keep the generated field-guide artwork.
+  // An owned moment photograph should lead a shared link with the actual
+  // experience instead of generic civic-moment artwork.
   const ogImage = slug === FAIR_DAY_SLUG
     ? {
         url: "/images/fair/fairgrounds-night-mike-d-1920.jpg",
@@ -37,10 +37,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         height: 1080,
         alt: "The Great Frederick Fairgrounds glowing at night, seen from above.",
       }
+    : m.spotlightImage
+      ? {
+          url: m.spotlightImage.src,
+          width: m.spotlightImage.width,
+          height: m.spotlightImage.height,
+          alt: m.spotlightImage.alt,
+        }
     : {
         url: `/api/og?type=moment&slug=${slug}`,
         width: 1200,
         height: 630,
+        alt: `${m.title} in Frederick County`,
       };
   const title = slug === FAIR_DAY_SLUG ? "Fair Day | The Great Frederick Fair 2026" : m.title;
   const description =
@@ -52,7 +60,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     description,
     alternates: { canonical: `/moments/${slug}` },
     openGraph: { title, description, images: [ogImage] },
-    twitter: { card: "summary_large_image", title, description, images: [ogImage.url] },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [{ url: ogImage.url, alt: ogImage.alt }],
+    },
   };
 }
 
@@ -170,6 +183,26 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
         <p className="relative mt-2 max-w-[40ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           {m.intro}
         </p>
+        {m.spotlightImage && (
+          <figure className="relative mt-5 aspect-[16/9] overflow-hidden rounded-[var(--app-radius-lg)]" style={{ boxShadow: "var(--app-elev-1), var(--app-edge)" }}>
+            <Image
+              src={m.spotlightImage.src}
+              alt={m.spotlightImage.alt}
+              fill
+              priority
+              sizes="(max-width: 640px) 100vw, 640px"
+              className="object-cover object-center"
+            />
+            <span
+              aria-hidden
+              className="absolute inset-x-0 bottom-0 h-1/2"
+              style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 74%, transparent), transparent)" }}
+            />
+            <figcaption className="absolute inset-x-0 bottom-0 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-on-brand)]">
+              {m.spotlightImage.credit}
+            </figcaption>
+          </figure>
+        )}
         {m.spotlightFacts && m.spotlightFacts.length > 0 && (
           <dl className="relative mt-5 grid gap-px overflow-hidden rounded-[var(--app-radius-md)] border sm:grid-cols-3" style={{ borderColor: "color-mix(in srgb, var(--app-ink) 14%, var(--app-border))", background: "color-mix(in srgb, var(--app-ink) 8%, transparent)" }}>
             {m.spotlightFacts.map((fact) => (

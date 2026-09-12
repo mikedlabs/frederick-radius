@@ -56,6 +56,17 @@ export type MomentSpotlightFact = {
   value: string;
 };
 
+/** An owned editorial photograph used only where it truthfully depicts the
+ * occasion. Keeping the credit with the data makes that provenance visible on
+ * both the day-of lead and the fuller guide. */
+export type MomentSpotlightImage = {
+  src: string;
+  alt: string;
+  credit: string;
+  width: number;
+  height: number;
+};
+
 export type CivicMoment = {
   slug: string;
   /** Big serif hub title ("The Fourth in Frederick County"). */
@@ -66,8 +77,12 @@ export type CivicMoment = {
   spotlightLead: string;
   /** Optional at-a-glance facts for the Today lead and the moment hub. */
   spotlightFacts?: MomentSpotlightFact[];
+  /** Optional owned photograph for the day-of lead and the moment hub. */
+  spotlightImage?: MomentSpotlightImage;
   /** Official plan for the primary day-of action, when one page covers the occasion. */
   spotlightSourceUrl?: string;
+  /** A scoped directions link for a moment with a stable public location. */
+  spotlightDirectionsUrl?: string;
   /** Eastern window the moment is live (inclusive). */
   starts: string;
   ends: string;
@@ -515,7 +530,15 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
       { label: "Where", value: "Market Street, downtown" },
       { label: "Admission", value: "Free to attend" },
     ],
+    spotlightImage: {
+      src: "/images/moments/in-the-streets-2024-mike-d.jpg",
+      alt: "A packed Market Street during In The Streets in downtown Frederick, photographed in 2024.",
+      credit: "Photograph by Mike D · In The Streets 2024",
+      width: 1920,
+      height: 1078,
+    },
     spotlightSourceUrl: "https://www.celebratefrederick.com/events/in-the-street/",
+    spotlightDirectionsUrl: "https://www.google.com/maps/search/?api=1&query=Market%20Street%2C%20Frederick%2C%20MD",
     starts: "2026-09-09",
     ends: "2026-09-12",
     accent: "var(--app-brand)",
@@ -526,8 +549,17 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
     note: "Times are from Celebrate Frederick's event page. Exact road-closure hours aren't published yet; check their parking and directions link closer to the day.",
     sections: [
       {
-        heading: "The day",
+        heading: "Today's timeline",
         items: [
+          {
+            kind: "activity",
+            title: "Market Street Mile",
+            where: "Market Street",
+            when: "Sat, Sept 12 · 9 AM",
+            note: "The morning road race that kicks the day off before the festival opens.",
+            source_url: "https://www.celebratefrederick.com/events/in-the-street/",
+            confidence: "confirmed",
+          },
           {
             kind: "activity",
             title: "In The Streets festival",
@@ -535,15 +567,6 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
             address: "N. Market St, Frederick",
             when: "Sat, Sept 12 · 11 AM to 5 PM",
             note: "Free. Several entertainment stages, food from Frederick restaurants, and vendors down the length of the street.",
-            source_url: "https://www.celebratefrederick.com/events/in-the-street/",
-            confidence: "confirmed",
-          },
-          {
-            kind: "activity",
-            title: "Market Street Mile",
-            where: "Market Street",
-            when: "Sat, Sept 12 · 9 AM",
-            note: "The morning road race that kicks the day off before the festival opens.",
             source_url: "https://www.celebratefrederick.com/events/in-the-street/",
             confidence: "confirmed",
           },
