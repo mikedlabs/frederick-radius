@@ -41,6 +41,13 @@ describe("data integrity (a bad hand-edit fails here)", () => {
       expect(m.spotlightLead.length).toBeGreaterThan(0);
       expect(m.starts <= m.ends).toBe(true);
       expect(m.sections.length).toBeGreaterThan(0);
+      for (const fact of m.spotlightFacts ?? []) {
+        expect(fact.label.trim().length).toBeGreaterThan(0);
+        expect(fact.value.trim().length).toBeGreaterThan(0);
+      }
+      if (m.spotlightSourceUrl) {
+        expect(m.spotlightSourceUrl).toMatch(/^https?:\/\//);
+      }
     }
   });
 

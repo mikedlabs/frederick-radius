@@ -6,6 +6,7 @@ import { CIVIC_MOMENTS, momentBySlug, type MomentItem, type MomentItemKind } fro
 import FairDayPage from "@/components/fair/FairDayPage";
 import PageBloom from "@/components/ui/PageBloom";
 import { jsonLdScript } from "@/lib/seo/jsonld";
+import { easternDayKey } from "@/lib/tz";
 
 const FAIR_DAY_SLUG = "great-frederick-fair-2026";
 
@@ -121,6 +122,7 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const m = momentBySlug(slug);
   if (!m) notFound();
+  const isDayOf = easternDayKey(new Date()) === m.ends;
 
   if (slug === FAIR_DAY_SLUG) {
     return <FairDayPage />;
@@ -145,9 +147,9 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
         }}
       >
         <span aria-hidden className="pointer-events-none absolute -right-10 -top-12 h-48 w-48 rounded-full" style={{ background: `radial-gradient(circle, color-mix(in srgb, ${m.accent} 22%, transparent), transparent 70%)` }} />
-        <p className="relative inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: m.accent }}>
+        <p className="relative inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: m.accent }}>
           <Sparkles className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          This weekend in Frederick County
+          {isDayOf ? "Today in Frederick County" : "This weekend in Frederick County"}
         </p>
         <h1 className="relative mt-2 font-serif font-semibold leading-[1.02] tracking-tight" style={{ color: "var(--app-ink)", fontSize: "clamp(28px, 7vw, 40px)" }}>
           {m.title}
@@ -168,6 +170,22 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
         <p className="relative mt-2 max-w-[40ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           {m.intro}
         </p>
+        {m.spotlightFacts && m.spotlightFacts.length > 0 && (
+          <dl className="relative mt-5 grid gap-px overflow-hidden rounded-[var(--app-radius-md)] border sm:grid-cols-3" style={{ borderColor: "color-mix(in srgb, var(--app-ink) 14%, var(--app-border))", background: "color-mix(in srgb, var(--app-ink) 8%, transparent)" }}>
+            {m.spotlightFacts.map((fact) => (
+              <div key={fact.label} className="px-3.5 py-3" style={{ background: "color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent)" }}>
+                <dt className="text-[10px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>{fact.label}</dt>
+                <dd className="mt-0.5 text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>{fact.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {m.spotlightSourceUrl && (
+          <a href={m.spotlightSourceUrl} target="_blank" rel="noopener noreferrer" className="relative mt-5 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-3.5 text-[13px] font-semibold" style={{ background: "var(--app-brand)", color: "var(--app-bg)" }}>
+            Official event details
+            <ExternalLink className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+          </a>
+        )}
       </header>
 
       {m.weatherSensitive && (
