@@ -2,6 +2,8 @@ import { Sparkles, CheckCircle2, Circle } from "lucide-react";
 import { useState } from "react";
 import confetti from "canvas-confetti";
 import { motion } from "framer-motion";
+import { SnapCarousel, SnapCarouselItem } from "@/components/ui/SnapCarousel";
+import { MagicCard } from "@/components/ui/MagicCard";
 
 const QUEST_ITEMS = [
   { id: "q1", label: "Eat a classic Funnel Cake" },
@@ -20,8 +22,7 @@ export default function FairQuest() {
         next.delete(id);
       } else {
         next.add(id);
-        // Small confetti pop for a single item
-        const rect = (e.target as HTMLElement).getBoundingClientRect();
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const x = (rect.left + rect.width / 2) / window.innerWidth;
         const y = (rect.top + rect.height / 2) / window.innerHeight;
         
@@ -33,7 +34,6 @@ export default function FairQuest() {
           disableForReducedMotion: true,
         });
 
-        // Big celebration if 100% completed
         if (next.size === QUEST_ITEMS.length) {
           setTimeout(() => {
             confetti({
@@ -60,10 +60,10 @@ export default function FairQuest() {
       transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
       data-fair-quest
       aria-label="Fair Quest Scavenger Hunt"
-      className="mt-8 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] shadow-sm"
-      style={{ borderColor: "color-mix(in srgb, var(--app-border-strong) 60%, transparent)" }}
+      className="mt-8 overflow-hidden rounded-[var(--app-radius-lg)] border-0 bg-[var(--app-bg-elevated-solid)] pb-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]"
+      style={{ background: "color-mix(in srgb, var(--app-bg-surface) 95%, transparent)" }}
     >
-      <div className="border-b bg-[var(--app-brand-press)] p-4 text-[var(--app-on-brand)]">
+      <div className="bg-[var(--app-brand-press)] p-4 pb-14 text-[var(--app-on-brand)]" style={{ background: "linear-gradient(135deg, var(--app-brand-press), var(--app-brand))" }}>
         <h3 className="flex items-center gap-2 text-[18px] font-extrabold tracking-tight">
           <Sparkles className="h-5 w-5 text-yellow-300" /> Fair Quest 2026
         </h3>
@@ -80,28 +80,39 @@ export default function FairQuest() {
           <span className="text-[12px] font-bold">{progress}%</span>
         </div>
       </div>
-      <div className="divide-y p-1" style={{ borderColor: "var(--app-border)" }}>
-        {QUEST_ITEMS.map((item) => {
-          const isDone = completed.has(item.id);
-          return (
-            <button
-              key={item.id}
-              onClick={(e) => toggleItem(item.id, e)}
-              className="flex w-full items-center gap-3 p-3 text-left transition-colors active:bg-[var(--app-bg-hover)]"
-            >
-              {isDone ? (
-                <CheckCircle2 className="h-6 w-6 shrink-0 text-[var(--app-brand-press)]" />
-              ) : (
-                <Circle className="h-6 w-6 shrink-0 text-[var(--app-ink-3)]" />
-              )}
-              <span
-                className={`text-[15px] font-semibold ${isDone ? "text-[var(--app-ink-3)] line-through" : "text-[var(--app-ink)]"}`}
-              >
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
+      
+      <div className="-mt-10">
+        <SnapCarousel style={{ gap: "12px", padding: "0 16px" } as any}>
+          {QUEST_ITEMS.map((item) => {
+            const isDone = completed.has(item.id);
+            return (
+              <SnapCarouselItem key={item.id} style={{ width: "min(75vw, 280px)" }}>
+                <MagicCard className="h-full border border-white/20 bg-white/90 p-4 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-black/80">
+                  <button
+                    onClick={(e) => toggleItem(item.id, e)}
+                    className="flex h-full w-full flex-col text-left transition-transform active:scale-[0.98]"
+                  >
+                    <div className="mb-4 flex items-center justify-between">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--app-bg-sunken)] text-[12px] font-bold text-[var(--app-ink-2)]">
+                        #{item.id.replace("q", "")}
+                      </span>
+                      {isDone ? (
+                        <CheckCircle2 className="h-6 w-6 text-[var(--app-brand-press)] drop-shadow-sm" />
+                      ) : (
+                        <Circle className="h-6 w-6 text-[var(--app-ink-3)]" />
+                      )}
+                    </div>
+                    <span
+                      className={`text-[15px] font-extrabold leading-tight tracking-tight ${isDone ? "text-[var(--app-ink-3)] line-through" : "text-[var(--app-ink)]"}`}
+                    >
+                      {item.label}
+                    </span>
+                  </button>
+                </MagicCard>
+              </SnapCarouselItem>
+            );
+          })}
+        </SnapCarousel>
       </div>
     </motion.section>
   );

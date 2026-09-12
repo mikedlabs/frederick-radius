@@ -5,14 +5,17 @@ import { ReactNode } from "react";
 export function SnapCarousel({
   children,
   className = "",
+  style,
 }: {
   children: ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 }) {
   return (
     <div
       className={`snap-carousel-container flex w-full gap-4 overflow-x-auto pb-6 pt-4 px-6 snap-x snap-mandatory ${className}`}
       style={{
+        ...style,
         scrollbarWidth: "none", // Firefox
         msOverflowStyle: "none", // IE
       }}
@@ -54,14 +57,17 @@ export function SnapCarousel({
 export function SnapCarouselItem({
   children,
   className = "",
+  style,
 }: {
   children: ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 }) {
   return (
     <div
       className={`snap-carousel-item snap-center shrink-0 transition-transform ${className}`}
       style={{
+        ...style,
         /* Provide a gentle default transition for browsers without animation-timeline support */
         transition: "transform 0.3s ease, opacity 0.3s ease",
       }}

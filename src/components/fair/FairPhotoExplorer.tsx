@@ -11,7 +11,8 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
-import BottomDrawer from "@/components/ui/BottomDrawer";
+import BottomSheet from "@/components/ui/BottomSheet";
+import { X } from "lucide-react";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import {
   FAIR_PHOTO_PREVIEW,
@@ -130,17 +131,27 @@ export default function FairPhotoExplorer({
   const leaveFor = (next: () => void) => historyLayer.leave(next);
 
   return (
-    <BottomDrawer
-      open={open}
-      onOpenChange={closeOrOpen}
-      title="Explore the Fair at night"
-      subtitle="A real Frederick photograph with useful landmarks"
-      bareHeader
+    <BottomSheet
+      present={open}
+      onClose={() => closeOrOpen(false)}
+      ariaLabel="Explore the Fair at night"
     >
-      <div
-        data-fair-photo-explorer
-        className="mx-auto w-full max-w-[60rem]"
-      >
+      {(dismiss) => (
+        <div
+          data-fair-photo-explorer
+          className="mx-auto flex h-full w-full max-w-[60rem] flex-col"
+        >
+          {/* Custom bare header drag handle + close */}
+          <div className="absolute left-0 right-0 top-0 z-50 flex h-14 items-center justify-end px-3">
+            <div className="pointer-events-none absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-white/40 shadow-sm" />
+            <button
+              onClick={dismiss}
+              aria-label="Close photo explorer"
+              className="tap-44-xy grid h-8 w-8 place-items-center rounded-full bg-black/50 text-white backdrop-blur-md transition active:scale-95"
+            >
+              <X className="h-5 w-5" strokeWidth={2.25} />
+            </button>
+          </div>
         <div
           className="relative aspect-video overflow-hidden bg-[var(--app-ink)]"
           data-fair-photo-stage
@@ -344,6 +355,7 @@ export default function FairPhotoExplorer({
           </span>
         </div>
       </div>
-    </BottomDrawer>
+      )}
+    </BottomSheet>
   );
 }

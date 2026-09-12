@@ -45,7 +45,7 @@ import { toast } from "sonner";
 
 import RippleMark from "@/components/brand/RippleMark";
 import { Button } from "@/components/ui/Button";
-import BottomDrawer from "@/components/ui/BottomDrawer";
+import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 import {
   addFairPlanItem,
   moveFairPlanItemWithinDay,
@@ -3080,11 +3080,9 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         }
       />
 
-      <BottomDrawer
-        open={activePreparation === "ticket"}
-        onOpenChange={(open) =>
-          open ? openPreparation("ticket") : closePreparation("ticket")
-        }
+      <FairBottomSheet
+        present={activePreparation === "ticket"}
+        onClose={() => closePreparation("ticket")}
         title="Tickets"
         subtitle={`Reviewed options for ${fairDateShortLabel(selectedDate)}`}
       >
@@ -3095,13 +3093,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
           onPartyChange={(party) => setPlan((current) => setFairPlanParty(current, party, updateTimestamp()))}
           onReadyChange={(ready) => setPlan((current) => setFairPlanReady(current, "ticket", ready, updateTimestamp()))}
         />
-      </BottomDrawer>
+      </FairBottomSheet>
 
-      <BottomDrawer
-        open={activePreparation === "entry"}
-        onOpenChange={(open) =>
-          open ? openPreparation("entry") : closePreparation("entry")
-        }
+      <FairBottomSheet
+        present={activePreparation === "entry"}
+        onClose={() => closePreparation("entry")}
         title="Entry"
         subtitle="Payment, ticket access, and gate preparation"
       >
@@ -3110,13 +3106,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
           ready={plan.readyKeys.includes("entry")}
           onReadyChange={(ready) => setPlan((current) => setFairPlanReady(current, "entry", ready, updateTimestamp()))}
         />
-      </BottomDrawer>
+      </FairBottomSheet>
 
-      <BottomDrawer
-        open={programDetailOpen}
-        onOpenChange={(open) => {
-          if (!open) closeProgramDetail(true);
-        }}
+      <FairBottomSheet
+        present={programDetailOpen}
+        onClose={() => closeProgramDetail(true)}
         title={selectedProgramDetail?.title ?? "Program details"}
         subtitle={
           selectedProgramDetail
@@ -3203,14 +3197,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             </div>
           </div>
         ) : null}
-      </BottomDrawer>
+      </FairBottomSheet>
 
-      <BottomDrawer
-        open={helpOpen}
-        onOpenChange={(open) => {
-          if (open) openHelp();
-          else closeHelp();
-        }}
+      <FairBottomSheet
+        present={helpOpen}
+        onClose={() => closeHelp()}
         title="Fair help"
         subtitle="Access, parking, family needs, rides, weather, and re-entry"
       >
@@ -3246,7 +3237,38 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             </Button>
           </div>
         </div>
-      </BottomDrawer>
+      </FairBottomSheet>
     </article>
+  );
+}
+
+function FairBottomSheet({
+  present,
+  onClose,
+  title,
+  subtitle,
+  children,
+}: {
+  present: boolean;
+  onClose: () => void;
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+}) {
+  return (
+    <BottomSheet present={present} onClose={onClose} ariaLabel={title}>
+      {(dismiss) => (
+        <>
+          <SheetHandle onClose={dismiss} />
+          <div className="border-b pb-3 pt-2" style={{ borderColor: "var(--app-border)", paddingLeft: "max(1rem, env(safe-area-inset-left, 0px))", paddingRight: "max(3.5rem, calc(env(safe-area-inset-right, 0px) + 3.5rem))" }}>
+            <h2 className="font-sans text-[18px] font-extrabold tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>{title}</h2>
+            {subtitle ? <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-ink-3)" }}>{subtitle}</p> : null}
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(env(safe-area-inset-bottom,0px)+24px,24px)]">
+            {children}
+          </div>
+        </>
+      )}
+    </BottomSheet>
   );
 }
