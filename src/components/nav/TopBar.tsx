@@ -197,16 +197,9 @@ export default function TopBar() {
     setSearchOpen(false);
   }, [pathname, searchOpen]);
 
-  // Cmd-K / Ctrl-K opens search globally
+  // Forward slash opens search globally
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        openPrimaryFind(
-          document.activeElement instanceof HTMLElement ? document.activeElement : null,
-          window.scrollY,
-        );
-      }
       // Forward slash as a quick-open (don't trigger when typing into another input)
       if (e.key === "/" && !searchOpen) {
         const target = e.target as HTMLElement | null;

@@ -137,12 +137,13 @@ function popupFromFeature(
   feature: GeoJSON.Feature,
   anchor: { lng: number; lat: number },
 ): PopupState {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const p = (feature.properties ?? {}) as Record<string, any>;
   if (key === "land-value") {
     return {
       ...anchor,
       key,
-      name: "Estimated Value: " + new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(p.land_value || 0),
+      name: "Estimated Value: " + new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(Number(p.land_value) || 0),
       summary: "Simulated land value based on proximity to downtown and I-270 corridor.",
       popupLabel: "Parcel Hexagon"
     };

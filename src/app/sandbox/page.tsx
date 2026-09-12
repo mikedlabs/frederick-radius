@@ -4,9 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, useTransform, useScroll, AnimatePresence, useSpring } from "framer-motion";
 import { Command } from "cmdk";
 import { Drawer } from "vaul";
-import { Search, Bell, Map, Calendar, Bus, Ticket, X, Check, SearchIcon, ChevronRight } from "lucide-react";
+import { Search, Bell, Map, Calendar, Bus, Ticket, X, Check, SearchIcon, ChevronRight, ArrowLeft, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
 
 // -----------------------------------------------------------------------------
 // 1. Dynamic Island Alert
@@ -344,10 +343,9 @@ function SwipeStack() {
   ]);
 
   const x = useMotionValue(0);
-  const background = useTransform(x, [-100, 0, 100], ["#ef4444", "#ffffff", "#22c55e"]);
   const rotate = useTransform(x, [-200, 200], [-15, 15]);
 
-  const handleDragEnd = (event: any, info: any) => {
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: import("framer-motion").PanInfo) => {
     if (info.offset.x > 100 || info.offset.x < -100) {
       setCards(cards.slice(1));
       x.set(0);
@@ -362,7 +360,6 @@ function SwipeStack() {
     );
   }
 
-  const activeCard = cards[0];
 
   return (
     <div className="relative h-48 w-full flex items-center justify-center perspective-[1000px]">
@@ -398,8 +395,8 @@ function SwipeStack() {
         })}
       </AnimatePresence>
       <div className="absolute bottom-4 left-4 right-4 flex justify-between pointer-events-none opacity-50 text-xs font-medium px-2">
-        <span>← Skip</span>
-        <span>Save →</span>
+        <span className="flex items-center gap-1"><ArrowLeft className="h-3 w-3" /> Skip</span>
+        <span className="flex items-center gap-1">Save <ArrowRight className="h-3 w-3" /></span>
       </div>
     </div>
   );

@@ -592,6 +592,7 @@ export default function RightNow({
             if (sameOriginReferrer && window.history.length > 1) {
               window.history.back();
             } else {
+              // eslint-disable-next-line @next/next/no-location-assign-relative-destination
               window.location.assign("/today");
             }
           }}

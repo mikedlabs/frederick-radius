@@ -1,9 +1,9 @@
-import { Cloud, Search, ArrowRight } from "lucide-react";
+
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { compareForLead } from "@/lib/events/lead-rank";
 import { isUtilityEvent } from "@/lib/event-kind";
-import TomorrowSwipeStack from "./TomorrowSwipeStack";
+import EventSwipeStack from "./EventSwipeStack";
 import { easternDayKey } from "@/lib/tz";
 import { isTomorrowPreviewTime, tomorrowDaytimeForecast } from "@/lib/today/tomorrow";
 import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
@@ -64,7 +64,7 @@ export default async function TomorrowPreview({ now, eventsPromise }: { now: Dat
 
   return (
     <section data-today-plan-rest-content aria-label="Tomorrow" className="mt-4 overflow-hidden">
-      <TomorrowSwipeStack cards={swipeCards} weatherLine={weatherLine} />
+      <EventSwipeStack cards={swipeCards} weatherLine={weatherLine} emptyMessage="You are all caught up for tomorrow!" />
     </section>
   );
 }

@@ -1809,6 +1809,7 @@ export default function MapDock(props: MapDockProps) {
                         // document navigation avoids an App Router race where
                         // the panel could close while the search transition was
                         // cancelled, making the tap appear to do nothing.
+                        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
                         window.location.assign(
                           `/search?q=${encodeURIComponent(props.q.trim())}&returnTo=${encodeURIComponent(returnTo)}`,
                         );
@@ -1910,6 +1911,7 @@ export default function MapDock(props: MapDockProps) {
                         normalizeMapReturnTo(
                           `${current.pathname}${current.search}${current.hash}`,
                         ) ?? "/map";
+                      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
                       window.location.assign(
                         `/search?q=${encodeURIComponent(props.q.trim())}&returnTo=${encodeURIComponent(returnTo)}`,
                       );

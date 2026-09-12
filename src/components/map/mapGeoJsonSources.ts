@@ -536,3 +536,28 @@ export function buildEventScrubTimes(
     return { startH, endH, dayKey: easternDayKey(start) };
   });
 }
+
+// Convert events into a GeoJSON FeatureCollection for the heatmap layer.
+// We weight them slightly by category or just give them a point value.
+export function buildEventsGeoJson(
+  events: {
+    slug: string;
+    lng: number;
+    lat: number;
+    category?: string;
+  }[]
+): GeoJSON.FeatureCollection<GeoJSON.Geometry, any> {
+  return {
+    type: "FeatureCollection" as const,
+    features: events.map((e) => ({
+      type: "Feature" as const,
+      properties: { 
+        id: e.slug, 
+        category: e.category || 'unknown',
+        // We can add weight here if we want specific events to glow more
+        weight: 1 
+      },
+      geometry: { type: "Point" as const, coordinates: [e.lng, e.lat] },
+    })),
+  };
+}

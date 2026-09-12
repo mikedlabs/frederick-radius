@@ -204,7 +204,9 @@ export function MapLoadFailure({
           events={events}
           userLoc={null}
           failureMode
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination
           onPick={(place) => window.location.assign(`/places/${place.slug}`)}
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination
           onPickEvent={(event) => window.location.assign(`/events/${event.slug}`)}
         />
       )}

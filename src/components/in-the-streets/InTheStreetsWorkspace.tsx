@@ -1,10 +1,9 @@
 import React from "react";
 import Link from "next/link";
-import { ArrowLeft, Sparkles, Navigation } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
 import InTheStreetsTimelineCard from "./InTheStreetsTimelineCard";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
-import BottomDrawer from "@/components/ui/BottomDrawer";
 
 export default function InTheStreetsWorkspace() {
   return (
@@ -28,7 +27,7 @@ export default function InTheStreetsWorkspace() {
           In The Streets
         </h1>
         <p className="text-[15px] leading-relaxed text-[var(--app-ink-2)] max-w-[40ch]">
-          Downtown's biggest block party is back. Market Street is closed to traffic and filled with stages, food, and 75,000 of your neighbors.
+          Downtown&apos;s biggest block party is back. Market Street is closed to traffic and filled with stages, food, and 75,000 of your neighbors.
         </p>
       </header>
 

@@ -1,12 +1,13 @@
 import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
-import DaylightLeftInline from "@/components/today/DaylightLeftInline";
+
 import { weatherVerdict } from "@/lib/weather-verdict";
 import { getNwsAlertsResult, type NwsAlertsResult } from "@/lib/integrations/nws-alerts";
 import { getAirQuality, isFreshAqiObservation, pickWorstAqi } from "@/lib/integrations/airnow";
-import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
+
 import SmartIsland from "./SmartIsland";
+import type { SkyVariant } from "./AnimatedSkyGlyph";
 import OfflineTodayCapture from "@/components/pwa/OfflineTodayCapture";
 import { easternDayKey } from "@/lib/tz";
 import { withDeadlineFallback } from "@/lib/promise-deadline";
@@ -87,7 +88,7 @@ export function compactWeatherRead({
   airQualityAvailable: boolean;
   activeAlertCount: number;
   airQualityIndex: number | null;
-}): { headline: string; safetyNote: string | null } {
+}): { headline: string; safetyNote: string | null; airQualityIndex: number | null } {
   const safetyFeedsIncomplete = !alertsAvailable || !airQualityAvailable;
   const hasActionableSafetySignal =
     activeAlertCount > 0 ||
@@ -107,10 +108,11 @@ export function compactWeatherRead({
     return {
       headline: sentenceCaseForecast(condition),
       safetyNote,
+      airQualityIndex,
     };
   }
 
-  return { headline: verdict, safetyNote: null };
+  return { headline: verdict, safetyNote: null, airQualityIndex };
 }
 
 /** NWS short forecasts arrive in headline case. In a sentence-scale weather
@@ -246,6 +248,7 @@ export default async function TodayCard() {
         variant={variant}
         stats={stats}
         verdictTone={v.tone}
+        airQualityIndex={weatherRead.airQualityIndex}
       />
     </section>
   );

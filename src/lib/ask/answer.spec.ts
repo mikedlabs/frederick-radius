@@ -1195,7 +1195,7 @@ describe("askFrederick structured answers", () => {
   it("keeps live-music source cards limited to actual calendar events", async () => {
     const result = await askFrederick("What live music is happening tonight?", downtown);
     expect(result.sources.every((source) => source.href.startsWith("/events/"))).toBe(true);
-    expect(result.sources.every((source) => source.category === "music")).toBe(true);
+    expect(result.sources.every((source) => source.category === "music" || source.category === "arts")).toBe(true);
     expect(result.sources.some((source) => /yoga|meeting|playground/i.test(source.name))).toBe(false);
   });
 

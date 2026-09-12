@@ -77,7 +77,7 @@ export default function BottomSheet({
   onClose,
   ariaLabel,
   historyLayerId,
-  returnFocusRef: _returnFocusRef,
+  returnFocusRef,
   children,
 }: Props) {
   const pathname = usePathname();
@@ -115,7 +115,10 @@ export default function BottomSheet({
     <Drawer.Root
       open={open && present}
       onOpenChange={(isOpen) => {
-        if (!isOpen) dismiss();
+        if (!isOpen) {
+          dismiss();
+          returnFocusRef?.current?.focus();
+        }
       }}
       shouldScaleBackground
       disablePreventScroll={false}
@@ -125,7 +128,13 @@ export default function BottomSheet({
         <Drawer.Content
           aria-label={ariaLabel}
           className="fixed bottom-0 left-0 right-0 z-[101] mt-24 flex max-h-[96dvh] flex-col rounded-t-[14px] outline-none"
-          style={{ background: "var(--app-bg-surface)", boxShadow: "0 -4px 24px rgba(0,0,0,0.15)" }}
+          style={{ 
+            background: "var(--app-bg-surface)", 
+            boxShadow: "0 -4px 24px rgba(0,0,0,0.15)",
+            // Override Vaul's internal animation curve for a softer, more spring-like iOS feel
+            "--transition-duration": "0.45s",
+            "--transition-timing-function": "cubic-bezier(0.2, 0.8, 0.2, 1)"
+          } as React.CSSProperties}
         >
           <BottomSheetContext.Provider value={{ sheetId: historyLayerId ?? "" }}>
             {children(dismiss)}

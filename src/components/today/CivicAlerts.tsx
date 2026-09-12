@@ -338,16 +338,13 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
   const TailIcon = top && /^(Until|Clears|Started|Just )/.test(top.tail) ? Clock : null;
 
   return (
-    <section className="space-y-1.5" aria-label="Heads up">
-      <p className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-        Heads up
-      </p>
+    <section className="-mx-4 sm:-mx-6 lg:mx-0 mb-4 flex flex-col" aria-label="Heads up">
       {top && s && (
       <a
         href={top.url ?? "#"}
         target={top.url && top.external ? "_blank" : undefined}
         rel={top.external ? "noopener noreferrer" : undefined}
-        className="block rounded-[var(--app-radius-md)] px-3 py-2.5 shadow-[var(--app-shadow-1)] transition active:scale-[0.985]"
+        className="block px-4 py-3 sm:px-6 lg:rounded-[var(--app-radius-md)] lg:px-4 shadow-[var(--app-shadow-1)] transition active:brightness-95"
         style={{ background: s.bg, color: s.fg }}
       >
         <div className="flex items-start gap-2">
@@ -372,7 +369,7 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
         <a
           key={n.slug}
           href={`/events/${n.slug}`}
-          className="block rounded-[var(--app-radius-md)] px-3 py-2.5 shadow-[var(--app-shadow-1)] transition active:scale-[0.985]"
+          className="block border-t border-black/10 px-4 py-3 sm:px-6 lg:rounded-[var(--app-radius-md)] lg:border-t-0 lg:px-4 shadow-[var(--app-shadow-1)] transition active:brightness-95 mt-px lg:mt-1.5"
           style={{
             background: n.status === "cancelled" ? "var(--app-danger)" : "var(--app-warning)",
             color: "var(--app-on-brand)",
@@ -391,7 +388,7 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
         </a>
       ))}
       {more > 0 && (
-        <a href="/pulse" className="flex min-h-11 items-center px-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
+        <a href="/pulse" className="flex min-h-11 items-center px-4 sm:px-6 lg:px-0 text-[11px] font-semibold bg-[var(--app-bg-inset)] lg:bg-transparent" style={{ color: "var(--app-ink-3)" }}>
           +{more} more active {more === 1 ? "alert" : "alerts"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
         </a>
       )}

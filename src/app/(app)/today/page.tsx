@@ -7,7 +7,6 @@ import { easternDayKey } from "@/lib/tz";
 import OnNowBand from "@/components/today/OnNowBand";
 import KeysScore from "@/components/today/KeysScore";
 import LocalSportsScoreboard from "@/components/today/LocalSportsScoreboard";
-import SkyHero from "@/components/today/SkyHero";
 import SmartIslandSkeleton from "@/components/today/SmartIslandSkeleton";
 import { SnapCarousel, SnapCarouselItem } from "@/components/ui/SnapCarousel";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
@@ -18,8 +17,7 @@ import { SnapCarousel, SnapCarouselItem } from "@/components/ui/SnapCarousel";
 // it is in git history if we ever want it back.)
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MomentSpotlight from "@/components/today/MomentSpotlight";
-import TodayFairFeature from "@/components/today/TodayFairFeature";
-import Image from "next/image";
+import FairUpNext from "@/components/fair/FairUpNext";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import DismissibleSection from "@/components/today/DismissibleSection";
@@ -28,7 +26,6 @@ import TonightHeadline from "@/components/today/TonightHeadline";
 import TodayMasthead from "@/components/today/TodayMasthead";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import PageBloom from "@/components/ui/PageBloom";
-import Skeleton from "@/components/ui/Skeleton";
 import { MagicCard } from "@/components/ui/MagicCard";
 import WeekendPreview from "@/components/today/WeekendPreview";
 import FromYourSaved from "@/components/today/FromYourSaved";
@@ -63,7 +60,6 @@ import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
 import { getStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
 import { shouldPromoteTodayHeadliner } from "@/components/today/headlinerTiming";
-import TodayScopeStatus from "@/components/today/TodayScopeStatus";
 import TodayEventsRecovery from "@/components/today/TodayEventsRecovery";
 import {
   shouldRenderTodayEventSection,
@@ -72,7 +68,6 @@ import {
 import { eventTown } from "@/lib/events/eventTown";
 import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
-import AppTransitionLink from "@/components/nav/AppTransitionLink";
 import PageChapter from "@/components/ui/PageChapter";
 import {
   TODAY_FAIR_PROMOTION_SLUG,
@@ -252,7 +247,7 @@ export default async function HomePage() {
           :not(:empty) wrapper means it then costs the ordinary day zero space:
           no phantom gap above the sky hero. */}
       <Suspense fallback={null}>
-        <div className="[&:not(:empty)]:mb-4">
+        <div>
           <CivicAlerts />
         </div>
       </Suspense>
@@ -277,60 +272,44 @@ export default async function HomePage() {
         );
       })()}
 
-      {/* ── WEATHER HERO — the time-of-day gradient sky and today's weather
-          lead the page. Now a COMPACT, CONTAINED card (owner
-          call: "all cards within the main part" + "one header with the weather
-          more compact") — the sky is a rounded card within the column rather
-          than a full-bleed band, with a tighter weather row inside; the soft
-          downward shadow floats it over the page. The detailed hourly / 7-day
-          / almanac forecast still lives in the collapsed "full briefing". */}
-      {/* shader-rim — the page's ONE rationed living treatment: a slow, barely-
-          there conic accent ring on the true top-of-page hero (the sky plate),
-          the crafted-product-hero move the primitive reserves for a single
-          element. It freezes under prefers-reduced-motion. (The old className
-          shadow was dead — the .sky-hero rule's own inset shadow overrides it.) */}
-      {/* The whole weather plate is a door to the full forecast (July 2026
-          Reddit review: it looked tappable and wasn't — now it is, with the
-          standard right-edge disclosure chevron). */}
-      <div className="today-arrival today-arrival--weather relative z-10 mb-5 -mt-8 flex justify-center w-full">
+      <div className="today-arrival today-arrival--weather relative z-10 mb-5 flex justify-center w-full">
         <Suspense fallback={<SmartIslandSkeleton />}>
           <TodayCard />
         </Suspense>
       </div>
 
-      <div className="today-start-grid">
-        <div className="today-start-find space-y-5">
-          <MagicCard className="p-1">
-            <div className="today-arrival today-arrival--find">
-              <TodayAsk embedded>
-                <CravingStrip />
-              </TodayAsk>
-            </div>
-          </MagicCard>
-          <MagicCard className="p-4" aria-label="Places for your area">
-            {decisionLead}
-          </MagicCard>
-        </div>
-        <div className="today-start-context">
+      {/* The big event of the day, prominently displayed below the weather */}
+      <Suspense fallback={null}>
+        <BigEventOfTheDay eventsPromise={eventsPromise} now={now} />
+      </Suspense>
+
+
+
       {/* ── CAMPAIGN SPOTLIGHT — the document identifies itself before a
           campaign asks for attention. Fair Day owns this photographic doorway
           from Sep 2–26, then retires itself on Sep 27. When another civic
           moment overlaps the Fair campaign, it moves into Follow the day
           below instead of disappearing. */}
       {fairPromotionPhase ? (
-        <MagicCard className="mb-4 overflow-hidden">
-          <TodayFairFeature phase={fairPromotionPhase} compact={fairPromotionPhase === "planning"} />
-        </MagicCard>
+        <div className="mb-4">
+          <FairUpNext />
+        </div>
       ) : civicMoment ? (
         <MagicCard className="mb-4 overflow-hidden">
           <MomentSpotlight moment={civicMoment} />
         </MagicCard>
       ) : null}
 
-
-
+      <MagicCard className="mb-8 flex flex-col overflow-hidden p-0" aria-label="Find places for your area">
+        <div className="today-arrival today-arrival--find p-1">
+          <TodayAsk embedded>
+            <CravingStrip />
+          </TodayAsk>
         </div>
-      </div>
+        <div className="bg-[var(--app-bg-surface)] px-4 py-4 sm:px-5">
+          {decisionLead}
+        </div>
+      </MagicCard>
 
       <PageChapter
         label="Follow the day"
@@ -721,13 +700,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
             than repeating the Events page's full warning card. Today stays
             calm and scannable; the board remains the place to retry feeds and
             inspect the complete coverage state. */}
-        {/* A real draw can still earn the editorial feature, but it belongs to
-            the explicitly countywide event program. It must never displace the
-            town-aware place answer above or make the shared town control feel
-            inert. The program array below already removes this exact feature. */}
-        {featureIsPromoted && feature ? (
-          <TonightHeadline event={feature} now={now} embedded />
-        ) : null}
+
         {program.length > 0 || remainingEarlierToday.length > 0 ? (
           <div className="space-y-3">
             {/* ONE-HERO composition, part 2: the quiet-day truth. When no real
@@ -793,12 +766,6 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
               </details>
             )}
           </div>
-        ) : featureIsPromoted ? (
-          /* The headliner above is the whole calendar — an honest one-liner,
-             not an "empty" claim the hero itself contradicts. */
-          <p className="text-body py-4" style={{ color: "var(--app-ink-3)" }}>
-            Nothing else is on the calendar today.
-          </p>
         ) : sourceHealth.degraded ? null : (
           <p
             className="text-body py-4"
@@ -812,5 +779,25 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
         )}
       </DismissibleSection>
     </section>
+  );
+}
+
+/** 
+ * Extracts the single biggest event of the day and renders it immediately below the weather.
+ */
+async function BigEventOfTheDay({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
+  const { publicEvents } = await eventsPromise;
+  const { feature } = deriveTodayProgram(publicEvents, now);
+  
+  const featureIsPromoted = feature ? shouldPromoteTodayHeadliner(feature, now) : false;
+  
+  if (!featureIsPromoted || !feature) {
+    return null;
+  }
+  
+  return (
+    <div className="mb-8">
+      <TonightHeadline event={feature} now={now} embedded={false} />
+    </div>
   );
 }

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useState, useRef, type RefObject } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { ExternalLink, MapPin, Navigation, Ticket, CalendarCheck } from "lucide-react";
 import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 import CategoryIcon from "@/components/place/CategoryIcon";
-import SaveButton from "@/components/saved/SaveButton";
+import ItineraryButton from "@/components/saved/ItineraryButton";
 import EventActions from "@/components/event/EventActions";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
 import { eventCardVisual } from "@/components/event/eventVisuals";
@@ -137,6 +138,13 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
   const parking = preciseGeo && canAttend ? nearestEventParking(event.geom) : null;
   const eventVisual = eventCardVisual(event);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { scrollY } = useScroll({ container: scrollRef });
+  const heroY = useTransform(scrollY, [0, 300], [0, 100]);
+  const heroScale = useTransform(scrollY, [-100, 0], [1.1, 1]);
+  // Fade the hero text out slightly as it scrolls up
+  const textOpacity = useTransform(scrollY, [0, 150], [1, 0.3]);
+
   useEffect(() => {
     trackDecision({
       stage: "impression",
@@ -156,28 +164,39 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
   return (
     <>
       <SheetHandle onClose={onClose} closeLabel="Close" />
+      {/* Dynamic tint background based on category accent */}
+      <div 
+        className="absolute inset-0 pointer-events-none transition-colors duration-1000 opacity-20"
+        style={{ background: `linear-gradient(to bottom, ${accent}, transparent 400px)` }}
+        aria-hidden
+      />
       {/* Event sheets are usually SHORT (they answer when/where/cost, not
        *  everything) so the sheet often ends flush at the viewport bottom —
        *  the footer needs enough padding to clear the floating BottomNav
        *  pill, where the place sheet's long scroll never parks there. */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[88px]">
+      <div ref={scrollRef} className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[88px]">
         {/* Hero — the venue's photo when the event carries one, with the
          *  category eyebrow + title overlaid (same cinematic pattern as
          *  the place sheet). Photoless events get a category-tinted
          *  plate so the sheet always opens with an identity. */}
         {eventVisual ? (
           <div className="relative aspect-[16/9] w-full overflow-hidden">
-            <Image
-              src={eventVisual.src}
-              alt=""
-              fill
-              unoptimized={eventVisual.src.startsWith("/api/place-photo")}
-              priority
-              sizes="(max-width: 720px) 100vw, 720px"
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              className="object-cover"
-            />
+            <motion.div 
+              className="absolute inset-0 origin-bottom"
+              style={{ y: heroY, scale: heroScale }}
+            >
+              <Image
+                src={eventVisual.src}
+                alt=""
+                fill
+                unoptimized={eventVisual.src.startsWith("/api/place-photo")}
+                priority
+                sizes="(max-width: 720px) 100vw, 720px"
+                placeholder="blur"
+                blurDataURL={PAPER_CREAM_BLUR}
+                className="object-cover"
+              />
+            </motion.div>
             <div
               aria-hidden
               className="pointer-events-none absolute inset-0"
@@ -186,7 +205,10 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                   "linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.2) 55%, rgba(0,0,0,0.8) 100%)",
               }}
             />
-            <div className="absolute inset-x-0 bottom-0 p-5 pb-4">
+            <motion.div 
+              className="absolute inset-x-0 bottom-0 p-5 pb-4"
+              style={{ opacity: textOpacity }}
+            >
               <p
                 className="text-[11px] font-bold uppercase tracking-[0.14em]"
                 style={{
@@ -202,9 +224,9 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
               >
                 {event.title}
               </h2>
-            </div>
+            </motion.div>
             <div className="absolute left-3 top-3 z-10">
-              <SaveButton refType="event" refId={event.slug} label={`Save ${event.title}`} />
+              <ItineraryButton eventId={event.slug} label={`Add ${event.title} to itinerary`} />
             </div>
           </div>
         ) : null}
@@ -242,7 +264,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 </h2>
               </div>
               <div className="shrink-0">
-                <SaveButton refType="event" refId={event.slug} label={`Save ${event.title}`} />
+                <ItineraryButton eventId={event.slug} label={`Add ${event.title} to itinerary`} />
               </div>
             </header>
           )}

@@ -135,6 +135,7 @@ import {
   buildCuratedGeoJson,
   buildDotGeoJson,
   buildEventScrubTimes,
+  buildEventsGeoJson,
   buildFilteredOsmGeoJson,
   buildPlaceDupeIndex,
   buildRingGeoJson,
@@ -4072,6 +4073,9 @@ export default function AppMap({
   // mapGeoJsonSources.ts (stable identity, no memo needed).
   const aerialGeoJson = AERIAL_GEOJSON;
 
+  // Events GeoJSON for the active heatmap layer
+  const eventsGeoJson = useMemo(() => buildEventsGeoJson(events), [events]);
+
   // Historic cemeteries GeoJSON. `name` in properties powers the generic
   // hover preview; the click handler reads the full pin back by `id`.
   const cemeteryGeoJson = useMemo(() => buildCemeteryGeoJson(cemeteries), [cemeteries]);
@@ -6434,6 +6438,65 @@ export default function AppMap({
               }}
             />
           </Source>
+
+          {/* ACTIVE EVENTS HEATMAP */}
+          <Source id="events-heatmap-source" type="geojson" data={eventsGeoJson}>
+            <Layer
+              id="events-heatmap-layer"
+              type="heatmap"
+              paint={{
+                // Increase the heatmap weight based on frequency and property weight
+                "heatmap-weight": [
+                  "interpolate",
+                  ["linear"],
+                  ["get", "weight"],
+                  0, 0,
+                  1, 1
+                ],
+                // Increase the heatmap color weight weight by zoom level
+                // heatmap-intensity is a multiplier on top of heatmap-weight
+                "heatmap-intensity": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  0, 1,
+                  9, 3
+                ],
+                // Color ramp for heatmap.  Domain is 0 (low) to 1 (high).
+                // Begin color ramp at 0-stop with a 0-transparancy color
+                // to create a blur-like effect.
+                "heatmap-color": [
+                  "interpolate",
+                  ["linear"],
+                  ["heatmap-density"],
+                  0, "rgba(255, 140, 0, 0)",
+                  0.2, "rgba(255, 140, 0, 0.2)",
+                  0.4, "rgba(255, 100, 0, 0.4)",
+                  0.6, "rgba(255, 60, 0, 0.6)",
+                  0.8, "rgba(255, 20, 0, 0.8)",
+                  1, "rgba(255, 0, 0, 1)"
+                ],
+                // Adjust the heatmap radius by zoom level
+                "heatmap-radius": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  0, 2,
+                  9, 20,
+                  15, 60
+                ],
+                // Transition from heatmap to circle layer by zoom level
+                "heatmap-opacity": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  7, 0.6,
+                  15, 0.1
+                ],
+              }}
+            />
+          </Source>
+
           <Source id="near-dot" type="geojson" data={dotGeoJson}>
             <Layer
               id="dot-halo"

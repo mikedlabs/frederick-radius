@@ -392,19 +392,21 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
       {/* Visually small breadcrumbs with invisible 44px hit areas
           (WCAG 2.5.5) — py-3.5/-my-3.5 grows the tap zone only. */}
-      <nav aria-label="Breadcrumb" className="text-xs">
-        <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
-          <li><Link href="/events" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">Events</Link></li>
-          <li aria-hidden>·</li>
-          <li>
-            {physicalAttendance && MUNICIPALITY_BY_SLUG[event.municipality] ? (
-              <Link href={`/m/${event.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{event.municipality_name}</Link>
-            ) : (
-              <span>{physicalAttendance ? event.municipality_name : "Online"}</span>
-            )}
-          </li>
-        </ol>
-      </nav>
+      {!eventVisual && (
+        <nav aria-label="Breadcrumb" className="text-xs">
+          <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
+            <li><Link href="/events" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">Events</Link></li>
+            <li aria-hidden>·</li>
+            <li>
+              {physicalAttendance && MUNICIPALITY_BY_SLUG[event.municipality] ? (
+                <Link href={`/m/${event.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{event.municipality_name}</Link>
+              ) : (
+                <span>{physicalAttendance ? event.municipality_name : "Online"}</span>
+              )}
+            </li>
+          </ol>
+        </nav>
+      )}
 
       {/* Cancellation banner — loud, above the hero, so a user who
        *  came here for this event sees it's off before anything else.
@@ -482,7 +484,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         data-decision-entity="event"
         data-decision-id={event.slug}
         data-decision-position="detail"
-        className="shader-rim overflow-hidden rounded-[var(--app-radius-xl)] border"
+        className={`shader-rim overflow-hidden ${eventVisual ? "-mx-4 -mt-4 sm:mx-0 sm:mt-0 rounded-none sm:rounded-[var(--app-radius-xl)] border-y sm:border" : "rounded-[var(--app-radius-xl)] border"}`}
         style={{
           borderColor: "var(--app-border)",
           opacity: eventStatus === "cancelled" ? 0.85 : 1,
@@ -502,15 +504,23 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               blurDataURL={PAPER_CREAM_BLUR}
               className="object-cover"
             />
-            {/* Legibility gradient — dark at bottom for the title, soft
-             *  at top for the date pill. */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
-            {/* Top row: action cluster (the date moved to the promoted
-                WHEN line below the title — no longer a tiny hero pill). */}
-            <div className="absolute inset-x-0 top-0 flex items-start justify-end gap-3 p-4">
+            {/* Top row: action cluster and back button (glassmorphic) */}
+            <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
+              {/* Glassmorphic back button */}
+              <Link
+                href="/events"
+                className="tactile-interactive flex h-9 items-center justify-center gap-1.5 rounded-full px-3.5 text-xs font-semibold text-white shadow-sm backdrop-blur-md transition-transform active:scale-95"
+                style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}
+              >
+                <ArrowLeft className="h-4 w-4" strokeWidth={2.25} />
+                Back
+              </Link>
               <div className="flex shrink-0 items-center gap-1">
-                <EventActions event={event} actions={["share"]} />
-                <div className="hidden lg:block">
+                <div className="rounded-full backdrop-blur-md" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                  <EventActions event={event} actions={["share"]} />
+                </div>
+                <div className="hidden lg:block rounded-full backdrop-blur-md" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}>
                   <SaveButton refType="event" refId={event.slug} label={event.title} />
                 </div>
               </div>

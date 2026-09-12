@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Search, MapPin, Coffee, Utensils, Info, Navigation, X } from "lucide-react";
 import { Drawer } from "vaul";
 

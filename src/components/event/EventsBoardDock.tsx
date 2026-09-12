@@ -16,7 +16,26 @@ import {
   ChevronDown,
   Search,
   SlidersHorizontal,
+  Music,
+  Palette,
+  Utensils,
+  Users,
+  Activity,
+  Trees,
+  Sparkles,
+  Landmark,
 } from "lucide-react";
+
+const INTENT_ICONS: Record<string, any> = {
+  Music,
+  Palette,
+  Utensils,
+  Users,
+  Activity,
+  Trees,
+  Sparkles,
+  Landmark,
+};
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import EventWeekRibbon from "@/components/event/EventWeekRibbon";
 import { haptic } from "@/lib/haptics";
@@ -147,6 +166,8 @@ function EbChip({
   children,
   onClick,
   ariaLabel,
+  icon: Icon,
+  className,
 }: {
   on: boolean;
   color?: string | null;
@@ -155,6 +176,8 @@ function EbChip({
   children: ReactNode;
   onClick: () => void;
   ariaLabel?: string;
+  icon?: any;
+  className?: string;
 }) {
   return (
     <button
@@ -162,15 +185,19 @@ function EbChip({
       aria-pressed={on}
       aria-label={ariaLabel}
       onClick={onClick}
-      className={`eb-chip tap-44-y${quiet ? " eb-chip-quiet" : ""}`}
+      className={`eb-chip tap-44-y${quiet ? " eb-chip-quiet" : ""} ${className || ""}`}
       data-on={on || undefined}
       style={{
         ...(color ? { "--c": color } : {}),
         minHeight: 44,
       } as React.CSSProperties}
     >
-      {color && <span aria-hidden className="eb-chip-dot" />}
-      {children}
+      {Icon ? (
+        <Icon className="shrink-0" size={18} strokeWidth={2.25} aria-hidden />
+      ) : color ? (
+        <span aria-hidden className="eb-chip-dot" />
+      ) : null}
+      <span className="truncate">{children}</span>
       {typeof count === "number" && count > 0 && <span className="eb-chip-n">{count}</span>}
     </button>
   );
@@ -531,7 +558,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   return (
     <div className={`eb-dock${collapsed ? " eb-collapsed" : ""}${pane ? " eb-open" : ""}`}>
       <h1 className="sr-only">Events in Frederick County</h1>
-      <div className="eb-head" style={{ background: "var(--app-bg-elevated-solid)" }}>
+      <div className="eb-head backdrop-blur-xl supports-[backdrop-filter]:bg-[var(--app-bg-elevated)]/85" style={{ background: "var(--app-bg-elevated-solid)" }}>
         {/* The almanac nameplate — collapses to zero on scroll. */}
         <div className="eb-masthead" aria-hidden={collapsed}>
           <div className="eb-dateline">
@@ -703,23 +730,29 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
               </label>
 
               <Sect>Interest</Sect>
-              <div className="eb-chips" role="group" aria-label="Event interests">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="group" aria-label="Event interests">
                 <EbChip
                   on={!intent && !cat && !sub}
                   onClick={pickEverything}
+                  className="col-span-full justify-center !rounded-[var(--app-radius-md)]"
                 >
                   Any interest
                 </EbChip>
-                {EVENT_INTENTS.map((item) => (
-                  <EbChip
-                    key={item.id}
-                    on={intent === item.id}
-                    color={item.tucked ? "var(--app-civic)" : "var(--app-brand)"}
-                    onClick={() => pickIntent(item.id)}
-                  >
-                    {item.label}
-                  </EbChip>
-                ))}
+                {EVENT_INTENTS.map((item) => {
+                  const Icon = INTENT_ICONS[item.icon];
+                  return (
+                    <EbChip
+                      key={item.id}
+                      on={intent === item.id}
+                      color={item.tucked ? "var(--app-civic)" : "var(--app-brand)"}
+                      onClick={() => pickIntent(item.id)}
+                      icon={Icon}
+                      className="!flex-col !items-start !justify-between !h-20 !p-3 !rounded-[var(--app-radius-lg)] !w-full"
+                    >
+                      {item.label}
+                    </EbChip>
+                  );
+                })}
               </div>
 
               {intentDef?.subs?.length ? (

@@ -6,7 +6,7 @@ export const metadata = {
   title: PRODUCT_NAMES.liveConditions.pageTitle,
 };
 
-export default function PulseIntercepted(props: any) {
+export default function PulseIntercepted(props: Record<string, unknown>) {
   return (
     <InterceptedDrawer title={PRODUCT_NAMES.liveConditions.pageTitle} bareHeader>
       <div className="bg-[var(--app-bg)] w-full">

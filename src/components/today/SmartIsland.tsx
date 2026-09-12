@@ -13,7 +13,37 @@ type SmartIslandProps = {
   variant: SkyVariant | null;
   stats: string[];
   verdictTone: "good" | "mixed" | "rough";
+  airQualityIndex?: number | null;
 };
+
+function AqiGauge({ aqi }: { aqi: number }) {
+  // Map AQI to a 0-100% position on a 0-300 scale (clamp at 300)
+  const position = Math.min(Math.max((aqi / 300) * 100, 0), 100);
+  
+  let label = "Good";
+  if (aqi > 50) label = "Moderate";
+  if (aqi > 100) label = "Unhealthy for Sensitive Groups";
+  if (aqi > 150) label = "Unhealthy";
+  if (aqi > 200) label = "Very Unhealthy";
+  if (aqi > 300) label = "Hazardous";
+
+  return (
+    <div className="mt-3 rounded-[var(--app-radius-sm)] border p-3" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-inset)" }}>
+      <div className="mb-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-2)" }}>
+        <span>Air Quality</span>
+        <span style={{ color: "var(--app-ink)" }}>{aqi} {label}</span>
+      </div>
+      <div className="relative h-1.5 w-full rounded-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-500">
+        <motion.div
+          initial={{ left: 0 }}
+          animate={{ left: `${position}%` }}
+          transition={{ type: "spring", bounce: 0, duration: 1 }}
+          className="absolute top-1/2 -ml-1.5 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-white bg-black shadow-sm"
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function SmartIsland({
   headline,
@@ -22,6 +52,7 @@ export default function SmartIsland({
   variant,
   stats,
   verdictTone,
+  airQualityIndex,
 }: SmartIslandProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -133,6 +164,8 @@ export default function SmartIsland({
                   </span>
                 </div>
               )}
+
+              {airQualityIndex != null && <AqiGauge aqi={airQualityIndex} />}
             </motion.div>
           )}
         </AnimatePresence>

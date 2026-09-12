@@ -655,8 +655,8 @@ export default function SearchOverlay({
 
       {/* Sheet */}
       <div
-        className="relative z-10 flex h-[100dvh] w-full flex-col overflow-hidden bg-[var(--app-bg)] sm:mt-[8dvh] sm:h-auto sm:max-h-[84dvh] sm:max-w-screen-sm sm:rounded-[var(--app-radius-xl)] sm:border sm:bg-[var(--app-bg-elevated)] sm:shadow-[var(--app-shadow-3)]"
-        style={{ borderColor: "var(--app-border)" }}
+        className="relative z-10 flex h-[100dvh] w-full flex-col overflow-hidden sm:mt-[8dvh] sm:h-auto sm:max-h-[84dvh] sm:max-w-screen-sm sm:rounded-[var(--app-radius-xl)] sm:shadow-[var(--app-shadow-3)] backdrop-blur-2xl"
+        style={{ background: "color-mix(in srgb, var(--app-bg) 85%, transparent)" }}
       >
         <div
           className="flex min-h-14 items-center justify-between gap-3 px-4 sm:px-5"
@@ -684,8 +684,8 @@ export default function SearchOverlay({
 
         {/* Input */}
         <div
-          className="search-field-shell mx-4 mb-3 flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] px-3 shadow-[var(--app-shadow-1)] transition focus-within:border-[var(--app-brand)] focus-within:ring-2 focus-within:ring-[color-mix(in_srgb,var(--app-brand)_18%,transparent)] sm:mx-5"
-          style={{ borderColor: "var(--app-border-strong)" }}
+          className="search-field-shell mx-4 mb-3 flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] px-3 shadow-[var(--app-shadow-1)] transition focus-within:ring-2 focus-within:ring-[color-mix(in_srgb,var(--app-brand)_18%,transparent)] sm:mx-5 backdrop-blur-md"
+          style={{ background: "color-mix(in srgb, var(--app-bg-elevated-solid) 70%, transparent)", boxShadow: "inset 0 1px 3px rgba(34,28,21,0.04), 0 2px 8px rgba(34,28,21,0.04)" }}
         >
           <Search className="h-5 w-5 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand-press)" }} aria-hidden />
           <input
@@ -729,14 +729,14 @@ export default function SearchOverlay({
         </div>
 
         {/* Results */}
-        <div className="min-h-0 flex-1 overflow-y-auto border-t sm:max-h-[64dvh]" style={{ borderColor: "var(--app-border)" }}>
+        <div className="min-h-0 flex-1 overflow-y-auto sm:max-h-[64dvh]" style={{ boxShadow: "inset 0 4px 12px rgba(34,28,21,0.04)" }}>
           {/* Direct answer — "ask Frederick" routes a buried-gov question
               (recycling, permits, potholes, animal control…) straight to
               the right department + phone + source, ABOVE place results.
               The North Star front door, on real data. */}
           {hasAnswer && (
-            <div className="border-b px-3 py-2.5" style={{ borderColor: "var(--app-border)", background: "color-mix(in srgb, var(--app-brand) 5%, transparent)" }}>
-              <p className="eyebrow mb-1.5 px-1" style={{ color: "var(--app-brand-press)" }}>Direct answer</p>
+            <div className="px-3 py-2.5 pb-4 shadow-sm" style={{ background: "color-mix(in srgb, var(--app-brand) 4%, transparent)" }}>
+              <p className="eyebrow mb-2 px-1" style={{ color: "var(--app-brand-press)" }}>Direct answer</p>
               {visibleQuickAnswers.length > 0 && (
                 <ul className="mb-1.5 space-y-1.5">
                   {visibleQuickAnswers.map((qa) => {
@@ -1251,22 +1251,20 @@ function EmptyHint({
               Clear
             </button>
           </div>
-          <ul className="mt-2 border-y" style={{ borderColor: "var(--app-border-strong)" }}>
-            {recent.slice(0, 2).map((s) => (
-              <li key={`recent-${s}`}>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {recent.slice(0, 3).map((s) => (
                 <button
+                  key={`recent-${s}`}
                   type="button"
                   onClick={() => onPick(s)}
-                  className="flex min-h-12 w-full items-center gap-2 border-b px-1 text-left text-[13px] font-semibold last:border-b-0"
+                  className="tactile-interactive flex h-9 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[12.5px] font-medium shadow-[var(--app-shadow-1)] transition-transform hover:scale-[1.02] active:scale-95"
                   style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
                 >
-                  <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-                  <span className="min-w-0 flex-1 truncate">{s}</span>
-                  <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-35" strokeWidth={2.25} aria-hidden />
+                  <Clock className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+                  <span className="truncate max-w-[140px]">{s}</span>
                 </button>
-              </li>
             ))}
-          </ul>
+          </div>
         </div>
       ) : null}
 
@@ -1274,31 +1272,29 @@ function EmptyHint({
         <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
           Useful now
         </p>
-        <ul className="mt-2 border-y" style={{ borderColor: "var(--app-border-strong)" }}>
+        <div className="mt-2 grid grid-cols-2 gap-2">
           {quickStart.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                onClick={(event) => {
-                  if (!isPlainNavigationClick(event)) return;
-                  event.preventDefault();
-                  onNavigate(item.href);
-                }}
-                className="group flex min-h-[58px] items-center gap-3 border-b px-1 py-2 last:border-b-0"
-                style={{ borderColor: "var(--app-border)" }}
-              >
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-sm)]" style={{ color: "var(--app-brand-press)", background: "var(--app-brand-tint-6)" }}>
-                  <item.Icon className="h-4 w-4" strokeWidth={2.1} aria-hidden />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>{item.title}</span>
-                  <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>{item.subtitle}</span>
-                </span>
-                <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} aria-hidden />
-              </Link>
-            </li>
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={(event) => {
+                if (!isPlainNavigationClick(event)) return;
+                event.preventDefault();
+                onNavigate(item.href);
+              }}
+              className="tactile tactile-interactive group relative flex flex-col gap-2 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)] transition-transform hover:-translate-y-0.5 hover:shadow-[var(--app-shadow-2)] active:scale-[0.98] active:translate-y-0"
+              style={{ borderColor: "var(--app-border)" }}
+            >
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--app-radius-md)]" style={{ color: "var(--app-brand-press)", background: "var(--app-brand-tint-6)" }}>
+                <item.Icon className="h-4 w-4" strokeWidth={2.1} aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>{item.title}</span>
+                <span className="mt-1 block line-clamp-2 text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{item.subtitle}</span>
+              </span>
+            </Link>
           ))}
-        </ul>
+        </div>
       </div>
 
       <p className="mt-4 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>

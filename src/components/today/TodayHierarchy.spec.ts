@@ -151,7 +151,7 @@ describe("Today decision hierarchy", () => {
       'title="Local guides and saved places"',
     );
     const disclosureEnd = todayPage.indexOf(
-      "</CollapsibleSection>",
+      "</BottomDrawer>",
       disclosureStart,
     );
     const disclosure = todayPage.slice(disclosureStart, disclosureEnd);

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import useEmblaCarousel from "embla-carousel-react";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import PhotoLightbox from "@/components/ui/PhotoLightbox";
 import {
@@ -38,6 +39,11 @@ export default function PlacePhotoGallery({
   const [failedUrls, setFailedUrls] = useState<Set<string>>(() => new Set());
   const availablePhotos = photos.filter((url) => !failedUrls.has(url));
   const selectedIndex = selectedPhotoIndex(availablePhotos, selectedUrl);
+  const [emblaRef] = useEmblaCarousel({
+    dragFree: true,
+    containScroll: "trimSnaps",
+  });
+
   if (!photos || availablePhotos.length < 2) return null;
 
   const markFailed = (url: string) => {
@@ -52,48 +58,50 @@ export default function PlacePhotoGallery({
   return (
     <section className="space-y-2">
       <h2 className="eyebrow">Photos</h2>
-      <div className="shelf-rail -mx-1 gap-2 px-1 pb-1">
-        {availablePhotos.slice(1, 8).map((url, i) => {
-          const attribution = googlePhotoAttributionForUrl(url, attributions);
-          const photoSrc = placePhotoFailureSignalSrc(url);
-          return (
-            <div key={url} className="w-40 shrink-0 space-y-1">
-              <button
-                type="button"
-                onClick={() => setSelectedUrl(url)}
-                aria-label={`View ${name} photo ${i + 2}`}
-                className="relative h-28 w-40 cursor-zoom-in overflow-hidden rounded-[var(--app-radius-md)] border transition active:scale-[0.98]"
-                style={{ borderColor: "var(--app-border)" }}
-              >
-                <Image
-                  src={photoSrc}
-                  alt=""
-                  fill
-                  unoptimized={photoSrc.startsWith("/api/place-photo")}
-                  loading="lazy"
-                  sizes="160px"
-                  placeholder="blur"
-                  blurDataURL={PAPER_CREAM_BLUR}
-                  className="object-cover"
-                  onLoad={(event) => {
-                    if (isPlacePhotoFailureSignal(event.currentTarget)) {
-                      markFailed(url);
-                    }
-                  }}
-                  onError={() => markFailed(url)}
-                />
-              </button>
-              <span className="block truncate px-0.5" style={{ color: "var(--app-ink-3)" }}>
-                <GooglePhotoAttributionLine
-                  attribution={attribution}
-                  placeGoogleMapsUri={placeGoogleMapsUri}
-                  compact
-                  touchTarget
-                />
-              </span>
-            </div>
-          );
-        })}
+      <div className="embla overflow-hidden -mx-1 px-1 pb-1" ref={emblaRef}>
+        <div className="embla__container flex gap-2">
+          {availablePhotos.slice(1, 8).map((url, i) => {
+            const attribution = googlePhotoAttributionForUrl(url, attributions);
+            const photoSrc = placePhotoFailureSignalSrc(url);
+            return (
+              <div key={url} className="embla__slide w-40 shrink-0 space-y-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedUrl(url)}
+                  aria-label={`View ${name} photo ${i + 2}`}
+                  className="relative h-28 w-40 cursor-zoom-in overflow-hidden rounded-[var(--app-radius-md)] border transition active:scale-[0.98]"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                  <Image
+                    src={photoSrc}
+                    alt=""
+                    fill
+                    unoptimized={photoSrc.startsWith("/api/place-photo")}
+                    loading="lazy"
+                    sizes="160px"
+                    placeholder="blur"
+                    blurDataURL={PAPER_CREAM_BLUR}
+                    className="object-cover"
+                    onLoad={(event) => {
+                      if (isPlacePhotoFailureSignal(event.currentTarget)) {
+                        markFailed(url);
+                      }
+                    }}
+                    onError={() => markFailed(url)}
+                  />
+                </button>
+                <span className="block truncate px-0.5" style={{ color: "var(--app-ink-3)" }}>
+                  <GooglePhotoAttributionLine
+                    attribution={attribution}
+                    placeGoogleMapsUri={placeGoogleMapsUri}
+                    compact
+                    touchTarget
+                  />
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
       {selectedIndex !== null && (
         <PhotoLightbox
