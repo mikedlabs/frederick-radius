@@ -7,7 +7,7 @@ import EventCard from "@/components/event/EventCard";
 import AppMapClient from "@/components/map/AppMapClient";
 import Skeleton from "@/components/ui/Skeleton";
 import Link from "next/link";
-import { Calendar, Trash2, Map } from "lucide-react";
+import { Calendar, Trash2 } from "lucide-react";
 import { normalizeRequestedEventSlugList } from "@/lib/events/eventSlugBatch";
 
 export default function ItineraryClient() {
@@ -20,6 +20,7 @@ export default function ItineraryClient() {
 
   useEffect(() => {
     if (itineraryItems.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEvents([]);
       setLoading(false);
       return;
@@ -57,8 +58,8 @@ export default function ItineraryClient() {
     ends_at: e.ends_at,
     is_all_day: e.is_all_day,
     venue_name: e.venue_name,
-    lng: e.lng,
-    lat: e.lat,
+    lng: e.geom.lng,
+    lat: e.geom.lat,
     category: e.category,
     venue_place_slug: e.venue_place_slug,
   }));
@@ -113,12 +114,12 @@ export default function ItineraryClient() {
       {viewMode === "list" ? (
         <div className="flex-1 max-w-3xl w-full mx-auto p-4 md:p-6 pb-32 space-y-6">
           {loading ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex gap-4">
-                <Skeleton className="w-16 h-16 rounded-lg shrink-0" />
+            Array.from({ length: 3 }).map((_, _index) => (
+              <div key={_index} className="flex gap-4">
+                <Skeleton.Block className="w-16 h-16 rounded-lg shrink-0" />
                 <div className="flex-1 space-y-2">
-                  <Skeleton className="w-3/4 h-5" />
-                  <Skeleton className="w-1/2 h-4" />
+                  <Skeleton.Block className="w-3/4 h-5" />
+                  <Skeleton.Block className="w-1/2 h-4" />
                 </div>
               </div>
             ))
@@ -151,6 +152,7 @@ export default function ItineraryClient() {
           {events.length > 0 && !loading && (
             <AppMapClient 
               events={mapEvents}
+              places={[]}
               fullBleed
             />
           )}

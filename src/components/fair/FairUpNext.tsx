@@ -1,3 +1,5 @@
+"use client";
+
 import { Clock3, MapPin, ChevronRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { MagicCard } from "../ui/MagicCard";

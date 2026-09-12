@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Activity, Radio, Cpu, Zap, RadioReceiver } from "lucide-react";
+import { Activity, Cpu, Zap, RadioReceiver } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Telemetry = {
@@ -131,7 +131,7 @@ export default function HiveMindDashboard() {
               <div className="flex items-end gap-2 h-48">
                 {Array.from({ length: 32 }).map((_, i) => {
                   // Simulate some variance based on the actual kick level
-                  const variance = Math.random() * 0.2;
+                  const variance = Math.abs(Math.sin(i * 12.345)) * 0.2;
                   const height = telemetry.kickLevel > 0 
                     ? Math.max(5, (telemetry.kickLevel - variance) * 100) 
                     : 5;

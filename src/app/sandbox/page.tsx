@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, useTransform, useScroll, AnimatePresence, useSpring } from "framer-motion";
 import { Command } from "cmdk";
 import { Drawer } from "vaul";
-import { Search, Bell, Map, Calendar, Bus, Ticket, X, Check, SearchIcon, ChevronRight, ArrowLeft, ArrowRight } from "lucide-react";
+import { Search, Map, Calendar, Bus, SearchIcon, Ticket, ArrowLeft, ArrowRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // -----------------------------------------------------------------------------

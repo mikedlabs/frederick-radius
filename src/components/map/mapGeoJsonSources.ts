@@ -546,6 +546,7 @@ export function buildEventsGeoJson(
     lat: number;
     category?: string;
   }[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): GeoJSON.FeatureCollection<GeoJSON.Geometry, any> {
   return {
     type: "FeatureCollection" as const,

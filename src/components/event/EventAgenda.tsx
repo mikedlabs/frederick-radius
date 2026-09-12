@@ -2,7 +2,6 @@ import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import EmptyState from "@/components/ui/EmptyState";
 import { eventDecisionLocation } from "@/lib/events/decision-facts";
 import { eventDateBlock } from "@/lib/events/format";
 import { isDateOnlyEventAnchor, isEventEnded } from "@/lib/eventWhenLabel";
@@ -87,7 +86,7 @@ export default function EventAgenda({
               No events found.
             </h3>
             <p className="mt-1 text-[13px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-              We don't have anything on the calendar for this exact window. Try one of these instead:
+              We don&apos;t have anything on the calendar for this exact window. Try one of these instead:
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2">

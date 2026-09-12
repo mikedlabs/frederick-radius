@@ -26,6 +26,7 @@ import {
   Landmark,
 } from "lucide-react";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const INTENT_ICONS: Record<string, any> = {
   Music,
   Palette,
@@ -176,6 +177,7 @@ function EbChip({
   children: ReactNode;
   onClick: () => void;
   ariaLabel?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   icon?: any;
   className?: string;
 }) {

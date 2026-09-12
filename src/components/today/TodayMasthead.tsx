@@ -36,6 +36,7 @@ export default function TodayMasthead({ title, dateline }: TodayMastheadProps) {
           <Image 
             src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" 
             fill 
+            priority
             sizes="(min-width: 1024px) 440px, 100vw" 
             alt="Carroll Creek in Frederick, photographed by Mike D." 
             className="object-cover object-center" 

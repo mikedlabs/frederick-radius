@@ -18,6 +18,7 @@ export default function CommandMenu() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [aiResult, setAiResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [isAiMode, setIsAiMode] = useState(false);
@@ -50,6 +51,7 @@ export default function CommandMenu() {
   // Fetch from /api/search when query changes
   useEffect(() => {
     if (!query) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResults([]);
       setAiResult(null);
       return;
@@ -72,6 +74,7 @@ export default function CommandMenu() {
           .then(res => res.json())
           .then(data => {
             if (data.results) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               setResults(data.results.map((r: any) => ({
                 id: r.id || r.slug,
                 type: r.type,
@@ -178,7 +181,7 @@ export default function CommandMenu() {
               <Command.List className="max-h-[340px] overflow-y-auto p-2">
                 {query.length > 0 && results.length === 0 && !loading && (
                   <Command.Empty className="py-10 text-center text-[var(--app-ink-3)] text-sm">
-                    No results found for "{query}".
+                    No results found for &quot;{query}&quot;.
                   </Command.Empty>
                 )}
                 

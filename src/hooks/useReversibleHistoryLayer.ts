@@ -160,7 +160,7 @@ export function useReversibleHistoryLayer({
       const destination = new URL(href, window.location.href);
 
       if (destination.origin !== window.location.origin) {
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+         
         window.location.assign(destination);
         return;
       }
