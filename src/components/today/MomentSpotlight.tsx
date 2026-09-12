@@ -62,13 +62,13 @@ export default function MomentSpotlight({ moment }: { moment: SpotlightMoment })
           track("moment_spotlight_dismiss", { slug: moment.slug });
         }}
         aria-label="Dismiss"
-        className="tap-44 absolute right-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full"
+        className="absolute right-1.5 top-1.5 grid h-11 w-11 place-items-center rounded-full"
         style={{ color: "var(--app-ink-3)" }}
       >
         <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
       </button>
 
-      <Link href={`/moments/${moment.slug}`} className="relative block pr-8" onClick={() => track("moment_spotlight_open", { slug: moment.slug })}>
+      <Link href={`/moments/${moment.slug}`} className="relative block pr-12" onClick={() => track("moment_spotlight_open", { slug: moment.slug })}>
         <p className="inline-flex items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.14em]" style={{ color: moment.accent }}>
           <Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
           This weekend

@@ -6,6 +6,7 @@ import { weatherVerdict } from "@/lib/weather-verdict";
 import { getNwsAlertsResult, type NwsAlertsResult } from "@/lib/integrations/nws-alerts";
 import { getAirQuality, isFreshAqiObservation, pickWorstAqi } from "@/lib/integrations/airnow";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
+import SmartIsland from "./SmartIsland";
 import OfflineTodayCapture from "@/components/pwa/OfflineTodayCapture";
 import { easternDayKey } from "@/lib/tz";
 import { withDeadlineFallback } from "@/lib/promise-deadline";
@@ -185,7 +186,7 @@ export default async function TodayCard() {
   // The hero takes the BRIEF (one observation), never the full advice
   // line — the greeting already spends words here, and the counsel lives
   // in NowIntel below (owner report, 2026-07-19: too much text up top).
-  const verdict = weatherVerdict({
+  const v = weatherVerdict({
     temp: cur?.temperature ?? 70,
     shortForecast: cur?.shortForecast ?? "",
     precipNow: cur?.probabilityOfPrecipitation ?? 0,
@@ -198,9 +199,10 @@ export default async function TodayCard() {
     weatherAvailable: Boolean(cur && forecast),
     hourly: forecast?.hourly ?? [],
     now,
-  }).brief;
+  });
+  
   const weatherRead = compactWeatherRead({
-    verdict,
+    verdict: v.brief,
     condition,
     alertsAvailable: alertResult.available,
     airQualityAvailable,
@@ -217,14 +219,14 @@ export default async function TodayCard() {
   // Secondary stats — high + next sun event. The big temperature carries
   // "now," so it's dropped from this line to avoid saying it twice.
   const stats = cur
-    ? [
+    ? ([
         high != null ? `High ${high}°` : null,
         sun ? `${sun.label} ${sun.time}` : null,
-      ].filter(Boolean)
+      ].filter(Boolean) as string[])
     : [];
 
   return (
-    <section aria-label="Today in Frederick" style={{ color: "currentColor" }}>
+    <section aria-label="Today in Frederick">
       <OfflineTodayCapture
         snapshot={{
           dayKey: easternDayKey(now),
@@ -237,46 +239,14 @@ export default async function TodayCard() {
           },
         }}
       />
-      {/* The hook — a concise weather read in the display face.
-          The 3-second "I get it" line, now a tighter lead above one compact
-          weather row (was a 28px headline stacked over a 64px number). */}
-      {/* text-wrap balance: the two-line mood ("… chase shade and / AC.")
-          otherwise strands its last word at narrow widths. */}
-      {weatherRead.headline && (
-        <h2 className="font-serif text-[18px] font-semibold leading-snug tracking-tight [text-wrap:balance] sm:text-[20px]">
-          {weatherRead.headline}
-        </h2>
-      )}
-      {weatherRead.safetyNote && (
-        <p className="mt-1 text-[11.5px] font-medium">
-          {weatherRead.safetyNote}
-        </p>
-      )}
-
-      {/* One compact weather row: the animated glyph + the temperature + the
-          high/sunset stats, side by side, so the header stays short. */}
-      {(variant || tempNow != null || stats.length > 0) && (
-        <div className="mt-2 flex items-center gap-3">
-          {variant && (
-            <AnimatedSkyGlyph variant={variant} size={44} className="shrink-0 opacity-95" />
-          )}
-          {tempNow != null && (
-            <span className="font-serif text-[40px] font-light leading-none tracking-tight tabular-nums sm:text-[44px]">
-              {tempNow}&deg;
-            </span>
-          )}
-          {stats.length > 0 && (
-            <span className="text-[12.5px] font-medium leading-snug tabular-nums">
-              {stats.join("  ·  ")}
-              {/* Live daylight-left, moved here from TodayContext (client-side
-                  so it stays accurate; the server card would freeze it). */}
-              <DaylightLeftInline />
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* The selected event lead renders once in the Events today section. */}
+      <SmartIsland 
+        headline={weatherRead.headline}
+        safetyNote={weatherRead.safetyNote}
+        tempNow={tempNow}
+        variant={variant}
+        stats={stats}
+        verdictTone={v.tone}
+      />
     </section>
   );
 }

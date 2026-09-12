@@ -8,6 +8,7 @@ import OnNowBand from "@/components/today/OnNowBand";
 import KeysScore from "@/components/today/KeysScore";
 import LocalSportsScoreboard from "@/components/today/LocalSportsScoreboard";
 import SkyHero from "@/components/today/SkyHero";
+import SmartIslandSkeleton from "@/components/today/SmartIslandSkeleton";
 import { SnapCarousel, SnapCarouselItem } from "@/components/ui/SnapCarousel";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
 // from the SkyHero pre-launch. The temporal anchor (weekday + a live
@@ -291,23 +292,11 @@ export default async function HomePage() {
       {/* The whole weather plate is a door to the full forecast (July 2026
           Reddit review: it looked tappable and wasn't — now it is, with the
           standard right-edge disclosure chevron). */}
-      <SkyHero className="today-arrival today-arrival--weather relative z-10 mb-5">
-        <AppTransitionLink
-          href="/pulse?open=weather"
-          prefetch={false}
-          className="group relative block outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-        >
-          <Suspense fallback={<Skeleton.Block height={110} round="var(--app-radius-md)" />}>
-            <TodayCard />
-          </Suspense>
-          <span className="sr-only">Open the full forecast.</span>
-          <ChevronRight
-            aria-hidden
-            strokeWidth={2.25}
-            className="absolute bottom-2 right-2 h-4 w-4 opacity-50 transition-transform group-hover:translate-x-0.5"
-          />
-        </AppTransitionLink>
-      </SkyHero>
+      <div className="today-arrival today-arrival--weather relative z-10 mb-5 -mt-8 flex justify-center w-full">
+        <Suspense fallback={<SmartIslandSkeleton />}>
+          <TodayCard />
+        </Suspense>
+      </div>
 
       <div className="today-start-grid">
         <div className="today-start-find space-y-5">
