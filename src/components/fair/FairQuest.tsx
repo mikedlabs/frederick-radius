@@ -22,6 +22,12 @@ export default function FairQuest() {
         next.delete(id);
       } else {
         next.add(id);
+        
+        // Tactile haptic feedback for success
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          navigator.vibrate([15, 50, 15]);
+        }
+
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const x = (rect.left + rect.width / 2) / window.innerWidth;
         const y = (rect.top + rect.height / 2) / window.innerHeight;
@@ -82,7 +88,7 @@ export default function FairQuest() {
       </div>
       
       <div className="-mt-10">
-        <SnapCarousel style={{ gap: "12px", padding: "0 16px" } as any}>
+        <SnapCarousel style={{ gap: "12px", padding: "0 16px" }}>
           {QUEST_ITEMS.map((item) => {
             const isDone = completed.has(item.id);
             return (

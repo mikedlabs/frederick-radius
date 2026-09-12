@@ -2,6 +2,7 @@
 
 import {
   Accessibility,
+  Box,
   Building2,
   BusFront,
   ChevronDown,
@@ -730,6 +731,19 @@ export default function FairGroundsMapInner({
   const desktopSelectionHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const lastSelectionTriggerRef = useRef<HTMLElement | null>(null);
   const lastClosedFeatureRef = useRef<FairGroundsMapFeature | null>(null);
+
+  const [is3D, setIs3D] = useState(false);
+  const toggle3D = useCallback(() => {
+    if (!mapRef.current) return;
+    if (is3D) {
+      mapRef.current.easeTo({ pitch: 0, bearing: 0, duration: 800 });
+      setIs3D(false);
+    } else {
+      mapRef.current.easeTo({ pitch: 60, bearing: -20, duration: 800 });
+      setIs3D(true);
+    }
+  }, [is3D]);
+
   const clusterOriginRef = useRef<{
     element: HTMLElement;
     memberIds: string[];
@@ -3237,6 +3251,25 @@ export default function FairGroundsMapInner({
               <span className="sr-only">Whole grounds</span>
               <span className="hidden sm:inline" aria-hidden="true">
                 Whole grounds
+              </span>
+            </button>
+
+            <button
+              type="button"
+              data-fair-map-runtime-control
+              onClick={toggle3D}
+              className="tap-44 inline-flex h-[44px] w-[44px] items-center justify-center gap-2 rounded-full border px-0 text-[13px] font-bold sm:w-auto sm:px-3 transition-colors"
+              style={{
+                color: is3D ? "var(--app-ink-inverse)" : "var(--app-ink)",
+                background: is3D ? "var(--app-brand)" : "var(--app-bg-elevated-solid)",
+                borderColor: is3D ? "var(--app-brand)" : "var(--app-control-border)",
+                boxShadow: "var(--app-elev-1)",
+              }}
+            >
+              <Box className="h-4 w-4" aria-hidden />
+              <span className="sr-only">{is3D ? "2D View" : "3D View"}</span>
+              <span className="hidden sm:inline" aria-hidden="true">
+                {is3D ? "2D View" : "3D View"}
               </span>
             </button>
             </div>
