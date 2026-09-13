@@ -26,10 +26,10 @@ export default function TownEventHighlight({
   const now = new Date(nowIso);
   const townEvents = snapshot.publicEvents.filter(ev => {
     // Only today's events that haven't ended yet
-    if (!isEventToday(ev, now) || isEventEnded(ev, now)) return false;
+    if (!isEventToday(ev.starts_at, now) || isEventEnded(ev, now)) return false;
     // Only events that match the town slug
     return ev.municipality === townSlug;
-  }).sort(compareForLead(now));
+  }).sort(compareForLead);
 
   if (townEvents.length === 0) return null;
 
@@ -47,7 +47,7 @@ export default function TownEventHighlight({
         <ul className="grid gap-3 sm:grid-cols-2">
           {townEvents.slice(0, 4).map((ev) => (
             <li key={ev.slug}>
-              <EventCard event={ev} now={now} />
+              <EventCard event={ev} nowISO={nowIso} />
             </li>
           ))}
         </ul>
