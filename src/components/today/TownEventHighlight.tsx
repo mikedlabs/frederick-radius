@@ -1,7 +1,7 @@
 import type { EventArchiveSnapshot } from "@/lib/loaders/todayEventSnapshot";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { compareForLead } from "@/lib/events/lead-rank";
-import { isEventToday, isEventEnded } from "@/lib/eventWhenLabel";
+import { isEventEnded } from "@/lib/eventWhenLabel";
 import TownEventHighlightClient from "./TownEventHighlightClient";
 
 export default async function TownEventHighlight({
@@ -14,12 +14,13 @@ export default async function TownEventHighlight({
   const snapshot = await eventsPromise;
   const now = new Date(nowIso);
 
-  // Group events by municipality, keep only valid today events
+  // Group events by municipality, keep only valid upcoming/live events
   const byTown: Record<string, EventWithMeta[]> = {};
   
   for (const ev of snapshot.publicEvents) {
     if (!ev.municipality) continue;
-    if (!isEventToday(ev.starts_at, now) || isEventEnded(ev, now)) continue;
+    // Only exclude events that have definitively ended; allow future events!
+    if (isEventEnded(ev, now)) continue;
     
     if (!byTown[ev.municipality]) {
       byTown[ev.municipality] = [];
