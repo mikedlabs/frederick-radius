@@ -449,7 +449,7 @@ function MorphingFAB() {
               </button>
             </div>
             <div className="p-4 flex-1 bg-zinc-50 dark:bg-zinc-950">
-              <p className="text-sm text-zinc-500">Morphing layout animation with Framer Motion.</p>
+              <p className="text-sm text-zinc-500">This is a morphing layout animation with Framer Motion.</p>
             </div>
           </motion.div>
         )}

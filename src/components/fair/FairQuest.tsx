@@ -74,7 +74,7 @@ export default function FairQuest() {
           <Sparkles className="h-5 w-5 text-yellow-300" /> Fair Quest 2026
         </h3>
         <p className="mt-1 text-[13px] font-medium text-[var(--app-on-brand)] opacity-90">
-          Complete the ultimate fair experience!
+          You can complete the ultimate fair experience!
         </p>
         <div className="mt-3 flex items-center gap-3">
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-black/20">

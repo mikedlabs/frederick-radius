@@ -134,7 +134,7 @@ export default function FairPhotoExplorer({
     <BottomSheet
       present={open}
       onClose={() => closeOrOpen(false)}
-      ariaLabel="Explore the Fair at night"
+      ariaLabel="See the Fair at night"
     >
       {(dismiss) => (
         <div

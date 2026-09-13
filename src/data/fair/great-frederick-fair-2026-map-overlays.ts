@@ -548,7 +548,7 @@ const foodFeatures: FairGroundsMapFeature[] = [
     sourceUpdatedAt: null,
     scheduleAliases: [],
     anchor: [-77.3940, 39.4135],
-    detail: "Hot, fresh funnel cakes with powdered sugar.",
+    detail: "They serve hot, fresh funnel cakes with powdered sugar.",
     keywords: ["funnel cake", "sweet", "fried", "dessert"],
     informationSource: vendorGuideInformationSource,
     locationPrecision: "published-area",

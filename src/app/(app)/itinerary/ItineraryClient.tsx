@@ -77,7 +77,7 @@ export default function ItineraryClient() {
           Add events to your itinerary to build a chronological timeline or view them on a map.
         </p>
         <Link href="/events" className="px-6 py-2 bg-[var(--app-ink)] text-white rounded-full font-semibold">
-          Discover Events
+          See upcoming events
         </Link>
       </div>
     );
