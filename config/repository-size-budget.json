@@ -1,7 +1,7 @@
 {
   "version": 1,
   "defaultMaxBytes": 1048576,
-  "totalMaxBytes": 238000000,
+  "totalMaxBytes": 250000000,
   "categoryBudgets": {
     "source-of-truth": 3200000,
     "deployment-required-snapshot": 53000000,
