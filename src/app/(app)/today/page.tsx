@@ -159,6 +159,9 @@ export default async function HomePage() {
   const now = new Date();
   const fairPromotionPhase = todayFairPromotionPhase(now);
   const civicMoment = activeMoment(now);
+  const civicMomentLeadsToday =
+    civicMoment?.slug === "in-the-street-2026" &&
+    civicMoment.ends === easternDayKey(now);
 
   // ONE bounded snapshot read, created here but intentionally NOT awaited.
   // The expensive live-feed fan-out belongs to the warm/archive crons, never a
@@ -252,6 +255,15 @@ export default async function HomePage() {
         </div>
       </Suspense>
 
+      {/* In The Streets is the county's shared plan today, so it takes the
+          lead over the normal daily briefing and the upcoming Fair campaign.
+          Active alerts remain above it because they can change the plan. */}
+      {civicMoment && civicMomentLeadsToday && (
+        <div className="mb-5">
+          <MomentSpotlight moment={civicMoment} isDayOf />
+        </div>
+      )}
+
       {/* ── TITLE — a TIME-AWARE masthead (owner call, 2026-07-20: make /today
           "time-aware"). The page already reorders itself across the day (the
           evening gear below flips the lead to tonight at 17:00), but the title
@@ -321,7 +333,8 @@ export default async function HomePage() {
             the photographic Fair doorway at the top. */}
         {fairPromotionPhase &&
         civicMoment &&
-        civicMoment.slug !== TODAY_FAIR_PROMOTION_SLUG ? (
+        civicMoment.slug !== TODAY_FAIR_PROMOTION_SLUG &&
+        !civicMomentLeadsToday ? (
           <div className="mb-4">
             <MomentSpotlight moment={civicMoment} />
           </div>

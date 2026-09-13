@@ -67,6 +67,17 @@ describe("Today decision hierarchy", () => {
     expect(renderedPage.match(/<TodayFairFeature\b/g)).toHaveLength(1);
   });
 
+  it("puts In The Streets ahead of the ordinary briefing on its actual day", () => {
+    const alerts = renderedPage.indexOf("<CivicAlerts />");
+    const dayOfLead = renderedPage.indexOf("civicMomentLeadsToday && (");
+    const masthead = renderedPage.indexOf("{frame.title}");
+
+    expect(dayOfLead).toBeGreaterThan(alerts);
+    expect(dayOfLead).toBeLessThan(masthead);
+    expect(todayPage).toContain('civicMoment?.slug === "in-the-street-2026"');
+    expect(todayPage).toContain("civicMoment.ends === easternDayKey(now)");
+  });
+
   it("gives each part of the briefing one purpose and preserves an overlapping civic moment", () => {
     const decide = renderedPage.indexOf('className="today-start-grid"');
     const follow = renderedPage.indexOf('label="Follow the day"');
@@ -80,7 +91,9 @@ describe("Today decision hierarchy", () => {
     expect(renderedPage).toContain(
       "civicMoment.slug !== TODAY_FAIR_PROMOTION_SLUG",
     );
-    expect(renderedPage.match(/<MomentSpotlight\b/g)).toHaveLength(2);
+    // Day-of In The Streets leads above the masthead; the existing Fair-aware
+    // slots remain for pre-event weekends and overlapping occasions.
+    expect(renderedPage.match(/<MomentSpotlight\b/g)).toHaveLength(3);
   });
 
   it("keeps the town-aware place answer mounted instead of replacing it with an event", () => {

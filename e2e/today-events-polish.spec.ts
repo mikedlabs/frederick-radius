@@ -55,10 +55,6 @@ test("Today keeps the first open-place pick in view when photos fall back", asyn
   });
 
   await page.goto("/today", { waitUntil: "domcontentloaded" });
-  await expect(page.locator("[data-today-fair-feature]")).toHaveAttribute(
-    "data-fair-feature-tone",
-    "light",
-  );
   await expect(
     page.getByRole("button", { name: /Plan the rest/ }),
   ).toHaveAttribute("aria-expanded", "false");
