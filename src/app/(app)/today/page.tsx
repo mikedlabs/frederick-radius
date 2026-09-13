@@ -265,6 +265,39 @@ export default async function HomePage() {
         </div>
       )}
 
+      {/* ── WEATHER HERO — the time-of-day gradient sky and today's weather
+          lead the page. Now a COMPACT, CONTAINED card (owner
+          call: "all cards within the main part" + "one header with the weather
+          more compact") — the sky is a rounded card within the column rather
+          than a full-bleed band, with a tighter weather row inside; the soft
+          downward shadow floats it over the page. The detailed hourly / 7-day
+          / almanac forecast still lives in the collapsed "full briefing". */}
+      {/* shader-rim — the page's ONE rationed living treatment: a slow, barely-
+          there conic accent ring on the true top-of-page hero (the sky plate),
+          the crafted-product-hero move the primitive reserves for a single
+          element. It freezes under prefers-reduced-motion. (The old className
+          shadow was dead — the .sky-hero rule's own inset shadow overrides it.) */}
+      {/* The whole weather plate is a door to the full forecast (July 2026
+          Reddit review: it looked tappable and wasn't — now it is, with the
+          standard right-edge disclosure chevron). */}
+      <SkyHero className="today-arrival today-arrival--weather relative z-10 mb-5">
+        <AppTransitionLink
+          href="/pulse?open=weather"
+          prefetch={false}
+          className="group relative block outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+        >
+          <Suspense fallback={<Skeleton.Block height={110} round="var(--app-radius-md)" />}>
+            <TodayCard />
+          </Suspense>
+          <span className="sr-only">Open the full forecast.</span>
+          <ChevronRight
+            aria-hidden
+            strokeWidth={2.25}
+            className="absolute bottom-2 right-2 h-4 w-4 opacity-50 transition-transform group-hover:translate-x-0.5"
+          />
+        </AppTransitionLink>
+      </SkyHero>
+
       {/* ── TITLE — a TIME-AWARE masthead (owner call, 2026-07-20: make /today
           "time-aware"). The page already reorders itself across the day (the
           evening gear below flips the lead to tonight at 17:00), but the title
@@ -312,38 +345,7 @@ export default async function HomePage() {
         </div>
         </div>
         <div className="today-start-context">
-      {/* ── WEATHER HERO — the time-of-day gradient sky and today's weather
-          lead the page. Now a COMPACT, CONTAINED card (owner
-          call: "all cards within the main part" + "one header with the weather
-          more compact") — the sky is a rounded card within the column rather
-          than a full-bleed band, with a tighter weather row inside; the soft
-          downward shadow floats it over the page. The detailed hourly / 7-day
-          / almanac forecast still lives in the collapsed "full briefing". */}
-      {/* shader-rim — the page's ONE rationed living treatment: a slow, barely-
-          there conic accent ring on the true top-of-page hero (the sky plate),
-          the crafted-product-hero move the primitive reserves for a single
-          element. It freezes under prefers-reduced-motion. (The old className
-          shadow was dead — the .sky-hero rule's own inset shadow overrides it.) */}
-      {/* The whole weather plate is a door to the full forecast (July 2026
-          Reddit review: it looked tappable and wasn't — now it is, with the
-          standard right-edge disclosure chevron). */}
-      <SkyHero className="today-arrival today-arrival--weather relative z-10">
-        <AppTransitionLink
-          href="/pulse?open=weather"
-          prefetch={false}
-          className="group relative block outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-        >
-          <Suspense fallback={<Skeleton.Block height={110} round="var(--app-radius-md)" />}>
-            <TodayCard />
-          </Suspense>
-          <span className="sr-only">Open the full forecast.</span>
-          <ChevronRight
-            aria-hidden
-            strokeWidth={2.25}
-            className="absolute bottom-2 right-2 h-4 w-4 opacity-50 transition-transform group-hover:translate-x-0.5"
-          />
-        </AppTransitionLink>
-      </SkyHero>
+
       {/* ── CAMPAIGN SPOTLIGHT — the document identifies itself before a
           campaign asks for attention. Fair Day owns this photographic doorway
           from Sep 2–26, then retires itself on Sep 27. When another civic
