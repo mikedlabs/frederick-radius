@@ -8,6 +8,7 @@ import OnNowBand from "@/components/today/OnNowBand";
 import KeysScore from "@/components/today/KeysScore";
 import LocalSportsScoreboard from "@/components/today/LocalSportsScoreboard";
 import SmartIslandSkeleton from "@/components/today/SmartIslandSkeleton";
+import LivePulseTicker from "@/components/today/LivePulseTicker";
 import { SnapCarousel, SnapCarouselItem } from "@/components/ui/SnapCarousel";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
 // from the SkyHero pre-launch. The temporal anchor (weekday + a live
@@ -38,6 +39,7 @@ import { loadTodayEventSnapshot } from "@/lib/loaders/todayEventSnapshot";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
 import { isEventToday, isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
+import { sunTimes } from "@/lib/sun";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { splitTonightFeature, withoutTodayFeature } from "@/lib/today/tonight";
 import PoolsToday from "@/components/today/PoolsToday";
@@ -284,10 +286,28 @@ export default async function HomePage() {
         );
       })()}
 
-      <div className="today-arrival today-arrival--weather relative z-10 mb-5 flex justify-center w-full">
+      <div className="today-arrival today-arrival--weather relative z-10 mb-5 flex justify-center w-full flex-col">
         <Suspense fallback={<SmartIslandSkeleton />}>
           <TodayCard />
         </Suspense>
+        {/* Dynamic ambient context ticker */}
+        {(() => {
+          const sun = sunTimes(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
+          const messages = [];
+          
+          if (sun?.sunset) {
+            const sunsetTime = new Intl.DateTimeFormat("en-US", { timeStyle: "short", timeZone: "America/New_York" }).format(sun.sunset);
+            messages.push(`Sunset at ${sunsetTime}`);
+          }
+          
+          if (civicMoment) {
+            messages.push(`${civicMoment.title} is happening now`);
+          } else if (fairPromotionPhase === "planning") {
+            messages.push("The Great Frederick Fair starts Sept 18");
+          }
+
+          return <LivePulseTicker messages={messages} />;
+        })()}
       </div>
 
       {/* The big event of the day, prominently displayed below the weather */}

@@ -23,6 +23,7 @@ import Map, {
 // browse the dock's Where pane is locate's one home.)
 import type { GeoJSONSource } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { sunTimes } from "@/lib/sun";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import type { SmartMapDefault } from "@/lib/map/smartDefaults";
 import { useMode } from "@/hooks/useMode";
@@ -678,6 +679,40 @@ export default function AppMap({
       ),
     [isBrowseMap],
   );
+
+  // ── Ambient Sun-Sync Lighting ──
+  const [ambientConfig, setAmbientConfig] = useState(MAPBOX_FIELD_GUIDE_CONFIG);
+  useEffect(() => {
+    function updateLight() {
+      const now = new Date();
+      // Use Frederick's actual coordinates for sun math
+      const t = sunTimes(now, 39.4143, -77.4105);
+      let preset = "day";
+      if (t && t.sunrise && t.sunset && t.dusk) {
+        const timeMs = now.getTime();
+        // Determine the lighting phase for Mapbox Standard
+        if (timeMs < t.sunrise.getTime() - 1800000) preset = "night";
+        else if (timeMs < t.sunrise.getTime() + 1800000) preset = "dawn";
+        else if (timeMs < t.sunset.getTime() - 1800000) preset = "day";
+        else if (timeMs < t.dusk.getTime()) preset = "dusk";
+        else preset = "night";
+      }
+      
+      setAmbientConfig(prev => {
+        if (prev.basemap?.lightPreset === preset) return prev;
+        return {
+          ...prev,
+          basemap: {
+            ...prev.basemap,
+            lightPreset: preset
+          }
+        };
+      });
+    }
+    updateLight();
+    const iv = setInterval(updateLight, 60000); // Check every minute
+    return () => clearInterval(iv);
+  }, []);
   const routeSearchParams = useSearchParams();
   const routeScopeParam = routeSearchParams.get(SCOPE_PARAM);
   const explicitSearchScope = parseScope(routeScopeParam);
@@ -4811,7 +4846,7 @@ export default function AppMap({
                 })
           }
           mapStyle={MAPBOX_FIELD_GUIDE_STYLE}
-          config={MAPBOX_FIELD_GUIDE_CONFIG}
+          config={ambientConfig}
           style={{ width: "100%", height: "100%" }}
           attributionControl={false}
           logoPosition="bottom-left"

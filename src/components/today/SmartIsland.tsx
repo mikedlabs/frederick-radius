@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef } from "react";
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion";
 import AnimatedSkyGlyph, { SkyVariant } from "./AnimatedSkyGlyph";
 import { ChevronRight } from "lucide-react";
 import DaylightLeftInline from "@/components/today/DaylightLeftInline";
@@ -17,7 +17,6 @@ type SmartIslandProps = {
 };
 
 function AqiGauge({ aqi }: { aqi: number }) {
-  // Map AQI to a 0-100% position on a 0-300 scale (clamp at 300)
   const position = Math.min(Math.max((aqi / 300) * 100, 0), 100);
   
   let label = "Good";
@@ -55,12 +54,40 @@ export default function SmartIsland({
   airQualityIndex,
 }: SmartIslandProps) {
   const [expanded, setExpanded] = useState(false);
+  
+  const ref = useRef<HTMLButtonElement>(null);
+  
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  
+  const mouseXSpring = useSpring(x, { stiffness: 150, damping: 20 });
+  const mouseYSpring = useSpring(y, { stiffness: 150, damping: 20 });
 
-  // Map tone to colors for the glow effect
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["5deg", "-5deg"]);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-5deg", "5deg"]);
+  
+  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const xPct = mouseX / width - 0.5;
+    const yPct = mouseY / height - 0.5;
+    x.set(xPct);
+    y.set(yPct);
+  };
+  
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+
   const glowColors = {
-    good: "rgba(167, 139, 250, 0.4)", // soft purple
-    mixed: "rgba(148, 163, 184, 0.4)", // neutral slate
-    rough: "rgba(248, 113, 113, 0.5)", // warning red
+    good: "rgba(167, 139, 250, 0.4)",
+    mixed: "rgba(148, 163, 184, 0.4)",
+    rough: "rgba(248, 113, 113, 0.5)",
   };
   
   const borderColors = {
@@ -74,13 +101,19 @@ export default function SmartIsland({
 
   return (
     <motion.button
+      ref={ref}
       layout
       onClick={(e) => {
         e.preventDefault();
         setExpanded(!expanded);
       }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
       className="relative z-50 mx-auto w-full max-w-[360px] cursor-pointer overflow-hidden rounded-[32px] bg-[var(--app-bg-elevated-solid)] text-left shadow-lg outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
       style={{
+        rotateX,
+        rotateY,
+        transformPerspective: 1000,
         boxShadow: `0 12px 40px -12px ${currentGlow}, inset 0 1px 1px rgba(255,255,255,0.1)`,
         border: `1px solid ${currentBorder}`,
         backdropFilter: "blur(16px)",
@@ -88,14 +121,25 @@ export default function SmartIsland({
       }}
       initial={{ borderRadius: 32 }}
       animate={{ borderRadius: expanded ? 24 : 32 }}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
       transition={{ type: "spring", bounce: 0.25, duration: 0.5 }}
     >
-      <motion.div layout className="flex flex-col px-4 py-3">
-        {/* TOP ROW: Always visible. Tighter when collapsed. */}
+      {/* Dynamic ambient highlight that tracks mouse position */}
+      <motion.div
+        className="pointer-events-none absolute inset-0 z-0 opacity-40 mix-blend-overlay"
+        style={{
+          background: useTransform(
+            [mouseXSpring, mouseYSpring],
+            ([xPos, yPos]) => `radial-gradient(circle at ${(xPos as number + 0.5) * 100}% ${(yPos as number + 0.5) * 100}%, rgba(255,255,255,0.8) 0%, transparent 60%)`
+          )
+        }}
+      />
+      <motion.div layout className="relative z-10 flex flex-col px-4 py-3">
         <motion.div layout className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             {variant && (
-              <motion.div layout className="shrink-0">
+              <motion.div layout className="shrink-0 drop-shadow-md">
                 <AnimatedSkyGlyph variant={variant} size={expanded ? 40 : 32} className="opacity-95" />
               </motion.div>
             )}
@@ -129,7 +173,6 @@ export default function SmartIsland({
           </motion.div>
         </motion.div>
 
-        {/* EXPANDED CONTENT */}
         <AnimatePresence>
           {expanded && (
             <motion.div

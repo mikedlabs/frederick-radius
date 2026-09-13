@@ -138,7 +138,7 @@ export default function AppMapSelectionSurfaces({
       )}
 
       {dock && compactMapViewport && selectedEvent && (
-        <MapEventPeek event={selectedEvent} onClose={clearMapSelection} />
+        <MapEventPeek event={selectedEvent} onClose={clearMapSelection} parking={parking} />
       )}
 
       {dock && compactMapViewport && selected && (

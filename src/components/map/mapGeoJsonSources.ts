@@ -545,20 +545,50 @@ export function buildEventsGeoJson(
     lng: number;
     lat: number;
     category?: string;
+    starts_at?: string;
+    ends_at?: string;
   }[]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): GeoJSON.FeatureCollection<GeoJSON.Geometry, any> {
+  const now = Date.now();
+
   return {
     type: "FeatureCollection" as const,
-    features: events.map((e) => ({
-      type: "Feature" as const,
-      properties: { 
-        id: e.slug, 
-        category: e.category || 'unknown',
-        // We can add weight here if we want specific events to glow more
-        weight: 1 
-      },
-      geometry: { type: "Point" as const, coordinates: [e.lng, e.lat] },
-    })),
+    features: events.map((e) => {
+      let weight = 1;
+
+      if (e.starts_at) {
+        const start = new Date(e.starts_at).getTime();
+        // Assume 3 hours duration if ends_at is not provided
+        const end = e.ends_at ? new Date(e.ends_at).getTime() : start + 3 * 60 * 60 * 1000;
+        
+        if (now >= start && now <= end) {
+          // Happening RIGHT NOW! Maximum pulse.
+          weight = 5;
+        } else if (start > now && start - now < 6 * 60 * 60 * 1000) {
+          // Happening very soon (within 6 hours)
+          weight = 3;
+        } else if (start > now && start - now < 24 * 60 * 60 * 1000) {
+          // Happening later today
+          weight = 2;
+        } else if (now > end && now - end < 12 * 60 * 60 * 1000) {
+          // Just finished, cooling down
+          weight = 0.5;
+        } else if (now > end) {
+          // Finished over 12 hours ago
+          weight = 0.1;
+        }
+      }
+
+      return {
+        type: "Feature" as const,
+        properties: { 
+          id: e.slug, 
+          category: e.category || 'unknown',
+          weight 
+        },
+        geometry: { type: "Point" as const, coordinates: [e.lng, e.lat] },
+      };
+    }),
   };
 }

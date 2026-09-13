@@ -23,6 +23,8 @@ import type {
   SelectedOsm,
   SelectedPlace,
 } from "./types";
+import { garagePlanFor } from "@/lib/parking-forecast";
+import { type ParkingPin } from "@/lib/map/parking";
 import { mapPopupSource } from "./mapPopupSource";
 import MapResultSurface from "./MapResultSurface";
 
@@ -53,11 +55,19 @@ function observedWhen(value?: string): string | null {
 export function MapEventPeek({
   event,
   onClose,
+  parking = [],
 }: {
   event: EventPin;
   onClose: () => void;
+  parking?: ParkingPin[];
 }) {
   const color = event.category_color || "var(--app-brand)";
+  const plan = parking.length > 0 
+    ? garagePlanFor(
+        { lat: event.lat, lng: event.lng }, 
+        parking.map(p => ({ slug: p.slug, name: p.name, geom: { lng: p.lng, lat: p.lat } }))
+      )
+    : null;
 
   return (
     <MapResultSurface
@@ -86,6 +96,11 @@ export function MapEventPeek({
           <span className="map-peek-name font-serif">{event.title}</span>
           <span className="map-peek-detail">{event.venue_name}</span>
           <span className="map-peek-source">Radius event listing</span>
+          {plan && (
+            <span className="map-peek-detail" style={{ marginTop: '8px', padding: '6px 8px', background: 'var(--app-bg-sunken)', borderRadius: '6px' }}>
+              <strong>Parking near here:</strong> {plan.primaryGarage.name}.
+            </span>
+          )}
         </span>
       </div>
       <div className="map-peek-acts">

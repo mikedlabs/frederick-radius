@@ -88,7 +88,20 @@ export default function AppLayout({ children, modal }: { children: React.ReactNo
               once; it was the weaker, duplicate engine and is retired. */}
         </div>
         {modal}
-        <Toaster position="bottom-center" toastOptions={{ style: { background: "var(--app-bg-surface)", color: "var(--app-ink)", border: "1px solid var(--app-border)" } }} />
+        <Toaster position="bottom-center" toastOptions={{ 
+          className: "dark:!bg-zinc-900/85 dark:!border-white/10 dark:!shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.1)]",
+          style: { 
+            background: "rgba(255, 255, 255, 0.85)", 
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            color: "var(--app-ink)", 
+            border: "1px solid rgba(255,255,255,0.2)",
+            boxShadow: "0 10px 40px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.4)",
+            borderRadius: "16px",
+            padding: "16px",
+            fontWeight: "500",
+          } 
+        }} />
         <CommandMenu />
       </RouteAccent>
     </EventSheetProvider>
