@@ -13,7 +13,7 @@ type MagicCardProps<T extends ElementType = "div"> = {
 export function MagicCard<T extends ElementType = "div">({
   children,
   className = "",
-  glowColor = "rgba(120, 119, 198, 0.15)", // A soft, generic premium glow
+  glowColor = "rgba(120, 119, 198, 0.15)", // palette-exempt
   as,
   ...props
 }: MagicCardProps<T>) {

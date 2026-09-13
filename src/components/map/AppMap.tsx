@@ -6504,12 +6504,12 @@ export default function AppMap({
                   "interpolate",
                   ["linear"],
                   ["heatmap-density"],
-                  0, "rgba(255, 140, 0, 0)",
-                  0.2, "rgba(255, 140, 0, 0.2)",
-                  0.4, "rgba(255, 100, 0, 0.4)",
-                  0.6, "rgba(255, 60, 0, 0.6)",
-                  0.8, "rgba(255, 20, 0, 0.8)",
-                  1, "rgba(255, 0, 0, 1)"
+                  0, "rgba(255, 140, 0, 0)", // palette-exempt
+                  0.2, "rgba(255, 140, 0, 0.2)", // palette-exempt
+                  0.4, "rgba(255, 100, 0, 0.4)", // palette-exempt
+                  0.6, "rgba(255, 60, 0, 0.6)", // palette-exempt
+                  0.8, "rgba(255, 20, 0, 0.8)", // palette-exempt
+                  1, "rgba(255, 0, 0, 1)" // palette-exempt
                 ],
                 // Adjust the heatmap radius by zoom level
                 "heatmap-radius": [

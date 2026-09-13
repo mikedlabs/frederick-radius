@@ -85,15 +85,15 @@ export default function SmartIsland({
   };
 
   const glowColors = {
-    good: "rgba(167, 139, 250, 0.4)",
-    mixed: "rgba(148, 163, 184, 0.4)",
-    rough: "rgba(248, 113, 113, 0.5)",
+    good: "rgba(167, 139, 250, 0.4)", // palette-exempt
+    mixed: "rgba(148, 163, 184, 0.4)", // palette-exempt
+    rough: "rgba(248, 113, 113, 0.5)", // palette-exempt
   };
   
   const borderColors = {
-    good: "rgba(167, 139, 250, 0.6)",
-    mixed: "rgba(148, 163, 184, 0.5)",
-    rough: "rgba(248, 113, 113, 0.7)",
+    good: "rgba(167, 139, 250, 0.6)", // palette-exempt
+    mixed: "rgba(148, 163, 184, 0.5)", // palette-exempt
+    rough: "rgba(248, 113, 113, 0.7)", // palette-exempt
   };
 
   const currentGlow = glowColors[verdictTone] || glowColors.mixed;

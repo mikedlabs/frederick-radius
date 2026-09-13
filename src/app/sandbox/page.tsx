@@ -495,7 +495,7 @@ export default function SandboxPage() {
   const headerScale = useTransform(scrollY, [0, 300], [1, 1.1]);
 
   return (
-    <div className="min-h-screen bg-[#F6F4F0] dark:bg-zinc-950 font-sans selection:bg-brand/20">
+    <div className="min-h-screen bg-[var(--app-bg,#F6F4F0)] dark:bg-zinc-950 font-sans selection:bg-brand/20">
       
       {/* Scroll-Driven Parallax Background */}
       <motion.div 
