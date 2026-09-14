@@ -7,6 +7,7 @@ import { toast } from "sonner";
 export const UPDATE_PROMPT_DURATION_MS = 10_000;
 export const UPDATE_PROMPT_SNOOZE_MS = 30 * 60 * 1_000;
 const UPDATE_PROMPT_SNOOZE_KEY = "fr.update-prompt-snoozed-at.v1";
+const UPDATE_PROMPT_PRESENTED_KEY = "fr.update-prompt-presented-at.v1";
 const FAIR_OFFLINE_PATHS = new Set([
   "/fair",
   "/moments/great-frederick-fair-2026",
@@ -51,10 +52,18 @@ export async function requestFairOfflineWarm(
  */
 export function shouldOfferUpdatePrompt(
   snoozedAt: number | null,
+  presentedAt: number | null,
   now = Date.now(),
 ): boolean {
-  if (snoozedAt === null || !Number.isFinite(snoozedAt)) return true;
-  return now - snoozedAt >= UPDATE_PROMPT_SNOOZE_MS;
+  const wasSnoozedRecently =
+    snoozedAt !== null &&
+    Number.isFinite(snoozedAt) &&
+    now - snoozedAt < UPDATE_PROMPT_SNOOZE_MS;
+  const wasPresentedRecently =
+    presentedAt !== null &&
+    Number.isFinite(presentedAt) &&
+    now - presentedAt < UPDATE_PROMPT_SNOOZE_MS;
+  return !wasSnoozedRecently && !wasPresentedRecently;
 }
 
 /**
@@ -151,13 +160,39 @@ export default function ServiceWorkerRegister() {
       }
     };
 
+    const presentedAt = (): number | null => {
+      try {
+        const stored = window.sessionStorage.getItem(UPDATE_PROMPT_PRESENTED_KEY);
+        if (!stored) return null;
+        const value = Number(stored);
+        return Number.isFinite(value) ? value : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const markUpdatePromptPresented = () => {
+      try {
+        window.sessionStorage.setItem(
+          UPDATE_PROMPT_PRESENTED_KEY,
+          String(Date.now()),
+        );
+      } catch {
+        // A blocked storage API should never block the update controls.
+      }
+    };
+
     /**
      * Show the "Update available" toast for a specific waiting worker.
      * Remains long enough to act on without permanently occupying app chrome.
      * Another update dismisses the old notice before offering the new one.
      */
     const promptForUpdate = (waiting: ServiceWorker) => {
-      if (!shouldOfferUpdatePrompt(snoozedAt())) return;
+      if (!shouldOfferUpdatePrompt(snoozedAt(), presentedAt())) return;
+      // Both an already-waiting registration and updatefound can describe the
+      // same worker. Persist this before creating the toast so route changes
+      // or a second registrar cannot surface duplicate notices.
+      markUpdatePromptPresented();
       if (toastId !== undefined) {
         toast.dismiss(toastId);
       }

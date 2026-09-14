@@ -2,7 +2,10 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import MomentSpotlight, { type SpotlightMoment } from "./MomentSpotlight";
+import MomentSpotlight, {
+  momentSpotlightDecision,
+  type SpotlightMoment,
+} from "./MomentSpotlight";
 
 const IN_THE_STREETS: SpotlightMoment = {
   slug: "in-the-street-2026",
@@ -26,6 +29,20 @@ const IN_THE_STREETS: SpotlightMoment = {
 };
 
 describe("MomentSpotlight", () => {
+  it("uses the anonymous decision vocabulary for the featured event", () => {
+    expect(momentSpotlightDecision(IN_THE_STREETS.slug, "impression")).toEqual({
+      stage: "impression",
+      surface: "today",
+      entityKind: "event",
+      entityId: "in-the-street-2026",
+      position: "lead",
+    });
+    expect(momentSpotlightDecision(IN_THE_STREETS.slug, "action", "directions")).toMatchObject({
+      stage: "action",
+      action: "directions",
+    });
+  });
+
   it("turns a same-day moment into a full visual event lead", () => {
     const html = renderToStaticMarkup(
       createElement(MomentSpotlight, { moment: IN_THE_STREETS, isDayOf: true }),
