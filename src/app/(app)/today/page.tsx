@@ -17,7 +17,6 @@ import SkyHero from "@/components/today/SkyHero";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MomentSpotlight from "@/components/today/MomentSpotlight";
 import TodayFairFeature from "@/components/today/TodayFairFeature";
-import Image from "next/image";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import DismissibleSection from "@/components/today/DismissibleSection";

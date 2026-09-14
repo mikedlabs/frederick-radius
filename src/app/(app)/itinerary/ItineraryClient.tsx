@@ -125,7 +125,7 @@ export default function ItineraryClient() {
             ))
           ) : (
             <div className="relative border-l-2 border-[var(--app-border)] ml-4 pl-6 space-y-8">
-              {events.map((event, index) => (
+              {events.map((event) => (
                 <div key={event.slug} className="relative">
                   {/* Timeline node */}
                   <div className="absolute -left-[35px] top-4 w-4 h-4 rounded-full border-2 border-[var(--app-bg)] bg-[var(--app-accent)] shadow-sm" />
