@@ -44,15 +44,23 @@ describe("service-worker controller changes", () => {
 describe("service-worker update prompt snooze", () => {
   it("does not repeat the same waiting update after an in-app navigation", () => {
     const now = Date.parse("2026-08-13T18:00:00Z");
-    expect(shouldOfferUpdatePrompt(now - 5_000, now)).toBe(false);
+    expect(shouldOfferUpdatePrompt(now - 5_000, null, now)).toBe(false);
   });
 
   it("offers the waiting update again after the short snooze expires", () => {
     const now = Date.parse("2026-08-13T18:00:00Z");
     expect(
-      shouldOfferUpdatePrompt(now - UPDATE_PROMPT_SNOOZE_MS, now),
+      shouldOfferUpdatePrompt(now - UPDATE_PROMPT_SNOOZE_MS, null, now),
     ).toBe(true);
-    expect(shouldOfferUpdatePrompt(null, now)).toBe(true);
+    expect(shouldOfferUpdatePrompt(null, null, now)).toBe(true);
+  });
+
+  it("does not duplicate a prompt already shown for the waiting update", () => {
+    const now = Date.parse("2026-08-13T18:00:00Z");
+    expect(shouldOfferUpdatePrompt(null, now - 5_000, now)).toBe(false);
+    expect(
+      shouldOfferUpdatePrompt(null, now - UPDATE_PROMPT_SNOOZE_MS, now),
+    ).toBe(true);
   });
 });
 

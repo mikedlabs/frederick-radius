@@ -15,6 +15,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Sparkles, X, ArrowRight, ExternalLink, MapPin } from "lucide-react";
+import {
+  type DecisionAction,
+  type DecisionStage,
+  type DecisionTelemetry,
+  trackDecision,
+} from "@/lib/decision/telemetry";
 import { track } from "@/lib/track";
 
 export type SpotlightMoment = {
@@ -35,11 +41,27 @@ export type SpotlightMoment = {
   spotlightDirectionsUrl?: string;
 };
 
+export function momentSpotlightDecision(
+  slug: string,
+  stage: DecisionStage,
+  action?: DecisionAction,
+): DecisionTelemetry {
+  return {
+    stage,
+    surface: "today",
+    entityKind: "event",
+    entityId: slug,
+    position: "lead",
+    ...(action ? { action } : {}),
+  };
+}
+
 export default function MomentSpotlight({ moment, isDayOf }: { moment: SpotlightMoment; isDayOf?: boolean }) {
   const [dismissed, setDismissed] = useState(false);
   const key = `fr.moment-dismissed:${moment.slug}${isDayOf ? ":day-of" : ""}`;
 
   useEffect(() => {
+    trackDecision(momentSpotlightDecision(moment.slug, "impression"));
     if (isDayOf) {
       track("moment_spotlight_view", { slug: moment.slug, day_of: "true" });
       return;
@@ -134,12 +156,15 @@ export default function MomentSpotlight({ moment, isDayOf }: { moment: Spotlight
         )}
 
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Link href={`/moments/${moment.slug}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-3.5 text-[13px] font-semibold" style={{ background: "var(--app-brand)", color: "var(--app-bg)" }} onClick={() => track("moment_spotlight_open", { slug: moment.slug, day_of: isDayOf ? "true" : "false" })}>
+          <Link href={`/moments/${moment.slug}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-3.5 text-[13px] font-semibold" style={{ background: "var(--app-brand)", color: "var(--app-bg)" }} onClick={() => {
+            trackDecision(momentSpotlightDecision(moment.slug, "open", "open"));
+            track("moment_spotlight_open", { slug: moment.slug, day_of: isDayOf ? "true" : "false" });
+          }}>
             Plan your day
             <ArrowRight className="h-4 w-4" strokeWidth={2.5} aria-hidden />
           </Link>
           {moment.spotlightSourceUrl && (
-            <a href={moment.spotlightSourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+            <a href={moment.spotlightSourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }} onClick={() => trackDecision(momentSpotlightDecision(moment.slug, "action", "website"))}>
               Official event details
               <ExternalLink className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </a>
@@ -229,20 +254,23 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
             href={`/moments/${moment.slug}`}
             className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] px-4 text-[13px] font-semibold sm:w-auto"
             style={{ background: "var(--app-brand)", color: "var(--app-bg)" }}
-            onClick={() => track("moment_spotlight_open", { slug: moment.slug, day_of: "true" })}
+            onClick={() => {
+              trackDecision(momentSpotlightDecision(moment.slug, "open", "open"));
+              track("moment_spotlight_open", { slug: moment.slug, day_of: "true" });
+            }}
           >
             Open the day plan
             <ArrowRight className="h-4 w-4" strokeWidth={2.5} aria-hidden />
           </Link>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             {moment.spotlightDirectionsUrl && (
-              <a href={moment.spotlightDirectionsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+              <a href={moment.spotlightDirectionsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }} onClick={() => trackDecision(momentSpotlightDecision(moment.slug, "action", "directions"))}>
                 Get directions
                 <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
               </a>
             )}
             {moment.spotlightSourceUrl && (
-              <a href={moment.spotlightSourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+              <a href={moment.spotlightSourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }} onClick={() => trackDecision(momentSpotlightDecision(moment.slug, "action", "website"))}>
                 Official schedule
                 <ExternalLink className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
               </a>
