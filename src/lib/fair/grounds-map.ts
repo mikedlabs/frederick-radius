@@ -14,7 +14,6 @@ export const fairGroundsMapKindSchema = z.enum([
   "parking",
   "service",
   "transit",
-  "food",
 ]);
 
 export const fairGroundsMapFilterSchema = z.enum([
@@ -22,7 +21,6 @@ export const fairGroundsMapFilterSchema = z.enum([
   "animals",
   "buildings",
   "arrival",
-  "taste",
 ]);
 
 const informationSourceSchema = z
@@ -58,7 +56,6 @@ const propertiesSchema = z
       .optional(),
     directionsEnabled: z.boolean().optional(),
     filterIds: z.array(fairGroundsMapFilterSchema).max(3).optional(),
-    foodTags: z.array(z.enum(["sweet", "savory", "fried", "drinks"])).max(4).optional(),
   })
   .strict()
   .superRefine((properties, context) => {
@@ -167,7 +164,6 @@ export type FairGroundsMapFeaturePatch = {
       | "locationPrecision"
       | "directionsEnabled"
       | "filterIds"
-      | "foodTags"
     >
   >;
 };
@@ -226,7 +222,6 @@ export function fairGroundsFeatureMatchesFilter(
   }
   if (filter === "animals") return feature.properties.kind === "animal";
   if (filter === "buildings") return feature.properties.kind === "building";
-  if (filter === "taste") return feature.properties.kind === "food";
   return ["parking", "transit"].includes(feature.properties.kind);
 }
 
@@ -276,6 +271,5 @@ export function fairGroundsMapKindLabel(kind: FairGroundsMapKind): string {
     parking: "Parking",
     service: "Guest service",
     transit: "Transit stop",
-    food: "Food & Drink",
   }[kind];
 }

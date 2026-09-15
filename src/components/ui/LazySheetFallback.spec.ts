@@ -57,6 +57,8 @@ describe("lazy dialog boundaries", () => {
     expect(fallback).toContain('event.key !== "Escape"');
     expect(fallback).toContain("returnFocusRef.current?.focus?.()");
     expect(bottomSheet).toContain("const [open, setOpen] = useState(present)");
-    expect(bottomSheet).toContain("Drawer.Root");
+    expect(bottomSheet).toContain("returnFocusRef?.current ??");
+    expect(bottomSheet).toContain("createPortal(");
+    expect(bottomSheet).toContain("bg-[var(--app-bg-elevated-solid)]");
   });
 });

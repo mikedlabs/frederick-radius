@@ -2,7 +2,6 @@
 
 import {
   Accessibility,
-  Box,
   Building2,
   BusFront,
   ChevronDown,
@@ -20,7 +19,6 @@ import {
   Share2,
   Toilet,
   TicketCheck,
-  Utensils,
   X,
 } from "lucide-react";
 import {
@@ -41,8 +39,6 @@ import MapCanvas, {
   type MapRef,
 } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { motion, AnimatePresence } from "framer-motion";
-import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 
 import { hasWebGL } from "@/components/map/mapCameraHelpers";
 import { isFatalMapboxError } from "@/components/map/mapboxFailure";
@@ -131,8 +127,6 @@ const FAIR_VIEW = {
   longitude: -77.3943,
   latitude: 39.4125,
   zoom: 16.25,
-  pitch: 60,
-  bearing: -15,
 };
 const FAIR_NEARBY_BOUNDS: [number, number, number, number] = [
   -77.4045, 39.4065, -77.385, 39.4205,
@@ -190,12 +184,6 @@ const FILTERS: Array<{
     compactLabel: "Buildings",
     tone: "var(--app-warning-press)",
   },
-  {
-    id: "taste",
-    label: "Taste of the Fair",
-    compactLabel: "Food & Drink",
-    tone: "var(--app-destructive)",
-  },
 ];
 
 // FairDayWorkspace conditionally mounts the map as visitors move between its
@@ -212,7 +200,7 @@ function rememberFairGroundsMapFilter(filter: FairGroundsMapView): void {
 }
 
 const ACCESSIBLE_PLACE_GROUPS: Array<{
-  id: "arrive" | "essentials" | "explore" | "taste";
+  id: "arrive" | "essentials" | "explore";
   label: string;
   detail: string;
   kinds: readonly FairGroundsMapKind[];
@@ -235,12 +223,6 @@ const ACCESSIBLE_PLACE_GROUPS: Array<{
     detail: "Buildings, animals, and show areas",
     kinds: ["building", "animal", "stage"],
   },
-  {
-    id: "taste",
-    label: "Taste of the Fair",
-    detail: "Food and drinks",
-    kinds: ["food"],
-  },
 ];
 
 const MARKER_THEME: Record<
@@ -256,7 +238,6 @@ const MARKER_THEME: Record<
   parking: { color: "var(--app-cool)", background: "var(--app-bg-elevated-solid)" },
   service: { color: "var(--app-cool)", background: "var(--app-bg-elevated-solid)" },
   transit: { color: "var(--app-cool)", background: "var(--app-bg-elevated-solid)" },
-  food: { color: "var(--app-destructive)", background: "var(--app-bg-elevated-solid)" },
 };
 
 function markerTone(kind: FairGroundsMapKind): string {
@@ -276,7 +257,6 @@ function markerIcon(kind: FairGroundsMapKind) {
     parking: CircleParking,
     service: Accessibility,
     transit: BusFront,
-    food: Utensils,
     fairgrounds: MapPin,
   }[kind];
 }
@@ -294,7 +274,6 @@ const CLUSTER_KIND_LABELS: Record<
   parking: { singular: "parking area", plural: "parking areas" },
   service: { singular: "guest service", plural: "guest services" },
   transit: { singular: "transit stop", plural: "transit stops" },
-  food: { singular: "food vendor", plural: "food vendors" },
 };
 
 const CLUSTER_KIND_PRIORITY: Array<Exclude<FairGroundsMapKind, "fairgrounds">> = [
@@ -307,7 +286,6 @@ const CLUSTER_KIND_PRIORITY: Array<Exclude<FairGroundsMapKind, "fairgrounds">> =
   "stage",
   "animal",
   "building",
-  "food",
 ];
 
 function markerClusterSummary(features: FairGroundsMapFeature[]): {
@@ -354,7 +332,6 @@ function fairGroundsMapPurposeLabel(feature: FairGroundsMapFeature): string {
     parking: "Fair parking",
     service: "Guest service",
     transit: "Transit stop",
-    food: "Food & Drink",
     fairgrounds: "Fairgrounds",
   }[feature.properties.kind];
 }
@@ -366,13 +343,11 @@ function fairGroundsMapFilterForFeature(
     ? "animals"
     : feature.properties.kind === "building"
       ? "buildings"
-      : feature.properties.kind === "food"
-        ? "taste"
-        : feature.properties.kind === "parking" ||
-            feature.properties.kind === "transit" ||
-            feature.properties.filterIds?.includes("arrival")
-          ? "arrival"
-          : "essentials";
+      : feature.properties.kind === "parking" ||
+          feature.properties.kind === "transit" ||
+          feature.properties.filterIds?.includes("arrival")
+        ? "arrival"
+        : "essentials";
 }
 
 function locationPrecisionLabel(
@@ -731,19 +706,6 @@ export default function FairGroundsMapInner({
   const desktopSelectionHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const lastSelectionTriggerRef = useRef<HTMLElement | null>(null);
   const lastClosedFeatureRef = useRef<FairGroundsMapFeature | null>(null);
-
-  const [is3D, setIs3D] = useState(false);
-  const toggle3D = useCallback(() => {
-    if (!mapRef.current) return;
-    if (is3D) {
-      mapRef.current.easeTo({ pitch: 0, bearing: 0, duration: 800 });
-      setIs3D(false);
-    } else {
-      mapRef.current.easeTo({ pitch: 60, bearing: -20, duration: 800 });
-      setIs3D(true);
-    }
-  }, [is3D]);
-
   const clusterOriginRef = useRef<{
     element: HTMLElement;
     memberIds: string[];
@@ -778,7 +740,6 @@ export default function FairGroundsMapInner({
       : (readRememberedFairGroundsMapFilter() ?? "essentials"),
   );
   const [query, setQuery] = useState("");
-  const [activeFoodTags, setActiveFoodTags] = useState<string[]>([]);
   const [condensedMobileControls, setCondensedMobileControls] = useState(false);
   const [condensedSearchOpen, setCondensedSearchOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -860,15 +821,6 @@ export default function FairGroundsMapInner({
     }, MAP_LOAD_WATCHDOG_MS);
     return () => window.clearTimeout(watchdog);
   }, [handleMapFailure, mapData, mapLoaded, mapRuntime]);
-
-  const [isDesktop, setIsDesktop] = useState(false);
-  useEffect(() => {
-    const mql = window.matchMedia("(min-width: 1024px)");
-    setIsDesktop(mql.matches);
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
-  }, []);
 
   useEffect(() => {
     latestFilterRef.current = filter;
@@ -1110,17 +1062,12 @@ export default function FairGroundsMapInner({
   }, [mapData, programItems]);
 
   const featureMatchesView = useCallback(
-    (feature: FairGroundsMapFeature, view: FairGroundsMapView) => {
-      if (view === "program") {
-        return feature.properties.kind === "fairgrounds" || programMatches.has(feature.properties.id);
-      }
-      const matchesFilter = fairGroundsFeatureMatchesFilter(feature, view);
-      if (matchesFilter && view === "taste" && feature.properties.kind === "food" && activeFoodTags.length > 0) {
-        return feature.properties.foodTags?.some((tag) => activeFoodTags.includes(tag)) ?? false;
-      }
-      return matchesFilter;
-    },
-    [programMatches, activeFoodTags],
+    (feature: FairGroundsMapFeature, view: FairGroundsMapView) =>
+      view === "program"
+        ? feature.properties.kind === "fairgrounds" ||
+          programMatches.has(feature.properties.id)
+        : fairGroundsFeatureMatchesFilter(feature, view),
+    [programMatches],
   );
 
   const visibleFeatures = useMemo(
@@ -2605,45 +2552,6 @@ export default function FairGroundsMapInner({
                 );
               })}
             </div>
-            {filter === "taste" ? (
-              <div
-                className="scrollbar-none flex gap-2 overflow-x-auto px-3 pb-2 lg:-mx-6 lg:px-6"
-                role="group"
-                aria-label="Filter food by category"
-              >
-                {["sweet", "savory", "fried", "drinks"].map((tag) => {
-                  const active = activeFoodTags.includes(tag);
-                  return (
-                    <button
-                      key={tag}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => {
-                        setActiveFoodTags((prev) =>
-                          active
-                            ? prev.filter((t) => t !== tag)
-                            : [...prev, tag],
-                        );
-                      }}
-                      className="tap-44 min-h-9 shrink-0 rounded-full border px-3 text-[12px] font-semibold transition-colors"
-                      style={{
-                        borderColor: active
-                          ? "var(--app-destructive)"
-                          : "var(--app-control-border)",
-                        color: active
-                          ? "var(--app-ink-inverse)"
-                          : "var(--app-ink-2)",
-                        background: active
-                          ? "var(--app-destructive)"
-                          : "var(--app-bg-elevated-solid)",
-                      }}
-                    >
-                      {tag.charAt(0).toUpperCase() + tag.slice(1)}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
             </div>
           ) : null}
         </div>
@@ -2660,23 +2568,6 @@ export default function FairGroundsMapInner({
           }}
         >
           {interactiveMapAvailable ? (
-            <>
-              <AnimatePresence>
-                <motion.div
-                  initial={{ opacity: 0, y: -20, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ type: "spring", bounce: 0.5, delay: 1 }}
-                  className="pointer-events-none absolute left-1/2 top-4 z-[60] flex -translate-x-1/2 items-center gap-2.5 rounded-full border border-white/20 bg-black/75 px-4 py-2 text-white shadow-[0_8px_32px_rgba(0,0,0,0.25)] backdrop-blur-xl"
-                >
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500"></span>
-                  </span>
-                  <span className="text-[13px] font-bold tracking-tight text-white drop-shadow-sm">
-                    Demolition Derby starting in 15m
-                  </span>
-                </motion.div>
-              </AnimatePresence>
             <div
               ref={interactiveMapSurfaceRef}
               className="absolute inset-0"
@@ -2765,10 +2656,10 @@ export default function FairGroundsMapInner({
                 }}
               />
               <Layer
-                id="fair-grounds-context-extrusion"
-                type="fill-extrusion"
+                id="fair-grounds-context-fill"
+                type="fill"
                 paint={{
-                  "fill-extrusion-color": [
+                  "fill-color": [
                     "match",
                     ["get", "kind"],
                     "animal",
@@ -2783,30 +2674,14 @@ export default function FairGroundsMapInner({
                     "#E8C9BD",
                     "#E7D1A7",
                   ],
-                  "fill-extrusion-height": [
-                    "match",
-                    ["get", "kind"],
-                    "stage",
-                    14,
-                    "building",
-                    10,
-                    "animal",
-                    8,
-                    "ticket",
-                    4,
-                    "restroom",
-                    3,
-                    0,
-                  ],
-                  "fill-extrusion-base": 0,
-                  "fill-extrusion-opacity": showAerial ? 0.3 : [
+                  "fill-opacity": showAerial ? 0.1 : [
                     "interpolate",
                     ["linear"],
                     ["zoom"],
                     14,
-                    0.6,
+                    0.34,
                     18,
-                    0.95,
+                    0.72,
                   ],
                 }}
               />
@@ -3028,14 +2903,12 @@ export default function FairGroundsMapInner({
                       </span>
                     </button>
                   ) : (
-                    <motion.button
+                    <button
                       type="button"
                       data-fair-map-marker-group
                       data-fair-map-marker-count="1"
                       data-fair-map-cluster-members={feature.properties.id}
                       className="fair-grounds-map-marker tap-44 relative grid h-[44px] w-[44px] place-items-center rounded-full"
-                      animate={{ scale: selectedMarker ? 1.25 : 1, y: selectedMarker ? -8 : 0 }}
-                      transition={{ type: "spring", bounce: 0.6, duration: 0.5 }}
                       aria-label={`${mappedName}. ${fairGroundsMapKindLabel(kind)}. ${savedDescription} ${scheduleDescription}`.trim()}
                       aria-expanded={selectedMarker}
                       aria-controls={
@@ -3108,7 +2981,7 @@ export default function FairGroundsMapInner({
                           {scheduledHere.length}
                         </span>
                       ) : null}
-                    </motion.button>
+                    </button>
                   )}
                 </Marker>
               );
@@ -3167,7 +3040,6 @@ export default function FairGroundsMapInner({
               </MapCanvas>
               </FairMapCanvasBoundary>
             </div>
-            </>
           ) : mapRuntime === "unsupported" || mapRuntime === "failed" ? (
             <FairMapCanvasFallback
               map={mapData}
@@ -3253,296 +3125,287 @@ export default function FairGroundsMapInner({
                 Whole grounds
               </span>
             </button>
-
-            <button
-              type="button"
-              data-fair-map-runtime-control
-              onClick={toggle3D}
-              className="tap-44 inline-flex h-[44px] w-[44px] items-center justify-center gap-2 rounded-full border px-0 text-[13px] font-bold sm:w-auto sm:px-3 transition-colors"
-              style={{
-                color: is3D ? "var(--app-ink-inverse)" : "var(--app-ink)",
-                background: is3D ? "var(--app-brand)" : "var(--app-bg-elevated-solid)",
-                borderColor: is3D ? "var(--app-brand)" : "var(--app-control-border)",
-                boxShadow: "var(--app-elev-1)",
-              }}
-            >
-              <Box className="h-4 w-4" aria-hidden />
-              <span className="sr-only">{is3D ? "2D View" : "3D View"}</span>
-              <span className="hidden sm:inline" aria-hidden="true">
-                {is3D ? "2D View" : "3D View"}
-              </span>
-            </button>
             </div>
           ) : null}
 
           {interactiveMapAvailable && mapLoaded && clusterSelectionFeatures.length > 1 && !selected ? (
-            (() => {
-              const clusterContent = (dismiss?: () => void) => (
-                <div className="relative p-3">
-                  {dismiss ? (
-                    <SheetHandle onClose={dismiss} closeLabel="Close nearby map places" />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={closeMarkerCluster}
-                      className="tap-44 absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full"
-                      aria-label="Close nearby map places"
-                    >
-                      <X className="h-4 w-4" aria-hidden />
-                    </button>
-                  )}
-                  <p
-                    className="pr-11 text-[12px] font-bold uppercase tracking-[0.1em]"
-                    style={{ color: "var(--app-cool)" }}
-                  >
-                    Nearby on the map
-                  </p>
-                  <h3
-                    id="fair-map-cluster-selection-heading"
-                    ref={clusterSelectionHeadingRef}
-                    tabIndex={-1}
-                    className="mt-1 pr-11 text-[21px] font-extrabold leading-tight tracking-[-0.03em] outline-none"
-                  >
-                    Choose from {clusterSelectionFeatures.length} places
-                  </h3>
-                  <p
-                    className="mt-1 text-[13px] leading-relaxed"
-                    style={{ color: "var(--app-ink-2)" }}
-                  >
-                    {markerClusterSummary(clusterSelectionFeatures).detailed}. Choose
-                    a place to open its details.
-                  </p>
-                  <ul className="mt-2 grid gap-1" aria-label="Nearby map places">
-                    {clusterSelectionFeatures.map((feature) => {
-                      const Icon = markerIcon(feature.properties.kind);
-                      return (
-                        <li key={feature.properties.id}>
-                          <button
-                            type="button"
-                            onClick={(event) =>
-                              chooseFeature(feature, event.currentTarget, true)
-                            }
-                            className="tap-44 flex min-h-12 w-full items-center gap-3 rounded-[var(--app-radius-md)] px-2 py-2 text-left hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
+            <dialog
+              ref={clusterSelectionDialogRef}
+              id="fair-map-cluster-selection"
+              data-fair-map-cluster-selection
+              className="fair-map-mobile-sheet fair-map-cluster-dialog fixed left-3 right-3 mx-auto max-w-[30rem] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-0 lg:absolute lg:bottom-3 lg:left-3 lg:right-auto lg:max-h-[calc(100%-1.5rem)] lg:w-[22rem]"
+              style={{
+                zIndex: "var(--z-overlay)",
+                borderColor: "var(--app-control-border)",
+                borderTopColor: "var(--app-cool)",
+                borderTopWidth: "4px",
+                background: "var(--app-bg-elevated-solid)",
+                boxShadow: "var(--app-elev-3), var(--app-edge), var(--app-hi)",
+              }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="fair-map-cluster-selection-heading"
+              onCancel={(event) => {
+                event.preventDefault();
+                closeMarkerCluster();
+              }}
+              onClick={(event) => {
+                const bounds = event.currentTarget.getBoundingClientRect();
+                const clickedBackdrop =
+                  event.clientX < bounds.left ||
+                  event.clientX > bounds.right ||
+                  event.clientY < bounds.top ||
+                  event.clientY > bounds.bottom;
+                if (event.target !== event.currentTarget && !clickedBackdrop) {
+                  return;
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                closeMarkerCluster();
+              }}
+              onKeyDown={keepFocusInsideDialog}
+            >
+              <div className="relative p-3">
+              <button
+                type="button"
+                onClick={closeMarkerCluster}
+                className="tap-44 absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full"
+                aria-label="Close nearby map places"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+              <p
+                className="pr-11 text-[12px] font-bold uppercase tracking-[0.1em]"
+                style={{ color: "var(--app-cool)" }}
+              >
+                Nearby on the map
+              </p>
+              <h3
+                id="fair-map-cluster-selection-heading"
+                ref={clusterSelectionHeadingRef}
+                tabIndex={-1}
+                className="mt-1 pr-11 text-[21px] font-extrabold leading-tight tracking-[-0.03em] outline-none"
+              >
+                Choose from {clusterSelectionFeatures.length} places
+              </h3>
+              <p
+                className="mt-1 text-[13px] leading-relaxed"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                {markerClusterSummary(clusterSelectionFeatures).detailed}. Choose
+                a place to open its details.
+              </p>
+              <ul className="mt-2 grid gap-1" aria-label="Nearby map places">
+                {clusterSelectionFeatures.map((feature) => {
+                  const Icon = markerIcon(feature.properties.kind);
+                  return (
+                    <li key={feature.properties.id}>
+                      <button
+                        type="button"
+                        onClick={(event) =>
+                          chooseFeature(feature, event.currentTarget, true)
+                        }
+                        className="tap-44 flex min-h-12 w-full items-center gap-3 rounded-[var(--app-radius-md)] px-2 py-2 text-left hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
+                      >
+                        <span
+                          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border"
+                          style={{
+                            color: markerTone(feature.properties.kind),
+                            borderColor: markerTone(feature.properties.kind),
+                            background: "var(--app-bg-elevated-solid)",
+                          }}
+                          aria-hidden
+                        >
+                          <Icon className="h-4 w-4" aria-hidden />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-[14px] font-bold leading-snug">
+                            {mappedFeatureName(feature, mapData)}
+                          </span>
+                          <span
+                            className="block text-[12px] font-semibold"
+                            style={{ color: "var(--app-ink-3)" }}
                           >
-                            <span
-                              className="grid h-9 w-9 shrink-0 place-items-center rounded-full border"
-                              style={{
-                                color: markerTone(feature.properties.kind),
-                                borderColor: markerTone(feature.properties.kind),
-                                background: "var(--app-bg-elevated-solid)",
-                              }}
-                              aria-hidden
-                            >
-                              <Icon className="h-4 w-4" aria-hidden />
-                            </span>
-                            <span className="min-w-0">
-                              <span className="block text-[14px] font-bold leading-snug">
-                                {mappedFeatureName(feature, mapData)}
-                              </span>
-                              <span
-                                className="block text-[12px] font-semibold"
-                                style={{ color: "var(--app-ink-3)" }}
-                              >
-                                {fairGroundsMapKindLabel(feature.properties.kind)}
-                              </span>
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              );
-
-              return !isDesktop ? (
-                <BottomSheet
-                  present={true}
-                  onClose={closeMarkerCluster}
-                  ariaLabel="Nearby on the map"
-                  historyLayerId="map-cluster"
-                >
-                  {(dismiss) => clusterContent(dismiss)}
-                </BottomSheet>
-              ) : (
-                <dialog
-                  ref={clusterSelectionDialogRef}
-                  id="fair-map-cluster-selection"
-                  data-fair-map-cluster-selection
-                  className="fair-map-mobile-sheet fair-map-cluster-dialog fixed left-3 right-3 mx-auto max-w-[30rem] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-0 lg:absolute lg:bottom-3 lg:left-3 lg:right-auto lg:max-h-[calc(100%-1.5rem)] lg:w-[22rem]"
-                  style={{
-                    zIndex: "var(--z-overlay)",
-                    borderColor: "var(--app-control-border)",
-                    borderTopColor: "var(--app-cool)",
-                    borderTopWidth: "4px",
-                    background: "var(--app-bg-elevated-solid)",
-                    boxShadow: "var(--app-elev-3), var(--app-edge), var(--app-hi)",
-                  }}
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby="fair-map-cluster-selection-heading"
-                  onCancel={(event) => {
-                    event.preventDefault();
-                    closeMarkerCluster();
-                  }}
-                  onClick={(event) => {
-                    const bounds = event.currentTarget.getBoundingClientRect();
-                    const clickedBackdrop =
-                      event.clientX < bounds.left ||
-                      event.clientX > bounds.right ||
-                      event.clientY < bounds.top ||
-                      event.clientY > bounds.bottom;
-                    if (event.target !== event.currentTarget && !clickedBackdrop) {
-                      return;
-                    }
-                    event.preventDefault();
-                    event.stopPropagation();
-                    closeMarkerCluster();
-                  }}
-                  onKeyDown={keepFocusInsideDialog}
-                >
-                  {clusterContent()}
-                </dialog>
-              );
-            })()
+                            {fairGroundsMapKindLabel(feature.properties.kind)}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              </div>
+            </dialog>
           ) : null}
 
-          {selected && !isDesktop ? (
-            <BottomSheet
-              present={true}
-              onClose={closeSelection}
-              ariaLabel="Selected map place"
-              historyLayerId="map-selection"
+          {selected ? (
+            <dialog
+              ref={mobileSelectionDialogRef}
+              id="fair-map-selection-mobile"
+              data-fair-map-selection
+              className="fair-map-mobile-sheet fair-map-place-dialog fixed left-3 right-3 mx-auto max-w-[30rem] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-4 lg:hidden"
+              style={{
+                zIndex: selectionExpanded
+                  ? "var(--z-overlay)"
+                  : "calc(var(--z-sticky) + 1)",
+                borderColor: "var(--app-control-border)",
+                borderTopColor: selectedTone,
+                borderTopWidth: "4px",
+                background: "var(--app-bg-elevated-solid)",
+                boxShadow:
+                  "var(--app-elev-3), var(--app-edge), var(--app-hi)",
+              }}
+              role={selectionExpanded ? "dialog" : "region"}
+              aria-modal={selectionExpanded ? "true" : undefined}
+              aria-labelledby="fair-map-selection-mobile-heading"
+              onCancel={(event) => {
+                event.preventDefault();
+                closeSelection();
+              }}
+              onKeyDown={(event) => {
+                if (selectionExpanded) {
+                  keepFocusInsideDialog(event);
+                  return;
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  closeSelection();
+                }
+              }}
             >
-              {(dismiss) => (
-                <div className="relative px-4 pb-4 pt-2">
-                  <SheetHandle onClose={dismiss} closeLabel="Close selected map place" />
+              <button
+                type="button"
+                onClick={closeSelection}
+                className="tap-44 absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full"
+                aria-label="Close selected map place"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+              <p
+                className="pr-10 text-[12px] font-bold uppercase tracking-[0.1em]"
+                style={{ color: selectedTone }}
+              >
+                {fairGroundsMapKindLabel(selected.properties.kind)}
+              </p>
+              <h3
+                id="fair-map-selection-mobile-heading"
+                ref={mobileSelectionHeadingRef}
+                tabIndex={-1}
+                className="mt-1 pr-10 text-[22px] font-extrabold leading-tight tracking-[-0.03em] outline-none"
+              >
+                <span className="sr-only">Selected map place: </span>
+                {mappedFeatureName(selected, mapData)}
+              </h3>
+              <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
+                {selectedProgramItems.length > 0
+                  ? `${selectedProgramItems.length} ${selectedProgramItems.length === 1 ? "event" : "events"} here on your day`
+                  : fairGroundsMapPurposeLabel(selected)}
+                {selectedProgramItems.length === 0 ? (
+                  <span className="font-normal">
+                    {" "}·{" "}
+                    {locationPrecisionLabel(
+                      selected.properties.locationPrecision,
+                    ) ?? "Reviewed Fair map place"}
+                  </span>
+                ) : null}
+              </p>
+              {selected.properties.detail ? (
+                <p
+                  className={`mt-1.5 text-[13px] leading-relaxed ${selectionExpanded ? "" : "line-clamp-2"}`}
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  {selected.properties.detail}
+                </p>
+              ) : null}
+              <FairMapFeatureActions feature={selected} mode="primary" />
+              <button
+                ref={mobileSelectionToggleRef}
+                type="button"
+                aria-expanded={selectionExpanded}
+                aria-controls="fair-map-selection-mobile-details"
+                onClick={() => {
+                  if (selectionExpanded) {
+                    focusCollapsedSelectionRef.current = true;
+                  }
+                  setSelectionExpanded((current) => !current);
+                }}
+                className="tap-44 mt-1 inline-flex min-h-11 items-center gap-1 text-[13px] font-bold"
+                style={{ color: selectedTone }}
+              >
+                {selectionExpanded ? "Show less" : "More details"}
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform motion-reduce:transition-none ${selectionExpanded ? "rotate-180" : ""}`}
+                  aria-hidden
+                />
+              </button>
+              <div
+                id="fair-map-selection-mobile-details"
+                className={selectionExpanded ? "block" : "hidden"}
+              >
+              <FairMapFeatureActions feature={selected} mode="secondary" />
+              {selectedStops.length > 0 ? (
+                <p
+                  className="mt-2 text-[14px] font-semibold"
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  Saved in My Day: {selectedStops.map((stop) => stop.title).join(", ")}
+                </p>
+              ) : null}
+              {selectedProgramItems.length > 0 ? (
+                <div
+                  className="mt-3 border-l-2 pl-3"
+                  style={{ borderColor: "var(--app-amber)" }}
+                >
                   <p
-                    className="pr-10 text-[12px] font-bold uppercase tracking-[0.1em]"
-                    style={{ color: selectedTone }}
+                    className="text-[13px] font-bold uppercase tracking-[0.09em]"
+                    style={{ color: "var(--app-warning-press)" }}
                   >
-                    {fairGroundsMapKindLabel(selected.properties.kind)}
+                    On your selected day
                   </p>
-                  <h3
-                    id="fair-map-selection-mobile-heading"
-                    ref={mobileSelectionHeadingRef}
-                    tabIndex={-1}
-                    className="mt-1 pr-10 text-[22px] font-extrabold leading-tight tracking-[-0.03em] outline-none"
-                  >
-                    <span className="sr-only">Selected map place: </span>
-                    {mappedFeatureName(selected, mapData)}
-                  </h3>
-                  <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
-                    {selectedProgramItems.length > 0
-                      ? `${selectedProgramItems.length} ${selectedProgramItems.length === 1 ? "event" : "events"} here on your day`
-                      : fairGroundsMapPurposeLabel(selected)}
-                    {selectedProgramItems.length === 0 ? (
-                      <span className="font-normal">
-                        {" "}·{" "}
-                        {locationPrecisionLabel(
-                          selected.properties.locationPrecision,
-                        ) ?? "Reviewed Fair map place"}
+                  {selectedProgramItems.slice(0, 2).map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => openProgramItemFromMap(item.id)}
+                      className="tap-44 -ml-2 mt-0.5 flex min-h-11 w-[calc(100%+0.5rem)] items-center rounded-[var(--app-radius-sm)] px-2 text-left text-[14px] font-semibold leading-snug hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
+                      aria-label={`Open program details for ${item.title}`}
+                    >
+                      <span>
+                        <span className="tabular-nums" style={{ color: "var(--app-brand-press)" }}>
+                          {item.timeLabel}
+                        </span>{" "}
+                        · {item.title}
                       </span>
-                    ) : null}
-                  </p>
-                  {selected.properties.detail ? (
-                    <p
-                      className={`mt-1.5 text-[13px] leading-relaxed ${selectionExpanded ? "" : "line-clamp-2"}`}
-                      style={{ color: "var(--app-ink-2)" }}
-                    >
-                      {selected.properties.detail}
-                    </p>
-                  ) : null}
-                  <FairMapFeatureActions feature={selected} mode="primary" />
-                  <button
-                    ref={mobileSelectionToggleRef}
-                    type="button"
-                    aria-expanded={selectionExpanded}
-                    aria-controls="fair-map-selection-mobile-details"
-                    onClick={() => {
-                      if (selectionExpanded) {
-                        focusCollapsedSelectionRef.current = true;
-                      }
-                      setSelectionExpanded((current) => !current);
-                    }}
-                    className="tap-44 mt-1 inline-flex min-h-11 items-center gap-1 text-[13px] font-bold"
-                    style={{ color: selectedTone }}
-                  >
-                    {selectionExpanded ? "Show less" : "More details"}
-                    <ChevronDown
-                      className={`h-4 w-4 transition-transform motion-reduce:transition-none ${selectionExpanded ? "rotate-180" : ""}`}
-                      aria-hidden
-                    />
-                  </button>
-                  <div
-                    id="fair-map-selection-mobile-details"
-                    className={selectionExpanded ? "block" : "hidden"}
-                  >
-                  <FairMapFeatureActions feature={selected} mode="secondary" />
-                  {selectedStops.length > 0 ? (
-                    <p
-                      className="mt-2 text-[14px] font-semibold"
-                      style={{ color: "var(--app-ink-2)" }}
-                    >
-                      Saved in My Day: {selectedStops.map((stop) => stop.title).join(", ")}
-                    </p>
-                  ) : null}
-                  {selectedProgramItems.length > 0 ? (
-                    <div
-                      className="mt-3 border-l-2 pl-3"
-                      style={{ borderColor: "var(--app-amber)" }}
-                    >
-                      <p
-                        className="text-[13px] font-bold uppercase tracking-[0.09em]"
-                        style={{ color: "var(--app-warning-press)" }}
-                      >
-                        On your selected day
-                      </p>
-                      {selectedProgramItems.slice(0, 2).map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => openProgramItemFromMap(item.id)}
-                          className="tap-44 -ml-2 mt-0.5 flex min-h-11 w-[calc(100%+0.5rem)] items-center rounded-[var(--app-radius-sm)] px-2 text-left text-[14px] font-semibold leading-snug hover:bg-[var(--app-bg-sunken)] focus-visible:bg-[var(--app-bg-sunken)]"
-                          aria-label={`Open program details for ${item.title}`}
-                        >
-                          <span>
-                            <span className="tabular-nums" style={{ color: "var(--app-brand-press)" }}>
-                              {item.timeLabel}
-                            </span>{" "}
-                            · {item.title}
-                          </span>
-                        </button>
-                      ))}
-                      {selectedProgramItems.length > 2 ? (
-                        <button
-                          type="button"
-                          onClick={browseProgram}
-                          className="tap-44 mt-1 inline-flex min-h-11 items-center text-[13px] font-bold"
-                          style={{ color: "var(--app-cool)" }}
-                        >
-                          See {selectedProgramItems.length - 2} more in Program
-                        </button>
-                      ) : null}
-                    </div>
-                  ) : null}
-                    <div
-                      className="mt-3 flex flex-wrap items-center gap-3 border-t pt-2"
-                      style={{ borderColor: "var(--app-border)" }}
-                    >
+                    </button>
+                  ))}
+                  {selectedProgramItems.length > 2 ? (
                     <button
                       type="button"
-                      onClick={reportMobileMapIssue}
-                      className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-bold"
-                      style={{ color: "var(--app-brand-press)" }}
+                      onClick={browseProgram}
+                      className="tap-44 mt-1 inline-flex min-h-11 items-center text-[13px] font-bold"
+                      style={{ color: "var(--app-cool)" }}
                     >
-                        <MessageSquareWarning className="h-4 w-4" aria-hidden />
-                        Report issue
-                      </button>
-                    </div>
-                  </div>
+                      See {selectedProgramItems.length - 2} more in Program
+                    </button>
+                  ) : null}
                 </div>
-              )}
-            </BottomSheet>
+              ) : null}
+                <div
+                  className="mt-3 flex flex-wrap items-center gap-3 border-t pt-2"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                <button
+                  type="button"
+                  onClick={reportMobileMapIssue}
+                  className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-bold"
+                  style={{ color: "var(--app-brand-press)" }}
+                >
+                    <MessageSquareWarning className="h-4 w-4" aria-hidden />
+                    Report issue
+                  </button>
+                </div>
+              </div>
+            </dialog>
           ) : null}
         </div>
 
