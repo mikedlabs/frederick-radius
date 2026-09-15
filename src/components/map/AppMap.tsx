@@ -302,7 +302,7 @@ import {
 } from "./radiusScenes";
 import { parkingTone, PARKING_TONE_STYLE, type ParkingPin } from "@/lib/map/parking";
 import TimeScrubber from "./TimeScrubber";
-import { ArrowRight, ChevronRight, Shrink, Truck, X } from "lucide-react";
+import { ArrowRight, ChevronRight, Landmark, Shrink, Truck, X } from "lucide-react";
 import { withinScrubWindow } from "@/lib/map/scrubTime";
 import { easternDayKey } from "@/lib/tz";
 import { getOpenStatus, isOpenNow } from "@/lib/hours";
@@ -545,6 +545,8 @@ type Props = {
    *  GeoJSON FeatureCollections; default off, so the base map is
    *  unchanged unless the user opts in. */
   trailLines?: MapLineFC;
+  scenicRoutes?: MapLineFC;
+  coveredBridges?: MapLineFC;
   /** Open the Trails line layer ON at first paint (no saved pref yet) —
    *  set by the /trails surface, whose whole job is the trail network.
    *  Everywhere else it stays off so the base map is unchanged. */
@@ -647,6 +649,8 @@ export default function AppMap({
   extraAmenities = [],
   amenities = [],
   trailLines = EMPTY_LINE_FC,
+  scenicRoutes = EMPTY_LINE_FC,
+  coveredBridges = EMPTY_LINE_FC,
   trailsLayerDefault = false,
   transitLines = EMPTY_LINE_FC,
   municipalBoundaries = EMPTY_LINE_FC,
@@ -1402,6 +1406,8 @@ export default function AppMap({
   const {
     showCivic, setShowCivic,
     showTrails, setShowTrails,
+    showScenicRoutes, setShowScenicRoutes,
+    showCoveredBridges, setShowCoveredBridges,
     showTransit, setShowTransit,
     showAerial, setShowAerial,
     showCemeteries, setShowCemeteries,
@@ -1501,7 +1507,7 @@ export default function AppMap({
     if (!onLayerDemand) return;
     const groups = new Set<MapLayerGroup>();
     if (visibleAmenityGroups.size > 0) groups.add("amenities");
-    if (showTrails || visibleCemeteries) groups.add("outdoors");
+    if (showTrails || showScenicRoutes || showCoveredBridges || visibleCemeteries) groups.add("outdoors");
     if (visibleTransit) groups.add("transit");
     if (visibleParking) groups.add("parking");
     if (showCivic || showTraffic) groups.add("roads");
@@ -1511,6 +1517,8 @@ export default function AppMap({
     showCivic,
     showTraffic,
     showTrails,
+    showScenicRoutes,
+    showCoveredBridges,
     visibleAmenityGroups,
     visibleCemeteries,
     visibleParking,
@@ -2392,6 +2400,8 @@ export default function AppMap({
       outdoors: {
         parks: sceneSignalFromOverlay(overlayFeatureStates.parks),
         trailCount: trailLines.features.length,
+        scenicRouteCount: scenicRoutes.features.length,
+        coveredBridgeCount: coveredBridges.features.length,
         amenityCount:
           overlayFeatureStates.mobility?.status === "ready"
             ? overlayFeatureStates.mobility.count
@@ -2435,6 +2445,8 @@ export default function AppMap({
       sceneContext.outdoorSafetyHold,
       snowRoutes.features.length,
       trailLines.features.length,
+      scenicRoutes.features.length,
+      coveredBridges.features.length,
       transitRouteCount,
       liveBusesVisible,
     ],
@@ -5561,6 +5573,43 @@ export default function AppMap({
               }}
             />
           </Source>
+          <Source id="scenic-routes-source" type="geojson" data={(showScenicRoutes ? scenicRoutes : EMPTY_LINE_FC) as unknown as GeoJSON.FeatureCollection}>
+            <Layer
+              id="scenic-routes-at"
+              type="line"
+              filter={["==", ["get", "name"], "Appalachian Trail"]}
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": "#eab308",
+                "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 14, 4, 17, 6],
+                "line-opacity": 0.8,
+                "line-dasharray": [1, 2]
+              }}
+            />
+            <Layer
+              id="scenic-routes-national"
+              type="line"
+              filter={["==", ["get", "name"], "Historic National Road"]}
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": "#ef4444",
+                "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 14, 4, 17, 6],
+                "line-opacity": 0.8
+              }}
+            />
+            <Layer
+              id="scenic-routes-other"
+              type="line"
+              filter={["!", ["in", ["get", "name"], "Appalachian Trail", "Historic National Road"]]}
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": "#f97316",
+                "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 14, 4, 17, 6],
+                "line-opacity": 0.8,
+                "line-dasharray": [3, 3]
+              }}
+            />
+          </Source>
           {/* GIS overlays (6.3/6.4): parks, farmers markets, public art.
               Self-contained (lazy fetch, own Sources/Layers, own click
               popups) so this block stays out of the main render path. */}
@@ -6970,6 +7019,30 @@ export default function AppMap({
               );
             })}
 
+          {/* Historic Covered Bridges — HTML markers for custom styling */}
+          {showCoveredBridges &&
+            coveredBridges.features.map((feature, i) => {
+              const geometry = feature.geometry as { type: string; coordinates: [number, number] };
+              if (geometry.type !== "Point") return null;
+              const [lng, lat] = geometry.coordinates;
+              return (
+                <Marker
+                  key={`bridge:${i}`}
+                  longitude={lng as number}
+                  latitude={lat as number}
+                  anchor="bottom"
+                >
+                  <button
+                    type="button"
+                    title={(feature.properties?.name as string) || "Covered Bridge"}
+                    className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#ef4444] bg-white text-[#ef4444] shadow-[0_2px_10px_rgba(34,28,21,0.28)] hover:bg-[#ef4444] hover:text-white transition-colors"
+                  >
+                    <Landmark size={14} />
+                  </button>
+                </Marker>
+              );
+            })}
+
           {selectedEvent && (!dock || !compactMapViewport) && (
             <Popup
               longitude={selectedEvent.lng}
@@ -7175,6 +7248,18 @@ export default function AppMap({
             setShowTrails={(value) => {
               exitRadiusScene();
               setShowTrails(value);
+            }}
+            scenicRouteCount={scenicRoutes.features.length}
+            showScenicRoutes={showScenicRoutes}
+            setShowScenicRoutes={(value) => {
+              exitRadiusScene();
+              setShowScenicRoutes(value);
+            }}
+            coveredBridgeCount={coveredBridges.features.length}
+            showCoveredBridges={showCoveredBridges}
+            setShowCoveredBridges={(value) => {
+              exitRadiusScene();
+              setShowCoveredBridges(value);
             }}
             aerialCount={AERIAL_PHOTOS.length}
             showAerial={showAerial}

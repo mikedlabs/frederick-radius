@@ -220,6 +220,8 @@ export default function AppMapClient({
   extraAmenities = [],
   amenities = [],
   trailLines = EMPTY_FC,
+  scenicRoutes = EMPTY_FC,
+  coveredBridges = EMPTY_FC,
   trailsLayerDefault = false,
   transitLines = EMPTY_FC,
   municipalBoundaries = EMPTY_FC,
@@ -270,6 +272,8 @@ export default function AppMapClient({
   amenities?: Amenity[];
   /** Server-fetched toggleable line overlays (#3). */
   trailLines?: MapLineFC;
+  scenicRoutes?: MapLineFC;
+  coveredBridges?: MapLineFC;
   /** Open the Trails layer ON at first paint (the /trails surface). */
   trailsLayerDefault?: boolean;
   transitLines?: MapLineFC;
@@ -429,6 +433,8 @@ export default function AppMapClient({
             extraAmenities={extraAmenities}
             amenities={amenities}
             trailLines={trailLines}
+            scenicRoutes={scenicRoutes}
+            coveredBridges={coveredBridges}
             trailsLayerDefault={trailsLayerDefault}
             transitLines={transitLines}
             municipalBoundaries={municipalBoundaries}
@@ -493,7 +499,7 @@ export default function AppMapClient({
           />
         }
       >
-        <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} foodTruckPins={foodTruckPins} roadWorkZones={roadWorkZones} floodContext={floodContext} snowRoutes={snowRoutes} height={EMBEDDED_MAP_HEIGHT} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} initialBoundsPadding={initialBoundsPadding} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} compactSubjectMap={compactSubjectMap} initialAmenityGroups={initialAmenityGroups} showSearchControls={showSearchControls} onVisualReady={handleMapVisualReady} />
+        <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} scenicRoutes={scenicRoutes} coveredBridges={coveredBridges} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} foodTruckPins={foodTruckPins} roadWorkZones={roadWorkZones} floodContext={floodContext} snowRoutes={snowRoutes} height={EMBEDDED_MAP_HEIGHT} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} initialBoundsPadding={initialBoundsPadding} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} compactSubjectMap={compactSubjectMap} initialAmenityGroups={initialAmenityGroups} showSearchControls={showSearchControls} onVisualReady={handleMapVisualReady} />
       </MapChunkBoundary>
       )}
     </div>

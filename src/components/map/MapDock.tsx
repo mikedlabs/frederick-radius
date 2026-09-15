@@ -246,6 +246,12 @@ export type MapDockProps = {
   trailCount: number;
   showTrails: boolean;
   setShowTrails: SetState<boolean>;
+  scenicRouteCount: number;
+  showScenicRoutes: boolean;
+  setShowScenicRoutes: SetState<boolean>;
+  coveredBridgeCount: number;
+  showCoveredBridges: boolean;
+  setShowCoveredBridges: SetState<boolean>;
   aerialCount: number;
   showAerial: boolean;
   setShowAerial: SetState<boolean>;
@@ -990,6 +996,8 @@ export default function MapDock(props: MapDockProps) {
     (props.roadsNowActive ? 1 : 0) +
     (props.showTransit ? 1 : 0) +
     (props.showTrails ? 1 : 0) +
+    (props.showScenicRoutes ? 1 : 0) +
+    (props.showCoveredBridges ? 1 : 0) +
     (props.showAerial ? 1 : 0) +
     (props.showCemeteries ? 1 : 0) +
     (props.showParking ? 1 : 0) +
@@ -1105,6 +1113,8 @@ export default function MapDock(props: MapDockProps) {
     props.setShowCivic(false);
     props.setShowTransit(false);
     props.setShowTrails(false);
+    props.setShowScenicRoutes(false);
+    props.setShowCoveredBridges(false);
     props.setShowAerial(false);
     props.setShowCemeteries(false);
     props.setShowParking(false);
@@ -2204,7 +2214,7 @@ export default function MapDock(props: MapDockProps) {
                   <button
                     type="button"
                     className="dock-content-row dock-content-row-secondary"
-                    data-on={(props.showTrails || props.showAerial || props.showCemeteries || props.showSavedOnly || props.fieldNotesOnly) || undefined}
+                    data-on={(props.showTrails || props.showScenicRoutes || props.showCoveredBridges || props.showAerial || props.showCemeteries || props.showSavedOnly || props.fieldNotesOnly) || undefined}
                     onClick={() => openContentsPane("localLayers")}
                   >
                     <span className="dock-content-icon" aria-hidden>
@@ -2851,7 +2861,32 @@ export default function MapDock(props: MapDockProps) {
                       count={props.trailCount || undefined}
                       title="County trails"
                     >
+                      <Trees className="mr-2 inline-block opacity-75 relative -top-0.5" size={16} />
                       Trails
+                    </Chip>
+                  )}
+                  {(props.scenicRouteCount > 0 || props.providerLayersAvailable) && (
+                    <Chip
+                      on={props.showScenicRoutes}
+                      color="#f97316"
+                      onClick={() => props.setShowScenicRoutes((v) => !v)}
+                      count={props.scenicRouteCount || undefined}
+                      title="Scenic Routes and Byways"
+                    >
+                      <MapPin className="mr-2 inline-block opacity-75 relative -top-0.5" size={16} />
+                      Scenic Routes
+                    </Chip>
+                  )}
+                  {(props.coveredBridgeCount > 0 || props.providerLayersAvailable) && (
+                    <Chip
+                      on={props.showCoveredBridges}
+                      color="#ef4444"
+                      onClick={() => props.setShowCoveredBridges((v) => !v)}
+                      count={props.coveredBridgeCount || undefined}
+                      title="Historic Covered Bridges"
+                    >
+                      <Landmark className="mr-2 inline-block opacity-75 relative -top-0.5" size={16} />
+                      Covered Bridges
                     </Chip>
                   )}
                   {props.aerialCount > 0 && (

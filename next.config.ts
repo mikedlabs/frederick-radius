@@ -58,6 +58,8 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  staticPageGenerationTimeout: 300,
+  productionBrowserSourceMaps: false,
   // Browser QA commonly opens the local app through 127.0.0.1 while Next
   // advertises localhost. Treat both as the same trusted development origin
   // so HMR and client hydration are testable without weakening production.
