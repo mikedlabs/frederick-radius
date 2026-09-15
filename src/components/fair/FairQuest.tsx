@@ -61,8 +61,7 @@ export default function FairQuest() {
   return (
     <motion.section
       initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-50px" }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
       data-fair-quest
       aria-label="Fair Quest Scavenger Hunt"
