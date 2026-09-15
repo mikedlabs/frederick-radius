@@ -26,9 +26,9 @@ export default function FairWeatherWidget() {
           className="relative z-10 flex items-center justify-between gap-4"
         >
           <div className="min-w-0">
-            <h3 className="text-[17px] font-extrabold leading-tight tracking-[-0.025em] text-[var(--app-ink)]">
+            <h2 className="text-[17px] font-extrabold leading-tight tracking-[-0.025em] text-[var(--app-ink)]">
               Partly Cloudy
-            </h3>
+            </h2>
             <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-semibold leading-snug text-[var(--app-ink-2)]">
               <span>Frederick Fairgrounds</span>
               <span aria-hidden className="text-[var(--app-ink-3)]">·</span>
