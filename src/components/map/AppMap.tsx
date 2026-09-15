@@ -7035,7 +7035,7 @@ export default function AppMap({
                   <button
                     type="button"
                     title={(feature.properties?.name as string) || "Covered Bridge"}
-                    className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#ef4444] bg-white text-[#ef4444] shadow-[0_2px_10px_rgba(34,28,21,0.28)] hover:bg-[#ef4444] hover:text-white transition-colors"
+                    className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--color-primary,#ef4444)] bg-white text-[var(--color-primary,#ef4444)] shadow-[0_2px_10px_rgba(34,28,21,0.28)] hover:bg-[var(--color-primary,#ef4444)] hover:text-white transition-colors"
                   >
                     <Landmark size={14} />
                   </button>

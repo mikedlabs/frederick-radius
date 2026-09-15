@@ -388,29 +388,25 @@ function FairGlanceTile({
   ariaLabel: string;
 }) {
   return (
-    <MagicCard
-      as="button"
+    <button
       type="button"
       data-fair-glance-tile={kind}
-      onClick={(event: React.MouseEvent<HTMLButtonElement>) => onClick(event.currentTarget)}
+      onClick={(event) => onClick(event.currentTarget)}
       aria-label={ariaLabel}
-      className="tap-44 group flex min-h-11 min-w-0 flex-col px-3 py-3 text-left w-full h-full justify-between transition-transform active:scale-[0.98]"
-      style={{
-        background: `color-mix(in srgb, ${accent} 8%, var(--app-bg-elevated-solid))`,
-        borderColor: `color-mix(in srgb, ${accent} 25%, var(--app-border-strong))`,
-      }}
+      className="tap-44 group flex min-h-11 min-w-0 flex-col px-2 py-2 text-left first:pl-0 last:pr-0 sm:px-4"
+      style={{ borderColor: "var(--app-border)" }}
     >
       <span className="flex w-full items-center justify-between gap-2">
         <span
           aria-hidden="true"
-          className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.08em]"
+          className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.06em]"
           style={{ color: accent }}
         >
           {icon}
           {label}
         </span>
       </span>
-      <span className="mt-2.5 block text-[16px] font-bold leading-snug tracking-[-0.02em] sm:text-[18px]">
+      <span className="mt-2 block text-[16px] font-bold leading-snug tracking-[-0.02em] sm:text-[18px]">
         {value}
       </span>
       <span
@@ -419,7 +415,7 @@ function FairGlanceTile({
       >
         {detail}
       </span>
-    </MagicCard>
+    </button>
   );
 }
 
@@ -446,7 +442,7 @@ function FairProgramResultList({
 }) {
   return (
     <ol
-      className="relative mt-3 flex flex-col gap-3"
+      className="relative mt-3 divide-y divide-[var(--app-border)]"
       aria-label={label}
       data-fair-program-trail
     >
@@ -464,102 +460,97 @@ function FairProgramResultList({
           dayClosesAt,
         );
         return (
-          <li key={item.id}>
-            <MagicCard
-              className="relative grid grid-cols-[minmax(0,1fr)_2.75rem] gap-3 px-4 py-4 sm:px-5 sm:py-5"
-              style={{
-                background: `color-mix(in srgb, ${accent} 4%, var(--app-bg-elevated-solid))`,
-                borderColor: `color-mix(in srgb, ${accent} 20%, var(--app-border-strong))`,
-              }}
-            >
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <time
-                    className="text-[12px] font-extrabold leading-tight tabular-nums"
-                    style={{ color: accent }}
-                  >
-                    {item.timeLabel}
-                  </time>
-                  <span
-                    className="text-[11px] font-bold uppercase tracking-[0.07em]"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    {scheduleKindLabel(item.kind)}
-                  </span>
-                  {liveStatus ? (
-                    <span
-                      data-fair-program-live-state={liveStatus.state}
-                      className="inline-flex min-h-6 items-center rounded-full px-2 text-[10px] font-extrabold uppercase tracking-[0.06em]"
-                      style={{
-                        color:
-                          liveStatus.state === "live"
-                            ? "var(--app-on-brand)"
-                            : "var(--app-warning-press)",
-                        background:
-                          liveStatus.state === "live"
-                            ? "var(--app-brand-2)"
-                            : "color-mix(in srgb, var(--app-amber) 20%, var(--app-bg-elevated-solid))",
-                      }}
-                    >
-                      {liveStatus.label}
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mt-2 text-[20px] font-bold leading-[1.15] tracking-[-0.02em] sm:text-[22px]">
-                  {item.title}
-                </p>
-                {place ? (
-                  <p
-                    className="mt-1 text-[12px] font-semibold leading-snug"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    {place}
-                  </p>
-                ) : null}
-                {item.detail ? (
-                  <p
-                    className="mt-1 line-clamp-2 text-[12px] leading-snug"
-                    style={{ color: "var(--app-ink-2)" }}
-                  >
-                    {item.detail}
-                  </p>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={(event) => onOpen(item.id, event.currentTarget)}
-                  className="tap-44 -mb-2 mt-1 inline-flex min-h-11 items-center gap-1 text-[12px] font-bold transition-opacity hover:opacity-80 active:opacity-60"
+          <li
+            key={item.id}
+            className="relative grid grid-cols-[minmax(0,1fr)_2.75rem] gap-3 py-5 sm:py-6"
+          >
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <time
+                  className="text-[12px] font-extrabold leading-tight tabular-nums"
                   style={{ color: accent }}
-                  aria-label={`Open details for ${item.title}`}
                 >
-                  Details
-                  <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-                </button>
+                  {item.timeLabel}
+                </time>
+                <span
+                  className="text-[11px] font-bold uppercase tracking-[0.07em]"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {scheduleKindLabel(item.kind)}
+                </span>
+                {liveStatus ? (
+                  <span
+                    data-fair-program-live-state={liveStatus.state}
+                    className="inline-flex min-h-6 items-center rounded-full px-2 text-[10px] font-extrabold uppercase tracking-[0.06em]"
+                    style={{
+                      color:
+                        liveStatus.state === "live"
+                          ? "var(--app-on-brand)"
+                          : "var(--app-warning-press)",
+                      background:
+                        liveStatus.state === "live"
+                          ? "var(--app-brand-2)"
+                          : "color-mix(in srgb, var(--app-amber) 20%, var(--app-bg-elevated-solid))",
+                    }}
+                  >
+                    {liveStatus.label}
+                  </span>
+                ) : null}
               </div>
+              <p className="mt-2 text-[21px] font-bold leading-[1.15] tracking-[-0.025em] sm:text-[24px]">
+                {item.title}
+              </p>
+              {place ? (
+                <p
+                  className="mt-1 text-[12px] font-semibold leading-snug"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {place}
+                </p>
+              ) : null}
+              {item.detail ? (
+                <p
+                  className="mt-1 line-clamp-2 text-[12px] leading-snug"
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  {item.detail}
+                </p>
+              ) : null}
               <button
                 type="button"
-                data-fair-plan-toggle={item.id}
-                aria-pressed={planned}
-                onClick={() => onToggle(item, planned)}
-                className="tap-44 tactile tactile-interactive grid h-11 w-11 place-items-center self-start rounded-full transition active:scale-[0.94] motion-reduce:transition-none"
-                style={{
-                  background: planned
-                    ? "var(--app-bg-sunken)"
-                    : `color-mix(in srgb, ${accent} 12%, transparent)`,
-                  color: planned ? "var(--app-ink-3)" : accent,
-                }}
-                aria-label={
-                  planned
-                    ? `Remove ${item.title} from My Day`
-                    : `Add ${item.title} to My Day`
-                }
+                onClick={(event) => onOpen(item.id, event.currentTarget)}
+                className="tap-44 -mb-2 mt-0.5 inline-flex min-h-11 items-center gap-1 text-[12px] font-bold"
+                style={{ color: accent }}
+                aria-label={`Open details for ${item.title}`}
               >
-                {planned ? (
-                  <Check className="h-4 w-4" aria-hidden />
-                ) : (
-                  <Plus className="h-4 w-4" aria-hidden />
-                )}
+                Details
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden />
               </button>
-            </MagicCard>
+            </div>
+            <button
+              type="button"
+              data-fair-plan-toggle={item.id}
+              aria-pressed={planned}
+              onClick={() => onToggle(item, planned)}
+              className="tap-44 tactile tactile-interactive grid h-11 w-11 place-items-center self-start rounded-full transition active:scale-[0.94] motion-reduce:transition-none"
+              style={{
+                background: planned
+                  ? "var(--app-bg-sunken)"
+                  : "var(--app-brand-tint-6)",
+                color: planned ? "var(--app-ink-3)" : "var(--app-brand-press)",
+              }}
+              aria-label={
+                planned
+                  ? `Remove ${item.title} from My Day`
+                  : `Add ${item.title} to My Day`
+              }
+            >
+              {planned ? (
+                <Check className="h-4 w-4" aria-hidden />
+              ) : (
+                <Plus className="h-4 w-4" aria-hidden />
+              )}
+            </button>
           </li>
         );
       })}
@@ -606,10 +597,10 @@ function FairPhotoMasthead({
             />
           </picture>
           <div
-            className="absolute inset-0 backdrop-blur-[2px]"
+            className="absolute inset-0"
             style={{
               background:
-                "linear-gradient(180deg, color-mix(in srgb, var(--app-ink) 75%, transparent) 0%, color-mix(in srgb, var(--app-ink) 25%, transparent) 50%, color-mix(in srgb, var(--app-ink) 95%, transparent) 100%)",
+                "linear-gradient(180deg, color-mix(in srgb, var(--app-ink) 62%, transparent), color-mix(in srgb, var(--app-ink) 16%, transparent) 46%, color-mix(in srgb, var(--app-ink) 82%, transparent))",
             }}
             aria-hidden="true"
           />
@@ -1733,14 +1724,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       style={{
         background: "var(--app-bg)",
         color: "var(--app-ink)",
-        // The Great Frederick Fair official branding colors
-        "--app-brand": "#E31837", // Vibrant Red
-        "--app-brand-press": "#C0102B",
-        "--app-brand-2": "#0033A0", // Royal Blue
-        "--app-cool": "#0033A0",
-        "--app-accent": "#E31837",
-        "--app-amber": "#FFC72C", // Golden Yellow
-      } as React.CSSProperties}
+      }}
     >
       {!routeReady ? (
         <span
@@ -1839,75 +1823,201 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
           : `You are viewing ${planStatus.dateLabel}.`}
       </p>
 
-      
-      {/* 1. Unconditional Map background */}
-      <section
-        id="fair-grounds-map-background"
-        aria-hidden={activeMode !== "map"}
-        className="fixed inset-0 z-0 bg-[var(--app-bg-sunken)]"
-      >
-        <FairGroundsMap
-          savedStops={mappedPlanStops}
-          focusRequest={mapFocusRequest}
-          onFocusRequestHandled={handleMapFocusRequest}
-          programItems={discoveryItems.map((item) => ({
-            id: item.id,
-            title: item.title,
-            timeLabel: item.timeLabel,
-            placeLabel: item.placeLabel,
-          }))}
-          onBrowseProgram={() => chooseMode("find")}
-          onOpenProgramItem={openProgramDetail}
-        />
-      </section>
-
-      {/* 2. Scrollable Overlay Drawer */}
-      <div className="pointer-events-none fixed inset-0 z-10 flex flex-col overflow-y-auto overscroll-none">
-        <div 
-          className="pointer-events-none shrink-0 transition-[min-height] duration-500 ease-out" 
-          style={{ minHeight: activeMode === "map" ? "65vh" : "8vh" }} 
-        />
-        <div 
-          className="pointer-events-auto relative flex min-h-[92vh] flex-col rounded-t-[32px] shadow-2xl"
-          style={{ 
-            background: "var(--app-bg)", 
-            boxShadow: "0 -4px 32px color-mix(in srgb, var(--app-ink) 12%, transparent)" 
-          }}
-        >
-          {/* Drag handle */}
-          <div className="sticky top-0 z-[60] flex h-7 w-full shrink-0 items-center justify-center rounded-t-[32px] bg-[var(--app-bg)]">
-            <div className="h-1.5 w-12 rounded-full bg-[var(--app-border-strong)]" />
-          </div>
-
-          <header className="sticky top-7 z-[50] w-full bg-[var(--app-bg)] px-4 pb-3 sm:px-6">
-            <div className="mx-auto flex max-w-[60rem] items-center justify-between pb-3">
-               <div>
-                  <h1 className="text-[24px] font-extrabold tracking-[-0.04em]">{data.eventName}</h1>
-                  <p className="text-[12px] font-bold uppercase tracking-[0.05em]" style={{ color: "var(--app-brand)" }}>Radius at the Fair</p>
-               </div>
-               <div className="flex gap-2">
-                 <Link href="/today" prefetch={false} aria-label="Back to Frederick Radius" className="grid h-10 w-10 place-items-center rounded-full bg-[var(--app-bg-sunken)]"><ArrowLeft className="h-5 w-5" /></Link>
-                 <button onClick={() => { setHelpAnswerId(null); setHelpCategory(null); openHelp(); }} aria-label="Help & access" className="grid h-10 w-10 place-items-center rounded-full bg-[var(--app-bg-sunken)]"><CircleHelp className="h-5 w-5" /></button>
-               </div>
-            </div>
-            
-            <nav
-              aria-label="Fair Day"
-              className="relative mx-auto grid max-w-[60rem] grid-cols-4 gap-1.5 overflow-hidden rounded-[var(--app-radius-xl)] border p-1.5 pt-2.5 backdrop-blur-xl"
-              style={{
-                borderColor: "var(--app-control-border)",
-                background: "color-mix(in srgb, var(--app-bg-elevated-solid) 96%, transparent)",
-                boxShadow: "var(--app-elev-2), var(--app-edge), var(--app-hi)",
-              }}
-            >
-              <span
-                className="absolute inset-x-0 top-0 h-1.5"
-                style={{
-                  background: "linear-gradient(90deg, var(--app-brand) 0 24%, var(--app-amber) 24% 41%, var(--app-brand-2) 41% 59%, var(--app-cool) 59% 78%, var(--app-accent) 78% 100%)",
-                }}
-                aria-hidden
+      <header>
+        {activeMode === "now" ? (
+          <div
+            data-fair-hero
+            className="relative overflow-hidden border-b-2"
+            style={{ borderColor: "var(--app-brand)" }}
+          >
+            <picture className="absolute inset-0 block">
+              <source
+                type="image/webp"
+                srcSet="/images/fair/fairgrounds-night-mike-d-480.webp 480w, /images/fair/fairgrounds-night-mike-d-960.webp 960w, /images/fair/fairgrounds-night-mike-d-1920.webp 1920w"
+                sizes="100vw"
               />
-              {FAIR_PRIMARY_MODES.map((mode) => {
+              <img
+                src="/images/fair/fairgrounds-night-mike-d-960.jpg"
+                srcSet="/images/fair/fairgrounds-night-mike-d-960.jpg 960w, /images/fair/fairgrounds-night-mike-d-1920.jpg 1920w"
+                sizes="100vw"
+                alt="Mike D's photograph of The Great Frederick Fair in 2024, with the illuminated Ferris wheel and midway seen from above."
+                width="960"
+                height="540"
+                loading="eager"
+                fetchPriority="high"
+                className="h-full w-full object-cover object-[76%_center] sm:object-center"
+              />
+            </picture>
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(to bottom, color-mix(in srgb, var(--app-ink) 48%, transparent), transparent 24%), linear-gradient(to top, color-mix(in srgb, var(--app-ink) 96%, transparent), color-mix(in srgb, var(--app-ink) 54%, transparent) 36%, transparent 72%)",
+              }}
+              aria-hidden
+            />
+            <span
+              className="absolute inset-x-0 bottom-0 z-10 h-1.5 lg:hidden"
+              style={{
+                background:
+                  "linear-gradient(90deg, var(--app-brand) 0 24%, var(--app-amber) 24% 41%, var(--app-brand-2) 41% 59%, var(--app-cool) 59% 78%, var(--app-accent) 78% 100%)",
+              }}
+              aria-hidden
+            />
+
+            <div
+              data-fair-hero-content
+              className="relative z-10 mx-auto flex min-h-[380px] max-w-[68rem] flex-col px-4 pb-5 pt-3 text-[var(--app-ink-inverse)] sm:min-h-[480px] sm:px-6 sm:pb-7 sm:pt-4"
+            >
+              <div
+                data-fair-hero-controls
+                className="flex flex-wrap items-start justify-between gap-2"
+              >
+                <Link
+                  href="/today"
+                  prefetch={false}
+                  aria-label="Back to Frederick Radius"
+                  className="fair-hero-control fair-hero-control--photo tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full"
+                  style={{ color: "var(--app-ink-inverse)" }}
+                >
+                  <ArrowLeft className="h-[18px] w-[18px]" aria-hidden />
+                </Link>
+                <button
+                  type="button"
+                  aria-label="Help & access"
+                  onClick={() => {
+                    setHelpAnswerId(null);
+                    setHelpCategory(null);
+                    openHelp();
+                  }}
+                  className="fair-hero-control fair-hero-control--photo tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full"
+                  style={{ color: "var(--app-ink-inverse)" }}
+                >
+                  <CircleHelp className="h-[18px] w-[18px]" aria-hidden />
+                </button>
+              </div>
+
+              <div data-fair-hero-identity className="mt-auto pt-3">
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.11em] opacity-90 sm:text-[11px]">
+                  <RippleMark size={24} />
+                  Radius at the Fair
+                </div>
+                <h1
+                  id="fair-now-heading"
+                  tabIndex={-1}
+                  className="mt-2 max-w-[14ch] font-editorial text-[44px] font-normal leading-[0.94] tracking-[-0.035em] sm:mt-2 sm:text-[72px]"
+                  style={{
+                    textShadow:
+                      "0 2px 10px color-mix(in srgb, var(--app-ink) 58%, transparent)",
+                  }}
+                >
+                  {data.eventName}
+                </h1>
+                <p
+                  className="mt-1.5 max-w-[20rem] border-t pt-1.5 text-[10px] font-bold uppercase tracking-[0.15em] tabular-nums sm:mt-2 sm:pt-2 sm:text-[11px]"
+                  style={{
+                    borderColor:
+                      "color-mix(in srgb, var(--app-ink-inverse) 42%, transparent)",
+                  }}
+                >
+                  Sep 18–26 · 2026
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setPhotoExplorerOpen(true)}
+                  className="fair-hero-control fair-hero-control--photo tap-44 mt-3 inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-[12px] font-extrabold"
+                  style={{ color: "var(--app-ink-inverse)" }}
+                  data-fair-photo-explore-trigger
+                >
+                  <Camera className="h-4 w-4" aria-hidden />
+                  See the Fair from above
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : activeMode === "map" || activeMode === "my-day" || activeMode === "find" ? (
+          <div
+            data-fair-compact-header
+            className="border-b"
+            style={{
+              borderColor: "var(--app-border-strong)",
+              background: "var(--app-bg-elevated-solid)",
+            }}
+          >
+            <div className="mx-auto flex min-h-16 max-w-[68rem] items-center justify-between gap-3 px-3 sm:px-5">
+              <button
+                type="button"
+                onClick={() => chooseMode("now")}
+                className="fair-hero-control tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full"
+                style={{ color: "var(--app-brand-press)" }}
+                aria-label="Back to Fair Today"
+              >
+                <ArrowLeft className="h-[18px] w-[18px]" aria-hidden />
+              </button>
+              <div className="min-w-0 text-center">
+                <p className="truncate text-[16px] font-extrabold tracking-[-0.02em]">
+                  {activePrimaryLabel}
+                </p>
+                <p
+                  data-fair-compact-header-date
+                  className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.06em] tabular-nums sm:text-[12px]"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {storageReady
+                    ? fairDateShortLabel(selectedDate)
+                    : "Restoring your day"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setHelpAnswerId(null);
+                  setHelpCategory(null);
+                  openHelp();
+                }}
+                className="fair-hero-control tap-44 grid h-11 w-11 place-items-center rounded-full"
+                aria-label="Help & access"
+              >
+                <CircleHelp className="h-[18px] w-[18px]" aria-hidden />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <FairPhotoMasthead
+            mode={activeMode}
+            onBack={() => chooseMode("now")}
+            onHelp={() => {
+              setHelpAnswerId(null);
+              setHelpCategory(null);
+              openHelp();
+            }}
+          />
+        )}
+
+        <div
+          data-fair-primary-nav-shell
+          className={`relative z-20 mx-auto hidden max-w-[60rem] px-6 lg:block ${activeMode === "now" || activeMode === "travel" ? "-mt-5" : "mt-3"}`}
+        >
+          <nav
+            data-fair-primary-nav
+            className="relative grid grid-cols-4 gap-1.5 overflow-hidden rounded-[var(--app-radius-xl)] border p-1.5 pt-2.5 backdrop-blur-xl"
+            style={{
+              borderColor: "var(--app-control-border)",
+              background:
+                "color-mix(in srgb, var(--app-bg-elevated-solid) 96%, transparent)",
+              boxShadow: "var(--app-elev-2), var(--app-edge), var(--app-hi)",
+            }}
+            aria-label="Fair Day"
+          >
+            <span
+              className="absolute inset-x-0 top-0 h-1.5"
+              style={{
+                background:
+                  "linear-gradient(90deg, var(--app-brand) 0 24%, var(--app-amber) 24% 41%, var(--app-brand-2) 41% 59%, var(--app-cool) 59% 78%, var(--app-accent) 78% 100%)",
+              }}
+              aria-hidden
+            />
+            {FAIR_PRIMARY_MODES.map((mode) => {
               const active =
                 activeMode === mode.id ||
                 (activeMode === "travel" && mode.id === "my-day");
@@ -1918,50 +2028,52 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                   type="button"
                   aria-current={active ? "page" : undefined}
                   onClick={() => chooseMode(mode.id)}
-                  className="tap-44 tactile tactile-interactive flex min-h-[62px] flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-lg)] border transition-[background-color,border-color,transform] active:scale-[0.96] motion-reduce:transition-none"
+                  className="tap-44 tactile tactile-interactive grid min-h-[62px] grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-2 rounded-[var(--app-radius-lg)] border px-2.5 py-2 text-left transition-[background-color,border-color,transform] active:scale-[0.985] motion-reduce:transition-none"
                   style={{
                     borderColor: active
-                      ? `color-mix(in srgb, ${mode.accent} 25%, var(--app-border))`
+                      ? `color-mix(in srgb, ${mode.accent} 34%, var(--app-border))`
                       : "transparent",
                     color: active
                       ? mode.accent
                       : "var(--app-ink-2)",
                     background: active
-                      ? `color-mix(in srgb, ${mode.accent} 12%, var(--app-bg-elevated-solid))`
+                      ? `color-mix(in srgb, ${mode.accent} 8%, var(--app-bg-elevated-solid))`
                       : "transparent",
                   }}
                 >
                   <span
-                    className="relative flex items-center justify-center"
+                    className="grid h-10 w-10 place-items-center rounded-full"
                     style={{
                       color: active
-                        ? mode.accent
+                        ? "var(--app-on-brand)"
                         : "var(--app-ink-2)",
+                      background: active
+                        ? mode.accent
+                        : "var(--app-bg-sunken)",
                     }}
                     aria-hidden
                   >
-                    <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.5 : 2} />
-                    {storageReady && mode.id === "my-day" && plan.steps.length > 0 ? (
-                      <span className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-black outline outline-2"
-                        style={{
-                           backgroundColor: mode.accent,
-                           color: "var(--app-bg-sunken)",
-                           outlineColor: "var(--app-bg-sunken)"
-                        }}
-                      >
-                        {plan.steps.length}
-                      </span>
-                    ) : null}
+                    <Icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.25 : 1.75} />
                   </span>
-                  <span className="block text-[10px] font-extrabold uppercase tracking-[0.04em]">
-                    {mode.label}
+                  <span className="min-w-0">
+                    <span className="block text-[14px] font-extrabold leading-tight">
+                      {mode.label}
+                    </span>
+                    <span
+                      className="mt-0.5 block truncate text-[11px] font-semibold leading-tight"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      {storageReady && mode.id === "my-day" && plan.steps.length > 0
+                        ? `${plan.steps.length} saved · ${savedDayCount} ${savedDayCount === 1 ? "day" : "days"}`
+                        : mode.detail}
+                    </span>
                   </span>
                 </button>
               );
             })}
-            </nav>
-          </header>
-
+          </nav>
+        </div>
+      </header>
 
       {!routeReady || !storageReady ? (
         <div
@@ -2073,7 +2185,11 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 </label>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 pb-4 sm:gap-4 sm:pb-6">
+              <div
+                data-fair-glance-board
+                className="mt-3 grid grid-cols-3 divide-x border-y py-1"
+                style={{ borderColor: "var(--app-border)" }}
+              >
                 <FairGlanceTile
                   kind="gate"
                   label={gateGlance.label}
@@ -2535,7 +2651,38 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
           </section>
         ) : null}
 
-        
+        {activeMode === "map" ? (
+          <section
+            id={MODE_PANEL_IDS.map}
+            aria-labelledby="fair-grounds-map-heading"
+          >
+            <FairGroundsMap
+              savedStops={mappedPlanStops}
+              focusRequest={mapFocusRequest}
+              onFocusRequestHandled={handleMapFocusRequest}
+              programItems={discoveryItems.map((item) => ({
+                id: item.id,
+                title: item.title,
+                timeLabel: item.timeLabel,
+                placeLabel: item.placeLabel,
+              }))}
+              onBrowseProgram={() => chooseMode("find")}
+              onOpenProgramItem={openProgramDetail}
+            />
+            <div className="mx-4 mt-4 border-t pt-3 lg:mx-0" style={{ borderColor: "var(--app-border)" }}>
+              <a
+                href={data.externalGuide.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold"
+                style={{ color: "var(--app-cool)" }}
+              >
+                Official vendor booths
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              </a>
+            </div>
+          </section>
+        ) : null}
 
         {activeMode === "my-day" ? (
           <section
@@ -2838,9 +2985,89 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
         ) : null}
       </div>
 
-      
-
-              </div>
+      <div
+        data-mobile-action-bar
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-nav)] px-2 lg:hidden"
+        style={{
+          paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))",
+        }}
+      >
+        <nav
+          aria-label="Fair Day"
+          className="pointer-events-auto relative mx-auto grid max-w-screen-md grid-cols-4 gap-1 overflow-hidden rounded-[var(--app-radius-xl)] border p-1 pt-2 backdrop-blur-xl"
+          style={{
+            borderColor: "var(--app-control-border)",
+            background:
+              "color-mix(in srgb, var(--app-bg-elevated-solid) 96%, transparent)",
+            boxShadow:
+              "var(--app-elev-2), 0 -12px 30px -24px color-mix(in srgb, var(--app-ink) 38%, transparent)",
+          }}
+        >
+          <span
+            className="absolute inset-x-0 top-0 h-1"
+            style={{
+              background:
+                "linear-gradient(90deg, var(--app-brand) 0 24%, var(--app-amber) 24% 41%, var(--app-brand-2) 41% 59%, var(--app-cool) 59% 78%, var(--app-accent) 78% 100%)",
+            }}
+            aria-hidden
+          />
+          {FAIR_PRIMARY_MODES.map((mode) => {
+            const active =
+              activeMode === mode.id ||
+              (activeMode === "travel" && mode.id === "my-day");
+            const Icon = mode.icon;
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                aria-current={active ? "page" : undefined}
+                onClick={() => chooseMode(mode.id)}
+                aria-label={
+                  storageReady && mode.id === "my-day" && plannedRows.length > 0
+                    ? `${mode.label}, ${plannedRows.length} saved`
+                    : mode.label
+                }
+                className="tap-44 tactile tactile-interactive relative flex min-h-[60px] flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-lg)] px-1 text-[11px] font-semibold transition-[background-color,color,transform] active:scale-[0.97] motion-reduce:transition-none"
+                style={{
+                  color: active
+                    ? mode.accent
+                    : "var(--app-ink-2)",
+                  background: "transparent",
+                }}
+              >
+                <span
+                  className="relative grid h-8 w-10 place-items-center rounded-full"
+                  style={{
+                    color: active
+                      ? "var(--app-on-brand)"
+                      : "var(--app-ink-2)",
+                    background: active
+                      ? mode.accent
+                      : "var(--app-bg-sunken)",
+                  }}
+                  aria-hidden="true"
+                >
+                  <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
+                  {storageReady && mode.id === "my-day" && plannedRows.length > 0 ? (
+                    <span
+                      className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border px-1 text-[10px] font-extrabold leading-none tabular-nums"
+                      style={{
+                        color: "var(--app-on-brand)",
+                        borderColor: "var(--app-bg-elevated-solid)",
+                        background: "var(--app-brand-press)",
+                      }}
+                    >
+                      {plannedRows.length}
+                    </span>
+                  ) : null}
+                </span>
+                <span>
+                  {mode.label}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
       <FairPhotoExplorer
