@@ -252,6 +252,7 @@ export function parseDeferredBrowseLayers(value: unknown): DeferredBrowseLayers 
     snowRoutes: isFeatureCollection(candidate.snowRoutes)
       ? candidate.snowRoutes
       : EMPTY_SNOW_ROUTE_FC,
+
     smartSignals:
       candidate.smartSignals &&
       typeof candidate.smartSignals === "object" &&
