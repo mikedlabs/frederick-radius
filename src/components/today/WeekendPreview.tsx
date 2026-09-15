@@ -1,9 +1,9 @@
-
+import Link from "next/link";
+import { ArrowRight, CalendarRange } from "lucide-react";
 import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { buildHorizonBounds, groupByHorizon } from "@/lib/eventHorizon";
 import { easternParts } from "@/lib/tz";
 import { daypart } from "@/lib/daypart";
-import EventSwipeStack from "./EventSwipeStack";
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
 
@@ -52,38 +52,54 @@ export default async function WeekendPreview({
   ]);
   const clockTime = (e: (typeof weekend)[number]) =>
     !e.is_all_day && easternParts(new Date(e.starts_at)).hour !== 0;
-  const draws = weekend.filter(e => clockTime(e) && DRAW.has(e.category ?? ""));
-  if (draws.length === 0) draws.push(...weekend.filter(clockTime));
-  if (draws.length === 0) draws.push(...weekend);
-
-  const cardColors = [
-    { bg: "bg-indigo-500", text: "text-white" },
-    { bg: "bg-rose-500", text: "text-white" },
-    { bg: "bg-emerald-500", text: "text-white" },
-    { bg: "bg-amber-500", text: "text-white" },
-    { bg: "bg-cyan-500", text: "text-white" },
-  ];
-
-  const swipeCards = draws.slice(0, 5).map((draw, i) => {
-    const color = cardColors[i % cardColors.length];
-    return {
-      id: `${draw.slug}-${i}`,
-      title: draw.title,
-      venue: draw.venue_name || "Frederick, MD",
-      slug: draw.slug,
-      colorClass: color.bg,
-      textClass: color.text,
-    };
+  const first =
+    weekend.find((e) => clockTime(e) && DRAW.has(e.category ?? "")) ??
+    weekend.find(clockTime) ??
+    weekend[0];
+  const firstWhen = new Date(first.starts_at).toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    weekday: "long",
+    hour: "numeric",
+    minute: "2-digit",
   });
 
   return (
     <section aria-labelledby="weekend-preview-heading" className="mt-6">
-      <div className="flex items-center justify-between mb-3 px-1">
-        <h2 id="weekend-preview-heading" className="text-xl font-bold font-serif" style={{ color: "var(--app-ink)" }}>
-          Top Picks This Weekend
-        </h2>
-      </div>
-      <EventSwipeStack cards={swipeCards} emptyMessage="That's it for the top picks! See the full calendar for more." />
+      <Link
+        href="/events?lens=weekend"
+        className="tactile tactile-interactive flex items-center gap-3 rounded-[var(--app-radius-lg)] border p-3.5"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-elevated)",
+          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+        }}
+      >
+        <span
+          aria-hidden
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+          style={{ background: "color-mix(in srgb, var(--app-brand-2) 13%, transparent)", color: "var(--app-brand-2)" }}
+        >
+          <CalendarRange className="h-5 w-5" strokeWidth={2} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span id="weekend-preview-heading" className="eyebrow block" style={{ color: "var(--app-ink-3)" }}>
+            This weekend
+          </span>
+          {/* The real thing leads; the count is supporting detail below it
+              (CLAUDE.md: counts are never the headline). */}
+          <span
+            className="mt-0.5 block font-sans text-[17px] font-semibold leading-tight tracking-tight [text-wrap:pretty]"
+            style={{ color: "var(--app-ink)" }}
+          >
+            {first.title}
+            {first.venue_name ? ` at ${first.venue_name}` : ""}
+          </span>
+          <span className="mt-0.5 block truncate text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
+            First up {firstWhen} · {weekend.length} on the calendar so far
+          </span>
+        </span>
+        <ArrowRight aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} />
+      </Link>
     </section>
   );
 }

@@ -17,6 +17,7 @@ import SkyHero from "@/components/today/SkyHero";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MomentSpotlight from "@/components/today/MomentSpotlight";
 import TodayFairFeature from "@/components/today/TodayFairFeature";
+import Image from "next/image";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import DismissibleSection from "@/components/today/DismissibleSection";
@@ -58,10 +59,8 @@ import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
 import { getStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
 import { shouldPromoteTodayHeadliner } from "@/components/today/headlinerTiming";
-import TownEventHighlight from "@/components/today/TownEventHighlight";
-import WhatsOnClient from "@/components/today/WhatsOnClient";
+import TodayScopeStatus from "@/components/today/TodayScopeStatus";
 import TodayEventsRecovery from "@/components/today/TodayEventsRecovery";
-import TodayMasthead from "@/components/today/TodayMasthead";
 import {
   shouldRenderTodayEventSection,
   todayEventPicksMeta,
@@ -223,7 +222,6 @@ export default async function HomePage() {
   const whatsOn = (
     <div id="whats-on" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
       <Suspense fallback={null}>
-        <TownEventHighlight eventsPromise={eventsPromise} nowIso={now.toISOString()} />
         <WhatsOn eventsPromise={eventsPromise} now={now} />
       </Suspense>
     </div>
@@ -267,6 +265,53 @@ export default async function HomePage() {
         </div>
       )}
 
+      {/* ── TITLE — a TIME-AWARE masthead (owner call, 2026-07-20: make /today
+          "time-aware"). The page already reorders itself across the day (the
+          evening gear below flips the lead to tonight at 17:00), but the title
+          used to read a static "Today in Frederick" at every hour, so the shift
+          was invisible. The h1 + one-line frame now change with the Eastern
+          daypart (todayFrame, pinned to the same 17:00 boundary), so the page
+          NAMES the moment it is leading with. Server-computed on the Eastern
+          clock; the page ISRs every 300s so a boundary rolls within minutes.
+          This is the real document h1. Sits below an active civic alert (alerts
+          still lead) and above the weather. */}
+      {(() => {
+        const frame = todayFrame(easternStartHour(now.toISOString()));
+        return (
+          <header className="today-arrival today-arrival--masthead mb-5 flex flex-col overflow-hidden rounded-[var(--app-radius-lg)] border border-[var(--app-border)] bg-[var(--app-bg-elevated-solid)] sm:grid sm:grid-cols-[minmax(0,1fr)_42%]">
+            <div className="min-w-0 p-4 sm:p-6">
+            {/* The page title, at page-title size. At 22px it sat two pixels
+                above its own 20px section headings, so the masthead read as
+                just another section. 30/32 restores the ladder: page over
+                section over row, with typography carrying the hierarchy
+                (brand rule) instead of the deleted brick dash. The date now
+                rides the scope line below — one supporting line instead of a
+                decorated eyebrow above the title. */}
+            <h1 className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight sm:text-[32px]" style={{ color: "var(--app-ink)" }}>
+              {frame.title}
+            </h1>
+            <TodayScopeStatus dateline={formatEasternDateline(now)} />
+            </div>
+            <figure className="relative order-first h-[140px] sm:order-none sm:h-full sm:min-h-[180px]">
+              <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" fill sizes="(min-width: 1024px) 440px, 100vw" alt="Carroll Creek in Frederick, photographed by Mike D." className="object-cover object-center" />
+              <figcaption className="absolute bottom-2 right-2 rounded-sm bg-[var(--app-ink)] px-2 py-1 text-[10px] leading-snug text-[var(--app-on-brand)]">Carroll Creek · Mike D</figcaption>
+            </figure>
+          </header>
+        );
+      })()}
+
+      <div className="today-start-grid">
+        <div className="today-start-find">
+        <div className="today-arrival today-arrival--find">
+          <TodayAsk embedded>
+            <CravingStrip />
+          </TodayAsk>
+        </div>
+        <div className="mt-5" aria-label="Places for your area">
+          {decisionLead}
+        </div>
+        </div>
+        <div className="today-start-context">
       {/* ── WEATHER HERO — the time-of-day gradient sky and today's weather
           lead the page. Now a COMPACT, CONTAINED card (owner
           call: "all cards within the main part" + "one header with the weather
@@ -282,7 +327,7 @@ export default async function HomePage() {
       {/* The whole weather plate is a door to the full forecast (July 2026
           Reddit review: it looked tappable and wasn't — now it is, with the
           standard right-edge disclosure chevron). */}
-      <SkyHero className="today-arrival today-arrival--weather relative z-10 mb-5">
+      <SkyHero className="today-arrival today-arrival--weather relative z-10">
         <AppTransitionLink
           href="/pulse?open=weather"
           prefetch={false}
@@ -299,37 +344,6 @@ export default async function HomePage() {
           />
         </AppTransitionLink>
       </SkyHero>
-
-      {/* ── TITLE — a TIME-AWARE masthead (owner call, 2026-07-20: make /today
-          "time-aware"). The page already reorders itself across the day (the
-          evening gear below flips the lead to tonight at 17:00), but the title
-          used to read a static "Today in Frederick" at every hour, so the shift
-          was invisible. The h1 + one-line frame now change with the Eastern
-          daypart (todayFrame, pinned to the same 17:00 boundary), so the page
-          NAMES the moment it is leading with. Server-computed on the Eastern
-          clock; the page ISRs every 300s so a boundary rolls within minutes.
-          This is the real document h1. Sits below an active civic alert (alerts
-          still lead) and above the weather. */}
-      {(() => {
-        const frame = todayFrame(easternStartHour(now.toISOString()));
-        return (
-          <TodayMasthead title={frame.title} dateline={formatEasternDateline(now)} />
-        );
-      })()}
-
-      <div className="today-start-grid">
-        <div className="today-start-find">
-        <div className="today-arrival today-arrival--find">
-          <TodayAsk embedded>
-            <CravingStrip />
-          </TodayAsk>
-        </div>
-        <div className="mt-5" aria-label="Places for your area">
-          {decisionLead}
-        </div>
-        </div>
-        <div className="today-start-context">
-
       {/* ── CAMPAIGN SPOTLIGHT — the document identifies itself before a
           campaign asks for attention. Fair Day owns this photographic doorway
           from Sep 2–26, then retires itself on Sep 27. When another civic
@@ -586,7 +600,71 @@ function deriveTodayProgram(publicEvents: Awaited<EventsPromise>["publicEvents"]
  *  weight, ink, and their category's color dot; civic/routine rows sit in
  *  the same timeline, smaller and grayer. Live rows swap the clock for a
  *  pulsing "Now". */
-
+function ProgramRow({
+  event: e,
+  quiet,
+  now,
+}: {
+  event: Awaited<EventsPromise>["publicEvents"][number];
+  quiet: boolean;
+  now: Date;
+}) {
+  const live = isEventLiveNow(e, now);
+  const time = eventDateBlock(e).time;
+  const accent = CATEGORY_BY_SLUG[e.category ?? ""]?.color ?? "#7A7975";
+  const town = eventTown(e);
+  // "Frederick · Frederick": some feeds stamp the town as the venue name.
+  // One mention is information, two is noise.
+  const venue = e.venue_name?.trim();
+  const where = [venue, town && town.toLowerCase() !== venue?.toLowerCase() ? town : null]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <li>
+      <Link
+        href={`/events/${e.slug}`}
+        prefetch={false}
+        className="tap-44-y flex items-start gap-3 border-b py-2 pr-0.5"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <span
+          className="flex w-[58px] shrink-0 items-center gap-1 pt-px font-mono text-[11px] font-semibold tabular-nums leading-snug"
+          style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-3)" }}
+        >
+          {live && (
+            <span aria-hidden className="live-dot h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: "var(--app-brand)" }} />
+          )}
+          {live ? "Now" : time}
+        </span>
+        {quiet ? (
+          <span className="min-w-0 flex-1 truncate text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            {e.title}
+            {(venue || town) && (
+              <span style={{ color: "var(--app-ink-3)" }}> · {venue ?? town}</span>
+            )}
+          </span>
+        ) : (
+          <div className="min-w-0 flex-1">
+            <span className="line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+              {e.title}
+            </span>
+            {where && (
+              <span className="mt-0.5 block truncate text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                {where}
+              </span>
+            )}
+            {/* Real walk minutes from the user's cached fix (LocationPrime
+                consent), precisely-located venues only; self-hides. */}
+            {eventHasPreciseDisplayLocation(e) && <EventWalkTime dest={e.geom} />}
+          </div>
+        )}
+        {!quiet && (
+          <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: accent }} />
+        )}
+      </Link>
+    </li>
+  );
+}
 
 /** What's on = every PUBLIC event in the city or county TODAY, soonest first.
  *  Draws (concerts/markets/shows) lead as cards; routine recurring programs
@@ -700,11 +778,50 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                 .
               </p>
             )}
-            <WhatsOnClient 
-              program={program} 
-              remainingEarlierToday={remainingEarlierToday} 
-              nowIso={now.toISOString()} 
-            />
+            {programGroups.length > 0 && (
+              <div className="reveal-up">
+                {programGroups.map((group) => (
+                  <div key={group.label}>
+                    <p className="px-0.5 pb-1 pt-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+                      {group.label}
+                    </p>
+                    <ul>
+                      {group.rows.map(({ e, quiet }) => (
+                        <ProgramRow key={`${e.slug}-${e.starts_at}`} event={e} quiet={quiet} now={now} />
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+                {programOverflow > 0 && (
+                  <Link
+                    href="/events"
+                    className="tap-44-y flex items-center justify-between px-0.5 py-2.5 text-[13px] font-semibold"
+                    style={{ color: "var(--app-brand-press)" }}
+                  >
+                    +{programOverflow} more today
+                    <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+                  </Link>
+                )}
+              </div>
+            )}
+            {/* Finished draws collapse to one honest line — the record of the
+                day is a tap away, but done things don't spend screen. Native
+                <details>: no client JS. */}
+            {remainingEarlierToday.length > 0 && (
+              <details className="group">
+                <summary className="tap-44-y flex cursor-pointer list-none items-center gap-1.5 px-0.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-ink-3)" }}>
+                  <ChevronRight aria-hidden className="h-3 w-3 shrink-0 transition-transform group-open:rotate-90" strokeWidth={2.5} />
+                  Earlier today · {remainingEarlierToday.length} wrapped up
+                </summary>
+                <ul className="mt-1">
+                  {remainingEarlierToday.map((e) => (
+                    <li key={`${e.slug}-${e.starts_at}`}>
+                      <EventCard event={e} variant="utility" hideDate />
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
           </div>
         ) : featureIsPromoted ? (
           /* The headliner above is the whole calendar — an honest one-liner,
