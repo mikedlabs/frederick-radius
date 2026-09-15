@@ -28,7 +28,7 @@ export function SnapCarousel({
         @keyframes snap-carousel-scale {
           0% {
             transform: scale(0.9) translateY(4px);
-            opacity: 0.7;
+            opacity: 1;
           }
           50% {
             transform: scale(1) translateY(0);
@@ -37,7 +37,7 @@ export function SnapCarousel({
           }
           100% {
             transform: scale(0.9) translateY(4px);
-            opacity: 0.7;
+            opacity: 1;
           }
         }
 

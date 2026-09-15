@@ -60,8 +60,8 @@ export default function FairQuest() {
 
   return (
     <motion.section
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ y: 20 }}
+      animate={{ y: 0 }}
       transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
       data-fair-quest
       aria-label="Fair Quest Scavenger Hunt"
@@ -72,7 +72,7 @@ export default function FairQuest() {
         <h3 className="flex items-center gap-2 text-[18px] font-extrabold tracking-tight">
           <Sparkles className="h-5 w-5 text-yellow-300" /> Fair Quest 2026
         </h3>
-        <p className="mt-1 text-[13px] font-medium text-[var(--app-on-brand)] opacity-90">
+        <p className="mt-1 text-[13px] font-medium text-[var(--app-on-brand)]">
           You can complete the ultimate fair experience!
         </p>
         <div className="mt-3 flex items-center gap-3">
