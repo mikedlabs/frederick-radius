@@ -93,15 +93,6 @@ export const OVERLAYS: OverlayDef[] = [
     // light up automatically when the human-reviewed catalog is populated.
     ready: false,
   },
-  {
-    hidden: true,
-    key: "land-value",
-    label: "Housing & Land Value",
-    popupLabel: "Parcel Hex",
-    sources: "Maryland SDAT & Frederick County Open Data (H3 Extrusion Demo).",
-    endpoint: "/data/frederick_land_value.geojson",
-    ready: true,
-  },
 ];
 
 const VALID = new Set<string>(OVERLAYS.map((o) => o.key));

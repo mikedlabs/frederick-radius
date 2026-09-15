@@ -11,15 +11,11 @@ import { EventSheetProvider } from "@/components/event/EventSheetProvider";
 import ScrollMemory from "@/components/nav/ScrollMemory";
 import ModeParamSync from "@/components/mode/ModeParamSync";
 import OfflineSnapshotSync from "@/components/pwa/OfflineSnapshotSync";
-import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Suspense } from "react";
-import CommandMenu from "@/components/ui/CommandMenu";
-import { Toaster } from "sonner";
 
-export default function AppLayout({ children, modal }: { children: React.ReactNode, modal: React.ReactNode }) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <NuqsAdapter>
-      <PlaceSheetProvider>
+    <PlaceSheetProvider>
     <EventSheetProvider>
       <RouteAccent>
         {/* Inner wrapper. NO background here — the body element
@@ -65,7 +61,6 @@ export default function AppLayout({ children, modal }: { children: React.ReactNo
               AppMain so the map can fill the viewport on desktop. The
               lg:pl-24 clears the floating SideRail. */}
           <AppMain>{children}</AppMain>
-          {modal}
           {/* Two navs, one shows at a time:
               - BottomNav: floating pill at bottom, < lg
               - SideRail: floating rail on left edge, ≥ lg */}
@@ -87,25 +82,8 @@ export default function AppLayout({ children, modal }: { children: React.ReactNo
               and also grab Cmd+K, so the chord opened two overlays at
               once; it was the weaker, duplicate engine and is retired. */}
         </div>
-        {modal}
-        <Toaster position="bottom-center" toastOptions={{ 
-          className: "dark:!bg-zinc-900/85 dark:!border-white/10 dark:!shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.1)]",
-          style: { 
-            background: "rgba(255, 255, 255, 0.85)", 
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-            color: "var(--app-ink)", 
-            border: "1px solid rgba(255,255,255,0.2)",
-            boxShadow: "0 10px 40px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.4)",
-            borderRadius: "16px",
-            padding: "16px",
-            fontWeight: "500",
-          } 
-        }} />
-        <CommandMenu />
       </RouteAccent>
     </EventSheetProvider>
     </PlaceSheetProvider>
-    </NuqsAdapter>
   );
 }
