@@ -11,35 +11,34 @@ export default function FairWeatherWidget() {
       className="mt-4"
     >
       <MagicCard
-        className="relative overflow-hidden border-0 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.08)] backdrop-blur-2xl sm:p-5"
+        className="relative overflow-hidden rounded-[var(--app-radius-xl)] border p-4 backdrop-blur-xl sm:p-5"
         style={{
-          background: "linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7))",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.5), 0 8px 32px rgba(0,0,0,0.08)",
+          borderColor: "var(--app-control-border)",
+          background: "linear-gradient(135deg, color-mix(in srgb, var(--app-cool) 6%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid))",
+          boxShadow: "var(--app-elev-1), var(--app-edge)",
         }}
       >
-        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-blue-300/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-yellow-300/20 blur-3xl" />
-        
         <section
           data-fair-weather
           aria-label="Fair weather forecast"
           className="relative z-10 flex items-center justify-between gap-4"
         >
           <div className="min-w-0">
-            <h2 className="text-[17px] font-extrabold leading-tight tracking-[-0.025em] text-[var(--app-ink)]">
+            <span className="text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-[var(--app-cool)]">
+              Forecast · Frederick Fairgrounds
+            </span>
+            <h2 className="mt-0.5 text-[18px] font-extrabold leading-tight tracking-[-0.025em] text-[var(--app-ink)]">
               Partly Cloudy
             </h2>
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-semibold leading-snug text-[var(--app-ink-2)]">
-              <span>Frederick Fairgrounds</span>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] font-medium leading-snug text-[var(--app-ink-2)]">
+              <span className="flex items-center gap-1"><CloudRain className="h-3.5 w-3.5 text-[var(--app-cool)]" /> 15% rain</span>
               <span aria-hidden className="text-[var(--app-ink-3)]">·</span>
-              <span className="flex items-center gap-1"><CloudRain className="h-3.5 w-3.5 text-blue-500" /> 15%</span>
-              <span aria-hidden className="text-[var(--app-ink-3)]">·</span>
-              <span className="flex items-center gap-1"><Wind className="h-3.5 w-3.5 text-slate-500" /> 8 mph</span>
+              <span className="flex items-center gap-1"><Wind className="h-3.5 w-3.5 text-[var(--app-ink-3)]" /> 8 mph breeze</span>
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <span className="text-[32px] font-extrabold tracking-tighter text-[var(--app-ink)] drop-shadow-sm">78°</span>
-            <CloudSun className="h-10 w-10 text-yellow-500 drop-shadow-md" />
+          <div className="flex shrink-0 items-center gap-2.5">
+            <span className="text-[34px] font-extrabold tabular-nums tracking-tighter text-[var(--app-ink)]">78°</span>
+            <CloudSun className="h-9 w-9 text-[var(--app-amber)]" />
           </div>
         </section>
       </MagicCard>

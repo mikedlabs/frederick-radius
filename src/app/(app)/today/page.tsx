@@ -278,7 +278,7 @@ export default async function HomePage() {
       {(() => {
         const frame = todayFrame(easternStartHour(now.toISOString()));
         return (
-          <header className="today-arrival today-arrival--masthead mb-5 flex flex-col overflow-hidden rounded-[var(--app-radius-lg)] border border-[var(--app-border)] bg-[var(--app-bg-elevated-solid)] sm:grid sm:grid-cols-[minmax(0,1fr)_42%]">
+          <header className="scroll-masthead today-arrival today-arrival--masthead mb-5 flex flex-col overflow-hidden rounded-[var(--app-radius-lg)] border border-[var(--app-border)] bg-[var(--app-bg-elevated-solid)] sm:grid sm:grid-cols-[minmax(0,1fr)_42%]">
             <div className="min-w-0 p-4 sm:p-6">
             {/* The page title, at page-title size. At 22px it sat two pixels
                 above its own 20px section headings, so the masthead read as
@@ -292,7 +292,7 @@ export default async function HomePage() {
             </h1>
             <TodayScopeStatus dateline={formatEasternDateline(now)} />
             </div>
-            <figure className="relative order-first h-[140px] sm:order-none sm:h-full sm:min-h-[180px]">
+            <figure className="scroll-masthead-img relative order-first h-[140px] sm:order-none sm:h-full sm:min-h-[180px]">
               <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" fill sizes="(min-width: 1024px) 440px, 100vw" alt="Carroll Creek in Frederick, photographed by Mike D." className="object-cover object-center" />
               <figcaption className="absolute bottom-2 right-2 rounded-sm bg-[var(--app-ink)] px-2 py-1 text-[10px] leading-snug text-[var(--app-on-brand)]">Carroll Creek · Mike D</figcaption>
             </figure>

@@ -181,18 +181,21 @@ export default function BottomDrawer({
             className="mx-auto mt-2 h-1 w-10 rounded-full"
             style={{ background: "var(--app-border)" }}
           />
-          <Drawer.Close
-            onClick={() => haptic("light")}
-            aria-label={`Close ${title}`}
-            className="absolute top-2 z-10 grid h-11 w-11 place-items-center rounded-full border transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-95"
-            style={{
-              right: "max(0.75rem, env(safe-area-inset-right, 0px))",
-              borderColor: "var(--app-control-border)",
-              background: "var(--app-bg-elevated-solid)",
-              color: "var(--app-ink-2)",
-            }}
-          >
-            <X className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+          <Drawer.Close asChild aria-label={`Close ${title}`}>
+            <button
+              type="button"
+              onClick={() => haptic("light")}
+              aria-label={`Close ${title}`}
+              className="absolute top-2 z-10 grid h-11 w-11 place-items-center rounded-full border transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-95"
+              style={{
+                right: "max(0.75rem, env(safe-area-inset-right, 0px))",
+                borderColor: "var(--app-control-border)",
+                background: "var(--app-bg-elevated-solid)",
+                color: "var(--app-ink-2)",
+              }}
+            >
+              <X className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+            </button>
           </Drawer.Close>
           {bareHeader ? (
             // Header kept for screen readers only — the content provides

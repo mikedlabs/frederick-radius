@@ -21,6 +21,7 @@ export const fairGroundsMapFilterSchema = z.enum([
   "animals",
   "buildings",
   "arrival",
+  "food",
 ]);
 
 const informationSourceSchema = z
@@ -149,6 +150,7 @@ export type FairGroundsMap = z.infer<typeof fairGroundsMapSchema>;
 export type FairGroundsMapFeature = FairGroundsMap["features"][number];
 export type FairGroundsMapKind = z.infer<typeof fairGroundsMapKindSchema>;
 export type FairGroundsMapFilter = z.infer<typeof fairGroundsMapFilterSchema>;
+export type FairGroundsMapView = FairGroundsMapFilter | "program";
 
 export type FairGroundsMapFeaturePatch = {
   targetId: string;

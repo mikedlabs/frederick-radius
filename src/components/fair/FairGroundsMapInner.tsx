@@ -1,4 +1,5 @@
 "use client";
+import { flushSync } from "react-dom";
 
 import {
   Accessibility,
@@ -77,6 +78,7 @@ import FairGroundsMapMasthead from "./FairGroundsMapMasthead";
 import FairMapCanvasBoundary from "./FairMapCanvasBoundary";
 import FairLiveTransit from "./FairLiveTransit";
 import FairAerialLayer, { FAIR_AERIAL_ATTRIBUTION, useFairAerialStatus } from "./FairAerialLayer";
+import FairMapActionBar from "./FairMapActionBar";
 
 export type FairGroundsMapSavedStop = {
   id: string;
@@ -1542,10 +1544,22 @@ export default function FairGroundsMapInner({
       if (trigger) lastSelectionTriggerRef.current = trigger;
     }
     clusterSelectionDialogRef.current?.close();
-    setClusterSelectionIds([]);
-    setSelectionExpanded(false);
-    beginFairMapSelectionHistory(feature.properties.id);
-    setSelectedId(feature.properties.id);
+    
+    const updateState = () => {
+      setClusterSelectionIds([]);
+      setSelectionExpanded(false);
+      beginFairMapSelectionHistory(feature.properties.id);
+      setSelectedId(feature.properties.id);
+    };
+
+    if (document.startViewTransition) {
+      document.startViewTransition(() => {
+        flushSync(updateState);
+      });
+    } else {
+      updateState();
+    }
+    
     const selectedName = mapData
       ? mappedFeatureName(feature, mapData)
       : feature.properties.name;
@@ -1793,8 +1807,20 @@ export default function FairGroundsMapInner({
     // focus again. Search/list selections need a reframe when controls return.
     lastClosedFeatureRef.current = origin ? null : selected;
     focusCollapsedSelectionRef.current = false;
-    setSelectionExpanded(false);
-    setSelectedId(null);
+
+    const updateState = () => {
+      setSelectionExpanded(false);
+      setSelectedId(null);
+    };
+
+    if (document.startViewTransition) {
+      document.startViewTransition(() => {
+        flushSync(updateState);
+      });
+    } else {
+      updateState();
+    }
+
     setMapAnnouncement("Map place details closed.");
     restoreMapControlFocus(returnTarget, origin?.memberIds);
     clusterOriginRef.current = null;
@@ -2297,9 +2323,9 @@ export default function FairGroundsMapInner({
                 ref={condensedSearchTriggerRef}
                 type="button"
                 onClick={() => setCondensedSearchOpen(true)}
-                className="tap-44 grid h-[44px] w-[44px] shrink-0 place-items-center rounded-full border"
+                className="tap-44 flex h-[44px] flex-1 items-center gap-2 rounded-full border px-[14px] text-left transition-colors hover:bg-[var(--app-bg-sunken)]"
                 style={{
-                  color: "var(--app-ink)",
+                  color: "var(--app-ink-3)",
                   background: "var(--app-bg-elevated-solid)",
                   borderColor: "var(--app-control-border)",
                   boxShadow: "var(--app-elev-1)",
@@ -2307,43 +2333,8 @@ export default function FairGroundsMapInner({
                 aria-label="Search the Fair map"
               >
                 <Search className="h-[18px] w-[18px]" aria-hidden />
+                <span className="text-[clamp(16px,0.75rem,20px)] font-medium">Find a place or event</span>
               </button>
-              <div
-                className="relative h-[44px] min-w-0 flex-1 rounded-full"
-              >
-                <label htmlFor="fair-map-view" className="sr-only">
-                  Map view
-                </label>
-                <select
-                  ref={mapViewSelectRef}
-                  id="fair-map-view"
-                  data-fair-map-filter-select
-                  value={filter}
-                  onChange={(event) =>
-                    activateMapFilter(
-                      event.target.value as FairGroundsMapView,
-                    )
-                  }
-                  aria-describedby="fair-map-filter-status"
-                  className="block h-[44px] w-full appearance-none rounded-full border bg-[var(--app-bg-elevated-solid)] py-0 pl-[10px] pr-[24px] text-[clamp(14px,0.625rem,18px)] font-bold outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--app-brand-press)]"
-                  style={{
-                    color: "var(--app-ink)",
-                    borderColor: "var(--app-control-border)",
-                    boxShadow: "var(--app-elev-1)",
-                  }}
-                >
-                  {FILTERS.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.compactLabel} · {filterCounts.get(option.id) ?? 0}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  className="pointer-events-none absolute right-[7px] top-1/2 h-[16px] w-[16px] -translate-y-1/2"
-                  style={{ color: "var(--app-ink-3)" }}
-                  aria-hidden
-                />
-              </div>
               <button
                 type="button"
                 data-fair-map-runtime-control
@@ -3238,12 +3229,19 @@ export default function FairGroundsMapInner({
             </dialog>
           ) : null}
 
+          {interactiveMapAvailable && mapLoaded && !selected ? (
+            <FairMapActionBar 
+              activeFilter={filter} 
+              onSelectAction={activateMapFilter} 
+            />
+          ) : null}
+
           {selected ? (
             <dialog
               ref={mobileSelectionDialogRef}
               id="fair-map-selection-mobile"
               data-fair-map-selection
-              className="fair-map-mobile-sheet fair-map-place-dialog fixed left-3 right-3 mx-auto max-w-[30rem] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-4 lg:hidden"
+              className="fair-map-mobile-sheet fair-map-place-dialog fixed left-3 right-3 mx-auto max-w-[30rem] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-4 lg:hidden [view-transition-name:fair-map-selection]"
               style={{
                 zIndex: selectionExpanded
                   ? "var(--z-overlay)"
@@ -3371,10 +3369,15 @@ export default function FairGroundsMapInner({
                       aria-label={`Open program details for ${item.title}`}
                     >
                       <span>
-                        <span className="tabular-nums" style={{ color: "var(--app-brand-press)" }}>
-                          {item.timeLabel}
-                        </span>{" "}
-                        · {item.title}
+                        {item.timeLabel ? (
+                          <>
+                            <span className="tabular-nums" style={{ color: "var(--app-brand-press)" }}>
+                              {item.timeLabel}
+                            </span>
+                            {" · "}
+                          </>
+                        ) : null}
+                        {item.title}
                       </span>
                     </button>
                   ))}
@@ -3409,10 +3412,10 @@ export default function FairGroundsMapInner({
           ) : null}
         </div>
 
-        <aside
+        <section
           id={selected ? "fair-map-selection-desktop" : undefined}
           data-fair-map-selection={selected ? "" : undefined}
-          className="relative z-10 mx-2 -mt-4 hidden rounded-[var(--app-radius-xl)] border p-4 lg:mx-0 lg:mt-0 lg:flex lg:min-h-[620px] lg:flex-col lg:p-5"
+          className="relative z-10 mx-2 -mt-4 hidden rounded-[var(--app-radius-xl)] border p-4 lg:mx-0 lg:mt-0 lg:flex lg:min-h-[620px] lg:flex-col lg:p-5 [view-transition-name:fair-map-selection]"
           style={{
             borderColor: "var(--app-control-border)",
             borderTopColor: selected ? selectedTone : "var(--app-brand-press)",
@@ -3509,10 +3512,15 @@ export default function FairGroundsMapInner({
                       aria-label={`Open program details for ${item.title}`}
                     >
                       <span>
-                        <span className="tabular-nums" style={{ color: "var(--app-brand-press)" }}>
-                          {item.timeLabel}
-                        </span>{" "}
-                        · {item.title}
+                        {item.timeLabel ? (
+                          <>
+                            <span className="tabular-nums" style={{ color: "var(--app-brand-press)" }}>
+                              {item.timeLabel}
+                            </span>
+                            {" · "}
+                          </>
+                        ) : null}
+                        {item.title}
                       </span>
                     </button>
                   ))}
@@ -3601,7 +3609,7 @@ export default function FairGroundsMapInner({
               </p>
             ) : null}
           </div>
-        </aside>
+        </section>
       </div>
 
       {locationStatus ? (
