@@ -7,6 +7,7 @@ import {
   reliableOpeningSoon,
 } from "@/data/reliable-open-windows";
 import { daypartNeeds } from "@/lib/today/daypart-needs";
+import { easternParts } from "@/lib/tz";
 import type { WeatherLean } from "@/lib/today/weatherLean";
 import { isRecommendable } from "@/lib/relevance";
 import { mayUseLikelyOpenFallback } from "@/lib/likely-open";
@@ -55,17 +56,14 @@ export type DaypartRow = {
   openingSoon?: DaypartPick | null;
 };
 
-function easternHour(now: Date): number {
-  return Number(
-    new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" }).format(now),
-  );
-}
+
 
 export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRow[] {
   // The category browser above is collapsed by default. Keep the current meal
   // visible here instead of treating content behind that disclosure as a
   // duplicate. A lunch or dinner answer should never require a discovery tap.
-  const needs = daypartNeeds(easternHour(now), lean);
+  const parts = easternParts(now);
+  const needs = daypartNeeds(parts.hour, lean, parts.weekday);
   // The initial HTML is an honest COUNTY-WIDE quality ranking. It must not use
   // downtown Frederick as a silent stand-in for the visitor's location: that
   // made a five-mile-away place look "around here." DaypartNeeds immediately

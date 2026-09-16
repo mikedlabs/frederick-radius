@@ -94,11 +94,14 @@ const WET_NEEDS: DaypartNeed[] = [
 ];
 const HOT_NEEDS: DaypartNeed[] = [need("Ice cream & cool treats", "ice-cream")];
 
+export type WeatherLean = "wet" | "hot" | null;
+
 export function daypartNeeds(
   easternHour: number,
-  lean: "wet" | "hot" | null = null,
+  lean?: WeatherLean,
+  easternDayOfWeek?: number,
 ): DaypartNeed[] {
-  const base = baseDaypartNeeds(easternHour);
+  const base = baseDaypartNeeds(easternHour, easternDayOfWeek ?? 1);
   if (!lean) return base;
   const extras = (lean === "wet" ? WET_NEEDS : HOT_NEEDS).filter(
     (extra) => !base.some((b) => b.category === extra.category),
@@ -106,10 +109,15 @@ export function daypartNeeds(
   return [...extras, ...base];
 }
 
-function baseDaypartNeeds(easternHour: number): DaypartNeed[] {
+function baseDaypartNeeds(easternHour: number, easternDayOfWeek: number): DaypartNeed[] {
   const h = ((easternHour % 24) + 24) % 24;
+  const isWeekend = easternDayOfWeek === 0 || easternDayOfWeek === 6;
+
   // Morning 5–11: the first-cup + breakfast window.
   if (h >= 5 && h < 11) {
+    if (isWeekend && h >= 9) {
+      return [need("Brunch", "restaurant"), need("Coffee", "coffee"), need("Breakfast & bakeries", "bakery")];
+    }
     return [need("Coffee", "coffee"), need("Breakfast & bakeries", "bakery")];
   }
   // Midday 11–16: lunch, with a coffee backstop.

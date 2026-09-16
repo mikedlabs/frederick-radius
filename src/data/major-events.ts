@@ -128,6 +128,26 @@ export const MAJOR_EVENTS: MajorEvent[] = [
     getHypeSubline: () => "The illuminated sailboats return to Carroll Creek.",
     getLiveHeadline: () => "Color on the Creek is live!",
     getLiveSubline: () => "Walk Carroll Creek tonight to see the illuminated boats.",
+  },
+  {
+    id: "kris-kringle-procession",
+    title: "Kris Kringle Procession",
+    starts_at: iso(2026, 12, 11, 18, 30),
+    ends_at: iso(2026, 12, 11, 20, 0),
+    hype_days: 21,
+    theme_color: "var(--app-brand)",
+    icon: "🎄",
+    url: "/events",
+    getHypeHeadline: (daysOut) =>
+      `Kris Kringle Procession is in ${daysOut} day${daysOut === 1 ? "" : "s"}!`,
+    getHypeSubline: () => "Get ready for a magical holiday evening in Downtown Frederick.",
+    getLiveHeadline: () => "The Kris Kringle Procession is tonight!",
+    getLiveSubline: () => "The procession begins at the corner of South Carroll and East Patrick streets.",
+    getLiveDetails: () => [
+      "6:30 PM: Procession Begins",
+      "7:15 PM: Tree Lighting Ceremony at Baker Park",
+      "8:00 PM: Photos with Santa",
+    ],
   }
 ];
 

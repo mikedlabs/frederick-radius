@@ -258,6 +258,7 @@ function PlaceCell({
     } catch {
       /* fall through to navigation */
     }
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = `/places/${row.slug}`;
   }
 

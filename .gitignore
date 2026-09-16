@@ -134,3 +134,11 @@ scripts/reports/
 # The county PMTiles extract, sprites, and glyphs are intentionally tracked
 # promoted artifacts. Application builds verify their release manifest and do
 # not download or regenerate them. See ADR-002 and `npm run basemap:verify`.
+
+# A separate OSC/HUD side project was committed here by mistake (Sept 2026).
+# It lives outside this repo; keep it and its node_modules out of git.
+/hud_project/
+/osc_sniff.log
+# Local dev-server output and one-off audit scratch never belong in history.
+/.dev-server.log
+/scripts/scratch/
