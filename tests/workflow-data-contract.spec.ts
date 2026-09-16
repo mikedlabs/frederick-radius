@@ -5,8 +5,11 @@ import { parse } from "yaml";
 
 const WORKFLOW_DIR = resolve(process.cwd(), ".github/workflows");
 const NAS_RUNNER_DIR = resolve(process.cwd(), "ops/nas-runner");
+const NAS_BROWSER_RUNNER_DIR = resolve(process.cwd(), "ops/nas-browser-runner");
 const PINNED_CREATE_PR =
   "peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1";
+const NAS_BROWSER_GUARD =
+  "${{ github.repository == 'mikedlabs/frederick-radius' && github.ref == 'refs/heads/main' }}";
 
 function workflowText(name: string): string {
   return readFileSync(resolve(WORKFLOW_DIR, name), "utf8");
@@ -14,6 +17,10 @@ function workflowText(name: string): string {
 
 function nasRunnerText(name: string): string {
   return readFileSync(resolve(NAS_RUNNER_DIR, name), "utf8");
+}
+
+function nasBrowserRunnerText(name: string): string {
+  return readFileSync(resolve(NAS_BROWSER_RUNNER_DIR, name), "utf8");
 }
 
 type WorkflowDocument = {
@@ -166,6 +173,142 @@ describe("scheduled data workflow contracts", () => {
 
     expect(dataRunner?.mem_limit).toBe("4g");
     expect(dataRunner?.cpuset).toBe("0,1");
+  });
+
+  it("routes only reviewed trusted-main no-secret audits to the NAS browser runner", () => {
+    const workflowNames = readdirSync(WORKFLOW_DIR).filter((name) =>
+      /\.ya?ml$/.test(name),
+    );
+    const radiusBrowserJobs: string[] = [];
+
+    for (const name of workflowNames) {
+      const workflow = parse(workflowText(name)) as WorkflowDocument;
+      for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
+        const labels = Array.isArray(job["runs-on"])
+          ? job["runs-on"]
+          : [job["runs-on"]];
+        if (labels.includes("radius-browser")) {
+          radiusBrowserJobs.push(`${name}:${jobName}`);
+        }
+      }
+    }
+
+    const trustedAudits = [
+      ["fair-surge.yml", "surge", null],
+      ["performance-budget.yml", "lighthouse", 'cron: "15 17 * * *"'],
+      ["ux-audit.yml", "mobile-ux", 'cron: "15 5 * * *"'],
+      ["visual-contract.yml", "chromium", null],
+    ] as const;
+    expect(radiusBrowserJobs.sort()).toEqual(
+      trustedAudits.map(([name, jobName]) => `${name}:${jobName}`).sort(),
+    );
+
+    for (const [name, jobName, cron] of trustedAudits) {
+      const source = workflowText(name);
+      const workflow = parse(source) as WorkflowDocument;
+      expect(source).toContain("workflow_dispatch:");
+      expect(source).not.toContain("pull_request:");
+      expect(source).not.toContain("pull_request_target:");
+      expect(source).not.toContain("workflow_run:");
+      expect(source).not.toContain("issue_comment:");
+      expect(source).not.toContain("\n  push:");
+      expect(source).not.toContain("secrets.");
+      expect(source).not.toContain("npx playwright install");
+      expect(source).not.toContain("cache: npm");
+      expect(source).not.toContain('cache: "npm"');
+      expect(source).toContain("persist-credentials: false");
+      expect(workflow.jobs?.[jobName]?.["runs-on"]).toEqual([
+        "self-hosted",
+        "Linux",
+        "X64",
+        "radius-browser",
+      ]);
+      expect(workflow.jobs?.[jobName]?.if).toBe(NAS_BROWSER_GUARD);
+      expect(workflow.jobs?.[jobName]?.permissions).toEqual({ contents: "read" });
+      if (cron) {
+        expect(source).toContain("schedule:");
+        expect(source).toContain(cron);
+      } else {
+        expect(source).not.toContain("\n  schedule:");
+      }
+    }
+
+    const visual = workflowText("visual-contract.yml");
+    expect(visual).toContain('case "$VISUAL_MODE" in');
+    expect(visual).toContain("capture|compare");
+    expect(visual).not.toContain("npm run test:visual:${{ inputs.mode }}");
+
+    const fairSurge = workflowText("fair-surge.yml");
+    expect(fairSurge).not.toContain("\n  schedule:");
+    expect(fairSurge).toContain("npm run build");
+    expect(fairSurge).toContain(
+      "npm run perf:fair:surge -- --target=http://127.0.0.1:3000",
+    );
+    expect(fairSurge).toContain(".perf/fair-surge");
+    expect(fairSurge).not.toContain("https://frederickradius.app");
+  });
+
+  it("keeps the NAS browser runner bounded and separate from NAS storage", () => {
+    const compose = parse(nasBrowserRunnerText("compose.yaml")) as {
+      services?: Record<
+        string,
+        {
+          mem_limit?: string;
+          cpuset?: string;
+          shm_size?: string;
+          read_only?: boolean;
+          privileged?: boolean;
+          network_mode?: string;
+          ports?: unknown[];
+          volumes?: string[];
+          security_opt?: string[];
+          cap_drop?: string[];
+          cap_add?: string[];
+          pids_limit?: number;
+          ipc?: string;
+          environment?: Record<string, string>;
+        }
+      >;
+    };
+    const browserRunner = compose.services?.["radius-browser-runner"];
+
+    expect(browserRunner?.mem_limit).toBe("8g");
+    expect(browserRunner?.cpuset).toBe("2,3");
+    expect(browserRunner?.shm_size).toBe("1g");
+    expect(browserRunner?.pids_limit).toBe(1024);
+    expect(browserRunner?.read_only).toBe(true);
+    expect(browserRunner?.privileged).not.toBe(true);
+    expect(browserRunner?.network_mode).toBeUndefined();
+    expect(browserRunner?.ipc).toBeUndefined();
+    expect(browserRunner?.ports).toBeUndefined();
+    expect(browserRunner?.volumes).toEqual(["browser-runner-state:/runner"]);
+    expect(browserRunner?.security_opt).toContain("no-new-privileges:true");
+    expect(browserRunner?.cap_drop).toEqual(["ALL"]);
+    expect(browserRunner?.cap_add).toEqual([
+      "CHOWN",
+      "DAC_OVERRIDE",
+      "SETGID",
+      "SETUID",
+    ]);
+    expect(browserRunner?.environment?.RUNNER_LABELS).toBe("radius-browser");
+    expect(browserRunner?.environment?.PLAYWRIGHT_IMAGE_VERSION).toBe("1.60.0");
+    expect(browserRunner?.environment?.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD).toBe("1");
+    expect(browserRunner?.environment?.CHROME_PATH).toBe("/usr/local/bin/chromium");
+
+    const composeSource = nasBrowserRunnerText("compose.yaml");
+    expect(composeSource).not.toContain("/var/run/docker.sock");
+    expect(composeSource).not.toContain("/volume");
+    expect(composeSource).not.toContain("network_mode: host");
+
+    const dockerfile = nasBrowserRunnerText("Dockerfile");
+    expect(dockerfile).toContain(
+      "mcr.microsoft.com/playwright:v1.60.0-noble@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948",
+    );
+    const lock = JSON.parse(readFileSync("package-lock.json", "utf8")) as {
+      packages?: Record<string, { version?: string }>;
+    };
+    expect(lock.packages?.["node_modules/@playwright/test"]?.version).toBe("1.60.0");
+    expect(lock.packages?.["node_modules/playwright-core"]?.version).toBe("1.60.0");
   });
 
   it("uses the read-only Supabase Data API handoff for the hours snapshot", () => {
@@ -745,7 +888,8 @@ describe("scheduled data workflow contracts", () => {
     );
     const uxText = workflowText("ux-audit.yml");
     expect(uxText).toContain("workflow_dispatch:");
-    expect(uxText).not.toContain("\n  schedule:");
+    expect(uxText).toContain("\n  schedule:");
+    expect(uxText).toContain('cron: "15 5 * * *"');
     expect(uxText).toContain("--workers=2");
     expect(uxText).not.toContain("matrix:");
     expect(uxText).not.toContain("--shard=");

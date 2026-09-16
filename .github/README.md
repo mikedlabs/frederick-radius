@@ -6,7 +6,17 @@ The repository uses a small protected path from reviewed code to production.
 
 - `ci.yml` runs type, lint, data, unit, build, release-browser, and dependency-chaos checks from one shared production build on each PR.
 - `style.yml` enforces the public editorial rules.
-- `ux-audit.yml` runs the broader browser audit when an owner explicitly dispatches it.
+- `ux-audit.yml` runs the broader browser audit nightly on the secret-free,
+  trusted-main `radius-browser` NAS lane and when an owner explicitly
+  dispatches it from `main`.
+
+`performance-budget.yml` uses the same bounded browser lane for its daily
+production measurement. `visual-contract.yml` uses that pinned Linux host only
+when an owner dispatches a candidate capture or baseline comparison; it remains
+unscheduled until reviewed baselines exist. `fair-surge.yml` is also manual and
+runs the fixed 100, 500, and 1,000-user stages only against a production build
+on the runner's own loopback interface. Pull-request browser gates never run on
+a persistent NAS runner.
 
 Vercel owns the post-merge build and deployment from `main`. GitHub does not
 rebuild that same reviewed commit a second time. The deployment-status canary

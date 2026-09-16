@@ -20,13 +20,26 @@ describe("automation ownership", () => {
     },
   );
 
-  it("keeps the broader UX audit dispatch-only", () => {
+  it("rejects drift from the reviewed NAS browser schedules", () => {
     const workflows = {
       "ux-audit.yml": `on:\n  schedule:\n    - cron: "17 8 * * 0"`,
+      "performance-budget.yml": `on:\n  schedule:\n    - cron: "15 17 * * *"`,
     };
 
     expect(auditAutomationOwnership({ workflows }).failures).toContain(
-      "ux-audit.yml must remain dispatch-only until its runner budget is re-reviewed",
+      'ux-audit.yml must keep its reviewed NAS browser schedule (cron: "15 5 * * *")',
+    );
+  });
+
+  it("keeps visual comparison manual until reviewed Linux baselines exist", () => {
+    const workflows = {
+      "ux-audit.yml": `on:\n  schedule:\n    - cron: "15 5 * * *"`,
+      "performance-budget.yml": `on:\n  schedule:\n    - cron: "15 17 * * *"`,
+      "visual-contract.yml": `on:\n  schedule:\n    - cron: "30 6 * * 0"`,
+    };
+
+    expect(auditAutomationOwnership({ workflows }).failures).toContain(
+      "visual-contract.yml must remain dispatch-only until reviewed Linux baselines are committed",
     );
   });
 

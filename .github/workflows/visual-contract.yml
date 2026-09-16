@@ -25,31 +25,45 @@ concurrency:
 
 jobs:
   chromium:
-    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'mikedlabs/frederick-radius' && github.ref == 'refs/heads/main' }}
+    runs-on: [self-hosted, Linux, X64, radius-browser]
     timeout-minutes: 25
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          clean: true
+          fetch-depth: 1
 
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: ".nvmrc"
-          cache: npm
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Install Chromium
-        timeout-minutes: 10
-        run: npx playwright install --with-deps chromium
+      - name: Verify browser image contract
+        run: |
+          set -euo pipefail
+          test -x "$CHROME_PATH"
+          node -e 'const lock = require("./package-lock.json"); const expected = process.env.PLAYWRIGHT_IMAGE_VERSION; for (const name of ["node_modules/@playwright/test", "node_modules/playwright-core"]) { const actual = lock.packages?.[name]?.version; if (!expected || actual !== expected) throw new Error(`${name} ${actual ?? "missing"} does not match browser image ${expected ?? "missing"}`); }'
+          npx playwright --version
 
       - name: Run visual contracts
-        run: npm run test:visual:${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          case "$VISUAL_MODE" in
+            capture|compare) ;;
+            *) echo "Refusing unsupported visual mode: $VISUAL_MODE" >&2; exit 1 ;;
+          esac
+          npm run "test:visual:${VISUAL_MODE}"
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+          VISUAL_MODE: ${{ inputs.mode }}
 
       - name: Upload review images and pixel diffs
         if: always()

@@ -15,20 +15,22 @@ Text rasterization differs between macOS and the Linux runner used by GitHub
 Actions. A screenshot made on a developer Mac is therefore not a safe CI
 reference, even when the CSS is identical. The spec includes the platform in
 every filename, and the manual workflow keeps capture separate from compare.
-No visual job runs on every pull request yet.
+The manual job runs on the dedicated `radius-browser` NAS runner so every
+candidate comes from one pinned Playwright/Chromium image. It accepts only the
+private repository's trusted `main` revision and never runs pull-request code.
 
 ## Review and promote the Linux references
 
 1. Run **Visual contract candidates** from GitHub Actions with `capture`.
-2. Download the `visual-contract-capture-*` artifact and review all six PNGs
+2. Download the `visual-contract-capture-*` artifact and review all 12 PNGs
    from its `visual-contract-candidates` directory.
 3. Copy the approved Linux/Chromium images into
    `e2e/visual-contract.spec.ts-snapshots/` without renaming them.
 4. Run the workflow with `compare`.
-5. After the references prove stable across ordinary data refreshes, let this
-   dedicated workflow run `compare` on pull requests and make its Chromium job
-   required. Keep it separate from the style workflow, which does not install a
-   browser.
+5. Keep the workflow manual until the references prove stable across ordinary
+   data refreshes. A later reviewed change may add a trusted-main weekly
+   `compare` schedule. Do not route pull-request code to the persistent NAS
+   runner; required PR browser checks remain on GitHub-hosted runners.
 
 Local capture is useful for reviewing a branch, but it creates Darwin
 references on macOS and must not replace the Linux files:

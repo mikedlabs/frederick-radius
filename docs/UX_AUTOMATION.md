@@ -6,6 +6,13 @@ WCAG A/AA checks, and a conservative interaction crawl across the primary
 surfaces. It is intentionally not added to every pull request because the
 full route matrix starts a real app and reads live, fail-soft sources.
 
+The 05:15 UTC run uses the dedicated `radius-browser` NAS runner. That runner
+accepts only the private repository's trusted `main` revision, receives no
+stored repository or provider secrets, and limits its ephemeral `GITHUB_TOKEN`
+to read-only repository contents. Pull request browser gates remain on
+GitHub-hosted runners. The NAS job uses the browser already pinned in its image
+instead of modifying the container at job time.
+
 The interaction crawler is read-only by design:
 
 - It follows same-origin links that do not point at API, admin, account,
