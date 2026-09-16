@@ -2323,7 +2323,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                   boxShadow: "var(--app-elev-1), var(--app-edge)",
                 }}
               >
-                <div className="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[var(--app-brand)]">
+                <div className="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[var(--app-brand-press)]">
                   <Tag className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>Special Admission Today</span>
                 </div>
@@ -2343,7 +2343,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                         className="shrink-0 rounded-full px-2.5 py-1 text-[13px] font-extrabold tabular-nums"
                         style={{
                           background: "color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated-solid))",
-                          color: "var(--app-brand)",
+                          color: "var(--app-brand-press)",
                         }}
                       >
                         {offer.priceLabel}
