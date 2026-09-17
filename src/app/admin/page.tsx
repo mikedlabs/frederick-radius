@@ -84,6 +84,7 @@ const DOOR_GROUPS: { label: string; doors: { href: string; title: string; icon: 
       { href: "/admin/costs", title: "Costs", icon: Receipt },
       { href: "/admin/field-notes", title: "Field notes", icon: StickyNote },
       { href: "/collect", title: "Collect", icon: MapPin },
+      { href: "/admin/photo-marker", title: "Photo Marker", icon: MapPin },
     ],
   },
 ];

@@ -32,6 +32,7 @@ import {
   Trash2,
   Volume1,
   UtensilsCrossed,
+  Star,
 } from "lucide-react";
 import {
   useCallback,
@@ -43,6 +44,7 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 import RippleMark from "@/components/brand/RippleMark";
 import { Button } from "@/components/ui/Button";
@@ -87,12 +89,13 @@ import FairPracticalAnswers from "./FairPracticalAnswers";
 import FairShareButton from "./FairShareButton";
 import FairKeepGuide from "./FairKeepGuide";
 import FairGroundsMap from "./FairGroundsMap";
+import { FairPhotoMap } from "./FairPhotoMap";
+import { DEFAULT_FAIR_PHOTO_MARKERS } from "@/data/fair/fair-photo-map-layout";
 import FairGrandstandSpotlight from "./FairGrandstandSpotlight";
 import FairPhotoExplorer from "./FairPhotoExplorer";
 import FairTravelPanel from "./FairTravelPanel";
 import FairWeatherWidget from "./FairWeatherWidget";
 import FairUpNext from "./FairUpNext";
-import FairQuest from "./FairQuest";
 import { MagicCard } from "../ui/MagicCard";
 import type {
   FairDayArrivalView,
@@ -1030,6 +1033,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   const [selectedProgramDetailId, setSelectedProgramDetailId] = useState<
     string | null
   >(null);
+  const [showPhotoMap, setShowPhotoMap] = useState(false);
   const [mapFocusRequest, setMapFocusRequest] = useState<{
     programItemId: string;
     requestId: number;
@@ -1323,8 +1327,6 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   };
 
   const chooseMode = (mode: FairMode) => {
-    // Leaving the map cancels an unfinished one-shot handoff too. Focus can
-    // be visible before its confirmation timer acknowledges the request.
     if (mode !== "map") setMapFocusRequest(null);
     setActivePreparation(null);
     setHelpOpen(false);
@@ -1417,8 +1419,6 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       const nextDayId = `day-${date}`;
       const changedDay = current.selectedDayId !== nextDayId;
       const nextDay = setFairPlanDay(current, nextDayId, now);
-      // Travel checks are date-specific: transit service, road conditions,
-      // and return details can all differ across the nine Fair days.
       return changedDay
         ? setFairPlanReady(nextDay, "travel", false, now)
         : nextDay;
@@ -1573,6 +1573,19 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       null
     );
   }, [discoveryItems]);
+
+  const photoMapMarkers = useMemo(() => {
+    return DEFAULT_FAIR_PHOTO_MARKERS.map((marker) => {
+      if (marker.id === "grandstand" && grandstandSpotlightItem) {
+        return {
+          ...marker,
+          events: [{ time: grandstandSpotlightItem.timeLabel, title: grandstandSpotlightItem.title }],
+        };
+      }
+      return marker;
+    });
+  }, [grandstandSpotlightItem]);
+
   const matchingSchedule = useMemo(
     () =>
       sortFairProgramItems(
@@ -2448,8 +2461,57 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               </div>
             </section>
 
-            <FairQuest />
-
+            {grandstandSpotlightItem && (
+              <MagicCard
+                as="section"
+                aria-labelledby="fair-headliner-heading"
+                className="mt-4 overflow-hidden rounded-[var(--app-radius-xl)] border-l-4 p-4"
+                style={{
+                  borderColor: "var(--app-brand)",
+                  background:
+                    "color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated-solid))",
+                  boxShadow: "inset 0 1px 0 var(--app-hi), var(--app-elev-2), var(--app-edge)",
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-full relative overflow-hidden"
+                    style={{
+                      background:
+                        "color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated-solid))",
+                      color: "var(--app-brand)",
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-[var(--app-brand)]/10 animate-ping opacity-20 duration-3000" />
+                    <Star className="h-5 w-5 relative z-10" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <p
+                      className="text-[10.5px] font-bold uppercase tracking-[0.11em]"
+                      style={{ color: "var(--app-brand)" }}
+                    >
+                      Today&apos;s Grandstand Event
+                    </p>
+                    <h2
+                      id="fair-headliner-heading"
+                      className="mt-0.5 text-[17px] font-bold leading-tight tracking-[-0.02em]"
+                    >
+                      {grandstandSpotlightItem.title}
+                    </h2>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-col items-start gap-1.5 text-[14px] leading-relaxed">
+                  <span className="inline-flex rounded-sm bg-[var(--app-brand)]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--app-brand)]">
+                    {grandstandSpotlightItem.timeLabel}
+                  </span>
+                  {grandstandSpotlightItem.detail && (
+                    <p className="mt-0.5 text-[13px] text-[var(--app-ink)]/80 leading-snug">
+                      {grandstandSpotlightItem.detail}
+                    </p>
+                  )}
+                </div>
+              </MagicCard>
+            )}
             {selectedAccessHighlight ? (
               <MagicCard
                 as="section"
@@ -2743,19 +2805,73 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             id={MODE_PANEL_IDS.map}
             aria-labelledby="fair-grounds-map-heading"
           >
-            <FairGroundsMap
-              savedStops={mappedPlanStops}
-              focusRequest={mapFocusRequest}
-              onFocusRequestHandled={handleMapFocusRequest}
-              programItems={discoveryItems.map((item) => ({
-                id: item.id,
-                title: item.title,
-                timeLabel: item.timeLabel,
-                placeLabel: item.placeLabel,
-              }))}
-              onBrowseProgram={() => chooseMode("find")}
-              onOpenProgramItem={openProgramDetail}
-            />
+            <div className="flex justify-center p-4">
+              <div className="relative flex rounded-full bg-white/60 p-1 shadow-sm ring-1 ring-black/5 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (showPhotoMap) {
+                      setShowPhotoMap(false);
+                      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(50);
+                    }
+                  }}
+                  className={`relative z-10 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${!showPhotoMap ? "text-white" : "text-[var(--app-ink-2)] hover:text-[var(--app-ink)]"}`}
+                >
+                  Interactive Map
+                  {!showPhotoMap && (
+                    <motion.div
+                      layoutId="mapToggleTab"
+                      className="absolute inset-0 -z-10 rounded-full bg-[var(--app-brand)] shadow-sm"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!showPhotoMap) {
+                      setShowPhotoMap(true);
+                      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(50);
+                    }
+                  }}
+                  className={`relative z-10 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${showPhotoMap ? "text-white" : "text-[var(--app-ink-2)] hover:text-[var(--app-ink)]"}`}
+                >
+                  2026 Photo Map
+                  {showPhotoMap && (
+                    <motion.div
+                      layoutId="mapToggleTab"
+                      className="absolute inset-0 -z-10 rounded-full bg-[var(--app-brand)] shadow-sm"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {showPhotoMap ? (
+              <div className="px-4 pb-4">
+                <FairPhotoMap
+                  imageUrl="/fair/map_2026.png"
+                  altText="2026 Fairgrounds Map"
+                  markers={photoMapMarkers}
+                  onMarkerClick={(id) => console.log("Clicked marker", id)}
+                />
+              </div>
+            ) : (
+              <FairGroundsMap
+                savedStops={mappedPlanStops}
+                focusRequest={mapFocusRequest}
+                onFocusRequestHandled={handleMapFocusRequest}
+                programItems={discoveryItems.map((item) => ({
+                  id: item.id,
+                  title: item.title,
+                  timeLabel: item.timeLabel,
+                  placeLabel: item.placeLabel,
+                }))}
+                onBrowseProgram={() => chooseMode("find")}
+                onOpenProgramItem={openProgramDetail}
+              />
+            )}
             <div className="mx-4 mt-4 border-t pt-3 lg:mx-0" style={{ borderColor: "var(--app-border)" }}>
               <a
                 href={data.externalGuide.url}

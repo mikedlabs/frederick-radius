@@ -114,7 +114,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).not.toContain("Ready to Go checks");
   });
 
-  it("presents the three primary starts as a shallow mobile wallet stack", () => {
+  it("presents the three primary starts as an action grid", () => {
     const html = renderToStaticMarkup(
       createElement(FairDayWorkspace, { data }),
     );
@@ -123,9 +123,7 @@ describe("FairDayWorkspace server-rendered contract", () => {
     expect(html).toContain("data-fair-wallet-stack");
     expect(html.match(/data-fair-wallet-card=/g)).toHaveLength(3);
     expect(html).toContain('data-fair-wallet-card="2"');
-    expect(html).toContain("-mt-2 ml-1");
     expect(html).toContain('data-fair-wallet-card="3"');
-    expect(html).toContain("-mt-2 ml-2");
     expect(html).toContain("focus-visible:z-[var(--z-nav)]");
   });
 
