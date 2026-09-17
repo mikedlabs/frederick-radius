@@ -45,8 +45,7 @@ bubble, a sticky list header within its own scroll container — stays a plain
 low `z-0` / `z-10` / `z-20`. Those don't compete for the top of the screen, so
 they're intentionally excluded. Don't migrate them.
 
-The **marketing / vision surface** (`src/components/marketing/**`, plus
-`src/components/map/index.tsx` + `map-component.tsx`, which are marketing-only)
+The **marketing / vision surface** (`src/components/marketing/**`)
 has its own cinematic stacking and is out of scope.
 
 ## Guard

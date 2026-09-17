@@ -26,21 +26,6 @@ pivot" control.
   (transparent inactive, no per-chip elevation), e.g. the map time strip.
 - **`icon`**, **`count`** (tone-aware badge), **`size`** (`sm`/`md`).
 
-### `Segmented` — joined-segment tablist
-`src/components/ui/Segmented.tsx`. One primitive for "pick one of N
-modes" (the events view toggle, map Radius/Browse).
-
-```tsx
-<Segmented value={view} onChange={setView} labelsOn="sm" items={[
-  { key: "list", label: "List", icon: ListIcon },
-  { key: "map",  label: "Map",  icon: MapIcon, href: "/map" },
-]} />
-```
-- `value`+`onChange` (button segments) **or** per-item `href` (link
-  segments, with pending spinner).
-- `labelsOn="sm"` hides labels below the small breakpoint (icon-only on
-  tight rows).
-
 ### `Row` / `RowList` / `IconTile` — dense directory rows
 `src/components/ui/Row.tsx`. The antidote to "directory of big cards
 that goes on forever." A `RowList` is one elevated, rounded container
@@ -101,7 +86,8 @@ editorial guides or already use compact rows — left as-is by design.
 ## Rollout status
 
 **Done (verified: tsc + lint clean):**
-- `Pill` + `Segmented` created.
+- `Pill` created. (`Segmented` was also created here and has since been
+  deleted; the map Radius/Browse toggle it served was removed by owner call.)
 - `event/EventsExplorer` — QUICK chips, 4-view toggle, type/town facets.
 - `today/TimeToggle` — the "when?" control.
 - `map/MapModeToggle` — Radius/Browse.
