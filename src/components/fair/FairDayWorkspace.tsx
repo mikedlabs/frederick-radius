@@ -2183,7 +2183,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                           : "border-[var(--app-control-border)] bg-[var(--app-bg-elevated-solid)] text-[var(--app-ink)] hover:border-[var(--app-border-strong)] hover:bg-[var(--app-bg-sunken)]"
                       }`}
                     >
-                      <span className={`text-[10px] font-extrabold uppercase tracking-wider ${isSelected ? "text-[var(--app-on-brand)] opacity-90" : "text-[var(--app-ink-3)]"}`}>
+                      <span className={`text-[10px] font-extrabold uppercase tracking-wider ${isSelected ? "text-[var(--app-on-brand)]" : "text-[var(--app-ink-3)]"}`}>
                         {day.weekdayLabel.slice(0, 3)}
                       </span>
                       <span className="text-[15px] font-extrabold tabular-nums leading-tight">
