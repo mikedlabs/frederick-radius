@@ -30,7 +30,7 @@ export const FAIR_DAYS: FairDay[] = [
     admission_special: "Kids 10 & under free",
     grandstand_headline: "Daughtry",
     grandstand_image_url: "https://images.unsplash.com/photo-1540039155732-6761b54f6738?q=80&w=2070&auto=format&fit=crop",
-    grandstand_time: "7:30 PM",
+    grandstand_time: "8:00 PM",
   },
   {
     date: "2026-09-19",
@@ -46,7 +46,7 @@ export const FAIR_DAYS: FairDay[] = [
     admission_special: "Kids 10 & under free",
     grandstand_headline: "Neal McCoy",
     grandstand_image_url: "https://images.unsplash.com/photo-1510512396349-11f8b4fb91ee?q=80&w=2070&auto=format&fit=crop",
-    grandstand_time: "7:30 PM",
+    grandstand_time: "8:00 PM",
   },
   {
     date: "2026-09-21",
@@ -54,7 +54,7 @@ export const FAIR_DAYS: FairDay[] = [
     admission_special: "Seniors 65+ free until 3 PM / $5 Admission w/ canned food",
     grandstand_headline: "Tractor & Truck Pull",
     grandstand_image_url: "https://images.unsplash.com/photo-1596700688329-373f789d2ed3?q=80&w=2070&auto=format&fit=crop",
-    grandstand_time: "6:30 PM",
+    grandstand_time: "6:00 PM",
   },
   {
     date: "2026-09-22",
@@ -78,7 +78,7 @@ export const FAIR_DAYS: FairDay[] = [
     admission_special: "Free admission 11 AM - 2 PM",
     grandstand_headline: "Danny Gokey",
     grandstand_image_url: "https://images.unsplash.com/photo-1501612780327-45045538702b?q=80&w=2070&auto=format&fit=crop",
-    grandstand_time: "7:30 PM",
+    grandstand_time: "8:00 PM",
   },
   {
     date: "2026-09-25",
@@ -86,7 +86,7 @@ export const FAIR_DAYS: FairDay[] = [
     admission_special: "18 & under free until 5 PM",
     grandstand_headline: "Let's Sing Taylor",
     grandstand_image_url: "https://images.unsplash.com/photo-1470229722913-7c090bdc6e18?q=80&w=2070&auto=format&fit=crop",
-    grandstand_time: "7:30 PM",
+    grandstand_time: "6:00 PM",
   },
   {
     date: "2026-09-26",
@@ -94,7 +94,7 @@ export const FAIR_DAYS: FairDay[] = [
     admission_special: "Kids 10 & under free",
     grandstand_headline: "Warren Zeiders",
     grandstand_image_url: "https://images.unsplash.com/photo-1520166946029-796fb3b664fc?q=80&w=2070&auto=format&fit=crop",
-    grandstand_time: "7:30 PM",
+    grandstand_time: "8:00 PM",
   },
 ];
 
