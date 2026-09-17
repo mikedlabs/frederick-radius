@@ -20,8 +20,10 @@ No visual job runs on every pull request yet.
 ## Review and promote the Linux references
 
 1. Run **Visual contract candidates** from GitHub Actions with `capture`.
-2. Download the `visual-contract-capture-*` artifact and review all six PNGs
-   from its `visual-contract-candidates` directory.
+2. Download the `visual-contract-capture-*` artifact and review every PNG
+   from its `visual-contract-candidates` directory — twelve of them: six
+   surfaces (find-empty, ask-empty, ask-working, pulse-bus-sheet,
+   compass-directions, map-chooser) at both viewports.
 3. Copy the approved Linux/Chromium images into
    `e2e/visual-contract.spec.ts-snapshots/` without renaming them.
 4. Run the workflow with `compare`.

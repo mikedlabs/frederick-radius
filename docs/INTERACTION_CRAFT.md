@@ -16,9 +16,9 @@ behavior. Cite the rule number in PRs that lean on one.
 2. **Content may reorder; controls never move.** Habituation is what makes an
    app feel like a limb, and it only forms on things that stay put. Time-aware
    reordering is welcome on content (the Most-needed tail, shelves, lists) and
-   forbidden on controls (nav, anchors, buttons). The needs row pins
-   Open now / Near me first at every hour for exactly this reason
-   (`src/components/map/needsOrder.ts`).
+   forbidden on controls (nav, anchors, buttons). The shared header location
+   control is the standing example: it owns Near me / Whole county / town scope
+   and stays put rather than reshuffling by context.
 
 3. **Design the ending (peak-end).** A journey is remembered by its best
    moment and its last one. The find journey currently ends at a handoff —

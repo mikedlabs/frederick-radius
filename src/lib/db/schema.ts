@@ -875,7 +875,8 @@ export const search_misses = pgTable(
  * /admin moderation queue. `manage_token` is issued when a
  * business_claim is approved: the no-account capability credential for
  * the owner's management surface. No FK to a users table by design
- * (the app has no auth) or to places (places are file-sourced);
+ * (submissions are deliberately account-free; identity lives in Supabase
+ * auth.users, which Drizzle does not reflect) or to places (file-sourced);
  * `place_slug` is the loose string key.
  */
 export const submissions = pgTable(
