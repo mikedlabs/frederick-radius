@@ -2313,14 +2313,14 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             </section>
 
             {offersForSelectedDate.some((offer) => offer.placement === "eligibility-promotion") ? (
-              <section
+              <MagicCard
+                as="section"
                 data-fair-day-promotions
                 aria-label="Admission promotions for this day"
-                className="mt-3 overflow-hidden rounded-[var(--app-radius-xl)] border p-3.5 sm:p-4"
+                className="mt-3 overflow-hidden rounded-[var(--app-radius-xl)] p-3.5 sm:p-4"
                 style={{
-                  borderColor: "color-mix(in srgb, var(--app-brand) 25%, var(--app-control-border))",
-                  background: "color-mix(in srgb, var(--app-brand) 4%, var(--app-bg-elevated-solid))",
-                  boxShadow: "var(--app-elev-1), var(--app-edge)",
+                  background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated-solid))",
+                  boxShadow: "inset 0 2px 0 color-mix(in srgb, var(--app-brand) 15%, transparent), var(--app-elev-2), var(--app-edge)",
                 }}
               >
                 <div className="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[var(--app-brand-press)]">
@@ -2351,7 +2351,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                     </button>
                   ))}
                 </div>
-              </section>
+              </MagicCard>
             ) : null}
             <FairKeepGuide />
             <FairUpNext onAction={() => chooseMode("find")} />
@@ -2373,7 +2373,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                 <FairShareButton />
               </div>
               <div
-                className="mt-3 flex flex-col sm:grid sm:grid-cols-3 sm:gap-2.5"
+                className="mt-3 flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-2.5"
                 data-fair-wallet-stack
               >
                 {[
@@ -2411,7 +2411,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                     type="button"
                     onClick={action}
                     data-fair-wallet-card={index + 1}
-                    className={`fair-portal-action tap-44 group relative flex min-h-[100px] items-center gap-3 rounded-[var(--app-radius-xl)] px-3.5 pb-4 pt-3 text-left active:scale-[0.985] focus-visible:z-[var(--z-nav)] sm:ml-0 sm:mt-0 sm:min-h-[150px] sm:flex-col sm:items-start sm:justify-between sm:p-4.5 ${index === 0 ? "z-10" : index === 1 ? "z-20 -mt-2 ml-1" : "z-30 -mt-2 ml-2"}`}
+                    className="fair-portal-action tap-44 group relative flex min-h-[100px] items-center gap-3 rounded-[var(--app-radius-xl)] px-3.5 pb-4 pt-3 text-left active:scale-[0.985] focus-visible:z-[var(--z-nav)] sm:ml-0 sm:mt-0 sm:min-h-[150px] sm:flex-col sm:items-start sm:justify-between sm:p-4.5 z-10"
                     style={{
                       background: `linear-gradient(118deg, color-mix(in srgb, ${accent} 7%, transparent), transparent 42%), ${wash}`,
                       boxShadow: `inset 0 3px 0 ${accent}, var(--app-hi), var(--app-lip), var(--app-deck-edge), var(--app-elev-2)`,
@@ -2451,15 +2451,16 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             <FairQuest />
 
             {selectedAccessHighlight ? (
-              <section
+              <MagicCard
+                as="section"
                 data-fair-access-highlight
                 aria-labelledby="fair-access-highlight-heading"
-                className="mt-4 overflow-hidden rounded-[var(--app-radius-lg)] border-l-4 p-4"
+                className="mt-4 overflow-hidden rounded-[var(--app-radius-xl)] border-l-4 p-4"
                 style={{
                   borderColor: "var(--app-cool)",
                   background:
-                    "color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated))",
-                  boxShadow: "var(--app-elev-1), var(--app-edge)",
+                    "color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated-solid))",
+                  boxShadow: "inset 0 1px 0 var(--app-hi), var(--app-elev-2), var(--app-edge)",
                 }}
               >
                 <div className="flex items-start gap-3">
@@ -2498,16 +2499,14 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                   type="button"
                   onClick={() => {
                     setHelpAnswerId(selectedAccessHighlight.answerId);
-                    setHelpCategory(null);
-                    openHelp();
+                    setHelpOpen(true);
                   }}
-                  className="tap-44 mt-1 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold underline underline-offset-4"
+                  className="tap-44 mt-3 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold underline underline-offset-4 outline-none hover:opacity-80 focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--app-cool)]"
                   style={{ color: "var(--app-cool)" }}
                 >
-                  Open sensory-friendly details
-                  <ChevronRight className="h-4 w-4" aria-hidden />
+                  Read more in Q&A
                 </button>
-              </section>
+              </MagicCard>
             ) : null}
 
             <details className="mt-5 border-t pt-2" style={{ borderColor: "var(--app-border)" }}>
@@ -2604,7 +2603,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               </div>
             ) : null}
 
-            <div className="mt-3 grid grid-cols-4 gap-1.5" role="group" aria-label="Filter the Fair program" data-fair-program-filters>
+            <div className="mt-3 grid grid-cols-4 gap-2" role="group" aria-label="Filter the Fair program" data-fair-program-filters>
                 {SCHEDULE_FILTERS.map((filter) => {
                   const active = scheduleFilter === filter.id;
                   const Icon = filter.Icon;
@@ -2618,12 +2617,12 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                       onClick={() => {
                         setScheduleFilter(filter.id);
                       }}
-                      className="tap-44 flex min-h-[64px] min-w-0 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] border px-0 py-2 text-center text-[11px] font-semibold leading-tight min-[375px]:px-1 min-[375px]:text-[12px] sm:min-h-12 sm:flex-row sm:gap-2 sm:px-2 sm:text-[13px]"
+                      className={`tap-44 flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[1.25rem] border px-0 py-2 text-center text-[11px] font-bold leading-tight transition-all active:scale-95 min-[375px]:px-1 min-[375px]:text-[12px] sm:min-h-12 sm:flex-row sm:gap-2 sm:px-2 sm:text-[13px] ${active ? "z-10 shadow-lg scale-[1.02]" : "hover:scale-[1.01]"}`}
                       style={{
                         borderColor: active ? accent : "var(--app-border)",
-                        background: active ? `color-mix(in srgb, ${accent} 10%, var(--app-bg-elevated-solid))` : "var(--app-bg-elevated)",
+                        background: active ? `linear-gradient(135deg, color-mix(in srgb, ${accent} 15%, var(--app-bg-elevated-solid)), color-mix(in srgb, ${accent} 5%, var(--app-bg-elevated-solid)))` : "var(--app-bg-elevated)",
                         color: "var(--app-ink)",
-                        boxShadow: active ? `inset 0 -2px 0 ${accent}` : undefined,
+                        boxShadow: active ? `inset 0 1px 0 var(--app-hi), inset 0 -3px 0 ${accent}, 0 8px 16px -4px color-mix(in srgb, ${accent} 40%, transparent)` : "var(--app-elev-1)",
                       }}
                     >
                       <Icon className="h-4 w-4 shrink-0" style={{ color: accent }} aria-hidden />
@@ -2647,12 +2646,12 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             </div>
 
             {contextualAnswers.length > 0 ? (
-              <div className="mt-5 rounded-[var(--app-radius-lg)] border px-4 py-3" style={{ borderColor: "var(--app-border)", background: "var(--app-brand-tint-6)" }}>
+              <MagicCard className="mt-5 rounded-[var(--app-radius-xl)] px-4 py-3" style={{ background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated-solid))", boxShadow: "inset 0 2px 0 color-mix(in srgb, var(--app-brand) 15%, transparent), var(--app-elev-2), var(--app-edge)" }}>
                 <p className="text-[13px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--app-brand-press)" }}>
                   Quick answers
                 </p>
                 {contextualAnswers.map((answer) => (
-                  <details key={answer.id} className="border-b py-1 last:border-b-0" style={{ borderColor: "var(--app-border)" }}>
+                  <details key={answer.id} className="border-b py-1 last:border-b-0" style={{ borderColor: "color-mix(in srgb, var(--app-brand) 15%, var(--app-border))" }}>
                     <summary className="tap-44 flex min-h-12 cursor-pointer items-center justify-between gap-3 text-[15px] font-semibold">
                       {answer.question}
                       <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
@@ -2662,7 +2661,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                     </p>
                   </details>
                 ))}
-              </div>
+              </MagicCard>
             ) : null}
 
             <div className="mt-3">

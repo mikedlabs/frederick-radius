@@ -7,6 +7,7 @@ import { haptic } from "@/lib/haptics";
 import BrowsePlacesDisclosure from "./BrowsePlacesDisclosure";
 import { useSyncExternalStore, type ReactNode } from "react";
 import { getScope, scopeToParam, subscribeScopeChange } from "@/lib/scope";
+import { MagicCard } from "@/components/ui/MagicCard";
 
 /**
  * Today has one doorway for a named place, a category, or a full question.
@@ -26,16 +27,12 @@ export default function TodayAsk({
   const scope = useSyncExternalStore(subscribeScopeChange, getScope, () => null);
   const planHref = `/ask?q=${encodeURIComponent("Plan the next two hours")}${scope ? `&in=${scopeToParam(scope)}` : ""}`;
   return (
-    <section
+    <MagicCard
+      as="section"
       id="find-radius"
       aria-labelledby="today-find-heading"
       data-surface-row={embedded ? "find" : undefined}
-      className={`${embedded ? "" : "mt-3"} scroll-mt-24 overflow-hidden rounded-[var(--app-radius-lg)] border`}
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated)",
-
-      }}
+      className={`${embedded ? "" : "mt-3"} scroll-mt-24 ${embedded ? "border-transparent bg-transparent" : ""}`}
     >
       <h2 id="today-find-heading" className="sr-only">
         Find what you need
@@ -121,6 +118,6 @@ export default function TodayAsk({
       {children ? (
         <BrowsePlacesDisclosure embedded>{children}</BrowsePlacesDisclosure>
       ) : null}
-    </section>
+    </MagicCard>
   );
 }

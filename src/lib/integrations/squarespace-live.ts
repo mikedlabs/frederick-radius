@@ -115,6 +115,12 @@ async function fetchVenue(
       }
       return eventAdapterFailed();
     }
+
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("json") && !contentType.includes("javascript")) {
+      console.warn(`[squarespace-live] ${venue.slug}: expected JSON, got ${contentType}`);
+      return eventAdapterFailed();
+    }
     // Squarespace events collections expose future shows in `upcoming`; some
     // (e.g. Rockwell Brewery) only populate the generic `items` array. Prefer
     // `upcoming`, fall back to `items` — the date guard below filters either to

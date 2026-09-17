@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-07-23T05:38:17.440Z",
-  "count": 5,
+  "generated_at": "2026-09-17T14:56:30.812Z",
+  "count": 9,
   "closures": [
     {
       "name": "Ayse Meze Lounge",
@@ -9,10 +9,22 @@
       "source": "manual_denylist"
     },
     {
+      "name": "Clubhouse Kids at Monocacy Valley Montessori Public School",
+      "place_id": "2fdde0ed-2bbf-40dd-972d-2f9c0d898924",
+      "date_marked": "2026-08-22",
+      "source": "manual:closed_temporarily:https://www.clubhousekidsonline.com/contact.html"
+    },
+    {
       "name": "Cozy Restaurant",
       "place_id": null,
       "date_marked": null,
       "source": "curated:closed_permanently"
+    },
+    {
+      "name": "Emmitsburg Farmers Market",
+      "place_id": "ChIJIQneFymxyYkRR3QHvQM4htI",
+      "date_marked": "2026-08-19",
+      "source": "manual:closed_temporarily:https://emmitsburgmd.gov/residents/farmersmarket.php"
     },
     {
       "name": "Firestone's Culinary Tavern",
@@ -25,6 +37,18 @@
       "place_id": null,
       "date_marked": null,
       "source": "manual_denylist"
+    },
+    {
+      "name": "Mazako",
+      "place_id": "ChIJ3d_USlfbyYkRfQyBDVCEQFY",
+      "date_marked": "2026-04-18",
+      "source": "manual:closed_permanently:https://mocoshow.com/2026/04/13/mazako-to-close-in-frederick-just-months-after-opening/"
+    },
+    {
+      "name": "Sabor Casero Bakery Frederick",
+      "place_id": "ChIJ32ZnvkjbyYkRb1YFzmup_iU",
+      "date_marked": "2026-07-29",
+      "source": "manual:closed_permanently:https://www.frederickcountymd.gov/DocumentCenter/View/344522"
     },
     {
       "name": "VOLT",
