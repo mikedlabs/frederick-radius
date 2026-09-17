@@ -58,7 +58,6 @@ async function enhance() {
   const [THREE, { SparkRenderer, SplatMesh }] = await Promise.all([
     import("three"), import("@sparkjsdev/spark"),
   ]);
-  await SplatMesh.staticInitialized;
   if (disposed) return;
   const photo = new Image();
   photo.src = FAIR_PHOTO_SOURCE;
