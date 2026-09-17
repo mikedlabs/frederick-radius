@@ -2511,7 +2511,7 @@ export default function FairDayWorkspace({
                   </div>
                 </div>
                 <div className="mt-3 flex flex-col items-start gap-1.5 text-[14px] leading-relaxed">
-                  <span className="inline-flex rounded-sm bg-[var(--app-brand)]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--app-brand)]">
+                  <span className="inline-flex rounded-sm bg-[var(--app-brand)]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--app-brand-press)]">
                     {grandstandSpotlightItem.timeLabel}
                   </span>
                   {grandstandSpotlightItem.detail && (

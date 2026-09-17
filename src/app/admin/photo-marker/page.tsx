@@ -217,7 +217,7 @@ export default function PhotoMarkerAdmin() {
               <button
                 onClick={handleCopy}
                 disabled={markers.length === 0}
-                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-[var(--app-brand)] hover:bg-[var(--app-brand)]/10 disabled:opacity-50"
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-[var(--app-brand-press)] hover:bg-[var(--app-brand)]/10 disabled:opacity-50"
               >
                 {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                 {copied ? "Copied" : "Copy"}

@@ -114,7 +114,7 @@ export function FairPhotoMap({ imageUrl, altText, markers, onMarkerClick }: Fair
                       <div className="mt-3 flex flex-col gap-2 border-t border-black/[0.06] pt-3">
                         {marker.events.map((event, i) => (
                           <div key={i} className="flex items-start gap-2.5">
-                            <span className="mt-[2px] inline-flex rounded-sm bg-[var(--app-brand)]/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--app-brand)]">
+                            <span className="mt-[2px] inline-flex rounded-sm bg-[var(--app-brand)]/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--app-brand-press)]">
                               {event.time}
                             </span>
                             <span className="text-xs font-medium text-[var(--app-ink)]/90 leading-snug">
