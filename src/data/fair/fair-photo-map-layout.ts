@@ -7,7 +7,7 @@ export const DEFAULT_FAIR_PHOTO_MARKERS: PhotoMarker[] = [
     yPercent: 88,
     label: "Main Gate",
     icon: "ticket",
-    description: "Gate 1 Entrance & Ticketing",
+    subtitle: "Gate 1 Entrance & Ticketing",
   },
   {
     id: "grandstand",
@@ -15,7 +15,7 @@ export const DEFAULT_FAIR_PHOTO_MARKERS: PhotoMarker[] = [
     yPercent: 24,
     label: "Grandstand",
     icon: "star",
-    description: "Motorsports & Concerts",
+    subtitle: "Motorsports & Concerts",
   },
   {
     id: "midway",
@@ -23,7 +23,7 @@ export const DEFAULT_FAIR_PHOTO_MARKERS: PhotoMarker[] = [
     yPercent: 52,
     label: "Midway",
     icon: "ticket",
-    description: "Carnival Rides & Games",
+    subtitle: "Carnival Rides & Games",
   },
   {
     id: "ferris-wheel",
@@ -31,7 +31,7 @@ export const DEFAULT_FAIR_PHOTO_MARKERS: PhotoMarker[] = [
     yPercent: 55,
     label: "Ferris Wheel",
     icon: "pin",
-    description: "A recognizable visual landmark",
+    subtitle: "A recognizable visual landmark",
   },
   {
     id: "food-court",
@@ -39,7 +39,7 @@ export const DEFAULT_FAIR_PHOTO_MARKERS: PhotoMarker[] = [
     yPercent: 55,
     label: "Food Court",
     icon: "food",
-    description: "Classic Fair Food & Drinks",
+    subtitle: "Classic Fair Food & Drinks",
   },
   {
     id: "livestock-barns",
@@ -47,7 +47,7 @@ export const DEFAULT_FAIR_PHOTO_MARKERS: PhotoMarker[] = [
     yPercent: 20,
     label: "Livestock Barns",
     icon: "pin",
-    description: "Animals & Show Rings",
+    subtitle: "Animals & Show Rings",
   },
   {
     id: "exhibition-halls",
@@ -55,6 +55,6 @@ export const DEFAULT_FAIR_PHOTO_MARKERS: PhotoMarker[] = [
     yPercent: 15,
     label: "Exhibition Halls",
     icon: "pin",
-    description: "Farm, Garden, & Household Exhibits",
+    subtitle: "Farm, Garden, & Household Exhibits",
   },
 ];

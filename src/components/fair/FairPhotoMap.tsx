@@ -10,7 +10,7 @@ export type PhotoMarker = {
   xPercent: number;
   yPercent: number;
   label: string;
-  description?: string;
+  subtitle?: string;
   icon?: "pin" | "music" | "food" | "ticket" | "star";
   events?: { time: string; title: string }[];
 };
@@ -104,9 +104,9 @@ export function FairPhotoMap({ imageUrl, altText, markers, onMarkerClick }: Fair
                     <p className="font-bold text-[var(--app-ink)] text-[15px] leading-tight">
                       {marker.label}
                     </p>
-                    {marker.description && (
+                    {marker.subtitle && (
                       <p className="mt-1.5 text-xs text-[var(--app-ink)]/75 leading-relaxed">
-                        {marker.description}
+                        {marker.subtitle}
                       </p>
                     )}
                     
