@@ -38,19 +38,12 @@ describe("Fair offers", () => {
       greatFrederickFair2026Offers.find(
         (offer) => offer.id === "offer-adult-admission-early",
       ),
-    ).toMatchObject({
-      audience: "adult-11-plus",
-      channel: "online",
-      price: { status: "known", amountCents: 800, currency: "USD" },
-      validDates: {
-        status: "known",
-        startsOn: "2026-09-18",
-        endsOn: "2026-09-18",
-      },
-      deadline: {
-        status: "known",
-        value: "2026-09-18T17:00:00-04:00",
-      },
+    ).toBeUndefined();
+    expect(greatFrederickFair2026Offers.find(
+      (offer) => offer.id === "offer-blue-ribbon-bundle",
+    )).toMatchObject({
+      price: { status: "known", amountCents: 8000, currency: "USD" },
+      inclusions: { status: "known", value: ["10 Fair admissions"] },
     });
     expect(
       greatFrederickFair2026Offers.find(
@@ -171,7 +164,7 @@ describe("Fair offers", () => {
       officialPurchaseUrl: {
         status: "known",
         value:
-          "https://www.etix.com/ticket/v/11115/the-great-frederick-fair-advanced-gate?partner_id=944",
+          "https://www.etix.com/ticket/p/65356930/blue-ribbon-bundle-frederick-the-great-frederick-fair-advanced-gate?partner_id=944",
       },
     });
 

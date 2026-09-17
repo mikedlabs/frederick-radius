@@ -23,6 +23,11 @@ const eslintConfig = defineConfig([
     // Generated MapLibre style and glyph metadata are build artifacts, not
     // authored source. Linting them created more than a thousand false warnings.
     "public/basemap/**",
+    // Bundled third-party viewer output; lint its authored source, not Webpack.
+    "public/fair-viewer-assets/**",
+    "scripts/scratch/**",
+    "hud_project/**",
+    "patch_briefing.ts",
   ]),
   // No em dashes in user-facing copy. CLAUDE.md bans them and cleanFeedText
   // strips them from FEED data, but it never sees hand-typed JSX/strings, so

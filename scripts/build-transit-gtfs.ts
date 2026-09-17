@@ -10,7 +10,9 @@
  *
  * Uses the `unzip` CLI (build-time only; available on Linux/CI/Vercel).
  */
-import { writeFileSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { writeFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import {
   assertTransitValidation,
@@ -21,7 +23,7 @@ import { fetchValidatedZip } from "./lib/fetch-validated-zip";
 const GTFS_URL = "https://passio3.com/frederick/passioTransit/gtfs/google_transit.zip";
 const OFFICIAL_SCHEDULE_URL =
   "https://www.frederickcountymd.gov/199/Connector-Schedules";
-const TMP = "/tmp/fr-gtfs";
+const TMP = mkdtempSync(join(tmpdir(), "fr-gtfs-"));
 const OUT = new URL("../src/data/transit.json", import.meta.url).pathname;
 const NETWORK_OUT = new URL(
   "../src/data/transit-network.json",
@@ -57,8 +59,6 @@ function gtfsDate(value: string | undefined): string | undefined {
 }
 
 async function main() {
-  rmSync(TMP, { recursive: true, force: true });
-  mkdirSync(TMP, { recursive: true });
   const archivePath = `${TMP}/gtfs.zip`;
   const archive = await fetchValidatedZip(GTFS_URL, {
     onRetry: (message) => console.warn(`  ${message}`),

@@ -600,7 +600,8 @@ const cachedAssemble = unstable_cache(
   // corrections ahead of later fetch timestamps from stale live feeds.
   // v31: DFP rows retain WordPress's publisher modification timestamp and a
   // newer structured record can correct the matching curated occurrence.
-  ["unified-events-v32"],
+  // v33: stage-credit classification and themed-title duplicate reconciliation.
+  ["unified-events-v33"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.

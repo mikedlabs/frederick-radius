@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { LayoutGrid, List } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import PlaceCard from "./PlaceCard";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import FilterChip from "@/components/ui/FilterChip";
@@ -259,22 +260,42 @@ export default function PlaceList({
           No places match those filters. Tap a filter again to widen the list.
         </p>
       ) : layout === "grid" ? (
-        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
-          {visiblePlaces.map((p) => (
-            <PlaceCard key={p.slug} place={p} variant="grid" />
-          ))}
-        </div>
+        <motion.div layout className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
+          <AnimatePresence>
+            {visiblePlaces.map((p) => (
+              <motion.div
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+                key={p.slug}
+              >
+                <PlaceCard place={p} variant="grid" />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
       ) : (
-        <ul className="space-y-2" aria-busy={!mounted ? "true" : undefined}>
-          {visiblePlaces.map((p) => (
-            <li key={p.slug}>
-              {/* compact=true drops the second metadata row (status +
-                  rating + price) so the row reads tighter — list mode
-                  is for scanning, not full-card detail. */}
-              <PlaceCard place={p} variant="row" compact />
-            </li>
-          ))}
-        </ul>
+        <motion.ul layout className="space-y-2" aria-busy={!mounted ? "true" : undefined}>
+          <AnimatePresence>
+            {visiblePlaces.map((p) => (
+              <motion.li
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+                key={p.slug}
+              >
+                {/* compact=true drops the second metadata row (status +
+                    rating + price) so the row reads tighter — list mode
+                    is for scanning, not full-card detail. */}
+                <PlaceCard place={p} variant="row" compact />
+              </motion.li>
+            ))}
+          </AnimatePresence>
+        </motion.ul>
       )}
       {visibleCount < filteredPlaces.length && (
         <button

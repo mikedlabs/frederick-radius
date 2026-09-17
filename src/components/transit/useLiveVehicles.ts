@@ -79,6 +79,7 @@ let snap: LiveVehiclesSnap = EMPTY;
 const listeners = new Set<() => void>();
 let timer: ReturnType<typeof setInterval> | null = null;
 let inFlight = false;
+let activeRequest: AbortController | null = null;
 
 function emit() {
   for (const l of listeners) l();
@@ -113,8 +114,12 @@ function markUnavailable() {
 async function load() {
   if (inFlight) return;
   inFlight = true;
+  const controller = new AbortController();
+  activeRequest = controller;
+  const timeout = setTimeout(() => controller.abort(), 10_000);
   try {
-    const r = await fetch("/api/transit/vehicles", { cache: "no-store" });
+    const r = await fetch("/api/transit/vehicles", { cache: "no-store", signal: controller.signal });
+    if (activeRequest !== controller) return;
     if (!r.ok) {
       markUnavailable();
       return;
@@ -126,6 +131,7 @@ async function load() {
       feedTimestamp?: number;
       feeds?: { tripUpdates?: { available?: boolean } };
     };
+    if (activeRequest !== controller || controller.signal.aborted) return;
     if (Array.isArray(d.vehicles)) {
       const available = d.available !== false && d.status !== "unavailable";
       if (!available) {
@@ -151,11 +157,17 @@ async function load() {
         stale,
       };
       emit();
+    } else {
+      markUnavailable();
     }
   } catch {
-    markUnavailable();
+    if (activeRequest === controller) markUnavailable();
   } finally {
-    inFlight = false;
+    clearTimeout(timeout);
+    if (activeRequest === controller) {
+      activeRequest = null;
+      inFlight = false;
+    }
     // A failed/short-circuited poll leaves fetchedAt untouched; recheck age so
     // the feed can go stale without a successful response to trigger it.
     refreshStaleness();
@@ -163,6 +175,9 @@ async function load() {
 }
 
 function stopPolling() {
+  activeRequest?.abort();
+  activeRequest = null;
+  inFlight = false;
   if (!timer) return;
   clearInterval(timer);
   timer = null;

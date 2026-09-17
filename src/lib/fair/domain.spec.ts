@@ -101,6 +101,28 @@ describe("Great Frederick Fair domain", () => {
     });
   });
 
+  it("keeps communication and sensory access scoped to what the Fair confirms", () => {
+    const asl = greatFrederickFair2026.accessFacts.find(
+      (fact) => fact.id === "access-asl-grandstand",
+    );
+    const sensoryHours = greatFrederickFair2026.accessFacts.find(
+      (fact) => fact.id === "access-sensory-friendly-carnival",
+    );
+    const quietSpace = greatFrederickFair2026.accessFacts.find(
+      (fact) => fact.id === "access-sensory-space",
+    );
+
+    expect(asl?.state).toMatchObject({
+      status: "known",
+      value: expect.stringContaining("evening musical Grandstand"),
+    });
+    expect(sensoryHours?.state).toMatchObject({
+      status: "known",
+      value: expect.stringContaining("noon to 2 p.m."),
+    });
+    expect(quietSpace?.state.status).toBe("unknown");
+  });
+
   it("preserves the reviewed admission and parking amounts", () => {
     const adults = greatFrederickFair2026.admissionTiers.find(
       (tier) => tier.id === "admission-adults-11-plus",
@@ -161,7 +183,9 @@ describe("Great Frederick Fair domain", () => {
     expect(fairManifestSchema.safeParse(ambiguous).success).toBe(false);
 
     const newerThanManifest = cloneManifest();
-    newerThanManifest.provenance[0].verifiedAt = "2026-09-02T00:00:00Z";
+    newerThanManifest.provenance[0].verifiedAt = new Date(
+      Date.parse(newerThanManifest.updatedAt) + 1000,
+    ).toISOString();
     expect(fairManifestSchema.safeParse(newerThanManifest).success).toBe(false);
   });
 

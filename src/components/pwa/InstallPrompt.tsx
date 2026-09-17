@@ -265,21 +265,36 @@ export default function InstallPrompt() {
                 <ChevronRight className="inline h-3 w-3" aria-hidden /> Install app
               </Step>
             </>
-          ) : (
-            <div className="mt-3 flex items-center gap-3">
-              <Image
-                src="/brand/return-bridge-qr.svg"
-                alt="QR code for Frederick Radius"
-                width={96}
-                height={96}
-                className="rounded-[var(--app-radius-sm)] border bg-white p-1"
-                style={{ borderColor: "var(--app-border)" }}
-              />
-              <p className="text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                Scan with your phone, then choose Add to Home Screen in its
-                browser. You can also bookmark or copy this page.
+          ) : surface === "desktop" ? (
+            <div
+              className="mt-3 flex items-center gap-4 rounded-xl border p-3 shadow-sm"
+              style={{ borderColor: "var(--app-border)", background: "var(--app-bg-subtle)" }}
+            >
+              <div
+                className="shrink-0 overflow-hidden rounded-[var(--app-radius-sm)] border bg-white p-1.5"
+                style={{ borderColor: "var(--app-border)", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
+              >
+                <Image
+                  src="/brand/return-bridge-qr.svg"
+                  alt="QR code for Frederick Radius"
+                  width={80}
+                  height={80}
+                  className="block"
+                />
+              </div>
+              <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                <strong style={{ color: "var(--app-ink)", fontWeight: 600 }} className="block mb-1">
+                  Scan with your phone
+                </strong>
+                Choose Add to Home Screen in your phone&rsquo;s browser for one-tap access to live tools.
               </p>
             </div>
+          ) : (
+            <>
+              <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                To add Radius to your Home Screen, bookmark this page or look for an install option in your browser menu.
+              </p>
+            </>
           )}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">

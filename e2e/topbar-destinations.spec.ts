@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 for (const viewport of [
   { label: "narrow phone", width: 320, height: 720 },
+  { label: "standard phone", width: 390, height: 844 },
   { label: "tablet", width: 768, height: 900 },
 ]) {
   test(`TopBar keeps secondary destinations calm without overflow on a ${viewport.label}`, async ({
@@ -44,6 +45,29 @@ for (const viewport of [
       await expect(compass).toBeVisible();
       await expect(compass).toHaveAttribute("aria-current", "page");
       await expect(compass.getByText("Compass", { exact: true })).toBeHidden();
+
+      if (viewport.width === 390) {
+        const location = header.locator("[data-location-chip]");
+        const compactScope = location.locator('[data-location-scope-label="compact"]');
+        await expect(compactScope).toBeVisible();
+        await expect(compactScope).toHaveText("County");
+        await expect(
+          location.locator('[data-location-scope-label="full"]'),
+        ).toBeHidden();
+        const geometry = await location.evaluate((control) => ({
+          height: control.getBoundingClientRect().height,
+          labelClientWidth: control.querySelector<HTMLElement>(
+            '[data-location-scope-label="compact"]',
+          )?.clientWidth ?? 0,
+          labelScrollWidth: control.querySelector<HTMLElement>(
+            '[data-location-scope-label="compact"]',
+          )?.scrollWidth ?? 1,
+        }));
+        expect(geometry.height).toBeGreaterThanOrEqual(44);
+        expect(geometry.labelScrollWidth).toBeLessThanOrEqual(
+          geometry.labelClientWidth,
+        );
+      }
     }
   });
 }

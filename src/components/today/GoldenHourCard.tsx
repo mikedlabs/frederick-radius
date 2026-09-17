@@ -28,7 +28,7 @@ export default function GoldenHourCard({ now }: { now: Date }) {
     : `The calculated golden-hour window runs from ${goldenStart} to ${sunset}.`;
 
   return (
-    <section aria-label="Golden hour" className="mt-4">
+    <section data-today-plan-rest-content aria-label="Golden hour" className="mt-4">
       {/* Amber, not Plum. This card is the app's literal sunlight moment, and
           Amber is the token the palette DEFINES as sunlight; Plum is the
           reserved arts/editorial accent and had no business on a sunset.

@@ -49,6 +49,7 @@ export default function LocalSportsScoreboard() {
   return (
     <section
       data-today-sports-card
+      data-today-plan-rest-content
       className="mt-3 overflow-hidden rounded-[var(--app-radius-lg)] border"
       style={{
         borderColor: "var(--app-border)",

@@ -16,6 +16,8 @@ import SkyHero from "@/components/today/SkyHero";
 // it is in git history if we ever want it back.)
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MomentSpotlight from "@/components/today/MomentSpotlight";
+import TodayFairFeature from "@/components/today/TodayFairFeature";
+import Image from "next/image";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import DismissibleSection from "@/components/today/DismissibleSection";
@@ -47,6 +49,7 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { leanFromForecast, wetWindowEnd } from "@/lib/today/weatherLean";
 import EventWalkTime from "@/components/today/EventWalkTime";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
+import PlaceSheetBoundary from "@/components/place/PlaceSheetBoundary";
 import TodayAsk from "@/components/today/TodayAsk";
 import { todayFrame } from "@/lib/today/masthead";
 import { formatEasternDateline } from "@/lib/format/easternClock";
@@ -66,19 +69,22 @@ import { eventTown } from "@/lib/events/eventTown";
 import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
 import AppTransitionLink from "@/components/nav/AppTransitionLink";
+import PageChapter from "@/components/ui/PageChapter";
+import {
+  TODAY_FAIR_PROMOTION_SLUG,
+  todayFairPromotionPhase,
+} from "@/lib/today/fair-promotion";
 
 /**
  * Now — the daily briefing.
  *
  * Spine (top to bottom — matches the render below):
  *
- *   1. SkyHero        → time-of-day sky + date, clock, and weather
- *   2. Decision lead  → the location-aware open-place shelf, which is the
- *                       first Today answer that follows the shared town lens
- *   3. Find           → one route for a name, need, category, or question
- *   4. What's on      → a qualified event feature + today's public program
- *   5. Available      → scheduled local utilities and tomorrow's next move
- *   6. More           → secondary local guides and saved places, collapsed
+ *   1. Identity       → time-aware masthead, bounded campaign, and weather
+ *   2. Decide now     → one Find doorway + a location-aware place answer
+ *   3. Follow the day → a short chronological civic and event program
+ *   4. Plan the rest  → scheduled utilities, sports, light, and tomorrow
+ *   5. Keep exploring → local guides and saved places, collapsed
  *
  * (The old generated "best move now" card was removed 2026-06-18 because it
  *  promoted ideas without enough evidence. Today may recommend carefully when
@@ -152,6 +158,11 @@ export const revalidate = 300;
 
 export default async function HomePage() {
   const now = new Date();
+  const fairPromotionPhase = todayFairPromotionPhase(now);
+  const civicMoment = activeMoment(now);
+  const civicMomentLeadsToday =
+    civicMoment?.slug === "in-the-street-2026" &&
+    civicMoment.ends === easternDayKey(now);
 
   // ONE bounded snapshot read, created here but intentionally NOT awaited.
   // The expensive live-feed fan-out belongs to the warm/archive crons, never a
@@ -222,6 +233,7 @@ export default async function HomePage() {
     // link opens the sheet on a skeleton and fetches just that event.
     // Real anchors, SEO, and modified clicks all pass through untouched.
     <EventSheetBoundary fetchMissing className="relative">
+      <PlaceSheetBoundary fetchMissing>
       <PageBloom motif />
 
       {/* Stale-shell guard (June-9 review P0): a cached SW/CDN shell can
@@ -244,12 +256,12 @@ export default async function HomePage() {
         </div>
       </Suspense>
 
-      {/* ── MOMENT SPOTLIGHT — the big civic weekend (the Fourth, the Fair, the
-          holiday markets). Festive, not alarm-toned; self-hides outside a
-          moment's date window; dismissible for the session. */}
-      {activeMoment(now) && (
-        <div className="mb-4">
-          <MomentSpotlight moment={activeMoment(now)!} />
+      {/* In The Streets is the county's shared plan today, so it takes the
+          lead over the normal daily briefing and the upcoming Fair campaign.
+          Active alerts remain above it because they can change the plan. */}
+      {civicMoment && civicMomentLeadsToday && (
+        <div className="mb-5">
+          <MomentSpotlight moment={civicMoment} isDayOf />
         </div>
       )}
 
@@ -266,7 +278,8 @@ export default async function HomePage() {
       {(() => {
         const frame = todayFrame(easternStartHour(now.toISOString()));
         return (
-          <header className="today-arrival today-arrival--masthead mb-3 px-0.5">
+          <header className="scroll-masthead today-arrival today-arrival--masthead mb-5 flex flex-col overflow-hidden rounded-[var(--app-radius-lg)] border border-[var(--app-border)] bg-[var(--app-bg-elevated-solid)] sm:grid sm:grid-cols-[minmax(0,1fr)_42%]">
+            <div className="min-w-0 p-4 sm:p-6">
             {/* The page title, at page-title size. At 22px it sat two pixels
                 above its own 20px section headings, so the masthead read as
                 just another section. 30/32 restores the ladder: page over
@@ -278,10 +291,27 @@ export default async function HomePage() {
               {frame.title}
             </h1>
             <TodayScopeStatus dateline={formatEasternDateline(now)} />
+            </div>
+            <figure className="scroll-masthead-img relative order-first h-[140px] sm:order-none sm:h-full sm:min-h-[180px]">
+              <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" fill sizes="(min-width: 1024px) 440px, 100vw" alt="Carroll Creek in Frederick, photographed by Mike D." className="object-cover object-center" />
+              <figcaption className="absolute bottom-2 right-2 rounded-sm bg-[var(--app-ink)] px-2 py-1 text-[10px] leading-snug text-[var(--app-on-brand)]">Carroll Creek · Mike D</figcaption>
+            </figure>
           </header>
         );
       })()}
 
+      <div className="today-start-grid">
+        <div className="today-start-find">
+        <div className="today-arrival today-arrival--find">
+          <TodayAsk embedded>
+            <CravingStrip />
+          </TodayAsk>
+        </div>
+        <div className="mt-5" aria-label="Places for your area">
+          {decisionLead}
+        </div>
+        </div>
+        <div className="today-start-context">
       {/* ── WEATHER HERO — the time-of-day gradient sky and today's weather
           lead the page. Now a COMPACT, CONTAINED card (owner
           call: "all cards within the main part" + "one header with the weather
@@ -314,62 +344,75 @@ export default async function HomePage() {
           />
         </AppTransitionLink>
       </SkyHero>
+      {/* ── CAMPAIGN SPOTLIGHT — the document identifies itself before a
+          campaign asks for attention. Fair Day owns this photographic doorway
+          from Sep 2–26, then retires itself on Sep 27. When another civic
+          moment overlaps the Fair campaign, it moves into Follow the day
+          below instead of disappearing. */}
+      {fairPromotionPhase ? (
+        <div className="mb-4">
+          <TodayFairFeature phase={fairPromotionPhase} compact={fairPromotionPhase === "planning"} />
+        </div>
+      ) : civicMoment ? (
+        <div className="mb-4">
+          <MomentSpotlight moment={civicMoment} />
+        </div>
+      ) : null}
 
-      {/* One universal doorway. A person can type a name, need, or question;
-          the Find surface chooses search or reasoning automatically. The two
-          urgent shortcuts stay visible, while the full category taxonomy is
-          attached but closed instead of becoming a second competing wall.
-          It sits before the deeper recommendation shelf so the control stays
-          tappable above the phone nav on the first screen. */}
-      <div className="today-arrival today-arrival--find">
-        <TodayAsk embedded>
-          <CravingStrip />
-        </TodayAsk>
+
+
+        </div>
       </div>
 
-      {/* One town-aware first move. It stays mounted so a LocationChip change
-          immediately re-ranks this answer instead of only changing the chip. */}
-      <div className="today-arrival today-arrival--decision">
-        {decisionLead}
-      </div>
+      <PageChapter
+        label="Follow the day"
+        variant="plain"
+        className="mt-8"
+      >
+        {/* A second civic moment still matters during the Fair campaign. Keep
+            it with the day's program so it survives without competing with
+            the photographic Fair doorway at the top. */}
+        {fairPromotionPhase &&
+        civicMoment &&
+        civicMoment.slug !== TODAY_FAIR_PROMOTION_SLUG &&
+        !civicMomentLeadsToday ? (
+          <div className="mb-4">
+            <MomentSpotlight moment={civicMoment} />
+          </div>
+        ) : null}
+        {whatsOn}
+      </PageChapter>
 
-      {/* The day's chronological program belongs before sports and specials.
-          This is the first substantive briefing after the one decision lead
-          and the two direct find routes. WhatsOn already owns its visible
-          heading, so an extra chapter label would spend another row on a
-          phone. */}
-      {whatsOn}
+      <CollapsibleSection
+        title="Plan the rest"
+        storageKey="fr.today.plan-rest"
+        defaultOpen={false}
+        headingLevel={2}
+        className="today-plan-rest today-disclosure mt-8 border-t pt-2 [&>h2>button]:min-h-11"
+      >
+        <div role="group" aria-label="Useful today">
+          {availableToday}
 
-      {/* Scheduled utilities keep their own precise headings. The former
-          "Available today" chapter register sat directly above OnNowBand's
-          "For today" heading, making one section look like two competing
-          sections on a phone. Group the utilities without another visible
-          label; each child already says exactly what it contains. */}
-      <div role="group" aria-label="Useful today" className="mt-5">
-        {availableToday}
+          {/* Tonight's light is a scheduled fact like the rest of this chapter.
+              It self-hides outside its evening window and in bad weather. */}
+          <Suspense fallback={null}>
+            <WeatherSafeGoldenHour now={now} />
+          </Suspense>
 
-        {/* Tonight's light is a scheduled fact like the rest of this chapter.
-            It used to float between this chapter and the collapsed More
-            section as an unnumbered seventh beat; the docblock's six-part
-            spine is a real budget, so it lives here now. Self-hides outside
-            its evening window and in bad weather. */}
-        <Suspense fallback={null}>
-          <WeatherSafeGoldenHour now={now} />
-        </Suspense>
-
-        {/* A forward answer for the night owl. Self-hides during the day; once
-            the current day is nearly spent it offers one tomorrow move. */}
-        <Suspense fallback={null}>
-          <TomorrowPreview now={now} eventsPromise={eventsPromise} />
-        </Suspense>
-      </div>
+          {/* A forward answer for the night owl. Self-hides during the day; once
+              the current day is nearly spent it offers one tomorrow move. */}
+          <Suspense fallback={null}>
+            <TomorrowPreview now={now} eventsPromise={eventsPromise} />
+          </Suspense>
+        </div>
+      </CollapsibleSection>
 
       {/* Secondary doors share one deliberate reveal. The old lower page also
           repeated generated collections, a rotating place list, and a taste
           nudge; those made the briefing feel endless without improving the
           immediate decision. Their dedicated routes remain available. */}
       <CollapsibleSection
-        title="More for today"
+        title="Local guides and saved places"
         storageKey="fr.today.more-ideas"
         defaultOpen={false}
         headingLevel={2}
@@ -393,6 +436,7 @@ export default async function HomePage() {
           <MastheadNotes now={now} />
         </div>
       </CollapsibleSection>
+      </PlaceSheetBoundary>
     </EventSheetBoundary>
   );
 }
@@ -416,7 +460,7 @@ function OpenPlaceLead({
   rows: DaypartRows;
   note: string | null;
 }) {
-  return <DaypartNeeds rows={rows} note={note} />;
+  return <DaypartNeeds rows={rows} note={note} variant="brief" />;
 }
 
 /** Weather-aware ordering is a progressive enhancement. The ordinary local

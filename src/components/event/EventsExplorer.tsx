@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { featuredEventSlugs } from "@/lib/events/featured";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, ChevronDown, LocateFixed, X } from "lucide-react";
@@ -923,7 +924,52 @@ export default function EventsExplorer({
     <div
       data-events-interaction-ready={urlReady ? "true" : "false"}
       data-events-complete={dataComplete ? "true" : "false"}
+      aria-busy={!urlReady || loadingAll}
     >
+      {!urlReady ? (
+        <section
+          data-events-restoring-view
+          role="status"
+          aria-live="polite"
+          className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)]"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <div className="flex items-center gap-3 border-b px-4 py-4" style={{ borderColor: "var(--app-border)" }}>
+            <span
+              aria-hidden
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+              style={{
+                background: "var(--app-brand-tint-6)",
+                color: "var(--app-brand-press)",
+              }}
+            >
+              <CalendarDays className="h-5 w-5" strokeWidth={1.8} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[15px] font-extrabold tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+                Setting your local view
+              </p>
+              <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                Radius is restoring your town, time, and event filters.
+              </p>
+            </div>
+          </div>
+          <div aria-hidden className="space-y-3 p-4">
+            <div className="h-10 animate-pulse rounded-full bg-[var(--app-bg-sunken)] motion-reduce:animate-none" />
+            <div className="h-48 animate-pulse rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] motion-reduce:animate-none" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="h-20 animate-pulse rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] motion-reduce:animate-none" />
+              <div className="h-20 animate-pulse rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] motion-reduce:animate-none" />
+            </div>
+          </div>
+        </section>
+      ) : null}
+      <noscript>
+        <p className="rounded-[var(--app-radius-md)] border p-4 text-[13px]" style={{ borderColor: "var(--app-border)" }}>
+          Turn on JavaScript to restore local event filters and browse the interactive calendar.
+        </p>
+      </noscript>
+      <div data-events-personalized-view hidden={!urlReady}>
       <EventSheetBoundary events={eventPool} fetchFull className="space-y-3">
       {/* The masthead-dock — the almanac nameplate, one filter doorway, the
           mono count line, and the display controls. What, When, and Where stay
@@ -1153,66 +1199,67 @@ export default function EventsExplorer({
         // Composed empty state — soft category-tinted block, serif line,
         // one quiet sentence, primary action. Replaces the bare bordered
         // text-only message.
-        <div
-          className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] px-6 py-10 text-center"
-          style={{
-            background:
-              "radial-gradient(80% 60% at 30% 20%, color-mix(in srgb, var(--section-accent, var(--app-brand)) 14%, var(--app-bg-elevated)), var(--app-bg-elevated))",
-          }}
-        >
-          <span
-            aria-hidden
-            className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--section-accent, var(--app-brand)) 22%, var(--app-bg-elevated))",
-              color: "var(--section-accent, var(--app-brand))",
-            }}
+        <div className="space-y-4">
+          <div
+            className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-6 text-center shadow-sm"
+            style={{ borderColor: "var(--app-border)" }}
           >
-            <CalendarDays className="h-6 w-6" strokeWidth={1.5} />
-          </span>
-          <h3
-            className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            Nothing fits these filters
-          </h3>
-          <p
-            className="mx-auto mt-1 max-w-xs text-[13px] text-pretty"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            {relaxations.length > 0
-              ? "Drop a filter to widen the search. The list updates the moment something matches."
-              : "Try a wider time window or fewer types. The list updates as soon as something matches."}
-          </p>
-          {/* Honest relaxations — name each active filter and let the user
-              widen ONE at a time, sharpest first. Beats a blunt "Clear all"
-              when only one constraint is the culprit. */}
+            <span
+              aria-hidden
+              className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full"
+              style={{
+                background: "color-mix(in srgb, var(--section-accent, var(--app-brand)) 15%, var(--app-bg-sunken))",
+                color: "var(--section-accent, var(--app-brand))",
+              }}
+            >
+              <CalendarDays className="h-6 w-6" strokeWidth={1.5} />
+            </span>
+            <h3
+              className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              Nothing fits these filters
+            </h3>
+            <p
+              className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed text-pretty"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              {relaxations.length > 0
+                ? "Drop a filter to widen the search. The list updates the moment something matches."
+                : "Try a wider time window or fewer types. The list updates as soon as something matches."}
+            </p>
+          </div>
+          
+          {/* Honest relaxations — Bento-grid for quick actions */}
           {relaxations.length > 0 && (
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {relaxations.map((r) => (
                 <button
                   key={r.key}
                   type="button"
                   onClick={r.drop}
-                  className="tap-44-y inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold tactile tactile-interactive"
+                  className="tap-44-y tactile tactile-interactive flex min-h-[44px] items-center justify-between rounded-[var(--app-radius-md)] border bg-[var(--app-bg-surface)] px-4 py-2 text-[13px] font-semibold transition active:scale-95"
                   style={{
-                    background: "var(--app-bg-elevated)",
-                    color: "var(--app-ink-2)",
-                    boxShadow: "inset 0 0 0 1px var(--app-border)",
+                    borderColor: "var(--app-border)",
+                    color: "var(--app-ink)",
                   }}
                 >
-                  <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-                  {r.label}
+                  <span className="truncate pr-2">{r.label}</span>
+                  <X className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden style={{ color: "var(--app-ink-3)" }} />
                 </button>
               ))}
               {relaxations.length > 1 && (
                 <button
                   type="button"
                   onClick={clear}
-                  className="tap-44-y inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold tactile tactile-interactive"
-                  style={{ background: "var(--app-bg-elevated)", color: "var(--section-accent, var(--app-brand))" }}
+                  className="tap-44-y tactile tactile-interactive flex min-h-[44px] items-center justify-center rounded-[var(--app-radius-md)] border px-4 py-2 text-[13px] font-semibold transition active:scale-95 sm:col-span-3"
+                  style={{ 
+                    borderColor: "transparent",
+                    background: "color-mix(in srgb, var(--section-accent, var(--app-brand)) 10%, var(--app-bg-surface))", 
+                    color: "var(--section-accent, var(--app-brand))" 
+                  }}
                 >
-                  Clear all
+                  Clear all filters
                 </button>
               )}
             </div>
@@ -1227,21 +1274,30 @@ export default function EventsExplorer({
         // — a bare `grid` leaves an auto track that a card with a wide
         // min-content (one long unbroken token) stretches past the page edge
         // (397px track in a 358px column, Jul-9 mobile audit).
-        <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-          {filtered.slice(0, 100).map((e) => (
-            <li key={`${e.slug}-${e.starts_at}`}>
-              <EventCard event={e} nowISO={nowISO} />
-            </li>
-          ))}
+        <motion.ul layout className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+          <AnimatePresence>
+            {filtered.slice(0, 100).map((e) => (
+              <motion.li
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+                key={`${e.slug}-${e.starts_at}`}
+              >
+                <EventCard event={e} nowISO={nowISO} />
+              </motion.li>
+            ))}
+          </AnimatePresence>
           {filtered.length > 100 && (
             <li
-              className="pt-2 text-center text-[11px]"
+              className="col-span-full pt-2 text-center text-[11px]"
               style={{ color: "var(--app-ink-3)" }}
             >
               Showing the first 100. Use filters or the calendar view to narrow further.
             </li>
           )}
-        </ul>
+        </motion.ul>
       ) : (
         // Grouped by human time horizon — "what's on now / today / this
         // weekend / later" — so the page is navigable at a glance, not
@@ -1402,6 +1458,7 @@ export default function EventsExplorer({
       )}
       </div>
       </EventSheetBoundary>
+      </div>
     </div>
   );
 }
@@ -1416,8 +1473,24 @@ function CompactEventList({
   nowISO: string;
 }) {
   if (events.length === 0) return null;
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05 }
+    }
+  };
+
+  const item = {
+    hidden: { opacity: 0, y: 15, scale: 0.98 },
+    show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring" as const, bounce: 0, duration: 0.4 } }
+  };
+
   return (
-    <ol
+    <motion.ol
+      variants={container}
+      initial="hidden"
+      animate="show"
       className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
       style={{
         borderColor: "var(--app-border)",
@@ -1425,16 +1498,16 @@ function CompactEventList({
       }}
     >
       {events.map((event) => (
-        <li key={`${event.slug}-${event.starts_at}`}>
+        <motion.li variants={item} key={`${event.slug}-${event.starts_at}`}>
           <EventCard
             event={event}
             variant="compact"
             live={live.has(event.slug)}
             nowISO={nowISO}
           />
-        </li>
+        </motion.li>
       ))}
-    </ol>
+    </motion.ol>
   );
 }
 
@@ -1452,13 +1525,19 @@ function PromotedEvent({
   nowISO: string;
 }) {
   return (
-    <EventCard
-      event={event}
-      variant="feature"
-      live={live}
-      nowISO={nowISO}
-      priorityImage={priorityImage}
-      visual={visual ?? undefined}
-    />
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: "spring", bounce: 0.1, duration: 0.5 }}
+    >
+      <EventCard
+        event={event}
+        variant="feature"
+        live={live}
+        nowISO={nowISO}
+        priorityImage={priorityImage}
+        visual={visual ?? undefined}
+      />
+    </motion.div>
   );
 }

@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Sparkles, Flag, TriangleAlert, Star, Info, ExternalLink, CloudSun } from "lucide-react";
 import { CIVIC_MOMENTS, momentBySlug, type MomentItem, type MomentItemKind } from "@/data/civic-moments";
 import FairDayPage from "@/components/fair/FairDayPage";
+import InTheStreetsWorkspace from "@/components/in-the-streets/InTheStreetsWorkspace";
 import PageBloom from "@/components/ui/PageBloom";
 import { jsonLdScript } from "@/lib/seo/jsonld";
+import { easternDayKey } from "@/lib/tz";
 
 const FAIR_DAY_SLUG = "great-frederick-fair-2026";
+const IN_THE_STREETS_SLUG = "in-the-street-2026";
 
 /**
  * /moments/[slug] — a curated hub for a big county occasion (the Fourth, the
@@ -26,18 +30,44 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const m = momentBySlug(slug);
   if (!m) notFound();
-  const ogImage = { url: `/api/og?type=moment&slug=${slug}`, width: 1200, height: 630 };
+  // An owned moment photograph should lead a shared link with the actual
+  // experience instead of generic civic-moment artwork.
+  const ogImage = slug === FAIR_DAY_SLUG
+    ? {
+        url: "/images/fair/fairgrounds-night-mike-d-1920.jpg",
+        width: 1920,
+        height: 1080,
+        alt: "The Great Frederick Fairgrounds glowing at night, seen from above.",
+      }
+    : m.spotlightImage
+      ? {
+          url: m.spotlightImage.src,
+          width: m.spotlightImage.width,
+          height: m.spotlightImage.height,
+          alt: m.spotlightImage.alt,
+        }
+    : {
+        url: `/api/og?type=moment&slug=${slug}`,
+        width: 1200,
+        height: 630,
+        alt: `${m.title} in Frederick County`,
+      };
   const title = slug === FAIR_DAY_SLUG ? "Fair Day | The Great Frederick Fair 2026" : m.title;
   const description =
     slug === FAIR_DAY_SLUG
-      ? "An independent Frederick Radius guide to tickets, arrival, the official schedule, and your plan for the 2026 Great Frederick Fair."
+      ? "Plan tickets, arrival, the official schedule, and what you do not want to miss in one independent Frederick Radius guide."
       : m.subtitle;
   return {
     title,
     description,
     alternates: { canonical: `/moments/${slug}` },
     openGraph: { title, description, images: [ogImage] },
-    twitter: { card: "summary_large_image", title, description, images: [ogImage.url] },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [{ url: ogImage.url, alt: ogImage.alt }],
+    },
   };
 }
 
@@ -107,9 +137,13 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const m = momentBySlug(slug);
   if (!m) notFound();
+  const isDayOf = easternDayKey(new Date()) === m.ends;
 
   if (slug === FAIR_DAY_SLUG) {
     return <FairDayPage />;
+  }
+  if (slug === IN_THE_STREETS_SLUG) {
+    return <InTheStreetsWorkspace />;
   }
 
   return (
@@ -131,9 +165,9 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
         }}
       >
         <span aria-hidden className="pointer-events-none absolute -right-10 -top-12 h-48 w-48 rounded-full" style={{ background: `radial-gradient(circle, color-mix(in srgb, ${m.accent} 22%, transparent), transparent 70%)` }} />
-        <p className="relative inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: m.accent }}>
+        <p className="relative inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: m.accent }}>
           <Sparkles className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          This weekend in Frederick County
+          {isDayOf ? "Today in Frederick County" : "This weekend in Frederick County"}
         </p>
         <h1 className="relative mt-2 font-serif font-semibold leading-[1.02] tracking-tight" style={{ color: "var(--app-ink)", fontSize: "clamp(28px, 7vw, 40px)" }}>
           {m.title}
@@ -154,6 +188,42 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
         <p className="relative mt-2 max-w-[40ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           {m.intro}
         </p>
+        {m.spotlightImage && (
+          <figure className="relative mt-5 aspect-[16/9] overflow-hidden rounded-[var(--app-radius-lg)]" style={{ boxShadow: "var(--app-elev-1), var(--app-edge)" }}>
+            <Image
+              src={m.spotlightImage.src}
+              alt={m.spotlightImage.alt}
+              fill
+              priority
+              sizes="(max-width: 640px) 100vw, 640px"
+              className="object-cover object-center"
+            />
+            <span
+              aria-hidden
+              className="absolute inset-x-0 bottom-0 h-1/2"
+              style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 74%, transparent), transparent)" }}
+            />
+            <figcaption className="absolute inset-x-0 bottom-0 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-on-brand)]">
+              {m.spotlightImage.credit}
+            </figcaption>
+          </figure>
+        )}
+        {m.spotlightFacts && m.spotlightFacts.length > 0 && (
+          <dl className="relative mt-5 grid gap-px overflow-hidden rounded-[var(--app-radius-md)] border sm:grid-cols-3" style={{ borderColor: "color-mix(in srgb, var(--app-ink) 14%, var(--app-border))", background: "color-mix(in srgb, var(--app-ink) 8%, transparent)" }}>
+            {m.spotlightFacts.map((fact) => (
+              <div key={fact.label} className="px-3.5 py-3" style={{ background: "color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent)" }}>
+                <dt className="text-[10px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>{fact.label}</dt>
+                <dd className="mt-0.5 text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>{fact.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {m.spotlightSourceUrl && (
+          <a href={m.spotlightSourceUrl} target="_blank" rel="noopener noreferrer" className="relative mt-5 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-3.5 text-[13px] font-semibold" style={{ background: "var(--app-brand)", color: "var(--app-bg)" }}>
+            Official event details
+            <ExternalLink className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+          </a>
+        )}
       </header>
 
       {m.weatherSensitive && (

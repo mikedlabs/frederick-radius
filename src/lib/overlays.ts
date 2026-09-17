@@ -28,7 +28,8 @@ export type OverlayKey =
   | "mobility"
   | "art"
   | "markets"
-  | "bridges";
+  | "bridges"
+  | "land-value";
 
 export type OverlayDef = {
   key: OverlayKey;
@@ -45,6 +46,7 @@ export type OverlayDef = {
   /** False until the layer's data is seeded; the control shows it as
    *  coming soon instead of toggling an empty source. */
   ready: boolean;
+  hidden?: boolean;
 };
 
 export const OVERLAYS: OverlayDef[] = [

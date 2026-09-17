@@ -160,6 +160,7 @@ export function useReversibleHistoryLayer({
       const destination = new URL(href, window.location.href);
 
       if (destination.origin !== window.location.origin) {
+         
         window.location.assign(destination);
         return;
       }
@@ -176,6 +177,7 @@ export function useReversibleHistoryLayer({
         // independent of Next's App Router context. The ordinary branch is an
         // edge case (an active sheet normally owns the history layer), and a
         // native same-origin navigation is reliable in every host.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.assign(path);
       }
     },

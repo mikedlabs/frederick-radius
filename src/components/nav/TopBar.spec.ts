@@ -8,7 +8,7 @@ import {
 } from "./TopBar";
 
 describe("TopBar search ownership", () => {
-  it.each(["/map", "/search", "/compass", "/ask", "/ask/history"])(
+  it.each(["/today", "/map", "/search", "/compass", "/ask", "/ask/history"])(
     "lets the route's own search or composer lead on %s",
     (pathname) => {
       expect(pageOwnsPrimarySearch(pathname)).toBe(true);
@@ -25,10 +25,11 @@ describe("TopBar search ownership", () => {
   it("lets the Ask composer own its location scope", () => {
     expect(shouldShowGlobalLocation("/ask")).toBe(false);
     expect(shouldShowGlobalLocation("/ask/history")).toBe(false);
-    expect(shouldShowGlobalLocation("/today")).toBe(true);
+    expect(shouldShowGlobalLocation("/today")).toBe(false);
+    expect(shouldShowGlobalLocation("/search")).toBe(false);
   });
 
-  it.each(["/today", "/events", "/pulse", "/access", "/places/gravel-and-grind"])(
+  it.each(["/events", "/pulse", "/access", "/places/gravel-and-grind"])(
     "keeps global Find available on %s",
     (pathname) => {
       expect(pageOwnsPrimarySearch(pathname)).toBe(false);
@@ -45,6 +46,13 @@ describe("TopBar search ownership", () => {
     expect(location).toContain('data-location-scope-label="compact"');
     expect(location).toContain('data-location-scope-label="full"');
     expect(location).toContain(': "County";');
+    expect(location).toContain(
+      'className="hidden min-w-0 truncate min-[390px]:block sm:hidden"',
+    );
+    expect(location).toContain(
+      'className="hidden min-w-0 truncate sm:block sm:max-w-[160px]"',
+    );
+    expect(location).toContain("text-[12px] font-semibold leading-none");
     expect(styles).toContain('[data-location-scope-label="compact"]');
     expect(styles).toContain('[data-location-scope-label="full"]');
     expect(topBar).toContain('className="contents"');

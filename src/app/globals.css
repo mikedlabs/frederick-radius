@@ -71,7 +71,7 @@
   /* The elevated token is slightly translucent so the static page wash can
      soften a dense stack. Sheets and popovers use the solid companion. */
   --app-bg-elevated-solid: #FBF8F0;  /* warm white — elevated card */
-  --app-bg-elevated: color-mix(in srgb, #FBF8F0 96%, transparent);
+  --app-bg-elevated: color-mix(in srgb, #FBF8F0 85%, transparent);
   --app-bg-sunken: #EAE1D1;
   --app-border: #D8CDBA;
   --app-border-strong: rgba(34, 28, 21, 0.14);
@@ -371,6 +371,8 @@
 
 html, body {
   font-family: var(--font-sans-base), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* CLIP, not hidden: `overflow-x: hidden` computes overflow-y to `auto`,
@@ -688,6 +690,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .today-answer-shelf > [data-shelf-lead] {
     grid-column: 1 / -1;
   }
+  /* When an opening-soon transition consumes the third decision slot, keep
+     the two current choices balanced instead of stranding one half-width card
+     under a full-width lead. */
+  .today-answer-shelf[data-shelf-two="true"] > [data-shelf-lead] {
+    grid-column: auto;
+  }
 }
 
 /* ── Field-guide chapters ───────────────────────────────────────────────
@@ -805,10 +813,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .content-chapter--plain .content-chapter__label {
   font-family: var(--font-sans), system-ui, sans-serif;
-  font-size: 1.0625rem;
-  font-weight: 650;
-  letter-spacing: -0.015em;
-  text-transform: none;
+  font-size: 0.6875rem;
+  font-weight: 750;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
 }
 .content-chapter--plain .content-chapter__rule {
   background: var(--app-border);
@@ -827,6 +835,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 .today-sports-stack:not(:has([data-today-sports-card])) {
+  display: none;
+}
+
+/* Every child in this chapter is time- or data-gated. Remove the chapter
+   itself when none of those children rendered so an empty heading never
+   interrupts the briefing. */
+.today-plan-rest:not(:has([data-today-plan-rest-content])) {
   display: none;
 }
 
@@ -1106,6 +1121,77 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .maplibregl-map .maplibregl-ctrl-bottom-right {
     bottom: auto !important;
     top: 10px !important;
+  }
+
+  /* The Fair map carries an in-canvas search, lens rail, and two compact
+     utility actions on phones. Move MapLibre's native zoom group below those
+     rails. Keep attribution above the persistent Fair navigation; the rem
+     offset follows enlarged root text instead of falling behind that bar. */
+  .fair-grounds-map-canvas .maplibregl-ctrl-top-right {
+    top: 7.75rem !important;
+  }
+  .fair-grounds-map-canvas .maplibregl-ctrl-bottom-right {
+    bottom: calc(
+      var(
+          --fair-map-action-bar-clearance,
+          calc(4.875rem + env(safe-area-inset-bottom))
+        ) + 8px
+    ) !important;
+    top: auto !important;
+    left: 10px !important;
+    right: auto !important;
+  }
+
+  /* Narrow phones already have pinch, double-tap, keyboard zoom, automatic
+     lens framing, and the 44px Whole grounds action. Hiding the redundant
+     native +/- rail gives real map places ownership of this scarce canvas
+     space, including when a visitor enlarges text to 200%. */
+  @media (max-width: 639.98px) {
+    .fair-grounds-map-canvas .maplibregl-ctrl-top-right {
+      display: none !important;
+    }
+  }
+
+  /* Fair place and cluster sheets stay between the app header and the Fair
+     navigation at every text size. Their own content scrolls instead of
+     covering either persistent navigation surface. */
+  .fair-map-mobile-sheet {
+    bottom: calc(
+      var(
+          --fair-map-action-bar-height,
+          calc(
+            var(--app-bottomnav-reserve, 68px) +
+              env(safe-area-inset-bottom, 0px)
+          )
+        ) + 8px
+    ) !important;
+    max-height: calc(
+      100dvh - var(--app-topbar-h, 56px) -
+        var(
+          --fair-map-action-bar-height,
+          calc(
+            var(--app-bottomnav-reserve, 68px) +
+              env(safe-area-inset-bottom, 0px)
+          )
+        ) -
+        env(safe-area-inset-top, 0px) -
+        24px
+    ) !important;
+  }
+
+  .fair-map-cluster-dialog,
+  .fair-map-place-dialog {
+    top: auto !important;
+    width: min(calc(100% - 1.5rem), 30rem);
+    margin-block: 0;
+    margin-inline: auto;
+    color: var(--app-ink);
+  }
+
+  .fair-map-cluster-dialog::backdrop,
+  .fair-map-place-dialog::backdrop {
+    background: color-mix(in srgb, var(--app-ink) 24%, transparent);
+    backdrop-filter: blur(2px);
   }
 
   /* /radius is an embedded planning canvas, not the full-screen browse map.
@@ -1486,6 +1572,28 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* ─────────────────────────────────────────────────────
+ * Glassmorphism Utilities — Premium frosted depth
+ * ───────────────────────────────────────────────────── */
+.glass-premium {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    0 4px 12px -2px rgba(0, 0, 0, 0.15),
+    inset 0 1px 2px rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.glass-heavy {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  box-shadow:
+    0 8px 32px -4px rgba(0, 0, 0, 0.2),
+    inset 0 1px 2px rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* ─────────────────────────────────────────────────────
  * Pulse-dot — the small "this is live data" indicator
  * used in the /pulse hero eyebrow. A solid dot with a
  * radiating ring that gently breathes; respects
@@ -1798,6 +1906,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   width: 44px !important;
   height: 44px !important;
 }
+/* Fairgrounds pins sit over an unpredictable basemap. A light inner outline
+ * plus dark outer halo keeps keyboard focus visible over roads, grass, roofs,
+ * and either map theme instead of relying on one brand color. */
+.fair-grounds-map-marker:focus-visible {
+  outline: 3px solid var(--app-ink-inverse);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px var(--app-ink);
+}
 .maplibregl-map .maplibregl-ctrl-attrib-button {
   min-width: 44px !important;
   min-height: 44px !important;
@@ -1864,14 +1980,26 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 ::view-transition-image-pair(radius-weather) {
   isolation: auto;
 }
+
+::view-transition-old(fair-map-selection) {
+  animation: vt-map-sheet-down 240ms cubic-bezier(0.3, 0, 0.2, 1) forwards;
+}
+::view-transition-new(fair-map-selection) {
+  animation: vt-map-sheet-up 320ms cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+}
+
 @keyframes vt-fade-out { to { opacity: 0; transform: translateY(-4px); } }
 @keyframes vt-fade-in  { from { opacity: 0; transform: translateY(5px); } }
+@keyframes vt-map-sheet-down { to { opacity: 0; transform: translateY(12px) scale(0.98); } }
+@keyframes vt-map-sheet-up   { from { opacity: 0; transform: translateY(24px) scale(0.96); } }
 /* Reduced motion: gate the navigation slide off for prefers-reduced-motion
  * users (WCAG 2.3.3). */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(app-main),
   ::view-transition-new(app-main),
-  ::view-transition-group(radius-weather) {
+  ::view-transition-group(radius-weather),
+  ::view-transition-old(fair-map-selection),
+  ::view-transition-new(fair-map-selection) {
     animation: none;
   }
 }
@@ -4736,7 +4864,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 /* One control owns progressive disclosure. Its count is the only cold-bar
    indication of non-default state, so the map never grows another chip rail. */
 .dock-contents {
-  min-width: 92px;
+  /* The desktop grid sizes this auto track from the control's minimum. Give
+     the icon + complete action label their real width instead of allowing the
+     overflow-hidden span to collapse the track and ellipsize "What to see". */
+  min-width: 116px;
   max-width: 148px;
   display: inline-flex;
   align-items: center;
@@ -4760,12 +4891,19 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 @media (min-width: 360px) and (max-width: 1023.98px) {
   .dock-contents {
+    min-width: 80px;
     flex-direction: column;
     gap: 2px;
     padding: 3px 4px;
   }
   .dock-contents > span {
     max-width: 100%;
+  }
+}
+@media (max-width: 359.98px) {
+  .dock-contents {
+    min-width: 52px;
+    padding-inline: 4px;
   }
 }
 @media (max-width: 350px) {
@@ -8800,4 +8938,92 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
     opacity: 1;
     transition: none;
   }
+}
+
+/* The first choice leads Today. Weather supports it without delaying Find. */
+/* Upgraded to Bento Layout */
+.today-start-grid { 
+  display: grid; 
+  gap: 1.25rem; 
+  grid-template-columns: 1fr;
+  container-type: inline-size; 
+}
+.today-start-context { min-width: 0; }
+.today-start-grid + div { margin-top: 2rem; }
+@media (min-width: 768px) {
+  .today-start-grid { 
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: auto auto;
+    align-items: stretch; 
+  }
+  .today-start-find {
+    grid-column: 1 / 2;
+    grid-row: 1 / 3;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .today-start-context {
+    grid-column: 2 / 3;
+    grid-row: 1 / 3;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+}
+
+/* Scroll-Driven Masthead */
+@keyframes masthead-collapse {
+  to {
+    border-radius: 0;
+    margin-bottom: 0;
+    padding-bottom: 0.5rem;
+    padding-top: 0.5rem;
+    background: color-mix(in srgb, var(--app-bg-elevated-solid) 80%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    border-bottom: 1px solid var(--app-border);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  }
+}
+
+@keyframes masthead-img-fade {
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+    height: 0px;
+    min-height: 0px;
+  }
+}
+
+.scroll-masthead {
+  animation: masthead-collapse auto linear forwards;
+  animation-timeline: scroll(root);
+  animation-range: 0px 120px;
+}
+
+.scroll-masthead-img {
+  animation: masthead-img-fade auto linear forwards;
+  animation-timeline: scroll(root);
+  animation-range: 0px 120px;
+}
+
+/* MANDATORY Copy-Paste Safety: Disable continuous storytelling motion for sensitive users */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-masthead, .scroll-masthead-img {
+    animation: none !important;
+  }
+}
+
+.glass-popup .mapboxgl-popup-content {
+  background: var(--app-bg-elevated-translucent) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.glass-popup .mapboxgl-popup-tip {
+  border-top-color: var(--app-bg-elevated-translucent) !important;
 }

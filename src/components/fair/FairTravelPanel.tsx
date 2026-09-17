@@ -5,7 +5,6 @@ import {
   CarFront,
   Check,
   ChevronDown,
-  ChevronRight,
   ExternalLink,
   MapPin,
   Navigation,
@@ -16,15 +15,20 @@ import {
 import { useId, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { fairTransitDateStatus } from "@/data/fair/great-frederick-fair-2026-transit";
 
+import FairArrivalStatus from "./FairArrivalStatus";
 import FairCarMemoryPanel from "./FairCarMemoryPanel";
 import type { FairDayArrivalView, FairDayWorkspaceData } from "./types";
 
 export type FairTravelPanelProps = {
   options: FairDayArrivalView[];
   selected: FairDayArrivalView | null;
+  selectedDate: string;
   eventPhase: FairDayWorkspaceData["eventPhase"];
+  ready: boolean;
   onSelect: (option: FairDayArrivalView) => void;
+  onReadyChange: (ready: boolean) => void;
 };
 
 type SupportedArrivalChoice = "drive" | "transit" | "drop-off";
@@ -40,7 +44,7 @@ const MODE_META: Record<
   },
   transit: {
     label: "County Transit",
-    detail: "Fare-free network context",
+    detail: "Fare-free; verify Fair-day service",
     icon: BusFront,
   },
   "drop-off": {
@@ -187,7 +191,14 @@ function DriveFlow({
   );
 }
 
-function TransitFlow({ option }: { option: FairDayArrivalView }) {
+function TransitFlow({
+  option,
+  selectedDate,
+}: {
+  option: FairDayArrivalView;
+  selectedDate: string;
+}) {
+  const dateStatus = fairTransitDateStatus(selectedDate);
   return (
     <div>
       <FactBlock label="What is confirmed">{option.paymentLabel}</FactBlock>
@@ -216,24 +227,27 @@ function TransitFlow({ option }: { option: FairDayArrivalView }) {
             style={{ color: "var(--app-warning-press)" }}
             aria-hidden
           />
-          Fair-date service and arrival times are not confirmed from the
-          current Fair data pack.
+          {dateStatus.detail}
         </p>
         <p
           className="mt-2 text-[13px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
-          The nearby stop and route names are static network context. Check the
-          official County Transit information before relying on this trip.
+          Radius checked the official static feed on September 4. Check County
+          Transit again before relying on the trip because the schedule can
+          change and these are not live arrivals.
         </p>
       </div>
 
       <Button
         className="mt-6 w-full sm:w-auto"
-        href="/transit"
+        href={option.officialInfoUrl}
+        target="_blank"
+        rel="noopener noreferrer"
         iconLeft={<BusFront className="h-4 w-4" aria-hidden />}
+        iconRight={<ExternalLink className="h-4 w-4" aria-hidden />}
       >
-        Open Radius Transit
+        Check official County Transit
       </Button>
 
       <SourceDisclosure option={option} />
@@ -282,11 +296,65 @@ function DropOffFlow({ option }: { option: FairDayArrivalView }) {
   );
 }
 
+const READY_ACTION: Record<SupportedArrivalChoice, string> = {
+  drive: "Use this driving plan",
+  transit: "I checked Fair-date service",
+  "drop-off": "Use this drop-off plan",
+};
+
+function TravelReadinessControl({
+  choice,
+  ready,
+  onReadyChange,
+}: {
+  choice: SupportedArrivalChoice;
+  ready: boolean;
+  onReadyChange: (ready: boolean) => void;
+}) {
+  return (
+    <div
+      className="mt-5 border-y py-4"
+      style={{ borderColor: "var(--app-border-strong)" }}
+    >
+      <p
+        className="text-[11px] font-bold uppercase tracking-[0.11em]"
+        style={{ color: "var(--app-cool)" }}
+      >
+        Travel and return
+      </p>
+      <p
+        className="mt-1 max-w-[34rem] text-[13px] leading-relaxed"
+        style={{ color: "var(--app-ink-2)" }}
+      >
+        {ready
+          ? "This travel and return plan is marked ready on this device."
+          : choice === "transit"
+            ? "This records only your check. Use the published schedule as planning context and recheck County Transit before leaving."
+            : "Mark this ready after you have checked the official details you need."}
+      </p>
+      <Button
+        className="mt-3 w-full sm:w-auto"
+        variant="secondary"
+        aria-pressed={ready}
+        onClick={() => onReadyChange(!ready)}
+        iconLeft={
+          ready ? <Check className="h-4 w-4" aria-hidden /> : undefined
+        }
+      >
+        {ready ? "Mark travel plan not ready" : READY_ACTION[choice]}
+      </Button>
+    </div>
+  );
+}
+
 export default function FairTravelPanel({
   options,
   selected,
+  selectedDate,
   eventPhase,
+  ready,
   onSelect,
+  onReadyChange,
 }: FairTravelPanelProps) {
   const groupName = useId();
   const supportedOptions = options.filter(isSupportedOption);
@@ -296,14 +364,22 @@ export default function FairTravelPanel({
       : null;
   return (
     <div aria-label="Fair travel choices">
+      <FairArrivalStatus
+        selectedDate={selectedDate}
+        transitSelected={activeOption?.planChoice === "transit"}
+      />
       {supportedOptions.length > 0 ? (
-        <fieldset className="mt-5">
+        <fieldset className="mt-3">
           <legend className="sr-only">Choose a travel mode</legend>
           <div
-            className="divide-y border-y"
+            data-fair-travel-modes
+            className="grid grid-cols-3 gap-1 rounded-[var(--app-radius-lg)] border p-1"
             role="radiogroup"
             aria-label="Fair travel mode"
-            style={{ borderColor: "var(--app-border-strong)" }}
+            style={{
+              borderColor: "var(--app-border-strong)",
+              background: "var(--app-bg-elevated-solid)",
+            }}
           >
             {supportedOptions.map((option) => {
               const meta = MODE_META[option.planChoice];
@@ -312,9 +388,12 @@ export default function FairTravelPanel({
               return (
                 <label
                   key={option.id}
-                  className="relative flex min-h-[72px] cursor-pointer items-center gap-3 border-l-[3px] px-3 py-3 text-left outline-none transition-colors focus-within:ring-2 focus-within:ring-[color:var(--app-cool)] focus-within:ring-offset-2 focus-within:ring-offset-[color:var(--app-bg)] motion-reduce:transition-none"
+                  data-fair-travel-choice={option.planChoice}
+                  className="relative flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-[calc(var(--app-radius-lg)-4px)] border px-1 py-2 text-center outline-none transition-colors focus-within:ring-2 focus-within:ring-[color:var(--app-cool)] focus-within:ring-offset-2 focus-within:ring-offset-[color:var(--app-bg)] motion-reduce:transition-none"
                   style={{
-                    borderLeftColor: checked ? "var(--app-cool)" : "transparent",
+                    borderColor: checked
+                      ? "var(--app-cool)"
+                      : "transparent",
                     background: checked
                       ? "var(--app-cool-tint-14)"
                       : "transparent",
@@ -330,25 +409,32 @@ export default function FairTravelPanel({
                     onChange={() => onSelect(option)}
                   />
                   <Icon
-                    className="h-5 w-5 shrink-0"
+                    className="h-[18px] w-[18px] shrink-0"
                     style={{
                       color: checked ? "var(--app-cool)" : "var(--app-ink-2)",
                     }}
                     aria-hidden
                   />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-semibold leading-tight">
+                  <span className="min-w-0">
+                    <span className="block text-[12.5px] font-bold leading-tight">
                       {meta.label}
                     </span>
-                    <span className="mt-1 block text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                    <span className="sr-only">{meta.detail}</span>
+                    <span
+                      className="mt-0.5 hidden text-[12px] leading-snug sm:block"
+                      style={{ color: "var(--app-ink-3)" }}
+                      aria-hidden="true"
+                    >
                       {meta.detail}
                     </span>
                   </span>
                   {checked ? (
-                    <Check className="h-5 w-5 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
-                  ) : (
-                    <ChevronRight className="h-5 w-5 shrink-0" style={{ color: "var(--app-ink-3)" }} aria-hidden />
-                  )}
+                    <Check
+                      className="absolute right-1 top-1 h-3.5 w-3.5"
+                      style={{ color: "var(--app-cool)" }}
+                      aria-hidden
+                    />
+                  ) : null}
                 </label>
               );
             })}
@@ -366,19 +452,27 @@ export default function FairTravelPanel({
 
       {activeOption ? (
         <div
-          className="mt-5 border-t pt-5"
-          style={{ borderColor: "var(--app-border-strong)" }}
+          className="mt-4 rounded-[var(--app-radius-lg)] border p-4"
+          style={{
+            borderColor: "var(--app-border-strong)",
+            background: "var(--app-bg-elevated-solid)",
+          }}
           aria-live="polite"
         >
           {activeOption.planChoice === "drive" ? (
             <DriveFlow option={activeOption} eventPhase={eventPhase} />
           ) : null}
           {activeOption.planChoice === "transit" ? (
-            <TransitFlow option={activeOption} />
+            <TransitFlow option={activeOption} selectedDate={selectedDate} />
           ) : null}
           {activeOption.planChoice === "drop-off" ? (
             <DropOffFlow option={activeOption} />
           ) : null}
+          <TravelReadinessControl
+            choice={activeOption.planChoice}
+            ready={ready}
+            onReadyChange={onReadyChange}
+          />
         </div>
       ) : supportedOptions.length > 0 ? (
         <div

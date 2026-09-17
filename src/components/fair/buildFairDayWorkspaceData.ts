@@ -3,16 +3,21 @@ import { buildFairPartyOffers } from "@/lib/fair/party-plan";
 import { createFairPlan } from "@/lib/fair/plan";
 import type { FairScheduleSourceItem } from "@/lib/fair/schedule";
 import { greatFrederickFair2026PracticalAnswers } from "@/data/fair/great-frederick-fair-2026-practical-answers";
+import {
+  fairTransitTravelSummary,
+  greatFrederickFair2026TransitReview,
+} from "@/data/fair/great-frederick-fair-2026-transit";
 
 import type {
+  FairDayAccessHighlight,
   FairDayArrivalView,
+  FairDayParkingGlance,
   FairDayScheduleItemView,
   FairDayWorkspaceData,
 } from "./types";
+import { reviewedGrandstandPresentation } from "./reviewedGrandstandProgram";
 
 const FAIR_TIME_ZONE = "America/New_York";
-const COUNTY_TRANSIT_INFO_URL =
-  "https://www.frederickcountymd.gov/105/Transit-Services";
 const ETIX_WALLET_HELP_URL =
   "https://support.etix.com/general-info/what-is-etix-wallet-and-how-do-i-use-it";
 const EVENTHUB_GUIDE_URL =
@@ -68,9 +73,9 @@ function offerValidityLabel(
 function sourceAgeLabel(timestamp: string, asOf: Date): string {
   const elapsedMs = Math.max(0, asOf.getTime() - Date.parse(timestamp));
   const days = Math.floor(elapsedMs / 86_400_000);
-  if (days === 0) return "The source was checked today";
-  if (days === 1) return "The source was checked 1 day ago";
-  return `The source was checked ${days} days ago`;
+  if (days === 0) return "This imported program version is from today";
+  if (days === 1) return "This imported program version is 1 day old";
+  return `This imported program version is ${days} days old`;
 }
 
 function fairLocalDate(asOf: Date): string {
@@ -90,22 +95,29 @@ function scheduleKind(
 ): FairDayScheduleItemView["kind"] {
   const text = item.text.toLocaleLowerCase();
   if (
-    /\b(?:cattle|dairy|goat|horse|livestock|poultry|rabbit|sheep|swine)\b/.test(
+    /\b(?:alpacas?|cattle|dairy|dogs?|goats?|horses?|livestock|llamas?|pigs?|poultry|rabbits?|sheep|swine|turkeys?|pretty cow|beef (?:breed|cattle|fit(?:ting| out)|market)|longhorn(?: regional)? show|legendairy)\b/.test(
       text,
     )
   ) {
     return "animal";
   }
+  if (
+    /\b(?:food|bake|baked|cooking|cake|pie|culinary|chef|ice cream|taste of|beer garden|winery|wineries|brewery|breweries|distillery|distilleries)\b/.test(
+      text,
+    )
+  ) {
+    return "food";
+  }
   if (/\b(?:agriculture|agricultural|farm|garden|landscape|produce)\b/.test(text)) {
     return "agriculture";
   }
-  if (/\b(?:concert|music|band|choir|singer)\b/.test(text)) return "concert";
-  if (/\b(?:carnival|ride|midway)\b/.test(text)) return "carnival";
-  if (/\b(?:food|bake|cooking|cake|pie)\b/.test(text)) return "food";
   if (/\b(?:tractor|truck|motorsport|demolition)\b/.test(text)) {
     return "motorsport";
   }
+  if (/\b(?:concert|music|band|choir|singer)\b/.test(text)) return "concert";
+  if (/\b(?:carnival|ride|midway)\b/.test(text)) return "carnival";
   if (/\b(?:first aid|guest services|security)\b/.test(text)) return "service";
+  if (/\b(?:household building|exhibits?|arts? and crafts|photography)\b/.test(text)) return "exhibit";
   return "other";
 }
 
@@ -119,46 +131,112 @@ function scheduleCopy(text: string): { title: string; detail?: string } {
     .replace(/\s+([,.;!?])/g, "$1")
     .replace(/\s+/g, " ")
     .trim() || normalized;
-  const firstSectionRaw =
-    displayText
-      .split(
-        /\s+\|\s+|\s+-\s+(?=(?:Presented\s+[Bb]y|Grandstand))/u,
-      )
-      .find((section) => section.trim().length > 0)
-      ?.trim() ?? displayText;
-  const firstSection = firstSectionRaw.replace(/\s+-\s*/g, ": ");
-  const beforeLongQualifier =
-    firstSection.length > 120 && firstSection.includes(": ")
-      ? firstSection.slice(0, firstSection.indexOf(": ")).trim()
-      : firstSection;
+  const sections = displayText
+    .split(/\s+\|\s+|\s+-\s+/u)
+    .map((section) => section.trim())
+    .filter(Boolean);
+  const firstSectionCandidate = sections[0] ?? displayText;
+  const colonIndex = firstSectionCandidate.indexOf(": ");
+  const colonSections =
+    colonIndex >= 3 && colonIndex <= 80
+      ? [
+          firstSectionCandidate.slice(0, colonIndex),
+          firstSectionCandidate.slice(colonIndex + 2),
+          ...sections.slice(1),
+        ]
+      : sections;
+  const firstSection = colonSections[0] ?? displayText;
+
+  if (
+    colonSections.length > 1 &&
+    firstSection.length >= 3 &&
+    firstSection.length <= 80
+  ) {
+    const detail = colonSections
+      .slice(1)
+      .join(" · ")
+      .replace(/\s*~\s*/g, " · ")
+      .replace(/[{}]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    return detail ? { title: firstSection, detail } : { title: firstSection };
+  }
+
+  const beforeLongQualifier = firstSection;
   const breakAt = beforeLongQualifier.lastIndexOf(" ", 116);
   const title =
     beforeLongQualifier.length > 120
       ? `${beforeLongQualifier.slice(0, Math.max(80, breakAt)).trim()}…`
       : beforeLongQualifier;
 
-  return title === normalized ? { title } : { title, detail: text };
+  return title === displayText ? { title } : { title, detail: displayText };
 }
 
-function explicitPlaceLabel(text: string): string {
+function explicitPlaces(text: string): string[] {
   const numberedPlaces = text.match(
     /\b(?:Bldg\.?|Building|Gate)\s*(?:#\s*)?\d+[A-Za-z]?\b/gi,
   );
   const namedPlaces = text
     .split(/\s+-\s+/u)
-    .map((section) => section.replace(/\s*\(\$\)\s*/g, "").trim())
+    .map((section) =>
+      section
+        .split(/\s*~\s*/u)[0]
+        ?.replace(/\s*\(\$\)\s*/g, "")
+        .trim(),
+    )
     .filter(
-      (section) =>
+      (section): section is string =>
+        Boolean(section) &&
         section.length <= 120 &&
         /\b(?:Arena|Grandstand|Horse Park|Infield|Stage|Tent)\b/i.test(section),
     );
+  const reviewedNamedMentions =
+    (numberedPlaces?.length ?? 0) + namedPlaces.length === 0
+      ? text.match(/\b(?:Grandstand|Household Building|The Null Bldg\.?)\b/gi)
+      : null;
   const places = Array.from(
-    new Set([...(numberedPlaces ?? []), ...namedPlaces]),
+    new Set([
+      ...(numberedPlaces ?? []),
+      ...(reviewedNamedMentions ?? []),
+      ...namedPlaces,
+    ]),
   );
+  const hasHouseholdBuilding = places.some((place) =>
+    /\bHousehold Building\b/i.test(place),
+  );
+  return hasHouseholdBuilding
+    ? places.filter((place) => !/\bThe Null Bldg\.?\b/i.test(place))
+    : places;
+}
+
+function explicitPlaceLabel(text: string): string {
+  const places = explicitPlaces(text);
   if (places.length === 0) {
     return "The official schedule does not publish a separate place field.";
   }
   return `Published place: ${places.join(", ")}.`;
+}
+
+function detailWithoutRepeatedPlaces(
+  detail: string | undefined,
+  places: string[],
+): string | undefined {
+  if (!detail || places.length === 0) return detail;
+  const normalize = (value: string) =>
+    value
+      .toLocaleLowerCase()
+      .replace(/\bbuilding\b/g, "bldg")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  const normalizedPlaces = places.map(normalize);
+  const remaining = detail
+    .split(" · ")
+    .filter(
+      (section) => !normalizedPlaces.includes(normalize(section)),
+    )
+    .join(" · ")
+    .trim();
+  return remaining || undefined;
 }
 
 function scheduleTimeLabel(item: FairScheduleSourceItem): string {
@@ -171,17 +249,43 @@ function scheduleTimeLabel(item: FairScheduleSourceItem): string {
     : "Time not published";
 }
 
-function scheduleView(item: FairScheduleSourceItem): FairDayScheduleItemView {
+function scheduleView(
+  item: FairScheduleSourceItem,
+  asOf: Date,
+): FairDayScheduleItemView {
+  const reviewedGrandstand = reviewedGrandstandPresentation(item, asOf);
   const copy = scheduleCopy(item.text);
+  const places = explicitPlaces(item.text);
+  const performanceSlots = reviewedGrandstand
+    ? reviewedGrandstand.billing.mode === "opener-headliner"
+      ? [
+          reviewedGrandstand.billing.opener,
+          reviewedGrandstand.billing.headliner,
+        ]
+      : [reviewedGrandstand.billing.performance]
+    : undefined;
   return {
     id: item.id,
     date: item.fairDate,
-    title: copy.title,
-    detail: copy.detail,
-    timeLabel: scheduleTimeLabel(item),
-    placeLabel: explicitPlaceLabel(item.text),
-    kind: scheduleKind(item),
-    sourceUrl: item.sourceUrl,
+    title: reviewedGrandstand?.title ?? copy.title,
+    detail:
+      reviewedGrandstand?.detail ??
+      detailWithoutRepeatedPlaces(copy.detail, places),
+    timeLabel: reviewedGrandstand?.timeLabel ?? scheduleTimeLabel(item),
+    placeLabel:
+      places.length > 0
+        ? `Published place: ${places.join(", ")}.`
+        : explicitPlaceLabel(item.text),
+    kind: reviewedGrandstand ? "concert" : scheduleKind(item),
+    sourceUrl: reviewedGrandstand?.sourceUrl ?? item.sourceUrl,
+    sourceReview: reviewedGrandstand
+      ? {
+          reviewedOn: reviewedGrandstand.reviewedOn,
+          validThrough: reviewedGrandstand.validThrough,
+          sourceRevision: reviewedGrandstand.sourceRevision,
+        }
+      : undefined,
+    performanceSlots,
     sourceItem: item,
   };
 }
@@ -237,26 +341,18 @@ function arrivalViews(pack: FairPack): FairDayArrivalView[] {
     },
   ];
 
-  const featuredStop = pack.transit.featuredStop;
-  if (featuredStop) {
-    const routeLabels = featuredStop.routes.map((route) => route.short);
-    const routeText =
-      routeLabels.length > 0
-        ? `The reviewed static feed associates ${featuredStop.name} with ${routeLabels.join(" and ")}.`
-        : `The reviewed static feed includes ${featuredStop.name}, but it does not publish a route association in this pack.`;
-    views.push({
-      id: "arrival-transit-context",
-      planChoice: "transit",
-      label: "County Transit",
-      summary: `${routeText} This is static network context, not a service promise. Service on Fair dates is not confirmed, and arrival times are not confirmed.`,
-      paymentLabel:
-        "County Transit is fare-free. Check Fair-date service before relying on this option.",
-      returnLabel: "Recheck county Transit before leaving",
-      returnSummary:
-        "Radius has no confirmed Fair-date service or arrival time for this stop.",
-      officialInfoUrl: COUNTY_TRANSIT_INFO_URL,
-    });
-  }
+  views.push({
+    id: "arrival-transit-context",
+    planChoice: "transit",
+    label: "County Transit",
+    summary: fairTransitTravelSummary(),
+    paymentLabel:
+      "County Transit is fare-free. Radius checked the published static Fair-week schedule on September 4.",
+    returnLabel: "Recheck county Transit before leaving",
+    returnSummary:
+      "Static departure times can change. Check County Transit again before the return trip.",
+    officialInfoUrl: greatFrederickFair2026TransitReview.informationUrl,
+  });
 
   const dropOff = pack.manifest.accessFacts.find(
     (fact) => fact.kind === "accessible-drop-off" && fact.state.status === "known",
@@ -276,6 +372,30 @@ function arrivalViews(pack: FairPack): FairDayArrivalView[] {
   }
 
   return views;
+}
+
+function parkingGlance(pack: FairPack): FairDayParkingGlance {
+  const infield = pack.manifest.lots.find((lot) => lot.id === "lot-infield");
+  const satellite = pack.manifest.lots.find((lot) => lot.id === "lot-a");
+
+  return {
+    satellitePriceLabel:
+      satellite?.vehicleRate.status === "known"
+        ? moneyLabel(satellite.vehicleRate.amountCents)
+        : "Price not published",
+    satellitePaymentLabel:
+      satellite?.paymentMethods.status === "known"
+        ? satellite.paymentMethods.value.join(" or ")
+        : "Payment method not published",
+    infieldPriceLabel:
+      infield?.vehicleRate.status === "known"
+        ? moneyLabel(infield.vehicleRate.amountCents)
+        : "Price not published",
+    infieldPaymentLabel:
+      infield?.paymentMethods.status === "known"
+        ? infield.paymentMethods.value.join(" or ")
+        : "Payment method not published",
+  };
 }
 
 function entryCopy(pack: FairPack): {
@@ -298,13 +418,37 @@ function entryCopy(pack: FairPack): {
   };
 }
 
+function accessHighlights(pack: FairPack): FairDayAccessHighlight[] {
+  const sensoryWindow = pack.manifest.accessFacts.find(
+    (fact) =>
+      fact.id === "access-sensory-friendly-carnival" &&
+      fact.kind === "sensory-friendly-hours" &&
+      fact.state.status === "known",
+  );
+  if (!sensoryWindow || sensoryWindow.state.status !== "known") return [];
+  const sensoryDetail = sensoryWindow.state.value;
+
+  return sensoryWindow.relatedEntityIds.flatMap((entityId) => {
+    if (!entityId.startsWith("day-")) return [];
+    return [
+      {
+        id: sensoryWindow.id,
+        date: entityId.slice("day-".length),
+        title: "Sensory-friendly carnival · noon–2 p.m.",
+        detail: sensoryDetail,
+        answerId: "fair-answer-sensory-friendly-carnival",
+      },
+    ];
+  });
+}
+
 export function buildFairDayWorkspaceData(
   pack: FairPack,
   pointer: FairPackPointer,
   asOf: Date,
 ): FairDayWorkspaceData {
   const scheduleItems = pack.schedule.days.flatMap((day) =>
-    day.items.map(scheduleView),
+    day.items.map((item) => scheduleView(item, asOf)),
   );
   const firstDay = pack.schedule.days[0];
   const todayAtFair = fairLocalDate(asOf);
@@ -344,6 +488,8 @@ export function buildFairDayWorkspaceData(
       }).format(new Date(`${day.date}T12:00:00-04:00`)),
       dayLabel: String(Number(day.date.slice(-2))),
       gateHoursLabel: clockLabel(day.gateStartsAt),
+      gateOpensAt: day.gateStartsAt,
+      gateClosesAt: day.gateEndsAt,
     })),
     initialDate: initialDay.date,
     offers: pack.offers.map((offer) => ({
@@ -379,6 +525,9 @@ export function buildFairDayWorkspaceData(
           ? "eligibility-promotion"
           : "standard",
       officialInfoUrl: offer.officialInfoUrl,
+      purchaseNote: offer.officialPurchaseUrl.status === "unknown"
+        ? offer.officialPurchaseUrl.reason
+        : undefined,
       officialPurchaseUrl:
         offer.officialPurchaseUrl.status === "known"
           ? offer.officialPurchaseUrl.value
@@ -386,7 +535,9 @@ export function buildFairDayWorkspaceData(
     })),
     partyOffers,
     practicalAnswers: greatFrederickFair2026PracticalAnswers,
+    accessHighlights: accessHighlights(pack),
     arrivalOptions: arrivalViews(pack),
+    parkingGlance: parkingGlance(pack),
     ...entry,
     ticketWalletHelpUrl: ETIX_WALLET_HELP_URL,
     externalGuide: {
@@ -405,8 +556,8 @@ export function buildFairDayWorkspaceData(
     source: {
       label: `Official Fair data pack with ${pointer.itemCount} program rows`,
       sourceUrl: pack.provenance.scheduleSourceUrl,
-      checkedLabel: checkedLabel(pack.contentUpdatedAt),
-      ageLabel: sourceAgeLabel(pack.contentUpdatedAt, asOf),
+      checkedLabel: checkedLabel(pack.provenance.scheduleSourceRevision),
+      ageLabel: sourceAgeLabel(pack.provenance.scheduleSourceRevision, asOf),
     },
   };
 }

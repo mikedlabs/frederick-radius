@@ -6,8 +6,12 @@ Google Places. Production: https://frederickradius.app
 
 ## Design system — this is the truth, not older specs
 
-The canonical brand guide is `docs/brand/BRAND_GUIDE.md`; the generated visual
-guide is `docs/brand/Frederick-Radius-Brand-Guide.html`. The code source of
+The canonical brand guide is `docs/brand/BRAND_GUIDE.md`; the printable visual
+guide is `docs/brand/Frederick-Radius-Brand-Guide.html`, which is
+hand-maintained — no script writes it, and `npm run build:brand-guide` renders
+it to a PDF rather than authoring it. Edit it yourself when the identity
+changes, keeping its palette, names, and version line matching
+`src/lib/brand.ts`, because `npm run build:brand` fails otherwise. The code source of
 truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
 `src/app/globals.css`.
 
@@ -139,7 +143,9 @@ Back behavior when adding or changing tools.
 - **The Postgres `places` and `events` tables are NOT the catalog.** Do
   not read them. `schema.places` is write-only — seeded once by
   `src/lib/db/seed.ts` and read by nothing at runtime — and it holds
-  1,479 stale rows against the real 1,616, with no overrides applied.
+  a stale partial copy (1,479 rows at the July 2026 audit) with no
+  overrides applied, against a file catalog that moves with every data run
+  (1,570 as of 2026-09-16).
   `schema.events` is likewise vestigial (44 rows); the live event
   pipeline is `ingested_events` via `unifiedEvents.ts`. Places come from
   `src/data/places-client.json` (client surfaces) or
@@ -155,13 +161,21 @@ Back behavior when adding or changing tools.
   writer imports the direct OpenAI provider and requires `OPENAI_API_KEY` when
   vectors are deliberately enabled. Do not infer transport support from the
   provider catalog or from Ask's text-generation credentials. The larger
-  reason not to rush vectors is still the corpus: the indexed documents average
-  89 characters and 1,302 of
-  1,568 are under 100, so embedding them yields ~1,400 near-identical
-  "restaurant in Frederick" vectors and cosine ranking among those is close to
-  arbitrary. Enrich the documents first (`search_aliases` is scored by the
-  lexical engine but missing from the indexed document entirely); vectors are
-  worth buying only once there is something in them to embed.
+  reason not to rush vectors is still the corpus, though the shape of the
+  problem has changed since #1681 enriched it. Measured 2026-09-16 over all
+  1,570 documents: they average 150 characters, median 137, and only 47 are
+  under 100 — but 1,388 of 1,570 are still under 200, and the growth is mostly
+  address and postal-code boilerplate that appears on nearly every document.
+  What would actually distinguish them is still missing: `place.amenities` is
+  read by the builder and populated for ZERO places, only 14 places carry
+  `search_aliases`, 3 carry a description, and 1 carries `known_for`. So
+  embedding this corpus still yields ~1,500 near-identical "restaurant in
+  Frederick" vectors whose cosine ranking is close to arbitrary. Enrich the
+  documents first; vectors are worth buying only once there is something in
+  them to embed. (Do NOT re-add a note that aliases are missing from the
+  indexed document — they were added in #1634 and are at
+  `src/lib/ask/search-index-document.ts:38`; that claim sent agents to redo
+  finished work.)
   `hybridPlaceSearch()` fails soft to `[]`, so an EMPTY index is
   indistinguishable from a healthy one at the call site — it shipped empty
   and Ask ran keyword-only for months before anyone noticed. Keep

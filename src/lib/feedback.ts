@@ -12,6 +12,24 @@
 export const FEEDBACK_MAX_MESSAGE = 4000;
 export const FEEDBACK_MAX_PATHNAME = 512;
 export const FEEDBACK_MAX_VERSION = 80;
+export const FAIR_FEEDBACK_MAX_CONTEXT = 160;
+export const FAIR_FEEDBACK_PATHNAME =
+  "/moments/great-frederick-fair-2026";
+
+/**
+ * A short, fixed vocabulary keeps Fair reports scannable in the owner queue.
+ * These are product-report categories, not emergency or official Fair intake.
+ */
+export const FAIR_FEEDBACK_REASONS = {
+  map_wrong: "Map or location",
+  schedule_change: "Schedule change",
+  parking_entry: "Parking or entry",
+  restroom_help: "Restroom or family help",
+  access_barrier: "Accessibility barrier",
+  other: "Something else",
+} as const;
+
+export type FairFeedbackReason = keyof typeof FAIR_FEEDBACK_REASONS;
 
 /**
  * Small, fixed correction vocabulary for Ask Radius. These values are safe to
@@ -50,12 +68,16 @@ export type ParsedFeedback = ParsedFeedbackBase &
         source: "feedback-widget";
         reason: null;
         resultRef: null;
+        fairIssue: FairFeedbackReason | null;
+        fairContext: string | null;
       }
     | {
         source: "ask-correction";
         reason: AskCorrectionReason;
         /** Canonical local place/event route, never a query or answer. */
         resultRef: string | null;
+        fairIssue: null;
+        fairContext: null;
       }
   );
 
@@ -68,6 +90,14 @@ function askCorrectionReason(value: unknown): AskCorrectionReason | null {
     Object.hasOwn(ASK_CORRECTION_REASONS, value)
     ? (value as AskCorrectionReason)
     : null;
+}
+
+export function isFairFeedbackReason(
+  value: unknown,
+): value is FairFeedbackReason {
+  return (
+    typeof value === "string" && Object.hasOwn(FAIR_FEEDBACK_REASONS, value)
+  );
 }
 
 /**
@@ -104,13 +134,29 @@ export function parseFeedback(raw: unknown): ParseResult {
   if (typeof raw !== "object" || raw === null) return { ok: false, error: "invalid-body" };
   const r = raw as Record<string, unknown>;
 
+  const pathname =
+    typeof r.pathname === "string" && r.pathname.trim()
+      ? r.pathname.trim().slice(0, FEEDBACK_MAX_PATHNAME)
+      : null;
+  const version =
+    typeof r.version === "string" && r.version.trim()
+      ? r.version.trim().slice(0, FEEDBACK_MAX_VERSION)
+      : null;
+
   const source: FeedbackSource =
     r.source === "ask-correction" ? "ask-correction" : "feedback-widget";
+  const carriesFairMetadata =
+    Object.hasOwn(r, "fairIssue") || Object.hasOwn(r, "fairContext");
+  if (source !== "feedback-widget" && carriesFairMetadata) {
+    return { ok: false, error: "bad-fair-surface" };
+  }
   let correction: {
     reason: AskCorrectionReason;
     resultRef: string | null;
   } | null = null;
   let message: string;
+  let fairIssue: FairFeedbackReason | null = null;
+  let fairContext: string | null = null;
 
   if (source === "ask-correction") {
     const reason = askCorrectionReason(r.reason);
@@ -125,6 +171,27 @@ export function parseFeedback(raw: unknown): ParseResult {
     message = typeof r.message === "string" ? r.message.trim() : "";
     if (!message) return { ok: false, error: "empty" };
     if (message.length > FEEDBACK_MAX_MESSAGE) return { ok: false, error: "too-long" };
+
+    if (pathname === FAIR_FEEDBACK_PATHNAME || carriesFairMetadata) {
+      if (pathname !== FAIR_FEEDBACK_PATHNAME) {
+        return { ok: false, error: "bad-fair-surface" };
+      }
+      if (!isFairFeedbackReason(r.fairIssue)) {
+        return { ok: false, error: "bad-fair-issue" };
+      }
+      fairIssue = r.fairIssue;
+
+      if (r.fairContext != null && r.fairContext !== "") {
+        if (typeof r.fairContext !== "string") {
+          return { ok: false, error: "bad-fair-context" };
+        }
+        const normalizedContext = r.fairContext.replace(/\s+/g, " ").trim();
+        if (normalizedContext.length > FAIR_FEEDBACK_MAX_CONTEXT) {
+          return { ok: false, error: "fair-context-too-long" };
+        }
+        fairContext = normalizedContext || null;
+      }
+    }
   }
 
   const rawEmail =
@@ -134,15 +201,6 @@ export function parseFeedback(raw: unknown): ParseResult {
     if (!EMAIL_RE.test(rawEmail)) return { ok: false, error: "bad-email" };
     email = rawEmail;
   }
-
-  const pathname =
-    typeof r.pathname === "string" && r.pathname.trim()
-      ? r.pathname.trim().slice(0, FEEDBACK_MAX_PATHNAME)
-      : null;
-  const version =
-    typeof r.version === "string" && r.version.trim()
-      ? r.version.trim().slice(0, FEEDBACK_MAX_VERSION)
-      : null;
 
   return correction
     ? {
@@ -155,6 +213,8 @@ export function parseFeedback(raw: unknown): ParseResult {
           source: "ask-correction",
           reason: correction.reason,
           resultRef: correction.resultRef,
+          fairIssue: null,
+          fairContext: null,
         },
       }
     : {
@@ -167,6 +227,8 @@ export function parseFeedback(raw: unknown): ParseResult {
           source: "feedback-widget",
           reason: null,
           resultRef: null,
+          fairIssue,
+          fairContext,
         },
       };
 }
@@ -184,6 +246,8 @@ export type FeedbackRow = {
     source: FeedbackSource;
     reason?: AskCorrectionReason;
     result_ref?: string | null;
+    fair_issue?: FairFeedbackReason;
+    fair_context?: string | null;
   };
   submitter_email: string | null;
 };
@@ -204,8 +268,57 @@ export function buildFeedbackRow(value: ParsedFeedback, commit: string | null): 
       source: value.source,
       ...(value.source === "ask-correction"
         ? { reason: value.reason, result_ref: value.resultRef }
-        : {}),
+        : value.fairIssue
+          ? {
+              fair_issue: value.fairIssue,
+              fair_context: value.fairContext,
+            }
+          : {}),
     },
     submitter_email: value.email,
+  };
+}
+
+const FAIR_OWNER_ALERT_TITLES: Record<FairFeedbackReason, string> = {
+  map_wrong: "Fair map or location report",
+  schedule_change: "Fair schedule report",
+  parking_entry: "Fair parking or entry report",
+  restroom_help: "Fair restroom or family report",
+  access_barrier: "Fair accessibility report",
+  other: "Fair visitor report",
+};
+
+export const FEEDBACK_OWNER_ALERT_MAX_BODY = 160;
+
+function boundedAlertBody(value: string): string {
+  if (value.length <= FEEDBACK_OWNER_ALERT_MAX_BODY) return value;
+  return `${value.slice(0, FEEDBACK_OWNER_ALERT_MAX_BODY - 1).trimEnd()}…`;
+}
+
+/** Keeps the phone alert useful while leaving the durable, full note in admin. */
+export function buildFeedbackOwnerAlert(value: ParsedFeedback): {
+  title: string;
+  body: string;
+} {
+  if (value.source === "ask-correction") {
+    return {
+      title: "Ask correction",
+      body: boundedAlertBody(value.message),
+    };
+  }
+
+  if (value.fairIssue) {
+    return {
+      title: FAIR_OWNER_ALERT_TITLES[value.fairIssue],
+      body: boundedAlertBody(
+        [value.fairContext, value.message].filter(Boolean).join(" · "),
+      ),
+    };
+  }
+
+  const where = value.pathname ? ` · ${value.pathname}` : "";
+  return {
+    title: "Site feedback",
+    body: boundedAlertBody(`${value.message}${where}`),
   };
 }

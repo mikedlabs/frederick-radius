@@ -94,6 +94,32 @@ describe("TransIT GTFS-realtime feed metadata", () => {
     expect(result.receivedAt).toBeGreaterThan(0);
   });
 
+  it("passes a caller abort through to the trip-updates request", async () => {
+    const parent = new AbortController();
+    parent.abort();
+    const fetchMock = vi.fn<typeof fetch>(async (_input, init) => {
+      if (init?.signal?.aborted) {
+        throw new DOMException("Aborted", "AbortError");
+      }
+      return protobufResponse(encodedFeed([]));
+    });
+    vi.stubGlobal(
+      "fetch",
+      fetchMock,
+    );
+
+    const result = await getStopPredictionsResult(parent.signal);
+
+    expect(result).toMatchObject({
+      data: [],
+      status: "unavailable",
+      available: false,
+    });
+    const requestSignal = fetchMock.mock.calls[0]?.[1]?.signal;
+    expect(requestSignal).toBeInstanceOf(AbortSignal);
+    expect(requestSignal?.aborted).toBe(true);
+  });
+
   it("preserves arrival identity and schedule state for a stop-level rider decision", async () => {
     const updateTimestamp = 1_785_000_200;
     vi.stubGlobal(

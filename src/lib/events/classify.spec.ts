@@ -50,6 +50,29 @@ describe("classifyEvent", () => {
     }
   });
 
+  it("keeps administrative notices out of public event discovery", () => {
+    for (const title of [
+      "Office Closed",
+      "City Offices Closed for Labor Day",
+      "Government Office Closed in Observance of Election Day",
+      "Quarterly Spires Articles Due",
+      "Newsletter Article Is Due",
+    ]) {
+      expect(classifyEvent({ title }), title).toBe("town_reminder");
+      expect(isPublicEvent({ title }), title).toBe(false);
+    }
+  });
+
+  it("rejects syndicated Instagram profile titles as non-events", () => {
+    for (const title of [
+      "RCCG- NCCC (@rccg.nccc) • Instagram photos and videos",
+      "Downtown Frederick | Instagram Photos and Videos",
+    ]) {
+      expect(classifyEvent({ title }), title).toBe("non_event");
+      expect(isPublicEvent({ title }), title).toBe(false);
+    }
+  });
+
   // Guardrail: real public events MUST stay public — no over-eager hiding.
   it("keeps genuine public events public", () => {
     for (const title of [
@@ -66,6 +89,12 @@ describe("classifyEvent", () => {
       // a bare council) must never lane out of public discovery.
       "Board Game Night at the Library",
       "Keyboard Concert",
+      // Guards for the administrative and social-artifact filters.
+      "Office Hours: Drop-in Business Help",
+      "The Office: Closed-Door Mystery Dinner",
+      "Office Closed: The Musical",
+      "Instagram Photos and Videos Workshop",
+      "Spires Brass Holiday Concert",
     ]) {
       expect(classifyEvent({ title }), title).toBe("public");
       expect(isPublicEvent({ title }), title).toBe(true);

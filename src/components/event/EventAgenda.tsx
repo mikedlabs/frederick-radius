@@ -2,7 +2,9 @@ import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import EmptyState from "@/components/ui/EmptyState";
+import { eventDecisionLocation } from "@/lib/events/decision-facts";
+import { eventDateBlock } from "@/lib/events/format";
+import { isDateOnlyEventAnchor, isEventEnded } from "@/lib/eventWhenLabel";
 
 /**
  * A mobile agenda — the calendar that actually helps on a phone. Only
@@ -54,7 +56,7 @@ export default function EventAgenda({
   for (const e of [...events].sort(
     (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
   )) {
-    if (+new Date(e.starts_at) < now - 12 * 3_600_000) continue; // skip stale
+    if (isEventEnded(e, new Date(now))) continue;
     const np = nyParts(e.starts_at);
     let d = byKey.get(np.key);
     if (!d) {
@@ -67,12 +69,45 @@ export default function EventAgenda({
 
   if (days.length === 0) {
     return (
-      <EmptyState
-        icon={CalendarDays}
-        title="No events are on the calendar in this range."
-        body="Try a wider time window from the chips above, or jump to the weekend."
-        cta={{ label: "See this weekend", href: "/events?lens=weekend" }}
-      />
+      <div className="space-y-4">
+        <div className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5" style={{ borderColor: "var(--app-border)" }}>
+          <div className="mb-4">
+            <span
+              aria-hidden
+              className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full"
+              style={{
+                background: "color-mix(in srgb, var(--app-ink-3) 15%, var(--app-bg-sunken))",
+                color: "var(--app-ink-2)",
+              }}
+            >
+              <CalendarDays className="h-5 w-5" strokeWidth={1.75} />
+            </span>
+            <h3 className="font-serif text-[18px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+              No events found.
+            </h3>
+            <p className="mt-1 text-[13px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
+              We don&apos;t have anything on the calendar for this exact window. Try one of these instead:
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { href: "/events?lens=weekend", label: "This weekend" },
+              { href: "/events?lens=month", label: "This month" },
+              { href: "/open-now", label: "Open now" },
+              { href: "/pulse", label: "Live pulse" },
+            ].map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="tactile-interactive flex min-h-[44px] items-center justify-center rounded-[var(--app-radius-md)] border bg-[var(--app-bg-surface)] px-3 text-center text-[12.5px] font-semibold shadow-sm transition hover:scale-[1.02] active:scale-95"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -108,14 +143,14 @@ export default function EventAgenda({
                       className="w-14 shrink-0 text-[12px] font-semibold tabular-nums"
                       style={{ color: "var(--app-brand-press)" }}
                     >
-                      {e.is_all_day ? "All day" : nyTime(e.starts_at)}
+                      {e.is_all_day || isDateOnlyEventAnchor(e) ? eventDateBlock(e).time : nyTime(e.starts_at)}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                      <span className="block line-clamp-2 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
                         {e.title}
                       </span>
-                      <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                        {e.venue_name}
+                      <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                        {eventDecisionLocation(e)}
                       </span>
                     </span>
                     {cat && (

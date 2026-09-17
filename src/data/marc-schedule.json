@@ -1,10 +1,10 @@
 {
   "source": "https://feeds.mta.maryland.gov/gtfs/marc",
   "feedDate": null,
-  "generatedAt": "2026-08-02",
+  "generatedAt": "2026-09-17",
   "staticFeed": {
     "sourceUrl": "https://feeds.mta.maryland.gov/gtfs/marc",
-    "fetchedOn": "2026-08-02",
+    "fetchedOn": "2026-09-17",
     "serviceWindowStart": "2022-11-14",
     "serviceWindowEnd": "2026-12-31"
   },
@@ -231,32 +231,6 @@
       ],
       "start": "20250206",
       "end": "20261231"
-    },
-    "101C_848REG": {
-      "days": [
-        1,
-        1,
-        1,
-        1,
-        1,
-        0,
-        0
-      ],
-      "start": "20221114",
-      "end": "20261231"
-    },
-    "101CamdenO": {
-      "days": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "start": "20260626",
-      "end": "20260626"
     }
   },
   "exceptions": {
@@ -548,14 +522,6 @@
         "101PMT"
       ]
     },
-    "20260626": {
-      "added": [
-        "101CamdenO"
-      ],
-      "removed": [
-        "101C_848REG"
-      ]
-    },
     "20260702": {
       "added": [
         "104"
@@ -573,6 +539,15 @@
         "101P",
         "101C",
         "101B"
+      ]
+    },
+    "20260907": {
+      "added": [],
+      "removed": [
+        "101P",
+        "101C",
+        "101B",
+        "101PMT"
       ]
     }
   },

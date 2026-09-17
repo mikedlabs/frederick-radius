@@ -1,9 +1,13 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { eventReasons } from "@/lib/event-reasons";
-import { eventAttendanceLabel } from "@/lib/events/attendance";
+import { eventDecisionLocation, eventDecisionTime } from "@/lib/events/decision-facts";
+import DatePlate from "@/components/event/DatePlate";
 import { communicationAccessLabels } from "@/lib/events/communication-access";
 import { eventDateBlock } from "@/lib/events/format";
 import { formatDistance } from "@/lib/geo";
@@ -18,8 +22,8 @@ import EventVisualCredit from "@/components/event/EventVisualCredit";
 import {
   eventHasTrustworthyEnd,
   isEventLiveNow,
-  startedEventTimingDisclosure,
 } from "@/lib/eventWhenLabel";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
 
 export type EventPosterCardProps = {
   event: EventWithMeta;
@@ -67,11 +71,24 @@ export function posterVisualForEvent(
 }
 
 /**
+ * A venue-photo proxy can fail with a successful SVG response. Ask it for the
+ * transparent 1px failure signal so the card can switch to its designed date
+ * plate instead of presenting an error graphic as event photography.
+ */
+export function eventPosterPhotoSrc(src: string): string {
+  const narrowed = proxyPhotoAtWidth(src, 720);
+  if (!narrowed.startsWith("/api/place-photo")) return narrowed;
+  const url = new URL(narrowed, "https://frederickradius.local");
+  url.searchParams.set("fallback", "signal");
+  return `${url.pathname}?${url.searchParams.toString()}`;
+}
+
+/**
  * The image-led event card used for a horizon lead.
  *
  * An approved event or venue photograph gets a source caption. Everything
- * else gets the shared Radius category artwork, which is deliberately graphic
- * rather than photographic and therefore never misrepresents the event.
+ * else gets a compact date-led card, keeping timing and place visible without
+ * reserving an empty photograph-shaped panel.
  */
 export default function EventPosterCard({
   event,
@@ -84,13 +101,15 @@ export default function EventPosterCard({
 }: EventPosterCardProps) {
   const cardNow = nowISO ? new Date(nowISO) : null;
   const safeVisual = posterVisualForEvent(event, visual);
-  const onPhoto = safeVisual !== null;
+  const photoSrc = safeVisual ? eventPosterPhotoSrc(safeVisual.src) : null;
+  const [failedPhotoSrc, setFailedPhotoSrc] = useState<string | null>(null);
+  const onPhoto = safeVisual !== null && photoSrc !== failedPhotoSrc;
   const date = eventDateBlock(event);
   const cat = CATEGORY_BY_SLUG[event.category];
   const accent = cat?.color ?? "#7A7975";
   const accentText = `color-mix(in srgb, ${accent} 55%, var(--app-ink))`;
   const categoryLabel = cat?.name ?? (event.category ? event.category : "Event");
-  const venueLabel = eventAttendanceLabel(event);
+  const venueLabel = eventDecisionLocation(event);
   const status = event.status ?? "scheduled";
   const statusText = statusLabel(status);
   const isCancelled = status === "cancelled";
@@ -100,13 +119,10 @@ export default function EventPosterCard({
     (cardNow
       ? isEventLiveNow(event, cardNow)
       : !event.is_all_day && eventHasTrustworthyEnd(event));
-  const timingText =
-    status === "scheduled" && cardNow
-      ? startedEventTimingDisclosure(event, cardNow) ?? date.time
-      : date.time;
+  const timingText = eventDecisionTime(event, cardNow ?? undefined);
   const statusBg =
     isCancelled ? "var(--app-danger)" : "var(--app-warning-press)";
-  const reasons = eventReasons(event, cardNow ?? undefined);
+  const reasons = eventReasons(event, cardNow ?? undefined).filter((reason) => reason.kind !== "free");
   const accessLabel = communicationAccessLabels(event)[0];
   const titleColor = onPhoto ? "#fff" : "var(--app-ink)";
   const subColor = onPhoto ? "rgba(255,255,255,0.92)" : "var(--app-ink-2)";
@@ -117,6 +133,55 @@ export default function EventPosterCard({
     ? "rgba(255,255,255,0.82)"
     : "var(--app-ink-2)";
 
+  // Missing photography should yield a compact, date-led decision, not an
+  // empty image-sized canvas. The same state handles a failed photo request.
+  if (!onPhoto) {
+    return (
+      <article
+        data-decision-impression="true"
+        data-decision-surface="events"
+        data-decision-entity="event"
+        data-decision-id={event.slug}
+        data-decision-position="lead"
+        data-event-poster="category"
+        data-event-fallback="date-category"
+        className="group relative rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-4 sm:p-5"
+        style={{ borderColor: "var(--app-border)", borderTopColor: "var(--app-brand)", borderTopWidth: 3 }}
+      >
+        <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold">
+          <span style={{ color: "var(--app-ink-3)" }}>{categoryLabel}</span>
+          {confirmedLive && <span style={{ color: "var(--app-amber-text)" }}>Happening now</span>}
+          {statusText && <span style={{ color: statusBg }}>{statusText}</span>}
+        </div>
+        <div className="flex items-start gap-3 sm:gap-4">
+          <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent={accent} />
+          <div className="min-w-0 flex-1">
+            <Link
+              href={`/events/${event.slug}`}
+              data-decision-action="open"
+              prefetch={false}
+              className={`text-[20px] font-semibold leading-tight tracking-tight outline-none after:absolute after:inset-0 focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
+              style={{ color: "var(--app-ink)" }}
+            >
+              {event.title}
+            </Link>
+            <p className="mt-1.5 text-[13px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>{timingText}</p>
+            {venueLabel && <p className="mt-0.5 text-[13px]" style={{ color: "var(--app-ink-2)" }}>{venueLabel}</p>}
+            {whyItMatters && <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{whyItMatters}</p>}
+            {reasons.length > 0 && !confirmedLive && <div className="mt-2"><ReasonChipRow reasons={reasons} /></div>}
+            {(event.is_free || event.price_text || accessLabel || event.distance_m !== undefined) && (
+              <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+                {event.is_free ? <span style={{ color: "var(--app-positive)" }}>Free</span> : event.price_text ? <span>{event.price_text}</span> : null}
+                {accessLabel && <span>{accessLabel}</span>}
+                {event.distance_m !== undefined && <span>{formatDistance(event.distance_m)} away</span>}
+              </p>
+            )}
+          </div>
+        </div>
+      </article>
+    );
+  }
+
   return (
     <>
     <article
@@ -125,11 +190,7 @@ export default function EventPosterCard({
       data-decision-entity="event"
       data-decision-id={event.slug}
       data-decision-position="lead"
-      className={`tactile tactile-feature tactile-ring tactile-interactive group relative w-full overflow-hidden rounded-[var(--app-radius-lg)] ${
-        onPhoto
-          ? `aspect-[3/2] ${layout === "shelf" ? "lg:aspect-[4/3]" : "lg:aspect-[21/9]"}`
-          : "min-h-[230px] sm:min-h-[250px] lg:min-h-[270px]"
-      }`}
+      className={`tactile tactile-feature tactile-ring tactile-interactive group relative w-full overflow-hidden rounded-[var(--app-radius-lg)] aspect-[3/2] ${layout === "shelf" ? "lg:aspect-[4/3]" : "lg:aspect-[21/9]"}`}
       style={{
         backgroundColor: "var(--app-bg-elevated-solid)",
         boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
@@ -137,18 +198,27 @@ export default function EventPosterCard({
       }}
       data-event-poster={onPhoto ? "photo" : "category"}
     >
-      {safeVisual ? (
+      {safeVisual && onPhoto && photoSrc ? (
         <>
           <Image
-            src={safeVisual.src}
+            src={photoSrc}
             alt=""
             fill
             priority={priorityImage}
-            unoptimized={safeVisual.src.startsWith("/api/place-photo")}
+            unoptimized={photoSrc.startsWith("/api/place-photo")}
             sizes="(max-width: 640px) 100vw, 720px"
             placeholder="blur"
             blurDataURL={PAPER_CREAM_BLUR}
             className="ken-burns object-cover"
+            onLoad={(loadEvent) => {
+              if (
+                loadEvent.currentTarget.naturalWidth <= 1 ||
+                loadEvent.currentTarget.naturalHeight <= 1
+              ) {
+                setFailedPhotoSrc(photoSrc);
+              }
+            }}
+            onError={() => setFailedPhotoSrc(photoSrc)}
           />
           <span
             aria-hidden
@@ -159,37 +229,7 @@ export default function EventPosterCard({
             }}
           />
         </>
-      ) : (
-        <div
-          aria-hidden
-          data-event-fallback="date-category"
-          className="absolute inset-0 overflow-hidden"
-          style={{
-            background: `linear-gradient(135deg, color-mix(in srgb, ${accent} 13%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 68%)`,
-          }}
-        >
-          <span
-            className="absolute left-4 top-[42px] font-editorial text-[64px] leading-none tracking-[-0.06em]"
-            style={{ color: `color-mix(in srgb, ${accent} 42%, var(--app-ink))` }}
-          >
-            {date.day}
-          </span>
-          <span
-            className="absolute left-[88px] top-[51px] flex flex-col border-l pl-3 font-mono uppercase"
-            style={{
-              borderColor: `color-mix(in srgb, ${accent} 38%, var(--app-border))`,
-              color: "var(--app-ink-2)",
-            }}
-          >
-            <span className="text-[13px] font-semibold tracking-[0.12em]">{date.month}</span>
-            <span className="mt-1 text-[10px] tracking-[0.1em]">{date.weekday}</span>
-          </span>
-          <span
-            className="absolute left-4 right-4 top-[116px] h-px"
-            style={{ background: `color-mix(in srgb, ${accent} 24%, var(--app-border))` }}
-          />
-        </div>
-      )}
+      ) : null}
 
       <span
         aria-hidden
@@ -255,7 +295,7 @@ export default function EventPosterCard({
           <span className="absolute inset-0" aria-hidden />
           <span className="line-clamp-2">{event.title}</span>
         </Link>
-        <p className="mt-1 truncate text-[13px]" style={{ color: subColor }}>
+        <p className="mt-1 text-[13px]" style={{ color: subColor }}>
           {date.weekday && (
             <span className="font-mono tabular-nums">
               {date.weekday} {date.month} {date.day}
@@ -312,7 +352,7 @@ export default function EventPosterCard({
         )}
       </div>
     </article>
-      {safeVisual && (
+      {safeVisual && onPhoto && (
         <EventVisualCredit
           visual={safeVisual}
           compact

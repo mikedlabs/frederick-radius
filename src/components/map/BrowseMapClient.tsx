@@ -200,6 +200,8 @@ export default function BrowseMapClient({
     roadWorkZones,
     floodContext,
     snowRoutes,
+    scenicRoutes,
+    coveredBridges,
     smartSignals,
     sourceHealth,
   } = deferredLayers;
@@ -539,6 +541,8 @@ export default function BrowseMapClient({
       extraAmenities={extraAmenities}
       amenities={amenities}
       trailLines={trailLines}
+      scenicRoutes={scenicRoutes}
+      coveredBridges={coveredBridges}
       transitLines={transitLines}
       municipalBoundaries={municipalBoundaries}
       countyBoundary={countyBoundary}

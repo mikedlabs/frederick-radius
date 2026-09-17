@@ -60,6 +60,10 @@ describe("platform brand surfaces", () => {
     expect(value.icons?.every((icon) => icon.src.includes("?v="))).toBe(true);
   });
 
+  it("lets the installed app follow the device orientation", () => {
+    expect(manifest()).not.toHaveProperty("orientation");
+  });
+
   it("ships every declared icon at its advertised size", async () => {
     const expected = [
       [PLATFORM_BRAND.icons.any192, 192],

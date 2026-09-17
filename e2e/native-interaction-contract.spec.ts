@@ -184,7 +184,7 @@ test("the place-page Save CTA names its pending action immediately", async ({
 test("an event sheet keeps its route and restores the event trigger", async ({
   page,
 }) => {
-  await page.route("**/api/events/*/summary", async (route) => {
+  await page.route("**/api/events/*/summary*", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     const slug = decodeURIComponent(
       pathname.split("/api/events/")[1]?.replace("/summary", "") ??

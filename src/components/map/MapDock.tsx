@@ -43,6 +43,7 @@ import type { MapDiscovery } from "./mapDiscoveries";
 import { mapContentsSummary } from "./mapContent";
 import type { LiveLayerHealth } from "@/lib/live-layer-health";
 import { normalizeMapReturnTo } from "@/lib/map-return";
+import { normalizeBrowseReturnTo } from "@/lib/browse-return";
 import { replaceMapUrl } from "@/lib/map-url-state";
 import { mapSearchResultLimit } from "./mapSearchVisibility";
 import {
@@ -245,6 +246,12 @@ export type MapDockProps = {
   trailCount: number;
   showTrails: boolean;
   setShowTrails: SetState<boolean>;
+  scenicRouteCount: number;
+  showScenicRoutes: boolean;
+  setShowScenicRoutes: SetState<boolean>;
+  coveredBridgeCount: number;
+  showCoveredBridges: boolean;
+  setShowCoveredBridges: SetState<boolean>;
   aerialCount: number;
   showAerial: boolean;
   setShowAerial: SetState<boolean>;
@@ -296,6 +303,10 @@ export type MapDockProps = {
   cameraHealth: LiveLayerHealth;
   activeOverlays: OverlayKey[];
   toggleOverlay: (k: OverlayKey) => void;
+  atlasHeight?: number;
+  setAtlasHeight?: (h: number) => void;
+  atlas3D?: boolean;
+  setAtlas3D?: (b: boolean) => void;
 
   // ── When pane ──
   scrubHour: number | null;
@@ -451,6 +462,8 @@ export default function MapDock(props: MapDockProps) {
   );
   const router = useRouter();
   const sp = useSearchParams();
+  const browseReturnTo = normalizeBrowseReturnTo(sp.get("returnTo"));
+  const searchReturnTo = browseReturnTo && new URL(browseReturnTo, "https://frederick-radius.invalid").pathname === "/search" ? browseReturnTo : null;
   const locationOfferVisible =
     mapAvailable && showLocationIntro && shouldOfferMapLocationForUrl(sp);
   const initialScope = parseScope(sp.get(SCOPE_PARAM)) ?? getScope() ?? "county";
@@ -983,6 +996,8 @@ export default function MapDock(props: MapDockProps) {
     (props.roadsNowActive ? 1 : 0) +
     (props.showTransit ? 1 : 0) +
     (props.showTrails ? 1 : 0) +
+    (props.showScenicRoutes ? 1 : 0) +
+    (props.showCoveredBridges ? 1 : 0) +
     (props.showAerial ? 1 : 0) +
     (props.showCemeteries ? 1 : 0) +
     (props.showParking ? 1 : 0) +
@@ -1098,6 +1113,8 @@ export default function MapDock(props: MapDockProps) {
     props.setShowCivic(false);
     props.setShowTransit(false);
     props.setShowTrails(false);
+    props.setShowScenicRoutes(false);
+    props.setShowCoveredBridges(false);
     props.setShowAerial(false);
     props.setShowCemeteries(false);
     props.setShowParking(false);
@@ -1534,6 +1551,12 @@ export default function MapDock(props: MapDockProps) {
         data-search-keyboard={searchKeyboardOpen ? "true" : undefined}
         ref={dockRef}
       >
+        {searchReturnTo && !pane && !searchPanelOpen && (
+          <a href={searchReturnTo} className="flex min-h-11 items-center gap-1.5 rounded-t-[var(--app-radius-md)] border-b px-3 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)", background: "var(--app-bg-elevated-solid)" }}>
+            <ChevronLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+            Back to search results
+          </a>
+        )}
         {locationOfferVisible && pane === null && !searchPanelOpen && (
           <section
             className="map-location-offer"
@@ -1796,6 +1819,7 @@ export default function MapDock(props: MapDockProps) {
                         // document navigation avoids an App Router race where
                         // the panel could close while the search transition was
                         // cancelled, making the tap appear to do nothing.
+                        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
                         window.location.assign(
                           `/search?q=${encodeURIComponent(props.q.trim())}&returnTo=${encodeURIComponent(returnTo)}`,
                         );
@@ -1897,6 +1921,7 @@ export default function MapDock(props: MapDockProps) {
                         normalizeMapReturnTo(
                           `${current.pathname}${current.search}${current.hash}`,
                         ) ?? "/map";
+                      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
                       window.location.assign(
                         `/search?q=${encodeURIComponent(props.q.trim())}&returnTo=${encodeURIComponent(returnTo)}`,
                       );
@@ -2189,7 +2214,7 @@ export default function MapDock(props: MapDockProps) {
                   <button
                     type="button"
                     className="dock-content-row dock-content-row-secondary"
-                    data-on={(props.showTrails || props.showAerial || props.showCemeteries || props.showSavedOnly || props.fieldNotesOnly) || undefined}
+                    data-on={(props.showTrails || props.showScenicRoutes || props.showCoveredBridges || props.showAerial || props.showCemeteries || props.showSavedOnly || props.fieldNotesOnly) || undefined}
                     onClick={() => openContentsPane("localLayers")}
                   >
                     <span className="dock-content-icon" aria-hidden>
@@ -2836,7 +2861,32 @@ export default function MapDock(props: MapDockProps) {
                       count={props.trailCount || undefined}
                       title="County trails"
                     >
+                      <Trees className="mr-2 inline-block opacity-75 relative -top-0.5" size={16} />
                       Trails
+                    </Chip>
+                  )}
+                  {(props.scenicRouteCount > 0 || props.providerLayersAvailable) && (
+                    <Chip
+                      on={props.showScenicRoutes}
+                      color="#f97316"
+                      onClick={() => props.setShowScenicRoutes((v) => !v)}
+                      count={props.scenicRouteCount || undefined}
+                      title="Scenic Routes and Byways"
+                    >
+                      <MapPin className="mr-2 inline-block opacity-75 relative -top-0.5" size={16} />
+                      Scenic Routes
+                    </Chip>
+                  )}
+                  {(props.coveredBridgeCount > 0 || props.providerLayersAvailable) && (
+                    <Chip
+                      on={props.showCoveredBridges}
+                      color="#ef4444"
+                      onClick={() => props.setShowCoveredBridges((v) => !v)}
+                      count={props.coveredBridgeCount || undefined}
+                      title="Historic Covered Bridges"
+                    >
+                      <Landmark className="mr-2 inline-block opacity-75 relative -top-0.5" size={16} />
+                      Covered Bridges
                     </Chip>
                   )}
                   {props.aerialCount > 0 && (
@@ -2862,6 +2912,7 @@ export default function MapDock(props: MapDockProps) {
                       Cemeteries
                     </Chip>
                   )}
+                  
                   {OVERLAYS.filter((o) => o.ready).map((o) => (
                     <Chip
                       key={o.key}
@@ -2873,6 +2924,20 @@ export default function MapDock(props: MapDockProps) {
                       {o.label}
                     </Chip>
                   ))}
+                  {props.activeOverlays.includes("land-value") && (
+                    <div style={{ padding: 16, background: "rgba(255,255,255,0.05)", borderRadius: 12, marginTop: 12, border: "1px solid var(--app-border)" }}>
+                      <h4 style={{ margin: "0 0 12px 0", fontSize: 13, fontWeight: 600 }}>Data Atlas Controls</h4>
+                      <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, fontSize: 13 }}>
+                        <span>3D Extrusion</span>
+                        <input type="checkbox" checked={props.atlas3D ?? true} onChange={(e) => props.setAtlas3D?.(e.target.checked)} />
+                      </label>
+                      <label style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
+                        <span>Extrusion Height Multiplier ({props.atlasHeight ?? 1}x)</span>
+                        <input type="range" min="0.1" max="5" step="0.1" value={props.atlasHeight ?? 1} onChange={(e) => props.setAtlasHeight?.(parseFloat(e.target.value))} />
+                      </label>
+                    </div>
+                  )}
+
                 </div>
                 {props.activeOverlays.includes("mobility") && (
                   <p className="dock-hint" role="status">

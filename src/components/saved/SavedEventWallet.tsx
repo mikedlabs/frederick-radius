@@ -39,6 +39,7 @@ import { savedDateLabel } from "@/components/saved/walletFacts";
 import { useToggleSave } from "@/hooks/useSaved";
 import { eventLipFact, eventPriceLabel, eventWhenParts } from "@/components/saved/eventWalletFacts";
 import { statusLabel } from "@/lib/event-status";
+import { withBrowseReturnTo } from "@/lib/browse-return";
 
 /**
  * The background MOTIF per event-category family — reuses the place wallet's
@@ -156,7 +157,7 @@ function Card({
             ONE mono lip fact while tucked; the category TIER wordmark on raise. */}
         <div className="sw-top">
           <Link
-            href={`/events/${event.slug}`}
+            href={withBrowseReturnTo(`/events/${event.slug}`, "/my-radius")}
             className="sw-brand"
             onClick={() =>
               track("saved_event_wallet_open", { category: event.category })
@@ -237,7 +238,7 @@ function Card({
           </dl>
         </div>
         <div className="sw-actions">
-          <Link href={`/events/${event.slug}`} className="sw-act-primary">
+          <Link href={withBrowseReturnTo(`/events/${event.slug}`, "/my-radius")} className="sw-act-primary">
             Open event
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden>
               <path d="M5 12h14M13 6l6 6-6 6" />
@@ -286,6 +287,8 @@ export default function SavedEventWallet({
   savedAt,
   now,
   startRaised = false, // decks always start fully closed unless a caller opts in
+  openSlug: controlledSlug,
+  onOpenSlug,
 }: {
   events: Event[];
   /** saved_at ISO per event slug, for the stub ledger's Saved cell. */
@@ -295,11 +298,18 @@ export default function SavedEventWallet({
   /** Whether the top card starts raised (true for the active deck, false for
    *  the calm past archive so it stays fully tucked). */
   startRaised?: boolean;
+  openSlug?: string | null;
+  onOpenSlug?: (slug: string | null) => void;
 }) {
   // One card raised at a time (accordion), keyed by slug so a re-sort keeps
   // the SAME card raised. The active deck opens on its top card; the past
   // deck opens on nothing.
-  const [openSlug, setOpenSlug] = useState<string | null>(startRaised ? events[0]?.slug ?? null : null);
+  const [internalSlug, setInternalSlug] = useState<string | null>(startRaised ? events[0]?.slug ?? null : null);
+  const openSlug = controlledSlug === undefined ? internalSlug : controlledSlug;
+  const setOpenSlug = (slug: string | null) => {
+    if (controlledSlug === undefined) setInternalSlug(slug);
+    onOpenSlug?.(slug);
+  };
   if (events.length === 0) return null;
   const openValid = events.some((e) => e.slug === openSlug);
   return (

@@ -12,6 +12,8 @@
  * write user-specific data (e.g. /api/follows).
  */
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { PROTECTED_SYNC_PATH, sanitizeRedirectPath } from "@/lib/auth-routing";
 
 export type ServerUser = {
   id: string;
@@ -24,41 +26,24 @@ export type ServerUser = {
  * Return the current authenticated user, or null if no session.
  * Read-only — safe to call inside Server Components.
  *
- * Uses supabase.auth.getClaims(), which verifies the JWT signature and expiry.
- * With Supabase's asymmetric signing keys that verification is local after the
- * JWKS cache is warm; older symmetric projects safely fall back to the Auth
- * server. This preserves the verified-identity contract without forcing a
- * network round trip on every page and route that already crossed middleware.
- * We deliberately do NOT use getSession(), which only trusts cookie storage.
+ * Uses supabase.auth.getUser() (which validates the token with the
+ * Supabase auth server) NOT getSession() (which trusts the cookie).
+ * The former is the safe default for any server-side authz check.
  */
 export async function getServerUser(): Promise<ServerUser | null> {
-  let supabase;
   try {
-    supabase = await createClient();
-  } catch {
-    // Supabase not configured (env vars missing) — treat as anonymous
-    // rather than throwing. Auth is optional: every consumer already
-    // handles a null user ("on this device" mode), so this keeps pages
-    // rendering and, critically, stops the static prerender of tabs
-    // like /my-radius from crashing the production build when keys
-    // aren't present in the build environment.
-    return null;
-  }
-  try {
-    const { data, error } = await supabase.auth.getClaims();
-    if (error || !data?.claims?.sub) return null;
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data?.user) return null;
     return {
-      id: data.claims.sub,
-      email:
-        typeof data.claims.email === "string" ? data.claims.email : null,
-      // The JWT intentionally does not promise the Auth user record's
-      // last_sign_in_at field. Nothing currently consumes it, so keep the
-      // honest unknown instead of relabeling the token-issued timestamp.
-      last_sign_in_at: null,
+      id: data.user.id,
+      email: data.user.email ?? null,
+      last_sign_in_at: data.user.last_sign_in_at ?? null,
     };
   } catch {
-    // Auth transport/JWKS failure is anonymous for read surfaces and therefore
-    // fails closed for every write route that requires a user id.
+    // Auth is optional everywhere except explicitly protected routes. Missing
+    // preview env vars or a transient Supabase outage must not take down public
+    // My Radius/Settings pages; their device-local experience still works.
     return null;
   }
 }
@@ -70,4 +55,15 @@ export async function getServerUser(): Promise<ServerUser | null> {
 export async function getServerUserId(): Promise<string | null> {
   const u = await getServerUser();
   return u?.id ?? null;
+}
+
+/** Defense-in-depth gate for protected Server Components. */
+export async function requireServerUser(
+  nextPath: string = PROTECTED_SYNC_PATH,
+): Promise<ServerUser> {
+  const user = await getServerUser();
+  if (user) return user;
+
+  const next = sanitizeRedirectPath(nextPath, PROTECTED_SYNC_PATH);
+  redirect(`/auth/login?next=${encodeURIComponent(next)}&reason=sign_in_required`);
 }

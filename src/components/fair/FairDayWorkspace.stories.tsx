@@ -3,6 +3,10 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { addFairPlanItem, createFairPlan } from "@/lib/fair/plan";
 import type { FairPartyOffer } from "@/lib/fair/party-plan";
 import { greatFrederickFair2026PracticalAnswers } from "@/data/fair/great-frederick-fair-2026-practical-answers";
+import {
+  fairTransitTravelSummary,
+  greatFrederickFair2026TransitReview,
+} from "@/data/fair/great-frederick-fair-2026-transit";
 
 import FairDayWorkspace from "./FairDayWorkspace";
 import type {
@@ -27,17 +31,6 @@ const STORY_CARLOAD_URL =
   "https://www.etix.com/ticket/p/66497377/carload-special-tuesday-sept22-lot-d-onlythe-great-frederick-fair-frederick-the-great-frederick-fair-advanced-gate?partner_id=944";
 
 const storyPartyOffers: FairPartyOffer[] = [
-  {
-    id: "offer-adult-admission-early",
-    label: "Opening-Friday adult admission online",
-    kind: "adult-online-admission",
-    unitPriceCents: 800,
-    validDates: { startsOn: "2026-09-18", endsOn: "2026-09-18" },
-    deadline: { status: "known", value: "2026-09-18T17:00:00-04:00" },
-    pastKnownDeadline: false,
-    officialInfoUrl: OFFICIAL_FAIR_URL,
-    officialPurchaseUrl: STORY_ADMISSION_URL,
-  },
   {
     id: "offer-adult-admission-online",
     label: "Adult admission online",
@@ -225,22 +218,11 @@ export const fairDayStoryData: FairDayWorkspaceData = {
     weekdayLabel,
     dayLabel,
     gateHoursLabel,
+    gateOpensAt: `${date}T${gateHoursLabel === "4 PM" ? "16" : "09"}:00:00-04:00`,
+    gateClosesAt: `${date}T22:00:00-04:00`,
   })),
   initialDate: "2026-09-18",
   offers: [
-    {
-      id: "offer-adult-admission-early",
-      label: "Opening-Friday adult admission online",
-      priceLabel: "$8",
-      detail: "Adults age 11 and older can use this admission on opening Friday before the known purchase deadline.",
-      deadlineLabel: "Official sales end September 18 at 5:00 PM.",
-      deadlineAt: "2026-09-18T17:00:00-04:00",
-      officialInfoUrl: OFFICIAL_FAIR_URL,
-      officialPurchaseUrl: STORY_ADMISSION_URL,
-      validDates: { startsOn: "2026-09-18", endsOn: "2026-09-18" },
-      pastKnownDeadline: false,
-      placement: "calculator",
-    },
     {
       id: "offer-adult-admission-online",
       label: "Adult admission online",
@@ -305,6 +287,16 @@ export const fairDayStoryData: FairDayWorkspaceData = {
   ],
   partyOffers: storyPartyOffers,
   practicalAnswers: greatFrederickFair2026PracticalAnswers,
+  accessHighlights: [
+    {
+      id: "access-sensory-friendly-carnival",
+      date: "2026-09-20",
+      title: "Sensory-friendly carnival · noon–2 p.m.",
+      detail:
+        "The carnival lowers its lights and music during this window. The Fair does not describe this as a whole-ground low-sensory period.",
+      answerId: "fair-answer-sensory-friendly-carnival",
+    },
+  ],
   arrivalOptions: [
     {
       id: "arrival-drive",
@@ -322,13 +314,13 @@ export const fairDayStoryData: FairDayWorkspaceData = {
       id: "arrival-transit",
       planChoice: "transit",
       label: "County Transit",
-      summary:
-        "The reviewed static feed associates East Patrick Street at Fairground Center with EFS and 15. This is static network context, not a service promise. Service on Fair dates is not confirmed, and arrival times are not confirmed.",
-      paymentLabel: "County Transit is fare-free. Check Fair-date service before relying on this option.",
+      summary: fairTransitTravelSummary(),
+      paymentLabel:
+        "County Transit is fare-free. Radius checked the published static Fair-week schedule on September 4.",
       returnLabel: "Recheck county Transit before leaving",
       returnSummary:
-        "Radius has no confirmed Fair-date service or arrival time for this stop.",
-      officialInfoUrl: "https://www.frederickcountymd.gov/105/Transit-Services",
+        "Static departure times can change. Check County Transit again before the return trip.",
+      officialInfoUrl: greatFrederickFair2026TransitReview.informationUrl,
     },
     {
       id: "arrival-dropoff",
@@ -343,6 +335,12 @@ export const fairDayStoryData: FairDayWorkspaceData = {
       officialInfoUrl: OFFICIAL_VISIT_URL,
     },
   ],
+  parkingGlance: {
+    satellitePriceLabel: "$10",
+    satellitePaymentLabel: "cash",
+    infieldPriceLabel: "$15",
+    infieldPaymentLabel: "cash or credit card",
+  },
   entrySummary:
     "Adult admission is $10 online or $15 at the gate. Apple Pay is not accepted.",
   entryDetail:
@@ -360,8 +358,8 @@ export const fairDayStoryData: FairDayWorkspaceData = {
   source: {
     label: "Official Fair program and visitor information",
     sourceUrl: OFFICIAL_FAIR_URL,
-    checkedLabel: "September 1, 2026 at 2:40 PM",
-    ageLabel: "The source was checked today",
+    checkedLabel: "August 29, 2026 at 8:52 AM",
+    ageLabel: "This imported program version is 3 days old",
   },
 };
 
@@ -385,6 +383,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Mobile390: Story = {
+  name: "Photo-led Fair entrance / 390px",
   globals: {
     viewport: { value: "radiusMobile", isRotated: false },
   },
@@ -393,6 +392,22 @@ export const Mobile390: Story = {
 export const Narrow320: Story = {
   globals: {
     viewport: { value: "radiusMobileNarrow", isRotated: false },
+  },
+};
+
+export const PhotoLedProgram: Story = {
+  name: "Program / direct schedule and visible categories",
+  play: async ({ canvasElement }) => {
+    Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("nav button"))
+      .find((button) => button.offsetParent !== null && button.textContent?.trim().startsWith("Program"))?.click();
+  },
+};
+
+export const SavedDay: Story = {
+  name: "My Day / saved experiences before preparation",
+  play: async ({ canvasElement }) => {
+    Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("nav button"))
+      .find((button) => button.offsetParent !== null && button.textContent?.trim().startsWith("My Day"))?.click();
   },
 };
 

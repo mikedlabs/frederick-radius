@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><metadata xml:lang="en">
+    <Esri>
+        <CreaDate>20180220</CreaDate>
+        <CreaTime>14200457</CreaTime>
+        <ArcGISFormat>1.0</ArcGISFormat>
+        <ArcGISProfile>FGDC</ArcGISProfile>
+        <ModDate>20200725</ModDate>
+        <ModTime>05214428</ModTime>
+        <ArcGISstyle>FGDC CSDGM Metadata</ArcGISstyle>
+        <PublishStatus>editor:esri.dijit.metadata.editor</PublishStatus>
+    </Esri>
+    <dataIdInfo>
+        <idAbs>&lt;div&gt;&lt;span style='color:rgb(0, 0, 0); font-family:&amp;quot;Avenir Next W01&amp;quot;, &amp;quot;Avenir Next W00&amp;quot;, &amp;quot;Avenir Next&amp;quot;, Avenir, &amp;quot;Helvetica Neue&amp;quot;, Helvetica, Arial, sans-serif; font-size:14.4px;'&gt;This service provides Six Inch resolution aerial imagery for the State of Maryland. The imagery for this service is composed of imagery flown in 2023 (Western Shore) and 2024 (Eastern Shore).&lt;/span&gt;&lt;font size='3'&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font size='3'&gt;&lt;br /&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font size='3'&gt;&lt;span style='font-family:&amp;quot;Avenir Next W01&amp;quot;, &amp;quot;Avenir Next W00&amp;quot;, &amp;quot;Avenir Next&amp;quot;, Avenir, &amp;quot;Helvetica Neue&amp;quot;, Helvetica, Arial, sans-serif;'&gt;This is a MD iMAP hosted service. Find more information at &lt;/span&gt;&lt;a href='https://imap.maryland.gov/' target='_blank' rel='nofollow ugc noopener noreferrer'&gt;https://imap.maryland.gov&lt;/a&gt;&lt;span style='font-family:&amp;quot;Avenir Next W01&amp;quot;, &amp;quot;Avenir Next W00&amp;quot;, &amp;quot;Avenir Next&amp;quot;, Avenir, &amp;quot;Helvetica Neue&amp;quot;, Helvetica, Arial, sans-serif;'&gt;.&lt;/span&gt;&lt;br /&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;span style='font-family:&amp;quot;Avenir Next W01&amp;quot;, &amp;quot;Avenir Next W00&amp;quot;, &amp;quot;Avenir Next&amp;quot;, Avenir, &amp;quot;Helvetica Neue&amp;quot;, Helvetica, Arial, sans-serif;'&gt;&lt;font size='3'&gt;&lt;br /&gt;&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;div style='font-family:&amp;quot;Avenir Next W01&amp;quot;, &amp;quot;Avenir Next W00&amp;quot;, &amp;quot;Avenir Next&amp;quot;, Avenir, &amp;quot;Helvetica Neue&amp;quot;, Helvetica, Arial, sans-serif !important;'&gt;&lt;font size='3'&gt;&lt;span style='font-family:Arial;'&gt;Image Service Link: &lt;/span&gt;&lt;br /&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;a href='https://mdgeodata.md.gov/imagery/rest/services/SixInch/SixInchImagery/ImageServer' target='_blank' rel='nofollow ugc noopener noreferrer'&gt;&lt;font size='3'&gt;https://mdgeodata.md.gov/imagery/rest/services/SixInch/SixInchImagery/ImageServer&lt;/font&gt;&lt;/a&gt;&lt;br /&gt;&lt;/div&gt;&lt;/div&gt;</idAbs>
+        <idCitation>
+            <resTitle>Maryland Six Inch Imagery - Image Service</resTitle>
+            <date>
+                <pubDate>2017-05-01T14:20:15.824-05:00</pubDate>
+                <reviseDate>2024-06-17T19:12:24</reviseDate>
+            </date>
+            <citRespParty>
+                <rpOrgName>DoIT</rpOrgName>
+                <role>
+                    <RoleCd value="006"/>
+                </role>
+                <rpCntInfo>
+                    <cntAddress addressType="both">
+                        <city>Crownsville</city>
+                        <adminArea>MD</adminArea>
+                        <postCode>21032</postCode>
+                        <country>US</country>
+                    </cntAddress>
+                    <cntPhone>
+                        <voiceNum>410-697-9422</voiceNum>
+                    </cntPhone>
+                </rpCntInfo>
+                <rpIndName>John Lesko II</rpIndName>
+                <rpPosName>Program Manager</rpPosName>
+            </citRespParty>
+        </idCitation>
+        <dataExt>
+            <geoEle>
+                <GeoBndBox>
+                    <westBL>-79.507877</westBL>
+                    <eastBL>-75.019698</eastBL>
+                    <northBL>39.744137</northBL>
+                    <southBL>37.856525</southBL>
+                </GeoBndBox>
+            </geoEle>
+        </dataExt>
+        <searchKeys>
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+        <keyword>MD</keyword><keyword>Maryland</keyword><keyword>MD iMAP</keyword><keyword>Image Service</keyword><keyword>Raster</keyword><keyword>Dynamic</keyword><keyword>WMS</keyword><keyword>WCS</keyword><keyword>DoIT</keyword><keyword>Department of Information Technology</keyword><keyword>Imagery</keyword><keyword>Six Inch</keyword><keyword>IMAG</keyword></searchKeys>
+        <themeKeys>
+            <keyword>imagery</keyword>
+            <keyword>orthos</keyword>
+        </themeKeys>
+        <idPurp>Maryland Six Inch Imagery - Image Service</idPurp>
+        <idCredit>MD iMAP, DoIT</idCredit>
+        <resConst>
+            <Consts>
+                <useLimit>The Spatial Data, and the information therein, (collectively the "Data") is provided "as is" without warranty of any kind, either expressed, implied, or statutory. The user assumes the entire risk as to quality and performance of the Data. No guarantee of accuracy is granted, nor is any responsibility for reliance thereon assumed. In no event shall the State of Maryland be liable for direct, indirect, incidental, consequential or special damages of any kind. The State of Maryland does not accept liability for any damages or misrepresentation caused by inaccuracies in the Data or as a result to changes to the Data, nor is there responsibility assumed to maintain the Data in any manner or form. The Data can be freely distributed as long as the metadata entry is not modified or deleted. Any data derived from the Data must acknowledge the State of Maryland in the metadata.</useLimit>
+            </Consts>
+        </resConst>
+        <dataChar>
+            <CharSetCd value="004"/>
+        </dataChar>
+        <resMaint>
+            <maintFreq>
+                <MaintFreqCd value="009"/>
+            </maintFreq>
+        </resMaint>
+        <placeKeys>
+            <keyword>Maryland</keyword>
+        </placeKeys>
+        <tpCat>
+            <TopicCatCd value="010"/>
+        </tpCat>
+    </dataIdInfo>
+    <mdFileID>7ff8fee809dd4afcab7fbea0916e4ebe</mdFileID>
+    <mdChar>
+        <CharSetCd value="004"/>
+    </mdChar>
+    <mdDateSt>2018-02-20</mdDateSt>
+    <mdContact>
+        <role>
+            <RoleCd value="007"/>
+        </role>
+        <rpCntInfo>
+            <cntAddress addressType="both">
+                <city>Crownsville</city>
+                <adminArea>MD</adminArea>
+                <postCode>21032</postCode>
+            </cntAddress>
+        </rpCntInfo>
+        <rpOrgName>Maryland Department of Information Technology Data Services</rpOrgName>
+    </mdContact>
+    <dqInfo>
+        <report>
+            <measResult>
+                <ConResult>
+                    <conPass>1</conPass>
+                </ConResult>
+            </measResult>
+        </report>
+    </dqInfo>
+    <distInfo>
+        <distTranOps>
+            <onLineSrc>
+                <linkage>https://geodata.md.gov/imap/rest/services/Imagery/MD_SixInchImagery/ImageServer</linkage>
+            </onLineSrc>
+        </distTranOps>
+    </distInfo>
+</metadata>

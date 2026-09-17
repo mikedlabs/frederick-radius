@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { MapPin, Navigation, Loader2, AlertCircle, Check, ChevronDown, ChevronLeft, ArrowUpRight, Globe, X } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { haptic } from "@/lib/haptics";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance } from "@/lib/geo";
-import { getScope, setScope, scopeTownSlug, scopeLabel, subscribeScopeChange, type Scope } from "@/lib/scope";
+import { getScope, parseScope, setScope, scopeTownSlug, scopeLabel, subscribeScopeChange, type Scope } from "@/lib/scope";
+import { locationScopeHref } from "./locationScopeNavigation";
 
 /**
  * TopBar location chip — the browsing-scope selector (UX-02).
@@ -31,10 +32,12 @@ import { getScope, setScope, scopeTownSlug, scopeLabel, subscribeScopeChange, ty
  */
 export default function LocationChip({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { state, request } = useGeolocation();
   const [open, setOpen] = useState(false);
   const [showTowns, setShowTowns] = useState(false);
-  const [scope, setScopeState] = useState<Scope | null>(null);
+  const [storedScope, setScopeState] = useState<Scope | null>(null);
+  const scope = parseScope(searchParams.get("in")) ?? storedScope;
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -62,8 +65,19 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
     setScope(next);
     setScopeState(next);
     closePicker();
-    // Server components re-render with the new fr_scope cookie.
-    router.refresh();
+    const href = locationScopeHref(window.location.href, next);
+    if (href) {
+      if (window.location.pathname === "/map") {
+        // Native history keeps the live map mounted while synchronizing its
+        // URL-owned query and scope. The scope event above moves the camera.
+        window.history.replaceState(null, "", href);
+      } else {
+        router.replace(href, { scroll: false });
+      }
+    } else {
+      // Other server surfaces consume the new shared scope cookie directly.
+      router.refresh();
+    }
   };
 
   // Every town, sorted by how far it is from the reader. This loop already ran
@@ -157,7 +171,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
         aria-controls="location-scope-choices"
         aria-label={`Change town or location scope. Current scope: ${label}`}
         title={`Town and location: ${label}`}
-        className="inline-flex h-11 min-w-11 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-full border bg-[var(--app-bg-elevated)] px-2 text-[11px] font-medium transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:max-w-none sm:justify-start"
+        className="inline-flex h-11 min-w-11 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-full border bg-[var(--app-bg-elevated)] px-2 text-[12px] font-semibold leading-none transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:max-w-none sm:justify-start"
         style={{ borderColor: "var(--app-border)", color: labelColor }}
       >
         <LabelIcon
@@ -178,9 +192,23 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
             </span>
           </>
         ) : (
-          <span className="hidden min-w-0 truncate min-[390px]:block sm:max-w-[160px]">
-            {label}
-          </span>
+          <>
+            {/* At the common 390px phone width, show one complete scope word
+                instead of squeezing "Frederick, MD" into a clipped chip.
+                Wider headers restore the full readout. */}
+            <span
+              data-location-scope-label="compact"
+              className="hidden min-w-0 truncate min-[390px]:block sm:hidden"
+            >
+              {compactLabel}
+            </span>
+            <span
+              data-location-scope-label="full"
+              className="hidden min-w-0 truncate sm:block sm:max-w-[160px]"
+            >
+              {label}
+            </span>
+          </>
         )}
         <ChevronDown className="hidden h-3 w-3 opacity-60 min-[390px]:block" strokeWidth={2} aria-hidden />
       </button>

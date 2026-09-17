@@ -94,15 +94,34 @@ describe("scheduled data workflow contracts", () => {
     }
 
     const trustedGenerators = [
-      ["build-marc-schedule.yml", "build"],
-      ["data-steward.yml", "steward"],
-      ["transit-steward.yml", "transit"],
+      [
+        "build-marc-schedule.yml",
+        "build",
+        "${{ github.ref == 'refs/heads/main' }}",
+      ],
+      [
+        "data-steward.yml",
+        "steward",
+        "${{ github.ref == 'refs/heads/main' && vars.HOURS_REFRESH_CRON == '1' && vars.GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL == 'written-google-authorization-confirmed' && vars.GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED == '1' }}",
+      ],
+      [
+        "fair-data-steward.yml",
+        "collect",
+        "${{ github.ref == 'refs/heads/main' }}",
+      ],
+      [
+        "transit-steward.yml",
+        "transit",
+        "${{ github.ref == 'refs/heads/main' }}",
+      ],
     ] as const;
     expect(radiusDataJobs.sort()).toEqual(
-      trustedGenerators.map(([name, jobName]) => `${name}:${jobName}`).sort(),
+      trustedGenerators
+        .map(([name, jobName]) => `${name}:${jobName}`)
+        .sort(),
     );
 
-    for (const [name, jobName] of trustedGenerators) {
+    for (const [name, jobName, expectedCondition] of trustedGenerators) {
       const workflowTextValue = workflowText(name);
       const workflow = parse(workflowTextValue) as WorkflowDocument;
       expect(workflowTextValue).toContain("workflow_dispatch:");
@@ -113,9 +132,7 @@ describe("scheduled data workflow contracts", () => {
         "self-hosted",
         "radius-data",
       ]);
-      expect(workflow.jobs?.[jobName]?.if).toBe(
-        "${{ github.ref == 'refs/heads/main' }}",
-      );
+      expect(workflow.jobs?.[jobName]?.if).toBe(expectedCondition);
       expect(workflow.jobs?.[jobName]?.permissions).toEqual({ contents: "read" });
     }
 
@@ -629,7 +646,9 @@ describe("scheduled data workflow contracts", () => {
           /actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/g,
         ) ?? [];
       const mainGuards =
-        text.match(/if: \$\{\{ github\.ref == 'refs\/heads\/main' \}\}/g) ?? [];
+        text.match(
+          /if: \$\{\{ github\.ref == 'refs\/heads\/main'(?: && [^}\n]+)? \}\}/g,
+        ) ?? [];
       const exactHeads =
         text.match(
           /head_sha: \$\{\{ needs\.[^}]+\.outputs\.pr_head_sha \}\}/g,

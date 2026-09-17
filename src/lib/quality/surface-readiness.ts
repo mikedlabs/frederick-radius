@@ -34,6 +34,7 @@ export type SurfaceReadinessReason =
   | "database_unavailable"
   | "source_health_unavailable"
   | "source_health_degraded"
+  | "current_hours_policy_hold"
   | "hours_schema_missing"
   | "hours_schema_unknown"
   | "search_schema_missing"

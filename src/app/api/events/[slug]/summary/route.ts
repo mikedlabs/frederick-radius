@@ -3,6 +3,9 @@ import {
   isOperationalEventResolutionError,
   resolveEventPageBySlug,
 } from "@/lib/loaders/eventResolver";
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
+import { hasPhysicalAttendance } from "@/lib/events/attendance";
+import { noticeForEvent } from "@/lib/events/notices";
 
 export const revalidate = 300;
 
@@ -24,8 +27,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     if (!resolved) {
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     }
+    const sourceEvent = resolved.event;
+    // Match the full page's authoritative venue join. A seed may predate the
+    // explicit confidence stamp; the resolved catalog venue supplies the real
+    // coordinate without shipping the place catalog to the event sheet.
+    const venue = hasPhysicalAttendance(sourceEvent) && sourceEvent.venue_place_slug
+      ? clientPlaceBySlug(sourceEvent.venue_place_slug)
+      : null;
+    const notice = noticeForEvent(sourceEvent.slug, new Date());
+    const event = {
+      ...sourceEvent,
+      ...(venue ? { geom: venue.geom, geo_confidence: "venue_match" as const } : {}),
+      ...(notice && notice.status !== "advisory" ? { status: notice.status } : {}),
+    };
     return NextResponse.json(
-      { event: resolved.event },
+      { event },
       { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=900" } },
     );
   } catch (error) {

@@ -82,19 +82,50 @@ export function TodayEventsRecoveryView({
 }) {
   const events = response?.events ?? [];
   const healthyEmpty = response?.partial === false && events.length === 0;
-  const meta =
-    events.length > 0
-      ? todayEventPicksMeta({
-          todayPicks: events.length,
-          tonightPicks: events.filter((event) => event.moment === "Tonight")
-            .length,
-          degraded: response?.partial ?? false,
-        })
-      : healthyEmpty
-        ? "No event picks"
-        : failed
-          ? "Current picks unavailable"
-          : "Refreshing current picks";
+  const meta = todayEventPicksMeta({
+    todayPicks: events.length,
+    tonightPicks: events.filter((event) => event.moment === "Tonight").length,
+    degraded: response?.partial ?? false,
+  });
+
+  if (events.length === 0) {
+    const status = healthyEmpty
+      ? "No picks in this brief"
+      : failed
+        ? "Event picks are unavailable here"
+        : "Updating today's event picks";
+
+    return (
+      <section
+        className="mt-1"
+        aria-label="Events today"
+        data-today-event-recovery="true"
+      >
+        <div
+          className="flex min-h-14 items-center justify-between gap-3 border-y px-0.5 py-2"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
+              Events today
+            </p>
+            <p role="status" className="mt-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+              {status}
+            </p>
+          </div>
+          <Link
+            href="/events"
+            aria-label="Open the full events board"
+            className="tap-44-y inline-flex min-h-11 shrink-0 items-center gap-1 text-[12px] font-semibold"
+            style={{ color: "var(--app-brand-press)" }}
+          >
+            Full board
+            <ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -106,76 +137,62 @@ export function TodayEventsRecoveryView({
         id="upcoming"
         title="Events today"
         href="/events"
-        cta={events.length > 0 ? "See all" : "Full board"}
+        cta="See all"
         flat
         meta={meta}
       >
-        {events.length > 0 ? (
-          <ul>
-            {events.map((event) => (
-              <li key={event.slug}>
-                <Link
-                  href={`/events/${event.slug}`}
-                  prefetch={false}
-                  className="tap-44-y flex items-start gap-3 border-b py-2 pr-0.5"
-                  style={{ borderColor: "var(--app-border)" }}
+        <ul>
+          {events.map((event) => (
+            <li key={event.slug}>
+              <Link
+                href={`/events/${event.slug}`}
+                prefetch={false}
+                className="tap-44-y flex items-start gap-3 border-b py-2 pr-0.5"
+                style={{ borderColor: "var(--app-border)" }}
+              >
+                <span
+                  className="flex w-[58px] shrink-0 items-center gap-1 pt-px font-mono text-[11px] font-semibold tabular-nums leading-snug"
+                  style={{
+                    color:
+                      event.moment === "Now"
+                        ? "var(--app-brand-press)"
+                        : "var(--app-ink-3)",
+                  }}
                 >
+                  {event.moment === "Now" ? (
+                    <span
+                      aria-hidden
+                      className="live-dot h-1.5 w-1.5 shrink-0 rounded-full"
+                      style={{ background: "var(--app-brand)" }}
+                    />
+                  ) : null}
+                  {rowTime(event)}
+                </span>
+                <span className="min-w-0 flex-1">
                   <span
-                    className="flex w-[58px] shrink-0 items-center gap-1 pt-px font-mono text-[11px] font-semibold tabular-nums leading-snug"
-                    style={{
-                      color:
-                        event.moment === "Now"
-                          ? "var(--app-brand-press)"
-                          : "var(--app-ink-3)",
-                    }}
+                    className="line-clamp-2 block text-[14px] font-semibold leading-snug tracking-tight"
+                    style={{ color: "var(--app-ink)" }}
                   >
-                    {event.moment === "Now" ? (
-                      <span
-                        aria-hidden
-                        className="live-dot h-1.5 w-1.5 shrink-0 rounded-full"
-                        style={{ background: "var(--app-brand)" }}
-                      />
-                    ) : null}
-                    {rowTime(event)}
+                    {event.title}
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className="line-clamp-2 block text-[14px] font-semibold leading-snug tracking-tight"
-                      style={{ color: "var(--app-ink)" }}
-                    >
-                      {event.title}
-                    </span>
-                    <span
-                      className="mt-0.5 block truncate text-[11.5px] leading-snug"
-                      style={{ color: "var(--app-ink-3)" }}
-                    >
-                      {event.venue}
-                      {event.free ? " · Free" : ""}
-                    </span>
-                  </span>
-                  <ChevronRight
-                    aria-hidden
-                    className="mt-1 h-4 w-4 shrink-0"
-                    strokeWidth={2.25}
+                  <span
+                    className="mt-0.5 block truncate text-[11.5px] leading-snug"
                     style={{ color: "var(--app-ink-3)" }}
-                  />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p
-            role="status"
-            className="px-0.5 py-2 text-[13.5px] leading-snug"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            {healthyEmpty
-              ? "No event picks are available for this Today brief. The full events board has the complete calendar."
-              : failed
-                ? "Current event picks could not load here. The full events board remains available."
-                : "Radius is checking the current event board."}
-          </p>
-        )}
+                  >
+                    {event.venue}
+                    {event.free ? " · Free" : ""}
+                  </span>
+                </span>
+                <ChevronRight
+                  aria-hidden
+                  className="mt-1 h-4 w-4 shrink-0"
+                  strokeWidth={2.25}
+                  style={{ color: "var(--app-ink-3)" }}
+                />
+              </Link>
+            </li>
+          ))}
+        </ul>
       </DismissibleSection>
     </section>
   );
@@ -185,7 +202,9 @@ export function TodayEventsRecoveryView({
  * Recover the one state server-rendered Today cannot answer after its bounded
  * archive read times out. This component mounts only when the server snapshot
  * was degraded and had no usable event rows, then asks the same-origin runtime
- * refresh endpoint for one fresh read instead of leaving the section absent.
+ * endpoint for a bounded retry instead of leaving the section absent. A
+ * passive recovery is not an explicit visitor refresh and must not consume
+ * the separate, rate-limited cache-bypass allowance.
  */
 export default function TodayEventsRecovery() {
   const [state, setState] = useState<RecoveryState>({ status: "loading" });
@@ -197,7 +216,7 @@ export default function TodayEventsRecovery() {
       try {
         for (let attempt = 0; attempt < 2; attempt += 1) {
           if (controller.signal.aborted) return;
-          const response = await fetch("/api/today/events?refresh=1", {
+          const response = await fetch("/api/today/events", {
             cache: "no-store",
             headers: { Accept: "application/json" },
             signal: controller.signal,

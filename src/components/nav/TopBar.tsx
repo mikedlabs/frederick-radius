@@ -29,7 +29,8 @@ const SearchOverlay = lazy(() => import("@/components/search/SearchOverlay"));
 let searchLayerSequence = 0;
 
 export function pageOwnsPrimarySearch(pathname: string): boolean {
-  return pathname === "/map"
+  return pathname === "/today"
+    || pathname === "/map"
     || pathname === "/search"
     || pathname === "/compass"
     || pathname.startsWith("/ask");
@@ -44,7 +45,7 @@ export function shouldShowGlobalMobileSearch(pathname: string): boolean {
 export function shouldShowGlobalLocation(pathname: string): boolean {
   // Ask owns its scope inside the composer. A second location control in the
   // persistent header showed two competing answers to "where am I looking?"
-  return !pathname.startsWith("/ask");
+  return !pathname.startsWith("/ask") && pathname !== "/today" && pathname !== "/search";
 }
 
 export function topBarFindTarget(pathname: string): FindTarget {
@@ -196,16 +197,9 @@ export default function TopBar() {
     setSearchOpen(false);
   }, [pathname, searchOpen]);
 
-  // Cmd-K / Ctrl-K opens search globally
+  // Forward slash opens search globally
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        openPrimaryFind(
-          document.activeElement instanceof HTMLElement ? document.activeElement : null,
-          window.scrollY,
-        );
-      }
       // Forward slash as a quick-open (don't trigger when typing into another input)
       if (e.key === "/" && !searchOpen) {
         const target = e.target as HTMLElement | null;
@@ -404,7 +398,7 @@ export default function TopBar() {
               destinations retain full touch targets and accessible names on
               narrow phones. */}
           {shouldShowGlobalLocation(pathname) ? (
-            <LocationChip compact={pathname === "/map"} />
+            <Suspense fallback={null}><LocationChip compact={pathname === "/map"} /></Suspense>
           ) : null}
 
           {/* Pulse stays named on larger screens. On a phone it appears only
@@ -440,9 +434,10 @@ export default function TopBar() {
                   sliced off by the clip.
 
                   Delaying THIS label rather than the location text is the
-                  trade worth making: "Frederick, MD" tells you something, and
-                  "Tools" only repeats an icon that already carries both an
-                  aria-label and a title. Nothing is lost but a duplicate. */}
+                  trade worth making: the complete short location scope tells
+                  you something, and "Tools" only repeats an icon that already
+                  carries both an aria-label and a title. Nothing is lost but a
+                  duplicate. */}
               <span className="hidden text-[12px] font-semibold leading-none min-[400px]:inline sm:hidden">Tools</span>
               <span className="hidden text-[14px] font-semibold leading-none sm:inline">Compass</span>
             </AppTransitionLink>

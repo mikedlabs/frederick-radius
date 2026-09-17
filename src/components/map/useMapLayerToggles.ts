@@ -80,6 +80,22 @@ export function useMapLayerToggles({
           (!hasExplicitLayerView && (layerPrefs.trails ?? trailsLayerDefault)),
       ),
   );
+  const [showScenicRoutes, setShowScenicRoutes] = useState(
+    () =>
+      shouldInitializeReferenceLayer(
+        compactSubjectMap,
+        deepLinkLayers.has("scenic") ||
+          (!hasExplicitLayerView && (layerPrefs.scenicRoutes ?? false)),
+      ),
+  );
+  const [showCoveredBridges, setShowCoveredBridges] = useState(
+    () =>
+      shouldInitializeReferenceLayer(
+        compactSubjectMap,
+        deepLinkLayers.has("bridges") ||
+          (!hasExplicitLayerView && (layerPrefs.coveredBridges ?? false)),
+      ),
+  );
   const [showTransit, setShowTransit] = useState(
     // Transit is a deliberate map layer, never cold-open furniture. Deep-link
     // mode defaults can still request it; ordinary county browse stays quiet.
@@ -179,6 +195,8 @@ export function useMapLayerToggles({
       civic: showCivic,
       transit: showTransit,
       trails: showTrails,
+      scenicRoutes: showScenicRoutes,
+      coveredBridges: showCoveredBridges,
       aerial: showAerial,
       cemeteries: showCemeteries,
       parking: showParking,
@@ -199,6 +217,8 @@ export function useMapLayerToggles({
     showRotorcraft,
     showTraffic,
     showTrails,
+    showScenicRoutes,
+    showCoveredBridges,
     showTransit,
   ]);
   const sceneBaseRef = useRef<MapLayerPrefs | null>(null);
@@ -213,6 +233,8 @@ export function useMapLayerToggles({
     civic: layerPrefs.civic ?? smart.has("civic"),
     transit: layerPrefs.transit ?? transitDefaultOn,
     trails: layerPrefs.trails ?? trailsLayerDefault,
+    scenicRoutes: layerPrefs.scenicRoutes ?? false,
+    coveredBridges: layerPrefs.coveredBridges ?? false,
     aerial: layerPrefs.aerial ?? false,
     cemeteries: layerPrefs.cemeteries ?? false,
     parking: layerPrefs.parking ?? smart.has("parking"),
@@ -226,6 +248,8 @@ export function useMapLayerToggles({
     setShowCivic(Boolean(target.civic));
     setShowTransit(Boolean(target.transit));
     setShowTrails(Boolean(target.trails));
+    setShowScenicRoutes(Boolean(target.scenicRoutes));
+    setShowCoveredBridges(Boolean(target.coveredBridges));
     setShowAerial(Boolean(target.aerial));
     setShowCemeteries(Boolean(target.cemeteries));
     setShowParking(Boolean(target.parking));
@@ -241,6 +265,8 @@ export function useMapLayerToggles({
       civic: layers.has("civic"),
       transit: layers.has("transit"),
       trails: layers.has("trails"),
+      scenicRoutes: layers.has("scenic"),
+      coveredBridges: layers.has("bridges"),
       aerial: layers.has("aerial"),
       cemeteries: layers.has("cemeteries"),
       parking: layers.has("parking"),
@@ -282,6 +308,8 @@ export function useMapLayerToggles({
       civic: showCivic,
       transit: showTransit,
       trails: showTrails,
+      scenicRoutes: showScenicRoutes,
+      coveredBridges: showCoveredBridges,
       aerial: showAerial,
       cemeteries: showCemeteries,
       parking: showParking,
@@ -305,7 +333,7 @@ export function useMapLayerToggles({
     // suggestion itself must never become a stored preference.
     if (smartSeeded && !userTouchedRef.current) return;
     writeMapLayerPrefs(current);
-  }, [hasExplicitLayerView, smartSeeded, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showTraffic, showIncidents, showRotorcraft, showCameras]);
+  }, [hasExplicitLayerView, smartSeeded, showCivic, showTransit, showTrails, showScenicRoutes, showCoveredBridges, showAerial, showCemeteries, showParking, showRadar, showTraffic, showIncidents, showRotorcraft, showCameras]);
 
   // Every deliberate reference layer is first-class share/deep-link state.
   // Expand the composite `roads` alias into explicit members so turning one
@@ -325,6 +353,8 @@ export function useMapLayerToggles({
       ["civic", showCivic],
       ["transit", showTransit],
       ["trails", showTrails],
+      ["scenic", showScenicRoutes],
+      ["bridges", showCoveredBridges],
       ["aerial", showAerial],
       ["cemeteries", showCemeteries],
       ["parking", showParking],
@@ -355,12 +385,16 @@ export function useMapLayerToggles({
     showRotorcraft,
     showTraffic,
     showTrails,
+    showScenicRoutes,
+    showCoveredBridges,
     showTransit,
   ]);
 
   return {
     showCivic, setShowCivic: touch(setShowCivic),
     showTrails, setShowTrails: touch(setShowTrails),
+    showScenicRoutes, setShowScenicRoutes: touch(setShowScenicRoutes),
+    showCoveredBridges, setShowCoveredBridges: touch(setShowCoveredBridges),
     showTransit, setShowTransit: touch(setShowTransit),
     showAerial, setShowAerial: touch(setShowAerial),
     showCemeteries, setShowCemeteries: touch(setShowCemeteries),

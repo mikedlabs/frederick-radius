@@ -15,6 +15,7 @@ import FIELD_NOTES from "@/data/field-notes.json";
 import CLIFFNOTES from "@/data/town-cliffnotes.json";
 import HOURS_REFRESH from "@/data/places-hours-refresh.json";
 import { HOURS_MAX_AGE_DAYS } from "@/lib/hours-freshness";
+import { googleHoursRefreshRuntimeEnabled } from "@/lib/google-maps-policy";
 
 const DAY = 86_400_000;
 
@@ -142,7 +143,9 @@ export function curatedFreshnessAnomalies(now: Date = new Date()): Anomaly[] {
   // rolling Google refresh, which carries both hours and business status.
   // The Vercel writer can populate the database, but it does not help users
   // unless the resulting artifact reaches the canonical loader. An empty or
-  // old file is therefore a release-health failure, not an invisible advisory.
+  // old file is therefore a release-health failure while paid collection is
+  // authorized. On policy hold the product reports hours unavailable instead;
+  // repeatedly paging an intentionally stopped writer would be a false alarm.
   const hoursEntries = Object.entries(
     HOURS_REFRESH as Record<string, unknown>,
   ).filter(([key]) => !key.startsWith("_"));
@@ -154,16 +157,18 @@ export function curatedFreshnessAnomalies(now: Date = new Date()): Anomaly[] {
   // previously used 8, which meant it fired a full day AFTER that happened.
   // A warning that arrives after the outage is not a warning. Six gives a
   // day of daylight to notice a stalled writer and re-run the refresh.
-  const hoursAnomaly = snapshotFreshnessAnomaly(
-    "places-hours-refresh.json",
-    hoursEntries.map(
-      ([, value]) => (value as { refreshed_at?: string })?.refreshed_at,
-    ),
-    now,
-    HOURS_SNAPSHOT_MAX_AGE_DAYS,
-    "Run the hours-refresh cron through a full cycle, then pull and merge the data-steward PR.",
-  );
-  if (hoursAnomaly) out.push(hoursAnomaly);
+  if (googleHoursRefreshRuntimeEnabled()) {
+    const hoursAnomaly = snapshotFreshnessAnomaly(
+      "places-hours-refresh.json",
+      hoursEntries.map(
+        ([, value]) => (value as { refreshed_at?: string })?.refreshed_at,
+      ),
+      now,
+      HOURS_SNAPSHOT_MAX_AGE_DAYS,
+      "Run the hours-refresh cron through a full cycle, then pull and merge the data-steward PR.",
+    );
+    if (hoursAnomaly) out.push(hoursAnomaly);
+  }
 
   // 3. Hand-verified curated layers: count entries whose last_verified is
   //    older than the re-verification window. One line per dataset, only

@@ -1,5 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Positive availability scenarios need a stable reviewed fixture even when
+// production legitimately withholds every expired schedule. Never refresh
+// production timestamps just to make these tests pass.
+vi.mock("@/data/places-client-hours.json", async () => ({
+  default: (await import("../../../tests/fixtures/ask-reviewed-hours.json")).default,
+}));
+vi.mock("@/data/places-client.json", async (importOriginal) => {
+  const original = await importOriginal<{ default: Array<{ slug: string }> }>();
+  const hours = (await import("../../../tests/fixtures/ask-reviewed-hours.json")).default;
+  const bySlug = new Map(hours.map((row) => [row.slug, row]));
+  return { default: original.default.map((place) => ({ ...place, ...bySlug.get(place.slug) })) };
+});
+
 const foodTruckAvailabilityMocks = vi.hoisted(() => ({
   getFoodTruckAvailability: vi.fn(),
 }));
@@ -787,6 +800,23 @@ describe("askFrederick structured answers", () => {
     ).toBe(hasUnconfirmedHours);
   });
 
+  it.each(["I have two hours in Brunswick this afternoon. What can I do?", "Plan the next two hours in Brunswick"])("keeps a timed Brunswick request useful without invented availability: %s", async (query) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-06T18:00:00Z"));
+    try {
+      const result = await askFrederick(query, downtown);
+      expect(result.plan).toBeNull();
+      expect(result.intent).toMatchObject({ kind: "plan", durationHours: 2 });
+      expect(result.context).toBe("Brunswick");
+      expect(result.answer).toContain("does not have current verified hours");
+      expect(result.sources.every((source) => source.city === "Brunswick" && source.status === "Visit time unconfirmed")).toBe(true);
+      expect(result.actions?.some((action) => action.href === "/m/brunswick")).toBe(true);
+      expect(result.actions?.some((action) => action.kind === "refine")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("builds a lower-walking parent draft and labels unconfirmed hours", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-17T14:00:00.000Z"));
@@ -1163,10 +1193,22 @@ describe("askFrederick structured answers", () => {
   });
 
   it("keeps live-music source cards limited to actual calendar events", async () => {
-    const result = await askFrederick("What live music is happening tonight?", downtown);
-    expect(result.sources.every((source) => source.href.startsWith("/events/"))).toBe(true);
-    expect(result.sources.every((source) => source.category === "music")).toBe(true);
-    expect(result.sources.some((source) => /yoga|meeting|playground/i.test(source.name))).toBe(false);
+    // This is a fixture-quality test, not a current-calendar check. Pin the
+    // reviewed promoted event set so a legitimate seasonal festival cannot
+    // make an exact music-category assertion depend on the real clock.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-13T22:00:00.000Z"));
+    vi.stubEnv("RADIUS_DATA_MODE", "promoted");
+    try {
+      const result = await askFrederick("What live music is happening tonight?", downtown);
+      expect(result.sources.length).toBeGreaterThan(0);
+      expect(result.sources.every((source) => source.href.startsWith("/events/"))).toBe(true);
+      expect(result.sources.every((source) => source.category === "music")).toBe(true);
+      expect(result.sources.some((source) => /yoga|meeting|playground/i.test(source.name))).toBe(false);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.useRealTimers();
+    }
   });
 
   it("can anchor a plan on a real place named in the request", async () => {

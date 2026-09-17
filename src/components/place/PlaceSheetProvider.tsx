@@ -11,13 +11,14 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { usePushRecentPlace } from "@/hooks/useRecentPlaces";
-import { normalizeMapReturnTo } from "@/lib/map-return";
+import { browseReturnFromLocation, withBrowseReturnTo } from "@/lib/browse-return";
 import { readCachedGeoPosition } from "@/hooks/useGeolocation";
 import { isInFrederickCountyArea, type LngLat } from "@/lib/geo";
 import LazySheetFallback from "@/components/ui/LazySheetFallback";
+import { navigateAfterHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 
 const PlaceSheet = lazy(() => import("./PlaceSheet"));
 let placeLayerSequence = 0;
@@ -32,7 +33,14 @@ function preloadPlaceSheet() {
 type Ctx = {
   openSheet: (
     p: PlaceCardData,
-    options?: { travelOrigin?: (LngLat & { timestamp?: number }) | null },
+    options?: {
+      travelOrigin?: (LngLat & { timestamp?: number }) | null;
+      returnFocus?: HTMLElement | null;
+    },
+  ) => void;
+  openSheetBySlug: (
+    slug: string,
+    options?: { returnFocus?: HTMLElement | null },
   ) => void;
   closeSheet: () => void;
 };
@@ -57,13 +65,18 @@ function freshTravelOrigin(
 
 export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [place, setPlace] = useState<PlaceCardData | null>(null);
+  const [pendingSlug, setPendingSlug] = useState<string | null>(null);
   const [travelOrigin, setTravelOrigin] = useState<LngLat | null>(null);
   const [mapReturnTo, setMapReturnTo] = useState<string | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const historyLayerIdRef = useRef("");
   const activePlaceSlugRef = useRef<string | null>(null);
   const openPathRef = useRef(pathname);
+  // A late place lookup must not reopen a sheet after the visitor closes it,
+  // follows the canonical page fallback, or taps a different place.
+  const reqRef = useRef(0);
   // Quietly record the open so /saved's "Recently viewed" row can
   // surface it later. Stored locally only; the slug is the entire
   // payload, so there's no PII trail beyond what the user can already
@@ -92,14 +105,20 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   const openSheet = useCallback(
     (
       p: PlaceCardData,
-      options?: { travelOrigin?: (LngLat & { timestamp?: number }) | null },
+      options?: {
+        travelOrigin?: (LngLat & { timestamp?: number }) | null;
+        returnFocus?: HTMLElement | null;
+      },
     ) => {
       const hydrationUpdate = activePlaceSlugRef.current === p.slug;
+      reqRef.current++;
+      setPendingSlug(null);
       if (!hydrationUpdate) {
         openerRef.current =
-          typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+          options?.returnFocus ??
+          (typeof document !== "undefined" && document.activeElement instanceof HTMLElement
             ? document.activeElement
-            : null;
+            : null);
         historyLayerIdRef.current = `place-sheet:${Date.now()}:${++placeLayerSequence}`;
         // Capture this only when the sheet first opens. Map replaces a slim pin
         // with a hydrated record moments later; treating that data refresh as a
@@ -108,13 +127,7 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
         const current =
           typeof window === "undefined" ? null : new URL(window.location.href);
         openPathRef.current = current?.pathname ?? pathname;
-        setMapReturnTo(
-          normalizeMapReturnTo(
-            current?.pathname === "/map"
-              ? `${current.pathname}${current.search}${current.hash}`
-              : current?.searchParams.get("returnTo"),
-          ),
-        );
+        setMapReturnTo(current ? browseReturnFromLocation(current) : null);
         pushRecent(p.slug);
         const cachedOrigin = options?.travelOrigin ?? readCachedGeoPosition();
         setTravelOrigin(freshTravelOrigin(cachedOrigin));
@@ -129,9 +142,70 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
     },
     [pathname, pushRecent],
   );
+
+  const openSheetBySlug = useCallback(
+    (
+      slug: string,
+      options?: { returnFocus?: HTMLElement | null },
+    ) => {
+      const normalizedSlug = slug.trim();
+      if (!normalizedSlug) return;
+
+      openerRef.current =
+        options?.returnFocus ??
+        (typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null);
+      const historyLayerId = `place-sheet:${Date.now()}:${++placeLayerSequence}`;
+      historyLayerIdRef.current = historyLayerId;
+      const current =
+        typeof window === "undefined" ? null : new URL(window.location.href);
+      openPathRef.current = current?.pathname ?? pathname;
+      const returnTo = current ? browseReturnFromLocation(current) : null;
+      setMapReturnTo(returnTo);
+      setTravelOrigin(freshTravelOrigin(readCachedGeoPosition()));
+      activePlaceSlugRef.current = normalizedSlug;
+      const req = ++reqRef.current;
+      setPlace(null);
+      setPendingSlug(normalizedSlug);
+
+      const goToCanonicalPage = () => {
+        if (reqRef.current !== req) return;
+        activePlaceSlugRef.current = null;
+        setPlace(null);
+        setPendingSlug(null);
+        setTravelOrigin(null);
+        setMapReturnTo(null);
+        navigateAfterHistoryLayer(historyLayerId, () => {
+          router.push(withBrowseReturnTo(`/places/${encodeURIComponent(normalizedSlug)}`, returnTo));
+        });
+      };
+
+      fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(normalizedSlug)}`)
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data: { places?: PlaceCardData[] } | null) => {
+          if (reqRef.current !== req) return;
+          const resolved = Array.isArray(data?.places)
+            ? data.places.find((candidate) => candidate.slug === normalizedSlug)
+            : null;
+          if (!resolved) {
+            goToCanonicalPage();
+            return;
+          }
+          pushRecent(resolved.slug);
+          setPlace(resolved);
+          setPendingSlug(null);
+        })
+        .catch(goToCanonicalPage);
+    },
+    [pathname, pushRecent, router],
+  );
+
   const closeSheet = useCallback(() => {
+    reqRef.current++;
     activePlaceSlugRef.current = null;
     setPlace(null);
+    setPendingSlug(null);
     setTravelOrigin(null);
     setMapReturnTo(null);
   }, []);
@@ -140,14 +214,21 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   // user who presses Back while the lazy sheet bundle is still loading cannot
   // have that sheet appear later over the destination page.
   useEffect(() => {
-    if (!place || pathname === openPathRef.current) return;
+    if ((!place && !pendingSlug) || pathname === openPathRef.current) return;
     closeSheet();
-  }, [closeSheet, pathname, place]);
+  }, [closeSheet, pathname, pendingSlug, place]);
 
   return (
-    <PlaceSheetContext.Provider value={{ openSheet, closeSheet }}>
+    <PlaceSheetContext.Provider value={{ openSheet, openSheetBySlug, closeSheet }}>
       {children}
-      {place ? (
+      {pendingSlug ? (
+        <LazySheetFallback
+          label="Loading place details"
+          onClose={closeSheet}
+          returnFocusRef={openerRef}
+          historyLayerId={historyLayerIdRef.current}
+        />
+      ) : place ? (
         <Suspense
           fallback={(
             <LazySheetFallback
@@ -179,6 +260,7 @@ export function usePlaceSheet(): Ctx {
     // (e.g. on the /places/[slug] page itself) without crashing.
     return {
       openSheet: () => {},
+      openSheetBySlug: () => {},
       closeSheet: () => {},
     };
   }

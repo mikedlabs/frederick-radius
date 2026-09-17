@@ -1,9 +1,11 @@
+import { Suspense } from "react";
+import MapReturnLink from "@/components/place/MapReturnLink";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
 import Image from "next/image";
-import { Accessibility, AlertTriangle, ArrowRight, Ban, Calendar, ChevronDown, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
+import { Accessibility, AlertTriangle, ArrowLeft, ArrowRight, Ban, Calendar, ChevronDown, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { EVENTS } from "@/data/events";
 import { formatEventWhen, seriesOccurrenceLabel, eventDateBlock } from "@/lib/loaders/events";
@@ -65,7 +67,6 @@ import { eventTrust } from "@/lib/trust";
 import { easternOffsetIso, jsonLdScript } from "@/lib/seo/jsonld";
 import { noticeForEvent } from "@/lib/events/notices";
 import {
-  eventAttendanceLabel,
   eventAttendanceMode,
   eventOnlineActionUrl,
   hasPhysicalAttendance,
@@ -77,6 +78,8 @@ import { eventHasTrustworthyEnd } from "@/lib/events/format";
 import { isEventEnded } from "@/lib/eventWhenLabel";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { nearestEventParking } from "@/lib/events/parking";
+import { eventDecisionLocation, eventTimeCaution } from "@/lib/events/decision-facts";
+import { isDateOnlyEventAnchor } from "@/lib/eventWhenLabel";
 
 function splitDescription(text: string, limit = 300): { preview: string; rest: string } {
   if (text.length <= limit) return { preview: text, rest: "" };
@@ -243,7 +246,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const attendance = eventAttendanceMode(event);
   const physicalAttendance = hasPhysicalAttendance(event);
   const onlineActionUrl = eventOnlineActionUrl(event);
-  const attendanceLabel = eventAttendanceLabel(event);
+  const attendanceLabel = eventDecisionLocation(event);
   const communicationAccess = communicationAccessLabels(event);
 
   const cat = CATEGORY_BY_SLUG[event.category];
@@ -261,6 +264,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     ? `https://www.google.com/maps/dir/?api=1&destination=${pinGeom.lat},${pinGeom.lng}`
     : null;
   const hasTrustworthyEnd = eventHasTrustworthyEnd(event);
+  const timeCaution = eventTimeCaution(event);
   const calendarEndsAt = hasTrustworthyEnd
     ? event.ends_at
     : event.starts_at;
@@ -384,21 +388,25 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       data-decision-id={event.slug}
       data-decision-position="detail"
     >
+      <Suspense fallback={null}><MapReturnLink /></Suspense>
+
       {/* Visually small breadcrumbs with invisible 44px hit areas
           (WCAG 2.5.5) — py-3.5/-my-3.5 grows the tap zone only. */}
-      <nav aria-label="Breadcrumb" className="text-xs">
-        <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
-          <li><Link href="/events" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">Events</Link></li>
-          <li aria-hidden>·</li>
-          <li>
-            {physicalAttendance && MUNICIPALITY_BY_SLUG[event.municipality] ? (
-              <Link href={`/m/${event.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{event.municipality_name}</Link>
-            ) : (
-              <span>{physicalAttendance ? event.municipality_name : "Online"}</span>
-            )}
-          </li>
-        </ol>
-      </nav>
+      {!eventVisual && (
+        <nav aria-label="Breadcrumb" className="text-xs">
+          <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
+            <li><Link href="/events" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">Events</Link></li>
+            <li aria-hidden>·</li>
+            <li>
+              {physicalAttendance && MUNICIPALITY_BY_SLUG[event.municipality] ? (
+                <Link href={`/m/${event.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{event.municipality_name}</Link>
+              ) : (
+                <span>{physicalAttendance ? event.municipality_name : "Online"}</span>
+              )}
+            </li>
+          </ol>
+        </nav>
+      )}
 
       {/* Cancellation banner — loud, above the hero, so a user who
        *  came here for this event sees it's off before anything else.
@@ -476,7 +484,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         data-decision-entity="event"
         data-decision-id={event.slug}
         data-decision-position="detail"
-        className="shader-rim overflow-hidden rounded-[var(--app-radius-xl)] border"
+        className={`shader-rim overflow-hidden ${eventVisual ? "-mx-4 -mt-4 sm:mx-0 sm:mt-0 rounded-none sm:rounded-[var(--app-radius-xl)] border-y sm:border" : "rounded-[var(--app-radius-xl)] border"}`}
         style={{
           borderColor: "var(--app-border)",
           opacity: eventStatus === "cancelled" ? 0.85 : 1,
@@ -496,15 +504,23 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               blurDataURL={PAPER_CREAM_BLUR}
               className="object-cover"
             />
-            {/* Legibility gradient — dark at bottom for the title, soft
-             *  at top for the date pill. */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
-            {/* Top row: action cluster (the date moved to the promoted
-                WHEN line below the title — no longer a tiny hero pill). */}
-            <div className="absolute inset-x-0 top-0 flex items-start justify-end gap-3 p-4">
+            {/* Top row: action cluster and back button (glassmorphic) */}
+            <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
+              {/* Glassmorphic back button */}
+              <Link
+                href="/events"
+                className="tactile-interactive flex h-9 items-center justify-center gap-1.5 rounded-full px-3.5 text-xs font-semibold text-white shadow-sm backdrop-blur-md transition-transform active:scale-95"
+                style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}
+              >
+                <ArrowLeft className="h-4 w-4" strokeWidth={2.25} />
+                Back
+              </Link>
               <div className="flex shrink-0 items-center gap-1">
-                <EventActions event={event} actions={["share"]} />
-                <div className="hidden lg:block">
+                <div className="rounded-full backdrop-blur-md" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                  <EventActions event={event} actions={["share"]} />
+                </div>
+                <div className="hidden lg:block rounded-full backdrop-blur-md" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}>
                   <SaveButton refType="event" refId={event.slug} label={event.title} />
                 </div>
               </div>
@@ -520,40 +536,15 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             </div>
           </div>
         ) : (
-          <div
-            className="relative h-44 overflow-hidden sm:h-48"
-            style={{
-              background: `linear-gradient(135deg, ${cat?.color ?? "#B5462B"}40, ${cat?.color ?? "#B5462B"}0F 60%, var(--app-bg-elevated))`,
-            }}
-          >
-            {/* Watermark calendar — quietly anchors the right side. */}
-            <Calendar
-              className="pointer-events-none absolute -right-3 -top-3 h-32 w-32 opacity-15"
-              strokeWidth={1}
-              style={{ color: cat?.color ?? "var(--app-brand)" }}
-              aria-hidden
-            />
-            {/* Top-right action cluster */}
-            <div className="absolute right-3 top-3 z-10 flex shrink-0 items-center gap-1">
-              <EventActions event={event} actions={["share"]} />
-              <div className="hidden lg:block">
-                <SaveButton refType="event" refId={event.slug} label={event.title} />
+          <div className="relative bg-[var(--app-bg-elevated)] px-5 pb-2 pt-5">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>{cat?.name ?? "Event"}</p>
+              <div className="flex shrink-0 items-center gap-1">
+                <EventActions event={event} actions={["share"]} />
+                <div className="hidden lg:block"><SaveButton refType="event" refId={event.slug} label={event.title} /></div>
               </div>
             </div>
-            <div className="absolute inset-x-0 bottom-0 p-5">
-              <p
-                className="text-[11px] font-medium uppercase tracking-[0.14em]"
-                style={{ color: cat?.color ?? "var(--app-brand)" }}
-              >
-                {cat?.name ?? event.category}
-              </p>
-              <h1
-                className="mt-1 font-serif text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]"
-                style={{ color: "var(--app-ink)" }}
-              >
-                {event.title}
-              </h1>
-            </div>
+            <h1 className="text-[26px] font-semibold leading-tight tracking-tight sm:text-[32px]" style={{ color: "var(--app-ink)" }}>{event.title}</h1>
           </div>
         )}
         {eventVisual ? (
@@ -588,21 +579,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               </span>
             )}
           </div>
+          {timeCaution && <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{timeCaution}</p>}
           <TrustChip signal={eventTrust(event)} detail />
-          {desc && (
-            <div className="max-w-[68ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              <p>{description.preview}</p>
-              {description.rest ? (
-                <details className="group mt-1">
-                  <summary className="tap-44 inline-flex cursor-pointer list-none items-center gap-1 text-[12.5px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
-                    Read full description
-                    <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
-                  </summary>
-                  <p className="pb-1">{description.rest}</p>
-                </details>
-              ) : null}
-            </div>
-          )}
           <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: "var(--app-ink-3)" }}>
             {attendanceLabel && (
               <span className="inline-flex items-center gap-1">
@@ -633,6 +611,20 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             />
             {event.source_url && <EventSourceLink href={event.source_url} />}
           </div>
+          {desc && (
+            <div className="max-w-[68ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              <p>{description.preview}</p>
+              {description.rest ? (
+                <details className="group mt-1">
+                  <summary className="tap-44 inline-flex cursor-pointer list-none items-center gap-1 text-[12.5px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+                    Read full description
+                    <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
+                  </summary>
+                  <p className="pb-1">{description.rest}</p>
+                </details>
+              ) : null}
+            </div>
+          )}
           {communicationAccess.length > 0 && (
             <div
               className="flex items-start gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2.5"
@@ -662,19 +654,6 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           )}
         </div>
       </header>
-
-      {/* Smart pairings — the editorial decision layer the mobile
-          review called out as the killer feature. Synthesizes
-          weather at the event start, closest parking, and the
-          nearest food spot into one card. Self-hides if none of
-          the three signals are available. */}
-      {physicalAttendance && hasPreciseLocation && (
-        <EventSmartPairings
-          event={event}
-          nearbyFood={nearbyFood}
-          parkingDecision={parkingDecision}
-        />
-      )}
 
       {eventStatus !== "scheduled" ? (
         (() => {
@@ -826,19 +805,32 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         );
       })()}
 
-      {/* A map, directions, and nearby logistics are precise-location claims.
-          Area-only feed coordinates keep the venue text but never generate a
-          downtown pin for an event elsewhere in the county. */}
+      {/* Smart pairings — the editorial decision layer the mobile
+          review called out as the killer feature. Synthesizes
+          weather at the event start, closest parking, and the
+          nearest food spot into one card. Self-hides if none of
+          the three signals are available. */}
+      {physicalAttendance && hasPreciseLocation && eventStatus === "scheduled" && !hasEnded && !event.is_all_day && !isDateOnlyEventAnchor(event) && (
+        <EventSmartPairings
+          event={event}
+          nearbyFood={nearbyFood}
+          parkingDecision={null}
+        />
+      )}
+
+      {/* Practical attendance context uses the same precise location as Directions. */}
       {physicalAttendance && hasPreciseLocation && (
-        <>
+        <div className="space-y-4">
+          {eventStatus === "scheduled" && !hasEnded && (
+            <GettingThere
+              geom={pinGeom}
+              venuePlaceSlug={event.venue_place_slug ?? undefined}
+              geoPrecise
+              parkingDecision={parkingDecision}
+            />
+          )}
           <VenueMiniMap geom={pinGeom} name={event.venue_name} />
-          <GettingThere
-            geom={pinGeom}
-            venuePlaceSlug={event.venue_place_slug ?? undefined}
-            geoPrecise
-            parkingDecision={parkingDecision}
-          />
-        </>
+        </div>
       )}
 
       {event.info && (event.info.admission || event.info.drinks || event.info.food) && (
@@ -1012,7 +1004,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           <div className="space-y-5 pb-4 pt-2">
             {nearbyFood.length > 0 ? (
               <section className="space-y-2.5">
-                <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Eat &amp; drink before</h2>
+                <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Eat &amp; drink nearby</h2>
                 <ul className="space-y-2">
                   {nearbyFood.map((p) => <li key={p.slug}><PlaceCard place={p} variant="row" /></li>)}
                 </ul>

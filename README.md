@@ -17,7 +17,7 @@ Four primary tabs (the bottom nav; single source of truth in `src/components/nav
 
 | Tab | URL | What it does |
 |---|---|---|
-| **Today** | `/today` | The home. Today still leads with weather + an events shelf; the answer-first reframe (the "intelligence layer" home) is UX_REDO Layer 2. Renders weather (hourly + 7-day), TodayMoves + MoveStack, TwoDoors, mode-scoped events, MoodTiles. |
+| **Today** | `/today` | The home. Today still leads with weather + an events shelf; the answer-first reframe (the "intelligence layer" home) is UX_REDO Layer 2. Mounts a time-aware masthead with SkyHero/TodayCard weather, civic alerts, the moment spotlight and Fair feature, the on-now band, daypart needs, the Today's Ask launcher, and the weekend/tomorrow previews (see `src/app/(app)/today/page.tsx`). Hourly and 7-day forecasts live at `/pulse?open=weather`, which Today links to. |
 | **Map** | `/map` | Pinpoint-first map with category-color pins + a layers drawer (civic / transit / trails / amenities). Radius is a mode here: `/map?mode=radius`. |
 | **Events** | `/events` | Lens-driven event explorer (Tonight · Tomorrow · Weekend · This week · Free) with month-view calendar. |
 | **Saved** | `/my-radius` | Local and synced saves, recently viewed places, and follows. |
@@ -42,7 +42,7 @@ Plus: dynamic per-place OG images via `/api/og`, Event + LocalBusiness JSON-LD, 
 
 - **Next.js 16** App Router · **React 19** · **TypeScript 5** · **Tailwind 4**
 - **Mapbox GL JS** + custom paper-mode palette (was Leaflet — switched May 2026)
-- **Vaul** for bottom drawers · **cmdk** for the ⌘K command palette · **nuqs** for URL state
+- **Vaul** for bottom drawers · **nuqs** for URL state
 - **Sonner** for toasts · **Framer Motion** for shelf reveals
 - **Supabase** (auth + Postgres) · **Drizzle ORM** schema committed (Postgres + PostGIS) — DB usage limited to feed-snapshots + auth/follows
 - **next/og** for runtime OG image generation
@@ -53,7 +53,7 @@ Plus: dynamic per-place OG images via `/api/og`, Event + LocalBusiness JSON-LD, 
 
 ```
 src/
-├── middleware.ts            # /admin Basic Auth + Supabase session refresh
+├── proxy.ts                 # /admin Basic Auth + Supabase session refresh
 ├── app/
 │   ├── pitch/               # cinematic marketing demo (investor + press)
 │   ├── (app)/               # the PWA route group
@@ -83,7 +83,6 @@ src/
 │   ├── now/ · today/        # /today sections + weather/answer stack
 │   ├── event/ · place/ · saved/ · search/ · radius/ · map/
 │   ├── nav/                 # BottomNav (4 tabs, sliding indicator) · TopBar · RouteAccent
-│   ├── cmdk/                # ⌘K command palette
 │   ├── ui/                  # primitives (BottomDrawer, Skeleton, ReasonChip, etc.)
 │   └── marketing/           # the cinematic scenes (rendered at /pitch)
 ├── data/                    # municipalities, categories, places, events + enrichment JSON

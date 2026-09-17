@@ -9,7 +9,7 @@ import {
   subscribeScopeChange,
   type Scope,
 } from "@/lib/scope";
-import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 /** Plain-language contract for Today's mixed scope. Place decisions honor the
  * shared lens; weather, alerts, and the event program remain countywide. */
@@ -28,6 +28,8 @@ export function todayScopeStatusText(
   return "Countywide briefing";
 }
 
+const subscribeReady = () => () => {};
+
 const subscribe = (onStoreChange: () => void) =>
   subscribeScopeChange(() => onStoreChange());
 
@@ -43,6 +45,7 @@ const subscribe = (onStoreChange: () => void) =>
  * quiet line under the title now holds both supporting facts.
  */
 export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
+  const ready = useSyncExternalStore(subscribeReady, () => true, () => false);
   const scope = useSyncExternalStore(subscribe, getScope, () => null);
   const townScoped = Boolean(scopeTownSlug(scope));
   const {
@@ -88,13 +91,13 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
   };
 
   return (
-    <div className="mt-1.5 flex min-h-11 flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
       <p
         role="status"
         aria-live="polite"
         aria-atomic="true"
         data-testid="today-scope-status"
-        className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono text-[10.5px] leading-snug tracking-[0.02em]"
+        className="flex w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] leading-normal"
         style={{ color: "var(--app-ink-3)" }}
       >
         {dateline && (
@@ -112,6 +115,20 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
         />
         {todayScopeStatusText(scope, hasDeviceLocation)}
       </p>
+      <label className="inline-flex min-h-11 max-w-full items-center gap-2 text-[13px] font-medium">
+        <span className="sr-only">Choose your area</span>
+        <select
+          disabled={!ready}
+          value={scope ?? "county"}
+          onChange={(event) => setScope(event.target.value as Scope)}
+          className="min-h-11 max-w-full rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-3 text-[16px]"
+          style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
+        >
+          <option value="county">Whole county</option>
+          {scope === "nearme" && <option value="nearme">Near me</option>}
+          {MUNICIPALITIES.map((town) => <option key={town.slug} value={`town:${town.slug}`}>{town.name}</option>)}
+        </select>
+      </label>
       {showLocationAction ? (
         locationBlocked ? (
           // A denial cannot be re-prompted in this page session, so keeping
@@ -121,19 +138,19 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
           // ("error") keeps the button because a retry there can succeed.
           <p
             data-testid="today-location-blocked"
-            className="max-w-[36ch] text-right text-[10.5px] leading-snug"
+            className="max-w-[30ch] text-[12px] leading-normal"
             style={{ color: "var(--app-ink-3)" }}
           >
             {location.status === "denied"
-              ? "Location is off for this site. Turn it on in your browser settings to see nearby picks."
-              : "Location is unavailable on this device."}
+              ? "Location is off. Choose a town to keep browsing."
+              : "Location is unavailable. Choose a town to keep browsing."}
           </p>
         ) : (
           <button
             type="button"
             onClick={useMyLocation}
             disabled={location.status === "loading"}
-            className="tap-44 inline-flex h-11 shrink-0 items-center rounded-full px-2.5 text-[10.5px] font-semibold transition active:scale-[0.98] disabled:opacity-55"
+            className="tap-44 inline-flex h-11 shrink-0 items-center rounded-full px-2.5 text-[13px] font-semibold transition active:scale-[0.98] disabled:opacity-55"
             style={{
               color: "var(--app-brand-press)",
               background: "var(--app-brand-tint-6)",

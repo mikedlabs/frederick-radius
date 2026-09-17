@@ -62,6 +62,10 @@ import {
   getRadiusSearchIndexHealth,
   UNKNOWN_RADIUS_SEARCH_INDEX_HEALTH,
 } from "@/lib/quality/search-index-health";
+import {
+  GOOGLE_HOURS_POLICY_HOLD_MESSAGE,
+  googleHoursRefreshRuntimeEnabled,
+} from "@/lib/google-maps-policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -180,6 +184,7 @@ async function runDataHealthReport(requestSignal?: AbortSignal) {
   const healthWorkStartedAt = Date.now();
   const retentionPruneEnabled =
     process.env.DATA_RETENTION_PRUNE === "1";
+  const googleHoursRefreshExpected = googleHoursRefreshRuntimeEnabled();
   const phaseRunsOutcome = await withDeadlineOutcome(
     getRecentIngestRuns(),
     PHASE_HEARTBEAT_DEADLINE_MS,
@@ -304,6 +309,7 @@ async function runDataHealthReport(requestSignal?: AbortSignal) {
         ? hoursPromotionOutcome.value
         : null,
     artifactLatestAt: hoursArtifact.newestRefresh ?? null,
+    refreshExpected: googleHoursRefreshExpected,
   });
   const foodTruckScheduleHealth =
     evaluateFoodTruckScheduleHealth(storedFoodTruckSchedule);
@@ -324,15 +330,19 @@ async function runDataHealthReport(requestSignal?: AbortSignal) {
     void sendAnomalyAlert(allAnomalies);
   }
 
-  // THE ONE NUMBER. Every gate above collapsed to "N of M green" — the
-  // owner-readable answer to "is the app quietly broken?", persisted as an
-  // ingest_runs row so the admin board (and any later surface) can read the
-  // latest headline without recomputing.
+  // THE ONE NUMBER. Every applicable gate above collapses to "N of M green" —
+  // the owner-readable answer to "is the app quietly broken?" Intentionally
+  // disabled paid capabilities are named as held instead of being counted
+  // green or red. The result is persisted as an ingest_runs row so the admin
+  // board (and any later surface) can read the latest headline without
+  // recomputing.
   const gates: Array<{ name: string; green: boolean }> = [
-    {
-      name: "open-now-eligibility",
-      green: trust.fresh_hours.open_now_eligible,
-    },
+    ...(googleHoursRefreshExpected
+      ? [{
+          name: "open-now-eligibility",
+          green: trust.fresh_hours.open_now_eligible,
+        }]
+      : []),
     { name: "provenance", green: !trust.provenance.below_gate },
     { name: "coord-divergence", green: coordFlags.length === 0 },
     { name: "feed-anomalies", green: anomalies.length === 0 },
@@ -348,10 +358,12 @@ async function runDataHealthReport(requestSignal?: AbortSignal) {
       name: "db-health",
       green: dbHealth.status === "available" && dbAnomalies.length === 0,
     },
-    {
-      name: "hours-publication",
-      green: hoursPromotionHealth.green,
-    },
+    ...(googleHoursRefreshExpected
+      ? [{
+          name: "hours-publication",
+          green: hoursPromotionHealth.green,
+        }]
+      : []),
     {
       name: "search-index-coverage",
       green: searchIndex.status === "current",
@@ -365,7 +377,15 @@ async function runDataHealthReport(requestSignal?: AbortSignal) {
     ...tripwires.checks,
   ];
   const red = gates.filter((g) => !g.green);
-  const headline = `${gates.length - red.length}/${gates.length} green${red.length > 0 ? ` · red: ${red.map((g) => g.name).join(", ")}` : ""}`;
+  const held = googleHoursRefreshExpected
+    ? []
+    : ["open-now-eligibility", "hours-publication"];
+  const reportStatus =
+    red.length > 0 ? "degraded" : held.length > 0 ? "held" : "healthy";
+  const headline =
+    `${gates.length - red.length}/${gates.length} green` +
+    `${red.length > 0 ? ` · red: ${red.map((g) => g.name).join(", ")}` : ""}` +
+    `${held.length > 0 ? ` · held: ${held.join(", ")}` : ""}`;
 
   // GitHub Actions owns the durable health issue by default. Its automatic
   // GITHUB_TOKEN cannot expire and the production-health-alert workflow reads
@@ -394,11 +414,12 @@ async function runDataHealthReport(requestSignal?: AbortSignal) {
         }),
     withDeadlineOutcome(
       recordCompletedIngestRunStrict("tripwires", reportStartedAt, {
-        status: red.length === 0 ? "ok" : "error",
+        status:
+          red.length > 0 ? "error" : held.length > 0 ? "partial" : "ok",
         records_in: gates.length,
         records_upserted: gates.length - red.length,
         records_failed: red.length,
-        error: red.length > 0 ? headline : null,
+        error: red.length > 0 || held.length > 0 ? headline : null,
       }, { signal: reporterHeartbeatDeadline.signal }),
       REPORT_HEARTBEAT_DEADLINE_MS + 500,
     ).finally(() => reporterHeartbeatDeadline.dispose()),
@@ -421,7 +442,8 @@ async function runDataHealthReport(requestSignal?: AbortSignal) {
     summary: {
       headline,
       gates,
-      status: red.length === 0 ? "healthy" : "degraded",
+      held,
+      status: reportStatus,
       degraded: red.length > 0,
       required_phase_unavailable: requiredPhaseUnavailable,
       github_delivery: githubDelivery,
@@ -449,6 +471,10 @@ async function runDataHealthReport(requestSignal?: AbortSignal) {
     places: clientPlaces.length,
     dedup: { clusters, folded },
     hours: {
+      mode: googleHoursRefreshExpected ? "active_refresh" : "policy_hold",
+      operator_message: googleHoursRefreshExpected
+        ? null
+        : GOOGLE_HOURS_POLICY_HOLD_MESSAGE,
       fresh_count: trust.fresh_hours.fresh_count,
       total_count: trust.fresh_hours.total_count,
       coverage_pct: trust.fresh_hours.coverage_pct,

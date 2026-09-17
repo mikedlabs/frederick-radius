@@ -129,6 +129,23 @@ audit-reports/
 design-review/screenshots/
 # Closure-detector output: a local review artifact, regenerated each run.
 scripts/reports/
+# Deterministic, self-hosted viewer bundles generated before dev/build.
+/public/fair-viewer-assets/
+
+# Fair social/marketing stills rendered by scripts/generate-fair-stills.ts.
+# Large derived media (9:16 cards plus an MP4) that no app code imports and
+# that the repository size budget cannot hold: the tracked tree already sits
+# at ~238.5 MB of its 239 MB ceiling, and a single run of this script writes
+# hundreds of megabytes. Publish these from outside the repo.
+/public/images/fair/stills/
 # The county PMTiles extract, sprites, and glyphs are intentionally tracked
 # promoted artifacts. Application builds verify their release manifest and do
 # not download or regenerate them. See ADR-002 and `npm run basemap:verify`.
+
+# A separate OSC/HUD side project was committed here by mistake (Sept 2026).
+# It lives outside this repo; keep it and its node_modules out of git.
+/hud_project/
+/osc_sniff.log
+# Local dev-server output and one-off audit scratch never belong in history.
+/.dev-server.log
+/scripts/scratch/

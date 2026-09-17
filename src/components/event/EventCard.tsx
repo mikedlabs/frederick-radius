@@ -1,15 +1,15 @@
 import Link from "next/link";
 import Image from "next/image";
+import { MapPin, Ticket, Accessibility, Navigation } from "lucide-react";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import CategoryIcon from "@/components/place/CategoryIcon";
-import IconStamp from "@/components/ui/IconStamp";
 import type { EventWithMeta } from "@/lib/loaders/events";
 // VALUE import from the DATA-FREE formatter module, never from the loader:
 // a value import of loaders/events would drag its places-client static
 // import (1.8MB JSON) into every client bundle that renders an event card.
 import { eventDateBlock } from "@/lib/events/format";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import SaveButton from "@/components/saved/SaveButton";
+import ItineraryButton from "@/components/saved/ItineraryButton";
 import TrustChip from "@/components/ui/TrustChip";
 import { Chip } from "@/components/ui/Chip";
 import { ReasonChipRow } from "@/components/ui/ReasonChip";
@@ -18,7 +18,7 @@ import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
 import { statusLabel } from "@/lib/event-status";
 import DatePlate from "@/components/event/DatePlate";
-import { eventAttendanceLabel } from "@/lib/events/attendance";
+import { eventDecisionLocation, eventDecisionTime } from "@/lib/events/decision-facts";
 import { communicationAccessLabels } from "@/lib/events/communication-access";
 import {
   eventCardVisual,
@@ -29,7 +29,6 @@ import EventPosterCard from "@/components/event/EventPosterCard";
 import {
   eventHasTrustworthyEnd,
   isEventLiveNow,
-  startedEventTimingDisclosure,
 } from "@/lib/eventWhenLabel";
 
 // Event cards use the SHARED CategoryIcon seam (place/CategoryIcon): it resolves
@@ -109,9 +108,8 @@ export default function EventCard({
       ? isEventLiveNow(event, cardNow)
       : !event.is_all_day && eventHasTrustworthyEnd(event));
 
-  // A feature always remains a visual poster. The poster component resolves
-  // photographs through the source-aware eventCardVisual gate and otherwise
-  // paints honest category artwork; it never promotes event.hero_image raw.
+  // A lead uses a source-approved image when available and a compact date-led
+  // card otherwise. An unapproved image never bypasses the shared photo gate.
   if (variant === "feature") {
     return (
       <EventPosterCard
@@ -132,10 +130,7 @@ export default function EventCard({
   // a struck-through title so it can never be mistaken for "on."
   const statusText = statusLabel(status);
   const isCancelled = status === "cancelled";
-  const timingText =
-    status === "scheduled" && cardNow
-      ? startedEventTimingDisclosure(event, cardNow) ?? date.time
-      : date.time;
+  const timingText = eventDecisionTime(event, cardNow ?? undefined);
   // Badge palette: red for cancelled, amber for postponed.
   // Text-safe status color. Plain --app-warning (amber) fails WCAG AA both as
   // inline text on cream and as white-on-fill badge; --app-warning-press is the
@@ -143,7 +138,7 @@ export default function EventCard({
   // text on cream). Cancelled already uses --app-danger, which passes. This one
   // value feeds every status spot below (inline text + white pills). (audit a11y)
   const statusBg = isCancelled ? "var(--app-danger)" : "var(--app-warning-press)";
-  const venueLabel = eventAttendanceLabel(event);
+  const venueLabel = eventDecisionLocation(event);
   // Accent MUST be a hex literal — used in templates like `${accent}38`
   // to compose color-with-alpha. A CSS var() fallback would produce
   // invalid CSS. An unrecognized/blank category resolves to a NEUTRAL
@@ -230,7 +225,7 @@ export default function EventCard({
     return (
       <article
         {...decisionAttributes}
-        className="tactile-interactive group relative flex items-center gap-3 border-b px-3 py-2"
+        className="tactile-interactive group relative flex items-center gap-3 border-b px-3 py-2 transition-transform duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)] hover:scale-[1.02] active:scale-[0.98]"
         style={{ borderColor: "var(--app-border)" }}
       >
         {/* Date / time pill — anchors each row. Date numerals first
@@ -284,11 +279,11 @@ export default function EventCard({
             }`}
             style={{ color: "var(--app-ink)" }}
           >
-            <span className="block truncate text-[14px] font-semibold tracking-tight">
+            <span className="block line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight">
               {event.title}
             </span>
             <span
-              className="block truncate text-[11px] font-normal leading-tight"
+              className="block text-[12px] font-normal leading-relaxed"
               style={{ color: "var(--app-ink-3)" }}
             >
               <span className="font-mono tabular-nums">{timingText}</span>
@@ -362,7 +357,7 @@ export default function EventCard({
             floating over a blank band. */}
         <article
           {...decisionAttributes}
-          className="tactile tactile-interactive group relative flex flex-1 gap-3 overflow-hidden rounded-[var(--app-radius-lg)] rounded-tl-none border bg-[var(--app-bg-elevated)] px-3 pb-3 pt-2.5"
+          className="tactile tactile-interactive group relative flex flex-1 gap-3 overflow-hidden rounded-[var(--app-radius-lg)] rounded-tl-none border bg-[var(--app-bg-elevated)] px-3 pb-3 pt-2.5 transition-all duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)] hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0"
           style={{
             borderColor: "var(--app-border)",
             boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
@@ -442,7 +437,7 @@ export default function EventCard({
     return (
       <article
         {...decisionAttributes}
-        className="tactile tactile-interactive group relative rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-3"
+        className="tactile tactile-interactive group relative rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-3 transition-transform duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)] hover:scale-[1.01] active:scale-[0.98]"
         style={{
           borderColor: "var(--app-border)",
           // Faint left-edge accent in the category color so a stack of cards
@@ -514,40 +509,36 @@ export default function EventCard({
                   <span style={{ color: "var(--app-ink-3)" }}>· {event.recurrence_text}</span>
                 )}
               </p>
-              {/* Venue line — small, calm, single-line truncate. */}
-              {venueLabel && (
-                <p
-                  className="mt-0.5 truncate text-[12px] leading-snug"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  {venueLabel}
-                </p>
-              )}
-              {/* Meta row — price/free + distance only. The category WORD is
-                  dropped: the left accent rail + the icon tile already encode
-                  the kind, so naming it again was redundant chrome. */}
-              {(event.is_free || event.price_text || accessLabel || event.distance_m !== undefined) && (
-                <div className="mt-2 flex items-center gap-x-2 text-[11px]">
-                  {event.is_free ? (
-                    <span style={{ color: "var(--app-positive)" }}>Free</span>
-                  ) : event.price_text ? (
-                    <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
-                  ) : null}
-                  {accessLabel && (
-                    <span className="font-medium" style={{ color: "var(--app-cool)" }}>
-                      {accessLabel}
-                    </span>
-                  )}
-                  {event.distance_m !== undefined && (
-                    <span
-                      className="ml-auto font-mono tabular-nums"
-                      style={{ color: "var(--app-ink-3)" }}
-                    >
-                      {formatDistance(event.distance_m)}
-                    </span>
-                  )}
-                </div>
-              )}
+              {/* Venue and Meta block — Icon-first representations */}
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                {venueLabel && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+                    <span className="truncate max-w-[160px] leading-snug">{venueLabel}</span>
+                  </span>
+                )}
+                
+                {(event.is_free || event.price_text) && (
+                  <span className="flex items-center gap-1 font-medium" style={{ color: event.is_free ? "var(--app-positive)" : "inherit" }}>
+                    <Ticket className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+                    {event.is_free ? "Free" : event.price_text}
+                  </span>
+                )}
+
+                {accessLabel && (
+                  <span className="flex items-center gap-1 font-medium" style={{ color: "var(--app-cool)" }}>
+                    <Accessibility className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+                    {accessLabel}
+                  </span>
+                )}
+
+                {event.distance_m !== undefined && (
+                  <span className="ml-auto flex items-center gap-1 font-mono tabular-nums">
+                    <Navigation className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+                    {formatDistance(event.distance_m)}
+                  </span>
+                )}
+              </div>
             </div>
             {/* A fixed-size, lazy thumbnail appears only after the shared
                 source/venue resolver approves it. Credit is rendered below
@@ -564,7 +555,7 @@ export default function EventCard({
                     sizes="72px"
                     placeholder="blur"
                     blurDataURL={PAPER_CREAM_BLUR}
-                    className="object-cover"
+                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                   />
                   <span
                     aria-hidden
@@ -573,15 +564,7 @@ export default function EventCard({
                   />
                 </div>
               </figure>
-            ) : (
-              // The category glyph as a real pressed-paper SEAL — the canonical
-              // IconStamp (tint over elevated paper, engraved glyph in the
-              // accent, hairline edge + top highlight + warm accent lift),
-              // replacing the hand-built tile so event cards match place/Saved.
-              <IconStamp accent={accent} size="lg" className="shrink-0 self-center">
-                <CategoryIcon slug={event.category} />
-              </IconStamp>
-            )}
+            ) : null}
           </div>
         </Link>
         {cardVisual ? (
@@ -598,7 +581,7 @@ export default function EventCard({
   return (
     <article
       {...decisionAttributes}
-      className="tactile tactile-interactive group relative flex items-stretch gap-3 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-3"
+      className="tactile tactile-interactive group relative flex items-stretch gap-3 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-3 transition-transform duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)] hover:scale-[1.01] active:scale-[0.98]"
     >
       <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent={accent} />
       <div className="min-w-0 flex-1">
@@ -654,7 +637,7 @@ export default function EventCard({
         </div>
       </div>
       <div className="relative z-10 flex shrink-0 items-center self-start">
-        <SaveButton refType="event" refId={event.slug} label={`Save ${event.title}`} />
+        <ItineraryButton eventId={event.slug} label={`Add ${event.title} to itinerary`} />
       </div>
     </article>
   );

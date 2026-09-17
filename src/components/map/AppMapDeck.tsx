@@ -1,6 +1,6 @@
 "use client";
 
-import { Search as SearchIcon, Navigation as NavIcon } from "lucide-react";
+import { Search as SearchIcon, Navigation as NavIcon, Sparkles } from "lucide-react";
 import type { SearchResult } from "@/lib/search/index";
 import type { LngLat } from "@/lib/geo";
 
@@ -42,6 +42,19 @@ export default function AppMapDeck({
   locating = false,
   userLoc = null,
 }: AppMapDeckProps) {
+  const trimmedQ = q.trim();
+  const displayMatches = [...searchMatches];
+  
+  if (trimmedQ.length > 2) {
+    displayMatches.push({
+      type: "action",
+      id: "action:ask",
+      title: `Ask Frederick: "${trimmedQ}"`,
+      subtitle: "Get a smart answer or local recommendation",
+      href: `/ask?q=${encodeURIComponent(trimmedQ)}`
+    });
+  }
+
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-[var(--z-sticky)] px-2.5 pt-2.5 sm:px-3 sm:pt-3">
       <div className="pointer-events-auto mx-auto w-full max-w-[680px]">
@@ -97,7 +110,7 @@ export default function AppMapDeck({
               </button>
             )}
           </div>
-          {searchMatches.length > 0 && (
+          {displayMatches.length > 0 && (
             <ul
               className="absolute inset-x-0 top-full z-[var(--z-dropdown)] mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border backdrop-blur"
               style={{
@@ -106,9 +119,10 @@ export default function AppMapDeck({
                 boxShadow: "var(--app-shadow-3)",
               }}
             >
-              {searchMatches.map((r) => {
+              {displayMatches.map((r) => {
                 // Type-tinted dot so a town, event, or layer reads as a
                 // different thing from a place at a glance.
+                const isAsk = r.id === "action:ask";
                 const dot =
                   r.type === "event" ? "var(--app-brand, #B5462B)"
                   : r.type === "municipality" ? "var(--app-cool, #5C8AA8)"
@@ -125,7 +139,15 @@ export default function AppMapDeck({
                       }}
                       className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-[var(--app-bg-sunken)]"
                     >
-                      <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: dot }} />
+                      {isAsk ? (
+                        <Sparkles
+                          aria-hidden
+                          className="h-3.5 w-3.5 shrink-0"
+                          style={{ color: "var(--app-brand, #B5462B)" }}
+                        />
+                      ) : (
+                        <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: dot }} />
+                      )}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium" style={{ color: "var(--app-ink)" }}>
                           {r.title}

@@ -9,8 +9,72 @@
  * for being open during these windows. Times are 24-hour America/New_York.
  */
 
+import type { OpenStatus } from "@/lib/hours";
+
 export type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type OpenWindow = Partial<Record<Weekday, [string, string]>>;
+
+export const OPENING_SOON_MINUTES = 60;
+
+export type OpeningSoon = {
+  opensAt: string;
+  minutesUntil: number;
+};
+
+const FREDERICK_CLOCK = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  weekday: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+let lastClockMs = Number.NaN;
+let lastClockValue: { day: Weekday; minutes: number } | null = null;
+
+function frederickClock(now: Date): { day: Weekday; minutes: number } {
+  if (now.getTime() === lastClockMs && lastClockValue) return lastClockValue;
+  const parts = Object.fromEntries(
+    FREDERICK_CLOCK.formatToParts(now).map((part) => [part.type, part.value]),
+  );
+  const hour = parts.hour === "24" ? 0 : Number(parts.hour);
+  lastClockMs = now.getTime();
+  lastClockValue = {
+    day: parts.weekday.toLowerCase().slice(0, 3) as Weekday,
+    minutes: hour * 60 + Number(parts.minute),
+  };
+  return lastClockValue;
+}
+
+function minutesFromMidnight(hhmm: string): number | null {
+  if (!/^\d{2}:\d{2}$/.test(hhmm)) return null;
+  const [hour, minute] = hhmm.split(":").map(Number);
+  if (
+    !Number.isInteger(hour) ||
+    !Number.isInteger(minute) ||
+    hour < 0 ||
+    hour > 24 ||
+    minute < 0 ||
+    minute > 59 ||
+    (hour === 24 && minute !== 0)
+  ) {
+    return null;
+  }
+  return hour * 60 + minute;
+}
+
+function openingSoon(
+  opensAt: string,
+  now: Date,
+  maxMinutes: number,
+): OpeningSoon | null {
+  const openingMinute = minutesFromMidnight(opensAt);
+  if (openingMinute == null || maxMinutes <= 0) return null;
+  const minutesUntil = openingMinute - frederickClock(now).minutes;
+  return minutesUntil > 0 && minutesUntil <= maxMinutes
+    ? { opensAt, minutesUntil }
+    : null;
+}
 
 const wk = (open: string, close: string): OpenWindow => ({
   mon: [open, close],
@@ -78,27 +142,55 @@ export const RELIABLE_OPEN_WINDOWS: Record<string, OpenWindow> = {
 };
 
 /**
+ * A verified closed status may earn one explicit "opening soon" transition,
+ * but only when it names a same-day opening within the bounded window.
+ * Unknown and unverified states deliberately return null here; callers may
+ * consult the separately labeled curated fallback below.
+ */
+export function openingSoonFromStatus(
+  status: OpenStatus,
+  now: Date,
+  maxMinutes = OPENING_SOON_MINUTES,
+): OpeningSoon | null {
+  if (
+    status.state !== "closed" ||
+    !status.opensToday ||
+    !status.opensAt
+  ) {
+    return null;
+  }
+  return openingSoon(status.opensAt, now, maxMinutes);
+}
+
+/**
+ * The curated-window counterpart to openingSoonFromStatus. This is useful
+ * only as a clearly qualified fallback ("Likely opens"); it must never be
+ * promoted to a verified-hours claim by a caller.
+ */
+export function reliableOpeningSoon(
+  slug: string,
+  now: Date,
+  maxMinutes = OPENING_SOON_MINUTES,
+): OpeningSoon | null {
+  const { day } = frederickClock(now);
+  const span = RELIABLE_OPEN_WINDOWS[slug]?.[day];
+  return span ? openingSoon(span[0], now, maxMinutes) : null;
+}
+
+/**
  * Is the place open now per its curated window, evaluated in
  * America/New_York. Returns false when there is no window for the slug.
  */
 export function isLikelyOpenNow(slug: string, now: Date): boolean {
   const win = RELIABLE_OPEN_WINDOWS[slug];
   if (!win) return false;
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(now);
-  const map: Record<string, string> = {};
-  for (const p of parts) if (p.type !== "literal") map[p.type] = p.value;
-  const day = map.weekday.toLowerCase().slice(0, 3) as Weekday;
+  const { day, minutes } = frederickClock(now);
   const span = win[day];
   if (!span) return false;
-  const hh = map.hour === "24" ? "00" : map.hour;
-  const cur = `${hh.padStart(2, "0")}:${map.minute}`;
+  const open = minutesFromMidnight(span[0]);
+  const close = minutesFromMidnight(span[1]);
+  if (open == null || close == null) return false;
   // A closing time is an exclusive boundary: "closes at 6:00" must not
   // become a "likely open" claim at 6:00.
-  return cur >= span[0] && cur < span[1];
+  return minutes >= open && minutes < close;
 }

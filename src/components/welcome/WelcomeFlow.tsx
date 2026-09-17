@@ -77,6 +77,7 @@ export default function WelcomeFlow() {
   // on every request, and a client-side router push can race
   // document.cookie on some Safari/cache states.
   function goToNow(): void {
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.assign("/today");
   }
 

@@ -229,17 +229,28 @@ function roadIntelligenceAlert(
   }];
 }
 
-function officialCivicAlerts(alerts: OfficialCivicAlert[]): UnifiedAlert[] {
+/**
+ * Translate narrow official feeds into Today interruption levels.
+ *
+ * A record being present in the Health Department "closings" feed means the
+ * notice is current, not that it is urgent. Routine holiday/office closures
+ * remain available in Pulse, but must not displace an actual safety warning
+ * in Today's first screen. Consequence-bearing language can still promote a
+ * closing when the notice itself describes an emergency or hazard.
+ */
+export function officialCivicAlerts(alerts: OfficialCivicAlert[]): UnifiedAlert[] {
   return alerts.map((alert) => {
     const copy = `${alert.title} ${alert.summary}`;
+    const consequenceBearing =
+      /\b(?:emergency|evacuat|boil|unsafe|outbreak|do not|avoid|hazard|danger)\b/i.test(copy);
     const urgent =
       alert.kind === "city-emergency" ||
       alert.kind === "health-burn-ban" ||
-      /\b(?:emergency|evacuat|boil|unsafe|outbreak|closed|closure|do not|avoid)\b/i.test(copy);
+      consequenceBearing;
     const actionable =
       urgent ||
-      alert.kind === "health-closing" ||
-      /\b(?:warning|advisory|recall|exposure|contaminat|suspend|cancel|restricted)\b/i.test(copy);
+      (alert.kind !== "health-closing" &&
+        /\b(?:warning|advisory|recall|exposure|contaminat|suspend|cancel|restricted|closed|closure)\b/i.test(copy));
     return {
       // The same official notice can appear in more than one narrow Alert
       // Center category. Its canonical public URL identifies the notice more

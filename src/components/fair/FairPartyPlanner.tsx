@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, UsersRound } from "lucide-react";
+import { Copy, ExternalLink, UsersRound } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -149,9 +149,20 @@ export default function FairPartyPlanner({
   onPartyChange: (party: FairParty) => void;
 }) {
   const [adjustmentAnnouncement, setAdjustmentAnnouncement] = useState("");
+  const [copyStatus, setCopyStatus] = useState("");
   const result = recommendFairPartyPlan({ party, date, asOf, offers });
   const requestedRiders = party.adultRiders + party.childRiders;
   const totalGuests = party.adults11Plus + party.children10Under;
+  const ticketChecklist = result.status === "complete"
+    ? [
+        `The Great Frederick Fair · ${date}`,
+        `${party.adults11Plus} adults 11+; ${party.children10Under} children 10 and under.`,
+        ...result.lines.map((item) => `${item.quantity} × ${item.label}`),
+        `Listed subtotal: ${moneyLabel(result.listedSubtotalCents)}. Confirm the final total at checkout.`,
+        ...result.notes,
+        "Planning checklist only. Select quantities and complete payment on the official ticket site.",
+      ].join("\n")
+    : "";
   const handoffs =
     result.status === "complete"
       ? Array.from(
@@ -162,6 +173,7 @@ export default function FairPartyPlanner({
                 url: item.officialPurchaseUrl ?? item.officialInfoUrl,
                 purchase: item.officialPurchaseUrl !== null,
                 label: item.label,
+                quantity: item.quantity,
               },
             ]),
           ).values(),
@@ -345,23 +357,46 @@ export default function FairPartyPlanner({
                 role="group"
                 aria-label="Official ticket handoffs"
               >
+                <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                  This is an estimate, not an Etix cart. Your selections do not transfer.
+                  The official site opens in a new tab, where you select quantities and pay.
+                  Keep this checklist open for reference.
+                </p>
+                <Button
+                  variant="secondary"
+                  iconLeft={<Copy className="h-4 w-4" aria-hidden />}
+                  onClick={async () => {
+                    try {
+                      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+                      await navigator.clipboard.writeText(ticketChecklist);
+                      setCopyStatus("Ticket checklist copied. Nothing has been purchased.");
+                    } catch {
+                      setCopyStatus("Copy is unavailable. Keep this checklist open beside the official ticket page.");
+                    }
+                  }}
+                >
+                  Copy ticket checklist
+                </Button>
+                <p role="status" aria-live="polite" className="text-[12px] leading-relaxed">
+                  {copyStatus}
+                </p>
                 {handoffs.map((handoff) => (
                   <div
                     key={handoff.url}
-                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2"
+                    className="grid gap-1.5"
                   >
                     <span className="text-[11.5px] font-semibold leading-snug">
-                      {handoff.label}
+                      {handoff.quantity} × {handoff.label}
                     </span>
                     <Button
                       href={handoff.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      variant="secondary"
-                      size="sm"
+                      className="w-full"
+                      variant={handoff.purchase ? "primary" : "secondary"}
                       aria-label={
                         handoff.purchase
-                          ? `Continue to Etix for ${handoff.label}`
+                          ? `Open Etix for ${handoff.label}`
                           : `Review ${handoff.label} officially`
                       }
                       iconRight={<ExternalLink className="h-4 w-4" aria-hidden />}

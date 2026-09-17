@@ -21,6 +21,7 @@ import {
   type GtfsFeedMessage,
 } from "@/lib/integrations/gtfsRealtimeBindings";
 import { decorateVehiclesWithNextStop } from "@/lib/integrations/transitNextStop";
+import { createAbortDeadline } from "@/lib/promise-deadline";
 
 const VEHICLE_POSITIONS =
   "https://passio3.com/frederick/passioTransit/gtfs/realtime/vehiclePositions";
@@ -214,11 +215,16 @@ type DecodedFeed = TransitFeedMeta & {
   feed?: GtfsFeedMessage;
 };
 
-async function decodeFeed(url: string): Promise<DecodedFeed> {
-  const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), TIMEOUT_MS);
+async function decodeFeed(
+  url: string,
+  parentSignal?: AbortSignal,
+): Promise<DecodedFeed> {
+  const deadline = createAbortDeadline(TIMEOUT_MS, parentSignal);
   try {
-    const res = await fetch(url, { signal: ctl.signal, cache: "no-store" });
+    const res = await fetch(url, {
+      signal: deadline.signal,
+      cache: "no-store",
+    });
     if (!res.ok) {
       return { status: "unavailable", available: false, receivedAt: Date.now() };
     }
@@ -234,7 +240,7 @@ async function decodeFeed(url: string): Promise<DecodedFeed> {
   } catch {
     return { status: "unavailable", available: false, receivedAt: Date.now() };
   } finally {
-    clearTimeout(t);
+    deadline.dispose();
   }
 }
 
@@ -470,10 +476,12 @@ function stopPredictionsFromFeed(
 }
 
 /** Upcoming arrivals plus provider availability/freshness metadata. */
-export async function getStopPredictionsResult(): Promise<
+export async function getStopPredictionsResult(
+  signal?: AbortSignal,
+): Promise<
   TransitFeedResult<StopPrediction[]>
 > {
-  const decoded = await decodeFeed(TRIP_UPDATES);
+  const decoded = await decodeFeed(TRIP_UPDATES, signal);
   return {
     data: decoded.feed ? stopPredictionsFromFeed(decoded.feed) : [],
     status: decoded.status,
@@ -596,10 +604,12 @@ function serviceAlertsFromFeed(feed: GtfsFeedMessage): TransitServiceAlert[] {
 /** Provider-published bus disruptions with explicit feed availability. An
  * empty successful feed means only that no alert entity was published; callers
  * must not turn that into a broader "service normal" promise. */
-export async function getTransitServiceAlertsResult(): Promise<
+export async function getTransitServiceAlertsResult(
+  signal?: AbortSignal,
+): Promise<
   TransitFeedResult<TransitServiceAlert[]>
 > {
-  const decoded = await decodeFeed(SERVICE_ALERTS);
+  const decoded = await decodeFeed(SERVICE_ALERTS, signal);
   return {
     data: decoded.feed ? serviceAlertsFromFeed(decoded.feed) : [],
     status: decoded.status,

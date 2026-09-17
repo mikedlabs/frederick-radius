@@ -109,7 +109,7 @@ describe("TodayScopeStatus location memory", () => {
     );
   });
 
-  it("replaces the button with the browser-settings sentence after a denial", async () => {
+  it("offers manual town selection after location is denied", async () => {
     setScope("county");
     mockNavigator({
       getCurrentPosition: vi.fn(
@@ -129,7 +129,7 @@ describe("TodayScopeStatus location memory", () => {
       container.querySelector('[data-testid="today-location-blocked"]')
         ?.textContent,
     ).toBe(
-      "Location is off for this site. Turn it on in your browser settings to see nearby picks.",
+      "Location is off. Choose a town to keep browsing.",
     );
   });
 

@@ -31,6 +31,7 @@ import type {
   EventPin,
   FloodContextFC,
   SnowRouteFC,
+  MapLineFC,
 } from "@/components/map/types";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
 import {
@@ -64,6 +65,9 @@ import {
   type MapLayerSourceHealth,
 } from "@/components/map/deferredBrowseLayers";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
+import { getRegisterSites } from "@/lib/integrations/historicSites";
+import appalachianTrail from "@/data/appalachian-trail.json";
+import scenicByways from "@/data/scenic-byways.json";
 
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
@@ -203,6 +207,7 @@ export async function GET(request: Request) {
     communityReports,
     parkingOccupancy,
     eventSnapshot,
+    historicSites,
   ] = await Promise.all([
     needsSignals
       ? trackedSource<CurrentSituationSnapshot | null>(
@@ -282,6 +287,9 @@ export async function GET(request: Request) {
     wants("events")
       ? trackedSource(["events"], "Event schedule", loadTodayEventSnapshot(now), 2_500, null)
       : Promise.resolve(null),
+    wants("outdoors")
+      ? trackedSource(["outdoors"], "Historic sites", getRegisterSites(), 3_000, [])
+      : Promise.resolve([]),
   ]);
 
   if (situationSnapshot) {
@@ -546,6 +554,29 @@ export async function GET(request: Request) {
         ? "stale"
         : "unavailable";
 
+  const scenicRoutes = (wants("outdoors") ? {
+    type: "FeatureCollection" as const,
+    features: [
+      ...(appalachianTrail.features || []),
+      ...(scenicByways.features || []),
+    ],
+  } : EMPTY_FC) as MapLineFC;
+
+  const coveredBridges = (wants("outdoors") ? {
+    type: "FeatureCollection" as const,
+    features: historicSites.filter((s) => s.isCoveredBridge).map((b) => ({
+      type: "Feature" as const,
+      geometry: { type: "Point" as const, coordinates: [b.lng, b.lat] },
+      properties: {
+        id: b.id,
+        name: b.name,
+        municipality: b.municipality,
+        year: b.year,
+        type: "covered_bridge",
+      },
+    })),
+  } : EMPTY_FC) as MapLineFC;
+
   const payload: DeferredBrowseLayers = {
     ...EMPTY_DEFERRED_BROWSE_LAYERS,
     civic,
@@ -554,6 +585,8 @@ export async function GET(request: Request) {
       : [],
     amenities,
     trailLines,
+    scenicRoutes,
+    coveredBridges,
     transitLines,
     municipalBoundaries,
     cemeteries,

@@ -7,7 +7,7 @@ import { GREAT_FREDERICK_FAIR_2026_SCHEDULE_SOURCE_URL } from "@/lib/fair/schedu
 
 export const MAX_FAIR_PACK_BYTES = 600 * 1024;
 export const GREAT_FREDERICK_FAIR_2026_EXPECTED_DAYS = 9;
-export const GREAT_FREDERICK_FAIR_2026_EXPECTED_ROWS = 190;
+export const GREAT_FREDERICK_FAIR_2026_EXPECTED_ROWS = 188;
 
 const FAIR_ID = /^great-frederick-fair-\d{4}$/;
 const DAY_ID = /^day-\d{4}-\d{2}-\d{2}$/;
@@ -380,7 +380,7 @@ function addPackIssues(pack: FairPackBase, ctx: z.RefinementCtx): void {
     ) {
       ctx.addIssue({
         code: "custom",
-        message: "the reviewed 2026 Fair release must contain exactly 9 days and 190 rows",
+        message: "the reviewed 2026 Fair release must contain exactly 9 days and 188 rows",
         path: ["schedule", "stats"],
       });
     }

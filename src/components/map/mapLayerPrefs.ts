@@ -22,6 +22,8 @@ export type MapLayerPrefs = {
   civic?: boolean;
   transit?: boolean;
   trails?: boolean;
+  scenicRoutes?: boolean;
+  coveredBridges?: boolean;
   aerial?: boolean;
   cemeteries?: boolean;
   parking?: boolean;
@@ -92,6 +94,8 @@ export function writeMapLayerPrefs(p: MapLayerPrefs): void {
     if (p.civic) slim.civic = true;
     if (p.transit) slim.transit = true;
     if (p.trails) slim.trails = true;
+    if (p.scenicRoutes) slim.scenicRoutes = true;
+    if (p.coveredBridges) slim.coveredBridges = true;
     if (p.aerial) slim.aerial = true;
     if (p.cemeteries) slim.cemeteries = true;
     if (p.parking) slim.parking = true;

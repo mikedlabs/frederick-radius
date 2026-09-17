@@ -1,6 +1,6 @@
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { ReasonTone } from "@/components/ui/ReasonChip";
-import { haversineMeters, type LngLat } from "@/lib/geo";
+import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { isHiddenGem } from "@/data/hidden-gems";
 
 /**
@@ -36,9 +36,7 @@ export type PlaceReason =
 
 export type PlaceReasonChip = { kind: PlaceReason; label: string; tone: ReasonTone };
 
-const WALK_NEAR_M = 400; // ~5 minute walk
-const WALK_OK_M = 1200; // ~15 minute walk
-const WALK_SPEED_M_PER_MIN = 80; // 4.8 km/h
+const NEAR_M = 1200;
 
 const TOP_RATED_MIN_STARS = 4.5;
 const TOP_RATED_MIN_COUNT = 50;
@@ -48,12 +46,6 @@ const FRESH_WITHIN_DAYS = 14;
 // Unambiguous kid destinations (category-level only — conservative; no
 // fuzzy "park is sort of kid-friendly" guessing).
 const KID_CATEGORIES: ReadonlySet<string> = new Set(["family", "playground"]);
-// Obviously-free public destinations.
-// "outdoors" is dropped because it is a PARENT slug (park, trail, playground,
-// golf, agritourism live under it) and a place is only ever filed under a leaf,
-// so it could never fire. "public-art" stays: it is a real leaf that simply has
-// no places yet, and a mural is free when one arrives.
-const FREE_CATEGORIES: ReadonlySet<string> = new Set(["park", "trail", "public-art"]);
 
 // Tiny curated landmark set — the locators a local actually uses. Downtown
 // coords are the real place geoms; Hood/Monocacy are well-known points.
@@ -108,13 +100,10 @@ export function placeReasons(
   }
 
   // 3. Distance — only when an origin was set on the loader.
-  if (typeof p.distance_m === "number") {
-    if (p.distance_m <= WALK_NEAR_M) {
-      const mins = Math.max(1, Math.round(p.distance_m / WALK_SPEED_M_PER_MIN));
-      out.push({ kind: "near", label: `${mins} min walk`, tone: "near" });
-    } else if (p.distance_m <= WALK_OK_M) {
-      out.push({ kind: "walkable", label: "Walkable", tone: "near" });
-    }
+  // The loader supplies straight-line distance, not a pedestrian route. A
+  // nearby point may sit across a river, railway, or road without a crossing.
+  if (typeof p.distance_m === "number" && Number.isFinite(p.distance_m) && p.distance_m >= 0 && p.distance_m <= NEAR_M) {
+    out.push({ kind: "near", label: `${formatDistance(p.distance_m)} away`, tone: "near" });
   }
 
   // 3. One intent reason — the single most useful "does this fit?" signal,
@@ -123,12 +112,13 @@ export function placeReasons(
   // distance / quality. Dog-friendly is a real tag (from the discovered
   // rows / Google amenities when present), not a guess, and it's a signal
   // people specifically hunt for — so it outranks the weaker "Free"
-  // (obvious for a park) and "Near {landmark}" fillers.
+  // and "Near {landmark}" fillers. A park or trail may charge entry: only
+  // the catalog's explicit free tag supports a price claim.
   if (KID_CATEGORIES.has(p.category)) {
     out.push({ kind: "kid_friendly", label: "Kid-friendly", tone: "neutral" });
   } else if ((p.tags ?? []).includes("dog-friendly")) {
     out.push({ kind: "dog_friendly", label: "Dog-friendly", tone: "neutral" });
-  } else if (FREE_CATEGORIES.has(p.category)) {
+  } else if ((p.tags ?? []).includes("free")) {
     out.push({ kind: "free", label: "Free", tone: "free" });
   } else {
     const lm = nearestLandmark(p.geom);
@@ -155,7 +145,7 @@ export function placeReasons(
   if (p.hours_verified && p.hours_updated_at) {
     const daysOld =
       (now.getTime() - Date.parse(p.hours_updated_at)) / (24 * 3600_000);
-    if (daysOld <= FRESH_WITHIN_DAYS) {
+    if (daysOld >= 0 && daysOld <= FRESH_WITHIN_DAYS) {
       out.push({ kind: "hours_checked", label: "Hours checked", tone: "verified" });
     }
   }

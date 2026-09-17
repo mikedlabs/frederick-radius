@@ -369,7 +369,7 @@ export async function getIngestedCardBySlug(
     if (
       lifted
         ? !isPublicEvent({ title: s.title, category: s.category ?? undefined })
-        : lane === "private_rental" || lane === "cancelled"
+        : lane === "private_rental" || lane === "non_event" || lane === "cancelled"
     ) {
       continue;
     }

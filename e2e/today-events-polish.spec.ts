@@ -55,6 +55,9 @@ test("Today keeps the first open-place pick in view when photos fall back", asyn
   });
 
   await page.goto("/today", { waitUntil: "domcontentloaded" });
+  await expect(
+    page.getByRole("button", { name: /Plan the rest/ }),
+  ).toHaveAttribute("aria-expanded", "false");
   const firstPick = page.getByRole("link", {
     name: /First local pick.*Open now/i,
   });

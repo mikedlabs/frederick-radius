@@ -4,6 +4,7 @@ import { getSql } from "@/lib/db/client";
 import { archivedEventFromSnapshot } from "@/lib/events/event-identity";
 import { isPublicEvent } from "@/lib/events/classify";
 import { applyEventNotices } from "@/lib/events/notices";
+import { dedupeCrossSourceShows } from "@/lib/events/normalize";
 import {
   allUpcoming,
   type EventWithMeta,
@@ -356,7 +357,7 @@ export function hydrateTodayEventSnapshot(
   if (invalidSnapshots > 0) issues.push("event_archive_validation");
 
   const unified = applyEventNotices(
-    [...bySlug.values()].sort(
+    dedupeCrossSourceShows([...bySlug.values()]).sort(
       (a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at),
     ),
     now,

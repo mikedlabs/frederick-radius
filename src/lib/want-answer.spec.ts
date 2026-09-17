@@ -6,6 +6,7 @@ import {
   partitionWant,
   rankBestFit,
   resolveWantAvailability,
+  selectOpeningSoonCandidate,
   usefulDealHook,
   usefulFallbackSignature,
   wantDecisionReasons,
@@ -114,6 +115,76 @@ describe("partitionWant", () => {
     // The notable fallback pool: nearest first, so a no-hours category
     // (markets, playgrounds) still flows down with the closest places.
     expect(other.map((c) => c.slug)).toEqual(["closed-near", "closed-far"]);
+  });
+});
+
+describe("selectOpeningSoonCandidate", () => {
+  const now = new Date("2026-09-02T11:13:00.000Z");
+
+  it("prefers a verified same-day opening over a curated fallback", () => {
+    const selected = selectOpeningSoonCandidate(
+      [
+        cand({
+          slug: "gravel-and-grind-frederick",
+          open_status: { state: "unverified" },
+        }),
+        cand({
+          slug: "verified-cafe",
+          open_status: {
+            state: "closed",
+            opensAt: "08:05",
+            opensDay: "wed",
+            opensToday: true,
+          },
+        }),
+      ],
+      now,
+    );
+
+    expect(selected).toMatchObject({
+      candidate: { slug: "verified-cafe" },
+      confidence: "confirmed",
+      opensAt: "08:05",
+      minutesUntil: 52,
+    });
+  });
+
+  it("uses the curated schedule only as an explicitly likely fallback", () => {
+    const selected = selectOpeningSoonCandidate(
+      [
+        cand({
+          slug: "gravel-and-grind-frederick",
+          open_status: { state: "unverified" },
+        }),
+      ],
+      now,
+    );
+
+    expect(selected).toMatchObject({
+      candidate: { slug: "gravel-and-grind-frederick" },
+      confidence: "likely",
+      opensAt: "08:00",
+      minutesUntil: 47,
+    });
+  });
+
+  it("does not promote a place that opens more than an hour away", () => {
+    expect(
+      selectOpeningSoonCandidate(
+        [
+          cand({
+            slug: "later-cafe",
+            open_status: {
+              state: "closed",
+              opensAt: "08:14",
+              opensDay: "wed",
+              opensToday: true,
+            },
+          }),
+        ],
+        now,
+      ),
+    ).toBeNull();
   });
 });
 
@@ -410,6 +481,29 @@ describe("buildWantAnswer context", () => {
     expect(answer?.hero?.confidence).toBeUndefined();
     expect(answer?.hero?.distance).toBe("1 min walk");
     expect(answer?.also.some((row) => /starbucks/i.test(row.name))).toBe(false);
+  });
+
+  it("surfaces Gravel & Grind as likely opening soon without calling it open", () => {
+    const answer = buildWantAnswer(
+      "coffee",
+      null,
+      null,
+      new Date("2026-09-02T11:13:00.000Z"),
+    );
+
+    expect(answer?.soon).toMatchObject({
+      slug: "gravel-and-grind-frederick",
+      name: "Gravel & Grind",
+      confidence: "likely",
+      fact: "Likely opens at 8am · check hours",
+      opensInMinutes: 47,
+    });
+    expect([
+      answer?.hero,
+      ...(answer?.also ?? []),
+      ...(answer?.later ?? []),
+      ...(answer?.notable ?? []),
+    ].map((row) => row?.slug)).not.toContain("gravel-and-grind-frederick");
   });
 
   it("does not let an approximate centroid crown the fluke nearest place", () => {

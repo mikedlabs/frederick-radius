@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import EventPosterCard from "@/components/event/EventPosterCard";
+import EventPosterCard, { eventPosterPhotoSrc } from "@/components/event/EventPosterCard";
 import EventCard from "@/components/event/EventCard";
 
 function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
@@ -35,6 +35,18 @@ afterEach(() => {
 });
 
 describe("EventPosterCard visual trust", () => {
+  it("asks the place-photo proxy for a detectable failure signal", () => {
+    const src = new URL(
+      eventPosterPhotoSrc("/api/place-photo?name=Baker+Park&w=800"),
+      "https://frederickradius.local",
+    );
+
+    expect(src.searchParams.get("fallback")).toBe("signal");
+    expect(src.searchParams.get("w")).toBe("800");
+    expect(eventPosterPhotoSrc("https://s1.ticketm.net/dam/a/event.jpg"))
+      .toBe("https://s1.ticketm.net/dam/a/event.jpg");
+  });
+
   it("falls back to honest category artwork for an unattributed place photo", () => {
     const html = renderToStaticMarkup(
       createElement(EventPosterCard, {
@@ -92,6 +104,7 @@ describe("EventPosterCard visual trust", () => {
 
     expect(html).toContain('data-event-poster="photo"');
     expect(html).toContain("data-event-photo-credit");
+    expect(html).toContain("fallback=signal");
     expect(html).toContain("Local photographer");
     expect(html).toContain("Google Maps");
     expect(html).toContain("https://www.google.com/maps/place/example-photo");
@@ -102,7 +115,7 @@ describe("EventPosterCard visual trust", () => {
     expect(html).not.toContain("bg-black/55");
   });
 
-  it("keeps a photo-less EventCard feature in the poster layout", () => {
+  it("gives a photo-less EventCard feature a compact date-led layout", () => {
     const html = renderToStaticMarkup(
       createElement(EventCard, {
         event: event({ hero_image: undefined }),
@@ -189,7 +202,8 @@ describe("EventPosterCard visual trust", () => {
       }),
     );
 
-    expect(html).toContain("lg:min-h-[270px]");
+    expect(html).not.toContain("min-h-[270px]");
+    expect(html).not.toContain("min-h-[230px]");
     expect(html).not.toContain("lg:aspect-[4/3]");
   });
 

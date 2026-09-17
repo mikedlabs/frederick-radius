@@ -23,6 +23,7 @@ import Map, {
 // browse the dock's Where pane is locate's one home.)
 import type { GeoJSONSource } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { sunTimes } from "@/lib/sun";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import type { SmartMapDefault } from "@/lib/map/smartDefaults";
 import { useMode } from "@/hooks/useMode";
@@ -42,11 +43,14 @@ import type { SearchResult } from "@/lib/search/index";
 import {
   getScope,
   parseScope,
+  scopeTownSlug,
+  scopeToParam,
   setScope,
   subscribeScopeChange,
   SCOPE_PARAM,
   type Scope,
 } from "@/lib/scope";
+import { mapFallbackResults } from "./mapFallbackResults";
 // TYPE ONLY: importing the loader at runtime drags the ~12MB
 // places-enrichment.json into the client bundle (a 13MB chunk) and
 // the map never loads. Places arrive already decorated from the
@@ -132,6 +136,7 @@ import {
   buildCuratedGeoJson,
   buildDotGeoJson,
   buildEventScrubTimes,
+  buildEventsGeoJson,
   buildFilteredOsmGeoJson,
   buildPlaceDupeIndex,
   buildRingGeoJson,
@@ -297,7 +302,7 @@ import {
 } from "./radiusScenes";
 import { parkingTone, PARKING_TONE_STYLE, type ParkingPin } from "@/lib/map/parking";
 import TimeScrubber from "./TimeScrubber";
-import { ArrowRight, ChevronRight, Shrink, Truck, X } from "lucide-react";
+import { ArrowRight, ChevronRight, Landmark, Shrink, Truck, X } from "lucide-react";
 import { withinScrubWindow } from "@/lib/map/scrubTime";
 import { easternDayKey } from "@/lib/tz";
 import { getOpenStatus, isOpenNow } from "@/lib/hours";
@@ -540,6 +545,8 @@ type Props = {
    *  GeoJSON FeatureCollections; default off, so the base map is
    *  unchanged unless the user opts in. */
   trailLines?: MapLineFC;
+  scenicRoutes?: MapLineFC;
+  coveredBridges?: MapLineFC;
   /** Open the Trails line layer ON at first paint (no saved pref yet) —
    *  set by the /trails surface, whose whole job is the trail network.
    *  Everywhere else it stays off so the base map is unchanged. */
@@ -642,6 +649,8 @@ export default function AppMap({
   extraAmenities = [],
   amenities = [],
   trailLines = EMPTY_LINE_FC,
+  scenicRoutes = EMPTY_LINE_FC,
+  coveredBridges = EMPTY_LINE_FC,
   trailsLayerDefault = false,
   transitLines = EMPTY_LINE_FC,
   municipalBoundaries = EMPTY_LINE_FC,
@@ -674,8 +683,44 @@ export default function AppMap({
       ),
     [isBrowseMap],
   );
+
+  // ── Ambient Sun-Sync Lighting ──
+  const [ambientConfig, setAmbientConfig] = useState(MAPBOX_FIELD_GUIDE_CONFIG);
+  useEffect(() => {
+    function updateLight() {
+      const now = new Date();
+      // Use Frederick's actual coordinates for sun math
+      const t = sunTimes(now, 39.4143, -77.4105);
+      let preset = "day";
+      if (t && t.sunrise && t.sunset && t.dusk) {
+        const timeMs = now.getTime();
+        // Determine the lighting phase for Mapbox Standard
+        if (timeMs < t.sunrise.getTime() - 1800000) preset = "night";
+        else if (timeMs < t.sunrise.getTime() + 1800000) preset = "dawn";
+        else if (timeMs < t.sunset.getTime() - 1800000) preset = "day";
+        else if (timeMs < t.dusk.getTime()) preset = "dusk";
+        else preset = "night";
+      }
+      
+      setAmbientConfig(prev => {
+        if (prev.basemap?.lightPreset === preset) return prev;
+        return {
+          ...prev,
+          basemap: {
+            ...prev.basemap,
+            lightPreset: preset
+          }
+        };
+      });
+    }
+    updateLight();
+    const iv = setInterval(updateLight, 60000); // Check every minute
+    return () => clearInterval(iv);
+  }, []);
   const routeSearchParams = useSearchParams();
   const routeScopeParam = routeSearchParams.get(SCOPE_PARAM);
+  const explicitSearchScope = parseScope(routeScopeParam);
+  const explicitSearchTown = scopeTownSlug(explicitSearchScope);
   const [resultScope, setResultScope] = useState<Scope>(() =>
     parseScope(routeScopeParam) ?? (isBrowseMap ? getScope() : null) ?? "county",
   );
@@ -1361,6 +1406,8 @@ export default function AppMap({
   const {
     showCivic, setShowCivic,
     showTrails, setShowTrails,
+    showScenicRoutes, setShowScenicRoutes,
+    showCoveredBridges, setShowCoveredBridges,
     showTransit, setShowTransit,
     showAerial, setShowAerial,
     showCemeteries, setShowCemeteries,
@@ -1460,7 +1507,7 @@ export default function AppMap({
     if (!onLayerDemand) return;
     const groups = new Set<MapLayerGroup>();
     if (visibleAmenityGroups.size > 0) groups.add("amenities");
-    if (showTrails || visibleCemeteries) groups.add("outdoors");
+    if (showTrails || showScenicRoutes || showCoveredBridges || visibleCemeteries) groups.add("outdoors");
     if (visibleTransit) groups.add("transit");
     if (visibleParking) groups.add("parking");
     if (showCivic || showTraffic) groups.add("roads");
@@ -1470,6 +1517,8 @@ export default function AppMap({
     showCivic,
     showTraffic,
     showTrails,
+    showScenicRoutes,
+    showCoveredBridges,
     visibleAmenityGroups,
     visibleCemeteries,
     visibleParking,
@@ -2351,6 +2400,8 @@ export default function AppMap({
       outdoors: {
         parks: sceneSignalFromOverlay(overlayFeatureStates.parks),
         trailCount: trailLines.features.length,
+        scenicRouteCount: scenicRoutes.features.length,
+        coveredBridgeCount: coveredBridges.features.length,
         amenityCount:
           overlayFeatureStates.mobility?.status === "ready"
             ? overlayFeatureStates.mobility.count
@@ -2394,6 +2445,8 @@ export default function AppMap({
       sceneContext.outdoorSafetyHold,
       snowRoutes.features.length,
       trailLines.features.length,
+      scenicRoutes.features.length,
+      coveredBridges.features.length,
       transitRouteCount,
       liveBusesVisible,
     ],
@@ -2562,6 +2615,8 @@ export default function AppMap({
   // Like the saved lens, it's a deliberate selection that shows its set even
   // with no category active.
   const [fieldNotesOnly, setFieldNotesOnly] = useState(false);
+  const [atlasHeight, setAtlasHeight] = useState(1);
+  const [atlas3D, setAtlas3D] = useState(true);
 
   // On mode flip (user tapped the toggle, or geo suggestion landed):
   // reset every layer-toggle to the new mode's defaults. We deliberately
@@ -3310,7 +3365,7 @@ export default function AppMap({
     const origin =
       userLoc ?? viewCenterRef.current ?? searchFallbackOriginRef.current;
     const immediateMatches = immediateMapPlaceResults(
-      places,
+      explicitSearchTown ? places.filter((place) => place.municipality === explicitSearchTown) : places,
       term,
       origin,
       6,
@@ -3334,6 +3389,7 @@ export default function AppMap({
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       const params = new URLSearchParams({ q: term, limit: "6", origin: "map" });
+      if (explicitSearchScope && explicitSearchScope !== "nearme") params.set(SCOPE_PARAM, scopeToParam(explicitSearchScope));
       // About 11m precision is plenty for nearest-first ranking and avoids
       // sending an unnecessarily exact coordinate.
       params.set("lat", origin.lat.toFixed(4));
@@ -3562,7 +3618,7 @@ export default function AppMap({
       searchRetrieveAbortRef.current = null;
       searchRetrieveInFlightRef.current = null;
     };
-  }, [isBrowseMap, mapError, places, q, resetSearchBoxSession, searchAttempt, userLoc]);
+  }, [explicitSearchScope, explicitSearchTown, isBrowseMap, mapError, places, q, resetSearchBoxSession, searchAttempt, userLoc]);
 
   const placesBySlug = useMemo(() => {
     // globalThis.Map: the bare `Map` is react-map-gl's component here.
@@ -4063,6 +4119,9 @@ export default function AppMap({
   // Aerial photo GeoJSON — static manifest, built once in
   // mapGeoJsonSources.ts (stable identity, no memo needed).
   const aerialGeoJson = AERIAL_GEOJSON;
+
+  // Events GeoJSON for the active heatmap layer
+  const eventsGeoJson = useMemo(() => buildEventsGeoJson(events), [events]);
 
   // Historic cemeteries GeoJSON. `name` in properties powers the generic
   // hover preview; the click handler reads the full pin back by `id`.
@@ -4586,8 +4645,8 @@ export default function AppMap({
               </div>
             </div>
             <MapList
-              places={inViewPlaces}
-              events={visibleEvents}
+              places={mapFallbackResults(inViewPlaces, searchMatchesForSurface, q, explicitSearchTown, "place")}
+              events={mapFallbackResults(visibleEvents, searchMatchesForSurface, q, explicitSearchTown, "event")}
               userLoc={userLoc}
               sortOrigin={userLoc}
               failureMode
@@ -4799,7 +4858,7 @@ export default function AppMap({
                 })
           }
           mapStyle={MAPBOX_FIELD_GUIDE_STYLE}
-          config={MAPBOX_FIELD_GUIDE_CONFIG}
+          config={ambientConfig}
           style={{ width: "100%", height: "100%" }}
           attributionControl={false}
           logoPosition="bottom-left"
@@ -4848,6 +4907,8 @@ export default function AppMap({
             "marc-station-pins",
             "marc-station-hit",
             "muni-label",
+            "ov-land-value-fill",
+            "ov-land-value-extrusion",
           ]}
           onMoveStart={(e) => {
             const isUserMove =
@@ -5512,6 +5573,43 @@ export default function AppMap({
               }}
             />
           </Source>
+          <Source id="scenic-routes-source" type="geojson" data={(showScenicRoutes ? scenicRoutes : EMPTY_LINE_FC) as unknown as GeoJSON.FeatureCollection}>
+            <Layer
+              id="scenic-routes-at"
+              type="line"
+              filter={["==", ["get", "name"], "Appalachian Trail"]}
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": "#eab308",
+                "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 14, 4, 17, 6],
+                "line-opacity": 0.8,
+                "line-dasharray": [1, 2]
+              }}
+            />
+            <Layer
+              id="scenic-routes-national"
+              type="line"
+              filter={["==", ["get", "name"], "Historic National Road"]}
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": "#ef4444",
+                "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 14, 4, 17, 6],
+                "line-opacity": 0.8
+              }}
+            />
+            <Layer
+              id="scenic-routes-other"
+              type="line"
+              filter={["!", ["in", ["get", "name"], "Appalachian Trail", "Historic National Road"]]}
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": "#f97316",
+                "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 14, 4, 17, 6],
+                "line-opacity": 0.8,
+                "line-dasharray": [3, 3]
+              }}
+            />
+          </Source>
           {/* GIS overlays (6.3/6.4): parks, farmers markets, public art.
               Self-contained (lazy fetch, own Sources/Layers, own click
               popups) so this block stays out of the main render path. */}
@@ -5519,6 +5617,8 @@ export default function AppMap({
             active={activeOverlays}
             onFeatureState={rememberOverlayFeatureState}
             onFeatureBounds={rememberOverlayFeatureBounds}
+            atlas3D={atlas3D}
+            atlasHeight={atlasHeight}
           />
           <CityMobilityOverlay
             active={activeOverlays.includes("mobility")}
@@ -6422,6 +6522,65 @@ export default function AppMap({
               }}
             />
           </Source>
+
+          {/* ACTIVE EVENTS HEATMAP */}
+          <Source id="events-heatmap-source" type="geojson" data={eventsGeoJson}>
+            <Layer
+              id="events-heatmap-layer"
+              type="heatmap"
+              paint={{
+                // Increase the heatmap weight based on frequency and property weight
+                "heatmap-weight": [
+                  "interpolate",
+                  ["linear"],
+                  ["get", "weight"],
+                  0, 0,
+                  1, 1
+                ],
+                // Increase the heatmap color weight weight by zoom level
+                // heatmap-intensity is a multiplier on top of heatmap-weight
+                "heatmap-intensity": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  0, 1,
+                  9, 3
+                ],
+                // Color ramp for heatmap.  Domain is 0 (low) to 1 (high).
+                // Begin color ramp at 0-stop with a 0-transparancy color
+                // to create a blur-like effect.
+                "heatmap-color": [
+                  "interpolate",
+                  ["linear"],
+                  ["heatmap-density"],
+                  0, "rgba(255, 140, 0, 0)", // palette-exempt
+                  0.2, "rgba(255, 140, 0, 0.2)", // palette-exempt
+                  0.4, "rgba(255, 100, 0, 0.4)", // palette-exempt
+                  0.6, "rgba(255, 60, 0, 0.6)", // palette-exempt
+                  0.8, "rgba(255, 20, 0, 0.8)", // palette-exempt
+                  1, "rgba(255, 0, 0, 1)" // palette-exempt
+                ],
+                // Adjust the heatmap radius by zoom level
+                "heatmap-radius": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  0, 2,
+                  9, 20,
+                  15, 60
+                ],
+                // Transition from heatmap to circle layer by zoom level
+                "heatmap-opacity": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  7, 0.6,
+                  15, 0.1
+                ],
+              }}
+            />
+          </Source>
+
           <Source id="near-dot" type="geojson" data={dotGeoJson}>
             <Layer
               id="dot-halo"
@@ -6860,6 +7019,30 @@ export default function AppMap({
               );
             })}
 
+          {/* Historic Covered Bridges — HTML markers for custom styling */}
+          {showCoveredBridges &&
+            coveredBridges.features.map((feature, i) => {
+              const geometry = feature.geometry as { type: string; coordinates: [number, number] };
+              if (geometry.type !== "Point") return null;
+              const [lng, lat] = geometry.coordinates;
+              return (
+                <Marker
+                  key={`bridge:${i}`}
+                  longitude={lng as number}
+                  latitude={lat as number}
+                  anchor="bottom"
+                >
+                  <button
+                    type="button"
+                    title={(feature.properties?.name as string) || "Covered Bridge"}
+                    className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--color-primary,#ef4444)] bg-white text-[var(--color-primary,#ef4444)] shadow-[0_2px_10px_rgba(34,28,21,0.28)] hover:bg-[var(--color-primary,#ef4444)] hover:text-white transition-colors"
+                  >
+                    <Landmark size={14} />
+                  </button>
+                </Marker>
+              );
+            })}
+
           {selectedEvent && (!dock || !compactMapViewport) && (
             <Popup
               longitude={selectedEvent.lng}
@@ -7066,6 +7249,18 @@ export default function AppMap({
               exitRadiusScene();
               setShowTrails(value);
             }}
+            scenicRouteCount={scenicRoutes.features.length}
+            showScenicRoutes={showScenicRoutes}
+            setShowScenicRoutes={(value) => {
+              exitRadiusScene();
+              setShowScenicRoutes(value);
+            }}
+            coveredBridgeCount={coveredBridges.features.length}
+            showCoveredBridges={showCoveredBridges}
+            setShowCoveredBridges={(value) => {
+              exitRadiusScene();
+              setShowCoveredBridges(value);
+            }}
             aerialCount={AERIAL_PHOTOS.length}
             showAerial={showAerial}
             setShowAerial={(value) => {
@@ -7138,6 +7333,10 @@ export default function AppMap({
               exitRadiusScene();
               toggleOverlay(key);
             }}
+            atlasHeight={atlasHeight}
+            setAtlasHeight={setAtlasHeight}
+            atlas3D={atlas3D}
+            setAtlas3D={setAtlas3D}
             scrubHour={scrubHour}
             setScrubHour={(hour) => {
               exitRadiusScene();

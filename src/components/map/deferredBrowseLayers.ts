@@ -104,6 +104,8 @@ export type DeferredBrowseLayers = {
   /** Health travels with the data so an upstream miss cannot look like a
    * genuine zero-result map. Only explicitly requested groups are present. */
   sourceHealth: Partial<Record<MapLayerGroup, MapLayerSourceHealth>>;
+  scenicRoutes: MapLineFC;
+  coveredBridges: MapLineFC;
 };
 
 export const EMPTY_DEFERRED_BROWSE_LAYERS: DeferredBrowseLayers = {
@@ -122,6 +124,8 @@ export const EMPTY_DEFERRED_BROWSE_LAYERS: DeferredBrowseLayers = {
   snowRoutes: EMPTY_SNOW_ROUTE_FC,
   smartSignals: null,
   sourceHealth: {},
+  scenicRoutes: EMPTY_LINE_FC,
+  coveredBridges: EMPTY_LINE_FC,
 };
 
 /**
@@ -150,7 +154,10 @@ export function mapLayerGroupHasVisibleData(
       return payload.weekEvents.length > 0;
     case "outdoors":
       return (
-        payload.trailLines.features.length > 0 || payload.cemeteries.length > 0
+        payload.trailLines.features.length > 0 || 
+        payload.cemeteries.length > 0 ||
+        payload.scenicRoutes.features.length > 0 ||
+        payload.coveredBridges.features.length > 0
       );
     case "transit":
       return payload.transitLines.features.length > 0;
@@ -245,6 +252,7 @@ export function parseDeferredBrowseLayers(value: unknown): DeferredBrowseLayers 
     snowRoutes: isFeatureCollection(candidate.snowRoutes)
       ? candidate.snowRoutes
       : EMPTY_SNOW_ROUTE_FC,
+
     smartSignals:
       candidate.smartSignals &&
       typeof candidate.smartSignals === "object" &&
@@ -254,6 +262,12 @@ export function parseDeferredBrowseLayers(value: unknown): DeferredBrowseLayers 
         ? candidate.smartSignals
         : null,
     sourceHealth: parseSourceHealth(candidate.sourceHealth),
+    scenicRoutes: isFeatureCollection(candidate.scenicRoutes)
+      ? candidate.scenicRoutes
+      : EMPTY_LINE_FC,
+    coveredBridges: isFeatureCollection(candidate.coveredBridges)
+      ? candidate.coveredBridges
+      : EMPTY_LINE_FC,
   };
 }
 
@@ -355,6 +369,8 @@ export function mergeDeferredBrowseLayerGroup(
     return {
       ...current,
       trailLines: mergeFeatures(current.trailLines, incoming.trailLines),
+      scenicRoutes: mergeFeatures(current.scenicRoutes, incoming.scenicRoutes),
+      coveredBridges: mergeFeatures(current.coveredBridges, incoming.coveredBridges),
       cemeteries: mergeArrays(current.cemeteries, incoming.cemeteries),
       sourceHealth,
     };

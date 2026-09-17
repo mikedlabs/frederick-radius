@@ -1,10 +1,16 @@
 import "server-only";
 import { likelyOpenPlaces, rankPlaces } from "@/lib/loaders/places";
-import { formatHoursLine, isOpenNow } from "@/lib/hours";
+import { formatHoursLine, formatTime, isOpenNow } from "@/lib/hours";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import {
+  openingSoonFromStatus,
+  reliableOpeningSoon,
+} from "@/data/reliable-open-windows";
 import { daypartNeeds } from "@/lib/today/daypart-needs";
+import { easternParts } from "@/lib/tz";
 import type { WeatherLean } from "@/lib/today/weatherLean";
 import { isRecommendable } from "@/lib/relevance";
+import { mayUseLikelyOpenFallback } from "@/lib/likely-open";
 import {
   keepOneLocationPerChain,
   coffeeIntentTier,
@@ -40,102 +46,161 @@ export type DaypartPick = {
    *  as a real candidate without an open claim. */
   confidence: "confirmed" | "likely" | "unconfirmed";
 };
-export type DaypartRow = { label: string; href: string; category: string; picks: DaypartPick[] };
+export type DaypartRow = {
+  label: string;
+  href: string;
+  category: string;
+  picks: DaypartPick[];
+  /** One near-term transition, kept outside the open-now list so a closed
+   * place can never inherit an open label from the shelf. */
+  openingSoon?: DaypartPick | null;
+};
 
-function easternHour(now: Date): number {
-  return Number(
-    new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" }).format(now),
-  );
-}
+
 
 export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRow[] {
   // The category browser above is collapsed by default. Keep the current meal
   // visible here instead of treating content behind that disclosure as a
   // duplicate. A lunch or dinner answer should never require a discovery tap.
-  const needs = daypartNeeds(easternHour(now), lean);
+  const parts = easternParts(now);
+  const needs = daypartNeeds(parts.hour, lean, parts.weekday);
   // The initial HTML is an honest COUNTY-WIDE quality ranking. It must not use
   // downtown Frederick as a silent stand-in for the visitor's location: that
   // made a five-mile-away place look "around here." DaypartNeeds immediately
   // refreshes the active shelf through /api/want, which honors the shared town
   // scope or a cached device fix and then prints that context in the UI.
-  const ranked = rankPlaces({ now, preferOpen: true, limit: 500 });
+  // Keep verified-closed candidates long enough to identify a useful same-day
+  // opening transition. The current-place lanes below explicitly admit only
+  // confirmed-open or unknown/unverified candidates, so this does not weaken
+  // the open-now gate.
+  const ranked = rankPlaces({ now, limit: 500 });
   const likelySlugs = new Set(
     likelyOpenPlaces(undefined, now).map((place) => place.slug),
   );
-  return needs.map((need) => ({
-    label: need.label,
-    href: need.href,
-    category: need.category,
-    picks: (() => {
-      const eligible = ranked.filter(
-        (place) =>
-          place.category === need.category &&
-          isRecommendable(place),
-      );
-      // Preserve the loader's quality order inside each relevance/locality
-      // bucket. Generic Coffee should start with independent coffee shops and
-      // roasters, then chains and cafés; a boba or incidental-coffee record
-      // remains in the inventory but cannot lead on feature score alone.
-      const intentRanked = need.category === "coffee"
-        ? [...eligible].sort(
-            (a, b) =>
-              coffeeIntentTier(b) - coffeeIntentTier(a) ||
-              Number(isChainName(a.name)) - Number(isChainName(b.name)),
-          )
-        : eligible;
-      const confirmed = intentRanked.filter((place) => isOpenNow(place.open_status));
-      const likely = confirmed.length > 0
-        ? []
-        : intentRanked.filter((place) => likelySlugs.has(place.slug));
-      // Third tier, added 2026-08-19. When the rolling hours refresh goes dark
-      // county-wide, `confirmed` AND `likely` are both empty for every
-      // category, and this used to return NO picks — so Today printed
-      // "Current hours do not confirm an open match for breakfast & bakeries
-      // across Frederick County" with not one bakery under it. The county
-      // still has 36 bakeries; what we lost was the ability to say whether
-      // they are open. Offer the quality-ranked candidates and let the row's
-      // own hours line say the honest thing, exactly as /api/want's notable
-      // lane already does for Nearby.
-      const confidence: DaypartPick["confidence"] =
-        confirmed.length > 0 ? "confirmed" : likely.length > 0 ? "likely" : "unconfirmed";
-      const available = confirmed.length > 0
-        ? confirmed
-        : likely.length > 0
-          ? likely
-          : intentRanked;
-      const picks = need.category === "coffee"
-        ? keepOneLocationPerChain(available)
-        : available;
+  return needs.map((need) => {
+    const eligible = ranked.filter(
+      (place) =>
+        place.category === need.category &&
+        isRecommendable(place),
+    );
+    // Preserve the loader's quality order inside each relevance/locality
+    // bucket. Generic Coffee should start with independent coffee shops and
+    // roasters, then chains and cafés; a boba or incidental-coffee record
+    // remains in the inventory but cannot lead on feature score alone.
+    const intentRanked = need.category === "coffee"
+      ? [...eligible].sort(
+          (a, b) =>
+            coffeeIntentTier(b) - coffeeIntentTier(a) ||
+            Number(isChainName(a.name)) - Number(isChainName(b.name)),
+        )
+      : eligible;
 
-      return picks.slice(0, 4).map((place) => ({
-        slug: place.slug,
-        name: place.name,
-        rating: place.google_rating ?? null,
-        photo: place.google_photo_url ?? null,
-        photoCredit:
-          place.google_photo_attribution?.authors[0]?.display_name ?? null,
-        where:
-          place.city?.trim() ||
-          MUNICIPALITY_BY_SLUG[place.municipality]?.name ||
-          "Frederick County",
-        distance: null,
-        // The closing time, not the fact that it is open. `isOpenNow` already
-        // ran on this exact object nine lines up to build `confirmed`, and
-        // formatHoursLine turns the same open_status into "Open until 9pm" or
-        // "Closing soon · 10pm". Leaving this null made DaypartNeeds fall back
-        // to the literal string "Open now" on all four tiles, so the one
-        // location-aware answer on Today opened by saying the same two words
-        // four times while the closing time sat in hand.
-        //
-        // These strings are deliberately the ones /api/want substitutes on its
-        // live refresh (want-answer.ts toRow), so the first paint now matches
-        // what replaces it instead of visibly changing a moment later.
-        fact:
+    const confirmedSoon = intentRanked
+      .map((place, index) => {
+        const timing = openingSoonFromStatus(place.open_status, now);
+        return timing ? { place, index, ...timing } : null;
+      })
+      .filter((match): match is NonNullable<typeof match> => Boolean(match))
+      .sort(
+        (a, b) =>
+          a.minutesUntil - b.minutesUntil ||
+          a.index - b.index,
+      )[0];
+    const likelySoon = confirmedSoon
+      ? null
+      : intentRanked
+          .map((place, index) => {
+            if (!mayUseLikelyOpenFallback(place.open_status)) return null;
+            const timing = reliableOpeningSoon(place.slug, now);
+            return timing ? { place, index, ...timing } : null;
+          })
+          .filter((match): match is NonNullable<typeof match> => Boolean(match))
+          .sort(
+            (a, b) =>
+              a.minutesUntil - b.minutesUntil ||
+              a.index - b.index,
+          )[0] ?? null;
+    const openingSoonMatch = confirmedSoon ?? likelySoon;
+    const openingSoonConfidence: DaypartPick["confidence"] = confirmedSoon
+      ? "confirmed"
+      : "likely";
+
+    const toPick = (
+      place: (typeof intentRanked)[number],
+      confidence: DaypartPick["confidence"],
+      fact: string,
+    ): DaypartPick => ({
+      slug: place.slug,
+      name: place.name,
+      rating: place.google_rating ?? null,
+      photo: place.google_photo_url ?? null,
+      photoCredit:
+        place.google_photo_attribution?.authors[0]?.display_name ?? null,
+      where:
+        place.city?.trim() ||
+        MUNICIPALITY_BY_SLUG[place.municipality]?.name ||
+        "Frederick County",
+      distance: null,
+      fact,
+      confidence,
+    });
+
+    const openingSoon = openingSoonMatch
+      ? toPick(
+          openingSoonMatch.place,
+          openingSoonConfidence,
+          openingSoonConfidence === "confirmed"
+            ? `Opens soon · ${formatTime(openingSoonMatch.opensAt)}`
+            : `Likely opens at ${formatTime(openingSoonMatch.opensAt)} · check hours`,
+        )
+      : null;
+    const openingSoonSlug = openingSoon?.slug;
+    const confirmed = intentRanked.filter((place) => isOpenNow(place.open_status));
+    const likely = confirmed.length > 0
+      ? []
+      : intentRanked.filter(
+          (place) =>
+            likelySlugs.has(place.slug) && place.slug !== openingSoonSlug,
+        );
+    // Third tier, added 2026-08-19. When the rolling hours refresh goes dark
+    // county-wide, `confirmed` AND `likely` are both empty for every category.
+    // Offer quality-ranked unknown-hour candidates, but never a place that
+    // verified hours prove is closed. The opening-soon lane above owns the one
+    // near-term closed exception and labels it explicitly.
+    const unconfirmed = intentRanked.filter(
+      (place) =>
+        mayUseLikelyOpenFallback(place.open_status) &&
+        place.slug !== openingSoonSlug,
+    );
+    const confidence: DaypartPick["confidence"] =
+      confirmed.length > 0
+        ? "confirmed"
+        : likely.length > 0
+          ? "likely"
+          : "unconfirmed";
+    const available = confirmed.length > 0
+      ? confirmed
+      : likely.length > 0
+        ? likely
+        : unconfirmed;
+    const picks = need.category === "coffee"
+      ? keepOneLocationPerChain(available)
+      : available;
+
+    return {
+      label: need.label,
+      href: need.href,
+      category: need.category,
+      openingSoon,
+      picks: picks.slice(0, 4).map((place) =>
+        toPick(
+          place,
+          confidence,
           confidence === "likely"
             ? "Likely open · check hours"
             : formatHoursLine(place.open_status),
-        confidence,
-      }));
-    })(),
-  }));
+        ),
+      ),
+    };
+  });
 }

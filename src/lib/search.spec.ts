@@ -86,7 +86,11 @@ describe("search — normalize drops noise but keeps real keywords", () => {
       search("things to do", 5).some((hit) => hit.type === "event"),
     ).toBe(true);
     expect(
-      search("things to do tonight", 5).some((hit) => hit.type === "event"),
+      search("things to do tonight", 5, [{
+        slug: "tonights-event", title: "Jazz", category: "music", description: "A jazz concert.",
+        venue_name: "Creek Stage", starts_at: "2099-07-15T23:00:00Z", ends_at: "2099-07-16T01:00:00Z",
+        municipality: "frederick", geom: { lng: -77.41, lat: 39.41 }, is_free: true,
+      } as Event], { now: new Date("2099-07-15T16:00:00Z") }).some((hit) => hit.type === "event"),
     ).toBe(true);
   });
 

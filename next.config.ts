@@ -58,6 +58,8 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  staticPageGenerationTimeout: 300,
+  productionBrowserSourceMaps: false,
   // Browser QA commonly opens the local app through 127.0.0.1 while Next
   // advertises localhost. Treat both as the same trusted development origin
   // so HMR and client hydration are testable without weakening production.
@@ -66,11 +68,6 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
   experimental: {
-    // Enables Next's wiring around the browser View Transitions API
-    // so Link clicks animate between routes via the CSS defined in
-    // globals.css (vt-fade-in / vt-fade-out at the @view-transition
-    // root). No-op on browsers without VT API support.
-    viewTransition: true,
     // Client Router Cache lifetimes. Next 15+ defaults `dynamic` to 0,
     // which means a dynamic page (our tabs all read searchParams /
     // cookies, so they're dynamic) is dropped from the client cache
@@ -209,6 +206,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "t.plnspttrs.net" },
       { protocol: "https", hostname: "commons.wikimedia.org" },
       { protocol: "https", hostname: "upload.wikimedia.org" },
+      { protocol: "https", hostname: "thumb.wikimedia.org", pathname: "/wikipedia/commons/**" },
       // Library of Congress curated archive imagery. The app stores only
       // reviewed item metadata locally, then requests an explicit, pre-sized
       // IIIF/JPEG rendition from LOC's image CDN. No user request triggers a
@@ -245,7 +243,6 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
-          { key: "Content-Security-Policy", value: contentSecurityPolicy },
           // Force HTTPS for two years; reversible (no `preload`, so we
           // never get pinned on a browser preload list we can't undo).
           ...(isProduction
@@ -268,6 +265,15 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "geolocation=(self), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=(), browsing-topics=(), interest-cohort=()",
           },
+        ],
+      },
+      {
+        // The photographic renderer is a separate document with its own
+        // tightly scoped Wasm policy. Two CSP headers would intersect, not
+        // override each other, so the application policy excludes only it.
+        source: "/:path((?!fair-photo-viewer/?$).*)",
+        headers: [
+          { key: "Content-Security-Policy", value: contentSecurityPolicy },
         ],
       },
     ];

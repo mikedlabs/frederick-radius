@@ -59,6 +59,24 @@ describe("hours publication handoff health", () => {
     });
   });
 
+  it("does not call an intentionally disabled paid handoff stalled", () => {
+    expect(
+      evaluateHoursPromotionHealth({
+        sourceLatestAt: null,
+        artifactLatestAt: "2026-08-01T08:00:00.000Z",
+        now: NOW,
+        refreshExpected: false,
+      }),
+    ).toMatchObject({
+      green: false,
+      state: "policy_hold",
+      sourceLatestAt: null,
+      artifactLatestAt: "2026-08-01T08:00:00.000Z",
+      lagHours: null,
+      anomaly: null,
+    });
+  });
+
   it("does not accept a source watermark older than the public artifact", () => {
     expect(
       evaluateHoursPromotionHealth({

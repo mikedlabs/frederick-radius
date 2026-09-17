@@ -83,6 +83,8 @@ describe("isHighConfidenceCivicIntent", () => {
   });
 
   it.each([
+    "parks",
+    "libraries",
     "dog friendly restaurant",
     "water park",
     "health food",

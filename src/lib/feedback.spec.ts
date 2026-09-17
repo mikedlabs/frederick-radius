@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   parseFeedback,
+  buildFeedbackOwnerAlert,
   buildFeedbackRow,
+  FAIR_FEEDBACK_MAX_CONTEXT,
+  FAIR_FEEDBACK_PATHNAME,
+  FEEDBACK_OWNER_ALERT_MAX_BODY,
   FEEDBACK_MAX_MESSAGE,
 } from "@/lib/feedback";
 
@@ -14,6 +18,8 @@ describe("parseFeedback", () => {
       expect(r.value.email).toBeNull();
       expect(r.value.pathname).toBe("/map");
       expect(r.value.version).toBeNull();
+      expect(r.value.fairIssue).toBeNull();
+      expect(r.value.fairContext).toBeNull();
     }
   });
 
@@ -51,6 +57,76 @@ describe("parseFeedback", () => {
     if (r.ok) {
       expect(r.value.pathname?.length).toBeLessThanOrEqual(512);
       expect(r.value.version?.length).toBeLessThanOrEqual(80);
+    }
+  });
+
+  it("accepts fixed Fair metadata only on the Fair surface", () => {
+    const r = parseFeedback({
+      message: "  The entrance marker is one gate too far north.  ",
+      pathname: FAIR_FEEDBACK_PATHNAME,
+      fairIssue: "map_wrong",
+      fairContext: "  Gate  3\n· reviewed map feature  ",
+    });
+
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value).toMatchObject({
+        source: "feedback-widget",
+        fairIssue: "map_wrong",
+        fairContext: "Gate 3 · reviewed map feature",
+      });
+    }
+  });
+
+  it("rejects unknown, oversized, or off-surface Fair metadata", () => {
+    const cases = [
+      {
+        body: {
+          message: "note",
+          pathname: FAIR_FEEDBACK_PATHNAME,
+          fairIssue: "medical_emergency",
+        },
+        error: "bad-fair-issue",
+      },
+      {
+        body: {
+          message: "note",
+          pathname: FAIR_FEEDBACK_PATHNAME,
+        },
+        error: "bad-fair-issue",
+      },
+      {
+        body: {
+          message: "note",
+          pathname: "/today",
+          fairIssue: "parking_entry",
+        },
+        error: "bad-fair-surface",
+      },
+      {
+        body: {
+          message: "note",
+          pathname: FAIR_FEEDBACK_PATHNAME,
+          fairIssue: "map_wrong",
+          fairContext: "x".repeat(FAIR_FEEDBACK_MAX_CONTEXT + 1),
+        },
+        error: "fair-context-too-long",
+      },
+      {
+        body: {
+          source: "ask-correction",
+          reason: "unhelpful",
+          pathname: "/ask",
+          fairIssue: "other",
+        },
+        error: "bad-fair-surface",
+      },
+    ];
+
+    for (const entry of cases) {
+      const result = parseFeedback(entry.body);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error).toBe(entry.error);
     }
   });
 
@@ -114,6 +190,8 @@ describe("buildFeedbackRow", () => {
         source: "feedback-widget",
         reason: null,
         resultRef: null,
+        fairIssue: null,
+        fairContext: null,
       },
       "abc123",
     );
@@ -138,6 +216,8 @@ describe("buildFeedbackRow", () => {
         source: "feedback-widget",
         reason: null,
         resultRef: null,
+        fairIssue: null,
+        fairContext: null,
       },
       null,
     );
@@ -169,5 +249,75 @@ describe("buildFeedbackRow", () => {
       },
       submitter_email: null,
     });
+  });
+
+  it("keeps a Fair report structured in the existing feedback queue", () => {
+    const parsed = parseFeedback({
+      message: "The restroom sign points to a locked building.",
+      pathname: FAIR_FEEDBACK_PATHNAME,
+      fairIssue: "restroom_help",
+      fairContext: "Building 9 restroom",
+    });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    expect(buildFeedbackRow(parsed.value, "deploy456").payload).toMatchObject({
+      source: "feedback-widget",
+      fair_issue: "restroom_help",
+      fair_context: "Building 9 restroom",
+    });
+  });
+});
+
+describe("buildFeedbackOwnerAlert", () => {
+  it("puts the Fair category and context at the front of the owner alert", () => {
+    const parsed = parseFeedback({
+      message: "The marker points to the other side of the path.",
+      pathname: FAIR_FEEDBACK_PATHNAME,
+      fairIssue: "map_wrong",
+      fairContext: "Gate 3",
+    });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    expect(buildFeedbackOwnerAlert(parsed.value)).toEqual({
+      title: "Fair map or location report",
+      body: "Gate 3 · The marker points to the other side of the path.",
+    });
+  });
+
+  it("keeps an accessibility barrier distinct in storage and owner alerts", () => {
+    const parsed = parseFeedback({
+      message: "The route from the shuttle drop-off has a blocked curb cut.",
+      pathname: FAIR_FEEDBACK_PATHNAME,
+      fairIssue: "access_barrier",
+      fairContext: "Gate 4A",
+    });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    expect(buildFeedbackRow(parsed.value, "deploy789").payload).toMatchObject({
+      fair_issue: "access_barrier",
+      fair_context: "Gate 4A",
+    });
+    expect(buildFeedbackOwnerAlert(parsed.value)).toEqual({
+      title: "Fair accessibility report",
+      body:
+        "Gate 4A · The route from the shuttle drop-off has a blocked curb cut.",
+    });
+  });
+
+  it("keeps generic feedback generic and bounds phone-alert copy", () => {
+    const parsed = parseFeedback({
+      message: "x".repeat(300),
+      pathname: "/events",
+    });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const alert = buildFeedbackOwnerAlert(parsed.value);
+    expect(alert.title).toBe("Site feedback");
+    expect(alert.body.length).toBe(FEEDBACK_OWNER_ALERT_MAX_BODY);
+    expect(alert.body.endsWith("…")).toBe(true);
   });
 });

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getSql: vi.fn(),
   getPlaceDetails: vi.fn(),
   googlePlacesConfigured: vi.fn(),
+  googleHoursRefreshRuntimeEnabled: vi.fn(),
   finalizeIdempotentDailyUsage: vi.fn(),
   reserveIdempotentDailyUsageBatch: vi.fn(),
   reserveUsageIntervalLease: vi.fn(),
@@ -26,6 +27,10 @@ vi.mock("@/lib/db/client", () => ({
 vi.mock("@/lib/integrations/google-places", () => ({
   getPlaceDetails: mocks.getPlaceDetails,
   googlePlacesConfigured: mocks.googlePlacesConfigured,
+}));
+vi.mock("@/lib/google-maps-policy", () => ({
+  googleHoursRefreshRuntimeEnabled:
+    mocks.googleHoursRefreshRuntimeEnabled,
 }));
 vi.mock("@/lib/usage-meter", () => ({
   finalizeIdempotentDailyUsage: mocks.finalizeIdempotentDailyUsage,
@@ -108,6 +113,7 @@ describe("GET /api/cron/hours-refresh", () => {
     vi.clearAllMocks();
     process.env.CRON_SECRET = "test-cron-secret";
     process.env.HOURS_REFRESH_CRON = "1";
+    mocks.googleHoursRefreshRuntimeEnabled.mockReturnValue(true);
     delete process.env.GOOGLE_HOURS_REFRESH_DAILY_CAP;
     mocks.googlePlacesConfigured.mockReturnValue(true);
     storageSql = rawSql();
@@ -137,6 +143,19 @@ describe("GET /api/cron/hours-refresh", () => {
         google_place_id: "ChIJ-hours-route-test",
       },
     ]);
+  });
+
+  it("turns a scheduled invocation into a healthy no-op while policy holds paid Google", async () => {
+    mocks.googleHoursRefreshRuntimeEnabled.mockReturnValue(false);
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ enabled: false, mode: "policy_hold" });
+    expect(mocks.googlePlacesConfigured).not.toHaveBeenCalled();
+    expect(mocks.getDb).not.toHaveBeenCalled();
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
   });
 
   afterEach(() => {

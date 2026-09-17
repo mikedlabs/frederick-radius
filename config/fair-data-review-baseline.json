@@ -1,0 +1,39 @@
+{
+  "_doc": "Reviewed 2026 Fair source baseline. The NAS collector writes a private candidate and fails visibly when current normalized data moves outside these bounds or fingerprints. Update only after comparing the original sources and approving the change.",
+  "version": 1,
+  "checkedAt": "2026-09-16T18:11:55.393Z",
+  "minimums": {
+    "scheduleDays": 9,
+    "scheduleItems": 170,
+    "exhibitors": 140,
+    "boothShapes": 450,
+    "matchedBoothReferences": 380
+  },
+  "maximums": {
+    "ambiguousBoothReferences": 0,
+    "unmatchedBoothReferences": 0,
+    "mapSourceWarnings": 1,
+    "scheduleSourceWarnings": 2
+  },
+  "expectedFloorplanIds": ["9564", "9565", "9566"],
+  "knownConflictIds": [
+    "equipment-source-encoding",
+    "peewee-dairy-row",
+    "pop-2000-performer",
+    "warren-zeiders-opener"
+  ],
+  "officialPageVisibleTextSha256ById": {
+    "1722": "e0b7124b9e73106b36e465d0f009afc2f9adf8754123152f58fe829c095e2a78",
+    "2711": "a29dd697283e486ae75c6c5336273fb66b643e7eabc338c94188447f3240b6fb",
+    "2862": "b258ddf248c1fc6cfb8c551a51b7ec1c1c01179440bdfeb4859d1c040df042f9",
+    "3081": "2bc1db15df6d3a8fb772f83c25925bd3285bc0d1947dbed81a7fdff84dfe958d",
+    "3140": "7e886854e84a9be6347154cbf4b75add769c7e966100657177e99ec46ff9aec1",
+    "3175": "7a0f694915b952d27fd5492591eea80663d4d40a496f517a1c9707fac091fed1",
+    "3224": "c4d639144763b4189250d3229a35b9e0b31eb941ee2073cc5d279e615d9f7c72",
+    "3262": "93031015006efbb091100695d42d6fcfa4067cb3782ee2cc1984b2a65d95c5dd",
+    "3662": "7e9df9a9b21d7ca6cd5d92cd14e95b6160d1d250f8473220772c3412b22c30db",
+    "7698": "17ac41e5d950a2bee6d1d780488e766c6700584dfa400c1bf31ed527d34685a0"
+  },
+  "exhibitorInventorySha256": "27603f32cd26bcc51e166857d6eef2b37c7fffcf2a9d96cd097661b91933faa5",
+  "floorplanGeometrySha256": "c6f1d449ca8d933aa9f406966530b68f05c8e0a582d16e8d6441c71975ea7368"
+}

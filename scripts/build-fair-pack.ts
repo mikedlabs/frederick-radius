@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 
 import { greatFrederickFair2026Offers } from "../src/data/fair/great-frederick-fair-2026-offers";
 import { greatFrederickFair2026 } from "../src/data/fair/great-frederick-fair-2026";
+import reviewedSchedulePage from "../src/lib/fair/__fixtures__/great-frederick-fair-2026-schedule-page.json";
 import {
   GREAT_FREDERICK_FAIR_2026_EXPECTED_DAYS,
   GREAT_FREDERICK_FAIR_2026_EXPECTED_ROWS,
@@ -33,6 +34,7 @@ const descriptorPath = resolve(
 
 const parsedSchedule = parseGreatFrederickFair2026Schedule(
   readFileSync(scheduleInputPath, "utf8"),
+  reviewedSchedulePage,
 );
 if (!parsedSchedule.ok || !parsedSchedule.sourceRevision) {
   const messages = parsedSchedule.diagnostics
@@ -45,7 +47,7 @@ if (
   parsedSchedule.stats.itemCount !== GREAT_FREDERICK_FAIR_2026_EXPECTED_ROWS
 ) {
   throw new Error(
-    `Refusing to publish ${parsedSchedule.stats.dayCount} Fair days and ${parsedSchedule.stats.itemCount} rows; expected 9 days and 190 rows.`,
+    `Refusing to publish ${parsedSchedule.stats.dayCount} Fair days and ${parsedSchedule.stats.itemCount} rows; expected 9 days and ${GREAT_FREDERICK_FAIR_2026_EXPECTED_ROWS} rows.`,
   );
 }
 
