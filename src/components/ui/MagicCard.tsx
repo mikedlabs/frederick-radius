@@ -13,7 +13,7 @@ type MagicCardProps<T extends ElementType = "div"> = {
 export function MagicCard<T extends ElementType = "div">({
   children,
   className = "",
-  glowColor = "rgba(120, 119, 198, 0.15)", // palette-exempt
+  glowColor = "color-mix(in srgb, var(--app-brand) 15%, transparent)",
   as,
   ...props
 }: MagicCardProps<T>) {
@@ -32,7 +32,7 @@ export function MagicCard<T extends ElementType = "div">({
     <Component
       className={`group relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] shadow-sm ${className}`}
       onMouseMove={handleMouseMove}
-      style={{ borderColor: "color-mix(in srgb, var(--app-border-strong) 60%, transparent)", ...props.style }}
+      style={{ borderColor: "color-mix(in srgb, var(--app-brand) 20%, var(--app-border-strong))", ...props.style }}
       {...props}
     >
       <motion.div

@@ -54,10 +54,19 @@ export default function SectionHeading({
       >
         <span
           aria-hidden
-          className={small ? "inline-block h-3 w-1 rounded-full" : "inline-block h-4 w-1 rounded-full"}
+          className={small ? "inline-block h-3 w-1 rounded-full shrink-0" : "inline-block h-4 w-1 rounded-full shrink-0"}
           style={{ background: tickColor }}
         />
-        {title}
+        <span
+          className="truncate"
+          style={!small ? {
+            backgroundImage: `linear-gradient(110deg, var(--app-ink) 30%, color-mix(in srgb, ${tickColor} 80%, var(--app-ink)))`,
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          } : undefined}
+        >
+          {title}
+        </span>
         {count !== undefined && (
           <span
             className={small ? "font-data text-sm font-normal" : "font-data text-base font-normal"}

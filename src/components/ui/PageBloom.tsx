@@ -18,7 +18,7 @@ export default function PageBloom({
   style,
 }: {
   variant?: "warm-cool" | "warm" | "cool" | "single";
-  /** Opt in only when the page genuinely needs an editorial brand moment. */
+  /** Opt in only when the page genuinely needs an editorial brand moment (RippleMark watermark). */
   motif?: boolean;
   className?: string;
   style?: CSSProperties;
@@ -49,51 +49,53 @@ export default function PageBloom({
             "linear-gradient(to bottom, color-mix(in srgb, var(--app-bg-elevated-solid) 42%, transparent), transparent)",
         }}
       />
+      
       {motif && (
-        <>
-          <motion.div
-            className="absolute -right-24 -top-32"
-            style={{ color: tone }}
-            initial={{ opacity: 0.055, scale: 1 }}
-            animate={mounted ? { opacity: [0.04, 0.07, 0.04], scale: [0.98, 1.02, 0.98] } : {}}
-            transition={{ duration: 12, ease: "easeInOut", repeat: Infinity }}
-          >
-            <RippleMark size={330} detail="full" />
-          </motion.div>
-          {/* Dynamic glowing ambient bloom */}
-          <motion.div
-            className="absolute left-[-10vw] top-[-5vh] h-[50vh] w-[50vh] rounded-full blur-[100px] opacity-40 mix-blend-plus-lighter"
-            style={{ background: `color-mix(in srgb, ${tone} 15%, transparent)` }}
-            initial={{ x: 0, y: 0, scale: 1 }}
-            animate={mounted ? {
-              x: [0, 50, -20, 0],
-              y: [0, -30, 20, 0],
-              scale: [1, 1.1, 0.9, 1],
-            } : {}}
-            transition={{
-              duration: 25,
-              ease: "easeInOut",
-              repeat: Infinity,
-            }}
-          />
-          <motion.div
-            className="absolute right-[-10vw] top-[10vh] h-[40vh] w-[40vh] rounded-full blur-[120px] opacity-30 mix-blend-plus-lighter"
-            style={{ background: `color-mix(in srgb, var(--app-brand) 12%, transparent)` }}
-            initial={{ x: 0, y: 0, scale: 1 }}
-            animate={mounted ? {
-              x: [0, -40, 30, 0],
-              y: [0, 40, -10, 0],
-              scale: [1, 1.2, 0.8, 1],
-            } : {}}
-            transition={{
-              duration: 18,
-              ease: "easeInOut",
-              repeat: Infinity,
-            }}
-          />
-          <div className="aurora-grain" />
-        </>
+        <motion.div
+          className="absolute -right-24 -top-32"
+          style={{ color: tone }}
+          initial={{ opacity: 0.055, scale: 1 }}
+          animate={mounted ? { opacity: [0.04, 0.07, 0.04], scale: [0.98, 1.02, 0.98] } : {}}
+          transition={{ duration: 12, ease: "easeInOut", repeat: Infinity }}
+        >
+          <RippleMark size={330} detail="full" />
+        </motion.div>
       )}
+
+      {/* Dynamic glowing ambient bloom - globally active to bring more color */}
+      <motion.div
+        className="absolute left-[-10vw] top-[-5vh] h-[50vh] w-[50vh] rounded-full blur-[100px] opacity-40 mix-blend-plus-lighter"
+        style={{ background: `color-mix(in srgb, ${tone} 15%, transparent)` }}
+        initial={{ x: 0, y: 0, scale: 1 }}
+        animate={mounted ? {
+          x: [0, 50, -20, 0],
+          y: [0, -30, 20, 0],
+          scale: [1, 1.1, 0.9, 1],
+        } : {}}
+        transition={{
+          duration: 25,
+          ease: "easeInOut",
+          repeat: Infinity,
+        }}
+      />
+      <motion.div
+        className="absolute right-[-10vw] top-[10vh] h-[40vh] w-[40vh] rounded-full blur-[120px] opacity-30 mix-blend-plus-lighter"
+        style={{ background: `color-mix(in srgb, var(--app-brand) 12%, transparent)` }}
+        initial={{ x: 0, y: 0, scale: 1 }}
+        animate={mounted ? {
+          x: [0, -40, 30, 0],
+          y: [0, 40, -10, 0],
+          scale: [1, 1.2, 0.8, 1],
+        } : {}}
+        transition={{
+          duration: 18,
+          ease: "easeInOut",
+          repeat: Infinity,
+        }}
+      />
+      
+      {/* Global paper grain effect */}
+      <div className="aurora-grain" />
     </div>
   );
 }
