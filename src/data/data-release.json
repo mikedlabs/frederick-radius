@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:74d7bdcc72fea807c789a9386fc8911cc36cf3e047915613ed0b4902a40f6aa6",
+  "data_version": "sha256:86cea68795c85594c024c58fa39cce5662830d2d58d58beb241f8ab693fade65",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -263,25 +263,25 @@
       ]
     },
     "venue-events": {
-      "promoted_at": "2026-08-02T04:38:26Z",
+      "promoted_at": "2026-09-17T14:23:00.908Z",
       "artifacts": [
         {
           "path": "src/data/venue-event-source-inventory.json",
-          "sha256": "c1620253be2f2ed936a1876552e153bcf0a9b8dd0913076510d846a1f1f388f1",
-          "records": 29,
-          "bytes": 17423
+          "sha256": "0e5e3e1696dbb34114db65cc3df6f8cba13209e88e60ebb97f7054ed8ad9ef82",
+          "records": 6,
+          "bytes": 4275
         },
         {
           "path": "src/data/venue-event-source-state.json",
-          "sha256": "8f6544d1692e59d2baed262394ffa68e204fa05324fa55006494f44b0a0d84b3",
+          "sha256": "37247b0b26f2b323eb22663ed6b3cd1d46786129a51bf1a1530a4001ac440bb8",
           "records": 2,
-          "bytes": 3286
+          "bytes": 3288
         },
         {
           "path": "src/data/venue-events.json",
-          "sha256": "b9388f6baa467ba0021125980cc57a0e97ce8f80022b68a1e93bd52548041db8",
-          "records": 26,
-          "bytes": 15404
+          "sha256": "0e5e3e1696dbb34114db65cc3df6f8cba13209e88e60ebb97f7054ed8ad9ef82",
+          "records": 6,
+          "bytes": 4275
         }
       ]
     },
