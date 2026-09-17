@@ -9,20 +9,20 @@ and the traps that come with it.
 > old file kept asserting "every GL surface in the app now renders that way"
 > and listing traffic and hillshade as lost, all of which stopped being true
 > the day #1552 merged. The migration narrative is gone; the operational
-> knowledge below is still live and still governs five production surfaces.
+> knowledge below is still live and still governs six production surfaces.
 
 ## Who renders what
 
 | Engine | Surfaces |
 | --- | --- |
 | **Mapbox GL 3.27** — `mapbox://styles/mapbox/standard` via the field-guide config, DEM hillshade, live traffic | `/map`, `/map?mode=radius`, `/transit`, plus the AppMap embeds on `/beer`, `/trails`, `/my-radius`, and the fifteen shared overlay children |
-| **MapLibre GL 6.3** — self-hosted county PMTiles, no token, no per-load billing | `/events` map view (`EventsMapInner`), `/overhead`, `/collect`, `/report`, `/from-above/time-machine` |
+| **MapLibre GL 6.4** — self-hosted county PMTiles, no token, no per-load billing | `/events` map view (`EventsMapInner`), `/overhead`, `/collect`, `/report`, `/from-above/time-machine`, `/fair` (`FairGroundsMapInner`, with its aerial and live-transit layers) |
 
 The split is not arbitrary and it is not a migration in progress. Mapbox
 carries the immersive surfaces because it supplies terrain and traffic that
 MapLibre has no licensed equivalent for. MapLibre carries the locator and
 field-tool surfaces because they need a plain, cheap, reliable basemap and
-those five would otherwise bill per load for nothing.
+those six would otherwise bill per load for nothing.
 
 The two cannot be mixed **within** one component tree: react-map-gl's
 `/mapbox` and `/maplibre` entries have separate React contexts, so a `Source`
@@ -43,13 +43,13 @@ materializer, never a build hook.
 `frederickBasemapFlavor.ts`. `src/components/map/useFrederickFlavorStyle.ts`
 is the one hook every MapLibre surface calls.
 
-Package, worker, and shared worker runtime are pinned together at 6.3.0;
+Package, worker, and shared worker runtime are pinned together at 6.4.1;
 `tests/maplibre-worker-version.spec.ts` blocks a package-only upgrade from
 shipping a mismatched worker pair.
 
 ## Traps, all paid for
 
-Every one of these still applies to the five surfaces above.
+Every one of these still applies to the six surfaces above.
 
 - **The worker.** Turbopack does not rewrite MapLibre's
   `new Worker(new URL(...))`, so the worker is constructed with an EMPTY url
