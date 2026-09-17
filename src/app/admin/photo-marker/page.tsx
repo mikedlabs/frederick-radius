@@ -29,7 +29,7 @@ export default function PhotoMarkerAdmin() {
       xPercent,
       yPercent,
       label: "New Marker",
-      description: "",
+      subtitle: "",
     };
 
     setMarkers((prev) => [...prev, newMarker]);
@@ -175,13 +175,13 @@ export default function PhotoMarkerAdmin() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-[var(--app-ink-2)]">
-                    Description (optional)
+                    Subtitle (optional)
                   </label>
                   <textarea
-                    value={selectedMarker.description || ""}
+                    value={selectedMarker.subtitle || ""}
                     onChange={(e) =>
                       updateMarker(selectedMarker.id, {
-                        description: e.target.value,
+                        subtitle: e.target.value,
                       })
                     }
                     rows={3}

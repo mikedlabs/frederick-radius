@@ -64,7 +64,7 @@ export function FairPhotoMap({ imageUrl, altText, markers, onMarkerClick }: Fair
                 damping: 20,
                 delay: index * 0.05,
               }}
-              className={`absolute -translate-x-1/2 -translate-y-1/2 ${isActive ? "z-50" : "z-10"}`}
+              className={`absolute -translate-x-1/2 -translate-y-1/2 ${isActive ? "z-20" : "z-10"}`}
               style={{ left: `${marker.xPercent}%`, top: `${marker.yPercent}%` }}
             >
               <div className="relative">
