@@ -2488,7 +2488,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                   <div className="min-w-0">
                     <p
                       className="text-[10.5px] font-bold uppercase tracking-[0.11em]"
-                      style={{ color: "var(--app-brand)" }}
+                      style={{ color: "var(--app-brand-press)" }}
                     >
                       Today&apos;s Grandstand Event
                     </p>
