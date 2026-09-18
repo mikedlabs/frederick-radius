@@ -24,6 +24,7 @@ import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import TonightHeadline from "@/components/today/TonightHeadline";
 import PageBloom from "@/components/ui/PageBloom";
+import { MagicCard } from "@/components/ui/MagicCard";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
 import WeekendPreview from "@/components/today/WeekendPreview";
@@ -278,7 +279,7 @@ export default async function HomePage() {
       {(() => {
         const frame = todayFrame(easternStartHour(now.toISOString()));
         return (
-          <header className="scroll-masthead today-arrival today-arrival--masthead mb-5 flex flex-col overflow-hidden rounded-[var(--app-radius-lg)] border border-[var(--app-border)] bg-[var(--app-bg-elevated-solid)] sm:grid sm:grid-cols-[minmax(0,1fr)_42%]">
+          <MagicCard as="header" className="scroll-masthead today-arrival today-arrival--masthead mb-5 flex flex-col sm:grid sm:grid-cols-[minmax(0,1fr)_42%]">
             <div className="min-w-0 p-4 sm:p-6">
             {/* The page title, at page-title size. At 22px it sat two pixels
                 above its own 20px section headings, so the masthead read as
@@ -293,25 +294,29 @@ export default async function HomePage() {
             <TodayScopeStatus dateline={formatEasternDateline(now)} />
             </div>
             <figure className="scroll-masthead-img relative order-first h-[140px] sm:order-none sm:h-full sm:min-h-[180px]">
-              <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" fill sizes="(min-width: 1024px) 440px, 100vw" alt="Carroll Creek in Frederick, photographed by Mike D." className="object-cover object-center" />
+              <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" priority fill sizes="(min-width: 1024px) 440px, 100vw" alt="Carroll Creek in Frederick, photographed by Mike D." className="object-cover object-center" />
               <figcaption className="absolute bottom-2 right-2 rounded-sm bg-[var(--app-ink)] px-2 py-1 text-[10px] leading-snug text-[var(--app-on-brand)]">Carroll Creek · Mike D</figcaption>
             </figure>
-          </header>
+          </MagicCard>
         );
       })()}
 
-      <div className="today-start-grid">
-        <div className="today-start-find">
-        <div className="today-arrival today-arrival--find">
-          <TodayAsk embedded>
-            <CravingStrip />
-          </TodayAsk>
+      <div className="flex flex-col gap-5">
+      {/* ── CAMPAIGN SPOTLIGHT — the document identifies itself before a
+          campaign asks for attention. Fair Day owns this photographic doorway
+          from Sep 2–26, then retires itself on Sep 27. When another civic
+          moment overlaps the Fair campaign, it moves into Follow the day
+          below instead of disappearing. */}
+      {fairPromotionPhase ? (
+        <div>
+          <TodayFairFeature phase={fairPromotionPhase} compact={fairPromotionPhase === "planning"} />
         </div>
-        <div className="mt-5" aria-label="Places for your area">
-          {decisionLead}
+      ) : civicMoment ? (
+        <div>
+          <MomentSpotlight moment={civicMoment} />
         </div>
-        </div>
-        <div className="today-start-context">
+      ) : null}
+
       {/* ── WEATHER HERO — the time-of-day gradient sky and today's weather
           lead the page. Now a COMPACT, CONTAINED card (owner
           call: "all cards within the main part" + "one header with the weather
@@ -344,23 +349,15 @@ export default async function HomePage() {
           />
         </AppTransitionLink>
       </SkyHero>
-      {/* ── CAMPAIGN SPOTLIGHT — the document identifies itself before a
-          campaign asks for attention. Fair Day owns this photographic doorway
-          from Sep 2–26, then retires itself on Sep 27. When another civic
-          moment overlaps the Fair campaign, it moves into Follow the day
-          below instead of disappearing. */}
-      {fairPromotionPhase ? (
-        <div className="mb-4">
-          <TodayFairFeature phase={fairPromotionPhase} compact={fairPromotionPhase === "planning"} />
+
+        <div className="today-arrival today-arrival--find">
+          <TodayAsk embedded>
+            <CravingStrip />
+          </TodayAsk>
         </div>
-      ) : civicMoment ? (
-        <div className="mb-4">
-          <MomentSpotlight moment={civicMoment} />
-        </div>
-      ) : null}
-
-
-
+        
+        <div aria-label="Places for your area">
+          {decisionLead}
         </div>
       </div>
 

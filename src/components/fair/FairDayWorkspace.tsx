@@ -32,6 +32,7 @@ import {
   Trash2,
   Volume1,
   UtensilsCrossed,
+  Star,
 } from "lucide-react";
 import {
   useCallback,
@@ -43,6 +44,7 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 import RippleMark from "@/components/brand/RippleMark";
 import { Button } from "@/components/ui/Button";
@@ -87,12 +89,13 @@ import FairPracticalAnswers from "./FairPracticalAnswers";
 import FairShareButton from "./FairShareButton";
 import FairKeepGuide from "./FairKeepGuide";
 import FairGroundsMap from "./FairGroundsMap";
+import { FairPhotoMap } from "./FairPhotoMap";
+import { DEFAULT_FAIR_PHOTO_MARKERS } from "@/data/fair/fair-photo-map-layout";
 import FairGrandstandSpotlight from "./FairGrandstandSpotlight";
 import FairPhotoExplorer from "./FairPhotoExplorer";
 import FairTravelPanel from "./FairTravelPanel";
 import FairWeatherWidget from "./FairWeatherWidget";
 import FairUpNext from "./FairUpNext";
-import FairQuest from "./FairQuest";
 import { MagicCard } from "../ui/MagicCard";
 import type {
   FairDayArrivalView,
@@ -1010,7 +1013,13 @@ function FairDayPicker({
   );
 }
 
-export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData }) {
+export default function FairDayWorkspace({
+  data,
+  serverHeroBackground,
+}: {
+  data: FairDayWorkspaceData;
+  serverHeroBackground?: React.ReactNode;
+}) {
   const validDates = useMemo(
     () => new Set(data.dates.map((day) => day.date)),
     [data.dates],
@@ -1030,6 +1039,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   const [selectedProgramDetailId, setSelectedProgramDetailId] = useState<
     string | null
   >(null);
+  const [showPhotoMap, setShowPhotoMap] = useState(false);
   const [mapFocusRequest, setMapFocusRequest] = useState<{
     programItemId: string;
     requestId: number;
@@ -1323,8 +1333,6 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
   };
 
   const chooseMode = (mode: FairMode) => {
-    // Leaving the map cancels an unfinished one-shot handoff too. Focus can
-    // be visible before its confirmation timer acknowledges the request.
     if (mode !== "map") setMapFocusRequest(null);
     setActivePreparation(null);
     setHelpOpen(false);
@@ -1417,8 +1425,6 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       const nextDayId = `day-${date}`;
       const changedDay = current.selectedDayId !== nextDayId;
       const nextDay = setFairPlanDay(current, nextDayId, now);
-      // Travel checks are date-specific: transit service, road conditions,
-      // and return details can all differ across the nine Fair days.
       return changedDay
         ? setFairPlanReady(nextDay, "travel", false, now)
         : nextDay;
@@ -1573,6 +1579,19 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
       null
     );
   }, [discoveryItems]);
+
+  const photoMapMarkers = useMemo(() => {
+    return DEFAULT_FAIR_PHOTO_MARKERS.map((marker) => {
+      if (marker.id === "grandstand" && grandstandSpotlightItem) {
+        return {
+          ...marker,
+          events: [{ time: grandstandSpotlightItem.timeLabel, title: grandstandSpotlightItem.title }],
+        };
+      }
+      return marker;
+    });
+  }, [grandstandSpotlightItem]);
+
   const matchingSchedule = useMemo(
     () =>
       sortFairProgramItems(
@@ -1849,40 +1868,44 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             className="relative overflow-hidden border-b-2"
             style={{ borderColor: "var(--app-brand)" }}
           >
-            <picture className="absolute inset-0 block">
-              <source
-                type="image/webp"
-                srcSet="/images/fair/fairgrounds-night-mike-d-480.webp 480w, /images/fair/fairgrounds-night-mike-d-960.webp 960w, /images/fair/fairgrounds-night-mike-d-1920.webp 1920w"
-                sizes="100vw"
-              />
-              <img
-                src="/images/fair/fairgrounds-night-mike-d-960.jpg"
-                srcSet="/images/fair/fairgrounds-night-mike-d-960.jpg 960w, /images/fair/fairgrounds-night-mike-d-1920.jpg 1920w"
-                sizes="100vw"
-                alt="Mike D's photograph of The Great Frederick Fair in 2024, with the illuminated Ferris wheel and midway seen from above."
-                width="960"
-                height="540"
-                loading="eager"
-                fetchPriority="high"
-                className="h-full w-full object-cover object-[76%_center] sm:object-center"
-              />
-            </picture>
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(to bottom, color-mix(in srgb, var(--app-ink) 48%, transparent), transparent 24%), linear-gradient(to top, color-mix(in srgb, var(--app-ink) 96%, transparent), color-mix(in srgb, var(--app-ink) 54%, transparent) 36%, transparent 72%)",
-              }}
-              aria-hidden
-            />
-            <span
-              className="absolute inset-x-0 bottom-0 z-10 h-1.5 lg:hidden"
-              style={{
-                background:
-                  "linear-gradient(90deg, var(--app-brand) 0 24%, var(--app-amber) 24% 41%, var(--app-brand-2) 41% 59%, var(--app-cool) 59% 78%, var(--app-accent) 78% 100%)",
-              }}
-              aria-hidden
-            />
+            {serverHeroBackground || (
+              <>
+                <picture className="absolute inset-0 block">
+                  <source
+                    type="image/webp"
+                    srcSet="/images/fair/fairgrounds-night-mike-d-480.webp 480w, /images/fair/fairgrounds-night-mike-d-960.webp 960w, /images/fair/fairgrounds-night-mike-d-1920.webp 1920w"
+                    sizes="100vw"
+                  />
+                  <img
+                    src="/images/fair/fairgrounds-night-mike-d-960.jpg"
+                    srcSet="/images/fair/fairgrounds-night-mike-d-960.jpg 960w, /images/fair/fairgrounds-night-mike-d-1920.jpg 1920w"
+                    sizes="100vw"
+                    alt="Mike D's photograph of The Great Frederick Fair in 2024, with the illuminated Ferris wheel and midway seen from above."
+                    width="960"
+                    height="540"
+                    loading="eager"
+                    fetchPriority="high"
+                    className="h-full w-full object-cover object-[76%_center] sm:object-center"
+                  />
+                </picture>
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(to bottom, color-mix(in srgb, var(--app-ink) 48%, transparent), transparent 24%), linear-gradient(to top, color-mix(in srgb, var(--app-ink) 96%, transparent), color-mix(in srgb, var(--app-ink) 54%, transparent) 36%, transparent 72%)",
+                  }}
+                  aria-hidden
+                />
+                <span
+                  className="absolute inset-x-0 bottom-0 z-10 h-1.5 lg:hidden"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, var(--app-brand) 0 24%, var(--app-amber) 24% 41%, var(--app-brand-2) 41% 59%, var(--app-cool) 59% 78%, var(--app-accent) 78% 100%)",
+                  }}
+                  aria-hidden
+                />
+              </>
+            )}
 
             <div
               data-fair-hero-content
@@ -2313,14 +2336,14 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             </section>
 
             {offersForSelectedDate.some((offer) => offer.placement === "eligibility-promotion") ? (
-              <section
+              <MagicCard
+                as="section"
                 data-fair-day-promotions
                 aria-label="Admission promotions for this day"
-                className="mt-3 overflow-hidden rounded-[var(--app-radius-xl)] border p-3.5 sm:p-4"
+                className="mt-3 overflow-hidden rounded-[var(--app-radius-xl)] p-3.5 sm:p-4"
                 style={{
-                  borderColor: "color-mix(in srgb, var(--app-brand) 25%, var(--app-control-border))",
-                  background: "color-mix(in srgb, var(--app-brand) 4%, var(--app-bg-elevated-solid))",
-                  boxShadow: "var(--app-elev-1), var(--app-edge)",
+                  background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated-solid))",
+                  boxShadow: "inset 0 2px 0 color-mix(in srgb, var(--app-brand) 15%, transparent), var(--app-elev-2), var(--app-edge)",
                 }}
               >
                 <div className="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[var(--app-brand-press)]">
@@ -2351,7 +2374,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                     </button>
                   ))}
                 </div>
-              </section>
+              </MagicCard>
             ) : null}
             <FairKeepGuide />
             <FairUpNext onAction={() => chooseMode("find")} />
@@ -2448,18 +2471,68 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               </div>
             </section>
 
-            <FairQuest />
-
+            {grandstandSpotlightItem && (
+              <MagicCard
+                as="section"
+                aria-labelledby="fair-headliner-heading"
+                className="mt-4 overflow-hidden rounded-[var(--app-radius-xl)] border-l-4 p-4"
+                style={{
+                  borderColor: "var(--app-brand)",
+                  background:
+                    "color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated-solid))",
+                  boxShadow: "inset 0 1px 0 var(--app-hi), var(--app-elev-2), var(--app-edge)",
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-full relative overflow-hidden"
+                    style={{
+                      background:
+                        "color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated-solid))",
+                      color: "var(--app-brand)",
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-[var(--app-brand)]/10 animate-ping opacity-20 duration-3000" />
+                    <Star className="h-5 w-5 relative z-10" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <p
+                      className="text-[10.5px] font-bold uppercase tracking-[0.11em]"
+                      style={{ color: "var(--app-brand-press)" }}
+                    >
+                      Today&apos;s Grandstand Event
+                    </p>
+                    <h2
+                      id="fair-headliner-heading"
+                      className="mt-0.5 text-[17px] font-bold leading-tight tracking-[-0.02em]"
+                    >
+                      {grandstandSpotlightItem.title}
+                    </h2>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-col items-start gap-1.5 text-[14px] leading-relaxed">
+                  <span className="inline-flex rounded-sm bg-[var(--app-brand)]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--app-brand-press)]">
+                    {grandstandSpotlightItem.timeLabel}
+                  </span>
+                  {grandstandSpotlightItem.detail && (
+                    <p className="mt-0.5 text-[13px] text-[var(--app-ink)]/80 leading-snug">
+                      {grandstandSpotlightItem.detail}
+                    </p>
+                  )}
+                </div>
+              </MagicCard>
+            )}
             {selectedAccessHighlight ? (
-              <section
+              <MagicCard
+                as="section"
                 data-fair-access-highlight
                 aria-labelledby="fair-access-highlight-heading"
-                className="mt-4 overflow-hidden rounded-[var(--app-radius-lg)] border-l-4 p-4"
+                className="mt-4 overflow-hidden rounded-[var(--app-radius-xl)] border-l-4 p-4"
                 style={{
                   borderColor: "var(--app-cool)",
                   background:
-                    "color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated))",
-                  boxShadow: "var(--app-elev-1), var(--app-edge)",
+                    "color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated-solid))",
+                  boxShadow: "inset 0 1px 0 var(--app-hi), var(--app-elev-2), var(--app-edge)",
                 }}
               >
                 <div className="flex items-start gap-3">
@@ -2498,16 +2571,14 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                   type="button"
                   onClick={() => {
                     setHelpAnswerId(selectedAccessHighlight.answerId);
-                    setHelpCategory(null);
-                    openHelp();
+                    setHelpOpen(true);
                   }}
-                  className="tap-44 mt-1 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold underline underline-offset-4"
+                  className="tap-44 mt-3 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold underline underline-offset-4 outline-none hover:opacity-80 focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--app-cool)]"
                   style={{ color: "var(--app-cool)" }}
                 >
-                  Open sensory-friendly details
-                  <ChevronRight className="h-4 w-4" aria-hidden />
+                  Read more in Q&A
                 </button>
-              </section>
+              </MagicCard>
             ) : null}
 
             <details className="mt-5 border-t pt-2" style={{ borderColor: "var(--app-border)" }}>
@@ -2604,7 +2675,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
               </div>
             ) : null}
 
-            <div className="mt-3 grid grid-cols-4 gap-1.5" role="group" aria-label="Filter the Fair program" data-fair-program-filters>
+            <div className="mt-3 grid grid-cols-4 gap-2" role="group" aria-label="Filter the Fair program" data-fair-program-filters>
                 {SCHEDULE_FILTERS.map((filter) => {
                   const active = scheduleFilter === filter.id;
                   const Icon = filter.Icon;
@@ -2618,12 +2689,12 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                       onClick={() => {
                         setScheduleFilter(filter.id);
                       }}
-                      className="tap-44 flex min-h-[64px] min-w-0 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] border px-0 py-2 text-center text-[11px] font-semibold leading-tight min-[375px]:px-1 min-[375px]:text-[12px] sm:min-h-12 sm:flex-row sm:gap-2 sm:px-2 sm:text-[13px]"
+                      className={`tap-44 flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[1.25rem] border px-0 py-2 text-center text-[11px] font-bold leading-tight transition-all active:scale-95 min-[375px]:px-1 min-[375px]:text-[12px] sm:min-h-12 sm:flex-row sm:gap-2 sm:px-2 sm:text-[13px] ${active ? "z-10 shadow-lg scale-[1.02]" : "hover:scale-[1.01]"}`}
                       style={{
                         borderColor: active ? accent : "var(--app-border)",
-                        background: active ? `color-mix(in srgb, ${accent} 10%, var(--app-bg-elevated-solid))` : "var(--app-bg-elevated)",
+                        background: active ? `linear-gradient(135deg, color-mix(in srgb, ${accent} 15%, var(--app-bg-elevated-solid)), color-mix(in srgb, ${accent} 5%, var(--app-bg-elevated-solid)))` : "var(--app-bg-elevated)",
                         color: "var(--app-ink)",
-                        boxShadow: active ? `inset 0 -2px 0 ${accent}` : undefined,
+                        boxShadow: active ? `inset 0 1px 0 var(--app-hi), inset 0 -3px 0 ${accent}, 0 8px 16px -4px color-mix(in srgb, ${accent} 40%, transparent)` : "var(--app-elev-1)",
                       }}
                     >
                       <Icon className="h-4 w-4 shrink-0" style={{ color: accent }} aria-hidden />
@@ -2647,12 +2718,12 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             </div>
 
             {contextualAnswers.length > 0 ? (
-              <div className="mt-5 rounded-[var(--app-radius-lg)] border px-4 py-3" style={{ borderColor: "var(--app-border)", background: "var(--app-brand-tint-6)" }}>
+              <MagicCard className="mt-5 rounded-[var(--app-radius-xl)] px-4 py-3" style={{ background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated-solid))", boxShadow: "inset 0 2px 0 color-mix(in srgb, var(--app-brand) 15%, transparent), var(--app-elev-2), var(--app-edge)" }}>
                 <p className="text-[13px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--app-brand-press)" }}>
                   Quick answers
                 </p>
                 {contextualAnswers.map((answer) => (
-                  <details key={answer.id} className="border-b py-1 last:border-b-0" style={{ borderColor: "var(--app-border)" }}>
+                  <details key={answer.id} className="border-b py-1 last:border-b-0" style={{ borderColor: "color-mix(in srgb, var(--app-brand) 15%, var(--app-border))" }}>
                     <summary className="tap-44 flex min-h-12 cursor-pointer items-center justify-between gap-3 text-[15px] font-semibold">
                       {answer.question}
                       <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
@@ -2662,7 +2733,7 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
                     </p>
                   </details>
                 ))}
-              </div>
+              </MagicCard>
             ) : null}
 
             <div className="mt-3">
@@ -2744,19 +2815,73 @@ export default function FairDayWorkspace({ data }: { data: FairDayWorkspaceData 
             id={MODE_PANEL_IDS.map}
             aria-labelledby="fair-grounds-map-heading"
           >
-            <FairGroundsMap
-              savedStops={mappedPlanStops}
-              focusRequest={mapFocusRequest}
-              onFocusRequestHandled={handleMapFocusRequest}
-              programItems={discoveryItems.map((item) => ({
-                id: item.id,
-                title: item.title,
-                timeLabel: item.timeLabel,
-                placeLabel: item.placeLabel,
-              }))}
-              onBrowseProgram={() => chooseMode("find")}
-              onOpenProgramItem={openProgramDetail}
-            />
+            <div className="flex justify-center p-4">
+              <div className="relative flex rounded-full bg-white/60 p-1 shadow-sm ring-1 ring-black/5 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (showPhotoMap) {
+                      setShowPhotoMap(false);
+                      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(50);
+                    }
+                  }}
+                  className={`relative z-10 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${!showPhotoMap ? "text-white" : "text-[var(--app-ink-2)] hover:text-[var(--app-ink)]"}`}
+                >
+                  Interactive Map
+                  {!showPhotoMap && (
+                    <motion.div
+                      layoutId="mapToggleTab"
+                      className="absolute inset-0 -z-10 rounded-full bg-[var(--app-brand)] shadow-sm"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!showPhotoMap) {
+                      setShowPhotoMap(true);
+                      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(50);
+                    }
+                  }}
+                  className={`relative z-10 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${showPhotoMap ? "text-white" : "text-[var(--app-ink-2)] hover:text-[var(--app-ink)]"}`}
+                >
+                  2026 Photo Map
+                  {showPhotoMap && (
+                    <motion.div
+                      layoutId="mapToggleTab"
+                      className="absolute inset-0 -z-10 rounded-full bg-[var(--app-brand)] shadow-sm"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {showPhotoMap ? (
+              <div className="px-4 pb-4">
+                <FairPhotoMap
+                  imageUrl="/fair/map_2026.png"
+                  altText="2026 Fairgrounds Map"
+                  markers={photoMapMarkers}
+                  onMarkerClick={(id) => console.log("Clicked marker", id)}
+                />
+              </div>
+            ) : (
+              <FairGroundsMap
+                savedStops={mappedPlanStops}
+                focusRequest={mapFocusRequest}
+                onFocusRequestHandled={handleMapFocusRequest}
+                programItems={discoveryItems.map((item) => ({
+                  id: item.id,
+                  title: item.title,
+                  timeLabel: item.timeLabel,
+                  placeLabel: item.placeLabel,
+                }))}
+                onBrowseProgram={() => chooseMode("find")}
+                onOpenProgramItem={openProgramDetail}
+              />
+            )}
             <div className="mx-4 mt-4 border-t pt-3 lg:mx-0" style={{ borderColor: "var(--app-border)" }}>
               <a
                 href={data.externalGuide.url}

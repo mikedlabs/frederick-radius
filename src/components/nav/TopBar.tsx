@@ -229,7 +229,7 @@ export default function TopBar() {
     <>
       <header
         data-map-header={pathname === "/map" ? "true" : undefined}
-        className="sticky top-0 border-b border-[var(--app-border)] bg-[var(--app-bg)]/90 backdrop-blur-sm pt-[env(safe-area-inset-top)]"
+        className="sticky top-0 border-b border-[var(--app-border)] bg-[var(--app-bg)]/90 supports-[backdrop-filter]:bg-[var(--app-bg)]/60 backdrop-blur-xl pt-[env(safe-area-inset-top)] transition-colors duration-200"
         style={{
           // Tokenized z-index — see globals.css :root --z-* scale.
           zIndex: "var(--z-sticky)",

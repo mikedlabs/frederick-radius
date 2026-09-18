@@ -75,9 +75,8 @@ export default function BottomNav() {
       >
         <nav
           aria-label="Primary"
-          className="pointer-events-auto relative mx-auto max-w-screen-md overflow-hidden rounded-t-[var(--app-radius-md)]"
+          className="pointer-events-auto relative mx-auto max-w-screen-md overflow-hidden rounded-t-[var(--app-radius-xl)] bg-[var(--app-bg-elevated)]/90 supports-[backdrop-filter]:bg-[var(--app-bg-elevated)]/60 backdrop-blur-xl transition-colors duration-200"
           style={{
-            background: "var(--app-bg-elevated-solid)",
             border: "1px solid var(--app-border-strong)",
             boxShadow: "0 -8px 28px rgba(34, 28, 21, 0.08)",
           }}
@@ -126,10 +125,10 @@ export default function BottomNav() {
                     }}
                     onClick={handleActivate}
                     aria-current={isAtDestination ? "page" : undefined}
-                    className="relative flex h-12 w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition-[color,transform] duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)] active:scale-[0.97]"
+                    className="relative flex h-12 w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition-[color,transform,background-color] duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)] active:scale-[0.97]"
                     style={{
                       color: active ? "var(--app-brand-press)" : "var(--app-ink-3)",
-                      background: "transparent",
+                      background: active ? "var(--app-brand-tint-6)" : "transparent",
                     }}
                   >
                     <span

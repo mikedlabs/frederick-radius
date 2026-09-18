@@ -920,7 +920,7 @@ describe("FairDayWorkspace app journey", () => {
     );
 
     await act(async () =>
-      buttonWithText(container, "Open sensory-friendly details").click(),
+      buttonWithText(container, "Read more in Q&A").click(),
     );
     await act(async () => vi.advanceTimersByTimeAsync(20));
     expect(document.body.textContent).toContain(

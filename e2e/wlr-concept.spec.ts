@@ -9,7 +9,7 @@ test.describe("WLR Road Ready concept", () => {
 
   test("turns each car-care need into one useful next move", async ({ page }) => {
     const response = await page.goto("/concept/wlr", {
-      waitUntil: "domcontentloaded",
+      waitUntil: "load",
     });
 
     expect(response?.status()).toBe(200);

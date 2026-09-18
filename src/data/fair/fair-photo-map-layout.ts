@@ -1,0 +1,60 @@
+import type { PhotoMarker } from "@/components/fair/FairPhotoMap";
+
+export const DEFAULT_FAIR_PHOTO_MARKERS: PhotoMarker[] = [
+  {
+    id: "main-gate",
+    xPercent: 12,
+    yPercent: 88,
+    label: "Main Gate",
+    icon: "ticket",
+    subtitle: "Gate 1 Entrance & Ticketing",
+  },
+  {
+    id: "grandstand",
+    xPercent: 14,
+    yPercent: 24,
+    label: "Grandstand",
+    icon: "star",
+    subtitle: "Motorsports & Concerts",
+  },
+  {
+    id: "midway",
+    xPercent: 51,
+    yPercent: 52,
+    label: "Midway",
+    icon: "ticket",
+    subtitle: "Carnival Rides & Games",
+  },
+  {
+    id: "ferris-wheel",
+    xPercent: 81,
+    yPercent: 55,
+    label: "Ferris Wheel",
+    icon: "pin",
+    subtitle: "A recognizable visual landmark",
+  },
+  {
+    id: "food-court",
+    xPercent: 32,
+    yPercent: 55,
+    label: "Food Court",
+    icon: "food",
+    subtitle: "Classic Fair Food & Drinks",
+  },
+  {
+    id: "livestock-barns",
+    xPercent: 78,
+    yPercent: 20,
+    label: "Livestock Barns",
+    icon: "pin",
+    subtitle: "Animals & Show Rings",
+  },
+  {
+    id: "exhibition-halls",
+    xPercent: 62,
+    yPercent: 15,
+    label: "Exhibition Halls",
+    icon: "pin",
+    subtitle: "Farm, Garden, & Household Exhibits",
+  },
+];
