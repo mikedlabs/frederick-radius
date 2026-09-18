@@ -302,21 +302,6 @@ export default async function HomePage() {
       })()}
 
       <div className="flex flex-col gap-5">
-      {/* ── CAMPAIGN SPOTLIGHT — the document identifies itself before a
-          campaign asks for attention. Fair Day owns this photographic doorway
-          from Sep 2–26, then retires itself on Sep 27. When another civic
-          moment overlaps the Fair campaign, it moves into Follow the day
-          below instead of disappearing. */}
-      {fairPromotionPhase ? (
-        <div>
-          <TodayFairFeature phase={fairPromotionPhase} compact={fairPromotionPhase === "planning"} />
-        </div>
-      ) : civicMoment ? (
-        <div>
-          <MomentSpotlight moment={civicMoment} />
-        </div>
-      ) : null}
-
       {/* ── WEATHER HERO — the time-of-day gradient sky and today's weather
           lead the page. Now a COMPACT, CONTAINED card (owner
           call: "all cards within the main part" + "one header with the weather
@@ -355,7 +340,22 @@ export default async function HomePage() {
             <CravingStrip />
           </TodayAsk>
         </div>
-        
+
+      {/* ── CAMPAIGN SPOTLIGHT — the document identifies itself before a
+          campaign asks for attention. Fair Day owns this photographic doorway
+          from Sep 2–26, then retires itself on Sep 27. When another civic
+          moment overlaps the Fair campaign, it moves into Follow the day
+          below instead of disappearing. */}
+      {fairPromotionPhase ? (
+        <div>
+          <TodayFairFeature phase={fairPromotionPhase} compact={fairPromotionPhase === "planning"} />
+        </div>
+      ) : civicMoment ? (
+        <div>
+          <MomentSpotlight moment={civicMoment} />
+        </div>
+      ) : null}
+
         <div aria-label="Places for your area">
           {decisionLead}
         </div>

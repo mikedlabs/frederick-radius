@@ -59,8 +59,8 @@ describe("Today decision hierarchy", () => {
     const weather = renderedPage.indexOf("<SkyHero");
 
     expect(masthead).toBeGreaterThan(alerts);
-    expect(fair).toBeGreaterThan(masthead);
-    expect(weather).toBeGreaterThan(fair);
+    expect(weather).toBeGreaterThan(masthead);
+    expect(fair).toBeGreaterThan(weather);
     expect(renderedPage).toContain("fairPromotionPhase ? (");
     expect(renderedPage).toContain(": civicMoment ? (");
     expect(renderedPage.match(/<TodayFairFeature\b/g)).toHaveLength(1);
