@@ -98,6 +98,8 @@
   --app-accent-press: #682153;    /* text-safe Plum counterpart */
   --app-cool: #285D73;            /* Creek — supporting data/civic accent */
   --app-cool-2: #4C7C8F;
+  --app-indigo: #4B458C;          /* Evening/Nighttime accent */
+  --app-indigo-press: #322E63;    /* text-safe darker indigo */
   --app-sage: #859076;            /* topo-line sage — light nature accent */
 
   --app-positive: #315A43;

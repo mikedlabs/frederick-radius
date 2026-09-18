@@ -44,7 +44,7 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 import RippleMark from "@/components/brand/RippleMark";
 import { Button } from "@/components/ui/Button";
@@ -468,114 +468,136 @@ function FairProgramResultList({
       aria-label={label}
       data-fair-program-trail
     >
-      {items.map((item) => {
-        const planned = plan.steps.some(
-          (step) => step.scheduleItemId === item.id,
-        );
-        const place = compactPlaceLabel(item.placeLabel);
-        const accent = scheduleAccent(item.kind);
-        const liveStatus = fairProgramLiveStatus(
-          item,
-          asOf,
-          selectedDate,
-          nextStart,
-          dayClosesAt,
-        );
-        return (
-          <li
-            key={item.id}
-            className="relative grid grid-cols-[minmax(0,1fr)_2.75rem] gap-3 py-5 sm:py-6"
-          >
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <time
-                  className="text-[12px] font-extrabold leading-tight tabular-nums"
-                  style={{ color: accent }}
-                >
-                  {item.timeLabel}
-                </time>
-                <span
-                  className="text-[11px] font-bold uppercase tracking-[0.07em]"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  {scheduleKindLabel(item.kind)}
-                </span>
-                {liveStatus ? (
-                  <span
-                    data-fair-program-live-state={liveStatus.state}
-                    className="inline-flex min-h-6 items-center rounded-full px-2 text-[10px] font-extrabold uppercase tracking-[0.06em]"
-                    style={{
-                      color:
-                        liveStatus.state === "live"
-                          ? "var(--app-on-brand)"
-                          : "var(--app-warning-press)",
-                      background:
-                        liveStatus.state === "live"
-                          ? "var(--app-brand-2)"
-                          : "color-mix(in srgb, var(--app-amber) 20%, var(--app-bg-elevated-solid))",
-                    }}
-                  >
-                    {liveStatus.label}
-                  </span>
-                ) : null}
-              </div>
-              <p className="mt-2 text-[21px] font-bold leading-[1.15] tracking-[-0.025em] sm:text-[24px]">
-                {item.title}
-              </p>
-              {place ? (
-                <p
-                  className="mt-1 text-[12px] font-semibold leading-snug"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  {place}
-                </p>
-              ) : null}
-              {item.detail ? (
-                <p
-                  className="mt-1 line-clamp-2 text-[12px] leading-snug"
-                  style={{ color: "var(--app-ink-2)" }}
-                >
-                  {item.detail}
-                </p>
-              ) : null}
-              <button
-                type="button"
-                onClick={(event) => onOpen(item.id, event.currentTarget)}
-                className="tap-44 -mb-2 mt-0.5 inline-flex min-h-11 items-center gap-1 text-[12px] font-bold"
-                style={{ color: accent }}
-                aria-label={`Open details for ${item.title}`}
-              >
-                Details
-                <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-              </button>
-            </div>
-            <button
-              type="button"
-              data-fair-plan-toggle={item.id}
-              aria-pressed={planned}
-              onClick={() => onToggle(item, planned)}
-              className="tap-44 tactile tactile-interactive grid h-11 w-11 place-items-center self-start rounded-full transition active:scale-[0.94] motion-reduce:transition-none"
-              style={{
-                background: planned
-                  ? "var(--app-bg-sunken)"
-                  : "var(--app-brand-tint-6)",
-                color: planned ? "var(--app-ink-3)" : "var(--app-brand-press)",
-              }}
-              aria-label={
-                planned
-                  ? `Remove ${item.title} from My Day`
-                  : `Add ${item.title} to My Day`
-              }
+      <AnimatePresence initial={false}>
+        {items.map((item) => {
+          const planned = plan.steps.some(
+            (step) => step.scheduleItemId === item.id,
+          );
+          const place = compactPlaceLabel(item.placeLabel);
+          const accent = scheduleAccent(item.kind);
+          const liveStatus = fairProgramLiveStatus(
+            item,
+            asOf,
+            selectedDate,
+            nextStart,
+            dayClosesAt,
+          );
+          return (
+            <motion.li
+              layout
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              key={item.id}
+              className="relative grid grid-cols-[minmax(0,1fr)_2.75rem] gap-3 py-5 sm:py-6"
             >
-              {planned ? (
-                <Check className="h-4 w-4" aria-hidden />
-              ) : (
-                <Plus className="h-4 w-4" aria-hidden />
-              )}
-            </button>
-          </li>
-        );
-      })}
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <time
+                    className="text-[12px] font-extrabold leading-tight tabular-nums"
+                    style={{ color: accent }}
+                  >
+                    {item.timeLabel}
+                  </time>
+                  <span
+                    className="text-[11px] font-bold uppercase tracking-[0.07em]"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {scheduleKindLabel(item.kind)}
+                  </span>
+                  {liveStatus ? (
+                    <span
+                      data-fair-program-live-state={liveStatus.state}
+                      className="inline-flex min-h-6 items-center rounded-full px-2 text-[10px] font-extrabold uppercase tracking-[0.06em]"
+                      style={{
+                        color:
+                          liveStatus.state === "live"
+                            ? "var(--app-on-brand)"
+                            : "var(--app-warning-press)",
+                        background:
+                          liveStatus.state === "live"
+                            ? "var(--app-brand-2)"
+                            : "color-mix(in srgb, var(--app-amber) 20%, var(--app-bg-elevated-solid))",
+                      }}
+                    >
+                      {liveStatus.label}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-2 text-[21px] font-bold leading-[1.15] tracking-[-0.025em] sm:text-[24px]">
+                  {item.title}
+                </p>
+                {place ? (
+                  <p
+                    className="mt-1 text-[12px] font-semibold leading-snug"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {place}
+                  </p>
+                ) : null}
+                {item.detail ? (
+                  <p
+                    className="mt-1 line-clamp-2 text-[12px] leading-snug"
+                    style={{ color: "var(--app-ink-2)" }}
+                  >
+                    {item.detail}
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={(event) => onOpen(item.id, event.currentTarget)}
+                  className="tap-44 -mb-2 mt-0.5 inline-flex min-h-11 items-center gap-1 text-[12px] font-bold"
+                  style={{ color: accent }}
+                  aria-label={`Open details for ${item.title}`}
+                >
+                  Details
+                  <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </div>
+              <motion.button
+                type="button"
+                data-fair-plan-toggle={item.id}
+                aria-pressed={planned}
+                whileTap={{ scale: 0.85 }}
+                onClick={() => {
+                  haptic();
+                  onToggle(item, planned);
+                }}
+                className="tap-44 tactile tactile-interactive grid h-11 w-11 place-items-center self-start rounded-full transition motion-reduce:transition-none"
+                style={{
+                  background: planned
+                    ? "var(--app-bg-sunken)"
+                    : "var(--app-brand-tint-6)",
+                  color: planned ? "var(--app-ink-3)" : "var(--app-brand-press)",
+                }}
+                aria-label={
+                  planned
+                    ? `Remove ${item.title} from My Day`
+                    : `Add ${item.title} to My Day`
+                }
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={planned ? "check" : "plus"}
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.5, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex"
+                  >
+                    {planned ? (
+                      <Check className="h-4 w-4" aria-hidden />
+                    ) : (
+                      <Plus className="h-4 w-4" aria-hidden />
+                    )}
+                  </motion.span>
+                </AnimatePresence>
+              </motion.button>
+            </motion.li>
+          );
+        })}
+      </AnimatePresence>
     </ol>
   );
 }
@@ -1055,6 +1077,7 @@ export default function FairDayWorkspace({
   const [helpCategory, setHelpCategory] = useState<
     FairPracticalAnswer["category"] | null
   >(null);
+  const [dateSelectorOpen, setDateSelectorOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(
     data.initialPlan.selectedDayId?.replace(/^day-/, "") ??
       (validDates.has(data.initialDate) ? data.initialDate : (data.dates[0]?.date ?? "")),
@@ -2179,6 +2202,58 @@ export default function FairDayWorkspace({
             aria-labelledby="fair-now-heading"
             data-fair-mode-panel
           >
+            {grandstandSpotlightItem && (
+              <MagicCard
+                as="section"
+                aria-labelledby="fair-headliner-heading"
+                className="mb-6 overflow-hidden rounded-[var(--app-radius-xl)] border-l-4 p-4"
+                style={{
+                  borderColor: "var(--app-brand)",
+                  background:
+                    "color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated-solid))",
+                  boxShadow: "inset 0 1px 0 var(--app-hi), var(--app-elev-2), var(--app-edge)",
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-full relative overflow-hidden"
+                    style={{
+                      background:
+                        "color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated-solid))",
+                      color: "var(--app-brand)",
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-[var(--app-brand)]/10 animate-ping opacity-20 duration-3000" />
+                    <Star className="h-5 w-5 relative z-10" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <p
+                      className="text-[10.5px] font-bold uppercase tracking-[0.11em]"
+                      style={{ color: "var(--app-brand-press)" }}
+                    >
+                      Today&apos;s Grandstand Event
+                    </p>
+                    <h2
+                      id="fair-headliner-heading"
+                      className="mt-0.5 text-[17px] font-bold leading-tight tracking-[-0.02em]"
+                    >
+                      {grandstandSpotlightItem.title}
+                    </h2>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-col items-start gap-1.5 text-[14px] leading-relaxed">
+                  <span className="inline-flex rounded-sm bg-[var(--app-brand)]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--app-brand-press)]">
+                    {grandstandSpotlightItem.timeLabel}
+                  </span>
+                  {grandstandSpotlightItem.detail && (
+                    <p className="mt-0.5 text-[13px] text-[var(--app-ink)]/80 leading-snug">
+                      {grandstandSpotlightItem.detail}
+                    </p>
+                  )}
+                </div>
+              </MagicCard>
+            )}
+
             <section
               data-fair-at-a-glance
               aria-labelledby="fair-at-a-glance-heading"
@@ -2242,17 +2317,62 @@ export default function FairDayWorkspace({
                   </p> : null}
                 </div>
 
-                <label data-fair-plan-date className="w-full shrink-0">
-                  <span className="sr-only">Fair day in your plan</span>
-                  <select
-                    value={selectedDate}
-                    onChange={(event) => chooseFairDate(event.target.value)}
-                    aria-label="Fair day in your plan"
-                    className="h-11 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] px-2.5 text-[12px] font-semibold"
+                <div data-fair-plan-date className="w-full shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setDateSelectorOpen(true)}
+                    aria-label="Change Fair day"
+                    className="flex h-11 w-full items-center justify-between rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] px-3 text-[12px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
                     style={{
                       borderColor: "var(--app-control-border)",
                       color: "var(--app-ink)",
                     }}
+                  >
+                    <span>
+                      {data.dates.find(d => d.date === selectedDate)?.weekdayLabel}, Sep {data.dates.find(d => d.date === selectedDate)?.dayLabel}
+                      {(savedCountsByDate[selectedDate] ?? 0) > 0
+                        ? ` · ${savedCountsByDate[selectedDate]} saved`
+                        : ""}
+                    </span>
+                    <ChevronDown className="h-4 w-4 opacity-50" aria-hidden="true" />
+                  </button>
+                  <BottomDrawer
+                    open={dateSelectorOpen}
+                    onOpenChange={setDateSelectorOpen}
+                    title="Choose a day"
+                  >
+                    <div className="p-4 sm:p-6 pb-safe">
+                      <div className="flex flex-col gap-2">
+                        {data.dates.map((day) => {
+                          const isActive = selectedDate === day.date;
+                          const savedCount = savedCountsByDate[day.date] ?? 0;
+                          return (
+                            <button
+                              key={day.date}
+                              onClick={() => {
+                                chooseFairDate(day.date);
+                                setDateSelectorOpen(false);
+                              }}
+                              className={`flex items-center justify-between rounded-xl px-4 py-3.5 text-left transition-all active:scale-[0.98] ${isActive ? 'bg-[var(--app-brand-tint-6)] text-[var(--app-brand-press)] ring-1 ring-[var(--app-brand)]' : 'bg-[var(--app-bg-sunken)] text-[var(--app-ink)] hover:bg-[var(--app-bg-elevated)]'}`}
+                            >
+                              <span className="text-[15px] font-semibold">{day.weekdayLabel}, Sep {day.dayLabel}</span>
+                              <div className="flex items-center gap-2">
+                                {savedCount > 0 ? (
+                                  <span className={`text-[12px] font-bold ${isActive ? "opacity-100" : "opacity-60"}`}>{savedCount} saved</span>
+                                ) : null}
+                                {isActive && <Check className="h-4 w-4" />}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </BottomDrawer>
+                  <select
+                    className="sr-only"
+                    aria-label="Fair day in your plan"
+                    value={selectedDate}
+                    onChange={(e) => chooseFairDate(e.target.value)}
                   >
                     {data.dates.map((day) => (
                       <option key={day.date} value={day.date}>
@@ -2263,7 +2383,7 @@ export default function FairDayWorkspace({
                       </option>
                     ))}
                   </select>
-                </label>
+                </div>
               </div>
 
               <div
@@ -2377,7 +2497,7 @@ export default function FairDayWorkspace({
               </MagicCard>
             ) : null}
             <FairKeepGuide />
-            <FairUpNext onAction={() => chooseMode("find")} />
+            <FairUpNext asOf={partyAsOf} onAction={() => chooseMode("find")} />
 
             <section
               data-fair-now-portal
@@ -2471,57 +2591,6 @@ export default function FairDayWorkspace({
               </div>
             </section>
 
-            {grandstandSpotlightItem && (
-              <MagicCard
-                as="section"
-                aria-labelledby="fair-headliner-heading"
-                className="mt-4 overflow-hidden rounded-[var(--app-radius-xl)] border-l-4 p-4"
-                style={{
-                  borderColor: "var(--app-brand)",
-                  background:
-                    "color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated-solid))",
-                  boxShadow: "inset 0 1px 0 var(--app-hi), var(--app-elev-2), var(--app-edge)",
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  <span
-                    className="grid h-10 w-10 shrink-0 place-items-center rounded-full relative overflow-hidden"
-                    style={{
-                      background:
-                        "color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated-solid))",
-                      color: "var(--app-brand)",
-                    }}
-                  >
-                    <div className="absolute inset-0 bg-[var(--app-brand)]/10 animate-ping opacity-20 duration-3000" />
-                    <Star className="h-5 w-5 relative z-10" aria-hidden />
-                  </span>
-                  <div className="min-w-0">
-                    <p
-                      className="text-[10.5px] font-bold uppercase tracking-[0.11em]"
-                      style={{ color: "var(--app-brand-press)" }}
-                    >
-                      Today&apos;s Grandstand Event
-                    </p>
-                    <h2
-                      id="fair-headliner-heading"
-                      className="mt-0.5 text-[17px] font-bold leading-tight tracking-[-0.02em]"
-                    >
-                      {grandstandSpotlightItem.title}
-                    </h2>
-                  </div>
-                </div>
-                <div className="mt-3 flex flex-col items-start gap-1.5 text-[14px] leading-relaxed">
-                  <span className="inline-flex rounded-sm bg-[var(--app-brand)]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--app-brand-press)]">
-                    {grandstandSpotlightItem.timeLabel}
-                  </span>
-                  {grandstandSpotlightItem.detail && (
-                    <p className="mt-0.5 text-[13px] text-[var(--app-ink)]/80 leading-snug">
-                      {grandstandSpotlightItem.detail}
-                    </p>
-                  )}
-                </div>
-              </MagicCard>
-            )}
             {selectedAccessHighlight ? (
               <MagicCard
                 as="section"
@@ -2687,18 +2756,31 @@ export default function FairDayWorkspace({
                       aria-pressed={active}
                       data-fair-program-filter={filter.id}
                       onClick={() => {
+                        haptic();
                         setScheduleFilter(filter.id);
                       }}
-                      className={`tap-44 flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[1.25rem] border px-0 py-2 text-center text-[11px] font-bold leading-tight transition-all active:scale-95 min-[375px]:px-1 min-[375px]:text-[12px] sm:min-h-12 sm:flex-row sm:gap-2 sm:px-2 sm:text-[13px] ${active ? "z-10 shadow-lg scale-[1.02]" : "hover:scale-[1.01]"}`}
+                      className={`relative tap-44 flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[1.25rem] border px-0 py-2 text-center text-[11px] font-bold leading-tight transition-all active:scale-95 min-[375px]:px-1 min-[375px]:text-[12px] sm:min-h-12 sm:flex-row sm:gap-2 sm:px-2 sm:text-[13px] ${active ? "z-10 shadow-lg" : "hover:scale-[1.01]"}`}
                       style={{
                         borderColor: active ? accent : "var(--app-border)",
-                        background: active ? `linear-gradient(135deg, color-mix(in srgb, ${accent} 15%, var(--app-bg-elevated-solid)), color-mix(in srgb, ${accent} 5%, var(--app-bg-elevated-solid)))` : "var(--app-bg-elevated)",
+                        background: "var(--app-bg-elevated)",
                         color: "var(--app-ink)",
-                        boxShadow: active ? `inset 0 1px 0 var(--app-hi), inset 0 -3px 0 ${accent}, 0 8px 16px -4px color-mix(in srgb, ${accent} 40%, transparent)` : "var(--app-elev-1)",
                       }}
                     >
-                      <Icon className="h-4 w-4 shrink-0" style={{ color: accent }} aria-hidden />
-                      <span className="min-w-0 max-w-full [overflow-wrap:anywhere]">{filter.label}</span>
+                      {active && (
+                        <motion.div
+                          layoutId="activeFilterBg"
+                          className="absolute inset-0 rounded-[1.25rem]"
+                          style={{
+                            background: `linear-gradient(135deg, color-mix(in srgb, ${accent} 15%, var(--app-bg-elevated-solid)), color-mix(in srgb, ${accent} 5%, var(--app-bg-elevated-solid)))`,
+                            boxShadow: `inset 0 1px 0 var(--app-hi), inset 0 -3px 0 ${accent}, 0 8px 16px -4px color-mix(in srgb, ${accent} 40%, transparent)`,
+                          }}
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                        />
+                      )}
+                      <span className="relative z-10 flex flex-col items-center gap-1.5 sm:flex-row sm:gap-2">
+                        <Icon className="h-4 w-4 shrink-0" style={{ color: accent }} aria-hidden />
+                        <span className="min-w-0 max-w-full [overflow-wrap:anywhere]">{filter.label}</span>
+                      </span>
                     </button>
                   );
                 })}
