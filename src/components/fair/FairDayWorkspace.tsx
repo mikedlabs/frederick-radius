@@ -2369,7 +2369,7 @@ export default function FairDayWorkspace({
                     </div>
                   </BottomDrawer>
                   <select
-                    className="hidden"
+                    className="sr-only"
                     aria-label="Fair day in your plan"
                     value={selectedDate}
                     onChange={(e) => chooseFairDate(e.target.value)}
