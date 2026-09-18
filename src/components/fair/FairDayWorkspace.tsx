@@ -2396,7 +2396,7 @@ export default function FairDayWorkspace({
                 <FairShareButton />
               </div>
               <div
-                className="mt-3 flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-2.5"
+                className="mt-3 flex flex-col sm:grid sm:grid-cols-3 sm:gap-2.5"
                 data-fair-wallet-stack
               >
                 {[
@@ -2434,7 +2434,7 @@ export default function FairDayWorkspace({
                     type="button"
                     onClick={action}
                     data-fair-wallet-card={index + 1}
-                    className="fair-portal-action tap-44 group relative flex min-h-[100px] items-center gap-3 rounded-[var(--app-radius-xl)] px-3.5 pb-4 pt-3 text-left active:scale-[0.985] focus-visible:z-[var(--z-nav)] sm:ml-0 sm:mt-0 sm:min-h-[150px] sm:flex-col sm:items-start sm:justify-between sm:p-4.5 z-10"
+                    className={`fair-portal-action tap-44 group relative flex min-h-[100px] items-center gap-3 rounded-[var(--app-radius-xl)] px-3.5 pb-4 pt-3 text-left active:scale-[0.985] focus-visible:z-[var(--z-nav)] sm:ml-0 sm:mt-0 sm:min-h-[150px] sm:flex-col sm:items-start sm:justify-between sm:p-4.5 ${index === 0 ? "z-10" : index === 1 ? "z-20 -mt-2 ml-1" : "z-30 -mt-2 ml-2"}`}
                     style={{
                       background: `linear-gradient(118deg, color-mix(in srgb, ${accent} 7%, transparent), transparent 42%), ${wash}`,
                       boxShadow: `inset 0 3px 0 ${accent}, var(--app-hi), var(--app-lip), var(--app-deck-edge), var(--app-elev-2)`,
