@@ -8,6 +8,20 @@ const segment = path.join(
 );
 
 describe("event detail transient-failure contract", () => {
+  it("uses the range-aware listing lifecycle for the page and event sheet", () => {
+    const page = readFileSync(path.join(segment, "page.tsx"), "utf8");
+    const sheet = readFileSync(
+      path.join(process.cwd(), "src/components/event/EventSheet.tsx"),
+      "utf8",
+    );
+    expect(page).toContain('eventStatus === "scheduled" && isEventListingEnded(event, new Date())');
+    expect(sheet).toContain('status === "scheduled" && !isEventListingEnded(event, openedAt)');
+    // Retain the separate schedule caution rather than implying a multi-day
+    // listing is continuously open because its dates are still current.
+    expect(page).toContain("eventTimeCaution(event)");
+    expect(sheet).toContain("eventTimeCaution(event)");
+  });
+
   it("keeps timeouts distinct from true 404s and offers recovery", () => {
     const boundary = readFileSync(path.join(segment, "error.tsx"), "utf8");
     const page = readFileSync(path.join(segment, "page.tsx"), "utf8");

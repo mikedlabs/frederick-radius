@@ -75,7 +75,7 @@ import { communicationAccessLabels } from "@/lib/events/communication-access";
 import { loadEventNearbyPlaces } from "@/lib/loaders/eventNearbyPlaces";
 import { loadRelatedEventSections } from "@/lib/loaders/eventRelated";
 import { eventHasTrustworthyEnd } from "@/lib/events/format";
-import { isEventEnded } from "@/lib/eventWhenLabel";
+import { isEventListingEnded } from "@/lib/eventHorizon";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { nearestEventParking } from "@/lib/events/parking";
 import { eventDecisionLocation, eventTimeCaution } from "@/lib/events/decision-facts";
@@ -345,12 +345,12 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // shared link from June should still resolve in August. But resolved-from-
   // archive must not mean rendered-as-upcoming: this page used to give a
   // months-past event the full forward treatment (Tickets as the vermilion
-  // primary, Add to calendar, no statement that it happened). isEventEnded is
-  // the shared gate every listing surface uses, including its multi-day and
-  // capped-runtime rules. A cancelled or postponed event keeps its own louder
+  // primary, Add to calendar, no statement that it happened). The listing
+  // gate preserves current date ranges without treating them as continuous
+  // sessions. A cancelled or postponed event keeps its own louder
   // treatment; ended-ness only speaks for events that actually ran.
   const hasEnded =
-    eventStatus === "scheduled" && isEventEnded(event, new Date());
+    eventStatus === "scheduled" && isEventListingEnded(event, new Date());
   const eventVisual = eventCardVisual(event);
   // Server component: request-time clock is correct here, not impure render.
   // eslint-disable-next-line react-hooks/purity

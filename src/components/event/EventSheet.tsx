@@ -16,7 +16,8 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { eventDateBlock } from "@/lib/events/format";
 import { eventDecisionLocation, eventDecisionTime, eventTimeCaution } from "@/lib/events/decision-facts";
 import { eventHasPreciseLocation } from "@/lib/events/geo-confidence";
-import { eventHasTrustworthyEnd, isDateOnlyEventAnchor, isEventEnded } from "@/lib/eventWhenLabel";
+import { eventHasTrustworthyEnd, isDateOnlyEventAnchor } from "@/lib/eventWhenLabel";
+import { isEventListingEnded } from "@/lib/eventHorizon";
 import { nearestEventParking, eventParkingSummary } from "@/lib/events/parking";
 import { withBrowseReturnTo, browseReturnFromLocation } from "@/lib/browse-return";
 import { statusLabel } from "@/lib/event-status";
@@ -125,7 +126,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
     "Online option";
   const attendanceLabel = eventDecisionLocation(event);
   const [openedAt] = useState(() => new Date());
-  const canAttend = status === "scheduled" && !isEventEnded(event, openedAt);
+  const canAttend = status === "scheduled" && !isEventListingEnded(event, openedAt);
   const timeCaution = eventTimeCaution(event);
   const sourceHref = isLikelyEventActionUrl(event.source_url) ? event.source_url : null;
   // Directions are a promise of a real doorstep: only offer them when the

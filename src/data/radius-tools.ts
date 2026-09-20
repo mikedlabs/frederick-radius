@@ -490,6 +490,15 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         keywords: ["calendar", "month view", "events calendar"],
       },
       {
+        id: "great-frederick-fair-2026",
+        label: "2026 Fair guide",
+        description: "Review the 2026 Great Frederick Fair program, visitor information, and featured vendor details.",
+        href: "/moments/great-frederick-fair-2026",
+        icon: "calendar",
+        tone: "brand",
+        keywords: ["great frederick fair", "frederick fair", "fair guide", "fair map", "fair vendors"],
+      },
+      {
         id: "check-a-date",
         label: "Check a date",
         description: "Review listed events before you schedule something.",
