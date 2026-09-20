@@ -1,4 +1,48 @@
 {
+  "white-rabbit-gastropub": {
+    "blurb": "White Rabbit Gastropub serves Detroit-style pizza at 18 Market Space in downtown Frederick. Its menu includes In Crust We Trust pepperoni pizza, and its bar pours beer, cider and wine from rotating taps.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.whiterabbitgastropub.com/readme",
+      "fetched_at": "2026-09-20T00:00:00.000Z"
+    },
+    "reviewed_at": "2026-09-20T00:00:00.000Z",
+    "reviewer_note": "Reviewed the official About page, homepage and linked ordering page on 2026-09-20. The homepage names In Crust We Trust; About supports the permanent downtown address, Detroit-style pizza, rotating taps and weekend brunch alias. https://www.whiterabbitgastropub.com/onlineordering explicitly offers pickup and delivery. These sources also support the override roles, search aliases, amenities and known-for terms. This is the permanent restaurant, not a Fair vendor location; no booth, Fair hours, current opening status or food-allergy claim is inferred."
+  },
+  "attaboy-beer-frederick": {
+    "blurb": "Attaboy Beer is a brewery on Sagner Avenue with indoor seating, a heated garage and a beer garden. Its visit page lists food trucks and welcomes children until 8pm; leashed dogs are allowed in the garden and garage, but not the taproom.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.attaboybeer.com/visit-us",
+      "fetched_at": "2026-09-20T00:00:00.000Z"
+    },
+    "reviewed_at": "2026-09-20T00:00:00.000Z",
+    "reviewer_note": "Reviewed the official Visit page on 2026-09-20 for the address, seating, food trucks, parking and child/dog policies. The current Visit page's no-dogs-in-taproom rule takes precedence over conflicting older FAQ copy. The distinct Barrel House venue is not merged. These facts support the matching override aliases, amenities and known-for terms. No specific food truck, current opening status, free parking or table availability is promised."
+  },
+  "baker-park-frederick": {
+    "blurb": "Baker Park has a playground, picnic tables, tennis courts and walking and biking paths. The city's facility listing identifies restrooms in the bandshell and portable toilets near the tennis courts.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.cityoffrederickmd.gov/facilities/Facility/Details/78",
+      "fetched_at": "2026-09-20T00:00:00.000Z"
+    },
+    "reviewed_at": "2026-09-20T00:00:00.000Z",
+    "reviewer_note": "Reviewed the City of Frederick Baker Park Room 1 facility listing on 2026-09-20. It supports the described amenities, search aliases and known-for terms. Restroom locations are attributed to the city, with no promise of current restroom availability, accessible routes, court reservations or pool operating season."
+  },
+  "c-burr-artz-public-library-frederick": {
+    "blurb": "C. Burr Artz Public Library offers study and meeting rooms, wireless internet, printing and scanning in downtown Frederick. Its Maryland Room holds local history and genealogy resources focused on Frederick County and Maryland.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.fcpl.org/branches-hours/c-burr-artz-public-library",
+      "fetched_at": "2026-09-20T00:00:00.000Z"
+    },
+    "reviewed_at": "2026-09-20T00:00:00.000Z",
+    "reviewer_note": "Reviewed the FCPL branch page and https://www.fcpl.org/library-services/maryland-room on 2026-09-20. The branch page lists wireless internet, study/meeting rooms, curbside pickup and print/scan/copy/fax services. The Maryland Room page supports local history and genealogy. These facts support the override aliases, amenities and known-for terms. The older unverified makerspace claim is replaced; no room availability, free printing, passport walk-in availability or current-hours claim is inferred."
+  },
   "beans-in-the-belfry-brunswick": {
     "blurb": "Beans in the Belfry serves coffee, tea and meals in a converted church built in 1910. The Brunswick cafe has indoor seating and a children's play corner.",
     "status": "approved",

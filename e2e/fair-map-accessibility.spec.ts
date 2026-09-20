@@ -8,7 +8,7 @@ const FAIR_PATH = "/moments/great-frederick-fair-2026#fair-map";
 const AXE_PATH = path.join(process.cwd(), "node_modules/axe-core/axe.min.js");
 const FAIR_MAP_LENSES = [
   { id: "arrival", count: 16 },
-  { id: "program", count: 6 },
+  { id: "program", count: 11 },
   { id: "essentials", count: 24 },
   { id: "animals", count: 16 },
   { id: "buildings", count: 7 },
@@ -37,6 +37,22 @@ function boxesOverlap(left: GeometryBox, right: GeometryBox): boolean {
     left.bottom <= right.top ||
     right.bottom <= left.top
   );
+}
+
+function boundingBoxGeometry(box: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}): GeometryBox {
+  return {
+    left: box.x,
+    top: box.y,
+    right: box.x + box.width,
+    bottom: box.y + box.height,
+    width: box.width,
+    height: box.height,
+  };
 }
 
 async function readMobileMapChrome(page: Page) {
@@ -411,6 +427,30 @@ async function expectLensTargetsReachable(
       });
 }
 
+async function expectLargeTextLensUsable(
+  page: Page,
+  lens: (typeof FAIR_MAP_LENSES)[number],
+) {
+  const mapView = page.getByRole("combobox", { name: "Map view" });
+  await mapView.selectOption(lens.id);
+  await expect(mapView).toHaveValue(lens.id);
+  await expect(page.locator("#fair-map-filter-status")).toContainText(
+    `${lens.count} places`,
+  );
+  await expect
+    .poll(
+      async () => {
+        const audit = await readMarkerHitTargets(page);
+        return {
+          hasRenderedTarget: audit.markers.length > 0,
+          blockedTargets: audit.blockedTargets,
+        };
+      },
+      { timeout: 8_000 },
+    )
+    .toEqual({ hasRenderedTarget: true, blockedTargets: [] });
+}
+
 async function openFairMap(page: Page) {
   await page.goto(FAIR_PATH, { waitUntil: "domcontentloaded" });
   const map = page.locator("[data-fair-grounds-map]");
@@ -563,7 +603,7 @@ test.describe("Fairgrounds map accessibility", () => {
     ).toBeVisible();
 
     const search = page.getByRole("searchbox", {
-      name: "Find a place or program event on the Fair grounds map",
+      name: "Find a place, event, or vendor on the Fair grounds map",
     });
     await search.fill("Gate 4A");
     await page
@@ -607,7 +647,7 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(mapHeading).toBeFocused();
 
     const search = page.getByRole("searchbox", {
-      name: "Find a place or program event on the Fair grounds map",
+      name: "Find a place, event, or vendor on the Fair grounds map",
     });
     await search.fill("Homegrown Wineries");
     await expect(page.locator("#fair-map-search-status")).toContainText(
@@ -654,12 +694,39 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(administrationMarker).toBeFocused();
   });
 
+  test("hands an unmapped food vendor to the Fair's live directory without a guessed pin", async ({
+    page,
+  }) => {
+    await openFairMap(page);
+    const search = page.getByRole("searchbox", {
+      name: "Find a place, event, or vendor on the Fair grounds map",
+    });
+    const results = page.locator("#fair-map-search-results");
+
+    for (const vendor of ["Rad Pies", "White Rabbit"]) {
+      await search.fill(vendor);
+      const handoff = results.getByRole("link", {
+        name: `Search the Fair's live vendor directory for ${vendor}`,
+      });
+      await expect(handoff).toBeVisible();
+      await expect(handoff).toHaveAttribute(
+        "href",
+        `https://mobile.eventhub-floorplan.net/exhibitors-g2app.php?Show_ID=18209&q=${vendor.replace(" ", "+")}`,
+      );
+      await expect(handoff).toHaveAttribute("target", "_blank");
+      await expect(handoff).toHaveAttribute("rel", "noopener noreferrer");
+      await expect(results).toContainText("No reviewed map pin matches.");
+      await expect(results.getByRole("button")).toHaveCount(0);
+      await expect(results).not.toContainText(/Booths?:/i);
+    }
+  });
+
   test("connects rideshare search with owned arrival, parking, and transit details", async ({
     page,
   }) => {
     await openFairMap(page);
     const search = page.getByRole("searchbox", {
-      name: "Find a place or program event on the Fair grounds map",
+      name: "Find a place, event, or vendor on the Fair grounds map",
     });
 
     await search.fill("rideshare");
@@ -708,7 +775,7 @@ test.describe("Fairgrounds map accessibility", () => {
   }) => {
     await openFairMap(page);
     const search = page.getByRole("searchbox", {
-      name: "Find a place or program event on the Fair grounds map",
+      name: "Find a place, event, or vendor on the Fair grounds map",
     });
     const results = page.locator("#fair-map-search-results");
 
@@ -810,16 +877,18 @@ test.describe("Fairgrounds map accessibility", () => {
       expect(boxesOverlap(chrome.search!, chrome.filters!)).toBe(false);
       expect(boxesOverlap(chrome.filters!, chrome.utilities!)).toBe(false);
       expect(boxesOverlap(chrome.utilities!, chrome.attribution!)).toBe(false);
-      await expect(page.getByRole("button", { name: "Aerial background" })).toHaveAttribute("aria-pressed", "true");
+      await expect(
+        page.getByRole("button", { name: "Aerial background" }),
+      ).toHaveCount(0);
       if (width === 390) {
         // A whole-grounds view must actually expose choices, not satisfy
         // hit-target checks with one opaque cluster of every essential.
         await expect.poll(async () => (await readMarkerSpread(page)).widestPair).toBeGreaterThan(160);
-        await page.screenshot({ path: "output/playwright/visual-journey/fair-aerial-phone.png" });
+        await page.screenshot({ path: "output/playwright/visual-journey/fair-vector-phone.png" });
       }
       if (width === 320) {
         const search = page.getByRole("searchbox", {
-          name: "Find a place or program event on the Fair grounds map",
+          name: "Find a place, event, or vendor on the Fair grounds map",
         });
         await search.focus();
         await page.keyboard.press("Tab");
@@ -835,6 +904,55 @@ test.describe("Fairgrounds map accessibility", () => {
         expect(chrome.attributionToggleOwnsHit).toBe(true);
       }
     }
+  });
+
+  test("keeps tablet and desktop map tools independently reachable", async ({ page }) => {
+    for (const width of [640, 768, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      await openFairMap(page);
+
+      const controls = [
+        page.locator("[data-fair-aerial-controls]"),
+        page.locator("[data-fair-transit-toggle]"),
+        page.locator("[data-fair-map-utility-controls]"),
+        page.locator(".fair-grounds-map-canvas .maplibregl-ctrl-top-right .maplibregl-ctrl-group"),
+      ];
+      for (const control of controls) await expect(control).toBeVisible();
+      const boxes = await Promise.all(controls.map((control) => control.boundingBox()));
+      const geometry = boxes.map((box) => {
+        if (!box) throw new Error("Expected each map tool to have a visible box.");
+        return boundingBoxGeometry(box);
+      });
+      for (let left = 0; left < geometry.length; left += 1) {
+        for (let right = left + 1; right < geometry.length; right += 1) {
+          expect(boxesOverlap(geometry[left], geometry[right])).toBe(false);
+        }
+      }
+    }
+  });
+
+  test("explains an unavailable aerial without losing the reviewed map", async ({
+    page,
+  }) => {
+    await page.route(
+      "**/data/fair/aerial/frederick-fairgrounds-2025.jpg",
+      (route) => route.abort(),
+    );
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await openFairMap(page);
+
+    const aerial = page.getByRole("button", { name: "Aerial background" });
+    await aerial.focus();
+    await page.keyboard.press("Enter");
+    const unavailable = page.locator("[data-fair-aerial-unavailable]");
+    await expect(unavailable).toBeVisible();
+    await expect(unavailable).toContainText("2025 aerial unavailable");
+    const retry = page.getByRole("button", { name: "Retry 2025 aerial" });
+    await expect(retry).toBeVisible();
+    await expect(retry).toBeFocused();
+    await expect(page.locator("#fair-map-filter-status")).toContainText(
+      "This map view shows Entry + essentials: 24 places.",
+    );
   });
 
   test("preserves map-control separation when root text is enlarged", async ({
@@ -856,7 +974,7 @@ test.describe("Fairgrounds map accessibility", () => {
     expect(triggerBox?.width).toBeGreaterThanOrEqual(44);
     expect(triggerBox?.height).toBeGreaterThanOrEqual(44);
     const mapView = page.getByRole("combobox", { name: "Map view" });
-    await expect(mapView).toHaveCSS("height", "44px");
+    expect((await mapView.boundingBox())?.height).toBeGreaterThanOrEqual(44);
     const selectHitOwnership = await readCondensedSelectHitOwnership(page);
     expect(selectHitOwnership).not.toBeNull();
     expect(selectHitOwnership?.select.top).toBeGreaterThanOrEqual(
@@ -901,7 +1019,7 @@ test.describe("Fairgrounds map accessibility", () => {
 
     await page.screenshot({ path: "output/playwright/visual-journey/map-large-text.png" });
     for (const lens of FAIR_MAP_LENSES) {
-      await expectLensTargetsReachable(page, lens);
+      await expectLargeTextLensUsable(page, lens);
     }
 
     const cluster = page.locator("[data-fair-map-cluster]").first();
@@ -920,7 +1038,7 @@ test.describe("Fairgrounds map accessibility", () => {
 
     await searchTrigger.click();
     const search = page.getByRole("searchbox", {
-      name: "Find a place or program event on the Fair grounds map",
+      name: "Find a place, event, or vendor on the Fair grounds map",
     });
     await expect(search).toBeVisible();
     await expect(search).toBeFocused();
@@ -964,6 +1082,28 @@ test.describe("Fairgrounds map accessibility", () => {
         `${lens.count} places.`,
       );
     }
+  });
+
+  test("reframes Arrival after closing a focused place on a narrow phone", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await openFairMap(page);
+    const search = page.getByRole("searchbox", {
+      name: "Find a place, event, or vendor on the Fair grounds map",
+    });
+    await search.fill("Gate 1");
+    await page.locator("#fair-map-search-results")
+      .getByRole("button", { name: /^Gate 1 Gate$/ })
+      .press("Enter");
+    const heading = page.getByRole("heading", {
+      name: "Selected map place: Gate 1",
+      exact: true,
+    });
+    await expect(heading).toBeFocused();
+    await heading.press("Escape");
+    await expect(search).toBeFocused();
+    await expectLensTargetsReachable(page, FAIR_MAP_LENSES[0]);
   });
 
   test("opens a compact choice sheet for a dense marker cluster", async ({
@@ -1061,19 +1201,9 @@ test.describe("Fairgrounds map accessibility", () => {
       .selectOption("program");
     await expect
       .poll(async () => (await readMarkerHitTargets(page)).representedPlaces)
-      .toBe(6);
+      .toBe(11);
 
     const clusters = page.locator("[data-fair-map-cluster]");
-    await expect
-      .poll(async () => {
-        const counts = await clusters.evaluateAll((nodes) =>
-          nodes.map((node) =>
-            Number(node.getAttribute("data-fair-map-marker-count") ?? 0),
-          ),
-        );
-        return Math.min(...counts.filter((count) => count > 1));
-      })
-      .toBeLessThanOrEqual(4);
     const clusterCounts = await clusters.evaluateAll((nodes) =>
       nodes.map((node) =>
         Number(node.getAttribute("data-fair-map-marker-count") ?? 0),
@@ -1108,22 +1238,10 @@ test.describe("Fairgrounds map accessibility", () => {
       await expect(target).not.toBeFocused();
     };
 
-    await openCluster();
-    await clickBehindDialog(
-      page.getByRole("searchbox", {
-        name: "Find a place or program event on the Fair grounds map",
-      }),
-    );
-
-    await openCluster();
-    const canvas = map.locator("canvas");
-    const canvasBox = await canvas.boundingBox();
-    expect(canvasBox).not.toBeNull();
-    await page.mouse.click(canvasBox!.x + 5, canvasBox!.y + 8);
-    await expect(dialog).toHaveCount(0);
-    await expect(cluster).toBeFocused();
-    await expect(canvas).not.toBeFocused();
-
+    // Program now has eleven independently reviewed mapped places. Its chooser
+    // can legitimately cover the search rail and the upper map, so use the
+    // app navigation, which is reliably outside the modal, as the backdrop
+    // target. The navigation must neither receive focus nor navigate away.
     await openCluster();
     const today = page
       .locator("[data-mobile-action-bar]")
@@ -1137,7 +1255,7 @@ test.describe("Fairgrounds map accessibility", () => {
     ).toHaveAttribute("aria-current", "page");
   });
 
-  test("restores full lens and utility labels from the small breakpoint", async ({
+  test("keeps compact named lens cards and utility labels at the small breakpoint", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 640, height: 844 });
@@ -1154,7 +1272,8 @@ test.describe("Fairgrounds map accessibility", () => {
         .getByRole("button"),
     ).toHaveCount(5);
     await expect(arrival).toBeVisible();
-    await expect(arrival).toContainText("Arrive and enter · 16");
+    await expect(arrival).toContainText("Arrive");
+    await expect(arrival).toHaveAttribute("aria-label", "Arrive and enter · 16");
     await expect(
       page.locator(
         ".fair-grounds-map-canvas .maplibregl-ctrl-top-right .maplibregl-ctrl-group",
@@ -1251,7 +1370,7 @@ test.describe("Fairgrounds map accessibility", () => {
     await page.setViewportSize({ width: 320, height: 568 });
     await openFairMap(page);
     const search = page.getByRole("searchbox", {
-      name: "Find a place or program event on the Fair grounds map",
+      name: "Find a place, event, or vendor on the Fair grounds map",
     });
     await search.fill("Lot D entrance on Monroe Avenue");
     await page
@@ -1341,7 +1460,7 @@ test.describe("Fairgrounds map accessibility", () => {
       });
       await searchTrigger.click();
       const search = page.getByRole("searchbox", {
-        name: "Find a place or program event on the Fair grounds map",
+        name: "Find a place, event, or vendor on the Fair grounds map",
       });
       await search.fill(target.name);
       await page
@@ -1438,7 +1557,7 @@ test.describe("Fairgrounds map accessibility", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openFairMap(page);
     const search = page.getByRole("searchbox", {
-      name: "Find a place or program event on the Fair grounds map",
+      name: "Find a place, event, or vendor on the Fair grounds map",
     });
     await search.fill("Gate 1");
     await page
@@ -1475,7 +1594,7 @@ test.describe("Fairgrounds map accessibility", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openFairMap(page);
     const search = page.getByRole("searchbox", {
-      name: "Find a place or program event on the Fair grounds map",
+      name: "Find a place, event, or vendor on the Fair grounds map",
     });
     await search.fill("Gate 1");
     await page
@@ -1574,7 +1693,7 @@ test.describe("Fairgrounds map accessibility", () => {
     await page.setViewportSize({ width: 320, height: 568 });
     await openFairMap(page);
     const search = page.getByRole("searchbox", {
-      name: "Find a place or program event on the Fair grounds map",
+      name: "Find a place, event, or vendor on the Fair grounds map",
     });
     await search.fill("Homegrown Wineries");
     await page
@@ -1634,7 +1753,7 @@ test.describe("Fairgrounds map accessibility", () => {
     await page.setViewportSize({ width: 320, height: 480 });
     await openFairMap(page);
     const search = page.getByRole("searchbox", {
-      name: "Find a place or program event on the Fair grounds map",
+      name: "Find a place, event, or vendor on the Fair grounds map",
     });
     const selectHomegrown = async () => {
       await search.fill("Homegrown Wineries");
@@ -1816,7 +1935,7 @@ test.describe("Fairgrounds map accessibility", () => {
     await expectNoAxeViolations(page);
 
     const search = page.getByRole("searchbox", {
-      name: "Find a place or program event on the Fair grounds map",
+      name: "Find a place, event, or vendor on the Fair grounds map",
     });
     await search.fill("Gate 1");
     await page

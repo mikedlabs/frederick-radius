@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:74d7bdcc72fea807c789a9386fc8911cc36cf3e047915613ed0b4902a40f6aa6",
+  "data_version": "sha256:32ef5e0adf593e99b500eb8ea914bec7dac7c73449905f731b895dc9a757680e",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-09-09T04:33:44.823Z",
+      "promoted_at": "2026-09-20T07:51:39.050Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -48,9 +48,9 @@
         },
         {
           "path": "src/data/places-overrides.json",
-          "sha256": "db95733a9cf344faa8d9a1515351b71fb78fbf5ec0fdff71082180a545df8b96",
+          "sha256": "337672864978bc2bc938830a856f1d414a7fa96b6e0d350a1563f9067dd79780",
           "records": 4,
-          "bytes": 39193
+          "bytes": 40634
         },
         {
           "path": "src/data/place-status-overrides.json",
@@ -72,9 +72,9 @@
         },
         {
           "path": "src/data/known-for.json",
-          "sha256": "913122ea6565d4d26e1d7cf3639bd47e8c39c1f203c20b1dc1884a482e7462f8",
-          "records": 5,
-          "bytes": 1255
+          "sha256": "07dfd53b18afcd7b90c9b6b1b22e30571ef8183a45aac68ace38eb645a11b028",
+          "records": 9,
+          "bytes": 2460
         },
         {
           "path": "src/data/photo-suppress.json",
@@ -108,9 +108,9 @@
         },
         {
           "path": "src/data/descriptions.json",
-          "sha256": "1764ca877b1555f2cb811d04e71316c97da9ac6fe7b89b26d9cfb0aeb2c90add",
-          "records": 96,
-          "bytes": 50850
+          "sha256": "fe1ab92825b3d83eb62d668dd1a3e86b97280c8f9af941ca7b0201bbdd28ee5f",
+          "records": 100,
+          "bytes": 54819
         },
         {
           "path": "src/data/categories.ts",
@@ -210,9 +210,9 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "c17288642b0127d84189fe8f415ee217ff98b7850909f3035d7c07529964287b",
+          "sha256": "a5057ce2309d811fba13c7ea26caef41cdc41355d55ab619cba8fb5d294d8ac0",
           "records": 1570,
-          "bytes": 2261417
+          "bytes": 2263866
         },
         {
           "path": "src/data/places-client-hours.json",

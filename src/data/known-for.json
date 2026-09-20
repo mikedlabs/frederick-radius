@@ -1,4 +1,28 @@
 {
+  "white-rabbit-gastropub": {
+    "known_for": ["Detroit-style pizza", "In Crust We Trust pepperoni pizza", "rotating beer, cider and wine taps"],
+    "source": "reviewed_business_website",
+    "source_url": "https://www.whiterabbitgastropub.com/readme",
+    "reviewed_at": "2026-09-20T00:00:00.000Z"
+  },
+  "attaboy-beer-frederick": {
+    "known_for": ["beer garden", "food truck schedule", "dog-friendly garden and garage"],
+    "source": "reviewed_business_website",
+    "source_url": "https://www.attaboybeer.com/visit-us",
+    "reviewed_at": "2026-09-20T00:00:00.000Z"
+  },
+  "baker-park-frederick": {
+    "known_for": ["playground and picnic tables", "tennis courts", "walking and biking paths"],
+    "source": "reviewed_official_source",
+    "source_url": "https://www.cityoffrederickmd.gov/facilities/Facility/Details/78",
+    "reviewed_at": "2026-09-20T00:00:00.000Z"
+  },
+  "c-burr-artz-public-library-frederick": {
+    "known_for": ["Maryland Room local history collection", "study rooms", "printing and scanning"],
+    "source": "reviewed_official_source",
+    "source_url": "https://www.fcpl.org/branches-hours/c-burr-artz-public-library",
+    "reviewed_at": "2026-09-20T00:00:00.000Z"
+  },
   "dancing-bear-toys-and-games": {
     "known_for": [
       "puzzle games",

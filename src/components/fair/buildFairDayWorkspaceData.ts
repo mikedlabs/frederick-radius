@@ -7,6 +7,7 @@ import {
   fairTransitTravelSummary,
   greatFrederickFair2026TransitReview,
 } from "@/data/fair/great-frederick-fair-2026-transit";
+import { GREAT_FREDERICK_FAIR_2026_VENDOR_DIRECTORY } from "@/lib/fair/vendor-finder";
 
 import type {
   FairDayAccessHighlight,
@@ -20,8 +21,6 @@ import { reviewedGrandstandPresentation } from "./reviewedGrandstandProgram";
 const FAIR_TIME_ZONE = "America/New_York";
 const ETIX_WALLET_HELP_URL =
   "https://support.etix.com/general-info/what-is-etix-wallet-and-how-do-i-use-it";
-const EVENTHUB_GUIDE_URL =
-  "https://mobile.eventhub-floorplan.net/?Show_ID=18209";
 
 function moneyLabel(amountCents: number): string {
   if (amountCents === 0) return "Free";
@@ -544,7 +543,7 @@ export function buildFairDayWorkspaceData(
       label: "Official external EventHub guide",
       detail:
         "The Fair links to EventHub for its 2026 vendor floorplan and exhibitor directory. Radius opens it as an external guide and does not treat that floorplan as reviewed map geometry.",
-      url: EVENTHUB_GUIDE_URL,
+      url: GREAT_FREDERICK_FAIR_2026_VENDOR_DIRECTORY.guideUrl,
     },
     scheduleItems,
     initialPlan: createFairPlan({

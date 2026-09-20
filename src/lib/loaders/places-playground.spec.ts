@@ -19,7 +19,7 @@ describe("playground category evidence", () => {
     expect(slugs).toContain("middletown-park-middletown");
     expect(slugs).toContain("urbana-district-park-new-market");
     expect(slugs).toContain("utica-park-walkersville");
-    expect(slugs).not.toContain("baker-park-frederick");
+    expect(slugs).toContain("baker-park-frederick");
   });
 
   it("keeps downtown playground results proximity-monotonic outside close-call windows", () => {

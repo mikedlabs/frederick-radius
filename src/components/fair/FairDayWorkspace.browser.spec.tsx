@@ -52,6 +52,14 @@ describe("FairDayWorkspace app journey", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-18T20:59:00Z"));
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      (callback: FrameRequestCallback) =>
+        window.setTimeout(() => callback(Date.now()), 0),
+    );
+    vi.stubGlobal("cancelAnimationFrame", (handle: number) =>
+      window.clearTimeout(handle),
+    );
     feedbackMocks.haptic.mockReset();
     feedbackMocks.toast.mockReset();
     feedbackMocks.toastSuccess.mockReset();
@@ -352,6 +360,37 @@ describe("FairDayWorkspace app journey", () => {
 
     await openMode("Map");
     expect(container.querySelector<HTMLAnchorElement>(`a[href="${data.externalGuide.url}"]`)).not.toBeNull();
+  });
+
+  it("hands an unmatched Fair search to the live official vendor directory", async () => {
+    await renderFair();
+    await openFullProgram();
+
+    const search = container.querySelector<HTMLInputElement>(
+      "#fair-unified-search",
+    );
+    if (!search) throw new Error("Missing Fair program search.");
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    if (!valueSetter) throw new Error("Missing native input value setter.");
+    await act(async () => {
+      valueSetter.call(search, "Rad Pies");
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    const handoff = container.querySelector<HTMLAnchorElement>(
+      "[data-fair-program-vendor-result]",
+    );
+    expect(handoff?.href).toBe(
+      "https://mobile.eventhub-floorplan.net/exhibitors-g2app.php?Show_ID=18209&q=Rad+Pies",
+    );
+    expect(handoff?.target).toBe("_blank");
+    expect(handoff?.rel).toBe("noopener noreferrer");
+    expect(container.textContent).toContain(
+      "Radius does not guess a temporary booth pin or route.",
+    );
   });
 
   it("shows the full day immediately with one consistent category system", async () => {

@@ -40,6 +40,8 @@ import LiveGooglePlaceContext, { type LiveGooglePlaceData } from "@/components/p
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
 import { browseReturnFromLocation, normalizeBrowseReturnTo, withBrowseReturnTo } from "@/lib/browse-return";
 import PlaceCommunicationAccess from "@/components/place/PlaceCommunicationAccess";
+import PlanFromPlaceLink from "@/components/plan/PlanFromPlaceLink";
+import { isDestinationCategory, isRecommendable } from "@/lib/relevance";
 import {
   decisionContextFromPath,
   trackDecision,
@@ -745,6 +747,12 @@ function PlaceSheetContent({
             else behind a calm disclosure. Provider colors no longer flatten
             every capability into an equally loud pill. */}
         <PlaceSheetActions groups={actionGroups} entityId={place.slug} />
+
+        {isDestinationCategory(place.category) && isRecommendable(place) && place.is_operational !== "closed_permanently" && (
+          <div className="mt-3">
+            <PlanFromPlaceLink slug={place.slug} name={place.name} />
+          </div>
+        )}
 
         {/* Footer — link to full page + share */}
         <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs" style={{ borderColor: "var(--app-border)" }}>

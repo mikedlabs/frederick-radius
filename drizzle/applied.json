@@ -258,8 +258,9 @@
     {
       "file": "0045_mapbox_search_sessions.sql",
       "sha256": "f846910df2644224aba1e0875496981a56b1ce12191112cb6b9506ff0a72876f",
-      "production_state": "unverified",
-      "note": "Recorded from the repository; production has not been checked."
+      "production_state": "migration_recorded",
+      "migration_record": "mapbox_search_sessions",
+      "note": "Supabase migration history records mapbox_search_sessions at version 20260920075151. Live verification confirmed the session-token primary key, all six validated lifecycle/hash/count constraints, RLS enabled, and no PUBLIC/anon/authenticated table grants."
     }
   ]
 }

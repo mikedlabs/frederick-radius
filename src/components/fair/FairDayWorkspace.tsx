@@ -44,7 +44,6 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
 
 import RippleMark from "@/components/brand/RippleMark";
 import { Button } from "@/components/ui/Button";
@@ -67,6 +66,7 @@ import {
   buildFairPlanStatus,
   type FairPlanStatus,
 } from "@/lib/fair/plan-status";
+import { fairVendorDirectoryHref } from "@/lib/fair/vendor-finder";
 import type { FairPracticalAnswer } from "@/lib/fair/practical-answers";
 import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback-ui";
 import { haptic } from "@/lib/haptics";
@@ -89,8 +89,6 @@ import FairPracticalAnswers from "./FairPracticalAnswers";
 import FairShareButton from "./FairShareButton";
 import FairKeepGuide from "./FairKeepGuide";
 import FairGroundsMap from "./FairGroundsMap";
-import { FairPhotoMap } from "./FairPhotoMap";
-import { DEFAULT_FAIR_PHOTO_MARKERS } from "@/data/fair/fair-photo-map-layout";
 import FairGrandstandSpotlight from "./FairGrandstandSpotlight";
 import FairPhotoExplorer from "./FairPhotoExplorer";
 import FairTravelPanel from "./FairTravelPanel";
@@ -1039,7 +1037,6 @@ export default function FairDayWorkspace({
   const [selectedProgramDetailId, setSelectedProgramDetailId] = useState<
     string | null
   >(null);
-  const [showPhotoMap, setShowPhotoMap] = useState(false);
   const [mapFocusRequest, setMapFocusRequest] = useState<{
     programItemId: string;
     requestId: number;
@@ -1580,18 +1577,6 @@ export default function FairDayWorkspace({
     );
   }, [discoveryItems]);
 
-  const photoMapMarkers = useMemo(() => {
-    return DEFAULT_FAIR_PHOTO_MARKERS.map((marker) => {
-      if (marker.id === "grandstand" && grandstandSpotlightItem) {
-        return {
-          ...marker,
-          events: [{ time: grandstandSpotlightItem.timeLabel, title: grandstandSpotlightItem.title }],
-        };
-      }
-      return marker;
-    });
-  }, [grandstandSpotlightItem]);
-
   const matchingSchedule = useMemo(
     () =>
       sortFairProgramItems(
@@ -1802,6 +1787,14 @@ export default function FairDayWorkspace({
         }
         .fair-day-workspace [data-fair-mode-panel] {
           animation: fair-mode-panel-enter var(--app-dur-med) var(--app-ease-out) both;
+        }
+        /* Keep the no-WebGL recovery actions clear of the fixed Fair navigation
+           on short mobile screens. The map canvas supplies the remaining room. */
+        @media (max-width: 639px) and (max-height: 640px) {
+          .fair-day-workspace [data-fair-map-canvas-fallback] {
+            min-height: 0;
+            padding-top: 1rem;
+          }
         }
         .fair-day-workspace[data-fair-route-ready="false"] > [data-fair-route-target]:target ~ header,
         .fair-day-workspace[data-fair-route-ready="false"] > [data-fair-route-target]:target ~ [data-fair-plan-status],
@@ -2799,11 +2792,45 @@ export default function FairDayWorkspace({
                 <p className="text-[17px] font-semibold">
                   No program event matches that search.
                 </p>
-                <p className="mt-2 text-[14px]" style={{ color: "var(--app-ink-3)" }}>
-                  {contextualAnswers.length > 0
-                    ? "A reviewed Fair answer is shown above."
-                    : "Try another word, category, or Fair day."}
-                </p>
+                {normalizedQuery.length >= 2 ? (
+                  <>
+                    <p
+                      className="mx-auto mt-2 max-w-md text-[14px]"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      Looking for a temporary food or vendor stop? The Fair&apos;s
+                      live directory can check that separately.
+                    </p>
+                    <a
+                      href={fairVendorDirectoryHref(query)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-fair-program-vendor-result
+                      aria-label={`Search the Fair's live vendor directory for ${query.trim()}`}
+                      className="tap-44 mt-3 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[13px] font-bold"
+                      style={{
+                        color: "var(--app-ink-inverse)",
+                        background: "var(--app-cool)",
+                      }}
+                    >
+                      Search live Fair vendors
+                      <ExternalLink className="h-4 w-4" aria-hidden />
+                    </a>
+                    <p
+                      className="mx-auto mt-2 max-w-md text-[12px] leading-relaxed"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      Opens the Fair&apos;s current booth listing. Radius does not
+                      guess a temporary booth pin or route.
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-2 text-[14px]" style={{ color: "var(--app-ink-3)" }}>
+                    {contextualAnswers.length > 0
+                      ? "A reviewed Fair answer is shown above."
+                      : "Try another word, category, or Fair day."}
+                  </p>
+                )}
               </div>
             )}
 
@@ -2815,73 +2842,28 @@ export default function FairDayWorkspace({
             id={MODE_PANEL_IDS.map}
             aria-labelledby="fair-grounds-map-heading"
           >
-            <div className="flex justify-center p-4">
-              <div className="relative flex rounded-full bg-white/60 p-1 shadow-sm ring-1 ring-black/5 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (showPhotoMap) {
-                      setShowPhotoMap(false);
-                      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(50);
-                    }
-                  }}
-                  className={`relative z-10 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${!showPhotoMap ? "text-white" : "text-[var(--app-ink-2)] hover:text-[var(--app-ink)]"}`}
-                >
-                  Interactive Map
-                  {!showPhotoMap && (
-                    <motion.div
-                      layoutId="mapToggleTab"
-                      className="absolute inset-0 -z-10 rounded-full bg-[var(--app-brand)] shadow-sm"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!showPhotoMap) {
-                      setShowPhotoMap(true);
-                      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(50);
-                    }
-                  }}
-                  className={`relative z-10 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${showPhotoMap ? "text-white" : "text-[var(--app-ink-2)] hover:text-[var(--app-ink)]"}`}
-                >
-                  2026 Photo Map
-                  {showPhotoMap && (
-                    <motion.div
-                      layoutId="mapToggleTab"
-                      className="absolute inset-0 -z-10 rounded-full bg-[var(--app-brand)] shadow-sm"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {showPhotoMap ? (
-              <div className="px-4 pb-4">
-                <FairPhotoMap
-                  imageUrl="/fair/map_2026.png"
-                  altText="2026 Fairgrounds Map"
-                  markers={photoMapMarkers}
-                  onMarkerClick={(id) => console.log("Clicked marker", id)}
-                />
-              </div>
-            ) : (
-              <FairGroundsMap
-                savedStops={mappedPlanStops}
-                focusRequest={mapFocusRequest}
-                onFocusRequestHandled={handleMapFocusRequest}
-                programItems={discoveryItems.map((item) => ({
-                  id: item.id,
-                  title: item.title,
-                  timeLabel: item.timeLabel,
-                  placeLabel: item.placeLabel,
-                }))}
-                onBrowseProgram={() => chooseMode("find")}
-                onOpenProgramItem={openProgramDetail}
-              />
-            )}
+            <FairGroundsMap
+              savedStops={mappedPlanStops}
+              focusRequest={mapFocusRequest}
+              onFocusRequestHandled={handleMapFocusRequest}
+              programItems={discoveryItems.map((item) => ({
+                id: item.id,
+                title: item.title,
+                timeLabel: item.timeLabel,
+                placeLabel: item.placeLabel,
+              }))}
+              onBrowseProgram={() => chooseMode("find")}
+              onOpenProgramItem={openProgramDetail}
+              onToggleProgramItem={(itemId) => {
+                const item = scheduleById.get(itemId);
+                if (item) {
+                  toggleFairScheduleItem(
+                    item,
+                    plan.steps.some((step) => step.scheduleItemId === itemId),
+                  );
+                }
+              }}
+            />
             <div className="mx-4 mt-4 border-t pt-3 lg:mx-0" style={{ borderColor: "var(--app-border)" }}>
               <a
                 href={data.externalGuide.url}
@@ -3463,4 +3445,3 @@ export default function FairDayWorkspace({
     </article>
   );
 }
-

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Layer, Source } from "react-map-gl/maplibre";
 import provenance from "../../../public/data/fair/aerial/provenance.json";
 
@@ -9,8 +9,12 @@ export const FAIR_AERIAL_ATTRIBUTION = 'Aerial: <a href="https://www.arcgis.com/
 export type FairAerialStatus = "loading" | "ready" | "unavailable";
 
 /** The clear map remains usable while the optional photograph loads. */
-export function useFairAerialStatus(enabled: boolean): FairAerialStatus {
+export function useFairAerialStatus(enabled: boolean): {
+  status: FairAerialStatus;
+  retry: () => void;
+} {
   const [status, setStatus] = useState<FairAerialStatus>("loading");
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!enabled) return;
     const image = new Image();
@@ -33,8 +37,12 @@ export function useFairAerialStatus(enabled: boolean): FairAerialStatus {
       image.onload = null;
       image.onerror = null;
     };
-  }, [enabled]);
-  return status;
+  }, [attempt, enabled]);
+  const retry = useCallback(() => {
+    setStatus("loading");
+    setAttempt((current) => current + 1);
+  }, []);
+  return { status, retry };
 }
 
 export default function FairAerialLayer({ beforeId }: { beforeId?: string }) {

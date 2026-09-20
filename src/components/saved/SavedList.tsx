@@ -845,7 +845,7 @@ export default function SavedList({
   const listPlanHref = useMemo(
     () =>
       effectiveList && scopedSlugs.length >= 2
-        ? `/plan?p=${planTokenFromSaved(scopedSlugs.slice(0, 6))}`
+        ? withBrowseReturnTo(`/plan?p=${planTokenFromSaved(scopedSlugs.slice(0, 6))}`, "/my-radius")
         : null,
     [effectiveList, scopedSlugs],
   );
@@ -962,7 +962,7 @@ export default function SavedList({
     ? (byTown.get(dominantTown[0]) ?? []).slice(0, 6).map((p) => p.slug)
     : [];
   const planHref =
-    planClusterSlugs.length >= 2 ? `/plan?p=${planTokenFromSaved(planClusterSlugs)}` : "/plan";
+    withBrowseReturnTo(planClusterSlugs.length >= 2 ? `/plan?p=${planTokenFromSaved(planClusterSlugs)}` : "/plan", "/my-radius");
 
   // Masthead standfirst: the counts as supporting detail, never a headline.
   // Places + towns only — events would overflow 390px, and the colophon's

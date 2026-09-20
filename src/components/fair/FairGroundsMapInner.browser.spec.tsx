@@ -58,6 +58,7 @@ vi.mock("react-map-gl/maplibre", () => ({
           y: latitude,
         }),
         resize: vi.fn(),
+        setPadding: vi.fn(),
       }),
       getZoom: () => 16.25,
     }));
@@ -338,23 +339,25 @@ describe("FairGroundsMapInner map failure recovery", () => {
       view.value = "essentials";
       view.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    const listButtons = Array.from(
-      container.querySelectorAll<HTMLButtonElement>("button"),
-    );
-    const gateOne = listButtons.find((button) =>
-      button.textContent?.includes("Gate 1"),
-    );
-    const gateTwo = listButtons.find((button) =>
-      button.textContent?.includes("Gate 2"),
-    );
-    if (!gateOne || !gateTwo) {
+    const findReviewedGateControl = (name: string) => {
+      const placeListButtons = Array.from(
+        container.querySelectorAll<HTMLButtonElement>(
+          "#fair-map-place-list button",
+        ),
+      );
+      const gate = placeListButtons.find((button) =>
+        button.textContent?.includes(name),
+      );
+      if (gate) return gate;
       throw new Error(
-        `Missing reviewed gate controls: ${listButtons
+        `Missing reviewed ${name} control: ${placeListButtons
           .map((button) => button.textContent?.trim())
           .filter(Boolean)
           .join(" | ")}`,
       );
-    }
+    };
+
+    const gateOne = findReviewedGateControl("Gate 1");
 
     const historyLength = window.history.length;
     await act(async () => gateOne.click());
@@ -365,7 +368,10 @@ describe("FairGroundsMapInner map failure recovery", () => {
     expect(window.history.length).toBe(historyLength + 1);
     const selectionState = window.history.state;
 
-    await act(async () => gateTwo.click());
+    // Re-query after selection: the navigator panel is intentionally replaced
+    // with selected-place actions, so a broad, pre-selection button reference
+    // can be reconciled to a different control.
+    await act(async () => findReviewedGateControl("Gate 2").click());
     expect(new URLSearchParams(window.location.search).get("meet")).toBe(
       "osm-node-14099608926",
     );
@@ -798,10 +804,12 @@ describe("FairGroundsMapInner map failure recovery", () => {
     async (mapStartDelay) => {
       const handled = vi.fn();
       const openProgramItem = vi.fn();
+      const toggleProgramItem = vi.fn();
       await renderMap({
         focusRequest: { programItemId: "program-daughtry", requestId: 7 },
         onFocusRequestHandled: handled,
         onOpenProgramItem: openProgramItem,
+        onToggleProgramItem: toggleProgramItem,
         programItems: [
           {
             id: "program-daughtry",
@@ -843,6 +851,14 @@ describe("FairGroundsMapInner map failure recovery", () => {
       );
       expect(handled).toHaveBeenCalledOnce();
       expect(handled).toHaveBeenCalledWith(7);
+
+      const saveButton = container.querySelector<HTMLButtonElement>(
+        '[aria-label="Add Daughtry to My Day"]',
+      );
+      expect(saveButton?.getAttribute("aria-pressed")).toBe("false");
+      await act(async () => saveButton?.click());
+      expect(toggleProgramItem).toHaveBeenCalledExactlyOnceWith("program-daughtry");
+      expect(openProgramItem).not.toHaveBeenCalled();
 
       const programButton = Array.from(
         container.querySelectorAll<HTMLButtonElement>("button"),

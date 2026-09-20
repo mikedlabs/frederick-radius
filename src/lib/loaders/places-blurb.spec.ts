@@ -7,9 +7,10 @@ describe("place blurb boundary", () => {
     expect(bakerPark).toBeDefined();
 
     const rendered = decoratePlace(bakerPark!);
-    expect(rendered.short_blurb).toBe(
-      "Baker Park is a 44-acre downtown park with a band shell, lake, tennis, and the Joseph D. Baker carillon tower.",
-    );
+    expect(rendered.short_blurb).toMatch(/^Baker Park has a playground,/);
+    expect(rendered.short_blurb).toMatch(/[.!?]$/);
+    expect(rendered.description_reviewed).toBe(true);
+    expect(rendered.description_source).toBe("official_source");
   });
 
   it("never exposes a subjectless lower-case remainder", () => {

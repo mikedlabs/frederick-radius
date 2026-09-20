@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -40,6 +41,9 @@ import type {
   PlanSlotCategory,
 } from "@/lib/integrations/planner";
 import { useFollowedSlugs } from "@/hooks/useFollows";
+import { updatedPlanHref } from "@/lib/plan-journey";
+import { isDestinationCategory, isRecommendable } from "@/lib/relevance";
+import { withBrowseReturnTo } from "@/lib/browse-return";
 import {
   addStop,
   generatePlan,
@@ -86,11 +90,14 @@ export default function PlanBuilder({
   initialPlan,
   initialInputs,
   shared = false,
+  fromPlace,
 }: {
   initialPlan?: Plan;
   initialInputs?: Partial<PlanInputs>;
   shared?: boolean;
+  fromPlace?: string;
 }) {
+  const searchParams = useSearchParams();
   const [audience, setAudience] = useState<PlanInputs["audience"]>(initialInputs?.audience ?? "date");
   const [vibe, setVibe] = useState<PlanInputs["vibe"]>(initialInputs?.vibe ?? "easy");
   const [hours, setHours] = useState<PlanInputs["duration_hours"]>(initialInputs?.duration_hours ?? 3);
@@ -103,6 +110,10 @@ export default function PlanBuilder({
   const [near, setNear] = useState<{ lng: number; lat: number } | null>(null);
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [plan, setPlan] = useState<Plan | null>(initialPlan ?? null);
+  const [planMunicipality, setPlanMunicipality] = useState(initialInputs?.municipality);
+  const [planAreaLabel, setPlanAreaLabel] = useState(() => initialInputs?.municipality
+    ? MUNICIPALITIES.find((town) => town.slug === initialInputs.municipality)?.name ?? "Frederick County"
+    : "Frederick County");
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -110,7 +121,7 @@ export default function PlanBuilder({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const resultRef = useRef<HTMLElement>(null);
 
-  const [pinned, setPinned] = useState<Set<string>>(new Set());
+  const [pinned, setPinned] = useState<Set<string>>(() => new Set(initialInputs?.anchor_slug ? [initialInputs.anchor_slug] : []));
   const [swapIdx, setSwapIdx] = useState<number | null>(null);
   const [alts, setAlts] = useState<PlanAlternative[] | null>(null);
   const [swapCats, setSwapCats] = useState<PlanSlotCategory[] | null>(null);
@@ -194,6 +205,9 @@ export default function PlanBuilder({
       vibe,
       duration_hours: hours,
       start_at: startAt,
+      ...(initialInputs?.anchor_slug && plan?.stops.some((stop) => stop.place?.slug === initialInputs.anchor_slug)
+        ? { anchor_slug: initialInputs.anchor_slug }
+        : {}),
       ...(selectedTown ? {
         municipality: selectedTown.slug,
         start_near: selectedTown.centroid,
@@ -213,6 +227,8 @@ export default function PlanBuilder({
         const result = await generatePlan(inputs);
         if (!result) throw new Error("No plan returned");
         setPlan(result);
+        setPlanMunicipality(inputs.municipality);
+        setPlanAreaLabel(areaLabel);
         setDrawerOpen(false);
         setStatusMsg(result.stops.length > 0
           ? `Built a ${result.stops.length}-stop plan for ${areaLabel}.`
@@ -302,10 +318,16 @@ export default function PlanBuilder({
   };
 
   const inPlan = new Set((plan?.stops ?? []).flatMap((stop) => stop.place ? [stop.place.slug] : []));
+  const planReturnTo = plan
+    ? updatedPlanHref(new URL(`/plan?${searchParams}`, "https://frederick-radius.invalid"), plan.share)
+    : undefined;
   const savedCandidates = [...savedSlugs]
     .filter((slug) => !inPlan.has(slug))
     .map((slug) => savedPlaces.get(slug))
-    .filter((place): place is PlaceCardData => Boolean(place?.geom));
+    .filter((place): place is PlaceCardData => Boolean(place?.geom))
+    .filter((place) => (!planMunicipality || place.municipality === planMunicipality)
+      && isDestinationCategory(place.category) && isRecommendable(place)
+      && place.is_operational !== "closed_permanently");
 
   const addFromSaved = (slug: string) => {
     if (!plan) return;
@@ -335,7 +357,7 @@ export default function PlanBuilder({
     setPlan(null);
     setStatusMsg(null);
     setErrorMsg(null);
-    window.history.replaceState(null, "", "/plan");
+    window.history.replaceState(null, "", updatedPlanHref(new URL(window.location.href)));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -389,9 +411,9 @@ export default function PlanBuilder({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="eyebrow" style={{ color: "var(--app-brand)" }}>
-                  {shared ? "Shared plan · " : ""}{planDateLabel(plan)} · {areaLabel}
+                  {shared ? "Shared plan · " : ""}{planDateLabel(plan)} · {planAreaLabel}
                 </p>
-                {shared ? (
+                {initialPlan ? (
                   <h1 className="mt-1 font-serif text-[28px] font-semibold leading-[1.08] tracking-tight" style={{ color: "var(--app-ink)" }}>
                     {plan.title}
                   </h1>
@@ -411,6 +433,12 @@ export default function PlanBuilder({
                 Adjust
               </button>
             </div>
+
+            {fromPlace && plan.stops.some((stop) => stop.place?.slug === initialInputs?.anchor_slug) && (
+              <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                {fromPlace} is your first stop. Add saved places below or adjust the plan.
+              </p>
+            )}
 
             {plan.summary && (
               <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
@@ -490,6 +518,7 @@ export default function PlanBuilder({
                   <Stop
                     key={`${stop.order}-${stop.place?.slug ?? stop.event?.slug ?? index}`}
                     stop={stop}
+                    returnTo={planReturnTo}
                     index={index}
                     pending={pending}
                     busy={busy}
@@ -875,6 +904,7 @@ function PickerRow({
 
 function Stop({
   stop,
+  returnTo,
   index,
   pending,
   busy,
@@ -884,6 +914,7 @@ function Stop({
   onRemove,
 }: {
   stop: Plan["stops"][number];
+  returnTo?: string;
   index: number;
   pending: boolean;
   busy: number | null;
@@ -892,7 +923,7 @@ function Stop({
   onPin?: () => void;
   onRemove: () => void;
 }) {
-  const href = stop.place ? `/places/${stop.place.slug}` : stop.event ? `/events/${stop.event.slug}` : "#";
+  const href = withBrowseReturnTo(stop.place ? `/places/${stop.place.slug}` : stop.event ? `/events/${stop.event.slug}` : "#", returnTo);
   const name = stop.place?.name ?? stop.event?.title ?? "Stop";
   const where = stop.place ? placeLocationLabel(stop.place.address, stop.place.city) : stop.event?.venue_name;
   const geom = stop.place?.geom ?? stop.event?.geom;
@@ -1184,7 +1215,7 @@ function routeUrlForPlan(plan: Plan): string {
 
 function replacePlanUrl(token: string): void {
   if (typeof window === "undefined") return;
-  window.history.replaceState(null, "", `/plan?p=${encodeURIComponent(token)}`);
+  window.history.replaceState(null, "", updatedPlanHref(new URL(window.location.href), token));
 }
 
 function placeLocationLabel(address?: string, city?: string): string {
