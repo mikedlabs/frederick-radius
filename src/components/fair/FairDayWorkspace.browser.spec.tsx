@@ -942,7 +942,7 @@ describe("FairDayWorkspace app journey", () => {
     ).toHaveLength(1);
   });
 
-  it("promotes the Sunday sensory window into the selected-day journey", async () => {
+  it("places the selected-day highlights immediately below the dates", async () => {
     await renderFair();
 
     expect(container.querySelector("[data-fair-access-highlight]")).toBeNull();
@@ -957,6 +957,17 @@ describe("FairDayWorkspace app journey", () => {
     expect(highlight?.textContent).toContain(
       "whole-ground low-sensory period",
     );
+
+    const dates = container.querySelector('[role="tablist"][aria-label="Select Fair day"]');
+    const highlights = container.querySelector("[data-fair-day-highlights]");
+    const grandstand = container.querySelector("[data-fair-grandstand-highlight]");
+    expect(dates?.nextElementSibling).toBe(highlights);
+    expect(highlights?.firstElementChild).toBe(grandstand);
+    expect(grandstand?.nextElementSibling).toBe(highlight);
+    expect(highlights?.nextElementSibling?.querySelector("#fair-at-a-glance-heading"))
+      .not.toBeNull();
+    expect(container.querySelectorAll("[data-fair-grandstand-highlight]")).toHaveLength(1);
+    expect(container.querySelectorAll("[data-fair-access-highlight]")).toHaveLength(1);
 
     await act(async () =>
       buttonWithText(container, "Read more in Q&A").click(),

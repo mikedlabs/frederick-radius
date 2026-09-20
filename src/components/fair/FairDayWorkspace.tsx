@@ -2216,6 +2216,119 @@ export default function FairDayWorkspace({
                 })}
               </div>
 
+              <div data-fair-day-highlights className="mb-4 space-y-3">
+                {grandstandSpotlightItem && (
+                  <MagicCard
+                    as="section"
+                    data-fair-grandstand-highlight
+                    aria-labelledby="fair-headliner-heading"
+                    className="overflow-hidden rounded-[var(--app-radius-xl)] border-l-4 p-4"
+                    style={{
+                      borderColor: "var(--app-brand)",
+                      background:
+                        "color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated-solid))",
+                      boxShadow: "inset 0 1px 0 var(--app-hi), var(--app-elev-2), var(--app-edge)",
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span
+                        className="grid h-10 w-10 shrink-0 place-items-center rounded-full relative overflow-hidden"
+                        style={{
+                          background:
+                            "color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated-solid))",
+                          color: "var(--app-brand)",
+                        }}
+                      >
+                        <div className="absolute inset-0 bg-[var(--app-brand)]/10 animate-ping opacity-20 duration-3000" />
+                        <Star className="h-5 w-5 relative z-10" aria-hidden />
+                      </span>
+                      <div className="min-w-0">
+                        <p
+                          className="text-[10.5px] font-bold uppercase tracking-[0.11em]"
+                          style={{ color: "var(--app-brand-press)" }}
+                        >
+                          Today&apos;s Grandstand Event
+                        </p>
+                        <h2
+                          id="fair-headliner-heading"
+                          className="mt-0.5 text-[17px] font-bold leading-tight tracking-[-0.02em]"
+                        >
+                          {grandstandSpotlightItem.title}
+                        </h2>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-col items-start gap-1.5 text-[14px] leading-relaxed">
+                      <span className="inline-flex rounded-sm bg-[var(--app-brand)]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--app-brand-press)]">
+                        {grandstandSpotlightItem.timeLabel}
+                      </span>
+                      {grandstandSpotlightItem.detail && (
+                        <p className="mt-0.5 text-[13px] text-[var(--app-ink)]/80 leading-snug">
+                          {grandstandSpotlightItem.detail}
+                        </p>
+                      )}
+                    </div>
+                  </MagicCard>
+                )}
+                {selectedAccessHighlight ? (
+                  <MagicCard
+                    as="section"
+                    data-fair-access-highlight
+                    aria-labelledby="fair-access-highlight-heading"
+                    className="overflow-hidden rounded-[var(--app-radius-xl)] border-l-4 p-4"
+                    style={{
+                      borderColor: "var(--app-cool)",
+                      background:
+                        "color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated-solid))",
+                      boxShadow: "inset 0 1px 0 var(--app-hi), var(--app-elev-2), var(--app-edge)",
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span
+                        className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+                        style={{
+                          background:
+                            "color-mix(in srgb, var(--app-cool) 13%, var(--app-bg-elevated-solid))",
+                          color: "var(--app-cool)",
+                        }}
+                      >
+                        <Volume1 className="h-5 w-5" aria-hidden />
+                      </span>
+                      <div className="min-w-0">
+                        <p
+                          className="text-[10.5px] font-bold uppercase tracking-[0.11em]"
+                          style={{ color: "var(--app-cool)" }}
+                        >
+                          Sunday access highlight
+                        </p>
+                        <h2
+                          id="fair-access-highlight-heading"
+                          className="mt-0.5 text-[17px] font-bold leading-tight tracking-[-0.02em]"
+                        >
+                          {selectedAccessHighlight.title}
+                        </h2>
+                      </div>
+                    </div>
+                    <p
+                      className="mt-2 text-[14px] leading-relaxed"
+                      style={{ color: "var(--app-ink-2)" }}
+                    >
+                      {selectedAccessHighlight.detail}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHelpAnswerId(selectedAccessHighlight.answerId);
+                        setHelpOpen(true);
+                      }}
+                      className="tap-44 mt-3 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold underline underline-offset-4 outline-none hover:opacity-80 focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--app-cool)]"
+                      style={{ color: "var(--app-cool)" }}
+                    >
+                      Read more in Q&A
+                    </button>
+                  </MagicCard>
+                ) : null}
+              </div>
+
               <div className="grid grid-cols-[minmax(0,1fr)_8.5rem] items-center gap-3">
                 <div className="min-w-0">
                   <h2
@@ -2463,116 +2576,6 @@ export default function FairDayWorkspace({
                 ))}
               </div>
             </section>
-
-            {grandstandSpotlightItem && (
-              <MagicCard
-                as="section"
-                aria-labelledby="fair-headliner-heading"
-                className="mt-4 overflow-hidden rounded-[var(--app-radius-xl)] border-l-4 p-4"
-                style={{
-                  borderColor: "var(--app-brand)",
-                  background:
-                    "color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated-solid))",
-                  boxShadow: "inset 0 1px 0 var(--app-hi), var(--app-elev-2), var(--app-edge)",
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  <span
-                    className="grid h-10 w-10 shrink-0 place-items-center rounded-full relative overflow-hidden"
-                    style={{
-                      background:
-                        "color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated-solid))",
-                      color: "var(--app-brand)",
-                    }}
-                  >
-                    <div className="absolute inset-0 bg-[var(--app-brand)]/10 animate-ping opacity-20 duration-3000" />
-                    <Star className="h-5 w-5 relative z-10" aria-hidden />
-                  </span>
-                  <div className="min-w-0">
-                    <p
-                      className="text-[10.5px] font-bold uppercase tracking-[0.11em]"
-                      style={{ color: "var(--app-brand-press)" }}
-                    >
-                      Today&apos;s Grandstand Event
-                    </p>
-                    <h2
-                      id="fair-headliner-heading"
-                      className="mt-0.5 text-[17px] font-bold leading-tight tracking-[-0.02em]"
-                    >
-                      {grandstandSpotlightItem.title}
-                    </h2>
-                  </div>
-                </div>
-                <div className="mt-3 flex flex-col items-start gap-1.5 text-[14px] leading-relaxed">
-                  <span className="inline-flex rounded-sm bg-[var(--app-brand)]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--app-brand-press)]">
-                    {grandstandSpotlightItem.timeLabel}
-                  </span>
-                  {grandstandSpotlightItem.detail && (
-                    <p className="mt-0.5 text-[13px] text-[var(--app-ink)]/80 leading-snug">
-                      {grandstandSpotlightItem.detail}
-                    </p>
-                  )}
-                </div>
-              </MagicCard>
-            )}
-            {selectedAccessHighlight ? (
-              <MagicCard
-                as="section"
-                data-fair-access-highlight
-                aria-labelledby="fair-access-highlight-heading"
-                className="mt-4 overflow-hidden rounded-[var(--app-radius-xl)] border-l-4 p-4"
-                style={{
-                  borderColor: "var(--app-cool)",
-                  background:
-                    "color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated-solid))",
-                  boxShadow: "inset 0 1px 0 var(--app-hi), var(--app-elev-2), var(--app-edge)",
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  <span
-                    className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
-                    style={{
-                      background:
-                        "color-mix(in srgb, var(--app-cool) 13%, var(--app-bg-elevated-solid))",
-                      color: "var(--app-cool)",
-                    }}
-                  >
-                    <Volume1 className="h-5 w-5" aria-hidden />
-                  </span>
-                  <div className="min-w-0">
-                    <p
-                      className="text-[10.5px] font-bold uppercase tracking-[0.11em]"
-                      style={{ color: "var(--app-cool)" }}
-                    >
-                      Sunday access highlight
-                    </p>
-                    <h2
-                      id="fair-access-highlight-heading"
-                      className="mt-0.5 text-[17px] font-bold leading-tight tracking-[-0.02em]"
-                    >
-                      {selectedAccessHighlight.title}
-                    </h2>
-                  </div>
-                </div>
-                <p
-                  className="mt-2 text-[14px] leading-relaxed"
-                  style={{ color: "var(--app-ink-2)" }}
-                >
-                  {selectedAccessHighlight.detail}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHelpAnswerId(selectedAccessHighlight.answerId);
-                    setHelpOpen(true);
-                  }}
-                  className="tap-44 mt-3 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold underline underline-offset-4 outline-none hover:opacity-80 focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--app-cool)]"
-                  style={{ color: "var(--app-cool)" }}
-                >
-                  Read more in Q&A
-                </button>
-              </MagicCard>
-            ) : null}
 
             <details className="mt-5 border-t pt-2" style={{ borderColor: "var(--app-border)" }}>
               <summary className="tap-44 flex min-h-11 cursor-pointer items-center justify-between gap-3 text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
