@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bookmark, BookmarkCheck, Loader2, X } from "lucide-react";
 import { useIsFollowed, useToggleFollow, useFollowedSlugs } from "@/hooks/useFollows";
 import { useMounted } from "@/hooks/useSaved";
@@ -63,6 +63,7 @@ export default function MyRadiusButton({
   const { authed } = useFollowedSlugs();
   const toggle = useToggleFollow(slug, "place_detail");
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [hover, setHover] = useState(false);
   const [optimisticFollowed, setOptimisticFollowed] = useState<boolean | null>(null);
   const renderedFollowed = optimisticFollowed ?? isFollowed;
@@ -93,7 +94,8 @@ export default function MyRadiusButton({
   }
 
   async function onClick() {
-    if (busy) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     const wasFollowed = renderedFollowed;
     const returnState = currentReturnBridgeState();
     const modalOpen = Boolean(
@@ -111,9 +113,10 @@ export default function MyRadiusButton({
     try {
       // One code path with the sheet's SaveButton: the toggle itself is
       // auth-aware (localStorage when anonymous, optimistic DB write when
-      // signed in), so the tap always succeeds instantly. Anonymous saves
+      // signed in). Anonymous saves
       // get a quiet sync upsell in the toast, never a login detour.
       const nowFollowed = await toggle();
+      if (nowFollowed === wasFollowed) throw new Error("Save state did not change");
       setOptimisticFollowed(nowFollowed);
       haptic(nowFollowed ? "medium" : "light");
       if (nowFollowed) {
@@ -130,18 +133,41 @@ export default function MyRadiusButton({
           duration: offerKeepAction ? 7000 : undefined,
           action: offerKeepAction
             ? { label: "Keep handy", onClick: openReturnBridge }
-            : { label: "Undo", onClick: () => void toggle() },
+            : { label: "Undo", onClick: () => void undo(nowFollowed) },
           cancel: offerKeepAction
-            ? { label: "Undo", onClick: () => void toggle() }
+            ? { label: "Undo", onClick: () => void undo(nowFollowed) }
             : undefined,
         });
       } else {
         toast(`Removed from Saved · ${name}`, {
-          action: { label: "Undo", onClick: () => void toggle() },
+          action: { label: "Undo", onClick: () => void undo(nowFollowed) },
         });
       }
+    } catch {
+      toast.error(wasFollowed ? "Could not remove from Saved" : "Could not save this place", {
+        description: "Your saved list has not changed. Please try again.",
+      });
+    } finally {
+      setOptimisticFollowed(null);
+      setBusy(false);
+      busyRef.current = false;
+    }
+  }
+
+  async function undo(wasFollowed: boolean) {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      const nextFollowed = await toggle();
+      if (nextFollowed === wasFollowed) throw new Error("Save state did not change");
+    } catch {
+      toast.error("Could not undo this change", {
+        description: "Your saved list has not changed. Please try again.",
+      });
     } finally {
       setBusy(false);
+      busyRef.current = false;
     }
   }
 

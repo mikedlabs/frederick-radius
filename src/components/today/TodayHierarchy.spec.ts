@@ -22,15 +22,16 @@ describe("Today decision hierarchy", () => {
     expect(eventClose).toBeGreaterThan(placeClose);
   });
 
-  it("puts weather before Find and the deeper place lead and event program", () => {
+  it("puts Find before weather and the deeper place lead and event program", () => {
     const weather = renderedPage.indexOf("</SkyHero>");
     const lead = renderedPage.indexOf("{decisionLead}");
     const find = renderedPage.indexOf("<TodayAsk embedded");
     const events = renderedPage.indexOf("{whatsOn}");
 
     expect(weather).toBeGreaterThan(-1);
-    expect(find).toBeGreaterThan(weather);
-    expect(lead).toBeGreaterThan(find);
+    expect(find).toBeGreaterThan(-1);
+    expect(find).toBeLessThan(weather);
+    expect(lead).toBeGreaterThan(weather);
     expect(events).toBeGreaterThan(lead);
   });
 
@@ -52,14 +53,16 @@ describe("Today decision hierarchy", () => {
     expect(renderedPage).not.toContain("<WeatherNeeds");
   });
 
-  it("keeps alerts first, identifies Today, then gives the Fair one campaign slot", () => {
+  it("keeps alerts first and the request doorway ahead of the one Fair campaign slot", () => {
     const alerts = renderedPage.indexOf("<CivicAlerts />");
     const fair = renderedPage.indexOf("<TodayFairFeature");
     const masthead = renderedPage.indexOf("{frame.title}");
+    const find = renderedPage.indexOf("<TodayAsk embedded");
     const weather = renderedPage.indexOf("<SkyHero");
 
     expect(masthead).toBeGreaterThan(alerts);
-    expect(fair).toBeGreaterThan(masthead);
+    expect(find).toBeGreaterThan(masthead);
+    expect(fair).toBeGreaterThan(find);
     expect(weather).toBeGreaterThan(fair);
     expect(renderedPage).toContain("fairPromotionPhase ? (");
     expect(renderedPage).toContain(": civicMoment ? (");

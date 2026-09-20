@@ -4,7 +4,7 @@ import { findErrorBoundaryMarker } from "./error-boundary-markers";
 /**
  * Compact release gate for the surfaces that join Frederick Radius together.
  *
- * The full browser suite remains nightly. This smaller matrix is designed to
+ * The full UX and visual workflows are on-demand. This smaller matrix runs
  * run against `next build && next start` on every pull request so a page that
  * compiles but hydrates, renders, or routes incorrectly cannot ship.
  */

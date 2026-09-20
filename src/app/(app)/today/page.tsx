@@ -81,8 +81,9 @@ import {
  *
  * Spine (top to bottom — matches the render below):
  *
- *   1. Identity       → time-aware masthead, bounded campaign, and weather
- *   2. Decide now     → one Find doorway + a location-aware place answer
+ *   1. Identity       → active alerts and the time-aware masthead
+ *   2. Decide now     → one Find doorway before campaigns and weather
+ *                       + a location-aware place answer
  *   3. Follow the day → a short chronological civic and event program
  *   4. Plan the rest  → scheduled utilities, sports, light, and tomorrow
  *   5. Keep exploring → local guides and saved places, collapsed
@@ -288,12 +289,12 @@ export default async function HomePage() {
                 (brand rule) instead of the deleted brick dash. The date now
                 rides the scope line below — one supporting line instead of a
                 decorated eyebrow above the title. */}
-            <h1 className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight sm:text-[32px]" style={{ color: "var(--app-ink)" }}>
+            <h1 className="font-serif text-[28px] font-semibold leading-[1.05] tracking-tight min-[375px]:text-[30px] sm:text-[32px]" style={{ color: "var(--app-ink)" }}>
               {frame.title}
             </h1>
             <TodayScopeStatus dateline={formatEasternDateline(now)} />
             </div>
-            <figure className="scroll-masthead-img relative order-first h-[140px] sm:order-none sm:h-full sm:min-h-[180px]">
+            <figure className="scroll-masthead-img relative order-first h-[72px] min-[375px]:h-[140px] sm:order-none sm:h-full sm:min-h-[180px]">
               <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" priority fill sizes="(min-width: 1024px) 440px, 100vw" alt="Carroll Creek in Frederick, photographed by Mike D." className="object-cover object-center" />
               <figcaption className="absolute bottom-2 right-2 rounded-sm bg-[var(--app-ink)] px-2 py-1 text-[10px] leading-snug text-[var(--app-on-brand)]">Carroll Creek · Mike D</figcaption>
             </figure>
@@ -302,8 +303,19 @@ export default async function HomePage() {
       })()}
 
       <div className="flex flex-col gap-5">
+        {/* The universal request doorway is Today's primary action. Keep it
+            immediately after the scope control: a seasonal campaign must not
+            push it more than a screen down on a phone. Active alerts still
+            lead the document because they can change a visitor's plans. */}
+        <div className="today-arrival today-arrival--find">
+          <TodayAsk embedded>
+            <CravingStrip />
+          </TodayAsk>
+        </div>
+
       {/* ── CAMPAIGN SPOTLIGHT — the document identifies itself before a
-          campaign asks for attention. Fair Day owns this photographic doorway
+          campaign asks for attention. Find remains ahead of it so visitors
+          with another need can act immediately. Fair Day owns this doorway
           from Sep 2–26, then retires itself on Sep 27. When another civic
           moment overlaps the Fair campaign, it moves into Follow the day
           below instead of disappearing. */}
@@ -350,12 +362,6 @@ export default async function HomePage() {
         </AppTransitionLink>
       </SkyHero>
 
-        <div className="today-arrival today-arrival--find">
-          <TodayAsk embedded>
-            <CravingStrip />
-          </TodayAsk>
-        </div>
-        
         <div aria-label="Places for your area">
           {decisionLead}
         </div>

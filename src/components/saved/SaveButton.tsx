@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useIsSaved, useToggleSave, useMounted, useSavedList } from "@/hooks/useSaved";
 import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { Bookmark } from "lucide-react";
@@ -48,9 +48,9 @@ export default function SaveButton({
   // button immediately rather than leaving the bookmark visually unchanged
   // during that lookup; the shared store remains the durable source of truth.
   const [optimisticSaved, setOptimisticSaved] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const renderedSaved = optimisticSaved ?? isSaved;
-  const toggle =
-    refType === "place" ? () => void togglePlace() : legacyToggle;
   // Pre-toggle total. Used to detect the user's first save ever —
   // when totalBefore is 0 AND the user is about to save, the next
   // tap is the moment that promotes a stranger into someone who has
@@ -74,9 +74,31 @@ export default function SaveButton({
   }, [celebrate]);
   useEffect(() => {
     if (optimisticSaved === null || optimisticSaved !== isSaved) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear the one-tap visual bridge once the shared save store has caught up
+    // Clear the one-tap visual bridge once the shared save store catches up.
     setOptimisticSaved(null);
   }, [isSaved, optimisticSaved]);
+
+  async function toggle(wasSaved: boolean): Promise<boolean> {
+    if (busyRef.current) return false;
+    busyRef.current = true;
+    setBusy(true);
+    setOptimisticSaved(!wasSaved);
+    try {
+      const nextSaved = await (refType === "place" ? togglePlace() : legacyToggle());
+      // A full followed-place list refuses an addition without throwing.
+      if (nextSaved === wasSaved) throw new Error("Save state did not change");
+      return true;
+    } catch {
+      toast.error(wasSaved ? "Could not remove from Saved" : "Could not save this item", {
+        description: "Your saved list has not changed. Please try again.",
+      });
+      return false;
+    } finally {
+      setOptimisticSaved(null);
+      setBusy(false);
+      busyRef.current = false;
+    }
+  }
 
   if (!mounted) {
     return (
@@ -100,9 +122,10 @@ export default function SaveButton({
     <button
       type="button"
       data-save-ref={`${refType}:${refId}`}
-      onClick={(e) => {
+      onClick={async (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (busyRef.current) return;
         const wasSaved = renderedSaved;
         const returnState = currentReturnBridgeState();
         const modalOpen = Boolean(
@@ -115,9 +138,8 @@ export default function SaveButton({
           && returnState.valueKind === null
           && isInstallPromptSuppressedPath(window.location.pathname)
           && !modalOpen;
-        setOptimisticSaved(!wasSaved);
         haptic(wasSaved ? "light" : "medium");
-        toggle();
+        if (!await toggle(wasSaved)) return;
         if (refType === "event") track("save_event", { on: !wasSaved });
         if (!wasSaved && refType !== "radius") {
           const context = decisionContextFromPath(window.location.pathname);
@@ -136,7 +158,7 @@ export default function SaveButton({
         // a mistaken save is one tap to reverse.
         if (wasSaved) {
           toast(`Removed from Saved`, {
-            action: { label: "Undo", onClick: () => toggle() },
+            action: { label: "Undo", onClick: () => void toggle(!wasSaved) },
           });
         } else if (totalBefore === 0) {
           // First add ever — moment worth marking. Editorial copy
@@ -147,17 +169,19 @@ export default function SaveButton({
             duration: offerKeepAction ? 7000 : 5000,
             action: offerKeepAction
               ? { label: "Keep handy", onClick: openReturnBridge }
-              : { label: "Undo", onClick: () => toggle() },
+              : { label: "Undo", onClick: () => void toggle(!wasSaved) },
             cancel: offerKeepAction
-              ? { label: "Undo", onClick: () => toggle() }
+              ? { label: "Undo", onClick: () => void toggle(!wasSaved) }
               : undefined,
           });
         } else {
           toast.success(`Saved · ${label.replace(/^Save\s+/, "")}`, {
-            action: { label: "Undo", onClick: () => toggle() },
+            action: { label: "Undo", onClick: () => void toggle(!wasSaved) },
           });
         }
       }}
+      disabled={busy}
+      aria-busy={busy}
       aria-pressed={renderedSaved}
       // `label` arrives as "Save {name}"; strip the verb so the aria reads
       // cleanly ("Save {name}" / "Remove {name} from Saved") instead of the
