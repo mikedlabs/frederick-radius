@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   FAIR_PLAN_STORAGE_KEY,
   addFairPlanItem,
+  addFairPlanVendor,
+  clearFairPlan,
+  fairPlanSchema,
+  MAX_FAIR_PLAN_STEPS,
   createFairPlan,
   moveFairPlanItem,
   moveFairPlanItemWithinDay,
@@ -10,7 +14,9 @@ import {
   parseFairPlanText,
   readFairPlan,
   reconcileFairPlan,
+  reconcileFairPlanVendors,
   removeFairPlanItem,
+  removeFairPlanVendor,
   serializeFairPlan,
   setFairPlanParty,
   setFairPlanReady,
@@ -130,6 +136,7 @@ describe("device-local Fair plan", () => {
     const legacy: Record<string, unknown> = { ...current };
     delete legacy.party;
     delete legacy.readyKeys;
+    delete legacy.vendorStops;
     const migrated = parseFairPlanText(JSON.stringify(legacy));
 
     expect(migrated?.party).toEqual({
@@ -139,6 +146,7 @@ describe("device-local Fair plan", () => {
       childRiders: 0,
     });
     expect(migrated?.readyKeys).toEqual([]);
+    expect(migrated?.vendorStops).toEqual([]);
 
     const updated = setFairPlanParty(
       migrated ?? current,
@@ -272,5 +280,46 @@ describe("device-local Fair plan", () => {
     expect(withReviewedAlias.appliedAliases).toEqual([
       { from: oldItem.id, to: newItem.id },
     ]);
+  });
+
+  it("saves anytime vendors in the same plan without invented event times", () => {
+    const vendor = { id: "vendor-white-rabbit-rad-pies", name: "White Rabbit x Rad Pies" };
+    let plan = addFairPlanVendor(emptyPlan(), vendor, "day-2026-09-20", "2026-09-20T12:00:00Z");
+    plan = addFairPlanVendor(plan, vendor, "day-2026-09-20", "2026-09-20T12:01:00Z");
+    expect(plan.vendorStops).toEqual([{ vendorId: vendor.id, dayId: "day-2026-09-20", labelSnapshot: vendor.name, sourceState: "current" }]);
+    expect(plan.steps).toEqual([]);
+    expect(parseFairPlanText(serializeFairPlan(plan))).toEqual(plan);
+    expect(serializeFairPlan(plan)).not.toMatch(/timeLabel|latitude|longitude|coordinate|query|booth/);
+  });
+
+  it("allows returning to the same vendor on another day and removes only the chosen day", () => {
+    const vendor = { id: "vendor-pizza", name: "Pizza" };
+    const sunday = addFairPlanVendor(emptyPlan(), vendor, "day-2026-09-20", "2026-09-20T12:00:00Z");
+    const monday = addFairPlanVendor(sunday, vendor, "day-2026-09-21", "2026-09-20T12:00:00Z");
+    const removed = removeFairPlanVendor(monday, vendor.id, "day-2026-09-20", "2026-09-20T12:00:00Z");
+    expect(removed.vendorStops).toHaveLength(1);
+    expect(removed.vendorStops[0].dayId).toBe("day-2026-09-21");
+    expect(clearFairPlan(removed, "2026-09-20T12:00:00Z").vendorStops).toEqual([]);
+  });
+
+  it("preserves vendor choices through schedule reconciliation and flags removed vendor IDs", () => {
+    const vendor = { id: "vendor-original", name: "Same visible name" };
+    const plan = addFairPlanVendor(emptyPlan(), vendor, "day-2026-09-20", "2026-09-20T12:00:00Z");
+    const scheduleReconciled = reconcileFairPlan(plan, [], REVISION_B, "2026-09-20T12:01:00Z").plan;
+    expect(scheduleReconciled.vendorStops).toEqual(plan.vendorStops);
+    const reviewed = reconcileFairPlanVendors(scheduleReconciled, [{ id: "vendor-different", name: vendor.name }], "2026-09-20T12:02:00Z");
+    expect(reviewed.vendorStops[0]).toMatchObject({ vendorId: vendor.id, labelSnapshot: vendor.name, sourceState: "changed-or-removed" });
+    expect(reconcileFairPlanVendors(reviewed, [{ ...vendor, name: "Corrected name" }], "2026-09-20T12:03:00Z").vendorStops[0]).toMatchObject({ labelSnapshot: "Corrected name", sourceState: "current" });
+  });
+
+  it("bounds the combined plan and rejects duplicate or malformed vendor choices", () => {
+    const now = "2026-09-20T12:00:00Z";
+    let plan = emptyPlan();
+    for (let index = 0; index < MAX_FAIR_PLAN_STEPS - 1; index++) plan = addFairPlanItem(plan, item(`event-${index}`), now);
+    plan = addFairPlanVendor(plan, { id: "vendor-one", name: "Vendor one" }, "day-2026-09-20", now);
+    expect(() => addFairPlanItem(plan, item("too-many"), now)).toThrow(RangeError);
+    expect(() => addFairPlanVendor(plan, { id: "vendor-two", name: "Vendor two" }, "day-2026-09-20", now)).toThrow(RangeError);
+    expect(fairPlanSchema.safeParse({ ...emptyPlan(), vendorStops: [plan.vendorStops[0], plan.vendorStops[0]] }).success).toBe(false);
+    expect(parseFairPlanText(JSON.stringify({ ...emptyPlan(), vendorStops: [{ ...plan.vendorStops[0], vendorId: "https://evil.example/" }] }))).toBeNull();
   });
 });

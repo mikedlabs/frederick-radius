@@ -29,7 +29,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-function DrawerFixture({ initiallyOpen = false }: { initiallyOpen?: boolean }) {
+function DrawerFixture({ initiallyOpen = false, surface = "default" }: { initiallyOpen?: boolean; surface?: "default" | "solid" }) {
   const [open, setOpen] = useState(initiallyOpen);
 
   return (
@@ -51,6 +51,7 @@ function DrawerFixture({ initiallyOpen = false }: { initiallyOpen?: boolean }) {
         onOpenChange={setOpen}
         title="Nearby essentials"
         subtitle="Example results from a confirmed starting point."
+        surface={surface}
       >
         <div className="mx-auto max-w-xl space-y-5 px-4 py-4">
           <SectionHeading title="Closest mapped amenities" count={2} size="sm" />
@@ -144,4 +145,11 @@ export const OpenAt320: Story = {
     viewport: { value: "radiusMobileNarrow", isRotated: false },
   },
   render: () => <DrawerFixture initiallyOpen />,
+};
+
+export const SolidSurface: Story = {
+  parameters: {
+    docs: { description: { story: "An opaque detail layer for vendor information or dense text over a busy map. Existing drawers retain their default surface." } },
+  },
+  render: () => <DrawerFixture initiallyOpen surface="solid" />,
 };

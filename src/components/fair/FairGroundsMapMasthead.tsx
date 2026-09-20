@@ -1,5 +1,9 @@
+import { ArrowUpRight, UtensilsCrossed } from "lucide-react";
+
 type FairGroundsMapMastheadProps = {
   checkedOn?: string;
+  selectedDateLabel?: string;
+  onBrowseVendors?: () => void;
 };
 
 function checkedLabel(date: string): string {
@@ -13,61 +17,47 @@ function checkedLabel(date: string): string {
 
 export default function FairGroundsMapMasthead({
   checkedOn,
+  selectedDateLabel,
+  onBrowseVendors,
 }: FairGroundsMapMastheadProps) {
   return (
     <div
-      className="relative overflow-hidden rounded-[var(--app-radius-xl)] border"
-      style={{
-        borderColor: "var(--app-control-border)",
-        background: "var(--app-bg-elevated-solid)",
-        boxShadow: "var(--app-edge), var(--app-hi)",
-      }}
+      data-fair-map-masthead
+      className="flex flex-wrap items-end justify-between gap-3 pb-4"
     >
-      <div
-        className="absolute bottom-0 left-0 top-0 w-1.5"
-        style={{
-          background: "var(--app-brand-press)",
-        }}
-        aria-hidden
-      />
-      <div className="flex flex-wrap items-end justify-between gap-4 px-5 py-5 sm:px-6">
-        <div>
-          <p
-            className="text-[11px] font-extrabold uppercase tracking-[0.16em]"
-            style={{ color: "var(--app-brand-press)" }}
-          >
-            Fair navigator
-          </p>
-          <h2
-            className="mt-1 text-[30px] font-bold leading-[1.05] tracking-[-0.035em] sm:text-[35px]"
-            style={{
-              color: "var(--app-ink)",
-            }}
-          >
-            Find your next stop.
-          </h2>
-          <p
-            className="mt-2 text-[14px] font-semibold leading-snug"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            Find your way to entrances, essentials, events, and places around
-            the grounds.
-          </p>
-        </div>
+      <div>
+        <p
+          className="text-[11px] font-extrabold uppercase tracking-[0.16em]"
+          style={{ color: "var(--app-brand-press)" }}
+        >
+          Fair navigator{selectedDateLabel ? ` · ${selectedDateLabel}` : ""}
+        </p>
+        <h2
+          className="mt-1 text-[30px] font-bold leading-[1.05] tracking-[-0.035em]"
+          style={{ color: "var(--app-ink)" }}
+        >
+          Explore the Fair.
+        </h2>
+        <p
+          className="mt-1.5 text-[13px] font-medium leading-snug"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          Search the grounds or browse Fair vendors.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
         {checkedOn ? (
           <span
-            className="inline-flex items-center gap-2 rounded-[var(--app-radius-md)] border px-3 py-2 text-[12px] font-bold tabular-nums"
+            className="inline-flex items-center gap-2 text-[11px] font-semibold tabular-nums"
             style={{
-              borderColor: "var(--app-border)",
-              color: "var(--app-ink-2)",
-              background: "var(--app-bg-sunken)",
+              color: "var(--app-ink-3)",
             }}
           >
             <span
               className="h-1.5 w-1.5 rounded-full bg-[var(--app-brand-press)]"
               aria-hidden
             />
-            Reviewed {checkedLabel(checkedOn)}
+            Grounds reviewed {checkedLabel(checkedOn)}
           </span>
         ) : (
           <div
@@ -75,6 +65,21 @@ export default function FairGroundsMapMasthead({
             aria-hidden
           />
         )}
+        {onBrowseVendors ? (
+          <button
+            type="button"
+            onClick={onBrowseVendors}
+            className="tap-44 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[13px] font-bold"
+            style={{
+              color: "var(--app-on-brand)",
+              background: "var(--app-brand-press)",
+            }}
+          >
+            <UtensilsCrossed className="h-4 w-4" aria-hidden />
+            Food & vendors
+            <ArrowUpRight className="h-4 w-4" aria-hidden />
+          </button>
+        ) : null}
       </div>
     </div>
   );

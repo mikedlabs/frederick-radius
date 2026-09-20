@@ -86,7 +86,7 @@ export function buildFairPlanStatus(plan: FairPlan): FairPlanStatus {
   const selectedDate = selectedDateFromPlan(plan);
   const selectedDayId = selectedDate ? `day-${selectedDate}` : null;
   const selectedDaySteps = selectedDayId
-    ? plan.steps.filter((step) => step.dayId === selectedDayId)
+    ? [...plan.steps, ...plan.vendorStops].filter((step) => step.dayId === selectedDayId)
     : [];
   const savedStopCount = selectedDaySteps.length;
   const needsReviewStopCount = selectedDaySteps.filter(

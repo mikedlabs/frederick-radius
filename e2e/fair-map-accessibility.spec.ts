@@ -694,7 +694,7 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(administrationMarker).toBeFocused();
   });
 
-  test("hands an unmapped food vendor to the Fair's live directory without a guessed pin", async ({
+  test("finds a reviewed food vendor and retains the official directory without a guessed pin", async ({
     page,
   }) => {
     await openFairMap(page);
@@ -716,7 +716,10 @@ test.describe("Fairgrounds map accessibility", () => {
       await expect(handoff).toHaveAttribute("target", "_blank");
       await expect(handoff).toHaveAttribute("rel", "noopener noreferrer");
       await expect(results).toContainText("No reviewed map pin matches.");
-      await expect(results.getByRole("button")).toHaveCount(0);
+      await expect(results.getByRole("button")).toHaveCount(1);
+      await expect(results.getByRole("button")).toContainText("White Rabbit x Rad Pies");
+      await expect(results).toContainText("Official booth reference: 587, 588");
+      await expect(page.locator("[data-fair-map-selection]")).toHaveCount(0);
       await expect(results).not.toContainText(/Booths?:/i);
     }
   });
@@ -837,7 +840,8 @@ test.describe("Fairgrounds map accessibility", () => {
       await expect(mapView).toHaveValue("essentials");
       await expect(mapView).toHaveCSS("height", "44px");
       await expect(mapView.locator("option:checked")).toHaveText("Essentials · 24");
-      await expect(mapView.locator("option")).toHaveCount(5);
+      await expect(mapView.locator("option")).toHaveCount(6);
+      await expect(mapView.locator('option[value="vendors"]')).toHaveText("Food & vendors");
       await expect(mapView.locator("option").last()).toHaveText("Buildings · 7");
       await expect(page.locator("#fair-map-filter-status")).toContainText(
         "This map view shows Entry + essentials: 24 places.",
@@ -1270,7 +1274,8 @@ test.describe("Fairgrounds map accessibility", () => {
       page
         .getByRole("group", { name: "Choose what the Fair map shows" })
         .getByRole("button"),
-    ).toHaveCount(5);
+    ).toHaveCount(6);
+    await expect(page.getByRole("button", { name: "Vendors", exact: true })).toBeVisible();
     await expect(arrival).toBeVisible();
     await expect(arrival).toContainText("Arrive");
     await expect(arrival).toHaveAttribute("aria-label", "Arrive and enter · 16");

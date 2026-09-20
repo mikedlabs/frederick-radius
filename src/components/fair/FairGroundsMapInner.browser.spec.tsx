@@ -97,6 +97,22 @@ vi.mock("@/lib/fair/car-memory", () => ({
   readSavedFairCar: () => null,
 }));
 
+// Drawer content has its own browser tests. This harness isolates the map's
+// single-overlay URL/history contract from Vaul animation timing.
+vi.mock("./FairVendorExplorer", async (importOriginal) => {
+  const original = await importOriginal<typeof import("./FairVendorExplorer")>();
+  return {
+    ...original,
+    default: (props: import("./FairVendorExplorer").FairVendorExplorerProps) =>
+      props.open ? createElement("section", {
+        "data-test-vendor-explorer": props.selectedVendorId ?? "browse",
+      },
+      createElement("button", { "data-test-vendor-close": "", onClick: () => props.onOpenChange(false) }, "Close vendors"),
+      createElement("button", { "data-test-vendor-select": "", onClick: () => props.onSelectVendor(props.vendors[0].id) }, "Choose first vendor"),
+      ) : null,
+  };
+});
+
 import FairGroundsMapInner, { fairMeetHereUrl } from "./FairGroundsMapInner";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
@@ -302,6 +318,67 @@ describe("FairGroundsMapInner map failure recovery", () => {
     expect(url.hash).toBe("#fair-map");
     expect(url.searchParams.has("location")).toBe(false);
     expect(url.searchParams.has("plan")).toBe(false);
+  });
+
+  it("opens and closes a direct vendor link without a guessed map selection or leaving the Fair", async () => {
+    window.history.replaceState({}, "", "/moments/great-frederick-fair-2026?vendor=vendor-white-rabbit-rad-pies#fair-map");
+    await renderMap();
+    expect(container.querySelector("[data-test-vendor-explorer]")?.getAttribute("data-test-vendor-explorer")).toBe("vendor-white-rabbit-rad-pies");
+    expect(container.querySelector("[data-fair-map-selection]")).toBeNull();
+    const close = container.querySelector<HTMLButtonElement>("[data-test-vendor-close]")!;
+    await act(async () => close.click());
+    expect(container.querySelector("[data-test-vendor-explorer]")).toBeNull();
+    expect(window.location.pathname).toBe("/moments/great-frederick-fair-2026");
+    expect(window.location.search).toBe("");
+    expect(window.location.hash).toBe("#fair-map");
+  });
+
+  it("keeps vendor browsing and detail in one history layer with Back and Forward restoration", async () => {
+    await renderMap();
+    const initialLength = window.history.length;
+    const browse = Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Food & vendors")!;
+    await act(async () => browse.click());
+    expect(new URLSearchParams(window.location.search).get("vendor")).toBe("browse");
+    expect(window.history.length).toBe(initialLength + 1);
+    const selectionState = window.history.state;
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-test-vendor-select]")!.click());
+    expect(new URLSearchParams(window.location.search).get("vendor")).toBe("vendor-white-rabbit-rad-pies");
+    expect(window.history.length).toBe(initialLength + 1);
+    expect(new URLSearchParams(window.location.search).has("meet")).toBe(false);
+
+    window.history.replaceState({}, "", "/fair-map-test#fair-map");
+    await act(async () => window.dispatchEvent(new PopStateEvent("popstate", { state: {} })));
+    expect(container.querySelector("[data-test-vendor-explorer]")).toBeNull();
+    window.history.replaceState(selectionState, "", "/fair-map-test?vendor=vendor-white-rabbit-rad-pies#fair-map");
+    await act(async () => window.dispatchEvent(new PopStateEvent("popstate", { state: selectionState })));
+    expect(container.querySelector("[data-test-vendor-explorer]")?.getAttribute("data-test-vendor-explorer")).toBe("vendor-white-rabbit-rad-pies");
+    expect(container.querySelector("[data-fair-map-selection]")).toBeNull();
+  });
+
+  it("retains a direct vendor detail when the grounds snapshot is unavailable", async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error("Offline"));
+    window.history.replaceState({}, "", "/moments/great-frederick-fair-2026?vendor=vendor-white-rabbit-rad-pies#fair-map");
+    await renderMapShell();
+    expect(container.querySelector("[data-test-vendor-explorer]")?.getAttribute("data-test-vendor-explorer")).toBe("vendor-white-rabbit-rad-pies");
+    expect(container.querySelector("[data-mock-map-canvas]")).toBeNull();
+  });
+
+  it("opens bundled vendor details without waiting for an unresolved map fetch", async () => {
+    vi.mocked(fetch).mockImplementation(() => new Promise<Response>(() => {}));
+    window.history.replaceState({}, "", "/moments/great-frederick-fair-2026?vendor=vendor-white-rabbit-rad-pies#fair-map");
+    await renderMapShell();
+    expect(container.querySelector("[data-test-vendor-explorer]")?.getAttribute("data-test-vendor-explorer")).toBe("vendor-white-rabbit-rad-pies");
+    expect(container.querySelector("[data-mock-map-canvas]")).toBeNull();
+  });
+
+  it("sends unknown shared vendor IDs to visible drawer recovery, including history navigation", async () => {
+    window.history.replaceState({}, "", "/moments/great-frederick-fair-2026?vendor=vendor-no-longer-listed#fair-map");
+    await renderMap();
+    expect(container.querySelector("[data-test-vendor-explorer]")?.getAttribute("data-test-vendor-explorer")).toBe("vendor-no-longer-listed");
+    window.history.replaceState({}, "", "/fair-map-test?vendor=vendor-another-old-link#fair-map");
+    await act(async () => window.dispatchEvent(new PopStateEvent("popstate", { state: {} })));
+    expect(container.querySelector("[data-test-vendor-explorer]")?.getAttribute("data-test-vendor-explorer")).toBe("vendor-another-old-link");
+    expect(container.querySelector("[data-fair-map-selection]")).toBeNull();
   });
 
   it("opens the exact reviewed place from a shared meeting link", async () => {

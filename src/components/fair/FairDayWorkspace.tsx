@@ -50,10 +50,14 @@ import { Button } from "@/components/ui/Button";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import {
   addFairPlanItem,
+  addFairPlanVendor,
+  MAX_FAIR_PLAN_STEPS,
   moveFairPlanItemWithinDay,
   readFairPlan,
   reconcileFairPlan,
+  reconcileFairPlanVendors,
   removeFairPlanItem,
+  removeFairPlanVendor,
   setFairPlanArrivalChoice,
   setFairPlanDay,
   setFairPlanParty,
@@ -67,6 +71,7 @@ import {
   type FairPlanStatus,
 } from "@/lib/fair/plan-status";
 import { fairVendorDirectoryHref } from "@/lib/fair/vendor-finder";
+import { greatFrederickFair2026Vendors, type FairVendorProfile } from "@/data/fair/great-frederick-fair-2026-vendors";
 import type { FairPracticalAnswer } from "@/lib/fair/practical-answers";
 import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback-ui";
 import { haptic } from "@/lib/haptics";
@@ -87,6 +92,7 @@ import {
 import FairPartyPlanner from "./FairPartyPlanner";
 import FairPracticalAnswers from "./FairPracticalAnswers";
 import FairShareButton from "./FairShareButton";
+import FairPlanShareButton from "./FairPlanShareButton";
 import FairKeepGuide from "./FairKeepGuide";
 import FairGroundsMap from "./FairGroundsMap";
 import FairGrandstandSpotlight from "./FairGrandstandSpotlight";
@@ -1192,7 +1198,7 @@ export default function FairDayWorkspace({
         data.packRevision,
         restoredAt,
       );
-      let restoredPlan = reconciled.plan;
+      let restoredPlan = reconcileFairPlanVendors(reconciled.plan, greatFrederickFair2026Vendors, restoredAt);
       if (reconciled.plan.selectedDayId) {
         const restoredDate = reconciled.plan.selectedDayId.replace(/^day-/, "");
         if (validDates.has(restoredDate)) {
@@ -1341,7 +1347,10 @@ export default function FairDayWorkspace({
     const leavingMapSelection =
       mode !== "map" &&
       isFairMapSelectionHistoryState(window.history.state);
-    if (mode !== "map") nextUrl.searchParams.delete("meet");
+    if (mode !== "map") {
+      nextUrl.searchParams.delete("meet");
+      nextUrl.searchParams.delete("vendor");
+    }
     nextUrl.hash = hash;
     const nextPath = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
     const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
@@ -1370,6 +1379,7 @@ export default function FairDayWorkspace({
     closeProgramDetail();
     setActiveMode("map");
     const url = new URL(window.location.href);
+    url.searchParams.delete("vendor");
     url.searchParams.set("meet", featureId);
     url.hash = "fair-map";
     window.history.pushState(
@@ -1383,6 +1393,20 @@ export default function FairDayWorkspace({
         .getElementById(MODE_HEADING_IDS.map)
         ?.focus({ preventScroll: true });
     });
+  };
+
+  const showFairVendor = (vendorId: string) => {
+    setActivePreparation(null);
+    setHelpOpen(false);
+    closeProgramDetail();
+    setMapFocusRequest(null);
+    setActiveMode("map");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("meet");
+    url.searchParams.set("vendor", vendorId);
+    url.hash = "fair-map";
+    window.history.pushState({ ...withoutFairMapSelectionHistoryState(window.history.state), fairMode: "map" }, "", `${url.pathname}${url.search}${url.hash}`);
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
   };
 
   const showGrandstandProgram = () => {
@@ -1462,6 +1486,10 @@ export default function FairDayWorkspace({
       return;
     }
 
+    if (plan.steps.length + plan.vendorStops.length >= MAX_FAIR_PLAN_STEPS) {
+      toast.error(`My Day can hold ${MAX_FAIR_PLAN_STEPS} stops. Remove a stop before saving another.`);
+      return;
+    }
     haptic("medium");
     setPlan((current) =>
       addFairPlanItem(current, item.sourceItem, changedAt),
@@ -1483,6 +1511,24 @@ export default function FairDayWorkspace({
           );
         },
       },
+    });
+  };
+
+  const toggleFairVendor = (vendor: FairVendorProfile) => {
+    const dayId = `day-${selectedDate}`;
+    const saved = plan.vendorStops.some((stop) => stop.vendorId === vendor.id && stop.dayId === dayId);
+    if (!saved && plan.steps.length + plan.vendorStops.length >= MAX_FAIR_PLAN_STEPS) {
+      toast.error(`My Day can hold ${MAX_FAIR_PLAN_STEPS} stops. Remove a stop before saving another.`);
+      return;
+    }
+    const now = updateTimestamp();
+    setPlan((current) => saved ? removeFairPlanVendor(current, vendor.id, dayId, now) : addFairPlanVendor(current, vendor, dayId, now));
+    haptic(saved ? "light" : "medium");
+    toast.success(saved ? "Removed from My Day" : "Added to My Day", {
+      id: FAIR_PLAN_TOAST_ID,
+      description: `${vendor.name} · ${fairDateShortLabel(selectedDate)}`,
+      action: { label: "My Day", onClick: () => chooseMode("my-day") },
+      cancel: { label: "Undo", onClick: () => setPlan((current) => saved ? addFairPlanVendor(current, vendor, dayId, updateTimestamp()) : removeFairPlanVendor(current, vendor.id, dayId, updateTimestamp())) },
     });
   };
 
@@ -1682,7 +1728,8 @@ export default function FairDayWorkspace({
         .slice(0, 2)
     : [];
   const selectedDayId = `day-${selectedDate}`;
-  const savedCountsByDate = plan.steps.reduce<Record<string, number>>(
+  const allSavedStops = [...plan.steps, ...plan.vendorStops];
+  const savedCountsByDate = allSavedStops.reduce<Record<string, number>>(
     (counts, step) => {
       const date = step.dayId.replace(/^day-/, "");
       counts[date] = (counts[date] ?? 0) + 1;
@@ -1699,6 +1746,8 @@ export default function FairDayWorkspace({
       step,
       item: scheduleById.get(step.scheduleItemId) ?? null,
     }));
+  const savedVendorRows = plan.vendorStops.filter((stop) => stop.dayId === selectedDayId).map((stop) => ({ stop, vendor: greatFrederickFair2026Vendors.find((vendor) => vendor.id === stop.vendorId) ?? null }));
+  const selectedDaySavedCount = plannedRows.length + savedVendorRows.length;
   const mappedPlanStops = plannedRows.map(({ step, item }) => ({
     id: step.scheduleItemId,
     title: item?.title ?? step.labelSnapshot,
@@ -1707,14 +1756,14 @@ export default function FairDayWorkspace({
     placeLabel: item?.placeLabel ?? "",
   }));
   const planStatus = buildFairPlanStatus(plan);
-  const changedOrRemovedStopCount = plan.steps.filter(
+  const changedOrRemovedStopCount = allSavedStops.filter(
     (step) => step.sourceState === "changed-or-removed",
   ).length;
   const planNotice =
     changedOrRemovedStopCount > 0
       ? `${changedOrRemovedStopCount} saved ${
           changedOrRemovedStopCount === 1 ? "stop has" : "stops have"
-        } changed in the official program. Review the saved wording before relying on it.`
+        } changed in ${plan.vendorStops.some((stop) => stop.sourceState === "changed-or-removed") ? "the reviewed Fair information" : "the official program"}. Review the saved wording before relying on it.`
       : null;
   const selectedProgramDetail = selectedProgramDetailId
     ? (scheduleById.get(selectedProgramDetailId) ?? null)
@@ -1727,7 +1776,7 @@ export default function FairDayWorkspace({
   const ticketAndGateReady =
     plan.readyKeys.includes("ticket") && plan.readyKeys.includes("entry");
   const travelReady = plan.readyKeys.includes("travel");
-  const firstStopReady = plannedRows.some(
+  const firstStopReady = savedVendorRows.some(({ vendor, stop }) => vendor !== null && stop.sourceState === "current") || plannedRows.some(
     ({ item, step }) => item !== null && step.sourceState === "current",
   );
   const activePrimaryLabel =
@@ -1849,7 +1898,7 @@ export default function FairDayWorkspace({
         aria-atomic="true"
         data-fair-plan-announcement
       >
-        {plan.readyKeys.length > 0 || plan.steps.length > 0
+        {plan.readyKeys.length > 0 || allSavedStops.length > 0
           ? planStatus.summarySentence
           : `You are viewing ${planStatus.dateLabel}.`}
       </p>
@@ -2098,8 +2147,8 @@ export default function FairDayWorkspace({
                       className="mt-0.5 block truncate text-[11px] font-semibold leading-tight"
                       style={{ color: "var(--app-ink-3)" }}
                     >
-                      {storageReady && mode.id === "my-day" && plan.steps.length > 0
-                        ? `${plan.steps.length} saved · ${savedDayCount} ${savedDayCount === 1 ? "day" : "days"}`
+                      {storageReady && mode.id === "my-day" && allSavedStops.length > 0
+                        ? `${allSavedStops.length} saved · ${savedDayCount} ${savedDayCount === 1 ? "day" : "days"}`
                         : mode.detail}
                     </span>
                   </span>
@@ -2152,7 +2201,7 @@ export default function FairDayWorkspace({
         hidden={!routeReady || !storageReady}
         className={
           activeMode === "map"
-            ? "w-full pb-24 lg:mx-auto lg:max-w-[68rem] lg:px-6 lg:pb-12 lg:pt-6"
+            ? "w-full pb-24 lg:mx-auto lg:max-w-[88rem] lg:px-6 lg:pb-12 lg:pt-3"
             : `mx-auto px-4 pb-32 sm:px-6 lg:pb-12 ${
                 activeMode === "travel"
                   ? "pt-3 sm:pt-6"
@@ -2337,7 +2386,7 @@ export default function FairDayWorkspace({
                   >
                     {fairDateWeekdayLabel(selectedDate)} at a glance
                   </h2>
-                  {plan.readyKeys.length > 0 || plan.steps.length > 0 ? <p
+                  {plan.readyKeys.length > 0 || allSavedStops.length > 0 ? <p
                     data-fair-plan-summary
                     className="mt-1 text-[12px] font-semibold leading-snug"
                     style={{ color: "var(--app-ink-2)" }}
@@ -2847,6 +2896,9 @@ export default function FairDayWorkspace({
           >
             <FairGroundsMap
               savedStops={mappedPlanStops}
+              savedVendors={savedVendorRows.map(({ stop, vendor }) => ({ id: stop.vendorId, name: vendor?.name ?? stop.labelSnapshot }))}
+              onToggleVendor={toggleFairVendor}
+              selectedDateLabel={fairDateShortLabel(selectedDate)}
               focusRequest={mapFocusRequest}
               onFocusRequestHandled={handleMapFocusRequest}
               programItems={discoveryItems.map((item) => ({
@@ -2922,8 +2974,13 @@ export default function FairDayWorkspace({
               ) : null}
             </div>
             <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              {plannedRows.length > 0 ? `${plannedRows.length} saved ${plannedRows.length === 1 ? "stop" : "stops"} for ${fairDateShortLabel(selectedDate)}.` : "Save a show or activity from the program to start your day."}
+              {selectedDaySavedCount > 0 ? `${selectedDaySavedCount} saved ${selectedDaySavedCount === 1 ? "stop" : "stops"} for ${fairDateShortLabel(selectedDate)}.` : "Save a show, activity, or vendor to start your day."}
             </p>
+            <FairPlanShareButton
+              dateLabel={fairDateShortLabel(selectedDate)}
+              scheduleItems={plannedRows.flatMap(({ item, step }) => item && step.sourceState === "current" ? [{ title: item.title, timeLabel: item.timeLabel }] : [])}
+              vendors={savedVendorRows.flatMap(({ vendor, stop }) => vendor && stop.sourceState === "current" ? [{ id: vendor.id, name: vendor.name }] : [])}
+            />
 
             <details
               className="mt-4 border-y py-1"
@@ -2933,7 +2990,7 @@ export default function FairDayWorkspace({
               data-fair-journey
             >
               <summary className="tap-44 flex min-h-11 cursor-pointer items-center justify-between gap-3 text-[14px] font-semibold">
-                <span>Tickets &amp; arrival <span className="font-normal text-[var(--app-ink-3)]">· {[ticketAndGateReady, travelReady, firstStopReady].filter(Boolean).length}/3 ready</span></span>
+                <span>Tickets &amp; arrival</span>
                 <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
               </summary>
               <div className="relative mt-4 grid grid-cols-3 gap-2 before:absolute before:left-[16%] before:right-[16%] before:top-[21px] before:h-px before:bg-[var(--app-border-strong)] before:content-['']">
@@ -2996,7 +3053,7 @@ export default function FairDayWorkspace({
               </div>
             </details>
 
-            {plannedRows.length === 0 && !selectedArrival ? (
+            {selectedDaySavedCount === 0 && !selectedArrival ? (
               <Button
                 className="mt-4 w-full"
                 onClick={() => chooseMode("find")}
@@ -3079,7 +3136,7 @@ export default function FairDayWorkspace({
                   );
                 })}
 
-                {selectedArrival && plannedRows.length === 0 ? (
+                {selectedArrival && selectedDaySavedCount === 0 ? (
                   <li
                     className="grid grid-cols-[40px_minmax(0,1fr)] gap-3 border-b py-5"
                     style={{ borderColor: "var(--app-border)" }}
@@ -3136,6 +3193,23 @@ export default function FairDayWorkspace({
                   </li>
                 ) : null}
               </ol>
+            ) : null}
+            {savedVendorRows.length > 0 ? (
+              <section className="mt-8 border-t pt-5" style={{ borderColor: "var(--app-border)" }} aria-labelledby="fair-saved-vendors-heading">
+                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--app-brand-press)]">Visit when it suits your day</p>
+                <h2 id="fair-saved-vendors-heading" className="mt-1 text-[25px] font-extrabold tracking-tight">Food & vendors</h2>
+                <p className="mt-2 text-[13px] leading-relaxed text-[var(--app-ink-2)]">These are saved stops, not timed reservations. Confirm opening hours with each vendor.</p>
+                <ul className="mt-3 divide-y divide-[var(--app-border)]" aria-label="Saved Fair vendors">
+                  {savedVendorRows.map(({ stop, vendor }) => <li key={stop.vendorId} className="py-4">
+                    <h3 className="text-[21px] font-bold leading-tight tracking-tight">{vendor?.name ?? stop.labelSnapshot}</h3>
+                    {stop.sourceState === "changed-or-removed" ? <p className="mt-1 text-[12px] font-semibold text-[var(--app-warning-press)]">Needs review. This vendor is no longer in the reviewed selection.</p> : vendor?.booth.status === "known" ? <p className="mt-1 text-[13px] text-[var(--app-ink-2)]">Booth reference: {vendor.booth.value}</p> : null}
+                    <div className="mt-2 flex flex-wrap gap-4">
+                      {vendor ? <button type="button" onClick={() => showFairVendor(vendor.id)} className="tap-44 inline-flex min-h-11 items-center gap-1 text-[13px] font-bold text-[var(--app-cool)]" aria-label={`View ${vendor.name} in the Fair guide`}>View vendor <ChevronRight className="h-4 w-4" aria-hidden /></button> : null}
+                      <button type="button" onClick={() => setPlan((current) => removeFairPlanVendor(current, stop.vendorId, stop.dayId, updateTimestamp()))} className="tap-44 inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold text-[var(--app-ink-3)]" aria-label={`Remove ${stop.labelSnapshot} from My Day`}><Trash2 className="h-4 w-4" aria-hidden />Remove</button>
+                    </div>
+                  </li>)}
+                </ul>
+              </section>
             ) : null}
           </section>
         ) : null}
@@ -3221,8 +3295,8 @@ export default function FairDayWorkspace({
                 aria-current={active ? "page" : undefined}
                 onClick={() => chooseMode(mode.id)}
                 aria-label={
-                  storageReady && mode.id === "my-day" && plannedRows.length > 0
-                    ? `${mode.label}, ${plannedRows.length} saved`
+                  storageReady && mode.id === "my-day" && selectedDaySavedCount > 0
+                    ? `${mode.label}, ${selectedDaySavedCount} saved`
                     : mode.label
                 }
                 className="tap-44 tactile tactile-interactive relative flex min-h-[60px] flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-lg)] px-1 text-[11px] font-semibold transition-[background-color,color,transform] active:scale-[0.97] motion-reduce:transition-none"
@@ -3246,7 +3320,7 @@ export default function FairDayWorkspace({
                   aria-hidden="true"
                 >
                   <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
-                  {storageReady && mode.id === "my-day" && plannedRows.length > 0 ? (
+                  {storageReady && mode.id === "my-day" && selectedDaySavedCount > 0 ? (
                     <span
                       className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border px-1 text-[10px] font-extrabold leading-none tabular-nums"
                       style={{
@@ -3255,7 +3329,7 @@ export default function FairDayWorkspace({
                         background: "var(--app-brand-press)",
                       }}
                     >
-                      {plannedRows.length}
+                      {selectedDaySavedCount}
                     </span>
                   ) : null}
                 </span>
