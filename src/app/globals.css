@@ -1152,6 +1152,15 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     }
   }
 
+  /* On a short phone the Navigator already leaves a real keyboard list below
+     the map. Do not stack a second in-canvas place tray over the remaining
+     touchable geography; it returns at normal phone heights and larger. */
+  @media (max-width: 639.98px) and (max-height: 700px) {
+    [data-fair-map-task-index] {
+      display: none !important;
+    }
+  }
+
   /* Fair place and cluster sheets stay between the app header and the Fair
      navigation at every text size. Their own content scrolls instead of
      covering either persistent navigation surface. */

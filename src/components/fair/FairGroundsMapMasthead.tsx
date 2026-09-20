@@ -16,63 +16,58 @@ export default function FairGroundsMapMasthead({
 }: FairGroundsMapMastheadProps) {
   return (
     <div
-      className="overflow-hidden rounded-[var(--app-radius-xl)] border"
+      className="relative overflow-hidden rounded-[var(--app-radius-xl)] border"
       style={{
-        borderColor:
-          "color-mix(in srgb, var(--app-cool) 28%, var(--app-border))",
-        background:
-          "radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--app-cool) 14%, transparent), transparent 46%), radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--app-amber) 13%, transparent), transparent 42%), var(--app-bg-elevated-solid)",
-        boxShadow:
-          "var(--app-edge), var(--app-hi), 0 20px 42px -38px var(--app-ink)",
+        borderColor: "var(--app-control-border)",
+        background: "var(--app-bg-elevated-solid)",
+        boxShadow: "var(--app-edge), var(--app-hi)",
       }}
     >
       <div
-        className="h-1.5 w-full"
+        className="absolute bottom-0 left-0 top-0 w-1.5"
         style={{
-          background:
-            "linear-gradient(90deg, var(--app-brand-press) 0 34%, var(--app-amber) 34% 52%, var(--app-brand-2) 52% 68%, var(--app-cool) 68% 84%, var(--app-accent) 84% 100%)",
+          background: "var(--app-brand-press)",
         }}
         aria-hidden
       />
-      <div className="flex flex-wrap items-end justify-between gap-3 px-4 pb-4 pt-3.5 sm:px-5 sm:pb-5 sm:pt-4">
+      <div className="flex flex-wrap items-end justify-between gap-4 px-5 py-5 sm:px-6">
         <div>
           <p
-            className="text-[12px] font-extrabold uppercase tracking-[0.14em]"
-            style={{ color: "var(--app-cool)" }}
+            className="text-[11px] font-extrabold uppercase tracking-[0.16em]"
+            style={{ color: "var(--app-brand-press)" }}
           >
-            Source-checked grounds map
+            Fair navigator
           </p>
           <h2
-            className="mt-1 text-[28px] font-bold leading-[1.1] tracking-[-0.025em] sm:text-[32px]"
+            className="mt-1 text-[30px] font-bold leading-[1.05] tracking-[-0.035em] sm:text-[35px]"
             style={{
               color: "var(--app-ink)",
             }}
           >
-            Fairgrounds map
+            Find your next stop.
           </h2>
           <p
-            className="mt-1.5 text-[13px] font-semibold leading-snug"
+            className="mt-2 text-[14px] font-semibold leading-snug"
             style={{ color: "var(--app-ink-2)" }}
           >
-            Find gates, restrooms, buildings, and what is happening there.
+            Find your way to entrances, essentials, events, and places around
+            the grounds.
           </p>
         </div>
         {checkedOn ? (
           <span
-            className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-bold tabular-nums"
+            className="inline-flex items-center gap-2 rounded-[var(--app-radius-md)] border px-3 py-2 text-[12px] font-bold tabular-nums"
             style={{
-              borderColor:
-                "color-mix(in srgb, var(--app-brand-2) 30%, var(--app-border))",
+              borderColor: "var(--app-border)",
               color: "var(--app-ink-2)",
-              background:
-                "color-mix(in srgb, var(--app-brand-2) 6%, var(--app-bg-elevated-solid))",
+              background: "var(--app-bg-sunken)",
             }}
           >
             <span
-              className="h-1.5 w-1.5 rounded-full bg-[var(--app-brand-2)]"
+              className="h-1.5 w-1.5 rounded-full bg-[var(--app-brand-press)]"
               aria-hidden
             />
-            Checked {checkedLabel(checkedOn)}
+            Reviewed {checkedLabel(checkedOn)}
           </span>
         ) : (
           <div

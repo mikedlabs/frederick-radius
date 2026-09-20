@@ -378,6 +378,7 @@ function durationFor(cat: string): number {
 
 function planCategoryNoun(category: string): string {
   const labels: Record<string, string> = {
+    coffee: "coffee shop",
     arts: "arts venue",
     music: "music venue",
     shopping: "shop",
@@ -945,10 +946,11 @@ function hoursPhrase(totalMin: number): string {
 
 function titleFor(input: PlanInputs, now: Date): string {
   const seg = slotFor(now);
-  if (input.audience === "date") return seg === "evening" ? "Date night" : `A ${seg} date`;
-  if (input.audience === "friends") return `A ${seg} with friends`;
+  const article = seg === "morning" ? "A" : "An";
+  if (input.audience === "date") return seg === "evening" ? "Date night" : `${article} ${seg} date`;
+  if (input.audience === "friends") return `${article} ${seg} with friends`;
   if (input.audience === "family") return `A family ${seg}`;
-  if (input.audience === "visitor") return `A ${seg} in Frederick`;
+  if (input.audience === "visitor") return `${article} ${seg} in Frederick`;
   return `A solo ${seg}`;
 }
 

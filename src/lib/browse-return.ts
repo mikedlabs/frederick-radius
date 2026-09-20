@@ -8,6 +8,7 @@ const DESTINATIONS: Record<string, string> = {
   "/events": "events",
   "/my-radius": "saved",
   "/today": "Today",
+  "/plan": "your plan",
 };
 
 /** A detail can return to a known listing, never to an arbitrary redirect. */

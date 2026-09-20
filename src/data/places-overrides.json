@@ -91,6 +91,28 @@
     "baker-park-bandshell"
   ],
   "patch": {
+    "white-rabbit-gastropub": {
+      "category": "restaurant",
+      "subcategories": ["bar", "gastropub", "pizza"],
+      "tags": ["pizza", "takeout", "delivery"],
+      "search_aliases": ["White Rabbit", "Detroit-style pizza", "Detroit pizza", "In Crust We Trust", "craft beer", "weekend brunch"],
+      "amenities": ["takeout", "delivery"]
+    },
+    "attaboy-beer-frederick": {
+      "tags": ["family", "dog-friendly", "outdoor-seating"],
+      "search_aliases": ["Attaboy", "beer garden", "food trucks", "dog-friendly brewery"],
+      "amenities": ["indoor seating", "heated garage", "heated beer garden", "parking"]
+    },
+    "baker-park-frederick": {
+      "website": "https://www.cityoffrederickmd.gov/facilities/Facility/Details/78",
+      "search_aliases": ["Baker Park", "Baker Park playground", "Baker Park tennis courts", "Baker Park picnic tables", "Baker Park bathrooms"],
+      "amenities": ["playground", "picnic tables", "tennis courts", "walking and biking paths", "restrooms in bandshell"]
+    },
+    "c-burr-artz-public-library-frederick": {
+      "website": "https://www.fcpl.org/branches-hours/c-burr-artz-public-library",
+      "search_aliases": ["C Burr Artz", "downtown library", "Maryland Room", "local history research", "study rooms", "printing and scanning"],
+      "amenities": ["wireless internet", "study rooms", "meeting rooms", "printing", "scanning", "copying", "fax service", "curbside pickup"]
+    },
     "beans-in-the-belfry-brunswick": {
       "website": "https://beansinthebelfry.com/"
     },

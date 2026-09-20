@@ -30,6 +30,10 @@ export type PatchFields = {
    *  food request. These feed the canonical multi-category intent matcher. */
   subcategories?: string[];
   tags?: string[];
+  /** Source-reviewed discovery terms and facilities. Evidence belongs with the
+   * approved description's source and review note, not provider booleans. */
+  search_aliases?: string[];
+  amenities?: string[];
   short_blurb?: string;
   /** Human-confirmed contact and location corrections. These fields take
    * precedence over stale scrape data and automated coordinate snapping. */
@@ -140,6 +144,8 @@ export function patchRecord<T extends { slug: string }>(
   if (x.category) (out as Record<string, unknown>).category = x.category;
   if (x.subcategories) (out as Record<string, unknown>).subcategories = x.subcategories;
   if (x.tags) (out as Record<string, unknown>).tags = x.tags;
+  if (x.search_aliases) (out as Record<string, unknown>).search_aliases = x.search_aliases;
+  if (x.amenities) (out as Record<string, unknown>).amenities = x.amenities;
   if (x.short_blurb !== undefined) {
     (out as Record<string, unknown>).short_blurb = x.short_blurb;
   }

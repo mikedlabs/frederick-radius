@@ -55,6 +55,17 @@ describe("patchRecord", () => {
     });
   });
 
+  it("preserves reviewed discovery evidence and can withdraw unsupported evidence", () => {
+    const p = { slug: "x", search_aliases: ["old alias"], amenities: ["unverified"] };
+    expect(patchRecord(p, {
+      x: { search_aliases: ["Detroit-style pizza"], amenities: ["takeout"] },
+    })).toEqual({ slug: "x", search_aliases: ["Detroit-style pizza"], amenities: ["takeout"] });
+    expect(patchRecord(p, { x: { search_aliases: [], amenities: [] } })).toEqual({
+      slug: "x", search_aliases: [], amenities: [],
+    });
+    expect(p.amenities).toEqual(["unverified"]);
+  });
+
   it("can add verified communication access and written contact", () => {
     const p = { slug: "x", name: "Community center", tags: ["community"] };
     const accessibility = {

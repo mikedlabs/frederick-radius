@@ -215,7 +215,7 @@ test.describe("Fair Day production release journey", () => {
     await expect(fairMap).toBeVisible();
     await expect(
       page.getByRole("searchbox", {
-        name: "Find a place or program event on the Fair grounds map",
+        name: "Find a place, event, or vendor on the Fair grounds map",
       }),
     ).toBeVisible();
     await expect(fairMap.locator("canvas")).toBeVisible({ timeout: 15_000 });
@@ -233,7 +233,7 @@ test.describe("Fair Day production release journey", () => {
 
     await page
       .getByRole("searchbox", {
-        name: "Find a place or program event on the Fair grounds map",
+        name: "Find a place, event, or vendor on the Fair grounds map",
       })
       .fill("Homegrown Wineries");
     await page
@@ -415,6 +415,14 @@ test.describe("Fair Day production release journey", () => {
         { timeout: 3_000 },
       )
       .toBe("fair-map-selection-mobile-heading");
+
+    await selectedGrandstand.getByRole("button", { name: "More details" }).click();
+    const mapDetails = page.getByRole("dialog", { name: "Selected map place: Grandstand" });
+    await mapDetails.getByRole("button", { name: "Add Daughtry to My Day" }).click();
+    await expect(mapDetails.getByRole("button", { name: "Remove Daughtry from My Day" })).toHaveAttribute("aria-pressed", "true");
+    await mapDetails.getByRole("button", { name: "Remove Daughtry from My Day" }).click();
+    await expect(mapDetails.getByRole("button", { name: "Add Daughtry to My Day" })).toHaveAttribute("aria-pressed", "false");
+    await mapDetails.getByRole("button", { name: "Show less" }).click();
 
     await page.getByRole("button", { name: "Program", exact: true }).click();
     await expect(page).toHaveURL(/#program$/);

@@ -14,7 +14,14 @@ function LiveLayer({ condensed }: { condensed: boolean }) {
     : vehicles.length === 0 ? "No fresh bus positions near the Fairgrounds."
     : `${vehicles.length} county bus${vehicles.length === 1 ? "" : "es"} nearby now.`;
   return <>
-    <div data-fair-transit-status className="absolute left-[12px] right-[12px] z-10 max-w-[280px] overflow-y-auto rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] p-[12px] shadow-[var(--app-elev-2)]" style={{ borderColor: "var(--app-border)", top: condensed ? 116 : 228, maxHeight: `calc(100% - ${condensed ? 132 : 244}px - var(--fair-map-action-bar-clearance, 96px))` }}>
+    <div
+      data-fair-transit-status
+      className={`absolute left-[12px] right-[12px] z-10 max-w-[280px] overflow-y-auto rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] p-[12px] shadow-[var(--app-elev-2)] ${condensed ? "top-[168px]" : "top-[12rem] sm:top-[228px]"}`}
+      style={{
+        borderColor: "var(--app-border)",
+        maxHeight: `calc(100% - ${condensed ? 180 : 244}px - var(--fair-map-action-bar-clearance, 96px))`,
+      }}
+    >
       <p role="status" className="text-[13px] font-semibold">{status}</p>
       <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         Positions now, not your selected Fair date. Nearby does not mean Fair service.
@@ -38,8 +45,8 @@ export default function FairLiveTransit({ condensed = false, hidden = false }: {
   const [enabled, setEnabled] = useState(false);
   return <div hidden={hidden}>
     <button type="button" data-fair-map-runtime-control data-fair-transit-toggle aria-label="Live county buses" title="Live county buses" aria-pressed={enabled} onClick={() => setEnabled(!enabled)}
-      className="tap-44 absolute right-[12px] z-10 inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-[8px] rounded-full border bg-[var(--app-bg-elevated-solid)] px-0 text-[clamp(13px,0.8125rem,18px)] font-semibold shadow-[var(--app-elev-2)] sm:px-[12px] lg:left-[12px] lg:right-auto"
-      style={{ top: condensed ? 64 : 124, borderColor: enabled ? "var(--app-cool)" : "var(--app-border)" }}>
+      className={`tap-44 absolute right-[12px] z-10 inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-[8px] rounded-full border bg-[var(--app-bg-elevated-solid)] px-0 text-[clamp(13px,0.8125rem,18px)] font-semibold shadow-[var(--app-elev-2)] sm:left-[12px] sm:right-auto sm:px-[12px] ${condensed ? "top-[116px]" : "top-[8.5rem] sm:top-[11rem]"}`}
+      style={{ borderColor: enabled ? "var(--app-cool)" : "var(--app-border)" }}>
       <BusFront className="h-[16px] w-[16px]" aria-hidden /> <span className={condensed ? "sr-only" : "sr-only sm:not-sr-only"}>Live county buses</span>
     </button>
     {enabled ? <LiveLayer condensed={condensed} /> : null}

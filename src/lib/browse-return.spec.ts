@@ -21,6 +21,12 @@ describe("connected browsing returns", () => {
     expect(normalizeBrowseReturnTo("/events?date=2026-09-07&in=thurmont&cat=music#results")).toBe("/events?date=2026-09-07&in=thurmont&cat=music#results");
   });
 
+  it("returns to the exact edited outing from a stop's detail", () => {
+    const plan = "/plan?p=edited-token&in=brunswick&returnTo=%2Fsearch%3Fq%3Dcoffee";
+    expect(browseReturnLabel(plan)).toBe("Back to your plan");
+    expect(new URL(withBrowseReturnTo("/places/beans", plan), "https://example.test").searchParams.get("returnTo")).toBe(plan);
+  });
+
   it("carries a listing through a detail's place sheet without accepting external destinations", () => {
     expect(browseReturnFromLocation(new URL("https://example.test/events/a?returnTo=%2Fmy-radius"))).toBe("/my-radius");
     expect(withBrowseReturnTo("https://evil.test/places/a", "/my-radius")).toBe("https://evil.test/places/a");

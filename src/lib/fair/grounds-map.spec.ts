@@ -254,6 +254,14 @@ describe("Fair grounds map", () => {
     );
   });
 
+  it("keeps unlicensed food and vendor placement out of the geographic map", () => {
+    expect(
+      map.features.filter((feature) =>
+        fairGroundsFeatureMatchesFilter(feature, "food"),
+      ),
+    ).toEqual([]);
+  });
+
   it("makes non-public gates explicit without routing visitors to them", () => {
     const restrictions = new Map(
       ["Gate 4", "Gate 5", "Gate 6"].map((name) => {

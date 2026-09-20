@@ -230,7 +230,7 @@ test.describe("safe interaction crawler", () => {
           if (String(error).includes("Element is not attached to the DOM")) {
             continue;
           }
-          throw error;
+          throw new Error(`${surface}: could not activate "${selected.candidate.text}"`, { cause: error });
         }
         await page.waitForTimeout(350);
 

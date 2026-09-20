@@ -9,6 +9,10 @@ export type SessionUpdate = {
   hadSessionCookie: boolean;
 };
 
+// A stalled Auth refresh must not hold every public route until Vercel's
+// function deadline. Protected routes still treat a timeout as unavailable.
+export const SESSION_VERIFICATION_TIMEOUT_MS = 4_000;
+
 /**
  * Refresh and verify a Supabase session for a Next.js Proxy request.
  *
@@ -37,28 +41,58 @@ export async function updateSession(request: NextRequest): Promise<SessionUpdate
     return { response, authState: "anonymous", hadSessionCookie };
   }
 
-  const supabase = createServerClient(url, key, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet, headers) {
-        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) =>
-          response.cookies.set(name, value, options),
-        );
-        Object.entries(headers).forEach(([name, value]) =>
-          response.headers.set(name, value),
-        );
-      },
-    },
+  const controller = new AbortController();
+  let acceptingCookies = true;
+  let timer: ReturnType<typeof setTimeout>;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      acceptingCookies = false;
+      console.warn("[auth] Session verification deadline exceeded.");
+      reject(new Error("Session verification timed out"));
+      controller.abort();
+    }, SESSION_VERIFICATION_TIMEOUT_MS);
   });
 
-  // Keep this call immediately after client creation. Supabase's SSR client
-  // relies on the refresh side effects happening before any response work.
   try {
-    const { data, error } = await supabase.auth.getClaims();
+    const supabase = createServerClient(url, key, {
+      global: {
+        fetch(input, init) {
+          const upstreamSignal = init?.signal ??
+            (input instanceof Request ? input.signal : undefined);
+          return fetch(input, {
+            ...init,
+            signal: upstreamSignal
+              ? AbortSignal.any([upstreamSignal, controller.signal])
+              : controller.signal,
+          });
+        },
+      },
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet, headers) {
+          // SDK retries or a fetch implementation that ignores abort may
+          // finish later. Never mutate request/response cookies after return.
+          if (!acceptingCookies) return;
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options),
+          );
+          Object.entries(headers).forEach(([name, value]) =>
+            response.headers.set(name, value),
+          );
+        },
+      },
+    });
+
+    // Keep this call immediately after client creation. Refresh cookie/header
+    // side effects must finish before the verified response is returned.
+    const { data, error } = await Promise.race([
+      supabase.auth.getClaims(),
+      deadline,
+    ]);
     return {
       response,
       authState: !error && data?.claims?.sub ? "authenticated" : "anonymous",
@@ -67,6 +101,11 @@ export async function updateSession(request: NextRequest): Promise<SessionUpdate
   } catch {
     // Public pages should remain usable during an Auth outage. Protected pages
     // treat this state as signed out and fail closed in src/proxy.ts.
+    response.headers.set("Cache-Control", "private, no-store");
     return { response, authState: "unavailable", hadSessionCookie };
+  } finally {
+    acceptingCookies = false;
+    clearTimeout(timer!);
+    controller.abort();
   }
 }

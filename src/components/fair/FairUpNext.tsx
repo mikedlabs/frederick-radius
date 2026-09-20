@@ -3,7 +3,7 @@
 import { Clock3, MapPin, ChevronRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { MagicCard } from "../ui/MagicCard";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
 
 function useFairCountdown() {
@@ -18,8 +18,9 @@ function useFairCountdown() {
       const diff = targetDate.getTime() - now.getTime();
       
       if (diff <= 0) {
-        setTimeLeft("Open Now");
-        setIsUrgent(true);
+        // Opening day having passed does not mean the gates are open now.
+        setTimeLeft("Sep 18–26");
+        setIsUrgent(false);
         return;
       }
       
@@ -54,17 +55,18 @@ export default function FairUpNext({
   onAction?: () => void;
 } = {}) {
   const { timeLeft, isUrgent } = useFairCountdown();
+  const reduceMotion = useReducedMotion();
 
   return (
     <motion.div
-      initial={{ y: 10, scale: 0.98 }}
+      initial={reduceMotion ? false : { y: 10, scale: 0.98 }}
       animate={{ y: 0, scale: 1 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       layoutId="fair-up-next"
     >
       <motion.div
-        animate={isUrgent ? { scale: [1, 1.01, 1], boxShadow: ["0px 0px 0px rgba(0,0,0,0)", "0px 4px 16px var(--app-brand)", "0px 0px 0px rgba(0,0,0,0)"] } : {}}
-        transition={isUrgent ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : {}}
+        animate={isUrgent && !reduceMotion ? { boxShadow: ["0px 0px 0px rgba(0,0,0,0)", "0px 4px 16px var(--app-brand)", "0px 0px 0px rgba(0,0,0,0)"] } : {}}
+        transition={isUrgent && !reduceMotion ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : {}}
         className="rounded-[var(--app-radius-xl)]"
       >
         <MagicCard
@@ -88,11 +90,11 @@ export default function FairUpNext({
             >
               <h3 className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[var(--app-brand-press)]">
                 <Star className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Opening Day Countdown</span>
+                <span>2026 Fair dates</span>
               </h3>
               <span className="relative flex items-center gap-1.5 rounded-full bg-[var(--app-brand)] px-2.5 py-0.5 text-[10.5px] font-bold text-[var(--app-on-brand)] shadow-sm">
                 <span className="relative flex h-1.5 w-1.5">
-                  {isUrgent && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--app-on-brand)] opacity-75"></span>}
+                  {isUrgent && !reduceMotion && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--app-on-brand)] opacity-75"></span>}
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--app-on-brand)]"></span>
                 </span>
                 {timeLeft}

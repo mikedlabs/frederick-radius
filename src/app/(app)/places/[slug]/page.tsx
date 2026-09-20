@@ -54,6 +54,8 @@ import LiveGooglePlaceContext from "@/components/place/GooglePlaceContext";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
 import MapReturnLink from "@/components/place/MapReturnLink";
 import PlaceCommunicationAccess from "@/components/place/PlaceCommunicationAccess";
+import PlanFromPlaceLink from "@/components/plan/PlanFromPlaceLink";
+import { isDestinationCategory, isRecommendable } from "@/lib/relevance";
 import type { DecisionAction } from "@/lib/decision/telemetry";
 
 /**
@@ -376,8 +378,13 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           <Suspense fallback={null}>
             <PendingFollowApplier slug={place.slug} name={place.name} />
           </Suspense>
-          <div className="-mt-1">
+          <div className="-mt-1 flex flex-wrap items-center gap-2">
             <MyRadiusButton slug={place.slug} name={place.name} />
+            {isDestinationCategory(place.category) && isRecommendable(place) && place.is_operational !== "closed_permanently" && (
+              <Suspense fallback={null}>
+                <PlanFromPlaceLink slug={place.slug} name={place.name} />
+              </Suspense>
+            )}
           </div>
           {desc && (
             <div>

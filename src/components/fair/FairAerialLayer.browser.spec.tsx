@@ -16,7 +16,16 @@ class FakeImage {
 let host: HTMLDivElement;
 let root: Root;
 function Status({ enabled }: { enabled: boolean }) {
-  return createElement("span", null, useFairAerialStatus(enabled));
+  const { retry, status } = useFairAerialStatus(enabled);
+  return createElement(
+    "div",
+    null,
+    createElement("span", { "data-status": "" }, status),
+    createElement("button", { type: "button", onClick: retry }, "Retry"),
+  );
+}
+function statusText() {
+  return host.querySelector("[data-status]")?.textContent;
 }
 beforeEach(() => {
   vi.useFakeTimers();
@@ -32,21 +41,34 @@ afterEach(() => {
 it("loads only the self-hosted image before enabling the aerial", () => {
   act(() => root.render(createElement(Status, { enabled: true })));
   expect(image.src).toBe(FAIR_AERIAL_URL);
-  expect(host.textContent).toBe("loading");
+  expect(statusText()).toBe("loading");
   act(() => image.onload?.());
-  expect(host.textContent).toBe("ready");
+  expect(statusText()).toBe("ready");
 });
 it("leaves the clear-map fallback available if the image fails or stalls", () => {
   act(() => root.render(createElement(Status, { enabled: true })));
   act(() => vi.advanceTimersByTime(10_000));
-  expect(host.textContent).toBe("unavailable");
+  expect(statusText()).toBe("unavailable");
   expect(image.onload).toBeNull();
 });
 it("does not treat a broken image as an available aerial", () => {
   act(() => root.render(createElement(Status, { enabled: true })));
   image.naturalWidth = 0;
   act(() => image.onload?.());
-  expect(host.textContent).toBe("unavailable");
+  expect(statusText()).toBe("unavailable");
+});
+it("starts a fresh image request when the visitor retries", () => {
+  act(() => root.render(createElement(Status, { enabled: true })));
+  act(() => image.onerror?.());
+  expect(statusText()).toBe("unavailable");
+
+  const retry = host.querySelector<HTMLButtonElement>("button");
+  if (!retry) throw new Error("Expected a retry button.");
+  act(() => retry.click());
+  expect(statusText()).toBe("loading");
+  expect(image.src).toBe(FAIR_AERIAL_URL);
+  act(() => image.onload?.());
+  expect(statusText()).toBe("ready");
 });
 it("disarms callbacks when the visitor switches to the clear map", () => {
   act(() => root.render(createElement(Status, { enabled: true })));
