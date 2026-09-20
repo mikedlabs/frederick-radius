@@ -135,6 +135,8 @@ describe("BottomDrawer keyboard focus", () => {
     await flushScheduledWork();
 
     expect(dialog().getAttribute("aria-modal")).toBe("true");
+    expect(dialog().dataset.drawerSurface).toBe("default");
+    expect(dialog().style.background).toBe("var(--app-bg-elevated)");
     expect(dialog().getAttribute("aria-labelledby")).toBeTruthy();
     expect(dialog().getAttribute("aria-describedby")).toBeTruthy();
     expect(document.activeElement).toBe(closeButton());
@@ -148,6 +150,15 @@ describe("BottomDrawer keyboard focus", () => {
 
     expect(dialog().getAttribute("data-state")).toBe("closed");
     expect(document.activeElement).toBe(opener);
+  });
+
+  it("opts into an opaque surface without changing the dialog semantics", async () => {
+    await act(async () => root.render(<BottomDrawer open title="Solid details" surface="solid"><p>Readable map details</p></BottomDrawer>));
+    await flushScheduledWork();
+    expect(dialog().dataset.drawerSurface).toBe("solid");
+    expect(dialog().style.background).toBe("var(--app-bg-elevated-solid)");
+    expect(dialog().getAttribute("aria-modal")).toBe("true");
+    expect(dialog().contains(document.activeElement)).toBe(true);
   });
 
   it("traps forward and backward keyboard focus inside the drawer", async () => {

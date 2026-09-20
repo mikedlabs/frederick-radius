@@ -49,6 +49,8 @@ export type BottomDrawerProps = {
    *  so content can render flush under the drag handle — e.g. a
    *  full-bleed photo cover. Default false. */
   bareHeader?: boolean;
+  /** Use an opaque surface for dense content above a busy map or photograph. */
+  surface?: "default" | "solid";
 };
 
 export default function BottomDrawer({
@@ -59,6 +61,7 @@ export default function BottomDrawer({
   open,
   onOpenChange,
   bareHeader = false,
+  surface = "default",
 }: BottomDrawerProps) {
   // Most controlled drawers are opened by a button outside Drawer.Root, so
   // Radix has no registered trigger to restore. Remember that real opener
@@ -160,6 +163,7 @@ export default function BottomDrawer({
         />
         <Drawer.Content
           aria-modal="true"
+          data-drawer-surface={surface}
           {...(subtitle ? {} : { "aria-describedby": undefined })}
           onCloseAutoFocus={(event) => {
             if (!returnFocusRef.current?.isConnected) return;
@@ -168,7 +172,7 @@ export default function BottomDrawer({
           }}
           className="fixed bottom-0 left-0 right-0 z-[var(--z-overlay)] mt-24 flex max-h-[90dvh] flex-col rounded-t-[24px] border-t outline-none"
           style={{
-            background: "var(--app-bg-elevated)",
+            background: surface === "solid" ? "var(--app-bg-elevated-solid)" : "var(--app-bg-elevated)",
             borderColor: "var(--app-border)",
             boxShadow: "var(--app-elev-3), var(--app-edge), var(--app-hi)",
           }}

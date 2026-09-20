@@ -19,6 +19,18 @@ function plan(overrides: Partial<FairPlan> = {}): FairPlan {
 }
 
 describe("buildFairPlanStatus", () => {
+  it("counts only this day's vendor stops and includes removed vendors in review state", () => {
+    const status = buildFairPlanStatus(plan({ arrivalChoice: "walk", readyKeys: ["ticket", "travel", "entry"], vendorStops: [
+      { vendorId: "vendor-current", dayId: "day-2026-09-18", labelSnapshot: "Current vendor", sourceState: "current" },
+      { vendorId: "vendor-removed", dayId: "day-2026-09-18", labelSnapshot: "Removed vendor", sourceState: "changed-or-removed" },
+      { vendorId: "vendor-tomorrow", dayId: "day-2026-09-19", labelSnapshot: "Tomorrow vendor", sourceState: "current" },
+    ] }));
+    expect(status.savedStopCount).toBe(2);
+    expect(status.needsReviewStopCount).toBe(1);
+    expect(status.nextAction).toBe("my-day");
+    expect(status.savedStopsLabel).toBe("2 saved stops");
+  });
+
   it("starts with tickets and reports the selected day truthfully", () => {
     const status = buildFairPlanStatus(plan());
 

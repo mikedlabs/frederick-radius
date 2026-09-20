@@ -23,8 +23,12 @@ import {
 } from "@/data/fair/great-frederick-fair-2026-pack";
 import {
   FAIR_PLAN_STORAGE_KEY,
+  addFairPlanVendor,
+  parseFairPlanText,
+  serializeFairPlan,
   setFairPlanParty,
 } from "@/lib/fair/plan";
+import { greatFrederickFair2026Vendors } from "@/data/fair/great-frederick-fair-2026-vendors";
 
 import FairDayWorkspace from "./FairDayWorkspace";
 import { buildFairDayWorkspaceData } from "./buildFairDayWorkspaceData";
@@ -159,6 +163,41 @@ describe("FairDayWorkspace app journey", () => {
       ),
     );
   }
+
+  it("restores a vendor-only day in My Day with sharing and no invented event time", async () => {
+    const data = buildFairDayWorkspaceData(greatFrederickFair2026Pack, greatFrederickFair2026PackPointer, new Date("2026-09-18T20:59:00Z"));
+    const vendor = greatFrederickFair2026Vendors[0];
+    const saved = addFairPlanVendor({ ...data.initialPlan, selectedDayId: "day-2026-09-18" }, vendor, "day-2026-09-18", "2026-09-18T20:59:00Z");
+    storedValues.set(FAIR_PLAN_STORAGE_KEY, serializeFairPlan(saved));
+    await renderFair(data);
+    await openMode("My Day");
+    const section = container.querySelector('[aria-labelledby="fair-saved-vendors-heading"]');
+    expect(section?.textContent).toContain(vendor.name);
+    expect(section?.textContent).toContain("not timed reservations");
+    expect(container.querySelector('[aria-label="My Fair Day timeline"]')).toBeNull();
+    expect(container.textContent).toContain("1 saved stop for Fri, Sep 18");
+    expect(container.textContent).toContain("0 of 3 preparation steps are ready");
+    expect(container.querySelector("[data-fair-journey] summary")?.textContent).toBe("Tickets & arrival");
+    expect(buttonWithText(container, "Share saved stops")).toBeTruthy();
+    await act(async () => buttonWithText(section!, "Remove").click());
+    expect(parseFairPlanText(storedValues.get(FAIR_PLAN_STORAGE_KEY)!)?.vendorStops).toEqual([]);
+    expect(container.querySelector('[aria-labelledby="fair-saved-vendors-heading"]')).toBeNull();
+  });
+
+  it("keeps a removed vendor visible for review and preserves another day's vendor", async () => {
+    const data = buildFairDayWorkspaceData(greatFrederickFair2026Pack, greatFrederickFair2026PackPointer, new Date("2026-09-18T20:59:00Z"));
+    let saved = addFairPlanVendor({ ...data.initialPlan, selectedDayId: "day-2026-09-18" }, { id: "vendor-no-longer-listed", name: "Old vendor snapshot" }, "day-2026-09-18", "2026-09-18T20:59:00Z");
+    saved = addFairPlanVendor(saved, greatFrederickFair2026Vendors[0], "day-2026-09-19", "2026-09-18T20:59:00Z");
+    storedValues.set(FAIR_PLAN_STORAGE_KEY, serializeFairPlan(saved));
+    await renderFair(data);
+    await openMode("My Day");
+    const section = container.querySelector('[aria-labelledby="fair-saved-vendors-heading"]');
+    expect(section?.textContent).toContain("Old vendor snapshot");
+    expect(section?.textContent).toContain("Needs review");
+    expect(section?.textContent).not.toContain(greatFrederickFair2026Vendors[0].name);
+    expect(container.textContent).not.toContain("Share saved stops");
+    expect(parseFairPlanText(storedValues.get(FAIR_PLAN_STORAGE_KEY)!)?.vendorStops).toHaveLength(2);
+  });
 
   async function replayHistoryDestination(hash: string) {
     window.history.replaceState(

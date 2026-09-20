@@ -6,6 +6,7 @@ import {
   type FairParty,
 } from "@/lib/fair/party-plan";
 import type { FairScheduleSourceItem } from "@/lib/fair/schedule";
+import type { FairVendor } from "@/lib/fair/domain";
 
 export const FAIR_PLAN_STORAGE_KEY =
   "fr:fair-plan:great-frederick-fair-2026:v1";
@@ -44,6 +45,14 @@ export const fairPlanStepSchema = z
   })
   .strict();
 
+/** A visit-anytime choice, never a fabricated schedule row or map coordinate. */
+export const fairPlanVendorStopSchema = z.object({
+  vendorId: z.string().regex(/^vendor-[a-z0-9]+(?:-[a-z0-9]+)*$/).max(120),
+  dayId: dayIdSchema,
+  labelSnapshot: z.string().trim().min(2).max(160),
+  sourceState: z.enum(["current", "changed-or-removed"]),
+}).strict();
+
 export const fairPlanSchema = z
   .object({
     version: z.literal(1),
@@ -62,10 +71,22 @@ export const fairPlanSchema = z
     readyKeys: z.array(fairPlanReadyKeySchema).max(5),
     consideredOfferIds: z.array(offerIdSchema).max(40),
     steps: z.array(fairPlanStepSchema).max(MAX_FAIR_PLAN_STEPS),
+    vendorStops: z.array(fairPlanVendorStopSchema).max(MAX_FAIR_PLAN_STEPS).default([]),
     updatedAt: offsetTimestampSchema,
   })
   .strict()
   .superRefine((plan, ctx) => {
+    if (plan.steps.length + plan.vendorStops.length > MAX_FAIR_PLAN_STEPS) {
+      ctx.addIssue({ code: "custom", message: `A Fair plan may contain at most ${MAX_FAIR_PLAN_STEPS} stops.`, path: ["vendorStops"] });
+    }
+    const vendorDays = new Set<string>();
+    plan.vendorStops.forEach((stop, index) => {
+      const key = `${stop.dayId}:${stop.vendorId}`;
+      if (vendorDays.has(key)) {
+        ctx.addIssue({ code: "custom", message: "a vendor may appear only once per Fair day", path: ["vendorStops", index, "vendorId"] });
+      }
+      vendorDays.add(key);
+    });
     const scheduleIds = new Set<string>();
     plan.steps.forEach((step, index) => {
       if (scheduleIds.has(step.scheduleItemId)) {
@@ -105,6 +126,7 @@ export const fairPlanSchema = z
 
 export type FairPlan = z.infer<typeof fairPlanSchema>;
 export type FairPlanStep = z.infer<typeof fairPlanStepSchema>;
+export type FairPlanVendorStop = z.infer<typeof fairPlanVendorStopSchema>;
 export type FairPlanArrivalChoice = FairPlan["arrivalChoice"];
 export type FairPlanReadyKey = z.infer<typeof fairPlanReadyKeySchema>;
 
@@ -179,10 +201,44 @@ export function addFairPlanItem(
 ): FairPlan {
   const plan = fairPlanSchema.parse(planCandidate);
   if (plan.steps.some((step) => step.scheduleItemId === item.id)) return plan;
-  if (plan.steps.length >= MAX_FAIR_PLAN_STEPS) {
+  if (plan.steps.length + plan.vendorStops.length >= MAX_FAIR_PLAN_STEPS) {
     throw new RangeError(`A Fair plan may contain at most ${MAX_FAIR_PLAN_STEPS} items.`);
   }
   return withUpdate(plan, { steps: [...plan.steps, scheduleStep(item)] }, now);
+}
+
+export function addFairPlanVendor(
+  planCandidate: FairPlan,
+  vendor: Pick<FairVendor, "id" | "name">,
+  dayId: string,
+  now: string,
+): FairPlan {
+  const plan = fairPlanSchema.parse(planCandidate);
+  if (plan.vendorStops.some((stop) => stop.vendorId === vendor.id && stop.dayId === dayId)) return plan;
+  if (plan.steps.length + plan.vendorStops.length >= MAX_FAIR_PLAN_STEPS) {
+    throw new RangeError(`A Fair plan may contain at most ${MAX_FAIR_PLAN_STEPS} stops.`);
+  }
+  const stop = fairPlanVendorStopSchema.parse({ vendorId: vendor.id, dayId, labelSnapshot: vendor.name, sourceState: "current" });
+  return withUpdate(plan, { vendorStops: [...plan.vendorStops, stop] }, now);
+}
+
+export function removeFairPlanVendor(planCandidate: FairPlan, vendorId: string, dayId: string, now: string): FairPlan {
+  const plan = fairPlanSchema.parse(planCandidate);
+  const vendorStops = plan.vendorStops.filter((stop) => stop.vendorId !== vendorId || stop.dayId !== dayId);
+  return vendorStops.length === plan.vendorStops.length ? plan : withUpdate(plan, { vendorStops }, now);
+}
+
+/** Missing vendors remain visible for review; matching names never replace IDs. */
+export function reconcileFairPlanVendors(planCandidate: FairPlan, vendors: readonly Pick<FairVendor, "id" | "name">[], now: string): FairPlan {
+  const plan = fairPlanSchema.parse(planCandidate);
+  const current = new Map(vendors.map((vendor) => [vendor.id, vendor]));
+  const vendorStops = plan.vendorStops.map((stop): FairPlanVendorStop => {
+    const vendor = current.get(stop.vendorId);
+    return vendor
+      ? { ...stop, labelSnapshot: vendor.name, sourceState: "current" }
+      : { ...stop, sourceState: "changed-or-removed" };
+  });
+  return withUpdate(plan, { vendorStops }, now);
 }
 
 export function removeFairPlanItem(
@@ -251,9 +307,9 @@ export function moveFairPlanItemWithinDay(
 
 export function clearFairPlan(planCandidate: FairPlan, now: string): FairPlan {
   const plan = fairPlanSchema.parse(planCandidate);
-  return plan.steps.length === 0
+  return plan.steps.length === 0 && plan.vendorStops.length === 0
     ? plan
-    : withUpdate(plan, { steps: [] }, now);
+    : withUpdate(plan, { steps: [], vendorStops: [] }, now);
 }
 
 export function setFairPlanDay(

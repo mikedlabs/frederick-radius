@@ -20,6 +20,7 @@ import {
   Search,
   Share2,
   Toilet,
+  UtensilsCrossed,
   TicketCheck,
   X,
 } from "lucide-react";
@@ -73,12 +74,18 @@ import { haptic } from "@/lib/haptics";
 import { FAIR_DAY_PATH } from "@/lib/fair/plan-status";
 import { fairMapSearchScore } from "@/lib/fair/map-search";
 import { fairVendorDirectoryHref } from "@/lib/fair/vendor-finder";
+import { searchFairVendors } from "@/lib/fair/vendor-discovery";
+import {
+  greatFrederickFair2026Vendors,
+  type FairVendorProfile,
+} from "@/data/fair/great-frederick-fair-2026-vendors";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { mapCameraDuration } from "@/lib/motion";
 import { MAP_LABEL_FONT_MEDIUM } from "@/lib/map/frederickFlavorStyle";
 
 import FairGroundsMapLoading from "./FairGroundsMapLoading";
 import FairGroundsMapMasthead from "./FairGroundsMapMasthead";
+import FairVendorExplorer from "./FairVendorExplorer";
 import FairMapCanvasBoundary from "./FairMapCanvasBoundary";
 import FairLiveTransit from "./FairLiveTransit";
 import FairAerialLayer, { FAIR_AERIAL_ATTRIBUTION, useFairAerialStatus } from "./FairAerialLayer";
@@ -109,6 +116,9 @@ export type FairGroundsMapProps = {
   onFocusRequestHandled?: (requestId: number) => void;
   onOpenProgramItem?: (itemId: string) => void;
   onToggleProgramItem?: (itemId: string) => void;
+  selectedDateLabel?: string;
+  savedVendors?: { id: string; name: string }[];
+  onToggleVendor?: (vendor: FairVendorProfile) => void;
 };
 
 type FairGroundsMapView = FairGroundsMapFilter | "program";
@@ -123,6 +133,7 @@ type FairGroundsMarkerGroup = {
 
 function fairMapSelectionUrl(featureId: string | null): string {
   const url = new URL(window.location.href);
+  url.searchParams.delete("vendor");
   if (featureId) url.searchParams.set("meet", featureId);
   else url.searchParams.delete("meet");
   url.hash = "fair-map";
@@ -717,6 +728,9 @@ export default function FairGroundsMapInner({
   onFocusRequestHandled,
   onOpenProgramItem,
   onToggleProgramItem,
+  selectedDateLabel,
+  savedVendors = [],
+  onToggleVendor,
 }: FairGroundsMapProps) {
   const mapRef = useRef<MapRef | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -769,6 +783,9 @@ export default function FairGroundsMapInner({
       : (readRememberedFairGroundsMapFilter() ?? "essentials"),
   );
   const [query, setQuery] = useState("");
+  const [vendorExplorerOpen, setVendorExplorerOpen] = useState(false);
+  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
+  const [vendorQuery, setVendorQuery] = useState("");
   const [condensedMobileControls, setCondensedMobileControls] = useState(false);
   const [condensedSearchOpen, setCondensedSearchOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -1052,7 +1069,8 @@ export default function FairGroundsMapInner({
     if (
       !mapData ||
       focusedDeepLinkRef.current ||
-      window.location.hash !== "#fair-map"
+      window.location.hash !== "#fair-map" ||
+      new URLSearchParams(window.location.search).has("vendor")
     ) {
       return;
     }
@@ -1443,11 +1461,22 @@ export default function FairGroundsMapInner({
       .slice(0, 6);
   }, [mapData, programMatches, query]);
   const normalizedQuery = query.trim();
+  const vendorSearchMatches = useMemo(
+    () => normalizedQuery.length >= 2
+      ? searchFairVendors(greatFrederickFair2026Vendors, normalizedQuery).slice(0, 4)
+      : [],
+    [normalizedQuery],
+  );
+  const featuredVendor = greatFrederickFair2026Vendors.find((vendor) =>
+    vendor.searchAliases.some((alias) => alias.toLowerCase() === "rad pies"),
+  );
   const searchAnnouncement =
     normalizedQuery.length >= 2
       ? searchMatches.length > 0
         ? `${searchMatches.length} map ${searchMatches.length === 1 ? "result" : "results"} available. Tab to review them.`
-        : "No reviewed map place matches that search. The Fair's live vendor search is available."
+        : vendorSearchMatches.length > 0
+          ? `${vendorSearchMatches.length} reviewed vendor ${vendorSearchMatches.length === 1 ? "match" : "matches"} available. Booth details do not imply a mapped pin.`
+          : "No reviewed map place matches that search. The Fair's live vendor search is available."
       : "";
   const selectedStops = selected
     ? (savedStopMatches.get(selected.properties.id) ?? [])
@@ -1597,6 +1626,51 @@ export default function FairGroundsMapInner({
     attemptFocus();
   }, []);
 
+  const selectVendor = (vendorId: string | null) => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("meet");
+    url.searchParams.set("vendor", vendorId ?? "browse");
+    url.hash = "fair-map";
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    setSelectedVendorId(vendorId);
+  };
+
+  const openVendorExplorer = (vendorId: string | null = null, search = "") => {
+    // The vendor browser replaces, rather than stacks on, map-place details.
+    lastSelectionTriggerRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement : null;
+    mobileSelectionDialogRef.current?.close();
+    clusterSelectionDialogRef.current?.close();
+    setSelectedId(null);
+    setClusterSelectionIds([]);
+    setSelectionExpanded(false);
+    const state = { ...window.history.state, [FAIR_MAP_SELECTION_HISTORY_KEY]: true };
+    const url = new URL(window.location.href);
+    url.searchParams.delete("meet");
+    url.searchParams.set("vendor", vendorId ?? "browse");
+    url.hash = "fair-map";
+    if (isFairMapSelectionHistoryState(window.history.state)) {
+      window.history.replaceState(state, "", `${url.pathname}${url.search}${url.hash}`);
+    } else {
+      window.history.pushState(state, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+    selectionHistoryEntryRef.current = true;
+    setVendorQuery(search);
+    setSelectedVendorId(vendorId);
+    setVendorExplorerOpen(true);
+  };
+
+  const closeVendorExplorer = () => {
+    setVendorExplorerOpen(false);
+    if (isFairMapSelectionHistoryState(window.history.state)) {
+      window.history.back();
+    } else {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("vendor");
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+  };
+
   const beginFairMapSelectionHistory = useCallback((featureId: string) => {
     const currentState =
       window.history.state && typeof window.history.state === "object"
@@ -1658,6 +1732,8 @@ export default function FairGroundsMapInner({
     clusterSelectionDialogRef.current?.close();
     
     const updateState = () => {
+      setVendorExplorerOpen(false);
+      setSelectedVendorId(null);
       setClusterSelectionIds([]);
       setSelectionExpanded(false);
       beginFairMapSelectionHistory(feature.properties.id);
@@ -1681,7 +1757,18 @@ export default function FairGroundsMapInner({
   };
 
   useEffect(() => {
-    if (!mapData || sharedMeetingPlaceHandledRef.current) return;
+    if (sharedMeetingPlaceHandledRef.current) return;
+    const vendorId = new URLSearchParams(window.location.search).get("vendor");
+    if (vendorId) {
+      sharedMeetingPlaceHandledRef.current = true;
+      // Unknown links get the drawer's visible recovery state, never a silent
+      // map landing or a guessed replacement vendor.
+      setSelectedVendorId(vendorId === "browse" ? null : vendorId);
+      setVendorExplorerOpen(true);
+      selectionHistoryEntryRef.current = isFairMapSelectionHistoryState(window.history.state);
+      return;
+    }
+    if (!mapData) return;
     sharedMeetingPlaceHandledRef.current = true;
     const sharedId = new URLSearchParams(window.location.search).get("meet");
     if (!sharedId) return;
@@ -1708,18 +1795,29 @@ export default function FairGroundsMapInner({
   }, [mapData]);
 
   useEffect(() => {
-    if (!mapData) return;
     const syncSelectionFromHistory = (event: PopStateEvent) => {
+      const vendorId = new URLSearchParams(window.location.search).get("vendor");
+      if (vendorId) {
+        mobileSelectionDialogRef.current?.close();
+        clusterSelectionDialogRef.current?.close();
+        setSelectedId(null);
+        setClusterSelectionIds([]);
+        setSelectedVendorId(vendorId === "browse" ? null : vendorId);
+        setVendorExplorerOpen(true);
+        selectionHistoryEntryRef.current = isFairMapSelectionHistoryState(event.state);
+        return;
+      }
+      setVendorExplorerOpen(false);
       const requestedId = new URLSearchParams(window.location.search).get(
         "meet",
       );
       const feature = requestedId
-        ? (mapData.features.find(
+        ? (mapData?.features.find(
             (candidate) => candidate.properties.id === requestedId,
           ) ?? null)
         : null;
 
-      if (feature && feature.properties.kind !== "fairgrounds") {
+      if (mapData && feature && feature.properties.kind !== "fairgrounds") {
         const nextFilter = fairGroundsMapFilterForFeature(feature);
         selectionHistoryEntryRef.current = isFairMapSelectionHistoryState(
           event.state,
@@ -2250,6 +2348,19 @@ export default function FairGroundsMapInner({
     );
   };
 
+  const vendorExplorer = (
+    <FairVendorExplorer
+      open={vendorExplorerOpen}
+      onOpenChange={(open) => { if (!open) closeVendorExplorer(); }}
+      vendors={greatFrederickFair2026Vendors}
+      selectedVendorId={selectedVendorId}
+      onSelectVendor={selectVendor}
+      initialQuery={vendorQuery}
+      savedVendorIds={savedVendors.map((vendor) => vendor.id)}
+      onToggleVendor={onToggleVendor ?? (() => undefined)}
+    />
+  );
+
   if (
     mapSnapshotStatus === "failed" ||
     mapSnapshotStatus === "retrying"
@@ -2307,13 +2418,19 @@ export default function FairGroundsMapInner({
           >
             Browse the program
           </button>
+          <button type="button" onClick={() => openVendorExplorer()}
+            className="tap-44 inline-flex min-h-11 items-center gap-2 font-semibold text-[var(--app-brand-press)]">
+            <UtensilsCrossed className="h-4 w-4" aria-hidden />
+            Browse Fair vendors
+          </button>
         </div>
+        {vendorExplorer}
       </div>
     );
   }
 
   if (!mapData) {
-    return <FairGroundsMapLoading />;
+    return <><FairGroundsMapLoading />{vendorExplorer}</>;
   }
 
   const renderSearchResults = () =>
@@ -2327,6 +2444,27 @@ export default function FairGroundsMapInner({
           boxShadow: "var(--app-elev-3)",
         }}
       >
+        {vendorSearchMatches.length > 0 ? (
+          <ul aria-label="Reviewed Fair vendors" className="border-b pb-1" style={{ borderColor: "var(--app-border)" }}>
+            {vendorSearchMatches.map((vendor) => (
+              <li key={vendor.id}>
+                <button type="button" onClick={() => openVendorExplorer(vendor.id, normalizedQuery)}
+                  className="tap-44 flex min-h-16 w-full items-center gap-3 rounded-[var(--app-radius-md)] px-3 py-2 text-left hover:bg-[var(--app-bg-sunken)]">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--app-brand-tint-6)] text-[var(--app-brand-press)]" aria-hidden>
+                    <UtensilsCrossed className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[14px] font-bold">{vendor.name}</span>
+                    <span className="line-clamp-2 text-[12px] leading-snug text-[var(--app-ink-3)]">
+                      {vendor.booth.status === "known" ? `Official booth reference: ${vendor.booth.value}` : "Fair vendor · location not confirmed"}
+                    </span>
+                  </span>
+                  <ChevronDown className="h-4 w-4 shrink-0 -rotate-90 text-[var(--app-brand-press)]" aria-hidden />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {searchMatches.length > 0 ? (
           <ul aria-label="Fair map search results">
             {searchMatches.map((feature) => (
@@ -2391,7 +2529,7 @@ export default function FairGroundsMapInner({
 
   return (
     <section
-      className="relative lg:mt-5"
+      className="relative"
       aria-labelledby="fair-grounds-map-heading"
       data-fair-grounds-map
       style={
@@ -2408,7 +2546,9 @@ export default function FairGroundsMapInner({
       }
     >
       <div className="hidden lg:block">
-        <FairGroundsMapMasthead checkedOn={mapData.reviewedOn} />
+        <FairGroundsMapMasthead checkedOn={mapData.reviewedOn}
+          selectedDateLabel={selectedDateLabel}
+          onBrowseVendors={() => openVendorExplorer()} />
       </div>
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {mapAnnouncement}
@@ -2425,9 +2565,10 @@ export default function FairGroundsMapInner({
       <p id="fair-map-instructions" className="sr-only">
         On a phone, pinch or double-tap the map to zoom. When the map is
         focused, use keyboard plus and minus to zoom. Every shown place is also
-        available in the complete task-grouped list below. If a vendor is not
-        one of those reviewed map places, search sends its name to the Fair&apos;s
-        official live vendor directory instead of guessing a booth pin. Grounds
+        available in the complete task-grouped list below. Search also finds
+        reviewed vendor profiles with official booth references. The Fair&apos;s
+        live vendor directory provides the wider list. Vendor booth references
+        are not exact map pins. Grounds
         geometry comes from reviewed OpenStreetMap data. Official
         arrival pins and published transit stops identify their sources. Follow
         current signs on the grounds.
@@ -2579,14 +2720,15 @@ export default function FairGroundsMapInner({
                 data-fair-map-filter-select
                 value={filter}
                 onChange={(event) =>
-                  activateMapFilter(
-                    event.target.value as FairGroundsMapView,
-                  )
+                  event.target.value === "vendors"
+                    ? openVendorExplorer()
+                    : activateMapFilter(event.target.value as FairGroundsMapView)
                 }
                 aria-describedby="fair-map-filter-status"
                 className="block h-full w-full rounded-r-full appearance-none bg-transparent py-0 pl-3 pr-9 text-[clamp(16px,0.75rem,20px)] font-bold outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--app-brand-press)]"
                 style={{ color: "var(--app-ink)" }}
               >
+                <option value="vendors">Food & vendors</option>
                 {FILTERS.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.compactLabel} · {filterCounts.get(option.id) ?? 0}
@@ -2615,14 +2757,14 @@ export default function FairGroundsMapInner({
       ) : (
         <div
           data-fair-map-standard-controls
-          className={`${selected ? "hidden lg:relative lg:block" : "absolute inset-x-3 top-3 sm:relative sm:inset-auto sm:mx-3 sm:mt-3 lg:mx-0 lg:mt-4"} z-20 overflow-visible rounded-[var(--app-radius-xl)] border p-2 lg:p-3`}
+          className={`${selected ? "hidden lg:relative" : "absolute inset-x-3 top-3 sm:relative sm:inset-auto sm:mx-3 sm:mt-3 lg:mx-0 lg:mt-0"} z-20 overflow-visible rounded-[var(--app-radius-xl)] border p-2 lg:flex lg:items-center lg:gap-2 lg:p-2`}
           style={{
             borderColor: "var(--app-control-border)",
             background: "var(--app-bg-elevated-solid)",
             boxShadow: "var(--app-elev-1), var(--app-edge)",
           }}
         >
-          <div className="hidden items-center justify-between gap-3 px-2 pt-1 sm:flex">
+          <div className="hidden items-center justify-between gap-3 px-2 pt-1 sm:flex lg:hidden">
             <div>
               <p
                 className="text-[10px] font-extrabold uppercase tracking-[0.15em]"
@@ -2648,7 +2790,7 @@ export default function FairGroundsMapInner({
           </div>
           <div
             data-fair-map-search-rail
-            className="relative z-30 sm:mt-2"
+            className="relative z-30 sm:mt-2 lg:mt-0 lg:w-[min(32%,24rem)] lg:shrink-0"
           >
             <label htmlFor="fair-map-search" className="sr-only">
               Find a place, event, or vendor on the Fair grounds map
@@ -2707,7 +2849,7 @@ export default function FairGroundsMapInner({
             <div
               data-fair-map-filter-rail
               data-fair-map-runtime-control
-              className="relative z-20 mt-2"
+              className="relative z-20 mt-2 lg:mt-0 lg:min-w-0 lg:flex-1"
             >
             <div className="px-3 pb-1 sm:hidden">
               <div
@@ -2736,14 +2878,15 @@ export default function FairGroundsMapInner({
                     data-fair-map-filter-select
                     value={filter}
                     onChange={(event) =>
-                      activateMapFilter(
-                        event.target.value as FairGroundsMapView,
-                      )
+                      event.target.value === "vendors"
+                        ? openVendorExplorer()
+                        : activateMapFilter(event.target.value as FairGroundsMapView)
                     }
                     aria-describedby="fair-map-filter-status"
                     className="h-11 w-full appearance-none bg-transparent py-0 pl-3 pr-9 text-[13px] font-bold outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--app-brand-press)]"
                     style={{ color: "var(--app-ink)" }}
                   >
+                    <option value="vendors">Food & vendors</option>
                     {FILTERS.map((option) => (
                       <option key={option.id} value={option.id}>
                         {option.compactLabel} ·{" "}
@@ -2771,10 +2914,16 @@ export default function FairGroundsMapInner({
               </p>
             </div>
             <div
-              className="hidden grid-cols-5 gap-1.5 px-1 pb-1 sm:grid"
+              className="hidden grid-cols-6 gap-1 px-1 pb-1 sm:grid lg:px-0 lg:pb-0"
               role="group"
               aria-label="Choose what the Fair map shows"
             >
+              <button type="button" onClick={() => openVendorExplorer()}
+                className="tap-44 flex min-h-12 min-w-0 items-center justify-center gap-1 rounded-[var(--app-radius-md)] border px-2 text-[12px] font-bold"
+                style={{ borderColor: "var(--app-brand-tint-6)", background: "var(--app-brand-tint-6)", color: "var(--app-brand-press)" }}>
+                <UtensilsCrossed className="h-4 w-4 shrink-0" aria-hidden />
+                <span>Vendors</span>
+              </button>
               {FILTERS.map((option) => {
                 const active = option.id === filter;
                 const count = filterCounts.get(option.id) ?? 0;
@@ -2786,7 +2935,7 @@ export default function FairGroundsMapInner({
                     aria-pressed={active}
                     aria-label={`${option.label} · ${count}`}
                     onClick={() => activateMapFilter(option.id)}
-                    className="tap-44 flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-2 text-[12px] font-bold lg:justify-start lg:gap-2 lg:px-3 lg:text-[13px]"
+                    className="tap-44 flex min-h-12 min-w-0 items-center justify-center gap-1 rounded-[var(--app-radius-md)] border px-1.5 text-[12px] font-bold"
                     style={{
                       borderColor: active
                         ? "var(--app-brand-press)"
@@ -2803,13 +2952,10 @@ export default function FairGroundsMapInner({
                     }}
                     >
                     <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                    <span className="min-w-0 truncate lg:hidden">
+                    <span className="min-w-0 truncate">
                       {option.compactLabel}
                     </span>
-                    <span className="hidden min-w-0 truncate lg:inline">
-                      {option.label}
-                    </span>
-                    <span className="text-[11px] tabular-nums opacity-75">
+                    <span className="hidden text-[10px] tabular-nums opacity-75 xl:inline">
                       {count}
                     </span>
                   </button>
@@ -2821,10 +2967,10 @@ export default function FairGroundsMapInner({
         </div>
       )}
 
-      <div className="mx-3 mt-0 sm:mt-3 lg:mx-0 lg:mt-3 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-0">
+      <div className="mx-3 mt-0 sm:mt-3 lg:mx-0 lg:mt-3 lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-0 xl:grid-cols-[minmax(0,1fr)_23rem]">
         <div
           ref={mapCanvasShellRef}
-          className="fair-grounds-map-canvas relative h-[calc(100dvh-var(--app-topbar-h)-var(--fair-map-action-bar-height,calc(var(--app-bottomnav-reserve,68px)+env(safe-area-inset-bottom,0px)))-1rem)] min-h-[288px] overflow-hidden rounded-[var(--app-radius-xl)] border sm:h-[min(67dvh,40rem)] sm:min-h-[27rem] lg:h-[41rem] lg:min-h-0 lg:rounded-r-none"
+          className="fair-grounds-map-canvas relative h-[calc(100dvh-var(--app-topbar-h)-var(--fair-map-action-bar-height,calc(var(--app-bottomnav-reserve,68px)+env(safe-area-inset-bottom,0px)))-1rem)] min-h-[288px] overflow-hidden rounded-[var(--app-radius-xl)] border sm:h-[min(67dvh,40rem)] sm:min-h-[27rem] lg:h-[min(72dvh,48rem)] lg:min-h-[32rem] lg:rounded-r-none"
           style={{
             borderColor: "var(--app-control-border)",
             background: "var(--app-bg-sunken)",
@@ -3449,12 +3595,11 @@ export default function FairGroundsMapInner({
                 <p className="text-[11px] font-extrabold uppercase tracking-[0.1em]">
                   Places in this view
                 </p>
-                <span
-                  className="text-[11px] font-bold tabular-nums"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  {filterCounts.get(filter) ?? 0}
-                </span>
+                <button type="button" onClick={() => openVendorExplorer()}
+                  className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[12px] font-bold text-[var(--app-brand-press)]">
+                  <UtensilsCrossed className="h-3.5 w-3.5" aria-hidden />
+                  Food & vendors
+                </button>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 {navigatorCandidates.slice(0, 2).map((feature) => {
@@ -3790,11 +3935,11 @@ export default function FairGroundsMapInner({
         <section
           id={selected ? "fair-map-selection-desktop" : undefined}
           data-fair-map-selection={selected ? "" : undefined}
-          className="relative z-10 mx-2 -mt-4 hidden rounded-[var(--app-radius-xl)] border p-4 lg:mx-0 lg:mt-0 lg:flex lg:min-h-[656px] lg:rounded-l-none lg:flex-col lg:border-l-0 lg:p-5 [view-transition-name:fair-map-selection]"
+          className="relative z-10 mx-2 -mt-4 hidden rounded-[var(--app-radius-xl)] border p-4 lg:mx-0 lg:mt-0 lg:flex lg:h-[min(72dvh,48rem)] lg:min-h-[32rem] lg:overflow-y-auto lg:rounded-l-none lg:flex-col lg:border-l-0 lg:p-5 [view-transition-name:fair-map-selection]"
           style={{
             borderColor: "var(--app-control-border)",
-            borderTopColor: selected ? selectedTone : "var(--app-brand-press)",
-            borderTopWidth: "4px",
+            borderTopColor: selected ? selectedTone : "var(--app-control-border)",
+            borderTopWidth: selected ? "4px" : "1px",
             background: "var(--app-bg-elevated-solid)",
             boxShadow: "var(--app-elev-2), var(--app-edge), var(--app-hi)",
           }}
@@ -3931,7 +4076,7 @@ export default function FairGroundsMapInner({
                 className="text-[11px] font-extrabold uppercase tracking-[0.14em]"
                 style={{ color: "var(--app-brand-press)" }}
               >
-                Navigator index
+                Around the grounds
               </p>
               <h3
                 id="fair-map-guidance-heading"
@@ -3946,6 +4091,23 @@ export default function FairGroundsMapInner({
               >
                 Choose a reviewed place to bring it forward on the map.
               </p>
+              {featuredVendor ? (
+                <button type="button" onClick={() => openVendorExplorer(featuredVendor.id)}
+                  data-fair-featured-vendor
+                  className="tap-44 mt-4 w-full rounded-[var(--app-radius-lg)] border p-4 text-left"
+                  style={{ borderColor: "color-mix(in srgb, var(--app-brand) 25%, var(--app-border))", background: "linear-gradient(135deg, var(--app-brand-tint-6), var(--app-bg-elevated-solid))" }}>
+                  <span className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--app-brand-press)]">
+                    Fair food <UtensilsCrossed className="h-4 w-4" aria-hidden />
+                  </span>
+                  <span className="mt-2 block text-[19px] font-bold leading-tight tracking-tight">{featuredVendor.name}</span>
+                  <span className="mt-2 block text-[12px] leading-relaxed text-[var(--app-ink-2)]">
+                    {featuredVendor.booth.status === "known" ? `Official booth references: ${featuredVendor.booth.value}.` : "Explore this Fair vendor."}
+                  </span>
+                  <span className="mt-3 inline-flex items-center gap-1 text-[12px] font-bold text-[var(--app-brand-press)]">
+                    Explore vendor <ChevronDown className="h-3.5 w-3.5 -rotate-90" aria-hidden />
+                  </span>
+                </button>
+              ) : null}
               {navigatorCandidates.length > 0 ? (
                 <ul
                   data-fair-map-navigator-index
@@ -4025,7 +4187,7 @@ export default function FairGroundsMapInner({
             </p>
           ) : null}
 
-          <div className="mt-4 border-t pt-3 lg:mt-auto" style={{ borderColor: "var(--app-border)" }}>
+          <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
             <button
               type="button"
               onClick={() => reportMapIssue(selected)}
@@ -4219,6 +4381,7 @@ export default function FairGroundsMapInner({
           ))}
         </ul>
       </details>
+      {vendorExplorer}
     </section>
   );
 }
