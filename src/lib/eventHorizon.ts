@@ -14,6 +14,7 @@
 import { easternDayKey, easternParts, easternWallToUtcISO } from "@/lib/tz";
 import {
   effectiveTimedEventEndMs,
+  isEventEnded,
   isEventLiveNow,
 } from "@/lib/eventWhenLabel";
 
@@ -74,6 +75,25 @@ export function isRangeListing(e: {
     !e.is_all_day &&
     Date.parse(e.ends_at) - Date.parse(e.starts_at) > RANGE_LISTING_MS
   );
+}
+
+/**
+ * Detail pages keep a current date-range listing actionable until its real
+ * end, subject to the same stale-range guard as the Events board. This is
+ * listing availability, not evidence of continuous opening or a live session.
+ * Ordinary timed and all-day events retain their existing lifecycle rules.
+ */
+export function isEventListingEnded(
+  e: { starts_at: string; ends_at: string; is_all_day?: boolean },
+  now: Date,
+): boolean {
+  if (isRangeListing(e)) {
+    return (
+      Date.parse(e.ends_at) <= now.getTime() ||
+      now.getTime() - Date.parse(e.starts_at) > RANGE_LISTING_STALE_AFTER_MS
+    );
+  }
+  return isEventEnded(e, now);
 }
 
 /**

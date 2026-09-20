@@ -1,8 +1,12 @@
 import { describe, it, expect } from "vitest";
+import { EVENT_BY_SLUG } from "@/data/events";
+import { isEventLiveNow } from "./eventWhenLabel";
 import {
   groupByHorizon,
   horizonOf,
+  isEventListingEnded,
   isRangeListing,
+  RANGE_LISTING_STALE_AFTER_MS,
   type HorizonBounds,
 } from "./eventHorizon";
 
@@ -24,6 +28,40 @@ const ev = (slug: string, startMs: number, endMs: number) => ({
   slug,
   starts_at: new Date(startMs).toISOString(),
   ends_at: new Date(endMs).toISOString(),
+});
+
+describe("isEventListingEnded — detail-page availability", () => {
+  const fair = EVENT_BY_SLUG["great-frederick-fair-2026"];
+
+  it("keeps the current Fair actionable on September 20 without claiming it is live", () => {
+    const duringFair = new Date("2026-09-20T12:00:00-04:00");
+    expect(isRangeListing(fair)).toBe(true);
+    expect(isEventListingEnded(fair, duringFair)).toBe(false);
+    expect(isEventLiveNow(fair, duringFair)).toBe(false);
+  });
+
+  it("keeps a future range and retires the Fair at its actual closing time", () => {
+    expect(isEventListingEnded(fair, new Date("2026-09-17T12:00:00-04:00"))).toBe(false);
+    const closing = Date.parse(fair.ends_at);
+    expect(isEventListingEnded(fair, new Date(closing - 1))).toBe(false);
+    expect(isEventListingEnded(fair, new Date(closing))).toBe(true);
+    expect(isEventListingEnded(fair, new Date(closing + DAY))).toBe(true);
+  });
+
+  it("retires a stale range after 120 days even when its stated end is ahead", () => {
+    const start = NOW - RANGE_LISTING_STALE_AFTER_MS;
+    const series = ev("old-series", start, NOW + 60 * DAY);
+    expect(isEventListingEnded(series, new Date(NOW))).toBe(false);
+    expect(isEventListingEnded(series, new Date(NOW + 1))).toBe(true);
+  });
+
+  it("preserves the timed-session cap and all-day exclusive end", () => {
+    const timed = ev("inflated-session", NOW - 10 * HOUR, NOW + HOUR);
+    expect(isEventListingEnded(timed, new Date(NOW))).toBe(true);
+    const allDay = { ...ev("all-day", NOW - 2 * DAY, NOW + DAY), is_all_day: true };
+    expect(isEventListingEnded(allDay, new Date(NOW))).toBe(false);
+    expect(isEventListingEnded(allDay, new Date(NOW + DAY))).toBe(true);
+  });
 });
 
 describe("horizonOf — live gate", () => {

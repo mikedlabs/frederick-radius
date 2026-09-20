@@ -105,7 +105,7 @@ describe("FairCarMemoryPanel", () => {
 
     await act(async () => button("Save my location").click());
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(20);
+      vi.advanceTimersToNextFrame();
     });
     const stored = JSON.parse(storedValues.get(FAIR_CAR_STORAGE_KEY) ?? "{}");
     expect(stored.latitude).toBe(39.4105);
@@ -115,7 +115,7 @@ describe("FairCarMemoryPanel", () => {
 
     await act(async () => button("Where is my car from here?").click());
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(20);
+      vi.advanceTimersToNextFrame();
     });
     expect(container.textContent).toContain("About");
     expect(container.textContent).toContain("south");
@@ -148,7 +148,7 @@ describe("FairCarMemoryPanel", () => {
 
     await act(async () => button("Delete saved spot").click());
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(20);
+      vi.advanceTimersToNextFrame();
     });
     expect(storedValues.has(FAIR_CAR_STORAGE_KEY)).toBe(false);
     expect(container.textContent).toContain("removed from this device");

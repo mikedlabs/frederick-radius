@@ -27,7 +27,7 @@ describe("Tool Deck model", () => {
     const ids = TOOL_DECK_GROUP_DEFINITIONS.flatMap((group) => group.toolIds);
     const expectedIds = ["ask-radius", ...RADIUS_TOOLS.map((tool) => tool.id)];
 
-    expect(RADIUS_TOOLS).toHaveLength(63);
+    expect(RADIUS_TOOLS).toHaveLength(64);
     expect(ids).toHaveLength(expectedIds.length);
     expect(new Set(ids).size).toBe(ids.length);
     expect([...ids].sort()).toEqual([...expectedIds].sort());
