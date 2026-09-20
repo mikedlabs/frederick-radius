@@ -81,7 +81,7 @@ describe("Fair vendor discovery", () => {
 
   it("uses a complete selected view with real booth/menu/source labels but no made-up map location", async () => {
     render();
-    await click(`Explore ${food.name}`);
+    await click(`View ${food.name}`);
     expect(props.onSelectVendor).toHaveBeenCalledWith(food.id);
     render({ selectedVendorId: food.id });
     expect(container.querySelectorAll('[role="dialog"]')).toHaveLength(1);

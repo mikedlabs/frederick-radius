@@ -4101,10 +4101,10 @@ export default function FairGroundsMapInner({
                   </span>
                   <span className="mt-2 block text-[19px] font-bold leading-tight tracking-tight">{featuredVendor.name}</span>
                   <span className="mt-2 block text-[12px] leading-relaxed text-[var(--app-ink-2)]">
-                    {featuredVendor.booth.status === "known" ? `Official booth references: ${featuredVendor.booth.value}.` : "Explore this Fair vendor."}
+                    {featuredVendor.booth.status === "known" ? `Official booth references: ${featuredVendor.booth.value}.` : "View this Fair vendor’s details."}
                   </span>
                   <span className="mt-3 inline-flex items-center gap-1 text-[12px] font-bold text-[var(--app-brand-press)]">
-                    Explore vendor <ChevronDown className="h-3.5 w-3.5 -rotate-90" aria-hidden />
+                    View vendor <ChevronDown className="h-3.5 w-3.5 -rotate-90" aria-hidden />
                   </span>
                 </button>
               ) : null}
