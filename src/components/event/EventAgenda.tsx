@@ -3,8 +3,10 @@ import { CalendarDays } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { eventDecisionLocation } from "@/lib/events/decision-facts";
-import { eventDateBlock } from "@/lib/events/format";
+import { eventDateBlock, formatEventWhen } from "@/lib/events/format";
 import { isDateOnlyEventAnchor, isEventEnded } from "@/lib/eventWhenLabel";
+import { isRangeListing, RANGE_LISTING_STALE_AFTER_MS } from "@/lib/eventHorizon";
+import { easternDayKey } from "@/lib/tz";
 
 /**
  * A mobile agenda — the calendar that actually helps on a phone. Only
@@ -39,7 +41,51 @@ function nyTime(iso: string): string {
     .toLowerCase();
 }
 
-type Day = { key: string; weekday: string; label: string; events: EventWithMeta[] };
+type Day = { key: string; heading: string; ongoing?: boolean; events: EventWithMeta[] };
+
+/** A continuing date range is not an appointment on its past opening day. */
+export function eventAgendaGroups(events: readonly EventWithMeta[], nowMs: number, maxDays = 24): Day[] {
+  const now = new Date(nowMs);
+  const today = easternDayKey(now);
+  const byKey = new Map<string, Day>();
+  const ongoing: EventWithMeta[] = [];
+  for (const event of [...events].sort(
+    (a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at),
+  )) {
+    // The 8-hour live-session cap does not describe an exhibit's date range.
+    // Match the shared horizon rule without claiming it is open right now.
+    if (isRangeListing(event)) {
+      if (
+        Date.parse(event.ends_at) < nowMs ||
+        nowMs - Date.parse(event.starts_at) > RANGE_LISTING_STALE_AFTER_MS
+      ) continue;
+    } else if (isEventEnded(event, now)) continue;
+    if (
+      (isRangeListing(event) || event.is_all_day) &&
+      easternDayKey(new Date(event.starts_at)) < today
+    ) {
+      ongoing.push(event);
+      continue;
+    }
+    const date = nyParts(event.starts_at);
+    let group = byKey.get(date.key);
+    if (!group) {
+      group = { key: date.key, heading: `${date.weekday} · ${date.label}`, events: [] };
+      byKey.set(date.key, group);
+    }
+    group.events.push(event);
+  }
+  const groups = [...byKey.values()].slice(0, maxDays);
+  if (ongoing.length > 0) {
+    groups.push({
+      key: "ongoing",
+      heading: "Ongoing listings",
+      ongoing: true,
+      events: ongoing.sort((a, b) => Date.parse(a.ends_at) - Date.parse(b.ends_at)),
+    });
+  }
+  return groups;
+}
 
 export default function EventAgenda({
   events,
@@ -51,21 +97,7 @@ export default function EventAgenda({
   nowMs: number;
   maxDays?: number;
 }) {
-  const now = nowMs;
-  const byKey = new Map<string, Day>();
-  for (const e of [...events].sort(
-    (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
-  )) {
-    if (isEventEnded(e, new Date(now))) continue;
-    const np = nyParts(e.starts_at);
-    let d = byKey.get(np.key);
-    if (!d) {
-      d = { key: np.key, weekday: np.weekday, label: np.label, events: [] };
-      byKey.set(np.key, d);
-    }
-    d.events.push(e);
-  }
-  const days = [...byKey.values()].slice(0, maxDays);
+  const days = eventAgendaGroups(events, nowMs, maxDays);
 
   if (days.length === 0) {
     return (
@@ -92,7 +124,7 @@ export default function EventAgenda({
           <div className="grid grid-cols-2 gap-2">
             {[
               { href: "/events?lens=weekend", label: "This weekend" },
-              { href: "/events?lens=month", label: "This month" },
+              { href: "/events?lens=all", label: "All upcoming events" },
               { href: "/open-now", label: "Open now" },
               { href: "/pulse", label: "Live pulse" },
             ].map((link) => (
@@ -117,12 +149,17 @@ export default function EventAgenda({
         <section key={d.key}>
           <div className="mb-1.5 flex items-baseline gap-2">
             <h3 className="font-serif text-base font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-              {d.weekday} · {d.label}
+              {d.heading}
             </h3>
             <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
               {d.events.length} {d.events.length === 1 ? "event" : "events"}
             </span>
           </div>
+          {d.ongoing ? (
+            <p className="mb-2 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+              These listings span several days. Check the publisher for individual dates and opening hours.
+            </p>
+          ) : null}
           <ul
             className="overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)]"
             style={{ borderColor: "var(--app-border)" }}
@@ -143,7 +180,11 @@ export default function EventAgenda({
                       className="w-14 shrink-0 text-[12px] font-semibold tabular-nums"
                       style={{ color: "var(--app-brand-press)" }}
                     >
-                      {e.is_all_day || isDateOnlyEventAnchor(e) ? eventDateBlock(e).time : nyTime(e.starts_at)}
+                      {d.ongoing
+                        ? "Date range"
+                        : e.is_all_day || isDateOnlyEventAnchor(e) || isRangeListing(e)
+                          ? eventDateBlock(e).time
+                          : nyTime(e.starts_at)}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block line-clamp-2 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
@@ -152,6 +193,11 @@ export default function EventAgenda({
                       <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
                         {eventDecisionLocation(e)}
                       </span>
+                      {d.ongoing ? (
+                        <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                          {formatEventWhen(e)}
+                        </span>
+                      ) : null}
                     </span>
                     {cat && (
                       <span

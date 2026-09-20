@@ -315,11 +315,11 @@ export const EVENTS: Event[] = [
     slug: "great-frederick-fair-2026",
     title: "The Great Frederick Fair",
     description:
-      "164th annual county fair. Nine days of livestock shows, agricultural exhibits, midway rides, concerts on the grandstand, and the demolition derby on closing Saturday.",
-    // Fri Sep 18 through Sat Sep 26, 2026 per thegreatfrederickfair.com/past-future/
-    // (164th edition; 2025 was the 163rd).
-    starts_at: iso(at(127, 10, 0)),
-    ends_at: iso(at(135, 23, 0)),
+      "The county fair brings livestock shows, agricultural exhibits, midway rides, Grandstand concerts, and motorsports to the Frederick Fairgrounds from September 18 through 26. Check the official schedule for daily hours.",
+    // Official 2026 gate hours: Sep 18, 4–10pm; Sep 19–26, 9am–10pm.
+    // This is the overall date range, not a continuous opening window.
+    starts_at: iso(at(127, 16, 0)),
+    ends_at: iso(at(135, 22, 0)),
     timezone: "America/New_York",
     venue_name: "Frederick Fairgrounds",
     address: "797 E Patrick St, Frederick, MD 21701",
@@ -328,9 +328,15 @@ export const EVENTS: Event[] = [
     category: "family",
     audience: ["adults", "kids-0-5", "kids-6-12", "groups"],
     is_free: false,
-    price_text: "$10 adult / $5 kids 6–11 / free under 6",
+    price_text: "$10 online / $15 at the gate (ages 11+); free for ages 10 and under",
+    info: {
+      admission:
+        "Gate admission does not include carnival rides or ticketed Grandstand events. Advance Grandstand tickets include gate admission on the performance day.",
+    },
+    source_url: "https://thegreatfrederickfair.com/come-to-the-fair/",
     source: "manual",
     is_verified: true,
+    last_verified_at: "2026-09-20T15:35:48.000Z",
   },
   {
     slug: "in-the-streets-frederick-2026",

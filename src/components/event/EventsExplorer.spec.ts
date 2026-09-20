@@ -11,6 +11,7 @@ import {
   eventsBrowseRequest,
   initialBrowseIsComplete,
   reconcileBrowseResponse,
+  eventsEmptyState,
 } from "./EventsExplorer";
 
 function event(
@@ -47,6 +48,52 @@ function event(
 }
 
 describe("EventsExplorer deferred browse reconciliation", () => {
+  it("keeps current date ranges discoverable without calling them today's confirmed session", () => {
+    const bounds = {
+      now: Date.parse("2026-09-20T10:00:00-04:00"),
+      next24: Date.parse("2026-09-21T00:00:00-04:00"),
+      weekendStart: Date.parse("2026-09-18T17:00:00-04:00"),
+      weekendEnd: Date.parse("2026-09-21T00:00:00-04:00"),
+    };
+    const range = {
+      starts_at: "2026-09-01T12:00:00-04:00",
+      ends_at: "2026-09-30T18:00:00-04:00",
+    };
+    expect(eventMatchesTimeWindow(range, "all", bounds)).toBe(true);
+    expect(eventMatchesTimeWindow(range, "today", bounds)).toBe(false);
+    expect(eventMatchesTimeWindow(range, "weekend", bounds)).toBe(false);
+    expect(eventMatchesTimeWindow({ ...range, ends_at: "2026-09-19T18:00:00-04:00" }, "all", bounds)).toBe(false);
+    expect(eventMatchesTimeWindow({ ...range, starts_at: "2026-01-01T12:00:00-05:00" }, "all", bounds)).toBe(false);
+  });
+
+  it("does not present a loading or incomplete calendar as no matching events", () => {
+    expect(eventsEmptyState({ loading: true, dataComplete: false, hasFilters: true })).toEqual({
+      title: "Checking the calendar",
+      description: "Your filters are still in place while the rest of the events load.",
+      canRetry: false,
+    });
+    expect(eventsEmptyState({ loading: false, dataComplete: false, hasFilters: true })).toMatchObject({
+      title: "No matches in the events loaded so far",
+      canRetry: true,
+    });
+    expect(eventsEmptyState({ loading: false, dataComplete: true, hasFilters: true })).toMatchObject({
+      title: "Nothing fits these filters",
+      canRetry: false,
+    });
+    expect(eventsEmptyState({ loading: false, dataComplete: true, hasFilters: false })).toMatchObject({
+      title: "No upcoming events are listed",
+      canRetry: true,
+    });
+  });
+
+  it("keeps empty Agenda and Map views in the same filter-recovery path as the list", () => {
+    const source = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
+    expect(source).toContain('view === "calendar" && filtered.length > 0');
+    expect(source).toContain('view === "map" && filtered.length > 0');
+    expect(source).toContain('key: "query", label: `Search: ${q.trim()}`');
+    expect(source).toContain('aria-label={`Remove ${r.label} filter`}');
+  });
+
   it("keeps personalized event results hidden until browser scope and filters are restored", () => {
     const source = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
 
@@ -66,6 +113,22 @@ describe("EventsExplorer deferred browse reconciliation", () => {
         headers: { Accept: "application/json" },
         cache: "no-store",
       },
+    });
+  });
+
+  it("allows the empty calendar's explicit retry after a complete snapshot", () => {
+    expect(eventsEmptyState({ loading: false, dataComplete: true, hasFilters: false }).canRetry).toBe(true);
+    const source = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
+    const ensureAllEvents = source.slice(
+      source.indexOf("const ensureAllEvents = useCallback"),
+      source.indexOf("// Which horizon groups are expanded"),
+    );
+    expect(ensureAllEvents).toContain("if (dataComplete && !forceRefresh) return Promise.resolve()");
+    expect(ensureAllEvents).toContain("if (requestRef.current) return requestRef.current");
+    expect(ensureAllEvents).toContain("eventsBrowseRequest(forceRefresh)");
+    expect(eventsBrowseRequest(true)).toMatchObject({
+      url: "/api/events/browse?refresh=1",
+      init: { cache: "no-store" },
     });
   });
 

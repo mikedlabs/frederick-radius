@@ -1,6 +1,6 @@
 "use client";
 
-import { useQueryState } from "nuqs";
+import { parseAsString, useQueryStates } from "nuqs";
 import { useTransition, useSyncExternalStore } from "react";
 import { motion, LayoutGroup } from "framer-motion";
 import { MapPin } from "lucide-react";
@@ -11,19 +11,21 @@ import { queryWithoutSearchArea } from "@/lib/search/refinement";
 const subscribeReady = () => () => {};
 
 export default function SearchRefinements({ town, query }: { town: string | null; query: string }) {
-  const [, setInQuery] = useQueryState("in");
-  const [, setQQuery] = useQueryState("q");
   const [pending, startTransition] = useTransition();
+  const [, setSearchQuery] = useQueryStates(
+    { in: parseAsString, q: parseAsString },
+    { shallow: false, history: "push", scroll: false, startTransition },
+  );
   const ready = useSyncExternalStore(subscribeReady, () => true, () => false);
 
   const handleSelect = (value: string) => {
     if (pending || !ready) return;
     const nextQuery = queryWithoutSearchArea(query);
     setScope(value === "county" ? "county" : `town:${value}`);
-    startTransition(() => {
-      setInQuery(value === "county" ? null : value);
-      setQQuery(nextQuery);
-    });
+    // Results and the selected chip are server-rendered. Update both fields
+    // together and rerun the server search; a shallow URL edit leaves stale
+    // results on screen. Explicit county also survives a later scope cookie.
+    void setSearchQuery({ in: value, q: nextQuery || null });
   };
 
   const options = [
@@ -37,7 +39,7 @@ export default function SearchRefinements({ town, query }: { town: string | null
     <div className="flex flex-col gap-3 border-b pb-4 pt-2" style={{ borderColor: "var(--app-border)" }}>
       <div className="flex items-center gap-2 px-1 text-[13px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
         <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-        <span>Search Area</span>
+        <span>Search area</span>
       </div>
       
       {/* Edge-to-edge horizontal scrolling chips */}
@@ -51,6 +53,7 @@ export default function SearchRefinements({ town, query }: { town: string | null
                   key={opt.slug}
                   onClick={() => handleSelect(opt.slug)}
                   disabled={pending || !ready}
+                  aria-pressed={isSelected}
                   className="tap-44-y relative shrink-0 rounded-full px-4 py-2 text-[14px] font-medium transition active:scale-[0.98] disabled:opacity-60"
                   style={{
                     color: isSelected ? "var(--app-on-brand)" : "var(--app-ink)",

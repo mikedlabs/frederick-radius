@@ -13,7 +13,7 @@ import EventsBoardDock, { type ViewKey, type EventSortKey } from "@/components/e
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
-import { groupByHorizon, isRangeListing } from "@/lib/eventHorizon";
+import { groupByHorizon, isRangeListing, RANGE_LISTING_STALE_AFTER_MS } from "@/lib/eventHorizon";
 import {
   collapseLaterSeries,
   type EventBrowseSummary,
@@ -89,6 +89,43 @@ export function nearbyEventsWhereLabel({
   if (failed) return "Nearby ranking unavailable";
   if (loading) return "Ranking nearby events…";
   return "Nearby results are partial";
+}
+
+/** No loaded matches is not evidence of an empty calendar during recovery. */
+export function eventsEmptyState({
+  loading,
+  dataComplete,
+  hasFilters,
+}: {
+  loading: boolean;
+  dataComplete: boolean;
+  hasFilters: boolean;
+}): { title: string; description: string; canRetry: boolean } {
+  if (loading) {
+    return {
+      title: "Checking the calendar",
+      description: "Your filters are still in place while the rest of the events load.",
+      canRetry: false,
+    };
+  }
+  if (!dataComplete) {
+    return {
+      title: "No matches in the events loaded so far",
+      description: "The calendar is incomplete. Check again before ruling out this time or place.",
+      canRetry: true,
+    };
+  }
+  return hasFilters
+    ? {
+        title: "Nothing fits these filters",
+        description: "Remove a filter below to widen the search without starting over.",
+        canRetry: false,
+      }
+    : {
+        title: "No upcoming events are listed",
+        description: "There are no upcoming events in the current calendar. Check again for newly added dates.",
+        canRetry: true,
+      };
 }
 
 // The eight intent ids, for the ?intent= URL codec. Mirrors IntentId in
@@ -335,11 +372,23 @@ export function eventMatchesTimeWindow(
   },
 ): boolean {
   const nowDate = new Date(bounds.now);
-  if (isEventEnded(event, nowDate)) return false;
-  if (time === "all") return true;
-
   const start = Date.parse(event.starts_at);
   if (!Number.isFinite(start)) return false;
+  if (isRangeListing(event)) {
+    // A range is not one continuous live session. Keep its published span
+    // discoverable, subject to the existing stale-range limit, without using
+    // the single-session 8-hour cap or asserting today's opening hours.
+    if (
+      Date.parse(event.ends_at) < bounds.now ||
+      bounds.now - start > RANGE_LISTING_STALE_AFTER_MS
+    ) return false;
+    if (time === "all") return true;
+    if (dayKeyEastern(event.starts_at) < dayKeyEastern(nowDate.toISOString())) {
+      return false;
+    }
+  } else if (isEventEnded(event, nowDate)) return false;
+  if (time === "all") return true;
+
   const live = isEventLiveNow(event, nowDate);
   const startedToday =
     start <= bounds.now &&
@@ -544,7 +593,7 @@ export default function EventsExplorer({
   }, [town, urlReady]);
 
   const ensureAllEvents = useCallback((forceRefresh = false): Promise<void> => {
-    if (dataComplete) return Promise.resolve();
+    if (dataComplete && !forceRefresh) return Promise.resolve();
     if (requestRef.current) return requestRef.current;
 
     setLoadingAll(true);
@@ -890,6 +939,7 @@ export default function EventsExplorer({
   // order a user is most likely to want to relax (the sharpest filters
   // first). Labels resolve to the human name, not the raw slug.
   const relaxations: { key: string; label: string; drop: () => void }[] = [];
+  if (q.trim()) relaxations.push({ key: "query", label: `Search: ${q.trim()}`, drop: () => setQ("") });
   if (intent) relaxations.push({ key: "intent", label: INTENT_BY_ID[intent].label, drop: () => { setIntent(null); setSub(null); } });
   if (sub) relaxations.push({ key: "sub", label: categories.find((c) => c.slug === sub)?.name ?? sub, drop: () => setSub(null) });
   if (cat) relaxations.push({ key: "cat", label: categories.find((c) => c.slug === cat)?.name ?? cat, drop: () => setCat(null) });
@@ -906,6 +956,12 @@ export default function EventsExplorer({
   if (town) relaxations.push({ key: "town", label: towns.find((t) => t.slug === town)?.name ?? MUNICIPALITY_BY_SLUG[town]?.name ?? town, drop: () => chooseTown(null) });
   if (time !== "all") relaxations.push({ key: "time", label: time === "today" ? "Today" : time === "weekend" ? "This weekend" : "This week", drop: () => setTime("all") });
   if (day) relaxations.push({ key: "day", label: "That day", drop: () => setDay(null) });
+
+  const emptyState = eventsEmptyState({
+    loading: loadingAll,
+    dataComplete,
+    hasFilters: relaxations.length > 0,
+  });
 
   const primaryHorizon = horizonGroups[0];
   const primaryLead = primaryHorizon?.events[0] ?? null;
@@ -1165,9 +1221,9 @@ export default function EventsExplorer({
 
       {/* Results */}
       <div aria-busy={loadingAll} className="space-y-3">
-      {view === "calendar" ? (
+      {view === "calendar" && filtered.length > 0 ? (
         <EventAgenda events={filtered} nowMs={now} />
-      ) : view === "map" ? (
+      ) : view === "map" && filtered.length > 0 ? (
         <EventsMap events={mapPins} />
       ) : view === "compact" && filtered.length > 0 ? (
         // Compact "Rolodex" mode — flat list of 48px rows, no horizon
@@ -1218,16 +1274,24 @@ export default function EventsExplorer({
               className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              Nothing fits these filters
+              {emptyState.title}
             </h3>
             <p
               className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed text-pretty"
               style={{ color: "var(--app-ink-2)" }}
             >
-              {relaxations.length > 0
-                ? "Drop a filter to widen the search. The list updates the moment something matches."
-                : "Try a wider time window or fewer types. The list updates as soon as something matches."}
+              {emptyState.description}
             </p>
+            {emptyState.canRetry ? (
+              <button
+                type="button"
+                onClick={() => void ensureAllEvents(true)}
+                className="tap-44 mt-3 inline-flex min-h-11 items-center px-3 text-[13px] font-semibold underline"
+                style={{ color: "var(--app-cool)" }}
+              >
+                Check the calendar again
+              </button>
+            ) : null}
           </div>
           
           {/* Honest relaxations — Bento-grid for quick actions */}
@@ -1238,6 +1302,7 @@ export default function EventsExplorer({
                   key={r.key}
                   type="button"
                   onClick={r.drop}
+                  aria-label={`Remove ${r.label} filter`}
                   className="tap-44-y tactile tactile-interactive flex min-h-[44px] items-center justify-between rounded-[var(--app-radius-md)] border bg-[var(--app-bg-surface)] px-4 py-2 text-[13px] font-semibold transition active:scale-95"
                   style={{
                     borderColor: "var(--app-border)",
