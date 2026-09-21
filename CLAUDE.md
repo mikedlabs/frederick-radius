@@ -234,3 +234,38 @@ Work on `claude/<topic>` branches off CURRENT `origin/main` (fetch first
 — deploy-wait scripts often leave the checkout on a stale branch). One
 concern per PR. Commit messages explain the WHY and cite the audit/issue
 they close.
+
+### Merge discipline (the anti-thrash rules)
+
+The failure mode here is not bad code, it is diffusion: many agents open
+overlapping, half-landed PRs on the same surface and the backlog grows
+faster than it drains. These rules exist to stop that. `STATE.md` holds
+the current PR-triage snapshot; this holds the standing rules.
+
+- **One surface, one agent at a time.** Before cutting a branch, list open
+  PRs and branches (`gh pr list`, `git branch -a`). If work already exists
+  for that surface (Today, Map, Ask, Events, the data pipeline, the Fair),
+  extend or coordinate on it. Do not open a competing branch that reworks
+  the same surface. The `codex/*` vs `cursor/*` duplicates (two Radius
+  remediations, two Today-layout PRs) are exactly what this forbids.
+- **WIP limit.** Keep at most ~3–4 open human-authored feature PRs. If the
+  queue is longer, land or close before opening more. A PR that cannot be
+  reviewed and merged soon should not be open.
+- **Lanes.** Give each concurrent effort a lane and keep it there: map /
+  Today / Ask / Events / data / infra. Cross-lane changes belong in their
+  own small PR, not smuggled into a feature branch.
+- **Data-bot PRs drain on a cadence.** The `bot/*` refresh PRs (venue
+  events, municipal civic, commerce links, transit GTFS, business info)
+  flow through the `data:release` gate regularly rather than accumulating.
+- **Stale = rebase or close.** A feature PR with no movement for a few
+  weeks is rebased onto current `origin/main` or closed. Do not let drafts
+  from months ago linger as ambient noise.
+
+### The backlog
+
+Intent lives in **GitHub issues**, one issue per concern, so duplicates
+are visible before a branch is cut. Every PR cites the issue it closes.
+The live current-state read and the standing sequenced plan live in
+[`STATE.md`](./STATE.md); the product laws live in
+[`docs/NORTH_STAR.md`](./docs/NORTH_STAR.md). Do not plan from the retired
+`AUDIT.md` / `ROADMAP.md` / `UX_REDO.md` trio.

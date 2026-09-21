@@ -7,7 +7,7 @@ guide and sorts it by your location.
 
 **Live:** [frederickradius.app](https://frederickradius.app)
 **Brand system:** [`docs/brand/BRAND_GUIDE.md`](./docs/brand/BRAND_GUIDE.md)
-**Companion docs:** [`docs/NORTH_STAR.md`](./docs/NORTH_STAR.md) (what the product is + the laws) · [`UX_REDO.md`](./UX_REDO.md) (the sequenced redo plan + data-confidence gate) · [`AUDIT.md`](./AUDIT.md) (what works, what's half-working) · [`ROADMAP.md`](./ROADMAP.md) (what's shipping, scaffolded, or unbuilt) · `docs/archive/` (historical decisions, pre-overhaul state).
+**Companion docs:** [`STATE.md`](./STATE.md) (the single source of truth for current state + the sequenced plan) · [`docs/NORTH_STAR.md`](./docs/NORTH_STAR.md) (what the product is + the laws) · [`docs/USER_FIRST_INTERACTION_CONTRACT.md`](./docs/USER_FIRST_INTERACTION_CONTRACT.md) (the interaction rules). Historical (superseded by `STATE.md`, kept for reasoning): [`UX_REDO.md`](./UX_REDO.md) (still holds the data-confidence gate) · [`AUDIT.md`](./AUDIT.md) · [`ROADMAP.md`](./ROADMAP.md) · `docs/archive/`.
 
 ---
 
