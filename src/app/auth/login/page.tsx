@@ -12,7 +12,7 @@ import LoginForm from "./LoginForm";
 export const metadata: Metadata = {
   title: "Keep your Radius with you",
   description:
-    "Sign in to keep the places in My Radius available across your devices.",
+    "Sign in to keep your saved places available across your devices.",
   robots: { index: false, follow: false },
 };
 
@@ -48,7 +48,7 @@ function destinationContext(next: string) {
     };
   }
   return {
-    label: "My Radius",
+    label: "Saved",
     backLabel: "Not now, keep saving on this device",
     backHref: "/my-radius",
   };
@@ -118,7 +118,7 @@ export default async function LoginPage({
           <section className="space-y-6 md:pt-5">
             <div className="space-y-3">
               <p className="eyebrow" style={{ color: "var(--app-brand)" }}>
-                My Radius · continuity
+                Saved · continuity
               </p>
               <h1
                 className="max-w-xl font-serif text-[42px] font-semibold leading-[0.98] tracking-[-0.035em] sm:text-[52px]"
@@ -130,8 +130,8 @@ export default async function LoginPage({
                 className="max-w-lg text-[15px] leading-7 text-pretty"
                 style={{ color: "var(--app-ink-2)" }}
               >
-                Sign in once and the places in My Radius will be there on every
-                device. After the sign-in email, we&apos;ll bring you back to {context.label}.
+                Sign in once and your saved places will be there on every device.
+                After the sign-in email, we&apos;ll bring you back to {context.label}.
               </p>
             </div>
 
@@ -150,7 +150,7 @@ export default async function LoginPage({
                     Kept with your account
                   </p>
                   <p className="mt-0.5 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-                    Places in My Radius
+                    Saved places
                   </p>
                 </div>
               </div>
@@ -173,8 +173,7 @@ export default async function LoginPage({
 
             <p className="flex max-w-lg gap-2 text-[11.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
               <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-              We store your email and the places you put in My Radius. No public
-              profile. No location history. Signing in never subscribes you to marketing.
+              We store your email and the places you save. No public profile. No location history. Signing in never subscribes you to marketing.
             </p>
           </section>
 

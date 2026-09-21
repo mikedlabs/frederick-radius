@@ -35,7 +35,7 @@ export type LeadRankable = {
 // draw. Tight, specific phrases so a real draw (carnival, concert, festival,
 // bingo night, fish fry) is never demoted. Title-only, like classifyEvent.
 const ROUTINE_PROGRAM =
-  /\b(story\s?times?|lap\s?sit|toddler time|baby (time|lap)|preschool (story|play)|tutor(ing)?|study (hall|group)|homework help|knit(ting)?|crochet|cross\s?stitch|quilt(ing)?|craft (time|club|circle)|coloring|chess club|game (club|night at the library)|book club|reading group|writers? (group|club)|\bguild\b|water\s?color|yoga|tai chi|zumba|pilates|meditation|mindfulness|support group|grief group|english conversation|\besl\b|citizenship class|computer (class|basics|help)|tech (help|tutor)|résumé|resume help|job (club|help|seekers)|genealogy|drop[- ]?in (craft|play|tech|help)|conversation class(es)?|school skills|build and play|family support specialist|\bdcfs\b)\b/i;
+  /\b(story\s?times?|lap\s?sit|toddler time|baby (time|lap)|preschool (story|play)|tutor(ing)?|study (hall|group)|homework help|knit(ting)?|crochet|cross\s?stitch|quilt(ing)?|craft (time|club|circle)|coloring|chess club|game (club|night at the library)|book club|reading group|writers? (group|club)|\bguild\b|water\s?color|yoga|tai chi|zumba|pilates|meditation|mindfulness|support group|grief group|english conversation|\besl\b|citizenship class|computer (class|basics|help)|tech (help|tutor)|résumé|resume help|job (club|help|seekers)|genealogy|drop[- ]?in (craft|play|tech|help)|conversation class(es)?|school skills|build and play|family support specialist|walking group|social group|cardio(?: sculpt)?|fitness class|exercise class|intramural|\bdcfs\b)\b/i;
 
 export function isRoutineProgram(e: { title?: string }): boolean {
   return ROUTINE_PROGRAM.test(e.title ?? "");

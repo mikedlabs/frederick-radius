@@ -222,10 +222,10 @@ for (const viewport of VIEWPORTS) {
           }
           const header = page.locator("header").first();
           await expect(
-            header.getByRole("link", { name: /^Pulse:/ }),
+            header.getByRole("link", { name: /^County status:/ }),
           ).toBeVisible();
           await expect(
-            header.getByRole("link", { name: "Open Compass tools" }),
+            header.getByRole("link", { name: "Open tools" }),
           ).toBeVisible();
           // The connected-discovery pass moved the single request doorway
           // into Today's main launcher; do not assert the retired header UI.

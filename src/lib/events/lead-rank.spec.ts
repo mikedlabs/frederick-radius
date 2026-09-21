@@ -25,6 +25,11 @@ describe("isRoutineProgram", () => {
     expect(isRoutineProgram({ title: "Build and Play" })).toBe(true);
     expect(isRoutineProgram({ title: "School Skills" })).toBe(true);
     expect(isRoutineProgram({ title: "ESL Conversation Classes" })).toBe(true);
+    expect(isRoutineProgram({ title: "Brunswick Walking Group" })).toBe(true);
+    expect(isRoutineProgram({ title: "Men's Social Group" })).toBe(true);
+    expect(isRoutineProgram({ title: "Cardio Sculpt" })).toBe(true);
+    expect(isRoutineProgram({ title: "4v4 Intramural Beach Volleyball" })).toBe(true);
+    expect(isRoutineProgram({ title: "Historic Downtown Walking Tour" })).toBe(false);
     // Real draws are NOT routine.
     expect(isRoutineProgram({ title: "Thurmont Firemen's Carnival" })).toBe(false);
     expect(isRoutineProgram({ title: "Vigilant Hose Co Friday Bingo" })).toBe(false);

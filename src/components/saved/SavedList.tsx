@@ -1589,9 +1589,9 @@ export default function SavedList({
  * begin. The app shell already exposes the rest of Radius. */
 export function EmptyState() {
   return (
-    <div className="max-w-sm space-y-4 py-2">
+    <div data-saved-empty-state="true" className="max-w-sm space-y-4 py-2">
       <p
-        className="px-0.5 font-serif text-[18px] font-semibold leading-snug"
+        className="px-0.5 font-sans text-[18px] font-semibold leading-snug"
         style={{ color: "var(--app-ink)" }}
       >
         Save a place, event, bus trip, or stop to keep it here for later.

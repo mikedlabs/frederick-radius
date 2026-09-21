@@ -872,16 +872,48 @@ function SecondarySignals({
   const notConnected = updates.filter(
     (tile) => pulseTileState(tile) === "Not connected",
   );
-  const degraded = [...partial, ...unavailable, ...notConnected];
+  const visibleUpdates = updates.filter(
+    (tile) => pulseTileState(tile) !== "Not connected",
+  );
+  const degraded = [...partial, ...unavailable];
   const incompleteCount = partial.length + unavailable.length;
   const degradedSummary = [
     incompleteCount > 0
       ? `${incompleteCount} ${incompleteCount === 1 ? "live check is" : "live checks are"} incomplete`
       : null,
     notConnected.length > 0
-      ? `${notConnected.length} ${notConnected.length === 1 ? "source is" : "sources are"} not connected`
+      ? `${nameListSentence(notConnected.map((tile) => tile.label))} ${notConnected.length === 1 ? "is" : "are"} not connected`
       : null,
   ].filter(Boolean).join(" · ");
+
+  if (visibleUpdates.length === 0) {
+    return (
+      <section aria-labelledby="pulse-secondary-heading" className="min-w-0">
+        <div
+          className="flex min-h-11 items-center gap-2.5 rounded-[var(--app-radius-sm)] border px-3 py-1.5"
+          style={{
+            borderColor: "var(--app-border)",
+            background: "color-mix(in srgb, var(--app-bg-elevated-solid) 54%, transparent)",
+          }}
+        >
+          <Shield
+            aria-hidden
+            className="h-4 w-4 shrink-0"
+            strokeWidth={2}
+            style={{ color: "var(--app-ink-3)" }}
+          />
+          <span id="pulse-secondary-heading" className="min-w-0 flex-1">
+            <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              Source status
+            </span>
+            <span className="mt-0.5 block text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              {degradedSummary}
+            </span>
+          </span>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section aria-labelledby="pulse-secondary-heading" className="min-w-0">
@@ -925,14 +957,13 @@ function SecondarySignals({
         <div className="border-t px-3 pb-2 pt-2.5" style={{ borderColor: "var(--app-border)" }}>
           <p className="pb-2 text-[10.5px] leading-relaxed text-[var(--app-ink-3)]">
             {secondarySignalsSummary(
-              updates.length,
+              visibleUpdates.length,
               partial.length,
               unavailable.length,
-              notConnected.length,
             )}
           </p>
           <ul id="pulse-local-updates" data-pulse-bank="local-pulse">
-            {updates.map((tile) => (
+            {visibleUpdates.map((tile) => (
               <SecondarySignalRow
                 key={tile.key}
                 tile={tile}
@@ -1096,7 +1127,7 @@ export default function PulseBoard({
                   className="block text-[9.5px] font-semibold uppercase tracking-[0.12em]"
                   style={{ color: "var(--app-ink-3)" }}
                 >
-                  Frederick Pulse
+                  County status
                 </span>
                 <PulseStatusLabel
                   renderedAt={hero.renderedAt}

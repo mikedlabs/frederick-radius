@@ -106,7 +106,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/about" },
   title: "About",
   description:
-    "Frederick Radius helps people find open places, local events, and practical information across Frederick County, Maryland.",
+    "Frederick Radius helps people find places, local events, and practical information across Frederick County, Maryland.",
 };
 
 export default async function AboutPage() {
@@ -176,13 +176,13 @@ export default async function AboutPage() {
           headings and Public Sans carries the body. */}
       <section className="space-y-4 text-[16px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         <p>
-          Frederick Radius helps people find open places, local events, and
-          practical information across Frederick County, Maryland.
+          Frederick Radius helps people find places, local events, and practical
+          information across Frederick County, Maryland.
         </p>
         <p>
           It is built for the decisions that come up before you leave home.
-          Radius combines posted hours with what is happening nearby and the
-          details needed to get there.
+          Radius combines source-backed place details with what is happening
+          nearby and the practical information needed to get there.
         </p>
         <p>
           The goal is practical: help someone choose a place or event without
@@ -286,6 +286,43 @@ export default async function AboutPage() {
         </ul>
       </section>
 
+      <section
+        aria-labelledby="about-trust-heading"
+        className="flex items-start gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 sm:p-5"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <span
+          aria-hidden
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+          style={{
+            background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
+            color: "var(--app-cool)",
+          }}
+        >
+          <ShieldCheck className="h-4 w-4" strokeWidth={2.25} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2
+            id="about-trust-heading"
+            className="font-sans text-[18px] font-semibold tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            How Radius checks the guide
+          </h2>
+          <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            See which details come from official, owner, business, and community sources, plus what is currently unavailable.
+          </p>
+          <Link
+            href="/trust"
+            className="tap-44-y mt-2 inline-flex min-h-11 items-center font-semibold underline-offset-2 hover:underline"
+            style={{ color: "var(--app-cool)" }}
+          >
+            Read Trust &amp; data
+            <ArrowRight aria-hidden className="ml-1 h-3.5 w-3.5" strokeWidth={2.25} />
+          </Link>
+        </div>
+      </section>
+
       {/* Companion content — Books + editorial collections + history.
           Moved here from the Field Guide drawer (May 2026 IA cleanup,
           Phase 2): the drawer was carrying four unrelated jobs;
@@ -299,7 +336,7 @@ export default async function AboutPage() {
       >
         <h2
           id="about-companion-heading"
-          className="font-serif text-[22px] font-semibold tracking-tight"
+          className="font-sans text-[22px] font-semibold tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
           Other Frederick projects
