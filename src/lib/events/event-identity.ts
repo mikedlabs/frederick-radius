@@ -2,6 +2,7 @@ import "server-only";
 import { getSql } from "@/lib/db/client";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { archiveJsonText } from "@/lib/events/archive-json";
+import { inferEventCategoryFromTitle } from "@/lib/events/classify";
 
 export type ArchivedEventIdentity = {
   id: string;
@@ -117,7 +118,19 @@ export function archivedEventFromSnapshot(
   ) {
     return null;
   }
-  return { ...(row as unknown as EventWithMeta), slug };
+  const hydrated = { ...(row as unknown as EventWithMeta), slug };
+  // The county feed sends `category: ""` for 156 of 1,082 live events, all of
+  // them Senior Services programming plus Sky Stage. EventCard looks the
+  // category up in CATEGORY_BY_SLUG, so an empty one costs the card its
+  // artwork and costs the event every category filter it belongs in.
+  //
+  // Inferred at this boundary, never at render, and only when the feed left
+  // it blank. A supplied category always wins.
+  if (!hydrated.category) {
+    const inferred = inferEventCategoryFromTitle(hydrated.title ?? "");
+    if (inferred) return { ...hydrated, category: inferred };
+  }
+  return hydrated;
 }
 
 async function beforeDeadline<T>(
