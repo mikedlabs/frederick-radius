@@ -6,7 +6,7 @@ const COMPASS_PINS_KEY = "fr.compass.pins.v1";
 const DEFAULT_PINNED_TOOLS = [
   "Ask Radius",
   "Near me",
-  "Live conditions",
+  "County status",
   "Nearby essentials",
 ] as const;
 
@@ -72,14 +72,14 @@ test("Compass keeps core tools visible and opens URL-backed intent chapters", as
   expect(Math.abs((dialogBox?.y ?? 0) + (dialogBox?.height ?? 0) - 844))
     .toBeLessThanOrEqual(2);
   expect(dialogBox?.width ?? 0).toBeGreaterThanOrEqual(388);
-  await expect(dialog.getByRole("button", { name: "All tools" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Tools" })).toBeVisible();
   await expect(dialog.getByRole("link", { name: /^Brunch guide\b/ })).toBeVisible();
   await expect(dialog.getByRole("searchbox")).toHaveCount(1);
   await expect(dialog.getByRole("button", { name: /^Pin / })).toHaveCount(0);
 
-  await dialog.getByRole("button", { name: "All tools" }).click();
+  await dialog.getByRole("button", { name: "Tools" }).click();
   await expect(page).toHaveURL(/[?&]deck=all(?:&|$)/);
-  dialog = page.getByRole("dialog", { name: "All tools" });
+  dialog = page.getByRole("dialog", { name: "Tools" });
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText(/6[45] tools, organized by category/);
   await expect(dialog.getByRole("button")).toHaveCount(10);
@@ -110,7 +110,7 @@ test("Compass keeps core tools visible and opens URL-backed intent chapters", as
   await page.goBack();
   await expect(page).toHaveURL(/\/compass$/);
   await expect(
-    page.getByRole("dialog", { name: "All tools" }),
+    page.getByRole("dialog", { name: "Tools" }),
   ).toBeHidden();
 });
 

@@ -147,7 +147,7 @@ describe("Compass Tool Deck model", () => {
     const tasks = commonCompassTasks(groups);
 
     expect(directory.id).toBe(ALL_COMPASS_TOOLS_ID);
-    expect(directory.label).toBe("All tools");
+    expect(directory.label).toBe("Tools");
     expect(directory.groups).toEqual(groups);
     expect(directory.total).toBe(flattenTools(groups).length);
     expect(RADIUS_TOOLS).toHaveLength(64);

@@ -23,8 +23,8 @@ for (const viewport of [
     });
 
     const header = page.locator("header").first();
-    const pulse = header.getByRole("link", { name: /^Pulse:/ });
-    const compass = header.getByRole("link", { name: "Open Compass tools" });
+    const pulse = header.getByRole("link", { name: /^County status:/ });
+    const compass = header.getByRole("link", { name: "Open Tools" });
 
     await expect(header.getByRole("link", { name: /tools/i })).toHaveCount(1);
 
@@ -38,13 +38,13 @@ for (const viewport of [
       await expect(pulse).toBeVisible();
       await expect(compass).toBeVisible();
       await expect(compass).toHaveAttribute("aria-current", "page");
-      await expect(pulse.getByText("Pulse", { exact: true })).toBeVisible();
-      await expect(compass.getByText("Compass", { exact: true })).toBeVisible();
+      await expect(pulse.getByText("County status", { exact: true })).toBeVisible();
+      await expect(compass.getByText("Tools", { exact: true })).toBeVisible();
     } else {
       await expect(pulse).toBeHidden();
       await expect(compass).toBeVisible();
       await expect(compass).toHaveAttribute("aria-current", "page");
-      await expect(compass.getByText("Compass", { exact: true })).toBeHidden();
+      await expect(compass.getByText("Tools", { exact: true })).toBeHidden();
 
       if (viewport.width === 390) {
         const location = header.locator("[data-location-chip]");
