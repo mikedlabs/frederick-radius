@@ -11,6 +11,7 @@ import type { FairVendorProfile } from "@/data/fair/great-frederick-fair-2026-ve
 import { FAIR_DAY_PATH } from "@/lib/fair/plan-status";
 import { fairVendorDirectoryHref } from "@/lib/fair/vendor-finder";
 import { searchFairVendors } from "@/lib/fair/vendor-discovery";
+import { readFairLayoutRoute } from "@/lib/fair/layout-navigation";
 
 export type FairVendorExplorerProps = {
   open: boolean;
@@ -131,7 +132,10 @@ export default function FairVendorExplorer({ open, onOpenChange, vendors, select
   };
 
   return (
-    <BottomDrawer open={open} onOpenChange={onOpenChange} surface="solid" title="Food & vendors" subtitle="Explore reviewed Fair stops and keep your favorites in My Day.">
+    <BottomDrawer open={open} onOpenChange={onOpenChange} getReturnFocus={() => {
+      if (readFairLayoutRoute(window.location.href).view !== "booths") return null;
+      return document.getElementById("fair-booth-detail-heading");
+    }} surface="solid" title="Food & vendors" subtitle="Explore reviewed Fair stops and keep your favorites in My Day.">
       <div className="min-h-full bg-[var(--app-bg-elevated-solid)]">
       <div className="mx-auto max-w-5xl px-4 py-5 sm:px-8 sm:py-7" data-fair-vendor-explorer>
         {selectedVendorId ? selected ? (

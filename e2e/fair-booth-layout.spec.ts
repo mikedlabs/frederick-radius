@@ -3,6 +3,7 @@ import type { AxeResults } from "axe-core";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import type { FairLayoutData } from "../src/lib/fair/layout";
+import { fairBoothNeighborhoods } from "../src/data/fair/fair-booth-context";
 
 const FAIR_PATH = "/moments/great-frederick-fair-2026";
 const LAYOUT_PATH = "/fair/layouts/great-frederick-fair-2026.json";
@@ -59,18 +60,48 @@ async function selectRadPies(page: Page, explorer: Locator) {
 }
 
 async function expectNoHorizontalOverflow(page: Page) {
-  const geometry = await page.evaluate(() => ({
-    documentWidth: document.documentElement.scrollWidth,
-    viewportWidth: document.documentElement.clientWidth,
-    explorer: (() => {
-      const element = document.querySelector("[data-fair-booth-explorer]")!;
+  // iOS can briefly rubber-band while scrolling a result into view. Wait for
+  // settled geometry without relaxing the existing one-pixel edge tolerance.
+  await expect.poll(() => page.evaluate(() => {
+    const viewportWidth = document.documentElement.clientWidth;
+    const box = document.querySelector("[data-fair-booth-explorer]")!.getBoundingClientRect();
+    return Math.max(document.documentElement.scrollWidth - viewportWidth, -box.left, box.right - viewportWidth);
+  }), { message: "The document and booth finder must fit the horizontal viewport" }).toBeLessThanOrEqual(1);
+}
+
+async function expectBoothVisibleAndTappable(explorer: Locator, boothId: string) {
+  const booth = explorer.locator(`[data-fair-booth-id="${boothId}"]`);
+  // This WebKit build reports zero-area IntersectionObserver bounds for SVG
+  // shapes. Measure the rendered booth against both clipping boundaries and
+  // require its center to hit the exact source shape, not a covering label.
+  await expect(async () => {
+    const geometry = await booth.evaluate((element) => {
       const box = element.getBoundingClientRect();
-      return { left: box.left, right: box.right };
-    })(),
-  }));
-  expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth + 1);
-  expect(geometry.explorer.left).toBeGreaterThanOrEqual(-1);
-  expect(geometry.explorer.right).toBeLessThanOrEqual(geometry.viewportWidth + 1);
+      const canvas = element.closest("[data-fair-booth-canvas]")!.getBoundingClientRect();
+      const viewport = document.documentElement;
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return {
+        width: box.width,
+        height: box.height,
+        left: box.left,
+        right: box.right,
+        top: box.top,
+        bottom: box.bottom,
+        visibleLeft: Math.max(0, canvas.left),
+        visibleRight: Math.min(viewport.clientWidth, canvas.right),
+        visibleTop: Math.max(0, canvas.top),
+        visibleBottom: Math.min(viewport.clientHeight, canvas.bottom),
+        hitBoothId: hit?.getAttribute("data-fair-booth-id") ?? null,
+      };
+    });
+    expect(geometry.width).toBeGreaterThan(0);
+    expect(geometry.height).toBeGreaterThan(0);
+    expect(geometry.left).toBeGreaterThanOrEqual(geometry.visibleLeft);
+    expect(geometry.right).toBeLessThanOrEqual(geometry.visibleRight);
+    expect(geometry.top).toBeGreaterThanOrEqual(geometry.visibleTop);
+    expect(geometry.bottom).toBeLessThanOrEqual(geometry.visibleBottom);
+    expect(geometry.hitBoothId).toBe(boothId);
+  }).toPass({ timeout: 5_000 });
 }
 
 async function expectAccessibleExplorer(page: Page) {
@@ -105,6 +136,83 @@ test.describe("Fair numbered booth layout", () => {
       contentType: "image/svg+xml",
       body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>',
     }));
+  });
+
+  test("opens visible booth geometry from the desktop Vendors map control", async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 900 });
+    await page.goto(`${FAIR_PATH}#fair-map`, { waitUntil: "domcontentloaded" });
+    const grounds = page.locator("[data-fair-grounds-map]");
+    await expect(grounds.locator("canvas")).toBeVisible({ timeout: 30_000 });
+    await grounds.getByRole("button", { name: "Vendors", exact: true }).click();
+    const explorer = page.locator("[data-fair-booth-explorer]");
+    await expect(explorer.locator("[data-fair-booth-svg]")).toBeVisible({ timeout: 30_000 });
+    await expect(explorer.locator("[data-fair-booth-id]").first()).toBeAttached();
+    await expect(page.getByRole("dialog", { name: "Food & vendors", exact: true })).toHaveCount(0);
+    expect(new URL(page.url()).searchParams.get("layout")).toBe("booths");
+    const { detail } = await selectRadPies(page, explorer);
+    await expect(detail).toContainText(VENDOR_NAME);
+    await expect(explorer.locator("[data-fair-selected-vendor]")).toContainText(VENDOR_NAME);
+    await expectBoothVisibleAndTappable(explorer, "9566:3353619");
+    await expectBoothVisibleAndTappable(explorer, "9566:3353618");
+  });
+
+  test("the phone vendor map selector shows booths and returns to all grounds places", async ({ page }) => {
+    await page.goto(`${FAIR_PATH}#fair-map`, { waitUntil: "domcontentloaded" });
+    const grounds = page.locator("[data-fair-grounds-map]");
+    await expect(grounds.locator("canvas")).toBeVisible({ timeout: 30_000 });
+    const selector = grounds.locator("[data-fair-map-filter-select]");
+    await expect(selector).toHaveValue("all");
+    await selector.selectOption("vendors");
+    const explorer = page.locator("[data-fair-booth-explorer]");
+    await expect(explorer.locator("[data-fair-booth-svg]")).toBeVisible({ timeout: 30_000 });
+    await expect(explorer.locator("[data-fair-area-vendors]")).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Food & vendors", exact: true })).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+    await expectAccessibleExplorer(page);
+    await explorer.getByRole("button", { name: "Whole fair", exact: true }).click();
+    await expect(grounds.locator("canvas")).toBeVisible({ timeout: 30_000 });
+    await expect(selector).toHaveValue("all");
+    expect(new URL(page.url()).searchParams.has("layout")).toBe(false);
+  });
+
+  test("tapping a vendor name on the map selects its real source booth", async ({ page }) => {
+    const explorer = await openBooths(page);
+    const label = explorer.locator("[data-fair-vendor-label]").first();
+    await expect(label).toBeVisible();
+    const vendorId = await label.getAttribute("data-vendor-id");
+    const boothId = await label.getAttribute("data-fair-booth-label-for");
+    const layout = publishedLayout();
+    const vendor = layout.vendors.find((item) => item.id === vendorId);
+    const booth = layout.maps.flatMap((map) => map.booths).find((item) => item.id === boothId);
+    expect(vendor).toBeDefined();
+    expect(booth).toBeDefined();
+    expect(vendor!.boothIds).toContain(boothId);
+    const target = label.locator("rect");
+    const targetBox = await target.boundingBox();
+    expect(targetBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+    expect(targetBox?.width ?? 0).toBeGreaterThanOrEqual(44);
+    await target.click();
+    const detail = explorer.getByRole("region", { name: `Booth ${booth!.label}`, exact: true });
+    await expect(detail).toBeVisible();
+    await expect(detail).toContainText(vendor!.name);
+    await expect(explorer.locator(`[data-fair-booth-id="${boothId}"]`)).toHaveAttribute("data-selected", "true");
+    await expect(explorer.locator("[data-fair-selected-vendor]")).toContainText(vendor!.name);
+    expect(new URL(page.url()).searchParams.get("booth")).toBe(boothId);
+    await expect(page.getByRole("dialog", { name: "Food & vendors", exact: true })).toHaveCount(0);
+  });
+
+  test("vendor map controls offer an honest retry when booth data is unavailable", async ({ page }) => {
+    await page.route(`**${LAYOUT_PATH}`, (route) => route.fulfill({ status: 503, body: "Layout unavailable" }));
+    await page.goto(`${FAIR_PATH}#fair-map`, { waitUntil: "domcontentloaded" });
+    const grounds = page.locator("[data-fair-grounds-map]");
+    await expect(grounds.locator("canvas")).toBeVisible({ timeout: 30_000 });
+    await grounds.locator("[data-fair-map-filter-select]").selectOption("vendors");
+    const fallback = page.locator("[data-fair-booth-layout-fallback]");
+    await expect(fallback).toBeVisible();
+    await expect(fallback.getByRole("button", { name: "Try loading the layout again", exact: true })).toBeVisible();
+    await expect(fallback.locator(`a[href="${OFFICIAL_GUIDE}"]`)).toBeVisible();
+    await expect(page.locator("[data-fair-booth-explorer]")).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "Food & vendors", exact: true })).toHaveCount(0);
   });
 
   test("finds both Rad Pies booths and Back dismisses details without losing the query", async ({ page }) => {
@@ -157,17 +265,18 @@ test.describe("Fair numbered booth layout", () => {
     expect(new URL(page.url()).searchParams.has("booth")).toBe(false);
   });
 
-  test("renders all three sections as custom maps and shows the original layout only on request", async ({ page }) => {
+  test("opens all seven reviewed booth areas and shows original sheets only on request", async ({ page }) => {
     const explorer = await openBooths(page);
     const maps = publishedLayout().maps;
     expect(maps.map(({ id }) => id).sort()).toEqual(["9564", "9565", "9566"]);
-    const sections = explorer.getByRole("group", { name: "Choose a map section", exact: true });
-    await expect(sections.getByRole("button")).toHaveCount(3);
-    for (const map of maps) {
-      const section = sections.getByRole("button", { name: map.name, exact: true });
-      await section.click();
-      await expect(section).toHaveAttribute("aria-pressed", "true");
+    const areas = explorer.getByRole("combobox", { name: "Choose a booth area", exact: true });
+    await expect(areas.locator("option")).toHaveCount(7);
+    for (const area of fairBoothNeighborhoods) {
+      const map = maps.find((item) => item.id === area.mapId)!;
+      await areas.selectOption(area.id);
+      await expect(areas).toHaveValue(area.id);
       await expect(explorer.locator("[data-fair-booth-id]")).toHaveCount(map.booths.length);
+      for (const id of area.boothIds) await expect(explorer.locator(`[data-fair-booth-id="${id}"]`)).toBeAttached();
       await expect(explorer.locator("[data-fair-booth-svg] image")).toHaveCount(0);
       const context = explorer.locator("[data-fair-booth-context]");
       await expect(context).toBeVisible();

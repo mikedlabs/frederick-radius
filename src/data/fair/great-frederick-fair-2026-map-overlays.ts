@@ -9,6 +9,9 @@ import {
 } from "./great-frederick-fair-2026-transit";
 
 const OFFICIAL_CHECKED_AT = "2026-09-04T06:04:00Z";
+// Only the PDF's grounds map was re-reviewed for these corrections. Other
+// visitor-page and transit review timestamps intentionally remain unchanged.
+const SCHEDULE_MAP_CHECKED_AT = "2026-09-21T15:59:02Z";
 
 const parkingInformationSource = {
   publisher: "The Great Frederick Fair",
@@ -35,7 +38,7 @@ const scheduleMapInformationSource = {
   publisher: "The Great Frederick Fair",
   title: "2026 Schedule of Events grounds map",
   url: "https://thegreatfrederickfair.com/wp-content/uploads/2026/08/2026-GFF-SoE_website.pdf",
-  checkedAt: OFFICIAL_CHECKED_AT,
+  checkedAt: SCHEDULE_MAP_CHECKED_AT,
 };
 
 const vendorGuideInformationSource = {
@@ -70,6 +73,7 @@ export const greatFrederickFair2026MapPatches: FairGroundsMapFeaturePatch[] = [
   {
     targetId: "osm-node-14099608925",
     properties: {
+      name: "Gate 1 · Pedestrians only",
       detail:
         "Gate 1 is pedestrian-only. The Fair allows special-needs unloading and loading outside this gate; follow current traffic signs and on-site directions.",
       keywords: [
@@ -79,6 +83,18 @@ export const greatFrederickFair2026MapPatches: FairGroundsMapFeaturePatch[] = [
         "unloading",
       ],
       informationSource: faqInformationSource,
+      locationPrecision: "mapped-feature",
+      filterIds: ["arrival"],
+    },
+  },
+  {
+    targetId: "osm-node-14099608931",
+    properties: {
+      name: "Gate 2 · Pedestrians only",
+      detail:
+        "Gate 2 is pedestrian-only on the 2026 Fair grounds map. Use Gate 3 for vehicle entry to infield parking and follow current on-site traffic signs.",
+      keywords: ["pedestrian entrance", "pedestrians only", "monroe avenue"],
+      informationSource: scheduleMapInformationSource,
       locationPrecision: "mapped-feature",
       filterIds: ["arrival"],
     },
@@ -106,6 +122,7 @@ export const greatFrederickFair2026MapPatches: FairGroundsMapFeaturePatch[] = [
   {
     targetId: "osm-node-14099608940",
     properties: {
+      name: "Gate 4A · Pedestrians only",
       detail:
         "Gate 4A is pedestrian-only. Use its Highland Avenue pull-off for taxi, rideshare, or friend drop-off. The free ADA-compliant shuttle from the Monocacy Boulevard side of Lot D also arrives here.",
       keywords: [
@@ -127,6 +144,7 @@ export const greatFrederickFair2026MapPatches: FairGroundsMapFeaturePatch[] = [
   {
     targetId: "osm-node-14099608937",
     properties: {
+      name: "Gate 4 · Exit only",
       detail:
         "Exit only. The 2026 Fair grounds map does not show Gate 4 as a visitor entrance. Use Gate 4A for pedestrian entry, pickup, or drop-off.",
       keywords: ["exit only", "not an entrance", "highland street"],
@@ -139,6 +157,7 @@ export const greatFrederickFair2026MapPatches: FairGroundsMapFeaturePatch[] = [
   {
     targetId: "osm-node-14099608957",
     properties: {
+      name: "Gate 5 · Exhibitors only",
       detail:
         "Exhibitors only. The 2026 Fair grounds map does not show Gate 5 as a public visitor entrance.",
       keywords: ["exhibitors only", "not a public entrance", "highland street"],
@@ -151,6 +170,7 @@ export const greatFrederickFair2026MapPatches: FairGroundsMapFeaturePatch[] = [
   {
     targetId: "osm-node-3124269595",
     properties: {
+      name: "Gate 6 · Closed",
       detail:
         "Closed. The 2026 Fair grounds map marks Gate 6 closed; do not use it as an arrival or exit point.",
       keywords: ["closed gate", "not an entrance", "not an exit"],
@@ -278,10 +298,46 @@ export const greatFrederickFair2026MapPatches: FairGroundsMapFeaturePatch[] = [
   {
     targetId: "osm-way-307321838",
     properties: {
-      name: "Free Stage",
-      scheduleAliases: ["free stage", "funky joe's bandwagon stage"],
+      name: "Grandstand stage",
+      scheduleAliases: [],
+      detail:
+        "The official grounds map shows this stage beside the Grandstand infield.",
       informationSource: scheduleMapInformationSource,
       locationPrecision: "mapped-feature",
+    },
+  },
+  {
+    targetId: "osm-way-307321843",
+    properties: {
+      name: "Dairy Office (Building 31)",
+      scheduleAliases: ["dairy office", "bldg. 31", "building 31"],
+      informationSource: scheduleMapInformationSource,
+      locationPrecision: "mapped-feature",
+    },
+  },
+  {
+    targetId: "osm-way-307321840",
+    properties: {
+      name: "Milking Parlor (Building 43)",
+      scheduleAliases: ["milking parlor", "milking facility", "bldg. 43", "building 43"],
+      informationSource: scheduleMapInformationSource,
+      locationPrecision: "mapped-feature",
+    },
+  },
+  {
+    targetId: "osm-way-307321855",
+    properties: {
+      name: "Dairy Barns (Buildings 33–39)",
+      scheduleAliases: [
+        "dairy barns", "building 33", "building 34", "building 35",
+        "building 36", "building 37", "building 38", "building 39",
+      ],
+      keywords: ["bldg. 33", "bldg. 34", "bldg. 35", "bldg. 36", "bldg. 37", "bldg. 38", "bldg. 39"],
+      detail:
+        "The official Fair map labels the dairy barns as Buildings 33 through 39. Radius shows their shared mapped area; use the building numbers on site to find an individual barn.",
+      informationSource: scheduleMapInformationSource,
+      locationPrecision: "mapped-feature",
+      directionsEnabled: false,
     },
   },
   {
@@ -507,8 +563,33 @@ const serviceFeatures: FairGroundsMapFeature[] = [
   }),
 ];
 
+const showAreaFeatures: FairGroundsMapFeature[] = [
+  pointFeature({
+    id: "fair-service-funky-joes-free-stage",
+    name: "Funky Joe's Free Stage",
+    kind: "stage",
+    sourceUrl: scheduleMapInformationSource.url,
+    sourceUpdatedAt: null,
+    scheduleAliases: [
+      "free stage", "funky joe's bandwagon stage", "funky joes bandwagon",
+      "funky joe's band wagon stage", "resthaven rest area", "resthaven area",
+    ],
+    // Reuse the reviewed Building 9 anchor to identify the published area.
+    // The PDF shows the stage between 9 and 12, not at the infield stage.
+    // It does not supply a surveyed coordinate or a verified walking route.
+    anchor: [-77.39419534285715, 39.41131661428572],
+    detail:
+      "Funky Joe's Bandwagon Stage is in the Resthaven area between Home Arts & Crafts (Building 9) and Youth Indoor Exhibits (Building 12). This marks the published area, not an exact stage entrance. Follow on-site signs.",
+    keywords: ["music", "free stage", "funky joe", "resthaven", "bandwagon", "faith at the fair"],
+    informationSource: scheduleMapInformationSource,
+    locationPrecision: "published-area",
+    directionsEnabled: false,
+  }),
+];
+
 export const greatFrederickFair2026MapAdditions: FairGroundsMapFeature[] = [
   ...parkingFeatures,
   ...transitFeatures,
   ...serviceFeatures,
+  ...showAreaFeatures,
 ];

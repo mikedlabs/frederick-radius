@@ -19,13 +19,21 @@ async function findRadPies(page: Page) {
   if (await compactTrigger.isVisible()) await compactTrigger.click();
   await expect(search).toBeVisible();
   await search.fill("Rad Pies");
-  const result = page.locator("#fair-map-search-results").getByRole("button", { name: /^White Rabbit x Rad Pies/ });
+  const result = page.locator("#fair-map-search-results").getByRole("button", { name: `Find booths for ${VENDOR_NAME}`, exact: true });
   await expect(result).toBeVisible();
   await result.click();
+  const explorer = page.locator("[data-fair-booth-explorer]");
+  const booth = explorer.getByRole("region", { name: "Booth 587", exact: true });
+  await expect(booth).toBeVisible();
+  await expect(booth).toContainText(VENDOR_NAME);
+  await expect(explorer.locator('[data-fair-booth-id="9566:3353619"]')).toHaveAttribute("data-selected", "true");
+  await expect(explorer.locator('[data-fair-booth-id="9566:3353618"]')).toHaveAttribute("data-highlighted", "true");
+  await expect(page.getByRole("dialog", { name: "Food & vendors", exact: true })).toHaveCount(0);
+  await booth.getByRole("button", { name: "View menu and details", exact: true }).click();
   const drawer = page.getByRole("dialog", { name: "Food & vendors", exact: true });
   await expect(drawer).toBeVisible();
   await expect(drawer.getByRole("heading", { name: VENDOR_NAME, exact: true })).toBeVisible();
-  return { search, result, drawer };
+  return { search, result, drawer, explorer, booth };
 }
 
 test.describe("Fair vendor discovery and My Day", () => {
@@ -36,16 +44,14 @@ test.describe("Fair vendor discovery and My Day", () => {
     serviceWorkers: "block",
   });
 
-  test("finds a real vendor without inventing a pin, then saves and returns through My Day", async ({ page }) => {
+  test("locates a vendor on the booth map first, then opens its menu and returns through My Day", async ({ page }) => {
     test.setTimeout(60_000);
     await openMap(page);
-    const { drawer } = await findRadPies(page);
+    const { drawer, booth } = await findRadPies(page);
     await expect(page).toHaveURL(`${FAIR_PATH}?vendor=${VENDOR_ID}#fair-map`);
     await expect(drawer).toContainText("Booth reference: 587, 588");
-    await expect(drawer).toContainText("It is not an exact map pin");
     await expect(drawer).toContainText("Vendor hours are not confirmed");
     await expect(drawer.getByRole("link", { name: "Rad Pies restaurant menu" })).toHaveAttribute("href", "https://www.radpies.com/menu/pizza/");
-    await expect(drawer.getByRole("button", { name: /Show.*map/i })).toHaveCount(0);
     await expect(page.locator("[data-fair-map-selection]:visible")).toHaveCount(0);
     const vendorPins = page.locator('[data-fair-map-marker-group][aria-label*="Rad Pies"], [data-fair-map-marker-group][aria-label*="White Rabbit"]');
     await expect(vendorPins).toHaveCount(0);
@@ -63,6 +69,8 @@ test.describe("Fair vendor discovery and My Day", () => {
 
     await drawer.getByRole("button", { name: "Close Food & vendors", exact: true }).click();
     await expect(drawer).toBeHidden();
+    await expect(booth).toBeVisible();
+    expect(new URL(page.url()).searchParams.get("booth")).toBe("9566:3353619");
     await page.locator("[data-mobile-action-bar]").getByRole("button", { name: /^My Day/ }).click();
     await expect(page.getByRole("heading", { name: "My Fair Day", exact: true })).toBeVisible();
     const saved = page.getByRole("list", { name: "Saved Fair vendors" });
@@ -99,10 +107,10 @@ test.describe("Fair vendor discovery and My Day", () => {
     await expect(page.getByRole("heading", { name: "Fairgrounds map", exact: true })).toBeVisible();
   });
 
-  test("keeps a real detail usable at 320px and restores search-result focus after Escape", async ({ page }) => {
+  test("keeps menus usable at 320px and returns to the selected booth after Escape", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 568 });
     await openMap(page);
-    const { drawer, result, search } = await findRadPies(page);
+    const { drawer, explorer, booth } = await findRadPies(page);
     await expect(drawer).toHaveAttribute("data-drawer-surface", "solid");
     const close = drawer.getByRole("button", { name: "Close Food & vendors", exact: true });
     const closeBox = await close.boundingBox();
@@ -125,8 +133,12 @@ test.describe("Fair vendor discovery and My Day", () => {
     await save.focus();
     await page.keyboard.press("Escape");
     await expect(drawer).toBeHidden();
-    await expect(page).toHaveURL(`${FAIR_PATH}#fair-map`);
-    await expect(search).toHaveValue("Rad Pies");
-    await expect(result).toBeFocused();
+    await expect(booth).toBeVisible();
+    expect(new URL(page.url()).searchParams.get("booth")).toBe("9566:3353619");
+    await expect(explorer.getByRole("searchbox", { name: "Find a vendor or booth", exact: true })).toHaveValue(VENDOR_NAME);
+    await expect.poll(() => booth.evaluate((element) => {
+      const focused = document.activeElement;
+      return element.contains(focused) ? "booth details" : focused?.outerHTML.slice(0, 300);
+    }), { message: "Closing the menu must return keyboard focus to the selected booth, not removed UI or the page body." }).toBe("booth details");
   });
 });

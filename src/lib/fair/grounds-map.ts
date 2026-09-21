@@ -215,9 +215,8 @@ export function fairGroundsFeatureMatchesFilter(
   feature: FairGroundsMapFeature,
   filter: FairGroundsMapFilter,
 ): boolean {
-  // Food/vendor placement is not licensed for Radius's geographic map. Keep
-  // this first so the shared Fairgrounds boundary cannot make an unsupported
-  // `food` lens look like a usable Fair food map.
+  // Reviewed booth coordinates belong to the separate schematic vendor map,
+  // not geographic positions. Never use the grounds boundary as a food pin.
   if (filter === "food") return false;
   if (feature.properties.kind === "fairgrounds") return true;
   if (feature.properties.filterIds?.includes(filter)) return true;

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, createElement, useState } from "react";
+import { act, createElement, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,7 +9,7 @@ import BottomDrawer from "./BottomDrawer";
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true;
 
-function ControlledDrawer() {
+function ControlledDrawer({ getReturnFocus }: { getReturnFocus?: () => HTMLElement | null } = {}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -22,6 +22,7 @@ function ControlledDrawer() {
         onOpenChange={setOpen}
         title="Controlled details"
         subtitle="A controlled drawer without an in-place trigger."
+        getReturnFocus={getReturnFocus}
       >
         <div>
           <button type="button">First body action</button>
@@ -30,6 +31,22 @@ function ControlledDrawer() {
       </BottomDrawer>
     </>
   );
+}
+
+function ReplacingDrawer() {
+  const [stage, setStage] = useState<"booth" | "menu" | "returned">("booth");
+  const returnedHeading = useRef<HTMLHeadingElement>(null);
+
+  return <main>
+    {stage === "booth" && <button type="button" onClick={() => setStage("menu")}>Open booth menu</button>}
+    {stage === "returned" && <h2 ref={returnedHeading} tabIndex={-1}>Booth 587</h2>}
+    {stage === "menu" && <BottomDrawer
+      open
+      onOpenChange={(open) => { if (!open) setStage("returned"); }}
+      getReturnFocus={() => returnedHeading.current}
+      title="Booth menu"
+    ><button type="button">Read menu</button></BottomDrawer>}
+  </main>;
 }
 
 function RejectingControlledDrawer() {
@@ -159,6 +176,42 @@ describe("BottomDrawer keyboard focus", () => {
     expect(dialog().style.background).toBe("var(--app-bg-elevated-solid)");
     expect(dialog().getAttribute("aria-modal")).toBe("true");
     expect(dialog().contains(document.activeElement)).toBe(true);
+  });
+
+  it.each(["Escape", "close button"])("returns focus to a replacement heading after %s unmounts the drawer", async (method) => {
+    await act(async () => root.render(createElement(ReplacingDrawer)));
+    const opener = container.querySelector<HTMLButtonElement>("button")!;
+    opener.focus();
+    await act(async () => opener.click());
+    await flushScheduledWork();
+    expect(opener.isConnected).toBe(false);
+    expect(container.querySelector("h2")).toBeNull();
+    expect(dialog().contains(document.activeElement)).toBe(true);
+
+    await act(async () => {
+      if (method === "Escape") document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      else closeButton().click();
+    });
+    await flushScheduledWork();
+
+    const heading = container.querySelector("h2");
+    expect(heading?.textContent).toBe("Booth 587");
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(heading);
+  });
+
+  it.each(["null", "disconnected"])("keeps the original opener fallback when the replacement resolves to %s", async (target) => {
+    const replacement = target === "null" ? null : document.createElement("h2");
+    const getReturnFocus = vi.fn(() => replacement);
+    await act(async () => root.render(<ControlledDrawer getReturnFocus={getReturnFocus} />));
+    const opener = container.querySelector<HTMLButtonElement>("button")!;
+    opener.focus();
+    await act(async () => opener.click());
+    await flushScheduledWork();
+    expect(getReturnFocus).not.toHaveBeenCalled();
+    await act(async () => closeButton().click());
+    await flushScheduledWork();
+    expect(document.activeElement).toBe(opener);
   });
 
   it("traps forward and backward keyboard focus inside the drawer", async () => {

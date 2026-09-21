@@ -45,6 +45,15 @@ export type FairScheduleSourceItem = {
   sourceUid: string;
   recurrenceId: string | null;
   sourceModifiedAt: string;
+  sourceUrl:
+    | typeof GREAT_FREDERICK_FAIR_2026_SCHEDULE_SOURCE_URL
+    | `https://thegreatfrederickfair.com/wp-content/uploads/2026/08/2026-GFF-SoE_website.pdf#page=${number}`;
+};
+
+/** The calendar/visitor-page parser still produces only web schedule rows.
+ * Reviewed PDF supplements join the visitor view, never this pack input.
+ */
+type FairWebScheduleSourceItem = FairScheduleSourceItem & {
   sourceUrl: typeof GREAT_FREDERICK_FAIR_2026_SCHEDULE_SOURCE_URL;
 };
 
@@ -56,7 +65,7 @@ export type FairScheduleSourceDay = {
   sourceUid: string;
   recurrenceId: string | null;
   sourceModifiedAt: string;
-  items: FairScheduleSourceItem[];
+  items: FairWebScheduleSourceItem[];
 };
 
 export type FairScheduleDiagnostic = {
@@ -97,7 +106,7 @@ export type FairScheduleParseStats = {
 export type FairScheduleParseResult = {
   ok: boolean;
   days: FairScheduleSourceDay[];
-  items: FairScheduleSourceItem[];
+  items: FairWebScheduleSourceItem[];
   sourceRevision: string | null;
   diagnostics: FairScheduleDiagnostic[];
   stats: FairScheduleParseStats;
@@ -622,7 +631,7 @@ function parseDayRows(
   event: FairVEvent,
   fairDate: string,
   diagnostics: FairScheduleDiagnostic[],
-): FairScheduleSourceItem[] {
+): FairWebScheduleSourceItem[] {
   const rowMatches = [...event.description.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)];
   if (rowMatches.length === 0) {
     diagnostics.push({
@@ -634,7 +643,7 @@ function parseDayRows(
     return [];
   }
 
-  const items: FairScheduleSourceItem[] = [];
+  const items: FairWebScheduleSourceItem[] = [];
   const idCounts = new Map<string, number>();
   let previousExplicitTime: string | null = null;
 

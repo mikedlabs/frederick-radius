@@ -13,6 +13,7 @@ import {
 } from "@/data/fair/great-frederick-fair-2026-transit";
 
 import { buildFairDayWorkspaceData } from "./buildFairDayWorkspaceData";
+import { addFairPlanItem, parseFairPlanText, reconcileFairPlan, serializeFairPlan } from "@/lib/fair/plan";
 
 const REVIEW_TIME = new Date("2026-09-01T20:00:00Z");
 
@@ -24,9 +25,11 @@ describe("buildFairDayWorkspaceData", () => {
       REVIEW_TIME,
     );
 
-    expect(data.scheduleItems).toHaveLength(
+    const importedRows = data.scheduleItems.filter((item) => !item.id.includes("-pdf-"));
+    expect(importedRows).toHaveLength(
       greatFrederickFair2026PackPointer.itemCount,
     );
+    expect(data.scheduleItems).toHaveLength(243);
     expect(data.scheduleItems.every((item) => item.id === item.sourceItem.id)).toBe(
       true,
     );
@@ -190,7 +193,7 @@ describe("buildFairDayWorkspaceData", () => {
       detail:
         "Chris Darlington opens at 6:30 p.m. Warren Zeiders headlines at 8 p.m.",
     });
-    expect(data.scheduleItems.filter((item) => item.kind === "concert")).toHaveLength(
+    expect(importedRows.filter((item) => item.kind === "concert")).toHaveLength(
       6,
     );
     expect(demolitionDerby?.kind).toBe("motorsport");
@@ -220,6 +223,33 @@ describe("buildFairDayWorkspaceData", () => {
         )?.kind,
       ).toBe("food");
     }
+  });
+
+  it("adds reviewed PDF programs without rewriting pack rows or their timing", () => {
+    const original = JSON.stringify(greatFrederickFair2026Pack);
+    const data = buildFairDayWorkspaceData(greatFrederickFair2026Pack, greatFrederickFair2026PackPointer, new Date("2026-09-21T16:00:00Z"));
+    expect(JSON.stringify(greatFrederickFair2026Pack)).toBe(original);
+    expect(data.scheduleItems.filter((item) => item.id.includes("-pdf-"))).toHaveLength(55);
+    expect(data.scheduleItems.filter((item) => item.title.startsWith("Faith at the Fair"))).toHaveLength(1);
+    const music = data.scheduleItems.find((item) => item.id === "schedule-2026-09-21-pdf-funky-1300")!;
+    expect(music).toMatchObject({ title: "Shredded Cheddar", kind: "concert", timeLabel: "1pm", sourceUrl: "https://thegreatfrederickfair.com/wp-content/uploads/2026/08/2026-GFF-SoE_website.pdf#page=14", sourceReview: { reviewedOn: "2026-09-21", sourceRevision: "pdf-revision-2026-08-25" }, sourceItem: { startsAt: "2026-09-21T17:00:00.000Z", endsAt: null } });
+    const openingElsa = data.scheduleItems.find((item) => item.id === "schedule-2026-09-18-pdf-character")!;
+    expect(openingElsa).toMatchObject({ timeLabel: "Confirm time", sourceItem: { timing: "unspecified", startsAt: null, endsAt: null } });
+    expect(openingElsa.detail).toContain("before the reviewed 4pm opening");
+    expect(data.scheduleItems.find((item) => item.id === "schedule-2026-09-25-pdf-bluey")).toMatchObject({ title: "Bluey meet and greet", timeLabel: "1pm to 3pm", sourceItem: { fairDate: "2026-09-25", startsAt: "2026-09-25T17:00:00.000Z", endsAt: "2026-09-25T19:00:00.000Z" } });
+  });
+
+  it("retains PDF music and character saves across serialization and source reconciliation", () => {
+    const data = buildFairDayWorkspaceData(greatFrederickFair2026Pack, greatFrederickFair2026PackPointer, new Date("2026-09-21T16:00:00Z"));
+    const sources = data.scheduleItems.map((item) => item.sourceItem);
+    const music = sources.find((item) => item.id === "schedule-2026-09-21-pdf-funky-1300")!;
+    const bluey = sources.find((item) => item.id === "schedule-2026-09-23-pdf-bluey")!;
+    let plan = addFairPlanItem(data.initialPlan, music, "2026-09-21T16:00:01Z");
+    plan = addFairPlanItem(plan, bluey, "2026-09-21T16:00:02Z");
+    const reloaded = parseFairPlanText(serializeFairPlan(plan))!;
+    const result = reconcileFairPlan(reloaded, sources, greatFrederickFair2026PackPointer.revision, "2026-09-21T16:01:00Z");
+    expect(result.changedOrRemovedIds).toEqual([]);
+    expect(result.plan.steps.map((step) => [step.scheduleItemId, step.dayId, step.sourceState])).toEqual([[music.id, music.dayId, "current"], [bluey.id, bluey.dayId, "current"]]);
   });
 
   it("keeps county Transit and the Fair parking shuttle as separate facts", () => {

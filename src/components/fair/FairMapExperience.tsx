@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Map, MapPinned, RefreshCw } from "lucide-react";
+import { ExternalLink, MapPinned, RefreshCw } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
@@ -147,11 +147,10 @@ export default function FairMapExperience(props: FairGroundsMapProps) {
   const mapId = requestedBooth?.map.id ?? requestedFloor?.id ?? data?.maps[0]?.id ?? route.floor;
 
   return <div data-fair-map-experience>
-    {route.view === "grounds" || !data ? <div className="mb-3 flex flex-wrap gap-2 px-4 lg:px-0" role="group" aria-label="Fair map views">
-      <button type="button" aria-pressed={route.view === "booths"} onClick={() => navigate({ ...route, view: "booths" })} className="tap-44 inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[13px] font-bold sm:flex-none" style={{ borderColor: route.view === "booths" ? "var(--app-brand)" : "var(--app-border)", background: route.view === "booths" ? "var(--app-brand)" : "var(--app-bg-elevated-solid)", color: route.view === "booths" ? "var(--app-ink-inverse)" : "var(--app-ink)" }}><Map className="h-4 w-4" aria-hidden />Booths & vendors</button>
-      <button type="button" aria-pressed={route.view === "grounds"} onClick={() => navigate({ ...route, view: "grounds", booth: null })} className="tap-44 inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[13px] font-bold sm:flex-none" style={{ borderColor: route.view === "grounds" ? "var(--app-brand)" : "var(--app-border)", background: route.view === "grounds" ? "var(--app-brand)" : "var(--app-bg-elevated-solid)", color: route.view === "grounds" ? "var(--app-ink-inverse)" : "var(--app-ink)" }}><MapPinned className="h-4 w-4" aria-hidden />Grounds & services</button>
+    {route.view === "booths" && !data ? <div className="mb-3 flex flex-wrap gap-2 px-4 lg:px-0" role="group" aria-label="Fair map views">
+      <button type="button" onClick={() => navigate({ ...route, view: "grounds", booth: null })} className="tap-44 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-3 text-[13px] font-bold text-[var(--app-cool)]"><MapPinned className="h-4 w-4" aria-hidden />Grounds & services</button>
     </div> : null}
-    {route.view === "grounds" ? <FairGroundsMap {...props} boothLayoutData={data} initialSearchQuery={groundsQuery} onSearchQueryChange={setGroundsQuery} onShowBoothLayout={showVendorBooths} /> : <div id="fair-map">
+    {route.view === "grounds" ? <FairGroundsMap {...props} boothLayoutData={data} initialSearchQuery={groundsQuery} onSearchQueryChange={setGroundsQuery} onShowBoothLayout={showVendorBooths} onBrowseBoothLayout={() => navigate({ view: "booths", floor: "9566", booth: null, query: "" })} /> : <div id="fair-map">
       <h1 id="fair-grounds-map-heading" tabIndex={-1} className="sr-only">Fairgrounds map</h1>
       {status === "failed" ? <section data-fair-booth-layout-fallback className="mx-4 rounded-[var(--app-radius-lg)] border border-[var(--app-border)] p-5 lg:mx-0" aria-labelledby="fair-layout-failure-heading">
         <h2 id="fair-layout-failure-heading" className="text-[24px] font-bold">The booth layout could not load.</h2>

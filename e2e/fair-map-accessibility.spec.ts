@@ -7,9 +7,9 @@ import { findErrorBoundaryMarker } from "./error-boundary-markers";
 const FAIR_PATH = "/moments/great-frederick-fair-2026#fair-map";
 const AXE_PATH = path.join(process.cwd(), "node_modules/axe-core/axe.min.js");
 const FAIR_MAP_LENSES = [
-  { id: "arrival", count: 16 },
+  { id: "arrival", count: 17 },
   { id: "program", count: 11 },
-  { id: "essentials", count: 24 },
+  { id: "essentials", count: 25 },
   { id: "animals", count: 16 },
   { id: "buildings", count: 7 },
 ] as const;
@@ -608,10 +608,10 @@ test.describe("Fairgrounds map accessibility", () => {
     await search.fill("Gate 4A");
     await page
       .locator("#fair-map-search-results")
-      .getByRole("button", { name: /^Gate 4A Gate$/ })
+      .getByRole("button", { name: /^Gate 4A · Pedestrians only Gate$/ })
       .click();
     const selection = page.getByRole("region", {
-      name: "Selected map place: Gate 4A",
+      name: "Selected map place: Gate 4A · Pedestrians only",
     });
     await expect(selection).toBeVisible();
     await expect(
@@ -619,7 +619,7 @@ test.describe("Fairgrounds map accessibility", () => {
     ).toBeVisible();
     await selection.getByRole("button", { name: "More details" }).click();
     const expandedSelection = page.getByRole("dialog", {
-      name: "Selected map place: Gate 4A",
+      name: "Selected map place: Gate 4A · Pedestrians only",
     });
     await expect(
       expandedSelection.getByRole("link", { name: /Official details/i }),
@@ -740,12 +740,12 @@ test.describe("Fairgrounds map accessibility", () => {
     await gateResult.press("Enter");
 
     const gateDetails = page.getByRole("region", {
-      name: "Selected map place: Gate 4A",
+      name: "Selected map place: Gate 4A · Pedestrians only",
     });
     await expect(gateDetails).toBeVisible();
     await gateDetails.getByRole("button", { name: "More details" }).click();
     const expandedGateDetails = page.getByRole("dialog", {
-      name: "Selected map place: Gate 4A",
+      name: "Selected map place: Gate 4A · Pedestrians only",
     });
     await expect(
       expandedGateDetails.getByRole("link", { name: /Get directions/i }),
@@ -783,9 +783,9 @@ test.describe("Fairgrounds map accessibility", () => {
     const results = page.locator("#fair-map-search-results");
 
     await search.fill("Gate 4");
-    await results.getByRole("button", { name: /^Gate 4 Gate$/ }).press("Enter");
+    await results.getByRole("button", { name: /^Gate 4 · Exit only Gate$/ }).press("Enter");
     const restrictedGate = page.getByRole("region", {
-      name: "Selected map place: Gate 4",
+      name: "Selected map place: Gate 4 · Exit only",
     });
     await expect(restrictedGate).toBeVisible();
     await expect(restrictedGate).toContainText("Fair gate");
@@ -793,7 +793,7 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(restrictedGate).toContainText("Exit only");
     await restrictedGate.getByRole("button", { name: "More details" }).click();
     const expandedRestrictedGate = page.getByRole("dialog", {
-      name: "Selected map place: Gate 4",
+      name: "Selected map place: Gate 4 · Exit only",
     });
     await expect(expandedRestrictedGate).toContainText("Exit only");
     await expect(
@@ -826,6 +826,49 @@ test.describe("Fairgrounds map accessibility", () => {
     ).toHaveCount(0);
   });
 
+  test("finds Funky Joe's in its published area without offering an exact route", async ({ page }) => {
+    await openFairMap(page);
+    const search = page.getByRole("searchbox", {
+      name: "Find a place, event, or vendor on the Fair grounds map",
+    });
+    await search.fill("Funky Joe");
+    const result = page.locator("#fair-map-search-results").getByRole("button", { name: /Funky Joe's Free Stage/ });
+    await expect(result).toHaveCount(1);
+    await result.press("Enter");
+    const stage = page.getByRole("region", { name: "Selected map place: Funky Joe's Free Stage" });
+    await expect(stage).toBeVisible();
+    await expect(stage).toContainText("Published area; follow signs");
+    await stage.getByRole("button", { name: "More details" }).click();
+    const expanded = page.getByRole("dialog", { name: "Selected map place: Funky Joe's Free Stage" });
+    await expect(expanded).toContainText("between Home Arts & Crafts (Building 9) and Youth Indoor Exhibits (Building 12)");
+    await expect(expanded.getByRole("link", { name: /Get directions/i })).toHaveCount(0);
+    await expect(expanded.getByRole("link", { name: /Official details/i })).toBeVisible();
+  });
+
+  test("shows Gate 2 as pedestrian-only in search and selected details", async ({ page }) => {
+    await openFairMap(page);
+    await page.getByRole("searchbox", { name: "Find a place, event, or vendor on the Fair grounds map" }).fill("Gate 2");
+    await page.locator("#fair-map-search-results").getByRole("button", { name: /^Gate 2 · Pedestrians only Gate$/ }).press("Enter");
+    const details = page.getByRole("region", { name: "Selected map place: Gate 2 · Pedestrians only" });
+    await expect(details).toBeVisible();
+    await details.getByRole("button", { name: "More details" }).click();
+    await expect(page.getByRole("dialog", { name: "Selected map place: Gate 2 · Pedestrians only" })).toContainText("Gate 2 is pedestrian-only");
+  });
+
+  for (const [query, label] of [["Gate 5", "Gate 5 · Exhibitors only"], ["Gate 6", "Gate 6 · Closed"]] as const) {
+    test(`keeps ${query} visibly restricted without visitor directions`, async ({ page }) => {
+      await openFairMap(page);
+      await page.getByRole("searchbox", { name: "Find a place, event, or vendor on the Fair grounds map" }).fill(query);
+      await page.locator("#fair-map-search-results").getByRole("button", { name: `${label} Gate`, exact: true }).press("Enter");
+      const details = page.getByRole("region", { name: `Selected map place: ${label}` });
+      await expect(details).toBeVisible();
+      await details.getByRole("button", { name: "More details" }).click();
+      const expanded = page.getByRole("dialog", { name: `Selected map place: ${label}` });
+      await expect(expanded.getByRole("link", { name: /Get directions/i })).toHaveCount(0);
+      await expect(expanded.getByRole("link", { name: /Official details/i })).toBeVisible();
+    });
+  }
+
   test("starts with a compact essentials view across common narrow phone widths", async ({
     page,
   }) => {
@@ -839,12 +882,12 @@ test.describe("Fairgrounds map accessibility", () => {
       const mapView = page.getByRole("combobox", { name: "Map view" });
       await expect(mapView).toHaveValue("essentials");
       await expect(mapView).toHaveCSS("height", "44px");
-      await expect(mapView.locator("option:checked")).toHaveText("Essentials · 24");
+      await expect(mapView.locator("option:checked")).toHaveText("Essentials · 25");
       await expect(mapView.locator("option")).toHaveCount(6);
       await expect(mapView.locator('option[value="vendors"]')).toHaveText("Food & vendors");
       await expect(mapView.locator("option").last()).toHaveText("Buildings · 7");
       await expect(page.locator("#fair-map-filter-status")).toContainText(
-        "This map view shows Entry + essentials: 24 places.",
+        "This map view shows Entry + essentials: 25 places.",
       );
       await expect(
         page.locator(
@@ -863,7 +906,7 @@ test.describe("Fairgrounds map accessibility", () => {
         .poll(async () => {
           const markers = await readMarkerHitTargets(page);
           return (
-            markers.representedPlaces === 24 &&
+            markers.representedPlaces === 25 &&
             markers.markers.length > 0 &&
             markers.blockedTargets.length === 0
           );
@@ -955,7 +998,7 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(retry).toBeVisible();
     await expect(retry).toBeFocused();
     await expect(page.locator("#fair-map-filter-status")).toContainText(
-      "This map view shows Entry + essentials: 24 places.",
+      "This map view shows Entry + essentials: 25 places.",
     );
   });
 
@@ -1098,10 +1141,10 @@ test.describe("Fairgrounds map accessibility", () => {
     });
     await search.fill("Gate 1");
     await page.locator("#fair-map-search-results")
-      .getByRole("button", { name: /^Gate 1 Gate$/ })
+      .getByRole("button", { name: /^Gate 1 · Pedestrians only Gate$/ })
       .press("Enter");
     const heading = page.getByRole("heading", {
-      name: "Selected map place: Gate 1",
+      name: "Selected map place: Gate 1 · Pedestrians only",
       exact: true,
     });
     await expect(heading).toBeFocused();
@@ -1268,7 +1311,7 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(page.locator("[data-fair-map-filter-select]")).toBeHidden();
 
     const arrival = page.getByRole("button", {
-      name: "Arrive and enter · 16",
+      name: "Arrive and enter · 17",
     });
     await expect(
       page
@@ -1278,7 +1321,7 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(page.getByRole("button", { name: "Vendors", exact: true })).toBeVisible();
     await expect(arrival).toBeVisible();
     await expect(arrival).toContainText("Arrive");
-    await expect(arrival).toHaveAttribute("aria-label", "Arrive and enter · 16");
+    await expect(arrival).toHaveAttribute("aria-label", "Arrive and enter · 17");
     await expect(
       page.locator(
         ".fair-grounds-map-canvas .maplibregl-ctrl-top-right .maplibregl-ctrl-group",
@@ -1366,7 +1409,7 @@ test.describe("Fairgrounds map accessibility", () => {
     );
     await expect
       .poll(async () => (await readMarkerHitTargets(page)).representedPlaces)
-      .toBe(24);
+      .toBe(25);
   });
 
   test("keeps selected-place details above map controls at 320px", async ({
@@ -1542,14 +1585,14 @@ test.describe("Fairgrounds map accessibility", () => {
     await expect(
       places.getByRole("heading", { name: "Find essentials" }),
     ).toBeVisible();
-    const gate = places.getByRole("button", { name: /^Gate 1 Gate$/ });
+    const gate = places.getByRole("button", { name: /^Gate 1 · Pedestrians only Gate$/ });
     await expect(gate).toBeVisible();
     await gate.focus();
     await gate.press("Enter");
     await expect(gate).toHaveAttribute("aria-pressed", "true");
     const heading = page.getByRole("heading", {
       level: 3,
-      name: "Selected map place: Gate 1",
+      name: "Selected map place: Gate 1 · Pedestrians only",
     });
     await expect(heading).toBeFocused();
     await heading.press("Escape");
@@ -1567,14 +1610,14 @@ test.describe("Fairgrounds map accessibility", () => {
     await search.fill("Gate 1");
     await page
       .locator("#fair-map-search-results")
-      .getByRole("button", { name: /^Gate 1 Gate$/ })
+      .getByRole("button", { name: /^Gate 1 · Pedestrians only Gate$/ })
       .click();
 
     await expect(page).toHaveURL(
       /\/moments\/great-frederick-fair-2026\?meet=osm-node-14099608925#fair-map$/,
     );
     await expect(
-      page.getByRole("region", { name: "Selected map place: Gate 1" }),
+      page.getByRole("region", { name: "Selected map place: Gate 1 · Pedestrians only" }),
     ).toBeVisible();
 
     await page.goBack();
@@ -1589,7 +1632,7 @@ test.describe("Fairgrounds map accessibility", () => {
       /\/moments\/great-frederick-fair-2026\?meet=osm-node-14099608925#fair-map$/,
     );
     await expect(
-      page.getByRole("region", { name: "Selected map place: Gate 1" }),
+      page.getByRole("region", { name: "Selected map place: Gate 1 · Pedestrians only" }),
     ).toBeVisible();
   });
 
@@ -1604,7 +1647,7 @@ test.describe("Fairgrounds map accessibility", () => {
     await search.fill("Gate 1");
     await page
       .locator("#fair-map-search-results")
-      .getByRole("button", { name: /^Gate 1 Gate$/ })
+      .getByRole("button", { name: /^Gate 1 · Pedestrians only Gate$/ })
       .click();
     await expect(page.locator("[data-fair-map-selection]:visible")).toBeVisible();
 
@@ -1948,7 +1991,7 @@ test.describe("Fairgrounds map accessibility", () => {
       .getByRole("button", { name: /^Gate 1/ })
       .press("Enter");
     await expect(
-      page.getByRole("region", { name: "Selected map place: Gate 1" }),
+      page.getByRole("region", { name: "Selected map place: Gate 1 · Pedestrians only" }),
     ).toBeVisible();
     await expectNoAxeViolations(page);
   });
