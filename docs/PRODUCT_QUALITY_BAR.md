@@ -37,10 +37,13 @@ content.
 
 ## Known limits, not passing scores
 
-The Fair's complete booth layout is not published. The private candidate uses
-source-layout coordinates, and the existing organizer-permission and source
-review requirements still apply. A curated vendor card with a booth reference
-does not complete the mapped-booth journey.
+The Fair booth explorer uses the reviewed September 21, 2026 snapshot of all
+three official layout sections: 155 exhibitors and 511 booth shapes. Owner
+permission is recorded in the release manifest. These are source-layout
+coordinates, not surveyed GPS positions or walking routes. A booth listing
+does not confirm today's hours or inventory. Rich menus and saved vendor stops
+remain limited to the separately reviewed vendor profiles; the complete booth
+directory does not imply equivalent editorial detail for every exhibitor.
 
 Provider coverage, performance, assistive-technology behavior, and editorial
 completeness need their own evidence. Never mark these 8/10 merely because the

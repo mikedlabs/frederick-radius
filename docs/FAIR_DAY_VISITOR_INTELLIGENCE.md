@@ -158,6 +158,46 @@ map needs written Fair or Map D permission plus a read-only export or API with
 stable exhibitor, floorplan, booth, and modified-time fields. Attendee,
 registration, contact, and transaction data are out of scope.
 
+### September 21 owner-authorized layout release
+
+On September 21, 2026, the owner stated, "i have permission - lets do it," and
+authorized using the public exhibitor directory and floorplan artwork and
+geometry. The first public layout release records that owner attestation. It
+does not claim that Radius independently verified a license or received a new
+organizer export. That authorization applies to the manually reviewed public
+layout artifact; it does not authorize private exhibitor data or automatic
+promotion from the recurring collector.
+
+The source checked at `2026-09-21T13:37:38.606Z` contains 155 exhibitors,
+three floorplans, 511 source rectangles, and 411 exhibitor-to-booth references.
+All references resolve to exactly one shape. The inventory and normalized
+geometry match the September 20 review candidate. The older September 16
+collector baseline still raises its existing alerts, including unrelated
+official-page changes; this release neither clears those alerts nor promotes
+schedule changes.
+
+`public/fair/layouts/great-frederick-fair-2026.json` is the narrow public
+artifact. `scripts/import-fair-layout.ts` is an explicit, manual importer,
+separate from collection and builds. Its output contains only public exhibitor
+identities, booth assignments, image-space rectangles and rotation, source
+labels, local artwork paths, and review/permission provenance. Twelve reviewed
+business profiles are linked by stable source identity. No source CSS
+open/closed value is interpreted as business hours or availability.
+
+The three original PNG backgrounds are preserved byte for byte. Their source
+canvases are 1600 × 1460, 1600 × 2520, and 1600 × 1920; their native artwork
+dimensions are also stored so the renderer can match the source's width-scaled,
+un-stretched background. Fifty-six rectangles rotate around their top-left
+corner. One rectangle has no source label or exhibitor and remains unlabeled.
+The explicit "Click to edit" residue is omitted; all other source labels keep
+their source font size, including zero-sized invisible labels. These are
+schematic floorplans, with no inferred GPS coordinates or walking routes.
+
+The per-map artwork hashes, source-markup hashes, rotation counts, and permission
+record are in `docs/audits/2026-09-21-fair-layout-release.json`. A future refresh
+requires another source comparison and explicit manual release. The collector
+remains review-only.
+
 The `Fair data steward` workflow runs the collector twice daily on the
 `radius-data` NAS runner and retains a review artifact for three days. It has
 read-only repository permission and no promotion job. The job stays green only

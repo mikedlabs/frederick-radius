@@ -94,7 +94,8 @@ import FairPracticalAnswers from "./FairPracticalAnswers";
 import FairShareButton from "./FairShareButton";
 import FairPlanShareButton from "./FairPlanShareButton";
 import FairKeepGuide from "./FairKeepGuide";
-import FairGroundsMap from "./FairGroundsMap";
+import FairMapExperience from "./FairMapExperience";
+import { clearFairLayoutParams, FAIR_LAYOUT_NAVIGATION_EVENT } from "@/lib/fair/layout-navigation";
 import FairGrandstandSpotlight from "./FairGrandstandSpotlight";
 import FairPhotoExplorer from "./FairPhotoExplorer";
 import FairTravelPanel from "./FairTravelPanel";
@@ -1350,6 +1351,7 @@ export default function FairDayWorkspace({
     if (mode !== "map") {
       nextUrl.searchParams.delete("meet");
       nextUrl.searchParams.delete("vendor");
+      clearFairLayoutParams(nextUrl);
     }
     nextUrl.hash = hash;
     const nextPath = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
@@ -1380,6 +1382,7 @@ export default function FairDayWorkspace({
     setActiveMode("map");
     const url = new URL(window.location.href);
     url.searchParams.delete("vendor");
+    clearFairLayoutParams(url);
     url.searchParams.set("meet", featureId);
     url.hash = "fair-map";
     window.history.pushState(
@@ -1387,6 +1390,7 @@ export default function FairDayWorkspace({
       "",
       `${url.pathname}${url.search}${url.hash}`,
     );
+    window.dispatchEvent(new Event(FAIR_LAYOUT_NAVIGATION_EVENT));
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: "auto" });
       document
@@ -1403,9 +1407,11 @@ export default function FairDayWorkspace({
     setActiveMode("map");
     const url = new URL(window.location.href);
     url.searchParams.delete("meet");
+    clearFairLayoutParams(url);
     url.searchParams.set("vendor", vendorId);
     url.hash = "fair-map";
     window.history.pushState({ ...withoutFairMapSelectionHistoryState(window.history.state), fairMode: "map" }, "", `${url.pathname}${url.search}${url.hash}`);
+    window.dispatchEvent(new Event(FAIR_LAYOUT_NAVIGATION_EVENT));
     window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
   };
 
@@ -1425,6 +1431,10 @@ export default function FairDayWorkspace({
 
   const showProgramItemOnMap = (item: FairDayScheduleItemView) => {
     if (!compactPlaceLabel(item.placeLabel)) return;
+    const url = new URL(window.location.href);
+    clearFairLayoutParams(url);
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    window.dispatchEvent(new Event(FAIR_LAYOUT_NAVIGATION_EVENT));
     mapFocusRequestId.current += 1;
     setMapFocusRequest({
       programItemId: item.id,
@@ -2894,7 +2904,7 @@ export default function FairDayWorkspace({
             id={MODE_PANEL_IDS.map}
             aria-labelledby="fair-grounds-map-heading"
           >
-            <FairGroundsMap
+            <FairMapExperience
               savedStops={mappedPlanStops}
               savedVendors={savedVendorRows.map(({ stop, vendor }) => ({ id: stop.vendorId, name: vendor?.name ?? stop.labelSnapshot }))}
               onToggleVendor={toggleFairVendor}
