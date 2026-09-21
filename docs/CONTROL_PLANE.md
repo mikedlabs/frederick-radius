@@ -15,6 +15,7 @@ data-trust promise before the next owner review.
 | Code quality and editorial checks | GitHub Actions on PR/main | They are release gates, not recurring maintenance. |
 | Production alias verification | GitHub deployment status | It runs only when a deployment actually changes production. |
 | Reviewed data proposals | GitHub Actions | The existing daily proposal workflows remain until the NAS runner is authenticated, limited to a dedicated label, and shown to open the same review PR safely. |
+| Independent production health | NAS Task Scheduler after owner setup, plus GitHub Actions | After merge and NAS acceptance, the NAS can parse the public health contract every five minutes. The daily GitHub check remains an independent off-site backstop. |
 
 ## What is dispatch-only
 
@@ -35,6 +36,15 @@ accept the handoff only after the capped runner completes one manual MARC
 pilot and returns online after a restart. Vercel remains the owner of live
 database refreshes throughout this transition.
 
+The reviewed monitor code does not create or enable a DSM task. After this
+change is merged and the NAS checkout is updated, an administrator can follow
+`ops/nas-runner/README.md` to create the low-privilege task and complete a
+healthy, controlled-failure, and recovery acceptance check. The monitor has no
+production credential and performs no production write. It confirms an
+incident after two unhealthy contract responses, repeats at most once every six
+hours, and treats the intentional Google-hours policy hold as operational only
+when the rest of the public readiness contract remains healthy.
+
 ## One exception stream
 
 The owner brief is the routine reading surface. Slack is only for red states:
@@ -48,6 +58,12 @@ No green messages, routine counts, or duplicate alerts belong in Slack. The
 current data-health alert helper suppresses an unchanged anomaly fingerprint
 for six hours. Slack setup is an owner action because it creates a webhook
 secret; add it only as `SLACK_WEBHOOK_URL` in Vercel Production.
+
+The NAS monitor may use the same exception channel, but its webhook stays in a
+permission-limited NAS environment outside the repository. A Slack failure does
+not become silence: only a due transition or six-hour reminder exits nonzero so
+DSM can take over without creating routine noise. The NAS and GitHub monitors
+do not suppress one another.
 
 ## Required account checks
 

@@ -155,7 +155,7 @@ export async function GET(request: Request) {
     msg: { title: string; body: string; tag: string },
   ): Promise<boolean> => {
     const eventUrlSlug = row.canonical_event_slug ?? row.event_slug;
-    let claimed = false;
+    let claimId: string | null = null;
     try {
       const claim = await db
         .insert(push_log)
@@ -167,17 +167,30 @@ export async function GET(request: Request) {
         })
         .onConflictDoNothing({ target: [push_log.topic, push_log.dedupe_key] })
         .returning({ id: push_log.id });
-      claimed = claim.length > 0;
+      claimId = claim[0]?.id ?? null;
     } catch {
-      claimed = false;
+      claimId = null;
     }
-    if (!claimed) return false;
+    if (!claimId) return false;
+    const claimedLogId = claimId;
+
+    const releaseRetryClaim = async () => {
+      try {
+        await db.delete(push_log).where(eq(push_log.id, claimedLogId));
+      } catch {
+        console.error("[saved-reminders] failed delivery claim could not be released");
+      }
+    };
 
     try {
-      await sendPush(
+      const result = await sendPush(
         { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
         { ...msg, url: `/events/${eventUrlSlug}` },
       );
+      if (!result) {
+        await releaseRetryClaim();
+        return false;
+      }
       return true;
     } catch (err) {
       if (err instanceof Error && err.message === "subscription_gone") {
@@ -194,6 +207,8 @@ export async function GET(request: Request) {
         } catch {
           /* best-effort */
         }
+      } else {
+        await releaseRetryClaim();
       }
       return false;
     }

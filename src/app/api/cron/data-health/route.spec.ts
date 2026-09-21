@@ -145,6 +145,7 @@ describe("GET /api/cron/data-health", () => {
     mocks.auditCoordDivergence.mockReturnValue([]);
     mocks.getAnomalies.mockReturnValue([]);
     mocks.hydrateSnapshotsStrict.mockResolvedValue(undefined);
+    mocks.sendAnomalyAlert.mockResolvedValue("accepted");
     mocks.computePlaceTrustReport.mockReturnValue({
       fresh_hours: {
         fresh_count: 70,
@@ -297,6 +298,55 @@ describe("GET /api/cron/data-health", () => {
     expect(body.summary.github_delivery).toBe("auth_failed");
   });
 
+  it("awaits the bounded anomaly alert and exposes provider acceptance", async () => {
+    const anomaly = {
+      source: "test-feed",
+      kind: "ingest_stale",
+      detail: "The test feed is stale.",
+    };
+    mocks.getAnomalies.mockReturnValue([anomaly]);
+    let finishAlert!: () => void;
+    mocks.sendAnomalyAlert.mockReturnValue(
+      new Promise((resolve) => {
+        finishAlert = () => resolve("accepted");
+      }),
+    );
+
+    let completed = false;
+    const responsePromise = GET(request()).then(async (response) => {
+      completed = true;
+      return { response, body: await response.json() };
+    });
+
+    await vi.waitFor(() => {
+      expect(mocks.sendAnomalyAlert).toHaveBeenCalledWith([anomaly]);
+    });
+    expect(completed).toBe(false);
+
+    finishAlert();
+    const { response, body } = await responsePromise;
+    expect(response.status).toBe(200);
+    expect(body.summary.slack_alert_delivery).toBe("accepted");
+    expect(body.feeds.slack_alert_delivery).toBe("accepted");
+  });
+
+  it("surfaces a rejected Slack delivery without failing the health report", async () => {
+    mocks.getAnomalies.mockReturnValue([
+      {
+        source: "test-feed",
+        kind: "ingest_stale",
+        detail: "The test feed is stale.",
+      },
+    ]);
+    mocks.sendAnomalyAlert.mockResolvedValue("rejected");
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.summary.slack_alert_delivery).toBe("rejected");
+  });
+
   it("delegates health issues to the non-expiring Actions channel by default", async () => {
     vi.stubEnv("VERCEL_GITHUB_ALERTS_ENABLED", "");
 
@@ -419,7 +469,9 @@ describe("GET /api/cron/data-health", () => {
     expect(body.summary).toMatchObject({
       status: "held",
       degraded: false,
+      slack_alert_delivery: "not_needed",
     });
+    expect(mocks.sendAnomalyAlert).not.toHaveBeenCalled();
     expect(mocks.recordCompletedIngestRunStrict).toHaveBeenCalledWith(
       "tripwires",
       expect.any(String),
