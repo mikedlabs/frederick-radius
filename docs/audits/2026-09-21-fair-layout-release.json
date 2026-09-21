@@ -1,0 +1,70 @@
+{
+  "reviewedAt": "2026-09-21T13:47:17.076Z",
+  "sourceCheckedAt": "2026-09-21T13:37:38.606Z",
+  "permission": {
+    "basis": "owner-attestation",
+    "attestedOn": "2026-09-21",
+    "scope": "Public exhibitor names, booth assignments, floorplan artwork and image-space geometry.",
+    "evidence": "Owner stated 'i have permission - lets do it' in the September 21, 2026 task. This is an owner attestation, not an independently verified license or newly obtained organizer export."
+  },
+  "candidateSha256": "aa7ff2c918632b07c3d91af0e552005d1e253145394fda492c9aedd0ce437a24",
+  "reviewedSourceFingerprints": {
+    "exhibitorInventorySha256": "c1a03e01f2a2d07b10562a75a0b454660dcc1184b16e37f9327254202738f588",
+    "floorplanGeometrySha256": "9704b409625eea261750786032101d41c5dc1719cd91062d8e5034d429795d6b"
+  },
+  "sourceReviewAlerts": [
+    "Official Fair page 2711 changed from its reviewed text.",
+    "Official Fair page 2862 changed from its reviewed text.",
+    "Official Fair page 3262 changed from its reviewed text.",
+    "The normalized EventHub exhibitor inventory changed.",
+    "The normalized EventHub floorplan geometry changed."
+  ],
+  "scope": "Only the exhibitor/floorplan subset was promoted. The recurring collector and its review gate remain unchanged. No schedule, private contact, transaction, registration, imagery from vendor profiles, or business operating status is included.",
+  "annotationReview": "The explicit 'Click to edit' editor residue was omitted. All other source labels are preserved with their source font sizes, including zero-sized invisible text. Annotation coordinates include source text padding. Background artwork is original, unedited PNG data rendered at source canvas width with its intrinsic aspect ratio. Booth rotation origin is top left.",
+  "maps": [
+    {
+      "mapId": "9564",
+      "sourceUrl": "https://mapd-client-images.s3.us-east-2.amazonaws.com/uploads/1770865145-2512_greaterfre.png",
+      "sourceHtmlSha256": "c6c0714df5063a7eb3908340c540882392aaa27c0eb4091509f83b3fbd84fa44",
+      "artworkSha256": "c6f34661de28171659e5dc6eb739cea5f9c0e9fb33953bbd2436502309c88f52",
+      "artworkBytes": 802137,
+      "artworkWidth": 3334,
+      "artworkHeight": 3042,
+      "canvasWidth": 1600,
+      "canvasHeight": 1460,
+      "boothCount": 76,
+      "rotatedBoothCount": 0,
+      "unlabeledBoothIds": []
+    },
+    {
+      "mapId": "9565",
+      "sourceUrl": "https://mapd-client-images.s3.us-east-2.amazonaws.com/uploads/1770865157-9009_greatfrede.png",
+      "sourceHtmlSha256": "1b36b836995009aa6c6eb7331720f64ae7c5aec6d024fb36bfd9f12b7693918f",
+      "artworkSha256": "ffac3c388722f0f664fe955bb294d8f4e84331e77368b11c3e96d4ca0b3ef247",
+      "artworkBytes": 1006775,
+      "artworkWidth": 3335,
+      "artworkHeight": 5252,
+      "canvasWidth": 1600,
+      "canvasHeight": 2520,
+      "boothCount": 256,
+      "rotatedBoothCount": 17,
+      "unlabeledBoothIds": []
+    },
+    {
+      "mapId": "9566",
+      "sourceUrl": "https://mapd-client-images.s3.us-east-2.amazonaws.com/uploads/1770865172-2643_greatfrede.png",
+      "sourceHtmlSha256": "06bee4274ec915dffa6cef81d28515b5a1d30986be63ccc34fae2cd7c7515a0a",
+      "artworkSha256": "176007271225cf1d2294df131814b4810eafdac8e705acd997109e7b9560ddb1",
+      "artworkBytes": 892386,
+      "artworkWidth": 3335,
+      "artworkHeight": 3998,
+      "canvasWidth": 1600,
+      "canvasHeight": 1920,
+      "boothCount": 179,
+      "rotatedBoothCount": 39,
+      "unlabeledBoothIds": [
+        "9566:3353654"
+      ]
+    }
+  ]
+}

@@ -75,6 +75,7 @@ import { FAIR_DAY_PATH } from "@/lib/fair/plan-status";
 import { fairMapSearchScore } from "@/lib/fair/map-search";
 import { fairVendorDirectoryHref } from "@/lib/fair/vendor-finder";
 import { searchFairVendors } from "@/lib/fair/vendor-discovery";
+import { findFairLayoutBooth, searchFairLayoutVendors, type FairLayoutData } from "@/lib/fair/layout";
 import {
   greatFrederickFair2026Vendors,
   type FairVendorProfile,
@@ -119,6 +120,10 @@ export type FairGroundsMapProps = {
   selectedDateLabel?: string;
   savedVendors?: { id: string; name: string }[];
   onToggleVendor?: (vendor: FairVendorProfile) => void;
+  onShowBoothLayout?: (vendorId: string) => void;
+  boothLayoutData?: FairLayoutData | null;
+  initialSearchQuery?: string;
+  onSearchQueryChange?: (query: string) => void;
 };
 
 type FairGroundsMapView = FairGroundsMapFilter | "program";
@@ -731,6 +736,10 @@ export default function FairGroundsMapInner({
   selectedDateLabel,
   savedVendors = [],
   onToggleVendor,
+  onShowBoothLayout,
+  boothLayoutData,
+  initialSearchQuery = "",
+  onSearchQueryChange,
 }: FairGroundsMapProps) {
   const mapRef = useRef<MapRef | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -782,13 +791,14 @@ export default function FairGroundsMapInner({
       ? "essentials"
       : (readRememberedFairGroundsMapFilter() ?? "essentials"),
   );
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialSearchQuery);
   const [vendorExplorerOpen, setVendorExplorerOpen] = useState(false);
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   const [vendorQuery, setVendorQuery] = useState("");
   const [condensedMobileControls, setCondensedMobileControls] = useState(false);
-  const [condensedSearchOpen, setCondensedSearchOpen] = useState(false);
+  const [condensedSearchOpen, setCondensedSearchOpen] = useState(Boolean(initialSearchQuery));
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => { onSearchQueryChange?.(query); }, [onSearchQueryChange, query]);
   const [clusterSelectionIds, setClusterSelectionIds] = useState<string[]>([]);
   const [selectionExpanded, setSelectionExpanded] = useState(false);
   const [markerGroups, setMarkerGroups] = useState<FairGroundsMarkerGroup[]>([]);
@@ -1461,19 +1471,35 @@ export default function FairGroundsMapInner({
       .slice(0, 6);
   }, [mapData, programMatches, query]);
   const normalizedQuery = query.trim();
+  const hasMapSearchQuery = normalizedQuery.length >= 2 || /^\d$/.test(normalizedQuery);
   const vendorSearchMatches = useMemo(
-    () => normalizedQuery.length >= 2
+    () => hasMapSearchQuery
       ? searchFairVendors(greatFrederickFair2026Vendors, normalizedQuery).slice(0, 4)
       : [],
-    [normalizedQuery],
+    [hasMapSearchQuery, normalizedQuery],
+  );
+  const boothSearchMatches = useMemo(
+    () => boothLayoutData && hasMapSearchQuery
+      ? searchFairLayoutVendors(boothLayoutData, normalizedQuery)
+        .filter((vendor) => !vendorSearchMatches.some((profile) => profile.id === vendor.richProfileId))
+        .slice(0, 6)
+      : [],
+    [boothLayoutData, hasMapSearchQuery, normalizedQuery, vendorSearchMatches],
   );
   const featuredVendor = greatFrederickFair2026Vendors.find((vendor) =>
     vendor.searchAliases.some((alias) => alias.toLowerCase() === "rad pies"),
   );
+  const unassignedBoothMatches = boothLayoutData?.maps.flatMap((map) => map.booths
+    .filter((booth) => booth.vendorIds.length === 0 && booth.label && booth.label.toLowerCase() === normalizedQuery.toLowerCase().replace(/^booths?\s+/, ""))
+    .map((booth) => ({ map, booth }))) ?? [];
   const searchAnnouncement =
-    normalizedQuery.length >= 2
+    hasMapSearchQuery
       ? searchMatches.length > 0
         ? `${searchMatches.length} map ${searchMatches.length === 1 ? "result" : "results"} available. Tab to review them.`
+        : unassignedBoothMatches.length > 0
+          ? `${unassignedBoothMatches.length} numbered booth matches available. No exhibitor is listed for these spaces.`
+        : boothSearchMatches.length > 0
+          ? `${boothSearchMatches.length} exhibitor matches available. Choose one to open its numbered booth layout.`
         : vendorSearchMatches.length > 0
           ? `${vendorSearchMatches.length} reviewed vendor ${vendorSearchMatches.length === 1 ? "match" : "matches"} available. Booth details do not imply a mapped pin.`
           : "No reviewed map place matches that search. The Fair's live vendor search is available."
@@ -2358,6 +2384,7 @@ export default function FairGroundsMapInner({
       initialQuery={vendorQuery}
       savedVendorIds={savedVendors.map((vendor) => vendor.id)}
       onToggleVendor={onToggleVendor ?? (() => undefined)}
+      onShowBoothLayout={onShowBoothLayout}
     />
   );
 
@@ -2434,7 +2461,7 @@ export default function FairGroundsMapInner({
   }
 
   const renderSearchResults = () =>
-    normalizedQuery.length >= 2 ? (
+    hasMapSearchQuery ? (
       <div
         id="fair-map-search-results"
         className="absolute left-0 right-0 top-[calc(100%+0.4rem)] z-30 max-h-[min(18rem,50dvh)] overflow-y-auto overscroll-contain rounded-[var(--app-radius-lg)] border p-1"
@@ -2461,10 +2488,17 @@ export default function FairGroundsMapInner({
                   </span>
                   <ChevronDown className="h-4 w-4 shrink-0 -rotate-90 text-[var(--app-brand-press)]" aria-hidden />
                 </button>
+                {boothLayoutData && onShowBoothLayout ? <button type="button" onClick={() => onShowBoothLayout(vendor.id)} aria-label={`Locate ${vendor.name} booths`} className="tap-44 ml-3 mb-1 inline-flex min-h-11 items-center gap-2 px-3 text-[13px] font-bold text-[var(--app-cool)]"><MapPin className="h-4 w-4" aria-hidden />Locate numbered booths</button> : null}
               </li>
             ))}
           </ul>
         ) : null}
+        {boothSearchMatches.length > 0 && boothLayoutData && onShowBoothLayout ? <ul aria-label="Fair exhibitor booth results" className="border-b pb-1" style={{ borderColor: "var(--app-border)" }}>
+          {boothSearchMatches.map((vendor) => <li key={vendor.id}><button type="button" aria-label={`Find booths for ${vendor.name}`} onClick={() => onShowBoothLayout(vendor.id)} className="tap-44 flex min-h-16 w-full items-center justify-between gap-3 rounded-[var(--app-radius-md)] px-3 py-2 text-left hover:bg-[var(--app-bg-sunken)]"><span className="min-w-0"><span className="block text-[14px] font-bold">{vendor.name}</span><span className="block text-[12px] leading-snug text-[var(--app-ink-3)]">Booths {vendor.boothIds.map((id) => findFairLayoutBooth(boothLayoutData, id)?.booth.label).filter(Boolean).join(", ")}</span></span><MapPin className="h-4 w-4 shrink-0 text-[var(--app-cool)]" aria-hidden /></button></li>)}
+        </ul> : null}
+        {unassignedBoothMatches.length > 0 && onShowBoothLayout ? <ul aria-label="Numbered Fair booths">
+          {unassignedBoothMatches.map(({ map, booth }) => <li key={booth.id}><button type="button" onClick={() => onShowBoothLayout(booth.id)} className="tap-44 flex min-h-14 w-full flex-col justify-center rounded-[var(--app-radius-md)] px-3 py-2 text-left hover:bg-[var(--app-bg-sunken)]"><span className="text-[14px] font-bold">Booth {booth.label}</span><span className="text-[12px] text-[var(--app-ink-3)]">{map.shortName}. No exhibitor listed.</span></button></li>)}
+        </ul> : null}
         {searchMatches.length > 0 ? (
           <ul aria-label="Fair map search results">
             {searchMatches.map((feature) => (
@@ -2496,7 +2530,7 @@ export default function FairGroundsMapInner({
               </li>
             ))}
           </ul>
-        ) : (
+        ) : boothSearchMatches.length === 0 && vendorSearchMatches.length === 0 && unassignedBoothMatches.length === 0 ? (
           <a
             href={fairVendorDirectoryHref(normalizedQuery)}
             target="_blank"
@@ -2523,7 +2557,7 @@ export default function FairGroundsMapInner({
               aria-hidden
             />
           </a>
-        )}
+        ) : null}
       </div>
     ) : null;
 
@@ -2566,9 +2600,8 @@ export default function FairGroundsMapInner({
         On a phone, pinch or double-tap the map to zoom. When the map is
         focused, use keyboard plus and minus to zoom. Every shown place is also
         available in the complete task-grouped list below. Search also finds
-        reviewed vendor profiles with official booth references. The Fair&apos;s
-        live vendor directory provides the wider list. Vendor booth references
-        are not exact map pins. Grounds
+        exhibitors in the reviewed 2026 booth directory and opens their numbered
+        booth layouts. Booth layouts are not GPS positions. Grounds
         geometry comes from reviewed OpenStreetMap data. Official
         arrival pins and published transit stops identify their sources. Follow
         current signs on the grounds.
@@ -2604,7 +2637,7 @@ export default function FairGroundsMapInner({
                 placeholder="Find a place, event, or vendor"
                 autoComplete="off"
                 aria-controls={
-                  normalizedQuery.length >= 2
+                  hasMapSearchQuery
                     ? "fair-map-search-results"
                     : undefined
                 }
@@ -2809,7 +2842,7 @@ export default function FairGroundsMapInner({
               placeholder="Find a place, event, or vendor"
               autoComplete="off"
               aria-controls={
-                normalizedQuery.length >= 2
+                hasMapSearchQuery
                   ? "fair-map-search-results"
                   : undefined
               }

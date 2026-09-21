@@ -21,6 +21,7 @@ export type FairVendorExplorerProps = {
   initialQuery?: string;
   savedVendorIds: readonly string[];
   onToggleVendor: (vendor: FairVendorProfile) => void;
+  onShowBoothLayout?: (vendorId: string) => void;
 };
 
 type VendorFilter = "all" | "saved" | FairVendorProfile["kind"];
@@ -94,7 +95,7 @@ function VendorSaveAction({ vendor, saved, onToggle }: { vendor: FairVendorProfi
   </Button>;
 }
 
-export default function FairVendorExplorer({ open, onOpenChange, vendors, selectedVendorId, onSelectVendor, initialQuery, savedVendorIds, onToggleVendor }: FairVendorExplorerProps) {
+export default function FairVendorExplorer({ open, onOpenChange, vendors, selectedVendorId, onSelectVendor, initialQuery, savedVendorIds, onToggleVendor, onShowBoothLayout }: FairVendorExplorerProps) {
   const [query, setQuery] = useState(initialQuery ?? "");
   const [filter, setFilter] = useState<VendorFilter>("all");
   const headingRef = useRef<HTMLHeadingElement | null>(null);
@@ -158,6 +159,7 @@ export default function FairVendorExplorer({ open, onOpenChange, vendors, select
                 <h3 className="text-[12px] font-bold uppercase tracking-[0.1em] text-[var(--app-ink-3)]">Find them at the Fair</h3>
                 <p className="mt-2 break-words text-[20px] font-bold tracking-tight">{selected.booth.status === "known" ? `Booth reference: ${selected.booth.value}` : "Booth location not confirmed"}</p>
                 <p className="mt-2 text-[13px] leading-relaxed text-[var(--app-ink-2)]">{selected.booth.status === "known" ? "Use this booth reference in the Fair’s official vendor guide. It is not an exact map pin." : selected.booth.reason}</p>
+                {onShowBoothLayout && selected.booth.status === "known" ? <Button className="mt-3" variant="secondary" onClick={() => onShowBoothLayout(selected.id)}>Find numbered booths</Button> : null}
                 <a href={selected.directoryUrl} target="_blank" rel="noopener noreferrer" className="tap-44 mt-2 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-bold text-[var(--app-cool)]">Open official booth guide <ArrowUpRight className="h-4 w-4" aria-hidden /></a>
                 {selected.operatingHours.status === "known" ? <p className="mt-4 text-[13px] leading-relaxed text-[var(--app-ink-2)]">Published hours: {selected.operatingHours.value}</p> : <p className="mt-4 text-[13px] leading-relaxed text-[var(--app-ink-3)]">Vendor hours are not confirmed. Check with the vendor before making a special trip.</p>}
                 {selected.menuUrl || selected.websiteUrl ? <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
