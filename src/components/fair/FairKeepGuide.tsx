@@ -1,6 +1,7 @@
 "use client";
 
 import { Bookmark, Copy, Smartphone } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { FAIR_DAY_PATH } from "@/lib/fair/plan-status";
 import { openReturnBridge } from "@/lib/return-bridge";
@@ -41,6 +42,9 @@ export default function FairKeepGuide() {
         <p role="status" className="mt-2 text-[13px] leading-relaxed text-[var(--app-ink-2)]">
           {copyState === "copied" ? "Fair link copied. Your My Day plan stays in this browser, not in the link." : "My Day saves your stops in this browser. A bookmark or copied link does not transfer the plan to another device."}
         </p>
+        <Link href="/install" className="mt-1 inline-flex min-h-11 items-center text-[13px] font-semibold text-[var(--app-ink-2)] underline underline-offset-4">
+          Home Screen setup and help
+        </Link>
         {copyState === "manual" ? <label className="mt-2 block text-[13px]">Select and copy the Fair link<input aria-label="Fair guide link" readOnly value={link} onFocus={(event) => event.currentTarget.select()} className="mt-1 min-h-11 w-full rounded-md border bg-[var(--app-bg)] px-3 text-[16px]" /></label> : null}
       </div>
     </details>
