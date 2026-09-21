@@ -13,15 +13,15 @@ export const PRODUCT_NAMES = {
     description: "Get a source-backed local answer or build an outing around your constraints.",
   },
   allTools: {
-    uiLabel: "All tools",
-    pageTitle: "All tools",
-    shareTitle: "All Frederick Radius tools",
+    uiLabel: "Tools",
+    pageTitle: "Tools",
+    shareTitle: "Frederick Radius tools",
     description: "Search every Frederick Radius tool from one index.",
   },
   liveConditions: {
-    uiLabel: "Live conditions",
-    pageTitle: "Live conditions in Frederick County",
-    shareTitle: "Live conditions in Frederick County | Frederick Radius",
+    uiLabel: "County status",
+    pageTitle: "County status",
+    shareTitle: "County status in Frederick County | Frederick Radius",
     description: "Check current Frederick County conditions from official and attributed sources.",
   },
   beer: {

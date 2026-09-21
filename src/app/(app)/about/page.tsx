@@ -302,9 +302,83 @@ export default async function AboutPage() {
           className="font-serif text-[22px] font-semibold tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Other Frederick projects
+          Editorial & projects
         </h2>
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {/* History — editorial pages, leads as core Radius content. */}
+          <li>
+            <Link
+              href="/history"
+              className="hover-lift flex h-full items-start gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3.5 transition"
+              style={{
+                borderColor: "var(--app-border)",
+                boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+              }}
+            >
+              <span
+                aria-hidden
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+                style={{
+                  background: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)",
+                  color: "var(--app-brand-2)",
+                }}
+              >
+                <Landmark className="h-5 w-5" strokeWidth={2} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span
+                  className="block text-[14px] font-semibold leading-tight"
+                  style={{ color: "var(--app-ink)" }}
+                >
+                  History
+                </span>
+                <span
+                  className="mt-0.5 block text-[12px] leading-snug"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  Frederick County, one story at a time
+                </span>
+              </span>
+            </Link>
+          </li>
+
+          {/* Collections — curated editorial lists. */}
+          <li>
+            <Link
+              href="/collections"
+              className="hover-lift flex h-full items-start gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3.5 transition"
+              style={{
+                borderColor: "var(--app-border)",
+                boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+              }}
+            >
+              <span
+                aria-hidden
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+                style={{
+                  background: "color-mix(in srgb, var(--app-accent) 14%, transparent)",
+                  color: "var(--app-accent)",
+                }}
+              >
+                <Sparkles className="h-5 w-5" strokeWidth={2} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span
+                  className="block text-[14px] font-semibold leading-tight"
+                  style={{ color: "var(--app-ink)" }}
+                >
+                  Collections
+                </span>
+                <span
+                  className="mt-0.5 block text-[12px] leading-snug"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  Editorial lists: date nights, rainy days, kid energy
+                </span>
+              </span>
+            </Link>
+          </li>
+
           {/* The book — From Above, the photographer's storefront. */}
           <li>
             <a
@@ -447,80 +521,6 @@ export default async function AboutPage() {
                 </span>
               </span>
             </a>
-          </li>
-
-          {/* History — editorial pages. */}
-          <li>
-            <Link
-              href="/history"
-              className="hover-lift flex h-full items-start gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3.5 transition"
-              style={{
-                borderColor: "var(--app-border)",
-                boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-              }}
-            >
-              <span
-                aria-hidden
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
-                style={{
-                  background: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)",
-                  color: "var(--app-brand-2)",
-                }}
-              >
-                <Landmark className="h-5 w-5" strokeWidth={2} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span
-                  className="block text-[14px] font-semibold leading-tight"
-                  style={{ color: "var(--app-ink)" }}
-                >
-                  History
-                </span>
-                <span
-                  className="mt-0.5 block text-[12px] leading-snug"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  Frederick County, one story at a time
-                </span>
-              </span>
-            </Link>
-          </li>
-
-          {/* Collections — curated editorial lists. */}
-          <li>
-            <Link
-              href="/collections"
-              className="hover-lift flex h-full items-start gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3.5 transition"
-              style={{
-                borderColor: "var(--app-border)",
-                boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-              }}
-            >
-              <span
-                aria-hidden
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
-                style={{
-                  background: "color-mix(in srgb, var(--app-accent) 14%, transparent)",
-                  color: "var(--app-accent)",
-                }}
-              >
-                <Sparkles className="h-5 w-5" strokeWidth={2} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span
-                  className="block text-[14px] font-semibold leading-tight"
-                  style={{ color: "var(--app-ink)" }}
-                >
-                  Collections
-                </span>
-                <span
-                  className="mt-0.5 block text-[12px] leading-snug"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  Editorial lists: date nights, rainy days, kid energy
-                </span>
-              </span>
-            </Link>
           </li>
         </ul>
       </section>
