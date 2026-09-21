@@ -29,7 +29,7 @@ jobs:
     if: ${{ github.ref == 'refs/heads/main' }}
     # Public GTFS generation runs on the NAS. The hosted reusable workflows
     # below retain every write permission and PR/status mutation.
-    runs-on: [self-hosted, radius-data]
+    runs-on: radius-data
     timeout-minutes: 30
     permissions:
       contents: read
