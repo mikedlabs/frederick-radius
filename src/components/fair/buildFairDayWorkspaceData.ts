@@ -8,6 +8,7 @@ import {
   greatFrederickFair2026TransitReview,
 } from "@/data/fair/great-frederick-fair-2026-transit";
 import { GREAT_FREDERICK_FAIR_2026_VENDOR_DIRECTORY } from "@/lib/fair/vendor-finder";
+import { fairProgramSupplementPresentation, fairProgramSupplementSourceItem, reviewedFairProgramSupplement } from "@/data/fair/great-frederick-fair-2026-program-supplement";
 
 import type {
   FairDayAccessHighlight,
@@ -446,9 +447,12 @@ export function buildFairDayWorkspaceData(
   pointer: FairPackPointer,
   asOf: Date,
 ): FairDayWorkspaceData {
-  const scheduleItems = pack.schedule.days.flatMap((day) =>
-    day.items.map((item) => scheduleView(item, asOf)),
-  );
+  const importedRows = pack.schedule.days.flatMap((day) => day.items);
+  const supplementalRows = pack.fairId === "great-frederick-fair-2026" ? reviewedFairProgramSupplement(importedRows) : [];
+  const scheduleItems = [
+    ...importedRows.map((item) => scheduleView(item, asOf)),
+    ...supplementalRows.map((entry) => ({ ...scheduleView(fairProgramSupplementSourceItem(entry), asOf), ...fairProgramSupplementPresentation(entry) })),
+  ];
   const firstDay = pack.schedule.days[0];
   const todayAtFair = fairLocalDate(asOf);
   const initialDay =
@@ -553,7 +557,7 @@ export function buildFairDayWorkspaceData(
       selectedDayId: initialDay.id,
     }),
     source: {
-      label: `Official Fair data pack with ${pointer.itemCount} program rows`,
+      label: `Official Fair data pack with ${pointer.itemCount} program rows${supplementalRows.length ? ` and ${supplementalRows.length} reviewed printed-program additions` : ""}`,
       sourceUrl: pack.provenance.scheduleSourceUrl,
       checkedLabel: checkedLabel(pack.provenance.scheduleSourceRevision),
       ageLabel: sourceAgeLabel(pack.provenance.scheduleSourceRevision, asOf),

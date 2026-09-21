@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import FairBoothExplorer, { findBoothResults, type FairBoothExplorerProps } from "./FairBoothExplorer";
 import { fairBoothFixture } from "./fair-booth-fixture";
+import realLayout from "../../../public/fair/layouts/great-frederick-fair-2026.json";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -44,7 +45,9 @@ describe("Fair booth explorer", () => {
   it("renders original geometry and labels, highlights search without moving the camera", () => {
     render();
     expect(container.querySelectorAll("[data-fair-booth-id]")).toHaveLength(3);
-    expect([...container.querySelectorAll("svg text")].map((node) => node.textContent)).toEqual(["587", "588", "589"]);
+    expect([...container.querySelectorAll("svg text")].map((node) => node.textContent)).toEqual(expect.arrayContaining(["587", "588", "589", "White Rabbit x Rad Pies"]));
+    expect(container.querySelectorAll('[data-vendor-listed="true"][data-fair-booth-id]')).toHaveLength(2);
+    expect(container.querySelector('[data-fair-area-vendors]')?.textContent).toContain("White Rabbit x Rad Pies");
     const overview = view();
     render({ query: "Rad Pies" });
     expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(2);
@@ -74,6 +77,7 @@ describe("Fair booth explorer", () => {
 
   it("provides source-backed details and only invokes reviewed vendor actions", () => {
     render({ selectedBoothId: "3:5" });
+    expect(container.querySelector('#fair-booth-detail-heading')?.textContent).toBe("Booth 587");
     expect(container.querySelector('[aria-label="Booth 587"]')?.textContent).toContain("White Rabbit x Rad Pies");
     expect(container.querySelector('a[href="https://mobile.map-dynamics.com/exhibitor-profile-g2app.php?ID=1"]')).not.toBeNull();
     expect(container.textContent).toContain("Sep 21, 2026");
@@ -98,7 +102,8 @@ describe("Fair booth explorer", () => {
     click("Show booth 587: White Rabbit x Rad Pies");
     expect(props.onSelectBooth).toHaveBeenCalledWith("3:5");
     expect(props.onMapChange).not.toHaveBeenCalled();
-    click("Indoor exhibits");
+    const select = container.querySelector<HTMLSelectElement>('select[aria-label="Choose a booth area"]')!;
+    act(() => { select.value = "map-2"; select.dispatchEvent(new Event("change", { bubbles: true })); });
     expect(props.onMapChange).toHaveBeenCalledWith("2");
   });
 
@@ -111,7 +116,7 @@ describe("Fair booth explorer", () => {
     const canvas = container.querySelector("[data-fair-booth-canvas]")!;
     act(() => canvas.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })));
     expect(view()).not.toBe(zoomed);
-    click("Fit whole map");
+    click("Fit booth area");
     expect(view()).toBe(overview);
     render({ selectedBoothId: "3:5" });
     act(() => canvas.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
@@ -130,6 +135,38 @@ describe("Fair booth explorer", () => {
     pointer(canvas, "pointermove", 400, 350);
     pointer(canvas, "pointerup", 400, 350);
     expect(props.onSelectBooth).not.toHaveBeenCalled();
+  });
+
+  it("names vendors directly on the map and selects them by tapping their label", () => {
+    render();
+    const label = container.querySelector('[data-fair-vendor-label]')!;
+    expect(label.textContent).toContain("White Rabbit x Rad Pies");
+    const boothId = label.getAttribute("data-fair-booth-label-for");
+    pointer(label.querySelector("rect")!, "pointerdown", 300, 300);
+    pointer(container.querySelector("[data-fair-booth-canvas]")!, "pointerup", 300, 300);
+    expect(props.onSelectBooth).toHaveBeenCalledWith(boothId);
+    render({ selectedBoothId: boothId });
+    expect(container.querySelector('[data-fair-selected-vendor]')?.textContent).toBe("White Rabbit x Rad Pies");
+  });
+
+  it("starts in one useful area with named candidates and covers all seven areas through one selector", () => {
+    render({ data: realLayout as FairBoothExplorerProps["data"], mapId: "9566" });
+    const select = container.querySelector<HTMLSelectElement>('select[aria-label="Choose a booth area"]')!;
+    expect(select.options).toHaveLength(7);
+    expect(select.value).toBe("west-end");
+    expect(container.querySelector('[data-fair-area-vendors]')?.textContent).toContain("White Rabbit x Rad Pies");
+    expect(container.querySelector('[data-fair-area-vendors]')?.textContent).toContain("Big Papi's");
+    expect(container.querySelectorAll('[data-fair-area-vendors] li').length).toBeLessThanOrEqual(6);
+    expect(container.querySelector('[aria-label="Choose a map section"]')).toBeNull();
+    const westView = view();
+    act(() => { select.value = "machinery-row"; select.dispatchEvent(new Event("change", { bubbles: true })); });
+    expect(select.value).toBe("machinery-row");
+    expect(view()).not.toBe(westView);
+    expect(props.onMapChange).not.toHaveBeenCalled();
+    const machineryView = view();
+    render({ query: "Rad Pies" });
+    expect(view()).toBe(machineryView);
+    expect(container.textContent).toContain("Matching booths");
   });
 
   it("returns to the whole Fair through the parent without clearing the search", () => {

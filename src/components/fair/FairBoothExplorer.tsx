@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/Button";
 import type { FairLayoutData } from "@/lib/fair/layout";
 import { fairBoothMapContexts, findFairBoothNeighborhood } from "@/data/fair/fair-booth-context";
 
-import { boothViewBox, fitBoothAreaCamera, fitBoothCamera, focusBoothCamera, MAX_BOOTH_ZOOM, panBoothCamera, zoomBoothCamera, type BoothCamera } from "./fair-booth-camera";
+import { boothViewBox, fitBoothCamera, focusBoothCamera, MAX_BOOTH_ZOOM, panBoothCamera, zoomBoothCamera, type BoothCamera, type BoothCanvas } from "./fair-booth-camera";
+import { layoutFairVendorLabels } from "./fair-booth-vendor-labels";
 import styles from "./FairBoothExplorer.module.css";
 
 type LayoutMap = FairLayoutData["maps"][number];
@@ -65,13 +66,11 @@ export default function FairBoothExplorer({ data, mapId, selectedBoothId, query,
   const [showOriginal, setShowOriginal] = useState(false);
   const [neighborhoods, setNeighborhoods] = useState<Record<string, string>>({});
   const context = activeMap ? fairBoothMapContexts[activeMap.id] : undefined;
-  const canvasBounds = !showOriginal && context ? context.bounds : activeMap;
-  const cameraKey = `${activeMap?.id ?? "none"}:${showOriginal ? "original" : "radius"}`;
+  const areaOptions = useMemo(() => data.maps.flatMap((map) => fairBoothMapContexts[map.id]?.neighborhoods ?? [{ id: `map-${map.id}`, mapId: map.id, name: map.name, bounds: { x: 0, y: 0, width: map.width, height: map.height }, boothIds: map.booths.map((booth) => booth.id) }]), [data]);
   const [viewport, setViewport] = useState({ width: 800, height: 560, measured: false });
   const [showList, setShowList] = useState(false);
   const [failedImages, setFailedImages] = useState<string[]>([]);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const mapChoicesRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const detailHeadingRef = useRef<HTMLHeadingElement>(null);
   const originRef = useRef<HTMLElement | null>(null);
@@ -86,8 +85,10 @@ export default function FairBoothExplorer({ data, mapId, selectedBoothId, query,
   const highlighted = useMemo(() => new Set(hasQuery ? results.map(({ booth }) => booth.id) : []), [hasQuery, results]);
   const selected = allResults.find(({ booth }) => booth.id === selectedBoothId);
   const selectedNeighborhood = selected ? findFairBoothNeighborhood(selected.booth.id) : undefined;
-  const neighborhoodId = (activeMap ? neighborhoods[activeMap.id] : undefined) ?? selectedNeighborhood?.id ?? "all";
-  const activeNeighborhood = context?.neighborhoods.find((area) => area.id === neighborhoodId);
+  const neighborhoodId = selected?.map.id === activeMap?.id && selectedNeighborhood ? selectedNeighborhood.id : (activeMap ? neighborhoods[activeMap.id] : undefined) ?? (activeMap?.id === "9566" ? "west-end" : undefined);
+  const activeNeighborhood = areaOptions.find((area) => area.mapId === activeMap?.id && area.id === neighborhoodId) ?? areaOptions.find((area) => area.mapId === activeMap?.id);
+  const canvasBounds: BoothCanvas | undefined = showOriginal ? activeMap : activeNeighborhood?.bounds ?? activeMap;
+  const cameraKey = `${activeMap?.id ?? "none"}:${showOriginal ? "original" : activeNeighborhood?.id ?? "radius"}`;
   const selectionKey = viewport.measured && selected?.map.id === activeMap?.id ? `${selected?.booth.id}:${cameraKey}` : null;
   const [focusedBoothId, setFocusedBoothId] = useState<string | null>(null);
   // Reconcile the controlled selection before painting. Query changes never
@@ -99,12 +100,18 @@ export default function FairBoothExplorer({ data, mapId, selectedBoothId, query,
       if (activeMap && selectedNeighborhood) setNeighborhoods((previous) => ({ ...previous, [activeMap.id]: selectedNeighborhood.id }));
     }
   }
-  const listed = hasQuery ? results : allResults.filter(({ map }) => map.id === activeMap?.id);
+  const areaResults = allResults.filter(({ booth }) => activeNeighborhood?.boothIds.includes(booth.id));
+  const listed = hasQuery ? results : areaResults;
+  const areaVendors = data.vendors.flatMap((vendor) => {
+    const booths = areaResults.filter(({ booth }) => booth.vendorIds.includes(vendor.id));
+    return booths.length ? [{ vendor, booths }] : [];
+  }).sort((a, b) => Number(Boolean(b.vendor.richProfileId)) - Number(Boolean(a.vendor.richProfileId)) || a.vendor.name.localeCompare(b.vendor.name));
   const radPies = allResults.find(({ names }) => names.some((name) => /\brad\s*pies\b/i.test(name)));
   const camera = useMemo(() => canvasBounds ? cameras[cameraKey] ?? fitBoothCamera(canvasBounds) : { x: 0, y: 0, zoom: 1 }, [cameraKey, canvasBounds, cameras]);
   const cameraRef = useRef(camera);
   useEffect(() => { cameraRef.current = camera; }, [camera]);
   const viewBox = canvasBounds ? boothViewBox(canvasBounds, viewport, camera) : { x: 0, y: 0, width: 1, height: 1 };
+  const vendorLabels = layoutFairVendorLabels({ booths: areaResults.map(({ booth }) => booth), vendors: data.vendors, viewBox, viewport, selectedBoothId, highlightedIds: highlighted });
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
@@ -119,17 +126,6 @@ export default function FairBoothExplorer({ data, mapId, selectedBoothId, query,
     observer.observe(canvas);
     return () => observer.disconnect();
   }, []);
-
-  useEffect(() => {
-    const rail = mapChoicesRef.current;
-    const active = rail?.querySelector<HTMLButtonElement>('[aria-pressed="true"]');
-    if (!rail || !active) return;
-    const outer = rail.getBoundingClientRect();
-    const item = active.getBoundingClientRect();
-    // Move only the horizontal section rail, never the page or map camera.
-    if (item.left < outer.left) rail.scrollLeft -= outer.left - item.left;
-    else if (item.right > outer.right) rail.scrollLeft += item.right - outer.right;
-  }, [activeMap?.id]);
 
   useEffect(() => {
     if (!activeMap || selected?.map.id !== activeMap.id) {
@@ -167,14 +163,16 @@ export default function FairBoothExplorer({ data, mapId, selectedBoothId, query,
     setCameras((previous) => ({ ...previous, [cameraKey]: next }));
   };
   const fitSection = () => {
-    setNeighborhoods((previous) => ({ ...previous, [activeMap.id]: "all" }));
     setCamera(fitBoothCamera(canvasBounds));
   };
   const chooseNeighborhood = (areaId: string) => {
-    const area = context?.neighborhoods.find((item) => item.id === areaId);
-    setNeighborhoods((previous) => ({ ...previous, [activeMap.id]: areaId }));
+    const area = areaOptions.find((item) => item.id === areaId);
+    if (!area) return;
+    setNeighborhoods((previous) => ({ ...previous, [area.mapId]: areaId }));
+    setShowOriginal(false);
     onSelectBooth(null);
-    setCamera(area ? fitBoothAreaCamera(canvasBounds, viewport, area.bounds) : fitBoothCamera(canvasBounds));
+    setCameras((previous) => ({ ...previous, [`${area.mapId}:${area.id}`]: fitBoothCamera(area.bounds) }));
+    if (area.mapId !== activeMap.id) onMapChange(area.mapId);
   };
   const selectBooth = (boothId: string, origin?: HTMLElement) => {
     originRef.current = origin ?? canvasRef.current;
@@ -187,8 +185,8 @@ export default function FairBoothExplorer({ data, mapId, selectedBoothId, query,
   const startPointer = (event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     const point = pointerPosition(event);
-    const target = event.target instanceof Element ? event.target.closest("[data-fair-booth-id]") : null;
-    pointersRef.current.set(event.pointerId, { ...point, startX: point.x, startY: point.y, boothId: target?.getAttribute("data-fair-booth-id") ?? null });
+    const target = event.target instanceof Element ? event.target.closest("[data-fair-booth-id], [data-fair-booth-label-for]") : null;
+    pointersRef.current.set(event.pointerId, { ...point, startX: point.x, startY: point.y, boothId: target?.getAttribute("data-fair-booth-id") ?? target?.getAttribute("data-fair-booth-label-for") ?? null });
     event.currentTarget.setPointerCapture?.(event.pointerId);
     if (pointersRef.current.size === 1) gestureMovedRef.current = false;
     if (pointersRef.current.size === 2) {
@@ -240,43 +238,58 @@ export default function FairBoothExplorer({ data, mapId, selectedBoothId, query,
   return (
     <section data-fair-booth-explorer className={styles.explorer} aria-label="Fair booth finder">
       {onShowWholeFair && <Button variant="quiet" className={styles.wholeFair} iconLeft={<ArrowLeft size={16} aria-hidden />} onClick={onShowWholeFair}>Whole fair</Button>}
-      <div ref={mapChoicesRef} role="group" aria-label="Choose a map section" className={styles.mapChoices}>
-        {data.maps.map((map) => <Button key={map.id} variant="quiet" aria-label={map.name} aria-pressed={map.id === activeMap.id} className={styles.mapChoice} onClick={() => onMapChange(map.id)}>{map.shortName}</Button>)}
-      </div>
       <div className={styles.workspace}>
         <div className={styles.mapColumn}>
           <div className={styles.contextToolbar}>
-            <div className={styles.neighborhoodField}>{context && context.neighborhoods.length > 1 ? <><label htmlFor={`${id}-neighborhood`}>Booth area</label><select id={`${id}-neighborhood`} aria-label="Choose a booth neighborhood" value={neighborhoodId} onChange={(event) => chooseNeighborhood(event.target.value)}><option value="all">All {activeMap.shortName.toLowerCase()} areas</option>{context.neighborhoods.map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}</select></> : <p>{context?.neighborhoods[0]?.name ?? activeMap.shortName}</p>}</div>
-            <Button variant="quiet" className={styles.sourceToggle} aria-pressed={showOriginal} onClick={() => setShowOriginal((value) => !value)}>{showOriginal ? "Hide original layout" : "Show original layout"}</Button>
+            <div className={styles.neighborhoodField}><label htmlFor={`${id}-neighborhood`}>Booth area <span>{areaOptions.length} areas</span></label><select id={`${id}-neighborhood`} aria-label="Choose a booth area" value={activeNeighborhood?.id} onChange={(event) => chooseNeighborhood(event.target.value)}>{areaOptions.map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}</select></div>
           </div>
           <div className={styles.mapFrame}>
-            <div ref={canvasRef} data-fair-booth-canvas data-layout-style={showOriginal ? "original" : "radius"} data-zoom={camera.zoom.toFixed(3)} tabIndex={0} role="group" aria-label={`${activeMap.name} booth layout`} aria-describedby={`${id}-instructions`} className={styles.canvas} onPointerDown={startPointer} onPointerMove={movePointer} onPointerUp={(event) => endPointer(event)} onPointerCancel={(event) => endPointer(event, true)} onKeyDown={keyCamera}>
+            <div ref={canvasRef} data-fair-booth-canvas data-layout-style={showOriginal ? "original" : "radius"} data-booth-area={activeNeighborhood?.id} data-zoom={camera.zoom.toFixed(3)} tabIndex={0} role="group" aria-label={`${showOriginal ? activeMap.name : activeNeighborhood?.name} booth layout`} aria-describedby={`${id}-instructions`} className={styles.canvas} onPointerDown={startPointer} onPointerMove={movePointer} onPointerUp={(event) => endPointer(event)} onPointerCancel={(event) => endPointer(event, true)} onKeyDown={keyCamera}>
               <svg data-fair-booth-svg aria-hidden="true" className={styles.floorplan} viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}>
+                <defs><clipPath id={`${id}-area-clip`}><rect x={canvasBounds.x ?? 0} y={canvasBounds.y ?? 0} width={canvasBounds.width} height={canvasBounds.height} /></clipPath></defs>
+                <g clipPath={showOriginal ? undefined : `url(#${id}-area-clip)`}>
                 {showOriginal ? <image href={activeMap.backgroundUrl} x={0} y={0} width={activeMap.width} height={activeMap.width * activeMap.imageHeight / activeMap.imageWidth} onError={() => setFailedImages((previous) => previous.includes(activeMap.id) ? previous : [...previous, activeMap.id])} /> : <g data-fair-booth-context>{context?.paths.map((path) => <path key={path.id} data-fair-context={path.kind} d={path.d} className={styles.contextPath} vectorEffect="non-scaling-stroke" />)}{context?.labels.map((label, index) => <text key={`context-label-${index}`} className={styles.contextLabel} x={label.x} y={label.y} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(30, Math.max(18, viewBox.width / viewport.width * 12))} transform={label.rotation ? `rotate(${label.rotation} ${label.x} ${label.y})` : undefined}>{label.text}</text>)}</g>}
-                {activeMap.annotations?.filter((annotation) => annotation.fontSize > 0).map((annotation, index) => <text key={`annotation-${index}`} className={styles.annotation} x={annotation.x} y={annotation.y} dominantBaseline="text-before-edge" fontSize={annotation.fontSize} transform={annotation.rotationDeg ? `rotate(${annotation.rotationDeg} ${annotation.x} ${annotation.y})` : undefined}>{annotation.text}</text>)}
+                {activeMap.annotations?.filter((annotation) => annotation.fontSize > 0).map((annotation, index) => <text key={`annotation-${index}`} className={showOriginal ? styles.annotation : styles.contextLabel} x={annotation.x} y={annotation.y} dominantBaseline="text-before-edge" fontSize={showOriginal ? annotation.fontSize : viewBox.width / viewport.width * 12} transform={annotation.rotationDeg ? `rotate(${annotation.rotationDeg} ${annotation.x} ${annotation.y})` : undefined}>{annotation.text}</text>)}
                 {activeMap.booths.map((booth) => {
                   const isSelected = booth.id === selectedBoothId;
                   const isMatch = highlighted.has(booth.id);
-                  return <g key={booth.id} transform={boothTransform(booth)}><rect data-fair-booth-id={booth.id} data-highlighted={isMatch} data-selected={isSelected} className={styles.booth} x={booth.x} y={booth.y} width={booth.width} height={booth.height} vectorEffect="non-scaling-stroke"><title>{boothName(booth)}</title></rect>{booth.label && <text className={styles.boothLabel} x={booth.x + booth.width / 2} y={booth.y + booth.height / 2} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(booth.height * 0.46, booth.width / Math.max(2, booth.label.length) * 1.45)}>{booth.label}</text>}</g>;
+                  const names = data.vendors.filter((vendor) => booth.vendorIds.includes(vendor.id)).map((vendor) => vendor.name);
+                  return <g key={booth.id} transform={boothTransform(booth)}><rect data-fair-booth-id={booth.id} data-vendor-listed={names.length > 0} data-highlighted={isMatch} data-selected={isSelected} className={styles.booth} x={booth.x} y={booth.y} width={booth.width} height={booth.height} rx={Math.min(2, booth.width * .05)} vectorEffect="non-scaling-stroke"><title>{`${boothName(booth)}: ${names.join(", ") || "No vendor listed"}`}</title></rect>{booth.label && <text className={styles.boothLabel} x={booth.x + booth.width / 2} y={booth.y + booth.height / 2} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(booth.height * 0.46, booth.width / Math.max(2, booth.label.length) * 1.45)}>{booth.label}</text>}</g>;
                 })}
                 {activeMap.booths.filter((booth) => highlighted.has(booth.id) || booth.id === selectedBoothId).map((booth) => <rect key={`outline-${booth.id}`} className={styles.highlightOutline} data-selected={booth.id === selectedBoothId} x={booth.x} y={booth.y} width={booth.width} height={booth.height} transform={boothTransform(booth)} vectorEffect="non-scaling-stroke" />)}
+                </g>
+                {!showOriginal && <g transform={`translate(${viewBox.x} ${viewBox.y}) scale(${viewBox.width / viewport.width})`}>
+                  {vendorLabels.map((label) => <g key={`leader-${label.vendorId}`} className={styles.vendorMapLabel} data-selected={label.selected}>
+                    <line x1={label.anchorX} y1={label.anchorY} x2={Math.max(label.x + 8, Math.min(label.x + label.width - 8, label.anchorX))} y2={Math.max(label.y, Math.min(label.y + label.height, label.anchorY))} className={styles.vendorLeader} />
+                    <circle cx={label.anchorX} cy={label.anchorY} r={3} className={styles.vendorAnchor} />
+                  </g>)}
+                  {vendorLabels.map((label) => <g key={label.vendorId} data-fair-vendor-label data-vendor-id={label.vendorId} data-fair-booth-label-for={label.boothId} data-selected={label.selected} className={styles.vendorMapLabel}>
+                    <title>{label.name}, booth {label.boothLabel}</title>
+                    <rect x={label.x} y={label.y} width={label.width} height={label.height} rx={6} className={styles.vendorLabelSurface} />
+                    <text x={label.x + 10} y={label.y + 17} className={styles.vendorName}>{label.displayName}</text>
+                    <text x={label.x + 10} y={label.y + 33} className={styles.vendorBoothNumber}>Booth {label.boothLabel}</text>
+                  </g>)}
+                </g>}
               </svg>
             </div>
-            <div className={styles.mapReadout} aria-hidden="true">{selected ? `${boothName(selected.booth)}${activeNeighborhood ? ` · ${activeNeighborhood.name}` : ""}` : activeNeighborhood?.name ?? activeMap.shortName}</div>
+            <div className={styles.mapReadout} aria-hidden="true">{selected ? <><strong data-fair-selected-vendor>{selected.names.join(", ") || boothName(selected.booth)}</strong><span>{selected.names.length ? `${boothName(selected.booth)} · ` : ""}{activeNeighborhood?.name ?? activeMap.shortName}</span></> : <><strong>{activeNeighborhood?.name ?? activeMap.shortName}</strong><span>{areaVendors.length} listed vendors</span></>}</div>
             <div className={styles.mapControls} role="group" aria-label="Map zoom controls">
               <Button variant="secondary" className={styles.iconButton} aria-label="Zoom in" disabled={camera.zoom >= MAX_BOOTH_ZOOM} onClick={() => setCamera(zoomBoothCamera(canvasBounds, viewport, camera, 1.5))}><Plus size={18} aria-hidden /></Button>
               <Button variant="secondary" className={styles.iconButton} aria-label="Zoom out" disabled={camera.zoom <= 1} onClick={() => setCamera(zoomBoothCamera(canvasBounds, viewport, camera, 1 / 1.5))}><Minus size={18} aria-hidden /></Button>
-              <Button variant="secondary" className={styles.iconButton} aria-label="Fit whole map" onClick={fitSection}><Expand size={18} aria-hidden /></Button>
+              <Button variant="secondary" className={styles.iconButton} aria-label="Fit booth area" onClick={fitSection}><Expand size={18} aria-hidden /></Button>
             </div>
           </div>
+          <div className={styles.mapLegend} aria-label="Map key"><span><i data-vendor-listed="true" />Vendor listed</span><span><i />No vendor listed</span></div>
           <p id={`${id}-instructions`} className={styles.mapInstructions}>Drag to move. Pinch or use + and − to zoom. <span className="sr-only">With a mouse, hold Control while scrolling to zoom. With the map focused, use the arrow keys to move, plus or minus to zoom, and Home to fit the map. Choose a booth from the list for keyboard access.</span></p>
+          <Button variant="quiet" className={styles.sourceToggle} aria-pressed={showOriginal} onClick={() => setShowOriginal((value) => !value)}>{showOriginal ? "Hide original layout" : "Show original layout"}</Button>
+          {showOriginal && <p className={styles.originalContext}>This original sheet shows {activeMap.name}.</p>}
           {showOriginal && failedImages.includes(activeMap.id) && <p role="status" className={styles.imageError}>The official map image could not load. You can still find a vendor using the booth list.</p>}
           <p className={styles.source}><a href={data.provenance.guideUrl} target="_blank" rel="noopener noreferrer">Official Fair source <ArrowUpRight size={13} aria-hidden /></a><span>{checkedLabel(data.checkedAt)}</span><span>Booth positions follow the Fair’s layout. This is not a GPS map.</span></p>
         </div>
 
         <aside className={styles.sidebar} aria-label="Find and view booths" onKeyDown={(event) => { if (event.key === "Escape" && selectedBoothId) { event.preventDefault(); onSelectBooth(null); } }}>
           <div className={styles.searchSection}>
-            <h3 className={styles.findHeading}>Find a booth</h3>
+            <h3 className={styles.findHeading}>Find a vendor</h3>
             <label className={styles.searchBox}>
               <Search size={18} aria-hidden />
               <input ref={searchRef} type="search" value={query} aria-label="Find a vendor or booth" placeholder="Vendor or booth number" onChange={(event) => onQueryChange(event.target.value)} />
@@ -287,7 +300,7 @@ export default function FairBoothExplorer({ data, mapId, selectedBoothId, query,
           {selected ? (
             <section className={styles.detail} aria-label={boothName(selected.booth)}>
               <div className={styles.detailTop}><p className={styles.sectionLabel}>{selectedNeighborhood?.name ?? selected.map.shortName}</p><Button variant="quiet" className={styles.iconButton} aria-label="Close booth details" onClick={() => onSelectBooth(null)}><X size={19} aria-hidden /></Button></div>
-              <h4 ref={detailHeadingRef} tabIndex={-1} className={styles.boothHeading}>{boothName(selected.booth)}</h4>
+              <h4 id="fair-booth-detail-heading" ref={detailHeadingRef} tabIndex={-1} className={styles.boothHeading}>{boothName(selected.booth)}</h4>
               {selected.booth.vendorIds.length ? selected.booth.vendorIds.map((vendorId) => {
                 const vendor = data.vendors.find((item) => item.id === vendorId);
                 if (!vendor) return null;
@@ -301,11 +314,16 @@ export default function FairBoothExplorer({ data, mapId, selectedBoothId, query,
               <p className={styles.detailNote}>Booth listings do not confirm vendor hours or what is available today.</p>
               {onShareBooth && <Button variant="secondary" className={styles.shareButton} iconLeft={<Share2 size={15} aria-hidden />} onClick={() => onShareBooth(selected.booth.id)}>Share this booth</Button>}
             </section>
-          ) : !hasQuery && !showList ? <div className={styles.browseIntro}><p>Choose a numbered booth on the map, or search the Fair’s vendor list.</p><Button variant="secondary" iconLeft={<List size={16} aria-hidden />} onClick={() => setShowList(true)}>Browse booth list</Button></div> : null}
+          ) : !hasQuery && !showList ? <div className={styles.browseIntro}>
+            <div className={styles.resultsHeading}><h4>Vendors in this area</h4><span>{areaVendors.length} listed</span></div>
+            {areaVendors.length ? <ul className={styles.areaVendorList} data-fair-area-vendors>{areaVendors.slice(0, 6).map(({ vendor, booths }) => <li key={vendor.id}><button type="button" className={styles.resultButton} aria-label={`Show booth ${booths[0].booth.label}: ${vendor.name}`} onClick={(event) => selectBooth(booths[0].booth.id, event.currentTarget)}><span className={styles.resultText}><strong>{vendor.name}</strong><span>Booth{booths.length > 1 ? "s" : ""} {booths.map(({ booth }) => booth.label).join(", ")}</span></span><ChevronRight size={15} aria-hidden /></button></li>)}</ul> : <p>The official guide does not list vendors in this area.</p>}
+            <Button variant="secondary" className={styles.browseButton} iconLeft={<List size={16} aria-hidden />} onClick={() => setShowList(true)}>Browse booth list</Button>
+            <p className={styles.areaHint}>Search finds vendors and booth numbers across all {areaOptions.length} areas.</p>
+          </div> : null}
 
           {(hasQuery || showList) && <div className={styles.results}>
-            <div className={styles.resultsHeading}><h4>{hasQuery ? "Matching booths" : `${activeMap.shortName} booths`}</h4><span role="status">{listed.length} {listed.length === 1 ? "match" : "matches"}</span></div>
-            {listed.length ? <ul className={styles.resultList}>{listed.map(({ map, booth, names }) => <li key={booth.id}><button type="button" aria-label={`Show ${booth.label ? `booth ${booth.label}` : "unlabeled space"}: ${names.join(", ") || "No vendor listed"}`} aria-pressed={booth.id === selectedBoothId} className={styles.resultButton} onClick={(event) => selectBooth(booth.id, event.currentTarget)}><span className={styles.resultNumber}>{booth.label || "?"}</span><span className={styles.resultText}><strong>{names.join(", ") || (booth.label ? "No vendor listed" : "Unlabeled space")}</strong><span>{map.shortName}</span></span><ChevronRight size={15} aria-hidden /></button></li>)}</ul> : <p className={styles.bodyCopy}>No booths match “{query}”. Try a vendor name or a booth number.</p>}
+            <div className={styles.resultsHeading}><h4>{hasQuery ? "Matching booths" : "Booths in this area"}</h4><span role="status">{listed.length} {listed.length === 1 ? "match" : "matches"}</span></div>
+            {listed.length ? <ul className={styles.resultList}>{listed.map(({ map, booth, names }) => <li key={booth.id}><button type="button" aria-label={`Show ${booth.label ? `booth ${booth.label}` : "unlabeled space"}: ${names.join(", ") || "No vendor listed"}`} aria-pressed={booth.id === selectedBoothId} className={styles.resultButton} onClick={(event) => selectBooth(booth.id, event.currentTarget)}><span className={styles.resultNumber}>{booth.label || "?"}</span><span className={styles.resultText}><strong>{names.join(", ") || (booth.label ? "No vendor listed" : "Unlabeled space")}</strong><span>{findFairBoothNeighborhood(booth.id)?.name ?? map.shortName}</span></span><ChevronRight size={15} aria-hidden /></button></li>)}</ul> : <p className={styles.bodyCopy}>No booths match “{query}”. Try a vendor name or a booth number.</p>}
             <Button variant="quiet" className={styles.resetSearch} onClick={() => { onQueryChange(""); setShowList(false); searchRef.current?.focus(); }}>{hasQuery ? "Clear search" : "Close booth list"}</Button>
           </div>}
         </aside>

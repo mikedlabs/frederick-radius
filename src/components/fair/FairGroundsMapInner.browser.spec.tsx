@@ -79,8 +79,8 @@ vi.mock("react-map-gl/maplibre", () => ({
   Marker: ({ children }: { children?: ReactNode }) =>
     createElement("div", null, children),
   NavigationControl: () => null,
-  Source: ({ children, id }: { children?: ReactNode; id?: string }) =>
-    createElement("div", { "data-mock-map-source": id }, children),
+  Source: ({ children, id, data }: { children?: ReactNode; id?: string; data?: unknown }) =>
+    createElement("div", { "data-mock-map-source": id, "data-source-features": JSON.stringify(data) }, children),
 }));
 
 vi.mock("@/components/map/mapCameraHelpers", () => ({
@@ -333,17 +333,59 @@ describe("FairGroundsMapInner map failure recovery", () => {
     expect(window.location.hash).toBe("#fair-map");
   });
 
-  it("keeps vendor browsing and detail in one history layer with Back and Forward restoration", async () => {
+  it("starts with all reviewed places instead of hiding buildings behind a different lens", async () => {
+    await renderMap();
+    await loadMap();
+    expect(container.querySelector<HTMLSelectElement>("[data-fair-map-filter-select]")?.value).toBe("all");
+    const list = container.querySelector("#fair-map-place-list");
+    expect(list?.textContent).toContain("Gate 1");
+    expect(list?.textContent).toContain("Gate 2");
+    expect(list?.textContent).toContain("Grandstand");
+  });
+
+  it("opens the booth map from vendor map controls without opening the menu directory", async () => {
+    const browseBooths = vi.fn();
+    await renderMap({ onBrowseBoothLayout: browseBooths });
+    await loadMap();
+    const vendors = Array.from(container.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent?.trim() === "Vendors");
+    if (!vendors) throw new Error("Missing Vendors map control.");
+    await act(async () => vendors.click());
+    expect(browseBooths).toHaveBeenCalledOnce();
+    expect(container.querySelector("[data-test-vendor-explorer]")).toBeNull();
+
+    const view = container.querySelector<HTMLSelectElement>("[data-fair-map-filter-select]");
+    if (!view) throw new Error("Missing map view control.");
+    await act(async () => {
+      view.value = "vendors";
+      view.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(browseBooths).toHaveBeenCalledTimes(2);
+    expect(container.querySelector("[data-test-vendor-explorer]")).toBeNull();
+    expect(new URLSearchParams(window.location.search).has("vendor")).toBe(false);
+  });
+
+  it("locates the featured vendor on the booth map without opening an unrelated grounds pin", async () => {
+    const showBooths = vi.fn();
+    await renderMap({ onShowBoothLayout: showBooths });
+    await loadMap();
+    const featured = container.querySelector<HTMLButtonElement>("[data-fair-featured-vendor]");
+    if (!featured) throw new Error("Missing featured Fair vendor.");
+    await act(async () => featured.click());
+    expect(showBooths).toHaveBeenCalledExactlyOnceWith("vendor-white-rabbit-rad-pies");
+    expect(container.querySelector("[data-test-vendor-explorer]")).toBeNull();
+    expect(container.querySelector("[data-fair-map-selection]")).toBeNull();
+  });
+
+  it("keeps a direct menu-directory visit and its detail in one history layer", async () => {
+    window.history.replaceState({}, "", "/fair-map-test?vendor=browse#fair-map");
     await renderMap();
     const initialLength = window.history.length;
-    const browse = Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Food & vendors")!;
-    await act(async () => browse.click());
     expect(new URLSearchParams(window.location.search).get("vendor")).toBe("browse");
-    expect(window.history.length).toBe(initialLength + 1);
     const selectionState = window.history.state;
     await act(async () => container.querySelector<HTMLButtonElement>("[data-test-vendor-select]")!.click());
     expect(new URLSearchParams(window.location.search).get("vendor")).toBe("vendor-white-rabbit-rad-pies");
-    expect(window.history.length).toBe(initialLength + 1);
+    expect(window.history.length).toBe(initialLength);
     expect(new URLSearchParams(window.location.search).has("meet")).toBe(false);
 
     window.history.replaceState({}, "", "/fair-map-test#fair-map");
@@ -730,7 +772,19 @@ describe("FairGroundsMapInner map failure recovery", () => {
     expect(document.activeElement?.id).toBe("fair-map-fallback-heading");
   });
 
-  it("keeps reviewed grounds shapes visible beneath the active map lens", async () => {
+  it("keeps contextual shapes without decorative offset strokes or duplicate context polygons", async () => {
+    const polygon = {
+      ...MAP_FIXTURE.features[2],
+      geometry: {
+        type: "Polygon",
+        coordinates: [[[-77.3938, 39.4131], [-77.3933, 39.4131], [-77.3933, 39.4134], [-77.3938, 39.4134], [-77.3938, 39.4131]]],
+      },
+    };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ...MAP_FIXTURE, features: [...MAP_FIXTURE.features.slice(0, 2), polygon] }),
+    } as Response);
     await renderMap();
     await loadMap();
 
@@ -741,15 +795,19 @@ describe("FairGroundsMapInner map failure recovery", () => {
       container.querySelector(
         '[data-mock-map-layer="fair-grounds-context-shadow"]',
       ),
-    ).not.toBeNull();
+    ).toBeNull();
     expect(
       container.querySelector(
         '[data-mock-map-layer="fair-grounds-context-highlight"]',
       ),
-    ).not.toBeNull();
+    ).toBeNull();
     expect(
       container.querySelector('[data-mock-map-source="fair-reviewed-geometry"]'),
     ).not.toBeNull();
+    const context = JSON.parse(container.querySelector('[data-mock-map-source="fair-grounds-context"]')!.getAttribute("data-source-features")!);
+    const perimeter = JSON.parse(container.querySelector('[data-mock-map-source="fair-reviewed-geometry"]')!.getAttribute("data-source-features")!);
+    expect(context.features.map((feature: typeof polygon) => feature.properties.id)).toContain(polygon.properties.id);
+    expect(perimeter.features.map((feature: typeof polygon) => feature.properties.id)).not.toContain(polygon.properties.id);
   });
 
   it("counts an unpinned changed stop in the saved-plan map total", async () => {
@@ -874,6 +932,74 @@ describe("FairGroundsMapInner map failure recovery", () => {
     expect(
       container.querySelector("[data-fair-visitor-location]"),
     ).toBeNull();
+  });
+
+  it("locates a cross-day event without adding it to the selected day's map program", async () => {
+    const handled = vi.fn();
+    const selectedDayProgram = [{
+      id: "program-monday-pull", title: "Monday tractor pull", timeLabel: "6 p.m.",
+      placeLabel: "Published place: Grandstand.",
+    }];
+    const requestedItem = {
+      id: "program-danny-thursday", title: "Danny Gokey", timeLabel: "8 p.m.",
+      placeLabel: "Published place: Grandstand.", dateLabel: "Thursday, September 24",
+    };
+    const commonProps = {
+      programItems: selectedDayProgram,
+      selectedDateLabel: "Monday, September 21",
+      onFocusRequestHandled: handled,
+    };
+    await renderMap({
+      ...commonProps,
+      focusRequest: { programItemId: requestedItem.id, requestId: 81, programItem: requestedItem },
+    });
+    await flushAnimationFrames();
+    const view = container.querySelector<HTMLSelectElement>("[data-fair-map-filter-select]");
+    expect(view?.value).toBe("all");
+    expect(view?.querySelector('option[value="program"]')?.textContent).toBe("Today · 1");
+    const contexts = container.querySelectorAll("[data-fair-map-located-program]");
+    expect(contexts).toHaveLength(2);
+    for (const context of contexts) {
+      expect(context.textContent).toBe("Located for Danny Gokey · Thursday, September 24 · 8 p.m.");
+    }
+    expect(container.querySelector("#fair-map-selection-mobile")?.textContent).toContain("1 event here on your day");
+    expect(container.querySelector('[aria-label="Open program details for Danny Gokey"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Open program details for Monday tractor pull"]')).not.toBeNull();
+    expect(selectedDayProgram).toHaveLength(1);
+
+    await loadMap();
+    await flushAnimationFrames();
+    await act(async () => vi.advanceTimersByTimeAsync(50));
+    expect(handled).toHaveBeenCalledExactlyOnceWith(81);
+    await renderMap({ ...commonProps, focusRequest: null });
+    expect(container.querySelectorAll("[data-fair-map-located-program]")).toHaveLength(2);
+
+    const gate = Array.from(container.querySelectorAll<HTMLButtonElement>("#fair-map-place-list button"))
+      .find((button) => button.textContent?.includes("Gate 1"));
+    expect(gate).toBeDefined();
+    await act(async () => gate?.click());
+    expect(container.querySelectorAll("[data-fair-map-located-program]")).toHaveLength(0);
+  });
+
+  it.each(["unmapped place", "mismatched id"])("does not guess a cross-day event location with %s", async (reason) => {
+    const handled = vi.fn();
+    await renderMap({
+      programItems: [],
+      focusRequest: {
+        requestId: 82, programItemId: "program-cross-day",
+        programItem: {
+          id: reason === "mismatched id" ? "some-other-event" : "program-cross-day",
+          title: "Other-day show", timeLabel: "1 p.m.", dateLabel: "Thursday, September 24",
+          placeLabel: reason === "unmapped place" ? "Published place: Unreviewed tent." : "Published place: Grandstand.",
+        },
+      },
+      onFocusRequestHandled: handled,
+    });
+    await flushAnimationFrames();
+    expect(container.textContent).toContain("That program place is not available on the reviewed Fair map.");
+    expect(container.querySelector("[data-fair-map-selection]")).toBeNull();
+    expect(container.querySelector("[data-fair-map-located-program]")).toBeNull();
+    expect(handled).toHaveBeenCalledExactlyOnceWith(82);
   });
 
   it.each([0, 250, 1_500])(

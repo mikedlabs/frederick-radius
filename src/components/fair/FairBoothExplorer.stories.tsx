@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { FAIR_LAYOUT_URL, parseFairLayoutData, type FairLayoutData } from "@/lib/fair/layout";
 import FairBoothExplorer from "./FairBoothExplorer";
 import { fairBoothFixture } from "./fair-booth-fixture";
@@ -26,7 +27,15 @@ const meta = {
 } satisfies Meta<typeof Workshop>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const Overview: Story = {};
+export const Overview: Story = {
+  globals: { viewport: { value: "radiusDesktop", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("combobox", { name: "Choose a booth area" })).toHaveValue("west-end");
+    await expect(canvas.getByRole("button", { name: "Show booth 587: White Rabbit x Rad Pies" })).toBeVisible();
+    await waitFor(() => expect(canvasElement.querySelectorAll("[data-fair-vendor-label]").length).toBeGreaterThan(0));
+  },
+};
 export const BrandSearch: Story = { args: { query: "Rad Pies" } };
 export const SelectedBooth: Story = { args: { selected: true, query: "Rad Pies" } };
 export const NoMatch: Story = { args: { query: "Unavailable vendor" } };
@@ -34,3 +43,15 @@ export const Mobile320: Story = { globals: { viewport: { value: "radiusMobileNar
 export const Mobile375: Story = { globals: { viewport: { value: "radiusMobileCompact", isRotated: false } }, args: { selected: true } };
 export const Mobile390: Story = { globals: { viewport: { value: "radiusMobile", isRotated: false } }, args: { query: "Rad Pies" } };
 export const Mobile430: Story = { globals: { viewport: { value: "radiusMobileLarge", isRotated: false } } };
+export const ChooseArea: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const selector = canvas.getByRole("combobox", { name: "Choose a booth area" });
+    await expect(within(selector).getAllByRole("option")).toHaveLength(7);
+    await userEvent.selectOptions(selector, "homegrown");
+    await expect(canvasElement.querySelector("[data-fair-booth-canvas]")).toHaveAttribute("data-booth-area", "homegrown");
+    await expect(canvasElement.querySelectorAll("[data-fair-area-vendors] li").length).toBeGreaterThan(0);
+    await expect(canvasElement.querySelector("svg image")).toBeNull();
+  },
+};

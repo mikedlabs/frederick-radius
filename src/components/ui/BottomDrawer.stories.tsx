@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { Droplets, MapPin, Navigation, Toilet } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import BottomDrawer from "./BottomDrawer";
 import { Button } from "./Button";
@@ -152,4 +153,42 @@ export const SolidSurface: Story = {
     docs: { description: { story: "An opaque detail layer for vendor information or dense text over a busy map. Existing drawers retain their default surface." } },
   },
   render: () => <DrawerFixture initiallyOpen surface="solid" />,
+};
+
+function ReplacementFocusFixture() {
+  const [stage, setStage] = useState<"booth" | "menu" | "returned">("booth");
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  return <main className="min-h-screen p-4" style={{ background: "var(--app-bg)" }}>
+    <p className="mb-4 text-sm">The menu replaces the booth view. Closing it returns keyboard focus to the booth.</p>
+    {stage === "booth" && <Button onClick={() => setStage("menu")}>Open booth menu</Button>}
+    {stage === "returned" && <h2 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">Booth 587</h2>}
+    {stage === "menu" && <BottomDrawer
+      open
+      onOpenChange={(open) => { if (!open) setStage("returned"); }}
+      getReturnFocus={() => headingRef.current}
+      title="Booth menu"
+      surface="solid"
+    ><div className="p-4"><p>The original booth control is no longer on the page.</p><Button className="mt-4">Read menu</Button></div></BottomDrawer>}
+  </main>;
+}
+
+export const ReturnToReplacementView: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  parameters: {
+    docs: { description: { story: "A route handoff replaces the opener and unmounts the menu. Escape must restore focus to the new, connected booth heading." } },
+  },
+  render: () => <ReplacementFocusFixture />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const opener = canvas.getByRole("button", { name: "Open booth menu" });
+    await userEvent.click(opener);
+    await expect(await body.findByRole("dialog", { name: "Booth menu" })).toBeVisible();
+    await expect(opener.isConnected).toBe(false);
+    await expect(canvas.queryByRole("heading", { name: "Booth 587" })).toBeNull();
+    await userEvent.keyboard("{Escape}");
+    const heading = await canvas.findByRole("heading", { name: "Booth 587" });
+    await waitFor(() => expect(body.queryByRole("dialog", { name: "Booth menu" })).toBeNull());
+    await waitFor(() => expect(heading).toHaveFocus());
+  },
 };

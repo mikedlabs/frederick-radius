@@ -68,13 +68,54 @@ describe("Fair grounds map", () => {
       item.placeLabel.startsWith("Published place:"),
     );
 
-    expect(mappedProgramItems).toHaveLength(147);
+    expect(mappedProgramItems).toHaveLength(193);
     expect(
       mappedProgramItems.every(
         (item) =>
           resolveFairGroundsFeatureId(map.features, [item.placeLabel]) !== null,
       ),
     ).toBe(true);
+  });
+
+  it("maps the printed music and Bluey additions to their reviewed places without guessing a character meeting point", () => {
+    const workspace = buildFairDayWorkspaceData(
+      greatFrederickFair2026Pack,
+      greatFrederickFair2026PackPointer,
+      new Date("2026-09-21T16:00:00Z"),
+    );
+    const music = workspace.scheduleItems.filter((item) =>
+      item.id.includes("-pdf-funky-"),
+    );
+    const bluey = workspace.scheduleItems.filter((item) =>
+      item.id.endsWith("-pdf-bluey"),
+    );
+    const characters = workspace.scheduleItems.filter((item) =>
+      item.id.endsWith("-pdf-character"),
+    );
+
+    expect(music).toHaveLength(43);
+    expect(bluey).toHaveLength(3);
+    expect(characters).toHaveLength(9);
+    for (const item of music) {
+      expect(
+        map.features
+          .filter((feature) => fairGroundsFeatureMatchesPlace(feature, item.placeLabel))
+          .map((feature) => feature.properties.id),
+        item.title,
+      ).toEqual(["fair-service-funky-joes-free-stage"]);
+    }
+    for (const item of bluey) {
+      expect(
+        map.features
+          .filter((feature) => fairGroundsFeatureMatchesPlace(feature, item.placeLabel))
+          .map((feature) => feature.properties.id),
+        item.title,
+      ).toEqual(["osm-way-103615601"]);
+    }
+    for (const item of characters) {
+      expect(item.placeLabel).not.toMatch(/^Published place:/);
+      expect(resolveFairGroundsFeatureId(map.features, [item.placeLabel])).toBeNull();
+    }
   });
 
   it("contains the visitor essentials without pretending every lot is mapped", () => {
@@ -94,9 +135,9 @@ describe("Fair grounds map", () => {
   });
 
   it("applies reviewed patches and additions without duplicate feature ids", () => {
-    expect(greatFrederickFair2026MapPatches).toHaveLength(28);
-    expect(greatFrederickFair2026MapAdditions).toHaveLength(12);
-    expect(map.features).toHaveLength(56);
+    expect(greatFrederickFair2026MapPatches).toHaveLength(32);
+    expect(greatFrederickFair2026MapAdditions).toHaveLength(13);
+    expect(map.features).toHaveLength(57);
     expect(new Set(map.features.map((feature) => feature.properties.id)).size).toBe(
       map.features.length,
     );
@@ -208,7 +249,7 @@ describe("Fair grounds map", () => {
       fairGroundsFeatureMatchesFilter(feature, "arrival"),
     );
 
-    expect(arrival).toHaveLength(17);
+    expect(arrival).toHaveLength(18);
     expect(
       arrival.filter((feature) => feature.properties.kind === "parking"),
     ).toHaveLength(5);
@@ -219,7 +260,11 @@ describe("Fair grounds map", () => {
       arrival
         .filter((feature) => feature.properties.kind === "gate")
         .map((feature) => feature.properties.name),
-    ).toEqual(["Gate 1", "Gate 3", "Gate 4", "Gate 4A", "Gate 5", "Gate 6"]);
+    ).toEqual([
+      "Gate 1 · Pedestrians only", "Gate 2 · Pedestrians only", "Gate 3",
+      "Gate 4 · Exit only", "Gate 4A · Pedestrians only",
+      "Gate 5 · Exhibitors only", "Gate 6 · Closed",
+    ]);
     expect(
       arrival.every(
         (feature) =>
@@ -235,7 +280,7 @@ describe("Fair grounds map", () => {
     const essentials = map.features.filter((feature) =>
       fairGroundsFeatureMatchesFilter(feature, "essentials"),
     );
-    expect(essentials).toHaveLength(25);
+    expect(essentials).toHaveLength(26);
     expect(
       essentials.some((feature) => feature.properties.kind === "restroom"),
     ).toBe(true);
@@ -264,7 +309,7 @@ describe("Fair grounds map", () => {
 
   it("makes non-public gates explicit without routing visitors to them", () => {
     const restrictions = new Map(
-      ["Gate 4", "Gate 5", "Gate 6"].map((name) => {
+      ["Gate 4 · Exit only", "Gate 5 · Exhibitors only", "Gate 6 · Closed"].map((name) => {
         const feature = map.features.find(
           (candidate) => candidate.properties.name === name,
         );
@@ -273,11 +318,11 @@ describe("Fair grounds map", () => {
       }),
     );
 
-    expect(restrictions.get("Gate 4")?.properties.detail).toContain("Exit only");
-    expect(restrictions.get("Gate 5")?.properties.detail).toContain(
+    expect(restrictions.get("Gate 4 · Exit only")?.properties.detail).toContain("Exit only");
+    expect(restrictions.get("Gate 5 · Exhibitors only")?.properties.detail).toContain(
       "Exhibitors only",
     );
-    expect(restrictions.get("Gate 6")?.properties.detail).toContain("Closed");
+    expect(restrictions.get("Gate 6 · Closed")?.properties.detail).toContain("Closed");
     expect(
       [...restrictions.values()].every(
         (feature) =>
@@ -300,7 +345,7 @@ describe("Fair grounds map", () => {
       (feature) => feature.properties.name === "Administration (Building 3)",
     );
     const gateFourA = map.features.find(
-      (feature) => feature.properties.name === "Gate 4A",
+      (feature) => feature.properties.id === "osm-node-14099608940",
     );
 
     expect(services).toHaveLength(3);
@@ -348,6 +393,61 @@ describe("Fair grounds map", () => {
     );
   });
 
+  it("labels pedestrian gates without changing their reviewed anchors or drop-off facts", () => {
+    for (const id of ["osm-node-14099608925", "osm-node-14099608931", "osm-node-14099608940"]) {
+      const gate = map.features.find((feature) => feature.properties.id === id);
+      const original = baseMap.features.find((feature) => feature.properties.id === id);
+      expect(gate?.properties.name).toContain("Pedestrians only");
+      expect(gate?.properties.anchor).toEqual(original?.properties.anchor);
+      expect(gate?.geometry).toEqual(original?.geometry);
+      expect(gate?.properties.filterIds).toContain("arrival");
+    }
+    const gateFourA = map.features.find((feature) => feature.properties.id === "osm-node-14099608940");
+    expect(gateFourA?.properties.detail).toContain("taxi, rideshare, or friend drop-off");
+    expect(gateFourA?.properties.detail).toContain("free ADA-compliant shuttle");
+  });
+
+  it("puts Funky Joe's in its published area instead of the Grandstand stage polygon", () => {
+    const freeStage = map.features.find((feature) => feature.properties.id === "fair-service-funky-joes-free-stage");
+    const buildingNine = baseMap.features.find((feature) => feature.properties.id === "osm-way-103615601");
+    const grandstandStage = map.features.find((feature) => feature.properties.id === "osm-way-307321838");
+    const originalStage = baseMap.features.find((feature) => feature.properties.id === "osm-way-307321838");
+
+    expect(freeStage?.geometry.type).toBe("Point");
+    expect(freeStage?.properties.anchor).toEqual(buildingNine?.properties.anchor);
+    expect(freeStage?.properties).toMatchObject({
+      kind: "stage",
+      locationPrecision: "published-area",
+      directionsEnabled: false,
+    });
+    expect(freeStage?.properties.detail).toContain("between Home Arts & Crafts (Building 9) and Youth Indoor Exhibits (Building 12)");
+    expect(grandstandStage?.properties.name).toBe("Grandstand stage");
+    expect(grandstandStage?.properties.scheduleAliases).toEqual([]);
+    expect(grandstandStage?.geometry).toEqual(originalStage?.geometry);
+    expect(grandstandStage?.properties.anchor).not.toEqual(freeStage?.properties.anchor);
+    expect(resolveFairGroundsFeatureId(map.features, ["Funky Joe’s Bandwagon Stage in the Resthaven Rest Area"])).toBe("fair-service-funky-joes-free-stage");
+    expect(resolveFairGroundsFeatureId(map.features, ["Grandstand"])).toBe("osm-way-103615596");
+  });
+
+  it.each([33, 34, 35, 36, 37, 38, 39])("finds dairy building %s within the shared mapped barn area", (number) => {
+    const barns = map.features.find((feature) => feature.properties.id === "osm-way-307321855");
+    const original = baseMap.features.find((feature) => feature.properties.id === "osm-way-307321855");
+    expect(resolveFairGroundsFeatureId(map.features, [`Building ${number}`])).toBe("osm-way-307321855");
+    expect(barns?.properties.name).toBe("Dairy Barns (Buildings 33–39)");
+    expect(barns?.properties.detail).toContain("shared mapped area");
+    expect(barns?.properties.directionsEnabled).toBe(false);
+    expect(barns?.geometry).toEqual(original?.geometry);
+  });
+
+  it("refreshes only the reviewed PDF source timestamp", () => {
+    const pdfSources = map.features.flatMap((feature) => feature.properties.informationSource?.url.endsWith("2026-GFF-SoE_website.pdf") ? [feature.properties.informationSource] : []);
+    expect(pdfSources.length).toBeGreaterThan(0);
+    expect(pdfSources.every((source) => source.checkedAt === "2026-09-21T15:59:02Z")).toBe(true);
+    expect(map.features.find((feature) => feature.properties.id === "fair-arrival-lot-b")?.properties.informationSource?.checkedAt).toBe("2026-09-04T06:04:00Z");
+    expect(map.features.find((feature) => feature.properties.id === "osm-node-14099608940")?.properties.informationSource?.checkedAt).toBe("2026-09-04T06:04:00Z");
+    expect(baseMap.reviewedOn).toBe("2026-09-04");
+  });
+
   it.each([
     ["Published place: Grandstand.", "osm-way-103615596"],
     [
@@ -382,7 +482,10 @@ describe("Fair grounds map", () => {
     ["Published place: Youth Building, Bldg. 12.", "osm-way-307321839"],
     ["Published place: Homegrown Frederick, Bldg. 13.", "osm-way-307321854"],
     ["Published place: Bathroom Building 15.", "osm-way-307321850"],
-    ["Published place: Free Stage.", "osm-way-307321838"],
+    ["Published place: Free Stage.", "fair-service-funky-joes-free-stage"],
+    ["Published place: Funky Joe's Bandwagon Stage in the Resthaven Rest Area.", "fair-service-funky-joes-free-stage"],
+    ["Published place: Dairy Office, Bldg. 31.", "osm-way-307321843"],
+    ["Published place: Milking Parlor, Bldg. 43.", "osm-way-307321840"],
   ])("maps the official 2026 label %s to %s", (placeLabel, featureId) => {
     const matches = map.features.filter((feature) =>
       fairGroundsFeatureMatchesPlace(feature, placeLabel),

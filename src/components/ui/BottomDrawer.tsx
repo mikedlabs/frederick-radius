@@ -45,6 +45,8 @@ export type BottomDrawerProps = {
   open?: boolean;
   /** Open-state callback for controlled mode. */
   onOpenChange?: (open: boolean) => void;
+  /** Resolve a replacement focus target after a route handoff removes the opener. */
+  getReturnFocus?: () => HTMLElement | null;
   /** Hide the visible title/subtitle header (kept for screen readers)
    *  so content can render flush under the drag handle — e.g. a
    *  full-bleed photo cover. Default false. */
@@ -60,6 +62,7 @@ export default function BottomDrawer({
   subtitle,
   open,
   onOpenChange,
+  getReturnFocus,
   bareHeader = false,
   surface = "default",
 }: BottomDrawerProps) {
@@ -166,6 +169,21 @@ export default function BottomDrawer({
           data-drawer-surface={surface}
           {...(subtitle ? {} : { "aria-describedby": undefined })}
           onCloseAutoFocus={(event) => {
+            const replacement = getReturnFocus?.();
+            if (replacement?.isConnected) {
+              event.preventDefault();
+              if (restoreFrameRef.current !== null) {
+                window.cancelAnimationFrame(restoreFrameRef.current);
+                restoreFrameRef.current = null;
+              }
+              if (restoreTimerRef.current !== null) {
+                window.clearTimeout(restoreTimerRef.current);
+                restoreTimerRef.current = null;
+              }
+              returnFocusRef.current = replacement;
+              replacement.focus({ preventScroll: true });
+              return;
+            }
             if (!returnFocusRef.current?.isConnected) return;
             event.preventDefault();
             restoreRememberedFocus();
