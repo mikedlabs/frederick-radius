@@ -5637,6 +5637,26 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .map-live-status {
     bottom: 72px;
   }
+  
+  /* Feed status group adapts to mobile chrome (BottomNav) */
+  .feed-status-group {
+    bottom: 72px;
+  }
+  
+  /* Tighter spacing on narrow mobile (320-375px) */
+  @media (max-width: 375px) {
+    .feed-status {
+      padding: 7px 9px;
+      font-size: 11.5px;
+      min-height: 36px;
+    }
+    
+    .feed-status-retry {
+      min-height: 28px;
+      padding: 0 10px;
+      font-size: 10px;
+    }
+  }
 }
 .dock-host[data-dock-pane="open"] :is(
   .map-live-status,
