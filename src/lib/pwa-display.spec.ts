@@ -40,6 +40,12 @@ describe("iOS Safari detection", () => {
 });
 
 describe("install prompt policy", () => {
+  it("keeps the setup page deliberate without changing other secondary pages", () => {
+    expect(isInstallPromptSuppressedPath("/install")).toBe(true);
+    expect(isInstallPromptSuppressedPath("/settings")).toBe(false);
+    expect(isInstallPromptSuppressedPath("/about")).toBe(false);
+  });
+
   it("stays off focused routes and pages with persistent action docks", () => {
     expect(isInstallPromptSuppressedPath("/map")).toBe(true);
     expect(isInstallPromptSuppressedPath("/ask")).toBe(true);

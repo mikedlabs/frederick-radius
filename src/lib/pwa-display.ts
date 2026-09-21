@@ -58,6 +58,8 @@ export function isInstallPromptSuppressedPath(pathname: string): boolean {
   return isFairDayPath(pathname)
     || pathname === "/map"
     || pathname === "/today"
+    // The setup page already has a deliberate Add action.
+    || pathname === "/install"
     || pathname.startsWith("/ask")
     || /^\/(places|events)\/[^/]+$/.test(pathname);
 }

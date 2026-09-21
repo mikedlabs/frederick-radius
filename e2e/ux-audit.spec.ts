@@ -62,6 +62,7 @@ const ROUTES = [
   "/history",
   "/my-radius",
   "/settings",
+  "/install",
   "/plan",
   "/emergency",
   "/emergency-vet",
