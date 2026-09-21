@@ -23,6 +23,7 @@
     "audit:vendor-media": "tsx --tsconfig tsconfig.json scripts/audit-vendor-media.ts",
     "lint:zindex": "node scripts/check-zindex.mjs",
     "lint:colors": "node scripts/check-colors.mjs",
+    "lint:type": "node scripts/check-typography.mjs",
     "scan:devibe": "python3 scripts/devibe_scan.py src --surface public",
     "scan:devibe:all": "python3 scripts/devibe_scan.py src --surface all",
     "build:photo-suppress": "tsx --tsconfig tsconfig.json scripts/build-photo-suppress.ts",

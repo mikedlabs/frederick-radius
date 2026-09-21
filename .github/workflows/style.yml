@@ -57,3 +57,6 @@ jobs:
 
       - name: Layer scale lint
         run: npm run lint:zindex
+
+      - name: Type scale lint
+        run: npm run lint:type

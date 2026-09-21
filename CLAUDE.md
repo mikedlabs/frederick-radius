@@ -203,6 +203,17 @@ Back behavior when adding or changing tools.
 
 - `npx tsc --noEmit` · `npx eslint <changed files>` · `npx vitest run`
   must pass before any commit.
+- **The style guards ratchet, they never regress.** The `style-lint` CI job
+  runs four rule-based guards: `style:lint` (voice), `lint:colors` (bare-hex
+  palette), `lint:zindex` (overlay layering), and `lint:type` (the type
+  scale). `lint:type` (`scripts/check-typography.mjs`) is a per-file ratchet
+  against `scripts/typography-baseline.json`: a file may not grow its count
+  of arbitrary pixel text sizes, and a file with none may not add one. Use a
+  semantic scale class from `globals.css` (`.text-title` / `.text-body` /
+  `.text-caption` / `.display-*` / `.eyebrow`) instead. When a cleanup
+  removes some, lock the lower number in with
+  `node scripts/check-typography.mjs --write`; never raise the baseline to
+  make a red pass.
 - **Lockfile edits: regenerate with `npx -y npm@10 install`, never bare
   `npm install`.** CI pins node 22, whose npm 10 rejects locks written by
   npm 11+ ("Missing: <pkg> from lock file" in `npm ci`). A lock written by a
