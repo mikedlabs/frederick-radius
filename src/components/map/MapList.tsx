@@ -8,13 +8,14 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Search, MapPin } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { haptic } from "@/lib/haptics";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import CategoryIcon from "@/components/place/CategoryIcon";
+import { CompactEmptyState } from "@/components/ui/EmptyState";
 import { mapListPhotoLoader } from "./map-list-photo-loader";
 import type { EventPin, MapPinPlace } from "./types";
 
@@ -196,15 +197,15 @@ export default function MapList({
         </span>
       </div>
       {empty ? (
-        <div className="map-list-empty">
-          <p className="font-serif map-list-empty-title">
-            {failureMode ? "No fallback results are available" : "Nothing matches yet"}
-          </p>
-          <p className="map-list-empty-sub">
-            {failureMode
-              ? "Reload the map or use the page navigation to keep browsing."
-              : "Loosen a filter in the dock, or switch back to the map to browse the whole county."}
-          </p>
+        <div className="mx-auto max-w-[680px] px-3 py-4">
+          <CompactEmptyState
+            icon={failureMode ? MapPin : Search}
+            title={failureMode ? "No fallback results available" : "Nothing matches your filters"}
+            body={failureMode
+              ? "Reload the map or use the navigation to keep browsing."
+              : "Remove a filter in the dock, or switch back to the map to browse the whole county."}
+            tone="quiet"
+          />
         </div>
       ) : (
         <div className="map-list-results">
