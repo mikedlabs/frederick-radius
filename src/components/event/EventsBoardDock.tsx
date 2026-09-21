@@ -566,7 +566,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           <div className="eb-dateline">
             {dlWeekday} &middot; {dlDate}
           </div>
-          <h2 className="eb-title font-serif">
+          <h2 className="eb-title font-sans">
             What&rsquo;s <span className="eb-title-on">on</span>
           </h2>
         </div>
@@ -695,7 +695,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
       >
         <div className="eb-pane-scroll">
           <div className="dock-pane-head">
-            <span className="dock-pane-title font-serif">Filters</span>
+            <span className="dock-pane-title font-sans">Filters</span>
             <button type="button" className="dock-done" onClick={closePane}>
               Done
             </button>

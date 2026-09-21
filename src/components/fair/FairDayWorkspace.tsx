@@ -2182,7 +2182,7 @@ export default function FairDayWorkspace({
         >
           <RippleMark size={24} />
           <p className="text-[13px] font-semibold leading-snug">
-            Preparing the Fair guide. Restoring your date and saved plan now.
+            Restoring your saved Fair date and plan…
           </p>
         </div>
       ) : null}
@@ -2642,7 +2642,7 @@ export default function FairDayWorkspace({
                 <ChevronDown className="h-4 w-4" aria-hidden />
               </summary>
               <p className="pb-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-                {data.disclosure} {data.source.label}. {data.source.ageLabel}.{" "}
+                {data.disclosure} Program source: {data.source.label}, checked {data.source.checkedLabel} ({data.source.ageLabel}).{" "}
                 <a href={data.source.sourceUrl} target="_blank" rel="noopener noreferrer" className="tap-44 inline-flex min-h-11 items-center font-semibold underline underline-offset-4" style={{ color: "var(--app-brand-press)" }}>
                   Official source
                 </a>
@@ -3506,7 +3506,7 @@ export default function FairDayWorkspace({
           <div className="mt-8 border-t pt-5" style={{ borderColor: "var(--app-border)" }}>
             <p className="text-[14px] font-semibold">{data.source.label}</p>
             <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-              Radius checked this official program source on {data.source.checkedLabel}. {data.source.ageLabel}.
+              This program source was checked on {data.source.checkedLabel} ({data.source.ageLabel}).
             </p>
             <a href={data.source.sourceUrl} target="_blank" rel="noopener noreferrer" className="tap-44 mt-2 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
               Open the official source

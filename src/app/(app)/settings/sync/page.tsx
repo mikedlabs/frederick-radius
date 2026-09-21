@@ -39,8 +39,8 @@ export default async function SyncSettingsPage({
           Your Radius comes with you.
         </h1>
         <p className="max-w-2xl text-[14px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-          Places in My Radius travel between your signed-in devices. The rest of
-          your Frederick context stays quietly on this one.
+          Saved places travel between your signed-in devices. The rest of your
+          Frederick context stays quietly on this one.
         </p>
       </header>
 
@@ -96,12 +96,12 @@ export default async function SyncSettingsPage({
         <div className="flex gap-3">
           <Smartphone className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
           <div className="min-w-0 flex-1">
-            <h2 className="font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            <h2 className="font-sans text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>
               What Frederick Radius keeps
             </h2>
             <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-              Sync stores your email and the places in My Radius. Saved events,
-              routes, home spot, interests, searches, and recent views are not
+              Sync stores your email and saved places. Saved events, routes, home
+              spot, interests, searches, and recent views are not
               added to your account. Stopping sync does not clear this device.
             </p>
           </div>
