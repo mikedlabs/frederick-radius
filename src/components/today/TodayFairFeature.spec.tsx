@@ -51,7 +51,23 @@ describe("TodayFairFeature", () => {
     expect(html).toContain("Open Radius at the Fair");
   });
 
-  it("continues the saved on-device plan with its one next action", async () => {
+  it("keeps the briefing variant concise without losing its identity or action", () => {
+    const html = renderToStaticMarkup(
+      createElement(TodayFairFeature, { phase: "fair-day", briefing: true }),
+    );
+
+    expect(html).toContain('data-fair-feature-tone="briefing"');
+    expect(html).toContain("The Great Frederick Fair");
+    expect(html).toContain("Through Sep 26");
+    expect(html).toContain("Your Fair day, in one place.");
+    expect(html).toContain("Open Radius at the Fair");
+    expect(html).toContain("photographed by Mike D in 2024");
+    expect(html.match(/<a\b/g)).toHaveLength(1);
+    expect(html).toContain(`href="${TODAY_FAIR_PROMOTION_HREF}"`);
+    expect(html).not.toContain("The Fair opens September 18");
+  });
+
+  it.each([false, true])("continues the saved on-device plan with briefing=%s", async (briefing) => {
     const savedPlan: FairPlan = {
       ...createFairPlan({
         fairId: "great-frederick-fair-2026",
@@ -94,13 +110,13 @@ describe("TodayFairFeature", () => {
     const root = createRoot(container);
 
     await act(async () => {
-      root.render(createElement(TodayFairFeature, { phase: "planning" }));
+      root.render(createElement(TodayFairFeature, { phase: "planning", briefing }));
     });
 
     expect(container.textContent).toContain("Your Fair day is taking shape.");
-    expect(container.textContent).toContain(
-      "plan for 4 people has 1 saved stop",
-    );
+    if (!briefing) {
+      expect(container.textContent).toContain("plan for 4 people has 1 saved stop");
+    }
     expect(container.textContent).toContain("Finish travel plan");
     expect(container.querySelector("a")?.getAttribute("href")).toBe(
       "/moments/great-frederick-fair-2026#travel",
