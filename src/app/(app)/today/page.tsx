@@ -7,13 +7,6 @@ import { easternDayKey } from "@/lib/tz";
 import OnNowBand from "@/components/today/OnNowBand";
 import KeysScore from "@/components/today/KeysScore";
 import LocalSportsScoreboard from "@/components/today/LocalSportsScoreboard";
-import SkyHero from "@/components/today/SkyHero";
-// AdaptiveGreeting (serif headline like "Sun for now") was removed
-// from the SkyHero pre-launch. The temporal anchor (weekday + a live
-// clock) now lives in TodayCard inside the SkyHero — without a second
-// editorial verdict on top of the weather card's own conditions line.
-// (The component itself was deleted in the 2026-08 dead-code sweep;
-// it is in git history if we ever want it back.)
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MomentSpotlight from "@/components/today/MomentSpotlight";
 import TodayFairFeature from "@/components/today/TodayFairFeature";
@@ -24,7 +17,6 @@ import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import TonightHeadline from "@/components/today/TonightHeadline";
 import PageBloom from "@/components/ui/PageBloom";
-import { MagicCard } from "@/components/ui/MagicCard";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
 import WeekendPreview from "@/components/today/WeekendPreview";
@@ -71,6 +63,7 @@ import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
 import AppTransitionLink from "@/components/nav/AppTransitionLink";
 import PageChapter from "@/components/ui/PageChapter";
+import styles from "@/components/today/TodayLayout.module.css";
 import {
   TODAY_FAIR_PROMOTION_SLUG,
   todayFairPromotionPhase,
@@ -280,29 +273,22 @@ export default async function HomePage() {
       {(() => {
         const frame = todayFrame(easternStartHour(now.toISOString()));
         return (
-          <MagicCard as="header" className="scroll-masthead today-arrival today-arrival--masthead mb-5 flex flex-col sm:grid sm:grid-cols-[minmax(0,1fr)_42%]">
-            <div className="min-w-0 p-4 sm:p-6">
-            {/* The page title, at page-title size. At 22px it sat two pixels
-                above its own 20px section headings, so the masthead read as
-                just another section. 30/32 restores the ladder: page over
-                section over row, with typography carrying the hierarchy
-                (brand rule) instead of the deleted brick dash. The date now
-                rides the scope line below — one supporting line instead of a
-                decorated eyebrow above the title. */}
-            <h1 className="font-serif text-[28px] font-semibold leading-[1.05] tracking-tight min-[375px]:text-[30px] sm:text-[32px]" style={{ color: "var(--app-ink)" }}>
+          <header className={`scroll-masthead ${styles.masthead}`}>
+            <h1 className={styles.title}>
               {frame.title}
             </h1>
-            <TodayScopeStatus dateline={formatEasternDateline(now)} />
-            </div>
-            <figure className="scroll-masthead-img relative order-first h-[72px] min-[375px]:h-[140px] sm:order-none sm:h-full sm:min-h-[180px]">
-              <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" priority fill sizes="(min-width: 1024px) 440px, 100vw" alt="Carroll Creek in Frederick, photographed by Mike D." className="object-cover object-center" />
-              <figcaption className="absolute bottom-2 right-2 rounded-sm bg-[var(--app-ink)] px-2 py-1 text-[10px] leading-snug text-[var(--app-on-brand)]">Carroll Creek · Mike D</figcaption>
+            <figure className={styles.portrait}>
+              <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" priority fill sizes="(min-width: 640px) 280px, 88px" alt="Carroll Creek in Frederick, photographed by Mike D." />
+              <figcaption className={styles.photoCredit}>Carroll Creek · Mike D</figcaption>
             </figure>
-          </MagicCard>
+            <div className={styles.scope}>
+              <TodayScopeStatus dateline={formatEasternDateline(now)} />
+            </div>
+          </header>
         );
       })()}
 
-      <div className="flex flex-col gap-5">
+      <div data-today-briefing className={styles.briefing}>
         {/* The universal request doorway is Today's primary action. Keep it
             immediately after the scope control: a seasonal campaign must not
             push it more than a screen down on a phone. Active alerts still
@@ -319,32 +305,19 @@ export default async function HomePage() {
           from Sep 2–26, then retires itself on Sep 27. When another civic
           moment overlaps the Fair campaign, it moves into Follow the day
           below instead of disappearing. */}
+      <div className={styles.context}>
       {fairPromotionPhase ? (
-        <div>
-          <TodayFairFeature phase={fairPromotionPhase} compact={fairPromotionPhase === "planning"} />
-        </div>
+        <TodayFairFeature phase={fairPromotionPhase} briefing />
       ) : civicMoment ? (
         <div>
           <MomentSpotlight moment={civicMoment} />
         </div>
       ) : null}
 
-      {/* ── WEATHER HERO — the time-of-day gradient sky and today's weather
-          lead the page. Now a COMPACT, CONTAINED card (owner
-          call: "all cards within the main part" + "one header with the weather
-          more compact") — the sky is a rounded card within the column rather
-          than a full-bleed band, with a tighter weather row inside; the soft
-          downward shadow floats it over the page. The detailed hourly / 7-day
-          / almanac forecast still lives in the collapsed "full briefing". */}
-      {/* shader-rim — the page's ONE rationed living treatment: a slow, barely-
-          there conic accent ring on the true top-of-page hero (the sky plate),
-          the crafted-product-hero move the primitive reserves for a single
-          element. It freezes under prefers-reduced-motion. (The old className
-          shadow was dead — the .sky-hero rule's own inset shadow overrides it.) */}
-      {/* The whole weather plate is a door to the full forecast (July 2026
-          Reddit review: it looked tappable and wasn't — now it is, with the
-          standard right-edge disclosure chevron). */}
-      <SkyHero className="today-arrival today-arrival--weather relative z-10">
+      {/* The verified weather glance remains one link to the full forecast.
+          Its quiet reading surface shares the row with the current campaign
+          without making either one a second page headline. */}
+      <section data-today-weather className={styles.weather}>
         <AppTransitionLink
           href="/pulse?open=weather"
           prefetch={false}
@@ -360,17 +333,18 @@ export default async function HomePage() {
             className="absolute bottom-2 right-2 h-4 w-4 opacity-50 transition-transform group-hover:translate-x-0.5"
           />
         </AppTransitionLink>
-      </SkyHero>
+      </section>
+      </div>
 
+      <div data-today-current-content className={styles.currentContent}>
         <div aria-label="Places for your area">
           {decisionLead}
         </div>
-      </div>
 
       <PageChapter
         label="Follow the day"
         variant="plain"
-        className="mt-8"
+        className={styles.events}
       >
         {/* A second civic moment still matters during the Fair campaign. Keep
             it with the day's program so it survives without competing with
@@ -385,6 +359,8 @@ export default async function HomePage() {
         ) : null}
         {whatsOn}
       </PageChapter>
+      </div>
+      </div>
 
       <CollapsibleSection
         title="Plan the rest"

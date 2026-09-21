@@ -23,7 +23,7 @@ describe("Today decision hierarchy", () => {
   });
 
   it("puts Find before weather and the deeper place lead and event program", () => {
-    const weather = renderedPage.indexOf("</SkyHero>");
+    const weather = renderedPage.indexOf("<section data-today-weather");
     const lead = renderedPage.indexOf("{decisionLead}");
     const find = renderedPage.indexOf("<TodayAsk embedded");
     const events = renderedPage.indexOf("{whatsOn}");
@@ -41,7 +41,7 @@ describe("Today decision hierarchy", () => {
     // this test guards ORDER (title, then scope line, then weather), not the
     // element's exact attribute list.
     const scope = renderedPage.indexOf("<TodayScopeStatus");
-    const weather = renderedPage.indexOf("<SkyHero");
+    const weather = renderedPage.indexOf("<section data-today-weather");
 
     expect(title).toBeGreaterThan(-1);
     expect(scope).toBeGreaterThan(title);
@@ -58,7 +58,7 @@ describe("Today decision hierarchy", () => {
     const fair = renderedPage.indexOf("<TodayFairFeature");
     const masthead = renderedPage.indexOf("{frame.title}");
     const find = renderedPage.indexOf("<TodayAsk embedded");
-    const weather = renderedPage.indexOf("<SkyHero");
+    const weather = renderedPage.indexOf("<section data-today-weather");
 
     expect(masthead).toBeGreaterThan(alerts);
     expect(find).toBeGreaterThan(masthead);
@@ -81,7 +81,7 @@ describe("Today decision hierarchy", () => {
   });
 
   it("gives each part of the briefing one purpose and preserves an overlapping civic moment", () => {
-    const decide = renderedPage.indexOf('className="flex flex-col gap-5"');
+    const decide = renderedPage.indexOf("data-today-briefing");
     const follow = renderedPage.indexOf('label="Follow the day"');
     const plan = renderedPage.indexOf('title="Plan the rest"');
     const more = renderedPage.indexOf('title="Local guides and saved places"');
