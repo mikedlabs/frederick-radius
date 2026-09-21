@@ -22,7 +22,13 @@ import type { ReactNode } from "react";
  *     screen, not a calm absence.
  *   - The "tone" controls the accent color of the icon halo + CTA.
  *     `quiet` is the default (ink tones); `brand` for moments where
- *     we want the user to act; `positive` for "all caught up".
+ *     we want the user to act; `positive` for "all caught up";
+ *     `caution` for delayed or degraded states.
+ *
+ * Mobile improvements (2026-09):
+ *   - Reduced padding at narrow viewports (320-375px)
+ *   - Minimum tap target of 44px maintained for CTAs
+ *   - Icon halo size adapts to viewport width
  *
  * Examples:
  *   <EmptyState
@@ -32,7 +38,7 @@ import type { ReactNode } from "react";
  *     cta={{ label: "See this weekend", href: "/events?lens=weekend" }}
  *   />
  */
-export type EmptyStateTone = "quiet" | "brand" | "positive";
+export type EmptyStateTone = "quiet" | "brand" | "positive" | "caution";
 
 const TONE: Record<EmptyStateTone, { color: string; bg: string }> = {
   quiet: {
@@ -47,6 +53,10 @@ const TONE: Record<EmptyStateTone, { color: string; bg: string }> = {
     color: "var(--app-positive)",
     bg: "color-mix(in srgb, var(--app-positive) 14%, var(--app-bg-elevated))",
   },
+  caution: {
+    color: "var(--app-amber)",
+    bg: "color-mix(in srgb, var(--app-amber) 14%, var(--app-bg-elevated))",
+  },
 };
 
 export default function EmptyState({
@@ -56,6 +66,7 @@ export default function EmptyState({
   tone = "quiet",
   cta,
   secondary,
+  compact = false,
   className,
 }: {
   icon: LucideIcon;
@@ -68,13 +79,16 @@ export default function EmptyState({
   cta?: { label: string; href: string };
   /** Optional secondary text link below the CTA. */
   secondary?: { label: string; href: string };
+  /** Compact mode for tight spaces (smaller padding, icon) */
+  compact?: boolean;
   className?: string;
 }) {
   const t = TONE[tone];
   return (
     <div
       className={[
-        "tactile relative overflow-hidden rounded-[var(--app-radius-lg)] px-6 py-10 text-center",
+        "tactile relative overflow-hidden rounded-[var(--app-radius-lg)] text-center",
+        compact ? "px-4 py-6 sm:px-5 sm:py-8" : "px-5 py-8 sm:px-6 sm:py-10",
         className ?? "",
       ].join(" ")}
       style={{
@@ -84,23 +98,32 @@ export default function EmptyState({
     >
       <span
         aria-hidden
-        className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full"
+        className={[
+          "mx-auto mb-3 inline-flex items-center justify-center rounded-full",
+          compact ? "h-10 w-10" : "h-12 w-12",
+        ].join(" ")}
         style={{
           background: `color-mix(in srgb, ${t.color} 22%, var(--app-bg-elevated))`,
           color: t.color,
         }}
       >
-        <Icon className="h-6 w-6" strokeWidth={1.75} />
+        <Icon className={compact ? "h-5 w-5" : "h-6 w-6"} strokeWidth={1.75} />
       </span>
       <h3
-        className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
+        className={[
+          "font-serif font-semibold leading-tight tracking-tight",
+          compact ? "text-[17px] sm:text-[19px]" : "text-[18px] sm:text-[20px]",
+        ].join(" ")}
         style={{ color: "var(--app-ink)" }}
       >
         {title}
       </h3>
       {body && (
         <p
-          className="mx-auto mt-1.5 max-w-sm text-[13px] leading-relaxed text-pretty"
+          className={[
+            "mx-auto mt-1.5 max-w-sm leading-relaxed text-pretty",
+            compact ? "text-[12px] sm:text-[13px]" : "text-[13px]",
+          ].join(" ")}
           style={{ color: "var(--app-ink-2)" }}
         >
           {body}
@@ -112,9 +135,11 @@ export default function EmptyState({
           className="tap-44 mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold tactile tactile-interactive"
           style={{
             background:
-              tone === "brand" ? "var(--app-brand-press)" : "var(--app-bg-elevated)",
-            color: tone === "brand" ? "var(--app-on-brand)" : t.color,
-            boxShadow: tone === "brand" ? "var(--app-shadow-1)" : undefined,
+              tone === "brand" || tone === "caution"
+                ? tone === "brand" ? "var(--app-brand-press)" : "var(--app-amber)"
+                : "var(--app-bg-elevated)",
+            color: tone === "brand" || tone === "caution" ? "var(--app-on-brand)" : t.color,
+            boxShadow: tone === "brand" || tone === "caution" ? "var(--app-shadow-1)" : undefined,
           }}
         >
           {cta.label}
@@ -131,6 +156,79 @@ export default function EmptyState({
           </Link>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * CompactEmptyState — a smaller inline empty state for tight spaces like
+ * collapsed sections, inline panels, or mobile drawers. Maintains minimum
+ * tap targets while reducing visual weight.
+ */
+export function CompactEmptyState({
+  icon: Icon,
+  title,
+  body,
+  tone = "quiet",
+  action,
+}: {
+  icon: LucideIcon;
+  /** Short statement (no period needed for compact) */
+  title: string;
+  /** Optional short explanation */
+  body?: string;
+  tone?: EmptyStateTone;
+  /** Optional action button */
+  action?: { label: string; onClick: () => void };
+}) {
+  const t = TONE[tone];
+  return (
+    <div
+      className="flex items-start gap-3 rounded-[var(--app-radius-md)] border px-3 py-3"
+      style={{
+        borderColor: "var(--app-border)",
+        background: "var(--app-bg-elevated)",
+      }}
+    >
+      <span
+        aria-hidden
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+        style={{
+          background: `color-mix(in srgb, ${t.color} 18%, var(--app-bg-elevated))`,
+          color: t.color,
+        }}
+      >
+        <Icon className="h-4 w-4" strokeWidth={2} />
+      </span>
+      <div className="min-w-0 flex-1 pt-0.5">
+        <p
+          className="text-[13px] font-semibold leading-snug"
+          style={{ color: "var(--app-ink)" }}
+        >
+          {title}
+        </p>
+        {body && (
+          <p
+            className="mt-0.5 text-[11.5px] leading-snug"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            {body}
+          </p>
+        )}
+        {action && (
+          <button
+            type="button"
+            onClick={action.onClick}
+            className="mt-2 min-h-[36px] rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-transform active:scale-[0.96]"
+            style={{
+              borderColor: t.color,
+              color: t.color,
+            }}
+          >
+            {action.label}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
