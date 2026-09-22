@@ -1571,6 +1571,31 @@ async function answerParkingRequest(
   };
 }
 
+type AmenityRankCandidate = {
+  amenity: Pick<Amenity, "municipality" | "name">;
+  distance: number | null;
+  anchorDistance: number;
+};
+
+/**
+ * Order mapped amenities for an answer. With a real user origin, nearest
+ * wins outright. Without one, a same-town match wins, then proximity to the
+ * downtown anchor, then name. Exported so the no-origin fallback is testable:
+ * a county-wide "public restroom" answer must not float a suburban park's
+ * portable toilet to the top just because its name sorts early alphabetically.
+ */
+export function compareAmenityRank(
+  a: AmenityRankCandidate,
+  b: AmenityRankCandidate,
+  municipality: string | null | undefined,
+): number {
+  if (a.distance != null && b.distance != null) return a.distance - b.distance;
+  const aLocal = municipality && a.amenity.municipality === municipality ? 1 : 0;
+  const bLocal = municipality && b.amenity.municipality === municipality ? 1 : 0;
+  if (aLocal !== bLocal) return bLocal - aLocal;
+  return a.anchorDistance - b.anchorDistance || a.amenity.name.localeCompare(b.amenity.name);
+}
+
 async function answerAmenityRequest(
   requested: ReturnType<typeof requestedAmenities>,
   intent: AskIntent,
@@ -1604,18 +1629,17 @@ async function answerAmenityRequest(
       distance: context.origin
         ? haversineMeters(context.origin, { lng: amenity.lng, lat: amenity.lat })
         : null,
+      // Always known: proximity to the downtown anchor. Used only as the
+      // no-origin fallback order so a county-wide answer stops ranking a
+      // suburban park's portable toilet first on an alphabetical name.
+      anchorDistance: haversineMeters(FREDERICK_CENTER, { lng: amenity.lng, lat: amenity.lat }),
     }));
 
-  const byKind = new Map<AmenityKind, Array<{ amenity: Amenity; distance: number | null }>>();
+  const byKind = new Map<AmenityKind, Array<{ amenity: Amenity; distance: number | null; anchorDistance: number }>>();
   for (const request of requested) {
     const list = candidates
       .filter((candidate) => candidate.amenity.kind === request.kind)
-      .sort((a, b) => {
-        if (a.distance != null && b.distance != null) return a.distance - b.distance;
-        const aLocal = context.municipality && a.amenity.municipality === context.municipality ? 1 : 0;
-        const bLocal = context.municipality && b.amenity.municipality === context.municipality ? 1 : 0;
-        return bLocal - aLocal || a.amenity.name.localeCompare(b.amenity.name);
-      });
+      .sort((a, b) => compareAmenityRank(a, b, context.municipality));
     byKind.set(request.kind, list);
   }
 
