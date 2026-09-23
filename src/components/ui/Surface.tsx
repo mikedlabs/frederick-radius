@@ -7,9 +7,9 @@ import type { ComponentPropsWithoutRef, CSSProperties, ElementType, ReactNode } 
  * bg-[var(--app-bg-elevated)]` recipe that had multiplied across cards,
  * wells, and panels. One primitive, three roles:
  *
- *   elevated — a raised card on the page (border + elevated fill). Default.
- *   sunken   — an inset well (sunken fill, no border).
- *   flat     — a plain bordered block on the base canvas.
+ *   raised — a lifted card on the page (border + raised fill). Default.
+ *   sunken — an inset well (sunken fill, no border).
+ *   flat   — a plain bordered block on the base canvas.
  *
  * Polymorphic: pass `as` for the right semantic element (section, article,
  * li, ...). Pass `interactive` for a tappable card (adds the tactile press
@@ -17,7 +17,7 @@ import type { ComponentPropsWithoutRef, CSSProperties, ElementType, ReactNode } 
  * content come from their own primitives.
  */
 
-type Variant = "elevated" | "sunken" | "flat";
+type Variant = "raised" | "sunken" | "flat";
 type Padding = "none" | "sm" | "md" | "lg";
 
 const BASE = "rounded-[var(--app-radius-lg)]";
@@ -31,7 +31,7 @@ const PADDING: Record<Padding, string> = {
 
 function variantOf(variant: Variant): { cls: string; style: CSSProperties } {
   switch (variant) {
-    case "elevated":
+    case "raised":
       return { cls: "border bg-[var(--app-bg-elevated)]", style: { borderColor: "var(--app-border)" } };
     case "sunken":
       return { cls: "bg-[var(--app-bg-sunken)]", style: {} };
@@ -57,7 +57,7 @@ export type SurfaceProps<T extends ElementType = "div"> = SurfaceOwnProps & {
 
 export function Surface<T extends ElementType = "div">({
   as,
-  variant = "elevated",
+  variant = "raised",
   padding = "md",
   interactive = false,
   className = "",

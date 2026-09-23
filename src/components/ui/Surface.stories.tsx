@@ -11,17 +11,17 @@ const meta = {
     docs: {
       description: {
         component:
-          "The canonical bordered/inset container. One primitive replaces the hand-repeated rounded/border/elevated-fill recipe. Three roles: elevated (a raised card, the default), sunken (an inset well), and flat (a bordered block on the base canvas). It owns only the shell; content comes from its own primitives.",
+          "The canonical bordered/inset container. One primitive replaces the hand-repeated rounded/border/fill recipe. Three roles: raised (a lifted card, the default), sunken (an inset well), and flat (a bordered block on the base canvas). It owns only the shell; content comes from its own primitives.",
       },
     },
   },
   args: {
-    variant: "elevated",
+    variant: "raised",
     padding: "md",
     interactive: false,
   },
   argTypes: {
-    variant: { control: "select", options: ["elevated", "sunken", "flat"] },
+    variant: { control: "select", options: ["raised", "sunken", "flat"] },
     padding: { control: "select", options: ["none", "sm", "md", "lg"] },
     interactive: { control: "boolean" },
   },
@@ -30,11 +30,11 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Elevated: Story = {
+export const Raised: Story = {
   render: (args) => (
     <Surface {...args} className="max-w-xs">
       <p className="text-body" style={{ color: "var(--app-ink)" }}>
-        A raised card on the page. Border plus the elevated fill.
+        A lifted card on the page, with a border and a soft fill.
       </p>
     </Surface>
   ),
@@ -43,8 +43,8 @@ export const Elevated: Story = {
 export const Roles: Story = {
   render: () => (
     <div className="flex w-full max-w-sm flex-col gap-3 p-4">
-      <Surface variant="elevated">
-        <span className="text-meta" style={{ color: "var(--app-ink-2)" }}>elevated · a raised card</span>
+      <Surface variant="raised">
+        <span className="text-meta" style={{ color: "var(--app-ink-2)" }}>raised · a lifted card</span>
       </Surface>
       <Surface variant="sunken">
         <span className="text-meta" style={{ color: "var(--app-ink-2)" }}>sunken · an inset well</span>
@@ -58,7 +58,7 @@ export const Roles: Story = {
 
 export const Interactive: Story = {
   render: () => (
-    <Surface as="button" interactive variant="elevated" className="max-w-xs text-left">
+    <Surface as="button" interactive variant="raised" className="max-w-xs text-left">
       <span className="text-body" style={{ color: "var(--app-ink)" }}>A tappable card</span>
       <span className="mt-1 block text-meta" style={{ color: "var(--app-ink-2)" }}>
         Adds the shared press grammar.
