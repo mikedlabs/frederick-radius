@@ -62,6 +62,7 @@ import {
   useGeolocation,
 } from "@/hooks/useGeolocation";
 import type { LngLat } from "@/lib/geo";
+import { fetchEventsBrowse } from "@/lib/events/fetchBrowse";
 
 export type TimeKey = "all" | "today" | "weekend" | "week";
 
@@ -599,10 +600,9 @@ export default function EventsExplorer({
     setLoadingAll(true);
     setLoadError(null);
     const browseRequest = eventsBrowseRequest(forceRefresh);
-    const request = fetch(browseRequest.url, browseRequest.init)
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`Events request failed (${response.status})`);
-        const payload = await response.json() as BrowseResponse;
+    const request = fetchEventsBrowse(browseRequest)
+      .then((response) => {
+        const payload = response as BrowseResponse;
         const reconciled = reconcileBrowseResponse(
           eventPoolRef.current,
           liveSlugsRef.current,
