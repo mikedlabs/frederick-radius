@@ -93,6 +93,12 @@ export default function BottomDrawer({
       if (drawerOpenRef.current) return;
       const returnTarget = returnFocusRef.current;
       if (!returnTarget?.isConnected) return;
+      const focusIsSafe = () => {
+        const activeModals = document.querySelectorAll(
+          '[role="dialog"][aria-modal="true"]:not([aria-hidden="true"]):not([data-state="closed"])',
+        );
+        return Array.from(activeModals).every((modal) => modal.contains(returnTarget));
+      };
       if (returnTarget.closest('[aria-hidden="true"]')) {
         // Vaul keeps the background hidden during its 500ms exit animation.
         // This fallback also covers test environments where animation-end never
@@ -102,14 +108,14 @@ export default function BottomDrawer({
           if (
             !drawerOpenRef.current
             && returnTarget.isConnected
-            && !document.querySelector('[role="dialog"][data-state="open"]')
+            && focusIsSafe()
           ) {
             returnTarget.focus({ preventScroll: true });
           }
         }, 550);
         return;
       }
-      if (returnTarget.isConnected) {
+      if (returnTarget.isConnected && focusIsSafe()) {
         returnTarget.focus({ preventScroll: true });
       }
     };
@@ -144,6 +150,9 @@ export default function BottomDrawer({
     () => () => {
       // Route drawers close by unmounting their slot, without receiving
       // open=false. Treat that removal as a completed close as well.
+      const shouldRestore = drawerOpenRef.current
+        || restoreFrameRef.current !== null
+        || restoreTimerRef.current !== null;
       drawerOpenRef.current = false;
       if (restoreFrameRef.current !== null) {
         window.cancelAnimationFrame(restoreFrameRef.current);
@@ -151,7 +160,7 @@ export default function BottomDrawer({
       if (restoreTimerRef.current !== null) {
         window.clearTimeout(restoreTimerRef.current);
       }
-      restoreRememberedFocus();
+      if (shouldRestore) restoreRememberedFocus();
     },
     [restoreRememberedFocus],
   );
@@ -176,7 +185,11 @@ export default function BottomDrawer({
           onCloseAutoFocus={(event) => {
             if (!returnFocusRef.current?.isConnected) return;
             event.preventDefault();
-            restoreRememberedFocus();
+            if (
+              drawerOpenRef.current
+              || restoreFrameRef.current !== null
+              || restoreTimerRef.current !== null
+            ) restoreRememberedFocus();
           }}
           className="fixed bottom-0 left-0 right-0 z-[var(--z-overlay)] mt-24 flex max-h-[90dvh] flex-col rounded-t-[24px] border-t outline-none"
           style={{

@@ -90,9 +90,10 @@ export const STEAK_EVIDENCE_RE = /\b(steak|steakhouse|ribeye|filet|sirloin|prime
 
 function featureIsNegated(prefix: string): boolean {
   if (NEGATED_FEATURE_PREFIX.test(prefix)) return true;
-  // A coordinated feature list inherits its clause: "without Wi-Fi and
-  // parking" does not turn parking into a positive request at "and".
-  if (!/\b(?:and|plus)\s*$/i.test(prefix)) return false;
+  // A coordinated feature list inherits its clause, including the same
+  // modifiers accepted for positive requests: "without Wi-Fi or free
+  // parking" does not turn parking into a positive request.
+  if (!/\b(?:and|or|plus)(?:\s+(?:free|public|reliable|a|an))?\s*$/i.test(prefix)) return false;
   const clause = [...prefix.matchAll(/\b(?:with|without|no|not|has|have|having|offers|including|need|want)\b/gi)].at(-1)?.[0];
   return Boolean(clause && /^(?:without|no|not)$/i.test(clause));
 }
@@ -360,6 +361,18 @@ export function unconfirmedSearchFeatures(
     if (key === "parking" && place.accessibility?.parking === true) return false;
     return !PLACE_FEATURES.find((feature) => feature.key === key)?.amenities.some((value) => amenities.has(value));
   });
+}
+
+/** Only an explicit negative fact can confirm absence. Missing amenities
+ * stay unknown; accessible-restroom/parking flags do not establish whether
+ * restrooms or parking exist at all. */
+export function unconfirmedSearchAbsences(
+  place: Pick<SearchQualifierPlace, "accessibility">,
+  qualifiers: SearchQualifiers,
+): SearchPlaceFeature[] {
+  return qualifiers.negatedFeatures.filter((key) =>
+    key !== "wheelchair" || place.accessibility?.wheelchair !== false,
+  );
 }
 
 export function searchFeatureCaveat(features: readonly SearchPlaceFeature[]): string {

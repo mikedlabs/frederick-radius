@@ -51,6 +51,25 @@ describe("search qualifiers", () => {
     expect(qualifiers.cleanedQuery).toBe(query);
   });
 
+  it.each([
+    "coffee without wifi and free parking",
+    "coffee without wifi plus public restrooms",
+    "coffee without wifi or reliable parking",
+    "coffee without parking or a restroom",
+    "coffee without parking and an electrical outlet",
+  ])("keeps coordinated modifiers inside the negative clause in %s", (query) => {
+    const qualifiers = parseSearchQualifiers(query);
+    expect(qualifiers.requestedFeatures).toEqual([]);
+    expect(qualifiers.negatedFeatures).toHaveLength(2);
+    expect(qualifiers.categoryKey).toBe("coffee");
+  });
+
+  it("lets an explicit with clause end the coordinated absence request", () => {
+    const qualifiers = parseSearchQualifiers("coffee without wifi and with free parking");
+    expect(qualifiers.negatedFeatures).toEqual(["wifi"]);
+    expect(qualifiers.requestedFeatures).toEqual(["parking"]);
+  });
+
   it.each(["parks with restrooms", "parks without restrooms", "park without restrooms"])("requires exact parks even with the outdoor shortcut in %s", (query) => {
     const parsed = parseSearchQualifiers(query);
     expect(parsed.strictPlaceKind).toBe("park");

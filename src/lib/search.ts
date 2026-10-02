@@ -23,6 +23,7 @@ import {
   BREAKFAST_FOOD_EVIDENCE_RE,
   SANDWICH_EVIDENCE_RE,
   unconfirmedSearchFeatures,
+  unconfirmedSearchAbsences,
   type SearchPlaceFeature,
   type SearchQualifiers,
 } from "@/lib/search/qualifiers";
@@ -1325,7 +1326,7 @@ export function qualifiedSearch(
   });
   const featureAwareCandidates = qualifiers.requestedFeatures.length > 0 || qualifiers.negatedFeatures.length > 0
     ? candidates.map((hit): SearchHit => hit.type === "place"
-        ? { ...hit, unconfirmedFeatures: unconfirmedSearchFeatures(hit.place, qualifiers), unconfirmedAbsences: qualifiers.negatedFeatures }
+        ? { ...hit, unconfirmedFeatures: unconfirmedSearchFeatures(hit.place, qualifiers), unconfirmedAbsences: unconfirmedSearchAbsences(hit.place, qualifiers) }
         : hit).sort((a, b) => {
         const missingFeatures = (hit: SearchHit) => hit.type === "place"
           ? hit.unconfirmedFeatures?.length ?? 0

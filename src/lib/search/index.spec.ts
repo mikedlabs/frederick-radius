@@ -312,6 +312,47 @@ describe("deterministic map search actions", () => {
     }
   });
 
+  it.each(["and", "or"])("excludes both negated amenities around %s with a modifier", (conjunction) => {
+    const base = placeLoader.clientPlaces().find((place) => place.category === "coffee")!;
+    const loader = vi.spyOn(placeLoader, "clientPlaces").mockReturnValue([
+      { ...base, slug: "known-wifi", name: "Connected Cafe", municipality: "brunswick", amenities: ["wifi"] },
+      { ...base, slug: "known-parking", name: "Parking Cafe", municipality: "brunswick", amenities: ["free-parking"] },
+      { ...base, slug: "unknown-amenities", name: "Another Cafe", municipality: "brunswick", amenities: [] },
+    ]);
+    try {
+      const { results, meta } = qualifiedSearchIndex(`coffee without wifi ${conjunction} free parking in Brunswick`, 12, []);
+      expect(meta.qualifiers.requestedFeatures).toEqual([]);
+      expect(meta.qualifiers.negatedFeatures).toEqual(["wifi", "parking"]);
+      expect(results.filter((result) => result.type === "place")).toEqual([
+        expect.objectContaining({ id: "place:unknown-amenities", subtitle: "Coffee · Brunswick · Not confirmed: absence of Wi-Fi and parking." }),
+      ]);
+      expect(results.some((result) => /action:map-(?:wifi|parking)/.test(result.id))).toBe(false);
+    } finally {
+      loader.mockRestore();
+    }
+  });
+
+  it.each([
+    ["coffee without wheelchair access in Brunswick", ""],
+    ["coffee without wheelchair access and wifi in Brunswick", " · Not confirmed: absence of Wi-Fi."],
+  ])("separates recorded accessibility exclusions from unknown absence for %s", (query, knownCaveat) => {
+    const base = placeLoader.clientPlaces().find((place) => place.category === "coffee")!;
+    const loader = vi.spyOn(placeLoader, "clientPlaces").mockReturnValue([
+      { ...base, slug: "access-present", name: "Access Cafe", municipality: "brunswick", amenities: [], accessibility: { wheelchair: true } },
+      { ...base, slug: "access-absent", name: "Barrier Cafe", municipality: "brunswick", amenities: [], accessibility: { wheelchair: false } },
+      { ...base, slug: "access-unknown", name: "Unknown Cafe", municipality: "brunswick", amenities: [], accessibility: undefined },
+    ]);
+    try {
+      const places = qualifiedSearchIndex(query, 12, []).results.filter((result) => result.type === "place");
+      expect(places).toHaveLength(2);
+      expect(places.find((place) => place.id === "place:access-present")).toBeUndefined();
+      expect(places.find((place) => place.id === "place:access-absent")?.subtitle).toBe(`Coffee · Brunswick${knownCaveat}`);
+      expect(places.find((place) => place.id === "place:access-unknown")?.subtitle).toContain("wheelchair access.");
+    } finally {
+      loader.mockRestore();
+    }
+  });
+
   it("does not load places for event/page-only queries and computes live status once for place lookups", () => {
     const loader = vi.spyOn(placeLoader, "clientPlaces");
     try {

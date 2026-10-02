@@ -68,6 +68,22 @@ function RouteDrawer() {
   );
 }
 
+
+function RemovableControlledDrawer({ mounted }: { mounted: boolean }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>Open removable drawer</button>
+      <button type="button">Next task</button>
+      {mounted ? (
+        <BottomDrawer open={open} onOpenChange={setOpen} title="Removable details">
+          <button type="button">Removable body action</button>
+        </BottomDrawer>
+      ) : null}
+    </>
+  );
+}
+
 function UncontrolledDrawer() {
   return (
     <BottomDrawer
@@ -179,6 +195,47 @@ describe("BottomDrawer keyboard focus", () => {
     await flushScheduledWork();
     expect(document.body.querySelector('[role="dialog"]')).toBeNull();
     expect(document.activeElement).toBe(opener);
+  });
+
+  it("does not move focus back when an already closed drawer is later removed", async () => {
+    await act(async () => root.render(<RemovableControlledDrawer mounted />));
+    const opener = container.querySelector<HTMLButtonElement>("button");
+    const next = container.querySelectorAll<HTMLButtonElement>("button")[1];
+    if (!opener || !next) throw new Error("Expected persistent task controls.");
+    opener.focus();
+    await act(async () => opener.click());
+    await flushScheduledWork();
+    await act(async () => closeButton().click());
+    await flushScheduledWork();
+    expect(document.activeElement).toBe(opener);
+    next.focus();
+    await act(async () => root.render(<RemovableControlledDrawer mounted={false} />));
+    await flushScheduledWork();
+    expect(document.activeElement).toBe(next);
+  });
+
+  it("does not restore focus behind another aria-modal dialog without Vaul state", async () => {
+    await act(async () => root.render(createElement(ControlledDrawer)));
+    const opener = container.querySelector<HTMLButtonElement>("button");
+    if (!opener) throw new Error("Expected the controlled opener.");
+    opener.focus();
+    await act(async () => opener.click());
+    await flushScheduledWork();
+    await act(async () => closeButton().click());
+    const otherModal = document.createElement("div");
+    otherModal.setAttribute("role", "dialog");
+    otherModal.setAttribute("aria-modal", "true");
+    const action = document.createElement("button");
+    action.textContent = "Continue search";
+    otherModal.append(action);
+    document.body.append(otherModal);
+    const openerFocus = vi.spyOn(opener, "focus");
+    try {
+      await flushScheduledWork();
+      expect(openerFocus).not.toHaveBeenCalled();
+    } finally {
+      otherModal.remove();
+    }
   });
 
   it("opts into an opaque surface without changing the dialog semantics", async () => {
