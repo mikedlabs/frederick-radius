@@ -64,9 +64,9 @@ export function WeatherUnavailable() {
       className="flex min-h-11 items-center justify-between gap-3 pr-5"
       style={{ color: "currentColor" }}
     >
-      <span className="text-[12.5px] font-medium">The forecast is briefly unavailable.</span>
+      <span className="text-[12.5px] font-medium">The NWS forecast is briefly unavailable.</span>
       <span className="shrink-0 text-[11.5px] font-semibold opacity-80">
-        Live conditions
+        County status
       </span>
     </section>
   );
@@ -243,7 +243,7 @@ export default async function TodayCard() {
       {/* text-wrap balance: the two-line mood ("… chase shade and / AC.")
           otherwise strands its last word at narrow widths. */}
       {weatherRead.headline && (
-        <h2 className="font-serif text-[18px] font-semibold leading-snug tracking-tight [text-wrap:balance] sm:text-[20px]">
+        <h2 className="font-sans text-[18px] font-semibold leading-snug tracking-tight [text-wrap:balance] sm:text-[20px]">
           {weatherRead.headline}
         </h2>
       )}
@@ -261,7 +261,7 @@ export default async function TodayCard() {
             <AnimatedSkyGlyph variant={variant} size={44} className="shrink-0 opacity-95" />
           )}
           {tempNow != null && (
-            <span className="font-serif text-[40px] font-light leading-none tracking-tight tabular-nums sm:text-[44px]">
+            <span className="font-sans text-[40px] font-light leading-none tracking-tight tabular-nums sm:text-[44px]">
               {tempNow}&deg;
             </span>
           )}

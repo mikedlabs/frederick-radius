@@ -13,7 +13,10 @@ import ModeParamSync from "@/components/mode/ModeParamSync";
 import OfflineSnapshotSync from "@/components/pwa/OfflineSnapshotSync";
 import { Suspense } from "react";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default function AppLayout({ children }: {
+  children: React.ReactNode;
+  modal: React.ReactNode;
+}) {
   return (
     <PlaceSheetProvider>
     <EventSheetProvider>

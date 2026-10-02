@@ -54,6 +54,8 @@ import LiveGooglePlaceContext from "@/components/place/GooglePlaceContext";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
 import MapReturnLink from "@/components/place/MapReturnLink";
 import PlaceCommunicationAccess from "@/components/place/PlaceCommunicationAccess";
+import PlaceVisitDetailsCard from "@/components/place/PlaceVisitDetailsCard";
+import { placeVisitDetails } from "@/lib/loaders/placeVisitDetails";
 import PlanFromPlaceLink from "@/components/plan/PlanFromPlaceLink";
 import { isDestinationCategory, isRecommendable } from "@/lib/relevance";
 import type { DecisionAction } from "@/lib/decision/telemetry";
@@ -190,6 +192,14 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
     place,
     commerceLinksFromBusinessInfo(place.slug, businessInfo),
   );
+  const reviewedVisitDetails = placeVisitDetails(place.slug);
+  const commerceDestinations = new Set(commerceLinks.map((link) => link.url));
+  const visitDetails = reviewedVisitDetails ? {
+    ...reviewedVisitDetails,
+    actions: reviewedVisitDetails.actions.filter(
+      (action) => !commerceDestinations.has(action.url),
+    ),
+  } : null;
   const mobileCommerceLink =
     commerceLinks.find(
       (link) => link.type === "order" && !isCommerceSearchLink(link),
@@ -452,6 +462,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           closure + action controls, so the first screen answers whether the
           place is visitable and what the user can do next. */}
       <div className="space-y-3">
+        <PlaceVisitDetailsCard details={visitDetails} />
         <PlaceCommunicationAccess place={place} />
         <KnownForCard
           knownFor={place.known_for}

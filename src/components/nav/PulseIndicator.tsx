@@ -15,7 +15,7 @@ import AppTransitionLink from "./AppTransitionLink";
  * destination while the indicator communicates active alerts, all-clear, or
  * unavailable data without making the navigation appear and disappear.
  *
- * Lives in TopBar between the LocationChip and Compass.
+ * Lives in TopBar between the LocationChip and Tools.
  */
 type PulseStatus = {
   active: boolean;
@@ -79,12 +79,12 @@ export default function PulseIndicator() {
   const unknown = !active && !loading && (failed || status?.ok === false);
   const current = pathname === "/pulse" || pathname.startsWith("/pulse/");
   const statusLabel = active
-    ? `Pulse: ${count} active ${count === 1 ? "alert" : "alerts"}`
+    ? `County status: ${count} active ${count === 1 ? "alert" : "alerts"}`
     : loading
-      ? "Pulse: checking county status"
+      ? "County status: checking"
       : unknown
-        ? "Pulse: status unavailable"
-        : "Pulse: all clear";
+        ? "County status: unavailable"
+        : "County status: no active alerts";
   const mobileVisible = current || active || unknown;
 
   return (
@@ -132,7 +132,7 @@ export default function PulseIndicator() {
         )}
       </span>
       <span className="hidden text-[14px] font-semibold leading-none sm:inline">
-        Pulse
+        County status
       </span>
     </AppTransitionLink>
   );

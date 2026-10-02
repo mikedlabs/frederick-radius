@@ -11,7 +11,7 @@ import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { getWantAnswer } from "@/lib/want-cache";
 import { GEOLOCATION_CHANGE_EVENT } from "@/hooks/useGeolocation";
 import { daypartBrowseHref } from "@/lib/today/daypart-needs";
-import { getScope, SCOPE_CHANGE_EVENT, type Scope } from "@/lib/scope";
+import { getScope, parseScope, SCOPE_CHANGE_EVENT, type Scope } from "@/lib/scope";
 import Skeleton from "@/components/ui/Skeleton";
 import { persistOfflineTodaySnapshot } from "@/lib/offline-snapshot";
 import { easternDayKey } from "@/lib/tz";
@@ -762,11 +762,16 @@ export default function DaypartNeeds({
       );
       if (next) setSelectedCategory(next);
     };
-    getWantAnswer(`cat:${baseActive.category}`, null)
+    // Today labels an unset lens as the whole county. Send that default
+    // explicitly so the API cannot substitute a home/IP origin or old cookie.
+    // Capture one scope for both the request and its eventual browse link.
+    const scope = parseScope(new URLSearchParams(window.location.search).get("in"))
+      ?? getScope() ?? "county";
+    getWantAnswer(`cat:${baseActive.category}`, null, scope)
       .then((raw) => {
         if (!current) return;
         const answer = raw as WantAnswer;
-        const shelf = liveShelfFromWantAnswer(answer, baseActive, getScope());
+        const shelf = liveShelfFromWantAnswer(answer, baseActive, scope);
         setLiveShelves((previous) => ({
           ...previous,
           [baseActive.category]: shelf,

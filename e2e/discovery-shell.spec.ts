@@ -740,7 +740,7 @@ test.describe("mobile discovery shell", () => {
 
   test("Pulse leads with a compact live briefing", async ({ page }) => {
     await page.goto("/pulse", { waitUntil: "domcontentloaded" });
-    await expect(page.getByText("Frederick Pulse", { exact: true })).toBeVisible();
+    await expect(page.getByText("County status", { exact: true })).toBeVisible();
     const quietDisclosure = page.locator(
       'section[aria-labelledby="pulse-secondary-heading"] details',
     );

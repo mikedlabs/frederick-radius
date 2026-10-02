@@ -261,7 +261,7 @@ test.describe("compact page entrances", () => {
 
     const search = page.getByRole("button", { name: "Ask or find across Frederick County" });
     const scope = page.getByRole("button", { name: /Change town or location scope/ });
-    const alerts = page.getByRole("link", { name: /Pulse: 2 active alerts/ });
+    const alerts = page.getByRole("link", { name: /County status: 2 active alerts/ });
     await expect(search).toBeVisible();
     await expect(scope).toBeVisible();
     await expect(alerts).toBeVisible();

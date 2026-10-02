@@ -46,6 +46,7 @@ export const PLACE_RELEASE_ARTIFACTS = Object.freeze([
   "src/lib/integrations/closures.ts",
   "src/lib/integrations/wikimedia.ts",
   // Additional immutable facts rendered by the place detail route.
+  "src/data/place-visit-details.json",
   "src/data/business-info.json",
   "src/data/field-notes.json",
   "src/data/course-info.json",

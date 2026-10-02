@@ -203,6 +203,82 @@ describe("official CivicPlus alert parsing", () => {
     expect(parsed.alerts[0].expiresAt).toBe("2026-09-28T15:00:00.000Z");
   });
 
+  it("selects the latest official update when July, August and September rows share a pubDate", () => {
+    // Replays the exact titles/publication date of the October 2 official feed.
+    const titles = [
+      "Measles Exposure Updated on Jul 23 2026  5:30PM",
+      "Measles Exposure Updated on Aug  4 2026  4:24PM",
+      "Measles Exposure Updated on Sep 17 2026  9:10AM",
+    ];
+    const feed = (rows: string[]) => `<rss><channel>${rows.map(title => `<item>
+      <title>${title}</title>
+      <link>https://health.frederickcountymd.gov/AlertCenter.aspx?AID=24</link>
+      <guid>https://health.frederickcountymd.gov/AlertCenter.aspx?AID=24/639252330740000000</guid>
+      <pubDate>Thu, 17 Sep 2026 09:11:14 -0500</pubDate>
+      <description>A statewide health bulletin; see its official source.</description>
+    </item>`).join("")}</channel></rss>`;
+    for (const rows of [titles, [...titles].reverse()]) {
+      const parsed = parseOfficialAlertFeed(feed(rows), OFFICIAL_CIVIC_ALERT_FEEDS[3], "2026-10-02T18:13:09.000Z");
+      expect(parsed.alerts).toHaveLength(1);
+      expect(parsed.alerts[0]).toMatchObject({
+        title: "Measles Exposure Updated on Sep 17 2026 9:10AM",
+        publishedAt: "2026-09-17T14:11:14.000Z",
+        expiresAt: "2026-10-17T14:11:14.000Z",
+      });
+      expect(isLocallyRelevantCivicAlert(parsed.alerts[0])).toBe(false);
+      expect(parseOfficialAlertFeed(feed(rows), OFFICIAL_CIVIC_ALERT_FEEDS[3], "2026-10-17T14:11:14.000Z").alerts).toEqual([]);
+    }
+  });
+
+  it.each([
+    "Frederick County health notice",
+    "Frederick County health notice Updated on Sep 31 2026 9:10AM",
+  ])("keeps a newer published local notice over an older dated statewide update: %s", (newTitle) => {
+    const item = (title: string, published: string, summary: string) => `<item>
+      <title>${title}</title><link>https://health.frederickcountymd.gov/AlertCenter.aspx?AID=24</link>
+      <pubDate>${published}</pubDate><description>${summary}</description>
+    </item>`;
+    const old = item("Statewide notice Updated on Sep 17 2026 9:10AM", "17 Sep 2026 09:11:14 -0500", "A statewide bulletin.");
+    const current = item(newTitle, "02 Oct 2026 09:11:14 -0500", "An official notice naming Frederick County.");
+    for (const rows of [[old, current], [current, old]]) {
+      const parsed = parseOfficialAlertFeed(`<rss><channel>${rows.join("")}</channel></rss>`, OFFICIAL_CIVIC_ALERT_FEEDS[3], "2026-10-02T18:13:09.000Z");
+      expect(parsed.alerts).toHaveLength(1);
+      expect(parsed.alerts[0]).toMatchObject({
+        title: newTitle,
+        publishedAt: "2026-10-02T14:11:14.000Z",
+        expiresAt: "2026-11-01T14:11:14.000Z",
+      });
+      expect(isLocallyRelevantCivicAlert(parsed.alerts[0])).toBe(true);
+    }
+  });
+
+  it("falls back to newest publication and stable order for missing or invalid update labels", () => {
+    const item = (title: string, day: string, id = "24") => `<item>
+      <title>${title}</title><link>https://health.frederickcountymd.gov/AlertCenter.aspx?AID=${id}</link>
+      <pubDate>${day} Sep 2026 09:11:14 -0500</pubDate>
+    </item>`;
+    const xml = `<rss><channel>${[
+      item("Older notice", "10"),
+      item("Invalid date Updated on Sep 31 2026 9:10AM", "17"),
+      item("Same publication, later row", "17"),
+      item("Different notice", "17", "25"),
+    ].join("")}</channel></rss>`;
+    const parsed = parseOfficialAlertFeed(xml, OFFICIAL_CIVIC_ALERT_FEEDS[3], "2026-10-02T18:13:09.000Z");
+    expect(parsed.alerts.map(alert => alert.title)).toEqual([
+      "Invalid date Updated on Sep 31 2026 9:10AM", "Different notice",
+    ]);
+  });
+
+  it("uses the latest dated update over undated duplicate labels without renewing its expiry", () => {
+    const xml = `<rss><channel>${["Plain notice", "Notice Updated on Sep 16 2026 12:10AM", "Notice Updated on Sep 16 2026 12:10PM"].map(title => `<item>
+      <title>${title}</title><link>https://health.frederickcountymd.gov/AlertCenter.aspx?AID=24</link>
+      <pubDate>17 Sep 2026 09:11:14 -0500</pubDate>
+    </item>`).join("")}</channel></rss>`;
+    const parsed = parseOfficialAlertFeed(xml, OFFICIAL_CIVIC_ALERT_FEEDS[3], "2026-10-02T18:13:09.000Z");
+    expect(parsed.alerts[0].title).toBe("Notice Updated on Sep 16 2026 12:10PM");
+    expect(parsed.alerts[0].expiresAt).toBe("2026-10-17T14:11:14.000Z");
+  });
+
   it("rejects a 200 HTML error page as a changed feed shape", () => {
     expect(
       parseOfficialAlertFeed(

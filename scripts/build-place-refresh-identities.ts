@@ -8,16 +8,16 @@
  * relevance, substance, quarantine, and accepted Google identity.
  */
 import { writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   canonicalPlaceRefreshIdentities,
   type PlaceRefreshIdentity,
 } from "@/lib/loaders/places";
 import { findGooglePlaceIdCollisions } from "@/lib/quality/enrichmentBinding";
 
-const OUT = new URL(
-  "../src/data/place-refresh-identities.json",
-  import.meta.url,
-).pathname;
+const OUT = fileURLToPath(
+  new URL("../src/data/place-refresh-identities.json", import.meta.url),
+);
 
 const identities: PlaceRefreshIdentity[] =
   canonicalPlaceRefreshIdentities();

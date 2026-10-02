@@ -8,6 +8,8 @@
  * cacheable while preserving shareable `?open=` links.
  */
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import MapReturnLink from "@/components/place/MapReturnLink";
 import Link from "next/link";
 import { ExternalLink, ChevronRight } from "lucide-react";
 import {
@@ -1176,7 +1178,31 @@ export default async function PulsePage() {
           sourceLabel: "NWS · weather.gov",
           body: <PulseWeatherPanel forecast={forecast} aqiObs={freshAqiObs} />,
         } as PulseTile]
-      : []),
+      : [{
+          key: "weather",
+          label: "Weather",
+          iconName: "CloudSun",
+          countLabel: "Forecast unavailable",
+          accent: "var(--app-warning)",
+          active: false,
+          attention: false,
+          degraded: true,
+          reading: true,
+          kind: "status",
+          sourceLabel: "NWS · weather.gov",
+          peek: "Frederick forecast unavailable",
+          body: (
+            <>
+              {emptyNote("Frederick’s forecast is unavailable right now. Check the official NWS forecast before making weather-dependent plans.")}
+              <a href="https://forecast.weather.gov/MapClick.php?lat=39.4143&lon=-77.4105"
+                target="_blank" rel="noopener noreferrer"
+                className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-[12px] font-semibold"
+                style={{ color: "var(--app-brand-press)" }}>
+                Check Frederick’s NWS forecast<ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              </a>
+            </>
+          ),
+        } as PulseTile]),
     // ── Numeric feeds → direct, source-backed readings ──
     // Air quality: an ambient environmental reading. A missing fresh reading
     // moves into the source-status disclosure rather than occupying a full
@@ -2248,6 +2274,7 @@ export default async function PulsePage() {
   return (
     <div className="relative min-w-0 space-y-6 pb-4">
       <PageBloom variant="cool" />
+      <Suspense fallback={null}><MapReturnLink /></Suspense>
 
       {/* The briefing owns hierarchy and interaction; detail remains in sourced
           drawers so the first screen stays useful at a glance. */}

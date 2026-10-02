@@ -19,6 +19,7 @@ import { readCachedGeoPosition } from "@/hooks/useGeolocation";
 import { isInFrederickCountyArea, type LngLat } from "@/lib/geo";
 import LazySheetFallback from "@/components/ui/LazySheetFallback";
 import { navigateAfterHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
+import { fetchPlaceSheetLookup } from "@/lib/place-sheet-lookup";
 
 const PlaceSheet = lazy(() => import("./PlaceSheet"));
 let placeLayerSequence = 0;
@@ -77,6 +78,16 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   // A late place lookup must not reopen a sheet after the visitor closes it,
   // follows the canonical page fallback, or taps a different place.
   const reqRef = useRef(0);
+  const lookupAbortRef = useRef<AbortController | null>(null);
+  const abortLookup = useCallback(() => {
+    lookupAbortRef.current?.abort();
+    lookupAbortRef.current = null;
+  }, []);
+
+  useEffect(() => () => {
+    reqRef.current++;
+    abortLookup();
+  }, [abortLookup]);
   // Quietly record the open so /saved's "Recently viewed" row can
   // surface it later. Stored locally only; the slug is the entire
   // payload, so there's no PII trail beyond what the user can already
@@ -112,6 +123,7 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
     ) => {
       const hydrationUpdate = activePlaceSlugRef.current === p.slug;
       reqRef.current++;
+      abortLookup();
       setPendingSlug(null);
       if (!hydrationUpdate) {
         openerRef.current =
@@ -140,7 +152,7 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
       activePlaceSlugRef.current = p.slug;
       setPlace(p);
     },
-    [pathname, pushRecent],
+    [abortLookup, pathname, pushRecent],
   );
 
   const openSheetBySlug = useCallback(
@@ -166,6 +178,9 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
       setTravelOrigin(freshTravelOrigin(readCachedGeoPosition()));
       activePlaceSlugRef.current = normalizedSlug;
       const req = ++reqRef.current;
+      abortLookup();
+      const controller = new AbortController();
+      lookupAbortRef.current = controller;
       setPlace(null);
       setPendingSlug(normalizedSlug);
 
@@ -181,13 +196,9 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
         });
       };
 
-      fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(normalizedSlug)}`)
-        .then((response) => (response.ok ? response.json() : null))
-        .then((data: { places?: PlaceCardData[] } | null) => {
+      fetchPlaceSheetLookup(normalizedSlug, controller.signal)
+        .then((resolved) => {
           if (reqRef.current !== req) return;
-          const resolved = Array.isArray(data?.places)
-            ? data.places.find((candidate) => candidate.slug === normalizedSlug)
-            : null;
           if (!resolved) {
             goToCanonicalPage();
             return;
@@ -196,19 +207,23 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
           setPlace(resolved);
           setPendingSlug(null);
         })
-        .catch(goToCanonicalPage);
+        .catch(goToCanonicalPage)
+        .finally(() => {
+          if (lookupAbortRef.current === controller) lookupAbortRef.current = null;
+        });
     },
-    [pathname, pushRecent, router],
+    [abortLookup, pathname, pushRecent, router],
   );
 
   const closeSheet = useCallback(() => {
     reqRef.current++;
+    abortLookup();
     activePlaceSlugRef.current = null;
     setPlace(null);
     setPendingSlug(null);
     setTravelOrigin(null);
     setMapReturnTo(null);
-  }, []);
+  }, [abortLookup]);
 
   // The provider survives App Router navigation. Close at this level so a
   // user who presses Back while the lazy sheet bundle is still loading cannot

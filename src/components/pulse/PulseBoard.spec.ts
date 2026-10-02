@@ -166,6 +166,10 @@ describe("Pulse smart blocks", () => {
 
     expect(secondarySource).toContain("Source status");
     expect(secondarySource).toContain("<SecondarySignalRow");
+    expect(secondarySource).toContain('pulseTileState(tile) !== "Not connected"');
+    expect(secondarySource).toContain("nameListSentence(notConnected.map");
+    expect(secondarySource).toContain("if (visibleUpdates.length === 0)");
+    expect(secondarySource).toContain("visibleUpdates.map");
     expect(secondarySource).not.toContain("<PulseSmartBlock");
   });
 

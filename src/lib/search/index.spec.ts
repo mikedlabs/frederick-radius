@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { qualifiedSearchIndex, searchIndex } from "./index";
 import { findDepartments } from "@/data/departments";
 import { isPaidGooglePhotoUrl } from "@/lib/google-photo-policy";
+import * as placeLoader from "@/lib/loaders/places-client";
 
 describe("deterministic map search actions", () => {
   it("does not hand paid Google photos to live search suggestions", () => {
@@ -118,6 +119,149 @@ describe("deterministic map search actions", () => {
       href: "/map?amenity=wifi",
     });
     expect(results.some((result) => result.type === "place")).toBe(false);
+  });
+
+  it("keeps coffee and Brunswick when Wi-Fi and quiet are requested", () => {
+    const { results, meta } = qualifiedSearchIndex("quiet coffee with wifi in Brunswick", 12, [], {
+      municipality: "frederick",
+      origin: { lng: -77.4105, lat: 39.4143 },
+    });
+    const places = results.filter((result) => result.type === "place");
+
+    expect(results[0]?.type).toBe("place");
+    expect(places.length).toBeGreaterThan(0);
+    expect(places.every((result) => result.subtitle.startsWith("Coffee · Brunswick"))).toBe(true);
+    expect(places.every((result) => result.subtitle.includes("Not confirmed: Wi-Fi and noise level."))).toBe(true);
+    expect(meta.qualifiers).toMatchObject({ categoryKey: "coffee", requestedFeatures: ["wifi", "quiet"] });
+    expect(meta.scopeMunicipality).toBe("brunswick");
+    expect(results.find((result) => result.id === "action:map-wifi")?.href).toBe("/map?amenity=wifi&in=brunswick");
+  });
+
+  it.each([
+    ["restaurant with parking in Brunswick", "restaurant", /Not confirmed: parking\./],
+    ["park with restrooms in Brunswick", "park", /Not confirmed: restrooms\./],
+    ["cafe with power outlets in Brunswick", "coffee", /Not confirmed: power outlets\./],
+  ] as const)("keeps the place request ahead of an amenity handoff for %s", (query, role, caveat) => {
+    const { results, meta } = qualifiedSearchIndex(query, 12, []);
+    const places = results.filter((result) => result.type === "place");
+    const catalog = new Map(placeLoader.clientPlaces().map((place) => [`place:${place.slug}`, place]));
+    expect(results[0]?.type).toBe("place");
+    expect(places.length).toBeGreaterThan(0);
+    expect(places.every((result) => {
+      const place = catalog.get(result.id)!;
+      return place.municipality === "brunswick" && (place.category === role || place.subcategories?.includes(role));
+    })).toBe(true);
+    expect(places.every((result) => caveat.test(result.subtitle))).toBe(true);
+    expect(meta.scopeMunicipality).toBe("brunswick");
+  });
+
+  it("prefers structured Wi-Fi evidence over an unknown cafe without inventing quiet", () => {
+    const base = placeLoader.clientPlaces().find((place) => place.category === "coffee")!;
+    const mock = vi.spyOn(placeLoader, "clientPlaces").mockReturnValue([
+      { ...base, slug: "unknown-cafe", name: "Unknown Cafe", municipality: "brunswick", feature_score: 10 },
+      { ...base, slug: "wifi-cafe", name: "Wi-Fi Cafe", municipality: "brunswick", feature_score: 1, amenities: ["wifi"] },
+    ]);
+    try {
+      const { results } = qualifiedSearchIndex("quiet coffee with wifi in Brunswick", 12, []);
+      expect(results[0]).toMatchObject({ id: "place:wifi-cafe", subtitle: "Coffee · Brunswick · Not confirmed: noise level." });
+      expect(results.find((result) => result.id === "place:unknown-cafe")?.subtitle).toContain("Not confirmed: Wi-Fi and noise level.");
+    } finally {
+      mock.mockRestore();
+    }
+  });
+
+  it("still leads a scoped standalone utility request with its map layer", () => {
+    const { results, meta } = qualifiedSearchIndex("public wifi in Brunswick", 12, []);
+    expect(results[0]).toMatchObject({ id: "action:map-wifi", href: "/map?amenity=wifi&in=brunswick" });
+    expect(results.some((result) => result.type === "place")).toBe(false);
+    expect(meta.qualifiers.requestedFeatures).toEqual([]);
+  });
+
+  it("keeps coffee as the destination when a park is only a landmark", () => {
+    const { results, meta } = qualifiedSearchIndex("coffee with wifi near Baker Park", 12, []);
+    expect(meta.qualifiers).toMatchObject({ categoryKey: "coffee", strictPlaceKind: null, requestedFeatures: ["wifi"] });
+    expect(results[0]?.type).toBe("place");
+    expect(results.filter((result) => result.type === "place").every((result) => result.badge === "Coffee")).toBe(true);
+  });
+
+  it("keeps utility-first Wi-Fi near a library on the scoped utility layer", () => {
+    const { results, meta } = qualifiedSearchIndex("public wifi near a library in Brunswick", 12, []);
+    expect(results[0]).toMatchObject({ id: "action:map-wifi", href: "/map?amenity=wifi&in=brunswick" });
+    expect(results.some((result) => result.type === "place")).toBe(false);
+    expect(meta.qualifiers).toMatchObject({ strictPlaceKind: null, requestedFeatures: [] });
+  });
+
+  it.each(["cafe without wifi", "park without parking"])("does not offer a negated amenity as an answer to %s", (query) => {
+    const { results, meta } = qualifiedSearchIndex(query, 12, []);
+    expect(meta.qualifiers.requestedFeatures).toEqual([]);
+    expect(results.some((result) => /action:map-(?:wifi|parking)/.test(result.id))).toBe(false);
+  });
+
+  it("keeps a known place name from becoming an unsupported noise claim", () => {
+    const base = placeLoader.clientPlaces().find((place) => place.category === "coffee")!;
+    const mock = vi.spyOn(placeLoader, "clientPlaces").mockReturnValue([
+      { ...base, slug: "quiet-cafe", name: "Quiet Cafe", municipality: "brunswick" },
+    ]);
+    try {
+      const { results, meta } = qualifiedSearchIndex("Quiet Cafe with wifi in Brunswick", 12, []);
+      expect(meta.qualifiers.requestedFeatures).toEqual(["wifi"]);
+      expect(results[0]).toMatchObject({ id: "place:quiet-cafe", subtitle: "Coffee · Brunswick · Not confirmed: Wi-Fi." });
+    } finally {
+      mock.mockRestore();
+    }
+  });
+
+  it("retains both features in an affirmative list and keeps a negative list unsupported", () => {
+    const positive = qualifiedSearchIndex("coffee with wifi and parking in Brunswick", 12, []);
+    expect(positive.meta.qualifiers.requestedFeatures).toEqual(["wifi", "parking"]);
+    expect(positive.results[0]?.type).toBe("place");
+    expect(positive.results.filter((result) => result.type === "place").every((result) => result.subtitle.includes("Not confirmed: Wi-Fi and parking."))).toBe(true);
+    const negative = qualifiedSearchIndex("coffee without wifi and parking in Brunswick", 12, []);
+    expect(negative.meta.qualifiers.requestedFeatures).toEqual([]);
+    expect(negative.results.some((result) => /action:map-(?:wifi|parking)/.test(result.id))).toBe(false);
+  });
+
+  it("does not erase a feature word from a known name when the same feature is requested", () => {
+    const base = placeLoader.clientPlaces().find((place) => place.category === "coffee")!;
+    const mock = vi.spyOn(placeLoader, "clientPlaces").mockReturnValue([
+      { ...base, slug: "wifi-cafe", name: "Wi-Fi Cafe", municipality: "brunswick", feature_score: 1 },
+      { ...base, slug: "other-cafe", name: "Other Cafe", municipality: "brunswick", feature_score: 10 },
+    ]);
+    try {
+      const { results, meta } = qualifiedSearchIndex("Wi-Fi Cafe with wifi in Brunswick", 12, []);
+      expect(meta.qualifiers.cleanedQuery).toBe("wi-fi cafe in brunswick");
+      expect(results[0]).toMatchObject({ id: "place:wifi-cafe", subtitle: "Coffee · Brunswick · Not confirmed: Wi-Fi." });
+    } finally {
+      mock.mockRestore();
+    }
+  });
+
+  it("keeps an exact named cafe and its requested Wi-Fi fact", () => {
+    const beans = placeLoader.clientPlaces().find((place) => place.name === "Beans in the Belfry")!;
+    const { results, meta } = qualifiedSearchIndex("Beans in the Belfry with wifi in Brunswick", 12, [], { municipality: "frederick" });
+    expect(results[0]).toMatchObject({ id: `place:${beans.slug}`, subtitle: "Coffee · Brunswick · Not confirmed: Wi-Fi." });
+    expect(results.filter((result) => result.type === "place")).toHaveLength(1);
+    expect(meta.qualifiers).toMatchObject({ namedPlaceSlug: beans.slug, requestedFeatures: ["wifi"] });
+    expect(meta.scopeMunicipality).toBe("brunswick");
+    expect(results.find((result) => result.id === "action:map-wifi")?.href).toBe("/map?amenity=wifi&in=brunswick");
+  });
+
+  it("preserves a named cafe without presenting a negated feature as confirmed", () => {
+    const beans = placeLoader.clientPlaces().find((place) => place.name === "Beans in the Belfry")!;
+    const { results, meta } = qualifiedSearchIndex("Beans in the Belfry without wifi in Brunswick", 12, []);
+    expect(results[0]?.id).toBe(`place:${beans.slug}`);
+    expect(results.filter((result) => result.type === "place")).toHaveLength(1);
+    expect(meta.qualifiers).toMatchObject({ namedPlaceSlug: beans.slug, requestedFeatures: [] });
+    expect(meta.qualifiers.cleanedQuery).toContain("without wifi");
+    expect(results.some((result) => result.id === "action:map-wifi")).toBe(false);
+    expect(results[0]?.subtitle).not.toMatch(/(?:without|no) Wi-Fi/i);
+  });
+
+  it("does not turn an ancillary named cafe into the exact destination", () => {
+    const { results, meta } = qualifiedSearchIndex("coffee with wifi near Beans in the Belfry", 12, [], { municipality: "brunswick" });
+    expect(meta.qualifiers).toMatchObject({ namedPlaceSlug: null, categoryKey: "coffee", requestedFeatures: ["wifi"] });
+    expect(results[0]?.type).toBe("place");
+    expect(results.filter((result) => result.type === "place").length).toBeGreaterThan(1);
   });
 
   it("keeps an explicit planning request on the tonight planner", () => {

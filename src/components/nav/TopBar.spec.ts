@@ -84,16 +84,16 @@ describe("TopBar search ownership", () => {
     );
   });
 
-  it("keeps Compass branded while clarifying the tool destination on mobile", () => {
+  it("uses literal County status and Tools labels in the shared chrome", () => {
     const topBar = readFileSync("src/components/nav/TopBar.tsx", "utf8");
     const pulse = readFileSync("src/components/nav/PulseIndicator.tsx", "utf8");
 
-    expect(topBar).toContain('aria-label="Open Compass tools"');
-    expect(topBar).toContain(">Compass</span>");
+    expect(topBar).toContain('aria-label="Open tools"');
+    expect(topBar).not.toContain(">Compass</span>");
     expect(topBar).toContain(">Tools</span>");
     expect(topBar).not.toContain('pathname !== "/compass"');
-    expect(pulse).toContain("Pulse: checking county status");
-    expect(pulse).toMatch(/>\s*Pulse\s*</);
+    expect(pulse).toContain("County status: checking");
+    expect(pulse).toMatch(/>\s*County status\s*</);
     expect(pulse).not.toContain("return null");
   });
 

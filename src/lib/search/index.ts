@@ -26,6 +26,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { browseSafePhotoUrl } from "@/lib/google-photo-policy";
 import { findDepartments, jurisdictionLabel } from "@/data/departments";
 import { isHighConfidenceCivicIntent, searchCivicActions, shouldShowDepartmentAnswers } from "@/lib/search/civic";
+import { negatedSearchFeatures, searchFeatureCaveat, type SearchPlaceFeature } from "@/lib/search/qualifiers";
 
 export type SearchResultType =
   | "place"
@@ -705,7 +706,10 @@ function hitToResult(h: SearchHit): SearchResult {
       type: "place",
       id: `place:${p.slug}`,
       title: p.name,
-      subtitle: `${cat?.name ?? p.category} · ${muni?.name ?? p.municipality}`,
+      subtitle: [
+        `${cat?.name ?? p.category} · ${muni?.name ?? p.municipality}`,
+        h.unconfirmedFeatures?.length ? searchFeatureCaveat(h.unconfirmedFeatures) : null,
+      ].filter(Boolean).join(" · "),
       href: `/places/${p.slug}`,
       badge: cat?.name,
       trust: p.open_status ? placeHoursTrust(p.open_status) : undefined,
@@ -903,6 +907,15 @@ const MAP_ACTIONS_INDEPENDENT_OF_LIVE_EVENTS = new Set([
   "action:map-trails",
 ]);
 
+const PLACE_FEATURE_MAP_ACTIONS: Readonly<Record<string, SearchPlaceFeature>> = {
+  "action:map-wifi": "wifi",
+  "action:map-restrooms": "restroom",
+  "action:map-parking": "parking",
+  "action:map-outlets": "outlet",
+  "action:map-water": "water",
+  "action:map-ev": "ev-charging",
+};
+
 /**
  * True when the query is completely handled by deterministic map controls
  * whose result cannot improve by waiting for the live event corpus.
@@ -939,8 +952,17 @@ export function qualifiedSearchIndex(
   if (official.complete) {
     return { results: official.results.slice(0, limit), meta: qualified.meta };
   }
-  const head = rawHead.map((result) => contextualSearchResult(result, qualified.meta, query));
-  const deterministicUtilityAction = head.some((result) =>
+  const qualifiers = qualified.meta.qualifiers;
+  const hasPlaceFeatureRequest = qualifiers.requestedFeatures.length > 0;
+  const hasPlaceIntent = Boolean(qualifiers.namedPlaceSlug || qualifiers.categoryKey || qualifiers.compoundIntent || (qualifiers.strictPlaceKind && qualifiers.strictPlaceKind !== "atm"));
+  const negatedFeatures = negatedSearchFeatures(query);
+  const head = rawHead
+    .filter((result) => {
+      const feature = PLACE_FEATURE_MAP_ACTIONS[result.id];
+      return !feature || (!negatedFeatures.includes(feature) && (!hasPlaceIntent || qualifiers.requestedFeatures.includes(feature)));
+    })
+    .map((result) => contextualSearchResult(result, qualified.meta, query));
+  const deterministicUtilityAction = !hasPlaceIntent && head.some((result) =>
     MAP_ACTIONS_THAT_FULLY_ANSWER_THE_QUERY.has(result.id),
   );
   const ranked = qualified.hits
@@ -966,7 +988,9 @@ export function qualifiedSearchIndex(
   const firstPlaceIndex = supportiveMapAction
     ? ranked.findIndex((result) => result.type === "place")
     : -1;
-  const merged = firstPlaceIndex >= 0
+  const merged = hasPlaceFeatureRequest && ranked.length > 0
+    ? [ranked[0], ...head, ...ranked.slice(1)]
+    : firstPlaceIndex >= 0
     ? [
         head[0],
         ranked[firstPlaceIndex],

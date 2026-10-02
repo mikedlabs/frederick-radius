@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Place } from "@/data/places";
 import { getOpenStatus } from "@/lib/hours";
 import { isOperational, publicPlaceBySlug } from "@/lib/loaders/places";
@@ -101,22 +101,31 @@ describe("manual place status overrides", () => {
     }
   });
 
-  it("keeps Concetta public without publishing unconfirmed hours", () => {
-    const place = publicPlaceBySlug(
-      "concettas-main-street-bistro-mount-airy",
-    );
+  it("keeps Concetta public during its reviewed window without publishing unconfirmed hours", () => {
+    const slug = "concettas-main-street-bistro-mount-airy";
+    const override = manualPlaceStatusOverride(slug);
+    expect(override?.status).toBe("operational");
 
-    expect(place).toBeDefined();
-    expect(place?.is_operational).toBe("operational");
-    expect(place?.hours).toBeUndefined();
-    expect(place?.hours_verified).toBe(false);
-    expect(
-      getOpenStatus(
-        place?.hours,
-        { verified: place?.hours_verified },
-        new Date("2026-08-10T16:00:00Z"),
-      ).state,
-    ).toBe("unknown");
+    // The data gate checks whether today's review is overdue. This test
+    // checks the correction's behavior inside its actual reviewed window.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date(`${override?.review_after}T16:00:00Z`));
+      const place = publicPlaceBySlug(slug);
+      expect(place).toBeDefined();
+      expect(place?.is_operational).toBe("operational");
+      expect(place?.hours).toBeUndefined();
+      expect(place?.hours_verified).toBe(false);
+      expect(
+        getOpenStatus(
+          place?.hours,
+          { verified: place?.hours_verified },
+          new Date(),
+        ).state,
+      ).toBe("unknown");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("uses the Frederick calendar day for review and effective dates", () => {

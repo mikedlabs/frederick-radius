@@ -35,7 +35,7 @@ export default function TodaySectionHeading({
         <div className="min-w-0">
           {eyebrow && <p className="fg-eyebrow mb-1.5">{eyebrow}</p>}
           <h2
-            className="flex items-center gap-2 font-serif text-[20px] font-semibold leading-none tracking-tight sm:text-[21px]"
+            className="flex items-center gap-2 font-sans text-[20px] font-semibold leading-none tracking-tight sm:text-[21px]"
             style={{ color: "var(--app-ink)" }}
           >
             {live && (

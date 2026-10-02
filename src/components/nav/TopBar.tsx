@@ -415,9 +415,9 @@ export default function TopBar() {
               onMouseEnter={() => router.prefetch("/compass")}
               onFocus={() => router.prefetch("/compass")}
               onPointerDown={() => router.prefetch("/compass")}
-              aria-label="Open Compass tools"
+              aria-label="Open tools"
               aria-current={pathname === "/compass" ? "page" : undefined}
-              title="Compass tools"
+              title="Tools"
               className="relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:px-3"
               style={{
                 borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
@@ -439,7 +439,9 @@ export default function TopBar() {
                   carries both an aria-label and a title. Nothing is lost but a
                   duplicate. */}
               <span className="hidden text-[12px] font-semibold leading-none min-[400px]:inline sm:hidden">Tools</span>
-              <span className="hidden text-[14px] font-semibold leading-none sm:inline">Compass</span>
+              <span className="hidden text-[14px] font-semibold leading-none sm:inline">
+                Tools
+              </span>
             </AppTransitionLink>
           </div>
         </div>

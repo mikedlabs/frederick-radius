@@ -167,6 +167,22 @@ function officialAlert(
 }
 
 describe("officialCivicAlerts", () => {
+  it("does not turn a generic statewide health notice into a Frederick Heads up", () => {
+    expect(officialCivicAlerts([officialAlert({
+      kind: "health-notice",
+      title: "Measles Exposure Updated on Sep 17 2026 9:10AM",
+      summary: "A Maryland resident visited several locations in Ocean City. Read the official notice.",
+    })])).toEqual([]);
+  });
+
+  it("keeps a health notice that explicitly names a Frederick County location", () => {
+    expect(officialCivicAlerts([officialAlert({
+      kind: "health-notice",
+      title: "Official health exposure notice",
+      summary: "The notice identifies a location in Brunswick, Frederick County.",
+    })])[0]?.severity).toBe("advisory");
+  });
+
   it("keeps a routine office closing out of Today's high-signal interruption layer", () => {
     expect(officialCivicAlerts([officialAlert()])[0]?.severity).toBe("info");
   });

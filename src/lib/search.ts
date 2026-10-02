@@ -21,6 +21,8 @@ import {
   parseSearchQualifiers,
   BREAKFAST_FOOD_EVIDENCE_RE,
   SANDWICH_EVIDENCE_RE,
+  unconfirmedSearchFeatures,
+  type SearchPlaceFeature,
   type SearchQualifiers,
 } from "@/lib/search/qualifiers";
 import { isTimedActivityRequest } from "@/lib/ask/intent";
@@ -34,6 +36,7 @@ export type SearchHit =
       place: PlaceCardData;
       score: number;
       conceptCoverage?: { matched: number; total: number };
+      unconfirmedFeatures?: SearchPlaceFeature[];
     }
   | { type: "event"; event: Event & { distance_m?: number }; score: number }
   | { type: "municipality"; municipality: Municipality; score: number }
@@ -1158,9 +1161,22 @@ export function qualifiedSearch(
   eventPool: readonly Event[] = EVENTS,
   context: QualifiedSearchContext = {},
 ): { hits: SearchHit[]; meta: QualifiedSearchMeta } {
-  const qualifiers = parseSearchQualifiers(query);
   const namedMunicipality = namedMunicipalityScope(query);
   const scopedQuery = withoutMunicipalityScope(query, namedMunicipality);
+  const literalPlace = clientPlaces()
+    .map((place) => ({ place, match: place.name.length >= 4
+      ? new RegExp(`(?:^|\\s)${place.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|\\s|[,.!?])`, "i").exec(query)
+      : null }))
+    .filter((candidate) => candidate.match)
+    .sort((a, b) => b.place.name.length - a.place.name.length)[0];
+  const namePrefix = literalPlace ? query.slice(0, literalPlace.match!.index).trim().toLowerCase() : null;
+  const primaryNamedPlace = namePrefix !== null && namePrefix.split(/\s+/).every((word) =>
+    new Set(["", "please", "find", "show", "me", "i", "want", "need", "a", "an", "the", "looking", "for"]).has(word),
+  );
+  const qualifiers = parseSearchQualifiers(query, {
+    literalPlaceName: literalPlace?.place.name,
+    namedPlaceSlug: primaryNamedPlace ? literalPlace?.place.slug : undefined,
+  });
   if (!qualifiers.constrained) {
     const rankingOrigin = namedMunicipality ? null : context.origin ?? null;
     const municipality = namedMunicipality?.slug ?? context.municipality ?? null;
@@ -1232,7 +1248,7 @@ export function qualifiedSearch(
     !broadUmbrellaQuery &&
     umbrellaEvidenceQuery.length > 0,
   );
-  const includeMatchingPlaces = qualifiers.compoundIntent
+  const includeMatchingPlaces = qualifiers.namedPlaceSlug || qualifiers.compoundIntent
     ? true
     : qualifiers.strictPlaceKind
       ? true
@@ -1265,7 +1281,9 @@ export function qualifiedSearch(
   // Pull a wider candidate set for multi-region requests, then interleave the
   // requested regions. Otherwise a data-rich town can consume the result cap
   // before a smaller town gets a fair chance to appear.
-  const candidateLimit = regionalScope && qualifiers.regions.length > 1 ? Math.max(limit * 4, 60) : limit;
+  const candidateLimit = (regionalScope && qualifiers.regions.length > 1) || qualifiers.requestedFeatures.length > 0
+    ? Math.max(limit * 4, 60)
+    : limit;
   const candidates = search(effectiveQuery, candidateLimit, eventPool, {
     resultKind: context.resultKind,
     eventQuery: query,
@@ -1291,9 +1309,19 @@ export function qualifiedSearch(
       (!downtownApplied || haversineMeters(FREDERICK_CENTER, place.geom) <= downtownRadiusMeters),
     now: context.now,
   });
-  const hits = regionalScope
-    ? balanceRegionalHits(candidates, qualifiers.regions, limit)
+  const featureAwareCandidates = qualifiers.requestedFeatures.length > 0
+    ? candidates.map((hit): SearchHit => hit.type === "place"
+        ? { ...hit, unconfirmedFeatures: unconfirmedSearchFeatures(hit.place, qualifiers) }
+        : hit).sort((a, b) => {
+        const missingFeatures = (hit: SearchHit) => hit.type === "place"
+          ? hit.unconfirmedFeatures?.length ?? 0
+          : qualifiers.requestedFeatures.length + 1;
+        return missingFeatures(a) - missingFeatures(b);
+      })
     : candidates;
+  const hits = regionalScope
+    ? balanceRegionalHits(featureAwareCandidates, qualifiers.regions, limit)
+    : featureAwareCandidates.slice(0, limit);
 
   return {
     hits,

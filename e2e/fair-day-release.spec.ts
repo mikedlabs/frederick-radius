@@ -364,12 +364,15 @@ test.describe("Fair Day production release journey", () => {
     await expect(details).toContainText(
       "Daughtry - Presented by Team Reeder of Long & Foster Real Estate, Inc. & Carter Machinery",
     );
-    await expect(
-      details.getByRole("link", { name: "Official Grandstand source" }),
-    ).toHaveAttribute("target", "_blank");
-    await expect(
-      details.getByRole("link", { name: "Official Grandstand source" }),
-    ).toHaveAttribute(
+    // The server-built review expires after the Fair. Both supported labels
+    // must retain the original official source, including in the archive.
+    const officialSource = details.getByRole("link", {
+      name: /^Official (?:Grandstand|program) source$/,
+    });
+    await expect(officialSource).toBeVisible();
+    await expect(officialSource).toHaveAttribute("target", "_blank");
+    await expect(officialSource).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(officialSource).toHaveAttribute(
       "href",
       "https://thegreatfrederickfair.com/schedule/",
     );

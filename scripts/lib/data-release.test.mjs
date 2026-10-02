@@ -74,6 +74,7 @@ test("the place release covers canonical server and place-page inputs", () => {
     "src/data/places-enrichment.json",
     "src/data/places-overrides.json",
     "src/data/place-status-overrides.json",
+    "src/data/place-visit-details.json",
     "src/data/categories.ts",
     "src/data/municipalities.ts",
     "src/data/events.ts",

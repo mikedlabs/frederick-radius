@@ -13,7 +13,7 @@ describe("Today universal Find launcher", () => {
     expect(html).toContain('href="/search"');
     expect(html).toContain("What do you need?");
     expect(html).toContain(
-      "Find a place or service, or ask for help planning your time.",
+      "Find a place, an event, or help with your plans.",
     );
     expect(html).toContain('href="/open-now"');
     expect(html).toContain('href="/amenities"');
@@ -24,11 +24,14 @@ describe("Today universal Find launcher", () => {
     expect(html).not.toContain("data-ask-composer");
   });
 
-  it("can sit flush inside the shared Today decision surface", () => {
+  it("keeps one unboxed section with all four useful shortcuts", () => {
     const html = renderToStaticMarkup(createElement(TodayAsk, { embedded: true }));
 
     expect(html).toContain('data-surface-row="find"');
     expect(html).not.toContain('class="mt-3 scroll-mt-24');
-    expect(html).toContain("overflow-hidden");
+    expect(html).toContain('aria-label="Quick needs"');
+    expect(html).toContain('href="/contacts"');
+    expect(html).toContain("Plan a few hours");
+    expect(html).not.toContain("magic-card");
   });
 });

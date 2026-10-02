@@ -4,7 +4,11 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TodayScopeStatus from "./TodayScopeStatus";
-import { setScope } from "@/lib/scope";
+import { getScope, setScope } from "@/lib/scope";
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}));
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true;
@@ -53,6 +57,7 @@ describe("TodayScopeStatus location memory", () => {
       },
     });
     window.sessionStorage.clear();
+    window.history.replaceState(null, "", "/today");
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -74,6 +79,26 @@ describe("TodayScopeStatus location memory", () => {
       await Promise.resolve();
     });
   };
+
+  it("uses an explicit county URL over a saved town and carries a later town change into links", async () => {
+    setScope("town:brunswick");
+    window.history.replaceState(null, "", "/today?in=county&intent=dinner#find-radius");
+    mockNavigator({});
+    await render();
+    expect(getScope()).toBe("county");
+    expect(container.querySelector("select")?.value).toBe("county");
+    expect(container.textContent).toContain("Countywide briefing");
+
+    await act(async () => {
+      const select = container.querySelector("select")!;
+      select.value = "town:brunswick";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(getScope()).toBe("town:brunswick");
+    expect(container.querySelector("select")?.value).toBe("town:brunswick");
+    expect(window.location.search).toBe("?in=brunswick&intent=dinner");
+    expect(window.location.hash).toBe("#find-radius");
+  });
 
   it("silently refreshes an already-granted fix when the lens is Near me", async () => {
     setScope("nearme");

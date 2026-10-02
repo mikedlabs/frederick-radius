@@ -1,6 +1,6 @@
 import { readCachedPosition } from "@/hooks/useGeolocation";
 import { roundCoord } from "@/lib/walkTime";
-import { getScope, scopeToParam } from "@/lib/scope";
+import { getScope, scopeToParam, type Scope } from "@/lib/scope";
 
 /**
  * Client-side want-answer cache + prefetch.
@@ -30,9 +30,9 @@ const TTL_MS = 45_000;
 type Entry = { at: number; promise: Promise<unknown> };
 const cache = new Map<string, Entry>();
 
-function buildUrl(cKey: string, facet: string | null): { url: string; key: string } {
+function buildUrl(cKey: string, facet: string | null, scopeOverride?: Scope): { url: string; key: string } {
   const fix = readCachedPosition();
-  const scope = getScope();
+  const scope = scopeOverride ?? getScope();
   // Never put an exact device fix into a URL, CDN key, access log, or error
   // trace. A ~100m snap preserves useful neighborhood ranking while keeping
   // the browser request itself coarse (the server rounds again defensively).
@@ -53,10 +53,11 @@ function buildUrl(cKey: string, facet: string | null): { url: string; key: strin
 /**
  * Fetch (or reuse) the want answer for a craving. Returns the parsed JSON, or
  * rejects on a non-OK response so the caller can show its error state. A
- * rejected attempt is evicted so the next tap retries cleanly.
+ * rejected attempt is evicted so the next tap retries cleanly. A surface with
+ * an explicit default can pass the same scope it displays and uses in links.
  */
-export function getWantAnswer(cKey: string, facet: string | null): Promise<unknown> {
-  const { url, key } = buildUrl(cKey, facet);
+export function getWantAnswer(cKey: string, facet: string | null, scopeOverride?: Scope): Promise<unknown> {
+  const { url, key } = buildUrl(cKey, facet, scopeOverride);
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.promise;
 

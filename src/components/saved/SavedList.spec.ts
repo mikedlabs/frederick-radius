@@ -58,6 +58,8 @@ describe("SavedList empty state", () => {
     expect(html).toContain(
       "Save a place, event, bus trip, or stop to keep it here for later.",
     );
+    expect(html).toContain('data-saved-empty-state="true"');
+    expect(html).toContain("font-sans");
     expect(html).toContain("Find something to save");
     expect(html).toContain('href="/search"');
     expect(html).toContain("Find a bus or stop");

@@ -34,7 +34,7 @@ function main(): void {
     bySlug[p.slug] = q;
   }
   writeFileSync(
-    new URL("../src/data/copy-scores.json", import.meta.url).pathname,
+    new URL("../src/data/copy-scores.json", import.meta.url),
     JSON.stringify({ computed_at: new Date().toISOString(), counts, bySlug }, null, 0),
   );
   const tot = places.length;

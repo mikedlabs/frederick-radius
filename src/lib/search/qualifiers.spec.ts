@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   matchesSearchQualifiers,
   parseSearchQualifiers,
+  unconfirmedSearchFeatures,
   type SearchQualifierPlace,
 } from "@/lib/search/qualifiers";
 
@@ -14,6 +15,42 @@ const openCoffee: SearchQualifierPlace = {
 };
 
 describe("search qualifiers", () => {
+  it("separates requested place facts without dropping the category or town", () => {
+    const qualifiers = parseSearchQualifiers("quiet coffee with Wi-Fi in Brunswick");
+    expect(qualifiers).toMatchObject({
+      categoryKey: "coffee",
+      requestedFeatures: ["wifi", "quiet"],
+      cleanedQuery: "coffee in brunswick",
+    });
+    const namedPlace: SearchQualifierPlace = { ...openCoffee, name: "Quiet Wi-Fi Cafe" };
+    expect(unconfirmedSearchFeatures(namedPlace, qualifiers)).toEqual(["wifi", "quiet"]);
+    expect(unconfirmedSearchFeatures({ ...openCoffee, amenities: ["wi-fi"] }, qualifiers)).toEqual(["quiet"]);
+  });
+
+  it("keeps unknown access qualified and rejects a recorded barrier", () => {
+    const qualifiers = parseSearchQualifiers("wheelchair accessible coffee in Brunswick");
+    expect(qualifiers.requestedFeatures).toEqual(["wheelchair"]);
+    expect(matchesSearchQualifiers(openCoffee, qualifiers)).toBe(true);
+    expect(unconfirmedSearchFeatures(openCoffee, qualifiers)).toEqual(["wheelchair"]);
+    expect(matchesSearchQualifiers({ ...openCoffee, accessibility: { wheelchair: false } }, qualifiers)).toBe(false);
+    expect(unconfirmedSearchFeatures({ ...openCoffee, accessibility: { wheelchair: true } }, qualifiers)).toEqual([]);
+  });
+
+  it("requires the requested park role rather than broad outdoor or name evidence", () => {
+    const qualifiers = parseSearchQualifiers("park with restrooms in Brunswick");
+    expect(qualifiers).toMatchObject({ strictPlaceKind: "park", requestedFeatures: ["restroom"] });
+    expect(matchesSearchQualifiers({ ...openCoffee, category: "park" }, qualifiers)).toBe(true);
+    expect(matchesSearchQualifiers({ ...openCoffee, name: "Park Cafe" }, qualifiers)).toBe(false);
+    expect(matchesSearchQualifiers({ ...openCoffee, category: "trail" }, qualifiers)).toBe(false);
+    expect(unconfirmedSearchFeatures({ ...openCoffee, amenities: ["restrooms"] }, qualifiers)).toEqual([]);
+  });
+
+  it.each(["cafe without wifi", "restaurant with no parking", "park without restrooms"])("leaves unsupported negative clauses intact for %s", (query) => {
+    const qualifiers = parseSearchQualifiers(query);
+    expect(qualifiers.requestedFeatures).toEqual([]);
+    expect(qualifiers.cleanedQuery).toBe(query);
+  });
+
   it("parses category, open-now, and near-me as executable constraints", () => {
     const parsed = parseSearchQualifiers("coffee open now near me");
     expect(parsed.categoryKey).toBe("coffee");

@@ -247,6 +247,43 @@ function stableId(value: string): string {
   return (hash >>> 0).toString(36);
 }
 
+/** CivicPlus repeats an alert's update history with one shared pubDate.
+ * Use its explicit update label only to choose a row, never to extend expiry.
+ * The label has no timezone, so this value is an ordering key, not provenance. */
+function officialTitleUpdateOrder(title: string): number | null {
+  const match = title.match(/\bUpdated on (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return null;
+  const month = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"].indexOf(match[1].toLowerCase());
+  const day = Number(match[2]);
+  const year = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  if (hour < 1 || hour > 12 || minute > 59) return null;
+  const date = new Date(Date.UTC(year, month, day, hour % 12 + (match[6].toLowerCase() === "pm" ? 12 : 0), minute));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day) return null;
+  return date.getTime();
+}
+
+function latestOfficialAlertRows(alerts: OfficialCivicAlert[]): OfficialCivicAlert[] {
+  const selected = new Map<string, { alert: OfficialCivicAlert; update: number | null }>();
+  for (const alert of alerts) {
+    const update = officialTitleUpdateOrder(alert.title);
+    const prior = selected.get(alert.url);
+    const publication = Date.parse(alert.publishedAt!);
+    const priorPublication = Date.parse(prior?.alert.publishedAt ?? "");
+    const newerPublication = publication > priorPublication;
+    const samePublication = publication === priorPublication;
+    const newerUpdate = update !== null && (prior?.update == null || update > prior.update);
+    // A title date only resolves repeated history under one shared pubDate.
+    // It must never suppress a genuinely newer published notice.
+    if (!prior || newerPublication || (samePublication && newerUpdate)) {
+      selected.set(alert.url, { alert, update });
+    }
+  }
+  // Map insertion order keeps a stable result when provider dates tie.
+  return [...selected.values()].map(({ alert }) => alert);
+}
+
 export type ParsedOfficialAlertFeed = {
   valid: boolean;
   asOf: string | null;
@@ -322,7 +359,7 @@ export function parseOfficialAlertFeed(
     });
   }
 
-  return { valid: true, asOf, alerts };
+  return { valid: true, asOf, alerts: latestOfficialAlertRows(alerts) };
 }
 
 type LoadOfficialCivicAlertOptions = {
