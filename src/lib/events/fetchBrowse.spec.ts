@@ -54,6 +54,52 @@ describe("bounded event browse reads", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it("propagates caller cancellation to transport and removes its listener", async () => {
+    vi.useFakeTimers();
+    const caller = new AbortController();
+    const remove = vi.spyOn(caller.signal, "removeEventListener");
+    let stopped = false;
+    vi.stubGlobal("fetch", vi.fn((_url, init) => new Promise((_resolve, reject) => {
+      init.signal.addEventListener("abort", () => {
+        stopped = true;
+        reject(init.signal.reason);
+      }, { once: true });
+    })));
+    const result = fetchEventsBrowse({ ...request, init: { ...request.init, signal: caller.signal } }).catch(error => error);
+    caller.abort();
+    expect(stopped).toBe(true);
+    await expect(result).resolves.toMatchObject({ name: "AbortError" });
+    expect(remove).toHaveBeenCalledWith("abort", expect.any(Function));
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("cancels a stalled body immediately even if the transport ignores abort", async () => {
+    vi.useFakeTimers();
+    const caller = new AbortController();
+    let signal: AbortSignal | undefined;
+    vi.stubGlobal("fetch", vi.fn((_url, init) => {
+      signal = init.signal;
+      return Promise.resolve({ ok: true, json: () => new Promise(() => {}) });
+    }));
+    const result = fetchEventsBrowse({ ...request, init: { ...request.init, signal: caller.signal } }).catch(error => error);
+    await Promise.resolve();
+    caller.abort();
+    expect(signal?.aborted).toBe(true);
+    await expect(result).resolves.toMatchObject({ name: "AbortError" });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("does not start transport for an already cancelled caller", async () => {
+    vi.useFakeTimers();
+    const caller = new AbortController();
+    caller.abort();
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ events: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(fetchEventsBrowse({ ...request, init: { ...request.init, signal: caller.signal } })).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("rejects unsuccessful responses promptly and clears the deadline", async () => {
     vi.useFakeTimers();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 503 })));

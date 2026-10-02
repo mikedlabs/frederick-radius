@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AlertCircle, AlertTriangle, ArrowRight, CalendarX, Clock, Info } from "lucide-react";
 import type { NwsAlert } from "@/lib/integrations/nws-alerts";
 import { getNpsAlerts, type NpsAlert } from "@/lib/integrations/nps";
@@ -415,9 +416,9 @@ export default async function CivicAlerts({ includeWeather = true, compact = fal
         </a>
       ))}
       {more > 0 && (
-        <a href="/pulse" className="flex min-h-11 items-center px-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
+        <Link href="/pulse" prefetch={false} className="flex min-h-11 items-center px-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
           +{more} more active {more === 1 ? "alert" : "alerts"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
-        </a>
+        </Link>
       )}
     </section>
   );

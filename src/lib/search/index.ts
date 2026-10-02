@@ -26,7 +26,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { browseSafePhotoUrl } from "@/lib/google-photo-policy";
 import { findDepartments, jurisdictionLabel } from "@/data/departments";
 import { isHighConfidenceCivicIntent, searchCivicActions, shouldShowDepartmentAnswers } from "@/lib/search/civic";
-import { negatedSearchFeatures, searchFeatureCaveat, type SearchPlaceFeature } from "@/lib/search/qualifiers";
+import { negatedSearchFeatures, parseSearchQualifiers, searchFeatureCaveat, type SearchPlaceFeature } from "@/lib/search/qualifiers";
 
 export type SearchResultType =
   | "place"
@@ -687,6 +687,8 @@ function matchLayers(query: string): SearchResult[] {
 function canonicalSearchQuery(query: string): string {
   const q = normalizeIntentText(query);
   if (!isParkingMapQuery(q) || !containsPhrase(q, "park")) return query;
+  // A park destination may request parking too; only rewrite the parking verb.
+  if (parseSearchQualifiers(query).strictPlaceKind === "park") return query;
   // The canonical ranker correctly understands the noun "parking," while
   // the verb "park" otherwise overweights park names. Preserve every other
   // word (including near-me/downtown qualifiers) and disambiguate only that
@@ -709,6 +711,7 @@ function hitToResult(h: SearchHit): SearchResult {
       subtitle: [
         `${cat?.name ?? p.category} · ${muni?.name ?? p.municipality}`,
         h.unconfirmedFeatures?.length ? searchFeatureCaveat(h.unconfirmedFeatures) : null,
+        h.unconfirmedAbsences?.length ? searchFeatureCaveat(h.unconfirmedAbsences).replace("Not confirmed: ", "Not confirmed: absence of ") : null,
       ].filter(Boolean).join(" · "),
       href: `/places/${p.slug}`,
       badge: cat?.name,
@@ -953,7 +956,7 @@ export function qualifiedSearchIndex(
     return { results: official.results.slice(0, limit), meta: qualified.meta };
   }
   const qualifiers = qualified.meta.qualifiers;
-  const hasPlaceFeatureRequest = qualifiers.requestedFeatures.length > 0;
+  const hasPlaceFeatureRequest = qualifiers.requestedFeatures.length > 0 || qualifiers.negatedFeatures.length > 0;
   const hasPlaceIntent = Boolean(qualifiers.namedPlaceSlug || qualifiers.categoryKey || qualifiers.compoundIntent || (qualifiers.strictPlaceKind && qualifiers.strictPlaceKind !== "atm"));
   const negatedFeatures = negatedSearchFeatures(query);
   const head = rawHead

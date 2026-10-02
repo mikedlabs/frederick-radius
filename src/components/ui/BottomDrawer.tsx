@@ -99,7 +99,11 @@ export default function BottomDrawer({
         // fires; onCloseAutoFocus replaces it as soon as the real exit finishes.
         restoreTimerRef.current = window.setTimeout(() => {
           restoreTimerRef.current = null;
-          if (!drawerOpenRef.current && returnTarget.isConnected) {
+          if (
+            !drawerOpenRef.current
+            && returnTarget.isConnected
+            && !document.querySelector('[role="dialog"][data-state="open"]')
+          ) {
             returnTarget.focus({ preventScroll: true });
           }
         }, 550);
@@ -138,14 +142,18 @@ export default function BottomDrawer({
 
   useLayoutEffect(
     () => () => {
+      // Route drawers close by unmounting their slot, without receiving
+      // open=false. Treat that removal as a completed close as well.
+      drawerOpenRef.current = false;
       if (restoreFrameRef.current !== null) {
         window.cancelAnimationFrame(restoreFrameRef.current);
       }
       if (restoreTimerRef.current !== null) {
         window.clearTimeout(restoreTimerRef.current);
       }
+      restoreRememberedFocus();
     },
-    [],
+    [restoreRememberedFocus],
   );
 
   return (

@@ -264,6 +264,71 @@ describe("deterministic map search actions", () => {
     expect(results.filter((result) => result.type === "place").length).toBeGreaterThan(1);
   });
 
+  it("recognizes a named-place amenity question without broadening its destination", () => {
+    const { results, meta } = qualifiedSearchIndex("Does Beans in the Belfry have Wi-Fi in Brunswick?", 12, []);
+    expect(meta.qualifiers).toMatchObject({ namedPlaceSlug: "beans-in-the-belfry-brunswick", requestedFeatures: ["wifi"] });
+    expect(results.filter((result) => result.type === "place")).toHaveLength(1);
+    expect(results[0]).toMatchObject({ id: "place:beans-in-the-belfry-brunswick", subtitle: "Coffee · Brunswick · Not confirmed: Wi-Fi." });
+  });
+
+  it.each([
+    ["parks with restrooms in Brunswick", "park"],
+    ["parks without restrooms in Brunswick", "park"],
+    ["park with parking in Brunswick", "park"],
+    ["park without parking in Brunswick", "park"],
+    ["restaurant with no parking in Brunswick", "restaurant"],
+    ["library without wifi in Brunswick", "library"],
+  ])("keeps an exact destination role for %s", (query, role) => {
+    const { results, meta } = qualifiedSearchIndex(query, 12, []);
+    const catalog = new Map(placeLoader.clientPlaces().map((place) => [`place:${place.slug}`, place]));
+    const places = results.filter((result) => result.type === "place");
+    expect(meta.qualifiers.strictPlaceKind).toBe(role);
+    if (role !== "library") expect(places.length).toBeGreaterThan(0);
+    expect(places.every((result) => {
+      const place = catalog.get(result.id)!;
+      return place.municipality === "brunswick" && (place.category === role || place.subcategories?.includes(role));
+    })).toBe(true);
+    if (/without|no parking/.test(query)) {
+      expect(meta.qualifiers.requestedFeatures).toEqual([]);
+      expect(results.some((result) => /action:map-(?:wifi|parking|restroom)/.test(result.id))).toBe(false);
+      expect(places.every((result) => result.subtitle.includes("Not confirmed: absence of"))).toBe(true);
+    }
+  });
+
+  it("excludes contrary amenity evidence while keeping missing negative evidence explicit", () => {
+    const base = placeLoader.clientPlaces().find((place) => place.category === "coffee")!;
+    const loader = vi.spyOn(placeLoader, "clientPlaces").mockReturnValue([
+      { ...base, slug: "known-wifi", name: "Connected Cafe", municipality: "brunswick", amenities: ["wifi"] },
+      { ...base, slug: "unknown-wifi", name: "Another Cafe", municipality: "brunswick", amenities: [] },
+    ]);
+    try {
+      const { results } = qualifiedSearchIndex("coffee without wifi in Brunswick", 12, []);
+      const places = results.filter((result) => result.type === "place");
+      expect(places).toHaveLength(1);
+      expect(places[0]).toMatchObject({ id: "place:unknown-wifi", subtitle: "Coffee · Brunswick · Not confirmed: absence of Wi-Fi." });
+      expect(results.some((result) => result.id === "action:map-wifi")).toBe(false);
+    } finally {
+      loader.mockRestore();
+    }
+  });
+
+  it("does not load places for event/page-only queries and computes live status once for place lookups", () => {
+    const loader = vi.spyOn(placeLoader, "clientPlaces");
+    try {
+      qualifiedSearchIndex("events tonight", 8, [], { resultKind: "event" });
+      qualifiedSearchIndex("settings", 8, [], { resultKind: "page" });
+      qualifiedSearchIndex("events with wifi tonight", 8, []);
+      expect(loader).not.toHaveBeenCalled();
+      qualifiedSearchIndex("coffee", 8, []);
+      expect(loader).toHaveBeenCalledTimes(1);
+      loader.mockClear();
+      qualifiedSearchIndex("Does Beans in the Belfry have wifi?", 8, []);
+      expect(loader).toHaveBeenCalledTimes(1);
+    } finally {
+      loader.mockRestore();
+    }
+  });
+
   it("keeps an explicit planning request on the tonight planner", () => {
     expect(searchIndex("plan tonight", 8, [])[0]).toMatchObject({
       id: "action:tonight",

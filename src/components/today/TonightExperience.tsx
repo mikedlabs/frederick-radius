@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "next/image";
 import { ArrowRight, ArrowUpRight, Clock3, MapPin } from "lucide-react";
 import type { ReactNode } from "react";

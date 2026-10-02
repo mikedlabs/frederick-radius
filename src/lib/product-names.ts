@@ -20,8 +20,8 @@ export const PRODUCT_NAMES = {
   },
   liveConditions: {
     uiLabel: "County status",
-    pageTitle: "County status",
-    shareTitle: "County status | Frederick Radius",
+    pageTitle: "County status in Frederick County",
+    shareTitle: "County status in Frederick County | Frederick Radius",
     description: "Check Frederick County weather, roads, schools, power, and official alerts from named sources.",
   },
   beer: {

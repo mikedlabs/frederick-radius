@@ -1,5 +1,7 @@
 "use client";
 
+import { PRODUCT_NAMES } from "@/lib/product-names";
+
 import { track } from "@/lib/track";
 
 import {
@@ -1226,7 +1228,7 @@ function EmptyHint({
       Icon: Calendar,
     },
     { href: "/amenities", title: "Nearby essentials", subtitle: "Find the closest mapped restroom, water, trash, seating, or dog bags.", Icon: MapPin },
-    { href: "/pulse", title: "Live conditions", subtitle: "Check weather, air, roads, transit, and outages.", Icon: Activity },
+    { href: "/pulse", title: PRODUCT_NAMES.liveConditions.uiLabel, subtitle: "Check weather, air, roads, transit, and outages.", Icon: Activity },
   ];
 
   return (

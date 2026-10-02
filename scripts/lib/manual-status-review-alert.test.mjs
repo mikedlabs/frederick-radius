@@ -103,7 +103,7 @@ test('future-effective records stay valid and inactive until their Eastern effec
   assert.equal(active.rows[0].daysRemaining, 5);
 });
 
-test('actual issue-delivery shell closes only with positively healthy app and clear reviews', () => {
+test('actual issue-delivery shell covers create, comment, close and healthy no-op branches', () => {
   const workflow = fs.readFileSync(new URL('../../.github/workflows/production-health-alert.yml', import.meta.url), 'utf8');
   const step = workflow.split('      - name: Open, update, or close the tracking issue\n')[1];
   assert.ok(step);
@@ -111,18 +111,21 @@ test('actual issue-delivery shell closes only with positively healthy app and cl
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'radius-status-review-'));
   try {
     const log = path.join(tmp, 'commands');
-    fs.writeFileSync(path.join(tmp, 'gh'), '#!/bin/sh\nif [ "$1 $2" = "issue list" ]; then echo 42; exit 0; fi\ncase "$1 $2" in\n  "issue comment"|"issue close"|"issue create") printf "%s\\n" "$2" >> "$CALL_LOG" ;;\n  *) exit 99 ;;\nesac\n', { mode: 0o755 });
-    for (const [status, manual, closes] of [['operational','clear',true], ['operational','attention',false], ['operational','unknown',false], ['degraded','clear',false], ['','clear',false], ['operational','',false]]) {
+    fs.writeFileSync(path.join(tmp, 'gh'), '#!/bin/sh\nif [ "$1 $2" = "issue list" ]; then printf "%s\\n" "$EXISTING_ISSUE"; exit 0; fi\ncase "$1 $2" in\n  "issue comment"|"issue close"|"issue create") printf "%s\\n" "$2" >> "$CALL_LOG" ;;\n  *) exit 99 ;;\nesac\n', { mode: 0o755 });
+    const states = [['operational', 'clear'], ['operational', 'attention'], ['operational', 'unknown'], ['degraded', 'clear'], ['', 'clear'], ['operational', '']];
+    for (const existing of ['42', '']) for (const [status, manual] of states) {
+      const healthy = status === 'operational' && manual === 'clear';
+      const expected = healthy ? existing ? ['comment', 'close'] : [] : existing ? ['comment'] : ['create'];
       fs.writeFileSync(log, '');
       const result = spawnSync('/bin/bash', ['-e', '-c', script], { encoding: 'utf8', env: {
-        PATH: `${tmp}:/usr/bin:/bin`, CALL_LOG: log, STATUS: status, MANUAL_STATUS: manual,
+        PATH: `${tmp}:/usr/bin:/bin`, CALL_LOG: log, EXISTING_ISSUE: existing, STATUS: status, MANUAL_STATUS: manual,
         SUMMARY: 'App result', MANUAL_SUMMARY: 'Review result', DETAIL: 'App detail', MANUAL_DETAIL: 'Review detail',
         TITLE: '[health] Test', GH_REPO: 'owner/radius', RUN_URL: 'https://example.org/run',
       } });
       assert.equal(result.status, 0, result.stderr);
-      const commands = fs.readFileSync(log,'utf8').trim().split('\n');
-      assert.equal(commands.includes('close'), closes, `${status}/${manual}`);
-      assert.ok(commands.includes('comment'));
+      const commands = fs.readFileSync(log,'utf8').trim().split('\n').filter(Boolean);
+      assert.deepEqual(commands, expected, `${status}/${manual}; existing=${existing || 'none'}`);
+      if (healthy && !existing) assert.match(result.stdout, /Healthy, and no open issue/);
     }
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });

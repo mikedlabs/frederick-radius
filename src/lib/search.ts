@@ -18,6 +18,7 @@ import {
 } from "@/lib/category-ranking";
 import {
   matchesSearchQualifiers,
+  hasSearchFeatureTerms,
   parseSearchQualifiers,
   BREAKFAST_FOOD_EVIDENCE_RE,
   SANDWICH_EVIDENCE_RE,
@@ -37,6 +38,7 @@ export type SearchHit =
       score: number;
       conceptCoverage?: { matched: number; total: number };
       unconfirmedFeatures?: SearchPlaceFeature[];
+      unconfirmedAbsences?: SearchPlaceFeature[];
     }
   | { type: "event"; event: Event & { distance_m?: number }; score: number }
   | { type: "municipality"; municipality: Municipality; score: number }
@@ -676,6 +678,8 @@ export type SearchOptions = {
   /** Apply an explicit result tab before limiting candidates. */
   resultKind?: SearchResultKind;
   placeFilter?: (place: PlaceCardData) => boolean;
+  /** Reuse one live-status pass when qualifiers already inspected the catalog. */
+  placePool?: readonly PlaceCardData[];
   onlyPlaces?: boolean;
   /**
    * Keep the app's own doors (town + category pages) even when `onlyPlaces`
@@ -732,6 +736,8 @@ export function search(
   ) return [];
 
   const hits: SearchHit[] = [];
+  let livePlaces = options.placePool;
+  const getPlaces = () => livePlaces ??= clientPlaces();
   const intent = detectIntent(query);
   const expansion = expandQuery(query);
   const shortIntent = recognizedShortIntent(query);
@@ -750,7 +756,7 @@ export function search(
   const fairVendorHrefs = new Set(fairVendors.map((match) => match.page.href));
   for (const match of fairVendors) hits.push({ type: "page", page: match.page, score: 30 });
 
-  for (const p of datedEventRequest || options.resultKind === "event" || options.resultKind === "page" ? [] : clientPlaces()) {
+  for (const p of datedEventRequest || options.resultKind === "event" || options.resultKind === "page" ? [] : getPlaces()) {
     if (options.placeFilter && !options.placeFilter(p)) continue;
     if (shortIntent && !matchesRecognizedShortIntent(p, shortIntent)) continue;
     const s =
@@ -962,9 +968,9 @@ export function search(
     const fuzzyThreshold = fuzzyThresholdForQuery(fuzzyQuery);
     let bestFuzzyPlaceScore = 0;
     let bestFuzzyPlaceSimilarity = 0;
-    if (!hits.some((h) => h.type === "place")) {
+    if (options.resultKind !== "event" && options.resultKind !== "page" && !hits.some((h) => h.type === "place")) {
       const close: { p: PlaceCardData; f: number }[] = [];
-      for (const p of clientPlaces()) {
+      for (const p of getPlaces()) {
         const f = fuzzyNameScore(fuzzyQuery, p.name);
         if (f >= fuzzyThreshold) close.push({ p, f });
       }
@@ -1163,7 +1169,11 @@ export function qualifiedSearch(
 ): { hits: SearchHit[]; meta: QualifiedSearchMeta } {
   const namedMunicipality = namedMunicipalityScope(query);
   const scopedQuery = withoutMunicipalityScope(query, namedMunicipality);
-  const literalPlace = clientPlaces()
+  const needsLiteralPlaceLookup = hasSearchFeatureTerms(query) &&
+    context.resultKind !== "event" && context.resultKind !== "page" &&
+    !(detectEventIntent(query) && searchEventWindow(query, context.now).meta.label);
+  const placePool = needsLiteralPlaceLookup ? clientPlaces() : undefined;
+  const literalPlace = (placePool ?? [])
     .map((place) => ({ place, match: place.name.length >= 4
       ? new RegExp(`(?:^|\\s)${place.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|\\s|[,.!?])`, "i").exec(query)
       : null }))
@@ -1171,7 +1181,7 @@ export function qualifiedSearch(
     .sort((a, b) => b.place.name.length - a.place.name.length)[0];
   const namePrefix = literalPlace ? query.slice(0, literalPlace.match!.index).trim().toLowerCase() : null;
   const primaryNamedPlace = namePrefix !== null && namePrefix.split(/\s+/).every((word) =>
-    new Set(["", "please", "find", "show", "me", "i", "want", "need", "a", "an", "the", "looking", "for"]).has(word),
+    new Set(["", "please", "find", "show", "me", "i", "want", "need", "a", "an", "the", "looking", "for", "does", "do", "is", "can", "could", "would", "you", "tell", "us", "if"]).has(word),
   );
   const qualifiers = parseSearchQualifiers(query, {
     literalPlaceName: literalPlace?.place.name,
@@ -1183,6 +1193,7 @@ export function qualifiedSearch(
     return {
       hits: search(scopedQuery, limit, eventPool, {
         resultKind: context.resultKind,
+        placePool,
         eventQuery: query,
         origin: rankingOrigin,
         rankPlacesByDistance: Boolean(rankingOrigin),
@@ -1244,6 +1255,8 @@ export function qualifiedSearch(
   const requiresSpecificUmbrellaEvidence = Boolean(
     !regionalScope &&
     !semanticIntent &&
+    !qualifiers.strictPlaceKind &&
+    !qualifiers.namedPlaceSlug &&
     ["food", "drinks", "shops"].includes(qualifiers.categoryKey ?? "") &&
     !broadUmbrellaQuery &&
     umbrellaEvidenceQuery.length > 0,
@@ -1286,6 +1299,7 @@ export function qualifiedSearch(
     : limit;
   const candidates = search(effectiveQuery, candidateLimit, eventPool, {
     resultKind: context.resultKind,
+    placePool,
     eventQuery: query,
     onlyPlaces: !preserveMixedEventResults,
     // Only where places are filtered down to explicit evidence. That branch
@@ -1309,9 +1323,9 @@ export function qualifiedSearch(
       (!downtownApplied || haversineMeters(FREDERICK_CENTER, place.geom) <= downtownRadiusMeters),
     now: context.now,
   });
-  const featureAwareCandidates = qualifiers.requestedFeatures.length > 0
+  const featureAwareCandidates = qualifiers.requestedFeatures.length > 0 || qualifiers.negatedFeatures.length > 0
     ? candidates.map((hit): SearchHit => hit.type === "place"
-        ? { ...hit, unconfirmedFeatures: unconfirmedSearchFeatures(hit.place, qualifiers) }
+        ? { ...hit, unconfirmedFeatures: unconfirmedSearchFeatures(hit.place, qualifiers), unconfirmedAbsences: qualifiers.negatedFeatures }
         : hit).sort((a, b) => {
         const missingFeatures = (hit: SearchHit) => hit.type === "place"
           ? hit.unconfirmedFeatures?.length ?? 0

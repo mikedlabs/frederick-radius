@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { Landmark } from "lucide-react";
@@ -87,9 +88,9 @@ export default async function MarkersPage() {
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           Search roadside marker text from MDOT and National Register sites from
           the National Park Service. For longer local stories, see{" "}
-          <a href="/history" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
+          <Link href="/history" prefetch={false} className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
             Frederick history
-          </a>
+          </Link>
           .
         </p>
       </header>

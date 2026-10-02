@@ -1084,8 +1084,8 @@ export default function RadiusBuilder({
                 )}
               </span>
             </button>
-            <a
-              href="/map?mode=browse"
+            <Link
+              href="/map?mode=browse" prefetch={false}
               aria-label="Back to county map"
               onClick={(event) => {
                 if (
@@ -1110,7 +1110,7 @@ export default function RadiusBuilder({
             >
               <MapIcon className="mb-1 h-4 w-4" strokeWidth={2.1} aria-hidden />
               County map
-            </a>
+            </Link>
           </div>
         }
       >

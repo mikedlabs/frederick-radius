@@ -94,7 +94,6 @@
 .find [data-surface-row="browse"] > :is(button, a) > span:first-child {
   width: 16px;
   height: 24px;
-  background: transparent;
 }
 
 @media (min-width: 640px) {

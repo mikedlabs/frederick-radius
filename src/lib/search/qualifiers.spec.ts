@@ -51,6 +51,20 @@ describe("search qualifiers", () => {
     expect(qualifiers.cleanedQuery).toBe(query);
   });
 
+  it.each(["parks with restrooms", "parks without restrooms", "park without restrooms"])("requires exact parks even with the outdoor shortcut in %s", (query) => {
+    const parsed = parseSearchQualifiers(query);
+    expect(parsed.strictPlaceKind).toBe("park");
+    expect(matchesSearchQualifiers({ ...openCoffee, category: "park" }, parsed)).toBe(true);
+    expect(matchesSearchQualifiers({ ...openCoffee, category: "trail" }, parsed)).toBe(false);
+    expect(matchesSearchQualifiers({ ...openCoffee, name: "Park Cafe" }, parsed)).toBe(false);
+  });
+
+  it("does not mistake parking verbs or a nearby landmark for a destination role", () => {
+    expect(parseSearchQualifiers("where can I park my car with restrooms nearby").strictPlaceKind).toBeNull();
+    expect(parseSearchQualifiers("coffee without wifi near Baker Park").strictPlaceKind).toBeNull();
+    expect(parseSearchQualifiers("public wifi near a library").strictPlaceKind).toBeNull();
+  });
+
   it("parses category, open-now, and near-me as executable constraints", () => {
     const parsed = parseSearchQualifiers("coffee open now near me");
     expect(parsed.categoryKey).toBe("coffee");

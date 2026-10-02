@@ -70,7 +70,7 @@ export default function TodayAsk({
           </span>
         </span>
         <ArrowRight
-          className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+          className="h-4 w-4 shrink-0"
           strokeWidth={2.25}
           style={{ color: "var(--app-brand-press)" }}
           aria-hidden

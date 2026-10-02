@@ -4,6 +4,7 @@
   column-gap: 16px;
   align-items: start;
   margin-block: 24px 20px;
+  /* This compact masthead stays static; the inherited collapse belongs to the retired tall hero. */
   animation: none;
 }
 

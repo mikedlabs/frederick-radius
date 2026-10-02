@@ -4,6 +4,9 @@
  * this payload to plain serializable data (no function refs / components).
  */
 
+import { PRODUCT_NAMES } from "@/lib/product-names";
+
+
 import { ACCENTS } from "@/data/categories";
 import { BRAND } from "@/lib/brand";
 import { isEventLiveNow } from "@/lib/eventWhenLabel";
@@ -90,7 +93,7 @@ export function buildActivities({
     list.push({
       id: "civic-spike",
       kind: "civic",
-      label: "Live conditions",
+      label: PRODUCT_NAMES.liveConditions.uiLabel,
       title: `${civicAlertCount} active civic reports`,
       subtitle: "Updated by Frederick County FixIt",
       href: "/",

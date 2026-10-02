@@ -41,7 +41,8 @@ describe("PlaceVisitDetailsCard", () => {
     }));
     expect(html).toContain("Official source 1");
     expect(html).toContain("Official source 2");
-    expect(html).toContain('aria-label="Source 2"');
+    expect(html).toContain('<span class="sr-only">Source 2</span>');
+    expect(html).toContain('<span aria-hidden="true">2</span>');
   });
 
   it("does not create a placeholder panel for an unreviewed place", () => {

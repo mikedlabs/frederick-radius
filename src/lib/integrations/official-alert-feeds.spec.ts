@@ -230,6 +230,25 @@ describe("official CivicPlus alert parsing", () => {
     }
   });
 
+  it("sorts long duplicate titles by the update label before display truncation", () => {
+    const prefix = "Frederick County official notice with detailed location information ".repeat(4);
+    const row = (month: string, day: number, summary: string) => `<item>
+      <title>${prefix}Updated on ${month} ${day} 2026 9:10AM</title>
+      <link>https://health.frederickcountymd.gov/AlertCenter.aspx?AID=24</link>
+      <pubDate>17 Sep 2026 09:11:14 -0500</pubDate><description>${summary}</description>
+    </item>`;
+    const old = row("Jul", 23, "Earlier official update.");
+    const current = row("Sep", 17, "Latest official update.");
+    for (const rows of [[old, current], [current, old]]) {
+      const parsed = parseOfficialAlertFeed(`<rss><channel>${rows.join("")}</channel></rss>`, OFFICIAL_CIVIC_ALERT_FEEDS[3], "2026-10-02T18:13:09.000Z");
+      expect(parsed.alerts).toHaveLength(1);
+      expect(parsed.alerts[0].summary).toBe("Latest official update.");
+      expect(parsed.alerts[0].title.length).toBeLessThanOrEqual(180);
+      expect(parsed.alerts[0].title).toMatch(/…$/);
+      expect(parsed.alerts[0].expiresAt).toBe("2026-10-17T14:11:14.000Z");
+    }
+  });
+
   it.each([
     "Frederick County health notice",
     "Frederick County health notice Updated on Sep 31 2026 9:10AM",

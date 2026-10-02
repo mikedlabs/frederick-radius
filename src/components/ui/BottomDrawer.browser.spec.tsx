@@ -53,6 +53,21 @@ function RejectingControlledDrawer() {
   );
 }
 
+
+function RouteDrawer() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>Open route drawer</button>
+      {open ? (
+        <BottomDrawer open onOpenChange={() => setOpen(false)} title="Route details">
+          <button type="button">Route body action</button>
+        </BottomDrawer>
+      ) : null}
+    </>
+  );
+}
+
 function UncontrolledDrawer() {
   return (
     <BottomDrawer
@@ -149,6 +164,20 @@ describe("BottomDrawer keyboard focus", () => {
     await flushScheduledWork();
 
     expect(dialog().getAttribute("data-state")).toBe("closed");
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("returns focus when a route drawer is removed instead of receiving open=false", async () => {
+    await act(async () => root.render(createElement(RouteDrawer)));
+    const opener = container.querySelector<HTMLButtonElement>("button");
+    if (!opener) throw new Error("Expected the route drawer opener.");
+    opener.focus();
+    await act(async () => opener.click());
+    await flushScheduledWork();
+    expect(dialog().contains(document.activeElement)).toBe(true);
+    await act(async () => closeButton().click());
+    await flushScheduledWork();
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull();
     expect(document.activeElement).toBe(opener);
   });
 

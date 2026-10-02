@@ -63,6 +63,8 @@ export type SearchQualifiers = {
   /** Requested place facts remain explicit even when the catalog cannot
    * confirm them. They are not silently treated as satisfied keywords. */
   requestedFeatures: SearchPlaceFeature[];
+  /** Absence is not proven by a missing amenity field. */
+  negatedFeatures: SearchPlaceFeature[];
   /** Query after separating operational/location language and requested
    * features. Category words remain so "pizza" still narrows broad Food. */
   cleanedQuery: string;
@@ -93,6 +95,11 @@ function featureIsNegated(prefix: string): boolean {
   if (!/\b(?:and|plus)\s*$/i.test(prefix)) return false;
   const clause = [...prefix.matchAll(/\b(?:with|without|no|not|has|have|having|offers|including|need|want)\b/gi)].at(-1)?.[0];
   return Boolean(clause && /^(?:without|no|not)$/i.test(clause));
+}
+
+/** Cheap gate for literal-name protection; never loads or decorates places. */
+export function hasSearchFeatureTerms(query: string): boolean {
+  return PLACE_FEATURES.some((feature) => feature.pattern.test(query));
 }
 
 export function negatedSearchFeatures(query: string): SearchPlaceFeature[] {
@@ -134,13 +141,15 @@ export function parseSearchQualifiers(query: string, options: { literalPlaceName
     ? searchDecisionQuery.replace(new RegExp(options.literalPlaceName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), literalPlaceToken)
     : searchDecisionQuery;
   const featureRequests = PLACE_FEATURES.filter((feature) => affirmativeFeatureRequest(featureQuery, feature));
+  const negativeRequests = negatedSearchFeatures(featureQuery);
+  const hasFeatureClause = featureRequests.length > 0 || negativeRequests.length > 0;
   // The known name was masked first, so "in" within Beans in the Belfry
   // cannot be confused with a location clause or split the destination.
-  const namedPlaceSlug = featureRequests.length > 0 || negatedSearchFeatures(featureQuery).length > 0
+  const namedPlaceSlug = hasFeatureClause
     ? options.namedPlaceSlug ?? null
     : null;
-  const destinationClause = featureQuery.split(/\b(?:with|near|around|by|at|in|has|having|that|offers)\b/i)[0];
-  const answer = namedPlaceSlug ? null : primaryAnswerFor(featureRequests.length > 0 ? destinationClause : q);
+  const destinationClause = featureQuery.split(/\b(?:with|without|near|around|by|at|in|has|have|having|that|offers)\b/i)[0];
+  const answer = namedPlaceSlug ? null : primaryAnswerFor(hasFeatureClause ? destinationClause : q);
   const compoundIntent = namedPlaceSlug ? null : BREAKFAST_SANDWICH_RE.test(q)
     ? "breakfast-sandwich"
     : STEAK_DINNER_RE.test(q)
@@ -148,10 +157,10 @@ export function parseSearchQualifiers(query: string, options: { literalPlaceName
       : null;
   // Singular "park" normally collides with the parking verb. A feature
   // clause makes the destination noun explicit without changing that verb.
-  const featurePlaceKind = !namedPlaceSlug && featureRequests.length > 0 && !/\b(?:where (?:can|do) i park|park (?:my|a|the) (?:car|vehicle))\b/i.test(destinationClause)
+  const featurePlaceKind = !namedPlaceSlug && hasFeatureClause && !/\b(?:where (?:can|do) i park|park (?:my|a|the) (?:car|vehicle))\b/i.test(destinationClause)
     ? /\brestaurants?\b/i.test(destinationClause) ? "restaurant"
-    : !answer && /\bparks?\b/i.test(destinationClause) ? "park"
-    : !answer && /\blibrar(?:y|ies)\b/i.test(destinationClause) ? "library" : null
+    : /\bparks?\b/i.test(destinationClause) ? "park"
+    : /\blibrar(?:y|ies)\b/i.test(destinationClause) ? "library" : null
     : null;
   const strictPlaceKind = namedPlaceSlug ? null : PHARMACY_RE.test(q)
     ? "pharmacy"
@@ -174,9 +183,9 @@ export function parseSearchQualifiers(query: string, options: { literalPlaceName
       ? CRAVING_BY_KEY[categoryKey]
       : null;
 
-  const requestedFeatures = namedPlaceSlug || categoryKey || compoundIntent || (strictPlaceKind && strictPlaceKind !== "atm")
-    ? featureRequests.map((feature) => feature.key)
-    : [];
+  const hasPlaceDestination = Boolean(namedPlaceSlug || categoryKey || compoundIntent || (strictPlaceKind && strictPlaceKind !== "atm"));
+  const requestedFeatures = hasPlaceDestination ? featureRequests.map((feature) => feature.key) : [];
+  const negatedFeatures = hasPlaceDestination ? negativeRequests : [];
 
   let cleanedQuery = featureQuery;
   if (openNow) {
@@ -237,6 +246,7 @@ export function parseSearchQualifiers(query: string, options: { literalPlaceName
     downtown,
     regions,
     requestedFeatures,
+    negatedFeatures,
     cleanedQuery,
     includeAllCategoryMatches,
     constrained: Boolean(
@@ -262,6 +272,11 @@ export function matchesSearchQualifiers(
   if (municipality && place.municipality !== municipality) return false;
   if (!municipalityMatchesRegions(place.municipality, qualifiers.regions)) return false;
   if (qualifiers.requestedFeatures.includes("wheelchair") && place.accessibility?.wheelchair === false) return false;
+  // A listed positive amenity contradicts "without". Missing evidence is
+  // merely unknown; those candidates keep an explicit absence caveat.
+  if (qualifiers.negatedFeatures.some((feature) =>
+    unconfirmedSearchFeatures(place, { ...qualifiers, requestedFeatures: [feature] }).length === 0,
+  )) return false;
   if (qualifiers.strictPlaceKind) {
     const exactFields = [
       place.category,

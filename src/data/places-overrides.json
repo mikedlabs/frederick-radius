@@ -115,8 +115,24 @@
     },
     "beans-in-the-belfry-brunswick": {
       "website": "https://beansinthebelfry.com/",
-      "menu_url": "https://beans-in-the-belfry-103792.square.site/",
-      "order_url": "https://beans-in-the-belfry-103792.square.site/",
+      "commerce_links": [
+        {
+          "type": "menu",
+          "provider": "square",
+          "url": "https://beans-in-the-belfry-103792.square.site/",
+          "source": "curated",
+          "last_verified_at": "2026-10-02",
+          "notes": "The official homepage provides this Square menu and ordering link. Current order acceptance is unconfirmed."
+        },
+        {
+          "type": "order",
+          "provider": "square",
+          "url": "https://beans-in-the-belfry-103792.square.site/",
+          "source": "curated",
+          "last_verified_at": "2026-10-02",
+          "notes": "The official homepage provides this Square menu and ordering link. Current order acceptance is unconfirmed."
+        }
+      ],
       "search_aliases": [
         "Beans in the Belfry",
         "coffee",

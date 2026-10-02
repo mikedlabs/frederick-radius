@@ -1,10 +1,23 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+import {
+  dismissReturnBridge,
+  emptyReturnBridgeState,
+  RETURN_BRIDGE_STORAGE_KEY,
+} from "../src/lib/return-bridge";
 
 const origin = `http://localhost:${Number(process.env.PW_PORT) || 3010}`;
 const route = "/today/tonight?intent=dinner&in=county";
 
 test.beforeEach(async ({ page }) => {
+  // Exercise Tonight as someone who already declined the install invitation.
+  // The timed iPhone offer is covered separately by pwa-install.spec.ts.
+  await page.addInitScript(({ key, state }) => {
+    window.localStorage.setItem(key, JSON.stringify(state));
+  }, {
+    key: RETURN_BRIDGE_STORAGE_KEY,
+    state: dismissReturnBridge(emptyReturnBridgeState()),
+  });
   // Keep browser assets local. Server-side sources still use the app's existing
   // source policy; these assertions work with available and unavailable feeds.
   await page.route("**/*", (request) => {
@@ -15,11 +28,6 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
 });
 
-async function dismissInstall(page: import("@playwright/test").Page) {
-  const dismiss = page.getByRole("button", { name: "Not now", exact: true });
-  if (await dismiss.isVisible()) await dismiss.click();
-}
-
 test("keeps the credited area photo and real recommendation useful at phone and desktop sizes", async ({ page }, testInfo) => {
   await page.goto(origin + route);
   await expect(page.getByRole("heading", { name: "Dinner tonight", exact: true })).toBeVisible();
@@ -28,7 +36,6 @@ test("keeps the credited area photo and real recommendation useful at phone and 
   await expect(lead.getByRole("link", { name: /^View .+ details$/ })).toBeVisible();
   for (const [width, height] of [[320, 740], [375, 812], [390, 844], [430, 932], [1440, 1000]]) {
     await page.setViewportSize({ width, height });
-    await dismissInstall(page);
     const photo = page.locator("[data-tonight-area-photo]");
     await expect(photo).toContainText("Carroll Creek, Frederick");
     await expect(photo).toContainText("Archive photograph by Mike D. · June 2023");

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
 import { decoratePlace, publicPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { clientPlaces } from "@/lib/loaders/places-client";
+import { resolveCommerceLinks } from "@/lib/commerce/links";
 import { hoursFreshnessEnforced } from "@/lib/hours-freshness";
 
 type ClientRow = PlaceCardData & { hours_policy_strict?: boolean };
@@ -14,6 +15,21 @@ describe("server/client place inventory parity", () => {
     expect(client.map((place) => place.slug).sort()).toEqual(
       server.map((place) => place.slug).sort(),
     );
+  });
+
+  it("ships Beans' source-reviewed menu and order links through the canonical override contract", () => {
+    const slug = "beans-in-the-belfry-brunswick";
+    const expected = ["menu", "order"].map((type) => ({
+      type, provider: "square", source: "curated",
+      url: "https://beans-in-the-belfry-103792.square.site/",
+    }));
+    for (const dataset of [server, client]) {
+      const beans = dataset.find((place) => place.slug === slug)!;
+      const links = resolveCommerceLinks(beans);
+      expect(links).toEqual(expect.arrayContaining(expected.map((link) => expect.objectContaining(link))));
+      expect(links.filter((link) => link.url === expected[0].url)).toHaveLength(2);
+      expect(links.every((link) => !link.is_verified)).toBe(true);
+    }
   });
 
   it("stamps the same hours policy and materialized schedules as the server build", () => {

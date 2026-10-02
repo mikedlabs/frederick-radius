@@ -8,8 +8,6 @@ import {
 import { buildFairDayWorkspaceData } from "./buildFairDayWorkspaceData";
 import FairDayWorkspace from "./FairDayWorkspace";
 
-import type { ReactNode } from "react";
-
 /**
  * Server adapter for the canonical reviewed pack. It emits useful schedule,
  * offer, arrival, and source content before the client workspace hydrates.

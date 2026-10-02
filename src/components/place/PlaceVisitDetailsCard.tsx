@@ -56,8 +56,9 @@ export default function PlaceVisitDetailsCard({
           <li key={fact.text}>
             {fact.text}
             {sources.length > 1 ? (
-              <sup className="ml-1 text-[10px]" aria-label={`Source ${sources.indexOf(fact.source_url) + 1}`}>
-                {sources.indexOf(fact.source_url) + 1}
+              <sup className="ml-1 text-[10px]">
+                <span aria-hidden>{sources.indexOf(fact.source_url) + 1}</span>
+                <span className="sr-only">Source {sources.indexOf(fact.source_url) + 1}</span>
               </sup>
             ) : null}
           </li>

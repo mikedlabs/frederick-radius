@@ -264,10 +264,11 @@ function officialTitleUpdateOrder(title: string): number | null {
   return date.getTime();
 }
 
-function latestOfficialAlertRows(alerts: OfficialCivicAlert[]): OfficialCivicAlert[] {
+type OfficialAlertCandidate = { alert: OfficialCivicAlert; update: number | null };
+
+function latestOfficialAlertRows(candidates: OfficialAlertCandidate[]): OfficialCivicAlert[] {
   const selected = new Map<string, { alert: OfficialCivicAlert; update: number | null }>();
-  for (const alert of alerts) {
-    const update = officialTitleUpdateOrder(alert.title);
+  for (const { alert, update } of candidates) {
     const prior = selected.get(alert.url);
     const publication = Date.parse(alert.publishedAt!);
     const priorPublication = Date.parse(prior?.alert.publishedAt ?? "");
@@ -307,13 +308,16 @@ export function parseOfficialAlertFeed(
   const asOf = isoOrNull(tagText("lastBuildDate", xml));
   const providerUpdatedAt = asOf;
   const retrievedMs = Date.parse(retrievedAt);
-  const alerts: OfficialCivicAlert[] = [];
+  const alerts: OfficialAlertCandidate[] = [];
   const itemPattern = /<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi;
   let itemMatch: RegExpExecArray | null;
 
   while ((itemMatch = itemPattern.exec(xml)) !== null) {
     const block = itemMatch[1];
-    const title = plainText(tagText("title", block), 180);
+    const rawTitle = tagText("title", block);
+    const title = plainText(rawTitle, 180);
+    // Keep the private ordering key before shortening the public title.
+    const update = officialTitleUpdateOrder(plainText(rawTitle, Number.MAX_SAFE_INTEGER));
     const itemUrl = officialItemUrl(tagText("link", block), definition);
     if (!title || !itemUrl) continue;
 
@@ -342,7 +346,7 @@ export function parseOfficialAlertFeed(
       confidence: "official",
     };
 
-    alerts.push({
+    alerts.push({ update, alert: {
       id: `${definition.id}-${stableId(itemUrl)}`,
       kind: definition.id,
       title,
@@ -356,7 +360,7 @@ export function parseOfficialAlertFeed(
       expiresAt,
       confidence: "official",
       provenance,
-    });
+    } });
   }
 
   return { valid: true, asOf, alerts: latestOfficialAlertRows(alerts) };
