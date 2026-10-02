@@ -22,8 +22,8 @@ describe("Today decision hierarchy", () => {
     expect(eventClose).toBeGreaterThan(placeClose);
   });
 
-  it("puts Find before weather and the deeper place lead and event program", () => {
-    const weather = renderedPage.indexOf("</SkyHero>");
+  it("puts Find and useful place and event answers before secondary weather", () => {
+    const weather = renderedPage.indexOf("<section data-today-weather");
     const lead = renderedPage.indexOf("{decisionLead}");
     const find = renderedPage.indexOf("<TodayAsk embedded");
     const events = renderedPage.indexOf("{whatsOn}");
@@ -31,8 +31,10 @@ describe("Today decision hierarchy", () => {
     expect(weather).toBeGreaterThan(-1);
     expect(find).toBeGreaterThan(-1);
     expect(find).toBeLessThan(weather);
-    expect(lead).toBeGreaterThan(weather);
+    expect(lead).toBeGreaterThan(find);
+    expect(lead).toBeLessThan(weather);
     expect(events).toBeGreaterThan(lead);
+    expect(events).toBeLessThan(weather);
   });
 
   it("shows an honest live scope readout before weather on narrow screens", () => {
@@ -41,7 +43,7 @@ describe("Today decision hierarchy", () => {
     // this test guards ORDER (title, then scope line, then weather), not the
     // element's exact attribute list.
     const scope = renderedPage.indexOf("<TodayScopeStatus");
-    const weather = renderedPage.indexOf("<SkyHero");
+    const weather = renderedPage.indexOf("<section data-today-weather");
 
     expect(title).toBeGreaterThan(-1);
     expect(scope).toBeGreaterThan(title);
@@ -49,20 +51,21 @@ describe("Today decision hierarchy", () => {
   });
 
   it("does not stack a second weather-safety panel below the active alert", () => {
-    expect(renderedPage).toContain("<CivicAlerts />");
+    expect(renderedPage).toContain("<CivicAlerts compact />");
     expect(renderedPage).not.toContain("<WeatherNeeds");
   });
 
   it("keeps alerts first and the request doorway ahead of the one Fair campaign slot", () => {
-    const alerts = renderedPage.indexOf("<CivicAlerts />");
+    const alerts = renderedPage.indexOf("<CivicAlerts compact />");
     const fair = renderedPage.indexOf("<TodayFairFeature");
     const masthead = renderedPage.indexOf("{frame.title}");
     const find = renderedPage.indexOf("<TodayAsk embedded");
-    const weather = renderedPage.indexOf("<SkyHero");
+    const weather = renderedPage.indexOf("<section data-today-weather");
 
     expect(masthead).toBeGreaterThan(alerts);
     expect(find).toBeGreaterThan(masthead);
-    expect(fair).toBeGreaterThan(find);
+    expect(fair).toBeGreaterThan(renderedPage.indexOf("{whatsOn}"));
+    expect(renderedPage).toContain("<TodayPlanTonightLink />");
     expect(weather).toBeGreaterThan(fair);
     expect(renderedPage).toContain("fairPromotionPhase ? (");
     expect(renderedPage).toContain(": civicMoment ? (");
@@ -70,7 +73,7 @@ describe("Today decision hierarchy", () => {
   });
 
   it("puts In The Streets ahead of the ordinary briefing on its actual day", () => {
-    const alerts = renderedPage.indexOf("<CivicAlerts />");
+    const alerts = renderedPage.indexOf("<CivicAlerts compact />");
     const dayOfLead = renderedPage.indexOf("civicMomentLeadsToday && (");
     const masthead = renderedPage.indexOf("{frame.title}");
 
@@ -81,7 +84,7 @@ describe("Today decision hierarchy", () => {
   });
 
   it("gives each part of the briefing one purpose and preserves an overlapping civic moment", () => {
-    const decide = renderedPage.indexOf('className="flex flex-col gap-5"');
+    const decide = renderedPage.indexOf("data-today-briefing");
     const follow = renderedPage.indexOf('label="Follow the day"');
     const plan = renderedPage.indexOf('title="Plan the rest"');
     const more = renderedPage.indexOf('title="Local guides and saved places"');

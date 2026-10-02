@@ -221,11 +221,24 @@ for (const viewport of VIEWPORTS) {
             ).toBeVisible();
           }
           const header = page.locator("header").first();
+          const countyStatus = header.locator("[data-pulse-indicator]");
+          await expect(countyStatus).toHaveAttribute("href", "/pulse");
+          if (viewport.width >= 640) {
+            await expect(countyStatus).toBeVisible();
+          } else {
+            // A quiet/checking phone header leaves room for the primary task;
+            // active alerts and unavailable checks must remain visible.
+            await expect.poll(async () => {
+              const label = await countyStatus.getAttribute("aria-label");
+              const visible = await countyStatus.isVisible();
+              if (/^County status: (checking|no active alerts)$/.test(label ?? "")) {
+                return !visible;
+              }
+              return /^County status: (unavailable|\d+ active alerts?)$/.test(label ?? "") && visible;
+            }).toBe(true);
+          }
           await expect(
-            header.getByRole("link", { name: /^Pulse:/ }),
-          ).toBeVisible();
-          await expect(
-            header.getByRole("link", { name: "Open Compass tools" }),
+            header.getByRole("link", { name: "Open tools" }),
           ).toBeVisible();
           // The connected-discovery pass moved the single request doorway
           // into Today's main launcher; do not assert the retired header UI.

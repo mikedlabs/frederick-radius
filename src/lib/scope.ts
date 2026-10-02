@@ -334,12 +334,24 @@ function safeStorage(): Storage | null {
   }
 }
 
-/** The stored browsing scope, or null when unset. Client-only. */
+/** The shared browsing scope, or null when genuinely unset. Client-only.
+ * Storage is authoritative; its existing cookie mirror recovers a saved lens
+ * when storage is unavailable or empty, so server and client do not disagree. */
 export function getScope(): Scope | null {
+  if (typeof window === "undefined") return null;
   const ls = safeStorage();
-  if (!ls) return null;
   try {
-    return parseScope(ls.getItem(STORAGE_KEY));
+    const stored = parseScope(ls?.getItem(STORAGE_KEY));
+    if (stored) return stored;
+  } catch {
+    // A blocked storage read can still use the validated scope mirror below.
+  }
+  if (typeof document === "undefined") return null;
+  try {
+    const prefix = `${SCOPE_COOKIE}=`;
+    const cookie = document.cookie.split(";").map((part) => part.trim())
+      .find((part) => part.startsWith(prefix));
+    return cookie ? parseScope(decodeURIComponent(cookie.slice(prefix.length))) : null;
   } catch {
     return null;
   }

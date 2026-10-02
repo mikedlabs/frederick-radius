@@ -1,0 +1,177 @@
+{
+  "beans-in-the-belfry-brunswick": {
+    "status": "approved",
+    "reviewed_at": "2026-10-02T17:34:09.000Z",
+    "facts": [
+      {
+        "text": "The cafe has indoor seating and a children's play corner.",
+        "source_url": "https://beansinthebelfry.com/"
+      },
+      {
+        "text": "The owner describes sidewalk and garden seating during warm weather.",
+        "source_url": "https://beansinthebelfry.com/"
+      }
+    ],
+    "actions": [
+      {
+        "label": "View the owner's menu",
+        "url": "https://beans-in-the-belfry-103792.square.site/"
+      }
+    ],
+    "unknowns": [
+      "wifi",
+      "noise_level",
+      "wheelchair_access"
+    ]
+  },
+  "smoketown-brewing-brunswick": {
+    "status": "approved",
+    "reviewed_at": "2026-10-02T17:34:09.000Z",
+    "facts": [
+      {
+        "text": "Dogs are welcome on the patio.",
+        "source_url": "https://www.smoketownbrewing.com/"
+      },
+      {
+        "text": "The brewery serves food as well as beer; its bar and kitchen have separate schedules.",
+        "source_url": "https://www.smoketownbrewing.com/contact"
+      }
+    ],
+    "actions": [
+      {
+        "label": "Check visit and kitchen information",
+        "url": "https://www.smoketownbrewing.com/contact"
+      }
+    ],
+    "unknowns": [
+      "wifi",
+      "noise_level",
+      "wheelchair_access"
+    ]
+  },
+  "attaboy-beer-frederick": {
+    "status": "approved",
+    "reviewed_at": "2026-10-02T17:34:09.000Z",
+    "facts": [
+      {
+        "text": "Friendly, leashed dogs are allowed in the beer garden and garage, but not the taproom.",
+        "source_url": "https://www.attaboybeer.com/visit-us"
+      },
+      {
+        "text": "Children may visit with a parent until 8 p.m.; children are not allowed at the bar.",
+        "source_url": "https://www.attaboybeer.com/visit-us"
+      },
+      {
+        "text": "Tables are first come, first served; the brewery does not take reservations.",
+        "source_url": "https://www.attaboybeer.com/visit-us"
+      }
+    ],
+    "actions": [
+      {
+        "label": "See the food truck schedule",
+        "url": "https://www.attaboybeer.com/food-trucks"
+      },
+      {
+        "label": "Read the visit policies",
+        "url": "https://www.attaboybeer.com/visit-us"
+      }
+    ],
+    "unknowns": [
+      "wifi",
+      "noise_level",
+      "wheelchair_access"
+    ]
+  },
+  "c-burr-artz-public-library-frederick": {
+    "status": "approved",
+    "reviewed_at": "2026-10-02T17:34:09.000Z",
+    "facts": [
+      {
+        "text": "The branch lists wireless internet, study rooms and meeting rooms.",
+        "source_url": "https://www.fcpl.org/branches-hours/c-burr-artz-public-library"
+      },
+      {
+        "text": "Printing, scanning, copying and outgoing fax services are available; check FCPL for fees and instructions.",
+        "source_url": "https://www.fcpl.org/library-services/print-scan-copy-fax"
+      }
+    ],
+    "actions": [
+      {
+        "label": "Check printing services",
+        "url": "https://www.fcpl.org/library-services/print-scan-copy-fax"
+      },
+      {
+        "label": "Read Wi-Fi access details",
+        "url": "https://www.fcpl.org/library-services/wireless-internet"
+      }
+    ],
+    "unknowns": [
+      "noise_level",
+      "wheelchair_access"
+    ]
+  },
+  "thurmont-regional-library-thurmont": {
+    "status": "approved",
+    "reviewed_at": "2026-10-02T17:34:09.000Z",
+    "facts": [
+      {
+        "text": "The branch lists wireless internet, study rooms and meeting rooms.",
+        "source_url": "https://www.fcpl.org/branches-hours/thurmont-regional-library"
+      },
+      {
+        "text": "Printing, scanning, copying and outgoing fax services are available; check FCPL for fees and instructions.",
+        "source_url": "https://www.fcpl.org/library-services/print-scan-copy-fax"
+      },
+      {
+        "text": "Curbside pickup uses a drive-through window; the branch also has a covered outdoor deck and a nature trail with a storypath.",
+        "source_url": "https://www.fcpl.org/branches-hours/thurmont-regional-library"
+      }
+    ],
+    "actions": [
+      {
+        "label": "Check printing services",
+        "url": "https://www.fcpl.org/library-services/print-scan-copy-fax"
+      },
+      {
+        "label": "Read Wi-Fi access details",
+        "url": "https://www.fcpl.org/library-services/wireless-internet"
+      }
+    ],
+    "unknowns": [
+      "noise_level",
+      "wheelchair_access"
+    ]
+  },
+  "myersville-community-library-myersville": {
+    "status": "approved",
+    "reviewed_at": "2026-10-02T17:34:09.000Z",
+    "facts": [
+      {
+        "text": "The branch lists wireless internet, study rooms and meeting rooms.",
+        "source_url": "https://www.fcpl.org/branches-hours/myersville-community-library"
+      },
+      {
+        "text": "Printing, scanning, copying and outgoing fax services are available; check FCPL for fees and instructions.",
+        "source_url": "https://www.fcpl.org/library-services/print-scan-copy-fax"
+      },
+      {
+        "text": "The branch displays Trolley 150, an original Myersville trolley car.",
+        "source_url": "https://www.fcpl.org/branches-hours/myersville-community-library"
+      }
+    ],
+    "actions": [
+      {
+        "label": "Check printing services",
+        "url": "https://www.fcpl.org/library-services/print-scan-copy-fax"
+      },
+      {
+        "label": "Read Wi-Fi access details",
+        "url": "https://www.fcpl.org/library-services/wireless-internet"
+      }
+    ],
+    "unknowns": [
+      "noise_level",
+      "wheelchair_access"
+    ]
+  }
+}

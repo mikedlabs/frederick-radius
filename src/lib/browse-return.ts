@@ -8,6 +8,7 @@ const DESTINATIONS: Record<string, string> = {
   "/events": "events",
   "/my-radius": "saved",
   "/today": "Today",
+  "/today/tonight": "Tonight",
   "/plan": "your plan",
 };
 

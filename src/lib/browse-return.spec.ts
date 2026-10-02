@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { browseReturnFromLocation, browseReturnLabel, normalizeBrowseReturnTo, withBrowseReturnTo } from "./browse-return";
 
 describe("connected browsing returns", () => {
+  it("keeps Tonight intent and town through a full detail visit", () => {
+    const tonight = "/today/tonight?intent=pizza&in=brunswick";
+    expect(browseReturnLabel(tonight)).toBe("Back to Tonight");
+    expect(new URL(withBrowseReturnTo("/places/example", tonight), "https://example.test").searchParams.get("returnTo")).toBe(tonight);
+    expect(normalizeBrowseReturnTo("/today/tonight/unsafe")).toBeNull();
+  });
   it("keeps a search's geography, filters, and exact map return together", () => {
     const map = "/map?c=-77.5,39.3,12&q=coffee&in=brunswick";
     const search = `/search?q=coffee&in=brunswick&returnTo=${encodeURIComponent(map)}`;

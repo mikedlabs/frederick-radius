@@ -311,8 +311,11 @@ const nextConfig: NextConfig = {
         destination: "https://frederickradius.app/:path*",
         permanent: true,
       },
+      // Tonight is an explicit planning intent, not an ignored Today filter.
+      // Keep the ordinary Today route cacheable and its existing layout intact.
+      { source: "/today", has: [{ type: "query", key: "t", value: "tonight" }], destination: "/today/tonight", permanent: false },
+      { source: "/tonight", destination: "/today/tonight", permanent: true },
       // Editorial micro-pages → canonical category surfaces.
-      { source: "/tonight", destination: "/today?t=tonight", permanent: true },
       { source: "/markets", destination: "/category/market", permanent: true },
       { source: "/historic", destination: "/category/museum", permanent: true },
       { source: "/art", destination: "/category/arts", permanent: true },

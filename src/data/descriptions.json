@@ -11,15 +11,15 @@
     "reviewer_note": "Reviewed the official About page, homepage and linked ordering page on 2026-09-20. The homepage names In Crust We Trust; About supports the permanent downtown address, Detroit-style pizza, rotating taps and weekend brunch alias. https://www.whiterabbitgastropub.com/onlineordering explicitly offers pickup and delivery. These sources also support the override roles, search aliases, amenities and known-for terms. This is the permanent restaurant, not a Fair vendor location; no booth, Fair hours, current opening status or food-allergy claim is inferred."
   },
   "attaboy-beer-frederick": {
-    "blurb": "Attaboy Beer is a brewery on Sagner Avenue with indoor seating, a heated garage and a beer garden. Its visit page lists food trucks and welcomes children until 8pm; leashed dogs are allowed in the garden and garage, but not the taproom.",
+    "blurb": "Attaboy Beer has indoor seating, a heated garage and a beer garden on Sagner Avenue. Leashed dogs are allowed in the garden and garage, but not the taproom. Children may visit with a parent until 8 p.m.; tables are first come, first served.",
     "status": "approved",
     "source": {
       "kind": "business_website",
       "url": "https://www.attaboybeer.com/visit-us",
-      "fetched_at": "2026-09-20T00:00:00.000Z"
+      "fetched_at": "2026-10-02T15:49:01.514882+00:00"
     },
-    "reviewed_at": "2026-09-20T00:00:00.000Z",
-    "reviewer_note": "Reviewed the official Visit page on 2026-09-20 for the address, seating, food trucks, parking and child/dog policies. The current Visit page's no-dogs-in-taproom rule takes precedence over conflicting older FAQ copy. The distinct Barrel House venue is not merged. These facts support the matching override aliases, amenities and known-for terms. No specific food truck, current opening status, free parking or table availability is promised."
+    "reviewed_at": "2026-10-02T17:34:09.000Z",
+    "reviewer_note": "Rechecked the official Visit page on 2026-10-02 for seating, parking, dog areas, child policy and no-reservations rule. Its specific no-dogs-in-taproom rule takes precedence over broader older FAQ copy. The Barrel House is a separate venue. The official homepage links the food-truck schedule; no particular truck, current open status, available table or free parking is promised. Wi-Fi, noise level and wheelchair access are unconfirmed."
   },
   "baker-park-frederick": {
     "blurb": "Baker Park has a playground, picnic tables, tennis courts and walking and biking paths. The city's facility listing identifies restrooms in the bandshell and portable toilets near the tennis courts.",
@@ -38,22 +38,22 @@
     "source": {
       "kind": "official_source",
       "url": "https://www.fcpl.org/branches-hours/c-burr-artz-public-library",
-      "fetched_at": "2026-09-20T00:00:00.000Z"
+      "fetched_at": "2026-10-02T15:49:03.444121+00:00"
     },
-    "reviewed_at": "2026-09-20T00:00:00.000Z",
-    "reviewer_note": "Reviewed the FCPL branch page and https://www.fcpl.org/library-services/maryland-room on 2026-09-20. The branch page lists wireless internet, study/meeting rooms, curbside pickup and print/scan/copy/fax services. The Maryland Room page supports local history and genealogy. These facts support the override aliases, amenities and known-for terms. The older unverified makerspace claim is replaced; no room availability, free printing, passport walk-in availability or current-hours claim is inferred."
+    "reviewed_at": "2026-10-02T17:34:09.000Z",
+    "reviewer_note": "Rechecked the FCPL branch page and linked wireless/print service pages on 2026-10-02. The branch lists Wi-Fi, study/meeting rooms, curbside pickup and print/scan/copy/fax. The previously reviewed Maryland Room description remains supported by its official service page. These sources support the matching amenities and aliases. Study rooms do not establish quietness; room availability, wheelchair routes, current hours and free printing are not inferred."
   },
   "beans-in-the-belfry-brunswick": {
-    "blurb": "Beans in the Belfry serves coffee, tea and meals in a converted church built in 1910. The Brunswick cafe has indoor seating and a children's play corner.",
+    "blurb": "Beans in the Belfry serves coffee, tea and meals in a restored 1910 church in Brunswick. It has indoor seating and a children's play corner; the owner also describes seasonal sidewalk and garden seating.",
     "status": "approved",
     "source": {
       "kind": "business_website",
-      "url": "https://beansinthebelfry.com/about/",
-      "fetched_at": "2026-09-09T04:20:00.000Z"
+      "url": "https://beansinthebelfry.com/",
+      "fetched_at": "2026-10-02T15:48:47.423823+00:00"
     },
     "generated_at": "2026-09-09T04:20:00.000Z",
-    "reviewed_at": "2026-09-09T04:20:00.000Z",
-    "reviewer_note": "Source-reviewed editorial summary of the official About page. The page identifies the 1910 church, food and drinks, seating and children's play corner. No current-hours claim is inferred."
+    "reviewed_at": "2026-10-02T17:34:09.000Z",
+    "reviewer_note": "Reviewed the official homepage on 2026-10-02. Food, building, indoor seating, children's play corner and seasonal outdoor seating are supported. The owner-linked Square menu/ordering URL supports the matching action fields. Laptop use is mentioned but Wi-Fi, noise level and wheelchair access are unconfirmed. The page contains conflicting phone numbers, so no phone correction is promoted. No current hours, seating availability or image-reuse rights are inferred."
   },
   "whistle-punk-farm-delicatessen-brunswick": {
     "blurb": "Whistle Punk Farm Delicatessen serves paninis, subs, sandwiches and salads in Brunswick's Newberry Building. Its published menu includes vegetarian and vegan options.",
@@ -1112,5 +1112,38 @@
       "fetched_at": "2026-08-01T09:48:01.377Z"
     },
     "generated_at": "2026-08-01T09:48:01.377Z"
+  },
+  "smoketown-brewing-brunswick": {
+    "blurb": "Smoketown Brewing occupies a restored fire station on West Potomac Street in Brunswick. It serves beer and food, with a taproom and a patio where dogs are welcome.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.smoketownbrewing.com/",
+      "fetched_at": "2026-10-02T15:48:47.554462+00:00"
+    },
+    "reviewed_at": "2026-10-02T17:34:09.000Z",
+    "reviewer_note": "Reviewed the owner homepage and contact page on 2026-10-02. The restored fire station, food, taproom, address and dog-friendly patio support this description and matching override terms. Its owner describes dinner service and publishes a separate kitchen schedule, supporting the restaurant subcategory while retaining brewery as the primary role. Dog access is limited to the patio evidence. Wi-Fi, noise level and wheelchair access are unconfirmed. Bar and kitchen schedules differ; neither is published as current hours. No event session, table availability or image permission is inferred."
+  },
+  "thurmont-regional-library-thurmont": {
+    "blurb": "Thurmont Regional Library offers wireless internet, study and meeting rooms, and printing and scanning. Curbside pickup uses a drive-through window. The branch also has a covered outdoor deck and a nature trail with a storypath.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.fcpl.org/branches-hours/thurmont-regional-library",
+      "fetched_at": "2026-10-02T15:49:07.127295+00:00"
+    },
+    "reviewed_at": "2026-10-02T17:34:09.000Z",
+    "reviewer_note": "Reviewed the FCPL branch page and linked wireless/print service pages on 2026-10-02. Services and outdoor features support this description and matching amenities/aliases. The drive-through is for curbside pickup. Wi-Fi is listed, but noise level and wheelchair routes are unconfirmed. No room availability, open-now status, current hours, free printing or outdoor-route accessibility is inferred."
+  },
+  "myersville-community-library-myersville": {
+    "blurb": "Myersville Community Library offers wireless internet, study and meeting rooms, and printing and scanning. The branch at 8 Harp Place also displays Trolley 150, one of the original trolley cars that served Myersville.",
+    "status": "approved",
+    "source": {
+      "kind": "official_source",
+      "url": "https://www.fcpl.org/branches-hours/myersville-community-library",
+      "fetched_at": "2026-10-02T15:49:08.269960+00:00"
+    },
+    "reviewed_at": "2026-10-02T17:34:09.000Z",
+    "reviewer_note": "Reviewed the official FCPL branch page and linked wireless/print service pages on 2026-10-02. Listed services and Trolley 150 support this description and matching amenities/aliases. Wi-Fi is listed, but noise level and wheelchair routes are unconfirmed. No room availability, current hours, free printing or ability to enter the trolley is inferred."
   }
 }

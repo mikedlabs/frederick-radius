@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
@@ -11,7 +12,7 @@ function render(open: boolean): string {
       className="outer-class"
       innerClassName="inner-class"
     >
-      <a href="/map">Open the map</a>
+      <Link href="/map" prefetch={false}>Open the map</Link>
     </MotionDisclosure>,
   );
 }

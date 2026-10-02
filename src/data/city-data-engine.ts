@@ -7,6 +7,9 @@
  * have not launched.
  */
 
+import { PRODUCT_NAMES } from "@/lib/product-names";
+
+
 export const COMMUNITIES = [
     { id: "frederick", name: "Frederick", preview: "Places + events" },
     { id: "urbana", name: "Urbana", preview: "Places + events" },
@@ -30,7 +33,7 @@ export const PERSONAS = [
         benefit: "Start with what is useful today: nearby places, current events, and practical local updates.",
         primaryUse: "Plan a local day",
         useCase: "Everyday discovery",
-        topFeatures: ["Today", "Radius", "Live conditions"],
+        topFeatures: ["Today", "Radius", PRODUCT_NAMES.liveConditions.uiLabel],
     },
     {
         id: "visitor",

@@ -18,18 +18,18 @@
  * regenerate with: `npm run build:client-places`.
  */
 import { writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { publicPlaces, decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
 import { businessInfoCommerceLinks } from "@/lib/loaders/businessInfo";
 import { hoursFreshnessEnforced } from "@/lib/hours-freshness";
 import { findGooglePlaceIdCollisions } from "@/lib/quality/enrichmentBinding";
 import { mergeClientCommerceLinks } from "./lib/client-commerce-links";
 
-const OUT = new URL("../src/data/places-client.json", import.meta.url).pathname;
-const HOURS_OUT = new URL("../src/data/places-client-hours.json", import.meta.url).pathname;
-const EVENT_VENUE_PHOTO_CREDITS_OUT = new URL(
-  "../src/data/event-venue-photo-credits.json",
-  import.meta.url,
-).pathname;
+const OUT = fileURLToPath(new URL("../src/data/places-client.json", import.meta.url));
+const HOURS_OUT = fileURLToPath(new URL("../src/data/places-client-hours.json", import.meta.url));
+const EVENT_VENUE_PHOTO_CREDITS_OUT = fileURLToPath(
+  new URL("../src/data/event-venue-photo-credits.json", import.meta.url),
+);
 
 type CompactPhotoCredit = {
   google_maps_uri: string;

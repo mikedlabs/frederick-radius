@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 const script = new URL("../scripts/verify-credentials.mjs", import.meta.url);
 
 function run(overrides = {}) {
-  return spawnSync(process.execPath, [script.pathname], {
+  return spawnSync(process.execPath, [fileURLToPath(script)], {
     cwd: new URL("..", import.meta.url),
     encoding: "utf8",
     env: {

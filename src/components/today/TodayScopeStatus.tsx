@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useSearchParams } from "next/navigation";
+import { locationScopeHref } from "@/components/nav/locationScopeNavigation";
 import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
 import {
   getScope,
+  parseScope,
   scopeTownSlug,
   setScope,
   subscribeScopeChange,
@@ -28,6 +31,15 @@ export function todayScopeStatusText(
   return "Countywide briefing";
 }
 
+/** Today is a cached briefing; changing its client scope needs no server fetch.
+ * Native history also synchronizes Next's search-parameter readers, including
+ * the Tonight entry, while preserving unrelated query and hash state. */
+function applyTodayScope(scope: Scope) {
+  setScope(scope);
+  const href = locationScopeHref(window.location.href, scope);
+  if (href) window.history.replaceState(null, "", href);
+}
+
 const subscribeReady = () => () => {};
 
 const subscribe = (onStoreChange: () => void) =>
@@ -46,7 +58,17 @@ const subscribe = (onStoreChange: () => void) =>
  */
 export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
   const ready = useSyncExternalStore(subscribeReady, () => true, () => false);
-  const scope = useSyncExternalStore(subscribe, getScope, () => null);
+  const storedScope = useSyncExternalStore(subscribe, getScope, () => null);
+  const searchParams = useSearchParams();
+  const urlScope = parseScope(searchParams.get("in"));
+  const scope = urlScope ?? storedScope;
+
+  // An explicit shared URL wins over yesterday's saved area. Align the shared
+  // store once per URL change so the place choices use the same lens as this
+  // readout. Area changes update both together through applyTodayScope.
+  useEffect(() => {
+    if (urlScope && getScope() !== urlScope) setScope(urlScope);
+  }, [urlScope]);
   const townScoped = Boolean(scopeTownSlug(scope));
   const {
     state: location,
@@ -78,12 +100,12 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
   useEffect(() => {
     if (!requestedHere.current || location.status !== "granted") return;
     requestedHere.current = false;
-    setScope("nearme");
+    applyTodayScope("nearme");
   }, [location.status]);
 
   const useMyLocation = () => {
     if (hasDeviceLocation) {
-      setScope("nearme");
+      applyTodayScope("nearme");
       return;
     }
     requestedHere.current = true;
@@ -120,7 +142,7 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
         <select
           disabled={!ready}
           value={scope ?? "county"}
-          onChange={(event) => setScope(event.target.value as Scope)}
+          onChange={(event) => applyTodayScope(event.target.value as Scope)}
           className="min-h-11 max-w-full rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-3 text-[16px]"
           style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
         >

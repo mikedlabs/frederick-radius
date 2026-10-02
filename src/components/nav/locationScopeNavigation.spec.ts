@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest";
 import { locationScopeHref } from "./locationScopeNavigation";
 
 describe("shared location refinement", () => {
+  it("changes Tonight's town in place even without an existing area parameter", () => {
+    const href = locationScopeHref("https://example.test/today/tonight?intent=pizza#choices", "town:brunswick")!;
+    const url = new URL(href, "https://example.test");
+    expect(url.pathname).toBe("/today/tonight");
+    expect(url.searchParams.get("intent")).toBe("pizza");
+    expect(url.searchParams.get("in")).toBe("brunswick");
+    expect(url.hash).toBe("#choices");
+    expect(locationScopeHref("https://example.test/today/tonight?intent=drinks&in=brunswick", "county"))
+      .toBe("/today/tonight?intent=drinks&in=county");
+  });
   it("updates explicit town while keeping intent, result filters, and source return", () => {
     const href = locationScopeHref("https://example.test/search?q=free+events+tonight+in+Brunswick&in=brunswick&kind=event&returnTo=%2Fmap%3Fc%3D1%2C2%2C3", "town:thurmont")!;
     const params = new URL(href, "https://example.test").searchParams;

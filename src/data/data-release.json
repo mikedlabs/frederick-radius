@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:403a210e8ea756e5f4fcce6364cd39d4e346de9c3fc47c69f1e60b05b2014a1f",
+  "data_version": "sha256:cc9f7d356db79bb8942476649ad6dbd5876c2403d4c8669e13037a8776d27e0f",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-09-20T15:37:34.237Z",
+      "promoted_at": "2026-10-02T21:13:36.676Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -48,15 +48,15 @@
         },
         {
           "path": "src/data/places-overrides.json",
-          "sha256": "337672864978bc2bc938830a856f1d414a7fa96b6e0d350a1563f9067dd79780",
+          "sha256": "3ff2f0ccacc253b7631968bea58edda0f6cf8abd7bdacd3e24c2b4687a8f3edf",
           "records": 4,
-          "bytes": 40634
+          "bytes": 43119
         },
         {
           "path": "src/data/place-status-overrides.json",
-          "sha256": "17ce722404512719660094aa702ed668be91410dd81e08ae045c022e892e0841",
+          "sha256": "b1c0e990f2a75fe385d121ffa85e8ddac663e6361ad2cf72357590303a5c9e89",
           "records": 8,
-          "bytes": 4008
+          "bytes": 4170
         },
         {
           "path": "src/data/places-hours-refresh.json",
@@ -108,9 +108,9 @@
         },
         {
           "path": "src/data/descriptions.json",
-          "sha256": "fe1ab92825b3d83eb62d668dd1a3e86b97280c8f9af941ca7b0201bbdd28ee5f",
-          "records": 100,
-          "bytes": 54819
+          "sha256": "bc2616c83f905e0c2ac47c43dea47e205c4e15570ac4d132a2f5a2825f0db112",
+          "records": 103,
+          "bytes": 58093
         },
         {
           "path": "src/data/categories.ts",
@@ -167,6 +167,12 @@
           "bytes": 8185
         },
         {
+          "path": "src/data/place-visit-details.json",
+          "sha256": "fcd88d2be63962f5e78d17bf5e16460026b8acc049d73c928f75d9d7e65c1f95",
+          "records": 6,
+          "bytes": 5591
+        },
+        {
           "path": "src/data/business-info.json",
           "sha256": "460370d2c65e13b5081d753307ab21481817e709d73530a120500e3704f40000",
           "records": 142,
@@ -210,9 +216,9 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "a5057ce2309d811fba13c7ea26caef41cdc41355d55ab619cba8fb5d294d8ac0",
+          "sha256": "1dbae84318a40f44f76ef6d1970c72848e3aa167ef7fc538e53137304774ea51",
           "records": 1570,
-          "bytes": 2263866
+          "bytes": 2266307
         },
         {
           "path": "src/data/places-client-hours.json",
@@ -240,25 +246,25 @@
       ]
     },
     "transit": {
-      "promoted_at": "2026-09-09T04:50:09.418Z",
+      "promoted_at": "2026-10-02T16:02:36.468Z",
       "artifacts": [
         {
           "path": "src/data/transit.json",
-          "sha256": "bdcaf096f7917765ee30859e425f0d1d1c6acd87f4580728ffecb1975ce85a62",
+          "sha256": "2c2c8a1c9579e225e9f4860ee160e93e63c4015a0566855fc960141a9bf9123b",
           "records": 8,
-          "bytes": 77283
+          "bytes": 77612
         },
         {
           "path": "src/data/transit-network.json",
-          "sha256": "e194bc0d306ac84eb1909ddb505d35ecdb249dc2674cd8411d12b36ca6aaaa9b",
+          "sha256": "648943cc4f48ce1916eee12a49e3c8f360a602334494411845fbdb3ca0e3c229",
           "records": 2,
-          "bytes": 124887
+          "bytes": 91059
         },
         {
           "path": "src/data/transit-trips.json",
-          "sha256": "d97f996037050ed3097f1cb9e3fab1435df85e209061c413bac8af9f8d816bd4",
-          "records": 883,
-          "bytes": 99172
+          "sha256": "8453f0ba465465da0c7c7f553f2076e0ba2ce2cc3e6e7161494c767349475b78",
+          "records": 917,
+          "bytes": 104780
         }
       ]
     },

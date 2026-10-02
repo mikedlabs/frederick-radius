@@ -1,7 +1,7 @@
 import { scopeToParam, type Scope } from "@/lib/scope";
 import { queryWithoutSearchArea } from "@/lib/search/refinement";
 
-const SCOPED_ROUTES = new Set(["/search", "/map", "/events", "/today", "/ask"]);
+const SCOPED_ROUTES = new Set(["/search", "/map", "/events", "/today", "/today/tonight", "/ask"]);
 
 /** Refinement updates the current route instead of leaving an old explicit
  * town in control. Preserve camera, date, result type, and the return journey. */

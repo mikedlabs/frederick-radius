@@ -20,12 +20,12 @@ describe("TodayCard fallback", () => {
     expect(TODAY_SAFETY_GLANCE_DEADLINE_MS).toBeLessThanOrEqual(3_000);
   });
 
-  it("turns a forecast miss into a compact live-conditions handoff", () => {
+  it("turns a forecast miss into a compact County status handoff", () => {
     const html = renderToStaticMarkup(createElement(WeatherUnavailable));
 
     expect(html).toContain('data-weather-state="unavailable"');
-    expect(html).toContain("The forecast is briefly unavailable.");
-    expect(html).toContain("Live conditions");
+    expect(html).toContain("The NWS forecast is briefly unavailable.");
+    expect(html).toContain("County status");
     expect(html).not.toContain("text-[40px]");
   });
 

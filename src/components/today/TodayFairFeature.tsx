@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 import { readFairPlan, type FairPlan } from "@/lib/fair/plan";
 import { buildFairPlanStatus } from "@/lib/fair/plan-status";
+import styles from "./TodayLayout.module.css";
 import {
   TODAY_FAIR_PROMOTION_HREF,
   type TodayFairPromotionPhase,
@@ -35,9 +36,11 @@ const COPY: Record<
 export default function TodayFairFeature({
   phase,
   compact = false,
+  briefing = false,
 }: {
   phase: TodayFairPromotionPhase;
   compact?: boolean;
+  briefing?: boolean;
 }) {
   const copy = COPY[phase];
   const [savedPlan, setSavedPlan] = useState<FairPlan | null>(null);
@@ -73,6 +76,26 @@ export default function TodayFairFeature({
   const detail = status?.summarySentence ?? copy.detail;
   const cta = status?.nextActionLabel ?? copy.cta;
   const href = status?.nextActionHref ?? TODAY_FAIR_PROMOTION_HREF;
+
+  if (briefing) {
+    return (
+      <section aria-label="The Great Frederick Fair">
+        <Link href={href} prefetch={false} data-today-fair-feature={phase}
+          data-today-fair-plan={status ? "saved" : "new"}
+          data-fair-feature-tone="briefing" className={styles.fairLink}>
+          <Image src="/images/fair/fairgrounds-night-mike-d-480.webp"
+            alt="The Ferris wheel at The Great Frederick Fair, photographed by Mike D in 2024."
+            width={76} height={76} sizes="76px" className={styles.fairPhoto} />
+          <span className="min-w-0">
+            <span className={styles.fairEyebrow}>{copy.eyebrow}</span>
+            <span className={styles.fairTitle}>{headline}</span>
+            <span className={styles.fairAction}>{cta}</span>
+          </span>
+          <ArrowRight className="h-4 w-4" aria-hidden />
+        </Link>
+      </section>
+    );
+  }
 
   if (compact) {
     return (

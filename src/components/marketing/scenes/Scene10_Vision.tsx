@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Check, CircleAlert, LoaderCircle, Mail } from "lucide-react";
@@ -174,9 +175,9 @@ export default function Scene10_Vision() {
                         </p>
                         <p className="mt-2 text-xs text-gray-600">
                             Your email is used to process beta access. By submitting, you agree to the{" "}
-                            <a href="/terms" className="underline underline-offset-4 transition-colors hover:text-gray-300">Terms</a>
+                            <Link href="/terms" prefetch={false} className="underline underline-offset-4 transition-colors hover:text-gray-300">Terms</Link>
                             {" "}and acknowledge the{" "}
-                            <a href="/privacy" className="underline underline-offset-4 transition-colors hover:text-gray-300">Privacy notice</a>.
+                            <Link href="/privacy" prefetch={false} className="underline underline-offset-4 transition-colors hover:text-gray-300">Privacy notice</Link>.
                         </p>
 
                         {statusMessage ? (
@@ -220,8 +221,8 @@ export default function Scene10_Vision() {
                 >
                     <span>© 2026 Frederick Radius</span>
                     <span aria-hidden="true">·</span>
-                    <a href="/terms" className="transition-colors hover:text-white">Terms</a>
-                    <a href="/privacy" className="transition-colors hover:text-white">Privacy</a>
+                    <Link href="/terms" prefetch={false} className="transition-colors hover:text-white">Terms</Link>
+                    <Link href="/privacy" prefetch={false} className="transition-colors hover:text-white">Privacy</Link>
                     <span aria-hidden="true">·</span>
                     <span>Independent of local government</span>
                 </motion.footer>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { featuredEventSlugs } from "@/lib/events/featured";
 import { Suspense } from "react";
@@ -130,13 +131,13 @@ export default async function EventsIndexPage() {
         </p>
         <p>
           Missing an event?{" "}
-          <a
-            href="/submit/event"
+          <Link
+            href="/submit/event" prefetch={false}
             className="tap-44-y inline-flex min-h-11 items-center underline"
             style={{ color: "var(--app-cool)" }}
           >
             Submit it <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
-          </a>
+          </Link>
         </p>
       </footer>
     </div>

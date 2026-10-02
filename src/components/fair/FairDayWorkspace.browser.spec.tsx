@@ -489,6 +489,62 @@ describe("FairDayWorkspace app journey", () => {
     expect(openDialogs()).toHaveLength(0);
   });
 
+  it.each([
+    ["2026-09-27T03:59:59Z", "Official Grandstand source", true],
+    ["2026-09-27T04:00:00Z", "Official program source", false],
+  ] as const)(
+    "keeps exact official wording and source link at the review boundary %s",
+    async (asOf, sourceLabel, reviewed) => {
+      vi.setSystemTime(new Date(asOf));
+      const data = buildFairDayWorkspaceData(
+        greatFrederickFair2026Pack,
+        greatFrederickFair2026PackPointer,
+        new Date(asOf),
+      );
+      const daughtry = data.scheduleItems.find(
+        (item) => item.title === "Daughtry",
+      );
+      expect(Boolean(daughtry?.sourceReview)).toBe(reviewed);
+      await renderFair(data);
+      await openFullProgram();
+      const day = container.querySelector<HTMLSelectElement>(
+        'select[aria-label="Fair day to explore"]',
+      );
+      if (!day) throw new Error("Missing Fair program date control.");
+      await act(async () => {
+        day.value = "2026-09-18";
+        day.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      const trigger = container.querySelector<HTMLButtonElement>(
+        'button[aria-label="Open details for Daughtry"]',
+      );
+      if (!trigger) throw new Error("Missing Daughtry details control.");
+      await act(async () => trigger.click());
+      await act(async () => vi.advanceTimersByTimeAsync(20));
+
+      expect(openDialogs()).toHaveLength(1);
+      const dialog = openDialogs()[0];
+      const wording = dialog.querySelector<HTMLDetailsElement>(
+        "[data-fair-official-wording]",
+      );
+      expect(wording?.querySelector("p")?.textContent).toBe(
+        daughtry?.sourceItem.text,
+      );
+      expect(wording?.textContent).toContain(
+        "Daughtry - Presented by Team Reeder of Long & Foster Real Estate, Inc. & Carter Machinery",
+      );
+      const sources = Array.from(dialog.querySelectorAll("a")).filter(
+        (link) => link.textContent?.trim() === sourceLabel,
+      );
+      expect(sources).toHaveLength(1);
+      expect(sources[0].getAttribute("href")).toBe(
+        "https://thegreatfrederickfair.com/schedule/",
+      );
+      expect(sources[0].getAttribute("target")).toBe("_blank");
+      expect(sources[0].getAttribute("rel")).toBe("noopener noreferrer");
+    },
+  );
+
   it("switches between visual discovery and the grounds map without leaving the Fair plan", async () => {
     await renderFair();
     await openMode("Program");

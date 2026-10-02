@@ -2,16 +2,16 @@
   "concettas-main-street-bistro-mount-airy": {
     "status": "operational",
     "effective_at": "2026-08-10",
-    "review_after": "2026-10-01",
+    "review_after": "2026-11-01",
     "source": "https://concettasmainstreet.com/",
-    "note": "Reconfirmed against the official site on 2026-08-27: Concetta's presents the Mount Airy restaurant as active, posts its current 2026 schedule, and offers online ordering. This corrects a conflicting provider closure signal without publishing provider hours until the hours pipeline records the first-party schedule."
+    "note": "Reconfirmed against the official website on 2026-10-02: the owner still invites visits at the matching Mount Airy address, publishes a 2026 schedule, and links to online ordering. Retain the reviewed operational correction over the conflicting 2026-08-20 provider closure signal. This review publishes neither hours nor an open-now claim. Review again by 2026-11-01."
   },
   "clubhouse-kids-at-monocacy-valley-montessori-public-school": {
     "status": "closed_temporarily",
     "effective_at": "2026-08-22",
-    "review_after": "2026-10-01",
+    "review_after": "2026-11-01",
     "source": "https://www.clubhousekidsonline.com/contact.html",
-    "note": "Clubhouse Kids' official locations page says its Monocacy Valley Montessori location is temporarily closed until construction of the new building is complete. The stale Google match belongs to The Banner School and has been quarantined separately."
+    "note": "Reconfirmed against the official locations page on 2026-10-02: Clubhouse Kids still states that its Monocacy Valley Montessori location is temporarily closed until construction of the new building is complete. Retain the temporary closure and review again by 2026-11-01. The stale Google match belongs to The Banner School and remains quarantined separately."
   },
   "emmitsburg-farmers-market-emmitsburg": {
     "status": "closed_temporarily",

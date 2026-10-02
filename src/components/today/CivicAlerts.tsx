@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AlertCircle, AlertTriangle, ArrowRight, CalendarX, Clock, Info } from "lucide-react";
 import type { NwsAlert } from "@/lib/integrations/nws-alerts";
 import { getNpsAlerts, type NpsAlert } from "@/lib/integrations/nps";
@@ -17,7 +18,8 @@ import {
   type RoadAttentionSignal,
 } from "@/lib/live/roadIntelligenceModel";
 import { getOfficialCivicAlertsSnapshot } from "@/lib/live/officialSignals";
-import type { OfficialCivicAlert } from "@/lib/integrations/official-alert-feeds";
+import { isLocallyRelevantCivicAlert, type OfficialCivicAlert } from "@/lib/integrations/official-alert-feeds";
+import { withBrowseReturnTo } from "@/lib/browse-return";
 
 export type UnifiedAlert = {
   /** Provider-stable identity. Alert counts are derived after de-duplicating
@@ -239,7 +241,7 @@ function roadIntelligenceAlert(
  * closing when the notice itself describes an emergency or hazard.
  */
 export function officialCivicAlerts(alerts: OfficialCivicAlert[]): UnifiedAlert[] {
-  return alerts.map((alert) => {
+  return alerts.filter(isLocallyRelevantCivicAlert).map((alert) => {
     const copy = `${alert.title} ${alert.summary}`;
     const consequenceBearing =
       /\b(?:emergency|evacuat|boil|unsafe|outbreak|do not|avoid|hazard|danger)\b/i.test(copy);
@@ -294,7 +296,7 @@ const STYLES = {
  * Other alert types (parking, road closures, transit) plug in here the
  * moment a real feed exists — absent until then, never faked.
  */
-export default async function CivicAlerts({ includeWeather = true }: { includeWeather?: boolean } = {}) {
+export default async function CivicAlerts({ includeWeather = true, compact = false, returnTo }: { includeWeather?: boolean; compact?: boolean; returnTo?: string } = {}) {
   const [situation, roads, official, nps] = await Promise.all([
     getCurrentSituationSnapshot(),
     getRoadIntelligenceSnapshot(),
@@ -336,6 +338,29 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
   const s = top ? STYLES[top.severity] : null;
   const Icon = s?.icon ?? Info;
   const TailIcon = top && /^(Until|Clears|Started|Just )/.test(top.tail) ? Clock : null;
+
+  if (compact) {
+    return (
+      <section aria-label="Heads up" className="space-y-1 border-b pb-2" style={{ borderColor: "var(--app-border)" }}>
+        {top && s && (
+          <a href={withBrowseReturnTo(top.url ?? "/pulse", returnTo)}
+            target={top.external ? "_blank" : undefined} rel={top.external ? "noopener noreferrer" : undefined}
+            className="flex min-h-11 items-center gap-2.5 rounded-[var(--app-radius-sm)] px-3 py-2"
+            style={{ background: "var(--app-bg-sunken)", borderLeft: `3px solid ${s.bg}`, color: "var(--app-ink)" }}>
+            <Icon className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold">Heads up: {top.title}</span><span className="block text-[11px]" style={{ color: "var(--app-ink-2)" }}>{top.tail} · {top.source}{top.scope ? ` · ${top.scope}` : ""}</span></span>
+            <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+          </a>
+        )}
+        {notices.map((notice) => (
+          <a key={notice.slug} href={withBrowseReturnTo(`/events/${notice.slug}`, returnTo)} className="flex min-h-11 items-center gap-2 px-3 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+            <CalendarX className="h-4 w-4 shrink-0" aria-hidden />{notice.headline}<ArrowRight className="ml-auto h-4 w-4 shrink-0" aria-hidden />
+          </a>
+        ))}
+        {more > 0 && <a href={withBrowseReturnTo("/pulse?open=alerts", returnTo)} className="flex min-h-11 items-center px-3 text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>{more} more active {more === 1 ? "alert" : "alerts"}</a>}
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-1.5" aria-label="Heads up">
@@ -391,9 +416,9 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
         </a>
       ))}
       {more > 0 && (
-        <a href="/pulse" className="flex min-h-11 items-center px-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
+        <Link href="/pulse" prefetch={false} className="flex min-h-11 items-center px-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
           +{more} more active {more === 1 ? "alert" : "alerts"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
-        </a>
+        </Link>
       )}
     </section>
   );

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { ChevronDown, MapPin, Navigation } from "lucide-react";
 import { useState } from "react";
@@ -33,13 +34,13 @@ const meta = {
         <p className="text-sm leading-relaxed text-[var(--app-ink-2)]">
           A mapped public restroom is nearby. Radius will show availability only when it can be confirmed.
         </p>
-        <a
-          href="/map?amenity=restroom"
+        <Link
+          href="/map?amenity=restroom" prefetch={false}
           className="tap-44 inline-flex items-center gap-2 font-semibold text-[var(--app-brand)]"
         >
           <Navigation className="h-4 w-4" aria-hidden />
           See it on the map
-        </a>
+        </Link>
       </div>
     ),
   },
@@ -85,9 +86,9 @@ function ProgressiveRevealFixture() {
       <MotionDisclosure id="progressive-nearby-detail" open={open}>
         <div className="space-y-2 pt-3 text-sm leading-relaxed text-[var(--app-ink-2)]">
           <p>Walking time appears after Radius has a confirmed starting point.</p>
-          <a className="tap-44 inline-flex items-center font-semibold text-[var(--app-brand)]" href="/map">
+          <Link className="tap-44 inline-flex items-center font-semibold text-[var(--app-brand)]" href="/map" prefetch={false}>
             Open walking directions
-          </a>
+          </Link>
         </div>
       </MotionDisclosure>
     </div>

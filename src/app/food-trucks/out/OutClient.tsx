@@ -199,13 +199,13 @@ export default function OutClient() {
           You need the private beacon link the owner sends after approving your claim. If you have
           not claimed your truck yet, start there and the owner will follow up.
         </p>
-        <a
-          href="/food-trucks/claim"
+        <Link
+          href="/food-trucks/claim" prefetch={false}
           className="tap-44 mt-4 inline-flex items-center rounded-[var(--app-radius-md)] px-3.5 py-2 text-[13px] font-semibold"
           style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand, #fff)" }}
         >
           Claim your truck
-        </a>
+        </Link>
       </Shell>
     );
   }

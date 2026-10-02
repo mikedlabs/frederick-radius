@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   useEffect,
   useRef,
@@ -908,9 +909,9 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
 
               <p className="dock-hint">
                 Planning an event of your own?{" "}
-                <a href="/check-a-date" style={{ color: "var(--app-brand-press)", fontWeight: 600 }}>
+                <Link href="/check-a-date" prefetch={false} style={{ color: "var(--app-brand-press)", fontWeight: 600 }}>
                   Check a date
-                </a>{" "}
+                </Link>{" "}
                 to see what&rsquo;s already scheduled.
               </p>
             </div>

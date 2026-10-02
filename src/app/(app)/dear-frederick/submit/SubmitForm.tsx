@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useState } from "react";
 
 /**
@@ -270,19 +271,19 @@ export default function SubmitForm() {
           may store, review, transcribe, edit for clarity or safety, and publish
           the letter and its image. My contact information stays private, and I
           can ask for removal. See the{" "}
-          <a
-            href="/terms"
+          <Link
+            href="/terms" prefetch={false}
             className="font-semibold underline underline-offset-2"
           >
             terms
-          </a>{" "}
+          </Link>{" "}
           and{" "}
-          <a
-            href="/privacy"
+          <Link
+            href="/privacy" prefetch={false}
             className="font-semibold underline underline-offset-2"
           >
             privacy policy
-          </a>
+          </Link>
           .
         </span>
       </label>

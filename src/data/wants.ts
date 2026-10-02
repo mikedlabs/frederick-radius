@@ -20,6 +20,9 @@
  * the front door. Pure + client-safe (icon names are strings; no React import).
  */
 
+import { PRODUCT_NAMES } from "@/lib/product-names";
+
+
 export type WantSub = {
   label: string;
   /** lucide icon name, resolved by the component's ICONS map. */
@@ -146,7 +149,7 @@ export const WANTS: WantCategory[] = [
     subs: [
       { label: "Churches & worship", icon: "Church", href: "/category/worship" },
       { label: "Libraries", icon: "Library", href: "/category/library" },
-      { label: "Live conditions", icon: "Activity", href: "/pulse" },
+      { label: PRODUCT_NAMES.liveConditions.uiLabel, icon: "Activity", href: "/pulse" },
       { label: "Contacts", icon: "Building2", href: "/contacts" },
     ],
   },

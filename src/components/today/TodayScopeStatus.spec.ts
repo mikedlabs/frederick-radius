@@ -1,7 +1,9 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import TodayScopeStatus, { todayScopeStatusText } from "./TodayScopeStatus";
+
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams() }));
 
 describe("TodayScopeStatus", () => {
   it("names the part of Today that follows a selected town", () => {
