@@ -4,9 +4,9 @@
     "name": "Brunswick",
     "townHall": {
       "label": "Town Hall",
-      "address": "1 West Potomac St. | Brunswick, MD 21716",
+      "address": "1 West Potomac St., Brunswick, MD 21716",
       "phone": "301-834-7500",
-      "hours": "Monday - Friday 8:00 a.m. - 4:30 p.m.",
+      "hours": "Monday - Friday, 8:00 a.m. - 4:30 p.m.",
       "website": "https://brunswickmd.gov/"
     },
     "publicWorks": {
@@ -18,7 +18,7 @@
       "url": "https://brunswickmd.gov/publicworks",
       "requestedUrl": "https://brunswickmd.gov/publicworks",
       "finalUrl": "https://brunswickmd.gov/publicworks",
-      "fetchedAt": "2026-08-18T15:34:08.417Z"
+      "fetchedAt": "2026-08-26T09:11:09.445Z"
     }
   },
   "thurmont": {
@@ -34,16 +34,20 @@
       "label": "Permits & Zoning",
       "website": "https://www.thurmont.com/2143/Government"
     },
+    "police": {
+      "label": "Police (non-emergency)",
+      "website": "https://www.thurmont.com/2143/Government"
+    },
     "trashRecycling": {
       "label": "Trash & Recycling",
-      "phone": "301-271-7313",
-      "schedule": "Curbside recycling pickup is scheduled for every other Friday with materials due at the curbside by 6:00 a.m. Curbside grass and leaves pickup runs from April through November on Mondays by 6:00 a.m."
+      "phone": "301-600-2960",
+      "schedule": "Curbside recycling pickup is scheduled for every other Friday, with bins required to be out by 6 a.m. on pickup day."
     },
     "source": {
       "url": "https://www.thurmont.com/2143/Government",
       "requestedUrl": "https://www.thurmont.com/2143/Government",
       "finalUrl": "https://www.thurmont.com/2143/Government",
-      "fetchedAt": "2026-08-18T15:34:12.048Z"
+      "fetchedAt": "2026-08-26T09:11:13.144Z"
     }
   },
   "middletown": {
@@ -52,29 +56,26 @@
     "townHall": {
       "label": "Town Hall",
       "phone": "301-371-6171",
-      "address": "31 West Main Street, Middletown, MD 21769",
-      "website": "https://www.middletown.md.us/"
+      "address": "31 West Main Street, Middletown, MD 21769"
     },
     "permits": {
       "label": "Permits & Zoning",
-      "phone": "301-371-6171",
-      "website": "https://www.middletown.md.us/"
+      "phone": "301-371-6171"
     },
     "utilities": {
       "label": "Water / Utilities",
-      "phone": "301-371-6171",
-      "website": "https://www.middletown.md.us/"
+      "phone": "301-371-6171"
     },
     "trashRecycling": {
       "label": "Trash & Recycling",
       "phone": "301-371-6171",
-      "schedule": "Yard debris pickup occurs on Tuesdays with branches bundled, no more than 4 feet long and 4 inches in diameter."
+      "schedule": "Yard debris pickup occurs on Tuesdays with branches bundled no more than 4 feet long and 4 inches in diameter."
     },
     "source": {
       "url": "https://www.middletown.md.us/",
       "requestedUrl": "https://www.middletown.md.us/",
       "finalUrl": "https://www.middletown.md.us/",
-      "fetchedAt": "2026-08-18T15:34:14.324Z"
+      "fetchedAt": "2026-08-26T09:11:16.067Z"
     }
   },
   "walkersville": {
@@ -82,15 +83,15 @@
     "name": "Walkersville",
     "townHall": {
       "label": "Town Hall",
-      "address": "21 W. Frederick St., P.O. Box 249, Walkersville, MD 21793",
       "phone": "301-845-4500",
-      "hours": "Monday–Friday 8:30am–4:30pm"
+      "address": "21 W. Frederick St., P.O. Box 249, Walkersville, MD 21793",
+      "hours": "M-F 8:30am - 4:30pm"
     },
     "source": {
       "url": "https://www.walkersvillemd.gov/",
       "requestedUrl": "https://www.walkersvillemd.gov/",
       "finalUrl": "https://www.walkersvillemd.gov/",
-      "fetchedAt": "2026-08-18T15:34:15.597Z"
+      "fetchedAt": "2026-08-26T09:11:17.443Z"
     }
   },
   "emmitsburg": {
@@ -98,8 +99,8 @@
     "name": "Emmitsburg",
     "townHall": {
       "label": "Town Hall",
-      "phone": "301-600-6300",
-      "website": "https://www.emmitsburgmd.gov"
+      "hours": "Monday - Friday 8:00 AM - 4:30 PM EST",
+      "website": "https://www.emmitsburgmd.gov/"
     },
     "trashRecycling": {
       "label": "Trash & Recycling",
@@ -111,7 +112,7 @@
       "url": "https://www.emmitsburgmd.gov/",
       "requestedUrl": "https://www.emmitsburgmd.gov/",
       "finalUrl": "https://www.emmitsburgmd.gov/",
-      "fetchedAt": "2026-08-18T15:34:18.441Z"
+      "fetchedAt": "2026-08-26T09:11:20.404Z"
     }
   },
   "new-market": {
@@ -131,7 +132,7 @@
       "url": "https://www.townofnewmarket.org/contacts-directory",
       "requestedUrl": "https://www.townofnewmarket.org/contacts-directory",
       "finalUrl": "https://www.townofnewmarket.org/contacts-directory",
-      "fetchedAt": "2026-08-18T15:34:22.063Z"
+      "fetchedAt": "2026-08-26T09:11:24.461Z"
     }
   },
   "mount-airy": {
@@ -146,7 +147,7 @@
     "trashRecycling": {
       "label": "Trash & Recycling",
       "phone": "301-829-1424",
-      "schedule": "Trash is collected every Tuesday for Carroll County premises and every Friday for Frederick County premises and the Nottingham Subdivision, with a 120 gallon weekly limit per premises. Yard waste is collected on posted calendar dates. Frederick County recyclables are collected every other Wednesday and Carroll County recyclables are collected every Wednesday."
+      "schedule": "Trash is collected every Tuesday for Carroll County premises and every Friday for Frederick County premises and the Nottingham Subdivision, with a 120 gallon weekly limit per premises. Frederick County recyclables are collected every other Wednesday and Carroll County recyclables are collected every Wednesday. Yard waste is collected on scheduled dates listed on the calendar."
     },
     "permits": {
       "label": "Permits & Zoning"
@@ -155,7 +156,7 @@
       "url": "https://mountairymd.gov/27/Government-Services",
       "requestedUrl": "https://mountairymd.gov/27/Government-Services",
       "finalUrl": "https://mountairymd.gov/27/Government-Services",
-      "fetchedAt": "2026-08-18T15:34:26.738Z"
+      "fetchedAt": "2026-08-26T09:11:29.356Z"
     }
   },
   "myersville": {
@@ -171,7 +172,7 @@
       "url": "https://myersville.org/government",
       "requestedUrl": "https://myersville.org/government",
       "finalUrl": "https://myersville.org/government",
-      "fetchedAt": "2026-08-18T15:34:28.138Z"
+      "fetchedAt": "2026-08-26T09:11:30.682Z"
     }
   },
   "woodsboro": {
@@ -180,14 +181,19 @@
     "townHall": {
       "label": "Town Hall",
       "phone": "301-898-3800",
-      "address": "605 S. Main Street, Woodsboro, MD 21798",
-      "hours": "Council Meetings are held on the second Tuesday of every month at 7:00 pm. Planning & Zoning Meetings are held the first Monday of the month as needed at 6:00 PM."
+      "address": "605 S. Main Street, Woodsboro, MD 21798"
+    },
+    "permits": {
+      "label": "Permits & Zoning"
+    },
+    "trashRecycling": {
+      "label": "Trash & Recycling"
     },
     "source": {
       "url": "https://woodsboro.org/",
       "requestedUrl": "https://woodsboro.org/",
       "finalUrl": "https://woodsboro.org/",
-      "fetchedAt": "2026-08-18T15:34:31.695Z"
+      "fetchedAt": "2026-08-26T09:11:34.104Z"
     }
   },
   "burkittsville": {
@@ -196,7 +202,7 @@
     "townHall": {
       "label": "Town Hall",
       "phone": "301-969-0326",
-      "address": "PO BOX 485, Burkittsville, MD 21718"
+      "address": "PO Box 485, Burkittsville, MD 21718"
     },
     "permits": {
       "label": "Permits & Zoning",
@@ -204,7 +210,7 @@
     },
     "trashRecycling": {
       "label": "Trash & Recycling",
-      "phone": "(301) 600-2960",
+      "phone": "(301) 668-8282",
       "website": "https://frederickcountymd.gov/1764/Recycling-Information"
     },
     "police": {
@@ -215,7 +221,7 @@
       "url": "https://burkittsville-md.gov/government/",
       "requestedUrl": "https://burkittsville-md.gov/government/",
       "finalUrl": "https://burkittsville-md.gov/government/",
-      "fetchedAt": "2026-08-18T15:34:34.694Z"
+      "fetchedAt": "2026-08-26T09:11:37.644Z"
     }
   },
   "rosemont": {
@@ -224,7 +230,8 @@
     "trashRecycling": {
       "label": "Trash & Recycling",
       "phone": "301-600-2960",
-      "schedule": "Recycling and yard waste materials may be dropped off at Brunswick Public Works (600 Petersville Road) any Monday-Friday from 8am-3pm."
+      "website": "https://www.frederickcountymd.gov/",
+      "schedule": "Recycling and yard waste materials may be dropped off at Brunswick Public Works (600 Petersville Road) Monday through Friday from 8am to 3pm."
     },
     "utilities": {
       "label": "Water / Utilities",
@@ -234,7 +241,7 @@
       "url": "https://sites.google.com/site/rosemontmd/home",
       "requestedUrl": "https://sites.google.com/site/rosemontmd/home",
       "finalUrl": "https://sites.google.com/site/rosemontmd/home",
-      "fetchedAt": "2026-08-18T15:34:35.959Z"
+      "fetchedAt": "2026-08-26T09:11:39.568Z"
     }
   }
 }
