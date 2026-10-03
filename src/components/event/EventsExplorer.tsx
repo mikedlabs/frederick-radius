@@ -12,6 +12,7 @@ import EventsMap from "@/components/event/EventsMap";
 import EventsBoardDock, { type ViewKey, type EventSortKey } from "@/components/event/EventsBoardDock";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import EmptyState from "@/components/ui/EmptyState";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon, isRangeListing, RANGE_LISTING_STALE_AFTER_MS } from "@/lib/eventHorizon";
 import {
@@ -1252,47 +1253,30 @@ export default function EventsExplorer({
           )}
         </ol>
       ) : filtered.length === 0 ? (
-        // Composed empty state — soft category-tinted block, serif line,
-        // one quiet sentence, primary action. Replaces the bare bordered
-        // text-only message.
         <div className="space-y-4">
-          <div
-            className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-6 text-center shadow-sm"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <span
-              aria-hidden
-              className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full"
-              style={{
-                background: "color-mix(in srgb, var(--section-accent, var(--app-brand)) 15%, var(--app-bg-sunken))",
-                color: "var(--section-accent, var(--app-brand))",
-              }}
-            >
-              <CalendarDays className="h-6 w-6" strokeWidth={1.5} />
-            </span>
-            <h3
-              className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              {emptyState.title}
-            </h3>
-            <p
-              className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed text-pretty"
-              style={{ color: "var(--app-ink-2)" }}
-            >
-              {emptyState.description}
-            </p>
-            {emptyState.canRetry ? (
+          <EmptyState
+            icon={CalendarDays}
+            title={emptyState.title}
+            body={emptyState.description}
+            tone={!dataComplete ? "caution" : "quiet"}
+            compact
+          />
+          
+          {emptyState.canRetry && (
+            <div className="text-center">
               <button
                 type="button"
                 onClick={() => void ensureAllEvents(true)}
-                className="tap-44 mt-3 inline-flex min-h-11 items-center px-3 text-[13px] font-semibold underline"
-                style={{ color: "var(--app-cool)" }}
+                className="tap-44 inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-[13px] font-semibold transition-transform active:scale-[0.96]"
+                style={{
+                  borderColor: "var(--app-border)",
+                  color: "var(--app-cool)",
+                }}
               >
                 Check the calendar again
               </button>
-            ) : null}
-          </div>
+            </div>
+          )}
           
           {/* Honest relaxations — Bento-grid for quick actions */}
           {relaxations.length > 0 && (

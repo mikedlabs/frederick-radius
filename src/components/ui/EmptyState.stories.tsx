@@ -1,78 +1,91 @@
-import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { CalendarDays, CheckCircle2, Clock3, MapPinOff } from "lucide-react";
+import type { Meta, StoryObj } from "@storybook/react";
+import EmptyState, { CompactEmptyState } from "./EmptyState";
+import { Calendar, Search, MapPin, Coffee, CloudOff } from "lucide-react";
 
-import EmptyState from "./EmptyState";
-
-const meta = {
-  title: "Radius UI/EmptyState",
+const meta: Meta<typeof EmptyState> = {
+  title: "UI/EmptyState",
   component: EmptyState,
-  tags: ["autodocs"],
   parameters: {
-    layout: "centered",
-    docs: {
-      description: {
-        component:
-          "The designed absence state. Copy says exactly what Radius can confirm, explains the gap and offers one useful next move.",
-      },
-    },
+    layout: "padded",
   },
-  decorators: [
-    (Story) => (
-      <div className="w-[min(34rem,calc(100vw-24px))] p-3">
-        <Story />
-      </div>
-    ),
-  ],
-  args: {
-    icon: CalendarDays,
-    title: "No events are on the calendar in this range.",
-    body: "Try a wider time window from the filters above, or jump to the weekend.",
-    cta: { label: "See this weekend", href: "/events?lens=weekend" },
-  },
-} satisfies Meta<typeof EmptyState>;
+  tags: ["autodocs"],
+};
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<typeof EmptyState>;
 
-export const NoEventsInRange: Story = {};
-
-export const HoursUnknown: Story = {
+export const Default: Story = {
   args: {
-    icon: Clock3,
-    title: "Open hours are not confirmed here yet.",
-    body: "Radius will not call this place closed without current hours. Check the official listing before you go.",
+    icon: Calendar,
+    title: "Nothing on tonight's calendar yet.",
+    body: "Try a wider time window, or come back later in the day.",
+    tone: "quiet",
+  },
+};
+
+export const WithCTA: Story = {
+  args: {
+    icon: Search,
+    title: "No places match your filters.",
+    body: "Remove a filter below to widen the search.",
     tone: "brand",
-    cta: { label: "See the official listing", href: "/places" },
-  },
-};
-export const AmenityNotMapped: Story = {
-  args: {
-    icon: MapPinOff,
-    title: "No public water fountain is mapped nearby yet.",
-    body: "Radius will not substitute a different amenity or invent an answer. You can check every confirmed location on the map.",
-    cta: { label: "Open the map", href: "/map?amenity=water" },
+    cta: { label: "Reset filters", href: "/map" },
   },
 };
 
-export const NoActiveAlert: Story = {
+export const WithBothLinks: Story = {
   args: {
-    icon: CheckCircle2,
-    title: "No active county alerts are posted.",
-    body: "Public safety, weather and travel sources are reporting normally in this preview.",
+    icon: MapPin,
+    title: "Nothing saved yet.",
+    body: "Tap the bookmark icon on any place or event to keep it here.",
     tone: "positive",
-    cta: undefined,
+    cta: { label: "Explore places", href: "/map" },
+    secondary: { label: "See upcoming events", href: "/events" },
   },
 };
 
-export const LongHonestStateAt320: Story = {
-  globals: {
-    viewport: { value: "radiusMobileNarrow", isRotated: false },
-  },
+export const Caution: Story = {
   args: {
-    icon: Clock3,
-    title: "No nearby places have recently verified open hours.",
-    body: "There may still be places open. Radius does not have enough current hours data to make that claim, so the full list remains available.",
-    tone: "brand",
-    cta: { label: "See places with unknown hours", href: "/places" },
+    icon: CloudOff,
+    title: "Event calendar is incomplete.",
+    body: "Some event sources timed out. The calendar shown may be missing upcoming events.",
+    tone: "caution",
+    cta: { label: "Try again", href: "/events" },
+  },
+};
+
+export const Compact: Story = {
+  args: {
+    icon: Coffee,
+    title: "No coffee shops open right now.",
+    body: "Try removing the open-now filter.",
+    tone: "quiet",
+    compact: true,
+  },
+};
+
+export const CompactWithAction: Story = {
+  render: () => (
+    <CompactEmptyState
+      icon={Calendar}
+      title="No events match"
+      body="Try a wider time window"
+      action={{ label: "Show all", onClick: () => alert("Show all clicked") }}
+    />
+  ),
+};
+
+export const MobileNarrow: Story = {
+  args: {
+    icon: Search,
+    title: "No search results.",
+    body: "Try a different search term or browse the map instead.",
+    tone: "quiet",
+    cta: { label: "Browse map", href: "/map" },
+  },
+  parameters: {
+    viewport: {
+      defaultViewport: "mobile1",
+    },
   },
 };
