@@ -1819,6 +1819,13 @@ export function eventMatchesTopic(event: Event, query: string): boolean {
   if (/\bperformances?\b/i.test(query)) {
     return ["music", "theater", "dance", "comedy"].includes(event.category) || /\b(?:performance|theater|theatre|concert|dance|comedy)\b/i.test(text);
   }
+  // A movie/showtime ask is answered by the cinemas (places). Appending
+  // tonight's unrelated calendar rows (a vinyl night, a volleyball game, a
+  // food truck) as "movies" is noise. Keep only genuinely film-related rows
+  // (a library screening, a film festival), which is usually none.
+  if (/\b(?:movies?|films?|cinema|showtimes?|matinee|screening)\b/i.test(query)) {
+    return /\b(?:movie|cinema|film|screening|showtime|matinee)\b/i.test(text);
+  }
   return true;
 }
 
