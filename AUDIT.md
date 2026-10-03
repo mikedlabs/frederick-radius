@@ -1,5 +1,10 @@
 # Frederick Radius — Audit
 
+> **HISTORICAL (superseded 2026-09-21).** This file no longer describes the
+> live app. Its route names and status columns are stale. The current
+> state of the app and the order of work now live in [`STATE.md`](./STATE.md).
+> This file is kept only for its reasoning. Plan from `STATE.md`, not here.
+
 **Last walked:** 2026-05-26 by the dev team during the Phase 1 doc refresh.
 **Source of truth status:** living document. Update when state changes. Older audits live in `docs/archive/`.
 
