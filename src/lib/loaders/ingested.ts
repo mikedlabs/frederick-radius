@@ -20,6 +20,8 @@ import {
   clampDescription,
 } from "@/lib/events/normalize";
 import { hasImplausibleStartTime } from "@/lib/events/visible";
+import { fcplStoredLifecycle, FCPL_SOURCE_DOMAIN } from "@/lib/ingest/fcpl";
+import type { EventStatus } from "@/lib/event-status";
 
 // Phase 1.6: drop venue open-status and routine recurring class/work
 // sessions. Default ON by owner directive (2026-05-16: "ship
@@ -32,6 +34,8 @@ const RELIABLE_CATEGORY_DOMAINS = new Set(["frederick.librarycalendar.com", "fcv
 
 export type IngestedOccurrence = {
   sourceUid: string;
+  /** Source state belongs to this date, never to all recurring siblings. */
+  status?: EventStatus;
   startsAtUtc: string;
   endsAtUtc: string | null;
   allDay: boolean;
@@ -87,6 +91,8 @@ type Row = {
   hero_image: string | null;
   hero_image_alt: string | null;
   updated_at: string | Date | null;
+  raw_vevent?: string | null;
+  status?: EventStatus;
 };
 
 function verifiedTimestamp(value: Row["updated_at"]): string | null {
@@ -112,10 +118,14 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
   let rows: Row[];
   try {
     rows = (await sql<Row[]>`
-      select source_uid, source_domain, source_url, title, description, starts_at_utc, ends_at_utc,
-             all_day, venue_name, address, lat, lng, municipality, category,
-             hero_image, hero_image_alt, updated_at
-      from ingested_events
+      select e.source_uid, e.source_domain, e.source_url, e.title, e.description,
+             e.starts_at_utc, e.ends_at_utc, e.all_day, e.venue_name, e.address,
+             e.lat, e.lng, e.municipality, e.category,
+             e.hero_image, e.hero_image_alt, e.updated_at, raw.raw_vevent
+      from ingested_events e
+      left join raw_events raw
+        on raw.id = e.raw_event_id
+       and e.source_domain = ${FCPL_SOURCE_DOMAIN}
       where starts_at_utc >= ${since}
          or ends_at_utc >= ${since}
       order by starts_at_utc asc
@@ -143,6 +153,13 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
   // address/empty.
   for (const r of rows) {
     r.venue_name = cleanVenueName(r.venue_name);
+    // Capture status before cleaning/grouping. Removing the marker joins the
+    // cancelled date to its scheduled siblings without cancelling the series.
+    if (r.source_domain === FCPL_SOURCE_DOMAIN) {
+      const lifecycle = fcplStoredLifecycle(r.raw_vevent, r.title);
+      r.status = lifecycle.status;
+      r.title = lifecycle.title;
+    }
   }
 
   const groups = new Map<string, Row[]>();
@@ -193,6 +210,7 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
       heroImageAlt: head.hero_image_alt,
       occurrences: rs.map((r) => ({
         sourceUid: r.source_uid,
+        status: r.status ?? "scheduled",
         startsAtUtc: r.starts_at_utc,
         endsAtUtc: r.ends_at_utc,
         allDay: r.all_day,
@@ -205,11 +223,16 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
     });
   }
   const visible = EVENT_NOISE_FILTER
-    ? series.filter(
-        (s) =>
-          !isVenueStatusNonEvent(s.title) &&
-          !(s.isRecurring && isRoutineRecurringClass(s.title)),
-      )
+    ? series.flatMap((s) => {
+        if (!isVenueStatusNonEvent(s.title) &&
+            !(s.isRecurring && isRoutineRecurringClass(s.title))) return [s];
+        // A previously published event still needs its archive corrected even
+        // when its series is now noise-filtered. Keep only lifecycle updates;
+        // this must not make the scheduled routine siblings discoverable.
+        const lifecycle = s.occurrences.filter((o) =>
+          o.status === "cancelled" || o.status === "postponed");
+        return lifecycle.length ? [{ ...s, occurrences: lifecycle }] : [];
+      })
     : series;
   visible.sort((a, b) => +new Date(a.nextStart) - +new Date(b.nextStart));
   return visible;
@@ -218,13 +241,14 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
 /** ISR-cached (1h) — the cron refreshes the data daily, hourly is plenty. */
 export const getIngestedSeries = unstable_cache(
   async (limit = 4000) => loadUpcoming(limit),
+  // v9: retain FCPL occurrence lifecycle from the existing raw source row.
   // v7: cleanTitle now strips trailing embedded weekday/date/time fragments
   // and de-shouts ALL-CAPS titles — the cached series titles change.
   // v6: splitPresenter paren/digit guards changed how titles normalize —
   // shape change must invalidate the persisted cache (the #509 lesson). The
   // deploy SHA is a second key segment so a forgotten version bump still
   // auto-busts on deploy.
-  ["ingested-series-v8", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["ingested-series-v9", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 3600, tags: ["ingested-events"] }
 );
 

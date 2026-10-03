@@ -601,7 +601,9 @@ const cachedAssemble = unstable_cache(
   // v31: DFP rows retain WordPress's publisher modification timestamp and a
   // newer structured record can correct the matching curated occurrence.
   // v33: stage-credit classification and themed-title duplicate reconciliation.
-  ["unified-events-v33"],
+  // v34: FCPL occurrence cancellations survive series collapse for archive
+  // updates, while public discovery advances to the next scheduled sibling.
+  ["unified-events-v34"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.

@@ -58,6 +58,9 @@ export async function getMonthEvents(
     const series = await getIngestedSeries();
     for (const s of series) {
       for (const o of s.occurrences) {
+        // Ingested lifecycle rows are retained for archive updates, not a
+        // promise that a cancelled date is still on the public calendar.
+        if (o.status === "cancelled" || o.status === "postponed") continue;
         if (!inWindow(o.startsAtUtc)) continue;
         events.push({
           id: `m:${o.sourceUid}`,
