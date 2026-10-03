@@ -40,4 +40,18 @@ describe("matchCivicAction", () => {
   it("does not turn a request to find a physical amenity into a county action", () => {
     expect(matchCivicAction("Where can I find a public trash can or drinking water downtown?")).toBeNull();
   });
+
+  it("answers a recycling-pickup question with the schedule, not the missed-collection form", () => {
+    const action = matchCivicAction("when is recycling pickup?");
+    expect(action?.id).toBe("collection-schedule");
+    expect(action?.url).toContain("Curbside-Collection-Schedule");
+  });
+
+  it("answers 'when is trash day' with the collection schedule", () => {
+    expect(matchCivicAction("when is trash day")?.id).toBe("collection-schedule");
+  });
+
+  it("routes a trash-pickup-schedule question to the schedule page", () => {
+    expect(matchCivicAction("trash pickup schedule")?.id).toBe("collection-schedule");
+  });
 });
