@@ -100,3 +100,107 @@ for (const status of [
     expect(await header.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
   });
 }
+
+for (const width of [375, 1366]) {
+  test(`Find resumes only its words and rechecks the selected area at ${width}px`, async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ width, height: 900 });
+    const requests: Array<{ query: string; scope: string }> = [];
+    await page.route("**/api/search?**", async (route) => {
+      const url = new URL(route.request().url());
+      const cookies = (await route.request().allHeaders()).cookie ?? "";
+      const scope = decodeURIComponent(cookies.match(/(?:^|;\s*)fr_scope=([^;]*)/)?.[1] ?? "");
+      requests.push({ query: url.searchParams.get("q") ?? "", scope });
+      const area = scope === "town:brunswick" ? "Brunswick" : "Whole county";
+      // Controlled answers let the browser prove it made a new read rather
+      // than reusing an old result. The detail destination is a real place.
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          results: [{
+            type: "place", id: "place:beans-in-the-belfry-brunswick",
+            title: `Fresh search fixture ${requests.length}`, subtitle: area,
+            href: "/places/beans-in-the-belfry-brunswick",
+          }],
+          meta: {
+            qualifiers: { constrained: true, categoryLabel: url.searchParams.get("q") === "pizza" ? "Pizza" : "Coffee" },
+            contextLabel: area,
+          },
+        }),
+      });
+    });
+    await page.goto("/today", { waitUntil: "domcontentloaded" });
+    const area = page.getByRole("combobox", { name: "Choose your area", exact: true });
+    await expect(area).toBeEnabled();
+    await area.selectOption("county");
+    const opener = page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true });
+    const dialog = page.getByRole("dialog", { name: "What do you need?", exact: true });
+    const field = dialog.getByRole("searchbox", { name: "Ask or find across Frederick County", exact: true });
+    await opener.click();
+    await field.fill("coffee");
+    await expect(dialog.getByText("Fresh search fixture 1", { exact: true })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(opener).toBeFocused();
+    await opener.click();
+    await expect(field).toHaveValue("coffee");
+    await expect(dialog.getByText("Fresh search fixture 2", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Fresh search fixture 1", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("dialog")).toHaveCount(1);
+    await page.goBack();
+    await expect(dialog).toHaveCount(0);
+    await expect(opener).toBeFocused();
+
+    await area.selectOption("town:brunswick");
+    await opener.click();
+    await expect(field).toHaveValue("coffee");
+    await expect(dialog.getByText("Fresh search fixture 3", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Coffee · Brunswick", { exact: true })).toBeVisible();
+    expect(requests).toEqual([
+      { query: "coffee", scope: "county" },
+      { query: "coffee", scope: "county" },
+      { query: "coffee", scope: "town:brunswick" },
+    ]);
+
+    await dialog.getByRole("listitem")
+      .filter({ hasText: "Fresh search fixture 3" })
+      .getByRole("link", { name: "Open", exact: true }).click();
+    await expect(page).toHaveURL(/\/places\/beans-in-the-belfry-brunswick/);
+    await expect(page.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
+    const detailOpener = page.getByRole("button", { name: "Ask or find across Frederick County", exact: true });
+    await expect(detailOpener).toBeEnabled();
+    await detailOpener.click();
+    await expect(field).toHaveValue("coffee");
+    await expect(dialog.getByText("Fresh search fixture 4", { exact: true })).toBeVisible();
+    const nextQuery = width === 375 ? "pizza" : "";
+    if (nextQuery) {
+      await field.fill(nextQuery);
+      await expect(dialog.getByText("Fresh search fixture 5", { exact: true })).toBeVisible();
+    } else {
+      await dialog.getByRole("button", { name: "Clear search", exact: true }).click();
+    }
+    await dialog.getByRole("button", { name: "Close Find", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(detailOpener).toBeFocused();
+    await expect.poll(() => page.evaluate(() => window.history.state?.__frederickRadiusLayer ?? null)).toBeNull();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/today(?:\?|$)/);
+    // No reload: Back may restore a BFCache header with an older memory draft.
+    await expect(area).toBeEnabled();
+    await opener.click();
+    await expect(field).toHaveValue(nextQuery);
+    if (nextQuery) {
+      await expect(dialog.getByText("Fresh search fixture 6", { exact: true })).toBeVisible();
+      await expect(dialog.getByText("Pizza · Brunswick", { exact: true })).toBeVisible();
+      expect(requests.at(-1)).toEqual({ query: "pizza", scope: "town:brunswick" });
+      await dialog.getByRole("button", { name: "Clear search", exact: true }).click();
+      await dialog.getByRole("button", { name: "Close Find", exact: true }).click();
+      await expect(dialog).toHaveCount(0);
+      await expect(opener).toBeFocused();
+      await opener.click();
+    }
+    await expect(field).toHaveValue("");
+    await expect(dialog.getByText("Useful now", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Fresh search fixture 4", { exact: true })).toHaveCount(0);
+  });
+}

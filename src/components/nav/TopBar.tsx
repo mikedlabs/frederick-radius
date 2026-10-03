@@ -28,6 +28,7 @@ import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 
 const SearchOverlay = lazy(() => import("@/components/search/SearchOverlay"));
 let searchLayerSequence = 0;
+const FIND_DRAFT_KEY = "fr:find-draft:v1";
 
 export function pageOwnsPrimarySearch(pathname: string): boolean {
   return pathname === "/today"
@@ -55,6 +56,9 @@ export function topBarFindTarget(pathname: string): FindTarget {
 
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchInitialQuery, setSearchInitialQuery] = useState("");
+  const searchDraftRef = useRef("");
+  const searchDraftNeedsStorageRef = useRef(false);
   const [findInteractionReady, setFindInteractionReady] = useState(false);
   const searchOpenerRef = useRef<HTMLElement | null>(null);
   const searchLayerIdRef = useRef("");
@@ -65,6 +69,35 @@ export default function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
   const closeSearch = useCallback(() => setSearchOpen(false), []);
+
+  // The overlay stays lazy and unmounts on close. Only its query survives in
+  // this tab, including the existing full navigation to a result. Never retain
+  // results, hours, source freshness, coordinates, or a previous area here.
+  const restoreSearchDraft = useCallback(() => {
+    // Back can revive this header from BFCache after another page in this
+    // tab edited or cleared Find. Read storage again unless our own latest
+    // edit failed to persist; a readable older value must not replace it.
+    if (!searchDraftNeedsStorageRef.current) {
+      try {
+        searchDraftRef.current = window.sessionStorage.getItem(FIND_DRAFT_KEY) ?? "";
+      } catch {
+        // Retain this header's latest words while reads are blocked.
+      }
+    }
+    setSearchInitialQuery(searchDraftRef.current);
+  }, []);
+  const rememberSearchDraft = useCallback((query: string) => {
+    // Update before dismissal or navigation can unmount the input. Memory is
+    // also the fallback when browser storage is unavailable or full.
+    searchDraftRef.current = query;
+    try {
+      if (query) window.sessionStorage.setItem(FIND_DRAFT_KEY, query);
+      else window.sessionStorage.removeItem(FIND_DRAFT_KEY);
+      searchDraftNeedsStorageRef.current = false;
+    } catch {
+      searchDraftNeedsStorageRef.current = true;
+    }
+  }, []);
 
   // The app bar is server-rendered before this client component hydrates. An
   // enabled button in that brief window looks actionable but has no click
@@ -139,10 +172,11 @@ export default function TopBar() {
     searchPathRef.current = pathname;
     searchReturnScrollYRef.current = returnScrollY;
     if (!searchOpen) {
+      restoreSearchDraft();
       searchLayerIdRef.current = `find:${Date.now()}:${++searchLayerSequence}`;
     }
     setSearchOpen(true);
-  }, [pathname, searchOpen]);
+  }, [pathname, restoreSearchDraft, searchOpen]);
 
   // Deep page = anything that isn't one of the 4 bottom-nav tabs (or its
   // sub-route) and isn't the root. On these the bottom nav lights NO
@@ -181,6 +215,7 @@ export default function TopBar() {
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
       searchPathRef.current = pathname;
       if (!searchOpen) {
+        restoreSearchDraft();
         searchLayerIdRef.current = `find:${Date.now()}:${++searchLayerSequence}`;
       }
       setSearchOpen(true);
@@ -188,7 +223,7 @@ export default function TopBar() {
     window.addEventListener("fr:open-search", open);
     if (consumeFindRequest("global")) window.requestAnimationFrame(open);
     return () => window.removeEventListener("fr:open-search", open);
-  }, [pathname, searchOpen]);
+  }, [pathname, restoreSearchDraft, searchOpen]);
 
   // Search belongs to the route that opened it. The persistent app layout must
   // not let a still-loading overlay appear over a different destination after
@@ -461,6 +496,8 @@ export default function TopBar() {
         >
           <SearchOverlay
             open
+            initialQuery={searchInitialQuery}
+            onQueryChange={rememberSearchDraft}
             onClose={closeSearch}
             openerRef={searchOpenerRef}
             historyLayerId={searchLayerIdRef.current}
