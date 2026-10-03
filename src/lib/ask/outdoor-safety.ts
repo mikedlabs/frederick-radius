@@ -128,6 +128,30 @@ export function applyAskOutdoorSafety(
   if (!mustHold) return result;
 
   const officialSource = safetySource(hold);
+
+  // A monitoring gap is not a hazard. `loadOutdoorSafetyHold` returns an
+  // active NWS alert or an unhealthy-air reading BEFORE it ever returns
+  // "unavailable", so this branch means we found no known danger and simply
+  // could not reach a feed. Do not bury the answer for that: keep the places
+  // and lead with an honest "could not confirm, check before you go" note.
+  // This still refuses to imply an all-clear (the caveat leads and the safety
+  // card is first) while not hiding real parks on a brief feed outage. A real
+  // NWS/air-quality hold falls through to the full suppression below.
+  if (hold.kind === "unavailable") {
+    return {
+      ...result,
+      answer: `${hold.reason} I could not confirm live conditions, so check official conditions before you head out. ${result.answer}`.trim(),
+      sources: [officialSource, ...result.sources].slice(0, 5),
+      actions: [
+        { label: "Check live conditions", kind: "open" as const, href: hold.url },
+        ...(result.actions ?? []),
+      ].slice(0, 3),
+      intelligence: result.intelligence
+        ? { ...result.intelligence, tools: [...new Set([...result.intelligence.tools, "weather"])] }
+        : { tools: ["weather"], confidence: "medium", retrieval: "keyword" },
+    };
+  }
+
   const preserved = safeSources.slice(0, 4);
   const remaining = namesLine(preserved);
   const holdWindow = hold.kind === "nws"
@@ -171,7 +195,9 @@ export function applyAskOutdoorSafety(
       ? { ...result.intelligence, tools: [...new Set([...result.intelligence.tools, "weather"])] }
       : {
           tools: ["weather"],
-          confidence: hold.kind === "unavailable" ? "medium" : "high",
+          // The "unavailable" hold is handled and returned earlier, so a hold
+          // reaching this suppression block is always a verified hazard.
+          confidence: "high",
           retrieval: "keyword",
         },
   };
