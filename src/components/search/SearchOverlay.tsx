@@ -11,6 +11,7 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
 } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Phone, Train, Activity } from "lucide-react";
 import type {
@@ -316,19 +317,24 @@ function settleFindReturnScroll(scrollY: number | null) {
 export default function SearchOverlay({
   open,
   onClose,
+  initialQuery = "",
+  onQueryChange,
   openerRef,
   historyLayerId,
   returnScrollY,
 }: {
   open: boolean;
   onClose: () => void;
+  /** Restore words only. Every mount gets current results and scope from the API. */
+  initialQuery?: string;
+  onQueryChange?: (query: string) => void;
   /** Explicit opener for touch browsers, which do not always move focus to
    * the button a person taps before mounting the dialog. */
   openerRef?: React.RefObject<HTMLElement | null>;
   historyLayerId: string;
   returnScrollY?: number | null;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchMeta, setSearchMeta] = useState<
     (QualifiedSearchIndexResult["meta"] & { liveEventsUnavailable?: boolean }) | null
@@ -336,7 +342,9 @@ export default function SearchOverlay({
   // Fetch lifecycle, so a network/API failure never masquerades as "nothing in
   // Frederick matches" (2026-07-12 audit): "loading" while a request is in
   // flight, "error" when it failed, "done" when it genuinely returned.
-  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
+    initialQuery.trim() ? "loading" : "idle",
+  );
   const [retryNonce, setRetryNonce] = useState(0);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [coords, setCoords] = useState<{ lng: number; lat: number } | null>(null);
@@ -369,9 +377,13 @@ export default function SearchOverlay({
   const navigateFromSearch = useCallback(
     (href: string) => {
       leavingFindRef.current = true;
+      // Native navigation can freeze this document in BFCache immediately.
+      // Close before that boundary so Back cannot revive old query/results.
+      // Keep the layer entry for leaveTo's existing atomic replace contract.
+      flushSync(onClose);
       historyLayer.leaveTo(href);
     },
-    [historyLayer],
+    [historyLayer, onClose],
   );
   const openOfficialAnswer = useCallback((href: string) => {
     const safeHref = safeOfficialAnswerHref(href);
@@ -387,6 +399,7 @@ export default function SearchOverlay({
   }, []);
 
   const updateQuery = (next: string) => {
+    onQueryChange?.(next);
     setQuery(next);
     // Never leave a result from the previous query tappable during the
     // debounce window. The first visible row always belongs to what is in the
@@ -403,6 +416,7 @@ export default function SearchOverlay({
   // newer ones — without it, a slow "co" can land after a fast "coffee"
   // and replace the right answer with the wrong one.
   useEffect(() => {
+    if (!open) return;
     const q = query.trim();
     if (!q) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: clear the previous fetch's results when the user empties the input, so the overlay never shows stale answers
@@ -436,6 +450,9 @@ export default function SearchOverlay({
       })
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then((data: QualifiedSearchIndexResult) => {
+          // Some transports can finish body parsing after cancellation. A
+          // dismissed or superseded query must never publish those results.
+          if (ctrl.signal.aborted) return;
           setResults(data.results ?? []);
           setSearchMeta(data.meta ?? null);
           setStatus("done");
@@ -445,7 +462,7 @@ export default function SearchOverlay({
           // it. A REAL failure becomes an explicit "error" state so the empty
           // area reads "search unavailable", not "nothing matches" — a data
           // failure must never look like local absence.
-          if (err && err.name !== "AbortError") {
+          if (!ctrl.signal.aborted && err && err.name !== "AbortError") {
             setResults([]);
             setSearchMeta(null);
             setStatus("error");
@@ -456,7 +473,7 @@ export default function SearchOverlay({
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [query, coords, retryNonce]);
+  }, [open, query, coords, retryNonce]);
 
   // Report zero-result searches. The queries people type and get nothing
   // for are the app's real backlog, so the query text rides with the event
