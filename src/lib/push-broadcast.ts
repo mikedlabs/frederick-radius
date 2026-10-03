@@ -212,7 +212,11 @@ export async function broadcast(
       continue;
     }
     try {
-      await sendPush({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } }, tagged);
+      const result = await sendPush(
+        { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+        tagged,
+      );
+      if (!result) continue;
       sent += 1;
     } catch (err) {
       if (err instanceof Error && err.message === "subscription_gone") {
