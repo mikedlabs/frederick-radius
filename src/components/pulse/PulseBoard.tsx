@@ -2,12 +2,15 @@
 
 import {
   createElement,
+  createContext,
+  useContext,
   Suspense,
   useEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
+  type CSSProperties,
 } from "react";
 import {
   AlertTriangle,
@@ -39,6 +42,8 @@ import PulseFreshness, {
   PulseStatusLabel,
 } from "@/components/pulse/PulseFreshness";
 import { track } from "@/lib/track";
+import { Button } from "@/components/ui/Button";
+import styles from "./PulseBoard.module.css";
 
 const ICONS: Record<string, LucideIcon> = {
   AlertTriangle,
@@ -60,6 +65,10 @@ const ICONS: Record<string, LucideIcon> = {
 };
 
 const SNAPSHOT_KEY = "fr.pulse.snapshot.v2";
+
+// Detail controls must not promise an action before hydration owns the URL.
+// Standalone presentation fixtures can still render outside the board.
+const PulseInteractionReady = createContext(true);
 
 const PULSE_BANK_DEFINITIONS = [
   {
@@ -372,17 +381,17 @@ function GroupHeading({
   note?: string;
 }) {
   return (
-    <div className="flex min-w-0 items-baseline justify-between gap-4">
+    <div className={styles.groupHeading}>
       <h2
         id={id}
-        className="min-w-0 break-words font-sans text-[17px] font-semibold leading-tight tracking-[-0.02em]"
+        className={styles.groupTitle}
         style={{ color: "var(--app-ink)" }}
       >
         {title}
       </h2>
       {note && (
         <span
-          className="max-w-[48%] shrink text-right text-[10.5px] leading-tight [overflow-wrap:anywhere]"
+          className={styles.groupNote}
           style={{ color: "var(--app-ink-3)" }}
         >
           {note}
@@ -395,24 +404,25 @@ function GroupHeading({
 /** Live situations stay in a short ledger with a written severity, so color is
  * supportive rather than the only signal. Quiet facts belong in Right now. */
 function AlertLedgerRow({ chip, onOpen, last }: { chip: PulseHeroChip; onOpen: (key: string) => void; last: boolean }) {
+  const interactionReady = useContext(PulseInteractionReady);
   const color = CHIP_TONE[chip.tone];
   const meta = [TONE_WORD[chip.tone], chip.meta].filter(Boolean).join(" · ");
   const inner = (
     <>
       <span aria-hidden className="w-[3px] shrink-0 self-stretch rounded-full" style={{ background: color }} />
       <span className="min-w-0 flex-1 py-2.5">
-        <span className="block line-clamp-2 text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>{chip.label}</span>
-        <span className="mt-0.5 block break-words font-mono text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{meta}</span>
+        <span className={styles.alertTitle} style={{ color: "var(--app-ink)" }}>{chip.label}</span>
+        <span className={styles.alertMeta} style={{ color: "var(--app-ink-3)" }}>{meta}</span>
       </span>
-      {chip.key && <ArrowRight aria-hidden className="h-3.5 w-3.5 shrink-0 self-center opacity-45" />}
+      {chip.key && <ArrowRight aria-hidden className={styles.rowArrow} />}
     </>
   );
-  const cls = `flex min-h-11 w-full items-stretch gap-2.5 pl-1 pr-1 text-left${last ? "" : " border-b"}`;
+  const cls = `${styles.alertRow}${last ? "" : ` ${styles.dividedRow}`}`;
   const border = { borderColor: "var(--app-border)" };
   return (
     <li>
       {chip.key ? (
-        <button type="button" onClick={() => onOpen(chip.key!)} className={cls} style={border}>{inner}</button>
+        <button type="button" disabled={!interactionReady} data-pulse-interaction-ready={String(interactionReady)} onClick={() => onOpen(chip.key!)} className={cls} style={border}>{inner}</button>
       ) : (
         <span className={`${cls} items-center`} style={border}>{inner}</span>
       )}
@@ -425,7 +435,7 @@ function HeroFacts({ chips, onOpen }: { chips: PulseHeroChip[]; onOpen: (key: st
   if (rows.length === 0) return null;
   return (
     <ul
-      className="overflow-hidden rounded-[var(--app-radius-md)] border px-2"
+      className={styles.ledger}
       style={{
         borderColor: "var(--app-border)",
         background: "var(--app-bg-elevated-solid)",
@@ -497,7 +507,7 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
       <Clock aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} />
       <div className="min-w-0">
         <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>Since your last look</p>
-        <p className="mt-0.5 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{message}</p>
+        <p className={styles.rowDescription} style={{ color: "var(--app-ink-3)" }}>{message}</p>
       </div>
     </div>
   );
@@ -535,198 +545,81 @@ function pulseTileReading(tile: PulseTile): string {
 function PulseSmartBlock({
   tile,
   onOpen,
-  index,
   bankKey,
   wideMobile = false,
 }: {
   tile: PulseTile;
   onOpen: () => void;
-  index: number;
   bankKey: string;
   wideMobile?: boolean;
 }) {
+  const interactionReady = useContext(PulseInteractionReady);
   const state = pulseTileState(tile);
   const unavailable = state === "Feed unavailable";
   const keyColor = unavailable ? "var(--app-warning)" : tile.accent;
-  const stateColor =
-    state === "Current" ? "var(--app-ink-3)" : keyColor;
   const accessibleReading = unavailable
     ? "Latest reading unavailable"
     : pulseTileReading(tile);
-  const gaugeValue = formatGaugeValue(tile);
-  const seatsOnArrival = index < 4;
 
   return (
     <li
       data-pulse-bank-item={bankKey}
-      className={`min-w-0${tile.kind === "feature" || wideMobile ? " col-span-2 sm:col-span-1" : ""}`}
+      data-kind={tile.kind}
+      className={`${styles.readingItem}${wideMobile ? ` ${styles.wideReading}` : ""}`}
     >
       <button
         type="button"
+        disabled={!interactionReady}
+        data-pulse-interaction-ready={String(interactionReady)}
         onClick={onOpen}
         data-pulse-key={tile.key}
         aria-haspopup="dialog"
         aria-label={`${tile.label}: ${accessibleReading}. ${state}. Source: ${tile.sourceLabel}`}
-        className={`fr-pulse-key${seatsOnArrival ? " fr-pulse-seat" : ""} group relative flex min-h-[104px] w-full min-w-0 flex-col overflow-hidden rounded-[var(--app-radius-md)] border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 sm:min-h-[120px]`}
+        className={styles.reading}
         style={{
-          borderColor: unavailable
-            ? "color-mix(in srgb, var(--app-warning) 38%, var(--app-border))"
-            : "var(--app-border)",
-          background: `linear-gradient(160deg, color-mix(in srgb, ${keyColor} 7%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 48%, color-mix(in srgb, var(--app-bg-sunken) 52%, var(--app-bg-elevated-solid)) 100%)`,
-          animationDelay: seatsOnArrival ? `${index * 34}ms` : undefined,
+          "--pulse-accent": keyColor,
           viewTransitionName: tile.key === "weather" ? "radius-weather" : undefined,
-        }}
+        } as CSSProperties}
       >
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background: `radial-gradient(105% 82% at 0% 0%, ${keyColor} 0%, transparent 72%)`,
-            opacity: state === "Current" ? 0.1 : 0.18,
-          }}
-        />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-[3px]"
-          style={{ background: keyColor, opacity: unavailable ? 1 : 0.82 }}
-        />
-
-        <span className="relative flex w-full min-w-0 items-center justify-between gap-2">
-          <span
-            aria-hidden
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] border"
-            style={{
-              borderColor: `color-mix(in srgb, ${keyColor} 20%, var(--app-border))`,
-              color: keyColor,
-              background: `color-mix(in srgb, ${keyColor} 10%, var(--app-bg-elevated-solid))`,
-            }}
-          >
-            {createElement(iconFor(tile), {
-              className: "h-4 w-4",
-              strokeWidth: 2.15,
-            })}
+        <span className={styles.readingHeader}>
+          <span aria-hidden className={styles.readingIcon}>
+            {createElement(iconFor(tile), { className: "h-5 w-5", strokeWidth: 1.8 })}
           </span>
-          {/* "Current" is the neutral state and stays unwritten on the face:
-              stamping it on every calm tile turned the quiet grid into a wall
-              of CURRENT. Every OTHER state still prints beside its color (the
-              written-state rule exists so a non-neutral state never relies on
-              tint alone), and the aria-label above always carries the state
-              for assistive tech. */}
-          {state !== "Current" && (
-            <span
-              className="min-w-0 truncate text-[8.5px] font-bold uppercase tracking-[0.105em]"
-              style={{ color: stateColor }}
-            >
-              {state}
-            </span>
-          )}
+          <span className={styles.readingLabel}>{tile.label}</span>
+          {state !== "Current" && <span className={styles.readingState}>{state}</span>}
         </span>
 
         {unavailable ? (
-          <span className="relative mt-3 block min-w-0 flex-1">
-            <span
-              className="block text-[15px] font-semibold leading-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              Latest reading unavailable
-            </span>
-            <span
-              className="mt-1.5 block text-[10px] leading-snug"
-              style={{ color: "var(--app-warning)" }}
-            >
-              Open the source details for context.
-            </span>
+          <span className={styles.readingBody}>
+            <span className={styles.readingMessage}>Latest reading unavailable</span>
+            <span className={styles.readingContext}>Open the source details for context.</span>
           </span>
         ) : tile.feature ? (
-          <span className="relative mt-3 flex min-w-0 flex-1 items-end gap-3">
-            <span
-              className="shrink-0 font-sans text-[34px] font-semibold leading-none tracking-[-0.04em] tabular-nums"
-              style={{ color: "var(--app-ink)" }}
-            >
-              {tile.feature.temp}°
-            </span>
-            <span className="min-w-0 pb-0.5">
-              <span
-                className="block line-clamp-2 text-[12px] font-semibold leading-tight"
-                style={{ color: "var(--app-ink)" }}
-              >
-                {tile.feature.condition}
-              </span>
-              {tile.feature.hl ? (
-                <span
-                  className="mt-1 block truncate font-mono text-[9.5px] tabular-nums"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  {tile.feature.hl}
-                </span>
-              ) : null}
+          <span className={`${styles.readingBody} ${styles.weatherReading}`}>
+            <span className={styles.temperature}>{tile.feature.temp}°</span>
+            <span className={styles.weatherContext}>
+              <span className={styles.condition}>{tile.feature.condition}</span>
+              {tile.feature.hl ? <span className={styles.readingContext}>{tile.feature.hl}</span> : null}
             </span>
           </span>
         ) : tile.gauge ? (
-          <span className="relative mt-2.5 flex min-w-0 flex-1 items-end gap-2.5">
-            <span
-              className={`shrink-0 font-mono font-semibold leading-none tabular-nums${tile.gauge.comma ? " text-[25px]" : " text-[28px]"}`}
-              style={{ color: keyColor }}
-            >
-              {gaugeValue}
+          <span className={styles.readingBody}>
+            <span className={styles.measurement}>
+              <span className={styles.measurementValue} data-comma={tile.gauge.comma || undefined}>{formatGaugeValue(tile)}</span>
+              <span className={styles.measurementUnit}>{tile.gauge.unit}</span>
             </span>
-            <span className="min-w-0 pb-0.5">
-              <span
-                className="block line-clamp-2 text-[10px] font-medium leading-tight"
-                style={{ color: "var(--app-ink-2)" }}
-              >
-                {tile.gauge.unit}
-              </span>
-              <span
-                className="mt-1 block line-clamp-2 text-[10px] leading-tight"
-                style={{ color: unavailable ? "var(--app-warning)" : "var(--app-ink-3)" }}
-              >
-                {tile.countLabel}
-              </span>
-            </span>
+            <span className={styles.readingContext}>{tile.countLabel}</span>
           </span>
         ) : (
-          <span className="relative mt-3 block min-w-0 flex-1">
-            <span
-              className="block line-clamp-2 text-[15px] font-semibold leading-[1.18] tracking-[-0.01em]"
-              style={{ color: "var(--app-ink)" }}
-            >
-              {tile.countLabel}
-            </span>
-            {tile.peek && tile.peek !== tile.countLabel ? (
-              <span
-                className="mt-1.5 block line-clamp-2 text-[10px] leading-snug"
-                style={{ color: unavailable ? "var(--app-warning)" : "var(--app-ink-3)" }}
-              >
-                {tile.peek}
-              </span>
-            ) : null}
+          <span className={styles.readingBody}>
+            <span className={styles.readingMessage}>{tile.countLabel}</span>
+            {tile.peek && tile.peek !== tile.countLabel ? <span className={styles.readingContext}>{tile.peek}</span> : null}
           </span>
         )}
 
-        <span
-          className="relative mt-2 block w-full min-w-0 border-t pt-1.5"
-          style={{ borderColor: "color-mix(in srgb, var(--app-border) 74%, transparent)" }}
-        >
-          <span className="flex min-w-0 items-center gap-1.5">
-            <span
-              className="min-w-0 flex-1 truncate text-[11px] font-semibold"
-              style={{ color: "var(--app-ink)" }}
-            >
-              {tile.label}
-            </span>
-            <ArrowRight
-              aria-hidden
-              className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5"
-            />
-          </span>
-          <span
-            className="mt-0.5 hidden truncate text-[9px] sm:block"
-            style={{ color: "var(--app-ink-3)" }}
-            title={tile.sourceLabel}
-          >
-            Source · {tile.sourceLabel}
-          </span>
+        <span className={styles.readingFooter}>
+          <span className={styles.readingSource}>Source · {tile.sourceLabel}</span>
+          <ArrowRight aria-hidden className={styles.rowArrow} />
         </span>
       </button>
     </li>
@@ -796,6 +689,7 @@ function SecondarySignalRow({
   tile: PulseTile;
   onOpen: () => void;
 }) {
+  const interactionReady = useContext(PulseInteractionReady);
   const state = pulseTileState(tile);
   const needsContext =
     state === "Partial data" ||
@@ -807,7 +701,10 @@ function SecondarySignalRow({
     <li>
       <button
         type="button"
+        disabled={!interactionReady}
+        data-pulse-interaction-ready={String(interactionReady)}
         onClick={onOpen}
+        data-pulse-key={tile.key}
         className="group flex min-h-[58px] w-full min-w-0 items-center gap-2.5 border-t px-1 py-2 text-left first:border-t-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)" }}
         aria-label={`${tile.label}: ${needsContext ? state : tile.countLabel}. Source: ${tile.sourceLabel}`}
@@ -827,23 +724,23 @@ function SecondarySignalRow({
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-baseline justify-between gap-2">
-            <span className="min-w-0 truncate text-[12.5px] font-semibold text-[var(--app-ink)]">
+            <span className={styles.rowTitle}>
               {tile.label}
             </span>
             {needsContext ? (
               <span
-                className="shrink-0 text-[9px] font-bold uppercase tracking-[0.08em]"
+                className={styles.sourceState}
                 style={{ color }}
               >
                 {state}
               </span>
             ) : null}
           </span>
-          <span className="mt-0.5 block truncate text-[10.5px] text-[var(--app-ink-3)]">
+          <span className={styles.sourceDescription}>
             {needsContext ? tile.countLabel : `${tile.countLabel} · ${tile.sourceLabel}`}
           </span>
           {needsContext ? (
-            <span className="mt-0.5 block truncate text-[9.5px] text-[var(--app-ink-3)]">
+            <span className={styles.rowSource}>
               Source · {tile.sourceLabel}
             </span>
           ) : null}
@@ -905,7 +802,7 @@ function SecondarySignals({
             style={{ color: "var(--app-ink-3)" }}
           />
           <span id="pulse-secondary-heading" className="min-w-0 flex-1">
-            <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            <span className={styles.rowTitle} style={{ color: "var(--app-ink)" }}>
               Source status
             </span>
             <span className="mt-0.5 block text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
@@ -920,7 +817,7 @@ function SecondarySignals({
   return (
     <section aria-labelledby="pulse-secondary-heading" className="min-w-0">
       <details
-        className="group overflow-hidden rounded-[var(--app-radius-sm)] border"
+        className={`${styles.sourceDisclosure} group`}
         style={{
           borderColor: "var(--app-border)",
           background: "color-mix(in srgb, var(--app-bg-elevated-solid) 54%, transparent)",
@@ -943,10 +840,10 @@ function SecondarySignals({
             />
           )}
           <span id="pulse-secondary-heading" className="min-w-0 flex-1">
-            <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            <span className={styles.rowTitle} style={{ color: "var(--app-ink)" }}>
               Source status
             </span>
-            <span className="mt-0.5 block text-[10.5px] leading-snug" style={{ color: degraded.length > 0 ? "var(--app-warning)" : "var(--app-ink-3)" }}>
+            <span className={styles.sourceDescription} style={{ color: degraded.length > 0 ? "var(--app-warning)" : "var(--app-ink-3)" }}>
               {degradedSummary || `${updates.length} supporting ${updates.length === 1 ? "check is" : "checks are"} current`}
             </span>
           </span>
@@ -957,7 +854,7 @@ function SecondarySignals({
         </summary>
 
         <div className="border-t px-3 pb-2 pt-2.5" style={{ borderColor: "var(--app-border)" }}>
-          <p className="pb-2 text-[10.5px] leading-relaxed text-[var(--app-ink-3)]">
+          <p className={styles.sourceExplanation}>
             {secondarySignalsSummary(
               visibleUpdates.length,
               partial.length,
@@ -981,11 +878,15 @@ function SecondarySignals({
 
 /** A live situation row with the context the compact readings intentionally omit. */
 function AttentionTile({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
+  const interactionReady = useContext(PulseInteractionReady);
   return (
     <button
       type="button"
+      disabled={!interactionReady}
+      data-pulse-interaction-ready={String(interactionReady)}
       onClick={onOpen}
-      className="group flex min-h-[62px] w-full items-center gap-3 border-b px-2 py-2.5 text-left transition last:border-b-0 active:bg-black/[0.025]"
+      data-pulse-key={tile.key}
+      className={styles.attentionRow}
       style={{
         borderColor: "var(--app-border)",
       }}
@@ -998,14 +899,14 @@ function AttentionTile({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }
         {createElement(iconFor(tile), { className: "h-4 w-4", strokeWidth: 2 })}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>{tile.label}</span>
-        <span className="mt-0.5 block line-clamp-2 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{tile.peek ?? tile.countLabel}</span>
-        <span className="mt-1 block truncate text-[9px]" style={{ color: "var(--app-ink-3)" }}>
+        <span className={styles.rowTitle} style={{ color: "var(--app-ink)" }}>{tile.label}</span>
+        <span className={styles.rowDescription} style={{ color: "var(--app-ink-2)" }}>{tile.peek ?? tile.countLabel}</span>
+        <span className={styles.rowSource} style={{ color: "var(--app-ink-3)" }}>
           Source · {tile.sourceLabel}
         </span>
       </span>
-      {tile.peek && <span className="shrink-0 text-right text-[11px] font-semibold" style={{ color: tile.accent }}>{tile.countLabel}</span>}
-      <ArrowRight aria-hidden className="h-4 w-4 shrink-0 opacity-40 transition-transform group-hover:translate-x-0.5" />
+      {tile.peek && <span className={styles.rowCount} style={{ color: tile.accent }}>{tile.countLabel}</span>}
+      <ArrowRight aria-hidden className={styles.rowArrow} />
     </button>
   );
 }
@@ -1022,6 +923,7 @@ export default function PulseBoard({
   breaking?: ReactNode;
 }) {
   const [open, setOpen] = useState<string | null>(null);
+  const [interactionReady, setInteractionReady] = useState(false);
   const pushedOpen = useRef(false);
 
   const current = tiles.find((tile) => tile.key === open) ?? null;
@@ -1034,9 +936,16 @@ export default function PulseBoard({
       const key = new URL(window.location.href).searchParams.get("open");
       setOpen(key && validKeys.has(key) ? key : null);
     };
+    let mounted = true;
     syncFromUrl();
+    queueMicrotask(() => {
+      if (mounted) setInteractionReady(true);
+    });
     window.addEventListener("popstate", syncFromUrl);
-    return () => window.removeEventListener("popstate", syncFromUrl);
+    return () => {
+      mounted = false;
+      window.removeEventListener("popstate", syncFromUrl);
+    };
   }, [validKeys]);
 
   const openTile = (key: string) => {
@@ -1100,79 +1009,64 @@ export default function PulseBoard({
   });
 
   return (
-    <>
-      <header
-        className="-mx-4 -mt-6 border-b px-4 pb-5 pt-4 text-[var(--app-ink)] sm:-mx-5 sm:px-5 sm:pb-6 lg:mx-0 lg:mt-0 lg:px-0 lg:pt-0"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <div className="max-w-[44rem]">
-          <div className="flex min-w-0 items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <span
-                aria-hidden
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-                style={{
-                  color: heroColor,
-                  background: `color-mix(in srgb, ${heroColor} 11%, transparent)`,
-                }}
-              >
-                {hero.allClear ? (
-                  <Check className="h-4 w-4" strokeWidth={2.5} />
-                ) : hero.operational && !lead ? (
-                  <Clock className="h-4 w-4" strokeWidth={2.25} />
-                ) : (
-                  <AlertTriangle className="h-4 w-4" strokeWidth={2.25} />
-                )}
-              </span>
-              <span className="min-w-0">
-                <span
-                  className="block text-[9.5px] font-semibold uppercase tracking-[0.12em]"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  County status
-                </span>
-                <PulseStatusLabel
-                  renderedAt={hero.renderedAt}
-                  status={statusWord}
-                  canClaimCurrent={hero.allClear && !degraded}
-                  color={heroColor}
-                />
-              </span>
-            </div>
-            <PulseFreshness renderedAt={hero.renderedAt} />
+    <PulseInteractionReady.Provider value={interactionReady}>
+      <header data-pulse-briefing data-pulse-interaction-ready={String(interactionReady)} className={styles.briefing}>
+        <span aria-hidden className={styles.countyRelief} />
+        <div className={styles.briefingTop}>
+          <div className={styles.status} style={{ "--pulse-tone": heroColor } as CSSProperties}>
+            <span aria-hidden className={styles.statusIcon}>
+              {hero.allClear ? (
+                <Check className="h-5 w-5" strokeWidth={2.25} />
+              ) : hero.operational && !lead ? (
+                <Clock className="h-5 w-5" strokeWidth={2} />
+              ) : (
+                <AlertTriangle className="h-5 w-5" strokeWidth={2} />
+              )}
+            </span>
+            <span>
+              <span className={styles.statusTitle}>County status</span>
+              <PulseStatusLabel
+                renderedAt={hero.renderedAt}
+                status={statusWord}
+                canClaimCurrent={hero.allClear && !degraded}
+                color={heroColor}
+              />
+            </span>
           </div>
-          <h1 className="mt-4 max-w-[40rem] font-sans text-[clamp(1.45rem,5.5vw,1.85rem)] font-semibold leading-[1.12] tracking-[-0.025em] text-balance text-[var(--app-ink)]">
-            {hero.line}
-          </h1>
-          <p className="mt-2 max-w-[38rem] text-[12.5px] leading-relaxed text-[var(--app-ink-2)]">{hero.sub}</p>
-          {(hero.leadMeta || lead) && (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-              {hero.leadMeta && (
-                <p className="flex min-w-0 items-center gap-1.5 text-[10.5px] text-[var(--app-ink-3)]">
-                  <Clock aria-hidden className="h-3.5 w-3.5 shrink-0" />
-                  {hero.leadMeta}
-                </p>
-              )}
-              {lead && (
-                <button
-                  type="button"
-                  onClick={() => openTile(lead.key)}
-                  className="inline-flex min-h-11 items-center gap-1.5 text-[11.5px] font-semibold text-[var(--app-ink)] transition active:opacity-70"
-                >
-                  {hero.actionLabel ?? "See what this means"}
-                  <ArrowRight aria-hidden className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-          )}
+          <div className={styles.freshness}><PulseFreshness renderedAt={hero.renderedAt} /></div>
         </div>
+        <h1 className={styles.headline}>{hero.line}</h1>
+        <p className={styles.summary}>{hero.sub}</p>
+        {(hero.leadMeta || lead) && (
+          <div className={styles.briefingAction}>
+            {hero.leadMeta && (
+              <p className={styles.leadMeta}>
+                <Clock aria-hidden className="h-4 w-4 shrink-0" />
+                {hero.leadMeta}
+              </p>
+            )}
+            {lead && (
+              <Button
+                variant="secondary"
+                disabled={!interactionReady}
+                data-decision-action="open-status-details"
+                onClick={() => openTile(lead.key)}
+                className={styles.leadButton}
+                style={{ backgroundColor: "var(--app-bg-elevated-solid)", color: "var(--app-ink)" }}
+                iconRight={<ArrowRight aria-hidden className="h-4 w-4" />}
+              >
+                {hero.actionLabel ?? "See what this means"}
+              </Button>
+            )}
+          </div>
+        )}
       </header>
 
       {breaking}
 
       <SinceLastLook tiles={tiles} />
 
-      <div className="mx-auto min-w-0 max-w-[64rem] space-y-6">
+      <div className={styles.board}>
         {hasAttention && (
           <section aria-labelledby="pulse-attention-heading" className="min-w-0 space-y-2.5">
             <GroupHeading
@@ -1184,7 +1078,7 @@ export default function PulseBoard({
               <HeroFacts chips={attentionChips} onOpen={openTile} />
               {attention.length > 0 && (
                 <div
-                  className="overflow-hidden rounded-[var(--app-radius-md)] border px-1"
+                  className={styles.ledger}
                   style={{
                     borderColor: "var(--app-border)",
                     background: "var(--app-bg-elevated-solid)",
@@ -1207,7 +1101,7 @@ export default function PulseBoard({
               note={`${displayGroups.actionable.length} ${displayGroups.actionable.length === 1 ? "live signal" : "live signals"}`}
             />
             <div
-              className="overflow-hidden rounded-[var(--app-radius-md)] border px-1"
+              className={styles.ledger}
               style={{
                 borderColor: "var(--app-border)",
                 background: "var(--app-bg-elevated-solid)",
@@ -1225,14 +1119,13 @@ export default function PulseBoard({
             <GroupHeading id="pulse-readings-heading" title="Current conditions" />
             <ul
               data-pulse-bank="readings"
-              className="grid min-w-0 grid-flow-dense grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
+              className={styles.readingsGrid}
             >
-              {displayGroups.readings.map((tile, index) => (
+              {displayGroups.readings.map((tile) => (
                 <PulseSmartBlock
                   key={tile.key}
                   tile={tile}
                   bankKey="readings"
-                  index={index}
                   wideMobile={wideReadingKeys.has(tile.key)}
                   onOpen={() => openTile(tile.key)}
                 />
@@ -1243,52 +1136,6 @@ export default function PulseBoard({
 
         <SecondarySignals updates={quietSignals} onOpen={openTile} />
       </div>
-
-      <style>{`
-        .fr-pulse-key {
-          isolation: isolate;
-          transition: box-shadow 160ms ease, transform 160ms ease, border-color 160ms ease;
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,0.78),
-            inset 0 -1px 0 rgba(34,28,21,0.055),
-            0 1px 2px rgba(34,28,21,0.055),
-            0 8px 18px -15px rgba(34,28,21,0.42);
-        }
-        .fr-pulse-key:active {
-          transform: translateY(1px) scale(0.985);
-          box-shadow:
-            inset 0 1px 2px rgba(34,28,21,0.08),
-            0 1px 2px rgba(34,28,21,0.05);
-        }
-        @media (hover: hover) {
-          .fr-pulse-key:hover {
-            transform: translateY(-1.5px);
-            box-shadow:
-              inset 0 1px 0 rgba(255,255,255,0.88),
-              inset 0 -1px 0 rgba(34,28,21,0.05),
-              0 2px 4px rgba(34,28,21,0.07),
-              0 16px 28px -18px rgba(34,28,21,0.48);
-          }
-        }
-        .fr-pulse-seat {
-          animation: fr-pulse-seat 240ms cubic-bezier(.2,.8,.3,1) both;
-        }
-        @keyframes fr-pulse-seat {
-          from { opacity: 0; transform: translateY(4px); }
-          to { opacity: 1; transform: none; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .fr-pulse-key,
-          .fr-pulse-key * {
-            animation: none !important;
-            transition: none !important;
-          }
-          .fr-pulse-key:active,
-          .fr-pulse-key:hover {
-            transform: none;
-          }
-        }
-      `}</style>
 
       <Sheet
         open={open !== null}
@@ -1316,6 +1163,6 @@ export default function PulseBoard({
           ) : null}
         </div>
       </Sheet>
-    </>
+    </PulseInteractionReady.Provider>
   );
 }

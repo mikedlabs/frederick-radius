@@ -50,6 +50,18 @@ describe("Today decision hierarchy", () => {
     expect(weather).toBeGreaterThan(scope);
   });
 
+  it("keeps the archive photograph distinct from current facts and preserves Tonight below Find", () => {
+    const mastheadEnd = renderedPage.indexOf("</header>");
+    const masthead = renderedPage.slice(0, mastheadEnd);
+    expect(masthead).toContain("Carroll Creek in Frederick in June 2023, photographed by Mike D.");
+    expect(masthead).toContain("Archive · Carroll Creek · June 2023 · Mike D");
+    expect(masthead).not.toContain("<TodayPlanTonightLink");
+    expect(renderedPage.indexOf("<TodayPlanTonightLink")).toBeGreaterThan(
+      renderedPage.indexOf("<TodayAsk embedded"),
+    );
+    expect(renderedPage.match(/<TodayPlanTonightLink/g)).toHaveLength(1);
+  });
+
   it("does not stack a second weather-safety panel below the active alert", () => {
     expect(renderedPage).toContain("<CivicAlerts compact />");
     expect(renderedPage).not.toContain("<WeatherNeeds");

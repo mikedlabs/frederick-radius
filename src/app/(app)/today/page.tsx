@@ -275,16 +275,17 @@ export default async function HomePage() {
         const frame = todayFrame(easternStartHour(now.toISOString()));
         return (
           <header className={`scroll-masthead ${styles.masthead}`}>
-            <h1 className={styles.title}>
-              {frame.title}
-            </h1>
-            <figure className={styles.portrait}>
-              <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" priority fill sizes="(min-width: 640px) 280px, 88px" alt="Carroll Creek in Frederick in June 2023, photographed by Mike D." />
-              <figcaption className={styles.photoCredit}>Carroll Creek · Mike D · 2023</figcaption>
-            </figure>
+            <div className={styles.mastheadLead} data-today-photo-lead>
+              <h1 className={styles.title}>
+                {frame.title}
+              </h1>
+              <figure className={styles.portrait}>
+                <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" priority fill sizes="(min-width: 1024px) 960px, (min-width: 768px) 720px, calc(100vw - 32px)" alt="Carroll Creek in Frederick in June 2023, photographed by Mike D." />
+                <figcaption className={styles.photoCredit}>Archive · Carroll Creek · June 2023 · Mike D</figcaption>
+              </figure>
+            </div>
             <div className={styles.scope}>
               <Suspense fallback={null}><TodayScopeStatus dateline={formatEasternDateline(now)} /></Suspense>
-              <Suspense fallback={null}><TodayPlanTonightLink /></Suspense>
             </div>
           </header>
         );
@@ -302,7 +303,7 @@ export default async function HomePage() {
         </div>
 
       <div data-today-current-content className={styles.currentContent}>
-        <div aria-label="Places for your area">
+        <div aria-label="Places for your area" className={styles.places}>
           {decisionLead}
         </div>
 
@@ -345,6 +346,10 @@ export default async function HomePage() {
           Its quiet reading surface shares the row with the current campaign
           without making either one a second page headline. */}
       <section data-today-weather className={styles.weather}>
+        <div className={styles.contextHeading}>
+          <span>Countywide weather</span>
+          <Suspense fallback={null}><TodayPlanTonightLink /></Suspense>
+        </div>
         <AppTransitionLink
           href="/pulse?open=weather"
           prefetch={false}
@@ -606,11 +611,11 @@ function ProgramRow({
       <Link
         href={`/events/${e.slug}`}
         prefetch={false}
-        className="tap-44-y flex items-start gap-3 border-b py-2 pr-0.5"
+        className={`tap-44-y flex items-start gap-3 border-b py-2 pr-0.5 ${styles.eventRow}`}
         style={{ borderColor: "var(--app-border)" }}
       >
         <span
-          className="flex w-[58px] shrink-0 items-center gap-1 pt-px font-mono text-[11px] font-semibold tabular-nums leading-snug"
+          className={`flex w-[58px] shrink-0 items-center gap-1 pt-px font-mono text-[11px] font-semibold tabular-nums leading-snug ${styles.eventTime}`}
           style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-3)" }}
         >
           {live && (
@@ -627,11 +632,11 @@ function ProgramRow({
           </span>
         ) : (
           <div className="min-w-0 flex-1">
-            <span className="line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+            <span className={`line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight ${styles.eventTitle}`} style={{ color: "var(--app-ink)" }}>
               {e.title}
             </span>
             {where && (
-              <span className="mt-0.5 block truncate text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              <span className={`mt-0.5 block truncate text-[11.5px] leading-snug ${styles.eventLocation}`} style={{ color: "var(--app-ink-3)" }}>
                 {where}
               </span>
             )}

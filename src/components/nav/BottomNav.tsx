@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { haptic } from "@/lib/haptics";
 import { shouldPrefetchGlobalNavigation } from "@/lib/fair/route-policy";
 import { TABS, tabIndexForPath } from "./tabs";
+import styles from "./NavChrome.module.css";
 
 type NavigationGesture = Pick<
   MouseEvent,
@@ -30,10 +31,9 @@ export function shouldShowBottomNav(
 /**
  * Mobile primary navigation as a compact field-guide index strip.
  *
- * The destinations remain conventional, but the floating glass capsule,
- * glowing center orb, and animated selection pill have been retired. A brick
- * registration rule now marks the active chapter. Search lives in the top bar,
- * leaving this strip to hold four stable destinations.
+ * Four stable destinations sit on a raised Cream strip. The selected
+ * destination has a filled Brick control, while search keeps its single
+ * doorway in the page or top bar.
  */
 export default function BottomNav() {
   const pathname = usePathname();
@@ -75,11 +75,7 @@ export default function BottomNav() {
       >
         <nav
           aria-label="Primary"
-          className="pointer-events-auto relative mx-auto max-w-screen-md overflow-hidden rounded-t-[var(--app-radius-xl)] bg-[var(--app-bg-elevated)]/90 supports-[backdrop-filter]:bg-[var(--app-bg-elevated)]/60 backdrop-blur-xl transition-colors duration-200"
-          style={{
-            border: "1px solid var(--app-border-strong)",
-            boxShadow: "0 -8px 28px rgba(34, 28, 21, 0.08)",
-          }}
+          className={`${styles.dock} pointer-events-auto relative mx-auto max-w-screen-md overflow-hidden`}
         >
           <ul className="mx-auto grid max-w-screen-md grid-cols-4 px-1 py-1">
             {TABS.map(({ href, label, icon: Icon, prefetch, fillOnActive }, idx) => {
@@ -125,16 +121,13 @@ export default function BottomNav() {
                     }}
                     onClick={handleActivate}
                     aria-current={isAtDestination ? "page" : undefined}
-                    className="relative flex h-12 w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition-[color,transform,background-color] duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)] active:scale-[0.97]"
-                    style={{
-                      color: active ? "var(--app-brand-press)" : "var(--app-ink-3)",
-                      background: active ? "var(--app-brand-tint-6)" : "transparent",
-                    }}
+                    className={`${styles.destination} relative flex h-12 w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition-[color,transform,background-color] duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)]`}
+                    data-selected={active ? "true" : "false"}
                   >
                     <span
                       aria-hidden
                       className="absolute left-1/2 top-0 h-[2px] w-7 -translate-x-1/2"
-                      style={{ background: active ? "var(--app-brand)" : "transparent" }}
+                      style={{ background: active ? "var(--app-on-brand)" : "transparent", opacity: 0.5 }}
                     />
                     <Icon
                       width={20}
