@@ -76,7 +76,7 @@
   border: 1px solid var(--app-border);
   background: var(--app-bg-elevated-solid);
   box-shadow: var(--app-shadow-1);
-  transition: border-color var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out);
+  transition: color var(--app-dur-fast) var(--app-ease-out), border-color var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out);
   border-radius: var(--app-radius-sm);
   color: var(--app-ink-2);
   font-size: 15px;

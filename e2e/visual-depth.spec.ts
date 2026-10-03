@@ -121,7 +121,12 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await page.screenshot({ path: testInfo.outputPath(`pulse-${width}.png`), fullPage: true });
 
     const sources = await openSourceStatus(page);
-    const sourceRows = sources.getByRole("button");
+    const sourceRows = sources.locator("button[data-pulse-key]");
+    // The disclosure summary is a control, not a sourced detail row. An open
+    // disclosure must contain rows; the static not-connected fallback need not.
+    if (await sources.locator("summary").count()) {
+      await expect.poll(() => sourceRows.count()).toBeGreaterThan(0);
+    }
     for (const row of await sourceRows.all()) {
       await expect(row).toHaveAccessibleName(/Source: \S/);
       await expectTouchTarget(row);

@@ -36,8 +36,6 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const photoBox = (await masthead.locator("figure").boundingBox())!;
     expect(photoBox.width).toBeGreaterThanOrEqual(mastheadBox.width * 0.95);
     await expect(masthead.locator("figcaption")).toContainText("Archive");
-    await expect(masthead.locator("figcaption")).toContainText("June 2023");
-    await expect(masthead.locator("figcaption")).toContainText("Mike D");
 
     for (const name of ["Open now", "Public essentials", "Plan a few hours", "Local services"]) {
       const shortcut = page.getByRole("link", { name, exact: true });

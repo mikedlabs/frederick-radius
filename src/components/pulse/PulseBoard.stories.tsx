@@ -197,6 +197,12 @@ export const ActiveAndCurrent: Story = {
         sourceLabel: "AirNow · EPA",
         countLabel: "Good",
         gauge: { value: 28, unit: "AQI" },
+        body: (
+          <p>
+            This is a sample air quality index reading for component review. Check
+            AirNow for the latest local reading.
+          </p>
+        ),
       },
       power,
     ],
