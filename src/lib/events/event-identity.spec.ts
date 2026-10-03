@@ -244,6 +244,38 @@ describe("event identity archive", () => {
   );
 
   it.each(["cancelled", "postponed"] as const)(
+    "does not let an unregistered %s source claim another event through a slug alias", async (status) => {
+      const queries: string[] = [];
+      const tx = Object.assign(vi.fn(async (strings: TemplateStringsArray) => {
+        const query = Array.from(strings).join(" ");
+        queries.push(query);
+        if (query.includes("from public.event_slug_aliases as alias")) {
+          return [{ id: "11111111-1111-4111-8111-111111111111", canonical_slug: snapshot().slug }];
+        }
+        return [];
+      }), { json: vi.fn((value: unknown) => value) });
+      mocks.getSql.mockReturnValue({ begin: async (work: (transaction: typeof tx) => Promise<unknown>) => work(tx) });
+      await expect(persistEventIdentity({ ...snapshot(), source: "fcpl", source_id: "unknown-fcpl-uid", status })).resolves.toBeNull();
+      expect(queries.some((query) => query.includes("from public.event_slug_aliases as alias"))).toBe(false);
+      expect(queries.some((query) => query.includes("update public.event_canonical_records"))).toBe(false);
+    },
+  );
+
+  it("still attaches a scheduled source through its existing slug alias", async () => {
+    const queries: string[] = [];
+    const tx = Object.assign(vi.fn(async (strings: TemplateStringsArray) => {
+      const query = Array.from(strings).join(" "); queries.push(query);
+      if (query.includes("from public.event_slug_aliases as alias")) {
+        return [{ id: "11111111-1111-4111-8111-111111111111", canonical_slug: snapshot().slug }];
+      }
+      return [];
+    }), { json: vi.fn((value: unknown) => value) });
+    mocks.getSql.mockReturnValue({ begin: async (work: (transaction: typeof tx) => Promise<unknown>) => work(tx) });
+    await expect(persistEventIdentity({ ...snapshot(), status: "scheduled" })).resolves.toMatchObject({ canonicalSlug: snapshot().slug });
+    expect(queries.some((query) => query.includes("from public.event_slug_aliases as alias"))).toBe(true);
+  });
+
+  it.each(["cancelled", "postponed"] as const)(
     "updates a previously scheduled canonical event to %s",
     async (status) => {
       const transactionCalls: unknown[][] = [];

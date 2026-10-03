@@ -239,6 +239,10 @@ function occurrenceToCard(
     attendance_mode !== "physical" && isLikelyEventActionUrl(occ.sourceUrl)
       ? occ.sourceUrl
       : undefined;
+  const status = occ.status ?? "scheduled";
+  const scheduledCount = s.occurrences.filter((o) =>
+    !o.status || o.status === "scheduled").length;
+  const isRecurring = status === "scheduled" && scheduledCount > 1;
   return {
     slug,
     title: s.title,
@@ -248,9 +252,9 @@ function occurrenceToCard(
     ends_at: occ.endsAtUtc ?? occ.startsAtUtc,
     timezone: "America/New_York",
     is_all_day: occ.allDay,
-    is_recurring: s.isRecurring,
-    // Honest recurrence legibility from the real collapsed count.
-    recurrence_text: s.isRecurring ? `${s.count} upcoming dates` : undefined,
+    is_recurring: isRecurring,
+    // Cancelled dates are lifecycle updates, never promised upcoming dates.
+    recurrence_text: isRecurring ? `${scheduledCount} upcoming dates` : undefined,
     venue_name: attendance_mode === "online" ? "Online" : (s.venueName ?? ""),
     address: attendance_mode === "online" ? "" : (s.address ?? ""),
     geom,
@@ -264,7 +268,7 @@ function occurrenceToCard(
     online_url,
     hero_image: s.heroImage ?? undefined,
     organizer: s.presenter,
-    status: "scheduled",
+    status,
     source,
     is_verified: false,
     ...stampEventProvenance({
@@ -306,19 +310,27 @@ export function ingestedSeriesToCards(series: IngestedSeries[], now: Date, perSe
   const cards: EventWithMeta[] = [];
   for (const s of series) {
     if (!LIFTED_INGEST_SOURCES.has(s.sourceDomain)) continue;
-    if (!isPublicEvent({ title: s.title, category: s.category ?? undefined })) continue;
+    const publicSeries = isPublicEvent({ title: s.title, category: s.category ?? undefined });
     // Two-sided window. The old filter only bounded the FUTURE side, so a
     // series whose next stored occurrence was earlier TODAY kept emitting the
     // finished one all evening ("the series' next occurrence" was a 2 PM craft
     // at 8 PM, ranking over live draws on /today). An ended occurrence is
     // never anyone's next occurrence — skip to the first still-relevant one.
-    const upcoming = s.occurrences
-      .filter(
-        (o) =>
-          +new Date(o.startsAtUtc) <= horizon &&
-          !isEventEnded({ starts_at: o.startsAtUtc, ends_at: o.endsAtUtc ?? undefined, is_all_day: o.allDay }, now),
-      )
-      .slice(0, perSeries);
+    const inWindow = s.occurrences.filter(
+      (o) =>
+        +new Date(o.startsAtUtc) <= horizon &&
+        !isEventEnded({ starts_at: o.startsAtUtc, ends_at: o.endsAtUtc ?? undefined, is_all_day: o.allDay }, now),
+    );
+    // Discovery takes the next scheduled date. Lifecycle uses the loader's
+    // retained window instead: a recently ended cancellation still has to
+    // correct the archive, as does a meeting excluded from public discovery.
+    const lifecycle = s.occurrences.filter((o) =>
+      +new Date(o.startsAtUtc) <= horizon &&
+      (o.status === "cancelled" || o.status === "postponed"));
+    const scheduled = publicSeries
+      ? inWindow.filter((o) => !o.status || o.status === "scheduled").slice(0, perSeries)
+      : [];
+    const upcoming = [...scheduled, ...lifecycle];
     for (const occ of upcoming) {
       const card = occurrenceToCard(s, occ);
       if (card) cards.push(card);
@@ -366,14 +378,13 @@ export async function getIngestedCardBySlug(
       title: s.title,
       category: s.category ?? undefined,
     });
-    if (
-      lifted
-        ? !isPublicEvent({ title: s.title, category: s.category ?? undefined })
-        : lane === "private_rental" || lane === "non_event" || lane === "cancelled"
-    ) {
-      continue;
-    }
+    const publicSeries = lifted
+      ? isPublicEvent({ title: s.title, category: s.category ?? undefined })
+      : lane !== "private_rental" && lane !== "non_event" && lane !== "cancelled";
     for (const occ of s.occurrences) {
+      // Existing detail identities need their cancellation even when the
+      // cleaned series title now belongs outside public discovery.
+      if (!publicSeries && occ.status !== "cancelled" && occ.status !== "postponed") continue;
       const card = occurrenceToCard(
         s,
         occ,

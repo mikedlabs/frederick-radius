@@ -415,7 +415,7 @@ export async function persistEventIdentity(
       `
     )[0];
 
-    if (!record) {
+    if (!record && eventStatus === "scheduled") {
       record = (
         await tx<IdentityRow[]>`
           select canonical.id, canonical.canonical_slug
@@ -430,9 +430,9 @@ export async function persistEventIdentity(
 
     // A cancellation or postponement is an update to something Radius
     // already published, not a reason to create a brand-new event page. The
-    // dedicated archive worker applies the same rule in bulk. Stable source
-    // identity (or an old slug alias) still lets a real scheduled event
-    // receive its new lifecycle status and snapshot below.
+    // dedicated archive worker applies the same rule in bulk. A lifecycle
+    // update requires its registered source identity; a coincidental slug
+    // alias cannot authorize changing another source's canonical record.
     if (!record && eventStatus !== "scheduled") return null;
 
     if (!record) {
