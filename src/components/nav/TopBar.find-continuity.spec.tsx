@@ -4,7 +4,7 @@ import { act, type AnchorHTMLAttributes } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const navigation = vi.hoisted(() => ({ pathname: "/events", push: vi.fn(), back: vi.fn() }));
+const navigation = vi.hoisted(() => ({ pathname: "/events", push: vi.fn(), back: vi.fn(), leaveTo: vi.fn() }));
 vi.mock("next/navigation", () => ({
   usePathname: () => navigation.pathname,
   useRouter: () => ({ push: navigation.push, back: navigation.back }),
@@ -15,6 +15,17 @@ vi.mock("next/link", () => ({
     return <a {...props} />;
   },
 }));
+vi.mock("@/hooks/useReversibleHistoryLayer", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/hooks/useReversibleHistoryLayer")>();
+  return {
+    ...actual,
+    useReversibleHistoryLayer: (options: Parameters<typeof actual.useReversibleHistoryLayer>[0]) => ({
+      ...actual.useReversibleHistoryLayer(options),
+      // Observe the exact native-navigation boundary without navigating jsdom.
+      leaveTo: navigation.leaveTo,
+    }),
+  };
+});
 vi.mock("./LocationChip", () => ({ default: () => null }));
 vi.mock("./PulseIndicator", () => ({ default: () => null }));
 vi.mock("@/components/brand/RippleMark", () => ({ default: () => null }));
@@ -130,6 +141,46 @@ describe("Find continuity through the real lazy header and overlay", () => {
     await settle();
     expect(container.textContent).toContain("Updated fixture result");
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(window.sessionStorage.getItem(DRAFT_KEY)).toBe("coffee");
+  });
+
+  it.each(["click", "Enter"])("unmounts Find before %s starts native result navigation", async (method) => {
+    const opener = await open();
+    await type("coffee");
+    await settle();
+    const signal = fetchMock.mock.calls[0][1]?.signal;
+    const layerId = window.history.state.__frederickRadiusLayer;
+    const scrollCount = vi.mocked(window.scrollTo).mock.calls.length;
+    let atNavigation: unknown;
+    navigation.leaveTo.mockImplementationOnce((href: string) => {
+      atNavigation = {
+        href,
+        dialogPresent: Boolean(container.querySelector('[role="dialog"]')),
+        requestAborted: signal?.aborted,
+        restoredOpenerFocus: document.activeElement === opener,
+        scrollCount: vi.mocked(window.scrollTo).mock.calls.length,
+        layerId: window.history.state.__frederickRadiusLayer,
+      };
+    });
+    await act(async () => {
+      if (method === "Enter") {
+        input().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      } else {
+        const link = [...container.querySelectorAll<HTMLAnchorElement>("a")]
+          .find((node) => node.textContent?.trim() === "Open");
+        if (!link) throw new Error("The result action is missing");
+        link.click();
+      }
+    });
+    expect(navigation.leaveTo).toHaveBeenCalledOnce();
+    expect(atNavigation).toEqual({
+      href: method === "Enter" ? "/nearby?c=coffee" : "/places/fixture",
+      dialogPresent: false,
+      requestAborted: true,
+      restoredOpenerFocus: false,
+      scrollCount,
+      layerId,
+    });
     expect(window.sessionStorage.getItem(DRAFT_KEY)).toBe("coffee");
   });
 

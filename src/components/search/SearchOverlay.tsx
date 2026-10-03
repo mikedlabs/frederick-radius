@@ -11,6 +11,7 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
 } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Phone, Train, Activity } from "lucide-react";
 import type {
@@ -376,9 +377,13 @@ export default function SearchOverlay({
   const navigateFromSearch = useCallback(
     (href: string) => {
       leavingFindRef.current = true;
+      // Native navigation can freeze this document in BFCache immediately.
+      // Close before that boundary so Back cannot revive old query/results.
+      // Keep the layer entry for leaveTo's existing atomic replace contract.
+      flushSync(onClose);
       historyLayer.leaveTo(href);
     },
-    [historyLayer],
+    [historyLayer, onClose],
   );
   const openOfficialAnswer = useCallback((href: string) => {
     const safeHref = safeOfficialAnswerHref(href);
