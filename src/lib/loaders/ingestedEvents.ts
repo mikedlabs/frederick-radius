@@ -310,7 +310,7 @@ export function ingestedSeriesToCards(series: IngestedSeries[], now: Date, perSe
   const cards: EventWithMeta[] = [];
   for (const s of series) {
     if (!LIFTED_INGEST_SOURCES.has(s.sourceDomain)) continue;
-    if (!isPublicEvent({ title: s.title, category: s.category ?? undefined })) continue;
+    const publicSeries = isPublicEvent({ title: s.title, category: s.category ?? undefined });
     // Two-sided window. The old filter only bounded the FUTURE side, so a
     // series whose next stored occurrence was earlier TODAY kept emitting the
     // finished one all evening ("the series' next occurrence" was a 2 PM craft
@@ -321,15 +321,16 @@ export function ingestedSeriesToCards(series: IngestedSeries[], now: Date, perSe
         +new Date(o.startsAtUtc) <= horizon &&
         !isEventEnded({ starts_at: o.startsAtUtc, ends_at: o.endsAtUtc ?? undefined, is_all_day: o.allDay }, now),
     );
-    // Discovery takes the next scheduled date. Every in-window cancellation
-    // still reaches the archive worker, including a later sibling that the
-    // one-card-per-series limit would otherwise hide indefinitely.
-    const lifecycle = inWindow.filter((o) =>
-      o.status === "cancelled" || o.status === "postponed");
-    const upcoming = [
-      ...inWindow.filter((o) => !o.status || o.status === "scheduled").slice(0, perSeries),
-      ...lifecycle,
-    ];
+    // Discovery takes the next scheduled date. Lifecycle uses the loader's
+    // retained window instead: a recently ended cancellation still has to
+    // correct the archive, as does a meeting excluded from public discovery.
+    const lifecycle = s.occurrences.filter((o) =>
+      +new Date(o.startsAtUtc) <= horizon &&
+      (o.status === "cancelled" || o.status === "postponed"));
+    const scheduled = publicSeries
+      ? inWindow.filter((o) => !o.status || o.status === "scheduled").slice(0, perSeries)
+      : [];
+    const upcoming = [...scheduled, ...lifecycle];
     for (const occ of upcoming) {
       const card = occurrenceToCard(s, occ);
       if (card) cards.push(card);
@@ -377,14 +378,13 @@ export async function getIngestedCardBySlug(
       title: s.title,
       category: s.category ?? undefined,
     });
-    if (
-      lifted
-        ? !isPublicEvent({ title: s.title, category: s.category ?? undefined })
-        : lane === "private_rental" || lane === "non_event" || lane === "cancelled"
-    ) {
-      continue;
-    }
+    const publicSeries = lifted
+      ? isPublicEvent({ title: s.title, category: s.category ?? undefined })
+      : lane !== "private_rental" && lane !== "non_event" && lane !== "cancelled";
     for (const occ of s.occurrences) {
+      // Existing detail identities need their cancellation even when the
+      // cleaned series title now belongs outside public discovery.
+      if (!publicSeries && occ.status !== "cancelled" && occ.status !== "postponed") continue;
       const card = occurrenceToCard(
         s,
         occ,

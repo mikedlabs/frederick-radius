@@ -169,6 +169,26 @@ describe("official FCPL occurrence cancellation", () => {
     expect(hydrateUnifiedEvents({ unified: cards, sourceHealth: { degraded: false, unavailable: [] } }).publicEvents).toEqual([]);
   });
 
+  it("keeps a committee cancellation for its archive even though its series is not public discovery", async () => {
+    respond([stored({ ...source("215322"), title: "Cancelled - Committee Meeting" })]);
+    const cards = ingestedSeriesToCards(await getIngestedSeries(), NOW);
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({ source_id: "215322", status: "cancelled", title: "Committee Meeting" });
+    expect(hydrateUnifiedEvents({ unified: cards, sourceHealth: { degraded: false, unavailable: [] } }).publicEvents).toEqual([]);
+    expect(prepareEventArchiveRows(cards).rows[0].event_status).toBe("cancelled");
+    await expect(getIngestedCardBySlug(cards[0].slug)).resolves.toMatchObject({ status: "cancelled" });
+  });
+
+  it("delivers a recently ended cancellation retained by the loader to archive reconciliation", async () => {
+    vi.setSystemTime(new Date("2026-11-15T21:00:00Z"));
+    respond([stored(source("215322"))]); // ended at19:30Z, inside the loader's six-hour window
+    const cards = ingestedSeriesToCards(await getIngestedSeries(), new Date());
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({ source_id: "215322", status: "cancelled" });
+    expect(prepareEventArchiveRows(cards).rows[0]).toMatchObject({ source_uid: "215322", event_status: "cancelled" });
+    expect(hydrateUnifiedEvents({ unified: cards, sourceHealth: { degraded: false, unavailable: [] } }).publicEvents).toEqual([]);
+  });
+
   it.each([null, "broken JSON", "[]", '{"moderation_state":{}}'])("retains explicit title cancellation when raw metadata is unavailable: %s", async (rawVevent) => {
     respond([stored(source("215322"), { raw_vevent: rawVevent })]);
     const cards = ingestedSeriesToCards(await getIngestedSeries(), NOW);

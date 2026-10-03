@@ -135,17 +135,6 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
     return [];
   }
 
-  rows = rows.filter(
-    (row) =>
-      !hasImplausibleStartTime({
-        title: row.title,
-        starts_at: row.starts_at_utc,
-        ends_at: row.ends_at_utc,
-        category: row.category,
-        is_all_day: row.all_day,
-      }),
-  );
-
   // Sanitize the venue at the SOURCE row so BOTH the series key and the
   // displayed venue use clean values — a feed that dumped its description
   // into the LOCATION field (the Bee City subcommittee) must leak into
@@ -161,6 +150,19 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
       r.title = lifecycle.title;
     }
   }
+
+  // Time plausibility is a discovery guard. A retained official cancellation
+  // must still correct its previously published identity, even at an odd hour.
+  rows = rows.filter(
+    (row) => row.status === "cancelled" || row.status === "postponed" ||
+      !hasImplausibleStartTime({
+        title: row.title,
+        starts_at: row.starts_at_utc,
+        ends_at: row.ends_at_utc,
+        category: row.category,
+        is_all_day: row.all_day,
+      }),
+  );
 
   const groups = new Map<string, Row[]>();
   for (const r of rows) {
