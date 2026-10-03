@@ -5,9 +5,9 @@
     "enabled": true,
     "catids": [14, 23, 27],
     "category_map": {
-      "14": "City Calendar",
-      "23": "Parks & Recreation",
-      "27": "Events Around the City"
+      "14": "City of Frederick Calendar",
+      "23": "Economic Development Calendar",
+      "27": "Parks & Recreation Calendar"
     }
   },
   {
@@ -16,21 +16,21 @@
     "enabled": true,
     "catids": [25, 50, 64, 71, 73, 74, 77, 80, 81, 82, 83, 87, 88, 90, 94],
     "category_map": {
-      "25": "County Calendar",
-      "50": "Parks & Recreation",
-      "64": "Senior Services",
-      "71": "Library & Programs",
-      "73": "Health & Human Services",
-      "74": "Workforce Services",
-      "77": "Public Meetings",
-      "80": "Sustainability",
-      "81": "Recreation Programs",
-      "82": "Animal Control",
-      "83": "Aging Services",
-      "87": "Veterans",
-      "88": "Emergency Management",
-      "90": "Economic Development",
-      "94": "Tourism"
+      "25": "Procurement & Contracting",
+      "50": "Energy and Environment",
+      "64": "Aging and Independence",
+      "71": "Equity and Inclusion Office",
+      "73": "County Council",
+      "74": "Liquor Board Upcoming Special Licenses",
+      "77": "Planning & Permitting",
+      "80": "County Council Meetings & Workshops",
+      "81": "Boards & Commissions",
+      "82": "Frederick County Sustainability Commission",
+      "83": "FCG TV",
+      "87": "Veterans Advisory Council",
+      "88": "Division Of Solid Waste and Recycling",
+      "90": "Office of Agriculture",
+      "94": "Fire & Rescue Upcoming Events"
     }
   },
   {
