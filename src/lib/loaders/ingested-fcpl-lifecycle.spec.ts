@@ -181,8 +181,14 @@ describe("official FCPL occurrence cancellation", () => {
 
   it("delivers a recently ended cancellation retained by the loader to archive reconciliation", async () => {
     vi.setSystemTime(new Date("2026-11-15T21:00:00Z"));
-    respond([stored(source("215322"))]); // ended at19:30Z, inside the loader's six-hour window
+    const sql = respond([stored(source("215322"))]); // ended at19:30Z, inside the loader's six-hour window
     const cards = ingestedSeriesToCards(await getIngestedSeries(), new Date());
+    const [query, ...parameters] = sql.mock.calls[0];
+    expect(query.join(" ")).toMatch(/where starts_at_utc >=\s+or ends_at_utc >=/);
+    expect(parameters.slice(1, 3)).toEqual([
+      "2026-11-15T15:00:00.000Z",
+      "2026-11-15T15:00:00.000Z",
+    ]);
     expect(cards).toHaveLength(1);
     expect(cards[0]).toMatchObject({ source_id: "215322", status: "cancelled" });
     expect(prepareEventArchiveRows(cards).rows[0]).toMatchObject({ source_uid: "215322", event_status: "cancelled" });

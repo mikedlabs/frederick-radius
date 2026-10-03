@@ -201,7 +201,29 @@ describe("FCPL lifecycle delivery through the shared assembly", () => {
     expect(result.unified).toContainEqual(cancelled);
   });
 
-  it.each(["https://frederick.librarycalendar.com/", "https://frederick.librarycalendar.com/events/feed/json"])("does not match a shared non-occurrence URL: %s", (sourceUrl) => {
+  // This event path is present in the official feed without a numeric suffix.
+  it.each([
+    "https://frederick.librarycalendar.com/event/UnderstandingAlzheimers",
+    "https://frederick.librarycalendar.com/event/UnderstandingAlzheimers/?source=calendar#details",
+  ])("matches a real official event path without a numeric suffix: %s", (sourceUrl) => {
+    const cancelled = lifecycle({ source_url: sourceUrl });
+    const stale = { ...cancelled, source: "manual" as const, source_id: "curated-copy",
+      slug: "curated-copy", is_verified: true, status: "scheduled" as const };
+    const otherDate = { ...stale, slug: "curated-next-week", source_id: "curated-next-week",
+      starts_at: "2026-10-20T14:00:00Z", ends_at: "2026-10-20T17:00:00Z" };
+    const result = shared([stale, otherDate], [cancelled]);
+    expect(result.publicEvents).toEqual([otherDate]);
+    expect(result.unified).toContainEqual(cancelled);
+  });
+
+  it.each([
+    "https://frederick.librarycalendar.com/",
+    "https://frederick.librarycalendar.com/events/feed/json",
+    "https://frederick.librarycalendar.com/event/",
+    "https://frederick.librarycalendar.com/event/program/another-page",
+    "http://frederick.librarycalendar.com/event/UnderstandingAlzheimers",
+    "https://example.com/event/UnderstandingAlzheimers",
+  ])("does not match a shared non-occurrence or unofficial URL: %s", (sourceUrl) => {
     const cancelled = lifecycle({ source_url: sourceUrl });
     const current = { ...cancelled, source: "manual" as const, source_id: "other",
       slug: "another-program", status: "scheduled" as const, is_verified: true };

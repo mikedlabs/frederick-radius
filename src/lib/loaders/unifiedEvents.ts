@@ -217,7 +217,7 @@ function fcplOccurrenceUrl(value: string | null | undefined): string | null {
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" || url.hostname !== "frederick.librarycalendar.com" ||
-        !/^\/event\/[^/]+-\d+\/?$/.test(url.pathname)) return null;
+        !/^\/event\/[^/]+\/?$/.test(url.pathname)) return null;
     return `${url.origin}${url.pathname.replace(/\/$/, "")}`;
   } catch { return null; }
 }
