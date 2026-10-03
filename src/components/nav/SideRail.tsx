@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { haptic } from "@/lib/haptics";
 import { shouldPrefetchGlobalNavigation } from "@/lib/fair/route-policy";
 import { TABS, tabIndexForPath } from "./tabs";
+import styles from "./NavChrome.module.css";
 
 /** Desktop counterpart to the mobile field-guide index strip. */
 export default function SideRail() {
@@ -27,12 +28,7 @@ export default function SideRail() {
     >
       <nav
         aria-label="Primary"
-        className="pointer-events-auto relative overflow-hidden rounded-[var(--app-radius-lg)]"
-        style={{
-          background: "var(--app-bg-elevated-solid)",
-          border: "1px solid var(--app-border-strong)",
-          boxShadow: "var(--app-elev-2)",
-        }}
+        className={`${styles.rail} pointer-events-auto relative overflow-hidden rounded-[var(--app-radius-lg)]`}
       >
         <ul className="flex flex-col items-stretch gap-1 px-1 py-1">
           {TABS.map(({ href, label, icon: Icon, prefetch, fillOnActive }, idx) => {
@@ -61,16 +57,13 @@ export default function SideRail() {
                     }
                   }}
                   aria-current={isAtDestination ? "page" : undefined}
-                  className="relative flex h-14 w-14 flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition active:scale-[0.97]"
-                  style={{
-                    color: active ? "var(--app-brand-press)" : "var(--app-ink-3)",
-                    background: active ? "var(--app-brand-tint-6)" : "transparent",
-                  }}
+                  className={`${styles.destination} relative flex h-14 w-14 flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition`}
+                  data-selected={active ? "true" : "false"}
                 >
                   <span
                     aria-hidden
                     className="absolute inset-y-2 left-0 w-[2px]"
-                    style={{ background: active ? "var(--app-brand)" : "transparent" }}
+                    style={{ background: active ? "var(--app-on-brand)" : "transparent", opacity: 0.5 }}
                   />
                   <Icon
                     width={20}

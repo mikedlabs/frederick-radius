@@ -491,12 +491,14 @@ function DaypartPickCard({
         />
         <span className="relative z-10 min-w-0 px-2.5 pb-2">
           <span
+            data-today-pick-name
             className="line-clamp-2 font-sans text-[14.5px] font-semibold leading-tight"
             style={{ color: "var(--app-on-brand)" }}
           >
             {place.name}
           </span>
           <span
+            data-today-pick-context
             className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] tabular-nums"
             style={{ color: "color-mix(in srgb, var(--app-on-brand) 86%, transparent)" }}
           >
@@ -564,12 +566,14 @@ function DaypartPickCard({
       </span>
       <span className="relative z-10 min-w-0 flex-1">
         <span
+          data-today-pick-name
           className="line-clamp-3 text-[14px] font-semibold leading-tight"
           style={{ color: "var(--app-ink)" }}
         >
           {place.name}
         </span>
         <span
+          data-today-pick-context
           className="mt-1 block truncate text-[11.5px]"
           style={{ color: "var(--app-ink-2)" }}
         >

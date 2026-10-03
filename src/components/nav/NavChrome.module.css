@@ -1,0 +1,71 @@
+/* The four destinations keep their footprint and behavior; depth makes the
+   current destination and available actions easier to recognize. */
+.bar {
+  background: color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent);
+  box-shadow: var(--app-hi), 0 5px 18px -13px color-mix(in srgb, var(--app-ink) 32%, transparent);
+}
+.search {
+  box-shadow: inset 0 1px 3px color-mix(in srgb, var(--app-ink) 8%, transparent), var(--app-hi);
+}
+.tool {
+  box-shadow: var(--app-hi), var(--app-elev-1);
+  transition: box-shadow var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out), transform var(--app-dur-fast) var(--app-ease-out);
+}
+.rail,
+.dock {
+  background: var(--app-bg-elevated-solid);
+  border: 1px solid var(--app-border-strong);
+  box-shadow: var(--app-hi), var(--app-shadow-2);
+}
+.dock {
+  border-radius: var(--app-radius-xl);
+}
+.destination {
+  color: var(--app-ink-2);
+  transition: color var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out), box-shadow var(--app-dur-fast) var(--app-ease-out), transform var(--app-dur-fast) var(--app-ease-out);
+}
+.destination[data-selected="true"] {
+  color: var(--app-on-brand);
+  background: linear-gradient(160deg, var(--app-brand), var(--app-brand-press));
+  box-shadow: var(--app-hi), var(--app-lip), var(--app-brand-glow);
+}
+.tool:focus-visible,
+.search:focus-visible {
+  outline: 2px solid var(--app-brand);
+  outline-offset: 3px;
+}
+.destination:focus-visible {
+  outline: 2px solid var(--app-brand);
+  outline-offset: -3px;
+}
+.destination[data-selected="true"]:focus-visible {
+  outline-color: var(--app-on-brand);
+}
+@media (hover: hover) {
+  .tool:hover {
+    box-shadow: var(--app-hi), var(--app-shadow-1);
+    transform: translateY(-1px);
+  }
+  .destination:not([data-selected="true"]):hover {
+    color: var(--app-ink);
+    background: var(--app-bg-sunken);
+  }
+}
+.tool:active {
+  transform: scale(.95);
+}
+.destination:active {
+  transform: scale(.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tool,
+  .destination {
+    transition: none;
+    transform: none;
+  }
+  .tool:hover,
+  .tool:active,
+  .destination:active {
+    transform: none;
+  }
+}

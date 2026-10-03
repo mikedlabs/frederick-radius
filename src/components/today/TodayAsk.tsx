@@ -70,9 +70,8 @@ export default function TodayAsk({
           </span>
         </span>
         <ArrowRight
-          className="h-4 w-4 shrink-0"
+          className={`h-4 w-4 shrink-0 ${styles.launcherArrow}`}
           strokeWidth={2.25}
-          style={{ color: "var(--app-brand-press)" }}
           aria-hidden
         />
       </Link>

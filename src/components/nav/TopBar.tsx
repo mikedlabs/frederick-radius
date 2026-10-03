@@ -11,6 +11,7 @@ import {
 } from "react";
 import { Search, Compass, ChevronLeft, X } from "lucide-react";
 import RippleMark from "@/components/brand/RippleMark";
+import styles from "./NavChrome.module.css";
 import LocationChip from "./LocationChip";
 import PulseIndicator from "./PulseIndicator";
 import AppTransitionLink from "./AppTransitionLink";
@@ -229,7 +230,7 @@ export default function TopBar() {
     <>
       <header
         data-map-header={pathname === "/map" ? "true" : undefined}
-        className="sticky top-0 border-b border-[var(--app-border)] bg-[var(--app-bg)]/90 supports-[backdrop-filter]:bg-[var(--app-bg)]/60 backdrop-blur-xl pt-[env(safe-area-inset-top)] transition-colors duration-200"
+        className={`${styles.bar} sticky top-0 border-b border-[var(--app-border)] backdrop-blur-xl pt-[env(safe-area-inset-top)]`}
         style={{
           // Tokenized z-index — see globals.css :root --z-* scale.
           zIndex: "var(--z-sticky)",
@@ -343,7 +344,7 @@ export default function TopBar() {
                   openPrimaryFind(event.currentTarget, returnScrollY);
                 }}
                 aria-label="Ask or find across Frederick County"
-                className="tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] disabled:cursor-wait disabled:opacity-60 lg:flex"
+                className={`${styles.search} tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] disabled:cursor-wait disabled:opacity-60 lg:flex`}
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
               >
                 <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
@@ -418,7 +419,7 @@ export default function TopBar() {
               aria-label="Open tools"
               aria-current={pathname === "/compass" ? "page" : undefined}
               title="Tools"
-              className="relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:px-3"
+              className={`${styles.tool} relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 hover:bg-[var(--app-bg-sunken)] sm:px-3`}
               style={{
                 borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
                 color: pathname === "/compass" ? "var(--app-brand-press)" : "var(--app-ink-2)",

@@ -10,19 +10,21 @@
 .launcher {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 80px;
-  padding: 15px 16px;
-  border: 1px solid var(--app-control-border);
+  gap: 10px;
+  min-height: 92px;
+  padding: 14px;
+  border: 1px solid var(--app-brand-press);
   border-radius: var(--app-radius-md);
-  color: var(--app-ink);
-  background: var(--app-bg-elevated);
+  color: var(--app-on-brand);
+  background: var(--app-brand-press);
+  box-shadow: var(--app-shadow-2), var(--app-hi);
   outline-offset: 4px;
-  transition: border-color 150ms ease;
+  transition: background-color var(--app-dur-fast) var(--app-ease-out), box-shadow var(--app-dur-fast) var(--app-ease-out);
 }
 
 .launcher:hover {
-  border-color: var(--app-brand);
+  background: color-mix(in srgb, var(--app-brand-press) 90%, var(--app-ink));
+  box-shadow: var(--app-shadow-3), var(--app-hi);
 }
 
 .launcher:focus-visible {
@@ -31,16 +33,20 @@
 
 .searchIcon {
   display: grid;
-  width: 40px;
+  width: 32px;
   height: 40px;
   flex-shrink: 0;
   place-items: center;
-  color: var(--app-brand-press);
+  color: var(--app-on-brand);
+}
+
+.launcherArrow {
+  color: var(--app-on-brand);
 }
 
 .prompt {
   display: block;
-  font-size: 21px;
+  font-size: 20px;
   font-weight: 650;
   line-height: 1.2;
   letter-spacing: -0.025em;
@@ -49,7 +55,7 @@
 .hint {
   display: block;
   margin-top: 4px;
-  color: var(--app-ink-2);
+  color: var(--app-on-brand);
   font-size: 15px;
   line-height: 1.4;
 }
@@ -57,16 +63,20 @@
 .shortcuts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 12px;
-  padding-block: 6px;
+  gap: 8px;
+  padding-block: 12px;
 }
 
 .shortcut {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 44px;
-  padding: 8px 4px;
+  min-height: 64px;
+  padding: 10px;
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated-solid);
+  box-shadow: var(--app-shadow-1);
+  transition: border-color var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out);
   border-radius: var(--app-radius-sm);
   color: var(--app-ink-2);
   font-size: 15px;
@@ -76,12 +86,21 @@
 
 .shortcut:hover {
   color: var(--app-brand-press);
-  background: var(--app-bg-sunken);
+  border-color: var(--app-brand);
+  background: var(--app-brand-tint-6);
+}
+
+.shortcut:focus-visible {
+  outline: 2px solid var(--app-brand);
+  outline-offset: 3px;
 }
 
 .shortcut svg {
-  width: 16px;
-  height: 16px;
+  width: 30px;
+  height: 30px;
+  padding: 6px;
+  border-radius: var(--app-radius-sm);
+  background: var(--app-brand-tint-6);
   flex-shrink: 0;
   color: var(--app-brand-press);
 }
@@ -113,7 +132,29 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .launcher {
+  .launcher,
+  .shortcut {
     transition: none;
+  }
+}
+
+@media (max-width: 359px) {
+  .launcher {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .prompt {
+    font-size: 19px;
+  }
+
+  .hint {
+    font-size: 14px;
+  }
+
+  .shortcut {
+    gap: 6px;
+    padding-inline: 8px;
+    font-size: 14px;
   }
 }
