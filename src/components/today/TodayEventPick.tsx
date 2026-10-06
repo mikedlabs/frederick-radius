@@ -7,7 +7,7 @@
 
 import Link from "next/link";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { eventDateBlock } from "@/lib/loaders/events";
+import { eventDateBlock } from "@/lib/events/format";
 import { eventTown } from "@/lib/events/eventTown";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 

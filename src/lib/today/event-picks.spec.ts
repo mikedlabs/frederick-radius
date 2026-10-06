@@ -18,12 +18,23 @@ function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
   return {
     slug: "test-event",
     title: "Test Event",
+    description: "",
     starts_at: "2026-10-06T14:00:00Z", // 10 AM Eastern
+    ends_at: "2026-10-06T15:00:00Z",
+    timezone: "America/New_York" as const,
     venue_name: "Test Venue",
+    address: "123 Main St",
+    geom: { lng: -77.4, lat: 39.4 },
+    municipality: "frederick",
     municipality_name: "Frederick",
     category: "music",
+    category_name: "Music",
+    audience: [],
+    is_free: false,
     is_verified: true,
-    source: "radius-curated" as any,
+    is_featured: false,
+    source: "manual",
+    geo_confidence: "venue_match" as const,
     ...overrides,
   } as EventWithMeta;
 }
@@ -51,8 +62,8 @@ describe("seriesFingerprint", () => {
 
 describe("crossSourceFingerprint", () => {
   it("dedupes same title and exact start time", () => {
-    const e1 = event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "dfp" as any });
-    const e2 = event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "fcpl" as any });
+    const e1 = event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "dfp" });
+    const e2 = event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "fcpl" });
     expect(crossSourceFingerprint(e1)).toBe(crossSourceFingerprint(e2));
   });
 });
@@ -81,8 +92,8 @@ describe("isSeniorRoutineProgram", () => {
 describe("dedupeCrossSource", () => {
   it("keeps more trusted source", () => {
     const events = [
-      event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "dfp" as any, slug: "ama-dfp" }),
-      event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "fcpl" as any, slug: "ama-fcpl" }),
+      event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "dfp", slug: "ama-dfp" }),
+      event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "fcpl", slug: "ama-fcpl" }),
     ];
     const deduped = dedupeCrossSource(events);
     expect(deduped).toHaveLength(1);
@@ -92,11 +103,11 @@ describe("dedupeCrossSource", () => {
 
 describe("isOnlineEvent", () => {
   it("detects attendance_mode online", () => {
-    expect(isOnlineEvent(event({ attendance_mode: "online" as any }))).toBe(true);
+    expect(isOnlineEvent(event({ attendance_mode: "online" }))).toBe(true);
   });
 
   it("treats mixed as physical", () => {
-    expect(isOnlineEvent(event({ attendance_mode: "mixed" as any }))).toBe(false);
+    expect(isOnlineEvent(event({ attendance_mode: "mixed" }))).toBe(false);
   });
 
   it("detects Virtual in title", () => {
@@ -106,20 +117,20 @@ describe("isOnlineEvent", () => {
 
 describe("isFreeEvent", () => {
   it("only treats is_free:true as free", () => {
-    expect(isFreeEvent(event({ is_free: true } as any))).toBe(true);
-    expect(isFreeEvent(event({ is_free: false } as any))).toBe(false);
+    expect(isFreeEvent(event({ is_free: true }))).toBe(true);
+    expect(isFreeEvent(event({ is_free: false }))).toBe(false);
     expect(isFreeEvent(event({}))).toBe(false);
   });
 });
 
 describe("isFamilyEvent", () => {
   it("detects kids-* audience", () => {
-    expect(isFamilyEvent({ ...event(), audience: "kids-preschool" } as any)).toBe(true);
+    expect(isFamilyEvent(event({ audience: ["kids-preschool"] }))).toBe(true);
   });
 
   it("detects keywords", () => {
     expect(isFamilyEvent(event({ title: "Storytime for kids" }))).toBe(true);
-    expect(isFamilyEvent(event({ description: "Family friendly" } as any))).toBe(true);
+    expect(isFamilyEvent(event({ description: "Family friendly" }))).toBe(true);
   });
 });
 
@@ -157,7 +168,7 @@ describe("pickBestThree", () => {
     const events = [
       event({ slug: "morning", starts_at: "2026-10-06T14:00:00Z" }), // 10 AM
       event({ slug: "evening", starts_at: "2026-10-06T23:00:00Z" }), // 7 PM
-      event({ slug: "free", starts_at: "2026-10-06T18:00:00Z", is_free: true } as any), // 2 PM
+      event({ slug: "free", starts_at: "2026-10-06T18:00:00Z", is_free: true }), // 2 PM
     ];
     const now = new Date("2026-10-06T13:00:00Z"); // 9 AM Eastern
     const picks = pickBestThree(events, now);

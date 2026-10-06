@@ -24,7 +24,6 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { easternDayKey } from "@/lib/tz";
 import { loadTodayEventSnapshot } from "@/lib/loaders/todayEventSnapshot";
-import { isPublicEvent } from "@/lib/events/classify";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { isRoutineProgram } from "@/lib/events/lead-rank";
@@ -232,7 +231,7 @@ async function EventsSections({
     return (
       <div className="mt-6 rounded-[var(--app-radius-md)] border p-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
         <p className="text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-          Today's event picks are briefly unavailable. The full{" "}
+          Today&apos;s event picks are briefly unavailable. The full{" "}
           <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
             events calendar
           </Link>{" "}

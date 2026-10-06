@@ -31,8 +31,9 @@ function easternStartHour(iso: string): number {
 function normalizeTitle(title: string): string {
   return title
     .toLowerCase()
-    // Strip common suffixes: "@ Town", "(hybrid)", "(2nd section)", "& Virtual"
-    .replace(/\s*[@&]\s+.+$/g, "")
+    // Strip common suffixes: "@ Town", "& Virtual", "& Online"
+    .replace(/\s*@\s+.+$/g, "")
+    .replace(/\s*&\s+(?:virtual|online)$/gi, "")
     .replace(/\s*\([^)]*(?:hybrid|section|virtual|online)[^)]*\)/gi, "")
     .replace(/[^\w\s]/g, " ")
     .replace(/\s+/g, " ")
@@ -60,7 +61,7 @@ const SENIOR_ROUTINE_PATTERNS = [
   /\blunch\s+bunch\b/i,
   /\bline\s+danc(?:e|ing)\b/i,
   /\bmah\s*jong\b/i,
-  /\bstrength\s*&?\s*stretch/i,
+  /\bstrength.*stretch/i, // Matches any variation after normalization
   /\bsenior\s+exercise\b/i,
   /\bdaily\s+exercise\b/i,
 ];
@@ -114,15 +115,15 @@ export function dedupeCrossSource(
  * 'mixed' is treated as physical. Check URL and title/venue as fallback. */
 export function isOnlineEvent(event: EventWithMeta): boolean {
   // Only 'online' attendance_mode is online; 'mixed' is physical
-  const mode = (event as any).attendance_mode;
+  const mode = event.attendance_mode;
   if (mode === "online") return true;
   if (mode === "mixed") return false;
   
   // Fallback: check title, venue, and URL
   const text = `${event.title} ${event.venue_name ?? ""}`.toLowerCase();
   if (/\b(virtual|online)\b/i.test(text)) return true;
-  const url = (event as any).url?.toLowerCase() ?? "";
-  if (url.includes("zoom.us") || url.includes("meet.google.com")) return true;
+  const onlineUrl = event.online_url?.toLowerCase() ?? "";
+  if (onlineUrl.includes("zoom.us") || onlineUrl.includes("meet.google.com")) return true;
   return false;
 }
 
@@ -130,7 +131,8 @@ export function isOnlineEvent(event: EventWithMeta): boolean {
  * fall back to eventHasTrustworthyEnd helper. */
 export function isWrappedEvent(event: EventWithMeta, now: Date): boolean {
   // Prefer end_trust field if present (from separate data-layer agent)
-  const endTrust = (event as any).end_trust;
+  // Use type guard since it's not in the base type yet
+  const endTrust = "end_trust" in event ? (event as EventWithMeta & { end_trust?: boolean }).end_trust : undefined;
   if (typeof endTrust === "boolean") {
     if (!endTrust) return false;
     const end = event.ends_at ? new Date(event.ends_at) : null;
@@ -152,8 +154,8 @@ export function isFreeEvent(event: EventWithMeta): boolean {
  * then fall back to title/description keywords. */
 export function isFamilyEvent(event: EventWithMeta): boolean {
   // Prefer audience field when set (kids-* values)
-  const audience = (event as any).audience;
-  if (typeof audience === "string" && audience.startsWith("kids-")) {
+  const audience = event.audience;
+  if (Array.isArray(audience) && audience.some((a) => a.startsWith("kids-"))) {
     return true;
   }
   
@@ -220,7 +222,9 @@ export function pickBestThree(
   // Dedupe by series fingerprint (prefer series_key if present, fall back to heuristic)
   const seen = new Set<string>();
   const unique = ordered.filter((event) => {
-    const key = (event as any).series_key ?? seriesFingerprint(event);
+    const key = "series_key" in event 
+      ? (event as EventWithMeta & { series_key?: string }).series_key ?? seriesFingerprint(event)
+      : seriesFingerprint(event);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -317,7 +321,9 @@ export function pickTonightEvents(
   // Dedupe by series (prefer series_key if present)
   const seen = new Set<string>();
   return ordered.filter((event) => {
-    const key = (event as any).series_key ?? seriesFingerprint(event);
+    const key = "series_key" in event 
+      ? (event as EventWithMeta & { series_key?: string }).series_key ?? seriesFingerprint(event)
+      : seriesFingerprint(event);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -352,7 +358,7 @@ export function pickThisWeekAnchors(
     const venue = (e.venue_name ?? "").toLowerCase();
     
     // Check end_trust if available, otherwise use helper
-    const endTrust = (e as any).end_trust;
+    const endTrust = "end_trust" in e ? (e as EventWithMeta & { end_trust?: boolean }).end_trust : undefined;
     const hasGoodEnd =
       typeof endTrust === "boolean"
         ? endTrust && e.ends_at
@@ -379,7 +385,9 @@ export function pickThisWeekAnchors(
   // Dedupe by series (prefer series_key if present)
   const seen = new Set<string>();
   const unique = anchors.filter((event) => {
-    const key = (event as any).series_key ?? seriesFingerprint(event);
+    const key = "series_key" in event 
+      ? (event as EventWithMeta & { series_key?: string }).series_key ?? seriesFingerprint(event)
+      : seriesFingerprint(event);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
