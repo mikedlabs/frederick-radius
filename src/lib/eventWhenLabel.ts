@@ -47,13 +47,17 @@ export function eventHasEndOfDaySentinel(e: EventTiming): boolean {
   if (
     !Number.isFinite(start.getTime()) ||
     !Number.isFinite(end.getTime()) ||
-    end.getTime() <= start.getTime() ||
-    easternDayKey(start) !== easternDayKey(end)
+    end.getTime() <= start.getTime()
   ) {
     return false;
   }
-  const clock = easternClock(end);
-  const looksLikeEndOfDay = clock.hour === 23 && clock.minute >= 58;
+  const endClock = easternClock(end);
+  // Catch 11:59 PM on the same day (the original sentinel), OR 12:59 AM the
+  // next day (which is 11:59 PM ET after UTC offset rolls it forward). Both
+  // signal "unknown end time" when the event is at least 10 hours long.
+  const looksLikeEndOfDay =
+    (endClock.hour === 23 && endClock.minute >= 58) ||
+    (endClock.hour === 0 && endClock.minute === 59 && easternDayKey(start) !== easternDayKey(end));
   const durationMs = end.getTime() - start.getTime();
   return looksLikeEndOfDay && durationMs >= 10 * 60 * 60 * 1000;
 }
