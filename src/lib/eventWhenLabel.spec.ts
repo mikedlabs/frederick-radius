@@ -4,6 +4,7 @@ import {
   isEventLiveNow,
   MAX_LIVE_SESSION_MS,
   classifyEventEndTrust,
+  eventHasEndOfDaySentinel,
 } from "./eventWhenLabel";
 
 // All fixtures are in Eastern Daylight Time (July, -04:00) so the day math is
@@ -134,6 +135,24 @@ describe("classifyEventEndTrust — archive hydrate quarantine", () => {
       ends_at: "2026-10-06T23:59:00-04:00",
     };
     expect(classifyEventEndTrust(lateShow)).toBe("ok");
+  });
+
+  it("classifies 12:59 AM next-day rollover as sentinel (Kid Creator Fall Market)", () => {
+    const kidCreator = {
+      starts_at: "2026-10-11T16:00:00.000Z",
+      ends_at: "2026-10-12T04:59:00.000Z",
+    };
+    expect(eventHasEndOfDaySentinel(kidCreator)).toBe(true);
+    expect(classifyEventEndTrust(kidCreator)).toBe("sentinel");
+  });
+
+  it("12:59 AM sentinel is not live mid-afternoon", () => {
+    const kidCreator = {
+      starts_at: "2026-10-11T16:00:00.000Z",
+      ends_at: "2026-10-12T04:59:00.000Z",
+    };
+    const midAfternoon = at("2026-10-11T18:00:00.000Z");
+    expect(isEventLiveNow(kidCreator, midAfternoon)).toBe(false);
   });
 
   it("classifies multi-week timed spans as 'span'", () => {

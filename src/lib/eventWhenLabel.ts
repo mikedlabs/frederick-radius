@@ -45,6 +45,10 @@ function easternClock(date: Date): {
  * minimum: if it ends 23:58-23:59 ET same civil day and starts ≥4h earlier,
  * treat as sentinel. A real evening event ending near midnight would start
  * after 8 PM and wouldn't meet the 4h threshold.
+ *
+ * Source Ops handoff (2026-10-06): 12:59 AM next-day rollover (Kid Creator
+ * Fall Market style) is also a sentinel — a daytime event ending at 12:59 AM
+ * the next Eastern day. Owned by data-layer (#1740), not Source Ops (#1741).
  */
 export function eventHasEndOfDaySentinel(e: EventTiming): boolean {
   if (e.is_all_day || !e.ends_at) return false;
@@ -53,15 +57,22 @@ export function eventHasEndOfDaySentinel(e: EventTiming): boolean {
   if (
     !Number.isFinite(start.getTime()) ||
     !Number.isFinite(end.getTime()) ||
-    end.getTime() <= start.getTime() ||
-    easternDayKey(start) !== easternDayKey(end)
+    end.getTime() <= start.getTime()
   ) {
     return false;
   }
   const clock = easternClock(end);
-  const looksLikeEndOfDay = clock.hour === 23 && clock.minute >= 58;
-  const durationMs = end.getTime() - start.getTime();
-  return looksLikeEndOfDay && durationMs >= 4 * 60 * 60 * 1000;
+  const startDay = easternDayKey(start);
+  const endDay = easternDayKey(end);
+
+  if (startDay === endDay) {
+    const looksLikeEndOfDay = clock.hour === 23 && clock.minute >= 58;
+    const durationMs = end.getTime() - start.getTime();
+    return looksLikeEndOfDay && durationMs >= 4 * 60 * 60 * 1000;
+  }
+
+  const nextDayRollover = clock.hour === 0 && clock.minute === 59;
+  return nextDayRollover;
 }
 
 /** A real, usable end-time claim rather than a missing, zero, or sentinel end. */
