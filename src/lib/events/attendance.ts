@@ -28,6 +28,8 @@ const ONLINE_TITLE_PREFIX =
   /^(?:virtual|online|zoom|webex|microsoft teams)\b/i;
 const ONLINE_TITLE_SUFFIX =
   /(?:^|[\s@|:()–—-])(?:virtual|online|zoom|webex|microsoft teams)(?:\s+(?:class|session|program|event))?\)?\s*$/i;
+const ONLINE_TITLE_PARENS =
+  /\((?:video|virtual|online|zoom|webex|microsoft teams)\)/i;
 
 /** Conservative inference for feeds that do not publish a structured mode. */
 export function eventAttendanceMode(
@@ -50,7 +52,8 @@ export function eventAttendanceMode(
     ONLINE_VENUE.test(venue) ||
     ONLINE_VENUE.test(address) ||
     ONLINE_TITLE_PREFIX.test(titleWithoutVirtualReality) ||
-    ONLINE_TITLE_SUFFIX.test(titleWithoutVirtualReality)
+    ONLINE_TITLE_SUFFIX.test(titleWithoutVirtualReality) ||
+    ONLINE_TITLE_PARENS.test(titleWithoutVirtualReality)
   ) {
     return "online";
   }

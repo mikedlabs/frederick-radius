@@ -452,7 +452,8 @@ const FEEDS: FeedSpec[] = [
     // Frederick Community College — Modern Campus (Localist) public calendar
     // (fetch-verified 2026-07-12). The classic calendar.frederick.edu host is
     // dead (302 -> not-found); this pubcalendar API is the live replacement.
-    // startDatetime is zone-less ET; the fetcher appends the ?start&end window.
+    // startDatetime is zone-less UTC (not ET — the API converts ET to UTC but
+    // strips the Z); the fetcher appends the ?start&end window.
     source: "fcc",
     source_label: "Frederick Community College",
     url: "https://api.calendar.moderncampus.net/pubcalendar/edb420ae-0d61-4c0c-90af-26e2dfad9adf/events",
@@ -1943,16 +1944,21 @@ async function fetchJsonArrayFeed(
     for (const raw of items) {
       const str = (k: string): string => (typeof raw[k] === "string" ? (raw[k] as string) : "");
       const isPresence = feed.format === "presence";
+      const isMC = feed.format === "moderncampus";
       const rawTitle = (isPresence ? str("eventName") : str("title")).trim();
       if (!rawTitle) continue;
       const startsAtISO = isPresence
         ? jsonEventDateToISO(str("startDateTimeUtc"), undefined)
-        : jsonEventDateToISO(undefined, str("startDatetime"));
+        : isMC
+          ? jsonEventDateToISO(str("startDatetime"), undefined)
+          : jsonEventDateToISO(undefined, str("startDatetime"));
       if (!startsAtISO) continue;
       const effectiveStart = new Date(startsAtISO);
       const rawEndsAtISO = isPresence
         ? jsonEventDateToISO(str("endDateTimeUtc"), undefined)
-        : jsonEventDateToISO(undefined, str("endDatetime"));
+        : isMC
+          ? jsonEventDateToISO(str("endDatetime"), undefined)
+          : jsonEventDateToISO(undefined, str("endDatetime"));
       const endsAtISO =
         rawEndsAtISO && Date.parse(rawEndsAtISO) > effectiveStart.getTime()
           ? rawEndsAtISO
