@@ -114,13 +114,14 @@ export function dedupeCrossSource(
  * 'mixed' is treated as physical. Check URL and title/venue as fallback. */
 export function isOnlineEvent(event: EventWithMeta): boolean {
   // Only 'online' attendance_mode is online; 'mixed' is physical
-  if (event.attendance_mode === "online") return true;
-  if (event.attendance_mode === "mixed") return false;
+  const mode = (event as any).attendance_mode;
+  if (mode === "online") return true;
+  if (mode === "mixed") return false;
   
   // Fallback: check title, venue, and URL
   const text = `${event.title} ${event.venue_name ?? ""}`.toLowerCase();
   if (/\b(virtual|online)\b/i.test(text)) return true;
-  const url = event.url?.toLowerCase() ?? "";
+  const url = (event as any).url?.toLowerCase() ?? "";
   if (url.includes("zoom.us") || url.includes("meet.google.com")) return true;
   return false;
 }

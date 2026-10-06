@@ -23,7 +23,7 @@ function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
     municipality_name: "Frederick",
     category: "music",
     is_verified: true,
-    source: "radius-curated",
+    source: "radius-curated" as any,
     ...overrides,
   } as EventWithMeta;
 }
@@ -81,12 +81,12 @@ describe("isSeniorRoutineProgram", () => {
 describe("dedupeCrossSource", () => {
   it("keeps more trusted source", () => {
     const events = [
-      event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "dfp", slug: "ama-dfp" }),
-      event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "cbartz", slug: "ama-cbartz" }),
+      event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "dfp" as any, slug: "ama-dfp" }),
+      event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "fcpl" as any, slug: "ama-fcpl" }),
     ];
     const deduped = dedupeCrossSource(events);
     expect(deduped).toHaveLength(1);
-    expect(deduped[0].slug).toBe("ama-cbartz"); // cbartz more trusted than dfp
+    expect(deduped[0].slug).toBe("ama-fcpl"); // fcpl more trusted than dfp
   });
 });
 

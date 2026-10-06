@@ -21,7 +21,6 @@ import { sunTimes } from "@/lib/sun";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
 import { currentFcpsOperationsNotices } from "@/lib/integrations/fcps";
 import { getMarcAlerts } from "@/lib/integrations/marcTrains";
-import { getPowerOutages } from "@/lib/integrations/potomac-edison";
 import { SIGNIFICANT_POWER_OUTAGE_CUSTOMERS } from "@/lib/pulse/signal-priority";
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
 import { ChevronRight } from "lucide-react";
@@ -89,33 +88,30 @@ export default async function TodayConditionsLine() {
 
   // 2. School closures/delays (severity 2)
   const schoolNotice = fcpsNotices.find(
-    (n) => n.type === "Closed" || n.type === "Delay",
+    (n: { type: string }) => n.type === "Closed" || n.type === "Delay",
   );
   if (schoolNotice) {
     const label =
       schoolNotice.type === "Closed"
         ? "FCPS: Closed"
-        : schoolNotice.detail
-          ? `FCPS: ${schoolNotice.detail}`
+        : (schoolNotice as { detail?: string }).detail
+          ? `FCPS: ${(schoolNotice as { detail: string }).detail}`
           : "FCPS: Delay";
     chips.push({ id: "fcps", label: label.slice(0, 32), severity: 2 });
   }
 
   // 3. Major power outages (severity 3)
-  try {
-    const outages = await getPowerOutages();
+  if (situation && situation.sources.power.availability === "available") {
+    const powerData = situation.sources.power.data as { total_out: number; total_served: number };
     if (
-      outages.totalOut >= SIGNIFICANT_POWER_OUTAGE_CUSTOMERS &&
-      outages.available
+      powerData.total_out >= SIGNIFICANT_POWER_OUTAGE_CUSTOMERS
     ) {
       const label =
-        outages.totalOut >= 1000
-          ? `Power: ${Math.round(outages.totalOut / 100) / 10}k out`
-          : `Power: ${outages.totalOut} out`;
+        powerData.total_out >= 1000
+          ? `Power: ${Math.round(powerData.total_out / 100) / 10}k out`
+          : `Power: ${powerData.total_out} out`;
       chips.push({ id: "power", label, severity: 3 });
     }
-  } catch {
-    // Power feed is optional
   }
 
   // 4. MARC alerts (severity 4)
