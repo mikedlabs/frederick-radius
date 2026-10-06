@@ -98,7 +98,7 @@ export default function TodaySeasonalPick({
             >
               {collection.blurb}
             </p>
-            <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-brand)" }}>
+            <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-brand-press)" }}>
               {collection.places.length} {collection.places.length === 1 ? "place" : "places"}
               <ArrowRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
             </div>
