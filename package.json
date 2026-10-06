@@ -215,7 +215,7 @@
     "jsdom": "^26.1.0",
     "lighthouse": "^13.4.1",
     "qrcode": "^1.5.4",
-    "sharp": "0.35.4",
+    "sharp": "0.35.5",
     "storybook": "^10.5.10",
     "tailwindcss": "^4",
     "tsx": "^4.23.1",
