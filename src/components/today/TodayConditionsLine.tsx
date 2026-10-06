@@ -58,7 +58,7 @@ export default async function TodayConditionsLine() {
       getNwsForecast(FREDERICK_CENTER).catch(() => null),
       getCurrentSituationSnapshot().catch(() => null),
       getFcpsAlertsResult().catch(() => ({ data: [], available: false })),
-      getMarcAlerts().catch(() => ({ alerts: [] })),
+      getMarcAlerts().catch(() => []),
       getRoadIntelligenceSnapshot().catch(() => ({ attention: [] })),
     ]);
   
@@ -70,7 +70,7 @@ export default async function TodayConditionsLine() {
   const cur = forecast?.hourly?.[0] ?? null;
   const tempNow = cur?.temperature ?? null;
   const condition = cur?.shortForecast ?? null;
-  const high = forecast?.daily?.find((p: { isDaytime: boolean }) => p.isDaytime)?.temperature ?? null;
+  const high = forecast?.daily?.find((p) => p.isDaytime === true)?.temperature ?? null;
 
   // Sunset
   const st = sunTimes(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
@@ -92,14 +92,14 @@ export default async function TodayConditionsLine() {
 
   // 2. School closures/delays (severity 2)
   const schoolNotice = fcpsNotices.find(
-    (n: { type: string }) => n.type === "Closed" || n.type === "Delay",
+    (n) => n.status === "closed" || n.status === "delayed",
   );
   if (schoolNotice) {
     const label =
-      schoolNotice.type === "Closed"
+      schoolNotice.status === "closed"
         ? "FCPS: Closed"
-        : (schoolNotice as { detail?: string }).detail
-          ? `FCPS: ${(schoolNotice as { detail: string }).detail}`
+        : schoolNotice.description
+          ? `FCPS: ${schoolNotice.description.slice(0, 20)}`
           : "FCPS: Delay";
     chips.push({ id: "fcps", label: label.slice(0, 32), severity: 2 });
   }
@@ -119,9 +119,9 @@ export default async function TodayConditionsLine() {
   }
 
   // 4. MARC alerts (severity 4)
-  if (marcAlerts.alerts.length > 0) {
-    const alert = marcAlerts.alerts[0];
-    const label = `MARC: ${alert.headerText || "Schedule change"}`.slice(
+  if (marcAlerts.length > 0) {
+    const alert = marcAlerts[0];
+    const label = `MARC: ${alert.header || "Schedule change"}`.slice(
       0,
       32,
     );
