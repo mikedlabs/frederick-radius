@@ -39,6 +39,12 @@ function easternClock(date: Date): {
 /**
  * Several public calendars use 11:59 PM as a placeholder for "no end time."
  * It is not evidence that a morning program is still running at night.
+ *
+ * Audit (2026-10-06): Daytime programs with shorter spans (Tops ~2 PM, Trivia
+ * ~2:30 PM ending 11:59 PM) were slipping through the 10h gate. Relaxed to 4h
+ * minimum: if it ends 23:58-23:59 ET same civil day and starts ≥4h earlier,
+ * treat as sentinel. A real evening event ending near midnight would start
+ * after 8 PM and wouldn't meet the 4h threshold.
  */
 export function eventHasEndOfDaySentinel(e: EventTiming): boolean {
   if (e.is_all_day || !e.ends_at) return false;
@@ -55,7 +61,7 @@ export function eventHasEndOfDaySentinel(e: EventTiming): boolean {
   const clock = easternClock(end);
   const looksLikeEndOfDay = clock.hour === 23 && clock.minute >= 58;
   const durationMs = end.getTime() - start.getTime();
-  return looksLikeEndOfDay && durationMs >= 10 * 60 * 60 * 1000;
+  return looksLikeEndOfDay && durationMs >= 4 * 60 * 60 * 1000;
 }
 
 /** A real, usable end-time claim rather than a missing, zero, or sentinel end. */

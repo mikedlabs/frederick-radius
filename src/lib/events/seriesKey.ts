@@ -25,6 +25,22 @@ export function eventSeriesKey(title: string): string {
     .toLowerCase()
     .trim();
 
+  const locationVariantSuffixes = [
+    /\s*@\s+[a-z\s]+$/i,
+    /\s*\(hybrid\)\s*$/i,
+    /\s*\(virtual\)\s*$/i,
+    /\s*\(online\)\s*$/i,
+    /\s*\(in person\)\s*$/i,
+    /\s*\(2nd section\)\s*$/i,
+    /\s*\(section \d+\)\s*$/i,
+    /\s*&\s*virtual\s*$/i,
+    /\s*and\s*virtual\s*$/i,
+  ];
+
+  for (const pattern of locationVariantSuffixes) {
+    normalized = normalized.replace(pattern, "");
+  }
+
   const timePhrases = [
     /\b(morning|afternoon|evening|night)\b/g,
     /\b\d{1,2}(:\d{2})?\s*(am|pm|a\.m\.|p\.m\.)\b/gi,

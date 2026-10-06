@@ -114,6 +114,28 @@ describe("classifyEventEndTrust — archive hydrate quarantine", () => {
     expect(classifyEventEndTrust(dailyExercise)).toBe("sentinel");
   });
 
+  it("classifies shorter-span end-of-day sentinels as 'sentinel' (4h gate)", () => {
+    const tops = {
+      starts_at: "2026-10-06T14:00:00-04:00",
+      ends_at: "2026-10-06T23:59:00-04:00",
+    };
+    expect(classifyEventEndTrust(tops)).toBe("sentinel");
+
+    const trivia = {
+      starts_at: "2026-10-06T14:30:00-04:00",
+      ends_at: "2026-10-06T23:59:00-04:00",
+    };
+    expect(classifyEventEndTrust(trivia)).toBe("sentinel");
+  });
+
+  it("does not classify near-midnight evening events as sentinels", () => {
+    const lateShow = {
+      starts_at: "2026-10-06T21:00:00-04:00",
+      ends_at: "2026-10-06T23:59:00-04:00",
+    };
+    expect(classifyEventEndTrust(lateShow)).toBe("ok");
+  });
+
   it("classifies multi-week timed spans as 'span'", () => {
     const multiWeekClass = {
       starts_at: "2026-10-06T18:00:00-04:00",

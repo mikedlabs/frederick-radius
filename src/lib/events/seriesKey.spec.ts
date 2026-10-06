@@ -77,4 +77,13 @@ describe("eventSeriesKey", () => {
     expect(fredericStorytime).toBe(thurmontStorytime);
     expect(brunswickStorytime).toBe("storytime");
   });
+
+  it("strips location and variant suffixes", () => {
+    expect(eventSeriesKey("Strength & Stretch @ Brunswick")).toBe("strength stretch");
+    expect(eventSeriesKey("Strength & Stretch @ Frederick")).toBe("strength stretch");
+    expect(eventSeriesKey("Game Time (Hybrid)")).toBe("game time");
+    expect(eventSeriesKey("Game Time (2nd Section)")).toBe("game time");
+    expect(eventSeriesKey("Yoga Class & Virtual")).toBe("yoga class");
+    expect(eventSeriesKey("Story Time and Virtual")).toBe("story time");
+  });
 });
