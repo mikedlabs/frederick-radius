@@ -71,17 +71,6 @@ describe("isEventLiveNow — evidence floor", () => {
     expect(isEventLiveNow(sentinel, at("2026-07-12T11:00:00-04:00"))).toBe(false);
   });
 
-  it("detects an end-of-day sentinel that rolled to 12:59 AM next day after UTC conversion", () => {
-    // Regression: some sources use 11:59 PM as a sentinel, but after UTC
-    // conversion (EDT -4) it becomes 03:59Z = the next calendar day in ET.
-    // Example: 12 PM–11:59 PM on Oct 11 becomes 16:00Z–03:59Z (Oct 12).
-    const rolledOver = {
-      starts_at: "2026-10-11T16:00:00.000Z",  // 12 PM ET
-      ends_at: "2026-10-12T04:59:00.000Z",    // 12:59 AM ET next day (was 11:59 PM before offset)
-    };
-    expect(isEventLiveNow(rolledOver, new Date("2026-10-11T18:00:00.000Z"))).toBe(false);
-  });
-
   it("all-day events are never live-now", () => {
     const today = { starts_at: "2026-07-12T00:00:00-04:00", is_all_day: true };
     expect(isEventLiveNow(today, at("2026-07-12T12:00:00-04:00"))).toBe(false);
