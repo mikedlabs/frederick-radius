@@ -105,6 +105,48 @@ export function startedEventTimingDisclosure(
 }
 
 /**
+ * Classification of end-time trustworthiness for quarantine at archive hydrate.
+ *
+ * Census findings (2026-10-06, 477 rows):
+ * - 13 end-of-day sentinels (~11:59 PM ET, long daytime programs)
+ * - 6 ends_at == starts_at
+ * - Multi-week class ends on timed rows
+ *
+ * Quarantine non-ok endings: do not treat ends_at as trustworthy for
+ * live/wrapped logic. Preserve the original ends_at for audit if needed.
+ */
+export type EventEndTrust =
+  | "ok"
+  | "missing"
+  | "equal"
+  | "sentinel"
+  | "span";
+
+export function classifyEventEndTrust(e: EventTiming): EventEndTrust {
+  if (!e.ends_at) return "missing";
+
+  const start = new Date(e.starts_at);
+  const end = new Date(e.ends_at);
+
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
+    return "missing";
+  }
+
+  if (end.getTime() === start.getTime()) return "equal";
+
+  if (end.getTime() < start.getTime()) return "missing";
+
+  if (!e.is_all_day && eventHasEndOfDaySentinel(e)) return "sentinel";
+
+  const durationMs = end.getTime() - start.getTime();
+  const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+
+  if (!e.is_all_day && durationMs > oneWeekMs) return "span";
+
+  return "ok";
+}
+
+/**
  * Honest "when" label for an event relative to now, in America/New_York.
  *
  * The /today hero + the "best move" card lead with the soonest worthwhile
