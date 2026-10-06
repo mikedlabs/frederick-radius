@@ -19,7 +19,7 @@ import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
-import { currentFcpsOperationsNotices } from "@/lib/integrations/fcps";
+import { getFcpsAlertsResult, currentFcpsOperationsNotices } from "@/lib/integrations/fcps";
 import { getMarcAlerts } from "@/lib/integrations/marcTrains";
 import { SIGNIFICANT_POWER_OUTAGE_CUSTOMERS } from "@/lib/pulse/signal-priority";
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
@@ -53,20 +53,24 @@ export default async function TodayConditionsLine() {
   const now = new Date();
 
   // Fetch weather, sun, and pulse signals in parallel
-  const [forecast, situation, fcpsNotices, marcAlerts, roadSnapshot] =
+  const [forecast, situation, fcpsAlertsResult, marcAlerts, roadSnapshot] =
     await Promise.all([
       getNwsForecast(FREDERICK_CENTER).catch(() => null),
       getCurrentSituationSnapshot().catch(() => null),
-      currentFcpsOperationsNotices().catch(() => []),
+      getFcpsAlertsResult().catch(() => ({ data: [], available: false })),
       getMarcAlerts().catch(() => ({ alerts: [] })),
       getRoadIntelligenceSnapshot().catch(() => ({ attention: [] })),
     ]);
+  
+  const fcpsNotices = fcpsAlertsResult.available 
+    ? currentFcpsOperationsNotices(fcpsAlertsResult.data)
+    : [];
 
   // Current weather
   const cur = forecast?.hourly?.[0] ?? null;
   const tempNow = cur?.temperature ?? null;
   const condition = cur?.shortForecast ?? null;
-  const high = forecast?.daily?.find((p) => p.isDaytime)?.temperature ?? null;
+  const high = forecast?.daily?.find((p: { isDaytime: boolean }) => p.isDaytime)?.temperature ?? null;
 
   // Sunset
   const st = sunTimes(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);

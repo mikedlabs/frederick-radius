@@ -51,8 +51,8 @@ describe("seriesFingerprint", () => {
 
 describe("crossSourceFingerprint", () => {
   it("dedupes same title and exact start time", () => {
-    const e1 = event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "dfp" });
-    const e2 = event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "cbartz" });
+    const e1 = event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "dfp" as any });
+    const e2 = event({ title: "Mortician AMA", starts_at: "2026-10-06T14:00:00Z", source: "fcpl" as any });
     expect(crossSourceFingerprint(e1)).toBe(crossSourceFingerprint(e2));
   });
 });
