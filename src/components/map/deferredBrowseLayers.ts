@@ -305,9 +305,10 @@ export function mergeDeferredBrowseLayerGroup(
   const priorHealth = current.sourceHealth[group];
   // A checked empty specialist result is still authoritative. Remember it
   // through a failed retry so older catalog context cannot resurrect points.
+  const retainedEmptyAuthority = !mapLayerGroupHasVisibleData(group, incoming) &&
+    (priorHealth?.status === "current" || priorHealth?.stale === true);
   const retained = incomingHealth?.status !== "current" &&
-    (mapLayerGroupHasVisibleData(group, current)
-      || priorHealth?.status === "current" || priorHealth?.stale === true);
+    (mapLayerGroupHasVisibleData(group, current) || retainedEmptyAuthority);
   const sourceHealth = incomingHealth
     ? {
         ...current.sourceHealth,

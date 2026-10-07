@@ -426,3 +426,42 @@ describe("specialist authority across actual request ordering", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });
+
+// The previous empty result owns no older visible data to age new additions.
+describe("fresh partial data after a checked empty snapshot", () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-06T20:00:00Z")); });
+  it.each(["parking", "amenities"] as const)("keeps the new %s assembly timestamp after expiry", async (group) => {
+    const firstTime = "2026-10-06T20:00:00.000Z";
+    const nextTime = "2026-10-06T20:15:00.000Z";
+    const point = { id: "fresh-one", slug: "fresh-one", name: "Fresh source point", lng: -77.4, lat: 39.4, kind: "water", available: 12, updated: nextTime };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ sourceHealth: { [group]: { status: "current", unavailable: [], asOf: firstTime } } })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ [group]: [point], sourceHealth: { [group]: { status: "partial", unavailable: ["Other source"], asOf: nextTime } } })));
+    vi.stubGlobal("fetch", fetchMock);
+    expect((await loadMapLayers([group]))[group]).toEqual([]);
+    vi.setSystemTime(new Date(nextTime));
+    const result = await loadMapLayers([group], { onlyExpired: true });
+    expect(result[group]).toEqual([point]);
+    expect(result.sourceHealth[group]).toMatchObject({ status: "partial", asOf: nextTime, unavailable: ["Other source"] });
+    expect(result.sourceHealth[group]?.stale).not.toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("checked empty authority through an empty partial retry", () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-06T20:00:00Z")); });
+  it.each(["parking", "amenities"] as const)("keeps older context from resurrecting empty %s", async (group) => {
+    const firstTime = "2026-10-06T20:00:00.000Z";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ sourceHealth: { [group]: { status: "current", unavailable: [], asOf: firstTime } } })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ sourceHealth: { [group]: { status: "partial", unavailable: ["Other source"], asOf: "2026-10-06T20:00:01.000Z" } } })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ [group]: [{ id: "old-catalog", slug: "old-catalog" }], sourceHealth: { context: { status: "current", unavailable: [], asOf: firstTime } } })));
+    vi.stubGlobal("fetch", fetchMock);
+    await loadMapLayers([group]); vi.setSystemTime(new Date("2026-10-06T20:15:00Z"));
+    await loadMapLayers([group]);
+    const result = await loadMapLayers(["context"]);
+    expect(result[group]).toEqual([]);
+    expect(result.sourceHealth[group]).toMatchObject({ status: "partial", stale: true, asOf: firstTime });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+});
