@@ -202,6 +202,7 @@ export default function PlanBuilder({
   };
 
   const activeEventAnchor = plan ? decodeSpec(plan.share)?.i.event_anchor_slug : undefined;
+  const scheduledEventStop = plan?.stops.find((stop) => stop.event);
 
   const buildInputs = (): PlanInputs | null => {
     const startAt = startAtFor(startMode, customStart);
@@ -377,7 +378,7 @@ export default function PlanBuilder({
 
   const controls = (
     <PlannerFields
-      eventStart={activeEventAnchor ? plan?.stops.find((stop) => stop.event)?.at ?? initialInputs?.start_at ?? "" : undefined}
+      eventStart={activeEventAnchor ? scheduledEventStop?.at ?? initialInputs?.start_at ?? "" : undefined}
       area={area}
       onAreaChange={handleAreaChange}
       onUseLocation={requestMyLocation}
@@ -455,7 +456,7 @@ export default function PlanBuilder({
               </p>
             )}
 
-            {activeEventAnchor && (
+            {scheduledEventStop && (
               <p className="mt-3 rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] p-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 The event keeps its published start and full duration. Any nearby stop comes after it. Hours that Radius cannot confirm stay outside the timed route.
               </p>
@@ -626,7 +627,11 @@ export default function PlanBuilder({
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         title="Adjust the plan"
-        subtitle={activeEventAnchor ? "The event keeps its published time. Change your company, focus, or outing length. Your current route stays until you rebuild it." : "Change the area, time, company, or focus. Your current route stays until you rebuild it."}
+        subtitle={activeEventAnchor
+          ? scheduledEventStop
+            ? "The event keeps its published time. Change your company, focus, or outing length. Your current route stays until you rebuild it."
+            : "Your event reference stays saved. Change your company, focus, or outing length, then review the event update before planning a visit."
+          : "Change the area, time, company, or focus. Your current route stays until you rebuild it."}
       >
         <div className="space-y-5 px-4 py-4">
           {controls}
