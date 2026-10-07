@@ -8,6 +8,7 @@ import {
   type AqiObservation,
 } from "@/lib/integrations/airnow";
 import {
+  activeNwsAlerts,
   AIRNOW_FREDERICK_URL,
   isFreshNwsAlertsResult,
 } from "@/lib/weather-safety";
@@ -268,16 +269,6 @@ function currentForecastPeriod(
       && startsAt <= nowMs + PERIOD_FUTURE_SKEW_MS
       && endsAt > nowMs;
   }) ?? null;
-}
-
-function activeAlerts(alerts: readonly NwsAlert[], now: Date): NwsAlert[] {
-  const nowMs = now.getTime();
-  return alerts.filter((alert) => {
-    const startsAt = Date.parse(alert.starts_at);
-    const endsAt = Date.parse(alert.ends_at);
-    return (!Number.isFinite(startsAt) || startsAt <= nowMs)
-      && (!Number.isFinite(endsAt) || endsAt > nowMs);
-  });
 }
 
 function urgencyRank(alert: NwsAlert): number {
@@ -604,7 +595,7 @@ export function currentOutdoorConditionsAskResult(
   );
   const worstAir = pickWorstAqi(freshAir);
   const alertFeedFresh = isFreshNwsAlertsResult(snapshot.alerts, now);
-  const currentAlerts = activeAlerts(snapshot.alerts.alerts, now)
+  const currentAlerts = activeNwsAlerts(snapshot.alerts.alerts, now)
     .sort(compareCurrentAlertPriority);
   const leadAlert = currentAlerts[0] ?? null;
   const missing = [
