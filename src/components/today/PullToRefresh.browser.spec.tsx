@@ -62,6 +62,33 @@ describe("Today pull refresh feedback", () => {
     expect(container.querySelector("[data-pull-refresh-indicator]")?.getAttribute("data-refresh-pending")).toBe("false");
     await act(async () => gesture()); expect(harness.refresh).toHaveBeenCalledTimes(2);
   });
+  it.each([false, true])("keeps pending feedback while the motion preference changes from %s", async (initialReduced) => {
+    let matches = initialReduced;
+    const listeners = new Set<() => void>();
+    Object.defineProperty(window, "matchMedia", { configurable: true, value: vi.fn(() => ({
+      get matches() { return matches; },
+      addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
+      removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
+    })) });
+    let finish!: () => void; let ready = false; const gate = new Promise<void>((resolve) => { finish = resolve; });
+    function Content({ version }: { version: number }) { if (version && !ready) throw gate; return createElement("p", null, `Version ${version}`); }
+    function Host() {
+      const [version, setVersion] = useState(0); harness.refresh.mockImplementation(() => setVersion((value) => value + 1));
+      return createElement(Fragment, null, createElement(PullToRefresh), createElement(Suspense, { fallback: "Loading" }, createElement(Content, { version })));
+    }
+    await act(async () => root.render(createElement(Host)));
+    await act(async () => gesture());
+    expect(container.querySelector("[data-pull-refresh-indicator]")?.getAttribute("data-refresh-pending")).toBe("true");
+    await act(async () => { matches = !initialReduced; for (const listener of listeners) listener(); });
+    expect(container.querySelector("[data-pull-refresh-indicator]")?.getAttribute("data-refresh-pending")).toBe("true");
+    expect(container.querySelector('[role="status"]')?.textContent).toBe("Refresh requested. Source checks may still be pending.");
+    expect(container.querySelector("svg")?.classList.contains("animate-spin")).toBe(!matches);
+    await act(async () => gesture()); expect(harness.refresh).toHaveBeenCalledTimes(1);
+    ready = true; await act(async () => finish());
+    expect(container.querySelector("[data-pull-refresh-indicator]")?.getAttribute("data-refresh-pending")).toBe("false");
+    await act(async () => gesture()); expect(harness.refresh).toHaveBeenCalledTimes(2);
+  });
+
   it("clears hidden gesture feedback and does not dispatch a hidden or resumed stale gesture", async () => {
     await act(async () => root.render(createElement(PullToRefresh)));
     await act(async () => { touch("touchstart", 0); touch("touchmove", 150); });

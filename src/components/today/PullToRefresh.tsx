@@ -26,6 +26,7 @@ export default function PullToRefresh() {
   const pendingRef = useRef(isPending);
   useEffect(() => { pendingRef.current = isPending; }, [isPending]);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const reduceMotionRef = useRef(false);
   const [announcement, setAnnouncement] = useState("");
   const startY = useRef<number | null>(null);
   const triggered = useRef(false);
@@ -33,7 +34,10 @@ export default function PullToRefresh() {
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReduceMotion(media.matches);
+    const update = () => {
+      reduceMotionRef.current = media.matches;
+      setReduceMotion(media.matches);
+    };
     update();
     media.addEventListener?.("change", update);
     return () => media.removeEventListener?.("change", update);
@@ -83,7 +87,7 @@ export default function PullToRefresh() {
       const dy = e.touches[0].clientY - startY.current;
       const decayed = Math.max(0, Math.min(MAX_PULL, dy * 0.55));
       pullRef.current = decayed;
-      if (!reduceMotion) setPull(decayed);
+      if (!reduceMotionRef.current) setPull(decayed);
       if (decayed >= PULL_THRESHOLD && !triggered.current) {
         triggered.current = true;
         haptic("medium");
@@ -126,7 +130,7 @@ export default function PullToRefresh() {
       window.removeEventListener("touchcancel", clearGesture);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [pathname, reduceMotion, router, startTransition]);
+  }, [pathname, router, startTransition]);
 
   if (pathname !== "/today") return null;
 

@@ -15,7 +15,7 @@ for (const viewport of [
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ active: false, count: 0, tone: "quiet", ok: true }),
+        body: JSON.stringify({ active: false, count: 0, tone: "quiet", ok: true, lastUpdated: new Date().toISOString() }),
       });
     });
     await page.goto("/compass", {
@@ -24,8 +24,10 @@ for (const viewport of [
     });
 
     const header = page.locator("header").first();
-    const pulse = header.getByRole("link", { name: /^County status:/ });
+    const pulse = header.locator("[data-pulse-indicator]");
     const compass = header.getByRole("link", { name: "Open tools" });
+    await expect(pulse).toHaveAttribute("aria-label", "County status: no active alerts");
+    await expect(pulse).toHaveAttribute("data-pulse-state", "ready");
 
     await expect(header.getByRole("link", { name: /tools/i })).toHaveCount(1);
     const toolLabels = compass.getByText("Tools", { exact: true });
@@ -81,25 +83,58 @@ for (const viewport of [
 }
 
 for (const status of [
-  { label: "active alerts", payload: { active: true, count: 2, tone: "alert", ok: true }, name: "County status: 2 active alerts" },
+  { label: "active alerts", payload: { active: true, count: 2, tone: "alert", ok: true }, name: "County status: 2 alerts reported" },
   { label: "unavailable checks", payload: { active: false, count: 0, tone: "quiet", ok: false }, name: "County status: unavailable" },
+  { label: "unverified reports", payload: { active: false, count: 0, tone: "quiet", ok: true, lastUpdated: "not-a-report-time" }, name: "County status: unavailable" },
 ]) {
   test(`TopBar keeps ${status.label} visible on a phone`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.route("**/api/pulse/status", async (route) => {
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(status.payload) });
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ lastUpdated: new Date().toISOString(), ...status.payload }) });
     });
     await page.goto("/today", { waitUntil: "domcontentloaded" });
     const header = page.locator("header").first();
     const statusLink = header.getByRole("link", { name: status.name, exact: true });
     await expect(statusLink).toBeVisible();
     await expect(statusLink).toHaveAttribute("href", "/pulse");
+    if (status.label !== "active alerts") await expect(statusLink.locator("[data-pulse-mobile-state]")).toHaveText("Unknown");
     const bounds = await statusLink.boundingBox();
     expect(bounds?.height).toBeGreaterThanOrEqual(44);
     expect(bounds?.width).toBeGreaterThanOrEqual(44);
     expect(await header.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
   });
 }
+
+test("TopBar keeps Checking visible until a valid quiet report arrives", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let release!: () => void;
+  let requested = false;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  await page.route("**/api/pulse/status", async (route) => {
+    requested = true;
+    await held;
+    await route.fulfill({ json: { active: false, count: 0, tone: "quiet", ok: true, lastUpdated: new Date().toISOString() } });
+  });
+  try {
+    await page.goto("/today", { waitUntil: "domcontentloaded" });
+    await expect.poll(() => requested).toBe(true);
+    const header = page.locator("header").first();
+    const status = header.locator("[data-pulse-indicator]");
+    await expect(status).toHaveAttribute("aria-label", "County status: checking");
+    await expect(status).toBeVisible();
+    await expect(status.locator("[data-pulse-mobile-state]")).toHaveText("Checking");
+    await expect(status).toHaveAttribute("href", "/pulse");
+    const bounds = await status.boundingBox();
+    expect(bounds?.height).toBeGreaterThanOrEqual(44);
+    expect(bounds?.width).toBeGreaterThanOrEqual(44);
+    expect(await header.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+    release();
+    await expect(status).toHaveAttribute("aria-label", "County status: no active alerts");
+    await expect(status).toHaveAttribute("data-pulse-state", "ready");
+    await expect(status).toBeHidden();
+    await expect(status.locator("[data-pulse-mobile-state]")).toHaveCount(0);
+  } finally { release(); }
+});
 
 for (const width of [375, 1366]) {
   test(`Find resumes only its words and rechecks the selected area at ${width}px`, async ({ page }) => {
