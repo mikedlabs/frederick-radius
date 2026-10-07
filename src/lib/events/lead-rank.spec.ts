@@ -51,6 +51,13 @@ describe("eventLeadTier", () => {
 });
 
 describe("eventProminence", () => {
+  it("scores the browse payload's has_tickets flag like a ticket link", () => {
+    const linked = ev({ category: "theater", ticket_url: "https://tickets.example.com" });
+    const flagged = { ...ev({ category: "theater" }), has_tickets: true };
+    expect(eventProminence(flagged)).toBe(eventProminence(linked));
+    expect(eventProminence(flagged)).toBe(eventProminence(ev({ category: "theater" })) + 3);
+  });
+
   it("does not treat unknown admission as paid prominence", () => {
     expect(eventProminence(ev({
       category: "community",

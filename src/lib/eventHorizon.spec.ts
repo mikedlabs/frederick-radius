@@ -89,7 +89,7 @@ describe("horizonOf — live gate", () => {
     const zeroDuration = ev("brunch", start, start);
     expect(horizonOf(zeroDuration, bounds())).toBe("today");
     expect(
-      horizonOf(zeroDuration, { ...bounds(), now: start + 2 * HOUR + 1 }),
+      horizonOf(zeroDuration, { ...bounds(), now: start + 3 * HOUR + 1 }),
     ).toBeNull();
   });
 

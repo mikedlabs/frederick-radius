@@ -26,6 +26,10 @@ export type LeadRankable = {
   starts_at: string;
   // Size/prominence signals (all optional so lighter shapes still rank).
   ticket_url?: string | null;
+  /** The browse payload drops ticket_url (a detail-only link) and carries
+   *  this flag instead, so the /events board ranks a ticketed show exactly
+   *  as the server does. */
+  has_tickets?: boolean;
   is_free?: boolean;
   price_text?: string | null;
   venue_name?: string | null;
@@ -63,7 +67,7 @@ const MARQUEE_CATEGORY = /music|concert|festival|fair|carnival|market|sport|thea
  */
 export function eventProminence(e: LeadRankable): number {
   let score = 0;
-  if (e.ticket_url) score += 3;
+  if (e.ticket_url || e.has_tickets) score += 3;
   if (MARQUEE_CATEGORY.test(e.category ?? "")) score += 2;
   if (e.price_text?.trim()) score += 1;
   if (/\b(library|branch)\b/i.test(e.venue_name ?? "")) score -= 3;

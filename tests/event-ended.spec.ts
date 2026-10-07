@@ -8,7 +8,7 @@ import { isEventEnded } from "@/lib/eventWhenLabel";
  *
  * Contract:
  *  - a real ends_at (later than the start) is trusted as-is
- *  - missing/equal ends_at grants a 2h assumed runtime
+ *  - missing/equal ends_at grants a 3h assumed runtime
  *  - all-day events end with their Eastern calendar day
  */
 describe("isEventEnded", () => {
@@ -39,10 +39,11 @@ describe("isEventEnded", () => {
     ).toBe(false);
   });
 
-  it("no-duration events get a 2h assumed runtime, not instant death", () => {
+  it("no-duration events get a 3h assumed runtime, not instant death", () => {
     const sevenPm = { starts_at: "2026-07-01T23:00:00Z", ends_at: "2026-07-01T23:00:00Z" };
     expect(isEventEnded(sevenPm, eightPmEt)).toBe(false); // 8 PM: within grace
-    expect(isEventEnded(sevenPm, new Date("2026-07-02T01:30:00Z"))).toBe(true); // 9:30 PM: past it
+    expect(isEventEnded(sevenPm, new Date("2026-07-02T01:30:00Z"))).toBe(false); // 9:30 PM: still within grace
+    expect(isEventEnded(sevenPm, new Date("2026-07-02T02:30:00Z"))).toBe(true); // 10:30 PM: past it
   });
 
   it("missing ends_at behaves like no-duration", () => {

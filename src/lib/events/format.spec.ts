@@ -66,6 +66,42 @@ describe("formatEventWhen", () => {
     expect(when).toBe("Thu, Jul 30 · 9:15 AM");
   });
 
+  it("does not invent an 11:59 PM end for a short evening civic meeting", () => {
+    // UI audit, Oct 2026: "Council Legislative Day 5:30 PM-11:59 PM" and
+    // "Ethics Commission Meeting 6:30 PM-11:59 PM". The old placeholder rule
+    // needed a ten-hour duration, so these short rows kept the fake end.
+    expect(
+      formatEventWhen(
+        base({
+          title: "Council Legislative Day",
+          starts_at: "2026-10-06T17:30:00-04:00",
+          ends_at: "2026-10-06T23:59:00-04:00",
+        }),
+      ),
+    ).toBe("Tue, Oct 6 · 5:30 PM");
+    expect(
+      formatEventWhen(
+        base({
+          title: "Ethics Commission Meeting",
+          starts_at: "2026-10-06T18:30:00-04:00",
+          ends_at: "2026-10-06T23:59:00-04:00",
+        }),
+      ),
+    ).toBe("Tue, Oct 6 · 6:30 PM");
+  });
+
+  it("does not print a next-day 12:59 AM placeholder as a real end", () => {
+    // "Kid Creator Fall Market 12:00 PM-Mon 12:59 AM": 11:59 PM written in
+    // the wrong offset. The start clock stays; the invented end goes.
+    const market = base({
+      title: "Kid Creator Fall Market",
+      starts_at: "2026-10-11T12:00:00-04:00",
+      ends_at: "2026-10-12T00:59:00-04:00",
+    });
+    expect(formatEventWhen(market)).toBe("Sun, Oct 11 · 12:00 PM");
+    expect(eventDateBlock(market).time).toBe("12:00 PM");
+  });
+
   it("treats a noon-to-end-of-day feed row as date-only", () => {
     const event = base({
       starts_at: "2026-07-30T12:00:00-04:00",
