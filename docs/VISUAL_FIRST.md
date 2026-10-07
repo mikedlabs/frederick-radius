@@ -199,4 +199,5 @@ the October 2026 UI and UX review.
 5. The posted-hours week chart, the tonight and tomorrow map, and the Events
    flyer rail.
 6. Owner and business photography supply: the shoot list and the business photo
-   upload.
+   upload The shoot list, ranked by real traffic, is
+   `docs/SHOOT_LIST.md`.
