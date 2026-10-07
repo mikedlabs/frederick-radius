@@ -236,7 +236,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
               </h2>
             </motion.div>
             <div className="absolute left-3 top-3 z-10">
-              <ItineraryButton eventId={event.slug} label={`Add ${event.title} to itinerary`} />
+              <ItineraryButton eventId={event.slug} eventTitle={event.title} />
             </div>
           </div>
         ) : null}
@@ -274,7 +274,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 </h2>
               </div>
               <div className="shrink-0">
-                <ItineraryButton eventId={event.slug} label={`Add ${event.title} to itinerary`} />
+                <ItineraryButton eventId={event.slug} eventTitle={event.title} />
               </div>
             </header>
           )}

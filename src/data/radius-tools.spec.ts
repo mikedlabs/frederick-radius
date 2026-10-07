@@ -56,6 +56,7 @@ describe("Radius tool registry", () => {
     expect(radiusJourneyForPath("/sports")).toBe("events");
     expect(radiusJourneyForPath("/moments/great-frederick-fair-2026")).toBe("events");
     expect(radiusJourneyForPath("/settings")).toBe("saved");
+    expect(radiusJourneyForPath("/itinerary")).toBe("saved");
     expect(radiusJourneyForPath("/search")).toBeNull();
   });
 

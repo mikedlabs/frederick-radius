@@ -56,6 +56,7 @@ import Passport from "@/components/saved/Passport";
 import type { ReactNode } from "react";
 import { withBrowseReturnTo } from "@/lib/browse-return";
 import { useSavedJourney } from "./useSavedJourney";
+import DayPlanLink from "./DayPlanLink";
 
 type SavedSortKey = "town" | "category" | "recent" | "az" | "distance" | "open";
 
@@ -331,6 +332,7 @@ function Masthead({ stand }: { stand: ReactNode }) {
           Saved
         </h1>
         <p className="sv-stand">{stand}</p>
+        <DayPlanLink />
       </div>
       <Link href="/settings" aria-label="Settings" className="sv-gear tactile tactile-interactive">
         <Settings className="h-[17px] w-[17px]" strokeWidth={2} aria-hidden />

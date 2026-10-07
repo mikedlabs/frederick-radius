@@ -150,10 +150,11 @@ describe("Compass Tool Deck model", () => {
     expect(directory.label).toBe("All tools");
     expect(directory.groups).toEqual(groups);
     expect(directory.total).toBe(flattenTools(groups).length);
-    expect(RADIUS_TOOLS).toHaveLength(64);
+    expect(RADIUS_TOOLS).toHaveLength(65);
     expect(directory.total).toBe(
-      65 + (CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED ? 1 : 0),
+      66 + (CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED ? 1 : 0),
     );
+    expect(groups.find((group) => group.id === "yours")?.items.find((item) => item.id === "day-plan")).toMatchObject({ href: "/itinerary", label: "Day Plan" });
     expect(tasks.map((item) => item.id)).toEqual(
       DEFAULT_TOOL_DECK_PIN_IDS,
     );
