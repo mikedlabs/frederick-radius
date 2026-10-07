@@ -30,8 +30,8 @@ for (const width of [390, 1366]) {
     await expect(page).toHaveURL(/\/compass$/);
     const drawer = page.getByRole("dialog");
     await expect(drawer).toHaveCount(1);
-    await expect(drawer.getByRole("heading", { name: "What do you need?", exact: true })).toBeVisible();
-    await expect(drawer.getByRole("searchbox", { name: "Search Radius tools and local guides", exact: true })).toBeVisible();
+    await expect(drawer.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
+    await expect(drawer.getByRole("searchbox", { name: "Filter tools", exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(drawer).toHaveCount(0);
     await expect(page).toHaveURL(origin);
@@ -51,7 +51,7 @@ test("Tools clears its route drawer before County status opens a weather detail"
   await page.locator("header").first().getByRole("link", { name: "Open tools", exact: true }).click();
   const drawer = page.getByRole("dialog");
   await expect(drawer).toHaveCount(1);
-  await drawer.getByRole("searchbox", { name: "Search Radius tools and local guides", exact: true }).fill("weather");
+  await drawer.getByRole("searchbox", { name: "Filter tools", exact: true }).fill("weather");
   const county = drawer.locator('a[href="/pulse"]');
   await expect(county).toHaveCount(1);
   await county.click();

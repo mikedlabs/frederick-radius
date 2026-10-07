@@ -316,7 +316,7 @@ test.describe("mobile discovery shell", () => {
 
     await page.goto("/compass", { waitUntil: "domcontentloaded" });
     await expect(
-      page.getByRole("searchbox", { name: /Search Radius tools/ }),
+      page.getByRole("searchbox", { name: "Filter tools" }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", {
@@ -664,10 +664,10 @@ test.describe("mobile discovery shell", () => {
     await page.goto("/compass", { waitUntil: "domcontentloaded" });
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "What do you need?" }),
+      page.getByRole("heading", { level: 1, name: "All tools" }),
     ).toBeVisible();
     const toolSearch = page.getByRole("searchbox", {
-      name: /Search Radius tools/,
+      name: "Filter tools",
     });
     await expect(toolSearch).toBeVisible();
     await expect(page.locator("[data-compass-ready]")).toHaveAttribute(
@@ -696,9 +696,18 @@ test.describe("mobile discovery shell", () => {
     await toolSearch.fill("coffee");
     await expect(toolSearch).toHaveAttribute("type", "text");
     await expect(toolSearch).toHaveAttribute("inputmode", "search");
-    await expect(page.getByRole("button", { name: "Clear tool search" })).toHaveCount(1);
-    await expect(page.getByRole("link", { name: /Search Frederick for “coffee”/ })).toHaveAttribute("href", "/search?q=coffee");
-    await expect(page.getByRole("link", { name: /Search Frederick for “coffee”/ })).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Clear tool filter" })).toHaveCount(1);
+    // No tool matches coffee, so no count; one row hands the words to Find.
+    await expect(page.locator("#compass-search-heading")).toHaveText("No tools match “coffee.”");
+    await expect(page.getByRole("button", { name: /Search Frederick for “coffee”/ })).toHaveCount(1);
+    await expect(page.getByRole("link", { name: /Search Frederick for/ })).toHaveCount(0);
+    await page.getByRole("button", { name: /Search Frederick for “coffee”/ }).click();
+    const find = page.getByRole("dialog", { name: "What do you need?" });
+    await expect(
+      find.getByRole("searchbox", { name: "Ask or find across Frederick County" }),
+    ).toHaveValue("coffee");
+    await page.keyboard.press("Escape");
+    await expect(find).toHaveCount(0);
     await toolSearch.fill("ask");
     await expect(page.getByRole("link", { name: /^Ask Radius\b/ })).toHaveCount(1);
     await toolSearch.fill("weather");

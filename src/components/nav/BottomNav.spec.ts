@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   isPlainPrimaryNavigation,
+  isTabLit,
   shouldShowBottomNav,
 } from "./BottomNav";
 
@@ -56,5 +57,24 @@ describe("BottomNav contextual chrome", () => {
     const source = readFileSync("src/components/nav/BottomNav.tsx", "utf8");
     expect(source).toContain("onPointerCancel={() => setPendingIdx(null)}");
     expect(source).toContain("if (event.buttons !== 0) setPendingIdx(null)");
+  });
+
+  it("lights only the tapped tab while a route change is pending", () => {
+    // Today (0) is current and Events (2) was just tapped: exactly one lit.
+    const lit = [0, 1, 2, 3].filter((idx) => isTabLit(idx, 0, 2));
+    expect(lit).toEqual([2]);
+  });
+
+  it("lights the current tab when nothing is pending, and none off the tabs", () => {
+    expect([0, 1, 2, 3].filter((idx) => isTabLit(idx, 1, null))).toEqual([1]);
+    expect([0, 1, 2, 3].filter((idx) => isTabLit(idx, -1, null))).toEqual([]);
+    expect([0, 1, 2, 3].filter((idx) => isTabLit(idx, -1, 3))).toEqual([3]);
+  });
+
+  it("draws the selected state from that one rule without changing its look", () => {
+    const source = readFileSync("src/components/nav/BottomNav.tsx", "utf8");
+    expect(source).toContain("const active = isTabLit(idx, realIdx, pendingIdx);");
+    expect(source).not.toContain("isRealActive || pendingIdx === idx");
+    expect(source).toContain('data-selected={active ? "true" : "false"}');
   });
 });

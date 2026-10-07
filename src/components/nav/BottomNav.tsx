@@ -21,6 +21,19 @@ export function isPlainPrimaryNavigation(event: NavigationGesture): boolean {
     && !event.shiftKey;
 }
 
+/**
+ * Which tab draws as selected. A pending tap owns the selection outright:
+ * lighting the tapped tab beside the current one showed two selected tabs
+ * for the whole route change.
+ */
+export function isTabLit(
+  idx: number,
+  realIdx: number,
+  pendingIdx: number | null,
+): boolean {
+  return pendingIdx !== null ? pendingIdx === idx : realIdx === idx;
+}
+
 export function shouldShowBottomNav(
   _pathname: string,
   contextualActionBarPresent = false,
@@ -80,8 +93,7 @@ export default function BottomNav() {
           <ul className="mx-auto grid max-w-screen-md grid-cols-4 px-1 py-1">
             {TABS.map(({ href, label, icon: Icon, prefetch, fillOnActive }, idx) => {
               const isAtDestination = pathname === href || pathname.startsWith(`${href}/`);
-              const isRealActive = realIdx === idx;
-              const active = isRealActive || pendingIdx === idx;
+              const active = isTabLit(idx, realIdx, pendingIdx);
 
               const handleActivate = (event: React.MouseEvent<HTMLAnchorElement>) => {
                 if (isAtDestination || !isPlainPrimaryNavigation(event.nativeEvent)) {

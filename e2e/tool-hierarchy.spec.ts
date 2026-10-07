@@ -19,7 +19,7 @@ test("Compass keeps core tools visible and opens URL-backed intent chapters", as
   const compass = page.locator("[data-compass-ready]");
   await expect(compass).toHaveAttribute("data-compass-ready", "true");
   await expect(
-    page.getByRole("heading", { level: 1, name: "What do you need?" }),
+    page.getByRole("heading", { level: 1, name: "All tools" }),
   ).toBeVisible();
 
   const pinned = page.locator(
@@ -176,7 +176,7 @@ test("Compass routes everyday language and exposes pinning in results", async ({
     "true",
   );
 
-  const search = page.getByRole("searchbox", { name: /Search Radius tools/ });
+  const search = page.getByRole("searchbox", { name: "Filter tools" });
   await search.fill("closest trash can");
   await expect(page.getByRole("link", { name: /^Trash cans\b/ })).toBeVisible();
   const pinTrash = page.getByRole("button", { name: "Pin Trash cans" });

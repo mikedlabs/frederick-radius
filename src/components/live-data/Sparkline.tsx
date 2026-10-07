@@ -12,6 +12,30 @@
  * number without thinking about chart libraries.
  */
 
+/**
+ * The vertical domain a sparkline draws against.
+ *
+ * Stretching min to max over the full height has no floor: a gauge that
+ * moved 0.01 ft between readings, which readingTrend() correctly calls
+ * Steady, drew as a full-height square wave. The domain is therefore never
+ * narrower than `minRange`, centered on the readings, so small wobble stays
+ * small. The default is five times readingTrend's steady tolerance (1% of
+ * the level, or 0.05 for tiny readings), which keeps anything it calls
+ * steady within about a fifth of the height.
+ */
+export function sparklineDomain(
+  values: readonly number[],
+  minRange?: number,
+): { min: number; max: number } {
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const mid = (lo + hi) / 2;
+  const floor = minRange ?? Math.max(Math.abs(mid) * 0.05, 0.25);
+  const span = Math.max(hi - lo, floor);
+  if (span <= 0) return { min: mid - 0.5, max: mid + 0.5 };
+  return { min: mid - span / 2, max: mid + span / 2 };
+}
+
 export default function Sparkline({
   values,
   width = 120,
@@ -21,6 +45,7 @@ export default function Sparkline({
   fillOpacity = 0.12,
   showLast = true,
   animated = false,
+  minRange,
 }: {
   values: number[];
   width?: number;
@@ -34,6 +59,9 @@ export default function Sparkline({
   /** One-shot reveal on mount: the line draws left-to-right and the latest
    *  point pulses as a "live" beacon. Freezes under prefers-reduced-motion. */
   animated?: boolean;
+  /** The smallest value range drawn over the full height, in the readings'
+   *  own units. Defaults to a floor scaled to the level (see sparklineDomain). */
+  minRange?: number;
 }) {
   if (!values || values.length < 2) {
     return (
@@ -56,11 +84,11 @@ export default function Sparkline({
     );
   }
 
-  // Normalize Y so the trend uses the full vertical space. Pad 8% top
-  // and bottom so the line doesn't kiss the edges.
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const span = max - min || 1;
+  // Normalize Y against a floored domain so a real trend uses the vertical
+  // space and a steady one stays flat. Pad 8% top and bottom so the line
+  // doesn't kiss the edges.
+  const { min, max } = sparklineDomain(values, minRange);
+  const span = max - min;
   const padY = height * 0.08;
   const innerH = height - padY * 2;
 

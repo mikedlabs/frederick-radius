@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import PageBloom from "./PageBloom";
-import { MotionConfig } from "framer-motion";
 import { expect } from "storybook/test";
 
 const meta = {
@@ -8,35 +7,33 @@ const meta = {
   component: PageBloom,
   tags: ["autodocs"],
   parameters: { layout: "fullscreen", docs: { description: { component:
-    "Decorative paper and color wash. Ambient loops run only in a visible tab with full motion enabled. The same static wash and grain remain for operating-system reduced motion or hidden tabs. Preference changes and the preview Motion toolbar take effect without reopening the page." } } },
-  decorators: [(Story, context) => (
-    <MotionConfig reducedMotion={context.globals.motion === "reduce" ? "always" : "user"}>
+    "Static field-guide paper: a soft top light and the paper grain. It draws no decorative glow and nothing in it moves. The optional motif is a still Ripple registration mark for an editorial moment." } } },
+  decorators: [(Story) => (
     <div className="relative isolate min-h-screen overflow-hidden bg-[var(--app-bg)] p-6">
       <Story />
       <div className="relative max-w-md space-y-2">
         <h2 className="font-serif text-2xl text-[var(--app-ink)]">A quiet Frederick moment</h2>
-        <p className="text-[var(--app-ink-2)]">The paper and color stay present while the content remains easy to read.</p>
+        <p className="text-[var(--app-ink-2)]">The paper stays present while the content remains easy to read.</p>
       </div>
     </div>
-    </MotionConfig>
   )],
   args: { variant: "warm-cool", motif: false, className: "!absolute" },
 } satisfies Meta<typeof PageBloom>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const PaperWash: Story = {};
-export const CoolWash: Story = { args: { variant: "cool" } };
-export const EditorialMotif: Story = { args: { variant: "warm", motif: true } };
-
-export const ReducedMotion: Story = {
-  globals: { motion: "reduce" },
-  args: { motif: true },
+export const Paper: Story = {
   play: async ({ canvasElement }) => {
     const bloom = canvasElement.querySelector("[data-page-bloom]")!;
-    await expect(bloom).toHaveAttribute("data-ambient-motion", "static");
-    for (const layer of bloom.querySelectorAll("[data-ambient-layer]")) {
-      await expect(getComputedStyle(layer).transform).toBe("none");
-    }
+    await expect(bloom.querySelector("[data-page-paper]")).not.toBeNull();
+    await expect(bloom.querySelector(".aurora-grain")).not.toBeNull();
+    await expect(bloom.querySelectorAll("[data-ambient-layer]")).toHaveLength(0);
+  },
+};
+export const EditorialMotif: Story = {
+  args: { variant: "warm", motif: true },
+  play: async ({ canvasElement }) => {
+    const motif = canvasElement.querySelector("[data-page-motif]")!;
+    await expect(getComputedStyle(motif).transform).toBe("none");
     await expect(canvasElement.firstElementChild!.getBoundingClientRect().height).toBeGreaterThanOrEqual(window.innerHeight);
   },
 };

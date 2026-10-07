@@ -34,6 +34,7 @@ vi.mock("@/lib/track", () => ({ track: vi.fn() }));
 
 import TopBar from "./TopBar";
 import { track } from "@/lib/track";
+import { requestFind } from "@/lib/findBridge";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -354,5 +355,25 @@ describe("Find continuity through the real lazy header and overlay", () => {
     await close();
     await open();
     expect(input().value).toBe("");
+  });
+
+  it("opens on the words a launcher hands over, such as Compass's filter", async () => {
+    window.sessionStorage.setItem(DRAFT_KEY, "older draft");
+    await act(async () => {
+      requestFind("global", "late night tacos");
+      await vi.dynamicImportSettled();
+    });
+    await settle(60);
+    expect(container.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+    expect(input().value).toBe("late night tacos");
+    expect(window.sessionStorage.getItem(DRAFT_KEY)).toBe("late night tacos");
+    await close();
+    // A plain request later restores the draft rather than replaying the handoff.
+    await act(async () => {
+      requestFind("global");
+      await vi.dynamicImportSettled();
+    });
+    await settle(60);
+    expect(input().value).toBe("late night tacos");
   });
 });

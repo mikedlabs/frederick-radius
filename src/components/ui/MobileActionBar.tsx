@@ -12,14 +12,19 @@ import type { DecisionAction } from "@/lib/decision/telemetry";
  * should be one thumb-reach away. This pins them to the bottom of the
  * viewport as a compact floating card.
  *
- * Placement mirrors the app's other bottom chrome:
+ * Placement and shape:
  *   - `lg:hidden` — desktop keeps the inline action grids untouched and
  *     the SideRail owns the left edge, so a bottom dock would be wrong.
  *   - It REPLACES BottomNav on detail routes instead of stacking above it.
  *     The bar therefore owns the same bottom edge and safe-area clearance as
  *     the primary nav.
- *   - A centered rounded card, not an edge-to-edge slab, to match the
- *     floating-pill language of BottomNav / FeedbackWidget.
+ *   - A full-width solid bar with one 1px top rule, deliberately NOT the
+ *     floating rounded card of the tab dock. The old card read as the
+ *     navigation, so a detail page looked like it had swapped tabs.
+ *   - One wide primary action (48px, brand-press fill, glyph plus label);
+ *     every other action is a 48px outlined square named by its
+ *     accessible label. The primary leads visually wherever it sits in
+ *     the markup.
  *
  * The bar stays presentational (no hooks) so it can render inside the server
  * page and simply pass client controls (SaveButton, EventCalendarButton)
@@ -43,14 +48,18 @@ export function MobileActionBar({
   return (
     <div
       data-mobile-action-bar
-      className="pointer-events-none fixed inset-x-0 lg:hidden"
+      data-app-action-bar
+      className="fixed inset-x-0 bottom-0 border-t lg:hidden"
       style={{
         zIndex: "var(--z-nav)",
-        // BottomNav is suppressed on these routes, so this dock owns the
-        // ordinary mobile-chrome position instead of forming a second tier.
-        bottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
+        background: "var(--app-bg-elevated-solid)",
+        borderColor: "var(--app-border)",
+        paddingTop: "8px",
+        // BottomNav is suppressed on these routes, so this bar owns the
+        // ordinary mobile-chrome edge instead of forming a second tier.
+        paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
         // On a notched phone in landscape the side insets aren't 0; keep
-        // the card off the notch while holding the 0.75rem base in portrait.
+        // the actions off the notch while holding the 0.75rem base.
         paddingLeft: "max(0.75rem, env(safe-area-inset-left, 0px))",
         paddingRight: "max(0.75rem, env(safe-area-inset-right, 0px))",
       }}
@@ -58,13 +67,7 @@ export function MobileActionBar({
       <div
         role="toolbar"
         aria-label={ariaLabel}
-        className="pointer-events-auto mx-auto flex max-w-screen-md items-stretch gap-1.5 rounded-[var(--app-radius-lg)] border p-1.5"
-        style={{
-          background: "var(--app-bg-elevated-solid)",
-          borderColor: "var(--app-border)",
-          boxShadow:
-            "0 10px 28px -8px rgba(20,20,18,0.22), 0 2px 6px rgba(20,20,18,0.10), var(--app-edge), var(--app-hi)",
-        }}
+        className="mx-auto flex max-w-screen-md items-center gap-2"
       >
         {children}
       </div>
@@ -72,32 +75,42 @@ export function MobileActionBar({
   );
 }
 
-const CELL =
-  "flex flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[11px] font-semibold leading-none min-h-[52px] tap-44";
+const CELL_PRIMARY =
+  "order-first flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-3 text-[15px] font-semibold leading-none tactile-glow-brand";
+const CELL_QUIET =
+  "grid h-12 w-12 shrink-0 place-items-center rounded-[var(--app-radius-md)] border transition-colors hover:bg-[var(--app-bg-sunken)]";
 
 /**
  * Shared cell chrome so a link cell (MobileBarLink) and a reused control
- * (EventCalendarButton in bar mode) look identical. Exported so the
- * calendar button can style itself as a bar cell without duplicating this.
+ * (EventCalendarButton, SaveButton in bar mode) look identical. Exported so
+ * those controls can style themselves as bar cells without duplicating this.
  */
 export function barCellClass(primary?: boolean): string {
-  return primary ? `${CELL} tactile-glow-brand` : `${CELL} transition-colors hover:bg-[var(--app-bg-sunken)]`;
+  return primary ? CELL_PRIMARY : CELL_QUIET;
 }
 export function barCellStyle(primary?: boolean): React.CSSProperties {
   return primary
-    ? // brand-press, not brand: white on plain --app-brand is ~4.1:1 on the
-      // 11px semibold cell label (fails AA); brand-press is ~6:1 (2026-07 P4).
+    ? // brand-press, not brand: white on plain --app-brand fails AA for the
+      // label; brand-press clears it (2026-07 P4).
       { background: "var(--app-brand-press)", color: "var(--app-on-brand)" }
-    : { color: "var(--app-ink-2)" };
+    : {
+        background: "var(--app-bg-elevated-solid)",
+        borderColor: "var(--app-border)",
+        color: "var(--app-ink-2)",
+      };
 }
 export function barIconStyle(primary?: boolean): React.CSSProperties {
-  return { color: primary ? "var(--app-on-brand)" : "var(--app-brand-press)" };
+  return { color: primary ? "var(--app-on-brand)" : "var(--app-ink-2)" };
+}
+/** The primary shows its words; a square keeps them for assistive tech. */
+export function barLabelClass(primary?: boolean): string {
+  return primary ? "truncate" : "sr-only";
 }
 
 /**
  * A link/anchor action cell (directions, call, tickets). Renders a plain
  * `<a>` — every bar link is an outbound/`tel:` target, no internal nav —
- * with one primary (vermilion) styling per bar and the rest quiet.
+ * with one primary (brand-press) action per bar and the rest quiet squares.
  */
 export function MobileBarLink({
   href,
@@ -122,34 +135,16 @@ export function MobileBarLink({
     <a
       href={href}
       data-decision-action={decisionAction}
+      data-bar-primary={primary ? "true" : undefined}
       aria-label={ariaLabel ?? label}
+      title={primary ? undefined : label}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       {...(download ? { download: true } : {})}
       className={barCellClass(primary)}
       style={barCellStyle(primary)}
     >
-      <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden style={barIconStyle(primary)} />
-      {label}
+      <Icon className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden style={barIconStyle(primary)} />
+      <span className={barLabelClass(primary)}>{label}</span>
     </a>
-  );
-}
-
-/**
- * Wrapper for a reused client control (e.g. SaveButton) so it reads as a
- * bar cell — the control is the icon, `label` sits beneath it to match the
- * link cells. The control keeps its own ≥44px tap target and a11y label.
- */
-export function MobileBarControl({
-  children,
-  label,
-}: {
-  children: ReactNode;
-  label: string;
-}) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-md)] px-2 py-1 text-[11px] font-semibold leading-none min-h-[52px]">
-      {children}
-      <span style={{ color: "var(--app-ink-2)" }}>{label}</span>
-    </div>
   );
 }

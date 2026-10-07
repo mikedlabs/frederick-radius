@@ -3,7 +3,7 @@
 import { Calendar } from "lucide-react";
 import { buildIcs } from "@/lib/ics";
 import { haptic } from "@/lib/haptics";
-import { barCellClass, barCellStyle, barIconStyle } from "@/components/ui/MobileActionBar";
+import { barCellClass, barCellStyle, barIconStyle, barLabelClass } from "@/components/ui/MobileActionBar";
 
 /**
  * "Add to calendar" cell for the event detail page, for events that have
@@ -85,7 +85,7 @@ export default function EventCalendarButton({
         aria-hidden
         style={inBar ? barIconStyle(primary) : { color: "var(--app-brand)" }}
       />
-      {label}
+      {inBar ? <span className={barLabelClass(primary)}>{label}</span> : label}
     </button>
   );
 }

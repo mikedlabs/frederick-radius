@@ -1996,6 +1996,37 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 #main-content {
   view-transition-name: app-main;
 }
+/* The persistent chrome gets its own snapshots. Left in the root snapshot,
+ * it sat UNDER the app-main group, so the outgoing and incoming page text
+ * painted over the header and the tab bar for the length of the fade. Named
+ * groups stack above app-main and switch instantly: chrome does not animate,
+ * and the outgoing image is hidden so a changed bar never shows doubled. */
+[data-app-topbar] {
+  view-transition-name: app-header;
+}
+[data-bottom-nav-shell] {
+  view-transition-name: app-nav;
+}
+[data-app-action-bar] {
+  view-transition-name: app-action-bar;
+}
+::view-transition-group(app-header),
+::view-transition-group(app-nav),
+::view-transition-group(app-action-bar) {
+  z-index: 1;
+  animation: none;
+}
+::view-transition-old(app-header),
+::view-transition-old(app-nav),
+::view-transition-old(app-action-bar) {
+  animation: none;
+  opacity: 0;
+}
+::view-transition-new(app-header),
+::view-transition-new(app-nav),
+::view-transition-new(app-action-bar) {
+  animation: none;
+}
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
@@ -8665,20 +8696,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    shelf, one contextual action, and one thumb command instead of stacking
    several equally heavy paper cards over the geography.
    ======================================================================== */
-header[data-map-header="true"] {
-  border-bottom-color: color-mix(in srgb, var(--app-ink) 10%, transparent) !important;
-  background: color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent) !important;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
-  backdrop-filter: blur(18px) saturate(1.08);
-  -webkit-backdrop-filter: blur(18px) saturate(1.08);
-}
+/* The map header keeps the shared opaque bar and the same 44px control
+   family as every other route: the scope capsule and County status keep
+   their 1px borders here instead of dissolving into the bar. Only the
+   compact sizing below is map-specific. */
 header[data-map-header="true"] [data-location-chip][data-compact="true"] {
   max-width: min(46vw, 176px);
-  border: 0 !important;
-  border-radius: 8px;
-  background: transparent !important;
   padding-inline: 7px;
-  color: var(--app-ink-2) !important;
 }
 header[data-map-header="true"] [data-location-chip][data-compact="true"] > svg:last-child {
   display: block !important;
@@ -8703,19 +8727,6 @@ header[data-map-header="true"] [data-location-chip][data-compact="true"] [data-l
   header[data-map-header="true"] [data-location-chip][data-compact="true"] [data-location-scope-label="full"] {
     display: none;
   }
-}
-header[data-map-header="true"] [data-location-chip][data-compact="true"]:hover,
-header[data-map-header="true"] [data-location-chip][data-compact="true"]:focus-visible {
-  background: color-mix(in srgb, var(--app-ink) 5%, transparent) !important;
-}
-header[data-map-header="true"] [data-pulse-indicator] {
-  border-color: transparent !important;
-  background: transparent !important;
-  padding-inline: 0;
-}
-header[data-map-header="true"] [data-pulse-indicator]:hover,
-header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
-  background: color-mix(in srgb, var(--app-ink) 5%, transparent) !important;
 }
 
 @media (max-width: 1023.98px) {

@@ -16,6 +16,8 @@ import {
   commonCompassTasks,
   compassStatusItems,
   compassTown,
+  compassMatchSummary,
+  compassToolMatches,
   groundedCompassSuggestion,
   liveLineForIntent,
   liveSuggestionForDeck,
@@ -35,7 +37,50 @@ describe("Compass search control", () => {
     const source = readFileSync("src/components/nav/CompassHub.tsx", "utf8");
     expect(source).toContain('type="text"');
     expect(source).toContain('role="searchbox"');
-    expect(source).toContain('aria-label="Clear tool search"');
+    expect(source).toContain('aria-label="Clear tool filter"');
+  });
+
+  it("names the page All tools in Public Sans and labels its field as a tool filter", () => {
+    const source = readFileSync("src/components/nav/CompassHub.tsx", "utf8");
+    const header = source.slice(
+      source.indexOf('<h1 className="font-sans'),
+      source.indexOf("</label>"),
+    );
+
+    expect(header).toContain("{PRODUCT_NAMES.allTools.pageTitle}");
+    expect(header).not.toContain("font-editorial");
+    expect(header).toContain('<span className="sr-only">Filter tools</span>');
+    // The COMPASS eyebrow and the editorial question are gone.
+    expect(source).not.toMatch(/>\s*Compass\s*<\/p>/);
+    expect(source).not.toContain("What do you need?");
+  });
+
+  it("hands the typed words to the one Find overlay instead of offering request cards", () => {
+    const source = readFileSync("src/components/nav/CompassHub.tsx", "utf8");
+
+    expect(source).toContain('requestFind("global", query)');
+    expect(source).not.toContain("Ask Radius about this");
+    expect(source).not.toContain("function CompassSearchActions");
+    expect(source.match(/Search Frederick for “/g)).toHaveLength(1);
+  });
+});
+
+describe("Compass tool-filter count", () => {
+  const item = (id: string) => ({ id });
+
+  it("leaves the generic search entry out of the match count", () => {
+    const matches = compassToolMatches([item("search"), item("parking"), item("restrooms")]);
+    expect(matches.map((match) => match.id)).toEqual(["parking", "restrooms"]);
+    expect(compassMatchSummary("park", matches.length)).toBe("2 tools match “park”");
+    expect(compassMatchSummary("parking", 1)).toBe("1 tool matches “parking”");
+  });
+
+  it("states no count when nothing matches", () => {
+    const matches = compassToolMatches([item("search")]);
+    expect(matches).toHaveLength(0);
+    const summary = compassMatchSummary("coffee", matches.length);
+    expect(summary).toBe("No tools match “coffee.”");
+    expect(summary).not.toMatch(/\d/);
   });
 
   it("leads with resident intents and keeps the complete index behind one explicit action", () => {

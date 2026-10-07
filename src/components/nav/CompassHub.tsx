@@ -53,6 +53,8 @@ import {
   scopeTownSlug,
   subscribeScopeChange,
 } from "@/lib/scope";
+import { requestFind } from "@/lib/findBridge";
+import { PRODUCT_NAMES } from "@/lib/product-names";
 import {
   DEFAULT_TOOL_DECK_PIN_IDS,
   TOOL_DECK_GROUP_DEFINITIONS,
@@ -883,26 +885,20 @@ export default function CompassHub() {
       className="space-y-5"
       data-compass-ready={hydrated ? "true" : "false"}
     >
-      {/* Title and search sit directly on Cream — the canvas, not a slab.
-          The border-b is the one boundary the header keeps. */}
+      {/* Title and filter sit directly on Cream — the canvas, not a slab.
+          The border-b is the one boundary the header keeps. The page names
+          what it is in Public Sans; the field filters this index, while the
+          county search stays the one Find overlay. */}
       <header
         className="-mx-4 -mt-4 border-b px-4 pb-4 pt-4 sm:-mx-5 sm:-mt-6 sm:px-5 sm:pt-5 lg:mx-0 lg:mt-0"
         style={{ borderColor: "var(--app-border)" }}
       >
-        <div>
-          <p
-            className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
-            style={{ color: "var(--app-brand-press)" }}
-          >
-            Compass
-          </p>
-          <h1 className="font-editorial mt-1 text-[34px] leading-[0.98] tracking-[-0.03em] sm:text-[38px]">
-            What do you need?
-          </h1>
-        </div>
+        <h1 className="font-sans text-[28px] font-semibold leading-tight tracking-[-0.02em] sm:text-[32px]">
+          {PRODUCT_NAMES.allTools.pageTitle}
+        </h1>
 
         <label className="mt-4 block">
-          <span className="sr-only">Search Radius tools and local guides</span>
+          <span className="sr-only">Filter tools</span>
           <span className="relative block">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
@@ -916,7 +912,7 @@ export default function CompassHub() {
               enterKeyHint="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Try parking, live music, or restrooms…"
+              placeholder="Filter tools, such as parking or restrooms"
               className="min-h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] py-2.5 pl-10 pr-11 text-[15px] font-medium outline-none placeholder:font-normal placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
               style={{
                 borderColor: "var(--app-border)",
@@ -927,7 +923,7 @@ export default function CompassHub() {
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                aria-label="Clear tool search"
+                aria-label="Clear tool filter"
                 className="absolute right-0.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full"
                 style={{ color: "var(--app-ink-3)" }}
               >
@@ -1517,6 +1513,22 @@ function CompassIntentBoard({
   );
 }
 
+/**
+ * The tool-filter result. The count names real tool matches only: the
+ * generic "Search everything" entry matches almost any words, so counting it
+ * made "1 match" out of nothing. When no tool matches there is no count at
+ * all, just a plain sentence. Either way one row hands the words to the
+ * single Find overlay rather than offering competing request cards.
+ */
+export function compassToolMatches<T extends { id: string }>(items: readonly T[]): T[] {
+  return items.filter((item) => item.id !== "search");
+}
+
+export function compassMatchSummary(query: string, count: number): string {
+  if (count === 0) return `No tools match “${query}.”`;
+  return `${count} ${count === 1 ? "tool matches" : "tools match"} “${query}”`;
+}
+
 function ToolSearchResults({
   query,
   items,
@@ -1530,16 +1542,7 @@ function ToolSearchResults({
   onTogglePin: (item: DirectoryItem) => void;
   intentProps: (item: DirectoryItem) => LinkIntentProps;
 }) {
-  const queryHref = `/search?q=${encodeURIComponent(query)}`;
-  const resolvedItems = items.map((item) =>
-    item.id === "search"
-      ? {
-          ...item,
-          href: queryHref,
-          label: `Search Frederick for “${query.length > 28 ? `${query.slice(0, 27)}…` : query}”`,
-        }
-      : item,
-  );
+  const toolMatches = compassToolMatches(items);
 
   return (
     <section aria-labelledby="compass-search-heading" className="space-y-4">
@@ -1550,119 +1553,53 @@ function ToolSearchResults({
           aria-live="polite"
           className="text-[17px] font-semibold tracking-[-0.01em]"
         >
-          {resolvedItems.length} {resolvedItems.length === 1 ? "match" : "matches"} for “{query}”
+          {compassMatchSummary(query, toolMatches.length)}
         </h2>
       </div>
-      {resolvedItems.length > 0 ? (
+      {toolMatches.length > 0 ? (
         <ToolLedger
-          items={resolvedItems}
+          items={toolMatches}
           pinnedIds={pinnedIds}
           onTogglePin={onTogglePin}
           intentProps={intentProps}
           showPinControls
         />
-      ) : (
-        <EmptySearch query={query} />
-      )}
-      <CompassSearchActions
-        query={query}
-        matchedItems={resolvedItems}
-        intentProps={intentProps}
-      />
+      ) : null}
+      <SearchFrederickRow query={query} />
     </section>
   );
 }
 
-function EmptySearch({ query }: { query: string }) {
+/** One row that hands the typed words to the single Find overlay. */
+function SearchFrederickRow({ query }: { query: string }) {
+  const shown = query.length > 28 ? `${query.slice(0, 27)}…` : query;
   return (
-    <div
-      className="rounded-[var(--app-radius-md)] border px-4 py-5"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated-solid)",
+    <button
+      type="button"
+      data-compass-find-handoff
+      onClick={() => {
+        haptic("light");
+        requestFind("global", query);
       }}
+      aria-haspopup="dialog"
+      className="tactile-interactive group flex min-h-[56px] w-full items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] px-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+      style={{ borderColor: "var(--app-border)" }}
     >
-      <p className="text-[13px] font-semibold">Nothing here matches “{query}.”</p>
-      <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-        Search Frederick itself or ask Radius in plain language.
-      </p>
-    </div>
-  );
-}
-
-function CompassSearchActions({
-  query,
-  matchedItems,
-  intentProps,
-}: {
-  query: string;
-  matchedItems: DirectoryItem[];
-  intentProps: (item: DirectoryItem) => LinkIntentProps;
-}) {
-  const searchItem: DirectoryItem = {
-    id: "search-query",
-    href: `/search?q=${encodeURIComponent(query)}`,
-    label: `Search Frederick for “${query.length > 28 ? `${query.slice(0, 27)}…` : query}”`,
-    description: "Search places, events, towns, guides, and tools.",
-    icon: Search,
-    color: "var(--app-brand-press)",
-  };
-  const askItem: DirectoryItem = {
-    ...ASK_RADIUS,
-    id: "ask-query",
-    href: `/ask?q=${encodeURIComponent(query)}`,
-    label: "Ask Radius about this",
-  };
-  const hasSearch = matchedItems.some(
-    (item) => item.id === "search" || item.href.startsWith("/search?"),
-  );
-  const hasAsk = matchedItems.some(
-    (item) => item.id === "ask-radius" || item.href === "/ask",
-  );
-  const alternateItems = [
-    ...(hasSearch ? [] : [searchItem]),
-    ...(hasAsk ? [] : [askItem]),
-  ];
-
-  if (alternateItems.length === 0) return null;
-
-  return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      {alternateItems.map((item) => (
-        <Link
-          key={item.id}
-          href={item.href}
-          prefetch={false}
-          {...externalLinkProps(item)}
-          {...intentProps(item)}
-          className="tactile-interactive group flex min-h-[64px] items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] p-3 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <item.icon
-            className="h-[18px] w-[18px] shrink-0"
-            style={{ color: item.color }}
-            strokeWidth={2.05}
-            aria-hidden
-          />
-          <span className="min-w-0 flex-1">
-            <span className="block text-[13px] font-semibold leading-tight">
-              {item.label}
-            </span>
-            <span
-              className="mt-1 block line-clamp-1 text-[12px]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {item.description}
-            </span>
-          </span>
-          <ArrowRight
-            className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5"
-            strokeWidth={2.2}
-            aria-hidden
-          />
-        </Link>
-      ))}
-    </div>
+      <Search
+        className="h-[18px] w-[18px] shrink-0"
+        style={{ color: "var(--app-brand-press)" }}
+        strokeWidth={2.05}
+        aria-hidden
+      />
+      <span className="min-w-0 flex-1 text-[14px] font-semibold leading-tight">
+        Search Frederick for “{shown}”
+      </span>
+      <ArrowRight
+        className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5"
+        strokeWidth={2.2}
+        aria-hidden
+      />
+    </button>
   );
 }
 

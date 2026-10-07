@@ -1,15 +1,18 @@
 /* The four destinations keep their footprint and behavior; depth makes the
    current destination and available actions easier to recognize. */
+/* The header is opaque: a frosted bar let page text read through its
+   controls while scrolling and during route changes. */
 .bar {
-  background: color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent);
+  background: var(--app-bg-elevated-solid);
   box-shadow: var(--app-hi), 0 5px 18px -13px color-mix(in srgb, var(--app-ink) 32%, transparent);
 }
 .search {
   box-shadow: inset 0 1px 3px color-mix(in srgb, var(--app-ink) 8%, transparent), var(--app-hi);
 }
+/* Tools is one member of the flat header control family (44px, utility
+   corner, 1px rule), so it carries no raised shadow of its own. */
 .tool {
-  box-shadow: var(--app-hi), var(--app-elev-1);
-  transition: box-shadow var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out), transform var(--app-dur-fast) var(--app-ease-out);
+  transition: background-color var(--app-dur-fast) var(--app-ease-out), transform var(--app-dur-fast) var(--app-ease-out);
 }
 .rail,
 .dock {
@@ -42,10 +45,6 @@
   outline-color: var(--app-on-brand);
 }
 @media (hover: hover) {
-  .tool:hover {
-    box-shadow: var(--app-hi), var(--app-shadow-1);
-    transform: translateY(-1px);
-  }
   .destination:not([data-selected="true"]):hover {
     color: var(--app-ink);
     background: var(--app-bg-sunken);
@@ -63,7 +62,6 @@
     transition: none;
     transform: none;
   }
-  .tool:hover,
   .tool:active,
   .destination:active {
     transform: none;

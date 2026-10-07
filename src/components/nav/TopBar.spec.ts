@@ -5,6 +5,7 @@ import {
   shouldShowGlobalLocation,
   shouldShowGlobalMobileSearch,
   showsHeaderBack,
+  showsPhoneWordmark,
   topBarFindTarget,
 } from "./TopBar";
 
@@ -104,10 +105,30 @@ describe("TopBar search ownership", () => {
     expect(topBar).toContain('"Frederick Radius beta, home"');
     expect(topBar).toContain('data-product-status="beta"');
     expect(topBar).toMatch(/data-product-status="beta"[\s\S]*>\s*Beta\s*<\/span>/);
-    expect(topBar).toContain(
-      'className="hidden whitespace-nowrap leading-none sm:block"',
-    );
+    expect(topBar).toContain('"hidden whitespace-nowrap leading-none sm:block"');
     expect(topBar).not.toContain('href="/beta"');
+  });
+
+  it.each(["/today", "/compass", "/search", "/ask"])(
+    "shows the full Caslon wordmark from 375px on %s, which owns its search and scope",
+    (pathname) => {
+      expect(showsPhoneWordmark(pathname)).toBe(true);
+    },
+  );
+
+  it.each(["/map", "/events", "/places/gravel-and-grind", "/pulse"])(
+    "keeps the bare mark on phones on %s",
+    (pathname) => {
+      expect(showsPhoneWordmark(pathname)).toBe(false);
+    },
+  );
+
+  it("sets that wordmark at 18px beside the 30px Ripple", () => {
+    const topBar = readFileSync("src/components/nav/TopBar.tsx", "utf8");
+
+    expect(topBar).toContain('"hidden whitespace-nowrap leading-none min-[375px]:block"');
+    expect(topBar).toContain("font-brand text-[18px]");
+    expect(topBar).toContain('size={pathname === "/map" || phoneWordmark ? 30 : 34}');
   });
 
   it("keeps the full search workspace out of the persistent shell until it opens", () => {
@@ -121,6 +142,72 @@ describe("TopBar search ownership", () => {
     );
     expect(topBar).toContain("{searchOpen ? (");
     expect(topBar).toContain("openerRef={searchOpenerRef}");
+  });
+});
+
+describe("TopBar control family", () => {
+  const topBar = readFileSync("src/components/nav/TopBar.tsx", "utf8");
+  const header = topBar.slice(topBar.indexOf("<header"), topBar.indexOf("</header>"));
+
+  it("draws the header opaque, with no frosted blur", () => {
+    const chrome = readFileSync("src/components/nav/NavChrome.module.css", "utf8");
+    const start = chrome.indexOf(".bar {");
+    const bar = chrome.slice(start, chrome.indexOf("}", start));
+
+    expect(header).toContain("data-app-topbar");
+    expect(header).not.toContain("backdrop-blur");
+    expect(bar).toContain("background: var(--app-bg-elevated-solid);");
+    expect(bar).not.toMatch(/background:[^;]*transparent/);
+  });
+
+  it("keeps every header control 44px tall with a utility corner; only the scope chip is a capsule", () => {
+    // Back, mobile search, desktop search and Tools. County status lives in
+    // PulseIndicator and the capsule scope chip in LocationChip.
+    expect(header).not.toContain("rounded-full");
+    expect(header).not.toMatch(/\bh-9\b/);
+    expect(header).toContain('aria-label="Back"');
+    expect(header.match(/rounded-\[var\(--app-radius-(?:sm|md)\)\] border/g)?.length).toBeGreaterThanOrEqual(4);
+    const pulse = readFileSync("src/components/nav/PulseIndicator.tsx", "utf8");
+    expect(pulse).toContain("h-11 min-w-11");
+    expect(pulse).toContain("rounded-[var(--app-radius-sm)] border");
+  });
+
+  it("does not let the map strip borders from the header controls", () => {
+    const css = readFileSync("src/app/globals.css", "utf8");
+    const mapHeaderRules = css
+      .split("}")
+      .filter((rule) => rule.includes('header[data-map-header="true"]'))
+      .join("}");
+
+    expect(mapHeaderRules).not.toMatch(/border:\s*0/);
+    expect(mapHeaderRules).not.toMatch(/border-color:\s*transparent/);
+    expect(mapHeaderRules).not.toMatch(/background:\s*transparent/);
+    expect(mapHeaderRules).not.toContain("backdrop-filter");
+  });
+});
+
+describe("Persistent chrome during route transitions", () => {
+  const css = readFileSync("src/app/globals.css", "utf8");
+  const ruleFor = (selector: string) => {
+    const start = css.indexOf(`${selector},`) >= 0 ? css.indexOf(`${selector},`) : css.indexOf(`${selector} {`);
+    return start < 0 ? "" : css.slice(start, css.indexOf("}", start));
+  };
+
+  it.each([
+    ["[data-app-topbar]", "app-header"],
+    ["[data-bottom-nav-shell]", "app-nav"],
+    ["[data-app-action-bar]", "app-action-bar"],
+  ])("gives %s its own snapshot so page text never paints over it", (selector, name) => {
+    expect(css).toContain(`${selector} {\n  view-transition-name: ${name};\n}`);
+    expect(ruleFor(`::view-transition-group(${name})`)).toMatch(/z-index: 1;[\s\S]*animation: none;/);
+    expect(ruleFor(`::view-transition-old(${name})`)).toContain("opacity: 0;");
+    expect(ruleFor(`::view-transition-new(${name})`)).toContain("animation: none;");
+  });
+
+  it("names the elements those rules target", () => {
+    expect(readFileSync("src/components/nav/TopBar.tsx", "utf8")).toContain("data-app-topbar");
+    expect(readFileSync("src/components/nav/BottomNav.tsx", "utf8")).toContain("data-bottom-nav-shell");
+    expect(readFileSync("src/components/ui/MobileActionBar.tsx", "utf8")).toContain("data-app-action-bar");
   });
 });
 

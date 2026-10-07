@@ -18,6 +18,7 @@ import AppTransitionLink from "./AppTransitionLink";
 import { usePathname, useRouter } from "next/navigation";
 import { backFallbackForPath, isDetailPath, tabIndexForPath } from "./tabs";
 import {
+  consumeFindQuery,
   consumeFindRequest,
   requestFind,
   type FindTarget,
@@ -52,6 +53,16 @@ export function shouldShowGlobalLocation(pathname: string): boolean {
 
 export function topBarFindTarget(pathname: string): FindTarget {
   return pathname === "/map" ? "map" : "global";
+}
+
+/**
+ * Routes whose page owns both search and scope leave the header with only
+ * the lockup, County status and Tools, so the full Caslon wordmark fits from
+ * 375px instead of waiting for the 640px breakpoint. The map keeps its
+ * compact location control in the header and therefore keeps the bare mark.
+ */
+export function showsPhoneWordmark(pathname: string): boolean {
+  return pageOwnsPrimarySearch(pathname) && pathname !== "/map";
 }
 
 /**
@@ -170,6 +181,7 @@ export default function TopBar() {
   // center treatment, but mobile still keeps one permanent global search
   // action so the app's primary utility never moves between screens.
   const pageOwnsSearch = pageOwnsPrimarySearch(pathname);
+  const phoneWordmark = showsPhoneWordmark(pathname);
   const showMobileSearch = shouldShowGlobalMobileSearch(pathname);
   const findTarget = topBarFindTarget(pathname);
   const openPrimaryFind = useCallback((
@@ -219,10 +231,13 @@ export default function TopBar() {
   }, [router]);
 
   // Compass and other in-page launchers can open the one global search
-  // without mounting a second search implementation.
+  // without mounting a second search implementation. A launcher that already
+  // holds the person's words hands them over, so Find opens on that query.
   useEffect(() => {
     const open = () => {
       consumeFindRequest("global");
+      const handed = consumeFindQuery();
+      if (handed) rememberSearchDraft(handed);
       searchReturnScrollYRef.current = window.scrollY;
       searchOpenerRef.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -236,7 +251,7 @@ export default function TopBar() {
     window.addEventListener("fr:open-search", open);
     if (consumeFindRequest("global")) window.requestAnimationFrame(open);
     return () => window.removeEventListener("fr:open-search", open);
-  }, [pathname, restoreSearchDraft, searchOpen]);
+  }, [pathname, rememberSearchDraft, restoreSearchDraft, searchOpen]);
 
   // Search belongs to the route that opened it. The persistent app layout must
   // not let a still-loading overlay appear over a different destination after
@@ -276,9 +291,14 @@ export default function TopBar() {
 
   return (
     <>
+      {/* Opaque, not frosted: page text scrolling under a translucent bar
+          read through the controls. data-app-topbar names the bar for its
+          own view transition (globals.css), so a tab change never paints
+          the next page's text over it. */}
       <header
+        data-app-topbar
         data-map-header={pathname === "/map" ? "true" : undefined}
-        className={`${styles.bar} sticky top-0 border-b border-[var(--app-border)] backdrop-blur-xl pt-[env(safe-area-inset-top)]`}
+        className={`${styles.bar} sticky top-0 border-b border-[var(--app-border)] pt-[env(safe-area-inset-top)]`}
         style={{
           // Tokenized z-index — see globals.css :root --z-* scale.
           zIndex: "var(--z-sticky)",
@@ -297,12 +317,14 @@ export default function TopBar() {
         >
           {isDeepPage ? (
             // Deep page: a clear way back, so no screen is a dead-end.
+            // One header control family: 44px tall, a utility corner, and a
+            // 1px rule. Only the location scope stays a capsule.
             <button
               type="button"
               onClick={goBack}
               aria-label="Back"
-              className="-ml-1.5 inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full px-1 font-semibold tracking-tight transition active:scale-[0.96] min-[390px]:justify-start min-[390px]:pl-1 min-[390px]:pr-2.5"
-              style={{ color: "var(--app-ink)" }}
+              className="inline-flex h-11 min-w-11 items-center justify-center gap-0.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-1 font-semibold tracking-tight transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.96] min-[390px]:justify-start min-[390px]:pl-0.5 min-[390px]:pr-2"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
             >
               <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
               <span className="hidden text-[15px] min-[390px]:inline">Back</span>
@@ -320,12 +342,15 @@ export default function TopBar() {
               {/* Canonical horizontal lockup: the 24px+ two-arc Ripple beside
                   a one-line Libre Caslon wordmark. The app-icon tile belongs
                   on home screens and avatars, not inside the product header. */}
-              <RippleMark size={pathname === "/map" ? 30 : 34} className="shrink-0" />
+              <RippleMark size={pathname === "/map" || phoneWordmark ? 30 : 34} className="shrink-0" />
               {/* The wordmark yields on the narrowest phones so functional
                   controls retain a full touch target. The mark still carries
-                  the brand there; the complete lockup returns at sm. */}
+                  the brand there; the complete lockup returns at sm, or at
+                  375px on routes whose page owns search and scope. */}
               <span
-                className="hidden whitespace-nowrap leading-none sm:block"
+                className={phoneWordmark
+                  ? "hidden whitespace-nowrap leading-none min-[375px]:block"
+                  : "hidden whitespace-nowrap leading-none sm:block"}
                 style={{ color: "var(--app-ink)" }}
               >
                 Frederick Radius
@@ -350,7 +375,7 @@ export default function TopBar() {
             </AppTransitionLink>
           )}
 
-          {/* Search trigger — full-width input-styled pill so the
+          {/* Search trigger — a full-width 44px input-styled field so the
               header reads as "find anything" instead of three tiny
               icons competing for attention. Fills the space between
               the logo and the right-side chips, Apple-Maps style.
@@ -392,7 +417,7 @@ export default function TopBar() {
                   openPrimaryFind(event.currentTarget, returnScrollY);
                 }}
                 aria-label="Ask or find across Frederick County"
-                className={`${styles.search} tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] disabled:cursor-wait disabled:opacity-60 lg:flex`}
+                className={`${styles.search} ml-1 hidden h-11 min-w-0 flex-1 items-center gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] disabled:cursor-wait disabled:opacity-60 lg:flex`}
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
               >
                 <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
@@ -424,7 +449,9 @@ export default function TopBar() {
                 pointerScrollYRef.current = null;
                 openPrimaryFind(event.currentTarget, returnScrollY);
               }}
-              className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 disabled:cursor-wait disabled:opacity-60 lg:hidden"
+              // A 44px rounded square, the same family as County status and
+              // Tools beside it. The scope chip is the header's only capsule.
+              className="relative grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 disabled:cursor-wait disabled:opacity-60 lg:hidden"
               style={{
                 borderColor: searchOpen ? "var(--app-brand)" : "var(--app-border)",
                 color: searchOpen ? "var(--app-brand-press)" : "var(--app-ink-2)",

@@ -19,6 +19,11 @@ import {
   trackDecision,
 } from "@/lib/decision/telemetry";
 import { toast } from "sonner";
+import {
+  barCellClass,
+  barCellStyle,
+  barLabelClass,
+} from "@/components/ui/MobileActionBar";
 
 export default function SaveButton({
   refType,
@@ -110,12 +115,12 @@ export default function SaveButton({
         aria-hidden
         tabIndex={-1}
         className={barLabel
-          ? "tap-44 flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[11px] font-semibold leading-none"
+          ? barCellClass(false)
           : "tap-44 grid h-9 w-9 place-items-center rounded-full"}
-        style={{ color: "var(--app-ink-3)" }}
+        style={barLabel ? { ...barCellStyle(false), color: "var(--app-ink-3)" } : { color: "var(--app-ink-3)" }}
       >
         <Bookmark className="h-4 w-4" strokeWidth={1.75} />
-        {barLabel ? <span>{barLabel}</span> : null}
+        {barLabel ? <span className={barLabelClass(false)}>{barLabel}</span> : null}
       </button>
     );
   }
@@ -195,9 +200,10 @@ export default function SaveButton({
       }
       title={renderedSaved ? "Saved" : "Save"}
       className={barLabel
-        ? "tap-44 relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[11px] font-semibold leading-none transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
+        ? `relative ${barCellClass(false)}`
         : "tap-44 relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92]"}
       style={{
+        ...(barLabel ? barCellStyle(false) : null),
         color: renderedSaved ? "var(--app-cool)" : "var(--app-ink-3)",
         transitionTimingFunction: "var(--app-ease-spring)",
       }}
@@ -210,7 +216,7 @@ export default function SaveButton({
         fill={renderedSaved ? "currentColor" : "none"}
         style={{ transitionTimingFunction: "var(--app-ease-spring)" }}
       />
-      {barLabel ? <span>{renderedSaved ? "Saved" : barLabel}</span> : null}
+      {barLabel ? <span className={barLabelClass(false)}>{renderedSaved ? "Saved" : barLabel}</span> : null}
       {celebrate && (
         <span
           aria-hidden

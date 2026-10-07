@@ -323,7 +323,7 @@ for (const viewport of VIEWPORTS) {
         compass.getByRole("heading", { name: "Choose a direction" }),
       ).toBeVisible();
       await expect(
-        compass.getByRole("searchbox", { name: "Search Radius tools and local guides" }),
+        compass.getByRole("searchbox", { name: "Filter tools" }),
       ).toBeVisible();
 
       await visualContract({
