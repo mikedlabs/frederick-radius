@@ -56,17 +56,25 @@ describe("resolveFeatured", () => {
 
 describe("featuredEventSlugs", () => {
   it("reads the current editorial features and retires them after the festival", () => {
-    expect(
-      [...featuredEventSlugs(new Date("2026-08-13T12:00:00-04:00"))].sort(),
-    ).toEqual([
+    const snallyfest = (now: Date) =>
+      [...featuredEventSlugs(now)].filter((slug) => slug.startsWith("snallyfest")).sort();
+    expect(snallyfest(new Date("2026-08-13T12:00:00-04:00"))).toEqual([
       "snallyfest-2026-festival-day",
       "snallyfest-2026-kickoff",
     ]);
+    expect(snallyfest(new Date("2026-08-16T01:00:00-04:00"))).toEqual([
+      "snallyfest-2026-festival-day",
+    ]);
+    expect(snallyfest(new Date("2026-08-16T01:31:00-04:00"))).toEqual([]);
+  });
+
+  it("features Catoctin Colorfest through its Sunday and retires it after", () => {
     expect(
-      [...featuredEventSlugs(new Date("2026-08-16T01:00:00-04:00"))],
-    ).toEqual(["snallyfest-2026-festival-day"]);
+      featuredEventSlugs(new Date("2026-10-07T09:00:00-04:00")).has("catoctin-colorfest-thurmont-2026"),
+    ).toBe(true);
     expect(
-      featuredEventSlugs(new Date("2026-08-16T01:31:00-04:00")).size,
-    ).toBe(0);
+      featuredEventSlugs(new Date("2026-10-11T16:00:00-04:00")).has("catoctin-colorfest-thurmont-2026"),
+    ).toBe(true);
+    expect(featuredEventSlugs(new Date("2026-10-12T09:00:00-04:00")).size).toBe(0);
   });
 });
