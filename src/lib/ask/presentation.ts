@@ -193,18 +193,19 @@ export function withAskResponsePresentation(
 }
 
 export type AskResponseSection =
-  | "summary"
+  | "supplement"
   | "context-controls"
   | "plan"
+  | "results"
   | "primary-action"
-  | "primary-source"
-  | "supporting-sources"
-  | "secondary-actions"
-  | "detail";
+  | "secondary-actions";
 
 /**
- * DOM order, not visual CSS order. This makes the hierarchy testable and
- * keeps assistive technology in the same decision-first sequence.
+ * DOM order, not visual CSS order, for everything under the answer heading.
+ * The heading itself is always the summary sentence, so the answer comes
+ * first on every layout. The supplement (the rest of the grounded prose and
+ * any caveat, such as unconfirmed hours or unmeasured noise) sits directly
+ * under it, and the ranked results are one flat list with its map.
  */
 export function askResponseSectionOrder(
   presentation: Pick<AskResponsePresentation, "layout">,
@@ -212,55 +213,40 @@ export function askResponseSectionOrder(
   switch (presentation.layout) {
     case "plan":
       return [
-        "summary",
+        "supplement",
         "context-controls",
         "plan",
         "primary-action",
-        "primary-source",
-        "supporting-sources",
+        "results",
         "secondary-actions",
-        "detail",
-      ];
-    case "place":
-      return [
-        "primary-source",
-        "summary",
-        "context-controls",
-        "supporting-sources",
-        "primary-action",
-        "secondary-actions",
-        "detail",
       ];
     case "civic":
       return [
-        "summary",
+        "supplement",
         "primary-action",
-        "primary-source",
-        "supporting-sources",
+        "results",
         "secondary-actions",
-        "detail",
       ];
     case "recovery":
-      // A recovery answer still owes the reader its reason, the records it
-      // names ("These places have contact details..."), and every way
-      // forward. Hiding them left plan recoveries pointing at nothing.
+      // A recovery answer still owes the reader its reason (the supplement),
+      // the records it names ("These places have contact details..."), and
+      // every way forward. Hiding them left plan recoveries pointing at
+      // nothing.
       return [
-        "summary",
-        "detail",
+        "supplement",
         "primary-action",
-        "primary-source",
-        "supporting-sources",
+        "results",
         "secondary-actions",
       ];
     default:
+      // Place and standard answers: the ranked list is the decision, and the
+      // one primary action follows it.
       return [
-        "summary",
+        "supplement",
         "context-controls",
-        "primary-source",
+        "results",
         "primary-action",
-        "supporting-sources",
         "secondary-actions",
-        "detail",
       ];
   }
 }

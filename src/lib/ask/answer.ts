@@ -2072,6 +2072,100 @@ const NON_SEATED_MEAL_TYPES = new Set([
 ]);
 
 /**
+ * The one catalog category a craving names outright. "Coffee" means a coffee
+ * shop; an ice-cream and soda shop that also pours coffee can be an honest
+ * alternative, but it must not rank ahead of a coffee shop (the North Market
+ * Pop Shop over Gravel & Grind miss). Meals, cuisines, and broad cravings
+ * such as "drinks" span several categories on purpose and are not listed.
+ */
+const EXPLICIT_WANT_CATEGORY: Readonly<Record<string, string>> = {
+  coffee: "coffee",
+  "ice-cream": "ice-cream",
+  "cat:bakery": "bakery",
+  breweries: "brewery",
+  wineries: "winery",
+};
+
+export function explicitWantCategory(wantKey: string): string | null {
+  return EXPLICIT_WANT_CATEGORY[wantKey] ?? null;
+}
+
+/** The reviewed discovery role the want matcher reads, else the raw category. */
+function wantCategoryOf(place: PlaceCardData): string {
+  return (place as PlaceCardData & { want_match_category?: string }).want_match_category ||
+    place.category;
+}
+
+/**
+ * Keep an explicitly named category first. Rows from another category keep
+ * their relative order behind every on-category row, so a slice of the list
+ * drops them before it drops a real match.
+ */
+export function categoryFirstRows<T extends { slug: string }>(
+  rows: readonly T[],
+  category: string | null,
+  categoryOf: (slug: string) => string | null = (slug) => {
+    const place = clientPlaceBySlug(slug);
+    return place ? wantCategoryOf(place) : null;
+  },
+): { rows: T[]; alternatives: Set<string> } {
+  if (!category) return { rows: [...rows], alternatives: new Set() };
+  const alternatives = new Set(
+    rows
+      .filter((row) => {
+        const rowCategory = categoryOf(row.slug);
+        return rowCategory != null && rowCategory !== category;
+      })
+      .map((row) => row.slug),
+  );
+  return {
+    rows: [
+      ...rows.filter((row) => !alternatives.has(row.slug)),
+      ...rows.filter((row) => alternatives.has(row.slug)),
+    ],
+    alternatives,
+  };
+}
+
+/** Countable nouns for the "See all N ..." action. A bare category label
+ * ("See all 12 coffee") is not a sentence anyone would say. */
+const WANT_BROWSE_NOUNS: Readonly<Record<string, string>> = {
+  coffee: "coffee shops",
+  "ice cream": "ice cream shops",
+  "ice cream & treats": "ice cream shops",
+  food: "places to eat",
+  drinks: "places for drinks",
+  breakfast: "breakfast spots",
+  brunch: "brunch spots",
+  lunch: "lunch spots",
+  dinner: "dinner spots",
+  "late night": "late-night spots",
+  pizza: "pizza places",
+  golf: "golf courses",
+  grocery: "grocery stores",
+  "live music": "live music venues",
+  movies: "movie theaters",
+  stay: "places to stay",
+  art: "art spaces",
+  "wine & liquor": "wine and liquor stores",
+  "farms & pyo": "farms",
+  "farms & pick-your-own": "farms",
+};
+
+export function askBrowseNoun(label: string, cuisine: string | null = null): string {
+  const lower = label.trim().toLowerCase();
+  if (cuisine) {
+    return `${cuisineLabel(cuisine)} places${lower && lower !== "food" ? ` for ${lower}` : ""}`;
+  }
+  const mapped = WANT_BROWSE_NOUNS[lower];
+  if (mapped) return mapped;
+  // Plural catalog labels already count ("breweries", "parks", "salons &
+  // barbers"); anything else ("wellness", "family fun") gets an honest
+  // container noun.
+  return /[^s]s$/.test(lower) ? lower : `places for ${lower}`;
+}
+
+/**
  * The Tier 2 planner's grounding: a meal/cuisine/craving question routed
  * through the SAME machinery the /today "I want…" strip runs (buildWantAnswer),
  * so "good breakfast spot downtown" gets the guide's ranked, live-open-state
@@ -2086,7 +2180,7 @@ async function wantContextBlock(
   dietary: AskIntent["dietary"] = [],
   availabilityLabel?: string,
   fit: AskFitContext = {},
-): Promise<{ block: string; picks: WantRow[]; label: string; total: number; browseHref: string; what: string } | null> {
+): Promise<{ block: string; picks: WantRow[]; label: string; total: number; browseHref: string; what: string; noun: string; alternatives: Set<string> } | null> {
   const queryTown = intent.area?.kind === "town" ? MUNICIPALITY_BY_SLUG[intent.area.slug] : null;
   const scopedTown = context.municipality
     ? MUNICIPALITY_BY_SLUG[context.municipality]
@@ -2194,6 +2288,7 @@ async function wantContextBlock(
   const what = intent.cuisine
     ? `${cuisineLabel(intent.cuisine)}${wa.label !== "Food" ? ` for ${wa.label.toLowerCase()}` : ""}`
     : wa.label;
+  const noun = askBrowseNoun(wa.label, intent.cuisine);
   // Zero matches is itself an answer — say it so the model can be plainly
   // honest ("the guide has no Thai in Brunswick") instead of hedging.
   if (wa.total === 0) {
@@ -2204,20 +2299,29 @@ async function wantContextBlock(
       total: 0,
       browseHref: wa.browseHref,
       what,
+      noun,
+      alternatives: new Set(),
     };
   }
+  const explicitCategory = intent.cuisine ? null : explicitWantCategory(intent.key);
 
   const line = (r: WantRow) => {
     const place = clientPlaceBySlug(r.slug);
     const accessNote = place ? askFitAccessNote(place, fit) : null;
-    return `- ${r.name}${r.where ? ` (${r.where})` : ""}: ${r.fact}${r.distance ? `; ${r.distance}` : ""}${r.detail ? `; ${r.detail}` : ""}${r.deal ? `; ${r.deal}` : ""}${r.why?.length ? `; WHY IT RANKED: ${r.why.slice(0, 2).join(" ")}` : ""}${r.tip ? `; LOCAL NOTE: ${r.tip}` : ""}${accessNote ? `; ACCESS: ${accessNote}` : ""}`;
+    const alternative = explicitCategory && place && wantCategoryOf(place) !== explicitCategory
+      ? `; ALTERNATIVE, NOT A ${categoryName(explicitCategory).toUpperCase()} LISTING: listed as ${categoryName(place.category)}`
+      : "";
+    return `- ${r.name}${r.where ? ` (${r.where})` : ""}: ${r.fact}${r.distance ? `; ${r.distance}` : ""}${r.detail ? `; ${r.detail}` : ""}${r.deal ? `; ${r.deal}` : ""}${r.why?.length ? `; WHY IT RANKED: ${r.why.slice(0, 2).join(" ")}` : ""}${r.tip ? `; LOCAL NOTE: ${r.tip}` : ""}${accessNote ? `; ACCESS: ${accessNote}` : ""}${alternative}`;
   };
-  const open = [wa.hero, ...wa.also]
-    .filter((r): r is WantRow => r != null)
-    .slice(0, 5);
+  const open = categoryFirstRows(
+    [wa.hero, ...wa.also].filter((r): r is WantRow => r != null),
+    explicitCategory,
+  ).rows.slice(0, 5);
   const likelyOpen = open[0]?.confidence === "likely";
-  const later = wa.later.slice(0, 3);
-  const notable = open.length === 0 && later.length === 0 ? wa.notable.slice(0, 4) : [];
+  const later = categoryFirstRows(wa.later, explicitCategory).rows.slice(0, 3);
+  const notable = open.length === 0 && later.length === 0
+    ? categoryFirstRows(wa.notable, explicitCategory).rows.slice(0, 4)
+    : [];
   const parts: string[] = [];
   if (open.length > 0) {
     parts.push(
@@ -2235,7 +2339,10 @@ async function wantContextBlock(
   if (availabilityLabel && open.length === 0) {
     parts.push(`No match has verified hours showing it open around ${availabilityLabel}.`);
   }
+  // Each lane already leads with the named category. Lanes keep their order
+  // so an open-now ask still puts open places ahead of ones that open later.
   const picks = availabilityLabel ? open : [...open, ...later, ...notable];
+  const { alternatives } = categoryFirstRows(picks, explicitCategory);
   // Completeness: tell the model the TOTAL so it never implies the few it names
   // are all there is, and hand back the browse URL so the caller can add a
   // "See all N nearby" action (owner: Ask "isn't finding everything within my
@@ -2251,6 +2358,40 @@ async function wantContextBlock(
     total: wa.total,
     browseHref: wa.browseHref,
     what,
+    noun,
+    alternatives,
+  };
+}
+
+/** A map point only for an event whose venue geocode is precise. Plotting an
+ * area-level venue would draw a false picture (docs/VISUAL_FIRST.md). */
+function eventSourceGeom(
+  event: Parameters<typeof eventHasCredibleLocation>[0],
+): AskSource["geom"] {
+  return eventHasCredibleLocation(event)
+    ? { lng: event.geom.lng, lat: event.geom.lat }
+    : undefined;
+}
+
+/**
+ * Give every catalog place a map point, whichever answer path built it (the
+ * want block, search, the amenity and brunch grounders, or the tool agent).
+ * Ask draws these as numbered pins that match its ranked list.
+ */
+export function withAskSourcePoints(result: AskResult): AskResult {
+  if (!result.sources.some((source) => !source.geom && source.href.startsWith("/places/"))) {
+    return result;
+  }
+  return {
+    ...result,
+    sources: result.sources.map((source) => {
+      if (source.geom || !source.href.startsWith("/places/")) return source;
+      const slug = source.href.slice("/places/".length).split(/[?#]/)[0];
+      const geom = clientPlaceBySlug(slug)?.geom;
+      return geom && Number.isFinite(geom.lng) && Number.isFinite(geom.lat)
+        ? { ...source, geom: { lng: geom.lng, lat: geom.lat } }
+        : source;
+    }),
   };
 }
 
@@ -2258,6 +2399,14 @@ export async function askFrederick(
   query: string,
   context: QualifiedSearchContext = {},
   options: { taste?: AskTasteSignals | unknown; fit?: AskFitContext | unknown } = {},
+): Promise<AskResult> {
+  return withAskSourcePoints(await answerAskQuestion(query, context, options));
+}
+
+async function answerAskQuestion(
+  query: string,
+  context: QualifiedSearchContext,
+  options: { taste?: AskTasteSignals | unknown; fit?: AskFitContext | unknown },
 ): Promise<AskResult> {
   const now = new Date();
   const q = (query || "").trim();
@@ -2889,8 +3038,8 @@ export async function askFrederick(
   if (want && want.total > (want.picks?.length ?? 0) && want.browseHref) {
     actions.unshift({
       label: preciseNearMe
-        ? `Browse nearby ${want.what.toLowerCase()}`
-        : `See all ${want.total} ${want.what.toLowerCase()}`,
+        ? `Browse nearby ${want.noun}`
+        : `See all ${want.total} ${want.noun}`,
       kind: "open",
       href: want.browseHref,
     });
@@ -2921,6 +3070,11 @@ export async function askFrederick(
           ),
         );
       if (requestedVisitLabel) source.status = `At ${requestedVisitLabel} · ${r.fact}`;
+      // A row from another category stays only as a labeled alternative,
+      // after every real match for the category the person named.
+      if (want!.alternatives.has(r.slug)) {
+        source.eyebrow = `Alternative · ${categoryName(place.category)}`;
+      }
       sources.push(source);
     }
   }
@@ -2957,6 +3111,7 @@ export async function askFrederick(
           ? formatDistance(haversineMeters(context.origin, e.geom))
           : undefined,
         confidence: "high",
+        geom: eventSourceGeom(e),
       });
       eventCitationPool = ctx.picked.map(toAskEventSource);
       for (const e of rankForSources(ctx.picked, q).slice(0, answerSourceLimit)) {
@@ -3191,6 +3346,7 @@ export async function askFrederick(
             : undefined,
           confidence: "high",
           photo_url: e.hero_image,
+          geom: eventSourceGeom(e),
         });
       }
     }

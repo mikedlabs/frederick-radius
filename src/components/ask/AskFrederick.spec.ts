@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ASK_CLIENT_DEADLINE_MS,
+  askAnswerSupplement,
   askAreaChipLabel,
   askAreaNeedsChoice,
   askCorrectionResultRef,
@@ -12,6 +13,8 @@ import {
   askFailureForAbortReason,
   askQuestionPath,
   askResultHeading,
+  askResultListLimit,
+  askResultPins,
   askVisibleRecommendationSummary,
   canDisplayAskSourcePhoto,
   explicitAreaInQuery,
@@ -273,6 +276,88 @@ describe("Ask Radius nearby context", () => {
     expect(askResultHeading(empty, null)).toBe(
       "Radius could not find a solid match.",
     );
+    // A failed request's message is not a grounded answer, so it never
+    // becomes the heading even when one is present.
+    expect(
+      askResultHeading(empty, "network", "Radius could not reach the answer service."),
+    ).toBe("Radius could not complete that request.");
+  });
+
+  it("makes the server's summary sentence the heading instead of the intent label", () => {
+    const coffee = {
+      status: "matches" as const,
+      intent: { label: "Coffee" } as never,
+    };
+    // The old heading was the intent label ("Coffee"): what was asked, not
+    // what Radius found.
+    expect(
+      askResultHeading(coffee, null, "Ibiza Cafe in Frederick is the best match for coffee."),
+    ).toBe("Ibiza Cafe in Frederick is the best match for coffee.");
+    expect(askResultHeading(coffee, null, "   ")).toBe("Here is what Radius found.");
+    expect(
+      askResultHeading(
+        { status: "empty", intent: undefined },
+        null,
+        "I couldn’t find a reliable match in Radius yet.",
+      ),
+    ).toBe("I couldn’t find a reliable match in Radius yet.");
+  });
+
+  it("puts the caveats directly under the answer as one paragraph", () => {
+    expect(
+      askAnswerSupplement({
+        failure: false,
+        answer: "ignored",
+        detail:
+          "Frederick Coffee Company is another option near downtown. Radius does not have verified noise-level data for these places, so I can’t confirm that they will be quiet.",
+        hoursLimitation:
+          "Radius has not confirmed that this place is open now. Check before you go.",
+      }),
+    ).toBe(
+      "Frederick Coffee Company is another option near downtown. Radius does not have verified noise-level data for these places, so I can’t confirm that they will be quiet. Radius has not confirmed that this place is open now. Check before you go.",
+    );
+    // The hours caveat is said once even if the prose already carries it.
+    expect(
+      askAnswerSupplement({
+        failure: false,
+        answer: null,
+        detail: "Radius has not confirmed that this place is open now. Check before you go.",
+        hoursLimitation:
+          "Radius has not confirmed that this place is open now. Check before you go.",
+      }),
+    ).toBe("Radius has not confirmed that this place is open now. Check before you go.");
+    expect(
+      askAnswerSupplement({ failure: false, answer: "One.", detail: null, hoursLimitation: null }),
+    ).toBeNull();
+    expect(
+      askAnswerSupplement({
+        failure: true,
+        answer: "Radius could not answer just now. Try again in a minute.",
+        detail: null,
+        hoursLimitation: null,
+      }),
+    ).toBe("Radius could not answer just now. Try again in a minute.");
+  });
+
+  it("shows three places or six other results before Show more", () => {
+    expect(askResultListLimit("place")).toBe(3);
+    expect(askResultListLimit("standard")).toBe(6);
+    expect(askResultListLimit("civic")).toBe(6);
+    expect(askResultListLimit("recovery")).toBe(6);
+  });
+
+  it("numbers map pins by list position and skips rows without a precise point", () => {
+    expect(
+      askResultPins([
+        { name: "Ibiza Cafe", geom: { lng: -77.4109, lat: 39.419 } },
+        { name: "County voter registration" },
+        { name: "Gravel & Grind", geom: { lng: -77.4092, lat: 39.4217 } },
+        { name: "Broken point", geom: { lng: Number.NaN, lat: 39.4 } },
+      ]),
+    ).toEqual([
+      { lng: -77.4109, lat: 39.419, label: "1", name: "Ibiza Cafe" },
+      { lng: -77.4092, lat: 39.4217, label: "3", name: "Gravel & Grind" },
+    ]);
   });
 
   it("hides a detail line when it only repeats the reason", () => {

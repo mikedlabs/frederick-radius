@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   ArrowRight,
   Check,
-  ChevronDown,
   Clock3,
   ExternalLink,
   LocateFixed,
@@ -50,6 +49,8 @@ import type {
   AskResult,
   AskSource,
 } from "@/lib/ask/answer";
+import type { AskResponsePresentation } from "@/lib/ask/contracts";
+import OwnedMiniMap, { type OwnedMiniMapPin } from "@/components/map/OwnedMiniMap";
 import { daypart } from "@/lib/daypart";
 import { haptic } from "@/lib/haptics";
 import { prefersReducedMotion } from "@/lib/motion";
@@ -496,13 +497,80 @@ export function askCorrectionResultRef(
   return `/${target.type === "place" ? "places" : "events"}/${target.id}`;
 }
 
+/**
+ * The answer heading is the answer: the server's own summary sentence. An
+ * intent label such as "Coffee" told the reader what they asked, not what
+ * Radius found. A failed request has no grounded sentence, so it says so.
+ */
 export function askResultHeading(
   result: Pick<AskResult, "intent" | "status">,
   failure: AskRequestFailure | null,
+  summary: string | null = null,
 ): string {
   if (failure) return "Radius could not complete that request.";
+  const sentence = summary?.trim();
+  if (sentence) return sentence;
   if (result.status === "empty") return "Radius could not find a solid match.";
-  return result.intent?.label ?? "Radius answer";
+  return "Here is what Radius found.";
+}
+
+/**
+ * The one paragraph under the heading: the rest of the grounded prose and
+ * every caveat that qualifies it (unmeasured noise, unconfirmed hours). It is
+ * said once, next to the answer, instead of in a boxed note above a card or a
+ * "More context" block under the list. A failure's whole message goes here
+ * because its heading is a plain statement of the failure.
+ */
+export function askAnswerSupplement({
+  failure,
+  answer,
+  detail,
+  hoursLimitation,
+}: {
+  failure: boolean;
+  answer: string | null | undefined;
+  detail: string | null | undefined;
+  hoursLimitation: string | null;
+}): string | null {
+  const prose = (failure ? answer : detail)?.trim() ?? "";
+  const caveat =
+    !failure && hoursLimitation && !prose.includes(hoursLimitation)
+      ? hoursLimitation
+      : "";
+  return [prose, caveat].filter(Boolean).join(" ") || null;
+}
+
+/**
+ * Rows shown before "Show N more". A place decision reads best as three
+ * choices; events and other lists can carry six before they turn into a wall.
+ */
+export function askResultListLimit(
+  layout: AskResponsePresentation["layout"],
+): number {
+  return layout === "place" ? 3 : 6;
+}
+
+/**
+ * Numbered pins for the results map. Each pin carries its row's number, so a
+ * row without a precise location simply has no pin; the numbers never shift.
+ */
+export function askResultPins(
+  sources: ReadonlyArray<Pick<AskSource, "geom" | "name">>,
+): OwnedMiniMapPin[] {
+  return sources.flatMap((source, index) =>
+    source.geom &&
+    Number.isFinite(source.geom.lng) &&
+    Number.isFinite(source.geom.lat)
+      ? [
+          {
+            lng: source.geom.lng,
+            lat: source.geom.lat,
+            label: String(index + 1),
+            name: source.name,
+          },
+        ]
+      : [],
+  );
 }
 
 export function askEvidenceLabels(
@@ -636,7 +704,7 @@ function AskSourceMedia({
           src={photoSrc}
           alt=""
           fill
-          sizes="(max-width: 639px) 68px, 104px"
+          sizes="68px"
           unoptimized={photoSrc.startsWith("/api/place-photo")}
           placeholder="blur"
           blurDataURL={PAPER_CREAM_BLUR}
@@ -674,6 +742,10 @@ function AskSourceCard({
       : external
         ? "website"
         : "open";
+  const kicker =
+    source.eyebrow?.trim() ||
+    CATEGORY_BY_SLUG[source.category]?.name ||
+    source.category;
   return (
     <article
       data-ask-source-index={index}
@@ -682,28 +754,37 @@ function AskSourceCard({
       data-decision-entity={decisionEntity}
       data-decision-id={decisionId}
       data-decision-position={decisionPosition}
-      className="overflow-hidden border-y"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "color-mix(in srgb, var(--app-bg-elevated-solid) 62%, transparent)",
-      }}
+      className="pt-3"
     >
-      <div className="grid grid-cols-[92px_minmax(0,1fr)] items-start sm:grid-cols-[104px_minmax(0,1fr)] sm:items-stretch">
+      <div className="grid grid-cols-[68px_minmax(0,1fr)] items-start gap-3">
         <div
           data-ask-source-media
-          className="relative m-3 aspect-square w-[68px] overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] sm:m-0 sm:h-full sm:min-h-[112px] sm:w-auto sm:aspect-auto sm:rounded-none"
+          className="relative aspect-square w-[68px] overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)]"
         >
           <AskSourceMedia source={source} />
+          {/* The same number as this row's pin on the results map. */}
+          <span
+            aria-hidden
+            data-ask-source-rank
+            className="absolute left-1 top-1 grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] font-bold leading-none tabular-nums"
+            style={{
+              background: "var(--app-brand)",
+              color: "var(--app-bg)",
+              boxShadow: "0 0 0 1.5px var(--app-bg)",
+            }}
+          >
+            {index + 1}
+          </span>
         </div>
 
-        <div className="min-w-0 p-3.5">
+        <div className="min-w-0">
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
               <p
-                className="text-[10px] font-bold uppercase tracking-[0.11em]"
-                style={{ color: "var(--app-brand-press)" }}
+                className="text-[11px] font-semibold leading-snug"
+                style={{ color: "var(--app-ink-3)" }}
               >
-                {String(index + 1).padStart(2, "0")} · {source.eyebrow || source.category}
+                {kicker}
               </p>
               <Link
                 href={source.href}
@@ -713,7 +794,7 @@ function AskSourceCard({
                 onClick={() => {
                   if (!external) onInternalOpen?.(index);
                 }}
-                className="mt-1 block font-sans text-[17px] font-semibold leading-tight tracking-tight hover:underline"
+                className="mt-0.5 block font-sans text-[17px] font-semibold leading-tight tracking-tight hover:underline"
                 style={{ color: "var(--app-ink)" }}
               >
                 {source.name}
@@ -746,7 +827,7 @@ function AskSourceCard({
           ) : null}
 
           <div
-            className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px]"
+            className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]"
             style={{ color: "var(--app-ink-3)" }}
           >
             {typeof source.rating === "number" ? (
@@ -775,10 +856,7 @@ function AskSourceCard({
         </div>
       </div>
 
-      <div
-        className="flex min-h-11 items-center gap-1 border-t px-2"
-        style={{ borderColor: "var(--app-border)" }}
-      >
+      <div className="mt-1 flex min-h-11 items-center gap-1 pl-[72px]">
         <Link
           href={source.href}
           data-decision-action={decisionOpenAction}
@@ -788,7 +866,7 @@ function AskSourceCard({
             haptic("light");
             if (!external) onInternalOpen?.(index);
           }}
-          className="tap-44 inline-flex flex-1 items-center justify-center gap-1.5 px-3 text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:opacity-70"
+          className="tap-44 inline-flex min-h-11 items-center gap-1.5 px-2 text-[12px] font-semibold transition hover:underline active:opacity-70"
           style={{ color: "var(--app-brand-press)" }}
         >
           {sourceOpenLabel(source)}
@@ -804,7 +882,7 @@ function AskSourceCard({
             data-decision-action="email"
             onClick={() => haptic("light")}
             aria-label={`Email ${source.name}`}
-            className="tap-44 inline-flex items-center justify-center gap-1.5 px-3 text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:opacity-70"
+            className="tap-44 inline-flex min-h-11 items-center gap-1.5 px-2 text-[12px] font-semibold transition hover:underline active:opacity-70"
             style={{ color: "var(--app-ink-2)" }}
           >
             <Mail className="h-3.5 w-3.5" aria-hidden />
@@ -817,7 +895,7 @@ function AskSourceCard({
             data-decision-action="call"
             onClick={() => haptic("light")}
             aria-label={`Call ${source.name} at ${source.phone}`}
-            className="tap-44 inline-flex items-center justify-center gap-1.5 px-3 text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:opacity-70"
+            className="tap-44 inline-flex min-h-11 items-center gap-1.5 px-2 text-[12px] font-semibold transition hover:underline active:opacity-70"
             style={{ color: "var(--app-ink-2)" }}
           >
             <Phone className="h-3.5 w-3.5" aria-hidden />
@@ -1008,84 +1086,68 @@ function AskPlanCard({
   );
 }
 
-function AskActionList({
-  actions,
-  label,
-  emphasizeFirst = true,
+/** The answer's one primary action: a full-width Brick button on a phone. */
+const ASK_PRIMARY_ACTION_CLASS =
+  "tap-44 mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-sm font-semibold transition active:opacity-80 sm:w-auto";
+const ASK_PRIMARY_ACTION_STYLE = {
+  color: "var(--app-on-brand)",
+  background: "var(--app-brand-press)",
+} as const;
+/** Every other way forward stays a quiet outlined control. */
+const ASK_SECONDARY_ACTION_CLASS =
+  "tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] border px-3.5 text-xs font-semibold transition active:opacity-75";
+const ASK_SECONDARY_ACTION_STYLE = {
+  borderColor: "var(--app-border)",
+  color: "var(--app-ink-2)",
+  background: "var(--app-bg-elevated-solid)",
+} as const;
+
+function AskActionControl({
+  action,
+  primary,
   onRefine,
   onInternalOpen,
 }: {
-  actions: AskAction[];
-  label: string;
-  emphasizeFirst?: boolean;
+  action: AskAction;
+  primary: boolean;
   onRefine: (action: AskAction) => void;
   onInternalOpen: () => void;
 }) {
-  if (actions.length === 0) return null;
-  return (
-    <nav aria-label={label} className="mt-4">
-      <p className="eyebrow mb-2 px-1" style={{ color: "var(--app-ink-3)" }}>
-        {label}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {actions.map((action, index) =>
-          action.href ? (
-            <Link
-              key={`${action.label}-${action.href}`}
-              href={action.href}
-              target={action.href.startsWith("http") ? "_blank" : undefined}
-              rel={action.href.startsWith("http") ? "noopener noreferrer" : undefined}
-              onClick={() => {
-                if (!action.href?.startsWith("http")) onInternalOpen();
-              }}
-              className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] border px-3.5 text-[11.5px] font-semibold transition active:opacity-75"
-              style={
-                emphasizeFirst && index === 0
-                  ? {
-                      borderColor: "var(--app-brand-press)",
-                      color: "var(--app-on-brand)",
-                      background: "var(--app-brand-press)",
-                    }
-                  : {
-                      borderColor: "var(--app-border)",
-                      color: "var(--app-ink-2)",
-                      background: "var(--app-bg-elevated-solid)",
-                    }
-              }
-            >
-              {action.label}
-              {action.href.startsWith("http") ? (
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-              ) : (
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-              )}
-            </Link>
-          ) : (
-            <button
-              key={`${action.label}-${action.query}`}
-              type="button"
-              onClick={() => onRefine(action)}
-              className="tap-44 min-h-11 rounded-[var(--app-radius-sm)] border px-3.5 text-[11.5px] font-semibold transition active:opacity-75"
-              style={
-                emphasizeFirst && index === 0
-                  ? {
-                      borderColor: "var(--app-brand-press)",
-                      color: "var(--app-on-brand)",
-                      background: "var(--app-brand-press)",
-                    }
-                  : {
-                      borderColor: "var(--app-border)",
-                      color: "var(--app-ink-2)",
-                      background: "var(--app-bg-elevated-solid)",
-                    }
-              }
-            >
-              {action.label}
-            </button>
-          ),
+  const className = primary ? ASK_PRIMARY_ACTION_CLASS : ASK_SECONDARY_ACTION_CLASS;
+  const style = primary ? ASK_PRIMARY_ACTION_STYLE : ASK_SECONDARY_ACTION_STYLE;
+  if (action.href) {
+    const external = action.href.startsWith("http");
+    return (
+      <Link
+        href={action.href}
+        data-ask-action={primary ? "primary" : "secondary"}
+        target={external ? "_blank" : undefined}
+        rel={external ? "noopener noreferrer" : undefined}
+        onClick={() => {
+          if (!external) onInternalOpen();
+        }}
+        className={className}
+        style={style}
+      >
+        {action.label}
+        {external ? (
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+        ) : (
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
         )}
-      </div>
-    </nav>
+      </Link>
+    );
+  }
+  return (
+    <button
+      type="button"
+      data-ask-action={primary ? "primary" : "secondary"}
+      onClick={() => onRefine(action)}
+      className={className}
+      style={style}
+    >
+      {action.label}
+    </button>
   );
 }
 
@@ -2128,16 +2190,30 @@ export default function AskFrederick({
         evidenceLabels?.hoursLimitation ?? null,
       )
     : null;
-  const supportingSources = res?.sources.slice(1) ?? [];
-  const collapsedSourceCount = responsePresentation?.layout === "place" ? 3 : 2;
-  const collapsedSupportingCount = Math.max(
-    0,
-    collapsedSourceCount - (leadSource ? 1 : 0),
-  );
-  const visibleSources = supportingSources.slice(
-    0,
-    showAllSources ? undefined : collapsedSupportingCount,
-  );
+  const answerHeading = res
+    ? askResultHeading(res, requestFailure, visibleSummary)
+    : "";
+  const answerSupplement = responsePresentation
+    ? askAnswerSupplement({
+        failure: Boolean(requestFailure),
+        answer: res?.answer,
+        detail: responsePresentation.detail,
+        hoursLimitation: evidenceLabels?.hoursLimitation ?? null,
+      })
+    : null;
+  // One flat ranked list: the lead result is row 1, not a separate card.
+  const rankedSources = res?.sources ?? [];
+  const resultListLimit = responsePresentation
+    ? askResultListLimit(responsePresentation.layout)
+    : rankedSources.length;
+  const shownSources = showAllSources
+    ? rankedSources
+    : rankedSources.slice(0, resultListLimit);
+  const hiddenSourceCount = rankedSources.length - shownSources.length;
+  const resultPins =
+    responsePresentation && responsePresentation.layout !== "plan"
+      ? askResultPins(rankedSources)
+      : [];
   const resultActions = (res?.actions ?? []).filter(
     (action) => !res?.plan || action.href !== res.plan.href,
   );
@@ -2443,88 +2519,32 @@ export default function AskFrederick({
           className={`ask-answer-arrival ${workspace ? "mt-4" : "mt-3 border-t pt-3"} transition-opacity ${loading ? "opacity-80" : ""}`}
           style={!workspace ? { borderColor: "var(--app-border)" } : undefined}
         >
-          <section
-            aria-labelledby="ask-answer-heading"
-            className={workspace ? "border-y px-1 py-4 sm:py-5" : undefined}
-            style={
-              workspace
-                ? {
-                    borderColor: "var(--app-border)",
-                    background:
-                      "color-mix(in srgb, var(--app-bg-elevated-solid) 52%, transparent)",
-                  }
-                : undefined
-            }
-          >
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h2
-                ref={answerHeadingRef}
-                id="ask-answer-heading"
-                tabIndex={-1}
-                className={
-                  workspace
-                    ? "font-serif text-[20px] font-semibold tracking-tight"
-                    : "text-[12px] font-semibold"
-                }
-                style={{ color: "var(--app-ink)" }}
-              >
-                {askResultHeading(res, requestFailure)}
-              </h2>
-              <div className="flex flex-wrap items-center justify-end gap-1.5">
-                {res.context ? (
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold"
-                    style={{
-                      borderColor: "var(--app-border)",
-                      color: "var(--app-ink-3)",
-                    }}
-                  >
-                    <MapPin className="h-3 w-3" aria-hidden />
-                    {res.context}
-                  </span>
-                ) : null}
-                {workspace && permalinkQuery ? (
-                  <button
-                    type="button"
-                    onClick={() => void shareQuestion()}
-                    className="tap-44 inline-flex min-h-9 items-center gap-1.5 rounded-full px-2.5 text-[10.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
-                    style={{ color: "var(--app-brand-press)" }}
-                  >
-                    {shareStatus === "copied" || shareStatus === "shared" ? (
-                      <Check className="h-3.5 w-3.5" aria-hidden />
-                    ) : (
-                      <Share2 className="h-3.5 w-3.5" aria-hidden />
-                    )}
-                    {shareStatus === "copied"
-                      ? "Link copied"
-                      : shareStatus === "shared"
-                        ? "Shared"
-                        : shareStatus === "error"
-                          ? "Try sharing again"
-                          : "Share question"}
-                  </button>
-                ) : null}
-              </div>
-            </div>
-            <p className="sr-only" role="status" aria-live="polite">
-              {shareStatus === "copied"
-                ? "The question link is ready to paste."
-                : shareStatus === "shared"
-                  ? "The question was sent."
-                  : shareStatus === "error"
-                    ? "Radius could not copy the question link."
-                    : ""}
-            </p>
+          {/* No outer band: the answer sits on the page like the rest of
+              Radius, and its sentence is the heading. */}
+          <section aria-labelledby="ask-answer-heading" className="px-1">
+            <h2
+              ref={answerHeadingRef}
+              id="ask-answer-heading"
+              tabIndex={-1}
+              className={
+                workspace
+                  ? "font-sans text-[21px] font-[650] leading-[1.3] tracking-[-0.012em]"
+                  : "text-base font-semibold leading-snug"
+              }
+              style={{ color: "var(--app-ink)" }}
+            >
+              {answerHeading}
+            </h2>
             {responseSections.map((section) => {
-              if (section === "summary") {
-                return visibleSummary ? (
+              if (section === "supplement") {
+                return answerSupplement ? (
                   <p
                     key={section}
                     data-ask-section={section}
-                    className="whitespace-pre-wrap px-1 text-[15px] leading-[1.58] sm:text-[16px]"
-                    style={{ color: "var(--app-ink)" }}
+                    className="mt-2 whitespace-pre-wrap text-[15px] leading-[1.55]"
+                    style={{ color: "var(--app-ink-2)" }}
                   >
-                    {visibleSummary}
+                    {answerSupplement}
                   </p>
                 ) : null;
               }
@@ -2634,61 +2654,17 @@ export default function AskFrederick({
                 ) : null;
               }
 
-              if (section === "primary-source") {
-                return leadSource ? (
-                  <div
-                    key={section}
-                    data-ask-section={section}
-                    className="mt-4 border-t pt-3"
-                    style={{ borderColor: "var(--app-border)" }}
-                  >
-                    <p
-                      className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-[0.11em]"
-                      style={{ color: "var(--app-brand-press)" }}
-                    >
-                      {responsePresentation.layout === "civic"
-                        ? "Official source"
-                        : evidenceLabels?.sourceLabel}
-                    </p>
-                    {evidenceLabels?.hoursLimitation ? (
-                      <p
-                        data-ask-hours-limitation
-                        className="mb-2 flex items-start gap-2 rounded-[var(--app-radius-sm)] px-3 py-2 text-[11.5px] font-medium leading-snug"
-                        style={{
-                          background:
-                            "color-mix(in srgb, var(--app-warning) 10%, var(--app-bg-elevated-solid))",
-                          color: "var(--app-ink-2)",
-                        }}
-                      >
-                        <Clock3
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0"
-                          aria-hidden
-                        />
-                        <span>{evidenceLabels.hoursLimitation}</span>
-                      </p>
-                    ) : null}
-                    <AskSourceCard
-                      source={leadSource}
-                      index={0}
-                      onInternalOpen={rememberAskReturn}
-                    />
-                  </div>
-                ) : null;
-              }
-
               if (section === "primary-action") {
                 if (requestFailure) {
                   return (
                     <button
                       key={section}
                       data-ask-section={section}
+                      data-ask-action="primary"
                       type="button"
                       onClick={retryLastQuestion}
-                      className="tap-44 mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-sm)] border px-4 text-[11.5px] font-semibold transition active:scale-[0.98]"
-                      style={{
-                        borderColor: "var(--app-brand-press)",
-                        color: "var(--app-brand-press)",
-                      }}
+                      className={ASK_PRIMARY_ACTION_CLASS}
+                      style={ASK_PRIMARY_ACTION_STYLE}
                     >
                       Try again
                       <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -2703,164 +2679,146 @@ export default function AskFrederick({
                     <button
                       key={section}
                       data-ask-section={section}
+                      data-ask-action="primary"
                       type="button"
                       onClick={() => inputRef.current?.focus()}
-                      className="tap-44 mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-sm)] border px-4 text-[11.5px] font-semibold transition active:scale-[0.98]"
-                      style={{
-                        borderColor: "var(--app-brand-press)",
-                        color: "var(--app-brand-press)",
-                      }}
+                      className={ASK_PRIMARY_ACTION_CLASS}
+                      style={ASK_PRIMARY_ACTION_STYLE}
                     >
                       Change the question
                       <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                     </button>
                   );
                 }
-                return (
+                const action = primaryAction[0];
+                return action ? (
                   <div key={section} data-ask-section={section}>
-                    <AskActionList
-                      actions={primaryAction}
-                      label={
-                        responsePresentation.layout === "civic"
-                          ? "Do this now"
-                          : "Next step"
-                      }
+                    <AskActionControl
+                      action={action}
+                      primary
                       onRefine={runAction}
                       onInternalOpen={() => rememberAskReturn(null)}
                     />
                   </div>
-                );
-              }
-
-              if (section === "supporting-sources") {
-                return supportingSources.length > 0 ? (
-                  <details
-                    key={section}
-                    data-ask-section={section}
-                    open={
-                      responsePresentation.layout === "place"
-                        ? true
-                        : undefined
-                    }
-                    className="group mt-5 overflow-hidden rounded-[var(--app-radius-md)] border"
-                    style={{
-                      borderColor: "var(--app-border)",
-                      background: "var(--app-bg-elevated)",
-                    }}
-                  >
-                    <summary className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3">
-                      <span
-                        className="text-[13px] font-semibold"
-                        style={{ color: "var(--app-ink)" }}
-                      >
-                        {responsePresentation.layout === "place"
-                          ? "Other options and sources"
-                          : responsePresentation.layout === "civic"
-                            ? "More official sources"
-                            : "Sources behind this answer"}
-                      </span>
-                      <span
-                        className="inline-flex items-center gap-2 font-mono text-[10px]"
-                        style={{ color: "var(--app-ink-3)" }}
-                      >
-                        {supportingSources.length}{" "}
-                        {supportingSources.length === 1 ? "source" : "sources"}
-                        <ChevronDown
-                          className="h-4 w-4 transition-transform group-open:rotate-180"
-                          strokeWidth={2.2}
-                          aria-hidden
-                        />
-                      </span>
-                    </summary>
-                    <div
-                      className="grid gap-2.5 border-t p-3"
-                      style={{ borderColor: "var(--app-border)" }}
-                    >
-                      <div className="grid gap-2.5">
-                        {visibleSources.map((source, index) => (
-                          <AskSourceCard
-                            key={`${source.category}-${source.slug}-${source.href}`}
-                            source={source}
-                            index={index + 1}
-                            onInternalOpen={rememberAskReturn}
-                          />
-                        ))}
-                      </div>
-                      {supportingSources.length > collapsedSupportingCount ? (
-                        <button
-                          type="button"
-                          onClick={() => setShowAllSources((value) => !value)}
-                          className="tap-44 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-sm)] border text-[11.5px] font-semibold transition active:opacity-75"
-                          style={{
-                            borderColor: "var(--app-border)",
-                            color: "var(--app-brand-press)",
-                          }}
-                        >
-                          {showAllSources
-                            ? "Show fewer sources"
-                            : `Show all ${supportingSources.length} sources`}
-                        </button>
-                      ) : null}
-                    </div>
-                  </details>
                 ) : null;
               }
 
-              if (section === "secondary-actions") {
+              if (section === "results") {
+                if (rankedSources.length === 0) return null;
                 return (
-                  <div key={section} data-ask-section={section}>
-                    <AskActionList
-                      actions={secondaryActions}
-                      label="Other next steps"
-                      emphasizeFirst={false}
-                      onRefine={runAction}
-                      onInternalOpen={() => rememberAskReturn(null)}
-                    />
+                  <div key={section} data-ask-section={section} className="mt-4">
+                    {resultPins.length > 0 ? (
+                      // Show before tell: where the ranked places are, with
+                      // the same numbers as the rows below.
+                      <div
+                        data-ask-results-map
+                        className="mb-1 overflow-hidden rounded-[var(--app-radius-md)] border"
+                        style={{ borderColor: "var(--app-border)" }}
+                      >
+                        <OwnedMiniMap pins={resultPins} name="these results" />
+                      </div>
+                    ) : null}
+                    <ol data-ask-results-list>
+                      {shownSources.map((source, index) => (
+                        <li
+                          key={`${source.category}-${source.slug}-${source.href}`}
+                          className="border-b"
+                          style={{ borderColor: "var(--app-border)" }}
+                        >
+                          <AskSourceCard
+                            source={source}
+                            index={index}
+                            onInternalOpen={rememberAskReturn}
+                          />
+                        </li>
+                      ))}
+                    </ol>
+                    {rankedSources.length > resultListLimit ? (
+                      <button
+                        type="button"
+                        aria-expanded={showAllSources}
+                        onClick={() => setShowAllSources((value) => !value)}
+                        className="tap-44 inline-flex min-h-11 items-center gap-1 text-sm font-semibold transition hover:underline active:opacity-75"
+                        style={{ color: "var(--app-brand-press)" }}
+                      >
+                        {showAllSources
+                          ? "Show fewer"
+                          : `Show ${hiddenSourceCount} more`}
+                      </button>
+                    ) : null}
                   </div>
                 );
               }
 
-              if (section === "detail") {
-                if (!responsePresentation.detail) return null;
-                if (responsePresentation.layout === "recovery") {
-                  // The reason belongs with the limitation it explains, so it
-                  // reads as the rest of the answer rather than extra context.
-                  return (
-                    <p
-                      key={section}
-                      data-ask-section={section}
-                      className="mt-2 whitespace-pre-wrap px-1 text-[14px] leading-[1.55]"
-                      style={{ color: "var(--app-ink-2)" }}
-                    >
-                      {responsePresentation.detail}
-                    </p>
-                  );
-                }
-                return responsePresentation.detail ? (
-                  <div
+              if (section === "secondary-actions") {
+                return secondaryActions.length > 0 ? (
+                  <nav
                     key={section}
                     data-ask-section={section}
-                    className="mt-4 border-t px-1 pt-3"
-                    style={{ borderColor: "var(--app-border)" }}
+                    aria-label="Other next steps"
+                    className="mt-3 flex flex-wrap gap-2"
                   >
-                    <p
-                      className="text-[10px] font-bold uppercase tracking-[0.11em]"
-                      style={{ color: "var(--app-ink-3)" }}
-                    >
-                      More context
-                    </p>
-                    <p
-                      className="mt-1 whitespace-pre-wrap text-[13px] leading-[1.58]"
-                      style={{ color: "var(--app-ink-2)" }}
-                    >
-                      {responsePresentation.detail}
-                    </p>
-                  </div>
+                    {secondaryActions.map((action) => (
+                      <AskActionControl
+                        key={`${action.label}-${action.href ?? action.query}`}
+                        action={action}
+                        primary={false}
+                        onRefine={runAction}
+                        onInternalOpen={() => rememberAskReturn(null)}
+                      />
+                    ))}
+                  </nav>
                 ) : null;
               }
 
               return null;
             })}
+
+            {res.context || (workspace && permalinkQuery) ? (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                {res.context ? (
+                  <span
+                    className="inline-flex items-center gap-1 text-xs font-semibold"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    <MapPin className="h-3 w-3" aria-hidden />
+                    {res.context}
+                  </span>
+                ) : (
+                  <span />
+                )}
+                {workspace && permalinkQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => void shareQuestion()}
+                    className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold transition hover:bg-[var(--app-bg-sunken)]"
+                    style={{ color: "var(--app-brand-press)" }}
+                  >
+                    {shareStatus === "copied" || shareStatus === "shared" ? (
+                      <Check className="h-3.5 w-3.5" aria-hidden />
+                    ) : (
+                      <Share2 className="h-3.5 w-3.5" aria-hidden />
+                    )}
+                    {shareStatus === "copied"
+                      ? "Link copied"
+                      : shareStatus === "shared"
+                        ? "Shared"
+                        : shareStatus === "error"
+                          ? "Try sharing again"
+                          : "Share question"}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            <p className="sr-only" role="status" aria-live="polite">
+              {shareStatus === "copied"
+                ? "The question link is ready to paste."
+                : shareStatus === "shared"
+                  ? "The question was sent."
+                  : shareStatus === "error"
+                    ? "Radius could not copy the question link."
+                    : ""}
+            </p>
 
             {!requestFailure && res.status !== "empty" && res.answer?.trim() ? (
               <AskCorrectionControl

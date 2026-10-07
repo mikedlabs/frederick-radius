@@ -26,6 +26,9 @@ export type AskSource = {
    *  the source card. ~90% of places carry one. */
   rating?: number;
   ratingCount?: number;
+  /** Where the result is, for the numbered results map. Present only for a
+   *  catalog place or an event with a precise geocode, never an area guess. */
+  geom?: { lng: number; lat: number };
 };
 
 export type AskAction =
@@ -77,9 +80,11 @@ export type AskIntelligence = {
  */
 export type AskResponsePresentation = {
   layout: "plan" | "place" | "civic" | "standard" | "recovery";
-  /** A complete sentence copied from grounded answer data. */
+  /** A complete sentence copied from grounded answer data. Ask shows it as
+   *  the answer heading. */
   summary: string | null;
-  /** Remaining grounded prose, shown after the primary decision surface. */
+  /** Remaining grounded prose, shown directly under the heading as one
+   *  supporting paragraph. */
   detail: string | null;
 };
 

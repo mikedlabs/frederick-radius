@@ -44,11 +44,9 @@ const SOURCES: AskSource[] = [
 ];
 
 const RECOVERY_ORDER = [
-  "summary",
-  "detail",
+  "supplement",
   "primary-action",
-  "primary-source",
-  "supporting-sources",
+  "results",
   "secondary-actions",
 ];
 
@@ -162,18 +160,16 @@ describe("Ask response hierarchy", () => {
       detail: "The full route includes the timing and a second stop.",
     });
     expect(askResponseSectionOrder(decorated.presentation!)).toEqual([
-      "summary",
+      "supplement",
       "context-controls",
       "plan",
       "primary-action",
-      "primary-source",
-      "supporting-sources",
+      "results",
       "secondary-actions",
-      "detail",
     ]);
   });
 
-  it("puts a ranked place before its concise explanation and alternatives", () => {
+  it("answers first, then shows the ranked places as one list before the action", () => {
     const decorated = withAskResponsePresentation(result({
       answer:
         "Gravel & Grind is the strongest nearby match. Beans & Bagels is another option.",
@@ -184,14 +180,14 @@ describe("Ask response hierarchy", () => {
       summary: "Gravel & Grind is the strongest nearby match.",
       detail: "Beans & Bagels is another option.",
     });
+    // The summary is the heading, so no result card can sit above it, and
+    // the rest of the prose is the supplement directly under it.
     expect(askResponseSectionOrder(decorated.presentation!)).toEqual([
-      "primary-source",
-      "summary",
+      "supplement",
       "context-controls",
-      "supporting-sources",
+      "results",
       "primary-action",
       "secondary-actions",
-      "detail",
     ]);
   });
 
@@ -216,12 +212,10 @@ describe("Ask response hierarchy", () => {
     expect(decorated.intent?.kind).toBe("civic");
     expect(decorated.presentation?.layout).toBe("civic");
     expect(askResponseSectionOrder(decorated.presentation!)).toEqual([
-      "summary",
+      "supplement",
       "primary-action",
-      "primary-source",
-      "supporting-sources",
+      "results",
       "secondary-actions",
-      "detail",
     ]);
   });
 
@@ -295,9 +289,9 @@ describe("Ask response hierarchy", () => {
     });
     const order = askResponseSectionOrder(decorated.presentation!);
     // The reason sits directly under the limitation it explains.
-    expect(order.slice(0, 2)).toEqual(["summary", "detail"]);
-    // The answer names places, so their cards must render with it.
-    expect(order).toContain("primary-source");
+    expect(order[0]).toBe("supplement");
+    // The answer names places, so their rows must render with it.
+    expect(order).toContain("results");
     // The second action is a real way forward, not clutter to drop.
     expect(order).toContain("secondary-actions");
     // A plan recovery has no route, so the reader is never shown one.
@@ -330,5 +324,19 @@ describe("Ask response hierarchy", () => {
       "The event is at 3 N. Main St. starting at 4:00 PM tonight.",
     );
     expect(decorated.presentation?.detail).toBe("Doors open at 3:30 PM.");
+  });
+
+  it("puts the caveat under the answer and never splits the results into a lead card and an accordion", () => {
+    for (const layout of ["plan", "place", "civic", "standard", "recovery"] as const) {
+      const order = askResponseSectionOrder({ layout });
+      // The supplement (noise caveat, unconfirmed hours) is said once,
+      // directly under the heading, not in a "More context" block.
+      expect(order[0]).toBe("supplement");
+      expect(order.filter((section) => section === "results")).toHaveLength(1);
+      expect(order.filter((section) => section === "primary-action")).toHaveLength(1);
+      expect(order).not.toContain("primary-source");
+      expect(order).not.toContain("supporting-sources");
+      expect(order).not.toContain("detail");
+    }
   });
 });

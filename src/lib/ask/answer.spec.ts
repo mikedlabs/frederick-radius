@@ -22,6 +22,7 @@ vi.mock("@/lib/food-trucks/availability", () => ({
 }));
 import {
   askFrederick,
+  categoryFirstRows,
   sourceHasVerifiedOpenStatus,
   temporalOpenPlaceHits,
 } from "./answer";
@@ -229,7 +230,7 @@ describe("askFrederick structured answers", () => {
     expect(result.sources.some((source) => source.name === "Market Street Boba Beans")).toBe(false);
   });
 
-  it("keeps Today and Ask on the same lead for the same town, noun, and clock", async () => {
+  it("keeps Ask on Today's ranking for the same town, noun, and clock, with the named category first", async () => {
     const now = freshHoursInstant(3, 14);
     vi.useFakeTimers();
     vi.setSystemTime(now);
@@ -250,7 +251,21 @@ describe("askFrederick structured answers", () => {
       const ask = await askFrederick("Where can I get coffee in Urbana?", context);
 
       expect(today?.decision?.lead?.id).toBe(today?.hero?.slug);
-      expect(ask.sources[0]?.slug).toBe(today?.decision?.lead?.id);
+      // Ask reads Today's own ranking, but an explicit "coffee" question
+      // keeps coffee listings first (the Pop Shop over Gravel & Grind miss).
+      // Its lead is Today's first coffee listing, and a non-coffee Today
+      // lead stays in the answer only as a labeled alternative.
+      const todayRows = [today?.hero, ...(today?.also ?? [])].filter(
+        (row): row is NonNullable<typeof row> => row != null,
+      );
+      const firstCoffee = categoryFirstRows(todayRows, "coffee").rows[0];
+      expect(ask.sources[0]?.slug).toBe(firstCoffee?.slug);
+      const todayLeadInAsk = ask.sources.find(
+        (source) => source.slug === today?.hero?.slug,
+      );
+      if (todayLeadInAsk && todayLeadInAsk.slug !== firstCoffee?.slug) {
+        expect(todayLeadInAsk.eyebrow).toMatch(/^Alternative · /);
+      }
       expect(today?.decision?.scope).toMatchObject({
         label: "Urbana",
         source: "town",
@@ -587,7 +602,7 @@ describe("askFrederick structured answers", () => {
         const place = clientPlaceBySlug(source.slug);
         return !place || !place.geom || haversineMeters(downtown.origin, place.geom) <= 5_000;
       })).toBe(true);
-      expect(result.actions?.some((action) => action.label === "Browse nearby food")).toBe(true);
+      expect(result.actions?.some((action) => action.label === "Browse nearby places to eat")).toBe(true);
     } finally {
       vi.useRealTimers();
     }

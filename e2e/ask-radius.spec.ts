@@ -83,10 +83,16 @@ test.describe("Ask Radius deterministic workspace", () => {
     );
   });
 
-  test("renders zero, one, and expandable source states", async ({ page }) => {
+  test("renders zero, one, and expandable source states as one ranked list", async ({ page }) => {
     await page.route("**/api/ask", async (route) => {
       const { query } = route.request().postDataJSON() as { query: string };
-      const count = query.startsWith("three") ? 3 : query.startsWith("zero") ? 0 : 1;
+      const count = query.startsWith("eight")
+        ? 8
+        : query.startsWith("three")
+          ? 3
+          : query.startsWith("zero")
+            ? 0
+            : 1;
       await fulfill(
         route,
         answer({
@@ -98,7 +104,8 @@ test.describe("Ask Radius deterministic workspace", () => {
 
     await page.goto("/ask");
     await submit(page, "one source");
-    await expect(page.getByText("1 source answer.")).toBeVisible();
+    // The answer sentence is the heading.
+    await expect(page.getByRole("heading", { name: "1 source answer." })).toBeVisible();
     await expect(
       page.locator('[data-ask-composer-dock="sticky"]'),
     ).toBeVisible();
@@ -108,15 +115,72 @@ test.describe("Ask Radius deterministic workspace", () => {
 
     await submit(page, "three sources");
     await expect(page.getByText("3 source answer.")).toBeVisible();
-    await expect(page.getByText("Source 3", { exact: true })).toHaveCount(0);
-    await page.locator("summary").filter({ hasText: "Sources behind this answer" }).click();
-    await expect(page.getByText("Source 2", { exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Show all 2 sources" }).click();
+    // No accordion: a non-place list shows up to six rows at once.
+    await expect(page.locator("details")).toHaveCount(0);
+    await expect(page.locator("[data-ask-results-list] > li")).toHaveCount(3);
     await expect(page.getByText("Source 3", { exact: true })).toBeVisible();
+
+    await submit(page, "eight sources");
+    await expect(page.getByText("8 source answer.")).toBeVisible();
+    await expect(page.locator("[data-ask-results-list] > li")).toHaveCount(6);
+    await expect(page.getByText("Source 8", { exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: "Show 2 more" }).click();
+    await expect(page.getByText("Source 8", { exact: true })).toBeVisible();
 
     await submit(page, "zero sources");
     await expect(page.getByText("0 source answer.")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Sources behind this answer" })).toHaveCount(0);
+    await expect(page.locator("[data-ask-results-list]")).toHaveCount(0);
+  });
+
+  test("leads a place answer with a numbered map and one primary action", async ({ page }) => {
+    const query = "quiet coffee shop to work downtown";
+    await page.route("**/api/ask", (route) =>
+      fulfill(
+        route,
+        answer({
+          answer:
+            "Ibiza Cafe in Frederick is the best match for coffee. Radius does not have verified noise-level data for these places, so I can’t confirm that they will be quiet.",
+          intent: parseAskIntent(query),
+          sources: [
+            { ...source(2), name: "Ibiza Cafe", geom: { lng: -77.4109, lat: 39.419 } },
+            { ...source(3), name: "Frederick Coffee Company", geom: { lng: -77.4051, lat: 39.4153 } },
+            { ...source(4), name: "Gravel & Grind", geom: { lng: -77.4092, lat: 39.4217 } },
+            {
+              ...source(5),
+              name: "North Market Pop Shop",
+              eyebrow: "Alternative · Ice cream & treats",
+              geom: { lng: -77.4108, lat: 39.4176 },
+            },
+          ],
+          actions: [
+            { label: "See all 12 coffee shops", kind: "open", href: "/nearby?c=coffee" },
+            { label: "Open now", kind: "refine", query: `${query} open now` },
+          ],
+        }),
+      ),
+    );
+
+    await page.goto("/ask");
+    await submit(page, query);
+    await expect(
+      page.getByRole("heading", {
+        name: "Ibiza Cafe in Frederick is the best match for coffee.",
+      }),
+    ).toBeVisible();
+    await expect(page.locator('[data-ask-section="supplement"]')).toContainText(
+      "can’t confirm that they will be quiet",
+    );
+    await expect(page.locator("[data-ask-results-map] [data-mini-map-pin]")).toHaveCount(4);
+    await expect(page.locator("[data-ask-results-list] > li")).toHaveCount(3);
+    await page.getByRole("button", { name: "Show 1 more" }).click();
+    await expect(page.getByText("Alternative · Ice cream & treats")).toBeVisible();
+    await expect(page.locator('[data-ask-action="primary"]')).toHaveCount(1);
+    await expect(
+      page.getByRole("link", { name: "See all 12 coffee shops" }),
+    ).toBeVisible();
+    for (const label of ["Best match", "Next step", "Other next steps", "More context"]) {
+      await expect(page.getByText(label, { exact: true })).toHaveCount(0);
+    }
   });
 
   test("keeps the submitted question and scope editable without overstating unknown hours", async ({
@@ -155,16 +219,17 @@ test.describe("Ask Radius deterministic workspace", () => {
     await expect(composer).toBeEditable();
     await expect(area).toBeVisible();
     await expect(area).toBeEnabled();
-    await expect(page.getByText("Possible match", { exact: true })).toBeVisible();
     await expect(page.getByText("Best match", { exact: true })).toHaveCount(0);
+    // The qualified sentence is the heading, and the hours caveat sits in
+    // the paragraph directly under it.
     await expect(
-      page.getByText(
-        "Radius has not confirmed this place's hours for tonight. Check before you go.",
-      ),
+      page.getByRole("heading", {
+        name: "Source 1 is a possible match for dinner tonight.",
+      }),
     ).toBeVisible();
-    await expect(
-      page.getByText("Source 1 is a possible match for dinner tonight."),
-    ).toBeVisible();
+    await expect(page.locator('[data-ask-section="supplement"]')).toHaveText(
+      "Radius has not confirmed this place's hours for tonight. Check before you go.",
+    );
 
     await composer.fill("Where can I get dessert tonight?");
     await expect(composer).toHaveValue("Where can I get dessert tonight?");
@@ -363,7 +428,8 @@ test.describe("Ask Radius deterministic workspace", () => {
       await page.goto("/ask");
       await submit(page, `${failure} example`);
       if (failure === "empty") {
-        await expect(page.getByRole("heading", { name: "Radius could not find a solid match." })).toBeVisible();
+        // An empty answer still has the server's own sentence as its heading.
+        await expect(page.getByRole("heading", { name: "Radius could not verify a useful match." })).toBeVisible();
       } else {
         await expect(page.getByRole("heading", { name: "Radius could not complete that request." })).toBeVisible();
       }
@@ -518,7 +584,7 @@ test.describe("Ask Radius deterministic workspace", () => {
 
     await page.goto("/ask");
     await submit(page, "What is happening tonight?");
-    await expect(page.getByText("More context", { exact: true })).toBeVisible();
+    await expect(page.locator('[data-ask-section="supplement"]')).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
     const dock = page.locator('[data-ask-composer-dock="sticky"]');
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
