@@ -62,6 +62,16 @@ truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
   Typography carries hierarchy before boxes/borders/badges. One primary
   action per view. Honest empty states. If a change reads like a generic
   SaaS template, it's wrong.
+- **Visual first (owner direction, 2026-10-07):** people read pictures before
+  sentences, so every surface shows before it tells. Each answer row, card
+  and first screen leads with a real visual: a photo that actually loaded, a
+  publisher flyer shown whole, the place's block on the self-hosted MapLibre
+  map, a time strip, a date plate, or a category mark on the place's own
+  color. Prose is kept for what a picture cannot say. Visuals must be honest:
+  no text plate or generated art presented as a photo, no credit before a
+  photo loads, no type over third-party flyers. A text-only state is a
+  fallback, not a design. Image ladder, prose budget, supply and build order:
+  `docs/VISUAL_FIRST.md`.
 
 ## Owner's public voice (Reddit, social, email — anything Mike posts)
 
