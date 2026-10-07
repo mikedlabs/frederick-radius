@@ -9,8 +9,10 @@ const edge = vi.hoisted(() => ({
   mapProps: {} as Record<string, unknown>,
   radiusProps: {} as Record<string, unknown>,
   places: vi.fn(),
+  track: vi.fn(),
   params: new URLSearchParams("q=test"),
 }));
+vi.mock("@/lib/track", () => ({ track: edge.track }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => edge.params }));
 vi.mock("./mapPlacesClient", () => ({ loadMapPlaces: edge.places, resetMapPlacesRequest: vi.fn() }));
 vi.mock("./AppMapClient", () => ({ default: (props: Record<string, unknown>) => { edge.mapProps = props; return null; } }));
@@ -20,6 +22,7 @@ vi.mock("@/components/radius/RadiusBuilder", () => ({ default: (props: Record<st
 import BrowseMapClient from "./BrowseMapClient";
 import DeferredRadiusBuilder from "@/components/radius/DeferredRadiusBuilder";
 import { resetMapLayersRequest } from "./mapLayersClient";
+import { resetMapPerf } from "./mapPerf";
 
 let root: Root;
 let container: HTMLDivElement;
@@ -45,7 +48,10 @@ async function mountBrowse(): Promise<void> {
 }
 
 beforeEach(() => {
+  resetMapPerf();
   vi.useFakeTimers();
+  vi.spyOn(Math, "random").mockReturnValue(1);
+  edge.track.mockClear();
   vi.setSystemTime(new Date("2026-10-06T20:00:00Z"));
   visibility = "visible";
   vi.spyOn(document, "visibilityState", "get").mockImplementation(() => visibility);
@@ -66,11 +72,28 @@ beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
 });
 afterEach(async () => {
-  await act(async () => root.unmount()); container.remove(); resetMapLayersRequest();
+  await act(async () => root.unmount()); container.remove(); resetMapPerf(); resetMapLayersRequest();
   vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 
 describe("Map refresh through its real callers", () => {
+  it.each([{ random: 0, sampled: true }, { random: 1, sampled: false }])(
+    "keeps all fetch assertions about layer work when telemetry sampled=$sampled",
+    async ({ random, sampled }) => {
+      vi.mocked(Math.random).mockReturnValue(random);
+      await mountBrowse();
+      // Keep the real source/performance caller: only outbound analytics is a boundary mock.
+      expect(groups()).toEqual(["context", "signals"]);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(edge.track).toHaveBeenCalledTimes(sampled ? 2 : 0);
+      if (sampled) {
+        for (const [event, props] of edge.track.mock.calls) {
+          expect(event).toBe("map_source_timing");
+          expect(props).toMatchObject({ source: "other" });
+        }
+      }
+    },
+  );
   it("waits for the usable place map before starting optional source work", async () => {
     edge.places.mockReturnValue(new Promise(() => {}));
     await mountBrowse();
