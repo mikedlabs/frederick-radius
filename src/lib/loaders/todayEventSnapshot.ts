@@ -9,9 +9,10 @@ import {
   allUpcoming,
   type EventWithMeta,
 } from "@/lib/loaders/events";
-import type {
-  EventSourceHealth,
-  UnifiedEvents,
+import {
+  promotedEventSet,
+  type EventSourceHealth,
+  type UnifiedEvents,
 } from "@/lib/loaders/unifiedEvents";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 
@@ -272,15 +273,83 @@ async function beforeDeadline<T>(
   }
 }
 
-function curatedFallback(
+/**
+ * The reviewed set that needs no database: curated seeds plus the promoted
+ * venue snapshot. The curated seeds alone were a single listing in October
+ * 2026, which is what /events served after every deploy and every slow read.
+ */
+function promotedFallback(
   now: Date,
   code: EventArchivePublicReasonCode,
 ): EventArchiveSnapshot {
-  const unified = applyEventNotices(allUpcoming(now), now);
+  const unified = promotedEventSet(now);
   return {
     unified,
     publicEvents: unified.filter(isPublicEvent),
     sourceHealth: eventArchiveSourceHealth([code]),
+  };
+}
+
+type RememberedArchiveRead = {
+  envelope: ArchiveEnvelope;
+  readAtMs: number;
+};
+
+type ArchiveMemoryGlobal = typeof globalThis & {
+  __frederickRadiusEventArchiveLastGoodV1?: Map<string, RememberedArchiveRead>;
+};
+
+/**
+ * The last archive read that answered in this server process, keyed by read
+ * shape. Process-local on purpose: the archive stays the cross-instance
+ * authority, and this only covers a warm instance whose next read is slow or
+ * rejected. globalThis keeps one copy when Next bundles this module twice.
+ */
+function archiveMemory(): Map<string, RememberedArchiveRead> {
+  const shared = globalThis as ArchiveMemoryGlobal;
+  shared.__frederickRadiusEventArchiveLastGoodV1 ??= new Map();
+  return shared.__frederickRadiusEventArchiveLastGoodV1;
+}
+
+export function resetEventArchiveMemoryForTests(): void {
+  archiveMemory().clear();
+}
+
+/**
+ * A failed read falls back to this process's last answered read when it is
+ * recent enough to pass the archive's own freshness gate, and otherwise to
+ * the promoted set. The remembered envelope is hydrated against the current
+ * clock, so its freshness and validation signals are recomputed honestly and
+ * events that ended before today's window are dropped.
+ */
+function archiveFallback(
+  now: Date,
+  code: EventArchivePublicReasonCode,
+  memoryKey: string,
+  windowStart: Date,
+): EventArchiveSnapshot {
+  const remembered = archiveMemory().get(memoryKey);
+  const ageMs = remembered ? now.getTime() - remembered.readAtMs : Number.NaN;
+  if (
+    !remembered ||
+    !(ageMs >= 0 && ageMs <= TODAY_EVENT_SNAPSHOT_MAX_AGE_MS)
+  ) {
+    return promotedFallback(now, code);
+  }
+  console.warn("[events] Archive read failed; serving the last answered read.", {
+    code,
+    ageMs,
+  });
+  const hydrated = hydrateTodayEventSnapshot(remembered.envelope, now);
+  const startMs = windowStart.getTime();
+  const inWindow = (event: EventWithMeta) => {
+    const endMs = Date.parse(event.ends_at ?? "");
+    return (Number.isFinite(endMs) ? endMs : Date.parse(event.starts_at)) >= startMs;
+  };
+  return {
+    ...hydrated,
+    unified: hydrated.unified.filter(inWindow),
+    publicEvents: hydrated.publicEvents.filter(inWindow),
   };
 }
 
@@ -374,8 +443,9 @@ export function hydrateTodayEventSnapshot(
  *
  * The two-hour archive job owns the expensive live-feed fan-out. A visitor
  * reads that last-known-good snapshot through one cancellable database query;
- * a missing, slow, partial, or stale archive keeps curated rows and exposes an
- * honest degraded signal. This deliberately never calls a live provider.
+ * a slow or rejected read reuses this server's last answered read, otherwise
+ * the promoted curated and venue rows with an honest degraded signal. This
+ * deliberately never calls a live provider.
  */
 export async function loadTodayEventSnapshot(
   now = new Date(),
@@ -414,8 +484,12 @@ export async function loadEventArchiveSnapshot(
       Math.floor(options.timeoutMs ?? EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS),
     ),
   );
+  const { start, end } = snapshotBounds(now, horizonDays);
+  const memoryKey = `${horizonDays}:${limit}`;
   const sql = getSql();
-  if (!sql) return curatedFallback(now, "event_archive_unavailable");
+  if (!sql) {
+    return archiveFallback(now, "event_archive_unavailable", memoryKey, start);
+  }
   // Bounds cross the wire as ISO text with an explicit cast, never as Date
   // objects.
   //
@@ -437,7 +511,6 @@ export async function loadEventArchiveSnapshot(
   // ISO text plus `::timestamptz` is correct under either mode, and it is
   // what the WRITE path in event-identity.ts has always done - which is
   // exactly why the collector kept working while every reader failed.
-  const { start, end } = snapshotBounds(now, horizonDays);
   const pending = sql<ArchiveEnvelope[]>`
     with latest_archive as (
       select status,
@@ -487,13 +560,15 @@ export async function loadEventArchiveSnapshot(
     if ("diagnostic" in outcome) {
       console.error("[events] Archive read rejected.", outcome.diagnostic);
     }
-    return curatedFallback(now, outcome.code);
+    return archiveFallback(now, outcome.code, memoryKey, start);
   }
   const envelope = outcome.value?.[0];
   // A missing row here is NOT an empty archive: the query anchors on
   // `(values (1))`, so a completed read always returns exactly one row.
   // Getting none back means the shape changed, which is its own bug.
-  return envelope
-    ? hydrateTodayEventSnapshot(envelope, now)
-    : curatedFallback(now, "event_archive_unavailable");
+  if (!envelope) {
+    return archiveFallback(now, "event_archive_unavailable", memoryKey, start);
+  }
+  archiveMemory().set(memoryKey, { envelope, readAtMs: now.getTime() });
+  return hydrateTodayEventSnapshot(envelope, now);
 }

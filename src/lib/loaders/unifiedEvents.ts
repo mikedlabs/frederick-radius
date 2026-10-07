@@ -291,6 +291,26 @@ export function mergeUnifiedEventCards(
   );
 }
 
+/** Local decoration only: venue thumbs and notice stamps, no network. */
+function decorateEventsLocally(
+  events: EventWithMeta[],
+  now: Date,
+): EventWithMeta[] {
+  let decorated = events;
+  try {
+    decorated = withVenueThumbs(events);
+  } catch {
+    // Photo join failed — cards render without the venue thumb.
+  }
+
+  try {
+    return applyEventNotices(decorated, now);
+  } catch {
+    // Notice stamp failed — cards render without cancel/postpone badges.
+    return decorated;
+  }
+}
+
 async function decorateUnifiedEvents(
   events: EventWithMeta[],
   now: Date,
@@ -308,19 +328,22 @@ async function decorateUnifiedEvents(
     }
   }
 
-  let decorated = positioned;
-  try {
-    decorated = withVenueThumbs(positioned);
-  } catch {
-    // Photo join failed — cards render without the venue thumb.
-  }
+  return decorateEventsLocally(positioned, now);
+}
 
-  try {
-    return applyEventNotices(decorated, now);
-  } catch {
-    // Notice stamp failed — cards render without cancel/postpone badges.
-    return decorated;
-  }
+/**
+ * The reviewed event set that needs no network or database: hand-curated
+ * seeds plus the promoted venue snapshot, merged and decorated by the same
+ * rules as the live assembly. Builds publish it, and the archive reader falls
+ * back to it when the durable archive cannot be read. The curated seeds alone
+ * can be a single listing (October 2026: only Catoctin Colorfest), which is
+ * what /events showed as "1 event listing shown · partial results".
+ */
+export function promotedEventSet(now: Date): EventWithMeta[] {
+  return decorateEventsLocally(
+    mergeUnifiedEventCards(allUpcoming(now), [], venueEventsAsCards(now), []),
+    now,
+  );
 }
 
 /**
@@ -329,16 +352,7 @@ async function decorateUnifiedEvents(
  * geocoding, and the optional event database remain runtime freshness paths.
  */
 export async function assemblePromotedEvents(now: Date): Promise<UnifiedEvents> {
-  const unified = await decorateUnifiedEvents(
-    mergeUnifiedEventCards(
-      allUpcoming(now),
-      [],
-      venueEventsAsCards(now),
-      [],
-    ),
-    now,
-    { upgradeGeoms: false },
-  );
+  const unified = promotedEventSet(now);
   return {
     unified,
     publicEvents: unified.filter(isPublicEvent),
@@ -660,6 +674,41 @@ const cachedAssemble = unstable_cache(
   // and geocode pass in the foreground/background function invocation.
   { revalidate: 840, tags: ["events"] },
 );
+
+/**
+ * How long an ISR page may keep a render built from a degraded event set.
+ * Healthy renders keep the page's own `revalidate`.
+ */
+export const DEGRADED_EVENT_RENDER_REVALIDATE_SECONDS = 60;
+
+// Next.js gives a statically rendered route the LOWEST revalidate of any
+// unstable_cache it reads during the render. Reading this tiny entry is the
+// supported way to shorten one render's lifetime without making the route
+// dynamic. Next has no per-render revalidate setter outside "use cache".
+const degradedEventRenderMarker = unstable_cache(
+  async () => true,
+  ["degraded-event-render-v1"],
+  { revalidate: DEGRADED_EVENT_RENDER_REVALIDATE_SECONDS },
+);
+
+/**
+ * Keep a degraded event render from becoming the page's cached state for the
+ * full ISR window. Every deploy prerenders /events and the town pages with no
+ * database (promoted-data build), and a runtime archive read can time out;
+ * either render used to be served as a cache HIT for five or ten minutes.
+ * Calling this after the event read caps that render at one minute, so the
+ * next request after it regenerates the page from the archive.
+ */
+export async function keepDegradedEventRenderShort(
+  sourceHealth: Pick<EventSourceHealth, "degraded">,
+): Promise<void> {
+  if (!sourceHealth.degraded) return;
+  try {
+    await degradedEventRenderMarker();
+  } catch {
+    // Outside a Next render there is no route cache to shorten.
+  }
+}
 
 export async function assembleUnifiedEvents(now: Date): Promise<UnifiedEvents> {
   if (isPromotedDataBuild()) return assemblePromotedEvents(now);

@@ -4,6 +4,7 @@ import { featuredEventSlugs } from "@/lib/events/featured";
 import { Suspense } from "react";
 import { ArrowRight, Building2 } from "lucide-react";
 import { loadEventArchiveSnapshot } from "@/lib/loaders/todayEventSnapshot";
+import { keepDegradedEventRenderShort } from "@/lib/loaders/unifiedEvents";
 import { classifyEvent } from "@/lib/events/classify";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
 import {
@@ -36,7 +37,8 @@ export const metadata: Metadata = {
 // so a tight window keeps them from drifting stale. This page is now a
 // STATIC (ISR) shell — see the restructure note below — so revalidate is
 // the ONLY staleness bound; the warm cron keeps the feed caches hot
-// underneath, which makes the revalidation render cheap.
+// underneath, which makes the revalidation render cheap. A degraded event
+// read shortens its own render to one minute (keepDegradedEventRenderShort).
 export const revalidate = 300;
 
 /**
@@ -162,6 +164,11 @@ async function EventsBoard({
   // receive one bounded durable read, so no calendar or secondary database
   // query can hold the page open.
   const { unified, publicEvents, sourceHealth } = await eventsPromise;
+  // A degraded read (every build has no database; a runtime read can time
+  // out) must not stay cached as this page for the full five minutes. In
+  // October 2026 that served "1 event listing shown · partial results" as a
+  // cache HIT for minutes at a time while the archive held 1,160 listings.
+  await keepDegradedEventRenderShort(sourceHealth);
   const civicEvents = unified.filter((e) => classifyEvent(e) === "civic_meeting").map(slimEventForBrowse);
   const reminderEvents = unified.filter((e) => classifyEvent(e) === "town_reminder").map(slimEventForBrowse);
   // Derive liveness from the complete unified public set. Using only the
