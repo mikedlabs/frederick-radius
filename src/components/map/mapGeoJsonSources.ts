@@ -522,8 +522,9 @@ export function buildEventScrubTimes(
     const localStart = new Date(start.toLocaleString("en-US", { timeZone: "America/New_York" }));
     const startH = easternHourFloat({ hour: localStart.getHours(), minute: localStart.getMinutes() });
     // An all-day row owns the whole date. Timed rows use the same bounded
-    // visibility end as Events: a missing/equal end gets two hours, while an
-    // inflated end-of-day stamp can never hold the scrubber until midnight.
+    // visibility end as Events: a missing/equal end or an 11:59 PM placeholder
+    // gets three hours, so a placeholder can never hold the scrubber until
+    // midnight.
     const end = e.is_all_day
       ? null
       : new Date(effectiveTimedEventEndMs(e));
