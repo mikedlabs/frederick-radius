@@ -995,12 +995,44 @@ export function buildWantAnswer(
     // availability) remains timeless. The automatic best-fit fallback caused
     // by thin hours coverage is stricter: confirmed-closed places do not lead,
     // and an open badge is attached only to a place that is truly open now.
-    const best =
-      requestedRankingMode === "best-fit"
-        ? rankBestFit(candidates, preciseOrigin)
-        : availability.current.filter(
-            (candidate) => candidate.slug !== openingSoon?.slug,
-          );
+    const automatic = requestedRankingMode !== "best-fit";
+    const automaticCurrent = availability.current.filter(
+      (candidate) => candidate.slug !== openingSoon?.slug,
+    );
+    // The automatic fallback must consult the same curated likely-open windows
+    // the server-rendered Today shelf uses. Without them, the live refresh
+    // replaced "Hootch & Banter · Likely open" with a local favorite whose
+    // hours were not confirmed at all (Today, Oct 6, 10:55 PM). For a
+    // right-now intent, confirmed-open places lead, likely-open places follow,
+    // and the rest of the unknown-hours lane comes after both.
+    const likelyOpenSlugs = new Set(
+      automatic && want.availability !== "not-applicable"
+        ? automaticCurrent
+            .filter(
+              (candidate) =>
+                mayUseLikelyOpenFallback(candidate.open_status) &&
+                isLikelyOpenNow(candidate.slug, now),
+            )
+            .map((candidate) => candidate.slug)
+        : [],
+    );
+    const best = !automatic
+      ? rankBestFit(candidates, preciseOrigin)
+      : want.availability === "required"
+        ? [
+            ...automaticCurrent.filter((candidate) =>
+              isOpenNow(candidate.open_status),
+            ),
+            ...automaticCurrent.filter((candidate) =>
+              likelyOpenSlugs.has(candidate.slug),
+            ),
+            ...automaticCurrent.filter(
+              (candidate) =>
+                !isOpenNow(candidate.open_status) &&
+                !likelyOpenSlugs.has(candidate.slug),
+            ),
+          ]
+        : automaticCurrent;
     // Thin hours coverage can move an ordinary right-now request into this
     // best-fit branch. Keep the same short-answer diversity rule used by the
     // open-now branch so one chain cannot take the hero and repeat in the
@@ -1019,8 +1051,12 @@ export function buildWantAnswer(
       toRow(
         candidate,
         false,
-        isOpenNow(candidate.open_status) ? "confirmed" : undefined,
-        reasonsFor(candidate, requestedRankingMode !== "best-fit"),
+        isOpenNow(candidate.open_status)
+          ? "confirmed"
+          : likelyOpenSlugs.has(candidate.slug)
+            ? "likely"
+            : undefined,
+        reasonsFor(candidate, automatic),
       );
     const breweryCurrent =
       cKey !== "breweries"

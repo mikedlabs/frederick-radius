@@ -8,14 +8,17 @@ import DaypartNeeds, {
   daypartLeadReason,
   daypartPhotoSrc,
   daypartPickScopeLabel,
+  daypartShelfConfidenceRank,
   daypartShelfHeading,
   daypartShelfTier,
   daypartUsablePickCount,
   initialDaypartCategory,
   isPhotoFailureSignal,
   isDaypartCountywideContext,
+  keepsServerDaypartShelf,
   liveShelfFromWantAnswer,
   nextUnresolvedDaypartCategory,
+  serverDaypartShelf,
 } from "./DaypartNeeds";
 
 describe("DaypartNeeds", () => {
@@ -364,6 +367,193 @@ describe("DaypartNeeds", () => {
     expect(shelf.href).toBe("/nearby?c=coffee&in=urbana");
   });
 
+  describe("server shelf confidence guard", () => {
+    // Oct 6, 10:55 PM Eastern (a Tuesday). Hootch & Banter's curated window
+    // runs 4pm to 11:59pm, so the server shelf honestly called it likely open.
+    const lateTuesday = new Date("2026-10-07T02:55:00.000Z");
+    const afterWindow = new Date("2026-10-07T04:30:00.000Z");
+    const serverRow = {
+      category: "bar",
+      label: "Bars open late",
+      href: "/category/bar",
+      picks: [{
+        slug: "hootch-and-banter-frederick",
+        name: "Hootch & Banter",
+        rating: 4.6,
+        where: "Frederick",
+        confidence: "likely" as const,
+        fact: "Likely open · check hours",
+      }],
+    };
+    const unconfirmedAnswer = (contextSource: "county" | "device" | "town") => ({
+      hero: {
+        slug: "mcclintocks-back-bar",
+        name: "McClintock's Back Bar",
+        photo: null,
+        where: "Frederick",
+        distance: null,
+        fact: "Hours not confirmed",
+        decisionReasons: [
+          { id: "local-favorite", label: "Radius has this marked as a local favorite.", evidenceIds: ["radius-curation"] },
+        ],
+      },
+      also: [],
+      browseHref: "/category/bar",
+      contextLabel: contextSource === "town" ? "Urbana" : "Whole county",
+      contextSource,
+      mayAssertNoneOpen: false,
+    });
+
+    it("ranks shelves by their strongest hours evidence", () => {
+      expect(daypartShelfConfidenceRank([])).toBe(Number.POSITIVE_INFINITY);
+      expect(
+        daypartShelfConfidenceRank([
+          { confidence: "unconfirmed" },
+          { confidence: "likely" },
+        ]),
+      ).toBeLessThan(daypartShelfConfidenceRank([{ confidence: "unconfirmed" }]));
+      expect(daypartShelfConfidenceRank([{ confidence: "confirmed" }])).toBeLessThan(
+        daypartShelfConfidenceRank([{ confidence: "likely" }]),
+      );
+    });
+
+    it("keeps a likely server shelf over an unconfirmed live shelf", () => {
+      for (const source of ["county", "device"] as const) {
+        const live = liveShelfFromWantAnswer(
+          unconfirmedAnswer(source),
+          serverRow,
+          source === "device" ? "nearme" : "county",
+        );
+        expect(keepsServerDaypartShelf(serverRow, live, lateTuesday)).toBe(true);
+      }
+
+      const kept = serverDaypartShelf(serverRow, lateTuesday);
+      expect(kept.picks.map((pick) => pick.slug)).toEqual([
+        "hootch-and-banter-frederick",
+      ]);
+      expect(kept.picks[0]).toMatchObject({
+        confidence: "likely",
+        fact: "Likely open · check hours",
+      });
+      expect(kept).toMatchObject({
+        href: "/category/bar",
+        contextLabel: "Across Frederick County",
+        contextSource: "county",
+        mayAssertNoneOpen: false,
+      });
+    });
+
+    it("keeps a server shelf over a countywide live zero", () => {
+      const live = liveShelfFromWantAnswer(
+        { ...unconfirmedAnswer("county"), hero: null },
+        serverRow,
+        "county",
+      );
+      expect(keepsServerDaypartShelf(serverRow, live, lateTuesday)).toBe(true);
+    });
+
+    it("lets a town scope replace the countywide shelf even with weaker evidence", () => {
+      const live = liveShelfFromWantAnswer(
+        unconfirmedAnswer("town"),
+        serverRow,
+        "town:urbana",
+      );
+      expect(keepsServerDaypartShelf(serverRow, live, lateTuesday)).toBe(false);
+    });
+
+    it("lets the live answer win once cached likely picks have aged out", () => {
+      const live = liveShelfFromWantAnswer(
+        unconfirmedAnswer("county"),
+        serverRow,
+        "county",
+      );
+      expect(keepsServerDaypartShelf(serverRow, live, afterWindow)).toBe(false);
+      expect(serverDaypartShelf(serverRow, afterWindow).picks).toEqual([]);
+    });
+
+    it("lets a live answer that can report nothing open replace the shelf", () => {
+      const live = liveShelfFromWantAnswer(
+        { ...unconfirmedAnswer("county"), hero: null, mayAssertNoneOpen: true },
+        serverRow,
+        "county",
+      );
+      expect(keepsServerDaypartShelf(serverRow, live, lateTuesday)).toBe(false);
+    });
+
+    it("drops a cached confirmed pick once its stated closing time passes", () => {
+      const confirmedRow = {
+        ...serverRow,
+        picks: [{
+          slug: "early-close-bar",
+          name: "Early Close Bar",
+          rating: 4.4,
+          confidence: "confirmed" as const,
+          fact: "Open until 10pm",
+        }],
+      };
+      const lateRow = {
+        ...serverRow,
+        picks: [{
+          slug: "late-close-bar",
+          name: "Late Close Bar",
+          rating: 4.4,
+          confidence: "confirmed" as const,
+          fact: "Closing soon · 2am",
+        }],
+      };
+      const live = liveShelfFromWantAnswer(
+        unconfirmedAnswer("county"),
+        serverRow,
+        "county",
+      );
+      const ninePm = new Date("2026-10-07T01:00:00.000Z");
+      const tenThirtyPm = new Date("2026-10-07T02:30:00.000Z");
+
+      expect(keepsServerDaypartShelf(confirmedRow, live, ninePm)).toBe(true);
+      expect(keepsServerDaypartShelf(confirmedRow, live, tenThirtyPm)).toBe(false);
+      expect(serverDaypartShelf(confirmedRow, tenThirtyPm).picks).toEqual([]);
+      // A past-midnight close is still ahead late in the evening.
+      expect(keepsServerDaypartShelf(lateRow, live, tenThirtyPm)).toBe(true);
+    });
+
+    it("accepts a live shelf of equal or stronger evidence", () => {
+      const likelyLive = liveShelfFromWantAnswer(
+        {
+          ...unconfirmedAnswer("county"),
+          hero: {
+            slug: "bushwaller-irish-pub-frederick",
+            name: "Bushwaller's",
+            photo: null,
+            where: "Frederick",
+            distance: null,
+            fact: "Likely open · check hours",
+            confidence: "likely",
+          },
+        },
+        serverRow,
+        "county",
+      );
+      const confirmedLive = liveShelfFromWantAnswer(
+        {
+          ...unconfirmedAnswer("county"),
+          hero: {
+            slug: "late-bar",
+            name: "Late Bar",
+            photo: null,
+            where: "Frederick",
+            distance: null,
+            fact: "Open until 1am",
+            confidence: "confirmed",
+          },
+        },
+        serverRow,
+        "county",
+      );
+      expect(keepsServerDaypartShelf(serverRow, likelyLive, lateTuesday)).toBe(false);
+      expect(keepsServerDaypartShelf(serverRow, confirmedLive, lateTuesday)).toBe(false);
+    });
+  });
+
   it("maps the live opening-soon row and removes it from current picks", () => {
     const shelf = liveShelfFromWantAnswer(
       {
@@ -458,7 +648,7 @@ describe("DaypartNeeds", () => {
     }])).toBe("Current hours show it is open now.");
   });
 
-  it("uses an exact distance before a generic review-history tie-breaker", () => {
+  it("pairs an exact distance with current hours instead of review history", () => {
     expect(daypartLeadReason([{
       slug: "nearby-only",
       name: "Nearby Only",
@@ -468,7 +658,75 @@ describe("DaypartNeeds", () => {
       decisionReasons: [
         { id: "review-evidence", label: "It has substantial Google review history.", evidenceIds: [] },
       ],
-    }])).toBe("It is 0.4 miles from you.");
+    }])).toBe("Current hours show it is open now, and it is 0.4 miles from you.");
+  });
+
+  it("never leads with curation or reviews when the hours are not confirmed", () => {
+    // Today, Oct 6, 10:55 PM: "Why it leads: Radius has this marked as a
+    // local favorite" sat under a bar whose hours were not confirmed. A
+    // right-now shelf may only explain its lead with hours evidence.
+    const unconfirmed = {
+      slug: "mcclintocks-back-bar",
+      name: "McClintock's Back Bar",
+      rating: null,
+      confidence: "unconfirmed" as const,
+      fact: "Hours not confirmed",
+      decisionReasons: [
+        { id: "local-favorite", label: "Radius has this marked as a local favorite.", evidenceIds: ["radius-curation"] },
+        { id: "review-evidence", label: "It has substantial Google review history.", evidenceIds: ["google-places"] },
+      ],
+    };
+    expect(daypartLeadReason([unconfirmed])).toBeNull();
+    // Distance alone is not a time-relevant reason either.
+    expect(daypartLeadReason([{ ...unconfirmed, distance: "4 min walk" }])).toBeNull();
+  });
+
+  it("explains a likely lead by its usual hours, not by its curation", () => {
+    const likely = {
+      slug: "hootch-and-banter-frederick",
+      name: "Hootch & Banter",
+      rating: null,
+      confidence: "likely" as const,
+      fact: "Likely open · check hours",
+      decisionReasons: [
+        { id: "local-favorite", label: "Radius has this marked as a local favorite.", evidenceIds: ["radius-curation"] },
+      ],
+    };
+    expect(daypartLeadReason([likely])).toBe(
+      "Its usual hours include this time of day.",
+    );
+    expect(daypartLeadReason([{ ...likely, distance: "4 min walk" }])).toBe(
+      "Its usual hours include this time of day, and it is a 4-minute walk from you.",
+    );
+  });
+
+  it("renders the lead reason at the 11px type floor", () => {
+    const html = renderToStaticMarkup(
+      createElement(DaypartNeeds, {
+        rows: [
+          {
+            category: "bar",
+            label: "Bars open late",
+            href: "/category/bar",
+            picks: [{
+              slug: "late-bar",
+              name: "Late Bar",
+              rating: 4.6,
+              confidence: "confirmed",
+              fact: "Open until 1am",
+            }],
+          },
+        ],
+      }),
+    );
+
+    const reason = html.match(
+      /<p data-today-decision-reason="true"[\s\S]*?<\/p>/,
+    )?.[0];
+    expect(reason).toContain("Why it leads");
+    expect(reason).toContain("It is open until 1am.");
+    expect(reason).toContain("text-[11px]");
+    expect(reason).not.toMatch(/text-\[(?:[0-9]|10)(?:\.\d+)?px\]/);
   });
 
   it("never turns an unknown-hours best-fit row into an open-now card", () => {

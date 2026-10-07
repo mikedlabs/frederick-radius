@@ -89,40 +89,39 @@ export function TodayEventsRecoveryView({
   });
 
   if (events.length === 0) {
+    // Every empty state keeps the normal events module's heading, so the
+    // section does not change shape when recovered rows arrive. The body is
+    // one plain sentence about the calendar, never internal "brief" jargon.
+    // A healthy zero means no remaining event met Today's editorial bar
+    // (selectTodayEvents), not that the full calendar is empty.
     const status = healthyEmpty
-      ? "No picks in this brief"
+      ? "Nothing on the rest of today's calendar stands out."
       : failed
-        ? "Event picks are unavailable here"
-        : "Updating today's event picks";
+        ? "Today's event picks could not load."
+        : "Today's event picks are still loading.";
 
     return (
       <section
-        className="mt-1"
+        className="mt-5 space-y-3"
         aria-label="Events today"
         data-today-event-recovery="true"
       >
-        <div
-          className="flex min-h-14 items-center justify-between gap-3 border-y px-0.5 py-2"
-          style={{ borderColor: "var(--app-border)" }}
+        <DismissibleSection
+          id="upcoming"
+          title="Events today"
+          href="/events"
+          cta="Full board"
+          flat
+          meta={meta}
         >
-          <div className="min-w-0">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
-              Events today
-            </p>
-            <p role="status" className="mt-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-              {status}
-            </p>
-          </div>
-          <Link
-            href="/events"
-            aria-label="Open the full events board"
-            className="tap-44-y inline-flex min-h-11 shrink-0 items-center gap-1 text-[12px] font-semibold"
-            style={{ color: "var(--app-brand-press)" }}
+          <p
+            role="status"
+            className="px-0.5 text-[13.5px] leading-snug"
+            style={{ color: "var(--app-ink-2)" }}
           >
-            Full board
-            <ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          </Link>
-        </div>
+            {status}
+          </p>
+        </DismissibleSection>
       </section>
     );
   }

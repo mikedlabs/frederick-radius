@@ -478,7 +478,10 @@ describe("buildWantAnswer context", () => {
       slug: "gravel-and-grind-frederick",
       name: "Gravel & Grind",
     });
-    expect(answer?.hero?.confidence).toBeUndefined();
+    // Its hours are not current on this clock, but its curated window covers
+    // Sunday noon, so the thin-coverage answer may call it likely, never open.
+    expect(answer?.hero?.confidence).toBe("likely");
+    expect(answer?.hero?.fact).toBe("Likely open · check hours");
     expect(answer?.hero?.distance).toBe("1 min walk");
     expect(answer?.also.some((row) => /starbucks/i.test(row.name))).toBe(false);
   });
@@ -545,9 +548,69 @@ describe("buildWantAnswer context", () => {
     expect(answer?.hero).not.toBeNull();
     expect(answer?.rankingMode).toBe("best-fit");
     expect(answer?.mayAssertNoneOpen).toBe(false);
-    expect(answer?.hero?.confidence).toBeUndefined();
-    expect(answer?.hero?.fact).toBe("Hours not confirmed");
-    expect(answer?.also.every((row) => row.confidence == null)).toBe(true);
+    // Expired hours never become a current claim. A curated usual-hours window
+    // may still say "likely" in its own words; every other row stays neutral.
+    const rows = [answer?.hero, ...(answer?.also ?? [])].filter(
+      (row): row is NonNullable<typeof row> => Boolean(row),
+    );
+    expect(rows.some((row) => row.confidence === "confirmed")).toBe(false);
+    for (const row of rows) {
+      expect(row.fact).toBe(
+        row.confidence === "likely"
+          ? "Likely open · check hours"
+          : "Hours not confirmed",
+      );
+    }
+  });
+
+  it("leads a thin-coverage right-now answer with likely-open places, labeled likely", () => {
+    // The Today regression of Oct 6, 10:55 PM, replayed on a Tuesday whose
+    // hours are all expired: the server shelf painted "Hootch & Banter ·
+    // Likely open", and this answer replaced it with McClintock's Back Bar,
+    // "Hours not confirmed", because the best-fit fallback never consulted the
+    // curated likely-open windows.
+    const lateTuesday = new Date("2030-10-09T02:55:00.000Z");
+    const answer = buildWantAnswer("cat:bar", null, null, lateTuesday);
+    expect(answer?.rankingMode).toBe("best-fit");
+
+    const rows = [answer?.hero, ...(answer?.also ?? [])].filter(
+      (row): row is NonNullable<typeof row> => Boolean(row),
+    );
+    expect(answer?.hero).toMatchObject({
+      confidence: "likely",
+      fact: "Likely open · check hours",
+    });
+    expect(answer?.hero?.slug).not.toBe("mcclintocks-back-bar");
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        slug: "hootch-and-banter-frederick",
+        confidence: "likely",
+      }),
+    );
+    // Likely rows come first; everything after them makes no hours claim.
+    const firstNeutral = rows.findIndex((row) => row.confidence == null);
+    if (firstNeutral >= 0) {
+      expect(
+        rows.slice(firstNeutral).every((row) => row.confidence == null),
+      ).toBe(true);
+    }
+    expect(answer?.decision?.claimState).toBe("partial");
+  });
+
+  it("keeps an explicit best-fit question timeless, without likely labels", () => {
+    const answer = buildWantAnswer(
+      "cat:bar",
+      null,
+      null,
+      new Date("2030-10-09T02:55:00.000Z"),
+      { rankingMode: "best-fit" },
+    );
+    const rows = [answer?.hero, ...(answer?.also ?? [])].filter(
+      (row): row is NonNullable<typeof row> => Boolean(row),
+    );
+
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((row) => row.confidence !== "likely")).toBe(true);
   });
 
   it("keeps boba out of the generic coffee answer's lead choices", () => {

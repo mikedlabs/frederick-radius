@@ -15,6 +15,7 @@ import { getScope, parseScope, SCOPE_CHANGE_EVENT, type Scope } from "@/lib/scop
 import Skeleton from "@/components/ui/Skeleton";
 import { persistOfflineTodaySnapshot } from "@/lib/offline-snapshot";
 import { easternDayKey } from "@/lib/tz";
+import { isLikelyOpenNow } from "@/data/reliable-open-windows";
 
 type WantRow = {
   slug: string;
@@ -111,8 +112,9 @@ export function nextUnresolvedDaypartCategory(
 export { daypartBrowseHref };
 
 /** Turn the live decision response into the shelf verbatim, including an empty
- * answer. A successful scoped zero is information; only a rejected request may
- * retain the countywide server fallback. */
+ * answer. A successful scoped zero is information; a rejected request, or a
+ * countywide answer with weaker hours evidence than the painted shelf (see
+ * keepsServerDaypartShelf), retains the countywide server fallback. */
 const WANT_CONFIDENCE_RANK: Record<
   NonNullable<WantRow["confidence"]>,
   number
@@ -176,6 +178,104 @@ export function liveShelfFromWantAnswer(
     contextLabel: answer.contextLabel || "Across Frederick County",
     contextSource: answer.contextSource ?? "county",
     mayAssertNoneOpen: answer.mayAssertNoneOpen === true,
+  };
+}
+
+/** The strongest hours evidence on a shelf; lower is stronger. A shelf with no
+ * picks has no evidence at all, so any shelf with a pick outranks it. */
+export function daypartShelfConfidenceRank(
+  picks: readonly Pick<DaypartPick, "confidence">[],
+): number {
+  return picks.reduce(
+    (best, place) => Math.min(best, WANT_CONFIDENCE_RANK[place.confidence]),
+    Number.POSITIVE_INFINITY,
+  );
+}
+
+/**
+ * Whether the server-rendered shelf should stay in place instead of the live
+ * answer. The live refresh exists to apply the visitor's context, not to trade
+ * stronger hours evidence for weaker evidence about the same countywide set:
+ * on Oct 6 at 10:55 PM the cached shelf said "Hootch & Banter · Likely open"
+ * and hydration swapped in a place whose hours were not confirmed at all.
+ *
+ * A town scope asks a narrower question, so its answer (even an empty one)
+ * always replaces the countywide shelf. A live answer with enough hours
+ * coverage to say nothing is open is current evidence, so it replaces the
+ * shelf too. Cached HTML can also outlive what it printed: a likely pick only
+ * counts while its curated window is open on this clock, and a confirmed pick
+ * only until the closing time it states.
+ */
+export function keepsServerDaypartShelf(
+  row: Pick<DaypartRow, "picks">,
+  live: Pick<LiveShelf, "picks" | "contextSource" | "mayAssertNoneOpen">,
+  now: Date,
+): boolean {
+  if (!isDaypartCountywideContext(live.contextSource)) return false;
+  if (live.mayAssertNoneOpen) return false;
+  return (
+    daypartShelfConfidenceRank(live.picks) >
+    daypartShelfConfidenceRank(currentServerDaypartPicks(row, now))
+  );
+}
+
+const EASTERN_CLOCK = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+function easternMinuteOfDay(now: Date): number {
+  const parts = Object.fromEntries(
+    EASTERN_CLOCK.formatToParts(now).map((part) => [part.type, part.value]),
+  );
+  return (Number(parts.hour) % 24) * 60 + Number(parts.minute);
+}
+
+/** "Open until 10pm" or "Closing soon · 9:30pm" as minutes after midnight. */
+function statedClosingMinute(fact: string | null | undefined): number | null {
+  const match = fact
+    ?.trim()
+    .match(/^(?:Open until|Closing soon\s*·)\s+(\d{1,2})(?::(\d{2}))?(am|pm)$/i);
+  if (!match) return null;
+  const hour = (Number(match[1]) % 12) + (match[3].toLowerCase() === "pm" ? 12 : 0);
+  return hour * 60 + Number(match[2] ?? 0);
+}
+
+/** A cached confirmed pick is stale once this clock has reached the closing
+ * time it printed. Only the half day after that time counts as past, so
+ * "Open until 2am" read at 11pm is still ahead of its close. */
+function confirmedPickStillOpen(place: DaypartPick, now: Date): boolean {
+  const close = statedClosingMinute(place.fact);
+  if (close == null) return true;
+  const minutesSinceClose = (easternMinuteOfDay(now) - close + 1440) % 1440;
+  return minutesSinceClose > 12 * 60;
+}
+
+function currentServerDaypartPicks(
+  row: Pick<DaypartRow, "picks">,
+  now: Date,
+): DaypartPick[] {
+  return row.picks.filter((place) =>
+    place.confidence === "likely"
+      ? isLikelyOpenNow(place.slug, now)
+      : place.confidence === "confirmed"
+        ? confirmedPickStillOpen(place, now)
+        : true,
+  );
+}
+
+/** The server shelf restated as the settled answer, without any pick whose
+ * curated window or stated closing time has passed since the HTML rendered. */
+export function serverDaypartShelf(row: DaypartRow, now: Date): LiveShelf {
+  return {
+    picks: currentServerDaypartPicks(row, now),
+    openingSoon: row.openingSoon ?? null,
+    href: row.href,
+    contextLabel: "Across Frederick County",
+    contextSource: "county",
+    mayAssertNoneOpen: false,
   };
 }
 
@@ -287,16 +387,21 @@ export function daypartPickScopeLabel(
 }
 
 function leadAvailabilityClause(place: DaypartPick): string | null {
+  // The curated fallback is a usual-hours statement, not a current one. Say
+  // exactly that; the card itself already asks the reader to check hours.
+  if (place.confidence === "likely") {
+    return "Its usual hours include this time of day";
+  }
   if (place.confidence !== "confirmed") return null;
-  const fact = place.fact?.trim();
-  if (!fact) return null;
+  const fact = place.fact?.trim() ?? "";
   const until = fact.match(/^Open until\s+(.+)$/i);
   if (until) return `It is open until ${until[1]}`;
   const closing = fact.match(/^Closing soon\s*[·-]\s*(.+)$/i);
   if (closing) return `It closes soon at ${closing[1]}`;
   if (/^Open 24 hours$/i.test(fact)) return "It is open 24 hours";
-  if (/^Open now$/i.test(fact)) return "Current hours show it is open now";
-  return null;
+  // A confirmed pick is open by its current hours even when the server shelf
+  // sent no hours line to quote.
+  return "Current hours show it is open now";
 }
 
 function leadDistanceClause(distance: string | null | undefined): string | null {
@@ -311,35 +416,26 @@ function leadDistanceClause(distance: string | null | undefined): string | null 
   return `${value} from you`;
 }
 
-/** Explain the lead with the evidence a person can act on first. Exact current
- * hours and consented-device distance beat popularity or review-volume
- * signals; editorial and third-party evidence remain useful tie-breakers when
- * the live answer cannot state either one. */
+/** Explain the lead only with evidence about right now: its current or usual
+ * hours, joined by consented-device distance when Radius has it. A shelf that
+ * answers "what is open now" cannot be led by curation or review volume, so a
+ * lead without hours evidence gets no "Why it leads" line at all; "Radius has
+ * this marked as a local favorite" on its own read as a reason to go to a
+ * place whose hours were not confirmed (Today, Oct 6, 10:55 PM). */
 export function daypartLeadReason(
   picks: readonly DaypartPick[],
 ): string | null {
   const lead = picks[0];
   if (!lead) return null;
   const availability = leadAvailabilityClause(lead);
+  if (!availability) return null;
   const distance = leadDistanceClause(lead.distance);
-  if (availability && distance) return `${availability} and is ${distance}.`;
-  if (availability) return `${availability}.`;
-  if (distance) return `It is ${distance}.`;
-
-  const reasons = lead.decisionReasons ?? [];
-  const priority = [
-    "availability",
-    "proximity",
-    "intent-fit",
-    "local-favorite",
-    "hidden-gem",
-    "review-evidence",
-  ];
-  for (const id of priority) {
-    const reason = reasons.find((candidate) => candidate.id === id);
-    if (reason) return reason.label;
-  }
-  return reasons[0]?.label ?? null;
+  if (!distance) return `${availability}.`;
+  // "It is open until 9pm and is…" shares its subject; a clause about the
+  // hours themselves needs its own subject for the distance.
+  return availability.startsWith("It ")
+    ? `${availability} and is ${distance}.`
+    : `${availability}, and it is ${distance}.`;
 }
 
 /** Ask the photo proxy for its 1x1 failure signal. This particular shelf can
@@ -499,7 +595,7 @@ function DaypartPickCard({
           </span>
           <span
             data-today-pick-context
-            className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] tabular-nums"
+            className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px] tabular-nums"
             style={{ color: "color-mix(in srgb, var(--app-on-brand) 86%, transparent)" }}
           >
             <span
@@ -655,7 +751,7 @@ function OpeningSoonPick({
       )}
       <span className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2.5">
         <span
-          className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.11em]"
+          className="font-mono text-[11px] font-semibold uppercase tracking-[0.08em]"
           style={{ color: "var(--app-warning-press)" }}
         >
           Opening soon
@@ -775,7 +871,14 @@ export default function DaypartNeeds({
       .then((raw) => {
         if (!current) return;
         const answer = raw as WantAnswer;
-        const shelf = liveShelfFromWantAnswer(answer, baseActive, scope);
+        const live = liveShelfFromWantAnswer(answer, baseActive, scope);
+        // Never trade the painted shelf for weaker hours evidence about the
+        // same countywide set. This also holds during auto-advance, where the
+        // next category's server shelf is what the reader is about to see.
+        const now = new Date();
+        const shelf = keepsServerDaypartShelf(baseActive, live, now)
+          ? serverDaypartShelf(baseActive, now)
+          : live;
         setLiveShelves((previous) => ({
           ...previous,
           [baseActive.category]: shelf,
@@ -988,7 +1091,7 @@ export default function DaypartNeeds({
       >
         {awaitingLive ||
         (visiblePicks.length > 0 && shelfTier !== "confirmed") ? <div className="px-0.5">
-          <p className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+          <p className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
             {awaitingLive
               ? "Checking nearby"
               : shelfTier === "likely"
@@ -1074,7 +1177,7 @@ export default function DaypartNeeds({
                 style={{ color: "var(--app-ink-2)" }}
               >
                 <span
-                  className="shrink-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.1em]"
+                  className="shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[0.08em]"
                   style={{ color: "var(--app-brand-press)" }}
                 >
                   Why it leads

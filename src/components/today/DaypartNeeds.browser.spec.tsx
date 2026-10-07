@@ -85,6 +85,58 @@ describe("Today hydrated scope agrees with its area control", () => {
     expect(container.querySelector('a[href="/nearby?c=coffee&in=frederick"]')).not.toBeNull();
   });
 
+  it("keeps a likely server shelf when the live answer only has unconfirmed hours", async () => {
+    // Oct 6, 10:55 PM Eastern. The cached HTML painted Hootch & Banter as
+    // likely open; hydration used to replace it with McClintock's Back Bar,
+    // "Hours not confirmed", led by "a local favorite".
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-07T02:55:00.000Z"));
+    state.answer.mockImplementation(async () => ({
+      hero: {
+        slug: "mcclintocks-back-bar",
+        name: "McClintock's Back Bar",
+        photo: null,
+        where: "Frederick",
+        distance: null,
+        fact: "Hours not confirmed",
+        decisionReasons: [
+          { id: "local-favorite", label: "Radius has this marked as a local favorite.", evidenceIds: ["radius-curation"] },
+        ],
+      },
+      also: [], later: [], notable: [],
+      contextSource: "county",
+      contextLabel: "Whole county",
+      browseHref: "/category/bar",
+    }));
+    const barRows = [{
+      category: "bar",
+      label: "Bars open late",
+      href: "/category/bar",
+      picks: [{
+        slug: "hootch-and-banter-frederick",
+        name: "Hootch & Banter",
+        rating: 4.6,
+        where: "Frederick",
+        confidence: "likely" as const,
+        fact: "Likely open · check hours",
+      }],
+    }];
+    try {
+      await act(async () => { root.render(<DaypartNeeds rows={barRows} variant="brief" />); });
+      await act(async () => { await Promise.resolve(); });
+
+      expect(state.answer).toHaveBeenCalledWith("cat:bar", null, "county");
+      expect(container.textContent).toContain("Hootch & Banter");
+      expect(container.textContent).toContain("Places likely open");
+      expect(container.textContent).toContain("Its usual hours include this time of day.");
+      expect(container.textContent).not.toContain("McClintock's Back Bar");
+      expect(container.textContent).not.toContain("Hours not confirmed");
+      expect(container.textContent).not.toContain("local favorite");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("honors an explicit county URL despite a stale city cookie", async () => {
     document.cookie = "fr_scope=town%3Afrederick; path=/";
     window.history.replaceState(null, "", "/today?in=county");

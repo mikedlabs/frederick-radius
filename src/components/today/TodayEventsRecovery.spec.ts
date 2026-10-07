@@ -38,7 +38,7 @@ describe("TodayEventsRecoveryView", () => {
       createElement(TodayEventsRecoveryView, { response: null }),
     );
 
-    expect(html).toContain("Updating today&#x27;s event picks");
+    expect(html).toContain("Today&#x27;s event picks are still loading.");
     expect(html).not.toContain("No events are on the calendar");
     expect(html).toContain('href="/events"');
     expect(html).not.toContain("Refreshing current picks");
@@ -52,8 +52,8 @@ describe("TodayEventsRecoveryView", () => {
       }),
     );
 
-    expect(html).toContain("Event picks are unavailable here");
-    expect(html).not.toContain("Updating today&#x27;s event picks");
+    expect(html).toContain("Today&#x27;s event picks could not load.");
+    expect(html).not.toContain("still loading");
   });
 
   it("distinguishes a healthy empty shortlist from a failed archive read", () => {
@@ -63,8 +63,41 @@ describe("TodayEventsRecoveryView", () => {
       }),
     );
 
-    expect(html).toContain("No picks in this brief");
-    expect(html).not.toContain("Event picks are unavailable here");
+    expect(html).toContain(
+      "Nothing on the rest of today&#x27;s calendar stands out.",
+    );
+    expect(html).not.toContain("could not load");
+    expect(html).not.toContain("No picks in this brief");
+  });
+
+  it("gives every empty state the normal events heading, not a small mono label", () => {
+    const states = [
+      { response: null },
+      { response: null, failed: true },
+      { response: { events: [], partial: false } },
+      { response: { events: [], partial: true } },
+    ];
+    const populated = renderToStaticMarkup(
+      createElement(TodayEventsRecoveryView, {
+        response: { partial: false, events: [event] },
+      }),
+    );
+    const headingOf = (html: string) =>
+      html.match(/<h2[^>]*>([^<]*)<\/h2>/)?.[1];
+
+    expect(headingOf(populated)).toBe("Events today");
+    for (const props of states) {
+      const html = renderToStaticMarkup(
+        createElement(TodayEventsRecoveryView, props),
+      );
+      expect(html).toContain('data-today-section-heading="true"');
+      expect(headingOf(html)).toBe("Events today");
+      expect(html).toContain('aria-label="Full board: Events today"');
+      expect(html).not.toContain("text-[10px]");
+      // One plain sentence carries the state.
+      const status = html.match(/<p role="status"[^>]*>([^<]*)<\/p>/)?.[1];
+      expect(status).toMatch(/^[A-Z][^.]*\.$/);
+    }
   });
 
   it("keeps partial coverage explicit when usable rows survive", () => {
