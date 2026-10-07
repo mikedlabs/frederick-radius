@@ -8584,6 +8584,99 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @media (prefers-reduced-motion: reduce) {
   .fr-food-truck-pulse { animation: none; transform: scale(1.25); opacity: .28; }
 }
+
+/* A published truck stop is a plan, not a presence: a hollow 28px puck with
+   an Ink 2 ring and a small "Scheduled 5 PM" label beside it. Only an
+   operator beacon keeps the filled Brick puck and its pulse. */
+.fr-food-truck-marker[data-availability="published-stop"] .fr-food-truck-glyph {
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid var(--app-ink-2);
+  color: var(--app-ink-2);
+  background: var(--app-bg-elevated-solid);
+  box-shadow: none;
+}
+
+.fr-food-truck-schedule {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: calc(50% + 17px);
+  transform: translateY(-50%);
+  padding: 1px 6px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-sm);
+  background: var(--app-bg-elevated-solid);
+  color: var(--app-ink-2);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Event times on the untouched county overview: a 10px Brick dot with a
+   Cream ring on the venue, then a pill naming the event and its time. The
+   button is the 44px tap target; the dot's center sits 22px from its left
+   edge, which the Marker offset puts on the venue. */
+.fr-overview-event {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0 0 17px;
+  border: 0;
+  background: transparent;
+  color: var(--app-ink);
+  cursor: pointer;
+}
+
+.fr-overview-event-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--app-brand);
+  box-shadow: 0 0 0 2px var(--app-bg);
+}
+
+.fr-overview-event-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 200px;
+  padding: 3px 8px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: var(--app-bg-elevated-solid);
+  box-shadow: var(--app-elev-1);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.fr-overview-event-title {
+  min-width: 0;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  color: var(--app-ink);
+}
+
+.fr-overview-event-time {
+  flex: none;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-ink-2);
+}
+
+.fr-overview-event:focus-visible {
+  outline: 2px solid var(--app-brand);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
 /* WLR discussion concept. Kept global to avoid styled-jsx hydration drift. */
 .road-ready-grid {
   position: absolute;

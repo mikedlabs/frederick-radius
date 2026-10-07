@@ -229,6 +229,7 @@ export default function AppMapClient({
   cemeteries = [],
   parking = [],
   events = [],
+  overviewEvents,
   transitStops = [],
   marcStations = [],
   foodTruckPins = [],
@@ -292,6 +293,9 @@ export default function AppMapClient({
    *  /map page filters to "happening soon" server-side so this stays a
    *  small (≤30 item) array. */
   events?: EventPin[];
+  /** The browse map's week of events; AppMap marks the few underway or
+   *  starting soon on the untouched county overview. Browse only. */
+  overviewEvents?: EventPin[];
   /** Bus-stop dots + MARC stations for the Transit layer (phase 3).
    *  Forwarded to AppMap; empty on embeds. */
   transitStops?: TransitStopPin[];
@@ -444,6 +448,7 @@ export default function AppMapClient({
             cemeteries={cemeteries}
             parking={parking}
             events={events}
+            overviewEvents={overviewEvents}
             transitStops={transitStops}
             marcStations={marcStations}
             foodTruckPins={foodTruckPins}

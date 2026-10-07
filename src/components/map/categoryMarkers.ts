@@ -110,29 +110,54 @@ export const BUCKET_COLOR: Record<Bucket, string> = {
  *  an all-brewery cluster fell to the mx==0 vermilion fallback, and two
  *  restaurants outvoted ten breweries — broken exactly where Frederick is
  *  most distinctive. Every curated-place bucket now rolls into one of eight
- *  families; the tally + tint expressions in AppMap read this one table. */
+ *  families; the tally + tint expressions in AppMap read this one table.
+ *
+ *  Only DESTINATION families (places people go to eat, drink, walk or see
+ *  something) choose a cluster's tint and its word. Downtown Frederick holds
+ *  many salons, offices and churches, so a tally over every family painted
+ *  the busiest blocks as gray "Services" (map audit, Oct 2026). Services,
+ *  civic, worship and shops still count toward the cluster's number, because
+ *  point_count covers every place in it; they just never name the area. */
 export const CLUSTER_FAMILIES: ReadonlyArray<{
   key: string;
   label: string;
   buckets: readonly Bucket[];
   color: string;
+  destination: boolean;
 }> = [
-  { key: "cf_food", label: "Food", buckets: ["food", "bakery"], color: BRAND.colors.brick },
-  { key: "cf_drink", label: "Drink", buckets: ["brewery", "wine", "bar"], color: BRAND.colors.functionalAmber },
-  { key: "cf_coffee", label: "Coffee", buckets: ["coffee"], color: "#8B5A2B" },
-  { key: "cf_outdoors", label: "Outdoors", buckets: ["outdoors"], color: BRAND.colors.forest },
-  { key: "cf_culture", label: "Culture", buckets: ["arts", "music", "publicart", "family", "library"], color: BRAND.colors.plum },
-  { key: "cf_shops", label: "Shops", buckets: ["shopping"], color: BRAND.colors.functionalAmber },
-  { key: "cf_services", label: "Services", buckets: ["services", "wellness", "lodging"], color: BRAND.colors.mutedInk },
-  { key: "cf_civic", label: "Civic", buckets: ["civic", "transit", "parking"], color: BRAND.colors.creek },
+  { key: "cf_food", label: "Food", buckets: ["food", "bakery"], color: BRAND.colors.brick, destination: true },
+  { key: "cf_drink", label: "Drink", buckets: ["brewery", "wine", "bar"], color: BRAND.colors.functionalAmber, destination: true },
+  { key: "cf_coffee", label: "Coffee", buckets: ["coffee"], color: "#8B5A2B", destination: true },
+  { key: "cf_outdoors", label: "Outdoors", buckets: ["outdoors"], color: BRAND.colors.forest, destination: true },
+  { key: "cf_culture", label: "Culture", buckets: ["arts", "music", "publicart", "family", "library"], color: BRAND.colors.plum, destination: true },
+  { key: "cf_shops", label: "Shops", buckets: ["shopping"], color: BRAND.colors.functionalAmber, destination: false },
+  { key: "cf_services", label: "Services", buckets: ["services", "wellness", "lodging"], color: BRAND.colors.mutedInk, destination: false },
+  { key: "cf_civic", label: "Civic", buckets: ["civic", "transit", "parking"], color: BRAND.colors.creek, destination: false },
 ];
+
+/** The families allowed to tint and name a cluster. */
+export const DESTINATION_CLUSTER_FAMILIES = CLUSTER_FAMILIES.filter(
+  (family) => family.destination,
+);
+
+/** A cluster with no destination places at all is drawn in this neutral and
+ * named with the plain fallback word instead of "Services" or "Civic". */
+export const NEUTRAL_CLUSTER_COLOR = BRAND.colors.mutedInk;
+
+/** True for a place bucket that belongs to a destination family. */
+export function isDestinationBucket(bucket: string): boolean {
+  return DESTINATION_CLUSTER_FAMILIES.some((family) =>
+    (family.buckets as readonly string[]).includes(bucket),
+  );
+}
 
 /** Supercluster reductions generated from the same family table that paints
  * the marks. This prevents taxonomy changes from quietly falling back to one
- * generic county color. */
+ * generic county color. Only destination families are tallied; the cluster's
+ * own point_count still counts every place. */
 export function curatedClusterProperties(): Record<string, unknown[]> {
   return Object.fromEntries(
-    CLUSTER_FAMILIES.map((family) => [
+    DESTINATION_CLUSTER_FAMILIES.map((family) => [
       family.key,
       [
         "+",
@@ -156,25 +181,26 @@ function dominantFamilyCondition(familyKey: string): unknown[] {
   return [
     "all",
     [">", ownCount, 0],
-    ...CLUSTER_FAMILIES.filter((family) => family.key !== familyKey).map(
-      (family) => [
-        ">=",
-        ownCount,
-        ["coalesce", ["get", family.key], 0],
-      ],
-    ),
+    ...DESTINATION_CLUSTER_FAMILIES.filter(
+      (family) => family.key !== familyKey,
+    ).map((family) => [
+      ">=",
+      ownCount,
+      ["coalesce", ["get", family.key], 0],
+    ]),
   ];
 }
 
-/** Mapbox expression selecting the family with the most places. Ties follow
- * the stable family order above, so cluster color never flickers between
- * frames at the same zoom. */
+/** Mapbox expression selecting the destination family with the most places.
+ * Ties follow the stable family order above, so cluster color never flickers
+ * between frames at the same zoom. A cluster with no destination places gets
+ * the neutral fallback. */
 export function curatedClusterColorExpression(
-  fallback = BRAND.colors.creek,
+  fallback: string = NEUTRAL_CLUSTER_COLOR,
 ): ExpressionSpecification {
   return [
     "case",
-    ...CLUSTER_FAMILIES.flatMap((family) => [
+    ...DESTINATION_CLUSTER_FAMILIES.flatMap((family) => [
       dominantFamilyCondition(family.key),
       family.color,
     ]),
@@ -189,7 +215,7 @@ export function curatedClusterLabelExpression(
 ): ExpressionSpecification {
   return [
     "case",
-    ...CLUSTER_FAMILIES.flatMap((family) => [
+    ...DESTINATION_CLUSTER_FAMILIES.flatMap((family) => [
       dominantFamilyCondition(family.key),
       family.label,
     ]),
@@ -197,19 +223,40 @@ export function curatedClusterLabelExpression(
   ] as ExpressionSpecification;
 }
 
-export function dominantClusterFamilyLabel(
+/** The destination family with the most places in a cluster, with its tally. */
+export function dominantDestinationFamily(
   properties: Readonly<Record<string, unknown>>,
-): string | null {
+): { label: string; count: number } | null {
   let winner: (typeof CLUSTER_FAMILIES)[number] | null = null;
   let winnerCount = 0;
-  for (const family of CLUSTER_FAMILIES) {
+  for (const family of DESTINATION_CLUSTER_FAMILIES) {
     const count = Number(properties[family.key] ?? 0);
     if (Number.isFinite(count) && count > winnerCount) {
       winner = family;
       winnerCount = count;
     }
   }
-  return winner?.label ?? null;
+  return winner ? { label: winner.label, count: winnerCount } : null;
+}
+
+export function dominantClusterFamilyLabel(
+  properties: Readonly<Record<string, unknown>>,
+): string | null {
+  return dominantDestinationFamily(properties)?.label ?? null;
+}
+
+/** The hover line under a cluster count. "Mostly food" is said only when that
+ * family really is more than half of every place in the cluster, services and
+ * civic places included; otherwise the count stands alone. */
+export function clusterFamilyHoverLine(
+  properties: Readonly<Record<string, unknown>>,
+): string | null {
+  const family = dominantDestinationFamily(properties);
+  const total = Number(properties.point_count ?? 0);
+  if (!family || !Number.isFinite(total) || total <= 0) return null;
+  return family.count * 2 > total
+    ? `Mostly ${family.label.toLocaleLowerCase()}`
+    : null;
 }
 
 function colorOf(slug: string): string {

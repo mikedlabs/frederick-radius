@@ -29,6 +29,7 @@ import {
 import { backgroundPlacesForMapSource } from "./mapSourceFilter";
 import { mapPlaceVisualState } from "./mapVisualState";
 import { bucketOf } from "./categoryMarkers";
+import { placeLabelRank } from "./mapContent";
 import { municipalityDisplayName } from "./mapCameraHelpers";
 import { AERIAL_PHOTOS } from "./mapAerialArchive";
 import type { NearbyUtilityPoint } from "./mapNearby";
@@ -344,6 +345,9 @@ export function buildCuratedGeoJson(
           // Draw order within the curated tier: verified places first so
           // the strongest pins win the spot when icons stack.
           pri: p.is_verified ? 0 : 1,
+          // Who is named first: field notes, a reviewed description, then a
+          // local favorite (placeLabelRank). Drives the place-name tiers.
+          labelRank: placeLabelRank(p),
           // Faded when an active What/Open-now filter doesn't match this pin
           // (interaction: the map reacts to the dock, not just the count).
           dimmed: visual.dimmed,

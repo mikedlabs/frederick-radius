@@ -91,10 +91,10 @@ import {
   type NearbyUtilityPoint,
 } from "./mapNearby";
 import {
+  clusterFamilyHoverLine,
   curatedClusterColorExpression,
   curatedClusterLabelExpression,
   curatedClusterProperties,
-  dominantClusterFamilyLabel,
   installCategoryMarkers,
 } from "./categoryMarkers";
 import { exposeMarkerChild } from "./markerA11y";
@@ -189,6 +189,8 @@ const COMPACT_CURATED_CLUSTER_MAX_ZOOM = 12;
 const CURATED_CLUSTER_PROPERTIES = curatedClusterProperties();
 const CURATED_CLUSTER_COLOR = curatedClusterColorExpression();
 const CURATED_CLUSTER_LABEL = curatedClusterLabelExpression();
+// Stable empty default so the overview-marker memo does not rerun per render.
+const NO_OVERVIEW_EVENTS: EventPin[] = [];
 
 // Mapbox Standard can keep its imported basemap animating indefinitely, so
 // `idle` is not a dependable readiness boundary. Render-frame probes are a
@@ -320,7 +322,23 @@ import { ArrowRight, ChevronRight, Landmark, Shrink, Truck, X } from "lucide-rea
 import { withinScrubWindow } from "@/lib/map/scrubTime";
 import { easternDayKey } from "@/lib/tz";
 import { getOpenStatus, isOpenNow } from "@/lib/hours";
-import { groupMapEvents, type MapEventGroup } from "./mapContent";
+import {
+  PLACE_LABEL_EARLY_ZOOM,
+  PLACE_LABEL_HALO_WIDTH,
+  curatedPlaceLabelField,
+  curatedPlaceLabelFont,
+  curatedPlaceLabelOpacity,
+  curatedPlaceLabelSize,
+  curatedPlaceSortKey,
+  eventGroupAriaLabel,
+  groupMapEvents,
+  overviewEventMarkers,
+  type MapEventGroup,
+} from "./mapContent";
+import {
+  foodTruckPinsForOverview,
+  scheduledFoodTruckLabel,
+} from "./foodTruckPins";
 import { resolveMapLocationSeed } from "./mapLocationSeed";
 import type { LiveIncidentSignal } from "@/lib/live/incidentSnapshot";
 import { buildMapSpotContext } from "./mapSpotContext";
@@ -587,6 +605,10 @@ type Props = {
    *  Apple Maps (they don't have local event ↔ venue joins). Already
    *  geo-deduped and scoped to "happening soon" server-side. */
   events?: EventPin[];
+  /** The browse map's week of events from the shared event archive. Only the
+   *  untouched county overview reads it, and it marks at most six that are
+   *  underway or start within two hours (overviewEventMarkers). */
+  overviewEvents?: EventPin[];
   /** Bus-stop dots + MARC stations for the Transit layer (phase 3).
    *  Stops are location+name only (no schedule data exists for them);
    *  MARC pins carry server-computed next trains as clock times. */
@@ -679,6 +701,7 @@ export default function AppMap({
   floodContext = EMPTY_FLOOD_CONTEXT_FC,
   snowRoutes = EMPTY_SNOW_ROUTE_FC,
   events = [],
+  overviewEvents = NO_OVERVIEW_EVENTS,
   initialAmenityGroups,
   dock,
   activeSlugs = null,
@@ -1539,6 +1562,14 @@ export default function AppMap({
   const visibleParking = showParking || Boolean(selectedDiscovery?.layers.parking);
   const visibleAerial = showAerial || Boolean(selectedDiscovery?.layers.aerial);
   const visibleCemeteries = showCemeteries || Boolean(selectedDiscovery?.layers.cemeteries);
+  // The untouched overview: the quiet county frame with no event window
+  // chosen either. A chosen window draws its own event markers instead.
+  const overviewUntouched =
+    quietCountyOverview && !dock?.timeModeExplicit && !dock?.musicTonight;
+  // The drawn, untouched overview marks events underway or starting soon, so
+  // it asks for the event archive once the canvas exists. A renderer failure
+  // or any camera move, task or layer leaves the request to its own owner.
+  const overviewMarksEvents = overviewUntouched && mapLoaded;
   useEffect(() => {
     if (!onLayerDemand && !onActiveLayerGroupsChange) return;
     const groups = new Set<MapLayerGroup>();
@@ -1547,7 +1578,7 @@ export default function AppMap({
     if (visibleTransit) groups.add("transit");
     if (visibleParking) groups.add("parking");
     if (showCivic || showTraffic) groups.add("roads");
-    if (dock?.timeModeExplicit || dock?.musicTonight) groups.add("events");
+    if (dock?.timeModeExplicit || dock?.musicTonight || overviewMarksEvents) groups.add("events");
     onActiveLayerGroupsChange?.([...groups]);
     if (groups.size > 0) onLayerDemand?.([...groups]);
   }, [
@@ -1555,6 +1586,7 @@ export default function AppMap({
     onActiveLayerGroupsChange,
     dock?.timeModeExplicit,
     dock?.musicTonight,
+    overviewMarksEvents,
     showCivic,
     showTraffic,
     showTrails,
@@ -3310,9 +3342,11 @@ export default function AppMap({
       f.layer.id === "amenity-clusters"
     ) {
       const count = Number(props.point_count);
-      const family =
+      // "Mostly food" only when that destination family is more than half of
+      // every place counted here, services and civic places included.
+      const familyLine =
         f.layer.id === "curated-clusters"
-          ? dominantClusterFamilyLabel(props)
+          ? clusterFamilyHoverLine(props)
           : null;
       next = {
         lng,
@@ -3324,7 +3358,7 @@ export default function AppMap({
           : f.layer.id === "amenity-clusters"
             ? "A cluster of amenities"
             : "A cluster of places",
-        sub: family ? `Mostly ${family.toLocaleLowerCase()}` : undefined,
+        sub: familyLine ?? undefined,
       };
     } else if (f.layer.id === "curated-icons" || f.layer.id === "curated-active-icons" || f.layer.id === "curated-hit") {
       const p = placesBySlug.get(String(props.slug));
@@ -4613,6 +4647,35 @@ export default function AppMap({
   // the chronological drawer; the map no longer grows a radial flower of
   // overlapping 44px buttons when a venue hosts several events.
   const eventGroups = useMemo(() => groupMapEvents(visibleEvents), [visibleEvents]);
+
+  // Event times own the untouched county overview: at most six events that
+  // are underway or start within two hours, each a Brick dot with a pill.
+  // They leave with the overview, except the one a person opened, which stays
+  // marked under its peek.
+  const overviewMarkers = useMemo(
+    () =>
+      overviewEventMarkers(overviewEvents, {
+        now: new Date(discoveryClockMs),
+        zoom: cameraZoom ?? 9.6,
+      }),
+    [cameraZoom, discoveryClockMs, overviewEvents],
+  );
+  const shownOverviewMarkers = overviewUntouched
+    ? overviewMarkers
+    : overviewMarkers.filter(
+        (marker) =>
+          marker.event.slug === selectedEvent?.slug &&
+          !visibleEvents.some((event) => event.slug === marker.event.slug),
+      );
+  // The same overview frame only draws a published truck stop from two hours
+  // before it starts until it ends; anywhere else the 24-hour plan stays.
+  const drawnFoodTruckPins = useMemo(
+    () =>
+      overviewUntouched
+        ? foodTruckPinsForOverview(liveFoodTruckPins, discoveryClockMs)
+        : liveFoodTruckPins,
+    [discoveryClockMs, liveFoodTruckPins, overviewUntouched],
+  );
 
   // "Closes within the hour" — the dock's living count line. open_status
   // "closing-soon" is exactly the ≤60-minute window (getOpenStatus).
@@ -6533,7 +6596,9 @@ export default function AppMap({
             />
             {/* A deliberate search/category/amenity task can reveal its
                 strongest matches before street zoom. Collision stays on, so
-                even this emphasis layer cannot recreate the old icon pile. */}
+                even this emphasis layer cannot recreate the old icon pile.
+                Each match carries its own name from z13 (text-optional), so
+                a crowded block drops a name before it drops a match. */}
             {mapLoaded && <Layer
               id="curated-active-icons"
               type="symbol"
@@ -6549,7 +6614,19 @@ export default function AppMap({
                 "icon-allow-overlap": false,
                 "icon-ignore-placement": false,
                 "icon-padding": 3,
-                "symbol-sort-key": ["get", "pri"],
+                "symbol-sort-key": curatedPlaceSortKey(selectedSlug),
+                "text-field": curatedPlaceLabelField({
+                  selectedSlug,
+                  compact: compactSubjectMap,
+                  matchLayer: true,
+                }),
+                "text-font": curatedPlaceLabelFont(selectedSlug),
+                "text-size": curatedPlaceLabelSize(selectedSlug),
+                "text-variable-anchor": ["right", "left", "top"],
+                // Clears the visible puck's edge (disc radius 18 x icon-size).
+                "text-radial-offset": ["interpolate", ["linear"], ["zoom"], 11, 0.95, 13, 1.1, 17, 1.55],
+                "text-max-width": 9,
+                "text-optional": true,
               }}
               paint={{
                 "icon-opacity": operationalLayerActive
@@ -6560,13 +6637,31 @@ export default function AppMap({
                     ? 0.12
                     : 1,
                 "icon-opacity-transition": { duration: mapPaintDuration },
+                "text-color": BRAND.colors.ink,
+                "text-halo-color": BRAND.colors.cream,
+                "text-halo-width": PLACE_LABEL_HALO_WIDTH,
+                "text-opacity": curatedPlaceLabelOpacity({
+                  selectedSlug,
+                  compact: compactSubjectMap,
+                  matchLayer: true,
+                  hidden: operationalLayerActive,
+                  receded: Boolean(dock) && (Boolean(selectedSlug) || foregroundReferenceActive),
+                }),
+                "text-opacity-transition": { duration: mapPaintDuration },
               }}
             />}
+            {/* Every other place. The name rides inside this symbol, so
+                collision drops the label and never the place: the dot below
+                always stays, and the puck itself appears at street zoom.
+                Under z16 the (still invisible) puck neither blocks nor yields,
+                so names compete only with names. Field notes, reviewed
+                descriptions and local favorites are named from z14, every
+                place from z15.5, the selected place first at 13/700. */}
             {mapLoaded && <Layer
               id="curated-icons"
               type="symbol"
               filter={["all", ["!", ["has", "point_count"]], ["!=", ["get", "emph"], true]]}
-              minzoom={15.8}
+              minzoom={compactSubjectMap ? 10.5 : PLACE_LABEL_EARLY_ZOOM}
               layout={{
                 "icon-image": [
                   "coalesce",
@@ -6593,12 +6688,24 @@ export default function AppMap({
                 ],
                 // Every place remains visible as a dot. Full category pucks
                 // are the close-reading tier and respect collision so streets
-                // and names remain legible in dense Downtown blocks.
-                "icon-allow-overlap": false,
-                "icon-ignore-placement": false,
+                // and names remain legible in dense Downtown blocks. Before
+                // the pucks appear (z16) they ignore collision entirely.
+                "icon-allow-overlap": ["step", ["zoom"], true, 16, false],
+                "icon-ignore-placement": ["step", ["zoom"], true, 16, false],
                 "icon-padding": 3,
-                "symbol-sort-key": ["get", "pri"],
+                "symbol-sort-key": curatedPlaceSortKey(selectedSlug),
                 "icon-anchor": "center",
+                "text-field": curatedPlaceLabelField({
+                  selectedSlug,
+                  compact: compactSubjectMap,
+                }),
+                "text-font": curatedPlaceLabelFont(selectedSlug),
+                "text-size": curatedPlaceLabelSize(selectedSlug),
+                "text-variable-anchor": ["right", "left", "top"],
+                // Beside the dot under z16, clear of the puck's edge above it.
+                "text-radial-offset": ["interpolate", ["linear"], ["zoom"], 15, 0.6, 16, 1.45, 18, 1.7],
+                "text-max-width": 9,
+                "text-optional": true,
               }}
               paint={{
                 // Two ways a pin fades, ORed together:
@@ -6612,8 +6719,8 @@ export default function AppMap({
                 //
                 "icon-opacity": operationalLayerActive ? 0 : selectedSlug && dock ? 0.16 : foregroundReferenceActive && dock ? 0.1 : [
                   "interpolate", ["linear"], ["zoom"],
-                  15.8, 0,
-                  16.2, [
+                  16, 0,
+                  16.3, [
                     "case",
                     [
                       "any",
@@ -6625,6 +6732,17 @@ export default function AppMap({
                   ],
                 ],
                 "icon-opacity-transition": { duration: mapPaintDuration },
+                // Ink on a Cream halo, the brand's own pair.
+                "text-color": BRAND.colors.ink,
+                "text-halo-color": BRAND.colors.cream,
+                "text-halo-width": PLACE_LABEL_HALO_WIDTH,
+                "text-opacity": curatedPlaceLabelOpacity({
+                  selectedSlug,
+                  compact: compactSubjectMap,
+                  hidden: operationalLayerActive,
+                  receded: Boolean(dock) && (Boolean(selectedSlug) || foregroundReferenceActive),
+                }),
+                "text-opacity-transition": { duration: mapPaintDuration },
               }}
             />}
             {/* Invisible tap-target pad — expands each curated pin's
@@ -6644,54 +6762,6 @@ export default function AppMap({
                 "circle-color": "#000000",
                 "circle-opacity": 0,
                 "circle-radius": 22,
-              }}
-            />
-            {/* Names reveal progressively — the ONE curated label layer (the
-                old duplicate curated-names was removed; the two double-drew
-                names between 15.5 and 16.5). From z13 up, only standout pins
-                label: text-optional + collision (allow/ignore-placement false)
-                let the engine draw the highest-priority names first and drop
-                the rest, so mid zoom shows a few verified names and more appear
-                as you zoom. symbol-sort-key uses pri (verified = 0 = drawn
-                first = wins the spot), matching curated-icons. */}
-            <Layer
-              id="curated-labels"
-              type="symbol"
-              minzoom={compactSubjectMap ? 10.5 : 13}
-              filter={["!", ["has", "point_count"]]}
-              layout={{
-                "text-field": ["get", "name"],
-                "text-size": ["interpolate", ["linear"], ["zoom"], 13, 9.5, 16, 12],
-                "text-font": MAPBOX_LABEL_FONT_REGULAR,
-                "text-anchor": "top",
-                "text-offset": [0, 1.15],
-                "text-optional": true,
-                "text-allow-overlap": false,
-                "text-ignore-placement": false,
-                "text-max-width": 9,
-                "symbol-sort-key": ["get", "pri"],
-              }}
-              paint={{
-                "text-color": "#3A362B",
-                "text-halo-color": "#FAFAF7",
-                "text-halo-width": 1.1,
-                "text-opacity": selectedSlug && dock
-                  ? 0.14
-                  : foregroundReferenceActive && dock
-                    ? 0.14
-                    : [
-                        "case",
-                        ["==", ["get", "emph"], true],
-                        1,
-                        ["==", ["get", "dimmed"], true],
-                        0.12,
-                        [
-                          "interpolate", ["linear"], ["zoom"],
-                          15.8, 0,
-                          16.3, 0.82,
-                          17, 1,
-                        ],
-                      ],
               }}
             />
           </Source>
@@ -7124,11 +7194,7 @@ export default function AppMap({
                       smoothFocus(map, [group.lng, group.lat], { minZoom: 14, maxStep: 4 });
                     }
                   }}
-                  aria-label={
-                    group.events.length === 1
-                      ? `${lead.title} at ${lead.venue_name}`
-                      : `${group.events.length} events at ${group.venueLabel}`
-                  }
+                  aria-label={eventGroupAriaLabel(group)}
                   className="fr-event-marker"
                   data-group={group.events.length > 1 || undefined}
                   style={{
@@ -7159,42 +7225,103 @@ export default function AppMap({
             );
           })}
 
-          {/* Food-truck availability is high-signal and scarce, so current
-              operator beacons and near-term published stops appear without a
-              second toggle. Only a beacon pulses or uses live language. */}
-          {liveFoodTruckPins.map((pin) => (
+          {/* Event times on the untouched overview: a 10px Brick dot on its
+              venue with a pill naming the event and its time. A pill that
+              would cover another marker is dropped; its dot stays. */}
+          {shownOverviewMarkers.map((marker) => (
             <Marker
-              key={`food-truck:${pin.id}`}
+              key={`overview-event:${marker.event.slug}`}
               ref={exposeMarkerChild}
-              longitude={pin.lng}
-              latitude={pin.lat}
-              anchor="bottom"
+              longitude={marker.event.lng}
+              latitude={marker.event.lat}
+              anchor="left"
+              offset={[-22, 0]}
             >
               <button
                 type="button"
-                className="fr-food-truck-marker"
-                data-availability={pin.availability}
-                tabIndex={isPointInView(pin.lng, pin.lat) ? 0 : -1}
-                aria-label={
-                  pin.availability === "operator-live"
-                    ? `${pin.name}, operator-confirmed live location`
-                    : `${pin.name}, published stop at ${pin.venueName}`
-                }
-                onClick={(event) => {
-                  event.stopPropagation();
+                className="fr-overview-event"
+                data-live={marker.live || undefined}
+                tabIndex={isPointInView(marker.event.lng, marker.event.lat) ? 0 : -1}
+                aria-label={marker.ariaLabel}
+                onClick={(pointerEvent) => {
+                  pointerEvent.stopPropagation();
                   haptic("light");
-                  openMapSelection({ kind: "food-truck", value: pin });
+                  openMapSelection({ kind: "event", value: marker.event });
+                  const map = mapRef.current?.getMap();
+                  if (map && map.getZoom() < 14) {
+                    cameraIntentRef.current = true;
+                    smoothFocus(map, [marker.event.lng, marker.event.lat], { minZoom: 14, maxStep: 4 });
+                  }
                 }}
               >
-                {pin.availability === "operator-live" ? (
-                  <span aria-hidden className="fr-food-truck-pulse" />
-                ) : null}
-                <span aria-hidden className="fr-food-truck-glyph">
-                  <Truck className="h-[17px] w-[17px]" strokeWidth={2.1} />
-                </span>
+                <span aria-hidden className="fr-overview-event-dot" />
+                {marker.showPill && (
+                  <span aria-hidden className="fr-overview-event-pill">
+                    <span className="fr-overview-event-title">{marker.event.title}</span>
+                    <span className="fr-overview-event-time">{marker.timeLabel}</span>
+                  </span>
+                )}
               </button>
             </Marker>
           ))}
+
+          {/* Food-truck availability is high-signal and scarce, so current
+              operator beacons and near-term published stops appear without a
+              second toggle. Only a beacon is a filled Brick puck that pulses
+              or uses live language; a published stop is a hollow puck that
+              says when it is scheduled. */}
+          {drawnFoodTruckPins.map((pin) => {
+            const scheduled =
+              pin.availability === "published-stop"
+                ? scheduledFoodTruckLabel(pin, new Date(discoveryClockMs))
+                : null;
+            const venue = pin.availability === "published-stop" ? pin.venueName.trim() : "";
+            return (
+              <Marker
+                key={`food-truck:${pin.id}`}
+                ref={exposeMarkerChild}
+                longitude={pin.lng}
+                latitude={pin.lat}
+                anchor="bottom"
+              >
+                <button
+                  type="button"
+                  className="fr-food-truck-marker"
+                  data-availability={pin.availability}
+                  tabIndex={isPointInView(pin.lng, pin.lat) ? 0 : -1}
+                  aria-label={
+                    pin.availability === "operator-live"
+                      ? `${pin.name}, operator-confirmed live location`
+                      : `${pin.name}, published stop${venue ? ` at ${venue}` : ""}${scheduled ? `, ${scheduled.toLocaleLowerCase()}` : ""}`
+                  }
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    haptic("light");
+                    openMapSelection({ kind: "food-truck", value: pin });
+                  }}
+                >
+                  {pin.availability === "operator-live" ? (
+                    <span aria-hidden className="fr-food-truck-pulse" />
+                  ) : null}
+                  <span aria-hidden className="fr-food-truck-glyph">
+                    <Truck
+                      className={
+                        pin.availability === "operator-live"
+                          ? "h-[17px] w-[17px]"
+                          : "h-[14px] w-[14px]"
+                      }
+                      strokeWidth={2.1}
+                    />
+                  </span>
+                  {scheduled ? (
+                    <span aria-hidden className="fr-food-truck-schedule">
+                      {scheduled}
+                    </span>
+                  ) : null}
+                </button>
+              </Marker>
+            );
+          })}
 
           {/* Parking layer — the five downtown city garages as "P" glyph
               markers, tinted by LIVE availability (green plenty / amber
@@ -7645,6 +7772,7 @@ export default function AppMap({
           selectedTransitStop={selectedTransitStop}
           eventGroup={eventGroup}
           userLoc={userLoc}
+          municipalBoundaries={municipalBoundaries}
           utilityPoints={utilityPoints}
           places={places}
           events={events}

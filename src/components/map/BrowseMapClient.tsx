@@ -555,6 +555,7 @@ export default function BrowseMapClient({
       cemeteries={cemeteries}
       parking={parking}
       events={events}
+      overviewEvents={weekEvents}
       transitStops={transitStops}
       marcStations={marcStations}
       foodTruckPins={foodTruckPins}

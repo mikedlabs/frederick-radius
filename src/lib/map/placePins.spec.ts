@@ -22,6 +22,15 @@ describe("mapPinPlaces", () => {
     }
   });
 
+  it("ships the local-favorite label signal only when it is true", () => {
+    const places = mapPinPlaces(new Date("2026-08-11T16:00:00.000Z"));
+    const favorites = places.filter((place) => place.local_favorite);
+    expect(favorites.length).toBeGreaterThan(0);
+    for (const place of places) {
+      if ("local_favorite" in place) expect(place.local_favorite).toBe(true);
+    }
+  });
+
   it("reuses the same five-minute snapshot inside one server process", () => {
     const first = mapPinPlaces(new Date("2026-08-11T16:01:00.000Z"));
     const second = mapPinPlaces(new Date("2026-08-11T16:04:59.000Z"));

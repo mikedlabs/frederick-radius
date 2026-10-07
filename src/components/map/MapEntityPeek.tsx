@@ -94,7 +94,9 @@ export function MapEventPeek({
             {eventWhen(event.starts_at)}
           </span>
           <span className="map-peek-name font-serif">{event.title}</span>
-          <span className="map-peek-detail">{event.venue_name}</span>
+          {event.venue_name?.trim() && (
+            <span className="map-peek-detail">{event.venue_name.trim()}</span>
+          )}
           <span className="map-peek-source">Radius event listing</span>
           {plan && (
             <span className="map-peek-detail" style={{ marginTop: '8px', padding: '6px 8px', background: 'var(--app-bg-sunken)', borderRadius: '6px' }}>
@@ -274,15 +276,23 @@ export function MapRawPeek({
 
 export function MapTownPeek({
   title,
+  kicker = "Town",
+  blurb,
   contacts,
   guideHref,
   onClose,
 }: {
   title: string;
+  /** "You are in" only when the device fix is inside the town's boundary
+   * (townPeekKicker); otherwise the plain "Town". */
+  kicker?: "You are in" | "Town";
+  /** The town's one-line hero blurb, shown when no civic contact is on file. */
+  blurb?: string;
   contacts: Array<{ label: string; phone?: string; website?: string }>;
   guideHref?: string;
   onClose: () => void;
 }) {
+  const fallback = blurb?.trim();
   return (
     <MapResultSurface
       className="map-peek map-entity-peek"
@@ -295,7 +305,7 @@ export function MapTownPeek({
           <Building2 className="h-7 w-7" strokeWidth={1.8} />
         </span>
         <span className="map-peek-text">
-          <span className="map-peek-cat">You are in</span>
+          <span className="map-peek-cat">{kicker}</span>
           <span className="map-peek-name font-serif">{title}</span>
           {contacts.length > 0 ? (
             <span className="map-entity-contact-list">
@@ -318,11 +328,9 @@ export function MapTownPeek({
                 </span>
               ))}
             </span>
-          ) : (
-            <span className="map-peek-detail">
-              Civic details are not available for this municipality yet.
-            </span>
-          )}
+          ) : fallback ? (
+            <span className="map-peek-detail">{fallback}</span>
+          ) : null}
         </span>
       </div>
       {guideHref && (

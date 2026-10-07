@@ -17,6 +17,12 @@ export const MAPBOX_LABEL_FONT_REGULAR = [
   "DIN Pro Regular",
   "Arial Unicode MS Regular",
 ];
+/** The selected place's name. Same Mapbox-hosted family as the basemap's
+ * own labels, so no Studio style is needed for the heavier weight. */
+export const MAPBOX_LABEL_FONT_BOLD = [
+  "DIN Pro Bold",
+  "Arial Unicode MS Bold",
+];
 
 /**
  * Mapbox Standard configuration is the basemap equivalent of the Radius

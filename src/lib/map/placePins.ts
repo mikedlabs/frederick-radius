@@ -26,6 +26,9 @@ export function mapPinPlace(
     municipality: decorated.municipality,
     short_blurb: decorated.short_blurb,
     primary_type: decorated.primary_type,
+    // Only true ships (about a third of places); the map names favorites
+    // early, after field notes and reviewed descriptions.
+    local_favorite: decorated.local_favorite || undefined,
   };
 
   return Object.fromEntries(

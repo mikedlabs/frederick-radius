@@ -29,7 +29,7 @@ import {
 } from "./mapNearby";
 import type { AerialPhoto } from "./mapAerialArchive";
 import type { MapDiscovery } from "./mapDiscoveries";
-import type { MapEventGroup } from "./mapContent";
+import { townPeekKicker, type MapEventGroup } from "./mapContent";
 import type { ParkingPin } from "@/lib/map/parking";
 import MapPeek from "./MapPeek";
 import MapParkingPeek from "./MapParkingPeek";
@@ -45,15 +45,17 @@ import {
 } from "./MapEntityPeek";
 import MapSpotPeek from "./MapSpotPeek";
 import MapDiscoveryPeek from "./MapDiscoveryPeek";
-import type {
-  CemeteryPin,
-  CivicTownSelection,
-  EventPin,
-  FoodTruckMapPin,
-  MapPinPlace,
-  MapSpotSelection,
-  MarcStationPin,
-  Selected,
+import {
+  EMPTY_LINE_FC,
+  type CemeteryPin,
+  type CivicTownSelection,
+  type EventPin,
+  type FoodTruckMapPin,
+  type MapLineFC,
+  type MapPinPlace,
+  type MapSpotSelection,
+  type MarcStationPin,
+  type Selected,
 } from "./types";
 
 type SpotContext = ComponentProps<typeof MapSpotPeek>["context"];
@@ -82,6 +84,9 @@ type Props = {
   selectedTransitStop: SelectedStop | null;
   eventGroup: MapEventGroup | null;
   userLoc: LngLat | null;
+  /** County GIS town outlines, when loaded. The town peek says "You are in"
+   * only for a device fix inside the tapped town's outline. */
+  municipalBoundaries?: MapLineFC;
   utilityPoints: NearbyUtilityPoint[];
   places: MapPinPlace[];
   events: EventPin[];
@@ -118,6 +123,7 @@ export default function AppMapSelectionSurfaces({
   selectedTransitStop,
   eventGroup,
   userLoc,
+  municipalBoundaries = EMPTY_LINE_FC,
   utilityPoints,
   places,
   events,
@@ -162,6 +168,12 @@ export default function AppMapSelectionSurfaces({
         return (
           <MapTownPeek
             title={municipality?.name ?? civicTown.name}
+            kicker={townPeekKicker({
+              slug: civicTown.slug,
+              userLoc,
+              boundaries: municipalBoundaries,
+            })}
+            blurb={municipality?.hero_blurb}
             contacts={civicRecord ? civicContacts(civicRecord).slice(0, 2) : []}
             guideHref={municipality ? `/m/${municipality.slug}` : undefined}
             onClose={clearMapSelection}
@@ -344,7 +356,7 @@ export default function AppMapSelectionSurfaces({
           marker opens this chronological index so no occurrence is hidden
           and each row can become the normal event popup in one tap. */}
       <BottomDrawer
-        title={eventGroup?.venueLabel ?? "Events here"}
+        title={eventGroup?.venueLabel ?? "Events"}
         subtitle={
           eventGroup
             ? `${eventGroup.events.length} ${eventGroup.events.length === 1 ? "event" : "events"} at this location`

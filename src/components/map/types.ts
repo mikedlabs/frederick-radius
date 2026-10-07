@@ -315,7 +315,9 @@ export type MapPinPlace = Pick<
   // isSamePlace id-equality branch can never fire against OSM records (the
   // OSM side never has a Google id). Full PlaceCardData records (SavedList,
   // radius) still carry them and still satisfy this type.
-  Partial<Pick<PlaceCardData, "google_place_id" | "feature_score">> & {
+  // local_favorite rides only when true: it is one of the map's label-rank
+  // signals (placeLabelRank in mapContent.ts).
+  Partial<Pick<PlaceCardData, "google_place_id" | "feature_score" | "local_favorite">> & {
     distance_m?: number;
   };
 
