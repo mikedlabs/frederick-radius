@@ -35,15 +35,16 @@ describe("TodayScopeStatus", () => {
     expect(html).toContain("Use my location");
   });
 
-  it("explains what location is for beside the button that can prompt for it", () => {
+  it("keeps the location explanation off the first screen until it is asked for", () => {
     const html = renderToStaticMarkup(createElement(TodayScopeStatus));
-    const describedBy = html.match(/<button[^>]*aria-describedby="([^"]+)"/)?.[1];
 
-    expect(describedBy).toBeTruthy();
-    expect(html).toContain(`id="${describedBy}"`);
-    expect(html).toContain(NEAR_ME_BENEFIT);
-    // The sentence is on the page before the tap, not after the prompt.
-    expect(html.indexOf("Use my location")).toBeLessThan(html.indexOf(NEAR_ME_BENEFIT));
+    // Today's Find launcher has a first-screen budget (owner PR #1734). The
+    // benefit sentence appears on the first tap, before any browser prompt,
+    // inside a live region that is already mounted.
+    expect(html).toContain("Use my location");
+    expect(html).not.toContain(NEAR_ME_BENEFIT);
+    expect(html).not.toMatch(/<button[^>]*aria-describedby=/);
+    expect(html).toContain('aria-live="polite" class="sr-only"');
   });
 
   it("names the area choices with the shared scope labels", () => {

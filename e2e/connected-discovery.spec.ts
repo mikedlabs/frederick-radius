@@ -70,6 +70,8 @@ test("a denied location still offers every town without another permission reque
   });
   await page.goto("/today");
   await page.getByRole("button", { name: "Use my location", exact: true }).click();
+  // The first tap explains what location is for; the second one asks.
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByTestId("today-location-blocked")).toContainText("Choose a town");
   await page.getByRole("combobox", { name: "Choose your area" }).selectOption("town:brunswick");
   await expect(page.getByTestId("today-scope-status")).toContainText("Brunswick");

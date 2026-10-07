@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { locationScopeHref } from "@/components/nav/locationScopeNavigation";
 import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
@@ -80,6 +80,10 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
   const requestedHere = useRef(false);
   const grantedCheckDone = useRef(false);
   const benefitId = useId();
+  // The first tap explains what location is for; only the second can open
+  // the browser prompt (USER_FIRST_INTERACTION_CONTRACT). Asking first keeps
+  // the sentence off Today's first screen until someone wants location.
+  const [explaining, setExplaining] = useState(false);
   const hasDeviceLocation = location.status === "granted";
   const locationBlocked =
     location.status === "denied" || location.status === "unavailable";
@@ -111,6 +115,11 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
       applyTodayScope("nearme");
       return;
     }
+    if (!explaining) {
+      setExplaining(true);
+      return;
+    }
+    setExplaining(false);
     requestedHere.current = true;
     requestLocation();
   };
@@ -176,28 +185,38 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
               type="button"
               onClick={useMyLocation}
               disabled={location.status === "loading"}
-              aria-describedby={hasDeviceLocation ? undefined : benefitId}
+              aria-describedby={explaining ? benefitId : undefined}
               className="tap-44 inline-flex h-11 shrink-0 items-center rounded-full px-2.5 text-[13px] font-semibold transition active:scale-[0.98] disabled:opacity-55"
               style={{
                 color: "var(--app-brand-press)",
                 background: "var(--app-brand-tint-6)",
               }}
             >
-              {location.status === "loading" ? "Finding you…" : "Use my location"}
+              {location.status === "loading"
+                ? "Finding you…"
+                : explaining
+                  ? "Continue"
+                  : "Use my location"}
             </button>
             {/* The contract asks for the benefit before the browser's
-                permission prompt. It sits beside the button rather than
-                behind a second tap, so the request stays one step. With a
-                fix already in hand the tap only changes the lens and no
-                prompt follows, so the sentence steps aside. */}
+                permission prompt. A permanent sentence here pushed Today's
+                Find launcher past the owner's first-screen budget (PR #1734),
+                so the first tap shows it and the second tap asks. With a fix
+                already in hand the tap only changes the lens and no prompt
+                follows, so there is nothing to explain. */}
+            {/* The live region stays mounted (and out of the layout) so a
+                screen reader hears the sentence when the first tap fills it. */}
             {hasDeviceLocation ? null : (
               <p
-                id={benefitId}
-                data-testid="today-location-benefit"
-                className="max-w-[34ch] text-[12px] leading-normal"
+                aria-live="polite"
+                className={explaining ? "max-w-[34ch] text-[12px] leading-normal" : "sr-only"}
                 style={{ color: "var(--app-ink-3)" }}
               >
-                {NEAR_ME_BENEFIT}
+                {explaining ? (
+                  <span id={benefitId} data-testid="today-location-benefit">
+                    {NEAR_ME_BENEFIT}
+                  </span>
+                ) : null}
               </p>
             )}
           </>

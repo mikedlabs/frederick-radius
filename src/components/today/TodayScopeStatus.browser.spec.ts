@@ -151,12 +151,21 @@ describe("TodayScopeStatus location memory", () => {
 
     await render();
     const button = container.querySelector("button")!;
+    expect(
+      container.querySelector('[data-testid="today-location-benefit"]'),
+    ).toBeNull();
+
+    // The first tap explains and never prompts.
+    await act(async () => button.click());
     const benefit = container.querySelector(
       '[data-testid="today-location-benefit"]',
     );
+    expect(getCurrentPosition).not.toHaveBeenCalled();
     expect(benefit?.textContent).toBe(NEAR_ME_BENEFIT);
+    expect(button.textContent).toBe("Continue");
     expect(button.getAttribute("aria-describedby")).toBe(benefit?.id);
 
+    // The second tap is the one that can open the browser prompt.
     await act(async () => button.click());
 
     expect(getCurrentPosition).toHaveBeenCalledOnce();
@@ -180,6 +189,10 @@ describe("TodayScopeStatus location memory", () => {
     });
 
     await render();
+    // First tap explains, second tap asks.
+    await act(async () => {
+      (container.querySelector("button") as HTMLButtonElement).click();
+    });
     await act(async () => {
       (container.querySelector("button") as HTMLButtonElement).click();
     });
@@ -208,6 +221,10 @@ describe("TodayScopeStatus location memory", () => {
     });
 
     await render();
+    // First tap explains, second tap asks.
+    await act(async () => {
+      (container.querySelector("button") as HTMLButtonElement).click();
+    });
     await act(async () => {
       (container.querySelector("button") as HTMLButtonElement).click();
     });
