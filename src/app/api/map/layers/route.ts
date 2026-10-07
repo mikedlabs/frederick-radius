@@ -624,6 +624,7 @@ export async function GET(request: Request) {
   const sourceHealth: Partial<
     Record<MapLayerGroup, MapLayerSourceHealth>
   > = {};
+  const assembledAt = new Date().toISOString();
   for (const group of groups) {
     const unavailable = [...(sourceFailures.get(group) ?? [])].sort();
     sourceHealth[group] = {
@@ -634,7 +635,7 @@ export async function GET(request: Request) {
             ? "partial"
             : "unavailable",
       unavailable,
-      asOf: now.toISOString(),
+      asOf: assembledAt,
     };
   }
   payload.sourceHealth = sourceHealth;
@@ -647,7 +648,7 @@ export async function GET(request: Request) {
     headers: {
       "Cache-Control": degraded
         ? DEGRADED_SHARED_CACHE
-        : mapLayerCacheControl(canonicalGroup),
+        : mapLayerCacheControl(groups),
       "X-Radius-Map-Groups": [...groups].sort().join(","),
     },
   });

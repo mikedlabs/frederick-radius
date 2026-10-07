@@ -3,6 +3,7 @@ import {
   mapLayerGroupHasVisibleData,
   mergeDeferredBrowseLayerGroup,
   parseDeferredBrowseLayers,
+  retainedMapLayerSnapshotTime,
   type DeferredBrowseLayers,
   type MapLayerGroup,
 } from "./deferredBrowseLayers";
@@ -33,6 +34,10 @@ function markOlderData(group: MapLayerGroup): void {
     unavailable: [],
     asOf: new Date(loadedAt.get(group)!).toISOString(),
   };
+  // An incomplete empty first response is not a known empty snapshot.
+  // Aging metadata alone must not prevent useful catalog context arriving.
+  if (prior.status !== "current" && !prior.stale &&
+    !mapLayerGroupHasVisibleData(group, snapshot)) return;
   // Group health can already be stale after a partial merge while that same
   // response supplied newly current weather. Age weather independently.
   const conditionsAreOlder = (group === "signals" || group === "roads") &&
@@ -50,12 +55,14 @@ function markOlderData(group: MapLayerGroup): void {
 
 function recordTransportFailure(group: MapLayerGroup): DeferredBrowseLayers {
   const prior = snapshot.sourceHealth[group];
+  const asOf = retainedMapLayerSnapshotTime(group, snapshot);
   snapshot = {
     ...snapshot,
     sourceHealth: {
       ...snapshot.sourceHealth,
       [group]: {
         ...prior,
+        ...(asOf ? { asOf } : {}),
         status: mapLayerGroupHasVisibleData(group, snapshot) ? "partial" : "unavailable",
         ...(mapLayerGroupHasVisibleData(group, snapshot) ? { stale: true } : {}),
         unavailable: [...new Set([...(prior?.unavailable ?? []), "Map data service"])].slice(0, 8),

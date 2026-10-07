@@ -336,3 +336,93 @@ describe("live map snapshot expiry and transport ownership", () => {
     ]);
   });
 });
+
+
+describe("borrowed context after first specialist transport failure", () => {
+  it.each(["parking", "amenities"] as const)("keeps the context assembly age for retained %s", async (group) => {
+    const at="2026-10-06T20:00:00Z";
+    vi.stubGlobal("fetch",vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ [group]: [{ id:"catalog-one",slug:"catalog-one" }], sourceHealth:{context:{status:"current",unavailable:[],asOf:at}} }))).mockRejectedValueOnce(new Error("offline")));
+    await loadMapLayers(["context"]);
+    const result=await loadMapLayers([group]);
+    expect(result[group]).toHaveLength(1);
+    expect(result.sourceHealth[group]).toMatchObject({status:"partial",stale:true,asOf:at});
+  });
+});
+
+
+describe("specialist authority across actual request ordering", () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-06T20:00:00Z")); });
+  const firstTime = "2026-10-06T20:00:00.000Z";
+  const contextTime = "2026-10-06T20:00:01.000Z";
+  const response = (value: unknown) => new Response(JSON.stringify(value));
+
+  it.each(["parking", "amenities"] as const)("keeps healthy empty %s authoritative after expiry, transport failure, and context arrival", async (group) => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response({ sourceHealth: { [group]: { status: "current", unavailable: [], asOf: firstTime } } }))
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(response({ [group]: [{ id: "old-catalog", slug: "old-catalog" }], sourceHealth: { context: { status: "current", unavailable: [], asOf: firstTime } } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await loadMapLayers([group]);
+    vi.setSystemTime(new Date(Date.parse(firstTime) + (group === "parking" ? 60_000 : 900_000)));
+    await loadMapLayers([group], { onlyExpired: true });
+    const result = await loadMapLayers(["context"]);
+    expect(result[group]).toEqual([]);
+    expect(result.sourceHealth[group]).toMatchObject({ status: "unavailable", stale: true, asOf: firstTime });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it.each(["parking", "amenities"] as const)("keeps retained %s context A and its age until specialist recovery despite later context B", async (group) => {
+    const point = (name: string) => ({ id: "catalog-one", slug: "catalog-one", name, lng: -77.4, lat: 39.4, kind: "water", available: null, updated: null });
+    const contextBTime = "2026-10-06T20:05:01.000Z";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response({ sourceHealth: { [group]: { status: "unavailable", unavailable: ["Specialist source"], asOf: firstTime } } }))
+      .mockResolvedValueOnce(response({ [group]: [point("Context A")], sourceHealth: { context: { status: "current", unavailable: [], asOf: contextTime } } }))
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(response({ [group]: [point("Context B")], sourceHealth: { context: { status: "current", unavailable: [], asOf: contextBTime } } }))
+      .mockResolvedValueOnce(response({ [group]: [point("Specialist recovered")], sourceHealth: { [group]: { status: "current", unavailable: [], asOf: contextBTime } } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await loadMapLayers([group]);
+    vi.setSystemTime(new Date(contextTime));
+    await loadMapLayers(["context"]);
+    await loadMapLayers([group]);
+    vi.setSystemTime(new Date(contextBTime));
+    const retained = await loadMapLayers(["context"], { onlyExpired: true });
+    expect(retained[group][0].name).toBe("Context A");
+    expect(retained.sourceHealth[group]).toMatchObject({ status: "partial", stale: true, asOf: contextTime });
+    const recovered = await loadMapLayers([group]);
+    expect(recovered[group][0].name).toBe("Specialist recovered");
+    expect(recovered.sourceHealth[group]).toMatchObject({ status: "current", asOf: contextBTime });
+    expect(recovered.sourceHealth[group]?.stale).not.toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+  });
+
+  it.each(["parking", "amenities"] as const)("does not make an empty partial first %s check authoritative when it expires", async (group) => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response({ sourceHealth: { [group]: { status: "partial", unavailable: ["Specialist source"], asOf: firstTime } } }))
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(response({ [group]: [{ id: "catalog-one", slug: "catalog-one" }], sourceHealth: { context: { status: "current", unavailable: [], asOf: firstTime } } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await loadMapLayers([group]);
+    vi.setSystemTime(new Date(Date.parse(firstTime) + (group === "parking" ? 60_000 : 900_000)));
+    await loadMapLayers([group], { onlyExpired: true });
+    const result = await loadMapLayers(["context"]);
+    expect(result[group]).toHaveLength(1);
+    expect(result.sourceHealth[group]?.status).toBe("unavailable");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it.each(["parking", "amenities"] as const)("retains the actual fallback age when %s fails before and after context arrives", async (group) => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response({ sourceHealth: { [group]: { status: "unavailable", unavailable: ["Specialist source"], asOf: firstTime } } }))
+      .mockResolvedValueOnce(response({ [group]: [{ id: "catalog-one", slug: "catalog-one" }], sourceHealth: { context: { status: "current", unavailable: [], asOf: contextTime } } }))
+      .mockRejectedValueOnce(new Error("offline"));
+    vi.stubGlobal("fetch", fetchMock);
+    await loadMapLayers([group]);
+    vi.setSystemTime(new Date(contextTime));
+    await loadMapLayers(["context"]);
+    const result = await loadMapLayers([group]);
+    expect(result[group]).toHaveLength(1);
+    expect(result.sourceHealth[group]).toMatchObject({ status: "partial", stale: true, asOf: contextTime });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+});

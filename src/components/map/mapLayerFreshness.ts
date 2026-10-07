@@ -19,10 +19,10 @@ export const LIVE_MAP_LAYER_GROUPS: readonly MapLayerGroup[] = [
 export const MAP_LAYER_REQUEST_TIMEOUT_MS = 8_000;
 export const MAP_LAYER_RETRY_INTERVAL_MS = 60_000;
 
-export function mapLayerCacheControl(group: MapLayerGroup): string {
-  if (!LIVE_MAP_LAYER_GROUPS.includes(group)) {
+export function mapLayerCacheControl(groups: ReadonlySet<MapLayerGroup>): string {
+  if (![...groups].some((group) => LIVE_MAP_LAYER_GROUPS.includes(group))) {
     return "public, s-maxage=300, stale-while-revalidate=900";
   }
-  const seconds = MAP_LAYER_MAX_AGE_MS[group] / 1_000;
+  const seconds = Math.min(...[...groups].map((group) => MAP_LAYER_MAX_AGE_MS[group])) / 1_000;
   return `public, s-maxage=${seconds}, stale-while-revalidate=60`;
 }

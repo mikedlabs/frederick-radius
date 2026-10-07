@@ -230,3 +230,37 @@ describe("operational layer ownership", () => {
     expect(merged.sourceHealth.parking).toMatchObject({ stale: true, asOf: "2026-10-06T20:00:00Z", status: "unavailable" });
   });
 });
+
+
+describe("specialist and context evidence boundaries", () => {
+  const at = "2026-10-06T20:00:00Z";
+  const later = "2026-10-06T20:02:00Z";
+  it.each(["parking", "amenities"] as const)("keeps the borrowed context age on a failed first %s check", (group) => {
+    const current = parseDeferredBrowseLayers({ [group]: [{ id: "catalog-one", slug: "catalog-one" }], sourceHealth: { context: { status: "current", unavailable: [], asOf: at } } });
+    const failed = parseDeferredBrowseLayers({ sourceHealth: { [group]: { status: "unavailable", unavailable: ["Specialist source"], asOf: later } } });
+    const result = mergeDeferredBrowseLayerGroup(current, failed, group);
+    expect(result[group]).toEqual(current[group]);
+    expect(result.sourceHealth[group]).toMatchObject({ status: "unavailable", stale: true, asOf: at });
+  });
+  it.each(["parking", "amenities"] as const)("allows valid catalog %s after an empty failed first specialist check", (group) => {
+    const current = parseDeferredBrowseLayers({ sourceHealth: { [group]: { status: "unavailable", unavailable: ["Specialist source"], asOf: at } } });
+    const incoming = parseDeferredBrowseLayers({ [group]: [{ id: "catalog-one", slug: "catalog-one" }], sourceHealth: { context: { status: "current", unavailable: [], asOf: later } } });
+    const result = mergeDeferredBrowseLayerGroup(current, incoming, "context");
+    expect(result[group]).toEqual(incoming[group]);
+    expect(result.sourceHealth[group]?.status).toBe("unavailable");
+  });
+  it.each(["parking", "amenities"] as const)("does not resurrect catalog %s after a healthy authoritative empty specialist result", (group) => {
+    const current = parseDeferredBrowseLayers({ sourceHealth: { [group]: { status: "current", unavailable: [], asOf: at } } });
+    const incoming = parseDeferredBrowseLayers({ [group]: [{ id: "old-catalog", slug: "old-catalog" }], sourceHealth: { context: { status: "current", unavailable: [], asOf: at } } });
+    expect(mergeDeferredBrowseLayerGroup(current, incoming, "context")[group]).toEqual([]);
+    const failed = parseDeferredBrowseLayers({ sourceHealth: { [group]: { status: "unavailable", unavailable: ["Specialist source"], asOf: later } } });
+    const afterFailure = mergeDeferredBrowseLayerGroup(current, failed, group);
+    expect(mergeDeferredBrowseLayerGroup(afterFailure, incoming, "context")[group]).toEqual([]);
+    expect(afterFailure.sourceHealth[group]).toMatchObject({ stale: true, asOf: at, status: "unavailable" });
+  });
+  it("does not borrow an unrelated context time for an event snapshot", () => {
+    const current = parseDeferredBrowseLayers({ weekEvents: [{ slug: "event" }], sourceHealth: { context: { status: "current", unavailable: [], asOf: at } } });
+    const failed = parseDeferredBrowseLayers({ sourceHealth: { events: { status: "unavailable", unavailable: ["Events"], asOf: later } } });
+    expect(mergeDeferredBrowseLayerGroup(current, failed, "events").sourceHealth.events?.asOf).toBeUndefined();
+  });
+});
