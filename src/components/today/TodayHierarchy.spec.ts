@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const todayPage = readFileSync("src/app/(app)/today/page.tsx", "utf8");
 const globalCss = readFileSync("src/app/globals.css", "utf8");
+const layoutCss = readFileSync("src/components/today/TodayLayout.module.css", "utf8");
 
 describe("Today decision hierarchy", () => {
   const renderedPage = todayPage.slice(todayPage.indexOf("<EventSheetBoundary"));
@@ -53,8 +54,13 @@ describe("Today decision hierarchy", () => {
   it("keeps the archive photograph distinct from current facts and preserves Tonight below Find", () => {
     const mastheadEnd = renderedPage.indexOf("</header>");
     const masthead = renderedPage.slice(0, mastheadEnd);
-    expect(masthead).toContain("Carroll Creek in Frederick in June 2023, photographed by Mike D.");
-    expect(masthead).toContain("Archive · Carroll Creek · June 2023 · Mike D");
+    // The frame follows the Eastern season and daypart; its credit and alt
+    // text come from the archive's own geotag, never a hardcoded June frame.
+    expect(masthead).toContain("const photo = todayMastheadPhoto(now);");
+    expect(masthead).toContain("src={photo.src}");
+    expect(masthead).toContain("alt={photo.alt}");
+    expect(masthead).toContain("{photo.credit}</figcaption>");
+    expect(masthead).not.toContain("SUMMER CARROL CREEK");
     expect(masthead).not.toContain("<TodayPlanTonightLink");
     expect(renderedPage.indexOf("<TodayPlanTonightLink")).toBeGreaterThan(
       renderedPage.indexOf("<TodayAsk embedded"),
@@ -77,7 +83,9 @@ describe("Today decision hierarchy", () => {
     expect(masthead).toBeGreaterThan(alerts);
     expect(find).toBeGreaterThan(masthead);
     expect(fair).toBeGreaterThan(renderedPage.indexOf("{whatsOn}"));
-    expect(renderedPage).toContain("<TodayPlanTonightLink />");
+    expect(renderedPage).toContain(
+      "<TodayPlanTonightLink renderedAt={now.toISOString()} />",
+    );
     expect(weather).toBeGreaterThan(fair);
     expect(renderedPage).toContain("fairPromotionPhase ? (");
     expect(renderedPage).toContain(": civicMoment ? (");
@@ -140,7 +148,9 @@ describe("Today decision hierarchy", () => {
     expect(events).toContain("featureIsPromoted && feature ?");
     expect(events).toContain("<TonightHeadline event={feature} now={now} embedded />");
     expect(events).toContain("meta={todayEventPicksMeta({");
-    expect(events).toContain("return <TodayEventsRecovery />;");
+    // The recovery note still stands in for a degraded empty program; after
+    // 9 PM the coming day's rows may follow it.
+    expect(events).toMatch(/return \(\s*<>\s*<TodayEventsRecovery \/>\s*\{comingDayAnswer\}/);
     expect(events).not.toContain("Some event sources are still updating.");
   });
 
@@ -165,7 +175,56 @@ describe("Today decision hierarchy", () => {
       ".today-plan-rest:not(:has([data-today-plan-rest-content]))",
     );
     expect(todayPage).toContain("<WeatherSafeGoldenHour");
-    expect(todayPage).toContain("<TomorrowPreview");
+  });
+
+  it("puts the dateline and current weather on the photo band, not in a row below it", () => {
+    const mastheadEnd = renderedPage.indexOf("</header>");
+    const masthead = renderedPage.slice(0, mastheadEnd);
+    const title = masthead.indexOf("{frame.title}");
+    const dateline = masthead.indexOf("data-today-dateline");
+    const figure = masthead.indexOf("<figure");
+    const scope = masthead.indexOf("<TodayScopeStatus");
+
+    expect(masthead).toContain("const frame = todayFrame(daypart(now));");
+    expect(dateline).toBeGreaterThan(title);
+    expect(figure).toBeGreaterThan(dateline);
+    expect(scope).toBeGreaterThan(figure);
+    expect(masthead).toContain("{formatEasternDateline(now)}");
+    expect(masthead).toContain("<MastheadWeather forecastPromise={forecastForLean} />");
+    // The scope line no longer carries the date a second time.
+    expect(masthead).toContain("<TodayScopeStatus />");
+    // Owner decision (PR #1734): the band stays 160px tall on phones.
+    expect(layoutCss).toMatch(/\.mastheadLead \{[^}]*min-height: 160px;/);
+    expect(layoutCss).toMatch(/\.dateline \{[^}]*padding: 6px 16px 40px;/);
+  });
+
+  it("answers late at night outside the Plan the rest disclosure", () => {
+    const planStart = renderedPage.indexOf('title="Plan the rest"');
+    const planEnd = renderedPage.indexOf("</CollapsibleSection>", planStart);
+    const plan = renderedPage.slice(planStart, planEnd);
+    const whatsOn = todayPage.slice(todayPage.indexOf("async function WhatsOn"));
+
+    // Tomorrow's rows used to sit inside the collapsed chapter at 10:53 PM.
+    expect(plan).not.toContain("<TomorrowPreview");
+    expect(whatsOn).toContain("const late = isTomorrowPreviewTime(now);");
+    expect(whatsOn).toContain("selectComingDayEvents(publicEvents, now)");
+    expect(whatsOn).toContain("comingDayWeatherSentence(await forecastPromise, now)");
+    expect(whatsOn).toContain("<TomorrowPreview");
+    expect(whatsOn).toContain("<ProgramRow");
+    // What is still on tonight leads; the coming day follows it.
+    expect(whatsOn.lastIndexOf('aria-label="Events today"')).toBeLessThan(
+      whatsOn.lastIndexOf("{comingDayAnswer}"),
+    );
+    // After 9 PM nothing is listed under "Earlier today".
+    expect(todayPage).toContain("const ended = late ? [] :");
+    expect(todayPage).toContain("isStillOnTonight(e, now, tonightEnds)");
+  });
+
+  it("names program groups from the one daypart clock", () => {
+    const whatsOn = todayPage.slice(todayPage.indexOf("async function WhatsOn"));
+    expect(whatsOn).toContain("programDaypartLabel(easternStartHour(row.e.starts_at))");
+    expect(whatsOn).not.toMatch(/"This afternoon"/);
+    expect(whatsOn).not.toMatch(/>=\s*17/);
   });
 
   it("renders the location-aware DaypartNeeds implementation once and removes its lower duplicate", () => {

@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NwsAlert } from "@/lib/integrations/nws-alerts";
 import type { NpsAlert } from "@/lib/integrations/nps";
-import CivicAlerts from "./CivicAlerts";
+import CivicAlerts, { compactAlertSourceLine } from "./CivicAlerts";
 
 const providers = vi.hoisted(() => ({
   situation: vi.fn(), roads: vi.fn(), official: vi.fn(), nps: vi.fn(),
@@ -64,5 +64,41 @@ describe("compact civic alert affected areas", () => {
     expect(html).toContain('target="_blank"');
     expect(html).toContain('rel="noopener noreferrer"');
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("clamps the row to the title plus its source on two lines", async () => {
+    const alert: NpsAlert = {
+      id: "offline-nps-long", parkCode: "cato", parkName: "Catoctin Mountain Park",
+      title: "Visitor center and Owens Creek picnic area closed for storm repairs",
+      description: "The visitor center and the Owens Creek picnic area are closed while crews repair storm damage to the access road and the lower parking lot, and visitors should expect detours along Park Central Road through the weekend.",
+      category: "Park Closure",
+      url: "https://www.nps.gov/cato/planyourvisit/conditions.htm",
+    };
+    providers.nps.mockResolvedValue([alert]);
+    const html = renderToStaticMarkup(await CivicAlerts({ compact: true }));
+
+    // The excerpt stays on the notice's own page; the row keeps one title
+    // line and one source line, each truncated rather than wrapped.
+    expect(html).not.toContain("storm damage to the access road");
+    expect(html).toMatch(/data-alert-title="true" class="[^"]*\btruncate\b/);
+    expect(html).toMatch(/data-alert-source="true" class="[^"]*\btruncate\b/);
+    expect(html).toContain("NPS · Catoctin Mountain Park</span>");
+  });
+});
+
+describe("compactAlertSourceLine", () => {
+  it("leads with the source, then the area, then a short time tail", () => {
+    expect(compactAlertSourceLine({ source: "NWS", scope: "Frederick County + 1 area", tail: "Until 10:00 PM" }))
+      .toBe("NWS · Frederick County + 1 area · Until 10:00 PM");
+    expect(compactAlertSourceLine({ source: "MDOT", scope: "", tail: "Started 9:10 PM" }))
+      .toBe("MDOT · Started 9:10 PM");
+  });
+
+  it("leaves a prose excerpt out of the compact row", () => {
+    expect(compactAlertSourceLine({
+      source: "HEALTH",
+      scope: "Frederick County",
+      tail: "Residents in the affected area should boil water before drinking.",
+    })).toBe("HEALTH · Frederick County");
   });
 });

@@ -6,22 +6,73 @@
  *
  * Eastern-time (the app is one county), four buckets aligned with the SkyHero
  * hour bands so the words match the picture: morning, midday, evening, late.
+ *
+ * This is the ONE daypart clock. Today's masthead, its place shelf
+ * (daypart-needs), its event program headings, the late-night tomorrow rows,
+ * Ask's starters and the Events board's time-of-day filter all read these
+ * boundaries. They used to disagree (the masthead flipped to Tonight at 5 PM
+ * while the shelf served dinner from 4 PM and the program said "This
+ * afternoon" until 5 PM), so the same page named two different moments.
+ *
+ *   05:00-10:59  morning
+ *   11:00-15:59  midday
+ *   16:00-20:59  evening
+ *   21:00-04:59  late
  */
 export type Daypart = "morning" | "midday" | "evening" | "late";
 
-export function daypart(now: Date = new Date()): Daypart {
-  const h =
+/** The hour a new day begins for people, not for the calendar. Before it,
+ * the late daypart is still "tonight"; from it, the morning is "today". */
+export const DAY_START_HOUR = 5;
+
+/** Eastern wall-clock hour (0-23) of an instant. */
+export function easternHour(now: Date = new Date()): number {
+  return (
     Number(
       new Intl.DateTimeFormat("en-US", {
         timeZone: "America/New_York",
         hour: "numeric",
         hour12: false,
       }).format(now),
-    ) % 24;
-  if (h >= 5 && h < 11) return "morning";
+    ) % 24
+  );
+}
+
+/** The daypart for an Eastern wall-clock hour. Out-of-range hours wrap. */
+export function daypartOfHour(easternHourValue: number): Daypart {
+  const h = ((easternHourValue % 24) + 24) % 24;
+  if (h >= DAY_START_HOUR && h < 11) return "morning";
   if (h >= 11 && h < 16) return "midday";
   if (h >= 16 && h < 21) return "evening";
   return "late";
+}
+
+export function daypart(now: Date = new Date()): Daypart {
+  return daypartOfHour(easternHour(now));
+}
+
+/** True for the two dayparts a person calls "tonight". */
+export function isTonightDaypart(part: Daypart): boolean {
+  return part === "evening" || part === "late";
+}
+
+/**
+ * The heading a day program uses for a listing that starts at this Eastern
+ * hour. The late daypart spans midnight, so a 10 PM start reads "Late tonight"
+ * while a 1 AM start on the same calendar day reads "Overnight".
+ */
+export function programDaypartLabel(startEasternHour: number): string {
+  const h = ((startEasternHour % 24) + 24) % 24;
+  switch (daypartOfHour(h)) {
+    case "morning":
+      return "This morning";
+    case "midday":
+      return "Midday";
+    case "evening":
+      return "Tonight";
+    case "late":
+      return h < DAY_START_HOUR ? "Overnight" : "Late tonight";
+  }
 }
 
 /** Cluster block keys, in the order they should appear for a given daypart.

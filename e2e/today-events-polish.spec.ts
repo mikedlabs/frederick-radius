@@ -55,8 +55,11 @@ test("Today keeps the first open-place pick in view when photos fall back", asyn
   });
 
   await page.goto("/today", { waitUntil: "domcontentloaded" });
+  // "Plan the rest" hides itself when none of its time-gated children has
+  // content, which can happen after 9 PM now that tomorrow's rows live in the
+  // day program. Hidden or shown, its disclosure must start collapsed.
   await expect(
-    page.getByRole("button", { name: /Plan the rest/ }),
+    page.locator(".today-plan-rest > h2 > button", { hasText: "Plan the rest" }),
   ).toHaveAttribute("aria-expanded", "false");
   const firstPick = page.getByRole("link", {
     name: /First local pick.*Open now/i,

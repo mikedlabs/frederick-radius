@@ -5,6 +5,7 @@ import {
   emptyReturnBridgeState,
   RETURN_BRIDGE_STORAGE_KEY,
 } from "../src/lib/return-bridge";
+import { easternParts, easternWallToUtcISO } from "../src/lib/tz";
 
 const origin = `http://localhost:${Number(process.env.PW_PORT) || 3010}`;
 const route = "/today/tonight?intent=dinner&in=county";
@@ -106,6 +107,13 @@ test("changes intent, keeps explicit county over a saved town, and keeps Near me
 
 test("Today carries explicit county into Tonight despite saved Brunswick", async ({ page, context }) => {
   test.setTimeout(90_000);
+  // "Plan tonight" retires at 9 PM on the visitor's clock. Pin the browser to
+  // 2 PM on the same Eastern day so this journey does not depend on when the
+  // suite runs (the server render day, and so the freshness guard, agree).
+  const eastern = easternParts(new Date());
+  await page.clock.setFixedTime(
+    new Date(easternWallToUtcISO(eastern.year, eastern.month, eastern.day, 14, 0)),
+  );
   await context.addCookies([{ name: "fr_scope", value: "town:brunswick", url: origin }]);
   await page.addInitScript(() => localStorage.setItem("fr:scope:v1", "town:brunswick"));
   await page.goto(origin + "/today?in=county");

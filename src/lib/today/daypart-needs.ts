@@ -7,9 +7,11 @@
  *
  * Pure + unit-tested. The server component reads the current Eastern hour,
  * calls this, and fills each need with the top OPEN-NOW places of its
- * category. Boundaries match the masthead / evening gear (17:00 = evening).
+ * category. Boundaries come from the one daypart clock in src/lib/daypart.ts,
+ * which the masthead and the event program read too.
  */
 
+import { daypartOfHour } from "@/lib/daypart";
 import { scopeToParam, type Scope } from "@/lib/scope";
 
 export type DaypartNeed = {
@@ -113,26 +115,27 @@ function baseDaypartNeeds(easternHour: number, easternDayOfWeek: number): Daypar
   const h = ((easternHour % 24) + 24) % 24;
   const isWeekend = easternDayOfWeek === 0 || easternDayOfWeek === 6;
 
-  // Morning 5–11: the first-cup + breakfast window.
-  if (h >= 5 && h < 11) {
-    if (isWeekend && h >= 9) {
-      return [need("Brunch", "restaurant"), need("Coffee", "coffee"), need("Breakfast & bakeries", "bakery")];
-    }
-    return [need("Coffee", "coffee"), need("Breakfast & bakeries", "bakery")];
+  // The one daypart clock decides the window, so the shelf serves dinner at
+  // the same instant the masthead says Tonight.
+  switch (daypartOfHour(h)) {
+    case "morning":
+      // The first-cup + breakfast window; weekend brunch from 9.
+      if (isWeekend && h >= 9) {
+        return [need("Brunch", "restaurant"), need("Coffee", "coffee"), need("Breakfast & bakeries", "bakery")];
+      }
+      return [need("Coffee", "coffee"), need("Breakfast & bakeries", "bakery")];
+    case "midday":
+      // Lunch, with a coffee backstop.
+      return [need("Lunch", "restaurant"), need("Coffee & cafes", "coffee")];
+    case "evening":
+      // Dinner and drinks; dinner planning starts before 5.
+      return [
+        need("Dinner", "restaurant"),
+        need("Breweries & taprooms", "brewery"),
+        need("Bars", "bar"),
+      ];
+    case "late":
+      // Who is still serving.
+      return [need("Bars open late", "bar"), need("Still serving", "restaurant")];
   }
-  // Midday 11–16: lunch, with a coffee backstop.
-  if (h >= 11 && h < 16) {
-    return [need("Lunch", "restaurant"), need("Coffee & cafes", "coffee")];
-  }
-  // Evening 16–21: dinner and drinks (matches the 17:00 evening gear closely
-  // enough; dinner planning starts before 5).
-  if (h >= 16 && h < 21) {
-    return [
-      need("Dinner", "restaurant"),
-      need("Breweries & taprooms", "brewery"),
-      need("Bars", "bar"),
-    ];
-  }
-  // Late 21–05: who's still serving.
-  return [need("Bars open late", "bar"), need("Still serving", "restaurant")];
 }

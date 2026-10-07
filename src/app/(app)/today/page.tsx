@@ -45,7 +45,25 @@ import EventWalkTime from "@/components/today/EventWalkTime";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import PlaceSheetBoundary from "@/components/place/PlaceSheetBoundary";
 import TodayAsk from "@/components/today/TodayAsk";
-import { todayFrame } from "@/lib/today/masthead";
+import {
+  mastheadWeatherPhrase,
+  todayFrame,
+  todayMastheadPhoto,
+} from "@/lib/today/masthead";
+import {
+  comingDay,
+  comingDayWeatherSentence,
+  isStillOnTonight,
+  isTomorrowPreviewTime,
+  selectComingDayEvents,
+} from "@/lib/today/tomorrow";
+import {
+  daypart,
+  daypartOfHour,
+  easternHour,
+  isTonightDaypart,
+  programDaypartLabel,
+} from "@/lib/daypart";
 import { formatEasternDateline } from "@/lib/format/easternClock";
 import DaypartNeeds from "@/components/today/DaypartNeeds";
 import CravingStrip from "@/components/now/CravingStrip";
@@ -214,11 +232,17 @@ export default async function HomePage() {
     </>
   );
 
-  // The event program streams inside its own Suspense boundary.
+  // The event program streams inside its own Suspense boundary. After 9 PM it
+  // also carries the coming day's rows and their NWS sentence, read from the
+  // same bounded forecast race the place shelf already started.
   const whatsOn = (
     <div id="whats-on" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
       <Suspense fallback={null}>
-        <WhatsOn eventsPromise={eventsPromise} now={now} />
+        <WhatsOn
+          eventsPromise={eventsPromise}
+          forecastPromise={forecastForLean}
+          now={now}
+        />
       </Suspense>
     </div>
   );
@@ -262,30 +286,43 @@ export default async function HomePage() {
       )}
 
       {/* ── TITLE — a TIME-AWARE masthead (owner call, 2026-07-20: make /today
-          "time-aware"). The page already reorders itself across the day (the
-          evening gear below flips the lead to tonight at 17:00), but the title
-          used to read a static "Today in Frederick" at every hour, so the shift
-          was invisible. The h1 + one-line frame now change with the Eastern
-          daypart (todayFrame, pinned to the same 17:00 boundary), so the page
-          NAMES the moment it is leading with. Server-computed on the Eastern
-          clock; the page ISRs every 300s so a boundary rolls within minutes.
-          This is the real document h1. Sits below an active civic alert (alerts
-          still lead) and above the weather. */}
+          "time-aware"). The h1 changes with the Eastern daypart from the one
+          daypart clock (src/lib/daypart.ts), the same clock the place shelf
+          and the event program read, so the page NAMES the moment it is
+          leading with. The 160px photo band (owner, PR #1734) shows an owner
+          archive frame chosen by Eastern season and daypart, credited from
+          its own geotag and capture month, and carries the dateline and the
+          current weather phrase so the facts sit on the picture instead of in
+          another row below it. Server-computed on the Eastern clock; the page
+          ISRs every 300s so a boundary rolls within minutes. This is the real
+          document h1. Sits below an active civic alert (alerts still lead). */}
       {(() => {
-        const frame = todayFrame(easternStartHour(now.toISOString()));
+        const frame = todayFrame(daypart(now));
+        const photo = todayMastheadPhoto(now);
         return (
           <header className={`scroll-masthead ${styles.masthead}`}>
-            <div className={styles.mastheadLead} data-today-photo-lead>
+            <div
+              className={styles.mastheadLead}
+              data-today-photo-lead
+              data-today-photo-season={photo.season}
+              data-today-photo-daypart={photo.daypart}
+            >
               <h1 className={styles.title}>
                 {frame.title}
               </h1>
+              <p className={styles.dateline} data-today-dateline>
+                <span>{formatEasternDateline(now)}</span>
+                <Suspense fallback={null}>
+                  <MastheadWeather forecastPromise={forecastForLean} />
+                </Suspense>
+              </p>
               <figure className={styles.portrait}>
-                <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" priority fill sizes="(min-width: 1024px) 960px, (min-width: 768px) 720px, calc(100vw - 32px)" alt="Carroll Creek in Frederick in June 2023, photographed by Mike D." />
-                <figcaption className={styles.photoCredit}>Archive · Carroll Creek · June 2023 · Mike D</figcaption>
+                <Image src={photo.src} priority fill sizes="(min-width: 1024px) 960px, (min-width: 768px) 720px, calc(100vw - 32px)" alt={photo.alt} />
+                <figcaption className={styles.photoCredit}>{photo.credit}</figcaption>
               </figure>
             </div>
             <div className={styles.scope}>
-              <Suspense fallback={null}><TodayScopeStatus dateline={formatEasternDateline(now)} /></Suspense>
+              <Suspense fallback={null}><TodayScopeStatus /></Suspense>
             </div>
           </header>
         );
@@ -348,7 +385,8 @@ export default async function HomePage() {
       <section data-today-weather className={styles.weather}>
         <div className={styles.contextHeading}>
           <span>Countywide weather</span>
-          <Suspense fallback={null}><TodayPlanTonightLink /></Suspense>
+          {/* Retires itself from 9 PM on the visitor's clock. */}
+          <Suspense fallback={null}><TodayPlanTonightLink renderedAt={now.toISOString()} /></Suspense>
         </div>
         <AppTransitionLink
           href="/pulse?open=weather"
@@ -385,12 +423,8 @@ export default async function HomePage() {
           <Suspense fallback={null}>
             <WeatherSafeGoldenHour now={now} />
           </Suspense>
-
-          {/* A forward answer for the night owl. Self-hides during the day; once
-              the current day is nearly spent it offers one tomorrow move. */}
-          <Suspense fallback={null}>
-            <TomorrowPreview now={now} eventsPromise={eventsPromise} />
-          </Suspense>
+          {/* The night owl's tomorrow answer moved out of this disclosure and
+              into the day program (WhatsOn), where it leads after 9 PM. */}
         </div>
       </CollapsibleSection>
 
@@ -524,29 +558,59 @@ async function TodayFoodTruckGuideWithSchedule({ now }: { now: Date }) {
 }
 
 /** Eastern wall-clock hour (0-23) of an ISO instant — the program's
- *  daypart grouping key. */
+ *  daypart grouping key, read through the one daypart clock. */
 function easternStartHour(iso: string): number {
-  return Number(
-    new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" })
-      .format(new Date(iso)),
+  return easternHour(new Date(iso));
+}
+
+/** The async masthead tail: " · 48° and clear" after the dateline, from the
+ *  bounded forecast race the page already started. A slow or missing reading
+ *  leaves the dateline alone rather than guess. */
+async function MastheadWeather({
+  forecastPromise,
+}: {
+  forecastPromise: ReturnType<typeof getNwsForecast>;
+}) {
+  const forecast = await forecastPromise;
+  const current = forecast?.hourly?.[0] ?? null;
+  const phrase = mastheadWeatherPhrase(current?.temperature, current?.shortForecast);
+  if (!phrase) return null;
+  return (
+    <>
+      <span aria-hidden> · </span>
+      <span>{phrase}</span>
+    </>
   );
 }
 
 /** The one today-program derivation, read by the What's-on program for both
  *  its feature and remaining rows. Keeping those decisions together means the
- *  selected feature can never be repeated in the timeline below it. */
-function deriveTodayProgram(publicEvents: Awaited<EventsPromise>["publicEvents"], now: Date) {
+ *  selected feature can never be repeated in the timeline below it.
+ *
+ *  `late` is the 9 PM to 5 AM daypart. Then the program is what is still on
+ *  tonight (isStillOnTonight), wrapped-up rows are dropped rather than listed
+ *  under "Earlier today", and the coming day is answered separately. */
+function deriveTodayProgram(
+  publicEvents: Awaited<EventsPromise>["publicEvents"],
+  now: Date,
+  late: boolean,
+) {
+  const tonightEnds = late ? comingDay(now) : null;
   const todayAll = publicEvents
-    .filter((e) => isEventToday(e.starts_at, now))
+    .filter((e) =>
+      tonightEnds
+        ? isStillOnTonight(e, now, tonightEnds)
+        : isEventToday(e.starts_at, now),
+    )
     .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
   // Time-honesty partition (the 7:55 PM audit render led with six ENDED 2-4 PM
   // library crafts while a live Keys game sat ninth): the rail carries only
   // what's live or still ahead; finished draws demote to a quiet "Earlier
   // today" line list, and finished civic rows drop entirely (a meeting that
   // ended has no evening value). Grouping stays by start-day; the floor is
-  // isEventEnded's real end time.
-  const ended = todayAll.filter((e) => isEventEnded(e, now));
-  const ahead = todayAll.filter((e) => !isEventEnded(e, now));
+  // isEventEnded's real end time. After 9 PM the earlier list is dropped.
+  const ended = late ? [] : todayAll.filter((e) => isEventEnded(e, now));
+  const ahead = late ? todayAll : todayAll.filter((e) => !isEventEnded(e, now));
   // The headline treatment is for DRAWS only. Routine recurring programming
   // (storytime, ESL class, tech help — the standing library calendar) joins
   // civic business in the quiet program rows, ordered by start time, so the
@@ -656,15 +720,46 @@ function ProgramRow({
 /** What's on = every PUBLIC event in the city or county TODAY, soonest first.
  *  Draws (concerts/markets/shows) lead as cards; routine recurring programs
  *  join the same chronological program as quiet rows. */
-async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
+async function WhatsOn({
+  eventsPromise,
+  forecastPromise,
+  now,
+}: {
+  eventsPromise: EventsPromise;
+  forecastPromise: ReturnType<typeof getNwsForecast>;
+  now: Date;
+}) {
   const { publicEvents, sourceHealth } = await eventsPromise;
-  // (The overnight "First thing tomorrow" strip that used to live here grew into
-  // its own composed TomorrowPreview beat above — top draw + weather look, gated
-  // on the same "late" daypart — so the tomorrow answer isn't duplicated.)
-  // The headliner itself renders ONCE in TodayDecisionLead; this section
-  // carries the rest of the program. Same derivation, same promise.
+  // From 9 PM to 5 AM Today answers by the clock: what is still on tonight
+  // leads, then the coming day ("Tomorrow, Thursday", or "Later today,
+  // Wednesday" after midnight) with up to three program rows and its NWS
+  // sentence. Those rows used to sit inside the collapsed "Plan the rest",
+  // so at 10:53 PM tomorrow's listings were a tap behind a closed heading.
+  const late = isTomorrowPreviewTime(now);
   const { feature, upcomingRest, remainingAlsoToday, remainingEarlierToday } =
-    deriveTodayProgram(publicEvents, now);
+    deriveTodayProgram(publicEvents, now, late);
+  const coming = late ? comingDay(now) : null;
+  const comingRows = late ? selectComingDayEvents(publicEvents, now) : [];
+  const comingWeather = late
+    ? comingDayWeatherSentence(await forecastPromise, now)
+    : null;
+  const comingHasContent = comingRows.length > 0 || comingWeather != null;
+  const comingDayAnswer = coming ? (
+    <TomorrowPreview
+      day={coming}
+      weatherSentence={comingWeather}
+      rowCount={comingRows.length}
+    >
+      {comingRows.map((e) => (
+        <ProgramRow
+          key={`${e.slug}-${e.starts_at}`}
+          event={e}
+          quiet={isRoutineProgram(e)}
+          now={now}
+        />
+      ))}
+    </TomorrowPreview>
+  ) : null;
   const featureIsPromoted = feature
     ? shouldPromoteTodayHeadliner(feature, now)
     : false;
@@ -695,12 +790,15 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
     ...shown.map(({ e }) => e),
   ];
   const briefingTonightPicks = briefingPicks.filter(
-    (event) => !event.is_all_day && easternStartHour(event.starts_at) >= 17,
+    (event) =>
+      !event.is_all_day &&
+      isTonightDaypart(daypartOfHour(easternStartHour(event.starts_at))),
   ).length;
+  // Group headings come from the same daypart clock as the masthead and the
+  // place shelf, so a 4 PM row is "Tonight" exactly when the title is.
   const partOf = (row: (typeof program)[number]): string => {
     if (row.e.is_all_day) return "All day";
-    const h = easternStartHour(row.e.starts_at);
-    return h < 12 ? "This morning" : h < 17 ? "This afternoon" : "Tonight";
+    return programDaypartLabel(easternStartHour(row.e.starts_at));
   };
   const programGroups: { label: string; rows: typeof program }[] = [];
   for (const row of shown) {
@@ -708,6 +806,11 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
     const last = programGroups[programGroups.length - 1];
     if (last && last.label === label) last.rows.push(row);
     else programGroups.push({ label, rows: [row] });
+  }
+  // Late at night with nothing still on, tonight has no answer to give: lead
+  // with the coming day instead of a heading over a "quiet night" line.
+  if (late && !featureIsPromoted && program.length === 0 && comingHasContent) {
+    return <div className="mt-5">{comingDayAnswer}</div>;
   }
   // A degraded archive with no usable rows is an unknown calendar state, not
   // an empty day. Do not leave a heading with a blank body or claim that
@@ -719,10 +822,16 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
     programCount: program.length,
     earlierCount: remainingEarlierToday.length,
   })) {
-    return <TodayEventsRecovery />;
+    return (
+      <>
+        <TodayEventsRecovery />
+        {comingDayAnswer}
+      </>
+    );
   }
 
   return (
+    <>
     <section className="mt-5 space-y-3" aria-label="Events today">
       <DismissibleSection
         id="upcoming"
@@ -757,7 +866,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                 when a feed just failed to load. */}
             {!feature && !sourceHealth.degraded && (
               <p className="px-0.5 pt-1 text-[13.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                It is a quiet {easternStartHour(now.toISOString()) >= 17 ? "night" : "day"} around here. The
+                It is a quiet {isTonightDaypart(daypart(now)) ? "night" : "day"} around here. The
                 week ahead is on the{" "}
                 <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
                   events page
@@ -785,7 +894,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                     className="tap-44-y flex items-center justify-between px-0.5 py-2.5 text-[13px] font-semibold"
                     style={{ color: "var(--app-brand-press)" }}
                   >
-                    +{programOverflow} more today
+                    +{programOverflow} more {late ? "tonight" : "today"}
                     <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
                   </Link>
                 )}
@@ -814,7 +923,9 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
           /* The headliner above is the whole calendar — an honest one-liner,
              not an "empty" claim the hero itself contradicts. */
           <p className="text-body py-4" style={{ color: "var(--app-ink-3)" }}>
-            Nothing else is on the calendar today.
+            {late
+              ? "Nothing else is listed for tonight."
+              : "Nothing else is on the calendar today."}
           </p>
         ) : sourceHealth.degraded ? null : (
           <p
@@ -824,10 +935,14 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
             {/* Only an empty set we TRUST is stated as "no events." The
                 heading already carries the one route to the complete board,
                 so this stays an answer instead of repeating the same link. */}
-            No events are on the calendar today.
+            {late
+              ? "Nothing more is listed for tonight."
+              : "No events are on the calendar today."}
           </p>
         )}
       </DismissibleSection>
     </section>
+    {comingDayAnswer}
+    </>
   );
 }

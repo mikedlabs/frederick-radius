@@ -21,13 +21,29 @@
   z-index: 1;
   width: 76%;
   max-width: 22ch;
-  padding: 18px 16px 38px;
+  padding: 18px 16px 0;
   color: var(--app-on-brand);
   font-size: clamp(28px, 5vw, 42px);
   font-weight: 650;
   line-height: 1.08;
   letter-spacing: -0.035em;
   text-wrap: balance;
+}
+
+/* The dateline and current weather phrase sit on the photo band, under the
+   title and inside the darker half of its contrast scrim. The bottom padding
+   keeps them clear of the credit chip. */
+.dateline {
+  position: relative;
+  z-index: 1;
+  max-width: 72%;
+  padding: 6px 16px 40px;
+  color: var(--app-on-brand);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--app-ink) 60%, transparent);
 }
 
 .scope > div {
@@ -250,7 +266,12 @@
 
   .title {
     width: 68%;
-    padding: 22px 24px 38px;
+    padding: 22px 24px 0;
+  }
+
+  .dateline {
+    max-width: 60%;
+    padding: 6px 24px 40px;
   }
 
   .context {
@@ -289,8 +310,15 @@
   }
 
   .title {
-    padding: 14px 12px 36px;
+    padding: 14px 12px 0;
     font-size: 26px;
+  }
+
+  /* The credit chip can wrap to two lines at this width; a slightly smaller
+     dateline keeps the band near its 144px floor so Find stays in view. */
+  .dateline {
+    padding: 4px 12px 42px;
+    font-size: 12px;
   }
 
   .places,

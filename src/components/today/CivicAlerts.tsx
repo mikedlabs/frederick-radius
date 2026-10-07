@@ -273,6 +273,28 @@ export function officialCivicAlerts(alerts: OfficialCivicAlert[]): UnifiedAlert[
   });
 }
 
+/** An alert tail that is a short time ("Until 8:00 PM", "Started 9:10 PM"),
+ * not an excerpt of the notice body. */
+const TIME_TAIL = /^(Until|Clears|Started|Just )/;
+
+/**
+ * The second line of Today's compact alert row: the source first, then the
+ * affected area, then a short time tail when the alert has one. Prose
+ * excerpts stay on the alert's own page, so the row holds the title plus this
+ * one line and never grows into a paragraph above the masthead.
+ */
+export function compactAlertSourceLine(
+  alert: Pick<UnifiedAlert, "source" | "scope" | "tail">,
+): string {
+  return [
+    alert.source,
+    alert.scope || null,
+    TIME_TAIL.test(alert.tail) ? alert.tail : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 const STYLES = {
   emergency: { bg: "var(--app-danger)", icon: AlertCircle, fg: "var(--app-on-brand)" },
   warning:   { bg: "var(--app-warning-press)", icon: AlertTriangle, fg: "var(--app-on-brand)" },
@@ -337,7 +359,7 @@ export default async function CivicAlerts({ includeWeather = true, compact = fal
   const more = alerts.length - 1;
   const s = top ? STYLES[top.severity] : null;
   const Icon = s?.icon ?? Info;
-  const TailIcon = top && /^(Until|Clears|Started|Just )/.test(top.tail) ? Clock : null;
+  const TailIcon = top && TIME_TAIL.test(top.tail) ? Clock : null;
 
   if (compact) {
     return (
@@ -348,7 +370,9 @@ export default async function CivicAlerts({ includeWeather = true, compact = fal
             className="flex min-h-11 items-center gap-2.5 rounded-[var(--app-radius-sm)] px-3 py-2"
             style={{ background: "var(--app-bg-sunken)", borderLeft: `3px solid ${s.bg}`, color: "var(--app-ink)" }}>
             <Icon className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold">Heads up: {top.title}</span><span className="block text-[11px]" style={{ color: "var(--app-ink-2)" }}>{top.tail} · {top.source}{top.scope ? ` · ${top.scope}` : ""}</span></span>
+            {/* Two lines at most: the title, then the source. Both truncate so
+                a long park notice cannot push the masthead down the screen. */}
+            <span className="min-w-0 flex-1"><span data-alert-title className="block truncate text-[13px] font-semibold leading-snug">Heads up: {top.title}</span><span data-alert-source className="block truncate text-[11px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{compactAlertSourceLine(top)}</span></span>
             <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
           </a>
         )}
