@@ -8,7 +8,9 @@ import {
   type AqiObservation,
 } from "@/lib/integrations/airnow";
 import {
+  activeNwsAlerts,
   AIRNOW_FREDERICK_URL,
+  isFreshNwsAlertsResult,
 } from "@/lib/weather-safety";
 import { compareAlertPriority } from "@/lib/alert-priority";
 import {
@@ -23,8 +25,6 @@ const NWS_FREDERICK_ALERTS_URL = "https://www.weather.gov/lwx/";
 const FORECAST_MAX_AGE_MS = 3 * 60 * 60 * 1_000;
 const FORECAST_FUTURE_SKEW_MS = 60 * 60 * 1_000;
 const PERIOD_FUTURE_SKEW_MS = 5 * 60 * 1_000;
-const ALERT_MAX_AGE_MS = 15 * 60 * 1_000;
-const ALERT_FUTURE_SKEW_MS = 2 * 60 * 1_000;
 
 const CURRENT_TIME_RE = /\b(?:right now|currently|at the moment|now)\b/i;
 const NEGATED_CURRENT_TIME_RE =
@@ -271,16 +271,6 @@ function currentForecastPeriod(
   }) ?? null;
 }
 
-function activeAlerts(alerts: readonly NwsAlert[], now: Date): NwsAlert[] {
-  const nowMs = now.getTime();
-  return alerts.filter((alert) => {
-    const startsAt = Date.parse(alert.starts_at);
-    const endsAt = Date.parse(alert.ends_at);
-    return (!Number.isFinite(startsAt) || startsAt <= nowMs)
-      && (!Number.isFinite(endsAt) || endsAt > nowMs);
-  });
-}
-
 function urgencyRank(alert: NwsAlert): number {
   return {
     Immediate: 5,
@@ -299,14 +289,6 @@ function compareCurrentAlertPriority(left: NwsAlert, right: NwsAlert): number {
 
 function alertCheckedAt(result: NwsAlertsResult): Date | null {
   return result.checkedAt ? validDate(result.checkedAt) : null;
-}
-
-function isFreshAlertResult(result: NwsAlertsResult, now: Date): boolean {
-  if (!result.available) return false;
-  const checkedAt = alertCheckedAt(result);
-  if (!checkedAt) return false;
-  const age = now.getTime() - checkedAt.getTime();
-  return age >= -ALERT_FUTURE_SKEW_MS && age <= ALERT_MAX_AGE_MS;
 }
 
 function formatTemperature(period: NwsHourly): string {
@@ -612,8 +594,8 @@ export function currentOutdoorConditionsAskResult(
     isFreshAqiObservation(observation, now)
   );
   const worstAir = pickWorstAqi(freshAir);
-  const alertFeedFresh = isFreshAlertResult(snapshot.alerts, now);
-  const currentAlerts = activeAlerts(snapshot.alerts.alerts, now)
+  const alertFeedFresh = isFreshNwsAlertsResult(snapshot.alerts, now);
+  const currentAlerts = activeNwsAlerts(snapshot.alerts.alerts, now)
     .sort(compareCurrentAlertPriority);
   const leadAlert = currentAlerts[0] ?? null;
   const missing = [

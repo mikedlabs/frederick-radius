@@ -1,4 +1,4 @@
-import type { NwsAlert } from "@/lib/integrations/nws-alerts";
+import type { NwsAlert, NwsAlertsResult } from "@/lib/integrations/nws-alerts";
 import {
   isFreshAqiObservation,
   pickWorstAqi,
@@ -26,6 +26,25 @@ export type OutdoorSafetyHold = {
 
 export const AIRNOW_FREDERICK_URL = "https://www.airnow.gov/?city=Frederick&state=MD&country=USA";
 
+/** A successful cached alert response is current only within the same window
+ * used by direct outdoor-condition answers. Missing timestamps stay unknown. */
+export function isFreshNwsAlertsResult(result: NwsAlertsResult, now = new Date()): boolean {
+  if (!result.available || !result.checkedAt) return false;
+  const age = now.getTime() - Date.parse(result.checkedAt);
+  return Number.isFinite(age) && age >= -2 * 60 * 1_000 && age <= 15 * 60 * 1_000;
+}
+
+/** Evaluate alert lifecycle at the caller's exact time, including cached rows. */
+export function activeNwsAlerts(alerts: readonly NwsAlert[], now = new Date()): NwsAlert[] {
+  const nowMs = now.getTime();
+  return alerts.filter((alert) => {
+    const startsAt = Date.parse(alert.starts_at);
+    const endsAt = Date.parse(alert.ends_at);
+    return (!Number.isFinite(startsAt) || startsAt <= nowMs) &&
+      (!Number.isFinite(endsAt) || endsAt > nowMs);
+  });
+}
+
 const DIRECT_HAZARD_RE = /\b(?:tornado|severe thunderstorm|flash flood|flood (?:warning|watch|advisory)|lightning)\b/i;
 const LIGHTNING_DANGER_RE = /\b(?:frequent|dangerous|continuous|cloud[- ]to[- ]ground) lightning\b|\blightning (?:is occurring|is expected|may occur)\b|\bmove indoors\b/i;
 const DANGEROUS_AIR_RE = /\b(?:code\s+(?:red|purple|maroon)|very unhealthy|hazardous|unhealthy for (?:the )?general population)\b/i;
@@ -44,14 +63,7 @@ export function outdoorSafetyHold(
   airObservations: readonly AqiObservation[] = [],
   now: Date = new Date(),
 ): OutdoorSafetyHold | null {
-  const nowMs = now.getTime();
-  const activeDangerAlerts = alerts.filter((item) => {
-      const startsAt = Date.parse(item.starts_at);
-      const endsAt = Date.parse(item.ends_at);
-      return (!Number.isFinite(startsAt) || startsAt <= nowMs) &&
-        (!Number.isFinite(endsAt) || endsAt > nowMs);
-    })
-    .filter(isOutdoorDangerAlert);
+  const activeDangerAlerts = activeNwsAlerts(alerts, now).filter(isOutdoorDangerAlert);
   const alert = prioritizeAlerts(activeDangerAlerts)[0];
   if (alert) {
     return {
