@@ -114,6 +114,7 @@ export const UrgentSituation: Story = {
       sub: "Avoid flooded roads. Open the official warning for affected areas and instructions.",
       leadMeta: "Sample warning · Through 8pm",
       actionLabel: "Read the warning",
+      status: { word: "Urgent", tone: "alert", count: 1 },
     },
     tiles: [
       {
@@ -127,6 +128,42 @@ export const UrgentSituation: Story = {
         attention: true,
         kind: "status",
         body: <p>This warning is a component sample, not a current alert.</p>,
+      },
+      weather,
+      river,
+      power,
+    ],
+  },
+};
+
+/** A high-severity CHART crash reads "Advisory" in amber, the same grade the
+ * header dot shows for it through selectCountyStatus. */
+export const RoadAdvisory: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  args: {
+    hero: {
+      ...hero,
+      allClear: false,
+      tone: "warning",
+      leadKey: "traffic",
+      line: "US 15 North has a reported crash.",
+      sub: "A crash is blocking lanes. Check the location before choosing your route.",
+      leadMeta: "US 15 north at MD 26 · Sample incident",
+      actionLabel: "Check the road impact",
+      status: { word: "Advisory", tone: "caution", count: 1 },
+    },
+    tiles: [
+      {
+        key: "traffic",
+        label: "Traffic",
+        iconName: "Construction",
+        sourceLabel: "MDOT CHART + Maryland WZDx",
+        countLabel: "1 incident",
+        accent: "var(--app-warning)",
+        active: true,
+        attention: true,
+        kind: "status",
+        body: <p>This crash is a component sample, not a current incident.</p>,
       },
       weather,
       river,

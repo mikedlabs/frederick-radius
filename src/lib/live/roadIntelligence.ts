@@ -108,7 +108,7 @@ async function loadRoadIntelligence(): Promise<RoadIntelligenceSnapshot> {
 
 const getCachedRoadIntelligence = unstable_cache(
   loadRoadIntelligence,
-  ["road-intelligence-v1", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["road-intelligence-v2", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 60, tags: ["road-intelligence"] },
 );
 

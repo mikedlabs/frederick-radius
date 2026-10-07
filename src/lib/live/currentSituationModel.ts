@@ -16,6 +16,11 @@ import {
   fuseScannerWithChartIncidents,
   type IncidentFusionResult,
 } from "@/lib/live/incidentFusion";
+import { alertPriority } from "@/lib/alert-priority";
+import {
+  powerOutageTone,
+  SIGNIFICANT_POWER_OUTAGE_CUSTOMERS,
+} from "@/lib/pulse/signal-priority";
 
 export const CURRENT_SITUATION_SCHEMA_VERSION = 1 as const;
 
@@ -160,9 +165,59 @@ export function sourceEnvelope<T>({
   };
 }
 
-function sourceIsFresh(source: SourceEnvelope<unknown>): boolean {
+/** A source may speak for the county only when it answered recently. */
+export function sourceIsFresh(
+  source: Pick<SourceEnvelope<unknown>, "availability" | "freshness">,
+): boolean {
   return source.availability === "available" && source.freshness === "fresh";
 }
+
+/**
+ * How serious one active item is. The header dot, the Live conditions
+ * masthead, Today and Compass all read these rules through
+ * selectCountyStatus (countyStatus.ts), and the snapshot summary below uses
+ * them too, so no surface can call red what another calls an advisory. Each
+ * rule matches the tone /pulse gives the same item when it leads the page.
+ */
+export type StatusSeverity = "urgent" | "advisory";
+
+/** NWS products that /pulse paints as Urgent: warnings for dangerous weather,
+ * Extreme or Severe products, and Code Purple or Maroon air. Statements,
+ * advisories and Code Orange air read as advisories. */
+export function weatherAlertSeverity(
+  alert: Pick<NwsAlert, "event" | "headline" | "description" | "severity">,
+): StatusSeverity {
+  return alertPriority(alert) <= 4 ? "urgent" : "advisory";
+}
+
+/** A thousand customers or one percent of the served area is urgent; a
+ * smaller outage over the 25-customer threshold is an advisory. */
+export function powerOutageSeverity(
+  totalOut: number,
+  totalServed: number,
+): StatusSeverity {
+  return powerOutageTone(totalOut, totalServed) === "danger"
+    ? "urgent"
+    : "advisory";
+}
+
+/** AirNow category 4 (Unhealthy) and above is urgent; category 3 is an
+ * advisory for sensitive groups. */
+export function airQualitySeverity(categoryId: number): StatusSeverity {
+  return categoryId >= 4 ? "urgent" : "advisory";
+}
+
+/** A high-severity CHART incident is a road advisory. Pulse labels a traffic
+ * lead "Advisory", so the header must not paint the same crash red. Only a
+ * declared road emergency (a snow emergency plan) reaches urgent, through the
+ * road intelligence model. */
+export const ROAD_INCIDENT_SEVERITY: StatusSeverity = "advisory";
+
+/** FCPS closures, delays and early dismissals are advisories. */
+export const SCHOOL_NOTICE_SEVERITY: StatusSeverity = "advisory";
+
+/** A severe PulsePoint fire or rescue type is urgent. */
+export const SEVERE_FIRE_RESCUE_SEVERITY: StatusSeverity = "urgent";
 
 /**
  * Preserve the difference between a current source, a failed/stale source, and
@@ -229,6 +284,59 @@ function snapshotId(sources: CurrentSituationSources, generatedAt: string): stri
   return `situation-${stableHash(`${generatedAt}|${identity}`)}`;
 }
 
+/** The rows a fresh source contributes to the county status right now. */
+export type ActiveSituationRows = {
+  weather: NwsAlert[];
+  schools: FcpsAlert[];
+  /** High-severity CHART incidents. */
+  roads: ChartIncident[];
+  /** Present only for an outage at or above the 25-customer threshold. */
+  power: FrederickOutages | null;
+  fireRescue: PulsePointIncident[];
+  /** The worst AirNow observation at category 3 or above, if any. */
+  air: AqiObservation | null;
+};
+
+/**
+ * Choose what is active from fresh sources only. The snapshot summary and
+ * selectCountyStatus both read this one selection, so the count a header
+ * shows and the rows a list shows can never come from different filters.
+ */
+export function selectActiveSituationRows(
+  sources: CurrentSituationSources,
+  nowMs: number,
+): ActiveSituationRows {
+  const worstAir = sourceIsFresh(sources.air)
+    ? sources.air.data.reduce<AqiObservation | null>(
+        (worst, observation) =>
+          !worst || observation.category.id > worst.category.id
+            ? observation
+            : worst,
+        null,
+      )
+    : null;
+  return {
+    weather: sourceIsFresh(sources.weather)
+      ? activeWeather(sources.weather.data, nowMs)
+      : [],
+    schools: sourceIsFresh(sources.schools)
+      ? currentSchoolNotices(sources.schools.data)
+      : [],
+    roads: sourceIsFresh(sources.traffic)
+      ? sources.traffic.data.filter((incident) => incident.severity === "High")
+      : [],
+    power:
+      sourceIsFresh(sources.power) &&
+      sources.power.data.total_out >= SIGNIFICANT_POWER_OUTAGE_CUSTOMERS
+        ? sources.power.data
+        : null,
+    fireRescue: sourceIsFresh(sources.fireRescue)
+      ? sources.fireRescue.data.filter((incident) => incident.severity === "severe")
+      : [],
+    air: worstAir && worstAir.category.id >= 3 ? worstAir : null,
+  };
+}
+
 export function buildCurrentSituationSnapshot({
   sources,
   roadFusion,
@@ -237,32 +345,14 @@ export function buildCurrentSituationSnapshot({
   const clock = resolvedDate(now, "Current situation snapshots");
   const nowMs = clock.getTime();
 
-  const weather = sourceIsFresh(sources.weather)
-    ? activeWeather(sources.weather.data, nowMs)
-    : [];
-  const schools = sourceIsFresh(sources.schools)
-    ? currentSchoolNotices(sources.schools.data)
-    : [];
-  const roads = sourceIsFresh(sources.traffic)
-    ? sources.traffic.data.filter((incident) => incident.severity === "High")
-    : [];
-  const power =
-    sourceIsFresh(sources.power) && sources.power.data.total_out >= 25 ? 1 : 0;
-  const fireRescue = sourceIsFresh(sources.fireRescue)
-    ? sources.fireRescue.data.filter((incident) => incident.severity === "severe")
-    : [];
-  const worstAirCategory = sourceIsFresh(sources.air)
-    ? Math.max(0, ...sources.air.data.map((observation) => observation.category.id))
-    : 0;
-  const air = worstAirCategory >= 3 ? 1 : 0;
-
+  const active = selectActiveSituationRows(sources, nowMs);
   const activeByCategory = {
-    weather: weather.length,
-    schools: schools.length,
-    roads: roads.length,
-    power,
-    fireRescue: fireRescue.length,
-    air,
+    weather: active.weather.length,
+    schools: active.schools.length,
+    roads: active.roads.length,
+    power: active.power ? 1 : 0,
+    fireRescue: active.fireRescue.length,
+    air: active.air ? 1 : 0,
   };
   const activeCount = Object.values(activeByCategory).reduce(
     (sum, count) => sum + count,
@@ -278,16 +368,23 @@ export function buildCurrentSituationSnapshot({
   const coverage = degradedSources.length === 0 ? "complete" : "partial";
   const status =
     activeCount > 0 ? "active" : coverage === "complete" ? "quiet" : "unknown";
-  const tone =
-    weather.length > 0 ||
-    roads.length > 0 ||
-    power > 0 ||
-    fireRescue.length > 0 ||
-    worstAirCategory >= 4
-      ? "alert"
-      : schools.length > 0 || air > 0
-        ? "caution"
-        : "quiet";
+  // The same severity rules selectCountyStatus uses. A high-severity CHART
+  // crash is an advisory here, as it is on /pulse.
+  const severities: StatusSeverity[] = [
+    ...active.weather.map(weatherAlertSeverity),
+    ...active.schools.map(() => SCHOOL_NOTICE_SEVERITY),
+    ...active.roads.map(() => ROAD_INCIDENT_SEVERITY),
+    ...(active.power
+      ? [powerOutageSeverity(active.power.total_out, active.power.total_served)]
+      : []),
+    ...active.fireRescue.map(() => SEVERE_FIRE_RESCUE_SEVERITY),
+    ...(active.air ? [airQualitySeverity(active.air.category.id)] : []),
+  ];
+  const tone = severities.includes("urgent")
+    ? "alert"
+    : severities.length > 0
+      ? "caution"
+      : "quiet";
 
   const scannerIsFresh = sourceIsFresh(sources.scanner);
   const trafficIsFresh = sourceIsFresh(sources.traffic);
@@ -335,7 +432,9 @@ export function buildCurrentSituationSnapshot({
   };
 }
 
-/** Stable legacy projection consumed by the header status endpoint. */
+/** Legacy projection of this snapshot alone. The header endpoint reads
+ * selectCountyStatus (countyStatus.ts), which adds road intelligence and
+ * official civic notices through the same severity rules. */
 export function selectPulseStatus(snapshot: CurrentSituationSnapshot): {
   active: boolean;
   count: number;

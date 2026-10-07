@@ -10,9 +10,11 @@ import {
   type ComponentProps,
 } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Bookmark,
+  Bus,
   CalendarDays,
   ExternalLink,
   History,
@@ -40,7 +42,17 @@ import { haptic } from "@/lib/haptics";
 import { getHomeMuni } from "@/lib/personalize";
 import { toolMatchesQuery } from "@/lib/search/toolQuery";
 import { track } from "@/lib/track";
-import { SIGNIFICANT_POWER_OUTAGE_CUSTOMERS } from "@/lib/pulse/signal-priority";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import type {
+  CountyStatusFamily,
+  CountyStatusItem,
+} from "@/lib/live/countyStatus";
+import {
+  getScope,
+  parseScope,
+  scopeTownSlug,
+  subscribeScopeChange,
+} from "@/lib/scope";
 import {
   DEFAULT_TOOL_DECK_PIN_IDS,
   TOOL_DECK_GROUP_DEFINITIONS,
@@ -313,13 +325,163 @@ export function commonCompassTasks(
   });
 }
 
+/** A glyph that names what the card is about. Sparkles read as a generated
+ * suggestion over a road incident, so each kind gets its own mark. */
+export type CompassSuggestionIcon = "alert" | "route" | "calendar" | "transit";
+
 export type CompassLiveSuggestion = {
   itemId: "county-pulse" | "transit" | "events";
   label: string;
   href: string;
   reason: string;
   eyebrow: "Needs attention" | "Moving now" | "On today";
+  icon: CompassSuggestionIcon;
 };
+
+/** One county status row from /api/pulse/status (selectCountyStatus). */
+export type CompassStatusItem = Pick<
+  CountyStatusItem,
+  "id" | "family" | "severity" | "title" | "href" | "towns"
+>;
+
+/** The town the person chose: the header scope town, else their home town. */
+export type CompassTown = { slug: string; name: string };
+
+/** County-wide road incidents that earn "Needs attention" on their own. One
+ * crash anywhere in the county is not a reason to interrupt Compass. */
+export const COMPASS_ROAD_INCIDENT_THRESHOLD = 3;
+
+const STATUS_FAMILIES: ReadonlySet<CountyStatusFamily> = new Set([
+  "weather",
+  "civic",
+  "water",
+  "fire-rescue",
+  "police",
+  "schools",
+  "roads",
+  "power",
+  "air",
+]);
+
+// Advisory families Compass already interrupted for. Any urgent item also
+// interrupts; an advisory civic notice or air reading stays on Live conditions.
+const ADVISORY_INTERRUPTIONS: ReadonlySet<CountyStatusFamily> = new Set([
+  "weather",
+  "schools",
+  "power",
+]);
+
+const STATUS_REASON: Record<CountyStatusFamily, string> = {
+  weather: "The National Weather Service has this alert in effect for Frederick County.",
+  civic: "The City or County posted this as a current notice.",
+  water: "A county river gauge is at or above its flood action stage.",
+  "fire-rescue": "PulsePoint lists this as a high-priority fire or rescue call.",
+  police: "Police published this public-safety update.",
+  schools: "Frederick County Public Schools posted this update.",
+  roads: "MDOT is reporting this for Frederick County roads.",
+  power: "Potomac Edison is reporting this outage in the county.",
+  air: "AirNow reports this reading for Frederick County.",
+};
+
+const STATUS_MAX_AGE_MS = (300 + 60) * 1000;
+const STATUS_FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
+
+function isCompassStatusItem(value: unknown): value is CompassStatusItem {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Partial<CompassStatusItem>;
+  return (
+    typeof item.id === "string" &&
+    typeof item.family === "string" &&
+    STATUS_FAMILIES.has(item.family) &&
+    (item.severity === "urgent" || item.severity === "advisory") &&
+    typeof item.title === "string" &&
+    item.title.trim().length > 0 &&
+    typeof item.href === "string" &&
+    item.href.startsWith("/") &&
+    !item.href.startsWith("//") &&
+    (item.towns === undefined ||
+      (Array.isArray(item.towns) &&
+        item.towns.every((town) => typeof town === "string")))
+  );
+}
+
+/** The graded rows of a status report, or none when the report is malformed
+ * or older than the header would accept. */
+export function compassStatusItems(
+  payload: unknown,
+  nowMs: number,
+): CompassStatusItem[] {
+  if (!payload || typeof payload !== "object") return [];
+  const report = payload as { items?: unknown; lastUpdated?: unknown };
+  const updatedMs =
+    typeof report.lastUpdated === "string" ? Date.parse(report.lastUpdated) : NaN;
+  const age = nowMs - updatedMs;
+  if (
+    !Number.isFinite(age) ||
+    age < -STATUS_FUTURE_TOLERANCE_MS ||
+    age >= STATUS_MAX_AGE_MS
+  ) {
+    return [];
+  }
+  return Array.isArray(report.items) ? report.items.filter(isCompassStatusItem) : [];
+}
+
+/**
+ * The county status card for Compass, from the same graded rows the header
+ * dot counts. Any urgent item interrupts, and so does a weather, school or
+ * power item. Road incidents interrupt only when there are three or more in
+ * the county, or when one sits on a road through the chosen town.
+ */
+export function countyStatusSuggestion(
+  items: readonly CompassStatusItem[],
+  town: CompassTown | null,
+): CompassLiveSuggestion | null {
+  const condition = [...items]
+    .filter(
+      (item) =>
+        item.severity === "urgent" || ADVISORY_INTERRUPTIONS.has(item.family),
+    )
+    .sort(
+      (a, b) =>
+        Number(a.severity !== "urgent") - Number(b.severity !== "urgent"),
+    )[0];
+  if (condition) {
+    return {
+      itemId: "county-pulse",
+      label: condition.title,
+      href: condition.href,
+      reason: STATUS_REASON[condition.family],
+      eyebrow: "Needs attention",
+      icon: condition.family === "roads" ? "route" : "alert",
+    };
+  }
+
+  const roads = items.filter((item) => item.family === "roads");
+  const local = town
+    ? roads.find((item) => item.towns?.includes(town.slug))
+    : undefined;
+  if (local && town) {
+    return {
+      itemId: "county-pulse",
+      label: local.title,
+      href: local.href,
+      reason: `MDOT is reporting this on a road through ${town.name}.`,
+      eyebrow: "Needs attention",
+      icon: "route",
+    };
+  }
+  if (roads.length >= COMPASS_ROAD_INCIDENT_THRESHOLD) {
+    return {
+      itemId: "county-pulse",
+      label: "Road incidents",
+      href: "/pulse?open=traffic",
+      reason: `MDOT is reporting ${roads.length} road incidents in Frederick County.`,
+      eyebrow: "Needs attention",
+      icon: "route",
+    };
+  }
+  return null;
+}
 
 type DeckLiveFace = { value: string; label: string };
 type DeckLiveKey = { id: string; status: string; faces: DeckLiveFace[] };
@@ -344,82 +506,35 @@ function activeCount(
 /**
  * Choose one live interruption for Compass. Ordinary readings do not elbow
  * out the daypart suggestion: only a condition that changes a resident's next
- * move earns the slot. Commute-hour transit is the one lower-severity
- * exception because a moving vehicle is useful only while someone is likely
- * deciding how to travel.
+ * move earns the slot. Conditions come from the county status, the selector
+ * the header dot reads, so Compass never calls "Needs attention" what the
+ * header and Live conditions grade differently. Commute-hour transit is the
+ * one lower-severity exception because a moving vehicle is useful only while
+ * someone is likely deciding how to travel.
  */
 export function liveSuggestionForDeck(
   keys: readonly DeckLiveKey[],
   hour: number,
+  statusItems: readonly CompassStatusItem[] = [],
+  town: CompassTown | null = null,
 ): CompassLiveSuggestion | null {
+  const condition = countyStatusSuggestion(statusItems, town);
+  if (condition) return condition;
+
   const byId = new Map(keys.map((key) => [key.id, key] as const));
-  const candidates: Array<CompassLiveSuggestion & { priority: number }> = [];
-
-  const weatherAlerts = activeCount(byId.get("weather"), /active alerts?/i);
-  if (weatherAlerts > 0) {
-    candidates.push({
-      itemId: "county-pulse",
-      label: weatherAlerts === 1 ? "Weather alert" : "Weather alerts",
-      href: "/pulse?open=weather",
-      reason: `${weatherAlerts} ${weatherAlerts === 1 ? "weather alert is" : "weather alerts are"} active for Frederick County.`,
-      eyebrow: "Needs attention",
-      priority: 500,
-    });
-  }
-
-  const schoolNotices = activeCount(
-    byId.get("schools"),
-    /closures?|delays?/i,
-  );
-  if (schoolNotices > 0) {
-    candidates.push({
-      itemId: "county-pulse",
-      label: schoolNotices === 1 ? "School notice" : "School notices",
-      href: "/pulse?open=schools",
-      reason: `${schoolNotices} FCPS ${schoolNotices === 1 ? "closure or delay is" : "closures or delays are"} posted.`,
-      eyebrow: "Needs attention",
-      priority: 400,
-    });
-  }
-
-  const customersOut = activeCount(byId.get("power"), /customers? out/i);
-  if (customersOut >= SIGNIFICANT_POWER_OUTAGE_CUSTOMERS) {
-    candidates.push({
-      itemId: "county-pulse",
-      label: "Power outages",
-      href: "/pulse?open=power",
-      reason: `${customersOut.toLocaleString()} ${customersOut === 1 ? "customer is" : "customers are"} without power in the county.`,
-      eyebrow: "Needs attention",
-      priority: 300,
-    });
-  }
-
-  const roadIncidents = activeCount(byId.get("traffic"), /incidents?/i);
-  if (roadIncidents > 0) {
-    candidates.push({
-      itemId: "county-pulse",
-      label: roadIncidents === 1 ? "Road incident" : "Road incidents",
-      href: "/pulse?open=traffic",
-      reason: `MDOT is reporting ${roadIncidents} open ${roadIncidents === 1 ? "incident" : "incidents"} in Frederick County.`,
-      eyebrow: "Needs attention",
-      priority: 200,
-    });
-  }
-
   const commuteHour = (hour >= 6 && hour < 10) || (hour >= 15 && hour < 19);
   const busesMoving = activeCount(byId.get("buses"), /buses? moving/i);
   if (commuteHour && busesMoving > 0) {
-    candidates.push({
+    return {
       itemId: "transit",
       label: "Live transit",
       href: "/transit",
       reason: `${busesMoving} ${busesMoving === 1 ? "bus is" : "buses are"} reporting a live position now.`,
       eyebrow: "Moving now",
-      priority: 100,
-    });
+      icon: "transit",
+    };
   }
-
-  return candidates.sort((a, b) => b.priority - a.priority)[0] ?? null;
+  return null;
 }
 
 /**
@@ -432,8 +547,10 @@ export function liveSuggestionForDeck(
 export function groundedCompassSuggestion(
   keys: readonly DeckLiveKey[],
   hour: number,
+  statusItems: readonly CompassStatusItem[] = [],
+  town: CompassTown | null = null,
 ): CompassLiveSuggestion | null {
-  const interruption = liveSuggestionForDeck(keys, hour);
+  const interruption = liveSuggestionForDeck(keys, hour, statusItems, town);
   if (interruption) return interruption;
 
   const eventsToday = activeCount(
@@ -447,7 +564,20 @@ export function groundedCompassSuggestion(
     href: "/events?when=today",
     reason: `${eventsToday} ${eventsToday === 1 ? "event is" : "events are"} still on today.`,
     eyebrow: "On today",
+    icon: "calendar",
   };
+}
+
+/** The chosen town: an explicit town scope wins, Whole county means no town,
+ * and otherwise the saved home town stands in, as it does for server pages. */
+export function compassTown(
+  scope: string | null,
+  homeSlug: string | null,
+): CompassTown | null {
+  const parsed = parseScope(scope);
+  const slug = scopeTownSlug(parsed) ?? (parsed === "county" ? null : homeSlug);
+  const municipality = slug ? MUNICIPALITY_BY_SLUG[slug] : undefined;
+  return slug && municipality ? { slug, name: municipality.name } : null;
 }
 
 function subscribeHomeTown(onChange: () => void) {
@@ -456,6 +586,30 @@ function subscribeHomeTown(onChange: () => void) {
 }
 
 const noHomeTown = () => null;
+
+function subscribeScope(onChange: () => void) {
+  return subscribeScopeChange(() => onChange());
+}
+
+const noScope = () => null;
+
+/** County status rows read once after mount, like the deck keys. A failed or
+ * stale report leaves Compass without a "Needs attention" card, never with a
+ * guessed one. */
+function useCountyStatusItems(): readonly CompassStatusItem[] {
+  const [items, setItems] = useState<readonly CompassStatusItem[]>([]);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch("/api/pulse/status", { cache: "no-store", signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((payload: unknown) => setItems(compassStatusItems(payload, Date.now())))
+      .catch(() => {
+        // The header indicator carries the unavailable state.
+      });
+    return () => ctrl.abort();
+  }, []);
+  return items;
+}
 
 function deckParamFromLocation(): CompassDeckView | null {
   const value = new URL(window.location.href).searchParams.get("deck");
@@ -534,6 +688,9 @@ export default function CompassHub() {
   const [pinNotice, setPinNotice] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const deckLiveKeys = useDeckLiveKeys();
+  const statusItems = useCountyStatusItems();
+  const scope = useSyncExternalStore(subscribeScope, getScope, noScope);
+  const town = useMemo(() => compassTown(scope, homeSlug), [scope, homeSlug]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -665,6 +822,8 @@ export default function CompassHub() {
   const contextualSuggestion = groundedCompassSuggestion(
     deckLiveKeys,
     localHour,
+    statusItems,
+    town,
   );
   const contextualBaseItem = contextualSuggestion
     ? itemById.get(contextualSuggestion.itemId) ?? null
@@ -794,6 +953,7 @@ export default function CompassHub() {
               item={contextualItem}
               reason={contextualSuggestion.reason}
               eyebrow={contextualSuggestion.eyebrow}
+              icon={contextualSuggestion.icon}
               intentProps={intentProps}
             />
           ) : null}
@@ -990,17 +1150,27 @@ function PinnedTools({
   );
 }
 
+const SUGGESTION_ICONS: Record<CompassSuggestionIcon, LucideIcon> = {
+  alert: AlertTriangle,
+  route: Route,
+  calendar: CalendarDays,
+  transit: Bus,
+};
+
 function ContextualToolSuggestion({
   item,
   reason,
   eyebrow = "Useful right now",
+  icon,
   intentProps,
 }: {
   item: DirectoryItem;
   reason: string;
   eyebrow?: string;
+  icon: CompassSuggestionIcon;
   intentProps: (item: DirectoryItem) => LinkIntentProps;
 }) {
+  const Icon = SUGGESTION_ICONS[icon];
   return (
     <section aria-labelledby="compass-suggestion-heading">
       <Link
@@ -1022,7 +1192,7 @@ function ContextualToolSuggestion({
           }}
           aria-hidden
         >
-          <Sparkles className="h-[18px] w-[18px]" strokeWidth={2} />
+          <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
         </span>
         <span className="min-w-0 flex-1">
           <span

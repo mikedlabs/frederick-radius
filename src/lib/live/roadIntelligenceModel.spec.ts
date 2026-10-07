@@ -155,8 +155,29 @@ describe("road intelligence model", () => {
     expect(signal).toMatchObject({
       kind: "highway-message",
       scope: "I-70 East prior to exit 52 US 15",
+      // Sentence case at the boundary, so no surface shouts the sign.
+      title: "Crash past exit 82, US 40: all lanes closed",
     });
     expect(roadAttentionScopeLabel(signal!)).toBe("Sign location");
+  });
+
+  it("drops a sign that stands outside the county for every surface", () => {
+    const sources = quietSources();
+    sources.messages.data = [{
+      id: "dms-i70-w-76",
+      location: "I-70 West prior to exit 76 MD 97",
+      message: "ROADWORK AT EXIT 76 MD 97 2 LEFT LANES CLOSED",
+      lng: -77.06,
+      lat: 39.3,
+      observedAt: NOW.toISOString(),
+      beaconsEnabled: true,
+      evidence: "device-observation",
+      sourceUrl: CHART_ROAD_SOURCES.messages,
+    }];
+
+    const snapshot = buildRoadIntelligenceSnapshot({ sources, now: NOW });
+    expect(snapshot.attention).toEqual([]);
+    expect(selectTodayRoadSignal(snapshot)).toBeNull();
   });
 });
 

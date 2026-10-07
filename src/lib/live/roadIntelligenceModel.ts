@@ -1,12 +1,14 @@
-import type {
-  ChartFeedResult,
-  ChartHighwayMessage,
-  ChartRoadConditionReport,
-  ChartRoadWeatherStation,
-  ChartSnowEmergency,
-  ChartSpeedSensor,
-  ChartTravelTime,
+import {
+  chartSignSentence,
+  type ChartFeedResult,
+  type ChartHighwayMessage,
+  type ChartRoadConditionReport,
+  type ChartRoadWeatherStation,
+  type ChartSnowEmergency,
+  type ChartSpeedSensor,
+  type ChartTravelTime,
 } from "@/lib/integrations/mdot-road-feeds";
+import { isInFrederickCountyArea } from "@/lib/geo";
 import type {
   MdotWorkZone,
   MdotWorkZonesResult,
@@ -176,18 +178,27 @@ function pavementSignals(
 const ACTIONABLE_SIGN_RE =
   /\b(?:closed|closure|blocked|detour|do not|avoid|emergency|flood|ice|snow|crash|incident|delay)\b/i;
 
+/**
+ * CHART's message-sign feed is statewide. On Oct 6 a Howard County sign
+ * ("ROADWORK AT EXIT 76 MD 97 2 LEFT LANES CLOSED") lit every page header.
+ * A sign carries its physical position, so a sign outside the county area is
+ * not a county signal for any surface: the header, Pulse, Today and Ask read
+ * the same attention list. A sign inside the county can still describe a road
+ * past the line; its text is not parsed for place.
+ */
 function highwayMessageSignals(
   result: ChartFeedResult<ChartHighwayMessage>,
 ): RoadAttentionSignal[] {
   if (!result.available) return [];
   return result.data
     .filter((message) => ACTIONABLE_SIGN_RE.test(message.message))
+    .filter((message) => isInFrederickCountyArea(message.lng, message.lat))
     .map((message) => ({
       id: `highway-message:${message.id}`,
       kind: "highway-message" as const,
       priority: 68,
       severity: "warning" as const,
-      title: message.message,
+      title: chartSignSentence(message.message),
       detail: "Message currently displayed on an official highway sign.",
       scope: message.location,
       sourceLabel: "MDOT CHART message sign",

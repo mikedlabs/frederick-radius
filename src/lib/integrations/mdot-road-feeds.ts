@@ -345,6 +345,62 @@ export function cleanChartDmsMessage(raw: Raw): string {
     .trim();
 }
 
+const SIGN_ROUTE_RE = /\b(i|us|md|rt)[\s-]*(\d{1,3}[a-z]?)\b/gi;
+const SIGN_UPPER_WORDS = /\b(md|mdot|sha|chart|hov|bwi|marc|amber|ez)\b/gi;
+const SIGN_DIRECTION_AFTER_ROUTE = /\b((?:I-|US |MD |RT )\d{1,3}[A-Z]?) ([nsew])\b/g;
+const SIGN_EXIT_BEFORE_ROUTE = /\b(exit \d{1,3}[a-z]?) (?=(?:I-|US |MD |RT )\d)/gi;
+// The first lane clause after other words gets a colon: "crash ahead: two
+// right lanes blocked". A clause that opens the sign keeps its plain start.
+const SIGN_LANE_CLAUSE =
+  / (?=(?:[1-9]|all|left|right|center|middle) (?:(?:left|right|center|middle) )?(?:lanes?|shoulder) (?:closed|blocked))/i;
+const SIGN_LANE_NUMBER = /\b([1-9]) ((?:(?:left|right|center|middle) )?lanes?)\b/gi;
+const SIGN_IMPERATIVE =
+  / (?=(?:use (?:caution|alternate|detour)|expect delays|seek alternate|avoid (?:the )?area|merge (?:left|right))\b)/gi;
+const SMALL_NUMBERS = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+
+function capitalizeSentences(value: string): string {
+  return value.replace(/(^|[.!?] )([a-z])/g, (_match, lead: string, letter: string) =>
+    `${lead}${letter.toUpperCase()}`);
+}
+
+function signPageSentence(page: string): string {
+  const shouted = page.trim();
+  if (!shouted) return "";
+  // Mixed-case text was already written for people; leave it alone.
+  if (shouted !== shouted.toUpperCase()) return shouted;
+  const sentence = shouted
+    .toLowerCase()
+    .replace(SIGN_ROUTE_RE, (_match, system: string, number: string) =>
+      system.toLowerCase() === "i"
+        ? `I-${number.toUpperCase()}`
+        : `${system.toUpperCase()} ${number.toUpperCase()}`)
+    .replace(SIGN_UPPER_WORDS, (word) => word.toUpperCase())
+    .replace(SIGN_DIRECTION_AFTER_ROUTE, (_match, road: string, dir: string) =>
+      `${road} ${dir.toUpperCase()}`)
+    .replace(SIGN_EXIT_BEFORE_ROUTE, "$1, ")
+    .replace(SIGN_LANE_CLAUSE, ": ")
+    .replace(SIGN_LANE_NUMBER, (_match, count: string, lanes: string) =>
+      `${SMALL_NUMBERS[Number(count)]} ${lanes}`)
+    .replace(SIGN_IMPERATIVE, ". ");
+  return capitalizeSentences(sentence);
+}
+
+/**
+ * Highway message signs are written in capitals for drivers at speed. A
+ * Radius row reads them at arm's length, so the sign text becomes sentence
+ * case once, at the boundary: "ROADWORK AT EXIT 76 MD 97 2 LEFT LANES CLOSED"
+ * reads "Roadwork at exit 76, MD 97: two left lanes closed". Route numbers
+ * keep their highway form, sign pages stay separated, and nothing is added
+ * that the sign did not say.
+ */
+export function chartSignSentence(message: string): string {
+  return message
+    .split(/\s*·\s*/)
+    .map(signPageSentence)
+    .filter(Boolean)
+    .join(" · ");
+}
+
 export function normalizeChartHighwayMessages(
   values: unknown[],
   now = new Date(),

@@ -8,6 +8,7 @@ import {
   pulseWideReadingKeys,
   secondarySignalsHeadline,
   secondarySignalsSummary,
+  pulseCountyStatusTone,
   pulseStatusWord,
   pulseTileBanks,
   pulseTileState,
@@ -122,6 +123,50 @@ describe("Pulse status language", () => {
       hasLead: false,
       operational: true,
       tone: "cool",
+    })).toBe("Live update");
+  });
+
+  it("takes the word from the county status the header dot reads", () => {
+    // Oct 6, 11:03 PM: the header was red while this masthead said
+    // "Advisory" for the same CHART crash. Both now read selectCountyStatus.
+    const advisory = { word: "Advisory" as const, tone: "caution" as const, count: 1 };
+    expect(pulseStatusWord({
+      allClear: false,
+      degraded: false,
+      hasLead: true,
+      tone: "danger",
+      status: advisory,
+    })).toBe("Advisory");
+    expect(pulseCountyStatusTone(advisory)).toBe("warning");
+
+    const urgent = { word: "Urgent" as const, tone: "alert" as const, count: 2 };
+    expect(pulseStatusWord({
+      allClear: false,
+      degraded: true,
+      hasLead: true,
+      tone: "warning",
+      status: urgent,
+    })).toBe("Urgent");
+    expect(pulseCountyStatusTone(urgent)).toBe("danger");
+  });
+
+  it("keeps the page's own quiet, partial and service states when the status is empty", () => {
+    const empty = { word: "Unknown" as const, tone: "quiet" as const, count: 0 };
+    expect(pulseCountyStatusTone(empty)).toBeNull();
+    expect(pulseStatusWord({
+      allClear: false,
+      degraded: true,
+      hasLead: false,
+      tone: "warning",
+      status: empty,
+    })).toBe("Partial data");
+    expect(pulseStatusWord({
+      allClear: false,
+      degraded: false,
+      hasLead: false,
+      operational: true,
+      tone: "cool",
+      status: { word: "All quiet", tone: "quiet", count: 0 },
     })).toBe("Live update");
   });
 

@@ -257,7 +257,7 @@ async function loadCurrentSituation(
 const getCachedCurrentSituation = unstable_cache(
   () => loadCurrentSituation(),
   [
-    "current-situation-v1",
+    "current-situation-v2",
     process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
   ],
   { revalidate: 60, tags: ["current-situation"] },

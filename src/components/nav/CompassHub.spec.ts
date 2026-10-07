@@ -14,10 +14,14 @@ import {
   buildToolDeckGroups,
   compassShortcutGridClass,
   commonCompassTasks,
+  compassStatusItems,
+  compassTown,
   groundedCompassSuggestion,
   liveLineForIntent,
   liveSuggestionForDeck,
   searchToolDeckGroups,
+  type CompassStatusItem,
+  type CompassTown,
 } from "./CompassHub";
 
 type ToolDeckGroups = ReturnType<typeof buildToolDeckGroups>;
@@ -343,50 +347,99 @@ describe("Compass live suggestion", () => {
     status,
     faces: [{ value, label }],
   });
+  const crash = (
+    id: string,
+    towns?: string[],
+  ): CompassStatusItem => ({
+    id,
+    family: "roads",
+    severity: "advisory",
+    title: "Crash on US 15 North",
+    href: "/pulse?open=traffic",
+    ...(towns ? { towns } : {}),
+  });
+  const thurmont: CompassTown = { slug: "thurmont", name: "Thurmont" };
 
-  it("promotes an outage when weather is clear", () => {
+  it("does not call one county-wide road incident a reason to interrupt", () => {
+    // Oct 6, 11:03 PM: Compass showed "Needs attention" with a Sparkles
+    // glyph for a single MDOT incident on the other side of the county.
+    expect(liveSuggestionForDeck([], 12, [crash("a", ["frederick"])], thurmont)).toBeNull();
+    expect(liveSuggestionForDeck([], 12, [crash("a"), crash("b")], null)).toBeNull();
+  });
+
+  it("interrupts for three or more road incidents with a route glyph", () => {
     expect(
-      liveSuggestionForDeck(
-        [
-          key("weather", "Clear", "no alerts"),
-          key("power", "1,204", "customers out"),
-        ],
-        12,
-      ),
-    ).toMatchObject({
+      liveSuggestionForDeck([], 12, [crash("a"), crash("b"), crash("c")], null),
+    ).toEqual({
       itemId: "county-pulse",
-      label: "Power outages",
-      href: "/pulse?open=power",
+      label: "Road incidents",
+      href: "/pulse?open=traffic",
+      reason: "MDOT is reporting 3 road incidents in Frederick County.",
       eyebrow: "Needs attention",
+      icon: "route",
     });
   });
 
-  it("keeps a small countywide outage visible without taking over the recommendation", () => {
+  it("interrupts for one incident on a road through the chosen town", () => {
+    expect(
+      liveSuggestionForDeck([], 12, [crash("a", ["frederick"]), crash("b", ["thurmont"])], thurmont),
+    ).toMatchObject({
+      label: "Crash on US 15 North",
+      reason: "MDOT is reporting this on a road through Thurmont.",
+      eyebrow: "Needs attention",
+      icon: "route",
+    });
+  });
+
+  it("names the condition itself and opens its own detail", () => {
     expect(
       liveSuggestionForDeck(
+        [key("buses", "12", "buses moving")],
+        8,
         [
-          key("weather", "Clear", "no alerts"),
-          key("power", "7", "customers out"),
+          crash("a"),
+          {
+            id: "firstenergy:outage",
+            family: "power",
+            severity: "urgent",
+            title: "1,204 customers without power",
+            href: "/pulse?open=power",
+          },
         ],
-        12,
+        null,
       ),
+    ).toEqual({
+      itemId: "county-pulse",
+      label: "1,204 customers without power",
+      href: "/pulse?open=power",
+      reason: "Potomac Edison is reporting this outage in the county.",
+      eyebrow: "Needs attention",
+      icon: "alert",
+    });
+  });
+
+  it("puts an urgent item ahead of an advisory one", () => {
+    expect(
+      liveSuggestionForDeck([], 12, [
+        { id: "fcps", family: "schools", severity: "advisory", title: "FCPS delayed opening", href: "/pulse?open=schools" },
+        { id: "fire", family: "fire-rescue", severity: "urgent", title: "Structure Fire", href: "/pulse?open=safety" },
+      ]),
+    ).toMatchObject({ label: "Structure Fire", icon: "alert" });
+  });
+
+  it("leaves an advisory civic notice or air reading on Live conditions", () => {
+    expect(
+      liveSuggestionForDeck([], 12, [
+        { id: "civic", family: "civic", severity: "advisory", title: "County offices closed Monday", href: "/pulse?open=alerts" },
+        { id: "air", family: "air", severity: "advisory", title: "Air quality is unhealthy for sensitive groups", href: "/pulse?open=air" },
+      ]),
     ).toBeNull();
   });
 
-  it("promotes serious traffic over routine commute-hour buses", () => {
+  it("offers commute-hour transit with a transit glyph when nothing needs attention", () => {
     expect(
-      liveSuggestionForDeck(
-        [
-          key("buses", "12", "buses moving"),
-          key("traffic", "3", "incidents"),
-        ],
-        8,
-      ),
-    ).toMatchObject({
-      label: "Road incidents",
-      href: "/pulse?open=traffic",
-      eyebrow: "Needs attention",
-    });
+      liveSuggestionForDeck([key("buses", "12", "buses moving")], 8, [crash("a")]),
+    ).toMatchObject({ itemId: "transit", eyebrow: "Moving now", icon: "transit" });
   });
 
   it("keeps routine readings out of the single recommendation slot", () => {
@@ -402,13 +455,64 @@ describe("Compass live suggestion", () => {
     ).toBeNull();
   });
 
-  it("does not promote a number from a feed that is unavailable", () => {
+  it("no longer interrupts from a deck reading the county status did not grade", () => {
     expect(
       liveSuggestionForDeck(
-        [key("traffic", "4", "incidents", "unavailable")],
-        8,
+        [key("traffic", "4", "incidents"), key("power", "1,204", "customers out")],
+        12,
       ),
     ).toBeNull();
+  });
+});
+
+describe("Compass county status report", () => {
+  const NOW = Date.parse("2026-10-07T03:05:00.000Z");
+  const item = {
+    id: "mdot-chart:1",
+    family: "roads",
+    severity: "advisory",
+    title: "Crash on US 15 North",
+    href: "/pulse?open=traffic",
+    towns: ["frederick"],
+  };
+
+  it("reads the graded rows from a current report", () => {
+    expect(
+      compassStatusItems({ lastUpdated: "2026-10-07T03:03:00.000Z", items: [item] }, NOW),
+    ).toEqual([item]);
+  });
+
+  it("makes no claim from a stale, malformed or off-site report", () => {
+    expect(
+      compassStatusItems({ lastUpdated: "2026-10-07T02:30:00.000Z", items: [item] }, NOW),
+    ).toEqual([]);
+    expect(compassStatusItems({ items: [item] }, NOW)).toEqual([]);
+    expect(compassStatusItems(null, NOW)).toEqual([]);
+    expect(
+      compassStatusItems(
+        {
+          lastUpdated: "2026-10-07T03:03:00.000Z",
+          items: [
+            { ...item, href: "https://example.com/" },
+            { ...item, href: "//example.com/" },
+            { ...item, severity: "severe" },
+            { ...item, family: "rumor" },
+            { ...item, title: " " },
+          ],
+        },
+        NOW,
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("Compass chosen town", () => {
+  it("prefers the header town, honors Whole county, and falls back to home", () => {
+    expect(compassTown("town:brunswick", "thurmont")).toEqual({ slug: "brunswick", name: "Brunswick" });
+    expect(compassTown("county", "thurmont")).toBeNull();
+    expect(compassTown("nearme", "thurmont")).toEqual({ slug: "thurmont", name: "Thurmont" });
+    expect(compassTown(null, null)).toBeNull();
+    expect(compassTown(null, "atlantis")).toBeNull();
   });
 });
 
@@ -419,7 +523,7 @@ describe("Compass grounded suggestion", () => {
     faces: [{ value, label }],
   });
 
-  it("uses a verified live event count instead of a daypart guess", () => {
+  it("uses a verified live event count with a calendar glyph instead of a daypart guess", () => {
     expect(
       groundedCompassSuggestion([key("events", "4", "on today")], 14),
     ).toMatchObject({
@@ -427,6 +531,7 @@ describe("Compass grounded suggestion", () => {
       href: "/events?when=today",
       reason: "4 events are still on today.",
       eyebrow: "On today",
+      icon: "calendar",
     });
   });
 
@@ -446,16 +551,36 @@ describe("Compass grounded suggestion", () => {
   it("still lets a serious live condition outrank events", () => {
     expect(
       groundedCompassSuggestion(
-        [
-          key("events", "4", "on today"),
-          key("weather", "1", "active alert"),
-        ],
+        [key("events", "4", "on today")],
         14,
+        [
+          {
+            id: "nws:1",
+            family: "weather",
+            severity: "urgent",
+            title: "Severe Thunderstorm Warning",
+            href: "/pulse?open=alerts",
+          },
+        ],
       ),
     ).toMatchObject({
       itemId: "county-pulse",
-      label: "Weather alert",
+      label: "Severe Thunderstorm Warning",
+      href: "/pulse?open=alerts",
       eyebrow: "Needs attention",
+      icon: "alert",
     });
+  });
+});
+
+describe("Compass suggestion glyph", () => {
+  it("never draws Sparkles on the live suggestion card", () => {
+    const source = readFileSync("src/components/nav/CompassHub.tsx", "utf8");
+    const card = source.slice(
+      source.indexOf("function ContextualToolSuggestion"),
+      source.indexOf("function RecentTools"),
+    );
+    expect(card).not.toContain("Sparkles");
+    expect(source).toMatch(/route: Route,\s+calendar: CalendarDays/);
   });
 });

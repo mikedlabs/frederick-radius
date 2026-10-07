@@ -44,6 +44,14 @@ describe("Pulse briefing presentation", () => {
     expect(briefing?.querySelector("button")?.textContent).toContain("Read the warning");
     expect(container.querySelectorAll('[data-pulse-bank-item="readings"]')).toHaveLength(1);
   });
+  it("prints the county status word and color the header dot shows", () => {
+    const traffic: PulseTile = { ...weather, key: "traffic", label: "Traffic", kind: "status", feature: undefined, reading: false, attention: true, active: true, countLabel: "Crash on US 15 North" };
+    const container = render({ allClear: false, tone: "danger", leadKey: "traffic", line: "US 15 North has a reported crash.", status: { word: "Advisory", tone: "caution", count: 1 } }, [traffic, weather]);
+    const briefing = container.querySelector("[data-pulse-briefing]");
+    expect(briefing?.textContent).toContain("Advisory");
+    expect(briefing?.textContent).not.toContain("Urgent");
+    expect(briefing?.innerHTML).toContain("var(--app-warning)");
+  });
   it("keeps a raw measurement as a value and unit without inventing a progress gauge", () => {
     const container = render({}, [{ ...weather, key: "rivers", label: "Monocacy River", kind: "gauge", feature: undefined, gauge: { value: 2.4, unit: "ft", decimals: 1 }, countLabel: "At Jug Bridge", sourceLabel: "USGS Water Services" }]);
     const reading = container.querySelector('[data-pulse-key="rivers"]');

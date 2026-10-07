@@ -42,6 +42,7 @@ import PulseFreshness, {
   PulseStatusLabel,
 } from "@/components/pulse/PulseFreshness";
 import { track } from "@/lib/track";
+import type { CountyStatus } from "@/lib/live/countyStatus";
 import { Button } from "@/components/ui/Button";
 import styles from "./PulseBoard.module.css";
 
@@ -119,12 +120,19 @@ const TONE_WORD: Record<PulseHeroChip["tone"], string> = {
   positive: "Clear",
 };
 
+/** The slice of selectCountyStatus the masthead reads. The header dot reads
+ * the same selector, so "Urgent" here is red there and "Advisory" is amber. */
+export type PulseCountyStatus = Pick<CountyStatus, "word" | "tone" | "count">;
+
 export type PulseHero = {
   allClear: boolean;
   /** A current service or access change exists, but no urgent condition leads. */
   operational?: boolean;
   degraded?: boolean;
   tone?: PulseHeroChip["tone"];
+  /** County status from selectCountyStatus. When it holds items, its word and
+   * tone set the masthead status instead of the lead's own tone. */
+  status?: PulseCountyStatus;
   line: string;
   sub: string;
   renderedAt: number;
@@ -154,19 +162,33 @@ export function pulseAttentionChips(
   );
 }
 
+/** The masthead color for a county status tone, or null when the status has
+ * nothing to report and the page's own quiet or partial state should speak. */
+export function pulseCountyStatusTone(
+  status: PulseCountyStatus | undefined,
+): PulseHeroChip["tone"] | null {
+  if (!status || status.count === 0) return null;
+  return status.tone === "alert" ? "danger" : "warning";
+}
+
 export function pulseStatusWord({
   allClear,
   degraded,
   hasLead,
   operational = false,
   tone,
+  status,
 }: {
   allClear: boolean;
   degraded: boolean;
   hasLead: boolean;
   operational?: boolean;
   tone: PulseHeroChip["tone"];
+  /** County status from selectCountyStatus. Any graded item decides the
+   * word, so the masthead and the header dot cannot disagree. */
+  status?: PulseCountyStatus;
 }): string {
+  if (status && status.count > 0) return status.word;
   if (operational && !hasLead) return "Live update";
   if (degraded && !hasLead) return "Partial data";
   // Not "Checked": PulseFreshness prints "Checked Nm ago" in the same masthead
@@ -980,7 +1002,9 @@ export default function PulseBoard({
 
   const degraded = hero.degraded ?? false;
   const heroTone = hero.tone ?? (hero.allClear ? "positive" : degraded ? "warning" : "danger");
-  const heroColor = CHIP_TONE[heroTone];
+  // The status word and its color come from the county status whenever it
+  // holds an item, the same selector the header dot reads.
+  const heroColor = CHIP_TONE[pulseCountyStatusTone(hero.status) ?? heroTone];
   const attentionChips = pulseAttentionChips(chips, {
     allClear: hero.allClear,
     showAlertData: false,
@@ -1006,6 +1030,7 @@ export default function PulseBoard({
     hasLead: Boolean(lead),
     operational: hero.operational,
     tone: heroTone,
+    status: hero.status,
   });
 
   return (

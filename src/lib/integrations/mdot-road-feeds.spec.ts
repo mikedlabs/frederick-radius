@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CHART_ROAD_SOURCES,
+  chartSignSentence,
   cleanChartDmsMessage,
   getChartRoadWeatherFrederickResult,
   normalizeChartHighwayMessages,
@@ -92,6 +93,31 @@ describe("CHART speed and travel-time feeds", () => {
         locations: [{ countyName: "Howard County", routeNumber: "70", routePrefix: "I" }],
       },
     ], NOW)).toEqual([]);
+  });
+});
+
+describe("chartSignSentence", () => {
+  it("writes the Oct 6 header sign in sentence case", () => {
+    expect(chartSignSentence("ROADWORK AT EXIT 76 MD 97 2 LEFT LANES CLOSED"))
+      .toBe("Roadwork at exit 76, MD 97: two left lanes closed");
+    expect(chartSignSentence("CRASH PAST EXIT 82 US 40 ALL LANES CLOSED"))
+      .toBe("Crash past exit 82, US 40: all lanes closed");
+  });
+
+  it("keeps route numbers, sign pages and plain starts intact", () => {
+    expect(chartSignSentence("I-270 4 MI 4 MIN · USE CAUTION"))
+      .toBe("I-270 4 mi 4 min · Use caution");
+    expect(chartSignSentence("LEFT LANE CLOSED AHEAD"))
+      .toBe("Left lane closed ahead");
+    expect(chartSignSentence("CRASH AHEAD 1 RIGHT LANE BLOCKED USE CAUTION"))
+      .toBe("Crash ahead: one right lane blocked. Use caution");
+    expect(chartSignSentence("SNOW EMERGENCY PLAN IN EFFECT"))
+      .toBe("Snow emergency plan in effect");
+  });
+
+  it("leaves text a person already wrote in mixed case alone", () => {
+    const written = "Roadwork at exit 76, MD 97: two left lanes closed";
+    expect(chartSignSentence(written)).toBe(written);
   });
 });
 

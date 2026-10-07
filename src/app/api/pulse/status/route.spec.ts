@@ -1,5 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { CurrentSituationSnapshot } from "@/lib/live/currentSituationModel";
+import type { AqiObservation } from "@/lib/integrations/airnow";
+import type { FcpsAlert } from "@/lib/integrations/fcps";
+import type { FrederickOutages } from "@/lib/integrations/firstenergy";
+import type { ChartIncident } from "@/lib/integrations/mdot-chart";
+import type { NwsAlert } from "@/lib/integrations/nws-alerts";
+import type { PulsePointIncident } from "@/lib/integrations/pulsepoint";
+import type { GeocodedIncident } from "@/lib/integrations/scannerIncidents";
+import {
+  buildCurrentSituationSnapshot,
+  sourceEnvelope,
+  type CurrentSituationSnapshot,
+  type CurrentSituationSources,
+} from "@/lib/live/currentSituationModel";
 import {
   buildRoadIntelligenceSnapshot,
   type RoadIntelligenceSources,
@@ -30,29 +42,79 @@ vi.mock("@/lib/live/roadIntelligence", () => ({
 
 import { GET } from "./route";
 
+const GENERATED_AT = "2026-07-28T16:00:00.000Z";
+
+function envelope<T>(
+  source: Parameters<typeof sourceEnvelope<T>>[0]["source"],
+  data: T,
+  options: Partial<Parameters<typeof sourceEnvelope<T>>[0]> = {},
+) {
+  return sourceEnvelope({
+    source,
+    data,
+    availability: "available",
+    requiredForQuiet: true,
+    capturedAt: GENERATED_AT,
+    staleAfterSeconds: 300,
+    asOf: GENERATED_AT,
+    asOfBasis: "retrieval",
+    ...options,
+  });
+}
+
+/** A real snapshot, so the route grades rows rather than a canned summary. */
 function snapshot(
-  overrides: Partial<CurrentSituationSnapshot["summary"]> = {},
+  overrides: Partial<CurrentSituationSources> = {},
 ): CurrentSituationSnapshot {
-  return {
-    generatedAt: "2026-07-28T16:00:00.000Z",
-    summary: {
-      status: "quiet",
-      coverage: "complete",
-      tone: "quiet",
-      activeCount: 0,
-      activeByCategory: {
-        weather: 0,
-        schools: 0,
-        roads: 0,
-        power: 0,
-        fireRescue: 0,
-        air: 0,
-      },
-      degradedSources: [],
+  return buildCurrentSituationSnapshot({
+    sources: {
+      weather: envelope<NwsAlert[]>("nws", []),
+      schools: envelope<FcpsAlert[]>("fcps", []),
+      traffic: envelope<ChartIncident[]>("mdot-chart", []),
+      scanner: envelope<GeocodedIncident[]>("frederick-scanner", [], {
+        requiredForQuiet: false,
+      }),
+      power: envelope<FrederickOutages>(
+        "firstenergy",
+        { total_out: 0, total_served: 100_000, munis: [] },
+        { itemCount: 0 },
+      ),
+      fireRescue: envelope<PulsePointIncident[]>("pulsepoint", [], {
+        availability: "disabled",
+        requiredForQuiet: false,
+        asOf: null,
+        asOfBasis: null,
+      }),
+      air: envelope<AqiObservation[]>("airnow", []),
       ...overrides,
     },
-  } as CurrentSituationSnapshot;
+    roadFusion: {
+      incidents: [],
+      matchedChartIncidentIds: [],
+      unmatchedChartIncidentIds: [],
+    },
+    now: GENERATED_AT,
+  });
 }
+
+/** The high-severity CHART crash behind the 11:03 PM red header dot. */
+function crash(): ChartIncident {
+  return {
+    id: "chart-us15",
+    type: "Incident",
+    description: "Crash",
+    county: "Frederick",
+    road: "US 15",
+    direction: "NB",
+    location: "US 15 north at MD 26",
+    lng: -77.4105,
+    lat: 39.4143,
+    started_at: "2026-07-28T15:50:00.000Z",
+    severity: "High",
+  };
+}
+
+const QUIET_FIELDS = { word: "All quiet", items: [] };
 
 const ROAD_NOW = new Date("2026-10-07T03:03:00.000Z");
 
@@ -119,28 +181,85 @@ describe("GET /api/pulse/status", () => {
       count: 0,
       tone: "quiet",
       ok: true,
-      lastUpdated: "2026-07-28T16:00:00.000Z",
+      lastUpdated: GENERATED_AT,
+      ...QUIET_FIELDS,
+    });
+  });
+
+  it("grades the Oct 6 CHART crash amber, the Advisory /pulse showed", async () => {
+    // At 11:03 PM the header dot was red while /pulse called the same crash
+    // an Advisory. Both now read selectCountyStatus.
+    mocks.getCurrentSituationSnapshot.mockResolvedValue(
+      snapshot({ traffic: envelope("mdot-chart", [crash()]) }),
+    );
+
+    const response = await GET();
+    await expect(response.json()).resolves.toMatchObject({
+      active: true,
+      count: 1,
+      tone: "caution",
+      word: "Advisory",
+      ok: true,
+      items: [
+        expect.objectContaining({
+          family: "roads",
+          severity: "advisory",
+          title: "Crash on US 15 North",
+          href: "/pulse?open=traffic",
+          towns: ["frederick"],
+        }),
+      ],
     });
   });
 
   it("reports active verified signals while preserving partial coverage", async () => {
     mocks.getCurrentSituationSnapshot.mockResolvedValue(
       snapshot({
-        status: "active",
-        coverage: "partial",
-        tone: "alert",
-        activeCount: 2,
-        degradedSources: ["fcps"],
+        weather: envelope<NwsAlert[]>("nws", [
+          {
+            id: "nws-tor",
+            event: "Tornado Warning",
+            headline: "Tornado Warning for Frederick County",
+            description: "",
+            severity: "Extreme",
+            urgency: "Immediate",
+            certainty: "Observed",
+            starts_at: "2026-07-28T15:30:00.000Z",
+            ends_at: "2026-07-28T17:00:00.000Z",
+            area: "Frederick, MD",
+            url: "https://api.weather.gov/alerts/nws-tor",
+          },
+        ]),
+        traffic: envelope("mdot-chart", [crash()]),
+        schools: envelope<FcpsAlert[]>("fcps", [], {
+          availability: "unavailable",
+          asOf: null,
+        }),
       }),
     );
 
     const response = await GET();
-    await expect(response.json()).resolves.toEqual({
+    await expect(response.json()).resolves.toMatchObject({
       active: true,
       count: 2,
       tone: "alert",
+      word: "Urgent",
       ok: false,
-      lastUpdated: "2026-07-28T16:00:00.000Z",
+      lastUpdated: GENERATED_AT,
+    });
+  });
+
+  it("says Unknown, not All quiet, when nothing is reported and a source failed", async () => {
+    mocks.getCurrentSituationSnapshot.mockResolvedValue(snapshot());
+    mocks.getRoadIntelligenceSnapshot.mockRejectedValue(new Error("timeout"));
+
+    const response = await GET();
+    await expect(response.json()).resolves.toMatchObject({
+      active: false,
+      count: 0,
+      tone: "quiet",
+      word: "Unknown",
+      ok: false,
     });
   });
 
@@ -173,16 +292,17 @@ describe("GET /api/pulse/status", () => {
 
     const response = await GET();
 
-    await expect(response.json()).resolves.toEqual({
+    await expect(response.json()).resolves.toMatchObject({
       active: true,
       count: 1,
       tone: "caution",
+      word: "Advisory",
       ok: true,
-      lastUpdated: "2026-07-28T16:00:00.000Z",
+      lastUpdated: GENERATED_AT,
     });
   });
 
-  it("caps the Oct 6 roadwork sign at caution when the sign stands in the county", async () => {
+  it("caps the Oct 6 roadwork sign at caution and writes it in sentence case", async () => {
     mocks.getCurrentSituationSnapshot.mockResolvedValue(snapshot());
     const sources = quietRoadSources();
     sources.messages.data = [
@@ -200,19 +320,24 @@ describe("GET /api/pulse/status", () => {
       expect.objectContaining({
         kind: "highway-message",
         severity: "warning",
-        title: EXIT_76_ROADWORK,
+        title: "Roadwork at exit 76, MD 97: two left lanes closed",
       }),
     ]);
     mocks.getRoadIntelligenceSnapshot.mockResolvedValue(roadwork);
 
     const response = await GET();
 
-    await expect(response.json()).resolves.toEqual({
+    await expect(response.json()).resolves.toMatchObject({
       active: true,
       count: 1,
       tone: "caution",
       ok: true,
-      lastUpdated: "2026-07-28T16:00:00.000Z",
+      lastUpdated: GENERATED_AT,
+      items: [
+        expect.objectContaining({
+          title: "Roadwork at exit 76, MD 97: two left lanes closed",
+        }),
+      ],
     });
   });
 
@@ -236,7 +361,8 @@ describe("GET /api/pulse/status", () => {
       count: 0,
       tone: "quiet",
       ok: true,
-      lastUpdated: "2026-07-28T16:00:00.000Z",
+      lastUpdated: GENERATED_AT,
+      ...QUIET_FIELDS,
     });
   });
 
@@ -259,18 +385,29 @@ describe("GET /api/pulse/status", () => {
 
     const response = await GET();
 
-    await expect(response.json()).resolves.toEqual({
+    await expect(response.json()).resolves.toMatchObject({
       active: true,
       count: 1,
       tone: "alert",
+      word: "Urgent",
       ok: true,
-      lastUpdated: "2026-07-28T16:00:00.000Z",
+      lastUpdated: GENERATED_AT,
     });
   });
 
   it("keeps a county alert red when a road advisory is also active", async () => {
     mocks.getCurrentSituationSnapshot.mockResolvedValue(
-      snapshot({ status: "active", tone: "alert", activeCount: 1 }),
+      snapshot({
+        fireRescue: envelope<PulsePointIncident[]>("pulsepoint", [
+          {
+            id: "pp-1",
+            type: "Structure Fire",
+            severity: "severe",
+            address: "100 block N Market St",
+            received_at: "2026-07-28T15:55:00.000Z",
+          },
+        ], { requiredForQuiet: false }),
+      }),
     );
     const sources = quietRoadSources();
     sources.messages.data = [
@@ -285,11 +422,13 @@ describe("GET /api/pulse/status", () => {
 
     const response = await GET();
 
-    await expect(response.json()).resolves.toMatchObject({
-      active: true,
-      count: 2,
-      tone: "alert",
-    });
+    const body = await response.json();
+    expect(body).toMatchObject({ active: true, count: 2, tone: "alert", word: "Urgent" });
+    // Worst first: the fire call leads the road sign.
+    expect(body.items.map((item: { family: string }) => item.family)).toEqual([
+      "fire-rescue",
+      "roads",
+    ]);
   });
 
   it("does not promote an unrelated statewide health notice as local", async () => {
@@ -300,6 +439,7 @@ describe("GET /api/pulse/status", () => {
           kind: "health-notice",
           title: "Measles exposure reported",
           summary: "The exposure locations are in Southern Maryland.",
+          url: "https://health.frederickcountymd.gov/AlertCenter.aspx?AID=9",
         },
       ],
       available: true,
@@ -313,7 +453,8 @@ describe("GET /api/pulse/status", () => {
       count: 0,
       tone: "quiet",
       ok: true,
-      lastUpdated: "2026-07-28T16:00:00.000Z",
+      lastUpdated: GENERATED_AT,
+      ...QUIET_FIELDS,
     });
   });
 });

@@ -9,8 +9,12 @@ import type { GeocodedIncident } from "@/lib/integrations/scannerIncidents";
 import type { IncidentFusionResult } from "@/lib/live/incidentFusion";
 import { fuseScannerWithChartIncidents } from "@/lib/live/incidentFusion";
 import {
+  airQualitySeverity,
   buildCurrentSituationSnapshot,
+  powerOutageSeverity,
+  selectActiveSituationRows,
   selectChartIncidentsResult,
+  weatherAlertSeverity,
   selectMapRoadPins,
   selectPulseStatus,
   sourceDisplayState,
@@ -219,12 +223,48 @@ describe("buildCurrentSituationSnapshot", () => {
       now: NOW,
     });
 
+    // A high-severity CHART crash is an advisory: /pulse labels it
+    // "Advisory", so the summary must not call it an alert (Oct 6 audit).
     expect(snapshot.summary).toMatchObject({
       status: "active",
       coverage: "partial",
-      tone: "alert",
+      tone: "caution",
       activeCount: 1,
     });
+  });
+
+  it("grades items by the shared severity rules", () => {
+    const heat: NwsAlert = {
+      id: "heat",
+      event: "Heat Advisory",
+      headline: "Heat Advisory in effect",
+      description: "",
+      severity: "Moderate",
+      urgency: "Expected",
+      certainty: "Likely",
+      starts_at: "2026-07-28T12:00:00.000Z",
+      ends_at: "2026-07-28T23:00:00.000Z",
+      area: "Frederick, MD",
+      url: "https://api.weather.gov/alerts/heat",
+    };
+    expect(weatherAlertSeverity(heat)).toBe("advisory");
+    expect(
+      weatherAlertSeverity({ ...heat, event: "Tornado Warning", severity: "Extreme" }),
+    ).toBe("urgent");
+    expect(powerOutageSeverity(1_204, 100_000)).toBe("urgent");
+    expect(powerOutageSeverity(30, 100_000)).toBe("advisory");
+    expect(airQualitySeverity(3)).toBe("advisory");
+    expect(airQualitySeverity(4)).toBe("urgent");
+
+    const advisoryOnly = buildCurrentSituationSnapshot({
+      sources: sources({ weather: envelope("nws", [heat]) }),
+      roadFusion: EMPTY_FUSION,
+      now: NOW,
+    });
+    expect(advisoryOnly.summary).toMatchObject({ tone: "caution", activeCount: 1 });
+    expect(
+      selectActiveSituationRows(advisoryOnly.sources, Date.parse(NOW)).weather,
+    ).toEqual([heat]);
   });
 
   it("does not treat a deliberately disabled optional source as degraded", () => {

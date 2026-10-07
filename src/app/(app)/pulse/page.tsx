@@ -66,6 +66,11 @@ import {
 import { getOfficialSignalsSnapshot } from "@/lib/live/officialSignals";
 import { isLocallyRelevantCivicAlert } from "@/lib/integrations/official-alert-feeds";
 import { sourceDisplayState } from "@/lib/live/currentSituationModel";
+import {
+  floodStatusItem,
+  policeStatusItem,
+  selectCountyStatus,
+} from "@/lib/live/countyStatus";
 import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
 import PulseBoard, {
   type PulseTile,
@@ -2185,12 +2190,38 @@ export default async function PulsePage() {
     },
   ];
 
+  // The masthead status word reads the selector the header dot reads, so a
+  // crash the header paints amber is an Advisory here too. River stage and a
+  // breaking police release are Pulse-only evidence, graded the same way.
+  const countyStatus = selectCountyStatus({
+    situation,
+    road: roadIntelligence,
+    civic: officialSignals.civic,
+    extraItems: [
+      ...(floodActive && worstFlood
+        ? [
+            floodStatusItem({
+              id: worstFlood.site.id,
+              title: `${titleCaseRiver(worstFlood.site.river)} ${worstFlood.category.label.toLowerCase()}`,
+              tone: worstFlood.category.tone,
+            }),
+          ]
+        : []),
+      ...(breakingPolice ? [policeStatusItem(breakingPolice)] : []),
+    ],
+  });
+
   // ── Hero + ticker for the board ──────────────────────────────────
   const hero: PulseHero = {
     allClear,
     operational: !leadCandidate && hasOperational,
     degraded: urgentDegraded,
     tone: heroTone,
+    status: {
+      word: countyStatus.word,
+      tone: countyStatus.tone,
+      count: countyStatus.count,
+    },
     line: heroLine,
     sub: heroSub,
     renderedAt: nowMs,

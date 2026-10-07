@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, AlertTriangle, ArrowRight, CalendarX, Clock, Info } from "lucide-react";
+import { AlertCircle, AlertTriangle, ArrowRight, CalendarX, ChevronDown, Clock, Info } from "lucide-react";
 import type { NwsAlert } from "@/lib/integrations/nws-alerts";
 import { getNpsAlerts, type NpsAlert } from "@/lib/integrations/nps";
 import {
@@ -381,7 +381,30 @@ export default async function CivicAlerts({ includeWeather = true, compact = fal
             <CalendarX className="h-4 w-4 shrink-0" aria-hidden />{notice.headline}<ArrowRight className="ml-auto h-4 w-4 shrink-0" aria-hidden />
           </a>
         ))}
-        {more > 0 && <a href={withBrowseReturnTo("/pulse?open=alerts", returnTo)} className="flex min-h-11 items-center px-3 text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>{more} more active {more === 1 ? "alert" : "alerts"}</a>}
+        {/* The count and the list below it come from the same alerts array.
+            It used to open /pulse?open=alerts, whose sheet holds only NWS and
+            City or County notices, so an NPS or MDOT row behind the count
+            answered "no current notice was found". */}
+        {more > 0 && (
+          <details data-alert-more className="group">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1 px-3 text-[12px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-ink-2)" }}>
+              {more} more active {more === 1 ? "alert" : "alerts"}
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-180" aria-hidden />
+            </summary>
+            <ul>
+              {alerts.slice(1).map((alert) => (
+                <li key={alert.identity}>
+                  <a href={withBrowseReturnTo(alert.url ?? "/pulse", returnTo)}
+                    target={alert.external ? "_blank" : undefined} rel={alert.external ? "noopener noreferrer" : undefined}
+                    className="flex min-h-11 items-center gap-2.5 px-3 py-1.5" style={{ color: "var(--app-ink)" }}>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-semibold leading-snug">{alert.title}</span><span className="block truncate text-[11px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{compactAlertSourceLine(alert)}</span></span>
+                    <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
       </section>
     );
   }
