@@ -742,8 +742,11 @@ test.describe("mobile discovery shell", () => {
     await expect(page.getByText("St Johns Catholic Prep School")).toHaveCount(0);
     await expect(page.getByText("Claiming is coming soon")).toHaveCount(0);
     await expect(
-      page.getByRole("link", { name: "Report incorrect info" }),
+      page.getByRole("link", { name: "Report a change" }),
     ).toHaveAttribute("href", /mailto:hello@frederickradius\.app/);
+    // The footer speaks trust once, in one date format: no raw ISO date.
+    await expect(page.getByText(/Updated \d{4}-\d{2}-\d{2}/)).toHaveCount(0);
+    await expect(page.getByText(/Details (?:and hours )?checked [A-Z][a-z]{2} \d{1,2}/)).toBeVisible();
   });
 
   test("Pulse leads with a compact live briefing", async ({ page }) => {

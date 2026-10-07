@@ -1,5 +1,11 @@
 import { CheckCircle2, Users, Database, Sparkles } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import {
+  CHECKED_AT_SOURCE,
+  COMMUNITY_SOURCE,
+  OFFICIAL_SOURCE,
+  RADIUS_REVIEWED,
+} from "@/lib/trust-language";
 
 /**
  * SourceBadge — a small chip telling the user where this record
@@ -32,10 +38,12 @@ export function sourceBadgeTier(place: Pick<PlaceCardData, "source" | "is_verifi
 export const SOURCE_BADGE_META: Record<SourceBadgeTier, { label: string; color: string; icon: typeof CheckCircle2; explanation: string }> = {
   // The visible labels make the claim legible without hover. Each explanation
   // is also included as screen-reader text instead of relying on `title`.
-  reviewed:  { label: "Radius reviewed", color: "var(--app-brand-press)", icon: Sparkles, explanation: "Selected or edited by Frederick Radius; current details can still change." },
-  checked:   { label: "Checked at source", color: "var(--app-positive)", icon: CheckCircle2, explanation: "Basic details were checked against a source. This is not owner verification." },
-  community: { label: "Community source", color: "var(--app-cool)", icon: Users, explanation: "Submitted by a local or assembled from a community or mapping source; check important details." },
-  official:  { label: "Official source", color: "var(--app-civic)", icon: Database, explanation: "Imported from a government source. The source agency does not operate or endorse Frederick Radius." },
+  // Labels come from the trust-language table so the badge, TrustChip and
+  // FreshnessChip can never name the same claim two ways.
+  reviewed:  { label: RADIUS_REVIEWED, color: "var(--app-brand-press)", icon: Sparkles, explanation: "Selected or edited by Frederick Radius; current details can still change." },
+  checked:   { label: CHECKED_AT_SOURCE, color: "var(--app-positive)", icon: CheckCircle2, explanation: "Basic details were checked against a source. This is not owner verification." },
+  community: { label: COMMUNITY_SOURCE, color: "var(--app-cool)", icon: Users, explanation: "Submitted by a local or assembled from a community or mapping source; check important details." },
+  official:  { label: OFFICIAL_SOURCE, color: "var(--app-civic)", icon: Database, explanation: "Imported from a government source. The source agency does not operate or endorse Frederick Radius." },
 };
 
 export function sourceBadgeMeta(

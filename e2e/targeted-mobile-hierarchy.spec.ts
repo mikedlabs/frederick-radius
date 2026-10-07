@@ -195,7 +195,8 @@ test("Place field notes lead with visit decisions and disclose the rest", async 
   await expect(primaryRows.nth(1)).toContainText("Park");
   await expect(notes.getByText(/Open mic night every Monday/)).toBeHidden();
   await expect(notes.getByRole("link", { name: "cafe-nola.com" }).first()).toBeVisible();
-  await expect(notes.getByText(/verified \d+w ago/).first()).toBeVisible();
+  // One trust date format (trust-language): "Checked Jun 15", never "verified 3mo ago".
+  await expect(notes.getByText(/Checked [A-Z][a-z]{2} \d{1,2}/).first()).toBeVisible();
 
   await notes.locator("summary").click();
   await expect(notes.getByText(/Open mic night every Monday/)).toBeVisible();

@@ -1,4 +1,5 @@
 import type { DayOfWeek, Hours, HoursWindow } from "@/data/places";
+import { HOURS_NOT_CONFIRMED, HOURS_NOT_POSTED } from "@/lib/trust-language";
 
 const DAYS: DayOfWeek[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 export const DAY_LABEL: Record<DayOfWeek, string> = {
@@ -200,12 +201,12 @@ export function formatHoursLine(status: OpenStatus): string {
       : `Closed · Opens ${DAY_LABEL[status.opensDay]} ${formatTime(status.opensAt)}`;
   }
   if (status.state === "closed") return "Closed";
-  if (status.state === "unverified") return "Hours not confirmed";
+  if (status.state === "unverified") return HOURS_NOT_CONFIRMED;
   // A schedule is on file but withheld (past the freshness window or never
   // verified). "Hours not posted" would claim the business never published
   // hours, which is false.
-  if (status.reason === "stale") return "Hours not confirmed";
-  return "Hours not posted";
+  if (status.reason === "stale") return HOURS_NOT_CONFIRMED;
+  return HOURS_NOT_POSTED;
 }
 
 export function formatFullHours(hours: Hours | undefined): { day: DayOfWeek; label: string; windows: HoursWindow[] }[] {

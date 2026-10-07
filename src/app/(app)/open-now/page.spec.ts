@@ -22,3 +22,22 @@ describe("Open now scope contract", () => {
     );
   });
 });
+
+describe("Open now trust contract", () => {
+  it("titles the page as an estimate and says the uncertainty once", () => {
+    expect(source).toContain("title: OPEN_NOW_TITLE");
+    expect(source).toContain("{OPEN_NOW_TITLE}");
+    expect(source).toContain("openNowSummary(snapshot.count, likely.length)");
+    expect(source).not.toMatch(/confirmed open/i);
+    // The likely list no longer repeats the header's caveat in a paragraph.
+    expect(source).not.toContain("These places are usually open at this hour");
+    expect(source).toContain("label: LIKELY_OPEN_CHECK_HOURS");
+  });
+
+  it("marks happy hour only inside a structured window and never parses notes text", () => {
+    expect(source).toContain("happyHourOnAt(p.slug, now)");
+    expect(source).not.toContain("fieldNotesFor");
+    expect(source).not.toContain("parseHappyHour");
+    expect(source).not.toMatch(/\?\s*"deal"/);
+  });
+});

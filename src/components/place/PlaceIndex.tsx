@@ -317,7 +317,7 @@ function PlaceCell({
             {row.mark && (
               <span
                 className="truncate text-[10px] font-bold uppercase tracking-[0.08em]"
-                style={{ color: "var(--app-accent-press)" }}
+                style={{ color: "var(--app-brand-press)" }}
               >
                 {row.mark}
               </span>

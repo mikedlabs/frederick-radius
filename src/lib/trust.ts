@@ -7,19 +7,31 @@
  * resident can answer "can I trust this, and where did it come from?"
  * at a glance.
  *
- * Four levels, each grounded in data the app actually has. We do not
+ * Three levels, each grounded in data the app actually has. We do not
  * invent a "last checked 2 minutes ago" when there is no timestamp:
  * freshness is optional and only set when a real one exists. Honest
- * beats impressive.
+ * beats impressive. Every label and date comes from the trust-language
+ * table, so a chip, a sheet and a page say one fact the same way.
  */
 
 import type { OpenStatus } from "@/lib/hours";
+import {
+  CHECKED_AT_SOURCE,
+  FROM_PUBLIC_CALENDAR,
+  GOVERNMENT_LISTING,
+  HOURS_NOT_CONFIRMED,
+  HOURS_NOT_POSTED,
+  PUBLISHER_LISTING,
+  RADIUS_REVIEWED,
+  updatedLabel,
+  type FreshnessBasis,
+} from "@/lib/trust-language";
 
 export type TrustLevel = "verified" | "likely" | "unconfirmed";
 
 export type TrustSignal = {
   level: TrustLevel;
-  /** One- or two-word chip text. */
+  /** Short chip text, taken from the trust-language table. */
   label: string;
   /** Plain-language basis, shown on detail surfaces and as the tooltip. */
   basis: string;
@@ -30,7 +42,7 @@ export type TrustSignal = {
 /** Structural subset of an event — EventWithMeta satisfies it. */
 export type EventTrustInput = {
   /** Any adapter source. The label branches below name the sources they
-   *  know; everything else reads as a live feed row. */
+   *  know; everything else reads as a public-calendar feed row. */
   source: string;
   is_verified: boolean;
 };
@@ -80,12 +92,13 @@ function sourceBasis(
  *  A source's own calendar is a publisher listing, not a Radius partnership.
  *  Government calendars are named as government listings without implying
  *  that the agency operates or endorses Radius. Radius-reviewed rows remain
- *  editorial, and all other live rows keep the existing fail-soft language. */
+ *  editorial. Every other automated row says plainly that it came from a
+ *  public calendar: "Live" is kept for something happening right now. */
 export function eventTrust(e: EventTrustInput): TrustSignal {
   if (e.source === "seed") {
     return {
       level: "verified",
-      label: "Radius reviewed",
+      label: RADIUS_REVIEWED,
       basis: "Selected and reviewed by Frederick Radius",
     };
   }
@@ -93,7 +106,7 @@ export function eventTrust(e: EventTrustInput): TrustSignal {
   if (governmentBasis) {
     return {
       level: "verified",
-      label: "Government listing",
+      label: GOVERNMENT_LISTING,
       basis: governmentBasis,
     };
   }
@@ -101,29 +114,38 @@ export function eventTrust(e: EventTrustInput): TrustSignal {
   if (publisherBasis) {
     return {
       level: "verified",
-      label: "Publisher listing",
+      label: PUBLISHER_LISTING,
       basis: publisherBasis,
     };
   }
-  // manual / live feed
+  // manual / automated feed
   return e.is_verified
     ? {
         level: "verified",
-        label: "Checked at source",
+        label: CHECKED_AT_SOURCE,
         basis: "Checked by Frederick Radius against the source",
       }
     : {
         level: "likely",
-        label: "Live",
-        basis: "Aggregated from a live feed",
+        label: FROM_PUBLIC_CALENDAR,
+        basis: "Read automatically from a public event calendar",
       };
 }
 
 /**
+ * What an event's freshness timestamp records. An editor's check (a verified
+ * or Radius-reviewed row) is a check at the source; every other row's stamp
+ * is the time Radius last read the publisher's calendar.
+ */
+export function eventFreshnessBasis(e: EventTrustInput): FreshnessBasis {
+  return e.is_verified || e.source === "seed" ? "checked" : "feed";
+}
+
+/**
  * Trust for a place's hours. "Verified" only when hours are confirmed
- * against a live source; curated-but-unconfirmed hours are honestly
- * "Likely"; a schedule withheld as stale and no hours at all are both
- * "Unconfirmed", with a basis that says which one is true. Mirrors
+ * against a live source; curated-but-unconfirmed hours and a schedule
+ * withheld as stale both read "Hours not confirmed", and no schedule at all
+ * reads "Hours not posted", the same words the status line uses. Mirrors
  * getOpenStatus and the loader's withheld-hours status.
  */
 export function placeHoursTrust(status: OpenStatus): TrustSignal {
@@ -133,13 +155,13 @@ export function placeHoursTrust(status: OpenStatus): TrustSignal {
     case "closed":
       return {
         level: "verified",
-        label: "Checked at source",
+        label: CHECKED_AT_SOURCE,
         basis: "Checked against posted hours",
       };
     case "unverified":
       return {
         level: "likely",
-        label: "Likely",
+        label: HOURS_NOT_CONFIRMED,
         basis: "Estimated from curated hours, not yet confirmed",
       };
     default:
@@ -148,52 +170,34 @@ export function placeHoursTrust(status: OpenStatus): TrustSignal {
       if (status.reason === "stale") {
         return {
           level: "unconfirmed",
-          label: "Unconfirmed",
+          label: HOURS_NOT_CONFIRMED,
           basis: "Radius has hours on file, but they have not been confirmed recently. Call ahead to confirm.",
         };
       }
       return {
         level: "unconfirmed",
-        label: "Unconfirmed",
+        label: HOURS_NOT_POSTED,
         basis: "No posted hours. Call ahead to confirm.",
       };
   }
 }
 
-const MINUTE = 60_000;
-const HOUR = 60 * MINUTE;
-const DAY = 24 * HOUR;
-
 /**
- * Relative freshness for a real timestamp. Pure: nowMs is injectable so
- * the output is deterministic in tests. Returns null for a missing or
- * unparseable input rather than guessing.
+ * Freshness for a real timestamp: "Updated 3 hours ago" inside a day, then
+ * "Updated Jun 15" (or "Updated May 14, 2025" from another year), through
+ * the trust-language date formatter. Pure: nowMs is injectable so the output
+ * is deterministic in tests. Returns null for a missing or unparseable input
+ * rather than guessing.
  */
 export function formatChecked(iso: string | undefined, nowMs: number = Date.now()): string | null {
-  if (!iso) return null;
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return null;
-  const diff = nowMs - t;
-  if (diff < 0) return "Updated just now";
-  if (diff < 2 * MINUTE) return "Updated just now";
-  if (diff < HOUR) return `Updated ${Math.floor(diff / MINUTE)} min ago`;
-  if (diff < DAY) {
-    const h = Math.floor(diff / HOUR);
-    return `Updated ${h} hour${h === 1 ? "" : "s"} ago`;
-  }
-  if (diff < 2 * DAY) return "Updated yesterday";
-  if (diff < 7 * DAY) return `Updated ${Math.floor(diff / DAY)} days ago`;
-  return `Updated on ${new Date(t).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  })}`;
+  return updatedLabel(iso, nowMs);
 }
 
 /** Brand token per level, resolved by the chip component. */
 export const TRUST_COLOR: Record<TrustLevel, string> = {
   verified: "var(--app-positive)",
-  // Calm provenance, not caution: "Live" (feed) and "Likely open" rows are
-  // normal states, so they ride the muted ink tone instead of warning-amber.
+  // Calm provenance, not caution: public-calendar feed rows and unconfirmed
+  // hours are normal states, so they ride the muted ink tone, not amber.
   // Amber is reserved for genuinely stale/unconfirmed signals. (TRUST_COLOR is
   // consumed only by TrustChip; the label carries likely-vs-unconfirmed.)
   likely: "var(--app-ink-3)",

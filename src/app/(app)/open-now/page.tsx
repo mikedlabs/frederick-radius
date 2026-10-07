@@ -15,7 +15,12 @@ import ScopeBar from "@/components/nav/ScopeBar";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { LngLat } from "@/lib/geo";
 import { resolveServerTownRankingContext } from "@/lib/scope";
-import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
+import { happyHourOnAt, hasFieldNotes } from "@/lib/loaders/fieldNotes";
+import {
+  LIKELY_OPEN_CHECK_HOURS,
+  OPEN_NOW_TITLE,
+  openNowSummary,
+} from "@/lib/trust-language";
 import PlaceIndex, { type IndexRow, type IndexSection } from "@/components/place/PlaceIndex";
 import PageBloom from "@/components/ui/PageBloom";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
@@ -44,10 +49,10 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   alternates: { canonical: "/open-now" },
-  title: "Open now",
+  title: OPEN_NOW_TITLE,
   description:
     "What's open right now across Frederick County, based on verified posted hours and ranked from your town.",
-  openGraph: { title: "Open now", description:
+  openGraph: { title: OPEN_NOW_TITLE, description:
     "What's open right now across Frederick County, based on verified posted hours and ranked from your town." },
 };
 
@@ -155,14 +160,17 @@ export default async function OpenNowPage() {
         status = { kind: "open", label: `Until ${formatTime(closes)}` };
       }
     }
-    const fn = fieldNotesFor(p.slug);
-    const mark = fn?.happy_hour
+    // A time-bound mark speaks only when a structured window covers this
+    // minute: "HAPPY HOUR" at 10 AM for a 4-7 PM pour was a false "now"
+    // claim. Happy hours carry windows parsed at the Field Notes boundary;
+    // deals carry no structured window, so they never earn a "deal" mark
+    // here. Free text is never parsed at render time. A place with notes
+    // still shows the timeless "field notes" mark.
+    const mark = happyHourOnAt(p.slug, now)
       ? "happy hour"
-      : fn?.deals?.length
-        ? "deal"
-        : fn?.insider?.length || fn?.parking
-          ? "field notes"
-          : null;
+      : hasFieldNotes(p.slug)
+        ? "field notes"
+        : null;
     return {
       slug: p.slug,
       name: p.name,
@@ -204,7 +212,7 @@ export default async function OpenNowPage() {
   const likelySections: IndexSection[] = [
     {
       key: "likely",
-      label: "Likely open · check hours",
+      label: LIKELY_OPEN_CHECK_HOURS,
       rows: likely.slice(0, 12).map((p) => toRow(p, false)),
     },
   ];
@@ -239,14 +247,13 @@ export default async function OpenNowPage() {
           className="mt-1 font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Open now
+          {OPEN_NOW_TITLE}
         </h1>
+        {/* The page's one statement of uncertainty. Posted hours are evidence,
+            not a promise (the old line called every row confirmed), so the
+            basis and the caveat are said here once instead of per section. */}
         <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          {snapshot.count > 0
-            ? `${snapshot.count} ${snapshot.count === 1 ? "place is" : "places are"} confirmed open`
-            : likely.length > 0
-              ? "Some places are usually open at this hour, but their hours are not recently confirmed."
-              : "No county listings have recently checked hours confirming they are open."}
+          {openNowSummary(snapshot.count, likely.length)}
         </p>
       </header>
 
@@ -262,17 +269,14 @@ export default async function OpenNowPage() {
 
       {verified.length > 0 ? (
         <PlaceIndex sections={sections} prioritizeFirstPhoto lazyPhotos />
-      ) : (
+      ) : likely.length === 0 ? (
+        // Nothing to list at all: point at the map link that follows. When
+        // the likely list does render, the header already says what it is
+        // and to check before going, so no second caveat appears here.
         <p className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>
-          {/* Only promise the "below" list when it actually renders (likely
-              can be empty overnight or in a sparse scope). Otherwise point at
-              the map link that follows, so the copy never references a section
-              that isn't there. */}
-          {likely.length > 0
-            ? "These places are usually open at this hour based on their posted schedules. Check before you go."
-            : "Open the map to look for places nearby, or check back a little later."}
+          Open the map to look for places nearby, or check back a little later.
         </p>
-      )}
+      ) : null}
 
       {likely.length > 0 && <PlaceIndex sections={likelySections} showSort={false} lazyPhotos />}
 

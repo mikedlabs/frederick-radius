@@ -69,7 +69,7 @@ import EventCard from "@/components/event/EventCard";
 import EventSmartPairings from "@/components/event/EventSmartPairings";
 import TrustChip from "@/components/ui/TrustChip";
 import FreshnessChip from "@/components/ui/FreshnessChip";
-import { eventTrust } from "@/lib/trust";
+import { eventFreshnessBasis, eventTrust } from "@/lib/trust";
 import { easternOffsetIso, jsonLdScript } from "@/lib/seo/jsonld";
 import { noticeForEvent } from "@/lib/events/notices";
 import {
@@ -644,6 +644,7 @@ export default async function EventPage({
             <FreshnessChip
               iso={event.last_verified_at ?? undefined}
               subject="Event"
+              basis={eventFreshnessBasis(event)}
             />
             {event.source_url && <EventSourceLink href={event.source_url} />}
           </div>

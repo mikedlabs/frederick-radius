@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { eventTrust, placeHoursTrust, formatChecked, TRUST_COLOR } from "@/lib/trust";
+import {
+  eventFreshnessBasis,
+  eventTrust,
+  placeHoursTrust,
+  formatChecked,
+  TRUST_COLOR,
+} from "@/lib/trust";
 import type { OpenStatus } from "@/lib/hours";
 
 describe("eventTrust", () => {
@@ -29,10 +35,27 @@ describe("eventTrust", () => {
     expect(gov.basis.length).toBeGreaterThan(0);
   });
 
-  it("live-aggregated (manual) is honestly 'likely/Live'", () => {
-    const t = eventTrust({ source: "manual", is_verified: false });
-    expect(t.level).toBe("likely");
-    expect(t.label).toBe("Live");
+  it("an automated feed row says it came from a public calendar, not 'Live'", () => {
+    for (const source of ["manual", "ticketmaster", "venue-extract"]) {
+      const t = eventTrust({ source, is_verified: false });
+      expect(t.level).toBe("likely");
+      expect(t.label).toBe("From a public calendar");
+      expect(t.basis).toMatch(/public event calendar/);
+      expect(t.basis).not.toMatch(/live/i);
+    }
+  });
+});
+
+describe("eventFreshnessBasis", () => {
+  it("keeps 'checked at source' for editor checks only", () => {
+    expect(eventFreshnessBasis({ source: "manual", is_verified: true })).toBe("checked");
+    expect(eventFreshnessBasis({ source: "seed", is_verified: false })).toBe("checked");
+  });
+
+  it("calls every automated row a calendar read", () => {
+    for (const source of ["manual", "county", "dfp", "ticketmaster"]) {
+      expect(eventFreshnessBasis({ source, is_verified: false })).toBe("feed");
+    }
   });
 });
 
@@ -61,6 +84,13 @@ describe("placeHoursTrust", () => {
     expect(stale.basis).toMatch(/call ahead/i);
     expect(stale.basis).not.toMatch(/—/);
   });
+
+  it("labels hours with the same words as the status line", () => {
+    expect(placeHoursTrust({ state: "unknown" }).label).toBe("Hours not posted");
+    expect(placeHoursTrust({ state: "unknown", reason: "stale" }).label).toBe("Hours not confirmed");
+    expect(placeHoursTrust({ state: "unverified" }).label).toBe("Hours not confirmed");
+    expect(placeHoursTrust({ state: "closed" }).label).toBe("Checked at source");
+  });
 });
 
 describe("formatChecked", () => {
@@ -72,17 +102,19 @@ describe("formatChecked", () => {
     expect(formatChecked("not-a-date", NOW)).toBeNull();
   });
 
-  it("buckets recent times in plain language", () => {
+  it("buckets times inside a day in plain language", () => {
     expect(formatChecked(iso(30_000), NOW)).toBe("Updated just now");
     expect(formatChecked(iso(15 * 60_000), NOW)).toBe("Updated 15 min ago");
     expect(formatChecked(iso(3 * 3_600_000), NOW)).toBe("Updated 3 hours ago");
     expect(formatChecked(iso(1 * 3_600_000), NOW)).toBe("Updated 1 hour ago");
-    expect(formatChecked(iso(26 * 3_600_000), NOW)).toBe("Updated yesterday");
-    expect(formatChecked(iso(4 * 86_400_000), NOW)).toBe("Updated 4 days ago");
   });
 
-  it("falls back to an absolute date past a week", () => {
-    expect(formatChecked(iso(40 * 86_400_000), NOW)).toMatch(/Updated on \w+ \d+/);
+  it("uses the one trust date format past a day", () => {
+    // NOW is 8 AM May 16 in Frederick.
+    expect(formatChecked(iso(26 * 3_600_000), NOW)).toBe("Updated May 15");
+    expect(formatChecked(iso(4 * 86_400_000), NOW)).toBe("Updated May 12");
+    expect(formatChecked(iso(40 * 86_400_000), NOW)).toBe("Updated Apr 6");
+    expect(formatChecked("2025-05-14", NOW)).toBe("Updated May 14, 2025");
   });
 
   it("a future timestamp degrades gracefully", () => {

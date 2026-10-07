@@ -2,7 +2,7 @@ import { stampEventProvenance } from "@/lib/provenance";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Suspense } from "react";
+import { Fragment, Suspense } from "react";
 import { AlertCircle, Apple, ArrowRight, CalendarCheck, Car, ChevronDown, ExternalLink, Globe, Instagram, Mail, MapPin, Navigation, Phone, ShoppingBag, UtensilsCrossed } from "lucide-react";
 import ShareButton from "@/components/place/ShareButton";
 import { PLACES } from "@/data/places";
@@ -59,6 +59,7 @@ import { placeVisitDetails } from "@/lib/loaders/placeVisitDetails";
 import PlanFromPlaceLink from "@/components/plan/PlanFromPlaceLink";
 import { isDestinationCategory, isRecommendable } from "@/lib/relevance";
 import type { DecisionAction } from "@/lib/decision/telemetry";
+import { formatTrustDate, placeTrustSegments, REPORT_A_CHANGE } from "@/lib/trust-language";
 
 /**
  * Phase 2: never render scraped second-person copy (quality bar 9,
@@ -96,19 +97,6 @@ function safeBlurb(p: {
     ) ??
     `${p.category_name} in ${p.municipality_name}.`
   );
-}
-
-/** "today", "3 days ago", "last month" — for the hours freshness line. */
-function confirmedAgo(iso: string | undefined): string | null {
-  if (!iso) return null;
-  const d = Date.now() - new Date(iso).getTime();
-  if (!Number.isFinite(d) || d < 0) return null;
-  const days = Math.floor(d / 86_400_000);
-  if (days <= 0) return "today";
-  if (days === 1) return "yesterday";
-  if (days < 30) return `${days} days ago`;
-  if (days < 60) return "last month";
-  return `${Math.floor(days / 30)} months ago`;
 }
 
 const HOURS_SOURCE_LABEL: Record<string, string> = {
@@ -176,9 +164,18 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
     place.description ?? place.short_blurb,
     place.description_reviewed ?? false,
   );
+  // One date format for every trust fact on the page (trust-language): the
+  // hours line, the Field Notes rows and the footer trust line all say
+  // "Jun 15", never "3 months ago" beside "verified 2w ago" beside an ISO date.
+  const hoursCheckedOn = formatTrustDate(place.hours_updated_at);
   const hoursConfirmed = place.hours_source
-    ? `Hours from ${HOURS_SOURCE_LABEL[place.hours_source] ?? place.hours_source}, confirmed ${confirmedAgo(place.hours_updated_at) ?? "recently"}.`
+    ? `Hours from ${HOURS_SOURCE_LABEL[place.hours_source] ?? place.hours_source}${hoursCheckedOn ? `, checked ${hoursCheckedOn}` : ""}.`
     : null;
+  const trustSegments = placeTrustSegments({
+    detailsCheckedAt: place.updated_at,
+    hoursStatus: place.open_status,
+    hoursCheckedAt: place.hours_updated_at,
+  });
   const googleUrl = googleMapsDirections(place.geom.lat, place.geom.lng);
   const appleUrl = appleMapsDirections(place.geom.lat, place.geom.lng, place.name);
   const actions = actionsForPlace(place);
@@ -632,11 +629,29 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 
       <footer className="space-y-2 pt-4">
         <PhotoCredit slug={place.slug} hasGooglePhoto={Boolean(place.google_photo_url)} />
-        <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-          {/* Freshness only. The source already speaks once, as the
-              SourceBadge in the header decision zone — restating it here
-              was the "source twice" duplicate (July 2026 review). */}
-          Updated {place.updated_at}
+        {/* One trust line in the trust-language vocabulary: when the details
+            were checked, what Radius can say about the hours, and the way to
+            correct either ("Details checked May 20 · Hours not confirmed ·
+            Report a change"). It replaced a raw "Updated 2026-05-14". The
+            source already speaks once, as the SourceBadge in the header
+            decision zone, so it is not restated here (July 2026 review). */}
+        <p
+          className="flex flex-wrap items-center gap-x-1.5 text-[12px]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          {trustSegments.map((segment) => (
+            <Fragment key={segment}>
+              <span>{segment}</span>
+              <span aria-hidden>·</span>
+            </Fragment>
+          ))}
+          <a
+            href={`mailto:hello@frederickradius.app?subject=Correction for ${place.name}`}
+            className="tap-44 inline-flex items-center underline underline-offset-2"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {REPORT_A_CHANGE}
+          </a>
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
           {cat && (
@@ -644,13 +659,6 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               More {cat.name.toLowerCase()} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           )}
-          <a
-            href={`mailto:hello@frederickradius.app?subject=Correction for ${place.name}`}
-            className="tap-44 inline-flex items-center"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Report incorrect info
-          </a>
           <ShareButton
             title={place.name}
             text={safeBlurb(place)}

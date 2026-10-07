@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { freshnessPhrase, type FreshnessBasis } from "@/lib/trust-language";
 
 /**
  * FreshnessChip — visible age signal for any timestamped row.
@@ -10,63 +11,43 @@ import { CheckCircle2, Clock, AlertCircle } from "lucide-react";
  * an hours refresh cannot accidentally imply that the description, menu, and
  * accessibility information were checked at the same time.
  *
- * Says "Checked at source", never "Verified". Per the trust vocabulary each
- * badge means exactly one thing: "Checked" = we checked the available source
- * on this date; "Owner verified" is reserved for approved owner-managed
- * listings (which earn the stronger word). A freshness timestamp is a
- * confirmation date, not an owner endorsement, so it must not say
- * "Verified" — that was the badge-confusion the audit flagged.
+ * Says "checked at source", never "Verified", and only for a real check (a
+ * person, or Radius against a named source). Per the trust vocabulary each
+ * badge means exactly one thing: "Owner verified" is reserved for approved
+ * owner-managed listings, and an automated calendar read says what it is,
+ * "Calendar read 1 hour ago". The words and the date format come from the
+ * trust-language table: "4 hours ago" inside a day, then "Jun 15".
  *
- * Honest by design: when the data is old, the chip says so — we'd
- * rather show the truth quietly than imply false freshness.
+ * Honest by design: when the data is old, the chip says so through its
+ * stale tier. We'd rather show the truth quietly than imply false freshness.
  */
 export type FreshnessSubject = "Listing" | "Hours" | "Event";
 
-function formatAge(
-  ms: number,
-  subject: FreshnessSubject,
-): { tier: "fresh" | "recent" | "stale"; label: string } {
-  const days = ms / 86_400_000;
-  if (days < 1) {
-    const hrs = Math.max(1, Math.round(ms / 3_600_000));
-    return { tier: "fresh", label: `${subject} checked at source · ${hrs}h ago` };
-  }
-  if (days < 14) {
-    return { tier: "fresh", label: `${subject} checked at source · ${Math.round(days)}d ago` };
-  }
-  return { tier: days < 90 ? "recent" : "stale", label: "" };
-}
+type FreshnessTier = "fresh" | "recent" | "stale";
 
-function formatAbsolute(
-  d: Date,
-  stale: boolean,
-  subject: FreshnessSubject,
-): string {
-  const opts: Intl.DateTimeFormatOptions = stale
-    ? { month: "short", year: "numeric" }
-    : { month: "short", day: "numeric" };
-  const prefix = stale ? `${subject} last checked` : `${subject} checked`;
-  return `${prefix} ${d.toLocaleDateString("en-US", opts)}`;
+function tierFor(ageMs: number): FreshnessTier {
+  const days = ageMs / 86_400_000;
+  if (days < 14) return "fresh";
+  return days < 90 ? "recent" : "stale";
 }
 
 export function freshnessLabel({
   iso,
   now,
   subject,
+  basis = "checked",
 }: {
   iso: string;
   now: number;
   subject: FreshnessSubject;
-}): { tier: "fresh" | "recent" | "stale"; label: string } | null {
+  /** "feed" for an automated calendar read; "checked" for a real check. */
+  basis?: FreshnessBasis;
+}): { tier: FreshnessTier; label: string } | null {
   const timestamp = Date.parse(iso);
   if (Number.isNaN(timestamp) || timestamp > now) return null;
-  const age = formatAge(now - timestamp, subject);
-  return {
-    tier: age.tier,
-    label:
-      age.label ||
-      formatAbsolute(new Date(timestamp), age.tier === "stale", subject),
-  };
+  const label = freshnessPhrase(subject, basis, iso, now);
+  if (!label) return null;
+  return { tier: tierFor(now - timestamp), label };
 }
 
 // No-op subscription: we just want a server/client split for `now`
@@ -79,10 +60,14 @@ const getServerNow = () => null;
 export default function FreshnessChip({
   iso,
   subject = "Listing",
+  basis = "checked",
   className = "",
 }: {
   iso: string | undefined;
   subject?: FreshnessSubject;
+  /** "feed" when the timestamp is an automated calendar read, so the chip
+   *  never calls a feed fetch a check at the source. */
+  basis?: FreshnessBasis;
   className?: string;
 }) {
   // `now` is null on the server and the real clock on the client.
@@ -92,7 +77,7 @@ export default function FreshnessChip({
 
   if (!iso) return null;
   if (now === null) return null; // SSR + pre-hydration: render nothing
-  const freshness = freshnessLabel({ iso, now, subject });
+  const freshness = freshnessLabel({ iso, now, subject, basis });
   if (!freshness) return null;
   const t = Date.parse(iso);
   const { tier, label: finalLabel } = freshness;

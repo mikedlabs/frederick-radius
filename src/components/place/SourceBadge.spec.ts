@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { sourceBadgeMeta } from "./SourceBadge";
+import {
+  CHECKED_AT_SOURCE,
+  COMMUNITY_SOURCE,
+  OFFICIAL_SOURCE,
+  RADIUS_REVIEWED,
+} from "@/lib/trust-language";
+import { SOURCE_BADGE_META, sourceBadgeMeta } from "./SourceBadge";
 
 describe("sourceBadgeMeta", () => {
   it("recognizes both county-GIS source spellings as official", () => {
@@ -24,5 +30,14 @@ describe("sourceBadgeMeta", () => {
     expect(sourceBadgeMeta({ source: "seed", is_verified: true, google_verified: true })?.label).toBe(
       "Radius reviewed",
     );
+  });
+
+  it("reads every label from the trust-language table", () => {
+    expect(Object.values(SOURCE_BADGE_META).map((meta) => meta.label)).toEqual([
+      RADIUS_REVIEWED,
+      CHECKED_AT_SOURCE,
+      COMMUNITY_SOURCE,
+      OFFICIAL_SOURCE,
+    ]);
   });
 });

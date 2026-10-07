@@ -1,5 +1,7 @@
 import RAW from "@/data/field-notes.json" with { type: "json" };
 import { deepCleanStrings } from "@/lib/format/text";
+import { parseHappyHour, type HHWindow } from "@/lib/happyHour";
+import { checkedLabel } from "@/lib/trust-language";
 
 /**
  * Field Notes — source-linked local notes with row-level trust evidence.
@@ -117,16 +119,58 @@ export function placesWithFieldHappyHour(): Array<{ slug: string; happy_hour: FN
     .map(([slug, n]) => ({ slug, happy_hour: n.happy_hour! }));
 }
 
-/** "verified 2w ago" — same register as the business-info freshness line. */
-export function verifiedLabel(iso?: string): string | null {
+/**
+ * "Checked Jun 15": the recorded check date in the trust-language format, so
+ * a Field Notes row, a deal card and the place page's trust line date a check
+ * the same way. Null when no parseable date was recorded.
+ */
+export function verifiedLabel(iso?: string, now: number = Date.now()): string | null {
   const recorded = recordedFieldNoteVerificationDate(iso);
   if (!recorded) return null;
-  const d = Date.now() - +new Date(recorded);
-  if (!Number.isFinite(d) || d < 0) return "verified just now";
-  const days = Math.floor(d / 86_400_000);
-  if (days < 1) return "verified today";
-  if (days < 14) return `verified ${days}d ago`;
-  const weeks = Math.floor(days / 7);
-  if (weeks < 9) return `verified ${weeks}w ago`;
-  return `verified ${Math.floor(days / 30)}mo ago`;
+  return checkedLabel(recorded, now);
+}
+
+/**
+ * Structured happy-hour windows, parsed once at the loader boundary from the
+ * reviewed schedule ("Mon-Fri 4-6:30pm"). A schedule the parser cannot read
+ * ("Tue, Wed & Thu specials") yields no window, so no surface can claim the
+ * happy hour is on. Surfaces read these windows; they never parse the text.
+ */
+const HAPPY_HOUR_WINDOWS: ReadonlyMap<string, readonly HHWindow[]> = new Map(
+  Object.entries(NOTES)
+    .map(([slug, notes]) => [slug, parseHappyHour(notes.happy_hour?.schedule ?? "")] as const)
+    .filter(([, windows]) => windows.length > 0),
+);
+
+export function happyHourWindowsFor(slug: string): readonly HHWindow[] {
+  return HAPPY_HOUR_WINDOWS.get(slug) ?? [];
+}
+
+const EASTERN_DAY_MINUTE = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  weekday: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+const WEEKDAY_INDEX: Readonly<Record<string, number>> = {
+  Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+};
+
+/**
+ * True only when one of the place's structured happy-hour windows covers
+ * `now` on the Frederick clock. No window means no claim.
+ */
+export function happyHourOnAt(slug: string, now: Date): boolean {
+  const windows = HAPPY_HOUR_WINDOWS.get(slug);
+  if (!windows) return false;
+  const parts = Object.fromEntries(
+    EASTERN_DAY_MINUTE.formatToParts(now).map((part) => [part.type, part.value]),
+  );
+  const day = WEEKDAY_INDEX[parts.weekday ?? ""];
+  if (day === undefined) return false;
+  const minute = (Number(parts.hour) % 24) * 60 + Number(parts.minute);
+  return windows.some(
+    (window) => window.days.includes(day) && minute >= window.start && minute < window.end,
+  );
 }
