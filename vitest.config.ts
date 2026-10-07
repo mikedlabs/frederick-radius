@@ -24,7 +24,7 @@ export default defineConfig({
         // ESM. Vite 7 must pre-bundle them before Chromium loads the stories.
         // Keep this list beside the aria-query override in package.json.
         optimizeDeps: {
-          include: ["aria-query", "lz-string", "pretty-format"],
+          include: ["aria-query", "lz-string", "pretty-format", "storybook/test"],
         },
       }
     : {}),
