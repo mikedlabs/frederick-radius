@@ -17,6 +17,8 @@ import {
   type PlanSlotCategory,
 } from "@/lib/integrations/planner";
 
+import { planAroundEvent, resolvePlanChoiceContext, resolveSharedPlan } from "@/lib/plan/resolve-shared-plan";
+
 async function withWeather(plan: Plan | null): Promise<Plan | null> {
   if (!plan) return null;
   // The itinerary itself is deterministic and should not wait on decorative
@@ -68,28 +70,35 @@ async function weatherNoteFor(plan: Plan): Promise<string | null> {
 
 /** Build a fresh plan from the builder inputs. */
 export async function generatePlan(input: PlanInputs): Promise<Plan | null> {
-  return withWeather(buildPlan(input));
+  return input.event_anchor_slug
+    ? withWeather(await planAroundEvent(input.event_anchor_slug, input))
+    : withWeather(buildPlan(input));
 }
 
 /** Rebuild a plan from a shared token or an edited spec. */
 export async function planFromToken(token: string): Promise<Plan | null> {
   const spec = decodeSpec(token);
-  return spec ? withWeather(reconstructPlan(spec)) : null;
+  return spec ? withWeather(await resolveSharedPlan(spec)) : null;
 }
 
 /** Drop the stop at index, then rebuild. Pure spec edit. */
 export async function removeStop(token: string, index: number): Promise<Plan | null> {
   const spec = decodeSpec(token);
   if (!spec) return null;
-  const next: PlanSpec = { ...spec, s: spec.s.filter((_, i) => i !== index) };
-  return withWeather(reconstructPlan(next));
+  if (!Number.isInteger(index) || index < 0 || index >= spec.s.length) return null;
+  const next: PlanSpec = { ...spec, i: { ...spec.i }, s: spec.s.filter((_, i) => i !== index) };
+  if (spec.s[index] && "e" in spec.s[index] && spec.s[index].e === next.i.event_anchor_slug) delete next.i.event_anchor_slug;
+  return withWeather(await resolveSharedPlan(next));
 }
 
 /** Swap the stop at index for the next best alternative, then rebuild. */
 export async function swapStop(token: string, index: number): Promise<Plan | null> {
   const spec = decodeSpec(token);
   if (!spec) return null;
-  return withWeather(reconstructPlan(swapStopInSpec(spec, index)));
+  const context = await resolvePlanChoiceContext(spec);
+  if (!context.eventAvailable) return withWeather(reconstructPlan(spec, context.events));
+  const edited = swapStopInSpec(context.spec, index);
+  return withWeather(reconstructPlan({ ...edited, i: spec.i }, context.events));
 }
 
 /** The real alternatives for a slot, for the Swap chooser. An explicit
@@ -102,7 +111,8 @@ export async function stopAlternatives(
 ): Promise<PlanAlternative[]> {
   const spec = decodeSpec(token);
   if (!spec) return [];
-  return slotAlternatives(spec, index, category);
+  const context = await resolvePlanChoiceContext(spec);
+  return context.eventAvailable ? slotAlternatives(context.spec, index, category) : [];
 }
 
 /** Everything the Swap chooser needs on open, in one round trip: the
@@ -117,14 +127,16 @@ export async function stopSwapOptions(
 ): Promise<{ categories: PlanSlotCategory[]; alternatives: PlanAlternative[]; selected: string | null }> {
   const spec = decodeSpec(token);
   if (!spec) return { categories: [], alternatives: [], selected: null };
-  const categories = slotCategories(spec, index);
+  const context = await resolvePlanChoiceContext(spec);
+  if (!context.eventAvailable) return { categories: [], alternatives: [], selected: null };
+  const categories = slotCategories(context.spec, index);
   const selected =
     categories.find((c) => c.current && c.count > 0)?.category
     ?? categories.find((c) => c.count > 0)?.category
     ?? categories.find((c) => c.current)?.category
     ?? categories[0]?.category
     ?? null;
-  const alternatives = selected ? slotAlternatives(spec, index, selected) : [];
+  const alternatives = selected ? slotAlternatives(context.spec, index, selected) : [];
   return { categories, alternatives, selected };
 }
 
@@ -132,14 +144,14 @@ export async function stopSwapOptions(
 export async function setStop(token: string, index: number, slug: string): Promise<Plan | null> {
   const spec = decodeSpec(token);
   if (!spec) return null;
-  return withWeather(reconstructPlan(setStopInSpec(spec, index, slug)));
+  return withWeather(await resolveSharedPlan(setStopInSpec(spec, index, slug)));
 }
 
 /** Add a specific place (e.g. from Saved) to the plan, then rebuild. */
 export async function addStop(token: string, slug: string): Promise<Plan | null> {
   const spec = decodeSpec(token);
   if (!spec) return null;
-  return withWeather(reconstructPlan(addStopToSpec(spec, slug)));
+  return withWeather(await resolveSharedPlan(addStopToSpec(spec, slug)));
 }
 
 /** Re-roll the plan, keeping the pinned places, then rebuild. */
@@ -150,5 +162,8 @@ export async function reshufflePlan(
 ): Promise<Plan | null> {
   const spec = decodeSpec(token);
   if (!spec) return null;
-  return withWeather(reconstructPlan(reshuffleSpec(spec, pinnedSlugs, seed)));
+  const context = await resolvePlanChoiceContext(spec);
+  if (!context.eventAvailable) return withWeather(reconstructPlan(spec, context.events));
+  const edited = reshuffleSpec(context.spec, pinnedSlugs, seed);
+  return withWeather(reconstructPlan({ ...edited, i: { ...spec.i, seed } }, context.events));
 }
