@@ -23,6 +23,9 @@ export default function InterceptedDrawer({
     }
   };
 
+  // Route drawers open over a whole page of text (Today's alerts sit right
+  // behind "What do you need?"), so the default 85% surface let that copy
+  // read through. Text-bearing sheets take the opaque surface.
   return (
     <BottomDrawer
       open={true}
@@ -30,6 +33,7 @@ export default function InterceptedDrawer({
       title={title}
       subtitle={subtitle}
       bareHeader={bareHeader}
+      surface="solid"
     >
       {children}
     </BottomDrawer>

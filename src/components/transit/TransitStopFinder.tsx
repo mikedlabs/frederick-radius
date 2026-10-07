@@ -1243,8 +1243,7 @@ export default function TransitStopFinder() {
 
         {results.length > 0 && (
           <ul
-            className="mt-2 divide-y"
-            style={{ borderColor: "var(--app-border)" }}
+            className="mt-2 divide-y divide-[var(--app-border)]"
           >
             {results.map(({ stop, distance }) => (
               <li key={stop.id}>

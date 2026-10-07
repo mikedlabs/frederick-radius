@@ -76,7 +76,7 @@ export default async function OnTapNow() {
                       {section.name}
                     </p>
                   )}
-                  <ul className="reveal-up mt-1 divide-y" style={{ borderColor: "var(--app-border)" }}>
+                  <ul className="reveal-up mt-1 divide-y divide-[var(--app-border)]">
                     {section.items.map((item) => (
                       <li key={item.name} className="flex items-baseline justify-between gap-3 py-2">
                         <span className="min-w-0">

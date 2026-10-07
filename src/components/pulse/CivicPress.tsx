@@ -95,7 +95,7 @@ export function PoliceBreakingStrip({ item, now }: { item: CivicPressItem; now: 
 export function PoliceBlotter({ items, now }: { items: CivicPressItem[]; now: number }) {
   if (items.length === 0) return null;
   return (
-    <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
+    <ul className="divide-y divide-[var(--app-border)]">
       {items.map((item) => (
         <li key={item.url}>
           <a
@@ -154,7 +154,7 @@ export function AdvisoryCard({ items, now }: { items: CivicPressItem[]; now: num
         </h2>
       </header>
       <div className="px-4 py-1">
-        <ul className="divide-y" style={{ borderColor: "color-mix(in srgb, var(--app-border) 70%, transparent)" }}>
+        <ul className="divide-y divide-[color-mix(in_srgb,var(--app-border)_70%,transparent)]">
           {items.map((item) => (
             <li key={item.url}>
               <a href={item.url} target="_blank" rel="noopener noreferrer" className="tactile-interactive group flex items-start gap-3 py-2.5">

@@ -300,7 +300,7 @@ export function FairArrivalStatusView({
 
       {status.signals.length > 0 ? (
         <ul
-          className="mt-2 divide-y border-t sm:mt-4"
+          className="mt-2 divide-y divide-[var(--app-border)] border-t sm:mt-4"
           style={{ borderColor: "var(--app-border)" }}
         >
           {status.signals.map((signal) => (

@@ -494,7 +494,7 @@ function BuildingRecords({ records }: { records: ArchiveViewRecord[] }) {
             </p>
 
             {active.documentationStats?.length ? (
-              <dl className="grid grid-cols-3 divide-x rounded-[var(--app-radius-md)] border py-3" style={{ borderColor: "var(--app-border)" }}>
+              <dl className="grid grid-cols-3 divide-x divide-[var(--app-border)] rounded-[var(--app-radius-md)] border py-3" style={{ borderColor: "var(--app-border)" }}>
                 {active.documentationStats.map((stat) => (
                   <div key={stat.label} className="px-2 text-center">
                     <dd className="font-serif text-[22px] font-semibold tabular-nums">{stat.value}</dd>

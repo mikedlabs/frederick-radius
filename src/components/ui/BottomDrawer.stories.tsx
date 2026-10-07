@@ -149,7 +149,7 @@ export const OpenAt320: Story = {
 
 export const SolidSurface: Story = {
   parameters: {
-    docs: { description: { story: "An opaque detail layer for vendor information or dense text over a busy map. Existing drawers retain their default surface." } },
+    docs: { description: { story: "An opaque detail layer for vendor information or dense text over a busy map. Route drawers such as All tools use it so the page behind never reads through the sheet." } },
   },
   render: () => <DrawerFixture initiallyOpen surface="solid" />,
 };

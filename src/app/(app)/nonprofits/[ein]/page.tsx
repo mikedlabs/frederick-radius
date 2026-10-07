@@ -106,7 +106,7 @@ export default async function NonprofitDetailPage({
         <h2 className="mb-2 font-serif text-[19px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
           IRS filing snapshot
         </h2>
-        <dl className="divide-y border-y sm:grid sm:grid-cols-3 sm:divide-x sm:divide-y-0" style={{ borderColor: "var(--app-border)" }}>
+        <dl className="divide-y divide-[var(--app-border)] border-y sm:grid sm:grid-cols-3 sm:divide-x sm:divide-y-0" style={{ borderColor: "var(--app-border)" }}>
           {stats.map((s) => (
             <div
               key={s.label}

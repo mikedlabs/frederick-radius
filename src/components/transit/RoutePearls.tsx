@@ -247,7 +247,7 @@ export default function RoutePearls() {
           No buses are on the road right now.
         </p>
       ) : (
-        <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
+        <ul className="divide-y divide-[var(--app-border)]">
           {rows.map((row) => (
             <li key={row.route.id} className="px-3 py-2.5">
               {(() => {

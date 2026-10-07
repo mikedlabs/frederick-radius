@@ -24,7 +24,7 @@ export default function GoogleHours({ lines }: { lines: string[] }) {
         Hours
       </h2>
       <ul
-        className="divide-y rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 text-sm"
+        className="divide-y divide-[var(--app-border)] rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 text-sm"
         style={{ borderColor: "var(--app-border)" }}
       >
         {lines.map((line) => {

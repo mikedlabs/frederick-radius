@@ -79,7 +79,7 @@ export default function LocalSportsScoreboard() {
         </Link>
       </div>
 
-      <div className="divide-y" style={{ borderColor: "var(--app-border)" }}>
+      <div className="divide-y divide-[var(--app-border)]">
         {games.map((game) => (
           <div
             key={game.id}
@@ -87,7 +87,7 @@ export default function LocalSportsScoreboard() {
           >
             <div className="min-w-0">
               <div
-                className="flex flex-wrap items-center gap-x-1.5 text-[9px] font-bold uppercase tracking-[0.08em]"
+                className="flex flex-wrap items-center gap-x-1.5 text-[11px] font-bold uppercase tracking-[0.08em]"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 <span>{game.teamNickname}</span>
@@ -115,7 +115,7 @@ export default function LocalSportsScoreboard() {
                   href={game.ticketsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="tap-44 inline-flex items-center gap-1 text-[10px] font-semibold"
+                  className="tap-44 inline-flex items-center gap-1 text-[11px] font-semibold"
                   style={{ color: "var(--app-brand-press)" }}
                 >
                   Home tickets
@@ -123,7 +123,7 @@ export default function LocalSportsScoreboard() {
                 </a>
               ) : (
                 <span
-                  className="block text-[10px]"
+                  className="block text-[11px]"
                   style={{ color: "var(--app-ink-3)" }}
                 >
                   {game.homeAway === "away"

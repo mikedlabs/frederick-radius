@@ -896,7 +896,7 @@ function TicketPreparation({
               Day-specific promotions
               <ChevronDown className="h-4 w-4" aria-hidden />
             </summary>
-            <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
+            <ul className="divide-y divide-[var(--app-border)]">
               {eligibilityOffers.map((offer) => (
                 <li key={offer.id} className="py-3">
                   <div className="flex items-start justify-between gap-3">
@@ -2515,7 +2515,7 @@ export default function FairDayWorkspace({
                   <Tag className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>Special Admission Today</span>
                 </div>
-                <div className="divide-y" style={{ borderColor: "color-mix(in srgb, var(--app-brand) 15%, var(--app-border))" }}>
+                <div className="divide-y divide-[color-mix(in_srgb,var(--app-brand)_15%,var(--app-border))]">
                   {offersForSelectedDate.filter((offer) => offer.placement === "eligibility-promotion").map((offer) => (
                     <button
                       key={offer.id}

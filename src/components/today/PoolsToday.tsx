@@ -38,7 +38,7 @@ export default async function PoolsToday({ now }: { now: Date }) {
     <section className="mt-6 space-y-2.5" aria-label="Pools">
       <SectionHeading size="sm" title="Pools" accent="var(--app-cool)" />
 
-      <ul className="divide-y border-y" style={{ borderColor: "var(--app-border)" }}>
+      <ul className="divide-y divide-[var(--app-border)] border-y" style={{ borderColor: "var(--app-border)" }}>
         {openPools.map((p) => {
           const place = clientPlaceBySlug(p.slug);
           return (

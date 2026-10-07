@@ -66,7 +66,7 @@ export default function CostTransparency() {
         </div>
       </header>
 
-      <ul className="mt-4 divide-y" style={{ borderColor: "var(--app-border)" }}>
+      <ul className="mt-4 divide-y divide-[var(--app-border)]">
         {BUILD_LINES.map((line) => {
           const lo = Math.round((line.hours * line.rate_low_usd) / 100) / 10;
           const hi = Math.round((line.hours * line.rate_high_usd) / 100) / 10;

@@ -300,7 +300,7 @@ export default async function LiveMusicPage() {
                         style={{ background: "var(--app-border)" }}
                       />
                     </div>
-                    <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
+                    <ul className="divide-y divide-[var(--app-border)]">
                       {day.shows.map((e) => (
                         <li key={e.slug} style={{ borderColor: "var(--app-border)" }}>
                           <Link

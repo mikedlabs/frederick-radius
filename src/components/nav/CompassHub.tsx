@@ -1669,7 +1669,7 @@ function ToolLedger({
 }) {
   return (
     <ul
-      className="divide-y border-y bg-[var(--app-bg-elevated-solid)]"
+      className="divide-y divide-[var(--app-border)] border-y bg-[var(--app-bg-elevated-solid)]"
       style={{ borderColor: "var(--app-border)" }}
     >
       {items.map((item) => {

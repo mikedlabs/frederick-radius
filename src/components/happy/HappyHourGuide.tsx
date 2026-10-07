@@ -235,7 +235,7 @@ function IndexSection({ label, count, tone, items, nowMin }: { label: string; co
         <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: tone }}>{label}</h3>
         <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{count}</span>
       </div>
-      <ul className="divide-y" style={{ borderColor: "color-mix(in srgb, var(--app-border) 70%, transparent)" }}>
+      <ul className="divide-y divide-[color-mix(in_srgb,var(--app-border)_70%,transparent)]">
         {items.map((it) => <li key={it.r.slug}><PricedRow it={it} nowMin={nowMin} /></li>)}
       </ul>
     </section>
@@ -469,7 +469,7 @@ export default function HappyHourGuide({
                 <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>Schedule varies</h3>
                 <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{varies.length}</span>
               </div>
-              <ul className="divide-y" style={{ borderColor: "color-mix(in srgb, var(--app-border) 70%, transparent)" }}>
+              <ul className="divide-y divide-[color-mix(in_srgb,var(--app-border)_70%,transparent)]">
                 {variesVisible.map((r) => (
                   <li key={r.slug}>
                     <Link href={`/places/${r.slug}`} aria-label={`${r.name}${r.deal ? `: ${r.deal}` : ""}`} className="tactile-interactive block py-1.5">

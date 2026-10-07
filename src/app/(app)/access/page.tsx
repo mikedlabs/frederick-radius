@@ -213,7 +213,7 @@ export default function CommunicationAccessPage() {
         >
           Official accessibility information
         </h2>
-        <div className="mt-2 divide-y" style={{ borderColor: "var(--app-border)" }}>
+        <div className="mt-2 divide-y divide-[var(--app-border)]">
           {OFFICIAL_LINKS.map((item) => (
             <a
               key={item.href}

@@ -64,7 +64,7 @@ export default function HoursBlock({
             </span>
           </p>
         )}
-        <ul className="divide-y border-t text-sm" style={{ borderColor: "var(--app-border)" }}>
+        <ul className="divide-y divide-[var(--app-border)] border-t text-sm" style={{ borderColor: "var(--app-border)" }}>
           {week.map((row) => (
             <li key={row.day} className="flex items-center justify-between py-1.5">
               <span style={{ color: "var(--app-ink-2)" }}>{row.label}</span>

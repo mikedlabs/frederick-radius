@@ -801,7 +801,7 @@ function PlannerFields({
 
   return (
     <div className="space-y-3">
-      <div className="divide-y rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)" }}>
+      <div className="divide-y divide-[var(--app-border)] rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)" }}>
         <PickerRow label="Area" Icon={MapPin} action={
           <div className="flex min-w-0 items-center gap-1">
             <select
@@ -873,7 +873,7 @@ function PlannerFields({
           </span>
           <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" style={{ color: "var(--app-ink-3)" }} aria-hidden />
         </summary>
-        <div className="divide-y border-t" style={{ borderColor: "var(--app-border)" }}>
+        <div className="divide-y divide-[var(--app-border)] border-t" style={{ borderColor: "var(--app-border)" }}>
           <PickerRow label="Going with" Icon={UsersRound} controlId="plan-audience" action={
             <select
               id="plan-audience"

@@ -92,7 +92,7 @@ export default async function ReservePage() {
         </p>
       </header>
 
-      <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
+      <ul className="divide-y divide-[var(--app-border)]">
         {rows.map(({ p, reserve }) => {
           const town = MUNICIPALITY_BY_SLUG[p.municipality ?? ""]?.name;
           return (

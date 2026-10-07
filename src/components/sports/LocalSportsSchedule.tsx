@@ -110,7 +110,7 @@ export default async function LocalSportsSchedule({
         </a>
       </div>
 
-      <div className="divide-y" style={{ borderColor: "var(--app-border)" }}>
+      <div className="divide-y divide-[var(--app-border)]">
         {rows.map((game) => {
           const starts = new Date(game.startsAt);
           const result = resultLine(game);

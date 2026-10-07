@@ -129,7 +129,7 @@ function ScoreRow({
       >
         <span className="min-w-0 truncate">{name}</span>
         <span
-          className="shrink-0 font-mono text-[8.5px] font-bold uppercase tracking-[0.1em]"
+          className="shrink-0 font-mono text-[11px] font-bold uppercase tracking-[0.08em]"
           style={{ color: "rgba(26,21,14,0.58)" }}
         >
           {side}
@@ -169,7 +169,7 @@ export function KeysPregameMatchup({ score }: { score: Score }) {
     >
       <div className="min-w-0">
         <p
-          className="font-mono text-[8.5px] font-bold uppercase tracking-[0.12em]"
+          className="font-mono text-[11px] font-bold uppercase tracking-[0.08em]"
           style={{ color: KEYS_ORANGE_DEEP }}
         >
           {sideLabel}
@@ -188,7 +188,7 @@ export function KeysPregameMatchup({ score }: { score: Score }) {
         style={{ borderColor: "rgba(26,21,14,0.14)" }}
       >
         <span
-          className="block font-mono text-[8px] font-bold uppercase tracking-[0.1em]"
+          className="block font-mono text-[11px] font-bold uppercase tracking-[0.08em]"
           style={{ color: "rgba(26,21,14,0.58)" }}
         >
           First pitch
@@ -203,7 +203,7 @@ export function KeysPregameMatchup({ score }: { score: Score }) {
         <LiveCountdown
           targetIso={score.startsAt}
           prefix="in"
-          className="block font-mono text-[9px] font-semibold tabular-nums"
+          className="block font-mono text-[11px] font-semibold tabular-nums"
           style={{ color: KEYS_ORANGE_DEEP }}
         />
       </div>
@@ -294,7 +294,7 @@ export default function KeysScore({
           <span className="flex shrink-0 items-center gap-1.5">
             {score.state !== "pre" && (
               <span
-                className="inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                className="inline-flex rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider"
                 style={{
                   borderColor: score.keysHome ? KEYS_ORANGE_DEEP : "rgba(26,21,14,0.3)",
                   color: score.keysHome ? KEYS_ORANGE_DEEP : INK,
@@ -305,7 +305,7 @@ export default function KeysScore({
               </span>
             )}
             <span
-              className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+              className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider"
               style={
                 chip.live
                   ? { background: KEYS_ORANGE_DEEP, color: "#FFFDF8" }
@@ -362,7 +362,7 @@ export default function KeysScore({
               ? `Tickets for the Frederick Keys home game against ${score.opponent.name}`
               : `Official Frederick Keys schedule for the ${score.keysHome ? "home" : "away"} game against ${score.opponent.name}`
           }
-          className="tap-44-y relative z-20 mt-2.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
+          className="tap-44-y relative z-20 mt-2.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.1em]"
           style={{ borderColor: KEYS_ORANGE_DEEP, color: KEYS_ORANGE_DEEP }}
         >
           {action.label}

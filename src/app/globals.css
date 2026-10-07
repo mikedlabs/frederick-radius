@@ -523,19 +523,43 @@ button, [role="button"], .tactile, .tactile-interactive, .tap-44 {
    the FOCUSED ELEMENT (squaring rounded pills/cards to 4px on focus) and
    force the ring to that radius. Modern browsers already draw the outline
    following each element's own border-radius, so the ring traces the real
-   shape. Elements inside overflow-hidden cards can use .focus-ring-inset. */
-:focus-visible {
+   shape. Elements inside overflow-hidden cards can use .focus-ring-inset.
+
+   The base ring has ZERO specificity and must stay a standalone rule. The
+   production minifier folds ADJACENT rules with identical declarations into
+   one `:is(a, b)` selector, and :is() takes the specificity of its most
+   specific argument. When the search-shell ring sat directly under this
+   rule, the merged selector rose to (0,2,1) and beat the map and Ask search
+   inputs' own `outline: none`, drawing a rectangle inside their rounded
+   pills. :where() keeps every component's focus treatment in charge, and
+   the rules in this block are ordered so that no two neighbors share a
+   declaration block (src/app/shellCss.contract.spec.ts holds both). */
+:where(:focus-visible) {
   outline: 2px solid var(--app-brand);
   outline-offset: 2px;
 }
 /* SearchInput's text field lives inside the rounded visual control. Delegate
    the input ring to that shell so keyboard focus follows the pill instead of
-   drawing a rectangular outline through its icon and Clear action. */
+   drawing a rectangular outline through its icon and Clear action. The input
+   reset sits BETWEEN the base ring and the shell ring so the two rings can
+   never be merged into one selector. */
+.search-field-shell input:focus-visible {
+  outline: none;
+}
 .search-field-shell:has(input:focus-visible) {
   outline: 2px solid var(--app-brand);
   outline-offset: 2px;
 }
-.search-field-shell input:focus-visible {
+/* Headings and regions that receive programmatic focus (tabindex="-1") after
+   a route change, a result, or a selection are reading positions, not
+   controls. Follow the #main-content precedent below so they do not draw a
+   ring around a heading or a whole panel. Wrapped in :where() so a component
+   that wants a visible focus treatment on its region (.dock-pane) still
+   wins. Tailwind's `outline-none` cannot do this job: it sits in @layer
+   utilities and loses to the unlayered base ring. */
+:where(
+  :is(h1, h2, h3, h4, h5, h6, [role="heading"], section, [role="region"])[tabindex="-1"]:focus-visible
+) {
   outline: none;
 }
 /* Inset ring for interactive elements nested inside overflow-hidden /
@@ -2626,9 +2650,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 /* Specimen-plate ticks — fine corner marks (top-left + bottom-right)
    that frame a card like a printed plate, registration-mark style.
-   Asymmetric on purpose: reads as a drawn frame, not a full border. */
-.fg-plate {
-  position: relative;
+   Asymmetric on purpose: reads as a drawn frame, not a full border.
+   The host's positioning lives in the BASE layer, following .tap-44: an
+   unlayered `position: relative` overrode PlaceHero's `absolute inset-0`, so
+   the emblem plate collapsed to its content and hugged the top of the band. */
+@layer base {
+  .fg-plate {
+    position: relative;
+  }
 }
 .fg-plate::before,
 .fg-plate::after {
@@ -7188,7 +7217,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     padding: 8px;
     border: 1px solid var(--app-border);
     border-radius: var(--app-radius-md);
-    background: var(--app-bg-elevated);
+    /* Opaque for the same reason as .eb-pane: the popover sits over event
+       text, which showed through the translucent surface. */
+    background: var(--app-bg-elevated-solid);
     box-shadow: var(--app-shadow-2);
   }
 }
@@ -7263,7 +7294,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   z-index: 3;
   max-height: 0;
   overflow: hidden;
-  background: var(--app-bg-elevated);
+  /* Opaque: the pane carries filter text over the scrim-dimmed event list,
+     and the 85% surface let event titles read through the chips. */
+  background: var(--app-bg-elevated-solid);
   border: 1px solid var(--app-border);
   border-top: none;
   border-radius: 0 0 var(--app-radius-lg) var(--app-radius-lg);

@@ -208,7 +208,7 @@ export default async function AmenitiesPage({
             Show all essentials on the map
             <ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
           </Link>
-          <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
+          <ul className="divide-y divide-[var(--app-border)]">
             {moreAmenities.map((group) => {
               const Icon = group.icon;
               return (

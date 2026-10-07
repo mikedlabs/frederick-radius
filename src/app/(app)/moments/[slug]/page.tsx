@@ -238,7 +238,7 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
           <h2 className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: m.accent }}>
             {section.heading}
           </h2>
-          <ul className="mt-1 divide-y" style={{ borderColor: "var(--app-border)" }}>
+          <ul className="mt-1 divide-y divide-[var(--app-border)]">
             {section.items.map((item, i) => (
               <Item key={i} item={item} accent={m.accent} />
             ))}
@@ -251,7 +251,7 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
           <h2 className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: m.accent }}>
             Good to know
           </h2>
-          <dl className="mt-1 divide-y" style={{ borderColor: "var(--app-border)" }}>
+          <dl className="mt-1 divide-y divide-[var(--app-border)]">
             {m.faq.map((f) => (
               <div key={f.q} className="py-3">
                 <dt className="font-serif text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>

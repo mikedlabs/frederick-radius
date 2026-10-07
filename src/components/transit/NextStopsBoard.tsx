@@ -100,7 +100,7 @@ export default function NextStopsBoard() {
           {stale ? "Delayed" : status === "degraded" ? "Arrivals unavailable" : `${rows.length} live`}
         </span>
       </div>
-      <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
+      <ul className="divide-y divide-[var(--app-border)]">
         {shown.map(({ v, route, mins }) => {
           const color = route?.color ?? "#285D73";
           return (
