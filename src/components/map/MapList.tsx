@@ -233,8 +233,11 @@ export default function MapList({
               </h2>
               <ul className="map-list-rows">
                 {eventRows.map((event) => {
-                  const dist = effectiveOrigin
-                    ? formatDistance(haversineMeters(effectiveOrigin, { lng: event.lng, lat: event.lat }))
+                  // Like place rows, a distance is a claim about where the
+                  // reader is. The map center can order the list but never
+                  // label a row's distance.
+                  const dist = userLoc
+                    ? formatDistance(haversineMeters(userLoc, { lng: event.lng, lat: event.lat }))
                     : null;
                   return (
                     <li key={event.slug}>

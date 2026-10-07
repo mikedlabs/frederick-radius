@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Armchair, Baby, Beer, Bike, BusFront, Check, ChevronDown, ChevronLeft, ChevronRight, Church, Clock, CloudSun, Coffee, Construction, Dog, Droplets, Gauge, Heart, History, Hotel, Landmark, Layers3, LoaderCircle, LocateFixed, MapPin, MoreHorizontal, Music, NotebookPen, Palette, PlugZap, Search as SearchIcon, Share2, ShieldPlus, ShoppingBag, Tag, TimerReset, Trash2, Trees, Utensils, Waves, Waypoints, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
+import { Armchair, Baby, Beer, Bike, BusFront, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Church, Clock, CloudSun, Coffee, Construction, Dog, Droplets, Gauge, Heart, History, Hotel, Landmark, Layers3, LayoutGrid, LoaderCircle, LocateFixed, MapPin, MoreHorizontal, Music, NotebookPen, Palette, PlugZap, Search as SearchIcon, Share2, ShieldPlus, ShoppingBag, Tag, TimerReset, Trash2, Trees, Utensils, Waves, Waypoints, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
 import RestroomMark from "@/components/icons/RestroomMark";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -33,7 +33,6 @@ import { track } from "@/lib/track";
 import { consumeFindRequest } from "@/lib/findBridge";
 import {
   TIME_WINDOWS,
-  countLine,
   dockDirty,
   layerStatusLine,
   layersCaption,
@@ -56,6 +55,17 @@ import type { LiveBusLayerSnapshot } from "./LiveBuses";
 import { shouldOfferMapLocationForUrl } from "./mapLocationIntro";
 import { focusMapBeforeDockDismiss } from "./mapDockFocus";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
+import MapListPeek from "./MapListPeek";
+import {
+  MAP_TASK_PARAM,
+  MAP_TASK_TILES,
+  mapTaskLabel,
+  parseMapClientTask,
+  type MapTaskId,
+  type MapTaskList,
+} from "./mapListTask";
+import type { EventPin } from "./types";
 import type {
   MapLayerGroup,
   MapLayerSourceHealth,
@@ -202,14 +212,29 @@ export type MapDockProps = {
   // ── Search, folded into the dock's top row (the map's ONE search). ──
   q: string;
   setQ: SetState<string>;
+  /** Enter with no highlighted option, or "Show all results": the camera
+   * stays put, only matching pins show, and the ranked list rises. */
+  submitSearch?: (query: string) => void;
   searchMatches: SearchResult[];
   searchPending: boolean;
   searchUnavailable: boolean;
   retrySearch: () => void;
   searchOpeningId: string | null;
   pickSearch: (r: SearchResult) => void;
-  /** Honest origin attached to map-search distances. */
-  searchDistanceOriginLabel: "from you" | "from map center" | null;
+  /** Distance is labeled only from a real device fix. The map center is not
+   * where anyone is standing, so there is no map-center form. */
+  searchDistanceOriginLabel: "from you" | null;
+
+  // ── The active task's ranked list (one per map, inside this dock). ──
+  taskList?: MapTaskList | null;
+  taskListExpanded?: boolean;
+  onTaskListExpandedChange?: (expanded: boolean) => void;
+  onPickTaskPlace?: (place: MapPinPlace) => void;
+  onPickTaskEvent?: (event: EventPin) => void;
+  /** The "What to see" tile that matches the current view, if any. */
+  activeTask?: MapTaskId | null;
+  /** Start a tile task within the header scope, or clear tasks with null. */
+  onMapTask?: (id: MapTaskId | null) => void;
 
   /** Hook point for the server-side verified-hours coverage gate. */
   openNowAvailable?: boolean;
@@ -432,6 +457,28 @@ function HeadRow({
 function Sect({ children }: { children: ReactNode }) {
   return <div className="dock-sect">{children}</div>;
 }
+
+/** The "What to see" tiles reuse the category poster tile: a tint of the
+ * category's own color and its watermark mark, so a need reads by color and
+ * shape before the word. Colors come from the shared category and intent
+ * tables the pins use, or a brand token where the tile is not a category. */
+const TASK_TILE_VISUALS: Record<MapTaskId, { Icon: LucideIcon; color: string }> = {
+  eat: {
+    Icon: Utensils,
+    color: INTENTS.find((intent) => intent.key === "eat")?.color ?? "var(--app-brand)",
+  },
+  coffee: {
+    Icon: Coffee,
+    color: CATEGORY_BY_SLUG.coffee?.color ?? "var(--app-brand)",
+  },
+  drinks: {
+    Icon: Wine,
+    color: CATEGORY_BY_SLUG.bar?.color ?? "var(--app-brand)",
+  },
+  "parks-trails": { Icon: Trees, color: "var(--app-brand-2)" },
+  "likely-open": { Icon: Clock, color: "var(--app-positive)" },
+  "events-tonight": { Icon: CalendarDays, color: "var(--app-brand)" },
+};
 
 const SCENE_ICONS: Record<RadiusSceneId, LucideIcon> = {
   "buses-now": BusFront,
@@ -947,21 +994,17 @@ export default function MapDock(props: MapDockProps) {
     props.goNearMe();
   };
 
-  const applyNearbyOutcome = () => {
+  /** A "What to see" tile applies within the header's current scope, closes
+   * the chooser, and lets the ranked list answer. The old Nearby row changed
+   * the location scope from inside this sheet and duplicated the header chip,
+   * which is the only Near me control (map audit MAP-05). Tapping the lit tile
+   * again clears it. */
+  const pickTask = (id: MapTaskId) => {
     haptic("light");
-    track("map_dock", { pane: "contents", pick: "nearby" });
-    props.onExitRadiusScene();
-    clearMapLayersForOutcome();
-    props.setScrubHour(null);
-    setParams((params) => {
-      for (const key of ["intent", "sub", "open", "deals", "music", "t", "scene"]) {
-        params.delete(key);
-      }
-    });
-    props.goNearMe();
-    setPlaceReveal(null);
-    setEssentialsQuick(false);
-    setPane("what");
+    const clearing = props.activeTask === id;
+    track("map_dock", { pane: "contents", pick: clearing ? `${id}-off` : id });
+    props.onMapTask?.(clearing ? null : id);
+    closePane();
   };
 
   // A successful location update naturally re-renders this component. Derive
@@ -977,6 +1020,10 @@ export default function MapDock(props: MapDockProps) {
   // ── Derived caption state ──
   const intent = browse.intentKey ? INTENTS.find((i) => i.key === browse.intentKey) : undefined;
   const sub = intent?.subIntents?.find((s) => s.key === browse.subKey);
+  // "Drinks", "Parks & trails", and "Likely open now" are place tasks too, so
+  // the context rail and Reset treat them the way they treat a category.
+  const clientTask = parseMapClientTask(props.activeTask);
+  const clientTaskLabel = clientTask ? mapTaskLabel(clientTask) : undefined;
   const communityReportsOn = props.amenityGroups.has("community");
   const publicAmenityCount = [...props.amenityGroups].filter((key) => key !== "community").length;
 
@@ -1042,7 +1089,7 @@ export default function MapDock(props: MapDockProps) {
   const layers = layersCaption([...layerBits, ...lensLabels]);
 
   const dirty = dockDirty({
-    intentActive: Boolean(intent),
+    intentActive: Boolean(intent || clientTask),
     openNow: browse.openNow,
     dealsOn: browse.dealsOn,
     musicTonight: browse.musicTonight,
@@ -1072,7 +1119,7 @@ export default function MapDock(props: MapDockProps) {
     : mapContentsSummary({
         area: whereText,
         amenity: firstAmenityLabel,
-        intent: intent?.label,
+        intent: intent?.label ?? clientTaskLabel,
         time: timeActive ? when.text : undefined,
         layer: layerBits[0] ?? lensLabels[0],
       });
@@ -1087,7 +1134,7 @@ export default function MapDock(props: MapDockProps) {
         : `${firstAmenityCount.toLocaleString("en-US")} mapped. Use Near me for the closest result.`
       : null);
   const refinementCount =
-    (intent ? 1 : 0) +
+    (intent || clientTask ? 1 : 0) +
     (browse.openNow ? 1 : 0) +
     (browse.dealsOn ? 1 : 0) +
     (browse.musicTonight ? 1 : 0) +
@@ -1110,14 +1157,12 @@ export default function MapDock(props: MapDockProps) {
     activeOptionCount - (props.smartSeededLayerCount ?? 0),
   );
 
+  // The sheet states the current view in words. A "1,570 places · 26 events"
+  // tally read as the headline of the sheet and helped nobody choose (map
+  // audit MAP-05). Counts stay supporting detail on the tiles and rows.
   const line = props.locating && nearMeRequested && !props.userLoc
     ? "Finding places near you…"
-    : countLine({
-        places: props.placeCount,
-        events: props.eventCount,
-        closingSoon: props.closingSoonCount,
-        scrubHour: props.scrubHour,
-      });
+    : contentsSummary;
 
   const clearMapLayersForOutcome = () => {
     clearLayerParamsImmediately();
@@ -1158,7 +1203,7 @@ export default function MapDock(props: MapDockProps) {
     // The deep focus target goes too, because the camera has just returned to
     // the whole county and a shared URL must reopen in that same state.
     setParams((q) => {
-      for (const key of ["intent", "sub", "open", "deals", "music", "t", "amenity", "show", "layers", "scene", "at", "place", SCOPE_PARAM]) {
+      for (const key of ["intent", "sub", "open", "deals", "music", "t", MAP_TASK_PARAM, "amenity", "show", "layers", "scene", "at", "place", SCOPE_PARAM]) {
         q.delete(key);
       }
     });
@@ -1245,7 +1290,7 @@ export default function MapDock(props: MapDockProps) {
     pane === "contents" ? "Choose what to see"
     : pane === "amenities" ? "Nearby essentials"
     : pane === "what"
-      ? "Find nearby"
+      ? "Place categories"
     : pane === "when" ? "Today & tonight"
     : pane === "where" ? "Choose an area"
     : pane === "discover" ? "Highlights"
@@ -1488,6 +1533,37 @@ export default function MapDock(props: MapDockProps) {
     if (!result.temporary) searchInputRef.current?.blur();
   };
 
+  /** Enter with nothing highlighted, or "Show all results", submits the
+   * phrase. It used to open the first row, which flew the camera to one shop
+   * while the map still showed the whole catalog (map audit MAP-02). */
+  const submitTypedSearch = () => {
+    const text = props.q.trim();
+    if (text.length < 2 || searchResultBusy) return;
+    flushMapSearchUrl();
+    setSearchSelection({ query: "", index: -1 });
+    closeSearchPanel();
+    searchInputRef.current?.blur();
+    props.submitSearch?.(text);
+  };
+
+  /** Leave the map for every Radius listing, with one exact return URL. */
+  const openFullSearch = (query: string) => {
+    flushMapSearchUrl();
+    const current = new URL(window.location.href);
+    current.searchParams.set("q", query);
+    const returnTo =
+      normalizeMapReturnTo(
+        `${current.pathname}${current.search}${current.hash}`,
+      ) ?? "/map";
+    // A document navigation avoids an App Router race where the panel could
+    // close while the search transition was cancelled, making the tap appear
+    // to do nothing.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign(
+      `/search?q=${encodeURIComponent(query)}&returnTo=${encodeURIComponent(returnTo)}`,
+    );
+  };
+
   const moveSearchSelection = (direction: 1 | -1) => {
     if (
       props.q.trim().length < 2 ||
@@ -1579,7 +1655,7 @@ export default function MapDock(props: MapDockProps) {
           </div>
         )}
       <div
-        className={`dock${mapAvailable && pane ? " dock-open" : ""}`}
+        className={`dock flex flex-col${mapAvailable && pane ? " dock-open" : ""}`}
         data-map-dock
         data-map-available={mapAvailable ? "true" : "false"}
         data-pane={mapAvailable ? pane ?? undefined : undefined}
@@ -1644,6 +1720,29 @@ export default function MapDock(props: MapDockProps) {
             </div>
           </section>
         )}
+        {/* The answer to the active task: a ranked list inside this one dock,
+            above the thumb search on phones and under the desktop search. It
+            steps aside while the chooser, the search panel, or the first-use
+            location offer owns the dock. */}
+        {mapAvailable &&
+          props.taskList &&
+          pane === null &&
+          !searchPanelOpen &&
+          !locationOfferVisible && (
+            <div className="max-lg:mb-2 lg:order-1 lg:mt-2">
+              <MapListPeek
+                list={props.taskList}
+                expanded={props.taskListExpanded ?? true}
+                onExpandedChange={(expanded) =>
+                  props.onTaskListExpandedChange?.(expanded)
+                }
+                userLoc={props.userLoc}
+                onPickPlace={(place) => props.onPickTaskPlace?.(place)}
+                onPickEvent={(event) => props.onPickTaskEvent?.(event)}
+                onSearchAll={openFullSearch}
+              />
+            </div>
+          )}
         {/* The top-bar scope chip already owns Near me. Keep one map search and
             one outcome menu here instead of repeating the same location action. */}
         <div
@@ -1717,12 +1816,18 @@ export default function MapDock(props: MapDockProps) {
                     moveSearchSelection(-1);
                     return;
                   }
-                  if (event.key === "Enter" && searchResultsVisible) {
+                  if (event.key === "Enter") {
                     event.preventDefault();
                     event.stopPropagation();
-                    chooseSearchResult(
-                      activeSearchResult ?? visibleSearchMatches[0],
-                    );
+                    if (searchResultsVisible && activeSearchResult) {
+                      chooseSearchResult(activeSearchResult);
+                    } else if (props.submitSearch && mapAvailable) {
+                      submitTypedSearch();
+                    } else if (searchResultsVisible && visibleSearchMatches[0]) {
+                      // Without a live map there is no list to raise, so the
+                      // readable fallback keeps opening the first result.
+                      chooseSearchResult(visibleSearchMatches[0]);
+                    }
                     return;
                   }
                   if (event.key === "Escape") {
@@ -1855,31 +1960,34 @@ export default function MapDock(props: MapDockProps) {
                 </ul>
                 {props.searchMatches.length > searchResultLimit && (
                   <div className="dock-search-more-item">
+                    {props.submitSearch && mapAvailable ? (
+                      // The full answer stays on the map: the same ranked list
+                      // Enter raises, instead of a different ranker on /search.
+                      <button
+                        type="button"
+                        className="dock-search-more"
+                        onPointerDown={(event) => event.preventDefault()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          submitTypedSearch();
+                        }}
+                      >
+                        Show all results
+                        <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                      </button>
+                    ) : (
                     <button
                       type="button"
                       className="dock-search-more"
                       onClick={(event) => {
                         event.stopPropagation();
-                        flushMapSearchUrl();
-                        const current = new URL(window.location.href);
-                        current.searchParams.set("q", props.q.trim());
-                        const returnTo =
-                          normalizeMapReturnTo(
-                            `${current.pathname}${current.search}${current.hash}`,
-                          ) ?? "/map";
-                        // This leaves the map with one exact return URL. A
-                        // document navigation avoids an App Router race where
-                        // the panel could close while the search transition was
-                        // cancelled, making the tap appear to do nothing.
-                        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-                        window.location.assign(
-                          `/search?q=${encodeURIComponent(props.q.trim())}&returnTo=${encodeURIComponent(returnTo)}`,
-                        );
+                        openFullSearch(props.q.trim());
                       }}
                     >
                       See all results
                       <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                     </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -1965,19 +2073,7 @@ export default function MapDock(props: MapDockProps) {
                 <div className="dock-search-empty-actions">
                   <button
                     type="button"
-                    onClick={() => {
-                      flushMapSearchUrl();
-                      const current = new URL(window.location.href);
-                      current.searchParams.set("q", props.q.trim());
-                      const returnTo =
-                        normalizeMapReturnTo(
-                          `${current.pathname}${current.search}${current.hash}`,
-                        ) ?? "/map";
-                      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-                      window.location.assign(
-                        `/search?q=${encodeURIComponent(props.q.trim())}&returnTo=${encodeURIComponent(returnTo)}`,
-                      );
-                    }}
+                    onClick={() => openFullSearch(props.q.trim())}
                   >
                     Search all Radius
                   </button>
@@ -2045,7 +2141,13 @@ export default function MapDock(props: MapDockProps) {
           onKeyDown={onPaneKeyDown}
         >
           <div className="dock-pane-scroll" ref={paneScrollRef}>
-            <div className="dock-pane-head">
+            {/* The scroll box's top padding sat above the sticky header, so
+                rows scrolled into view over it (map audit MAP-05). A solid
+                band in the sheet's own color closes that gap. */}
+            <div
+              className="dock-pane-head"
+              style={{ boxShadow: "0 -16px 0 var(--app-bg-elevated-solid)" }}
+            >
               {pane !== "contents" ? (
                 <button
                   type="button"
@@ -2068,16 +2170,12 @@ export default function MapDock(props: MapDockProps) {
               </button>
             </div>
 
-            {/* The contents index already explains its rows. Keep the count
-                bar out of that clean first sheet unless there is state to
-                reset; deeper panes retain the live, viewport-honest count. */}
-            {/* Amenities was the one pane that never showed the bar, so a
-                person who switched on restrooms and water had no Reset
-                anywhere in it — the escape hatch went missing exactly where
-                state had been added (mobile audit 2026-08-18). It now follows
-                the contents rule: silent when at rest, present once dirty. */}
-            {((pane === "contents" || pane === "amenities") && dirty) ||
-            (pane !== "contents" && pane !== "amenities") ? (
+            {/* The bar names the current view in words and offers Reset once
+                something is chosen, in every pane (the amenities pane once
+                lost its Reset exactly where state had been added, mobile
+                audit 2026-08-18). It no longer leads a sheet with a
+                "1,570 places · 26 events" tally (map audit MAP-05). */}
+            {dirty || pane === "discover" || isLayerPane ? (
               <div className="dock-countbar">
                 <div className="dock-countline" aria-live="polite">
                   {pane === "discover"
@@ -2145,6 +2243,59 @@ export default function MapDock(props: MapDockProps) {
                 <div className="dock-content-heading" aria-hidden>
                   What do you need?
                 </div>
+                {/* The first screen is the common needs, as the same poster
+                    tiles the category grid uses. One tap applies the need
+                    within the header scope, closes this sheet, and raises the
+                    ranked list. Coffee used to sit four taps deep behind a
+                    Nearby row that changed location scope (map audit MAP-05). */}
+                <div
+                  className="dock-cat-grid pb-2.5 pt-1 lg:p-2.5"
+                  role="group"
+                  aria-label="Show a common need on the map"
+                >
+                  {MAP_TASK_TILES.map((tile) => {
+                    const visual = TASK_TILE_VISUALS[tile.id];
+                    const Icon = visual.Icon;
+                    const on = props.activeTask === tile.id;
+                    return (
+                      <button
+                        key={tile.id}
+                        type="button"
+                        className="dock-cat"
+                        data-map-task={tile.id}
+                        data-on={on || undefined}
+                        aria-pressed={on}
+                        onClick={() => pickTask(tile.id)}
+                        style={{ "--c": visual.color } as React.CSSProperties}
+                      >
+                        <span aria-hidden className="dock-cat-art">
+                          <Icon className="h-16 w-16" strokeWidth={1.5} />
+                        </span>
+                        <span className="dock-cat-t">{tile.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="dock-content-primary">
+                <button
+                  type="button"
+                  className="dock-content-row dock-content-row-primary"
+                  data-on={Boolean(intent) || undefined}
+                  onClick={() => openContentsPane("what", "categories")}
+                >
+                  <span className="dock-content-icon" aria-hidden>
+                    <LayoutGrid className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                  </span>
+                  <span className="dock-content-copy">
+                    <strong>All place categories</strong>
+                    <small>{intent ? (sub?.label ?? intent.label) : "Food, parks, shops, and more"}</small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
+                </div>
+                <div className="dock-content-heading mt-3 lg:mt-0" aria-hidden>
+                  More map views
+                </div>
                 <div className="dock-content-primary">
                 {/* The 2-tap route to a restroom existed only as an unlabeled
                     tap on the user-location dot — invisible, and present only
@@ -2170,26 +2321,6 @@ export default function MapDock(props: MapDockProps) {
                   <span className="dock-content-copy">
                     <strong>Public essentials</strong>
                     <small>Restrooms, water, trash, and dog needs</small>
-                  </span>
-                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                </button>
-                </div>
-                <div className="dock-content-heading" aria-hidden>
-                  Start a map view
-                </div>
-                <div className="dock-content-primary">
-                <button
-                  type="button"
-                  className="dock-content-row dock-content-row-primary"
-                  data-on={activeWhereSel.kind === "nearme" || undefined}
-                  onClick={applyNearbyOutcome}
-                >
-                  <span className="dock-content-icon" aria-hidden>
-                    <LocateFixed className="h-[18px] w-[18px]" strokeWidth={2.1} />
-                  </span>
-                  <span className="dock-content-copy">
-                    <strong>Nearby</strong>
-                    <small>Show what is closest to you</small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
@@ -2534,21 +2665,36 @@ export default function MapDock(props: MapDockProps) {
                 <TimeScrubber hour={props.scrubHour} onChange={props.setScrubHour} />
 
                 <Sect>Places right now</Sect>
-                <button
-                  type="button"
-                  className="dock-opennow"
-                  data-on={browse.openNow || undefined}
-                  aria-pressed={browse.openNow}
-                  disabled={props.openNowAvailable === false}
-                  title={props.openNowAvailable === false ? props.openNowUnavailableLabel ?? "Open-now filtering is unavailable until more hours are verified" : undefined}
-                  onClick={toggleOpenNow}
-                >
-                  <Clock className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-                  {props.openNowAvailable === false ? "Open now unavailable" : "Open now"}
-                  {props.openNowAvailable !== false && (
+                {/* A disabled, unavailable Open now row offered nothing to
+                    do (map audit MAP-05). When too few hours are confirmed
+                    for the verified filter, the honest choice is /open-now's
+                    likely-open set, labeled as likely. */}
+                {props.openNowAvailable === false ? (
+                  props.onMapTask && (
+                    <button
+                      type="button"
+                      className="dock-opennow"
+                      data-on={props.activeTask === "likely-open" || undefined}
+                      aria-pressed={props.activeTask === "likely-open"}
+                      onClick={() => pickTask("likely-open")}
+                    >
+                      <Clock className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                      Likely open now
+                    </button>
+                  )
+                ) : (
+                  <button
+                    type="button"
+                    className="dock-opennow"
+                    data-on={browse.openNow || undefined}
+                    aria-pressed={browse.openNow}
+                    onClick={toggleOpenNow}
+                  >
+                    <Clock className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                    Open now
                     <span className="dock-opennow-n">{browse.openNowCount.toLocaleString("en-US")}</span>
-                  )}
-                </button>
+                  </button>
+                )}
                 {showDeals && (
                   <button
                     type="button"
@@ -2928,7 +3074,7 @@ export default function MapDock(props: MapDockProps) {
                   {(props.scenicRouteCount > 0 || props.providerLayersAvailable) && (
                     <Chip
                       on={props.showScenicRoutes}
-                      color="#f97316"
+                      color="var(--app-brand-2)"
                       onClick={() => props.setShowScenicRoutes((v) => !v)}
                       count={props.scenicRouteCount || undefined}
                       title="Scenic Routes and Byways"
@@ -2940,7 +3086,7 @@ export default function MapDock(props: MapDockProps) {
                   {(props.coveredBridgeCount > 0 || props.providerLayersAvailable) && (
                     <Chip
                       on={props.showCoveredBridges}
-                      color="#ef4444"
+                      color="var(--app-ink-2)"
                       onClick={() => props.setShowCoveredBridges((v) => !v)}
                       count={props.coveredBridgeCount || undefined}
                       title="Historic Covered Bridges"

@@ -136,7 +136,6 @@ import {
   buildCuratedGeoJson,
   buildDotGeoJson,
   buildEventScrubTimes,
-  buildEventsGeoJson,
   buildFilteredOsmGeoJson,
   buildPlaceDupeIndex,
   buildRingGeoJson,
@@ -226,6 +225,21 @@ import {
   reconcileMapSearchResults,
 } from "./mapLocalPlaceSearch";
 import { mapSearchResultsForRenderer } from "./mapSearchVisibility";
+import {
+  MAP_SEARCH_RESULT_LIMIT,
+  MAP_TASK_PARAM,
+  activeMapTask,
+  applyMapIntentToParams,
+  applyMapTaskToParams,
+  buildMapTaskList,
+  isMapCommandResult,
+  mapQueryRoute,
+  parseMapClientTask,
+  placesForMapClientTask,
+  type MapTaskId,
+} from "./mapListTask";
+import { TIME_WINDOW_LABEL } from "./dockCaption";
+import { getIntentByKey, type IntentKey } from "@/data/intents";
 import { nearbyReachBounds, placesWithinReach } from "./mapNearbyScope";
 import {
   AMENITY_GROUPS,
@@ -1159,10 +1173,20 @@ export default function AppMap({
   const routeSelectionToken = routeSearchParams.get(
     MAP_SELECTION_TOKEN_PARAM,
   );
+  // "Drinks", "Parks & trails", and "Likely open now" have no intent or time
+  // param of their own, so they ride `?task=` and survive Back and sharing.
+  const clientTask = parseMapClientTask(routeSearchParams.get(MAP_TASK_PARAM));
   const [q, setQ] = useState(() => {
     if (typeof window === "undefined") return "";
     return (new URLSearchParams(window.location.search).get("q") ?? "").slice(0, 160);
   });
+  // Enter (or "Show all results") turns the typed phrase into a map task: the
+  // camera stays put, only matching pins remain, and the ranked list rises.
+  // A query that arrives in the URL (a shared link, or the return from a place
+  // page) was already submitted, so its list comes back with it.
+  const [submittedQuery, setSubmittedQuery] = useState<string | null>(() =>
+    q.trim().length >= 2 ? q.trim() : null,
+  );
   const searchLiveQueryRef = useRef(q);
   const searchRequestRef = useRef(0);
   const searchRetrieveInFlightRef =
@@ -1187,6 +1211,11 @@ export default function AppMap({
       if (next !== searchLiveQueryRef.current) {
         searchLiveQueryRef.current = next;
         invalidateTemporaryMapboxRetrieve();
+        // Editing the phrase withdraws the submitted list; Enter raises the
+        // list for the new phrase.
+        setSubmittedQuery((current) =>
+          current !== null && current === next.trim() ? current : null,
+        );
       }
       // MapDock serializes a trimmed query into the URL. Track that exact
       // representation so a harmless trailing space cannot leave route/back
@@ -1225,6 +1254,9 @@ export default function AppMap({
       searchLiveQueryRef.current = liveRouteQuery;
       invalidateTemporaryMapboxRetrieve();
       setQ(liveRouteQuery);
+      setSubmittedQuery(
+        liveRouteQuery.trim().length >= 2 ? liveRouteQuery.trim() : null,
+      );
     }
   }, [invalidateTemporaryMapboxRetrieve, routeQuery]);
   // Back and Forward are browser actions, so restore their exact query from
@@ -1241,6 +1273,7 @@ export default function AppMap({
       searchLiveQueryRef.current = next;
       invalidateTemporaryMapboxRetrieve();
       setQ(next);
+      setSubmittedQuery(next.trim().length >= 2 ? next.trim() : null);
     };
     window.addEventListener("popstate", restoreBrowserQuery);
     return () => window.removeEventListener("popstate", restoreBrowserQuery);
@@ -1475,6 +1508,7 @@ export default function AppMap({
   const explicitPlaceTaskActive =
     q.trim().length >= 2 ||
     Boolean(dock?.intentKey || dock?.subKey) ||
+    Boolean(clientTask) ||
     amenityLayerActive ||
     Boolean(selectedSlug || peekPlace || selectedDiscovery) ||
     Boolean(activeSlugs);
@@ -1663,7 +1697,7 @@ export default function AppMap({
   // The camera and the result area are deliberately separate. Camera bounds
   // follow every settled pan so off-screen DOM pins leave the tab order. The
   // result bounds move only after a programmatic camera action or an explicit
-  // "Show results here" tap, which keeps counts and recommendations from
+  // "Search this area" tap, which keeps counts and recommendations from
   // shuffling under a person's finger while they explore.
   const [cameraBounds, setCameraBounds] = useState<MapViewportBounds | null>(null);
   const [cameraZoom, setCameraZoom] = useState<number | null>(null);
@@ -2678,12 +2712,32 @@ export default function AppMap({
       .filter((slug) => places.some((place) => place.slug === slug));
     return slugs.length > 0 ? new Set(slugs) : null;
   }, [places, q, searchMatches]);
-  const visualMatchSet = discoveryPlaceSet ?? searchPlaceSet ?? matchSet;
+  // A tile task the URL intents cannot express ("Drinks", "Parks & trails",
+  // "Likely open now") filters the source the same way a category does.
+  // Likely-open is a clock rule, so it follows the same minute tick as the
+  // map's findings.
+  const clientTaskSet = useMemo(() => {
+    if (!clientTask) return null;
+    return new Set(
+      placesForMapClientTask(
+        filteredPlaces,
+        clientTask,
+        new Date(discoveryClockMs),
+      ).map((place) => place.slug),
+    );
+  }, [clientTask, discoveryClockMs, filteredPlaces]);
+  // The newest task owns the source. A typed query used to emphasize its
+  // matches over the whole catalog, so "coffee" drew clusters of 1.1k, 193,
+  // and 90 while the panel listed three rows (map audit MAP-02). Mapbox
+  // clusters before it paints, so only a filtered source keeps the pins, the
+  // cluster counts, and the list telling the same story.
+  const sourceMatchSet = searchPlaceSet ?? clientTaskSet ?? matchSet;
+  const visualMatchSet = discoveryPlaceSet ?? sourceMatchSet;
   // What the dock counts, list, curated pins, and curated clusters all use:
-  // the lens-filtered places intersected with the active URL match set.
+  // the lens-filtered places intersected with the active task's match set.
   const visiblePlaces = useMemo(
-    () => curatedPlacesForMapSource(filteredPlaces, matchSet),
-    [filteredPlaces, matchSet],
+    () => curatedPlacesForMapSource(filteredPlaces, sourceMatchSet),
+    [filteredPlaces, sourceMatchSet],
   );
 
   // The Near me lens is the one-mile Radius drawn around the device fix. It
@@ -2822,14 +2876,6 @@ export default function AppMap({
     return inside.length;
   };
 
-  const commitCurrentResultArea = () => {
-    const map = mapRef.current?.getMap();
-    if (!map) return;
-    const count = commitResultViewport(map, { announce: true, writeUrl: true });
-    haptic("light");
-    track("map_results_area_commit", { place_count: count });
-  };
-
   // Spatial hash of curated places (as DedupeRecords) for the OSM
   // de-dupe — keyed so a ±1 neighborhood spans the shared rule radius.
   const placeDupeIndex = useMemo(() => buildPlaceDupeIndex(places), [places]);
@@ -2840,8 +2886,8 @@ export default function AppMap({
   );
 
   const filteredOsmGeoJson = useMemo(
-    () => buildFilteredOsmGeoJson(osmPlaces, matchSet !== null, osmDupesCurated),
-    [matchSet, osmPlaces, osmDupesCurated],
+    () => buildFilteredOsmGeoJson(osmPlaces, sourceMatchSet !== null, osmDupesCurated),
+    [sourceMatchSet, osmPlaces, osmDupesCurated],
   );
 
   // Which raw amenity category slugs are active, from the selected groups.
@@ -3396,7 +3442,13 @@ export default function AppMap({
     }
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
-      const params = new URLSearchParams({ q: term, limit: "6", origin: "map" });
+      // The dropdown shows three or four rows, but a submitted query owes a
+      // ranked list and a filtered map, so ask for the server's full page.
+      const params = new URLSearchParams({
+        q: term,
+        limit: String(MAP_SEARCH_RESULT_LIMIT),
+        origin: "map",
+      });
       if (explicitSearchScope && explicitSearchScope !== "nearme") params.set(SCOPE_PARAM, scopeToParam(explicitSearchScope));
       // About 11m precision is plenty for nearest-first ranking and avoids
       // sending an unnecessarily exact coordinate.
@@ -3422,7 +3474,7 @@ export default function AppMap({
           immediateMatches,
           rendererSafeResults,
           term,
-          6,
+          MAP_SEARCH_RESULT_LIMIT,
         );
 
         if (local.length > 0) {
@@ -4018,6 +4070,210 @@ export default function AppMap({
     router.push(r.href);
   };
 
+  // ── The active map task and its ranked list ─────────────────────────────
+  // A submitted query, a "What to see" tile, a category, and an event window
+  // all answer with the same small ranked list inside the dock, within the
+  // header's scope (USER_FIRST_INTERACTION_CONTRACT, Map: "A task returns a
+  // small ranked set of candidates, not pins alone").
+  const hasDock = Boolean(dock);
+  const queryText = q.trim();
+  const querySubmitted = queryText.length >= 2 && submittedQuery === queryText;
+  const searchPending = queryText.length >= 2 && searchSettledQuery !== queryText;
+  const activeIntent = dock ? getIntentByKey(dock.intentKey) : null;
+  const activeSubIntent = activeIntent?.subIntents?.find(
+    (sub) => sub.key === dock?.subKey,
+  );
+  const placeFilterLabel = !dock
+    ? null
+    : (activeSubIntent?.label ??
+      activeIntent?.label ??
+      (dock.openNow ? "Open now" : dock.dealsOn ? "Deals today" : null));
+  const eventListLabel = !dock
+    ? null
+    : dock.musicTonight
+      ? "Live music tonight"
+      : dock.timeModeExplicit
+        ? `Events ${TIME_WINDOW_LABEL[dock.timeMode].toLocaleLowerCase()}`
+        : null;
+  const activeTaskTile = activeMapTask({
+    clientTask,
+    intentKey: dock?.intentKey,
+    subKey: dock?.subKey,
+    openNow: dock?.openNow,
+    dealsOn: dock?.dealsOn,
+    musicTonight: dock?.musicTonight,
+    timeModeExplicit: dock?.timeModeExplicit,
+    timeMode: dock?.timeMode,
+  });
+  // "Search this area" and the collapsed state belong to one task. A
+  // different task, or a different header scope, starts again from the whole
+  // scope with the list raised.
+  const taskIdentityFor = (submitted: boolean) =>
+    [
+      submitted ? `q:${queryText}` : "",
+      clientTask ?? "",
+      placeFilterLabel ?? "",
+      eventListLabel ?? "",
+      resultScope,
+    ].join("|");
+  const taskIdentity = taskIdentityFor(querySubmitted);
+  // A query that arrives in the URL restores its list folded to the title,
+  // so a shared link shows the map first and the list is one tap away.
+  const [taskView, setTaskView] = useState<{
+    identity: string;
+    area: MapViewportBounds | null;
+    expanded: boolean;
+  }>(() => ({ identity: taskIdentity, area: null, expanded: !querySubmitted }));
+  const taskViewCurrent = taskView.identity === taskIdentity;
+  const taskArea = taskViewCurrent ? taskView.area : null;
+  const taskListExpanded = taskViewCurrent ? taskView.expanded : true;
+  const setTaskListExpanded = (expanded: boolean) =>
+    setTaskView({ identity: taskIdentity, area: taskArea, expanded });
+  const taskList = useMemo(
+    () =>
+      hasDock
+        ? buildMapTaskList({
+            scope: resultScope,
+            userLoc,
+            area: taskArea,
+            now: new Date(discoveryClockMs),
+            query: querySubmitted
+              ? {
+                  text: queryText,
+                  results: searchMatchesForSurface,
+                  pending: searchPending,
+                }
+              : null,
+            clientTask,
+            placeFilterLabel,
+            places: resultScopedPlaces,
+            placesBySlug,
+            eventListLabel,
+            events,
+          })
+        : null,
+    [
+      clientTask,
+      discoveryClockMs,
+      eventListLabel,
+      events,
+      hasDock,
+      placeFilterLabel,
+      placesBySlug,
+      queryText,
+      querySubmitted,
+      resultScope,
+      resultScopedPlaces,
+      searchMatchesForSurface,
+      searchPending,
+      taskArea,
+      userLoc,
+    ],
+  );
+  // The list and the "Search this area" control only exist while a task does.
+  // Plain browsing never offers to search an area that has no question.
+  const mapTaskActive = taskList !== null || queryText.length >= 2;
+  const searchAreaVisible = showResultsHere && mapTaskActive;
+  const taskListShown = Boolean(taskList) && !dockPaneOpen && !selectionOpen;
+
+  const beginMapTask = () => {
+    exitRadiusScene();
+    clearMapSelection();
+    setShowResultsHere(false);
+    setSubmittedQuery(null);
+    setMapQuery("");
+  };
+  /** Start one tile task, or clear every task with null. The header scope,
+   * camera, and layers stay exactly where the person left them. */
+  const startMapTask = (id: MapTaskId | null) => {
+    beginMapTask();
+    replaceMapUrl((params) => applyMapTaskToParams(params, id));
+    track("map_task", { task: id ?? "none" });
+  };
+  const startMapIntent = (intentKey: IntentKey, subKey?: string) => {
+    beginMapTask();
+    replaceMapUrl((params) => applyMapIntentToParams(params, intentKey, subKey));
+    track("map_task", { task: subKey ? `${intentKey}:${subKey}` : intentKey });
+  };
+  /** Enter with no highlighted option. The camera stays put; only matching
+   * pins remain and the ranked list rises. Opening a place stays a tap. */
+  const submitMapSearch = (raw: string) => {
+    const text = raw.trim();
+    if (text.length < 2) return;
+    const route = mapQueryRoute(text);
+    if (route.kind === "task") {
+      startMapTask(route.task);
+      return;
+    }
+    if (route.kind === "intent") {
+      startMapIntent(route.intentKey, route.subKey);
+      return;
+    }
+    // A town, a layer, or a scene answers by itself; a list would not help.
+    const hasLocalPlace = searchMatchesForSurface.some(
+      (result) => result.type === "place" && !result.temporary,
+    );
+    if (!hasLocalPlace && isMapCommandResult(searchMatchesForSurface[0])) {
+      void pickSearch(searchMatchesForSurface[0]);
+      return;
+    }
+    exitRadiusScene();
+    clearMapSelection();
+    setShowResultsHere(false);
+    setSubmittedQuery(text);
+    if (querySubmitted && queryText === text) {
+      setTaskView({ identity: taskIdentity, area: null, expanded: true });
+    }
+    haptic("light");
+    track("map_search_submit", {
+      place_count: searchMatchesForSurface.filter((result) => result.type === "place").length,
+    });
+  };
+  /** Re-run the active task for the visible map and raise its list. */
+  const searchThisArea = () => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    const viewport = readResultViewport(map);
+    if (!viewport) return;
+    const placeCount = commitResultViewport(map, {
+      announce: taskList?.unit !== "event",
+      writeUrl: true,
+    });
+    const submitQuery = !querySubmitted && queryText.length >= 2;
+    if (submitQuery) setSubmittedQuery(queryText);
+    setTaskView({
+      identity: taskIdentityFor(querySubmitted || submitQuery),
+      area: viewport.bounds,
+      expanded: true,
+    });
+    // A query ranks around the map's center, so ask again from the new one.
+    if (queryText.length >= 2) setSearchAttempt((attempt) => attempt + 1);
+    haptic("light");
+    track("map_results_area_commit", {
+      place_count: placeCount,
+      task: taskList?.unit ?? "query",
+    });
+  };
+  const openPlaceFromTaskList = (place: MapPinPlace) => {
+    const map = mapRef.current?.getMap();
+    if (map) {
+      cameraIntentRef.current = true;
+      smoothFocus(map, [place.geom.lng, place.geom.lat], {
+        minZoom: 15,
+        maxStep: 6,
+      });
+    }
+    openMapSelection({ kind: "place", value: place });
+  };
+  const openEventFromTaskList = (event: EventPin) => {
+    openMapSelection({ kind: "event", value: event });
+    const map = mapRef.current?.getMap();
+    if (map) {
+      cameraIntentRef.current = true;
+      smoothFocus(map, [event.lng, event.lat], { minZoom: 14, maxStep: 4 });
+    }
+  };
+
   // Near-me reach ring plus the browser's separate accuracy halo. The first
   // answers "what is within my Radius"; the second quietly shows how exact
   // the device fix really is so the center dot never overclaims precision.
@@ -4127,9 +4383,6 @@ export default function AppMap({
   // Aerial photo GeoJSON — static manifest, built once in
   // mapGeoJsonSources.ts (stable identity, no memo needed).
   const aerialGeoJson = AERIAL_GEOJSON;
-
-  // Events GeoJSON for the active heatmap layer
-  const eventsGeoJson = useMemo(() => buildEventsGeoJson(events), [events]);
 
   // Historic cemeteries GeoJSON. `name` in properties powers the generic
   // hover preview; the click handler reads the full pin back by `id`.
@@ -4492,7 +4745,7 @@ export default function AppMap({
       !hasExplicitLayerView &&
       !selectionOpen &&
       !dockPaneOpen &&
-      !showResultsHere &&
+      !searchAreaVisible &&
       !q.trim(),
   );
   const mapInterfaceState = !dock
@@ -4507,7 +4760,7 @@ export default function AppMap({
             ? "search"
             : dockPaneOpen
               ? "browse"
-              : showResultsHere
+              : searchAreaVisible
                 ? "reframe"
                 : smartDefaultVisible
                   ? "guidance"
@@ -5242,6 +5495,9 @@ export default function AppMap({
               resultViewportChanged(committedResultViewportRef.current, viewport)
             ) {
               setShowResultsHere(true);
+              // A person panning wants the map, so an open list folds to its
+              // title. "Search this area" or a tap on the title raises it.
+              if (taskList && taskListExpanded) setTaskListExpanded(false);
               manualViewportGestureRef.current = false;
               cameraControlGestureRef.current = false;
               return;
@@ -5580,6 +5836,9 @@ export default function AppMap({
               }}
             />
           </Source>
+          {/* Brand roles, not Tailwind defaults: Forest for the trail,
+              Creek for the historic road, and quiet Ink for other byways.
+              GL paint cannot read var(--app-*), so these read BRAND. */}
           <Source id="scenic-routes-source" type="geojson" data={(showScenicRoutes ? scenicRoutes : EMPTY_LINE_FC) as unknown as GeoJSON.FeatureCollection}>
             <Layer
               id="scenic-routes-at"
@@ -5587,7 +5846,7 @@ export default function AppMap({
               filter={["==", ["get", "name"], "Appalachian Trail"]}
               layout={{ "line-cap": "round", "line-join": "round" }}
               paint={{
-                "line-color": "#eab308",
+                "line-color": BRAND.colors.forest,
                 "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 14, 4, 17, 6],
                 "line-opacity": 0.8,
                 "line-dasharray": [1, 2]
@@ -5599,7 +5858,7 @@ export default function AppMap({
               filter={["==", ["get", "name"], "Historic National Road"]}
               layout={{ "line-cap": "round", "line-join": "round" }}
               paint={{
-                "line-color": "#ef4444",
+                "line-color": BRAND.colors.creek,
                 "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 14, 4, 17, 6],
                 "line-opacity": 0.8
               }}
@@ -5610,7 +5869,7 @@ export default function AppMap({
               filter={["!", ["in", ["get", "name"], "Appalachian Trail", "Historic National Road"]]}
               layout={{ "line-cap": "round", "line-join": "round" }}
               paint={{
-                "line-color": "#f97316",
+                "line-color": BRAND.colors.mutedInk,
                 "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 14, 4, 17, 6],
                 "line-opacity": 0.8,
                 "line-dasharray": [3, 3]
@@ -6530,63 +6789,9 @@ export default function AppMap({
             />
           </Source>
 
-          {/* ACTIVE EVENTS HEATMAP */}
-          <Source id="events-heatmap-source" type="geojson" data={eventsGeoJson}>
-            <Layer
-              id="events-heatmap-layer"
-              type="heatmap"
-              paint={{
-                // Increase the heatmap weight based on frequency and property weight
-                "heatmap-weight": [
-                  "interpolate",
-                  ["linear"],
-                  ["get", "weight"],
-                  0, 0,
-                  1, 1
-                ],
-                // Increase the heatmap color weight weight by zoom level
-                // heatmap-intensity is a multiplier on top of heatmap-weight
-                "heatmap-intensity": [
-                  "interpolate",
-                  ["linear"],
-                  ["zoom"],
-                  0, 1,
-                  9, 3
-                ],
-                // Color ramp for heatmap.  Domain is 0 (low) to 1 (high).
-                // Begin color ramp at 0-stop with a 0-transparancy color
-                // to create a blur-like effect.
-                "heatmap-color": [
-                  "interpolate",
-                  ["linear"],
-                  ["heatmap-density"],
-                  0, "rgba(255, 140, 0, 0)", // palette-exempt
-                  0.2, "rgba(255, 140, 0, 0.2)", // palette-exempt
-                  0.4, "rgba(255, 100, 0, 0.4)", // palette-exempt
-                  0.6, "rgba(255, 60, 0, 0.6)", // palette-exempt
-                  0.8, "rgba(255, 20, 0, 0.8)", // palette-exempt
-                  1, "rgba(255, 0, 0, 1)" // palette-exempt
-                ],
-                // Adjust the heatmap radius by zoom level
-                "heatmap-radius": [
-                  "interpolate",
-                  ["linear"],
-                  ["zoom"],
-                  0, 2,
-                  9, 20,
-                  15, 60
-                ],
-                // Transition from heatmap to circle layer by zoom level
-                "heatmap-opacity": [
-                  "interpolate",
-                  ["linear"],
-                  ["zoom"],
-                  7, 0.6,
-                  15, 0.1
-                ],
-              }}
-            />
-          </Source>
+          {/* No events heatmap. The stock pure-red density blur read as an
+              alarm under every event puck (map audit, missed item 2); the
+              pucks and the ranked event list already say where things are. */}
 
           <Source id="near-dot" type="geojson" data={dotGeoJson}>
             <Layer
@@ -7128,19 +7333,23 @@ export default function AppMap({
           {resultAreaAnnouncement.message}
         </p>
 
+        {/* Offered only while a query, a category, or a time window is
+            active. It used to appear after any pan and quietly updated counts
+            nobody could see (map audit MAP-08); now it re-runs the task for
+            the visible map and raises the list it changes. */}
         {dock &&
           !mapError &&
           !dockPaneOpen &&
           !selectionOpen &&
-          showResultsHere && (
+          searchAreaVisible && (
             <button
               type="button"
               className="map-results-here map-top-action tap-44"
-              onClick={commitCurrentResultArea}
+              onClick={searchThisArea}
               data-map-top-surface="results"
             >
               <span className="map-results-here-dot" aria-hidden />
-              Show results here
+              Search this area
             </button>
           )}
 
@@ -7180,26 +7389,23 @@ export default function AppMap({
             eventCount={inViewEvents.length}
             closingSoonCount={closingSoonCount}
             placesInView={inViewPlaces}
-            placesInViewOrigin={userLoc ?? viewCenter}
+            // Distance and "nearest first" need a real device fix. The map
+            // center is not where anyone is standing (map audit MAP-06).
+            placesInViewOrigin={userLoc}
             selectedPlaceSlug={selectedSlug}
-            onPickPlaceInView={(place) => {
-              const map = mapRef.current?.getMap();
-              if (map) {
-                cameraIntentRef.current = true;
-                smoothFocus(map, [place.geom.lng, place.geom.lat], {
-                  minZoom: 15,
-                  maxStep: 6,
-                });
-              }
-              openMapSelection({ kind: "place", value: place });
-            }}
+            onPickPlaceInView={openPlaceFromTaskList}
             q={q}
             setQ={setMapQuery}
+            submitSearch={submitMapSearch}
+            taskList={taskList}
+            taskListExpanded={taskListExpanded}
+            onTaskListExpandedChange={setTaskListExpanded}
+            onPickTaskPlace={openPlaceFromTaskList}
+            onPickTaskEvent={openEventFromTaskList}
+            activeTask={activeTaskTile}
+            onMapTask={startMapTask}
             searchMatches={searchMatchesForSurface}
-            searchPending={
-              q.trim().length >= 2 &&
-              searchSettledQuery !== q.trim()
-            }
+            searchPending={searchPending}
             searchUnavailable={searchUnavailableQuery === q.trim()}
             retrySearch={() => {
               // Clear the completed-failure markers in the same interaction
@@ -7211,9 +7417,7 @@ export default function AppMap({
             }}
             searchOpeningId={searchOpeningId}
             pickSearch={pickSearch}
-            searchDistanceOriginLabel={
-              userLoc ? "from you" : mapError ? null : "from map center"
-            }
+            searchDistanceOriginLabel={userLoc ? "from you" : null}
             openNowAvailable={dock.openNowAvailable}
             openNowUnavailableLabel={dock.openNowUnavailableLabel}
             savedCount={followedSlugs.size}
@@ -7387,7 +7591,7 @@ export default function AppMap({
             onExitRadiusScene={exitRadiusScene}
             suppressContextRail={
               selectionOpen ||
-              showResultsHere ||
+              searchAreaVisible ||
               smartDefaultVisible ||
               !mapLoaded
             }
@@ -7403,7 +7607,10 @@ export default function AppMap({
             un-lost used to be buried under Filters → Where → Whole county.
             Stacked just above the locate FAB; only shown once off the overview
             so the default county view stays uncluttered. */}
-        {dock && !mapError && !dockPaneOpen && !selectionOpen && offOverview && (
+        {/* On phones the ranked list sits where this button floats, so the
+            header scope chip carries "Whole county" while a list is up. */}
+        {dock && !mapError && !dockPaneOpen && !selectionOpen && offOverview &&
+          !(compactMapViewport && taskListShown) && (
           <button
             type="button"
             className="map-reset-fab tap-44"
