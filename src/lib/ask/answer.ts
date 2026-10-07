@@ -733,7 +733,7 @@ function answerStrictUtilityPlaceRequest(
     const distance = top.distance ? ` It is ${top.distance} away.` : "";
     answer = asksOpenNow
       ? `${top.name} is the closest ${request.singular} Radius can confirm open now${scope}.${distance}`
-      : `${top.name} is the nearest cataloged ${request.singular}${scope}.${distance} ${top.status === "Hours not posted" ? "Radius does not have fresh hours for it, so check before you go." : ""}`.trim();
+      : `${top.name} is the nearest cataloged ${request.singular}${scope}.${distance} ${top.status === "Hours not posted" || top.status === "Hours not confirmed" ? "Radius does not have fresh hours for it, so check before you go." : ""}`.trim();
   } else if (asksOpenNow && ranked.length > 0) {
     answer = `Radius has ${ranked.length} cataloged ${ranked.length === 1 ? request.singular : request.plural}${scope}, but none has fresh hours confirming it is open right now. I will not substitute an unrelated business.`;
   } else {
