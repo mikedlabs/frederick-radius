@@ -333,6 +333,64 @@ describe("GET /api/place-photo daily budget", () => {
     expect(mocks.reserveDailyUsage).toHaveBeenCalledOnce();
   });
 
+  it.each([undefined, "0"])("rejects an empty 200 photo with Content-Length %s", async (contentLength) => {
+    mocks.fetch.mockResolvedValue(new Response(new Uint8Array(), {
+      headers: { "Content-Type": "image/jpeg", ...(contentLength === undefined ? {} : { "Content-Length": contentLength }) },
+    }));
+
+    const response = await GET(request());
+
+    expect(response.headers.get("x-photo-fallback")).toBe("body-empty");
+    expect(response.headers.get("content-type")).toBe("image/svg+xml");
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["shorter", "4"],
+    ["longer", "2"],
+  ])("rejects a cleanly closed identity body %s than Content-Length", async (_label, contentLength) => {
+    mocks.fetch.mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), {
+      headers: { "Content-Type": "image/png", "Content-Length": contentLength, "Content-Encoding": "identity" },
+    }));
+
+    const response = await GET(request());
+
+    expect(response.headers.get("x-photo-fallback")).toBe("body-incomplete");
+    expect(response.headers.get("content-type")).toBe("image/svg+xml");
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledOnce();
+  });
+
+  it("preserves nonempty identity bytes whose declared length matches", async () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    mocks.fetch.mockResolvedValue(new Response(bytes, {
+      headers: { "Content-Type": "image/png", "Content-Length": "3", "Content-Encoding": "identity" },
+    }));
+
+    const response = await GET(request());
+
+    expect(response.headers.get("x-photo-fallback")).toBeNull();
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
+    expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
+  });
+
+  it("preserves fetch-decoded bytes when encoded Content-Length describes the wire body", async () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    // Native fetch's local mock proof delivers three decoded bytes but retains
+    // the gzip wire length of 23; that header is not decoded-body authority.
+    mocks.fetch.mockResolvedValue(new Response(bytes, {
+      headers: { "Content-Type": "image/png", "Content-Length": "23", "Content-Encoding": "gzip" },
+    }));
+
+    const response = await GET(request());
+
+    expect(response.headers.get("x-photo-fallback")).toBeNull();
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
+    expect(response.headers.get("content-encoding")).toBeNull();
+    expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
+  });
+
   it("stops pathological empty chunks instead of an unbounded body-read loop", async () => {
     const cancel = vi.fn();
     mocks.fetch.mockResolvedValue(new Response(new ReadableStream<Uint8Array>({ pull(controller) { controller.enqueue(new Uint8Array()); }, cancel })));

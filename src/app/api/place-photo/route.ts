@@ -150,7 +150,7 @@ function placeholderResponse(
 }
 
 
-/** Return only the complete bytes of this exact photo; never a healed retry. */
+/** Return the bounded transport bytes of this exact photo; never a healed retry. */
 function imageResponse(upstream: Response, bytes: Uint8Array<ArrayBuffer>): Response {
   return new Response(bytes, {
     status: 200,
@@ -165,8 +165,8 @@ function imageResponse(upstream: Response, bytes: Uint8Array<ArrayBuffer>): Resp
   });
 }
 
-class PhotoBodyLimitError extends Error {
-  constructor(readonly reason: "body-too-large" | "body-read-limit") {
+class PhotoBodyError extends Error {
+  constructor(readonly reason: "body-too-large" | "body-read-limit" | "body-empty" | "body-incomplete") {
     super(reason);
   }
 }
@@ -175,6 +175,7 @@ class PhotoBodyLimitError extends Error {
 async function readPhotoBytes(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   signal: AbortSignal,
+  expectedLength?: number,
 ): Promise<Uint8Array<ArrayBuffer>> {
   let bytes = new Uint8Array(64 * 1024);
   let length = 0;
@@ -183,12 +184,17 @@ async function readPhotoBytes(
     signal.throwIfAborted();
     const { done, value } = await reader.read();
     signal.throwIfAborted();
-    if (done) return bytes.slice(0, length);
+    if (done) {
+      if (length === 0) throw new PhotoBodyError("body-empty");
+      if (expectedLength !== undefined && length !== expectedLength) throw new PhotoBodyError("body-incomplete");
+      return bytes.slice(0, length);
+    }
     // A finite read ceiling also stops pathological empty/tiny chunks from
     // keeping the event loop in an endless sequence of resolved promises.
-    if (++reads > MAX_PHOTO_READS) throw new PhotoBodyLimitError("body-read-limit");
-    if (value.byteLength > MAX_PHOTO_BYTES - length) throw new PhotoBodyLimitError("body-too-large");
+    if (++reads > MAX_PHOTO_READS) throw new PhotoBodyError("body-read-limit");
+    if (value.byteLength > MAX_PHOTO_BYTES - length) throw new PhotoBodyError("body-too-large");
     const nextLength = length + value.byteLength;
+    if (expectedLength !== undefined && nextLength > expectedLength) throw new PhotoBodyError("body-incomplete");
     if (nextLength > bytes.length) {
       const grown = new Uint8Array(Math.min(MAX_PHOTO_BYTES, Math.max(nextLength, bytes.length * 2)));
       grown.set(bytes.subarray(0, length));
@@ -320,14 +326,19 @@ export async function GET(req: NextRequest) {
       // place refresh updates photo identity and attribution together.
       return placeholderResponse(name, w, `upstream-${upstream.status}`, slug, signalFallback);
     }
-    const advertisedBytes = Number(upstream.headers.get("content-length"));
-    if (Number.isFinite(advertisedBytes) && advertisedBytes > MAX_PHOTO_BYTES) {
+    // Fetch can decode an encoded response while retaining its wire length.
+    // Only identity Content-Length describes the bytes this route receives.
+    const encoding = upstream.headers.get("content-encoding")?.trim().toLowerCase();
+    const lengthHeader = upstream.headers.get("content-length")?.trim();
+    const advertisedBytes = (!encoding || encoding === "identity") && lengthHeader && /^\d+$/.test(lengthHeader)
+      ? Number(lengthHeader) : undefined;
+    if (advertisedBytes !== undefined && (!Number.isSafeInteger(advertisedBytes) || advertisedBytes > MAX_PHOTO_BYTES)) {
       void upstream.body.cancel().catch(() => {});
-      throw new PhotoBodyLimitError("body-too-large");
+      throw new PhotoBodyError("body-too-large");
     }
     reader = upstream.body.getReader();
     try {
-      return imageResponse(upstream, await readPhotoBytes(reader, deadline.signal));
+      return imageResponse(upstream, await readPhotoBytes(reader, deadline.signal, advertisedBytes));
     } catch (error) {
       cancelBody();
       throw error;
@@ -338,7 +349,7 @@ export async function GET(req: NextRequest) {
   })().catch((error: unknown) => placeholderResponse(
     name,
     w,
-    error instanceof PhotoBodyLimitError ? error.reason : deadline.signal.aborted ? stoppedReason() : "fetch-error",
+    error instanceof PhotoBodyError ? error.reason : deadline.signal.aborted ? stoppedReason() : "fetch-error",
     slug,
     signalFallback,
   ));
