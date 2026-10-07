@@ -50,9 +50,9 @@ picture, so nothing falls back to a wall of text.
 **Towns, parks and collections**
 
 1. Owner photography, matched to season and hour where possible.
-2. Licensed open photography with its credit (the verified `TOWN_PHOTOS` in
-   `src/lib/integrations/wikimedia.ts`, Library of Congress material in
-   `src/data/loc-archive.ts`).
+2. Licensed open photography with its credit (the verified `TOWN_PHOTOS` and
+   `LANDMARK_PHOTOS` in `src/lib/integrations/wikimedia.ts`, Library of Congress
+   material in `src/data/loc-archive.ts`).
 3. The place on the county map.
 
 **Time and conditions**
@@ -89,12 +89,12 @@ number, and live states are a dot. Amber is reserved for a real live state.
 | Source | What exists | What it takes |
 | --- | --- | --- |
 | Google place photos | 1,328 of 1,570 places carry a photo reference. Overnight on 2026-10-06 every probed photo returned `upstream-400` or `daily-cap`. | References are renewed only by the place refresh that is on Google policy hold (`docs/AGENTS_SCHEDULE.md`). Written authorization brings them back. Until then every surface must look complete without them. |
-| Owner photography | 108 seasonal photos in `public/images/seasons` and 104 geotagged aerials. Every geotagged photo is within 3 km of downtown Frederick. | A shoot list: the other twelve towns, the top parks and trails, and the most-viewed places, each published with a credit and date. |
+| Owner photography | 108 seasonal photos in `public/images/seasons` (104 geotagged), every geotagged one within 3 km of downtown Frederick, plus 133 From Above photos and a few fair and moment frames. AerialBeat already places an aerial within 800 m on 646 place pages, but it captions the frame with the place's town, so some Walkersville pages show a Frederick frame labeled Walkersville. | Caption aerials from their own geotag and capture month. Then a shoot list: the other twelve towns, the top parks and trails, and the most-viewed places, each published with a credit and date. |
 | Businesses | Owners can claim and manage a listing (`src/app/business`), but cannot add a photo. | A reviewed photo upload on the manage page. Owned, free and current. |
-| Publisher flyers | Approved event images from Downtown Frederick Partnership and venue feeds, gated by `src/components/event/eventVisuals.ts`. | Show them whole. |
-| Self-hosted map | The county PMTiles basemap in `public/basemap`, used on six surfaces with no per-load cost. | A mini map for every place and event page. Today `PlaceMiniMap.tsx` and `VenueMiniMap.tsx` fall back to a decorative locator grid whenever static Mapbox images are disabled. |
-| Place colors and marks | 1,342 places have a color in `place-hues.json`; 8 brewery woodcuts and 13 food truck marks exist. | The small-frame fallback, in flat color. |
-| Licensed open imagery | 13 verified Wikimedia town photos and the Library of Congress archive. | Town and collection images with credits, replaced by owner photos as the shoot list fills in. |
+| Publisher flyers | 93 of 1,160 upcoming events (8%) carry an approved publisher image, gated by `src/components/event/eventVisuals.ts` (80 of 82 Downtown Frederick Partnership listings). 74 of the 76 distinct DFP URLs arrive through the CDN transform `tr:w-1200,h-675,fo-auto`, already cropped to 16:9. | Show them whole. That needs the untransformed asset, checked to be the publisher's own original. |
+| Self-hosted map | The county PMTiles basemap in `public/basemap` (zooms 0 to 15), used on six surfaces with no per-load cost. A place's mini map moves about 41 KB of tiles. 715 of 1,160 upcoming events have a precise geocode. | A mini map for every place page and every precisely geocoded event. Today `PlaceMiniMap.tsx` and `VenueMiniMap.tsx` fall back to a decorative locator grid because static Mapbox images are off in production. |
+| Place colors and marks | 1,287 current places have a color in `place-hues.json` (55 more keys are orphaned). The hues were taken from Google photos, so they cannot be rebuilt while the hold lasts. Brewery logos cover 17 of 19 breweries, and 13 of 20 food trucks have marks. Category glyphs cover every place. | The small-frame fallback, in flat color. Brewery and truck logos stay small identifying marks, never photos. |
+| Licensed open imagery | 7 verified Wikimedia town photos and 6 landmark photos (`src/lib/integrations/wikimedia.ts`), 15 history photos, and 19 Library of Congress records. Wikimedia rate-limits some widths. | Self-host the Commons files with their credit lines, prefer the landmark photo when a Google photo fails, and replace with owner photos as the shoot list fills in. |
 
 ## Surface by surface
 
