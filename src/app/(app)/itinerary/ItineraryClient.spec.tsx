@@ -20,10 +20,19 @@ beforeEach(() => {
 afterEach(async () => {await act(async () => root.unmount());container.remove();vi.useRealTimers();vi.unstubAllGlobals();});
 async function mount(){await act(async()=>root.render(createElement(ItineraryClient)));}
 it("shows recovery rather than a blank timeline after a failed lookup with retained local refs",async()=>{
- fetchMock.mockResolvedValue(new Response(JSON.stringify({error:"source-unavailable"}),{status:503}));
+ fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({error:"source-unavailable"}),{status:503}));
  await mount();
  expect(container.textContent).toMatch(/could not|couldn't|unavailable/i);
- expect(container.querySelector('button')?.textContent).not.toBeNull();
+ const retry=Array.from(container.querySelectorAll("button")).find(button=>button.textContent==="Check again");
+ expect(retry).toBeInstanceOf(HTMLButtonElement);expect(retry!.disabled).toBe(false);
+ expect(edge.items[0].id).toBe("legacy-event");
+ const event={slug:"canonical-event",title:"Recovered current listing",starts_at:"2026-10-08T20:00:00Z"};
+ fetchMock.mockResolvedValueOnce(result([event],{resolvedSlugs:[{requestedSlug:"legacy-event",canonicalSlug:event.slug}]}));
+ await act(async()=>retry!.click());
+ expect(fetchMock).toHaveBeenCalledTimes(2);
+ expect(JSON.parse(fetchMock.mock.calls[1][1].body).slugs).toEqual(["legacy-event"]);
+ expect(container.textContent).toContain(event.title);expect(container.textContent).toContain("1 saved event · 1 listed");
+ expect(container.textContent).not.toContain("could not be checked");
  expect(edge.items[0].id).toBe("legacy-event");
 });
 it("uses the existing bounded JSON POST for 100 long event identities",async()=>{

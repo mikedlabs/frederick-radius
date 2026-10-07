@@ -4,10 +4,12 @@ import { createRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
+const surfaces = vi.hoisted(() => ({ map: vi.fn() }));
+
 vi.mock("@/components/event/EventCard", () => ({
-  default: ({ event }: { event: { title: string } }) => createElement("span", null, event.title),
+  default: ({ event }: { event: { title: string; slug: string } }) => createElement("a", { href: `/events/${event.slug}` }, event.title),
 }));
-vi.mock("@/components/map/AppMapClient", () => ({ default: () => null }));
+vi.mock("@/components/map/AppMapClient", () => ({ default: (props: Record<string, unknown>) => { surfaces.map(props); return createElement("div", { "data-map-events": JSON.stringify(props.events) }); } }));
 vi.mock("next/link", () => ({
   default: ({ children, ...props }: Record<string, unknown>) => createElement("a", props, children as ReactNode),
 }));
@@ -27,6 +29,7 @@ let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  surfaces.map.mockClear();
   localStorage.clear();
   localStorage.setItem(key, JSON.stringify([{ id: "legacy-event", added_at: savedAt }]));
   container = document.createElement("div");
@@ -34,9 +37,9 @@ beforeEach(() => {
   root = createRoot(container);
   fetchMock = vi.fn((_url: string, init: RequestInit) => {
     const requested = (JSON.parse(String(init.body)) as { slugs: string[] }).slugs;
-    const aliases: string[] = requested.filter((slug) => slug === "legacy-event" || slug === "second-alias");
+    const aliases: string[] = requested.filter((slug) => slug === "legacy-event" || slug === "second-alias" || slug === listing.slug);
     return Promise.resolve(new Response(JSON.stringify({
-      events: aliases.length > 0 ? [listing] : [],
+      events: aliases.map(() => listing),
       resolvedSlugs: aliases.map((requestedSlug) => ({ requestedSlug, canonicalSlug: listing.slug })),
       unresolvedSlugs: requested.filter((slug) => !aliases.includes(slug)), missingSlugs: [],
       degraded: requested.some((slug) => !aliases.includes(slug)),
@@ -152,3 +155,58 @@ it.each(["{broken", '{"items":[]}', '[{"id":"legacy-event"}]'])(
     expect(container.querySelector('[role="alert"]')?.textContent).toContain("could not remove");
   },
 );
+
+
+it.each([
+  ["legacy-event", "canonical-event"], ["canonical-event", "legacy-event"],
+  ["legacy-event", "second-alias"], ["second-alias", "legacy-event"],
+])("renders one equivalent listing and removes both original references: %s then %s", async (first, second) => {
+  localStorage.setItem(key, JSON.stringify([{ id: first, added_at: savedAt }, { id: second, added_at: untouchedAt }]));
+  await mount();
+  expect(container.textContent?.match(/Current public listing/g)).toHaveLength(1);
+  expect(container.textContent).toContain("2 saved events · 1 listed");
+  expect(JSON.parse(localStorage.getItem(key)!)).toEqual([{ id: first, added_at: savedAt }, { id: second, added_at: untouchedAt }]);
+  // Keep another tab's unrelated reference and date while removing the entire displayed group.
+  localStorage.setItem(key, JSON.stringify([{ id: first, added_at: savedAt }, { id: second, added_at: untouchedAt }, { id: "untouched-event", added_at: untouchedAt }]));
+  const write = vi.spyOn(Storage.prototype, "setItem");
+  await act(async () => removeButton().click());
+  expect(write).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(localStorage.getItem(key)!)).toEqual([{ id: "untouched-event", added_at: untouchedAt }]);
+  expect(container.textContent).not.toContain(listing.title);
+});
+it("keeps conflicting duplicate references unverified without changing local data", async () => {
+  const saved = [{ id: "legacy-event", added_at: savedAt }, { id: listing.slug, added_at: untouchedAt }];
+  localStorage.setItem(key, JSON.stringify(saved));
+  fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ events: [listing, { ...listing, status: "cancelled" }], resolvedSlugs: saved.map(({ id }) => ({ requestedSlug: id, canonicalSlug: listing.slug })), missingSlugs: [], unresolvedSlugs: [], degraded: false })));
+  await mount();
+  expect(container.textContent).toContain("2 saved events · 0 listed");
+  expect(container.textContent).toContain("could not be checked");
+  expect(container.textContent).not.toContain(listing.title);
+  expect(JSON.parse(localStorage.getItem(key)!)).toEqual(saved);
+  expect(container.querySelectorAll('button[aria-label^="Remove unverified event"]')).toHaveLength(2);
+});
+
+
+it.each([["legacy-event", "canonical-event"], ["canonical-event", "legacy-event"]])("clears earlier details and map points when the requested canonical becomes known missing: %s then %s", async (first, second) => {
+  const saved = [{ id: first, added_at: savedAt }, { id: second, added_at: untouchedAt }];
+  localStorage.setItem(key, JSON.stringify(saved));
+  const located = { ...listing, geom: { lng: -77.41, lat: 39.41 } };
+  fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ events: [located, located], resolvedSlugs: saved.map(({ id }) => ({ requestedSlug: id, canonicalSlug: listing.slug })), missingSlugs: [], unresolvedSlugs: [], degraded: false })));
+  await mount();
+  expect(container.querySelector(`a[href="/events/${listing.slug}"]`)).not.toBeNull();
+  await act(async () => Array.from(container.querySelectorAll("button")).find(button => button.textContent === "Map")!.click());
+  expect(surfaces.map).toHaveBeenLastCalledWith(expect.objectContaining({ events: [expect.objectContaining({ slug: listing.slug })] }));
+  surfaces.map.mockClear();
+  fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ events: [located], resolvedSlugs: [{ requestedSlug: "legacy-event", canonicalSlug: listing.slug }], missingSlugs: [listing.slug], unresolvedSlugs: [], degraded: false })));
+  await act(async () => Array.from(container.querySelectorAll("button")).find(button => button.textContent === "Check again")!.click());
+  expect(container.textContent).not.toContain(listing.title);
+  expect(container.textContent).not.toContain("Last-known");
+  expect(container.textContent).toContain("No checked event locations to show.");
+  expect(container.querySelector(`a[href="/events/${listing.slug}"]`)).toBeNull();
+  expect(container.querySelector("[data-map-events]")).toBeNull();
+  await act(async () => Array.from(container.querySelectorAll("button")).find(button => button.textContent === "Timeline")!.click());
+  expect(container.querySelectorAll('button[aria-label^="Remove unlisted event"]')).toHaveLength(2);
+  expect(container.textContent).not.toContain(listing.title);
+  expect(container.querySelector(`a[href="/events/${listing.slug}"]`)).toBeNull();
+  expect(JSON.parse(localStorage.getItem(key)!)).toEqual(saved);
+});
