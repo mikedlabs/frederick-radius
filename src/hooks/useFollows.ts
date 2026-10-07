@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useSavedList, useToggleSave, useIsSaved } from "@/hooks/useSaved";
 import { track } from "@/lib/track";
+import { createAbortDeadline, withDeadlineOutcome } from "@/lib/promise-deadline";
 import { businessTopic } from "@/lib/push-topics";
 import {
   cancelPendingReturnBridgeValue,
@@ -36,7 +37,8 @@ import {
  *        a card) updates EVERY follow control on screen at once.
  *     2. The toggle flips the store immediately and reconciles with
  *        the server in the background, so there's no spinner and no
- *        GET-then-write round trip. A failed write reverts the flip.
+ *        GET-then-write round trip. Completion waits for persistence;
+ *        a failed write restores the last confirmed membership.
  *   The previous design re-rendered only the button that was tapped
  *   and left every other `useFollowedSlugs()` reader showing stale
  *   membership until the page remounted.
@@ -134,6 +136,19 @@ export function shouldCancelPlaceReturnBridgeAfterDelete(
 let remoteStore: Set<string> | null = null;
 let remoteStoreUserId: string | null = null;
 let remoteStoreTruncated = false;
+type FollowWriteQueue = {
+  userId: string;
+  slug: string;
+  confirmed: boolean;
+  latest: number;
+  tail: Promise<void>;
+  pending: number;
+  uncertain: boolean;
+  transport: { promise: Promise<Response>; outcome: "pending" | "response" | "rejected" } | null;
+  reconciling: Promise<void> | null;
+};
+const followWrites = new Map<string, FollowWriteQueue>();
+let followWriteEpoch = 0;
 const remoteListeners = new Set<() => void>();
 function readRemote(): Set<string> | null {
   return remoteStore;
@@ -151,6 +166,16 @@ function writeAccountRemote(
   next: Set<string> | null,
   truncated = false,
 ) {
+  if (remoteStoreUserId !== userId) {
+    followWriteEpoch++;
+  }
+  // A newer verified snapshot is also the rollback baseline for any pending
+  // write. Never restore a pre-navigation value over an authoritative read.
+  for (const queue of followWrites.values()) {
+    if (queue.userId === userId && next !== null && (!truncated || next.has(queue.slug))) {
+      queue.confirmed = next.has(queue.slug);
+    }
+  }
   remoteStoreUserId = userId;
   remoteStoreTruncated = Boolean(userId) && truncated;
   writeRemote(next);
@@ -169,6 +194,7 @@ const subscribeRemote = (cb: () => void) => {
  * don't issue duplicate requests.
  */
 let authPromise: Promise<AuthState> | null = null;
+let authGeneration = 0;
 
 /**
  * Commit a verified Server Component snapshot to the browser store. This must
@@ -183,6 +209,7 @@ function commitFollowBootstrap(bootstrap: FollowedSlugsBootstrap) {
   const auth: AuthState = bootstrap.user
     ? { user: bootstrap.user }
     : "anonymous";
+  authGeneration++;
   authPromise = Promise.resolve(auth);
 
   if (!bootstrap.user) {
@@ -213,12 +240,24 @@ function commitFollowBootstrap(bootstrap: FollowedSlugsBootstrap) {
 
 function detectAuth(): Promise<AuthState> {
   if (!authPromise) {
-    authPromise = fetch("/api/auth/me", { cache: "no-store" })
+    const request = fetch("/api/auth/me", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : { user: null }))
       .then((data: { user: { id: string; email: string | null } | null }) =>
         data.user ? ({ user: data.user } as AuthState) : "anonymous",
       )
       .catch(() => "anonymous" as AuthState);
+    const lookup = withDeadlineOutcome(request, FOLLOW_WRITE_TIMEOUT_MS).then((result): AuthState => {
+      if (authPromise !== lookup) return "unknown";
+      if (result.status === "timed_out") {
+        // Release only this lookup. A timeout is not anonymous identity, and a
+        // late response must not replace a newer bootstrap or retry.
+        authPromise = null;
+        authGeneration++;
+        return "unknown";
+      }
+      return result.status === "fulfilled" ? result.value : "unknown";
+    });
+    authPromise = lookup;
   }
   return authPromise;
 }
@@ -234,6 +273,7 @@ let hydrateUserId: string | null = null;
 
 function invalidateAuthForUser(userId: string) {
   if (remoteStoreUserId === userId) writeAccountRemote(null, null);
+  authGeneration++;
   authPromise = null;
   hydratePromise = null;
   hydrateUserId = null;
@@ -377,7 +417,8 @@ export function useFollowedSlugs(bootstrap?: FollowedSlugsBootstrap): {
       void detectAuth().then((detected) => {
         if (cancelled) return;
         setAuth(detected);
-        void hydrate(detected);
+        if (detected === "unknown") scheduleTransientRetry();
+        else void hydrate(detected);
       });
     }
     return () => {
@@ -469,66 +510,211 @@ async function syncFollowPushTopic(slug: string, follow: boolean): Promise<void>
   }
 }
 
-/** Toggle a follow for a place. Returns the new state (true = followed). */
-export function useToggleFollow(slug: string, source?: string) {
+export const FOLLOW_WRITE_TIMEOUT_MS = 15_000;
+const UNCONFIRMED = "We could not confirm this change. Please try again.";
+const CHANGED_LIST = "Your saved list changed while we checked your account. Check this place and try again.";
+const PENDING_WRITE = "This change is still pending. Wait for it to finish before making another change to this place.";
+const UNKNOWN_WRITE = "The connection ended before this change could be confirmed. Refresh Saved to check your list.";
+const CHECKING_WRITE = "Your saved list must be checked before another change to this place can be made. Please wait, then try again.";
+
+/** Set one membership without overwriting unrelated optimistic saves. */
+function writeFollowMembership(slug: string, followed: boolean) {
+  const next = new Set(remoteStore ?? []);
+  if (followed) next.add(slug);
+  else next.delete(slug);
+  writeRemote(next);
+}
+
+function releaseFollowQueue(queue: FollowWriteQueue) {
+  const key = JSON.stringify([queue.userId, queue.slug]);
+  if (queue.pending === 0 && !queue.uncertain && !queue.transport && followWrites.get(key) === queue) {
+    followWrites.delete(key);
+  }
+}
+
+/** A cancelled read is safe; a cancelled mutation is not proof of rollback. */
+async function readFollowMembership(slug: string): Promise<boolean> {
+  const deadline = createAbortDeadline(FOLLOW_WRITE_TIMEOUT_MS);
+  let onAbort: () => void = () => {};
+  const interrupted = new Promise<never>((_, reject) => {
+    onAbort = () => reject(new DOMException("Saved lookup timed out", "AbortError"));
+    deadline.signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    const payload = await Promise.race([
+      fetch("/api/follows", { cache: "no-store", signal: deadline.signal })
+        .then(async (response) => {
+          if (!response.ok) throw new Error("Saved lookup failed");
+          return response.json() as Promise<{ slugs?: unknown; truncated?: unknown }>;
+        }),
+      interrupted,
+    ]);
+    if (!Array.isArray(payload.slugs)) throw new Error("Invalid saved list");
+    const followed = normalizeFollowSlugs(payload.slugs).includes(slug);
+    if (!followed && payload.truncated === true) throw new Error("Saved membership unresolved");
+    return followed;
+  } finally {
+    deadline.signal.removeEventListener("abort", onAbort);
+    deadline.dispose();
+  }
+}
+
+/** Only an actual HTTP outcome plus a fresh same-account read releases a hold. */
+function reconcileFollowQueue(queue: FollowWriteQueue): Promise<void> {
+  if (queue.reconciling) return queue.reconciling;
+  const transport = queue.transport;
+  if (!queue.uncertain || transport?.outcome !== "response" || remoteStoreUserId !== queue.userId) {
+    return Promise.resolve();
+  }
+  const epoch = followWriteEpoch;
+  const generation = authGeneration;
+  const reconcile = readFollowMembership(queue.slug)
+    .then((followed) => {
+      if (followWriteEpoch !== epoch || authGeneration !== generation || remoteStoreUserId !== queue.userId || queue.transport !== transport) return;
+      queue.confirmed = followed;
+      queue.uncertain = false;
+      queue.transport = null;
+      writeFollowMembership(queue.slug, followed);
+      releaseFollowQueue(queue);
+    })
+    .catch(() => {
+      // A failed observation does not establish the mutation's final state.
+    })
+    .finally(() => {
+      if (queue.reconciling === reconcile) queue.reconciling = null;
+    });
+  queue.reconciling = reconcile;
+  return reconcile;
+}
+
+function followFailureCopy(queue: FollowWriteQueue): string {
+  return queue.transport?.outcome === "pending" ? PENDING_WRITE
+    : queue.transport?.outcome === "rejected" ? UNKNOWN_WRITE
+      : CHECKING_WRITE;
+}
+
+/**
+ * Serialize confirmed writes, while keeping uncertainty separate from the UI
+ * deadline. Never abort a mutation and assume the server did not commit it.
+ * A held place refuses further writes until its real response and observation
+ * settle; other places remain independent. This is a document-local barrier,
+ * not a server ordering fence across refreshes or lost connections.
+ */
+function persistFollowToggle(
+  userId: string,
+  slug: string,
+  wasFollowed: boolean,
+  source: string,
+  onFailure?: (description: string) => void,
+): Promise<boolean> {
+  const key = JSON.stringify([userId, slug]);
+  let queue = followWrites.get(key);
+  if (!queue) {
+    queue = { userId, slug, confirmed: wasFollowed, latest: 0, tail: Promise.resolve(), pending: 0, uncertain: false, transport: null, reconciling: null };
+    followWrites.set(key, queue);
+  }
+  const activeQueue = queue;
+  const revision = ++activeQueue.latest;
+  activeQueue.pending++;
+  const epoch = followWriteEpoch;
+  const followed = !wasFollowed;
+  const isCurrentAccount = () => followWriteEpoch === epoch && remoteStoreUserId === userId;
+  const fail = () => {
+    if (isCurrentAccount() && activeQueue.latest === revision) writeFollowMembership(slug, activeQueue.confirmed);
+    onFailure?.(activeQueue.uncertain ? followFailureCopy(activeQueue) : UNCONFIRMED);
+    return wasFollowed;
+  };
+  const operation = activeQueue.tail.then(async () => {
+    try {
+      if (!isCurrentAccount()) return fail();
+      if (activeQueue.uncertain) {
+        void reconcileFollowQueue(activeQueue);
+        return fail();
+      }
+      let sent = false;
+      const transport = {
+        promise: Promise.resolve().then(() => {
+          // Identity may change between the queue turn and this microtask.
+          if (!isCurrentAccount()) throw new Error("Saved account changed");
+          sent = true;
+          return fetch("/api/follows", {
+            method: followed ? "POST" : "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(followed ? { slug, source } : { slug }),
+          });
+        }),
+        outcome: "pending" as "pending" | "response" | "rejected",
+      };
+      activeQueue.transport = transport;
+      void transport.promise.then(() => {
+        transport.outcome = "response";
+        if (activeQueue.transport === transport && activeQueue.uncertain) void reconcileFollowQueue(activeQueue);
+      }, () => { transport.outcome = "rejected"; });
+      const result = await withDeadlineOutcome(transport.promise, FOLLOW_WRITE_TIMEOUT_MS);
+      if (activeQueue.transport !== transport) return fail();
+      if (!sent) {
+        activeQueue.transport = null;
+        return fail();
+      }
+      if (result.status !== "fulfilled" || !result.value.ok || !isCurrentAccount()) {
+        activeQueue.uncertain = true;
+        void reconcileFollowQueue(activeQueue);
+        return fail();
+      }
+      activeQueue.transport = null;
+      activeQueue.confirmed = followed;
+      if (activeQueue.latest === revision) writeFollowMembership(slug, followed);
+      track("save_place", { on: followed, source, synced: true });
+      if (shouldCancelPlaceReturnBridgeAfterDelete(wasFollowed, remoteStore, slug)) {
+        cancelPendingReturnBridgeValue("place");
+      } else if (followed && remoteStore?.has(slug)) {
+        signalReturnBridgeValue("place");
+      }
+      if (remoteStore?.has(slug) === followed) void syncFollowPushTopic(slug, followed);
+      return followed;
+    } finally {
+      activeQueue.pending--;
+      releaseFollowQueue(activeQueue);
+    }
+  });
+  activeQueue.tail = operation.then(() => {}, () => {});
+  return operation;
+}
+
+/** A settled unchanged result means failure; discard callers stay compatible. */
+export function useToggleFollow(slug: string, source?: string, onFailure?: (description: string) => void) {
   const localToggle = useToggleSave("place", slug);
   return useCallback(async (): Promise<boolean> => {
+    const generation = authGeneration;
+    const startedFollowed = remoteStore?.has(slug) ?? readIsSavedSync(slug);
     const auth = await detectAuth();
+    // An old identity lookup cannot mutate a new account or its local saves.
+    // Normal first hydration does not change this auth generation.
+    if (authGeneration !== generation) {
+      onFailure?.(UNCONFIRMED);
+      return startedFollowed;
+    }
     if (auth === "anonymous" || auth === "unknown") {
-      // localStorage path (legacy)
       localToggle();
       const on = readIsSavedSync(slug);
       track("save_place", { on, source: source ?? "place_detail", synced: false });
       return on;
     }
-    // Authed path: optimistic. Flip the shared store immediately so
-    // every follow control re-renders to the new state with no spinner
-    // and no read-before-write round trip, then reconcile with the
-    // server in the background. A failed write reverts the flip.
     const current = remoteStoreUserId === auth.user.id && remoteStore
       ? remoteStore
       : new Set<string>();
+    // The tap belongs to the list the person saw. If account discovery
+    // changes that membership, refuse rather than sending the opposite action.
+    if (current.has(slug) !== startedFollowed) {
+      onFailure?.(CHANGED_LIST);
+      return startedFollowed;
+    }
     const { next, wasFollowed } = toggleSlug(current, slug);
     if (!wasFollowed && next.size > MAX_FOLLOWED_PLACES) return false;
+    if (remoteStoreUserId !== auth.user.id) writeAccountRemote(auth.user.id, current);
     writeRemote(next);
-    track("save_place", { on: !wasFollowed, source: source ?? "place_detail", synced: true });
-
-    void fetch("/api/follows", {
-      method: wasFollowed ? "DELETE" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        wasFollowed ? { slug } : { slug, source: source ?? "place_detail" },
-      ),
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error("follow write failed");
-        if (
-          shouldCancelPlaceReturnBridgeAfterDelete(
-            wasFollowed,
-            remoteStore,
-            slug,
-          )
-        ) {
-          cancelPendingReturnBridgeValue("place");
-        } else if (!wasFollowed && remoteStore?.has(slug)) {
-          signalReturnBridgeValue("place");
-        }
-        // Only mirror the push topic once the follow actually persisted, so a
-        // reverted (failed) follow never leaves a dangling biz:<slug> topic.
-        void syncFollowPushTopic(slug, !wasFollowed);
-      })
-      .catch(() => {
-        // Revert to pre-toggle membership against the LATEST store
-        // value (another toggle may have landed meanwhile).
-        const live = remoteStore ?? new Set<string>();
-        const reverted = new Set(live);
-        if (wasFollowed) reverted.add(slug);
-        else reverted.delete(slug);
-        writeRemote(reverted);
-      });
-
-    return !wasFollowed;
-  }, [slug, source, localToggle]);
+    return persistFollowToggle(auth.user.id, slug, wasFollowed, source ?? "place_detail", onFailure);
+  }, [slug, source, localToggle, onFailure]);
 }
 
 /** Module-level read of "is slug saved locally" — used by the toggle's
@@ -590,6 +776,10 @@ async function maybeSync(localSlugs: Set<string>, remoteSlugs: Set<string>, user
  *  showing the previous session's follow set. */
 export function resetFollowsSyncFlag(userId?: string) {
   if (userId) clearSyncedFlag(userId);
+  followWriteEpoch++;
+  // Pending/unknown server writes remain held even if this account signs out.
+  for (const queue of followWrites.values()) releaseFollowQueue(queue);
+  authGeneration++;
   authPromise = null;
   hydratePromise = null;
   hydrateUserId = null;

@@ -39,7 +39,8 @@ export default function SaveButton({
   // out. Events + radii stay on the legacy useSaved hook by design
   // (Phase 1 brief framed sync as "follow PLACES"; broader sync later).
   const placeFollowed = useIsFollowed(refType === "place" ? refId : "");
-  const togglePlace = useToggleFollow(refId, "icon");
+  const failureDescriptionRef = useRef<string | null>(null);
+  const togglePlace = useToggleFollow(refId, "icon", (description) => { failureDescriptionRef.current = description; });
   const legacyIsSaved = useIsSaved(refType, refId);
   const legacyToggle = useToggleSave(refType, refId);
   const isSaved = refType === "place" ? placeFollowed : legacyIsSaved;
@@ -83,14 +84,15 @@ export default function SaveButton({
     busyRef.current = true;
     setBusy(true);
     setOptimisticSaved(!wasSaved);
+    failureDescriptionRef.current = null;
     try {
       const nextSaved = await (refType === "place" ? togglePlace() : legacyToggle());
       // A full followed-place list refuses an addition without throwing.
-      if (nextSaved === wasSaved) throw new Error("Save state did not change");
+      if (failureDescriptionRef.current !== null || nextSaved === wasSaved) throw new Error("Save state did not change");
       return true;
     } catch {
       toast.error(wasSaved ? "Could not remove from Saved" : "Could not save this item", {
-        description: "Your saved list has not changed. Please try again.",
+        description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again.",
       });
       return false;
     } finally {
