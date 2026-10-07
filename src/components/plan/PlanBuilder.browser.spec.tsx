@@ -40,6 +40,7 @@ describe("event outing recovery and edit presentation", () => {
   it("preserves a missing event for share and removes its actual saved reference without directions", async () => {
     const plan = unavailable(); render(plan);
     expect(host.textContent).toContain("Its place in your plan is saved");
+    expect(host.textContent).not.toContain("The event keeps its published start and full duration.");
     expect(host.querySelector('a[href*="google.com/maps"]')).toBeNull();
     await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Share this plan"]')!.click());
     const shared = new URL(mocks.share.mock.calls[0][0].url);
@@ -58,6 +59,7 @@ describe("event outing recovery and edit presentation", () => {
     await act(async () => button("Check event again").click());
     expect(mocks.check).toHaveBeenCalledWith(plan.share);
     expect(host.textContent).toContain("Evening concert");
+    expect(host.textContent).toContain("The event keeps its published start and full duration.");
     expect(host.textContent).toContain("The event listing has been checked again.");
     expect(host.textContent).not.toContain("could not confirm this event");
     expect(host.textContent).not.toContain("Review your event");
