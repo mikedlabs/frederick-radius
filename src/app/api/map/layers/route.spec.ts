@@ -127,9 +127,30 @@ describe("GET /api/map/layers request boundary", () => {
     expect(body.sourceHealth.context).toEqual({
       status: "current",
       unavailable: [],
+      asOf: expect.any(String),
     });
     expect(mocks.mapPinPlaces).toHaveBeenCalledOnce();
     expect(mocks.getFieldAmenities).toHaveBeenCalledOnce();
+  });
+
+  it("bounds operational shared caching and carries the origin snapshot time", async () => {
+    const before = Date.now();
+    const response = await GET(request("?groups=signals"));
+    const body = await response.json();
+    expect(response.headers.get("cache-control")).toBe("public, s-maxage=60, stale-while-revalidate=60");
+    const asOf = Date.parse(body.sourceHealth.signals.asOf);
+    expect(asOf).toBeGreaterThanOrEqual(before);
+    expect(asOf).toBeLessThanOrEqual(Date.now());
+    expect(mocks.getCurrentSituationSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.getRoadIntelligenceSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.fetchMapillaryTrash).not.toHaveBeenCalled();
+  });
+
+  it("keeps event caching at the existing five-minute map interval", async () => {
+    const response = await GET(request("?groups=events"));
+    expect(response.headers.get("cache-control")).toBe("public, s-maxage=300, stale-while-revalidate=60");
+    expect(mocks.getCurrentSituationSnapshot).not.toHaveBeenCalled();
+    expect(mocks.loadTodayEventSnapshot).toHaveBeenCalledOnce();
   });
 
   it("labels a provider miss instead of presenting its fallback as a real zero", async () => {
@@ -146,6 +167,7 @@ describe("GET /api/map/layers request boundary", () => {
     expect(body.sourceHealth.context).toEqual({
       status: "partial",
       unavailable: ["Radius field notes"],
+      asOf: expect.any(String),
     });
   });
 
@@ -204,6 +226,7 @@ describe("GET /api/map/layers request boundary", () => {
         "Traffic speeds",
         "Travel times",
       ],
+      asOf: expect.any(String),
     });
   });
 
@@ -234,6 +257,7 @@ describe("GET /api/map/layers request boundary", () => {
     expect(JSON.parse(text).sourceHealth.events).toEqual({
       status: "unavailable",
       unavailable: ["Event schedule"],
+      asOf: expect.any(String),
     });
   });
 });

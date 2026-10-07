@@ -207,3 +207,26 @@ describe("canonicalMapLayerGroupSearch", () => {
     expect(canonicalMapLayerGroupSearch(search)).toBeNull();
   });
 });
+
+
+describe("operational layer ownership", () => {
+  it("does not let late catalog context erase current parking or amenity observations", () => {
+    const current = parseDeferredBrowseLayers({
+      parking: [{ slug: "garage", available: 12, updated: "2026-10-06T20:00:00Z" }],
+      amenities: [{ id: "usgs:gauge", observedAt: "2026-10-06T20:00:00Z", detail: "4 ft gauge height" }],
+      sourceHealth: { parking: { status: "current", unavailable: [] }, amenities: { status: "current", unavailable: [] } },
+    });
+    const catalog = parseDeferredBrowseLayers({ parking: [{ slug: "garage", available: null }], amenities: [], sourceHealth: { context: { status: "current", unavailable: [] } } });
+    const merged = mergeDeferredBrowseLayerGroup(current, catalog, "context");
+    expect(merged.parking[0].available).toBe(12);
+    expect(merged.amenities[0].detail).toBe("4 ft gauge height");
+  });
+
+  it("keeps the older timestamp when an unavailable refresh retains previous features", () => {
+    const current = parseDeferredBrowseLayers({ parking: [{ slug: "garage", available: 12 }], sourceHealth: { parking: { status: "current", unavailable: [], asOf: "2026-10-06T20:00:00Z" } } });
+    const failed = parseDeferredBrowseLayers({ sourceHealth: { parking: { status: "unavailable", unavailable: ["Parking occupancy"], asOf: "2026-10-06T20:02:00Z" } } });
+    const merged = mergeDeferredBrowseLayerGroup(current, failed, "parking");
+    expect(merged.parking[0].available).toBe(12);
+    expect(merged.sourceHealth.parking).toMatchObject({ stale: true, asOf: "2026-10-06T20:00:00Z", status: "unavailable" });
+  });
+});

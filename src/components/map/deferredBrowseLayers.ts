@@ -38,6 +38,10 @@ export type MapLayerSourceHealth = {
   status: "current" | "partial" | "unavailable";
   /** Plain provider labels only. Never expose upstream error text. */
   unavailable: string[];
+  /** Time this map snapshot was assembled, not an upstream observation time. */
+  asOf?: string;
+  /** Client age can expire while useful features remain visible. */
+  stale?: boolean;
 };
 
 /**
@@ -191,7 +195,7 @@ function parseSourceHealth(
   for (const group of MAP_LAYER_GROUPS) {
     const raw = health[group];
     if (!raw || typeof raw !== "object") continue;
-    const candidate = raw as { status?: unknown; unavailable?: unknown };
+    const candidate = raw as { status?: unknown; unavailable?: unknown; asOf?: unknown; stale?: unknown };
     if (
       candidate.status !== "current" &&
       candidate.status !== "partial" &&
@@ -201,6 +205,9 @@ function parseSourceHealth(
     }
     parsed[group] = {
       status: candidate.status,
+      ...(typeof candidate.asOf === "string" && Number.isFinite(Date.parse(candidate.asOf))
+        ? { asOf: candidate.asOf } : {}),
+      ...(candidate.stale === true ? { stale: true } : {}),
       unavailable: Array.isArray(candidate.unavailable)
         ? candidate.unavailable
             .filter((label): label is string => typeof label === "string")
@@ -278,8 +285,17 @@ export function mergeDeferredBrowseLayerGroup(
   group: MapLayerGroup,
 ): DeferredBrowseLayers {
   const incomingHealth = incoming.sourceHealth[group];
+  const retained = incomingHealth?.status !== "current" &&
+    mapLayerGroupHasVisibleData(group, current);
   const sourceHealth = incomingHealth
-    ? { ...current.sourceHealth, [group]: incoming.sourceHealth[group] }
+    ? {
+        ...current.sourceHealth,
+        [group]: retained ? {
+          ...incomingHealth,
+          asOf: current.sourceHealth[group]?.asOf,
+          stale: true,
+        } : incomingHealth,
+      }
     : current.sourceHealth;
   const degraded = incomingHealth?.status === "partial";
   const unavailable = incomingHealth?.status === "unavailable";
@@ -339,8 +355,10 @@ export function mergeDeferredBrowseLayerGroup(
   if (group === "context") {
     return {
       ...current,
-      amenities: mergeArrays(current.amenities, incoming.amenities),
-      parking: mergeArrays(current.parking, incoming.parking),
+      amenities: current.sourceHealth.amenities
+        ? current.amenities : mergeArrays(current.amenities, incoming.amenities),
+      parking: current.sourceHealth.parking
+        ? current.parking : mergeArrays(current.parking, incoming.parking),
       sourceHealth,
     };
   }
