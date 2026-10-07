@@ -545,7 +545,7 @@ export default function PlanBuilder({
                 {plan.notices?.length ? "No event is scheduled in this plan yet." : "Nothing reliable fits yet."}
               </h3>
               <p className="mx-auto mt-1 max-w-sm text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-                {plan.notices?.length ? "Review the update above or check the event again. Your shared link still keeps the choices you made." : "Radius did not find enough places with confirmed hours for that area and time. Try an earlier start, a longer drive, or another kind of outing."}
+                {plan.notices?.length ? "Review the update above or check the event again. Your shared link still keeps the choices you made." : `Radius did not find enough places with confirmed hours for that area and time. Try ${startMode === "now" ? "a later start" : "a different start time"}, a longer drive, or another kind of outing.`}
               </p>
               <button
                 type="button"
