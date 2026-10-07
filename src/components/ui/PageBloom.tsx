@@ -1,8 +1,8 @@
 "use client";
 
-import { useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useContext, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import RippleMark from "@/components/brand/RippleMark";
-import { motion, type HTMLMotionProps } from "framer-motion";
+import { motion, MotionConfigContext, type HTMLMotionProps } from "framer-motion";
 type AmbientLayerProps = Omit<HTMLMotionProps<"div">, "style" | "children"> & {
   active: boolean;
   style?: CSSProperties;
@@ -59,11 +59,15 @@ export default function PageBloom({
   className?: string;
   style?: CSSProperties;
 }) {
-  const active = useSyncExternalStore(
+  const { reducedMotion } = useContext(MotionConfigContext);
+  const browserAllowsMotion = useSyncExternalStore(
     subscribeAmbientMotion,
     readAmbientMotion,
     readServerAmbientMotion,
   );
+  // A parent can request less motion, but cannot override the visitor's
+  // operating-system preference or run animation while the tab is hidden.
+  const active = browserAllowsMotion && reducedMotion !== "always";
 
   const tone =
     variant === "cool"

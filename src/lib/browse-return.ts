@@ -1,3 +1,4 @@
+import { isResolvableEventSlug } from "@/lib/events/resolvable-event-slug";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 
 const BASE = new URL("https://frederick-radius.invalid");
@@ -12,18 +13,22 @@ const DESTINATIONS: Record<string, string> = {
   "/plan": "your plan",
 };
 
-/** A detail can return to a known listing, never to an arbitrary redirect. */
+const isEventDetail = (path: string) => path.startsWith("/events/") && isResolvableEventSlug(path.slice("/events/".length));
+
+/** Return only to known public browsing routes or a canonical event detail. */
 export function normalizeBrowseReturnTo(raw: unknown): string | null {
   if (typeof raw !== "string" || !raw || raw.length > 8_192) return null;
   const safe = safeRedirectPath(raw, INVALID);
   const parsed = new URL(safe, BASE);
-  if (!Object.hasOwn(DESTINATIONS, parsed.pathname)) return null;
+  if (!Object.hasOwn(DESTINATIONS, parsed.pathname) && !isEventDetail(parsed.pathname)) return null;
   return `${parsed.pathname}${parsed.search}${parsed.hash}`;
 }
 
 export function browseReturnLabel(raw: unknown): string | null {
   const safe = normalizeBrowseReturnTo(raw);
-  return safe ? `Back to ${DESTINATIONS[new URL(safe, BASE).pathname]}` : null;
+  if (!safe) return null;
+  const path = new URL(safe, BASE).pathname;
+  return isEventDetail(path) ? "Back to the event" : `Back to ${DESTINATIONS[path]}`;
 }
 
 export function withBrowseReturnTo(destination: string, raw: unknown): string {
@@ -38,6 +43,10 @@ export function withBrowseReturnTo(destination: string, raw: unknown): string {
 
 /** Keep the immediate listing, including its own route back to the map. */
 export function browseReturnFromLocation(location: URL): string | null {
+  if (isEventDetail(location.pathname)) {
+    const listing = normalizeBrowseReturnTo(location.searchParams.get("returnTo"));
+    if (listing) return listing;
+  }
   return normalizeBrowseReturnTo(
     `${location.pathname}${location.search}${location.hash}`,
   ) ?? normalizeBrowseReturnTo(location.searchParams.get("returnTo"));

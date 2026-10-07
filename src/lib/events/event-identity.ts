@@ -1,4 +1,5 @@
 import "server-only";
+import { isResolvableEventSlug } from "@/lib/events/resolvable-event-slug";
 import { getSql } from "@/lib/db/client";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { archiveJsonText } from "@/lib/events/archive-json";
@@ -240,13 +241,7 @@ export async function archivedEventsBySlugs(
   options: { signal?: AbortSignal; timeoutMs?: number } = {},
 ): Promise<ArchivedEventBatchResolution> {
   const requested = [...new Set(slugs)]
-    .filter(
-      (slug) =>
-        slug.length <= 200 &&
-        EVENT_SLUG.test(slug) &&
-        slug !== "constructor" &&
-        slug !== "prototype",
-    )
+    .filter(isResolvableEventSlug)
     .slice(0, EVENT_IDENTITY_BATCH_LIMIT);
   if (requested.length === 0) {
     return { matches: [], unresolvedSlugs: [] };

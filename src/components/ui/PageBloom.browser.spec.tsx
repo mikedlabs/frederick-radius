@@ -4,12 +4,13 @@ import { createRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PageBloom from "./PageBloom";
+import { MotionConfig } from "framer-motion";
 
 // Observe actual motion requests from the rendered component. JSDOM cannot
 // draw Framer frames; real frame behavior is checked in the browser journey.
-vi.mock("framer-motion", async () => {
+vi.mock("framer-motion", async (importOriginal) => {
   const { createElement } = await import("react");
-  return { motion: { div: ({ animate, transition, initial: _initial, ...props }: {
+  return { ...await importOriginal<typeof import("framer-motion")>(), motion: { div: ({ animate, transition, initial: _initial, ...props }: {
     animate?: Record<string, unknown>; transition?: { repeat?: number }; initial?: unknown;
   }) => {
     void _initial;
@@ -50,6 +51,21 @@ async function mount(motif = true) {
 function loops() { return host.querySelectorAll('[data-motion-loop="true"]').length; }
 
 describe("PageBloom ambient motion", () => {
+  it("honors a reduced MotionConfig and still preserves the visitor's native preference", async () => {
+    root = createRoot(host);
+    await act(async () => root!.render(<MotionConfig reducedMotion="never"><PageBloom motif /></MotionConfig>));
+    expect(loops()).toBe(3);
+    const owners = [...host.querySelectorAll('[data-motion-loop="true"]')];
+    await act(async () => root!.render(<MotionConfig reducedMotion="always"><PageBloom motif /></MotionConfig>));
+    expect(loops()).toBe(0);
+    expect(owners.every((owner) => !owner.isConnected)).toBe(true);
+    expect(host.querySelectorAll("[data-ambient-layer]")).toHaveLength(3);
+    await act(async () => root!.render(<MotionConfig reducedMotion="never"><PageBloom motif /></MotionConfig>));
+    expect(loops()).toBe(3);
+    await act(async () => { reduced = true; media.dispatchEvent(new Event("change")); });
+    expect(loops()).toBe(0);
+  });
+
   it("keeps server markup static before browser preferences are known", () => {
     expect(renderToString(<PageBloom motif />)).not.toContain('data-motion-loop="true"');
   });

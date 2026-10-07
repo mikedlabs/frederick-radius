@@ -61,7 +61,8 @@ export default function MyRadiusButton({
   const mounted = useMounted();
   const isFollowed = useIsFollowed(slug);
   const { authed } = useFollowedSlugs();
-  const toggle = useToggleFollow(slug, "place_detail");
+  const failureDescriptionRef = useRef<string | null>(null);
+  const toggle = useToggleFollow(slug, "place_detail", (description) => { failureDescriptionRef.current = description; });
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [hover, setHover] = useState(false);
@@ -110,13 +111,14 @@ export default function MyRadiusButton({
       && !modalOpen;
     setOptimisticFollowed(!wasFollowed);
     setBusy(true);
+    failureDescriptionRef.current = null;
     try {
       // One code path with the sheet's SaveButton: the toggle itself is
       // auth-aware (localStorage when anonymous, optimistic DB write when
       // signed in). Anonymous saves
       // get a quiet sync upsell in the toast, never a login detour.
       const nowFollowed = await toggle();
-      if (nowFollowed === wasFollowed) throw new Error("Save state did not change");
+      if (failureDescriptionRef.current !== null || nowFollowed === wasFollowed) throw new Error("Save state did not change");
       setOptimisticFollowed(nowFollowed);
       haptic(nowFollowed ? "medium" : "light");
       if (nowFollowed) {
@@ -145,7 +147,7 @@ export default function MyRadiusButton({
       }
     } catch {
       toast.error(wasFollowed ? "Could not remove from Saved" : "Could not save this place", {
-        description: "Your saved list has not changed. Please try again.",
+        description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again.",
       });
     } finally {
       setOptimisticFollowed(null);
@@ -158,12 +160,13 @@ export default function MyRadiusButton({
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
+    failureDescriptionRef.current = null;
     try {
       const nextFollowed = await toggle();
-      if (nextFollowed === wasFollowed) throw new Error("Save state did not change");
+      if (failureDescriptionRef.current !== null || nextFollowed === wasFollowed) throw new Error("Save state did not change");
     } catch {
       toast.error("Could not undo this change", {
-        description: "Your saved list has not changed. Please try again.",
+        description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again.",
       });
     } finally {
       setBusy(false);

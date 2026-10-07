@@ -80,6 +80,8 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { nearestEventParking } from "@/lib/events/parking";
 import { eventDecisionLocation, eventTimeCaution } from "@/lib/events/decision-facts";
 import { isDateOnlyEventAnchor } from "@/lib/eventWhenLabel";
+import { eventPlanEligibility } from "@/lib/plan/event-plan-eligibility";
+import { withBrowseReturnTo } from "@/lib/browse-return";
 
 function splitDescription(text: string, limit = 300): { preview: string; rest: string } {
   if (text.length <= limit) return { preview: text, rest: "" };
@@ -195,8 +197,15 @@ export async function generateMetadata(
   };
 }
 
-export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function EventPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ returnTo?: string | string[] }>;
+}) {
   const { slug } = await params;
+  const { returnTo } = await searchParams;
   if (!RESOLVABLE_SLUG.test(slug)) notFound();
   let resolution: ResolvedEventPage | null;
   try {
@@ -236,7 +245,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // events are windowed and a permanently-cached redirect could outlive
   // the event it points at. Seed events keep their hand-authored slug.
   if (resolution.kind !== "seed" && event.slug !== slug) {
-    redirect(`/events/${event.slug}`);
+    redirect(withBrowseReturnTo(`/events/${event.slug}`, returnTo));
   }
   // Reliable live-vs-seed signal: whether the static seed resolved it.
   // event.source is NOT usable here (hand-authored seed events also use
@@ -355,6 +364,16 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // Server component: request-time clock is correct here, not impure render.
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
+  const eventPlan = eventPlanEligibility(event, {
+    nowMs,
+    hasResolvedVenue: Boolean(venuePlace),
+    venueOperational: venuePlace?.is_operational,
+  });
+  const eventPlanDuration = eventPlan.eligible
+    ? eventPlan.durationMinutes % 60 === 0
+      ? `${eventPlan.durationMinutes / 60} ${eventPlan.durationMinutes === 60 ? "hour" : "hours"}`
+      : `${eventPlan.durationMinutes} minutes`
+    : null;
   // Secondary context is bounded and independent. The primary event has
   // already resolved; a slow related/nearby source degrades to the seed/slim
   // catalog fallback instead of rebuilding the full event and place catalogs.
@@ -804,6 +823,30 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           </div>
         );
       })()}
+
+      {eventPlan.eligible && (
+        <section
+          aria-label="Plan this visit"
+          className="border-y py-4"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <p className="text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            This plan reserves {eventPlanDuration} for the event. It can include one nearby stop when the hours fit.
+          </p>
+          <Link
+            href={withBrowseReturnTo(
+              `/plan?event=${encodeURIComponent(event.slug)}`,
+              withBrowseReturnTo(`/events/${event.slug}`, returnTo),
+            )}
+            prefetch={false}
+            className="tap-44 mt-1 inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline underline-offset-4"
+            style={{ color: "var(--app-brand-press)" }}
+          >
+            Plan around this event
+            <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </Link>
+        </section>
+      )}
 
       {/* Smart pairings — the editorial decision layer the mobile
           review called out as the killer feature. Synthesizes
