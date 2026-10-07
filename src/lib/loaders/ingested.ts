@@ -21,6 +21,7 @@ import {
 } from "@/lib/events/normalize";
 import { hasImplausibleStartTime } from "@/lib/events/visible";
 import { fcplStoredLifecycle, FCPL_SOURCE_DOMAIN } from "@/lib/ingest/fcpl";
+import { fcplObservedAt, type FcplObservationRow } from "@/lib/ingest/fcpl-observation-envelope";
 import type { EventStatus } from "@/lib/event-status";
 
 // Phase 1.6: drop venue open-status and routine recurring class/work
@@ -40,7 +41,7 @@ export type IngestedOccurrence = {
   endsAtUtc: string | null;
   allDay: boolean;
   sourceUrl: string | null;
-  /** Last successful normalized-source refresh for archive provenance. */
+  /** Exact FCPL publisher check when present; legacy/other rows retain normalized-write dates. */
   verifiedAt: string | null;
 };
 
@@ -92,6 +93,16 @@ type Row = {
   hero_image_alt: string | null;
   updated_at: string | Date | null;
   raw_vevent?: string | null;
+  id?: string;
+  raw_event_id?: string;
+  tzid?: string;
+  raw_id?: string;
+  raw_dtstamp?: string | Date;
+  raw_fetched_at?: string | Date;
+  raw_source_uid?: string;
+  raw_source_domain?: string;
+  raw_source_url?: string | null;
+  verified_at?: string | null;
   status?: EventStatus;
 };
 
@@ -118,10 +129,13 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
   let rows: Row[];
   try {
     rows = (await sql<Row[]>`
-      select e.source_uid, e.source_domain, e.source_url, e.title, e.description,
+      select e.id, e.raw_event_id, e.tzid, e.source_uid, e.source_domain, e.source_url, e.title, e.description,
              e.starts_at_utc, e.ends_at_utc, e.all_day, e.venue_name, e.address,
              e.lat, e.lng, e.municipality, e.category,
-             e.hero_image, e.hero_image_alt, e.updated_at, raw.raw_vevent
+             e.hero_image, e.hero_image_alt, e.updated_at, raw.raw_vevent,
+             raw.id as raw_id, raw.dtstamp as raw_dtstamp,
+             raw.fetched_at as raw_fetched_at, raw.source_uid as raw_source_uid,
+             raw.source_domain as raw_source_domain, raw.source_url as raw_source_url
       from ingested_events e
       left join raw_events raw
         on raw.id = e.raw_event_id
@@ -141,6 +155,11 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
   // neither. cleanVenueName nulls a junk venue; the key then falls back to
   // address/empty.
   for (const r of rows) {
+    // Producer-first rollout: an exact receipt improves check-date semantics.
+    // Legacy/unattested rows retain their previous write date so cancellations
+    // still correct archived identities. This does not strictly hold old data.
+    r.verified_at = (r.source_domain === FCPL_SOURCE_DOMAIN
+      ? fcplObservedAt(r as FcplObservationRow) : null) ?? verifiedTimestamp(r.updated_at);
     r.venue_name = cleanVenueName(r.venue_name);
     // Capture status before cleaning/grouping. Removing the marker joins the
     // cancelled date to its scheduled siblings without cancelling the series.
@@ -217,7 +236,7 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
         endsAtUtc: r.ends_at_utc,
         allDay: r.all_day,
         sourceUrl: r.source_url,
-        verifiedAt: verifiedTimestamp(r.updated_at),
+        verifiedAt: r.verified_at ?? null,
       })),
       count: rs.length,
       nextStart: head.starts_at_utc,
@@ -250,7 +269,7 @@ export const getIngestedSeries = unstable_cache(
   // shape change must invalidate the persisted cache (the #509 lesson). The
   // deploy SHA is a second key segment so a forgotten version bump still
   // auto-busts on deploy.
-  ["ingested-series-v9", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["ingested-series-v10", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 3600, tags: ["ingested-events"] }
 );
 
