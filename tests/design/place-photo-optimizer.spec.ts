@@ -25,13 +25,21 @@ describe("place photo proxy rendering", () => {
     expect(result).not.toContain("/_next/image");
   });
 
+  // /api/place-photo already performs the upstream fetch and can return a
+  // same-origin SVG fallback. Sending it through /_next/image makes Vercel
+  // reject that valid fallback with INVALID_IMAGE_OPTIMIZE_REQUEST.
+  const BYPASS = /unoptimized=\{[^}]*startsWith\("\/api\/place-photo"\)[^}]*\}/;
+
+  it("bypasses Next image optimization in the shared RadiusPhoto primitive", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/components/ui/RadiusPhoto.tsx"), "utf8");
+    expect(source).toMatch(BYPASS);
+  });
+
   it.each(PROXY_PHOTO_SURFACES)("bypasses Next image optimization in %s", (file) => {
     const source = readFileSync(resolve(process.cwd(), file), "utf8");
-
-    // /api/place-photo already performs the upstream fetch and can return a
-    // same-origin SVG fallback. Sending it through /_next/image makes Vercel
-    // reject that valid fallback with INVALID_IMAGE_OPTIMIZE_REQUEST.
-    expect(source).toMatch(/unoptimized=\{[^}]*startsWith\("\/api\/place-photo"\)[^}]*\}/);
+    // A surface that paints through RadiusPhoto inherits the bypass.
+    const delegates = /from "@\/components\/ui\/RadiusPhoto"/.test(source);
+    if (!delegates) expect(source).toMatch(BYPASS);
   });
 });
 

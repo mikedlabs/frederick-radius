@@ -48,7 +48,6 @@ export const SIGNAL_AWARE = new Set([
   // Batch 1 (October 2026) routed these through the failure signal. EventCard
   // and the events/[slug] hero did too, through PlacePhotoScope, and no
   // longer mention the proxy, so they need no entry.
-  "src/components/place/PlaceCard.tsx",
   "src/components/place/PlaceSheet.tsx",
   "src/components/map/MapPeek.tsx",
   "src/components/event/EventSheet.tsx",
@@ -56,7 +55,6 @@ export const SIGNAL_AWARE = new Set([
   // Earlier fixes that request and honor the signal themselves.
   "src/components/place/PlaceMedallion.tsx",
   "src/components/place/PlacePhotoGallery.tsx",
-  "src/components/place/PlaceIndex.tsx",
   "src/components/search/SearchResultImage.tsx",
   "src/components/beer/BreweryPhoto.tsx",
   "src/components/today/DaypartNeeds.tsx",

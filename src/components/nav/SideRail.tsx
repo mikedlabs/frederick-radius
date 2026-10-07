@@ -34,7 +34,9 @@ export default function SideRail() {
           {TABS.map(({ href, label, icon: Icon, prefetch, fillOnActive }, idx) => {
             const isAtDestination = pathname === href || pathname.startsWith(`${href}/`);
             const isRealActive = realIdx === idx;
-            const active = isRealActive || pendingIdx === idx;
+            // While a tap is pending only the pending tab is lit, so two
+            // tabs never read as selected at once (same rule as BottomNav).
+            const active = pendingIdx !== null ? pendingIdx === idx : isRealActive;
 
             return (
               <li key={href} className="flex">

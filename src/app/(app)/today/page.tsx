@@ -28,6 +28,7 @@ import FromYourSaved from "@/components/today/FromYourSaved";
 
 import { eventDateBlock } from "@/lib/loaders/events";
 import { loadTodayEventSnapshot } from "@/lib/loaders/todayEventSnapshot";
+import { keepDegradedEventRenderShort } from "@/lib/loaders/unifiedEvents";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
 import { isEventToday, isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
@@ -730,6 +731,10 @@ async function WhatsOn({
   now: Date;
 }) {
   const { publicEvents, sourceHealth } = await eventsPromise;
+  // Today reads the same archive as /events, so a degraded read (every
+  // build, or a runtime timeout) must not stay cached as this page for the
+  // full five minutes either.
+  await keepDegradedEventRenderShort(sourceHealth);
   // From 9 PM to 5 AM Today answers by the clock: what is still on tonight
   // leads, then the coming day ("Tomorrow, Thursday", or "Later today,
   // Wednesday" after midnight) with up to three program rows and its NWS

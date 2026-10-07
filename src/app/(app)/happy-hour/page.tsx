@@ -56,6 +56,7 @@ export default function HappyHourPage() {
       name: p.name,
       town: townName(p.municipality),
       photo: p.google_photo_url,
+      category: p.category,
       deal: v.happy_hour.details || undefined,
       parking: fn?.parking?.text,
       note: fn?.insider?.[0]?.text,

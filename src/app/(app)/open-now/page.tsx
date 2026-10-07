@@ -182,6 +182,8 @@ export default async function OpenNowPage() {
       closesMin,
       rating:
         p.google_rating != null && (p.google_rating_count ?? 0) >= 20 ? p.google_rating : null,
+      ratingCount:
+        p.google_rating != null && (p.google_rating_count ?? 0) >= 20 ? p.google_rating_count : null,
       mark,
       // No printed distance on /open-now: ranking uses the town centroid,
       // and a centroid-to-place figure would read as YOUR distance.

@@ -26,9 +26,23 @@ const THUMBNAIL_COMPONENTS = [
   "src/components/place/PlaceMedallion.tsx",
 ];
 
+// RadiusPhoto (src/components/ui/RadiusPhoto.tsx) is the shared photo
+// primitive. A component that paints through it inherits the narrowing, so it
+// passes either by narrowing itself or by delegating to the primitive.
+const RADIUS_PHOTO = "src/components/ui/RadiusPhoto.tsx";
+const delegatesToRadiusPhoto = (source: string) =>
+  /from "@\/components\/ui\/RadiusPhoto"/.test(source);
+
 describe("thumbnail photo width", () => {
+  it("narrows the proxy URL in the shared RadiusPhoto primitive", () => {
+    expect(read(RADIUS_PHOTO)).toContain("proxyPhotoAtWidth");
+  });
+
   it.each(THUMBNAIL_COMPONENTS)("%s narrows the proxy URL", (file) => {
-    expect(read(file)).toContain("proxyPhotoAtWidth");
+    const source = read(file);
+    expect(
+      source.includes("proxyPhotoAtWidth") || delegatesToRadiusPhoto(source),
+    ).toBe(true);
   });
 
   it("does not hand the stored hero URL straight to Image in PlaceCard", () => {

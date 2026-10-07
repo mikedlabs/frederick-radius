@@ -62,3 +62,8 @@ jobs:
       # literals. Counts may fall, never rise; see scripts/check-type-scale.mjs.
       - name: Type scale lint
         run: npm run lint:type-scale
+
+      # Place photos go through RadiusPhoto, which asks the proxy for its
+      # failure signal, so a missing photo never paints as a picture.
+      - name: Place photo lint
+        run: npm run lint:place-photo

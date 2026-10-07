@@ -173,7 +173,7 @@ function EventRow({
         }}
       >
         <span className="block text-[13px] font-bold">{plate.time}</span>
-        <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-[0.06em]">
+        <span className="text-caption mt-0.5 block font-semibold uppercase leading-none">
           {plate.period}
         </span>
       </span>
