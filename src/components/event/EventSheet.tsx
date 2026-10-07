@@ -11,6 +11,7 @@ import ItineraryButton from "@/components/saved/ItineraryButton";
 import EventActions from "@/components/event/EventActions";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
 import { eventCardVisual } from "@/components/event/eventVisuals";
+import { usePlacePhotoState } from "@/components/place/PlacePhotoState";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { eventDateBlock } from "@/lib/events/format";
@@ -146,7 +147,11 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
     physicalAttendance &&
     eventHasPreciseLocation(event);
   const parking = preciseGeo && canAttend ? nearestEventParking(event.geom) : null;
-  const eventVisual = eventCardVisual(event);
+  const approvedVisual = eventCardVisual(event);
+  // A venue photo the proxy could not deliver comes back as the failure
+  // signal; the sheet then opens on its photoless header with no credit.
+  const heroPhoto = usePlacePhotoState(approvedVisual?.src);
+  const eventVisual = heroPhoto.status === "missing" ? null : approvedVisual;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll({ container: scrollRef });
@@ -189,22 +194,24 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
          *  category eyebrow + title overlaid (same cinematic pattern as
          *  the place sheet). Photoless events get a category-tinted
          *  plate so the sheet always opens with an identity. */}
-        {eventVisual ? (
-          <div className="relative aspect-[16/9] w-full overflow-hidden">
-            <motion.div 
+        {eventVisual && heroPhoto.src ? (
+          <div className="relative aspect-[16/9] w-full overflow-hidden" data-event-sheet-hero="photo">
+            <motion.div
               className="absolute inset-0 origin-bottom"
               style={{ y: heroY, scale: heroScale }}
             >
               <Image
-                src={eventVisual.src}
+                src={heroPhoto.src}
                 alt=""
                 fill
-                unoptimized={eventVisual.src.startsWith("/api/place-photo")}
+                unoptimized={heroPhoto.src.startsWith("/api/place-photo")}
                 priority
                 sizes="(max-width: 720px) 100vw, 720px"
                 placeholder="blur"
                 blurDataURL={PAPER_CREAM_BLUR}
                 className="object-cover"
+                onLoad={heroPhoto.onLoad}
+                onError={heroPhoto.onError}
               />
             </motion.div>
             <div
@@ -240,7 +247,8 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
             </div>
           </div>
         ) : null}
-        {eventVisual ? (
+        {/* Credit only once a real photograph has decoded. */}
+        {eventVisual && heroPhoto.status === "ready" ? (
           <EventVisualCredit
             visual={eventVisual}
             className="border-b px-5 py-2"

@@ -8,13 +8,23 @@ const mocks = vi.hoisted(() => ({
   isUnattributedRequest: vi.fn(),
   photoUrl: vi.fn(),
   reserveDailyUsage: vi.fn(),
+  places: {
+    "dutchs-daughter": {
+      slug: "dutchs-daughter",
+      name: "Dutch's Daughter",
+      category: "restaurant",
+    },
+  } as Record<string, { slug: string; name: string; category: string }>,
+  categories: {
+    restaurant: { slug: "restaurant", name: "Restaurant", color: "#B5462B" },
+  } as Record<string, { slug: string; name: string; color: string }>,
 }));
 
 vi.mock("@/lib/integrations/google-places", () => ({
   photoUrl: mocks.photoUrl,
 }));
-vi.mock("@/data/places", () => ({ PLACE_BY_SLUG: {} }));
-vi.mock("@/data/categories", () => ({ CATEGORY_BY_SLUG: {} }));
+vi.mock("@/data/places", () => ({ PLACE_BY_SLUG: mocks.places }));
+vi.mock("@/data/categories", () => ({ CATEGORY_BY_SLUG: mocks.categories }));
 vi.mock("@/lib/origin-check", () => ({
   isOverPaidRequestBudget: mocks.isOverPaidRequestBudget,
   isSameOriginRequest: mocks.isSameOriginRequest,
@@ -100,6 +110,40 @@ describe("GET /api/place-photo daily budget", () => {
     expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["a known place", { slug: "dutchs-daughter" }],
+    ["an unknown slug", { slug: "not-a-catalog-place" }],
+    ["no slug", {}],
+  ])("serves a plate with no text for %s", async (_label, params) => {
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: false, count: 1_500 });
+
+    const response = await GET(request(params));
+    const svg = await response.text();
+
+    // Every surface crops this plate with object-cover. Typeset words became
+    // "RESTA PHOTO Dutch" fragments in list thumbnails and a second title
+    // under event heroes (production, Oct 6-7 2026).
+    expect(response.headers.get("x-photo-fallback")).toBe("daily-cap");
+    expect(svg).toMatch(/^<svg /);
+    expect(svg).not.toMatch(/<text|<tspan|<style|font-family/);
+    for (const word of ["PHOTO NOT AVAILABLE", "FREDERICK RADIUS", "RESTAURANT", "Dutch"]) {
+      expect(svg).not.toContain(word);
+    }
+    // The Cream field, the category rule and the Radius ripple remain.
+    expect(svg).toContain('fill="#F4EEE2"');
+    expect(svg).toContain('<rect width="5"');
+    expect(svg).toContain("<path d=");
+  });
+
+  it("keys a known place's plate to its category color", async () => {
+    mocks.reserveDailyUsage.mockResolvedValue({ reserved: false, count: 1_500 });
+
+    const svg = await (await GET(request({ slug: "dutchs-daughter" }))).text();
+
+    expect(svg).toContain('<rect width="5" height="600" fill="#B5462B"/>');
+    expect(svg).toContain('stroke="#B5462B"');
+  });
+
   it("uses the safe default for a malformed cap", async () => {
     vi.stubEnv("GOOGLE_PHOTO_DAILY_CAP", "100photos-private-value");
     mocks.reserveDailyUsage.mockResolvedValue({ reserved: false, count: 1_500 });
@@ -170,7 +214,9 @@ describe("GET /api/place-photo daily budget", () => {
       const { response, bytes } = await pending;
       expect(response.headers.get("x-photo-fallback")).toBe("fetch-timeout");
       expect(response.headers.get("content-type")).toBe("image/svg+xml");
-      expect(new TextDecoder().decode(bytes)).toContain("PHOTO NOT AVAILABLE");
+      const svg = new TextDecoder().decode(bytes);
+      expect(svg).toContain("<svg");
+      expect(svg).not.toContain("<text");
       expect(cancel).toHaveBeenCalledOnce();
       expect(mocks.fetch).toHaveBeenCalledOnce();
     } finally {
