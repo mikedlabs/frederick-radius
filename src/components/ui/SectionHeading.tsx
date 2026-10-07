@@ -4,7 +4,11 @@ import { ArrowRight } from "lucide-react";
 /**
  * SectionHeading — the one strong category header, reused by Shelf and
  * the Radius results grid (and available to any future surface). A
- * tick + editorial title + a quiet count, optional trailing action.
+ * tick + a solid Public Sans title + a quiet count, optional trailing action.
+ * Pass titles in sentence case. The title is always solid ink: gradient-filled
+ * text is a DESIGN_TELLS high finding, and the #1702 gradient also painted the
+ * primary title lighter than its own subhead (22px weight 400 against 16px
+ * weight 600), so type no longer carried the hierarchy.
  *
  * The tick color reads from `--section-accent` if a parent has set it
  * (so a whole route can theme its headings with one declaration on the
@@ -31,10 +35,10 @@ export default function SectionHeading({
   trailing?: React.ReactNode;
   /** Override the route accent for a single heading. */
   accent?: string;
-  /** Heading register. `lg` is the primary section title (Caslon 22 + full
-   *  tick); `sm` is the one lighter subhead register for secondary sections
-   *  (Public Sans 16 + a shorter tick), so hierarchy reads from type, not per-section
-   *  invention. */
+  /** Heading register. `lg` is the primary section title (Public Sans 20
+   *  semibold + full tick); `sm` is the one lighter subhead register for
+   *  secondary sections (Public Sans 16 semibold + a shorter tick), so hierarchy
+   *  reads from type, not per-section invention. */
   size?: "lg" | "sm";
 }) {
   const tickColor = accent ?? "var(--section-accent, var(--app-brand))";
@@ -49,7 +53,7 @@ export default function SectionHeading({
       <h2
         className={`${small
             ? "flex min-w-0 items-center gap-2 font-sans text-[16px] font-semibold leading-none tracking-tight"
-            : "flex min-w-0 items-center gap-2 font-serif text-[22px] leading-none tracking-tight"}${hasTrailingAction ? " max-[359px]:basis-full" : ""}`}
+            : "flex min-w-0 items-center gap-2 font-sans text-[20px] font-semibold leading-tight tracking-tight"}${hasTrailingAction ? " max-[359px]:basis-full" : ""}`}
         style={{ color: "var(--app-ink)" }}
       >
         <span
@@ -57,19 +61,10 @@ export default function SectionHeading({
           className={small ? "inline-block h-3 w-1 rounded-full shrink-0" : "inline-block h-4 w-1 rounded-full shrink-0"}
           style={{ background: tickColor }}
         />
-        <span
-          className="truncate"
-          style={!small ? {
-            backgroundImage: `linear-gradient(110deg, var(--app-ink) 30%, color-mix(in srgb, ${tickColor} 80%, var(--app-ink)))`,
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          } : undefined}
-        >
-          {title}
-        </span>
+        <span className="truncate">{title}</span>
         {count !== undefined && (
           <span
-            className={small ? "font-data text-sm font-normal" : "font-data text-base font-normal"}
+            className="font-data text-[13px] font-normal"
             style={{ color: "var(--app-ink-3)" }}
           >
             {count}
@@ -79,9 +74,7 @@ export default function SectionHeading({
       <span
         aria-hidden
         className="mb-[0.18rem] hidden h-px min-w-4 flex-1 min-[360px]:block"
-        style={{
-          background: `linear-gradient(90deg, color-mix(in srgb, ${tickColor} 34%, var(--app-border)), var(--app-border))`,
-        }}
+        style={{ background: "var(--app-border)" }}
       />
       {trailing ? (
         <span className="max-[359px]:ml-auto">{trailing}</span>

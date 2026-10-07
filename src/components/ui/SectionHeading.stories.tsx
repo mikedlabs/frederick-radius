@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
+import { expect } from "storybook/test";
 
 import { Button } from "./Button";
 import SectionHeading from "./SectionHeading";
@@ -14,7 +15,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The shared section marker. Its type scale establishes hierarchy before borders or extra cards do.",
+          "The shared section marker. Its type scale establishes hierarchy before borders or extra cards do. The primary title is solid ink in Public Sans 20 semibold, the secondary register is Public Sans 16 semibold, and an optional count sits at 13 pixels in muted ink. Titles are written in sentence case and are never gradient-filled.",
       },
     },
   },
@@ -36,7 +37,20 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const PrimarySection: Story = {};
+export const PrimarySection: Story = {
+  play: async ({ canvasElement }) => {
+    const heading = canvasElement.querySelector("h2")!;
+    const title = heading.querySelector<HTMLElement>("span.truncate")!;
+    const headingStyle = getComputedStyle(heading);
+    const titleStyle = getComputedStyle(title);
+    await expect(headingStyle.fontSize).toBe("20px");
+    await expect(headingStyle.fontWeight).toBe("600");
+    // Solid ink, never gradient-filled text (DESIGN_TELLS; regressed in #1702).
+    await expect(titleStyle.backgroundImage).toBe("none");
+    await expect(titleStyle.getPropertyValue("-webkit-text-fill-color")).not.toBe("rgba(0, 0, 0, 0)");
+    await expect(titleStyle.textTransform).toBe("none");
+  },
+};
 
 export const SecondarySection: Story = {
   args: {

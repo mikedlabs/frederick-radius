@@ -16,9 +16,16 @@ import {
 import { toast } from "sonner";
 import { trackDecision } from "@/lib/decision/telemetry";
 
+/** Outlined secondary: the same register as the page's secondary action tiles. */
+const SAVE_OUTLINE_STYLE = {
+  borderColor: "var(--app-border)",
+  background: "var(--app-bg-elevated)",
+  color: "var(--app-ink)",
+} as const;
+
 /**
- * MyRadiusButton — the prominent text-style follow CTA the user
- * spec'd for place detail pages.
+ * MyRadiusButton — the labeled text-style follow CTA the user
+ * spec'd for place detail pages (the single save affordance on the page).
  *
  * Three states:
  *   - default (not followed)              "Save"
@@ -46,7 +53,12 @@ import { trackDecision } from "@/lib/decision/telemetry";
  *     save must never be a login wall; sync is the upsell, not the toll.
  *
  * Visual register:
- *   - Default: brand-filled pill (the call to action stands out).
+ *   - Default: outlined secondary pill, ink label with a Brick bookmark
+ *     icon. Directions owns the page's one Brick fill (one primary action
+ *     per view); a filled Save beside a filled Order link and a filled
+ *     Directions dock spent Brick on three controls in the first phone
+ *     viewport. Save keeps its labeled text form and its place under the
+ *     title (the July "Add to My Radius" decision); only the fill changed.
  *   - Followed: subtle outlined pill with a checked bookmark icon.
  *   - Hover (desktop) on the followed state: red-tinted "Remove".
  *   - Loading: spinner in place of the icon; click is no-op.
@@ -81,14 +93,10 @@ export default function MyRadiusButton({
         data-place-save={slug}
         aria-hidden
         tabIndex={-1}
-        className="tap-44 inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
-        style={{
-          borderColor: "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-          color: "var(--app-ink-3)",
-        }}
+        className="tap-44-y inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[12px] font-semibold"
+        style={SAVE_OUTLINE_STYLE}
       >
-        <Bookmark className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+        <Bookmark className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-brand-press)" }} />
         Save
       </button>
     );
@@ -187,7 +195,7 @@ export default function MyRadiusButton({
         disabled={busy}
         aria-pressed={true}
         aria-label={busy ? `Saving ${name}` : `Saved. Tap to remove ${name}`}
-        className="tactile tactile-interactive inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
+        className="tap-44-y tactile tactile-interactive inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
         style={{
           borderColor: showRemove ? "var(--app-danger)" : "var(--app-border)",
           background: "var(--app-bg-elevated)",
@@ -222,8 +230,8 @@ export default function MyRadiusButton({
       disabled={busy}
       aria-pressed={false}
       aria-label={busy ? `Removing ${name}` : `Save ${name}`}
-      className="tap-44-y tactile tactile-interactive tactile-glow-brand inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
-      style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
+      className="tap-44-y tactile tactile-interactive inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
+      style={SAVE_OUTLINE_STYLE}
     >
       {busy ? (
         <>
@@ -232,7 +240,7 @@ export default function MyRadiusButton({
         </>
       ) : (
         <>
-          <Bookmark className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+          <Bookmark className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-brand-press)" }} />
           Save
         </>
       )}

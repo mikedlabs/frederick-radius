@@ -66,7 +66,10 @@ RULES = [
     {"id": "gradient-text", "label": "Gradient-filled text (heading/hero)", "sev": "high",
      "fix": "Solid color on headings and copy.",
      "pats": [r"bg-clip-text\s+[^\"'`]*text-transparent", r"text-transparent\s+[^\"'`]*bg-clip-text",
-              r"-webkit-background-clip\s*:\s*text", r"\bbackground-clip\s*:\s*text"]},
+              r"-webkit-background-clip\s*:\s*text", r"\bbackground-clip\s*:\s*text",
+              # React style objects: WebkitBackgroundClip: "text" or backgroundClip: 'text'.
+              # #1702 shipped gradient section titles this way, past the CSS-only patterns.
+              r"\b(Webkit|Moz|ms)?BackgroundClip\s*:\s*[\"'`]text[\"'`]"]},
     {"id": "purple-blue-gradient", "label": "Purple-to-blue/pink gradient", "sev": "high",
      "fix": "Default to solid fills.",
      "pats": [r"from-(purple|violet|indigo|fuchsia)-\d+\s+(via-[a-z]+-\d+\s+)?to-(blue|indigo|pink|cyan|sky)-\d+",
@@ -86,7 +89,10 @@ RULES = [
     {"id": "fade-in-animations", "label": "Boilerplate fade-in / hover-grow / scroll animation", "sev": "medium",
      "fix": "Motion only when it communicates something; gate behind prefers-reduced-motion.",
      "pats": [r"initial=\{\{\s*opacity:\s*0", r"whileInView", r"whileHover=\{\{\s*scale",
-              r"data-aos\s*=", r"\bhover:scale-1\d{2}\b"]},
+              r"data-aos\s*=", r"\bhover:scale-1\d{2}\b",
+              # Framer Motion variant objects such as transition: { staggerChildren: 0.05 }.
+              # #1688 shipped a staggered list fade-in this way, past the JSX-prop patterns.
+              r"\bstaggerChildren\s*:"]},
     {"id": "neon-glow", "label": "Unprompted neon glow shadow", "sev": "medium",
      "fix": "Remove glow you did not deliberately design.",
      "pats": [r"shadow-\[0_0_", r"drop-shadow-\[0_0_", r"text-shadow\s*:[^;]*\d+px[^;]*(rgba|#|hsl)",

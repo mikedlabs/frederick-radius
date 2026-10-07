@@ -38,6 +38,25 @@ describe("place detail save failure recovery", () => {
   function render() { act(() => root.render(<MyRadiusButton slug="test-stop" name="Test stop" />)); }
   function button() { return container.querySelector("button")!; }
 
+  it("keeps Save an outlined secondary so Directions stays the one Brick primary", () => {
+    render();
+    const save = button();
+    expect(save.getAttribute("aria-label")).toBe("Save Test stop");
+    expect(save.style.background).toBe("var(--app-bg-elevated)");
+    expect(save.style.borderColor).toBe("var(--app-border)");
+    expect(save.style.color).toBe("var(--app-ink)");
+    expect(save.getAttribute("style")).not.toContain("--app-brand");
+    expect(save.className).not.toContain("tactile-glow-brand");
+    expect(save.className).toContain("tap-44-y");
+  });
+
+  it("gives the Saved state the same 44px tap extender", () => {
+    mocks.saved = true;
+    render();
+    expect(button().getAttribute("aria-pressed")).toBe("true");
+    expect(button().className).toContain("tap-44-y");
+  });
+
   it("recovers from unavailable storage without retaining a false Saved label", async () => {
     mocks.toggle.mockRejectedValueOnce(new DOMException("Storage full", "QuotaExceededError"));
     render();

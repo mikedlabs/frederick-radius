@@ -20,7 +20,7 @@ const TYPE_ICON: Record<CommerceLinkType, typeof ShoppingBag> = {
   other: ExternalLink,
 };
 
-/** One clear lead action: order-ahead, else menu, else reserve. */
+/** One clear lead action, shown first: order-ahead, else menu, else reserve. */
 const PRIMARY_PRIORITY: CommerceLinkType[] = ["order", "menu", "reservation"];
 
 function decisionActionForCommerce(type: CommerceLinkType): DecisionAction {
@@ -33,9 +33,15 @@ function decisionActionForCommerce(type: CommerceLinkType): DecisionAction {
 /**
  * The place-detail commerce section — one calm block that supersedes the old
  * separate Reserve/Order rows. Renders resolved commerce links (menu / order /
- * reserve / delivery / catering) with a single brand-filled primary and quiet
- * pills for the rest, honest Toast labeling, trust/freshness where it's real,
- * and a broken-link report. Self-hides when a place has no commerce links.
+ * reserve / delivery / catering) as outlined secondary buttons with the lead
+ * action first, honest Toast labeling, trust/freshness where it's real, and a
+ * broken-link report. Self-hides when a place has no commerce links.
+ *
+ * No link here is Brick-filled: Directions is the place page's one primary
+ * action, and a filled "Order on Toast" beside a filled Save and the filled
+ * Directions dock spent Brick on three controls in the first phone viewport.
+ * The buttons keep the shared Button's radius-md corner rather than capsules,
+ * and each carries the external-link mark because each opens another site.
  */
 export default function CommerceActions({
   links,
@@ -102,22 +108,18 @@ export default function CommerceActions({
       <div className="flex flex-wrap gap-1.5">
         {displayLinks.map((l) => {
           const Icon = TYPE_ICON[l.type];
-          const isPrimary = l === primary;
           return (
             <Button
               key={`${l.type}-${l.url}`}
-              variant={isPrimary ? "primary" : "secondary"}
+              variant="secondary"
               size="sm"
               href={l.url}
               target="_blank"
               rel="noopener noreferrer"
               data-decision-action={decisionActionForCommerce(l.type)}
-              className="rounded-full"
               iconLeft={<Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />}
               iconRight={
-                isPrimary ? undefined : (
-                  <ExternalLink className="h-3 w-3" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-                )
+                <ExternalLink className="h-3 w-3" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />
               }
             >
               {commerceActionLabel(l)}
