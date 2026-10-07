@@ -32,6 +32,9 @@ function snapshot(slug = "current-event-2026-08-14"): EventWithMeta {
     geo_confidence: "exact_address",
     category_name: "Community",
     municipality_name: "Frederick",
+    // Hydrate stamps this on every valid snapshot. Same-day 6–8 PM ET
+    // is a real timed end, not a missing/equal/sentinel/span claim.
+    end_trust: "ok",
   };
 }
 
