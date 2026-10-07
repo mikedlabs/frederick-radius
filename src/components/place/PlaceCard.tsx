@@ -1,10 +1,8 @@
 "use client";
 
-import Image from "next/image";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
-import { proxyPhotoAtWidth } from "@/lib/format/img";
+import { useState, useSyncExternalStore } from "react";
 import { usePlacePhoto } from "@/components/place/usePlacePhoto";
-import { usePlacePhotoState } from "@/components/place/PlacePhotoState";
+import RadiusPhoto from "@/components/ui/RadiusPhoto";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import OpenClosedDot from "./OpenClosedDot";
@@ -13,13 +11,18 @@ import SaveButton from "@/components/saved/SaveButton";
 import { usePlaceSheet } from "./PlaceSheetProvider";
 import { haptic } from "@/lib/haptics";
 import PlaceStatus from "./PlaceStatus";
-import { knownFor } from "@/lib/cuisine";
-import { Star, NotebookPen, PawPrint } from "lucide-react";
-import CategoryIcon from "./CategoryIcon";
+import { curatedKnownFor, knownFor, placeTypeLabel } from "@/lib/cuisine";
+import { Star, NotebookPen, Tag } from "lucide-react";
 import SourceBadge from "./SourceBadge";
-import FieldNoteTag, { DealHookTag } from "./FieldNoteTag";
+import FieldNoteTag from "./FieldNoteTag";
 import { ReasonChipRow, type ReasonTone } from "@/components/ui/ReasonChip";
-import { placeReasons, type PlaceReasonChip } from "@/lib/place-reasons";
+import {
+  placeReasons,
+  placeRowMark,
+  streetLine,
+  type PlaceReasonChip,
+  type PlaceRowMark,
+} from "@/lib/place-reasons";
 
 /**
  * PlaceCard — the shared business card across browse and recommendation
@@ -28,30 +31,46 @@ import { placeReasons, type PlaceReasonChip } from "@/lib/place-reasons";
  * already removed shared, mismatched, or unattributed images.
  */
 
+/** Minimum Google review count before a rating is worth printing. */
+const RATING_MIN_COUNT = 20;
+
 /**
- * "What people rave about" — only when there is a real Google rating
- * with enough reviews to mean something (≥20). Honest: most DFP rows
- * have no rating and simply show nothing, never a fabricated score.
+ * The one star color for place ratings on browse rows (PlaceCard and
+ * PlaceIndex). Ratings are supporting data, so they sit in neutral ink; Plum
+ * is limited to arts and Amber to live or caution states.
  */
-function Rave({
+export const RATING_STAR_COLOR = "var(--app-ink-2)";
+
+/**
+ * A Google rating with its review count: "★ 4.6 (1,728)". Only when there is
+ * a real rating with enough reviews to mean something (20 or more); most DFP
+ * rows have no rating and show nothing, never a fabricated score. The
+ * "Google Maps" source label stays beside the figure because Google's terms
+ * require attribution wherever Places data shows without a Google map.
+ */
+export function PlaceRating({
   rating,
   count,
   className = "",
 }: {
-  rating?: number;
-  count?: number;
+  rating?: number | null;
+  count?: number | null;
   className?: string;
 }) {
-  if (!rating || !count || count < 20) return null;
+  if (!rating || !count || count < RATING_MIN_COUNT) return null;
   return (
     <span
-      className={`inline-flex items-center gap-1 text-[12px] font-semibold tabular-nums ${className}`}
+      data-place-rating
+      className={`inline-flex items-center gap-1 tabular-nums ${className}`}
       style={{ color: "var(--app-ink-2)" }}
-      title={`${rating.toFixed(1)} from ${count.toLocaleString()} Google reviews`}
+      title={`${rating.toFixed(1)} from ${count.toLocaleString("en-US")} Google reviews`}
     >
-      <Star className="h-3 w-3" strokeWidth={0} fill="var(--app-warning)" aria-hidden />
-      {rating.toFixed(1)}
-      <span className="text-xs font-normal" translate="no">Google Maps</span>
+      <Star className="h-3 w-3 shrink-0" strokeWidth={0} fill={RATING_STAR_COLOR} aria-hidden />
+      <span className="font-semibold">{rating.toFixed(1)}</span>
+      <span style={{ color: "var(--app-ink-3)" }}>({count.toLocaleString("en-US")})</span>
+      <span className="text-caption" style={{ color: "var(--app-ink-3)" }} translate="no">
+        Google Maps
+      </span>
     </span>
   );
 }
@@ -60,14 +79,16 @@ function Rave({
  * Tactile status chips for the result cards. Same tone vocabulary +
  * color tokens as ReasonChip, but dressed in the front-door tile's
  * "made" language. Restyle only — every chip here comes straight from
- * placeReasons(), so no badge is ever invented.
+ * placeReasons(), so no badge is ever invented. Quality chips (Local
+ * favorite, Hidden gem, Top rated) sit in neutral ink: Plum is reserved for
+ * arts and editorial accents.
  */
 const CHIP_TONE: Record<ReasonTone, { color: string; tint: string; edge: string; dot?: boolean }> = {
   open:     { color: "var(--app-positive)", tint: "var(--app-positive-tint-14)", edge: "color-mix(in srgb, var(--app-positive) 26%, transparent)", dot: true },
   near:     { color: "var(--app-cool)",     tint: "var(--app-cool-tint-14)",     edge: "color-mix(in srgb, var(--app-cool) 24%, transparent)" },
   verified: { color: "var(--app-positive)",  tint: "color-mix(in srgb, var(--app-positive) 14%, transparent)", edge: "color-mix(in srgb, var(--app-positive) 26%, transparent)" },
   free:     { color: "var(--app-positive)", tint: "var(--app-positive-tint-14)", edge: "color-mix(in srgb, var(--app-positive) 26%, transparent)" },
-  rated:    { color: "var(--app-accent-press)",   tint: "color-mix(in srgb, var(--app-accent) 20%, transparent)",  edge: "color-mix(in srgb, var(--app-accent) 34%, transparent)" },
+  rated:    { color: "var(--app-ink-2)",    tint: "var(--app-ink-tint-6)",       edge: "var(--app-ink-tint-12)" },
   neutral:  { color: "var(--app-ink-2)",    tint: "var(--app-ink-tint-6)",       edge: "var(--app-ink-tint-12)" },
 };
 
@@ -102,53 +123,60 @@ function StatusChipRow({ reasons, className = "" }: { reasons: PlaceReasonChip[]
 }
 
 /**
- * The category mark — the leading visual token that replaces the imported
- * photo. A tinted, light-catching rounded square holding the category's
- * own icon. Small and typographic by design: it signals *type* at a glance
- * without pretending to be a photograph of the place. The single source of
- * "place imagery" in browse.
+ * Per-place colors for the photoless mark (src/data/place-hues.json, 1,287
+ * places, about 21 KB gzipped). The table loads as its own chunk after the
+ * first render instead of riding in every list page's bundle: a row first
+ * needs it when its photo fails, which is a network round trip later. Until
+ * it arrives, and on the server, a mark wears its quiet category tint.
  */
-function CategoryMark({
-  category,
-  color,
-  size = 44,
-}: {
-  category: string;
-  color: string;
-  size?: number;
-}) {
-  return (
-    <div
-      aria-hidden
-      className="flex shrink-0 items-center justify-center rounded-[var(--app-radius-md)]"
-      style={{
-        height: size,
-        width: size,
-        // Quiet, low-tint chip — it signals type without competing with the
-        // title. Down a long list the eye reads the names, not a column of
-        // saturated blocks (the "supports, not dominates" rule).
-        background: `color-mix(in srgb, ${color} 11%, var(--app-bg-elevated-solid))`,
-        color,
-        boxShadow: "inset 0 0 0 1px color-mix(in srgb, " + color + " 16%, transparent)",
-      }}
-    >
-      <CategoryIcon
-        slug={category}
-        strokeWidth={1.75}
-        className="opacity-80"
-        style={{ color, height: Math.round(size * 0.44), width: Math.round(size * 0.44) }}
-      />
-    </div>
+type HueTable = Record<string, string>;
+let hueTable: HueTable | null = null;
+let hueRequest: Promise<void> | null = null;
+const hueListeners = new Set<() => void>();
+const HEX_HUE = /^#[0-9a-f]{6}$/i;
+
+function requestHueTable() {
+  if (hueTable || hueRequest || typeof window === "undefined") return;
+  hueRequest = import("@/data/place-hues.json")
+    .then((module) => {
+      hueTable = (module.default ?? module) as unknown as HueTable;
+      for (const listener of hueListeners) listener();
+    })
+    .catch(() => {
+      // A failed chunk leaves the category tint in place; the next mounted
+      // row may try again.
+      hueRequest = null;
+    });
+}
+
+function subscribeToHues(listener: () => void) {
+  hueListeners.add(listener);
+  requestHueTable();
+  return () => {
+    hueListeners.delete(listener);
+  };
+}
+
+/** The place's own color for its photoless mark, or null. */
+export function usePlaceHue(slug: string): string | null {
+  const table = useSyncExternalStore(
+    subscribeToHues,
+    () => hueTable,
+    () => null,
   );
+  const hue = table?.[slug];
+  return hue && HEX_HUE.test(hue) ? hue : null;
 }
 
 /**
- * Thumb — the leading visual on a browse card. Shows the place's real
- * Google photo (the same curated, de-twinned source as the detail page;
- * PHOTO_SUPPRESS has already nulled shared/duplicate photos so we never
- * show a wrong one) and falls back to the calm category mark when a place
- * has no photo. "Real photo when we have a good one, type mark when we
- * don't" — visual, but never a fabricated or mismatched image.
+ * Thumb — the leading visual on a browse card, painted by RadiusPhoto. It
+ * shows the place's real Google photo (the same curated, de-twinned source as
+ * the detail page; PHOTO_SUPPRESS has already nulled shared or duplicate
+ * photos) once it has actually loaded. RadiusPhoto asks the proxy for its
+ * failure signal and narrows the request to the painted width, so a daily cap
+ * never crops the proxy's plate into a thumbnail. Without a photo the frame is
+ * the category mark on the place's own flat color, mixed toward Ink: a mark,
+ * never a gradient or an initial pretending to be a picture.
  */
 function Thumb({
   place,
@@ -172,51 +200,52 @@ function Thumb({
     place.google_photo_url,
     lazyPhoto,
   );
-  // Narrow the proxy URL to the size actually painted. places-client.json
-  // stores one URL per place at w=800, the size a hero needs, and proxy
-  // responses render `unoptimized` because Next cannot resize an opaque
-  // route — which also makes the `sizes` hint below inert for them. So a
-  // 40px thumbnail was downloading the full 800px asset, dozens of times
-  // per scroll across every list surface. PlaceMedallion has done this for
-  // a while; the card thumbs were simply missed.
-  // The proxy's failure signal swaps a failed photo back to the category
-  // mark instead of cropping a fallback plate into a 46px fragment.
-  const photo = usePlacePhotoState(
-    photoUrl ? proxyPhotoAtWidth(photoUrl, size) : null,
-  );
-  if (photo.src && photo.status !== "missing") {
-    return (
-      <div
-        ref={anchorRef}
-        data-place-thumb="photo"
-        className="relative shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
-        style={{ height: size, width: size, boxShadow: "inset 0 0 0 1px var(--app-ink-tint-8)" }}
-      >
-        <Image
-          src={photo.src}
-          alt=""
-          fill
-          unoptimized={photo.src.startsWith("/api/place-photo")}
-          sizes={`${size}px`}
-          placeholder="blur"
-          blurDataURL={PAPER_CREAM_BLUR}
-          className="object-cover"
-          onLoad={photo.onLoad}
-          onError={photo.onError}
-        />
-      </div>
-    );
-  }
+  const hue = usePlaceHue(place.slug);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const showing = photoUrl && failedUrl !== photoUrl ? "photo" : "category";
   return (
-    <div ref={anchorRef} data-place-thumb="category" className="shrink-0" style={{ height: size, width: size }}>
-      <CategoryMark category={category} color={color} size={size} />
+    <div
+      ref={anchorRef}
+      data-place-thumb={showing}
+      className="shrink-0"
+      style={{ height: size, width: size }}
+    >
+      <RadiusPhoto
+        src={photoUrl}
+        size={size}
+        category={category}
+        hue={hue}
+        color={color}
+        className="rounded-[var(--app-radius-md)]"
+        onMissing={() => setFailedUrl(photoUrl ?? null)}
+      />
     </div>
+  );
+}
+
+/**
+ * The single mark a row carries (see placeRowMark): a verified deal figure or
+ * Field Notes in Brick press, any other editorial reason in neutral ink.
+ * Plain type with a small glyph, never a filled pill.
+ */
+function RowMark({ mark }: { mark: PlaceRowMark }) {
+  const brand = mark.tone !== "neutral";
+  const Icon = mark.tone === "deal" ? Tag : mark.tone === "notes" ? NotebookPen : null;
+  return (
+    <span
+      data-row-mark={mark.kind}
+      className="inline-flex min-w-0 items-center gap-1 font-semibold"
+      style={{ color: brand ? "var(--app-brand-press)" : "var(--app-ink-2)" }}
+      title={mark.tone === "deal" ? `Verified deal on file: ${mark.label}` : undefined}
+    >
+      {Icon && <Icon className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />}
+      <span className="truncate">{mark.label}</span>
+    </span>
   );
 }
 
 export default function PlaceCard({
   place,
-  compact = false,
   variant = "row",
   // Default OFF for dense-list variants (row/tile/grid), where a repeated
   // badge becomes "chip soup" down the margin; ON for the prominent
@@ -226,6 +255,9 @@ export default function PlaceCard({
   lazyPhoto = false,
 }: {
   place: PlaceCardData;
+  /** Legacy: compact rows used to drop the status, rating and price line,
+   *  which left list mode telling places apart by name alone. Every row now
+   *  keeps it; the prop is accepted so existing callers compile. */
   compact?: boolean;
   variant?: "row" | "feature" | "tile" | "grid" | "answer";
   /** Hydrate the photo on scroll; set by surfaces that withhold inline
@@ -255,18 +287,20 @@ export default function PlaceCard({
     : place.city
       ? `${place.name} in ${place.city}`
       : place.name;
-  // "Known for" — the real descriptive blurb, or null for DFP filler.
+  // "Known for" — the real descriptive blurb, or null for DFP filler. The
+  // lead variants (feature, answer) have room for it; rows never print it.
   const kf = knownFor(place);
   // Neutral mode drops the editorial "why" chips entirely (the /map list is a
   // reflection of the map, not a ranked pick); open/closed still shows via the
-  // variant's PlaceStatus.
-  const reasons = neutral ? [] : placeReasons(place);
+  // variant's PlaceStatus. Every variant prints the distance itself, so the
+  // proximity chip never repeats it.
+  const reasons = neutral ? [] : placeReasons(place, undefined, { distanceShown: true });
   // Where the card ALSO renders an explicit open indicator (the tile's
   // status dot, the feature/answer PlaceStatus line), the leading "Open"
   // reason chip just echoes it. Drop it there so the two visible chips
-  // carry NEW signal (a walk time, Local favorite) instead of repeating
-  // the dot. Row/grid keep the full set — there the chip is the ONLY
-  // open signal, so removing it would lose information.
+  // carry NEW signal (Local favorite, Dog-friendly) instead of repeating
+  // the dot. Grid keeps the full set, because there the chip is the ONLY
+  // open signal. The row prints PlaceStatus and takes one mark instead.
   const nonOpenReasons = reasons.filter(
     (r) => r.kind !== "open_now" && r.kind !== "verified_open",
   );
@@ -315,11 +349,11 @@ export default function PlaceCard({
               )}
               <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <PlaceStatus status={place.open_status} className="!text-[12px]" />
-                {place.deal_hook ? <DealHookTag label={place.deal_hook} /> : place.field_notes && !place.field_note_tip ? <FieldNoteTag /> : null}
+                {place.deal_hook ? <RowMark mark={{ kind: "deal", label: place.deal_hook, tone: "deal" }} /> : place.field_notes && !place.field_note_tip ? <FieldNoteTag /> : null}
                 {nonOpenReasons.length > 0 ? (
                   <StatusChipRow reasons={nonOpenReasons} />
                 ) : (
-                  <Rave rating={place.google_rating} count={place.google_rating_count} />
+                  <PlaceRating rating={place.google_rating} count={place.google_rating_count} className="text-meta" />
                 )}
               </div>
             </div>
@@ -382,7 +416,7 @@ export default function PlaceCard({
             {/* The decision row: open + closing time, rating, price. */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <PlaceStatus status={place.open_status} />
-              <Rave rating={place.google_rating} count={place.google_rating_count} />
+              <PlaceRating rating={place.google_rating} count={place.google_rating_count} className="text-meta" />
               {place.price_band && (
                 <span className="text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
                   {"$".repeat(place.price_band)}
@@ -457,13 +491,15 @@ export default function PlaceCard({
                 <>{place.known_for?.[0] ? " · " : ""}{formatDistance(place.distance_m)}</>
               )}
             </p>
-            {place.deal_hook ? <DealHookTag label={place.deal_hook} compact /> : place.field_notes ? <FieldNoteTag compact /> : null}
+            {place.deal_hook ? (
+              <span className="text-meta block"><RowMark mark={{ kind: "deal", label: place.deal_hook, tone: "deal" }} /></span>
+            ) : place.field_notes ? <FieldNoteTag compact /> : null}
             {nonOpenReasons.length > 0 ? (
               <ReasonChipRow reasons={nonOpenReasons.slice(0, 2)} className="pt-0.5" />
             ) : (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <PlaceStatus status={place.open_status} className="!text-[12px]" />
-                <Rave rating={place.google_rating} count={place.google_rating_count} className="!text-[12px]" />
+                <PlaceRating rating={place.google_rating} count={place.google_rating_count} className="text-meta" />
               </div>
             )}
           </div>
@@ -502,13 +538,15 @@ export default function PlaceCard({
                 {cat?.name ?? place.category}
                 {place.distance_m !== undefined && <> · {formatDistance(place.distance_m)}</>}
               </p>
-              {place.deal_hook ? <DealHookTag label={place.deal_hook} compact /> : place.field_notes ? <FieldNoteTag compact /> : null}
+              {place.deal_hook ? (
+                <span className="text-caption block"><RowMark mark={{ kind: "deal", label: place.deal_hook, tone: "deal" }} /></span>
+              ) : place.field_notes ? <FieldNoteTag compact /> : null}
               {reasons.length > 0 ? (
                 <ReasonChipRow reasons={reasons.slice(0, 2)} className="pt-0.5" />
               ) : (
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <PlaceStatus status={place.open_status} className="!text-[11px]" />
-                  <Rave rating={place.google_rating} count={place.google_rating_count} className="!text-[11px]" />
+                  <PlaceRating rating={place.google_rating} count={place.google_rating_count} className="text-caption" />
                 </div>
               )}
             </div>
@@ -519,104 +557,95 @@ export default function PlaceCard({
     );
   }
 
-  // ── ROW (default) — the dense list card. Leading category mark, name,
-  // type/known-for, distance, and chips. The workhorse of every list.
-  // The title leads; a quiet 42px mark anchors the left; chips capped at 2
-  // so a long list scans as names, not a wall of pills. Tighter vertical
-  // rhythm shortens the page without crowding.
-  // One tight signal line: open status, rating, price, and a compact
-  // field-notes / deal marker inline — no full-width badge row, no per-card
-  // commerce button (both lived their own row and made the card tall; the
-  // commerce action lives on the place page's action bar). The card is now
-  // name → type → one meta line, so a list scans as names, not boxes.
-  const rowReasons = reasons.slice(0, 2);
-  const inlineTag = place.deal_hook ? (
-    <DealHookTag label={place.deal_hook} compact />
-  ) : place.field_notes ? (
-    <FieldNoteTag compact />
-  ) : null;
+
+  // ── ROW (default) — the picture row, the workhorse of every list.
+  //
+  // Visual first (docs/VISUAL_FIRST.md): a 48px tile leads, the loaded photo
+  // or the category mark on the place's own color. Then the name, and one
+  // fact line that tells this place from its neighbours: what it is, from
+  // Google's structured type ("Barbecue", not "Restaurants" 183 times), and
+  // its street. Curated known_for may replace the type label; scraped blurbs
+  // never reach a row. A signal line follows with status, a rating with its
+  // review count, price and at most one mark. Distance prints once, at the
+  // right of the name.
+  //
+  // Rows are flat: no paper card, no category rail and no per-row shadow.
+  // A 1px rule separates them, so a long list scans as names and pictures,
+  // not a stack of boxes. The whole row opens the single PlaceSheet; Save is
+  // its own 44px target.
+  const typeLabel =
+    curatedKnownFor(place) ?? placeTypeLabel(place, cat) ?? place.category;
+  const factLine = [typeLabel, streetLine(place.address)]
+    .filter(Boolean)
+    .join(" · ");
+  const fullMark = placeRowMark(place);
+  // Neutral mode (the /map list) keeps facts (a verified deal, Field Notes)
+  // and drops app-chosen verdicts such as Local favorite.
+  const mark = neutral && fullMark?.tone === "neutral" ? null : fullMark;
+  const hasRating =
+    Boolean(place.google_rating) &&
+    (place.google_rating_count ?? 0) >= RATING_MIN_COUNT;
+  const hasStatus =
+    place.open_status.state !== "unknown" &&
+    place.open_status.state !== "unverified";
+  const hasSignals = hasStatus || hasRating || Boolean(place.price_band) || Boolean(mark);
   return (
     <article
-      className="tactile tactile-interactive tactile-e2 group relative flex items-stretch gap-2.5 overflow-hidden rounded-[var(--app-radius-lg)] py-2 pl-3.5 pr-2.5"
-      style={{
-        // Field-guide "pass" material: the warm paper texture behind the
-        // existing emboss (--app-hi/--app-edge from .tactile), with a category
-        // color cap down the left edge — the same color-band language the
-        // feature/answer/tile variants already carry, now on the workhorse row.
-        backgroundColor: "var(--app-bg-elevated-solid)",
-        backgroundImage: "var(--app-paper-light)",
-      }}
+      data-place-row
+      className="group relative flex items-center gap-3 border-b py-2.5 pl-0.5"
+      style={{ borderColor: "var(--app-border)" }}
     >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-[3px]"
-        style={{ background: color }}
-      />
       <button
         type="button"
         onClick={openDetail}
         aria-label={`View ${actionName} details`}
-        className="absolute inset-0 z-0 rounded-[var(--app-radius-lg)] text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-inset"
+        className="absolute inset-0 z-0 rounded-[var(--app-radius-sm)] text-left outline-none transition-colors hover:bg-[var(--app-bg-sunken)] active:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
       />
-      <div className="pointer-events-none relative z-10 self-center">
-        <Thumb place={place} category={place.category} color={color} size={46} lazyPhoto={lazyPhoto} />
+      <div className="pointer-events-none relative z-10 self-start">
+        <Thumb place={place} category={place.category} color={color} size={48} lazyPhoto={lazyPhoto} />
       </div>
-      <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col justify-center">
-        <div className="flex items-start gap-2">
+      <div className="pointer-events-none relative z-10 min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
           <span
             aria-hidden
-            className="line-clamp-1 min-w-0 flex-1 text-[15px] font-semibold leading-[1.2] tracking-tight"
+            className="text-title-sm line-clamp-1 min-w-0 flex-1"
             style={{ color: "var(--app-ink)" }}
           >
             {place.name}
           </span>
           {showSource && <SourceBadge place={place} size="sm" />}
           {place.distance_m !== undefined && (
-            <span className="ml-auto mt-[1px] shrink-0 whitespace-nowrap text-[12px] font-medium tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            <span
+              data-place-distance
+              className="text-meta-lg shrink-0 whitespace-nowrap tabular-nums"
+              style={{ color: "var(--app-ink-3)" }}
+            >
               {formatDistance(place.distance_m)}
             </span>
           )}
         </div>
-        <p className="mt-0.5 flex items-center gap-1 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          {(place.tags ?? []).includes("dog-friendly") && (
-            <PawPrint
-              className="h-3 w-3 shrink-0"
-              strokeWidth={2.25}
-              style={{ color: "var(--app-brand-2)" }}
-              aria-label="Dog-friendly"
-            />
-          )}
-          <span className="truncate">
-            {cat?.name ?? place.category}
-            {kf && <> · {kf}</>}
-          </span>
+        <p data-place-facts className="text-meta-lg truncate" style={{ color: "var(--app-ink-2)" }}>
+          {factLine}
         </p>
         {place.market_day && (
-          <p className="mt-0.5 truncate text-[12px] font-medium" style={{ color: "var(--app-brand-press)" }}>
+          <p className="text-meta-lg truncate font-medium" style={{ color: "var(--app-brand-press)" }}>
             {place.market_day}{place.market_hours ? ` · ${place.market_hours}` : ""}
           </p>
         )}
-        {!compact && (
-          rowReasons.length > 0 ? (
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-              <StatusChipRow reasons={rowReasons} />
-              {inlineTag}
-            </div>
-          ) : (
-            <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-              <PlaceStatus status={place.open_status} />
-              <Rave rating={place.google_rating} count={place.google_rating_count} />
-              {place.price_band && (
-                <span className="text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
-                  {"$".repeat(place.price_band)}
-                </span>
-              )}
-              {inlineTag}
-            </div>
-          )
+        {hasSignals && (
+          <div className="text-meta-lg mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
+            <PlaceStatus status={place.open_status} className="!text-[13px]" />
+            <PlaceRating rating={place.google_rating} count={place.google_rating_count} />
+            {place.price_band && (
+              <span style={{ color: "var(--app-ink-3)" }}>
+                {"$".repeat(place.price_band)}
+              </span>
+            )}
+            {mark && <RowMark mark={mark} />}
+          </div>
         )}
       </div>
-      <div className="relative z-10 self-start">
+      <div className="relative z-10 self-center">
         <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
       </div>
     </article>

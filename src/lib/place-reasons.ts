@@ -2,6 +2,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import type { ReasonTone } from "@/components/ui/ReasonChip";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { isHiddenGem } from "@/data/hidden-gems";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 
 /**
  * Derive the small "why this is shown" reason chips for a place,
@@ -36,11 +37,49 @@ export type PlaceReason =
 
 export type PlaceReasonChip = { kind: PlaceReason; label: string; tone: ReasonTone };
 
+export type PlaceReasonOptions = {
+  /**
+   * The surface prints the distance itself. A "224 ft away" chip beside a
+   * "224 ft" figure says the same thing twice (October 2026 row audit), so
+   * the proximity reason is left out.
+   */
+  distanceShown?: boolean;
+};
+
 const NEAR_M = 1200;
 
 const TOP_RATED_MIN_STARS = 4.5;
 const TOP_RATED_MIN_COUNT = 50;
 const LOCAL_FAVORITE_MIN_FEATURE = 9;
+
+/**
+ * "Local favorite" is a claim about a place people choose to spend time in.
+ * The loader derives it from a strong Google profile, which flagged 501 of
+ * 1,570 places (a print shop, a funeral home and auto shops among them), and
+ * a chip on a third of the catalog distinguishes nothing. The chip prints only
+ * in the destination families. Shopping, personal care, services, civic and
+ * worship, lodging and infrastructure keep the flag for ranking but never
+ * print it.
+ */
+const DESTINATION_FAMILIES: ReadonlySet<string> = new Set([
+  "food",
+  "outdoors",
+  "arts",
+  "family",
+  "sports",
+]);
+
+/**
+ * Whether a category is a destination (somewhere people go to eat, drink,
+ * play or see something) rather than an errand. Only destinations print the
+ * "Local favorite" chip.
+ */
+export function isDestinationCategory(category: string): boolean {
+  const entry = CATEGORY_BY_SLUG[category];
+  const family = entry ? entry.parent ?? entry.slug : undefined;
+  return family !== undefined && DESTINATION_FAMILIES.has(family);
+}
+
 const FRESH_WITHIN_DAYS = 14;
 
 // Unambiguous kid destinations (category-level only — conservative; no
@@ -77,6 +116,7 @@ function nearestLandmark(geom: LngLat): { name: string } | null {
 export function placeReasons(
   p: PlaceCardData,
   now: Date = new Date(),
+  options: PlaceReasonOptions = {},
 ): PlaceReasonChip[] {
   const out: PlaceReasonChip[] = [];
 
@@ -102,7 +142,13 @@ export function placeReasons(
   // 3. Distance — only when an origin was set on the loader.
   // The loader supplies straight-line distance, not a pedestrian route. A
   // nearby point may sit across a river, railway, or road without a crossing.
-  if (typeof p.distance_m === "number" && Number.isFinite(p.distance_m) && p.distance_m >= 0 && p.distance_m <= NEAR_M) {
+  if (
+    !options.distanceShown &&
+    typeof p.distance_m === "number" &&
+    Number.isFinite(p.distance_m) &&
+    p.distance_m >= 0 &&
+    p.distance_m <= NEAR_M
+  ) {
     out.push({ kind: "near", label: `${formatDistance(p.distance_m)} away`, tone: "near" });
   }
 
@@ -131,7 +177,9 @@ export function placeReasons(
   // visitor ranking blends, so the chip and the ranking never disagree.
   // Curated seed places with a high feature_score but no Google profile
   // still qualify. Otherwise a strong Google rating earns "Top rated".
-  if (p.local_favorite || (p.feature_score ?? 0) >= LOCAL_FAVORITE_MIN_FEATURE) {
+  const favorite =
+    p.local_favorite || (p.feature_score ?? 0) >= LOCAL_FAVORITE_MIN_FEATURE;
+  if (favorite && isDestinationCategory(p.category)) {
     out.push({ kind: "local_favorite", label: "Local favorite", tone: "rated" });
   } else if (
     (p.google_rating ?? 0) >= TOP_RATED_MIN_STARS &&
@@ -151,4 +199,76 @@ export function placeReasons(
   }
 
   return out.slice(0, 3);
+}
+
+/**
+ * The one mark a picture row may carry after its status, rating and price.
+ *
+ * - `deal`: a verified standing deal figure ("25% OFF"), in Brick press.
+ * - `notes`: source-linked Field Notes on file, in Brick press.
+ * - `neutral`: the first editorial reason (Hidden gem, Local favorite,
+ *   Kid-friendly, Dog-friendly, Free, Near a landmark, Hours checked), in ink.
+ *
+ * Open state, distance and "Top rated" never become a mark. The row already
+ * prints its status, its distance and its rating, and repeating them as chips
+ * is the duplication the October 2026 row audit removed. "Near Carroll Creek"
+ * marks destinations only: the row prints the street already, and on a bank
+ * or a salon the landmark is a second address rather than a reason to go.
+ */
+export type PlaceRowMark = {
+  kind: "deal" | "field_notes" | PlaceReason;
+  label: string;
+  tone: "deal" | "notes" | "neutral";
+};
+
+const ROW_MARK_SKIP: ReadonlySet<PlaceReason> = new Set([
+  "verified_open",
+  "open_now",
+  "near",
+  "walkable",
+  "top_rated",
+]);
+
+export function placeRowMark(
+  p: PlaceCardData,
+  now: Date = new Date(),
+): PlaceRowMark | null {
+  if (p.deal_hook) return { kind: "deal", label: p.deal_hook, tone: "deal" };
+  if (p.field_notes) return { kind: "field_notes", label: "Field notes", tone: "notes" };
+  const destination = isDestinationCategory(p.category);
+  const reason = placeReasons(p, now, { distanceShown: true }).find(
+    (r) =>
+      !ROW_MARK_SKIP.has(r.kind) &&
+      (r.kind !== "near_landmark" || destination),
+  );
+  return reason ? { kind: reason.kind, label: reason.label, tone: "neutral" } : null;
+}
+
+/**
+ * The street part of a catalog address for a row's fact line, or null when
+ * the field holds no street. Catalog addresses mix "118 S Market St", a full
+ * "49 E Patrick St, Frederick, MD 21701", a venue ahead of the street
+ * ("Barbara Fritchie House, 154 W Patrick St, ..."), plus codes ("CH7V+3PR")
+ * and bare town names. A row has room for the street only, and a town name or
+ * plus code printed where a street belongs reads as a broken address, so the
+ * first comma segment that reads as a street wins and anything else is null.
+ */
+const STREET_WORD =
+  /\b(?:st|street|ave|avenue|rd|road|blvd|boulevard|way|dr|drive|ln|lane|pike|ct|court|pl|place|hwy|highway|pkwy|parkway|sq|square|ter|terrace|cir|circle|alley|tpke|turnpike|route|rte)\b/i;
+/** A house number, then a street: "118 S Market St", "10-B N East St",
+ *  "402 5th Ave". A bare number ("25") or a ZIP is not a street. */
+const NUMBERED_STREET = /^\d+(?:-?[A-Za-z]|-\d+)?\s+\S/;
+
+export function streetLine(address: string | null | undefined): string | null {
+  const segments = (address ?? "")
+    .split(",")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment && !segment.includes("+"));
+  // A numbered street beats a named one, so "Market Place, 12 Main St"
+  // prints the street rather than the plaza.
+  return (
+    segments.find((segment) => NUMBERED_STREET.test(segment)) ??
+    segments.find((segment) => STREET_WORD.test(segment)) ??
+    null
+  );
 }

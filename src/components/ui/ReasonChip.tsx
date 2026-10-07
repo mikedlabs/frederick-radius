@@ -12,8 +12,13 @@ import type { CSSProperties } from "react";
  *   near      — Carroll Creek    (distance / walkable)
  *   verified  — Catoctin green   (recently verified)
  *   free      — positive green   (no admission)
- *   rated     — almanac gold     (top rated / local favorite)
+ *   rated     — neutral ink      (top rated / local favorite / hidden gem)
  *   neutral   — paper-sunken     (catch-all)
+ *
+ * Quality chips used to wear Plum, which put an arts accent on a third of
+ * the catalog (501 of 1,570 places carried "Local favorite"). The brand
+ * guide limits Plum to arts and editorial moments, so ratings and favorites
+ * read in neutral ink like the rest of a row's supporting data.
  *
  * Capped at 3 per card by the producers (placeReasons / eventReasons)
  * so a card never reads as a chip soup.
@@ -45,8 +50,8 @@ const TONE_TOKENS: Record<ReasonTone, { color: string; bg: string; dot?: boolean
     bg: "color-mix(in srgb, var(--app-cool) 16%, transparent)",
   },
   rated: {
-    color: "var(--app-accent-press)",
-    bg: "color-mix(in srgb, var(--app-accent) 20%, transparent)",
+    color: "var(--app-ink-2)",
+    bg: "var(--app-ink-tint-6)",
   },
   neutral: {
     color: "var(--app-ink-2)",

@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { cuisinesOf, primaryCuisineOf, cuisineFacets, cuisineLabel } from "@/lib/cuisine";
+import {
+  cuisinesOf,
+  primaryCuisineOf,
+  cuisineFacets,
+  cuisineLabel,
+  curatedKnownFor,
+  placeTypeLabel,
+} from "@/lib/cuisine";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 
 describe("cuisinesOf — text signal (name + blurb)", () => {
   it("matches a cuisine word in the name", () => {
@@ -85,5 +93,63 @@ describe("cuisineFacets + labels", () => {
   it("resolves a human label for a slug", () => {
     expect(cuisineLabel("japanese")).toBe("Japanese / Sushi");
     expect(cuisineLabel("unknown-slug")).toBe("unknown-slug");
+  });
+});
+
+describe("placeTypeLabel — what a browse row says the place is", () => {
+  const cat = (slug: string) => CATEGORY_BY_SLUG[slug];
+
+  it("leads with the structured Google type instead of the plural category", () => {
+    // The October 2026 audit counted "Restaurants" 183 times down one list.
+    expect(placeTypeLabel({ category: "restaurant", primary_type: "barbecue_restaurant" }, cat("restaurant"))).toBe("Barbecue");
+    expect(placeTypeLabel({ category: "coffee", primary_type: "coffee_shop" }, cat("coffee"))).toBe("Coffee shop");
+    expect(placeTypeLabel({ category: "salon", primary_type: "barber_shop" }, cat("salon"))).toBe("Barber");
+    expect(placeTypeLabel({ category: "worship", primary_type: "church" }, cat("worship"))).toBe("Church");
+  });
+
+  it("falls back to a singular category label for generic or missing types", () => {
+    expect(placeTypeLabel({ category: "restaurant", primary_type: "restaurant" }, cat("restaurant"))).toBe("Restaurant");
+    expect(placeTypeLabel({ category: "brewery" }, cat("brewery"))).toBe("Brewery");
+    expect(placeTypeLabel({ category: "shopping", primary_type: "store" }, cat("shopping"))).toBe("Shop");
+  });
+
+  it("lets a corrected category outrank a Google type from another family", () => {
+    // Orchards arrive as grocery_store; a human filed them under farms.
+    expect(placeTypeLabel({ category: "agritourism", primary_type: "grocery_store" }, cat("agritourism"))).toBe("Farm");
+    expect(placeTypeLabel({ category: "music", primary_type: "church" }, cat("music"))).toBe("Live music");
+  });
+
+  it("files barbers and tea shops under either neighbouring family", () => {
+    expect(placeTypeLabel({ category: "services", primary_type: "barber_shop" }, cat("services"))).toBe("Barber");
+    expect(placeTypeLabel({ category: "coffee", primary_type: "tea_store" }, cat("coffee"))).toBe("Tea shop");
+  });
+
+  it("keeps a category more specific than the Google type", () => {
+    expect(placeTypeLabel({ category: "antiques", primary_type: "home_goods_store" }, cat("antiques"))).toBe("Antiques");
+  });
+
+  it("never reads the name, which can mislead", () => {
+    // "Grill" would say American; Saffron Grill & Bar serves Indian food.
+    expect(placeTypeLabel({ category: "restaurant" }, cat("restaurant"))).toBe("Restaurant");
+  });
+});
+
+describe("curatedKnownFor", () => {
+  it("returns the first curated phrase in sentence case", () => {
+    expect(curatedKnownFor({ name: "Baker Park", known_for: ["playground and picnic tables"] })).toBe(
+      "Playground and picnic tables",
+    );
+    expect(curatedKnownFor({ name: "White Rabbit Gastropub", known_for: ["Detroit-style pizza"] })).toBe(
+      "Detroit-style pizza",
+    );
+  });
+
+  it("ignores scraped blurbs and phrases that say nothing at row size", () => {
+    expect(curatedKnownFor({ name: "Joe's", known_for: [] })).toBeNull();
+    expect(curatedKnownFor({ name: "Joe's" })).toBeNull();
+    expect(curatedKnownFor({ name: "Attaboy Beer", known_for: ["Attaboy Beer garden and garage"] })).toBeNull();
+    expect(
+      curatedKnownFor({ name: "X", known_for: ["a very long phrase that would never fit on one row of a list"] }),
+    ).toBeNull();
   });
 });

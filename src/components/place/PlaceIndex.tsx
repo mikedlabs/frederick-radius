@@ -4,32 +4,26 @@
  * PlaceIndex — the field-guide index as a native list.
  *
  * The card system for list-answer pages (/open-now is the exemplar;
- * /live-music, /brunch, /deals adopt it next). Judged design composite
- * (2026-07-10 panel): the "Field Index" chassis — ONE elevated paper
- * plate per section, hairline-divided 64px cells, sticky mono section
- * headers, whole-cell tap — carrying the "Almanac Plate" voice: serif
- * names as the interface, and a mono DATA LINE on every cell (closing
- * time, rating, moat mark) instead of chips. One plate per section
- * replaces a stack of per-card shadows; that single move is most of the
- * "real app" feel.
+ * /live-music, /brunch, /deals adopt it next): sticky section headers and a
+ * whole-cell tap, with each cell drawn as the same picture row PlaceCard
+ * uses on every browse list (October 2026 row audit). A 48px tile leads, the
+ * loaded photo or the category mark on the place's own color; then the name,
+ * one support line, and a data line with closing time, rating and at most
+ * one mark. Rows are flat and separated by a 1px rule, so the list scans as
+ * names and pictures rather than a plate of boxes.
  *
  * Tap opens the global PlaceSheet (the map's no-navigation detail
  * layer), hydrating the slim row via /api/places/by-slugs; a failed
  * hydration falls through to the place page, so a tap is never dead.
  */
 import { useState } from "react";
-import Image from "next/image";
 import { Star } from "lucide-react";
-import CategoryIcon from "@/components/place/CategoryIcon";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
+import { RATING_STAR_COLOR, usePlaceHue } from "@/components/place/PlaceCard";
+import RadiusPhoto from "@/components/ui/RadiusPhoto";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { haptic } from "@/lib/haptics";
-import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { usePlacePhoto } from "@/components/place/usePlacePhoto";
-import {
-  daypartPhotoSrc,
-  isPhotoFailureSignal,
-} from "@/components/today/DaypartNeeds";
 import { track } from "@/lib/track";
 
 export type IndexRow = {
@@ -48,6 +42,9 @@ export type IndexRow = {
   closesMin: number | null;
   /** Shown only when the source count clears the honesty gate (>=20). */
   rating: number | null;
+  /** The Google review count behind `rating`, printed as "(1,728)" when the
+   *  surface supplies it. */
+  ratingCount?: number | null;
   /** The one moat mark this cell earned: "happy hour" | "deal" | "field notes". */
   mark: string | null;
   /** Preformatted distance ("6 min walk" / "1.2 mi") — only when honest. */
@@ -191,21 +188,10 @@ function IndexSectionBlock({
         </span>
       </div>
 
-      {/* The plate: one elevated paper container; cells divide with
-          hairlines instead of carrying their own chrome. */}
-      <ul
-        className="breathe-in overflow-hidden rounded-[var(--app-radius-md)]"
-        style={{
-          background: "var(--app-bg-elevated-solid)",
-          border: "1px solid var(--app-border)",
-          boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
-        }}
-      >
-        {visible.map((row, i) => (
-          <li
-            key={row.slug}
-            style={i > 0 ? { borderTop: "1px solid color-mix(in srgb, var(--app-ink) 7%, transparent)" } : undefined}
-          >
+      {/* Flat picture rows on the canvas, each closed by a 1px rule. */}
+      <ul className="breathe-in">
+        {visible.map((row) => (
+          <li key={row.slug} style={{ borderBottom: "1px solid var(--app-border)" }}>
             <PlaceCell
               row={row}
               eagerPhoto={row.slug === priorityPhotoSlug}
@@ -214,14 +200,14 @@ function IndexSectionBlock({
           </li>
         ))}
         {hidden > 0 && (
-          <li style={{ borderTop: "1px solid color-mix(in srgb, var(--app-ink) 7%, transparent)" }}>
+          <li>
             <button
               type="button"
               onClick={() => {
                 haptic("light");
                 setExpanded(true);
               }}
-              className="flex min-h-[44px] w-full items-center justify-center gap-1.5 px-3.5 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:bg-[var(--app-bg-sunken)]"
+              className="text-meta-lg flex min-h-[44px] w-full items-center justify-center gap-1.5 px-3.5 font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:bg-[var(--app-bg-sunken)]"
               style={{ color: "var(--app-ink-2)" }}
             >
               Show {hidden} more
@@ -263,41 +249,40 @@ function PlaceCell({
   }
 
   const statusColor = row.status?.kind === "soon" ? "var(--app-warning)" : "var(--app-positive)";
+  // Marks arrive lower case from the page ("happy hour"); a row prints them
+  // as sentence-case words in Brick press, the deal color, never Plum.
+  const mark = row.mark ? row.mark.charAt(0).toUpperCase() + row.mark.slice(1) : null;
 
   return (
     <button
       type="button"
       onClick={open}
-      className="tactile-interactive flex w-full items-center gap-3 px-3.5 py-2.5 text-left"
-      style={{ minHeight: 64 }}
+      data-place-row
+      className="flex w-full items-center gap-3 py-2.5 pl-0.5 pr-1 text-left transition-colors hover:bg-[var(--app-bg-sunken)] active:bg-[var(--app-bg-sunken)]"
+      style={{ minHeight: 68 }}
       aria-label={`${row.name}. ${row.meta}${row.status ? `. ${row.status.label}` : ""}`}
     >
-      {/* 44px anchor: photo with a pressed ring, else the category glyph
-          on its tinted paper square. An anchor for recognition, not a hero. */}
       <CellVisual row={row} eagerPhoto={eagerPhoto} lazyPhoto={lazyPhoto} />
 
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline gap-2">
-          <span
-            className="min-w-0 truncate font-serif text-[16px] font-semibold leading-tight tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
+          <span className="text-title-sm min-w-0 truncate" style={{ color: "var(--app-ink)" }}>
             {row.name}
           </span>
           {row.distance && (
             <span
-              className="ml-auto shrink-0 font-mono text-[11.5px] tabular-nums"
+              className="text-meta-lg ml-auto shrink-0 tabular-nums"
               style={{ color: "var(--app-ink-3)" }}
             >
               {row.distance}
             </span>
           )}
         </span>
-        <span className="mt-[1px] block truncate text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+        <span className="text-meta-lg block truncate" style={{ color: "var(--app-ink-2)" }}>
           {row.meta}
         </span>
-        {(row.status || row.rating != null || row.mark) && (
-          <span className="mt-[3px] flex items-center gap-2 overflow-hidden font-mono text-[11.5px] tabular-nums whitespace-nowrap">
+        {(row.status || row.rating != null || mark) && (
+          <span className="text-meta-lg mt-0.5 flex items-center gap-2.5 overflow-hidden whitespace-nowrap tabular-nums">
             {row.status && (
               <span className="inline-flex shrink-0 items-center gap-1.5" style={{ color: "var(--app-ink-2)" }}>
                 <span
@@ -309,17 +294,30 @@ function PlaceCell({
               </span>
             )}
             {row.rating != null && (
-              <span className="inline-flex shrink-0 items-center gap-1" style={{ color: "var(--app-ink-2)" }}>
-                <Star aria-hidden className="h-[11px] w-[11px]" style={{ color: "var(--app-accent)", fill: "var(--app-accent)" }} strokeWidth={0} />
-                {row.rating.toFixed(1)}
+              <span
+                data-place-rating
+                className="inline-flex shrink-0 items-center gap-1"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                <Star aria-hidden className="h-3 w-3" fill={RATING_STAR_COLOR} strokeWidth={0} />
+                <span className="font-semibold">{row.rating.toFixed(1)}</span>
+                {row.ratingCount != null && row.ratingCount > 0 && (
+                  <span style={{ color: "var(--app-ink-3)" }}>
+                    ({row.ratingCount.toLocaleString("en-US")})
+                  </span>
+                )}
+                <span className="text-caption" style={{ color: "var(--app-ink-3)" }} translate="no">
+                  Google Maps
+                </span>
               </span>
             )}
-            {row.mark && (
+            {mark && (
               <span
-                className="truncate text-[10px] font-bold uppercase tracking-[0.08em]"
+                data-row-mark
+                className="truncate font-semibold"
                 style={{ color: "var(--app-brand-press)" }}
               >
-                {row.mark}
+                {mark}
               </span>
             )}
           </span>
@@ -330,12 +328,14 @@ function PlaceCell({
 }
 
 /**
- * The 44px cell anchor. With an inline URL it paints immediately, exactly as
- * before. Under lazyPhoto the URL arrives on scroll through the shared
- * batched loader, and the category glyph carries both the "not known yet"
- * and the honest "there is none" states, so nothing flashes and a suppressed
- * record never regains its wrong photo (the loader answers through the full
- * server loader's suppression gates).
+ * The 48px cell anchor, painted by RadiusPhoto: the loaded photo, or the
+ * category mark on the place's own color. Under lazyPhoto the URL arrives on
+ * scroll through the shared batched loader, and the mark carries both the
+ * "not known yet" and the honest "there is none" states, so nothing flashes
+ * and a suppressed record never regains its wrong photo (the loader answers
+ * through the full server loader's suppression gates). RadiusPhoto asks the
+ * proxy for its failure signal, so a rotted photo never paints the proxy's
+ * plate as if it were the place's picture.
  */
 function CellVisual({
   row,
@@ -347,48 +347,19 @@ function CellVisual({
   lazyPhoto: boolean;
 }) {
   const { photoUrl, anchorRef } = usePlacePhoto(row.slug, row.photo, lazyPhoto);
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  // fallback=signal: the proxy answers a dead photo with a 1x1 instead of
-  // Google's grey "PHOTO NOT AVAILABLE" plate, and the onLoad check swaps to
-  // the category glyph. Four components already did this; the canonical list
-  // card was the missed adopter (craft audit, 2026-08-19), so a rotted photo
-  // rendered a third party's error plate as if it were the place's picture.
-  // "No photo > wrong photo" is this repo's own rule.
-  const src = photoUrl ? daypartPhotoSrc(proxyPhotoAtWidth(photoUrl, 44)) : null;
-  const showPhoto = Boolean(src && failedSrc !== src);
+  const hue = usePlaceHue(row.slug);
   return (
-    <div ref={anchorRef} className="h-11 w-11 shrink-0">
-      {src && showPhoto ? (
-        <Image
-          // The row paints a 44px square, so ask the proxy for 88px rather than
-          // the 800px hero it defaults to. Non-proxy URLs pass through.
-          src={src}
-          alt=""
-          unoptimized={src.startsWith("/api/place-photo")}
-          width={88}
-          height={88}
-          sizes="44px"
-          loading={eagerPhoto ? "eager" : "lazy"}
-          fetchPriority={eagerPhoto ? "high" : "auto"}
-          className="h-11 w-11 rounded-[9px] object-cover"
-          style={{ boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-ink) 10%, transparent)" }}
-          onLoad={(event) => {
-            if (isPhotoFailureSignal(event.currentTarget)) setFailedSrc(src);
-          }}
-        />
-      ) : (
-        <span
-          aria-hidden
-          className="grid h-11 w-11 place-items-center rounded-[9px]"
-          style={{
-            background: `color-mix(in srgb, ${row.accent} 12%, var(--app-bg-elevated))`,
-            color: `color-mix(in srgb, ${row.accent} 78%, var(--app-ink))`,
-            boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-ink) 8%, transparent)",
-          }}
-        >
-          <CategoryIcon slug={row.category} className="h-5 w-5" />
-        </span>
-      )}
+    <div ref={anchorRef} className="h-12 w-12 shrink-0">
+      <RadiusPhoto
+        src={photoUrl}
+        size={48}
+        category={row.category}
+        hue={hue}
+        color={row.accent}
+        loading={eagerPhoto ? "eager" : "lazy"}
+        fetchPriority={eagerPhoto ? "high" : "auto"}
+        className="rounded-[var(--app-radius-md)]"
+      />
     </div>
   );
 }

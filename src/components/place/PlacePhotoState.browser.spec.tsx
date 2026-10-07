@@ -257,7 +257,7 @@ describe("PlaceCard thumbnail", () => {
       "https://frederickradius.local",
     );
     expect(src.searchParams.get("fallback")).toBe("signal");
-    expect(src.searchParams.get("w")).toBe("92");
+    expect(src.searchParams.get("w")).toBe("96");
   });
 
   it("keeps a real photo once it loads", async () => {

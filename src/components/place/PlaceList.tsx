@@ -277,7 +277,9 @@ export default function PlaceList({
           </AnimatePresence>
         </motion.div>
       ) : (
-        <motion.ul layout className="space-y-2" aria-busy={!mounted ? "true" : undefined}>
+        // Picture rows draw their own 1px rule, so the list stacks them
+        // without gaps: one ruled column, not a pile of separate cards.
+        <motion.ul layout aria-busy={!mounted ? "true" : undefined}>
           <AnimatePresence>
             {visiblePlaces.map((p) => (
               <motion.li
@@ -288,10 +290,10 @@ export default function PlaceList({
                 transition={{ type: "spring", bounce: 0, duration: 0.3 }}
                 key={p.slug}
               >
-                {/* compact=true drops the second metadata row (status +
-                    rating + price) so the row reads tighter — list mode
-                    is for scanning, not full-card detail. */}
-                <PlaceCard place={p} variant="row" compact />
+                {/* The full picture row. List mode used to pass compact,
+                    which dropped status, rating and price and left rows
+                    telling places apart by name alone. */}
+                <PlaceCard place={p} variant="row" />
               </motion.li>
             ))}
           </AnimatePresence>

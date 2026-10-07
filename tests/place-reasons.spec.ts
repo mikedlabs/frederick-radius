@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { placeReasons } from "@/lib/place-reasons";
+import {
+  isDestinationCategory,
+  placeReasons,
+  placeRowMark,
+  streetLine,
+} from "@/lib/place-reasons";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { OpenStatus } from "@/lib/hours";
 
@@ -121,5 +126,129 @@ describe("placeReasons — cap & priority unchanged", () => {
       }),
     );
     expect(r).toEqual(["verified_open", "near", "kid_friendly"]);
+  });
+});
+
+describe("placeReasons — row audit, October 2026", () => {
+  it("drops the proximity chip when the surface prints the distance itself", () => {
+    const p = place({ category: "coffee", distance_m: 68 });
+    expect(kinds(p)).toContain("near");
+    expect(
+      placeReasons(p, new Date(), { distanceShown: true }).map((r) => r.kind),
+    ).not.toContain("near");
+  });
+
+  it.each([
+    "shopping",
+    "book-store",
+    "market",
+    "services",
+    "auto-care",
+    "salon",
+    "wellness",
+    "civic",
+    "worship",
+    "lodging",
+  ])("never prints Local favorite on the %s category", (category) => {
+    expect(kinds(place({ category, local_favorite: true }))).not.toContain("local_favorite");
+  });
+
+  it.each(["restaurant", "coffee", "brewery", "park", "museum", "family"])(
+    "still prints Local favorite on the destination category %s",
+    (category) => {
+      expect(kinds(place({ category, local_favorite: true }))).toContain("local_favorite");
+    },
+  );
+
+  it("lets a shop with a strong rating fall through to Top rated", () => {
+    const shop = place({
+      category: "shopping",
+      local_favorite: true,
+      google_rating: 4.8,
+      google_rating_count: 300,
+    });
+    expect(kinds(shop)).toContain("top_rated");
+    expect(kinds(shop)).not.toContain("local_favorite");
+  });
+
+  it("knows which categories are destinations", () => {
+    expect(isDestinationCategory("restaurant")).toBe(true);
+    expect(isDestinationCategory("trail")).toBe(true);
+    expect(isDestinationCategory("shopping")).toBe(false);
+    expect(isDestinationCategory("hardware")).toBe(false);
+    expect(isDestinationCategory("not-a-category")).toBe(false);
+  });
+});
+
+describe("placeRowMark — at most one mark per row", () => {
+  it("leads with a verified deal figure, then Field Notes", () => {
+    expect(
+      placeRowMark(
+        place({ category: "bar", deal_hook: "25% OFF", field_notes: true, local_favorite: true }),
+      ),
+    ).toEqual({ kind: "deal", label: "25% OFF", tone: "deal" });
+    expect(
+      placeRowMark(place({ category: "bar", field_notes: true, local_favorite: true })),
+    ).toEqual({ kind: "field_notes", label: "Field notes", tone: "notes" });
+  });
+
+  it("never repeats the status, distance or rating the row already prints", () => {
+    const mark = placeRowMark(
+      place({
+        category: "coffee",
+        open_status: OPEN,
+        open_confidence: "verified",
+        distance_m: 68,
+        google_rating: 4.8,
+        google_rating_count: 400,
+        feature_score: 0,
+      }),
+    );
+    expect(mark).toBeNull();
+  });
+
+  it("uses the first editorial reason, in neutral ink", () => {
+    expect(placeRowMark(place({ category: "restaurant", local_favorite: true }))).toEqual({
+      kind: "local_favorite",
+      label: "Local favorite",
+      tone: "neutral",
+    });
+    expect(
+      placeRowMark(place({ category: "park", tags: ["dog-friendly"], local_favorite: true }))?.label,
+    ).toBe("Dog-friendly");
+  });
+
+  it("does not mark an errand with a landmark the street already locates", () => {
+    expect(placeRowMark(place({ category: "coffee", geom: CARROLL_CREEK }))?.label).toBe(
+      "Near Carroll Creek",
+    );
+    expect(placeRowMark(place({ category: "services", geom: CARROLL_CREEK }))).toBeNull();
+  });
+});
+
+describe("streetLine", () => {
+  it.each([
+    ["118 S Market St", "118 S Market St"],
+    ["49 E Patrick St, Frederick, MD 21701", "49 E Patrick St"],
+    ["Barbara Fritchie House, 154 W Patrick St, Frederick, MD 21701", "154 W Patrick St"],
+    ["CFWC+8P, 7628 Coblentz Rd, Middletown, MD 21769", "7628 Coblentz Rd"],
+    ["10-B N East St", "10-B N East St"],
+    ["402 5th Ave, Brunswick, MD 21716", "402 5th Ave"],
+    ["2nd Ave, Brunswick, MD 21716", "2nd Ave"],
+  ])("keeps the street of %s", (address, street) => {
+    expect(streetLine(address)).toBe(street);
+  });
+
+  it.each([
+    "Frederick",
+    "Frederick, MD 21701",
+    "CH7V+3PR",
+    "25, Brunswick, MD 21716",
+    "Dancingspine Chiropractic in Frederick",
+    "",
+    null,
+    undefined,
+  ])("prints nothing for %s", (address) => {
+    expect(streetLine(address)).toBeNull();
   });
 });

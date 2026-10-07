@@ -181,6 +181,313 @@ export function cuisineFacets(
 }
 
 /**
+ * The short, singular "what is it" label that leads a browse row ("Barbecue",
+ * "Coffee shop", "Hair salon"). The October 2026 row audit found the same
+ * category name ("Restaurants") printed 183 times down one list, so rows told
+ * places apart by almost nothing. Google's structured `primary_type` says
+ * what each place is, so it leads; only types that read as a plain answer
+ * are mapped. Generic types (`restaurant`, `store`, `food`,
+ * `point_of_interest`) carry nothing and fall through to the category.
+ *
+ * Each label belongs to a family (the top-level category slug). The label is
+ * used only when the place's corrected category sits in the same family, so a
+ * human fold in places-overrides.json (a former church that is now a music
+ * venue) always outranks Google's type. Wellness, services and shopping are one
+ * "errand" group because the catalog files barbers and salons under either.
+ *
+ * Name text is deliberately not consulted: "Saffron Grill & Bar" (Indian) and
+ * "Bonefish Grill" (seafood) both match the generic "grill" pattern, and a
+ * label states what a place is, so it takes only the structured signal.
+ */
+type TypeFamily = "food" | "outdoors" | "arts" | "family" | "errand" | "civic" | "lodging";
+
+const PLACE_TYPE_LABEL: Record<string, readonly [label: string, ...families: TypeFamily[]]> = {
+  // Restaurants by cuisine
+  italian_restaurant: ["Italian", "food"],
+  pizza_restaurant: ["Pizza", "food"],
+  pizza_delivery: ["Pizza", "food"],
+  mexican_restaurant: ["Mexican", "food"],
+  thai_restaurant: ["Thai", "food"],
+  chinese_restaurant: ["Chinese", "food"],
+  japanese_restaurant: ["Japanese", "food"],
+  sushi_restaurant: ["Sushi", "food"],
+  ramen_restaurant: ["Ramen", "food"],
+  korean_restaurant: ["Korean", "food"],
+  vietnamese_restaurant: ["Vietnamese", "food"],
+  indian_restaurant: ["Indian", "food"],
+  mediterranean_restaurant: ["Mediterranean", "food"],
+  greek_restaurant: ["Greek", "food"],
+  middle_eastern_restaurant: ["Middle Eastern", "food"],
+  turkish_restaurant: ["Turkish", "food"],
+  lebanese_restaurant: ["Lebanese", "food"],
+  afghani_restaurant: ["Afghan", "food"],
+  spanish_restaurant: ["Spanish", "food"],
+  tapas_restaurant: ["Tapas", "food"],
+  tapas_bar: ["Tapas", "food"],
+  brazilian_restaurant: ["Brazilian", "food"],
+  latin_american_restaurant: ["Latin American", "food"],
+  cuban_restaurant: ["Cuban", "food"],
+  caribbean_restaurant: ["Caribbean", "food"],
+  asian_restaurant: ["Asian", "food"],
+  asian_fusion_restaurant: ["Asian fusion", "food"],
+  fusion_restaurant: ["Fusion", "food"],
+  american_restaurant: ["American", "food"],
+  barbecue_restaurant: ["Barbecue", "food"],
+  seafood_restaurant: ["Seafood", "food"],
+  steak_house: ["Steakhouse", "food"],
+  hamburger_restaurant: ["Burgers", "food"],
+  chicken_restaurant: ["Chicken", "food"],
+  breakfast_restaurant: ["Breakfast", "food"],
+  brunch_restaurant: ["Brunch", "food"],
+  vegetarian_restaurant: ["Vegetarian", "food"],
+  vegan_restaurant: ["Vegan", "food"],
+  family_restaurant: ["Family restaurant", "food"],
+  diner: ["Diner", "food"],
+  bistro: ["Bistro", "food"],
+  gastropub: ["Gastropub", "food"],
+  bar_and_grill: ["Bar & grill", "food"],
+  fast_food_restaurant: ["Fast food", "food"],
+  meal_takeaway: ["Takeout", "food"],
+  catering_service: ["Catering", "food"],
+  // Quick bites, sweets and coffee
+  bagel_shop: ["Bagels", "food"],
+  sandwich_shop: ["Sandwiches", "food"],
+  deli: ["Deli", "food"],
+  juice_shop: ["Juice bar", "food"],
+  bakery: ["Bakery", "food"],
+  donut_shop: ["Doughnuts", "food"],
+  pastry_shop: ["Pastry shop", "food"],
+  cake_shop: ["Cakes", "food"],
+  dessert_shop: ["Desserts", "food"],
+  dessert_restaurant: ["Desserts", "food"],
+  ice_cream_shop: ["Ice cream", "food"],
+  chocolate_shop: ["Chocolate shop", "food"],
+  candy_store: ["Candy", "food"],
+  coffee_shop: ["Coffee shop", "food"],
+  coffee_roastery: ["Coffee roaster", "food"],
+  cafe: ["Cafe", "food"],
+  tea_house: ["Tea house", "food"],
+  // Drinks
+  bar: ["Bar", "food"],
+  pub: ["Pub", "food"],
+  sports_bar: ["Sports bar", "food"],
+  cocktail_bar: ["Cocktail bar", "food"],
+  wine_bar: ["Wine bar", "food"],
+  brewery: ["Brewery", "food"],
+  brewpub: ["Brewpub", "food"],
+  winery: ["Winery", "food"],
+  distillery: ["Distillery", "food"],
+  // Outdoors
+  park: ["Park", "outdoors"],
+  state_park: ["State park", "outdoors"],
+  dog_park: ["Dog park", "outdoors"],
+  hiking_area: ["Hiking area", "outdoors"],
+  playground: ["Playground", "outdoors"],
+  garden: ["Garden", "outdoors"],
+  nature_preserve: ["Nature preserve", "outdoors"],
+  wildlife_refuge: ["Wildlife refuge", "outdoors"],
+  campground: ["Campground", "outdoors"],
+  skateboard_park: ["Skate park", "outdoors"],
+  golf_course: ["Golf course", "outdoors"],
+  farm: ["Farm", "outdoors"],
+  farmstay: ["Farm stay", "outdoors", "lodging"],
+  // Arts and culture
+  museum: ["Museum", "arts"],
+  history_museum: ["History museum", "arts"],
+  art_gallery: ["Gallery", "arts"],
+  art_studio: ["Art studio", "arts"],
+  performing_arts_theater: ["Theater", "arts"],
+  movie_theater: ["Movie theater", "arts"],
+  concert_hall: ["Concert hall", "arts"],
+  live_music_venue: ["Live music venue", "arts"],
+  // Family
+  library: ["Library", "family"],
+  bowling_alley: ["Bowling", "family"],
+  video_arcade: ["Arcade", "family"],
+  amusement_center: ["Amusement center", "family"],
+  zoo: ["Zoo", "family"],
+  indoor_playground: ["Indoor playground", "family"],
+  // Shops, personal care and services
+  book_store: ["Bookstore", "errand"],
+  clothing_store: ["Clothing", "errand"],
+  womens_clothing_store: ["Clothing", "errand"],
+  gift_shop: ["Gift shop", "errand"],
+  florist: ["Florist", "errand"],
+  furniture_store: ["Furniture", "errand"],
+  home_goods_store: ["Home goods", "errand"],
+  garden_center: ["Garden center", "errand"],
+  thrift_store: ["Thrift store", "errand"],
+  jewelry_store: ["Jewelry", "errand"],
+  toy_store: ["Toys", "errand"],
+  liquor_store: ["Liquor store", "errand"],
+  grocery_store: ["Grocery", "errand"],
+  supermarket: ["Grocery", "errand"],
+  asian_grocery_store: ["Asian grocery", "errand"],
+  convenience_store: ["Convenience store", "errand"],
+  farmers_market: ["Farmers market", "errand"],
+  butcher_shop: ["Butcher", "errand"],
+  sporting_goods_store: ["Sporting goods", "errand"],
+  bicycle_store: ["Bike shop", "errand"],
+  pet_store: ["Pet store", "errand"],
+  // The catalog files tea shops under Coffee as often as under Shopping.
+  tea_store: ["Tea shop", "food", "errand"],
+  gym: ["Gym", "errand"],
+  fitness_center: ["Fitness center", "errand"],
+  yoga_studio: ["Yoga studio", "errand"],
+  hair_salon: ["Hair salon", "errand"],
+  barber_shop: ["Barber", "errand"],
+  beauty_salon: ["Beauty salon", "errand"],
+  nail_salon: ["Nail salon", "errand"],
+  spa: ["Spa", "errand"],
+  massage: ["Massage", "errand"],
+  massage_spa: ["Massage", "errand"],
+  chiropractor: ["Chiropractor", "errand"],
+  car_repair: ["Auto repair", "errand"],
+  tire_shop: ["Tires", "errand"],
+  pharmacy: ["Pharmacy", "errand"],
+  laundry: ["Laundry", "errand"],
+  tailor: ["Tailor", "errand"],
+  veterinary_care: ["Veterinarian", "errand"],
+  dentist: ["Dentist", "errand"],
+  dental_clinic: ["Dentist", "errand"],
+  doctor: ["Doctor", "errand"],
+  medical_clinic: ["Medical clinic", "errand"],
+  physiotherapist: ["Physical therapy", "errand"],
+  bank: ["Bank", "errand"],
+  gas_station: ["Gas station", "errand"],
+  funeral_home: ["Funeral home", "errand"],
+  post_office: ["Post office", "errand", "civic"],
+  // Civic and worship
+  church: ["Church", "civic"],
+  synagogue: ["Synagogue", "civic"],
+  city_hall: ["City hall", "civic"],
+  local_government_office: ["Government office", "civic"],
+  government_office: ["Government office", "civic"],
+  fire_station: ["Fire station", "civic"],
+  community_center: ["Community center", "civic"],
+  visitor_center: ["Visitor center", "civic"],
+  cemetery: ["Cemetery", "civic"],
+  // Lodging
+  hotel: ["Hotel", "lodging"],
+  motel: ["Motel", "lodging"],
+  inn: ["Inn", "lodging"],
+  bed_and_breakfast: ["Bed and breakfast", "lodging"],
+  extended_stay_hotel: ["Extended-stay hotel", "lodging"],
+};
+
+/** Top-level category slug → the label family it accepts. */
+const CATEGORY_FAMILY: Record<string, TypeFamily> = {
+  food: "food",
+  outdoors: "outdoors",
+  arts: "arts",
+  family: "family",
+  shopping: "errand",
+  wellness: "errand",
+  services: "errand",
+  civic: "civic",
+  lodging: "lodging",
+};
+
+/**
+ * Singular category labels for the fallback. The taxonomy names are plural
+ * section titles ("Restaurants", "Breweries"); one row describes one place.
+ */
+const CATEGORY_TYPE_LABEL: Record<string, string> = {
+  restaurant: "Restaurant",
+  coffee: "Coffee",
+  bar: "Bar",
+  brewery: "Brewery",
+  winery: "Winery",
+  distillery: "Distillery",
+  bakery: "Bakery",
+  pizza: "Pizza",
+  "ice-cream": "Ice cream",
+  "food-truck": "Food truck",
+  park: "Park",
+  trail: "Trail",
+  playground: "Playground",
+  golf: "Golf",
+  agritourism: "Farm",
+  museum: "Museum",
+  gallery: "Gallery",
+  theater: "Theater",
+  music: "Live music",
+  "public-art": "Public art",
+  tours: "Tour",
+  library: "Library",
+  shopping: "Shop",
+  antiques: "Antiques",
+  "book-store": "Bookstore",
+  market: "Market",
+  yoga: "Yoga & fitness",
+  massage: "Massage",
+  salon: "Salon & barber",
+  spa: "Spa",
+  government: "Government",
+  "public-safety": "Public safety",
+  worship: "Place of worship",
+  pharmacy: "Pharmacy",
+  hardware: "Hardware",
+  "auto-care": "Auto care",
+  lodging: "Lodging",
+  parking: "Parking",
+};
+
+/**
+ * Catalog categories more specific than any Google type their places carry.
+ * Antique dealers arrive as furniture_store or home_goods_store, and
+ * "Antiques" is the truer answer.
+ */
+const CATEGORY_LABEL_WINS: ReadonlySet<string> = new Set(["antiques"]);
+
+type TypeLabelPlace = {
+  category?: string;
+  primary_type?: string;
+};
+
+/**
+ * The row's type label: the mapped Google type when it agrees with the
+ * place's category family, otherwise the singular category label, otherwise
+ * the taxonomy name. `categoryName` resolves the taxonomy name and parent so
+ * this module stays free of the category table; pass `CATEGORY_BY_SLUG`'s
+ * entry. Returns null only when nothing at all is known.
+ */
+export function placeTypeLabel(
+  p: TypeLabelPlace,
+  category?: { slug: string; name: string; parent?: string } | null,
+): string | null {
+  const typed = p.primary_type ? PLACE_TYPE_LABEL[p.primary_type] : undefined;
+  if (typed && !(p.category && CATEGORY_LABEL_WINS.has(p.category))) {
+    const top = category ? category.parent ?? category.slug : undefined;
+    const family = top ? CATEGORY_FAMILY[top] : undefined;
+    const [label, ...families] = typed;
+    // An unknown category cannot contradict the type; a known one must agree.
+    if (!category || (family && families.includes(family))) return label;
+  }
+  if (p.category && CATEGORY_TYPE_LABEL[p.category]) return CATEGORY_TYPE_LABEL[p.category];
+  return category?.name ?? null;
+}
+
+/**
+ * The one curated "known for" phrase a browse row may show in place of its
+ * type label. Only `known_for` (extracted and reviewed by
+ * scripts/extract-known-for.mjs) qualifies; the scraped `short_blurb` never
+ * reaches a row, because DFP blurbs leak marketing copy and schedule
+ * fragments. A phrase that restates the place name or runs past a row's width
+ * says nothing at row size and is skipped, the same guard /open-now applies.
+ */
+export function curatedKnownFor(p: {
+  name: string;
+  known_for?: string[];
+}): string | null {
+  const raw = (p.known_for?.[0] ?? "").trim();
+  if (!raw || raw.length > 52) return null;
+  const name = p.name.trim().toLowerCase();
+  if (name && raw.toLowerCase().startsWith(name.slice(0, 10))) return null;
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+/**
  * DFP rows often carry boilerplate instead of a real description
  * ("More info about X · 123 Main St"). A blurb is only "known for"
  * worthy when it actually describes the place. Honest beats padded:
