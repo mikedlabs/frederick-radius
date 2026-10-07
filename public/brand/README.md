@@ -107,7 +107,11 @@ files are in `licenses/`.
   a working tracked QR code.
 
 The poster SVGs are editable 1800 by 2400 masters. The PNG exports are ready
-for review or a short-run proof. The campaign pair also includes 18 by 24 PDF
+for review or a short-run proof. `npm run build:brand` writes the `you-are-here`
+and `whole-county` PNGs to the ignored `output/brand/posters/` folder. Those two
+PNG handoffs are not deployed; their editable SVG masters remain public.
+The manifest records their local export paths. Other poster exports keep their
+existing public locations. The campaign pair also includes 18 by 24 PDF
 exports with generated QR codes. Add a tested QR code to the older templates
 only after the final destination URL and campaign tracking are locked.
 
