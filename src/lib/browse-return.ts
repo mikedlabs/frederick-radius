@@ -12,18 +12,22 @@ const DESTINATIONS: Record<string, string> = {
   "/plan": "your plan",
 };
 
-/** A detail can return to a known listing, never to an arbitrary redirect. */
+const EVENT_DETAIL = /^\/events\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/** Return only to known public browsing routes or a canonical event detail. */
 export function normalizeBrowseReturnTo(raw: unknown): string | null {
   if (typeof raw !== "string" || !raw || raw.length > 8_192) return null;
   const safe = safeRedirectPath(raw, INVALID);
   const parsed = new URL(safe, BASE);
-  if (!Object.hasOwn(DESTINATIONS, parsed.pathname)) return null;
+  if (!Object.hasOwn(DESTINATIONS, parsed.pathname) && !EVENT_DETAIL.test(parsed.pathname)) return null;
   return `${parsed.pathname}${parsed.search}${parsed.hash}`;
 }
 
 export function browseReturnLabel(raw: unknown): string | null {
   const safe = normalizeBrowseReturnTo(raw);
-  return safe ? `Back to ${DESTINATIONS[new URL(safe, BASE).pathname]}` : null;
+  if (!safe) return null;
+  const path = new URL(safe, BASE).pathname;
+  return EVENT_DETAIL.test(path) ? "Back to the event" : `Back to ${DESTINATIONS[path]}`;
 }
 
 export function withBrowseReturnTo(destination: string, raw: unknown): string {
@@ -38,6 +42,10 @@ export function withBrowseReturnTo(destination: string, raw: unknown): string {
 
 /** Keep the immediate listing, including its own route back to the map. */
 export function browseReturnFromLocation(location: URL): string | null {
+  if (EVENT_DETAIL.test(location.pathname)) {
+    const listing = normalizeBrowseReturnTo(location.searchParams.get("returnTo"));
+    if (listing) return listing;
+  }
   return normalizeBrowseReturnTo(
     `${location.pathname}${location.search}${location.hash}`,
   ) ?? normalizeBrowseReturnTo(location.searchParams.get("returnTo"));
