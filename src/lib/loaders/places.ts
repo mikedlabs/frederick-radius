@@ -19,7 +19,12 @@ import {
   isRecommendable,
   SUPPRESSED_JUNK_SLUGS,
 } from "@/lib/relevance";
-import { getOpenStatus, isOpenNow, type OpenStatus } from "@/lib/hours";
+import {
+  getOpenStatus,
+  isOpenNow,
+  withheldHoursStatus,
+  type OpenStatus,
+} from "@/lib/hours";
 import {
   isGooglePlaceId,
   stampPlaceProvenance,
@@ -1172,12 +1177,16 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     hours_source: refreshedHours ? ("google_places" as const) : hours_source,
     hours_updated_at: hoursVerifiedAt,
     // The one decision point of the hours policy: open and closed states render
-    // only from recently verified hours.
-    open_status: getOpenStatus(
-      mayAssertHours ? hours : undefined,
-      { verified: mayAssertHours },
-      now,
-    ),
+    // only from recently verified hours. A withheld schedule still records
+    // that one exists, so the page reads "Hours not confirmed" instead of the
+    // false "Hours not posted". With the Google refresh on hold, every
+    // schedule aged past the window and every place page claimed the
+    // business had never posted hours (UI audit, place-data-truth).
+    open_status: mayAssertHours
+      ? getOpenStatus(hours, { verified: true }, now)
+      : withheldHoursStatus(
+          Boolean(hours) || (enriched.google_hours?.length ?? 0) > 0,
+        ),
     distance_m: origin ? haversineMeters(origin, enriched.geom) : undefined,
     field_notes: hasFieldNotes(p.slug),
     // Standing happy-hour figure only (e.g. "25% OFF") — never a day-specific
@@ -1302,10 +1311,19 @@ export function getPlaceBySlug(slug: string, origin?: LngLat, now: Date = new Da
   const p = BASE_BY_SLUG[slug];
   if (!p) return null;
   const decorated = decoratePlace(p, origin, now);
+  // Rank against the DECORATED anchor, never the raw feed row. The DFP feed
+  // files many restaurants as "shopping" (K Town Takeout is one), and the
+  // override and Google-type normalizers correct that in decoratePlace.
+  // Scoring the raw category made a takeout restaurant's Nearby lead with a
+  // florist, a print shop, and a liquor store (UI audit, place-data-truth).
+  const anchor: NearbyAnchor = {
+    category: decorated.category,
+    geom: decorated.geom,
+  };
 
   const nearby_places = publicPlaces()
     .filter((x) => x.slug !== p.slug)
-    .map((x) => decoratePlace(x, p.geom, now))
+    .map((x) => decoratePlace(x, anchor.geom, now))
     // "Nearby" is a recommendation surface, not a raw proximity dump.
     // Apply the gate after enrichment because the institutional primary type
     // comes from Google, not the raw DFP row.
@@ -1321,19 +1339,53 @@ export function getPlaceBySlug(slug: string, origin?: LngLat, now: Date = new Da
         CATEGORY_BY_SLUG[candidate.category]?.parent ?? candidate.category,
       ),
     )
+    .filter((candidate) => pairsWithNearbyAnchor(anchor.category, candidate))
     .sort(
       (a, b) =>
-        nearbyContextScore(p.category, a) - nearbyContextScore(p.category, b),
+        nearbyContextScore(anchor.category, a) -
+        nearbyContextScore(anchor.category, b),
     )
     .slice(0, 6);
 
   return {
     ...decorated,
-    category_name: CATEGORY_BY_SLUG[p.category]?.name ?? p.category,
-    municipality_name: MUNICIPALITY_BY_SLUG[p.municipality]?.name ?? p.municipality,
+    // Same rule as the anchor: the page's "Restaurants in Frederick." fallback
+    // description must name the corrected category, not the feed's "Shopping".
+    category_name: CATEGORY_BY_SLUG[decorated.category]?.name ?? decorated.category,
+    municipality_name:
+      MUNICIPALITY_BY_SLUG[decorated.municipality]?.name ?? decorated.municipality,
     nearby_places,
     upcoming_events: eventsAtVenue(p.slug),
   };
+}
+
+type NearbyAnchor = Pick<PlaceCardData, "category" | "geom">;
+
+/**
+ * Shopping stops that are errands rather than a next stop after a meal or a
+ * drink. They stay in Search and Map. A food or drink page should not suggest
+ * a florist, a print shop, or a liquor store as the pairing just because its
+ * door is closer than the next restaurant.
+ */
+const ERRAND_SHOPPING_TYPES: ReadonlySet<string> = new Set([
+  "print_shop",
+  "florist",
+  "liquor_store",
+]);
+
+/** False when a candidate is the wrong kind of stop to pair with the anchor. */
+export function pairsWithNearbyAnchor(
+  anchorCategory: string,
+  candidate: Pick<PlaceCardData, "category" | "primary_type">,
+): boolean {
+  const anchorParent = CATEGORY_BY_SLUG[anchorCategory]?.parent ?? anchorCategory;
+  if (anchorParent !== "food") return true;
+  const candidateParent =
+    CATEGORY_BY_SLUG[candidate.category]?.parent ?? candidate.category;
+  if (candidateParent !== "shopping") return true;
+  return !(
+    candidate.primary_type && ERRAND_SHOPPING_TYPES.has(candidate.primary_type)
+  );
 }
 
 function nearbyContextScore(
