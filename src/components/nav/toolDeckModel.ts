@@ -129,6 +129,7 @@ export const TOOL_DECK_GROUP_DEFINITIONS = [
     description: "Saved items, notifications, settings, and submissions.",
     toolIds: [
       "saved",
+      "day-plan",
       "settings",
       "keep-radius",
       "notifications",

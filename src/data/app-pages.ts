@@ -49,7 +49,7 @@ export const APP_PAGES: AppPage[] = [
   { href: "/amenities", title: "Nearby essentials", blurb: "Find the closest mapped restroom, water, trash, dog bags, seating, or power.", keywords: ["restroom", "restrooms", "bathroom", "bathrooms", "toilet", "water", "trash", "dog bags", "bench", "seating", "power", "wifi", "ev charging", "charger", "phone charging", "power outlet", "power outlets", "bike rack", "picnic", "water fountain"] },
   { href: "/check-a-date", title: "Check a date", blurb: "Pick a date and review listed events before scheduling yours.", keywords: ["check a date", "date conflict", "schedule conflict"] },
   { href: "/ask", title: PRODUCT_NAMES.ask.pageTitle, blurb: PRODUCT_NAMES.ask.description, keywords: ["ask radius", "help me decide", "recommendation", "what should i do", "plan something"] },
-  { href: "/plan", title: PRODUCT_NAMES.outingPlanner.pageTitle, blurb: PRODUCT_NAMES.outingPlanner.description, keywords: ["itinerary", "plan my day", "day plan", "outing planner"] },
+  { href: "/plan", title: PRODUCT_NAMES.outingPlanner.pageTitle, blurb: PRODUCT_NAMES.outingPlanner.description, keywords: ["plan my day", "plan an outing", "outing planner"] },
   { href: "/open-now", title: "Open right now", blurb: "Find places whose posted hours indicate they are open, ranked from your selected town.", keywords: ["open now", "open late", "still open", "whats open"] },
   { href: "/nearby", title: "Nearby", blurb: "Rank useful places from a real location or a chosen town.", keywords: ["near me", "closest", "around me", "nearby"] },
 
@@ -85,6 +85,7 @@ export const APP_PAGES: AppPage[] = [
   { href: "/submit/place", title: "Add a place", blurb: "Tell Radius about a Frederick County place that is missing.", keywords: ["add place", "submit place", "missing place", "suggest place"] },
 
   // ── Yours ──
+  { href: "/itinerary", title: "Day Plan", blurb: "Review events saved on this device, in time order or on a map.", keywords: ["day plan", "itinerary", "planned events"] },
   { href: "/my-radius", title: "Saved", blurb: "Review your saved places, events, routes, and taps.", keywords: ["saved", "favorites", "bookmarks"] },
   { href: "/settings", title: "Settings", blurb: "Choose your home area and tune Radius for your needs.", keywords: ["settings", "home town", "home area", "preferences"] },
   { href: "/settings/notifications", title: "Alerts & feedback", blurb: "Choose local alerts, quiet hours, and phone feedback for this device.", keywords: ["alerts", "notifications", "quiet hours", "phone feedback", "haptics"] },

@@ -637,7 +637,7 @@ export default function EventCard({
         </div>
       </div>
       <div className="relative z-10 flex shrink-0 items-center self-start">
-        <ItineraryButton eventId={event.slug} label={`Add ${event.title} to itinerary`} />
+        <ItineraryButton eventId={event.slug} eventTitle={event.title} />
       </div>
     </article>
   );

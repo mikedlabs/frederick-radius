@@ -525,7 +525,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         tone: "accent",
         featured: true,
         parentJourney: "today",
-        keywords: ["itinerary", "plan my day", "day plan"],
+        keywords: ["plan an outing", "outing", "route", "plan my day"],
       },
       {
         id: "collections",
@@ -732,6 +732,15 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         icon: "bookmark",
         tone: "brand",
         keywords: ["saved", "favorites", "bookmarks"],
+      },
+      {
+        id: "day-plan",
+        label: "Day Plan",
+        description: "Review the events saved for your day on this device.",
+        href: "/itinerary",
+        icon: "calendar",
+        tone: "brand",
+        keywords: ["day plan", "itinerary", "planned events"],
       },
       {
         id: "settings",
