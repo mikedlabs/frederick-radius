@@ -67,6 +67,21 @@ describe("isLiveMusicEvent", () => {
     ).toBe(false);
   });
 
+  it("takes book and talk nights off a music venue's calendar (2026-10 UI audit)", () => {
+    // The Banyan's "Bookish Event" reached the Music interest filter because
+    // its venue calendar stamps every row "music".
+    for (const title of [
+      "Bookish Event",
+      "Book Signing with Local Authors",
+      "Author Talk: Writing Frederick",
+      "Parsons Newman Lecture",
+    ]) {
+      expect(inferredNonMusicCategory(title), title).toBe("community");
+      expect(isLiveMusicEvent({ category: "food", venue_place_slug: VENUE, title }), title).toBe(false);
+    }
+    expect(isNonMusicTitle("The Bookshelves (live)")).toBe(false);
+  });
+
   it("rejects events at non-music venues without a music category", () => {
     expect(isLiveMusicEvent({ category: "food", venue_place_slug: "some-restaurant", title: "Band Night" })).toBe(false);
     expect(isLiveMusicEvent({ category: "food", venue_place_slug: undefined, title: "Band Night" })).toBe(false);

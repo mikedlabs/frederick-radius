@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyEvent, isPublicEvent } from "./classify";
+import { classifyEvent, isAttendableTitle, isPublicEvent } from "./classify";
 
 describe("classifyEvent", () => {
   // Regression: the review found these leaking into public discovery (and
@@ -94,6 +94,40 @@ describe("classifyEvent", () => {
     ]) {
       expect(classifyEvent({ title }), title).toBe("public");
       expect(isPublicEvent({ title }), title).toBe(true);
+    }
+  });
+
+  // 2026-10 UI audit: festivals, fairs, classes, and studies are things a
+  // person attends, never a governance session, even when a feed's
+  // keyword inference stamped them "civic" or a committee name appears.
+  it("never lanes a festival, fair, class, or study as a civic meeting", () => {
+    for (const [title, category] of [
+      ["Fall Festival at Town Hall", "civic"],
+      ["Oktoberfest", "civic"],
+      ["Frederick Fiberfest - Fall Edition", "civic"],
+      ["Great Frederick Fair", "civic"],
+      ["Citizenship Class", "civic"],
+      ["Spanish Classes for Adults", "civic"],
+      ["\"Small Things Like These\" Advent Study", "civic"],
+      ["Legal Studies Pro Bono Day", "civic"],
+      ["Thurmont Festival Committee Fall Festival", undefined],
+      ["Fair Committee Pancake Breakfast", undefined],
+    ] as const) {
+      expect(classifyEvent({ title, category }), title).toBe("public");
+      expect(isAttendableTitle(title), title).toBe(true);
+    }
+  });
+
+  it("keeps governance forms civic even when they share those words", () => {
+    for (const title of [
+      "Festival Committee Meeting",
+      "Fair Board Meeting",
+      "Fair Housing Commission",
+      "Planning Commission Study Session",
+      "Board of Education Class Size Public Hearing",
+      "Manifest Destiny Lecture Committee",
+    ]) {
+      expect(classifyEvent({ title }), title).toBe("civic_meeting");
     }
   });
 

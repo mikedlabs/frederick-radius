@@ -4,6 +4,7 @@ import {
   eventLeadTier,
   eventProminence,
   compareForLead,
+  hasMarqueeTitle,
   pickLeadEvent,
 } from "./lead-rank";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -41,6 +42,13 @@ describe("eventLeadTier", () => {
     expect(eventLeadTier(ev({ title: "City Council Meeting" }))).toBe(2);
   });
 
+  it("demotes a series that meets again within 14 days to the routine tier", () => {
+    expect(eventLeadTier(ev({ title: "Game Night" }))).toBe(0);
+    expect(eventLeadTier({ ...ev({ title: "Game Night" }), frequent_series: true })).toBe(1);
+    // A frequent civic series stays utility, never promoted by the stamp.
+    expect(eventLeadTier({ ...ev({ title: "City Council Meeting" }), frequent_series: true })).toBe(2);
+  });
+
   it("does NOT let a venue-thumb storytime outrank a real draw", () => {
     // withVenueThumbs gives most events a hero_image; the routine demotion must
     // still win over a thumbnail.
@@ -56,6 +64,43 @@ describe("eventProminence", () => {
     const flagged = { ...ev({ category: "theater" }), has_tickets: true };
     expect(eventProminence(flagged)).toBe(eventProminence(linked));
     expect(eventProminence(flagged)).toBe(eventProminence(ev({ category: "theater" })) + 3);
+  });
+
+  it("runs the marquee test on the title as well as the category, counting it once", () => {
+    // "72 Film Fest" arrived filed under community; the title says it is a draw.
+    expect(eventProminence(ev({ title: "72 Film Fest 2026 - Friday", category: "community" }))).toBe(2);
+    expect(eventProminence(ev({ title: "Fall Fest at Everedy Square", category: "family" }))).toBe(2);
+    expect(eventProminence(ev({ title: "Great Frederick Fair", category: "community" }))).toBe(2);
+    expect(eventProminence(ev({ title: "Holiday Concert", category: "community" }))).toBe(2);
+    expect(eventProminence(ev({ title: "Comedy Night", category: "community" }))).toBe(2);
+    // Category and title both marquee: still +2, not +4.
+    expect(eventProminence(ev({ title: "Jazz Festival", category: "music" }))).toBe(2);
+  });
+
+  it("does not read instruction or recruiting events as marquee titles", () => {
+    for (const title of [
+      "Standup Comedy Class",
+      "Internship Fair",
+      "Education Transfer Fair",
+      "Public Safety Career and College Fair",
+      "Fair Housing Workshop",
+      "Manifest Your Goals",
+      "Concert Band Camp",
+    ]) {
+      expect(hasMarqueeTitle({ title }), title).toBe(false);
+      expect(eventProminence(ev({ title, category: "community" })), title).toBe(0);
+    }
+    for (const title of ["Catoctin Colorfest", "Oktoberfest", "Frederick Fiberfest", "County Fair"]) {
+      expect(hasMarqueeTitle({ title }), title).toBe(true);
+    }
+  });
+
+  it("gives a hand-curated row +2", () => {
+    const base = { title: "Harvest Supper", category: "community" };
+    expect(eventProminence(ev({ ...base, source: "manual" }))).toBe(2);
+    expect(eventProminence(ev({ ...base, source: "seed" }))).toBe(2);
+    expect(eventProminence(ev({ ...base, source: "dfp" }))).toBe(0);
+    expect(eventProminence(ev(base))).toBe(0);
   });
 
   it("does not treat unknown admission as paid prominence", () => {
@@ -121,6 +166,28 @@ describe("compareForLead + pickLeadEvent", () => {
     });
     expect([libraryTalk, concert].sort(compareForLead)[0]).toBe(concert);
     expect(pickLeadEvent([libraryTalk, concert])).toBe(concert);
+  });
+
+  it("a curated one-off weekend draw beats a weekly Game Night (2026-10 UI audit)", () => {
+    // The audit: Catoctin Colorfest (a curated row filed under "arts") and
+    // David Sedaris sat behind Show more while a weekly Game Night led.
+    const gameNight = {
+      ...ev({ title: "Game Night", category: "community", venue_name: "Frederick Social", starts_at: "2026-10-09T20:00:00Z" }),
+      frequent_series: true,
+    };
+    const colorfest = ev({
+      title: "Catoctin Colorfest",
+      category: "arts",
+      source: "manual",
+      venue_name: "Thurmont Community Park",
+      starts_at: "2026-10-10T13:00:00Z",
+    });
+    const sedaris = {
+      ...ev({ title: "David Sedaris", category: "theater", venue_name: "Weinberg Center for the Arts", starts_at: "2026-10-11T00:00:00Z" }),
+      has_tickets: true,
+    };
+    const ranked = [gameNight, colorfest, sedaris].sort(compareForLead);
+    expect(ranked.map((e) => e.title)).toEqual(["David Sedaris", "Catoctin Colorfest", "Game Night"]);
   });
 
   it("an owner-featured slug beats the heuristic (UX-05)", () => {

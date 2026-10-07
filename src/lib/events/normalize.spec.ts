@@ -15,6 +15,8 @@ import {
   titleIsJustVenue,
   isFacilityBooking,
   stripFacilityPrefix,
+  markFrequentSeries,
+  returnsWithinWindow,
 } from "./normalize";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
@@ -356,6 +358,84 @@ describe("seriesStem + series collapse", () => {
       mkEvent({ slug: "x2", title: "Trivia Night | Round 1", venue_name: "Olde Mother Brewing" }),
     ]);
     expect(out).toHaveLength(2);
+  });
+
+  it("keeps the frequent-series stamp its collapsed siblings proved", () => {
+    const out = collapseRecurringEvents([
+      mkEvent({ slug: "gn-1", title: "Game Night", venue_name: "Frederick Social", starts_at: "2026-10-07T20:00:00.000Z" }),
+      mkEvent({ slug: "gn-2", title: "Game Night", venue_name: "Frederick Social", starts_at: "2026-10-14T20:00:00.000Z" }),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].frequent_series).toBe(true);
+  });
+});
+
+describe("markFrequentSeries (2026-10 UI audit: weekly Game Night led /events)", () => {
+  it("stamps every row of a series that meets again within 14 days", () => {
+    const out = markFrequentSeries([
+      mkEvent({ slug: "gn-1", title: "Game Night", venue_name: "Frederick Social", starts_at: "2026-10-07T20:00:00.000Z" }),
+      mkEvent({ slug: "gn-2", title: "Game Night", venue_name: "Frederick Social", starts_at: "2026-10-14T20:00:00.000Z" }),
+      mkEvent({ slug: "sedaris", title: "David Sedaris", venue_name: "Weinberg Center for the Arts", starts_at: "2026-10-11T00:00:00.000Z" }),
+    ]);
+    expect(out.map((e) => [e.slug, e.frequent_series === true])).toEqual([
+      ["gn-1", true],
+      ["gn-2", true],
+      ["sedaris", false],
+    ]);
+  });
+
+  it("treats a twice-monthly class as frequent and a monthly one as not", () => {
+    const biweekly = markFrequentSeries([
+      mkEvent({ slug: "b1", title: "Open Studio", starts_at: "2026-10-01T22:00:00.000Z" }),
+      mkEvent({ slug: "b2", title: "Open Studio", starts_at: "2026-10-15T22:00:00.000Z" }),
+    ]);
+    expect(biweekly.every((e) => e.frequent_series === true)).toBe(true);
+    const monthly = markFrequentSeries([
+      mkEvent({ slug: "m1", title: "First Saturday", starts_at: "2026-10-03T22:00:00.000Z" }),
+      mkEvent({ slug: "m2", title: "First Saturday", starts_at: "2026-11-07T22:00:00.000Z" }),
+    ]);
+    expect(monthly.some((e) => e.frequent_series === true)).toBe(false);
+  });
+
+  it("does not demote a multi-day festival listed one row per day", () => {
+    const out = markFrequentSeries(
+      ["2026-10-09", "2026-10-10", "2026-10-11"].map((day, i) =>
+        mkEvent({ slug: `fest-${i}`, title: "Catoctin Colorfest", venue_name: "Thurmont Community Park", starts_at: `${day}T14:00:00.000Z` }),
+      ),
+    );
+    expect(out.some((e) => e.frequent_series === true)).toBe(false);
+  });
+
+  it("does not read two copies of one date as a series", () => {
+    const out = markFrequentSeries([
+      mkEvent({ slug: "a", title: "Las Áñez", venue_name: "New Spire Arts", starts_at: "2026-10-08T23:30:00.000Z" }),
+      mkEvent({ slug: "b", title: "Las Áñez", venue_name: "New Spire Arts", starts_at: "2026-10-08T23:30:00.000Z" }),
+    ]);
+    expect(out.some((e) => e.frequent_series === true)).toBe(false);
+  });
+
+  it("keys on venue, so one title at two venues is two series", () => {
+    const out = markFrequentSeries([
+      mkEvent({ slug: "a", title: "Game Night", venue_name: "Frederick Social", starts_at: "2026-10-07T20:00:00.000Z" }),
+      mkEvent({ slug: "b", title: "Game Night", venue_name: "Middletown Branch Library", starts_at: "2026-10-14T20:00:00.000Z" }),
+    ]);
+    expect(out.some((e) => e.frequent_series === true)).toBe(false);
+  });
+
+  it("returns the same row object when nothing changes", () => {
+    const row = mkEvent({ slug: "solo", title: "Solo Show" });
+    expect(markFrequentSeries([row])[0]).toBe(row);
+  });
+});
+
+describe("returnsWithinWindow", () => {
+  it("needs a real break between runs", () => {
+    expect(returnsWithinWindow([0, 7])).toBe(true);
+    expect(returnsWithinWindow([0, 14])).toBe(true);
+    expect(returnsWithinWindow([0, 15])).toBe(false);
+    expect(returnsWithinWindow([0, 1, 2])).toBe(false);
+    expect(returnsWithinWindow([0, 2, 7, 9])).toBe(true);
+    expect(returnsWithinWindow([3])).toBe(false);
   });
 });
 

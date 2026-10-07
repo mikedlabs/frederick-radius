@@ -8,7 +8,8 @@
  *
  * Tiers (lower = leads):
  *   0  draw            — a carnival, concert, market, festival, one-off
- *   1  routine program — storytime, weekly class, club, guild, support group
+ *   1  routine program — storytime, weekly class, club, guild, support group,
+ *                        and any series that meets again within 14 days
  *   2  utility         — civic/meeting business (already tucked elsewhere)
  * Within a tier: an event with imagery first, then soonest. (hero_image can't
  * be the top tier — withVenueThumbs decorates nearly every event with a venue
@@ -33,6 +34,11 @@ export type LeadRankable = {
   is_free?: boolean;
   price_text?: string | null;
   venue_name?: string | null;
+  /** Provenance; hand-curated rows ("manual", "seed") read as a bigger draw. */
+  source?: string;
+  /** Stamped at the unified assembly (markFrequentSeries) when the same
+   *  series meets on two separate dates within 14 days. */
+  frequent_series?: boolean;
 };
 
 // Standing programs that recur on a calendar and aren't a "come out tonight"
@@ -45,16 +51,37 @@ export function isRoutineProgram(e: { title?: string }): boolean {
   return ROUTINE_PROGRAM.test(e.title ?? "");
 }
 
-/** Lead tier — see module doc. Lower leads. */
+/** Lead tier — see module doc. Lower leads. A series that meets again
+ *  within 14 days is a standing program however its title reads: the
+ *  2026-10 UI audit found a weekly Game Night leading /events ahead of
+ *  one-off shows. */
 export function eventLeadTier(e: LeadRankable): number {
   if (isUtilityEvent(e)) return 2;
-  if (isRoutineProgram(e)) return 1;
+  if (isRoutineProgram(e) || e.frequent_series === true) return 1;
   return 0;
 }
 
 // Categories that read as a real "come out tonight" draw. Kept broad but
 // title/category-only, like the rest of this module.
 const MARQUEE_CATEGORY = /music|concert|festival|fair|carnival|market|sport|theat|comedy|nightlife|film|movie|dance|show/i;
+
+// The same test on the title, because feeds mis-file real draws ("72 Film
+// Fest" and "Catoctin Colorfest" arrived as community and arts). "fest"
+// also catches compounds such as Oktoberfest and Fiberfest.
+const MARQUEE_TITLE = /(?<!mani)fest(?:ival)?s?\b|\bfairs?\b|\bconcerts?\b|\bcomedy\b/i;
+// Instruction and recruiting events borrow those words without being a
+// night out: "Standup Comedy Class", "Internship Fair", "Fair Housing".
+const MARQUEE_TITLE_VETO =
+  /\b(?:career|job|transfer|internship|college|education|resource|health|benefits?|science|stem)\s+fairs?\b|\bfair\s+housing\b|\b(?:class(?:es)?|workshops?|lessons?|camps?|clinics?|courses?|study|studies)\b/i;
+
+/** True when the title itself names a festival, fair, concert, or comedy show. */
+export function hasMarqueeTitle(e: { title?: string }): boolean {
+  const title = e.title ?? "";
+  return MARQUEE_TITLE.test(title) && !MARQUEE_TITLE_VETO.test(title);
+}
+
+// Hand-curated provenance (the owner's own rows), as in lib/relevance.
+const CURATED_EVENT_SOURCES: ReadonlySet<string> = new Set(["manual", "seed"]);
 
 /**
  * Prominence within a tier — a rough "how big a draw is this" so the /today
@@ -64,11 +91,14 @@ const MARQUEE_CATEGORY = /music|concert|festival|fair|carnival|market|sport|thea
  * a library room reads as smaller. Signals only, never a value judgment beyond
  * "this is the kind of thing a county turns out for." `is_free: false` alone
  * is not a paid signal because feeds also use it when admission is unknown.
+ * A marquee category or title counts once. A hand-curated row earns +2: the
+ * owner added it because the county turns out for it.
  */
 export function eventProminence(e: LeadRankable): number {
   let score = 0;
   if (e.ticket_url || e.has_tickets) score += 3;
-  if (MARQUEE_CATEGORY.test(e.category ?? "")) score += 2;
+  if (MARQUEE_CATEGORY.test(e.category ?? "") || hasMarqueeTitle(e)) score += 2;
+  if (e.source && CURATED_EVENT_SOURCES.has(e.source)) score += 2;
   if (e.price_text?.trim()) score += 1;
   if (/\b(library|branch)\b/i.test(e.venue_name ?? "")) score -= 3;
   return score;

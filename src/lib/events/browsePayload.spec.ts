@@ -77,6 +77,16 @@ describe("events browse payload", () => {
     expect(slim.hero_image_attribution).toEqual(heroImageAttribution);
   });
 
+  it("carries the frequent-series stamp so the client re-sort ranks like the server", () => {
+    const stamped = slimEventForBrowse(
+      event("game-night", "2026-07-14T22:00:00.000Z", { frequent_series: true }),
+    );
+    expect(stamped.frequent_series).toBe(true);
+    expect(
+      "frequent_series" in slimEventForBrowse(event("one-off", "2026-07-14T22:00:00.000Z")),
+    ).toBe(false);
+  });
+
   it("keeps every current occurrence in the browse corpus and collapses only display rows", () => {
     const prepared = prepareEventsForBrowse([
       event("ended", "2026-07-14T08:00:00.000Z", {

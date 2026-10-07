@@ -134,6 +134,9 @@ export type EventWithMeta = Omit<Event, "source_url" | "last_verified_at"> &
   geo_confidence: GeoConfidence;
   category_name: string;
   municipality_name: string;
+  /** The same series meets on two separate dates within 14 days, so lead
+   *  ranking treats it as a standing program (normalize.markFrequentSeries). */
+  frequent_series?: boolean;
 };
 
 function decorate(e: Event, origin?: LngLat): EventWithMeta {

@@ -20,6 +20,7 @@
 import type { NwsForecast, NwsHourly } from "@/lib/integrations/nws";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { formatDistance } from "@/lib/geo";
+import { easternParts } from "@/lib/tz";
 import {
   eventParkingSummary,
   type EventParkingDecision,
@@ -114,6 +115,45 @@ export function parkingPhrase(
 }
 
 // ── Eat before ────────────────────────────────────────────────────
+
+/** An event starting at or after this Eastern hour is an evening out. */
+export const EVENING_START_HOUR = 17;
+
+const DAYTIME_FOOD_CATEGORIES: ReadonlySet<string> = new Set([
+  "restaurant",
+  "coffee",
+  "bar",
+  "brewery",
+  "bakery",
+  "pizza",
+]);
+
+// Coffee shops and bakeries are usually closed or winding down before an
+// evening show; the 2026-10 UI audit found an 8:30 PM event's "Around the
+// event" line naming a coffee shop. Evenings keep dinner and drinks only.
+const EVENING_FOOD_CATEGORIES: ReadonlySet<string> = new Set([
+  "restaurant",
+  "bar",
+  "pizza",
+  "brewery",
+]);
+
+/**
+ * Which place categories may be offered as "eat before" for this event.
+ * A timed start at 5 PM Eastern or later drops coffee and bakery; an
+ * all-day or undated event keeps the daytime set.
+ */
+export function eatBeforeCategories(event: {
+  starts_at?: string;
+  is_all_day?: boolean;
+}): ReadonlySet<string> {
+  if (event.is_all_day || !event.starts_at) return DAYTIME_FOOD_CATEGORIES;
+  const start = new Date(event.starts_at);
+  if (!Number.isFinite(start.getTime())) return DAYTIME_FOOD_CATEGORIES;
+  return easternParts(start).hour >= EVENING_START_HOUR
+    ? EVENING_FOOD_CATEGORIES
+    : DAYTIME_FOOD_CATEGORIES;
+}
 
 /**
  * Synthesize an "eat before" phrase from the pre-decorated nearby

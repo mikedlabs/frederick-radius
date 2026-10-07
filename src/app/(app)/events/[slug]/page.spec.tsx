@@ -10,7 +10,7 @@ vi.mock("@sentry/nextjs", () => ({ captureMessage: mocks.captureMessage }));
 vi.mock("@/lib/loaders/places-client", () => ({ clientPlaceBySlug: mocks.venue, clientPlaces: () => [] }));
 vi.mock("@/lib/loaders/eventSaves", () => ({ eventSaveCount: async () => null }));
 vi.mock("@/lib/loaders/eventNearbyPlaces", () => ({ loadEventNearbyPlaces: async () => ({ food: [], parking: [], source: "catalog-fallback" }) }));
-vi.mock("@/lib/loaders/eventRelated", () => ({ loadRelatedEventSections: async () => ({ lineup: [], moreUpcoming: { title: "More events", items: [] } }) }));
+vi.mock("@/lib/loaders/eventRelated", () => ({ loadRelatedEventSections: async () => ({ lineup: [], sections: [] }) }));
 import EventPage from "./page";
 import { EventResolutionTimeoutError, EventResolutionUnavailableError } from "@/lib/loaders/eventResolver";
 const now = new Date("2026-10-06T12:00:00-04:00");

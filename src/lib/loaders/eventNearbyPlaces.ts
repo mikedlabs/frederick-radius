@@ -5,17 +5,10 @@ import {
   clientPlaceBySlug,
   clientPlacesWithinRadius,
 } from "@/lib/loaders/places-client";
+import { eatBeforeCategories } from "@/lib/event-pairings";
 import { postgisNearbyPlaceDistances } from "@/lib/spatial/place-spatial-index";
 import { roundCoord } from "@/lib/walkTime";
 
-const FOOD_CATEGORIES = new Set([
-  "restaurant",
-  "coffee",
-  "bar",
-  "brewery",
-  "bakery",
-  "pizza",
-]);
 const FOOD_RADIUS_M = 2_000;
 const PARKING_RADIUS_M = 1_500;
 
@@ -25,8 +18,14 @@ export type EventNearbyPlaces = {
   source: "postgis" | "catalog-fallback";
 };
 
+/** The event fields this loader reads. The start decides which food
+ *  categories fit (an evening show skips coffee and bakeries). */
+export type EventNearbyInput = Pick<EventWithMeta, "geom"> &
+  Partial<Pick<EventWithMeta, "starts_at" | "is_all_day">>;
+
 function selectNearby(
   distances: ReadonlyMap<string, number>,
+  foodCategories: ReadonlySet<string>,
 ): Pick<EventNearbyPlaces, "food" | "parking"> {
   const food: PlaceCardData[] = [];
   const parking: PlaceCardData[] = [];
@@ -37,7 +36,7 @@ function selectNearby(
     if (
       food.length < 4 &&
       distance <= FOOD_RADIUS_M &&
-      FOOD_CATEGORIES.has(place.category)
+      foodCategories.has(place.category)
     ) {
       food.push(withDistance);
     }
@@ -59,21 +58,22 @@ function selectNearby(
  * deadline expires, the slim client catalog preserves the existing answer.
  */
 export async function loadEventNearbyPlaces(
-  event: Pick<EventWithMeta, "geom">,
+  event: EventNearbyInput,
 ): Promise<EventNearbyPlaces> {
+  const foodCategories = eatBeforeCategories(event);
   const origin = {
     lng: roundCoord(event.geom.lng),
     lat: roundCoord(event.geom.lat),
   };
   const spatial = await postgisNearbyPlaceDistances(origin, FOOD_RADIUS_M);
   if (spatial) {
-    return { ...selectNearby(spatial), source: "postgis" };
+    return { ...selectNearby(spatial, foodCategories), source: "postgis" };
   }
 
   const nearby = clientPlacesWithinRadius(event.geom, FOOD_RADIUS_M);
   return {
     food: nearby
-      .filter((place) => FOOD_CATEGORIES.has(place.category))
+      .filter((place) => foodCategories.has(place.category))
       .slice(0, 4),
     parking: nearby
       .filter(

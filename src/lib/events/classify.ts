@@ -71,6 +71,26 @@ const RE_MEETING =
 
 const RE_CANCELLED = /\bcancell?ed\b|\bpostponed\b/i;
 
+// Titles that name something a person attends, never a governance session:
+// festivals (including compounds such as "Oktoberfest" and "Fiberfest"),
+// fairs, classes, and studies. A feed's keyword inference can stamp
+// category "civic" on one of these because its blurb mentions a council or a
+// town hall venue, and a festival-planning committee name can trip
+// RE_MEETING. The 2026-10 UI audit asked that these never lane as civic
+// meetings. Narrow exceptions keep real governance forms civic: "Fair
+// Housing" and "Fair Elections" bodies, and a council "study session".
+const RE_ATTENDABLE_TITLE =
+  /(?<!mani)fest(?:ival)?s?\b|\bfairs?\b(?!\s+(?:housing|elections?|practices|labor))|\bclass(?:es)?\b|\bstud(?:y|ies)\b(?!\s+sessions?)/i;
+// An explicit meeting word still wins: "Festival Committee Meeting" is a
+// meeting about a festival, not the festival.
+const RE_EXPLICIT_MEETING = /\bmeetings?\b|\bpublic\s+hearings?\b|\bwork\s*sessions?\b/i;
+
+/** True when the title names a festival, fair, class, or study and does not
+ *  also call itself a meeting. Exported for the spec. */
+export function isAttendableTitle(title: string): boolean {
+  return RE_ATTENDABLE_TITLE.test(title) && !RE_EXPLICIT_MEETING.test(title);
+}
+
 export function classifyEvent(
   e: { title: string; status?: EventStatus | string; category?: string },
 ): EventLane {
@@ -81,7 +101,9 @@ export function classifyEvent(
   if (RE_NON_EVENT.test(t)) return "non_event";
   if (RE_RENTAL.test(t)) return "private_rental";
   if (RE_REMINDER.test(t) || RE_ADMIN_NOTICE.test(t)) return "town_reminder";
-  if (RE_MEETING.test(t) || e.category === "civic") return "civic_meeting";
+  if ((RE_MEETING.test(t) || e.category === "civic") && !isAttendableTitle(t)) {
+    return "civic_meeting";
+  }
   return "public";
 }
 

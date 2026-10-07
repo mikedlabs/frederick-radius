@@ -519,23 +519,42 @@ const FEEDS: FeedSpec[] = [
   // venues that scraper should target.
 ];
 
-const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
+/**
+ * Keyword rules, first match wins. `titleWords` count only when the event's
+ * own title (or a publisher category tag) says them, never when they appear
+ * in description prose. The 2026-10 UI audit found prose words filing events
+ * under the wrong interest: "Dress Your Family in Corduroy and Denim" in
+ * David Sedaris's book list made his evening "family", a speaker biography
+ * ("cofounder of the high school Academic Tournament") made a history lecture
+ * "sports", and "a FREE poker tournament" did the same for Game Night.
+ */
+const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[]; titleWords?: string[] }> = [
   // Fitness/recreation classes FIRST (first match wins): a rec-center
   // description like "a great workout with diverse music" or "utilizing
   // bands, light weights" otherwise substring-matches the music words, and
   // "Cardio Sculpt" rendered on the live-music radar (2026-07-17 review).
   { slug: "community", words: ["cardio", "zumba", "fitness class", "exercise", "workout", "pilates", "barre", "aerobics", "sculpt", "learn to"] },
-  { slug: "music", words: ["concert", "band", "music", "dj", "open mic", "acoustic", "punch brothers", "alive @ five"] },
+  // Social games and talks. A title that says what the evening is beats a
+  // stray "band" or "tournament" in the blurb.
+  { slug: "community", words: [], titleWords: ["game night", "board game", "board games", "bingo", "poker", "lecture", "author talk", "book talk", "book club", "book signing", "bookish"] },
+  { slug: "music", words: ["concert", "band", "music", "dj", "open mic", "acoustic", "jazz", "punch brothers", "alive @ five"] },
   // Sports is checked early so a game beats the family/outdoors/market
   // fallbacks ("youth soccer at the park" is sports, not outdoors).
-  // Tight, low-noise terms only (no bare "game"/"match"/"play").
-  { slug: "sports", words: ["baseball", "basketball", "soccer", "lacrosse", "softball", "volleyball", "tennis", "pickleball", "football", "golf tournament", "frederick keys", "blazers", "athletics", "tournament", "playoff", "doubleheader", "scrimmage", " vs ", "vs."] },
+  // Tight, low-noise terms only (no bare "game"/"match"/"play"). The
+  // generic contest words are title-only: biographies and bar blurbs use
+  // "tournament" for chess, poker, and academic quiz bowls.
+  { slug: "sports", words: ["baseball", "basketball", "soccer", "lacrosse", "softball", "volleyball", "tennis", "pickleball", "football", "golf tournament", "frederick keys", "blazers", "playoff", "doubleheader", "scrimmage"], titleWords: ["athletics", "tournament", " vs ", "vs."] },
   // Bare "play", "stage", and "show" are intentionally excluded. They
   // misclassified phrases such as "tennis match play" as theater.
   { slug: "theater", words: ["theater", "theatre", "stage play", "stage production", "playwright", "broadway", "performing arts", "comedy", "weinberg"] },
   { slug: "gallery", words: ["art", "exhibit", "gallery", "first saturday", "first friday", "mural", "delaplaine"] },
   { slug: "market", words: ["market", "vendor", "farmers", "makers", "fair"] },
-  { slug: "family", words: ["kids", "family", "children", "story time", "all ages", "scout", "youth"] },
+  // The bare word "family" is title-only (book titles and biographies use
+  // it); audience phrases in prose still count.
+  { slug: "family", words: ["kids", "children", "story time", "all ages", "scout", "youth", "families", "family-friendly", "family friendly", "whole family", "bring the family"], titleWords: ["family"] },
+  // Film screenings join theater, the category that already lists cinemas.
+  // After family so "Family Movie Night" keeps its audience.
+  { slug: "theater", words: [], titleWords: ["film", "films", "movie", "movies", "cinema", "screening"] },
   { slug: "outdoors", words: ["hike", "trail", "outdoor", "park", "ranger", "nature", "catoctin", "cunningham"] },
   { slug: "brewery", words: ["brewery", "beer", "tasting", "tap"] },
   { slug: "winery", words: ["wine", "winery", "vineyard", "linganore"] },
@@ -559,17 +578,50 @@ function containsCategoryKeyword(text: string, keyword: string): boolean {
   return new RegExp(`(?:^|[^a-z0-9])${escaped}(?=$|[^a-z0-9])`, "i").test(text);
 }
 
-function inferCategory(title: string, description: string, fallback: string): string {
+function matchCategoryKeywords(text: string, includeTitleWords: boolean): string | null {
+  if (!text.trim()) return null;
+  for (const { slug, words, titleWords } of CATEGORY_KEYWORDS) {
+    if (words.some((word) => containsCategoryKeyword(text, word))) return slug;
+    if (includeTitleWords && titleWords?.some((word) => containsCategoryKeyword(text, word))) {
+      return slug;
+    }
+  }
+  return null;
+}
+
+// A stage venue is honest evidence for an otherwise untagged row: The Hot
+// Sardines and other Weinberg shows reached the board as the DFP fallback
+// "community" because their excerpts open with box-office text.
+const STAGE_VENUE = /\b(?:theat(?:er|re)|weinberg|new spire|playhouse|opera house)\b/i;
+
+export type FeedCategoryContext = {
+  /** The row's venue name; a stage venue fills in "theater" last. */
+  venue?: string;
+  /** Publisher category tags (iCal CATEGORIES). They count like title words. */
+  tags?: string;
+};
+
+function inferCategory(
+  title: string,
+  description: string,
+  fallback: string,
+  context: FeedCategoryContext = {},
+): string {
   const text = `${title} ${description}`.toLowerCase();
   // Stage credits are stronger evidence than the generic word "music".
   // Do not promote every concert hosted at a theater into this category.
   if (/\bmusic\s+and\s+lyrics\s+by\b/.test(text) && /\bbook\s+by\b/.test(text)) {
     return "theater";
   }
-  for (const { slug, words } of CATEGORY_KEYWORDS) {
-    if (words.some((word) => containsCategoryKeyword(text, word))) return slug;
-  }
-  return fallback;
+  // The title names the event; the publisher's own tags are the next best
+  // claim. Description prose is read last and cannot use title-only words.
+  return (
+    matchCategoryKeywords(title, true) ??
+    matchCategoryKeywords(context.tags ?? "", true) ??
+    matchCategoryKeywords(description, false) ??
+    (context.venue && STAGE_VENUE.test(context.venue) ? "theater" : null) ??
+    fallback
+  );
 }
 
 const RECURRING_WEEKDAY_RE =
@@ -668,10 +720,15 @@ function categoryExists(slug: string, fallback: string): string {
  * Option B (an LLM classifier at ingest) is a separate, paid change and
  * is intentionally not done here.
  */
-export function feedCategory(feed: FeedSpec, title: string, description: string): string {
+export function feedCategory(
+  feed: FeedSpec,
+  title: string,
+  description: string,
+  context?: FeedCategoryContext,
+): string {
   if (feed.source === "county") return "";
   return categoryExists(
-    inferCategory(title, description, feed.default_category),
+    inferCategory(title, description, feed.default_category, context),
     feed.default_category,
   );
 }
@@ -1216,13 +1273,13 @@ async function fetchIcalFeed(
       const cleanedDesc = clampDescription(cleanDescription(description), 300);
       // The publisher's own CATEGORIES words join the keyword inference input
       // (same mechanism, one more honest signal) — a "Music" or "Kids" tag a
-      // feed took the trouble to publish should count.
+      // feed took the trouble to publish should count. They are read after
+      // the title and before description prose.
       const categoriesText = (item.categories ?? []).join(" ");
-      const inferredCategory = feedCategory(
-        feed,
-        title,
-        categoriesText ? `${description} ${categoriesText}` : description,
-      );
+      const inferredCategory = feedCategory(feed, title, description, {
+        venue,
+        tags: categoriesText,
+      });
 
       const candidate = {
         id: item.uid ?? `${feed.source}:${dedupeKey(title, start, venue)}`,
@@ -1362,7 +1419,7 @@ async function fetchRssFeed(
           feed.default_venue,
         ),
       );
-      const inferredCategory = feedCategory(feed, title, description);
+      const inferredCategory = feedCategory(feed, title, description, { venue });
 
       const candidate = {
         id: `${feed.source}:${dedupeKey(title, start, venue)}`,
@@ -2189,7 +2246,7 @@ export function parseVibemapEvents(
       geom: hasGeo ? { lat, lng } : feed.default_geom,
       ...(hasGeo ? { placement: "geocoded" as const } : {}),
       municipality: inferMunicipality(address, feed.default_municipality),
-      category: feedCategory(feed, title, description),
+      category: feedCategory(feed, title, description, { venue }),
       organizer: str("vibemap_event_organizer").trim() || feed.source_label,
       source: feed.source,
       source_label: feed.source_label,
@@ -2819,7 +2876,10 @@ function getCachedEventSourcePage(
     [
       // v3 adds the publisher-owned modification timestamp used to settle
       // first-party event changes. Keep old cache tuples out of this shape.
-      "live-event-source-page-v4",
+      // v5: category inference reads the title before description prose,
+      // keeps "family"/"tournament" claims title-only, and lets a stage venue
+      // fill in "theater", so cached rows' category changes in place.
+      "live-event-source-page-v5",
       source,
       String(windowDays),
       afterCursor ?? "first",

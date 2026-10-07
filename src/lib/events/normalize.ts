@@ -533,6 +533,81 @@ export function cleanEventSlug(input: {
   return `${base}-${etYmd(input.startsAt)}`;
 }
 
+/** A series that returns within this many days is a standing program. */
+export const FREQUENT_SERIES_WINDOW_DAYS = 14;
+// Dates closer than this belong to one run: a Friday-to-Sunday festival or
+// a fair listed one row per day is a single outing, not a series returning.
+const SAME_RUN_MAX_GAP_DAYS = 2;
+
+function etDayNumber(iso: string): number | null {
+  if (!Number.isFinite(Date.parse(iso))) return null;
+  const [y, m, d] = etYmd(iso).split("-").map(Number);
+  return Math.round(Date.UTC(y, m - 1, d) / 86_400_000);
+}
+
+/**
+ * True when Eastern calendar days show a series meeting again within the
+ * window after a real break. Weekly trivia and a twice-monthly class qualify;
+ * a three-day festival or a nine-day county fair does not.
+ */
+export function returnsWithinWindow(
+  days: readonly number[],
+  windowDays = FREQUENT_SERIES_WINDOW_DAYS,
+): boolean {
+  const sorted = [...new Set(days)].sort((a, b) => a - b);
+  let previousDay: number | null = null;
+  let previousRunStart: number | null = null;
+  for (const day of sorted) {
+    if (previousDay === null || day - previousDay > SAME_RUN_MAX_GAP_DAYS) {
+      if (previousRunStart !== null && day - previousRunStart <= windowDays) {
+        return true;
+      }
+      previousRunStart = day;
+    }
+    previousDay = day;
+  }
+  return false;
+}
+
+type SeriesStampable = Pick<
+  EventWithMeta,
+  "title" | "venue_name" | "municipality" | "starts_at"
+> & { frequent_series?: boolean };
+
+/**
+ * Stamp `frequent_series` on every row of a series (same recurrenceKey) that
+ * meets again within 14 days. Lead ranking reads the stamp, so the board, the
+ * Today headliner, and Ask agree that a weekly Game Night is a standing
+ * program rather than tonight's draw (2026-10 UI audit). Run it on a
+ * deduplicated set: it only ever adds the stamp, never removes one.
+ */
+export function markFrequentSeries<T extends SeriesStampable>(events: readonly T[]): T[] {
+  const daysByKey = new Map<string, number[]>();
+  const keys = events.map((e) => {
+    const key = recurrenceKey({
+      title: e.title,
+      venue: e.venue_name,
+      municipality: e.municipality,
+    });
+    const day = etDayNumber(e.starts_at);
+    if (day !== null) {
+      const days = daysByKey.get(key);
+      if (days) days.push(day);
+      else daysByKey.set(key, [day]);
+    }
+    return key;
+  });
+  const frequent = new Set<string>();
+  for (const [key, days] of daysByKey) {
+    if (returnsWithinWindow(days)) frequent.add(key);
+  }
+  return events.map((e, i) =>
+    frequent.has(keys[i]) && e.frequent_series !== true
+      ? { ...e, frequent_series: true }
+      : e,
+  );
+}
+
 /**
  * Collapse recurring events in a flat list to one card each. Groups by
  * recurrenceKey, keeps the soonest occurrence (the list arrives sorted by
@@ -540,12 +615,14 @@ export function cleanEventSlug(input: {
  * card recurring with a short date-count note. This is the fix for live
  * feeds that emit every occurrence as its own row, so a tasting room that
  * is "open" ten days no longer fills the list with ten identical cards.
+ * The kept card also carries the `frequent_series` stamp its dropped
+ * siblings proved, because they are gone after this step.
  */
 export function collapseRecurringEvents(events: EventWithMeta[]): EventWithMeta[] {
   const indexByKey = new Map<string, number>();
   const countByKey = new Map<string, number>();
   const out: EventWithMeta[] = [];
-  for (const e of events) {
+  for (const e of markFrequentSeries(events)) {
     const key = recurrenceKey({
       title: e.title,
       venue: e.venue_name,

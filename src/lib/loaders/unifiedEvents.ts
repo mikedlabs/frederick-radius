@@ -48,6 +48,7 @@ import {
   collapseRecurringEvents,
   dedupeCrossSourceShows,
   isFacilityBooking,
+  markFrequentSeries,
   stripFacilityPrefix,
   titleIsJustVenue,
 } from "@/lib/events/normalize";
@@ -277,11 +278,15 @@ export function mergeUnifiedEventCards(
       : { ...e, venue_name: v, address, title: t };
   });
 
-  const discovery = dedupeCrossSourceShows(
-    dedupeKeysHomeGames(
-      dedupeCuratedClusters(
-        venueCleaned.sort(
-          (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+  // The series-frequency stamp runs after every dedupe so two copies of one
+  // show can never read as a series that meets again.
+  const discovery = markFrequentSeries(
+    dedupeCrossSourceShows(
+      dedupeKeysHomeGames(
+        dedupeCuratedClusters(
+          venueCleaned.sort(
+            (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+          ),
         ),
       ),
     ),
@@ -648,7 +653,10 @@ const cachedAssemble = unstable_cache(
   // v34: FCPL occurrence cancellations survive series collapse for archive
   // updates, while public discovery advances to the next scheduled sibling.
   // v35: lifecycle bypasses all discovery-only filters and deduplication.
-  ["unified-events-v35"],
+  // v36: rows carry a `frequent_series` stamp for lead ranking, and feed
+  // category inference changed (title before prose, stage venues, book and
+  // talk nights off the music lane), so cached categories change in place.
+  ["unified-events-v36"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.

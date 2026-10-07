@@ -25,9 +25,11 @@ import { easternParts, easternWallToUtcISO } from "@/lib/tz";
  *  tonight" in the Jul-8 audit). The chip asserts who is ON STAGE, so a
  *  non-music title is excluded from the venue-join path. The explicit
  *  music/concert category path is untouched — a classified show keeps
- *  its word over this heuristic. */
+ *  its word over this heuristic. Book and talk nights joined the list
+ *  after the 2026-10 UI audit found The Banyan's "Bookish Event" filed
+ *  under Music from its venue calendar. */
 const NON_MUSIC_TITLE =
-  /\b(yoga|trivia|bingo|paint(?:ing)?|run\s+club|book\s+club|comedy|fitness|zumba|cardio|exercise|pilates|barre|workout|poses|learn\s+to)\b/i;
+  /\b(yoga|trivia|bingo|paint(?:ing)?|run\s+club|book\s+club|bookish|book\s+(?:signing|talk|launch|swap)|author\s+(?:talk|event|reading)|lecture|comedy|fitness|zumba|cardio|exercise|pilates|barre|workout|poses|learn\s+to)\b/i;
 const MARKET_TITLE =
   /\b(?:flea|farmers'?|makers?|artisan|craft|holiday|vintage|night)\s+market\b|\bmarket\s+(?:day|festival|fair)\b/i;
 

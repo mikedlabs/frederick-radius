@@ -71,6 +71,8 @@ export function slimEventForBrowse(e: EventWithMeta): BrowseEvent {
     distance_m: e.distance_m,
     category_name: e.category_name,
     municipality_name: e.municipality_name,
+    // Lead ranking reads this stamp; the client re-sort must see it too.
+    ...(e.frequent_series ? { frequent_series: true } : {}),
   } as BrowseEvent;
 }
 

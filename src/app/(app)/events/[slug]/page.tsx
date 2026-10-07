@@ -396,7 +396,7 @@ export default async function EventPage({
       : Promise.resolve({ food: [], parking: [], source: "catalog-fallback" as const }),
   ]);
   const lineup = related.lineup;
-  const moreUpcoming = related.moreUpcoming;
+  const relatedSections = related.sections;
   const nearbyFood = nearby.food;
   const nearbyParking = nearby.parking;
   const parkingDecision =
@@ -405,8 +405,6 @@ export default async function EventPage({
       : null;
   const firstLineupDates = lineup.slice(0, 4);
   const moreLineupDates = lineup.slice(4, 30);
-  const firstUpcoming = moreUpcoming.items.slice(0, 3);
-  const remainingUpcoming = moreUpcoming.items.slice(3);
 
   return (
     // AppMain owns the one shared mobile-chrome reserve. Adding another page
@@ -1010,19 +1008,20 @@ export default async function EventPage({
         </section>
       )}
 
-      {/* More upcoming events — same-venue future when there are 2+,
-          otherwise the next 6 county-wide. Sits below the Full lineup
-          and primary "Good to know" content so the user has digested
-          this event before being offered the next one. */}
-      {moreUpcoming.items.length > 0 && (
-        <section className="space-y-3">
+      {/* Related shelves: "More at <venue>", then "Same night nearby" or
+          the event's weekend, at most three rows each (eventRelated). They
+          sit below the Full lineup and primary "Good to know" content so
+          the user has digested this event before being offered the next
+          one. */}
+      {relatedSections.map((section) => (
+        <section key={section.kind} className="space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <h2
               className="inline-flex items-center gap-2 font-serif text-lg font-semibold tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
               <Calendar className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
-              {moreUpcoming.title}
+              {section.title}
             </h2>
             <Link
               href="/events"
@@ -1033,30 +1032,17 @@ export default async function EventPage({
             </Link>
           </div>
           <ul className="space-y-2">
-            {firstUpcoming.map((e) => (
+            {section.items.map((e) => (
               <li key={`${e.slug}-${e.starts_at}`}>
-                {/* glance, not row: the unified pool arrives venue-thumb
-                    decorated, so the section reads as a visual shelf now
+                {/* glance, not row: archived rows arrive venue-thumb
+                    decorated, so the section reads as a visual shelf
                     instead of a text list. */}
                 <EventCard event={e} variant="glance" />
               </li>
             ))}
           </ul>
-          {remainingUpcoming.length > 0 ? (
-            <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
-              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
-                Show {remainingUpcoming.length} more
-                <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
-              </summary>
-              <ul className="space-y-2 pt-2">
-                {remainingUpcoming.map((e) => (
-                  <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} variant="glance" /></li>
-                ))}
-              </ul>
-            </details>
-          ) : null}
         </section>
-      )}
+      ))}
 
       {(nearbyFood.length > 0 || nearbyParking.length > 0) ? (
         <details className="group border-y" style={{ borderColor: "var(--app-border)" }}>

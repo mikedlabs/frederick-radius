@@ -77,6 +77,19 @@ describe("venue event mixed-calendar categories", () => {
 
     expect(card.category).toBe("music");
   });
+
+  it("files The Banyan's Bookish Event as community, not music (2026-10 UI audit)", () => {
+    const [card] = venueEventsToCards([
+      event({
+        title: "Bookish Event",
+        venue_name: "The Banyan",
+        category: "music",
+      }),
+    ]);
+
+    expect(card.category).toBe("community");
+    expect(card.category_name).toBe("Community");
+  });
 });
 
 describe("venue event durable identity", () => {
