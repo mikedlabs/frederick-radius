@@ -42,10 +42,14 @@ picture, so nothing falls back to a wall of text.
 
 **Events**
 
-1. The publisher's flyer, shown whole at its native aspect ratio on an Ink
-   panel. Never crop it with object-cover and never set type over it.
+1. The publisher's flyer, shown whole at its native aspect ratio on a sunken
+   paper panel (`var(--app-bg-sunken)`), from the publisher's untransformed
+   original. Never crop it with object-cover and never set type over it.
 2. The venue's photo, credited, once it has loaded.
-3. The venue's block on the self-hosted map, then the date plate.
+3. The venue's block on the self-hosted map, only when the event has a precise
+   geocode (715 of 1,160 upcoming events on 2026-10-07). Plotting an
+   area-level venue would be a false picture, so those rows keep the date
+   plate.
 
 **Towns, parks and collections**
 
@@ -96,6 +100,40 @@ number, and live states are a dot. Amber is reserved for a real live state.
 | Place colors and marks | 1,287 current places have a color in `place-hues.json` (55 more keys are orphaned). The hues were taken from Google photos, so they cannot be rebuilt while the hold lasts. Brewery logos cover 17 of 19 breweries, and 13 of 20 food trucks have marks. Category glyphs cover every place. | The small-frame fallback, in flat color. Brewery and truck logos stay small identifying marks, never photos. |
 | Licensed open imagery | 7 verified Wikimedia town photos and 6 landmark photos (`src/lib/integrations/wikimedia.ts`), 15 history photos, and 19 Library of Congress records. Wikimedia rate-limits some widths. | Self-host the Commons files with their credit lines, prefer the landmark photo when a Google photo fails, and replace with owner photos as the shoot list fills in. |
 
+## Baseline, 2026-10-07
+
+Measured on production at 390 x 844, first viewport between the top bar and
+the bottom nav, by two independent probes (`shots/weight/textweight.json` and a
+point-sampling second review). Google photos were at their daily cap
+throughout, so every place photo request returned a fallback.
+
+| Surface | Real picture or map in the first viewport | Content words |
+| --- | ---: | ---: |
+| /map | 77.5% (map) | 25 |
+| /places/carroll-creek-linear-park-frederick | 28.5% (Wikimedia photo) | 55 |
+| /m/frederick, /m/brunswick | 26.9% (town photo) | 75 to 80 |
+| /today | 19.1% (owner photo, a June frame in October) | 87 |
+| /beer | 14.7% (brewery logos, no photo or map) | 55 |
+| /events | 0% | 77 |
+| /places/black-hog-bbq-bar | 0% (a 148 px empty hero panel) | 61 |
+| /category/restaurant | 0% (two cropped name plates) | 69 |
+| /open-now | 0% | 79 |
+| /ask (empty) | 0% | 27 |
+| /my-radius (first visit) | 0% | 50 |
+| /towns | 0% | 140 |
+| /parks | 0% | 114 |
+
+Eight of fourteen surfaces show no real picture at all, and seven fallback
+name plates were visible across those first screens. /events also served a
+degraded "1 event listing shown · 1 town · partial results" state repeatedly
+between 12:26 and 13:47 UTC, so its visual floor depends on fixing that state
+first.
+
+The visual-floor check (build step 2) should start from this table: zero name
+plates, and at least one real picture or map of 96 px or more in the first
+viewport. It has to state whether pixels under overlaid type count as picture,
+because the two probes differ by up to 8 points on photos with titles.
+
 ## Surface by surface
 
 - **Today:** the owner photo band follows the season and hour; tonight or
@@ -111,8 +149,10 @@ number, and live states are a dot. Amber is reserved for a real live state.
 - **Ask:** an answer about places shows a map with numbered pins that match the
   ranked list.
 - **Saved:** recently viewed places appear as picture cards on a first visit.
-- **Towns:** owner or licensed photography leads, with the town outline on the
-  county map.
+- **Towns and parks:** a county map leads. /towns shows all 13 towns from the
+  municipal boundaries already in the repo, with the 7 verified town photos
+  and the town on the map for the other 6. /parks pins its 33 parks (32
+  distinct points); outlines wait until polygon data exists.
 
 The reviewed mockups for these surfaces live on the design canvas linked from
 the October 2026 UI and UX review.
