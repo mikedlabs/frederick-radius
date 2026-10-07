@@ -4,20 +4,38 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 
 const mocks = vi.hoisted(() => ({
   getSql: vi.fn(),
+  venueCards: [] as EventWithMeta[],
 }));
 
 vi.mock("@/lib/db/client", () => ({
   getSql: mocks.getSql,
 }));
 
+// The promoted venue snapshot is committed data that changes nightly. Pin it
+// so the fallback assertions below do not depend on today's lineup.
+vi.mock("@/lib/loaders/venueEvents", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/loaders/venueEvents")>()),
+  venueEventsAsCards: () => mocks.venueCards,
+}));
+
+import { isPublicEvent } from "@/lib/events/classify";
+import { promotedEventSet } from "@/lib/loaders/unifiedEvents";
 import {
   EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
   loadEventArchiveSnapshot,
   hydrateTodayEventSnapshot,
   loadTodayEventSnapshot,
+  resetEventArchiveMemoryForTests,
   TODAY_EVENT_SNAPSHOT_MAX_AGE_MS,
   TODAY_EVENT_SNAPSHOT_TIMEOUT_MS,
 } from "./todayEventSnapshot";
+
+beforeEach(() => {
+  // Each read that answers is remembered for later fallbacks; never let one
+  // test's successful read rescue another test's failure.
+  resetEventArchiveMemoryForTests();
+  mocks.venueCards = [];
+});
 
 const NOW = new Date("2026-07-31T16:00:00.000Z");
 
@@ -197,7 +215,7 @@ describe("Today durable event snapshot", () => {
     });
   });
 
-  it("cancels a slow database read and returns curated fail-soft data", async () => {
+  it("cancels a slow database read and returns promoted fail-soft data", async () => {
     vi.useFakeTimers();
     const cancel = vi.fn();
     const never = Object.assign(new Promise<never>(() => undefined), {
@@ -447,5 +465,148 @@ describe("archive query parameters", () => {
       (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value),
     );
     expect(isoish.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// ── A failed read must not collapse the board to one listing ─────────
+//
+// /events served "1 event listing shown · 1 town · partial results" (only
+// Catoctin Colorfest) as a cache HIT on Oct 6 and 7, 2026, while the archive
+// held 1,160 listings. Every build renders with no database, and a runtime
+// read can time out; both fell back to the curated seeds alone.
+describe("archive read fallbacks", () => {
+  afterEach(() => {
+    mocks.getSql.mockReset();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  function venueCard(): EventWithMeta {
+    return event({
+      slug: "open-mic-attaboy-2026-08-02",
+      title: "Open Mic Night",
+      starts_at: "2026-08-02T23:00:00.000Z",
+      ends_at: "2026-08-03T02:00:00.000Z",
+      venue_name: "Attaboy Beer",
+      address: "400 Sagner Ave, Frederick, MD 21701",
+      category: "music",
+      category_name: "Music",
+      source: "venue-extract" as EventWithMeta["source"],
+      source_id: "attaboy-open-mic-2026-08-02",
+      is_verified: false,
+      geo_confidence: "venue_match",
+    });
+  }
+
+  function answeringSql(rows: unknown[]) {
+    return () => {
+      const pending: Promise<unknown[]> & { cancel?: () => void } =
+        Promise.resolve(rows);
+      pending.cancel = () => undefined;
+      return pending;
+    };
+  }
+
+  function hangingSql() {
+    return () =>
+      Object.assign(new Promise<never>(() => undefined), {
+        cancel: () => undefined,
+      });
+  }
+
+  it("falls back to the curated seeds plus the promoted venue snapshot", async () => {
+    mocks.venueCards = [venueCard()];
+    mocks.getSql.mockReturnValue(null);
+
+    const result = await loadEventArchiveSnapshot(NOW);
+    const slugs = result.publicEvents.map((row) => row.slug);
+
+    expect(slugs).toContain("open-mic-attaboy-2026-08-02");
+    expect(slugs).toEqual(
+      promotedEventSet(NOW).filter(isPublicEvent).map((row) => row.slug),
+    );
+    expect(result.sourceHealth.issues.map((issue) => issue.code)).toEqual([
+      "event_archive_unavailable",
+    ]);
+  });
+
+  it("serves this server's last answered read when the next read times out", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    mocks.getSql.mockReturnValue(answeringSql([envelope()]));
+    await loadEventArchiveSnapshot(NOW);
+
+    vi.useFakeTimers();
+    mocks.getSql.mockReturnValue(hangingSql());
+    const later = new Date(NOW.getTime() + 10 * 60_000);
+    const pending = loadEventArchiveSnapshot(later);
+    await vi.advanceTimersByTimeAsync(EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS + 1);
+    const result = await pending;
+
+    expect(result.publicEvents.map((row) => row.slug)).toContain(
+      "archive-event-2026-07-31",
+    );
+    // The remembered archive was written about an hour before this read, so
+    // its own freshness gate still passes and the board is not called partial.
+    expect(result.sourceHealth).toEqual({ degraded: false, unavailable: [], issues: [] });
+    expect(warn).toHaveBeenCalledWith(
+      "[events] Archive read failed; serving the last answered read.",
+      expect.objectContaining({ code: "event_archive_timeout" }),
+    );
+  });
+
+  it("stops reusing a remembered read past the archive freshness bound", async () => {
+    mocks.getSql.mockReturnValue(answeringSql([envelope()]));
+    await loadEventArchiveSnapshot(NOW);
+
+    mocks.getSql.mockReturnValue(null);
+    const result = await loadEventArchiveSnapshot(
+      new Date(NOW.getTime() + TODAY_EVENT_SNAPSHOT_MAX_AGE_MS + 1),
+    );
+
+    expect(result.publicEvents.some((row) => row.slug === "archive-event-2026-07-31")).toBe(false);
+    expect(result.sourceHealth.degraded).toBe(true);
+  });
+
+  it("keeps remembered reads separate by read shape", async () => {
+    mocks.getSql.mockReturnValue(answeringSql([envelope()]));
+    await loadEventArchiveSnapshot(NOW);
+
+    mocks.getSql.mockReturnValue(null);
+    const today = await loadTodayEventSnapshot(NOW);
+
+    expect(today.publicEvents.some((row) => row.slug === "archive-event-2026-07-31")).toBe(false);
+    expect(today.sourceHealth.degraded).toBe(true);
+  });
+
+  it("drops remembered events that ended before the current Eastern day", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const lastNight = event({
+      slug: "last-night-2026-07-31",
+      source_id: "last-night",
+      starts_at: "2026-07-31T23:00:00.000Z",
+      ends_at: "2026-08-01T01:00:00.000Z",
+    });
+    const saturday = event({
+      slug: "saturday-2026-08-01",
+      source_id: "saturday",
+      starts_at: "2026-08-01T16:00:00.000Z",
+      ends_at: "2026-08-01T18:00:00.000Z",
+    });
+    mocks.getSql.mockReturnValue(answeringSql([envelope({
+      candidates: [lastNight, saturday].map((row) => ({
+        canonical_slug: row.slug,
+        snapshot: row,
+      })),
+      archive_finished_at: "2026-08-01T02:30:00.000Z",
+    })]));
+    // 11 PM Eastern on July 31, then 1 AM Eastern on August 1.
+    await loadEventArchiveSnapshot(new Date("2026-08-01T03:00:00.000Z"));
+
+    mocks.getSql.mockReturnValue(null);
+    const result = await loadEventArchiveSnapshot(new Date("2026-08-01T05:00:00.000Z"));
+    const slugs = result.publicEvents.map((row) => row.slug);
+
+    expect(slugs).toContain("saturday-2026-08-01");
+    expect(slugs).not.toContain("last-night-2026-07-31");
   });
 });

@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
+import { townEventsFrom, BY_TOWN_ENABLED } from "@/lib/loaders/events";
+import { loadEventArchiveSnapshot } from "@/lib/loaders/todayEventSnapshot";
+import { keepDegradedEventRenderShort } from "@/lib/loaders/unifiedEvents";
 import { decoratePlace, publicPlacesByMunicipality, slimForList } from "@/lib/loaders/places";
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 import PlaceCard from "@/components/place/PlaceCard";
@@ -37,8 +39,8 @@ export const revalidate = 600;
  *   7. Living here — civic + town links merged into ONE demoted block.
  *   8. StayDeepLinks footer.
  *
- * Sections still self-hide when empty (honest empty states). Layout/visual
- * only — the data loaders below are unchanged.
+ * Sections still self-hide when empty (honest empty states). Upcoming events
+ * read the same archive-backed set as /events, scoped to the town.
  */
 
 export async function generateStaticParams() {
@@ -133,8 +135,16 @@ export default async function MunicipalityPage(
   const lead = worthYourTime[0];
   const grid = worthYourTime.slice(1, 5);
 
-  const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 3);
-  const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
+  // The same archive-backed public set the Events board shows, scoped to this
+  // town. The curated seeds alone said "Nothing is listed for Brunswick yet"
+  // while /towns counted 16 Brunswick events this week.
+  const now = new Date();
+  const eventSet = await loadEventArchiveSnapshot(now);
+  await keepDegradedEventRenderShort(eventSet.sourceHealth);
+  const eventsIncomplete = eventSet.sourceHealth.degraded;
+  const townEvents = townEventsFrom(eventSet.publicEvents, m.slug, now);
+  const upcomingEvents = townEvents.events.slice(0, 3);
+  const nearbyEvents = BY_TOWN_ENABLED ? townEvents.nearby : [];
   // Buried-civic answers for this town (trash/recycling, hall, permits…),
   // null until the extraction agent populates it. The block self-hides.
   const civic = municipalCivicFor(m.slug);
@@ -312,26 +322,43 @@ export default async function MunicipalityPage(
             </Link>
           </div>
           {upcomingEvents.length > 0 ? (
-            <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-              {upcomingEvents.map((e) => (
-                <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>
-              ))}
-            </ul>
+            <>
+              <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                {upcomingEvents.map((e) => (
+                  <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>
+                ))}
+              </ul>
+              {eventsIncomplete && (
+                <p className="text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+                  The county event calendar is incomplete right now, so this list may be missing events.
+                </p>
+              )}
+            </>
           ) : (
             <div
               className="space-y-3 rounded-[var(--app-radius-lg)] border border-dashed p-4"
               style={{ borderColor: "var(--app-border)" }}
             >
-              <p className="text-sm font-medium" style={{ color: "var(--app-ink-2)" }}>
-                Nothing is listed for {m.name} yet.
-              </p>
-              <Link
-                href={`/submit/event?m=${m.slug}`}
-                className="tap-44 inline-flex items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
-                style={{ background: "var(--app-brand)" }}
-              >
-                Submit an event for {m.name}
-              </Link>
+              {/* An incomplete calendar is not an empty town: say so instead
+                  of "nothing is listed", and skip the submit prompt. */}
+              {eventsIncomplete ? (
+                <p className="text-sm font-medium" style={{ color: "var(--app-ink-2)" }}>
+                  The county event calendar is incomplete right now, so events in {m.name} may be missing.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm font-medium" style={{ color: "var(--app-ink-2)" }}>
+                    Nothing is listed for {m.name} yet.
+                  </p>
+                  <Link
+                    href={`/submit/event?m=${m.slug}`}
+                    className="tap-44 inline-flex items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
+                    style={{ background: "var(--app-brand)" }}
+                  >
+                    Submit an event for {m.name}
+                  </Link>
+                </>
+              )}
               {nearbyEvents.length > 0 && (
                 <p className="border-t pt-3 text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
                   Nearby:{" "}
