@@ -349,6 +349,12 @@ export default async function SearchPage({
   const dominantType = [...typeCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
   const primaryHits = rankedHits.slice(0, 12);
   const remainingHits = rankedHits.slice(12);
+  const zeroResults =
+    Boolean(query) &&
+    rankedHits.length === 0 &&
+    govAnswers.length === 0 &&
+    civicAnswers.length === 0;
+  const answerLeads = Boolean(answer && result.meta.qualifiers.openNow);
   const answerColor = answer
     ? answer.key === "open-now"
       ? "var(--app-positive)"
@@ -379,29 +385,9 @@ export default async function SearchPage({
         <SearchRefinements town={town ?? null} query={query} />
       </header>
 
-      {/* Generic "ask about this" CTA — suppressed when a direct answer lead is
-          present below, so the view never stacks two brand-emphasis blocks
-          (one primary action per view). */}
-      {query && !answer && rankedHits.length === 0 && !suppressLocalHits && govAnswers.length === 0 ? (
-        <Link
-          href={`/ask?${new URLSearchParams({ q: query, in: town ?? "county" }).toString()}`}
-          className="tactile-interactive flex min-h-12 items-center gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2"
-          style={{
-            borderColor: "color-mix(in srgb, var(--app-brand) 28%, var(--app-border))",
-            background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated))",
-          }}
-        >
-          <MessageCircleQuestion className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
-          <span className="min-w-0 flex-1 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-            Need a recommendation or a plan? Ask Radius about this.
-          </span>
-          <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
-        </Link>
-      ) : null}
-
       {/* Answer-first lead: the direct answer to an intent query, above the
           ranked list. Links to the nearest-open craving surface (or Open now). */}
-      {answer && result.meta.qualifiers.openNow && (
+      {answer && answerLeads && (
         <Link
           href={answer.href}
           aria-label={`${answer.label}: ${answer.kicker}`}
@@ -533,19 +519,41 @@ export default async function SearchPage({
         </div>
       )}
 
-      {query && rankedHits.length === 0 && govAnswers.length === 0 && civicAnswers.length === 0 && (
-        <div className="space-y-2 border-y px-2 py-8 text-center text-sm" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-          <p>There are no matches for &ldquo;{query}&rdquo;. Try a shorter search or add a town.</p>
-          <p>
-            Need a government office?{" "}
-            <Link href="/contacts" className="font-semibold underline underline-offset-2" style={{ color: "var(--app-ink-2)" }}>
-              Every service and who to call
+      {/* Zero results: say what happened first, then offer one way forward.
+          The Ask card used to sit above the explanation and an empty tab bar
+          sat below it (map audit MAP-13). */}
+      {zeroResults && (
+        <section aria-label={`No matches for ${query}`}>
+          <div className="space-y-2 border-y px-2 py-8 text-center text-sm" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+            <p>There are no matches for &ldquo;{query}&rdquo;. Try a shorter search or add a town.</p>
+            <p>
+              Need a government office?{" "}
+              <Link href="/contacts" className="font-semibold underline underline-offset-2" style={{ color: "var(--app-ink-2)" }}>
+                Every service and who to call
+              </Link>
+            </p>
+          </div>
+          {/* Suppressed when a direct answer already leads, so the view never
+              stacks two brand-emphasis blocks (one primary action per view). */}
+          {!answerLeads && (
+            <Link
+              href={`/ask?${new URLSearchParams({ q: query, in: town ?? "county" }).toString()}`}
+              className="tactile-interactive flex min-h-[52px] items-center gap-2.5 border-b px-1 py-3"
+              style={{ borderColor: "var(--app-border)" }}
+            >
+              <MessageCircleQuestion className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+              <span className="min-w-0 flex-1 text-[14px] font-semibold leading-snug" style={{ color: "var(--app-brand-press)" }}>
+                Ask Radius about &ldquo;{query}&rdquo;
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
             </Link>
-          </p>
-        </div>
+          )}
+        </section>
       )}
 
-      {query && !suppressLocalHits && (
+      {/* With nothing to filter, a row of result-type tabs is just chrome. A
+          narrowed tab keeps them so the reader can step back to All matches. */}
+      {query && !suppressLocalHits && !(zeroResults && kind === "all") && (
         <nav aria-label="Result types" className="flex gap-1 overflow-x-auto border-b" style={{ borderColor: "var(--app-border)" }}>
           {[["all", "All matches"], ["place", "Places"], ["event", "Events"], ["page", "Tools & areas"]].map(([value, label]) => {
             const params = new URLSearchParams(resultParams);

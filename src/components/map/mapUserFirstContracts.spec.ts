@@ -43,22 +43,42 @@ describe("user-first map contracts", () => {
 
     expect(start).toBeGreaterThan(-1);
     expect(end).toBeGreaterThan(start);
+    // The first screen is the common needs as category tiles that apply
+    // within the header scope and close the chooser (map audit MAP-05).
+    expect(contents).toContain("MAP_TASK_TILES.map");
+    expect(contents).toContain("onClick={() => pickTask(tile.id)}");
+    expect(contents.indexOf("MAP_TASK_TILES.map")).toBeLessThan(
+      contents.indexOf("<strong>Public essentials</strong>"),
+    );
     for (const label of [
+      "All place categories",
       "Public essentials",
-      "Nearby",
       "Happening",
       "Get around",
       "Conditions",
     ]) {
       expect(contents).toContain(`<strong>${label}</strong>`);
     }
+    expect(contents).toContain("More map views");
+    // The header chip is the only Near me control. The Nearby row changed
+    // scope from inside this sheet with no fix, so it is gone.
+    expect(contents).not.toContain("<strong>Nearby</strong>");
+    expect(dock).not.toContain("applyNearbyOutcome");
     expect(contents).not.toContain("<strong>Area</strong>");
     expect(contents).toContain("whatChangedScene && !whatChangedUnavailable");
-    expect(contents).toContain("onClick={applyNearbyOutcome}");
+    expect(contents).toContain('openContentsPane("what", "categories")');
     expect(contents).toContain('openContentsPane("when")');
     expect(contents).toContain('openContentsPane("layers")');
     expect(contents).toContain('openContentsPane("conditions")');
-    expect(dock).toContain('setPane("what")');
+    expect(dock).toMatch(/const pickTask = \(id: MapTaskId\) => \{[\s\S]*?closePane\(\);/);
+  });
+
+  it("offers likely-open instead of a disabled Open now row and drops the count headline", () => {
+    expect(dock).not.toContain("Open now unavailable");
+    expect(dock).not.toContain("disabled={props.openNowAvailable === false}");
+    expect(dock).toContain('onClick={() => pickTask("likely-open")}');
+    expect(dock).not.toContain("countLine(");
+    expect(dock).toContain('boxShadow: "0 -16px 0 var(--app-bg-elevated-solid)"');
   });
 
   it("restores focus for explicit closes but hands a map gesture back to the canvas", () => {
@@ -98,6 +118,88 @@ describe("user-first map contracts", () => {
       /smoothFocus\(|\.flyTo\(|\.easeTo\(|\.fitBounds\(|\.jumpTo\(/,
     );
     expect(explicitPick).toMatch(/smoothFocus\(|\.easeTo\(/);
+  });
+
+  it("answers a query with the same story on the map and in the list", () => {
+    // The source, not just the paint, follows the newest task: clusters are
+    // counted before styling, so emphasis alone drew the whole catalog.
+    expect(appMap).toContain(
+      "const sourceMatchSet = searchPlaceSet ?? clientTaskSet ?? matchSet;",
+    );
+    expect(appMap).toContain(
+      "curatedPlacesForMapSource(filteredPlaces, sourceMatchSet)",
+    );
+    // Enter with nothing highlighted submits the phrase instead of opening
+    // the first row, and "Show all results" stays on the map.
+    const enter = dock.slice(
+      dock.indexOf('if (event.key === "Enter") {'),
+      dock.indexOf('if (event.key === "Escape") {'),
+    );
+    expect(enter).toContain("searchResultsVisible && activeSearchResult");
+    expect(enter).toContain("submitTypedSearch();");
+    expect(dock).toContain("Show all results");
+    expect(appMap).toContain("submitSearch={submitMapSearch}");
+    const submit = appMap.slice(
+      appMap.indexOf("const submitMapSearch = (raw: string) => {"),
+      appMap.indexOf("const searchThisArea = () => {"),
+    );
+    expect(submit).not.toMatch(/smoothFocus\(|\.flyTo\(|\.easeTo\(|\.fitBounds\(|\.jumpTo\(/);
+    expect(submit).toContain("mapQueryRoute(text)");
+  });
+
+  it("offers Search this area only while a task is active and makes it raise the list", () => {
+    expect(appMap).not.toContain("Show results here");
+    expect(appMap).toContain("Search this area");
+    expect(appMap).toContain(
+      "const searchAreaVisible = showResultsHere && mapTaskActive;",
+    );
+    expect(appMap).toContain("onClick={searchThisArea}");
+    const area = appMap.slice(
+      appMap.indexOf("const searchThisArea = () => {"),
+      appMap.indexOf("const openPlaceFromTaskList"),
+    );
+    expect(area).toContain("area: viewport.bounds");
+    expect(area).toContain("expanded: true");
+  });
+
+  it("never measures rows from the map center", () => {
+    expect(appMap).not.toContain("from map center");
+    expect(dock).not.toContain("from map center");
+    expect(appMap).toContain('searchDistanceOriginLabel={userLoc ? "from you" : null}');
+    expect(appMap).toContain("placesInViewOrigin={userLoc}");
+  });
+
+  it("keeps stock alarm colors and Tailwind defaults off the map", () => {
+    expect(appMap).not.toContain("events-heatmap");
+    expect(appMap).not.toContain('type="heatmap"');
+    expect(appMap).not.toMatch(/rgba\(255,\s*0,\s*0/);
+    const scenic = appMap.slice(
+      appMap.indexOf('<Source id="scenic-routes-source"'),
+      appMap.indexOf("<MapOverlays"),
+    );
+    for (const hex of ["#eab308", "#ef4444", "#f97316"]) {
+      expect(scenic).not.toContain(hex);
+      expect(dock).not.toContain(hex);
+    }
+    expect(appMap).toContain('"line-color": BRAND.colors.forest');
+    expect(appMap).toContain('"line-color": BRAND.colors.creek');
+  });
+
+  it("draws the attribution toggle as a quiet outline mark, not a filled card", () => {
+    const rule = css.slice(
+      css.indexOf(".dock-host .mapboxgl-ctrl-attrib-button::before {"),
+      css.indexOf("}", css.indexOf(".dock-host .mapboxgl-ctrl-attrib-button::before {")),
+    );
+    expect(rule).toContain("background-color: var(--app-ink-3);");
+    expect(rule).toContain("width: 20px;");
+    expect(rule).toContain("mask: url(");
+    expect(css).toMatch(
+      /\.dock-host \.mapboxgl-ctrl-attrib-button \{[^}]*background-image: none !important;[^}]*box-shadow: none !important;/,
+    );
+    // The 44px hit area stays.
+    expect(css).toMatch(
+      /\.mapboxgl-map \.mapboxgl-ctrl-attrib-button \{[^}]*min-height: 44px !important;/,
+    );
   });
 
   it("rotates a terminal Search Box session and reopens from bounded tab memory", () => {
