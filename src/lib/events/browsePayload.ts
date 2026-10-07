@@ -14,6 +14,9 @@ import { compareForLead } from "@/lib/events/lead-rank";
 export const INITIAL_EVENTS_PER_HORIZON = 6;
 const INITIAL_UTILITY_EVENTS = 12;
 
+/** A slim browse row. `has_tickets` stands in for the omitted ticket link. */
+export type BrowseEvent = EventWithMeta & { has_tickets?: boolean };
+
 export type EventBrowseSummary = {
   /** Complete post-collapse count, not merely the initial preview length. */
   totalCount: number;
@@ -32,9 +35,15 @@ export type EventBrowseSummary = {
  * long-form and detail-only fields are omitted. The source URL remains because
  * it is the honest join action for an online event without a separate meeting
  * URL.
+ *
+ * The ticket link itself stays on the detail page, but whether one exists is a
+ * ranking signal (lead-rank's ticketed-show bonus). Dropping it silently let a
+ * weekly Game Night outrank a one-off ticketed show on the board, so the slim
+ * row carries `has_tickets` and client and server rank the same way.
  */
-export function slimEventForBrowse(e: EventWithMeta): EventWithMeta {
+export function slimEventForBrowse(e: EventWithMeta): BrowseEvent {
   return {
+    ...(e.ticket_url ? { has_tickets: true } : {}),
     slug: e.slug,
     title: e.title,
     description: e.description.slice(0, 160),
@@ -62,7 +71,7 @@ export function slimEventForBrowse(e: EventWithMeta): EventWithMeta {
     distance_m: e.distance_m,
     category_name: e.category_name,
     municipality_name: e.municipality_name,
-  } as EventWithMeta;
+  } as BrowseEvent;
 }
 
 /**
@@ -162,7 +171,7 @@ function recurrenceContext(current: string | undefined, count: number): string {
 export function prepareEventsForBrowse(
   events: EventWithMeta[],
   bounds: HorizonBounds,
-): EventWithMeta[] {
+): BrowseEvent[] {
   return events
     .map(slimEventForBrowse)
     .filter((event) => horizonOf(event, bounds) !== null);
