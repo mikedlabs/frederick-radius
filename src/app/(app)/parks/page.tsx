@@ -7,8 +7,20 @@ import {
   enrichParksWithLocations,
 } from "@/lib/integrations/fcParkLocations";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { Row, RowList, IconTile } from "@/components/ui/Row";
+import COUNTY_OUTLINE from "@/data/county-boundary.json";
+import { publicPlaces } from "@/lib/loaders/places";
+import { Row, RowList } from "@/components/ui/Row";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import CountyOverviewMap from "@/components/map/CountyOverviewMap";
+import { overviewPath } from "@/components/map/countyOverview";
+import {
+  formatParkAcres,
+  parkAcreageShare,
+  parkOverviewPoints,
+  parkPlaceSlug,
+  parkRowHref,
+  titleCaseParkName,
+} from "./parkRows";
 
 export const metadata: Metadata = {
   // Promoted back into nav (the Outdoors want's Parks chip lands here),
@@ -21,26 +33,39 @@ export const metadata: Metadata = {
 // Parks change rarely; the integration revalidates weekly.
 export const revalidate = 604800;
 
-// Source attributes are ALL-CAPS ("COMMUNITY PARK"). Title-case for
-// display without mangling the underlying data.
-function titleCase(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/\b([a-z])/g, (m) => m.toUpperCase())
-    .replace(/\bOf\b/g, "of");
+/** Acreage drawn as a short Catoctin Forest bar beside its number. */
+function AcreageMeta({ acres, maxAcres }: { acres: number; maxAcres: number }) {
+  const share = parkAcreageShare(acres, maxAcres);
+  return (
+    <span className="flex items-center gap-2">
+      {share != null ? (
+        <span
+          aria-hidden
+          data-park-acreage-bar={share}
+          className="block h-1.5 w-12 overflow-hidden rounded-full bg-[color:var(--app-ink-tint-6)]"
+        >
+          <span
+            className="block h-full rounded-full bg-[color:var(--app-brand-2)]"
+            style={{ width: `${share}%` }}
+          />
+        </span>
+      ) : null}
+      <span>{formatParkAcres(acres)}</span>
+    </span>
+  );
 }
 
-/** One dense park row: name + type/address + acres, taps to the map. */
-function ParkRow({ p }: { p: Park }) {
-  const kind = p.type ? titleCase(p.type) : p.category ? titleCase(p.category) : null;
+/** One dense park row: name, type and address, acreage. It opens the park's
+ *  own page when the catalog has it, otherwise its spot on the map. */
+function ParkRow({ p, placeSlug, maxAcres }: { p: Park; placeSlug: string | null; maxAcres: number }) {
+  const kind = p.type ? titleCaseParkName(p.type) : p.category ? titleCaseParkName(p.category) : null;
   const subtitle = [kind, p.address].filter(Boolean).join(" · ") || undefined;
   return (
     <Row
-      href={`/map?at=${p.lat},${p.lng}`}
-      leading={<IconTile icon={Trees} tone="var(--app-brand-2)" />}
-      title={titleCase(p.name)}
+      href={parkRowHref(p, placeSlug)}
+      title={titleCaseParkName(p.name)}
       subtitle={subtitle}
-      meta={p.acres != null ? `${p.acres} ${p.acres === 1 ? "ac" : "ac"}` : undefined}
+      meta={p.acres != null ? <AcreageMeta acres={p.acres} maxAcres={maxAcres} /> : undefined}
     />
   );
 }
@@ -54,6 +79,12 @@ export default async function ParksPage() {
     getFrederickParkLocations().catch(() => []),
   ]);
   const parks = enrichParksWithLocations(parksRaw, parkLocs);
+
+  // Rows link to the park's own /places page when the public catalog has the
+  // same park by exact name and within its footprint; otherwise to /map.
+  const catalog = publicPlaces();
+  const placeSlugs = new Map(parks.map((p) => [p.id, parkPlaceSlug(p, catalog)]));
+  const maxAcres = Math.max(0, ...parks.map((p) => p.acres ?? 0));
 
   const byMuni = new Map<string, Park[]>();
   for (const p of parks) {
@@ -70,7 +101,7 @@ export default async function ParksPage() {
     .sort((a, b) => b.list.length - a.list.length);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <header className="space-y-1.5">
         <p className="eyebrow">
           Parks &amp; open space
@@ -78,11 +109,10 @@ export default async function ParksPage() {
         <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
           Parks
         </h1>
-        <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Browse reviewed local, state, and national park records. Tap a place
-          to see its mapped location.
+        <p className="text-body" style={{ color: "var(--app-ink-2)" }}>
+          Tap a park for its details and location.
         </p>
-        <p className="text-[13px]">
+        <p className="text-meta-lg">
           <Link
             href="/nearby?c=outside"
             className="tap-44-y inline-flex items-center font-medium underline underline-offset-2"
@@ -164,12 +194,18 @@ export default async function ParksPage() {
         </section>
       ) : (
         <>
-          <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            <strong className="font-serif text-base font-semibold" style={{ color: "var(--app-brand-2)" }}>
-              {parks.length}
-            </strong>{" "}
-            parks across {groups.length} {groups.length === 1 ? "area" : "areas"}
-          </p>
+          {/* Visual first: every park as a point on the county, above the
+              list. Points only; outlines wait for park polygon data. */}
+          <div className="mx-auto w-full max-w-md">
+            <CountyOverviewMap
+              label={`Map of Frederick County with ${parks.length} parks marked`}
+              outline={overviewPath(COUNTY_OUTLINE)}
+              points={parkOverviewPoints(parks)}
+              tone="park"
+              caption={`${parks.length} parks`}
+              href="/map?layers=parks"
+            />
+          </div>
           {/* Dense, collapsed-by-town. The largest area opens by
               default; the rest tuck away (choice persists per town) so
               the page is navigable at a glance instead of ~13 phone-
@@ -186,12 +222,12 @@ export default async function ParksPage() {
             >
               <RowList>
                 {g.list.map((p) => (
-                  <ParkRow key={p.id} p={p} />
+                  <ParkRow key={p.id} p={p} placeSlug={placeSlugs.get(p.id) ?? null} maxAcres={maxAcres} />
                 ))}
               </RowList>
             </CollapsibleSection>
           ))}
-          <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+          <p className="px-1 text-caption" style={{ color: "var(--app-ink-3)" }}>
             Radius maintains this list from National Park Service, Maryland
             DNR, municipal park pages, and Frederick County GIS park points.
             Follow each park&rsquo;s official link for current rules, hours,

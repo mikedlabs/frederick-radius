@@ -16,6 +16,20 @@ import type { Park } from "@/lib/integrations/fcParks";
  * Coordinates are park-center / main entrance points accurate to
  * ~50m, pulled from NPS / MD DNR / municipal pages.
  */
+
+/**
+ * Link mapping for /parks: the place-catalog name a reviewed park goes by
+ * when it differs from the record's own name. A park row links to its
+ * /places page only when a public catalog place carries exactly the park's
+ * name (or the name here) AND sits within the park's footprint
+ * (parkPlaceSlug in src/app/(app)/parks/parkRows.ts); otherwise the row keeps
+ * its /map link. Add an entry only when the record itself says the names are
+ * the same place, as Carroll Creek Park's address does.
+ */
+export const CURATED_PARK_CATALOG_NAMES: Readonly<Record<string, string>> = {
+  "carroll-creek-park": "Carroll Creek Linear Park",
+};
+
 export const CURATED_PARKS: Park[] = [
   // ── State + National parks (the spine) ─────────────────────────
   {

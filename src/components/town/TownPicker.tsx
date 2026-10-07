@@ -1,66 +1,151 @@
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
 import type { TownStat } from "@/lib/guided/town-stats";
-import { townEventWindowLabel } from "@/lib/guided/town-event-window";
+import { getTownPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
+import {
+  PlacePhotoScope,
+  PlacePhotoScopeImage,
+  PlacePhotoWhen,
+} from "@/components/place/PlacePhotoState";
+import { OVERVIEW_VIEW_HEIGHT, OVERVIEW_VIEW_WIDTH } from "@/components/map/countyOverview";
+
+/** A town drawn on the small county tile of its card. */
+export type TownLocator = {
+  /** Town center in overlay view units (projectOverview). */
+  x: number;
+  y: number;
+  /** The town's own boundary path, or null when there is no official one. */
+  path: string | null;
+};
+
+/** One short line per card: what the town holds, never a sentence fragment. */
+export function townCardLine(t: Pick<TownStat, "placeCount" | "eventCount">): string {
+  const places = `${t.placeCount} ${t.placeCount === 1 ? "place" : "places"}`;
+  if (t.eventCount <= 0) return places;
+  return `${places} · ${t.eventCount} ${t.eventCount === 1 ? "event" : "events"}`;
+}
 
 /**
- * The town picker — a grid of town cards that reads as "choose a starting
- * point", not a dropdown. Counts are real (gated places plus source-backed
- * event listings in the next seven days) and state their period explicitly.
- * Server component — pure links, no client JS.
+ * The town on the county map: the county outline, the town's own boundary
+ * when the County publishes one, and a Brick point at its center so even the
+ * smallest town reads at card size. It is real geography, so it is the
+ * honest picture for a town with no verified photo.
  */
-export default function TownPicker({ stats }: { stats: TownStat[] }) {
+function TownTile({ locator, outline }: { locator: TownLocator; outline: string }) {
   return (
-    <ul className="grid grid-cols-2 gap-2.5">
-      {stats.map((t) => (
-        <li key={t.slug}>
+    <svg
+      aria-hidden="true"
+      data-town-tile=""
+      viewBox={`0 0 ${OVERVIEW_VIEW_WIDTH} ${OVERVIEW_VIEW_HEIGHT}`}
+      className="absolute inset-0 h-full w-full"
+    >
+      <path
+        d={outline}
+        strokeWidth={1.25}
+        vectorEffect="non-scaling-stroke"
+        strokeLinejoin="round"
+        className="fill-[color:var(--app-bg)] stroke-[color:var(--app-ink-3)]"
+      />
+      {locator.path ? (
+        <path
+          d={locator.path}
+          strokeWidth={1}
+          vectorEffect="non-scaling-stroke"
+          strokeLinejoin="round"
+          className="fill-[color:var(--app-brand-tint-22)] stroke-[color:var(--app-brand)]"
+        />
+      ) : null}
+      <circle
+        cx={locator.x}
+        cy={locator.y}
+        r={40}
+        strokeWidth={2}
+        vectorEffect="non-scaling-stroke"
+        className="fill-[color:var(--app-brand)] stroke-[color:var(--app-bg)]"
+      />
+    </svg>
+  );
+}
+
+/**
+ * The town picker: a grid of picture cards. Seven towns have a verified
+ * Wikimedia photo of the town itself (TOWN_PHOTOS), credited under the card
+ * only once it has loaded, the same way event cards credit theirs. The other
+ * six, and any town whose photo fails, show the town on the county map
+ * instead, never a neighboring town's photo. Each card carries the name and
+ * one short line of real counts. Server component; the photo state is the
+ * only client boundary.
+ */
+export default function TownPicker({
+  stats,
+  locators,
+  tileOutline,
+}: {
+  stats: TownStat[];
+  locators: Record<string, TownLocator>;
+  tileOutline: string;
+}) {
+  return (
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {stats.map((t) => {
+        const photo = getTownPhoto(t.slug);
+        const locator = locators[t.slug];
+        const tile = locator ? <TownTile locator={locator} outline={tileOutline} /> : null;
+        const card = (
           <Link
             href={`/m/${t.slug}`}
-            className="tactile tactile-interactive group relative block h-full overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3.5 transition sm:p-4"
-            style={{
-              borderColor: "var(--app-border)",
-              boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-            }}
+            data-town-card={t.slug}
+            className="block flex-1 overflow-hidden rounded-[var(--app-radius-lg)] border border-[color:var(--app-border)] bg-[color:var(--app-bg-elevated-solid)]"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="font-serif text-[18px] leading-tight sm:text-[19px]" style={{ color: "var(--app-ink)" }}>
-                  {t.name}
-                </h2>
-                <p className="mt-1 line-clamp-2 text-[12px] leading-snug text-pretty sm:text-[13px]" style={{ color: "var(--app-ink-2)" }}>
-                  {t.fact}
-                </p>
-              </div>
-              <ChevronRight
-                className="mt-0.5 h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
-                strokeWidth={2.25}
-                style={{ color: "var(--app-ink-3)" }}
-                aria-hidden
-              />
+            <div className="relative aspect-[4/3] w-full overflow-hidden bg-[color:var(--app-bg-sunken)]">
+              {photo ? (
+                <>
+                  <PlacePhotoScopeImage
+                    alt=""
+                    fill
+                    sizes="(max-width: 640px) 50vw, 240px"
+                    className="object-cover"
+                  />
+                  <PlacePhotoWhen is="missing">{tile}</PlacePhotoWhen>
+                </>
+              ) : (
+                tile
+              )}
             </div>
-
-            <div className="mt-3 flex flex-col gap-0.5 text-[11px] sm:flex-row sm:items-center sm:gap-x-2 sm:text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-              <span>{t.placeCount} {t.placeCount === 1 ? "place" : "places"}</span>
-              <span aria-hidden className="hidden sm:inline">·</span>
-              <span>{townEventWindowLabel(t.eventCount)}</span>
+            <div className="px-3 py-2.5">
+              <h2 className="text-title-sm text-[color:var(--app-ink)]">{t.name}</h2>
+              <p className="mt-0.5 text-meta text-[color:var(--app-ink-3)]">{townCardLine(t)}</p>
             </div>
-
-            {t.bestFor.length > 0 && (
-              <div className="mt-2.5 hidden flex-wrap gap-1.5 sm:flex">
-                {t.bestFor.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full px-2 py-0.5 text-[11px] font-medium"
-                    style={{ background: "var(--app-ink-tint-6)", color: "var(--app-ink-2)" }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
           </Link>
-        </li>
-      ))}
+        );
+        return (
+          <li key={t.slug} className="flex flex-col">
+            {photo ? (
+              <PlacePhotoScope src={wikimediaUrl(photo.file, 1200)}>
+                {card}
+                <PlacePhotoWhen is="ready">
+                  <p
+                    data-town-photo-credit=""
+                    className="mt-0.5 px-1 text-caption text-[color:var(--app-ink-3)]"
+                  >
+                    Photo:{" "}
+                    <a
+                      href={photo.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="tap-44-y inline-flex min-h-6 items-center underline underline-offset-2"
+                    >
+                      {photo.author}
+                    </a>{" "}
+                    · {photo.license}
+                  </p>
+                </PlacePhotoWhen>
+              </PlacePhotoScope>
+            ) : (
+              card
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
