@@ -142,7 +142,7 @@ describe("EventPosterCard visual trust", () => {
     expect(html).not.toContain("<figcaption");
   });
 
-  it("renders a lazy, source-captioned glance thumbnail from an approved provider", () => {
+  it("renders a lazy glance thumbnail whose caption waits for the image", () => {
     const html = renderToStaticMarkup(
       createElement(EventCard, {
         event: event({
@@ -153,13 +153,15 @@ describe("EventPosterCard visual trust", () => {
       }),
     );
 
-    expect(html).toContain("Event image · Ticketmaster");
+    // The caption renders after the image loads (EventCard.browser.spec),
+    // never under a placeholder that may turn out to be no photo at all.
+    expect(html).not.toContain("Event image · Ticketmaster");
+    expect(html).toContain("data-event-card-thumb");
     expect(html).toContain('loading="lazy"');
     expect(html).toContain('alt=""');
-    expect(html).toContain("text-[9px]");
   });
 
-  it("renders full Google venue credit outside the glance card event link", () => {
+  it("server-renders no Google venue credit before the glance photo loads", () => {
     const html = renderToStaticMarkup(
       createElement(EventCard, {
         event: event({
@@ -182,16 +184,12 @@ describe("EventPosterCard visual trust", () => {
       }),
     );
 
-    const eventLinkStart = html.indexOf('href="/events/summer-concert"');
-    const eventLinkEnd = html.indexOf("</a>", eventLinkStart);
-    expect(eventLinkStart).toBeGreaterThan(-1);
-    expect(eventLinkEnd).toBeGreaterThan(eventLinkStart);
-    expect(html.slice(eventLinkStart, eventLinkEnd)).not.toContain(
-      "Local photographer",
-    );
-    expect(html.slice(eventLinkEnd)).toContain("Local photographer");
-    expect(html.slice(eventLinkEnd)).toContain("Google Maps");
-    expect(html.slice(eventLinkEnd)).toContain("Report photo");
+    // Placement of the full credit outside the event link, once the photo
+    // has loaded, is covered in EventCard.browser.spec.
+    expect(html).toContain("fallback=signal");
+    expect(html).not.toContain("Local photographer");
+    expect(html).not.toContain("data-event-photo-credit");
+    expect(html).not.toContain("Report photo");
   });
 
   it("keeps a photo-less shelf useful without reserving a giant image ratio", () => {

@@ -19,7 +19,9 @@ import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { haptic } from "@/lib/haptics";
 import { logActivity, track } from "@/lib/track";
 import { trackDecision } from "@/lib/decision/telemetry";
-import PlacePhoto from "@/components/place/PlacePhoto";
+import Image from "next/image";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { usePlacePhotoState } from "@/components/place/PlacePhotoState";
 import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import type { EventPin, MapPinPlace } from "./types";
@@ -161,9 +163,10 @@ export default function MapPeek({
       : null;
   const address = activeDetails?.address?.trim();
   const locationLine = address || town;
-  const photoUrl =
+  const photo = usePlacePhotoState(
     activeDetails?.google_photo_url ??
-    activeDetails?.hero_image;
+    activeDetails?.hero_image,
+  );
   const photoPending = !activeDetails && detailsResolvedSlug !== place.slug;
   const dirHref = place.geom ? directionsHref(place.geom.lat, place.geom.lng) : "#";
   const nameId = useId();
@@ -294,17 +297,23 @@ export default function MapPeek({
           onClick={openDetails}
           aria-label={`Open details for ${place.name}`}
         >
-          {photoUrl ? (
+          {photo.src && photo.status !== "missing" ? (
             <>
-              <PlacePhoto
-                src={photoUrl}
+              <Image
+                src={photo.src}
                 alt={`Photo of ${place.name}`}
-                glyph={place.name.slice(0, 1)}
-                color={catColor}
+                fill
+                unoptimized={photo.src.startsWith("/api/place-photo")}
                 sizes="78px"
-                className="absolute inset-0 h-full w-full"
+                placeholder="blur"
+                blurDataURL={PAPER_CREAM_BLUR}
+                className="absolute inset-0 h-full w-full object-cover"
+                onLoad={photo.onLoad}
+                onError={photo.onError}
               />
-              {activeDetails?.google_photo_url && (
+              {/* Credit only once a real photograph has decoded, never
+                  under the blur placeholder or a proxy fallback. */}
+              {activeDetails?.google_photo_url && photo.status === "ready" && (
                 <span className="map-peek-photo-credit">
                   <GooglePhotoAttributionLine
                     attribution={activeDetails.google_photo_attribution}

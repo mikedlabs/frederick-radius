@@ -44,19 +44,6 @@ const PLACEHOLDER_ACCENTS = [
   BRAND.colors.plum,
   BRAND.colors.ridge,
 ] as const;
-const SVG_FONT_FACES = `<style>
-  @font-face{font-family:'Public Sans';src:url('/brand/fonts/public-sans-variable.woff2') format('woff2');font-style:normal;font-weight:100 900}
-  @font-face{font-family:'Libre Caslon Display';src:url('/brand/fonts/libre-caslon-display-400.woff2') format('woff2');font-style:normal;font-weight:400}
-</style>`;
-
-function escapeXml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
-}
 
 function rippleSvg(accent: string, w: number, hgt: number): string {
   const scale = Math.max(2.4, hgt / 118);
@@ -71,50 +58,46 @@ function rippleSvg(accent: string, w: number, hgt: number): string {
 /**
  * SVG placeholder served when upstream fails. Returning a real image
  * (200 + image/svg+xml) instead of an error means the <img> in the
- * page never shows a broken-image icon — it just degrades to a quiet
- * gradient tile. This is what we want for hero/marquee photos where a
- * single 502 used to leave a glaring gap.
+ * page never shows a broken-image icon; it degrades to a quiet Cream tile.
  *
- * When the caller passes a place slug, the plate identifies the listing and
- * its category without pretending that generated initials are photography.
- * The actual Radius ripple makes the degraded state unmistakably ours.
+ * The plate carries NO text. Every surface crops this image with
+ * `object-cover`, so typeset words became fragments ("RESTA PHOTO Dutch")
+ * in list thumbnails, and a Caslon place name painted under an event hero
+ * title read as a second, competing title (production, Oct 6-7 2026). A
+ * missing photo must look missing: the Cream field, the category's color
+ * rule and the Radius ripple, nothing a reader could mistake for content.
+ * No OG or share caller depends on a lettered plate; those routes draw their
+ * own artwork, so there is no opt-in text variant.
+ *
+ * Surfaces that have a designed photoless state should not show this plate
+ * at all. They ask for `fallback=signal` (see usePlacePhotoState) and get a
+ * transparent 1px image they can detect instead.
  */
 function placeholderSvg(name: string, w: number, slug?: string): string {
   const aspect = 4 / 3;
   const hgt = Math.round(w / aspect);
 
-  // Rich path: known slug → use the place's name + category color
+  // A known slug keys the rule and ripple to the place's category color.
   const place = slug ? PLACE_BY_SLUG[slug] : undefined;
+  let rule: string;
+  let ripple: string;
   if (place) {
-    const cat = CATEGORY_BY_SLUG[place.category];
-    const accent = cat?.color ?? BRAND.colors.brick;
-    const placeName = escapeXml(place.name);
-    const category = escapeXml((cat?.name ?? place.category ?? "Place").toUpperCase());
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${hgt}" width="${w}" height="${hgt}" preserveAspectRatio="xMidYMid slice">
-  ${SVG_FONT_FACES}
-  <rect width="${w}" height="${hgt}" fill="${BRAND.colors.cream}"/>
-  <rect width="5" height="${hgt}" fill="${accent}"/>
-  ${rippleSvg(accent, w, hgt)}
-  <line x1="32" y1="${Math.round(hgt * 0.28)}" x2="${Math.round(w * 0.52)}" y2="${Math.round(hgt * 0.28)}" stroke="${BRAND.colors.border}"/>
-  <text x="32" y="${Math.round(hgt * 0.19)}" font-family="Public Sans, Arial, Helvetica, sans-serif" font-size="${Math.max(11, Math.round(hgt * 0.026))}" font-weight="700" letter-spacing="2.4" fill="${accent}">${category}</text>
-  <text x="32" y="${Math.round(hgt * 0.37)}" font-family="Public Sans, Arial, Helvetica, sans-serif" font-size="${Math.max(10, Math.round(hgt * 0.023))}" letter-spacing="1.4" fill="${BRAND.colors.mutedInk}">PHOTO NOT AVAILABLE</text>
-  <text x="32" y="${Math.round(hgt * 0.82)}" font-family="Libre Caslon Display, Georgia, serif" font-size="${Math.max(20, Math.round(hgt * 0.075))}" fill="${BRAND.colors.ink}">${placeName}</text>
-</svg>`;
+    const accent = CATEGORY_BY_SLUG[place.category]?.color ?? BRAND.colors.brick;
+    rule = accent;
+    ripple = accent;
+  } else {
+    // Generic fallback (no slug or unknown slug): a stable accent pair hashed
+    // from the photo name so neighbouring tiles do not all match.
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+    const colorIndex = Math.abs(h) % PLACEHOLDER_ACCENTS.length;
+    rule = PLACEHOLDER_ACCENTS[colorIndex];
+    ripple = PLACEHOLDER_ACCENTS[(colorIndex + 1) % PLACEHOLDER_ACCENTS.length];
   }
-
-  // Generic gradient fallback (no slug or unknown slug).
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  const colorIndex = Math.abs(h) % PLACEHOLDER_ACCENTS.length;
-  const first = PLACEHOLDER_ACCENTS[colorIndex];
-  const second = PLACEHOLDER_ACCENTS[(colorIndex + 1) % PLACEHOLDER_ACCENTS.length];
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${hgt}" width="${w}" height="${hgt}" preserveAspectRatio="xMidYMid slice">
-  ${SVG_FONT_FACES}
   <rect width="${w}" height="${hgt}" fill="${BRAND.colors.cream}"/>
-  <rect width="5" height="${hgt}" fill="${first}"/>
-  ${rippleSvg(second, w, hgt)}
-  <text x="32" y="${Math.round(hgt * 0.20)}" font-family="Public Sans, Arial, Helvetica, sans-serif" font-size="${Math.max(11, Math.round(hgt * 0.026))}" font-weight="700" letter-spacing="2.4" fill="${first}">FREDERICK RADIUS</text>
-  <text x="32" y="${Math.round(hgt * 0.36)}" font-family="Public Sans, Arial, Helvetica, sans-serif" font-size="${Math.max(10, Math.round(hgt * 0.023))}" letter-spacing="1.4" fill="${BRAND.colors.mutedInk}">PHOTO NOT AVAILABLE</text>
+  <rect width="5" height="${hgt}" fill="${rule}"/>
+  ${rippleSvg(ripple, w, hgt)}
 </svg>`;
 }
 

@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
-import Image from "next/image";
 import { Accessibility, AlertTriangle, ArrowLeft, ArrowRight, Ban, Calendar, ChevronDown, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { EVENTS } from "@/data/events";
@@ -51,6 +50,13 @@ import EventActions from "@/components/event/EventActions";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
 import EventSourceLink from "@/components/event/EventSourceLink";
 import { eventCardVisual } from "@/components/event/eventVisuals";
+import { eventMobilePrimaryAction } from "@/components/event/eventActionBar";
+import {
+  PlacePhotoHeader,
+  PlacePhotoScope,
+  PlacePhotoScopeImage,
+  PlacePhotoWhen,
+} from "@/components/place/PlacePhotoState";
 import GettingThere from "@/components/event/GettingThere";
 import VenueMiniMap from "@/components/event/VenueMiniMap";
 import { eventSaveCount } from "@/lib/loaders/eventSaves";
@@ -255,6 +261,11 @@ export default async function EventPage({
   const attendance = eventAttendanceMode(event);
   const physicalAttendance = hasPhysicalAttendance(event);
   const onlineActionUrl = eventOnlineActionUrl(event);
+  const mobilePrimary = eventMobilePrimaryAction({
+    ticketUrl: event.ticket_url,
+    attendance,
+    onlineActionUrl,
+  });
   const attendanceLabel = eventDecisionLocation(event);
   const communicationAccess = communicationAccessLabels(event);
 
@@ -409,9 +420,14 @@ export default async function EventPage({
     >
       <Suspense fallback={null}><MapReturnLink /></Suspense>
 
+      {/* One photo state for the whole hero. A venue photo the proxy could
+          not deliver answers with its failure signal; the page then renders
+          exactly the photoless layout (breadcrumbs, typographic header, no
+          credit) instead of a fallback plate under the title. */}
+      <PlacePhotoScope src={eventVisual?.src}>
       {/* Visually small breadcrumbs with invisible 44px hit areas
           (WCAG 2.5.5) — py-3.5/-my-3.5 grows the tap zone only. */}
-      {!eventVisual && (
+      <PlacePhotoWhen is="missing">
         <nav aria-label="Breadcrumb" className="text-xs">
           <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
             <li><Link href="/events" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">Events</Link></li>
@@ -425,7 +441,7 @@ export default async function EventPage({
             </li>
           </ol>
         </nav>
-      )}
+      </PlacePhotoWhen>
 
       {/* Cancellation banner — loud, above the hero, so a user who
        *  came here for this event sees it's off before anything else.
@@ -492,31 +508,30 @@ export default async function EventPage({
        *     gradient, date pill + share/save floating on top, title +
        *     category eyebrow overlaid at the bottom. Same visual
        *     language as FeaturedTonight on /today.
-       *   - Without hero_image: a richer category-tinted graphic hero
-       *     with a watermark calendar glyph + a bigger title. Still
-       *     reads as editorial, not as "missing image."
+       *   - Without hero_image, or when the photo proxy reports that it
+       *     could not deliver the venue photo: the typographic header.
+       *     Still reads as editorial, not as "missing image."
        * Shader-rim around the whole card for parity with the Today
        * editorial moments. */}
-      <header
+      <PlacePhotoHeader
         data-decision-impression="true"
         data-decision-surface="events"
         data-decision-entity="event"
         data-decision-id={event.slug}
         data-decision-position="detail"
-        className={`shader-rim overflow-hidden ${eventVisual ? "-mx-4 -mt-4 sm:mx-0 sm:mt-0 rounded-none sm:rounded-[var(--app-radius-xl)] border-y sm:border" : "rounded-[var(--app-radius-xl)] border"}`}
+        photoClassName="shader-rim overflow-hidden -mx-4 -mt-4 sm:mx-0 sm:mt-0 rounded-none sm:rounded-[var(--app-radius-xl)] border-y sm:border"
+        missingClassName="shader-rim overflow-hidden rounded-[var(--app-radius-xl)] border"
         style={{
           borderColor: "var(--app-border)",
           opacity: eventStatus === "cancelled" ? 0.85 : 1,
           viewTransitionName: `event-${event.slug}`,
         }}
       >
-        {eventVisual ? (
-          <div className="relative h-64 w-full overflow-hidden sm:h-72">
-            <Image
-              src={eventVisual.src}
+        <PlacePhotoWhen is="visible">
+          <div className="relative h-64 w-full overflow-hidden sm:h-72" data-event-hero="photo">
+            <PlacePhotoScopeImage
               alt=""
               fill
-              unoptimized={eventVisual.src.startsWith("/api/place-photo")}
               priority
               sizes="(max-width: 720px) 100vw, 720px"
               placeholder="blur"
@@ -554,8 +569,9 @@ export default async function EventPage({
               </h1>
             </div>
           </div>
-        ) : (
-          <div className="relative bg-[var(--app-bg-elevated)] px-5 pb-2 pt-5">
+        </PlacePhotoWhen>
+        <PlacePhotoWhen is="missing">
+          <div className="relative bg-[var(--app-bg-elevated)] px-5 pb-2 pt-5" data-event-hero="type">
             <div className="mb-2 flex items-center justify-between gap-3">
               <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>{cat?.name ?? "Event"}</p>
               <div className="flex shrink-0 items-center gap-1">
@@ -565,12 +581,15 @@ export default async function EventPage({
             </div>
             <h1 className="text-[26px] font-semibold leading-tight tracking-tight sm:text-[32px]" style={{ color: "var(--app-ink)" }}>{event.title}</h1>
           </div>
-        )}
+        </PlacePhotoWhen>
+        {/* Credit only once a real photograph has decoded. */}
         {eventVisual ? (
-          <EventVisualCredit
-            visual={eventVisual}
-            className="border-t bg-[var(--app-bg-elevated)] px-5 py-2"
-          />
+          <PlacePhotoWhen is="ready">
+            <EventVisualCredit
+              visual={eventVisual}
+              className="border-t bg-[var(--app-bg-elevated)] px-5 py-2"
+            />
+          </PlacePhotoWhen>
         ) : null}
         {/* Below-the-hero metadata strip: trust + description + venue/
          *  free/recurrence/organizer/freshness. */}
@@ -672,7 +691,8 @@ export default async function EventPage({
             </div>
           )}
         </div>
-      </header>
+      </PlacePhotoHeader>
+      </PlacePhotoScope>
 
       {eventStatus !== "scheduled" ? (
         (() => {
@@ -1072,8 +1092,10 @@ export default async function EventPage({
 
       {/* Mobile-only thumb-reachable dock. Desktop keeps the inline action
           grid above; this reuses the same .ics calendar button, ticket +
-          directions links, and the SaveButton. The vermilion primary is
-          Tickets when they exist, otherwise Add to calendar. A cancelled/
+          directions links, and the SaveButton. Exactly one action is the
+          filled primary (eventMobilePrimaryAction): Tickets when they exist,
+          Online details for an online or hybrid event without tickets,
+          otherwise Add to calendar. A cancelled/
           postponed event gets the same replacement as the grid: the
           organizer's word + a way back to tonight (Save stays so a
           postponed event can be tracked for its new date). */}
@@ -1132,10 +1154,10 @@ export default async function EventPage({
                 address: event.address,
                 is_all_day: event.is_all_day,
               }}
-              barVariant={event.ticket_url || onlineActionUrl ? "quiet" : "primary"}
+              barVariant={mobilePrimary === "calendar" ? "primary" : "quiet"}
               label="Add to calendar"
             />
-            {event.ticket_url && (
+            {mobilePrimary === "tickets" && event.ticket_url && (
               <MobileBarLink
                 href={event.ticket_url}
                 icon={Ticket}
@@ -1146,7 +1168,7 @@ export default async function EventPage({
                 decisionAction="ticket"
               />
             )}
-            {!event.ticket_url && attendance !== "physical" && onlineActionUrl && (
+            {mobilePrimary === "online" && onlineActionUrl && (
               <MobileBarLink
                 href={onlineActionUrl}
                 icon={ExternalLink}
