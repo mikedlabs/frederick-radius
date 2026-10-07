@@ -49,6 +49,7 @@ type Props = {
   /** Open on a skeleton while the on-demand fetch is in flight. */
   pending?: boolean;
   onClose: () => void;
+  onOpenFullPage?: () => void;
   returnFocusRef?: RefObject<HTMLElement | null>;
   historyLayerId: string;
 };
@@ -57,6 +58,7 @@ export default function EventSheet({
   event,
   pending = false,
   onClose,
+  onOpenFullPage,
   returnFocusRef,
   historyLayerId,
 }: Props) {
@@ -72,7 +74,7 @@ export default function EventSheet({
         event ? (
           <EventSheetContent event={event} onClose={dismiss} />
         ) : (
-          <EventSheetSkeleton onClose={dismiss} />
+          <EventSheetSkeleton onClose={dismiss} onOpenFullPage={onOpenFullPage} />
         )
       }
     </BottomSheet>
@@ -80,12 +82,12 @@ export default function EventSheet({
 }
 
 /** Calm placeholder while the tapped event loads (on-demand path). */
-function EventSheetSkeleton({ onClose }: { onClose: () => void }) {
+function EventSheetSkeleton({ onClose, onOpenFullPage }: { onClose: () => void; onOpenFullPage?: () => void }) {
   return (
     <>
       <SheetHandle onClose={onClose} closeLabel="Close" />
       <div
-        className="px-5 pb-[88px] pt-4"
+        className={onOpenFullPage ? "px-5 pb-6 pt-4" : "px-5 pb-[88px] pt-4"}
         role="status"
         aria-label="Loading event"
       >
@@ -97,6 +99,13 @@ function EventSheetSkeleton({ onClose }: { onClose: () => void }) {
         <div className="mt-2 h-3 w-11/12 rounded-full" style={{ background: "var(--app-bg-sunken)" }} />
         <span className="sr-only">Loading…</span>
       </div>
+      {onOpenFullPage ? (
+        <div className="px-5 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]">
+          <button type="button" onClick={onOpenFullPage} className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold" style={{ color: "var(--app-ink)", background: "var(--app-bg-sunken)" }}>
+            Open full page <ExternalLink className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      ) : null}
     </>
   );
 }
