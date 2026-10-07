@@ -4,6 +4,7 @@ import {
   pageOwnsPrimarySearch,
   shouldShowGlobalLocation,
   shouldShowGlobalMobileSearch,
+  showsHeaderBack,
   topBarFindTarget,
 } from "./TopBar";
 
@@ -121,4 +122,28 @@ describe("TopBar search ownership", () => {
     expect(topBar).toContain("{searchOpen ? (");
     expect(topBar).toContain("openerRef={searchOpenerRef}");
   });
+});
+
+describe("TopBar Back placement", () => {
+  it.each([
+    "/places/gravel-and-grind",
+    "/events/fall-festival-2026",
+    "/m/thurmont",
+  ])("shows Back on the %s detail even though its section tab stays lit", (pathname) => {
+    expect(showsHeaderBack(pathname)).toBe(true);
+  });
+
+  it.each(["/about", "/ask", "/search"])(
+    "keeps Back on %s, which no tab claims",
+    (pathname) => {
+      expect(showsHeaderBack(pathname)).toBe(true);
+    },
+  );
+
+  it.each(["/", "/today", "/map", "/events", "/events/calendar", "/my-radius", "/places", "/trails"])(
+    "keeps the home wordmark on the tab root or section page %s",
+    (pathname) => {
+      expect(showsHeaderBack(pathname)).toBe(false);
+    },
+  );
 });

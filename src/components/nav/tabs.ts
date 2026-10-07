@@ -55,11 +55,15 @@ export const TABS: readonly Tab[] = [
 
 /**
  * Secondary surfaces that belong UNDER a primary tab so the nav
- * highlights the right home. Place-browse + town + collection routes
- * read as the "Map" (explore places) context — index 1 now that Today
- * leads at index 0 and the Find tab is gone. Anything not listed returns
- * -1 → no tab highlighted (correct for /settings, /about, /parks,
- * a place detail, etc.).
+ * highlights the right home. Place-browse, place detail, town, and
+ * collection routes read as the "Map" (explore places) context, index 1
+ * now that Today leads at index 0 and the Find tab is gone. A path that no
+ * tab, registered journey, or prefix below claims returns -1 and lights no
+ * tab (for example /about, /search, and /ask).
+ *
+ * This table answers ONE question: which tab to light. It does not decide
+ * whether the header shows Back. A place, event, or town detail lights its
+ * section here and still gets a header Back from `isDetailPath()`.
  */
 const SECTION_PREFIXES: ReadonlyArray<readonly [string, number]> = [
   ["/places", 1],
@@ -83,7 +87,10 @@ const SECTION_PREFIXES: ReadonlyArray<readonly [string, number]> = [
   ["/transit", 1],
 ];
 
-/** Resolve a pathname to its tab index (or -1 if it isn't under a tab). */
+/**
+ * Resolve a pathname to its tab index (or -1 if it isn't under a tab).
+ * Highlighting only: use `isDetailPath()` to decide whether a page needs Back.
+ */
 export function tabIndexForPath(pathname: string): number {
   if (isFairDayPath(pathname)) return 0;
   const direct = TABS.findIndex(
@@ -104,4 +111,44 @@ export function tabIndexForPath(pathname: string): number {
     ([p]) => pathname === p || pathname.startsWith(p),
   );
   return section ? section[1] : -1;
+}
+
+/**
+ * Event routes that live beside `/events/<slug>` but are list views, not one
+ * event. Keep this in step with `src/app/(app)/events/(list)/`.
+ */
+const EVENT_LIST_SEGMENTS: ReadonlySet<string> = new Set(["calendar"]);
+
+/**
+ * One place, one event, or one town: `/places/<slug>`, `/events/<slug>`, and
+ * `/m/<slug>` (with anything beneath it). These pages keep their section's tab
+ * lit, so `tabIndexForPath()` alone made them look like tab roots and the
+ * header showed the wordmark instead of Back. A reader opens a detail from a
+ * specific map selection, list, or search result, and the interaction
+ * contract says Back returns them to it.
+ */
+export function isDetailPath(pathname: string): boolean {
+  const [section, slug, ...rest] = pathname.split("/").filter(Boolean);
+  if (!slug) return false;
+  switch (section) {
+    case "places":
+      return rest.length === 0;
+    case "events":
+      return rest.length === 0 && !EVENT_LIST_SEGMENTS.has(slug);
+    case "m":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Where header Back goes when there is no in-app history to return to (a
+ * shared link, a new tab, or a search engine result). A page under a tab goes
+ * to that tab's root, so an event opened cold returns to Events and a place
+ * returns to the Map it belongs to. Anything else goes to the front door.
+ */
+export function backFallbackForPath(pathname: string): string {
+  const index = tabIndexForPath(pathname);
+  return index >= 0 ? TABS[index].href : "/today";
 }

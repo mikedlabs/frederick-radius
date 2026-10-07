@@ -16,7 +16,7 @@ import LocationChip from "./LocationChip";
 import PulseIndicator from "./PulseIndicator";
 import AppTransitionLink from "./AppTransitionLink";
 import { usePathname, useRouter } from "next/navigation";
-import { tabIndexForPath } from "./tabs";
+import { backFallbackForPath, isDetailPath, tabIndexForPath } from "./tabs";
 import {
   consumeFindRequest,
   requestFind,
@@ -52,6 +52,19 @@ export function shouldShowGlobalLocation(pathname: string): boolean {
 
 export function topBarFindTarget(pathname: string): FindTarget {
   return pathname === "/map" ? "map" : "global";
+}
+
+/**
+ * The left slot shows Back instead of the wordmark on two kinds of page:
+ * - a page no tab claims, where the bottom nav lights nothing and the reader
+ *   would otherwise be stranded;
+ * - a place, event, or town detail. Those light their section's tab, but the
+ *   reader opened one specific item from somewhere, and Back must return there
+ *   (docs/USER_FIRST_INTERACTION_CONTRACT.md).
+ */
+export function showsHeaderBack(pathname: string): boolean {
+  if (pathname === "/") return false;
+  return tabIndexForPath(pathname) === -1 || isDetailPath(pathname);
 }
 
 export default function TopBar() {
@@ -178,21 +191,21 @@ export default function TopBar() {
     setSearchOpen(true);
   }, [pathname, restoreSearchDraft, searchOpen]);
 
-  // Deep page = anything that isn't one of the 4 bottom-nav tabs (or its
-  // sub-route) and isn't the root. On these the bottom nav lights NO
-  // tab, so without a back control the user is stranded — the #1 cause
-  // of the "I tapped something and got dumped with no way back" feel.
+  // Deep page = a page no tab claims, or a place, event, or town detail (see
+  // showsHeaderBack). Without a back control the user is stranded — the #1
+  // cause of the "I tapped something and got dumped with no way back" feel.
   // The left slot becomes a Back button here instead of the wordmark.
-  const isDeepPage = pathname !== "/" && tabIndexForPath(pathname) === -1;
+  const isDeepPage = showsHeaderBack(pathname);
   const goBack = () => {
     // Only trust history.back() when the previous entry is KNOWN to be ours —
     // i.e. the user has navigated within the app. On a cold arrival, go to the
-    // front door instead of bouncing them off-site (the old test,
+    // page's own section (Events for an event, Map for a place) or the front
+    // door instead of bouncing them off-site (the old test,
     // window.history.length > 1, is true even when the prior entry is Google).
     if (inAppNavs.current > 0) {
       router.back();
     } else {
-      router.push("/today");
+      router.push(backFallbackForPath(pathname));
     }
   };
 
