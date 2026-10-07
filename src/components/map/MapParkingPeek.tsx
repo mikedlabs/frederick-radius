@@ -12,6 +12,7 @@ import {
 } from "@/lib/map/parking";
 import { formatMapTimestamp } from "./mapContent";
 import MapResultSurface from "./MapResultSurface";
+import type { MapLayerSourceHealth } from "./deferredBrowseLayers";
 
 /**
  * MapParkingPeek — the quick-peek card for a downtown garage.
@@ -38,13 +39,16 @@ const TONE_COLOR = {
 export default function MapParkingPeek({
   pin,
   userLoc,
+  sourceHealth,
   onClose,
 }: {
   pin: ParkingPin;
   userLoc: LngLat | null;
+  sourceHealth?: MapLayerSourceHealth;
   onClose: () => void;
 }) {
-  const tone = parkingTone(pin);
+  const older = sourceHealth && (sourceHealth.stale || sourceHealth.status !== "current");
+  const tone = older ? "neutral" : parkingTone(pin);
   const spaces = parkingSpacesLabel(pin);
   const spacesColor = TONE_COLOR[tone];
 
@@ -80,7 +84,7 @@ export default function MapParkingPeek({
           <span className="map-peek-name font-serif">{pin.name}</span>
           <span className="map-peek-meta">
             {spaces ? (
-              <span style={{ color: spacesColor, fontWeight: 600 }}>{spaces}</span>
+              <span style={{ color: spacesColor, fontWeight: 600 }}>{older ? `Last report: ${spaces.toLowerCase()}` : spaces}</span>
             ) : (
               <span style={{ color: "var(--app-ink-3)" }}>Live spaces not reported</span>
             )}
@@ -90,6 +94,11 @@ export default function MapParkingPeek({
             {distance ? ` · ${distance} away` : ""}
           </span>
           {pin.rate && <span className="map-parking-rate">{pin.rate}</span>}
+          {older && (
+            <span className="map-peek-source" role="status">
+              Current parking availability is unverified. Check again before relying on this report.
+            </span>
+          )}
           <span className="map-peek-source">
             {updated
               ? `Parking feed updated ${updated}`

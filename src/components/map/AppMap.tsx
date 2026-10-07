@@ -630,6 +630,7 @@ type Props = {
     Record<MapLayerGroup, MapLayerSourceHealth>
   >;
   onLayerDemand?: (groups: readonly MapLayerGroup[]) => void;
+  onActiveLayerGroupsChange?: (groups: readonly MapLayerGroup[]) => void;
 };
 
 export default function AppMap({
@@ -673,6 +674,7 @@ export default function AppMap({
   sceneContext = { conditions: "unavailable", outdoorSafetyHold: null },
   mapLayerSourceHealth,
   onLayerDemand,
+  onActiveLayerGroupsChange,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   const isBrowseMap = Boolean(dock);
@@ -1504,16 +1506,21 @@ export default function AppMap({
   const visibleAerial = showAerial || Boolean(selectedDiscovery?.layers.aerial);
   const visibleCemeteries = showCemeteries || Boolean(selectedDiscovery?.layers.cemeteries);
   useEffect(() => {
-    if (!onLayerDemand) return;
+    if (!onLayerDemand && !onActiveLayerGroupsChange) return;
     const groups = new Set<MapLayerGroup>();
     if (visibleAmenityGroups.size > 0) groups.add("amenities");
     if (showTrails || showScenicRoutes || showCoveredBridges || visibleCemeteries) groups.add("outdoors");
     if (visibleTransit) groups.add("transit");
     if (visibleParking) groups.add("parking");
     if (showCivic || showTraffic) groups.add("roads");
-    if (groups.size > 0) onLayerDemand([...groups]);
+    if (dock?.timeModeExplicit || dock?.musicTonight) groups.add("events");
+    onActiveLayerGroupsChange?.([...groups]);
+    if (groups.size > 0) onLayerDemand?.([...groups]);
   }, [
     onLayerDemand,
+    onActiveLayerGroupsChange,
+    dock?.timeModeExplicit,
+    dock?.musicTonight,
     showCivic,
     showTraffic,
     showTrails,
@@ -6991,7 +6998,8 @@ export default function AppMap({
               the glyph stays crisp. Tapping raises the parking peek. */}
           {visibleParking &&
             parking.map((g) => {
-              const tone = parkingTone(g);
+              const tone = mapLayerSourceHealth?.parking && (mapLayerSourceHealth.parking.stale || mapLayerSourceHealth.parking.status !== "current")
+                ? "neutral" : parkingTone(g);
               const { fill, ink } = PARKING_TONE_STYLE[tone];
               return (
                 <Marker
@@ -7009,7 +7017,7 @@ export default function AppMap({
                       haptic("light");
                       openMapSelection({ kind: "parking", value: g });
                     }}
-                    aria-label={`${g.name} parking garage${g.isClosed ? ", closed" : ""}`}
+                    aria-label={`${g.name} parking garage${tone === "neutral" ? ", availability unverified" : g.isClosed ? ", closed" : ""}`}
                     className="fr-park-marker"
                     style={{ "--park-fill": fill, "--park-ink": ink } as React.CSSProperties}
                   >
@@ -7425,6 +7433,7 @@ export default function AppMap({
           spotContext={spotContext}
           peekPlace={peekPlace}
           parkingPeek={parkingPeek}
+          parkingSourceHealth={mapLayerSourceHealth?.parking}
           foodTruckPeek={foodTruckPeek}
           selectedTransitStop={selectedTransitStop}
           eventGroup={eventGroup}

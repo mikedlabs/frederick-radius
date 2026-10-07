@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   isSameOriginRequest: vi.fn(() => true),
@@ -43,7 +43,14 @@ vi.mock("@/lib/loaders/todayEventSnapshot", () => ({
   loadTodayEventSnapshot: mocks.loadTodayEventSnapshot,
 }));
 
+vi.mock("@/lib/integrations/fcParkAssetsPublic", () => ({ getPublicCountyParkAssets: async () => ({ availability: "available", records: [] }) }));
+vi.mock("@/lib/integrations/usgsWater", () => ({ getFrederickWaterSites: async () => [] }));
+vi.mock("@/lib/integrations/evCharging", () => ({ getEvChargingStations: async () => [], evDetailLine: () => "" }));
+vi.mock("@/lib/loaders/communityReports", () => ({ getCommunityReports: async () => [] }));
+
 import { GET } from "./route";
+
+afterEach(() => vi.useRealTimers());
 
 function request(search = "?groups=context", headers?: HeadersInit) {
   return new Request(`https://frederickradius.app/api/map/layers${search}`, {
@@ -127,9 +134,30 @@ describe("GET /api/map/layers request boundary", () => {
     expect(body.sourceHealth.context).toEqual({
       status: "current",
       unavailable: [],
+      asOf: expect.any(String),
     });
     expect(mocks.mapPinPlaces).toHaveBeenCalledOnce();
     expect(mocks.getFieldAmenities).toHaveBeenCalledOnce();
+  });
+
+  it("bounds operational shared caching and carries the origin snapshot time", async () => {
+    const before = Date.now();
+    const response = await GET(request("?groups=signals"));
+    const body = await response.json();
+    expect(response.headers.get("cache-control")).toBe("public, s-maxage=60, stale-while-revalidate=60");
+    const asOf = Date.parse(body.sourceHealth.signals.asOf);
+    expect(asOf).toBeGreaterThanOrEqual(before);
+    expect(asOf).toBeLessThanOrEqual(Date.now());
+    expect(mocks.getCurrentSituationSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.getRoadIntelligenceSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.fetchMapillaryTrash).not.toHaveBeenCalled();
+  });
+
+  it("keeps event caching at the existing five-minute map interval", async () => {
+    const response = await GET(request("?groups=events"));
+    expect(response.headers.get("cache-control")).toBe("public, s-maxage=300, stale-while-revalidate=60");
+    expect(mocks.getCurrentSituationSnapshot).not.toHaveBeenCalled();
+    expect(mocks.loadTodayEventSnapshot).toHaveBeenCalledOnce();
   });
 
   it("labels a provider miss instead of presenting its fallback as a real zero", async () => {
@@ -146,6 +174,7 @@ describe("GET /api/map/layers request boundary", () => {
     expect(body.sourceHealth.context).toEqual({
       status: "partial",
       unavailable: ["Radius field notes"],
+      asOf: expect.any(String),
     });
   });
 
@@ -204,6 +233,7 @@ describe("GET /api/map/layers request boundary", () => {
         "Traffic speeds",
         "Travel times",
       ],
+      asOf: expect.any(String),
     });
   });
 
@@ -234,6 +264,27 @@ describe("GET /api/map/layers request boundary", () => {
     expect(JSON.parse(text).sourceHealth.events).toEqual({
       status: "unavailable",
       unavailable: ["Event schedule"],
+      asOf: expect.any(String),
     });
+  });
+});
+
+
+describe("Map snapshot completion and mixed-group cache age", () => {
+  beforeEach(() => { mocks.isSameOriginRequest.mockReturnValue(true); mocks.isRateLimited.mockResolvedValue(false); });
+  it("stamps snapshot assembly after the delayed event provider completes", async () => {
+    vi.useFakeTimers();vi.setSystemTime(new Date("2026-10-06T20:00:00Z"));
+    mocks.loadTodayEventSnapshot.mockImplementationOnce(() => new Promise(resolve => setTimeout(() => resolve({ unified: [], publicEvents: [], sourceHealth: { degraded: false, unavailable: [], issues: [] } }), 1_500)));
+    const pending = GET(request("?groups=events"));
+    await vi.advanceTimersByTimeAsync(0);await vi.advanceTimersByTimeAsync(1_500);
+    const body = await (await pending).json();
+    expect(body.sourceHealth.events.asOf).toBe("2026-10-06T20:00:01.500Z");
+  });
+  it("bounds an amenities response by its returned five-minute context dependency", async () => {
+    const response=await GET(request("?groups=amenities"));
+    const body=await response.json();
+    expect(response.headers.get("x-radius-map-groups")).toBe("amenities,context");
+    expect(body.sourceHealth.amenities.status).toBe("current");
+    expect(response.headers.get("cache-control")).toBe("public, s-maxage=300, stale-while-revalidate=60");
   });
 });

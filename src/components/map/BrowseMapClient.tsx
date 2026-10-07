@@ -42,6 +42,7 @@ import {
   resetMapPlacesRequest,
 } from "./mapPlacesClient";
 import { loadMapLayers } from "./mapLayersClient";
+import { useMapLayerRefresh } from "./useMapLayerRefresh";
 import type { MapLayerGroup } from "./deferredBrowseLayers";
 
 /**
@@ -185,6 +186,11 @@ export default function BrowseMapClient({
       alive = false;
     };
   }, [placeLoad.status]);
+  const [activeLayerGroups, setActiveLayerGroups] = useState<readonly MapLayerGroup[]>([]);
+  const updateActiveLayerGroups = useCallback((groups: readonly MapLayerGroup[]) => {
+    setActiveLayerGroups((prior) => prior.join(",") === groups.join(",") ? prior : groups);
+  }, []);
+  useMapLayerRefresh(["signals", ...activeLayerGroups], setDeferredLayers, placeLoad.status === "ready");
   const allPlaces = placeLoad.places;
   const {
     civic,
@@ -562,6 +568,7 @@ export default function BrowseMapClient({
       }}
       mapLayerSourceHealth={sourceHealth}
       onLayerDemand={requestLayerGroups}
+      onActiveLayerGroupsChange={updateActiveLayerGroups}
       fullBleed
       // Center on the user's known location and measure from there when
       // arriving via a category tile (?intent=…) OR under a "near me" scope

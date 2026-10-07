@@ -1419,8 +1419,32 @@ export default function MapDock(props: MapDockProps) {
   const paneSourceGroups = sourceGroupsForPane(pane);
   const degradedPaneSourceGroups = paneSourceGroups.filter((group) => {
     const health = props.mapLayerSourceHealth?.[group];
-    return health && health.status !== "current";
+    return health && (health.status !== "current" || health.stale);
   });
+  const oldPaneSnapshots = degradedPaneSourceGroups
+    .map((group) => props.mapLayerSourceHealth?.[group])
+    .filter((health) => health?.stale);
+  const oldestSnapshotTime = Math.min(...oldPaneSnapshots.map((health) => Date.parse(health?.asOf ?? "")).filter(Number.isFinite));
+  const [snapshotClock, setSnapshotClock] = useState(() => Date.now());
+  useEffect(() => {
+    if (!Number.isFinite(oldestSnapshotTime)) return;
+    const update = () => {
+      if (document.visibilityState === "visible") setSnapshotClock(Date.now());
+    };
+    const first = window.setTimeout(update, 0);
+    const timer = window.setInterval(update, 60_000);
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, [oldestSnapshotTime]);
+  const snapshotAgeMinutes = Number.isFinite(oldestSnapshotTime)
+    ? Math.max(1, Math.floor((snapshotClock - oldestSnapshotTime) / 60_000)) : null;
+  const snapshotAgeCopy = snapshotAgeMinutes !== null
+    ? ` The last snapshot is ${snapshotAgeMinutes} ${snapshotAgeMinutes === 1 ? "minute" : "minutes"} old.`
+    : "";
   const paneSourceLabels = [
     ...new Set(
       degradedPaneSourceGroups.flatMap(
@@ -1428,6 +1452,9 @@ export default function MapDock(props: MapDockProps) {
       ),
     ),
   ];
+  const paneHasUnavailableSources = degradedPaneSourceGroups.some(
+    (group) => props.mapLayerSourceHealth?.[group]?.status === "unavailable",
+  );
   const paneSourcesUnavailable =
     degradedPaneSourceGroups.length > 0 &&
     degradedPaneSourceGroups.every(
@@ -2060,14 +2087,18 @@ export default function MapDock(props: MapDockProps) {
                 className="dock-source-health"
                 role="status"
                 aria-label={
-                  paneSourceLabels.length > 0
+                  oldPaneSnapshots.length > 0 && !paneHasUnavailableSources
+                    ? "Older map data"
+                    : paneSourceLabels.length > 0
                     ? `Unavailable map sources: ${paneSourceLabels.join(", ")}`
                     : "Some map sources are unavailable"
                 }
               >
                 <span>
-                  {paneSourcesUnavailable
-                    ? "These live map sources are unavailable. An empty layer does not mean there are no results."
+                  {paneHasUnavailableSources
+                    ? `${paneSourcesUnavailable ? "These" : "Some"} live map sources are unavailable. An empty layer does not mean there are no results.${oldPaneSnapshots.length > 0 ? ` Showing an older snapshot.${snapshotAgeCopy} Check again before relying on it.` : ""}`
+                    : oldPaneSnapshots.length > 0
+                    ? `The map could not be updated.${snapshotAgeCopy} Results may be out of date. Check again before relying on them.`
                     : "Some live map sources are unavailable. Available results are still shown."}
                 </span>
                 {props.retryMapLayerGroups && (
