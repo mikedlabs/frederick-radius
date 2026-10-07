@@ -4,8 +4,8 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import type { PlanSpec } from "@/lib/integrations/planner";
 const mocks = vi.hoisted(() => ({ places: [] as PlaceCardData[] }));
 vi.mock("@/lib/loaders/places-client", () => ({ clientPlaces: () => mocks.places, clientPlaceBySlug: (slug: string) => mocks.places.find((p) => p.slug === slug) }));
-import { decodeSpec, eventPlanSpec, reconstructPlan } from "@/lib/integrations/planner";
-import { planAroundEvent, resolveSharedPlan, type PlanEventSources } from "./resolve-shared-plan";
+import { decodeSpec, encodeSpec, eventPlanSpec, reconstructPlan } from "@/lib/integrations/planner";
+import { planAroundEvent, resolvePlanChoiceContext, resolveSharedPlan, type PlanEventSources } from "./resolve-shared-plan";
 
 const now = new Date("2026-10-06T12:00:00-04:00");
 const event = (overrides: Partial<EventWithMeta> = {}): EventWithMeta => ({
@@ -119,6 +119,59 @@ describe("current event outing resolution", () => {
     expect(plan?.notices?.[0].spec_index).toBe(0);
     expect(decodeSpec(plan!.share)?.s).toEqual(mixed.s);
   });
+  it.each([
+    { name: "later date", starts_at: "2026-10-07T19:00:00-04:00", ends_at: "2026-10-07T22:00:00-04:00" },
+    { name: "earlier start", starts_at: "2026-10-06T17:00:00-04:00", ends_at: "2026-10-06T20:00:00-04:00" },
+  ])("rebuilds the nearby window from an event rescheduled to a $name", async ({ starts_at, ends_at }) => {
+    mocks.places = [place("dinner", { hours: { tue: [{ open: "10:00", close: "24:00" }], wed: [{ open: "10:00", close: "24:00" }] }, hours_verified: true })];
+    const original: PlanSpec = { ...spec(), s: [{ e: "runtime-concert" }, { p: "dinner" }] };
+    const moved = event({ starts_at, ends_at });
+    const plan = await resolveSharedPlan(original, { now, sources: sources(moved) });
+    expect(plan?.stops).toHaveLength(2);
+    expect(plan?.notices).toBeUndefined();
+    expect(plan?.stops[0].duration_min).toBe(180);
+    expect(plan?.stops[1].place?.slug).toBe("dinner");
+    expect(Date.parse(plan!.stops[1].at)).toBeGreaterThan(Date.parse(ends_at));
+    const rebuilt = decodeSpec(plan!.share)!;
+    expect(Date.parse(rebuilt.i.start_at!)).toBe(Date.parse(starts_at));
+    expect(rebuilt.s).toEqual(original.s);
+  });
+  it("uses the explicit event anchor for choices even when another event reference comes first", async () => {
+    const selected = event({ slug: "selected-concert", geom: { lng: -77.445, lat: 39.4142 } });
+    const other = event({ slug: "first-concert", starts_at: "2026-10-06T16:00:00-04:00", ends_at: "2026-10-06T18:00:00-04:00" });
+    const readers = sources(null);
+    readers.archive = vi.fn(async () => ({ matches: [
+      { requestedSlug: other.slug, canonicalSlug: other.slug, id: "first", lastSeenAt: now.toISOString(), event: other, tombstoned: false },
+      { requestedSlug: "old-selected", canonicalSlug: selected.slug, id: "selected", lastSeenAt: now.toISOString(), event: selected, tombstoned: false },
+    ], unresolvedSlugs: [] }));
+    const anchored: PlanSpec = { ...spec("old-selected"), s: [{ e: other.slug }, { e: "old-selected" }, { p: "dinner" }] };
+    const context = await resolvePlanChoiceContext(anchored, { now, sources: readers });
+    expect(context.eventAvailable).toBe(true);
+    expect(context.spec.i).toMatchObject({ event_anchor_slug: selected.slug, start_near: selected.geom, start_at: selected.ends_at });
+    const canonical = await resolvePlanChoiceContext({ ...anchored, i: { ...anchored.i, event_anchor_slug: selected.slug } }, { now, sources: readers });
+    expect(canonical.spec.i.start_near).toEqual(selected.geom);
+    readers.archive = vi.fn(async () => ({ matches: [{ requestedSlug: other.slug, canonicalSlug: other.slug, id: "first", lastSeenAt: now.toISOString(), event: other, tombstoned: false }], unresolvedSlugs: ["old-selected"] }));
+    expect((await resolvePlanChoiceContext(anchored, { now, sources: readers })).eventAvailable).toBe(false);
+  });
+  it.each(["closed_permanently", "closed_temporarily"] as const)("does not reserve an event at a %s venue", async (is_operational) => {
+    mocks.places = [place("venue", { is_operational })];
+    const result = await resolveSharedPlan(spec(), { now, sources: sources(event({ venue_place_slug: "venue" })) });
+    expect(result?.stops).toEqual([]);
+    expect(result?.notices?.[0]).toMatchObject({ code: "does_not_fit", event_href: "/events/runtime-concert" });
+    expect(result?.notices?.[0].message).toContain("listed as closed");
+  });
+  it.each([160, 200])("round-trips and resolves an accepted %s-character event identity", async (length) => {
+    const slug = "a".repeat(length);
+    const original = spec(slug);
+    expect(decodeSpec(encodeSpec(original))).toEqual(original);
+    const result = await resolveSharedPlan(original, { now, sources: sources(event({ slug })) });
+    expect(result?.stops[0].event?.slug).toBe(slug);
+    expect(decodeSpec(result!.share)?.i.event_anchor_slug).toBe(slug);
+  });
+  it.each(["constructor", "prototype", "a".repeat(201), "invalid/slug"])("rejects invalid event tokens before archive resolution: %s", (slug) => {
+    expect(decodeSpec(encodeSpec(spec(slug)))).toBeNull();
+  });
+
   it("avoids event archive work entirely for place-only plans", async () => {
     const readers = sources(null); mocks.places = [place("dinner")];
     await resolveSharedPlan({ ...spec(), s: [{ p: "dinner" }] }, { now, sources: readers });

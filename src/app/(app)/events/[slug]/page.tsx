@@ -245,7 +245,7 @@ export default async function EventPage({
   // events are windowed and a permanently-cached redirect could outlive
   // the event it points at. Seed events keep their hand-authored slug.
   if (resolution.kind !== "seed" && event.slug !== slug) {
-    redirect(`/events/${event.slug}`);
+    redirect(withBrowseReturnTo(`/events/${event.slug}`, returnTo));
   }
   // Reliable live-vs-seed signal: whether the static seed resolved it.
   // event.source is NOT usable here (hand-authored seed events also use
@@ -367,6 +367,7 @@ export default async function EventPage({
   const eventPlan = eventPlanEligibility(event, {
     nowMs,
     hasResolvedVenue: Boolean(venuePlace),
+    venueOperational: venuePlace?.is_operational,
   });
   const eventPlanDuration = eventPlan.eligible
     ? eventPlan.durationMinutes % 60 === 0

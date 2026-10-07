@@ -8,7 +8,7 @@ import { isPublicEvent } from "@/lib/events/classify";
 import { deriveEventStatus, stripStatusMarker } from "@/lib/event-status";
 import { eventHasTrustworthyEnd } from "@/lib/eventWhenLabel";
 import { eventPlanEligibility } from "@/lib/plan/event-plan-eligibility";
-import { eventPlanSpec, reconstructPlan, type Plan, type PlanEventEvidence, type PlanInputs, type PlanNotice, type PlanSpec } from "@/lib/integrations/planner";
+import { eventPlanSpec, planAnchorEvent, reconstructPlan, type Plan, type PlanEventEvidence, type PlanInputs, type PlanNotice, type PlanSpec } from "@/lib/integrations/planner";
 
 export type PlanEventSources = {
   archive: (slugs: readonly string[], options: { signal: AbortSignal; timeoutMs: number }) => Promise<ArchivedEventBatchResolution>;
@@ -42,9 +42,9 @@ function evidenceFor(current: Event, now: Date): PlanEventEvidence[string] {
     return notice("ended", "This event has ended. It is no longer a scheduled stop. Your reference is saved.");
   }
   const venue = event.venue_place_slug ? clientPlaceBySlug(event.venue_place_slug) : undefined;
-  if (venue?.is_operational === "closed_permanently" || venue?.is_operational === "closed_temporarily") return notice("does_not_fit", "The event venue is currently listed as closed. Review the event details before setting out.");
-  const eligibility = eventPlanEligibility(event, { nowMs: now.getTime(), hasResolvedVenue: Boolean(venue) });
+  const eligibility = eventPlanEligibility(event, { nowMs: now.getTime(), hasResolvedVenue: Boolean(venue), venueOperational: venue?.is_operational });
   if (!eligibility.eligible) {
+    if (eligibility.reason === "venue_closed") return notice("does_not_fit", "The event venue is currently listed as closed. Review the event details before setting out.");
     if (eligibility.reason === "source_unconfirmed") return notice("unavailable", "Radius has not confirmed this event with its publisher recently enough to schedule a visit. Your reference is saved. Review the organizer's listing before setting out.");
     if (eligibility.reason === "duration_too_long") return notice("does_not_fit", "The full event is longer than this planner's six-hour window. Review the listing before choosing your visit time.");
     if (eligibility.reason === "already_started") return notice("already_started", "This event has already started. Radius cannot plan a full visit from its original start time. Your reference is saved.");
@@ -107,10 +107,10 @@ export async function planAroundEvent(slug: string, input?: PlanInputs, options:
 
 /** Give the existing place chooser the event's real location and finish time.
  * These coordinates exist only inside this server call, never in the token. */
-export async function resolvePlanChoiceContext(spec: PlanSpec): Promise<{ spec: PlanSpec; events: PlanEventEvidence; eventAvailable: boolean }> {
+export async function resolvePlanChoiceContext(spec: PlanSpec, options: Parameters<typeof resolvePlanEventEvidence>[1] = {}): Promise<{ spec: PlanSpec; events: PlanEventEvidence; eventAvailable: boolean }> {
   if (!spec.s.some((ref) => "e" in ref)) return { spec, events: {}, eventAvailable: true };
-  const events = await resolvePlanEventEvidence(spec);
-  const event = Object.values(events).find((row) => row.event)?.event;
+  const events = await resolvePlanEventEvidence(spec, options);
+  const event = planAnchorEvent(spec, events);
   if (!event) return { spec, events, eventAvailable: false };
   return { events, eventAvailable: true, spec: { ...spec, i: { ...spec.i, event_anchor_slug: event.slug, start_near: event.geom, start_at: event.ends_at, max_distance_m: 1_600, require_verified_hours: false } } };
 }

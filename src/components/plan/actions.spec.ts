@@ -16,11 +16,36 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 describe("event plan action identity", () => {
-  it("uses the current archive for generate, reopen, swap, set, add, and reshuffle", async () => {
-    const token = encodeSpec(spec());
-    const results = await Promise.all([generatePlan(spec().i), planFromToken(token), swapStop(token, 0), setStop(token, 0, "cafe-nola"), addStop(token, "cafe-nola"), reshufflePlan(token, [], 1)]);
+  it("uses current event evidence while each edit changes a real nearby place reference", async () => {
+    const nearby = (slug: string): PlaceCardData => ({ slug, name: slug, category: "restaurant", address: "24 W Patrick Street", city: "Frederick", state: "MD", postal_code: "21701", municipality: "frederick", geom: { lng: -77.4128, lat: 39.4142 }, source: "manual", feature_score: 5, short_blurb: "A local restaurant.", updated_at: now.toISOString(), is_verified: true, hours_verified: true, hours_updated_at: now.toISOString(), hours: { tue: [{ open: "10:00", close: "24:00" }] }, source_id: slug, source_url: null, license: "Publisher", confidence: "partner", first_seen_at: now.toISOString(), last_verified_at: now.toISOString(), open_status: { state: "open" } } as PlaceCardData);
+    mocks.places = [nearby("dinner"), nearby("another-dinner")];
+    const original = { ...spec(), s: [{ e: current.slug }, { p: "dinner" }] };
+    const token = encodeSpec(original);
+    const generated = await generatePlan(spec().i);
+    const reopened = await planFromToken(token);
+    const swapped = await swapStop(token, 1);
+    const selected = await setStop(token, 1, "another-dinner");
+    const added = await addStop(encodeSpec(spec()), "dinner");
+    const shuffled = await reshufflePlan(token, [], 1);
     expect(mocks.archive).toHaveBeenCalledTimes(6);
-    for (const plan of results) { expect(plan?.stops[0].event?.slug).toBe(current.slug); expect(plan?.stops[0].duration_min).toBe(180); }
+    for (const plan of [generated, reopened, swapped, selected, added, shuffled]) {
+      expect(plan?.stops[0].event?.slug).toBe(current.slug);
+      expect(plan?.stops[0].duration_min).toBe(180);
+    }
+    expect(reopened?.stops[1].place?.slug).toBe("dinner");
+    expect(swapped?.stops[1].place?.slug).toBe("another-dinner");
+    expect(selected?.stops[1].place?.slug).toBe("another-dinner");
+    expect(decodeSpec(selected!.share)?.s[1]).toEqual({ p: "another-dinner" });
+    expect(added?.stops[1].place?.slug).toBe("dinner");
+    expect(decodeSpec(added!.share)?.s).toEqual(original.s);
+    expect(decodeSpec(shuffled!.share)?.i.seed).toBe(1);
+  });
+  it("adds the existing bounded rain note to an event-anchored build", async () => {
+    mocks.weather.mockResolvedValue({ hourly: [{ startTime: current.starts_at, probabilityOfPrecipitation: 70 }], daily: [] });
+    const result = await generatePlan(spec().i);
+    expect(result?.stops[0].event?.slug).toBe(current.slug);
+    expect(result?.weather_note).toContain("70% chance");
+    expect(mocks.weather).toHaveBeenCalledWith(current.geom);
   });
   it("reflects a cancellation on every subsequent edit and keeps the event reference", async () => {
     mocks.archive.mockImplementation(async (slugs: string[]) => ({ matches: slugs.map((requestedSlug) => ({ requestedSlug, canonicalSlug: current.slug, event: { ...current, status: "cancelled" }, tombstoned: false })), unresolvedSlugs: [] }));

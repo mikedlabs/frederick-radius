@@ -10,6 +10,7 @@
  * which is how plans are shared and edited without any backend.
  */
 
+import { isResolvableEventSlug } from "@/lib/events/resolvable-event-slug";
 import type { Place } from "@/data/places";
 // Client-safe: PlanBuilder ("use client") imports this, so use the
 // slim already-decorated set, NOT @/lib/loaders/places (which
@@ -633,12 +634,32 @@ export function buildPlan(input: PlanInputs): Plan {
   };
 }
 
+/** Prefer the explicitly selected event, including a canonicalized alias.
+ * An unresolved explicit anchor cannot silently become a different event. */
+export function planAnchorEvent(spec: PlanSpec, events: PlanEventEvidence): Event | undefined {
+  const anchor = spec.i.event_anchor_slug;
+  if (anchor) {
+    const requested = Object.hasOwn(events, anchor) ? events[anchor]?.event : undefined;
+    return requested ?? Object.values(events).find((row) => row.event?.slug === anchor)?.event;
+  }
+  for (const ref of spec.s) {
+    if (!("e" in ref) || !Object.hasOwn(events, ref.e)) continue;
+    const event = events[ref.e]?.event;
+    if (event) return event;
+  }
+  return undefined;
+}
+
 /** Rebuild exact references using server-vetted event evidence. Unresolved
  * event slots stay in the share token so a temporary failure is recoverable. */
 export function reconstructPlan(spec: PlanSpec, events: PlanEventEvidence = {}): Plan | null {
   if (spec?.v !== 1 || !Array.isArray(spec.s)) return null;
-  const { origin, now } = resolve(spec.i);
-  const resolvedInput: PlanInputs = { ...spec.i, start_at: now.toISOString() };
+  const currentAnchor = planAnchorEvent(spec, events);
+  const currentInput: PlanInputs = { ...spec.i, ...(currentAnchor ? {
+    start_at: currentAnchor.starts_at, event_anchor_slug: currentAnchor.slug,
+  } : {}) };
+  const { origin, now } = resolve(currentInput);
+  const resolvedInput: PlanInputs = { ...currentInput, start_at: now.toISOString() };
   const ordered: Array<{ place?: Place; event?: Event; openState: PlanStop["open"]; why: string; photo_url?: string; spec_index: number }> = [];
   const notices: PlanNotice[] = [];
   const unscheduled: NonNullable<Plan["unscheduled"]> = [];
@@ -684,7 +705,7 @@ export function reconstructPlan(spec: PlanSpec, events: PlanEventEvidence = {}):
     if (eventPlan) {
       // A single nearby choice is enough for this first event workflow. It
       // must fit the same audience/category gates as the existing planner.
-      const anchor = ordered.find((item) => item.event)?.event;
+      const anchor = ordered.find((item) => item.event?.slug === currentAnchor?.slug)?.event;
       const familyCompatible = spec.i.audience !== "family" || !["bar", "brewery", "winery", "distillery"].includes(p.category);
       const compatible = familyCompatible && scoredCandidates({ ...resolvedInput, require_verified_hours: false, max_distance_m: 1_600 }, anchor?.geom ?? origin, arrival).some((c) => c.d.slug === p.slug);
       if (nearbyPlaces >= 1 || !anchor || !compatible || arrival.getTime() + duration * 60_000 > now.getTime() + spec.i.duration_hours * 60 * 60_000) {
@@ -782,10 +803,11 @@ export function decodeSpec(token: string): PlanSpec | null {
     if (![2, 3, 4, 6].includes(spec.i.duration_hours)) return null;
     if (spec.i.start_at && !Number.isFinite(new Date(spec.i.start_at).getTime())) return null;
     if (spec.i.municipality && !MUNICIPALITIES.some((town) => town.slug === spec.i.municipality)) return null;
+    if (spec.i.event_anchor_slug !== undefined && !isResolvableEventSlug(spec.i.event_anchor_slug)) return null;
     const validRefs = spec.s.every((ref) => {
       if (!ref || typeof ref !== "object") return false;
       if ("p" in ref) return typeof ref.p === "string" && ref.p.length > 0 && ref.p.length < 160;
-      if ("e" in ref) return typeof ref.e === "string" && ref.e.length > 0 && ref.e.length < 160;
+      if ("e" in ref) return isResolvableEventSlug(ref.e);
       return false;
     });
     return validRefs ? spec : null;

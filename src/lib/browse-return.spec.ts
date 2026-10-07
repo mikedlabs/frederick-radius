@@ -8,8 +8,15 @@ describe("connected browsing returns", () => {
     expect(browseReturnLabel(event)).toBe("Back to the event");
     expect(new URL(withBrowseReturnTo("/plan?event=runtime-concert", event), "https://example.test").searchParams.get("returnTo")).toBe(event);
     expect(browseReturnFromLocation(new URL(event, "https://example.test"))).toBe(listing);
-    for (const invalid of ["/events/a/secret", "/events/%2f%2fevil", "/events/a%5cfoo", "/events/-invalid"]) expect(normalizeBrowseReturnTo(invalid)).toBeNull();
+    for (const invalid of ["/events/a/secret", "/events/%2f%2fevil", "/events/a%5cfoo", "/events/-invalid", "/events/constructor", "/events/prototype", `/events/${"a".repeat(201)}`]) expect(normalizeBrowseReturnTo(invalid)).toBeNull();
   });
+  it("preserves the full accepted event slug length without accepting reserved detail returns", () => {
+    expect(normalizeBrowseReturnTo(`/events/${"a".repeat(200)}`)).toBe(`/events/${"a".repeat(200)}`);
+    expect(browseReturnLabel("/events/constructor")).toBeNull();
+    expect(browseReturnLabel("/events/prototype")).toBeNull();
+    expect(withBrowseReturnTo("/plan", "/events/prototype")).toBe("/plan");
+  });
+
   it("keeps Tonight intent and town through a full detail visit", () => {
     const tonight = "/today/tonight?intent=pizza&in=brunswick";
     expect(browseReturnLabel(tonight)).toBe("Back to Tonight");

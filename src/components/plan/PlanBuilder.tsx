@@ -201,7 +201,7 @@ export default function PlanBuilder({
     setGeoMsg(null);
   };
 
-  const activeEventAnchor = plan ? decodeSpec(plan.share)?.i.event_anchor_slug : initialInputs?.event_anchor_slug;
+  const activeEventAnchor = plan ? decodeSpec(plan.share)?.i.event_anchor_slug : undefined;
 
   const buildInputs = (): PlanInputs | null => {
     const startAt = startAtFor(startMode, customStart);

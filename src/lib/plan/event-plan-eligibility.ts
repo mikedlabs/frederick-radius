@@ -1,5 +1,6 @@
 import { stampEventProvenance, type SourceConfidence } from "@/lib/provenance";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
+import type { Place } from "@/data/places";
 import type { Event } from "@/data/events";
 import { isRangeListing } from "@/lib/eventHorizon";
 import {
@@ -27,19 +28,23 @@ export type EventPlanEligibility =
         | "timing_unknown"
         | "already_started"
         | "duration_too_long"
-        | "source_unconfirmed";
+        | "source_unconfirmed"
+        | "venue_closed";
     };
 
 /** The entry and server resolver must agree before reserving an event slot. */
 export function eventPlanEligibility(
   event: Event & { geo_confidence?: GeoConfidence; confidence?: SourceConfidence },
-  options: { nowMs: number; hasResolvedVenue?: boolean },
+  options: { nowMs: number; hasResolvedVenue?: boolean; venueOperational?: Place["is_operational"] },
 ): EventPlanEligibility {
   if (event.status === "cancelled" || event.status === "postponed") {
     return { eligible: false, reason: event.status };
   }
   if (!isPublicEvent(event)) {
     return { eligible: false, reason: "non_public" };
+  }
+  if (options.venueOperational === "closed_permanently" || options.venueOperational === "closed_temporarily") {
+    return { eligible: false, reason: "venue_closed" };
   }
   if (!hasPhysicalAttendance(event)) {
     return { eligible: false, reason: "not_physical" };

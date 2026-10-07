@@ -73,6 +73,11 @@ describe("event plan entry eligibility", () => {
     expect(eligibility(event({ attendance_mode: "mixed" }))).toEqual({ eligible: true, durationMinutes: 180 });
   });
 
+  it.each(["closed_permanently", "closed_temporarily"] as const)("withholds the entry for a %s resolved venue", (venueOperational) => {
+    expect(eventPlanEligibility(event(), { nowMs, hasResolvedVenue: true, venueOperational })).toEqual({ eligible: false, reason: "venue_closed" });
+    expect(eventPlanEligibility(event(), { nowMs, hasResolvedVenue: true, venueOperational: "operational" })).toEqual({ eligible: true, durationMinutes: 180 });
+  });
+
   it("requires a valid request clock", () => {
     expect(eventPlanEligibility(event(), { nowMs: NaN })).toEqual({ eligible: false, reason: "timing_unknown" });
   });

@@ -71,7 +71,7 @@ async function weatherNoteFor(plan: Plan): Promise<string | null> {
 /** Build a fresh plan from the builder inputs. */
 export async function generatePlan(input: PlanInputs): Promise<Plan | null> {
   return input.event_anchor_slug
-    ? planAroundEvent(input.event_anchor_slug, input)
+    ? withWeather(await planAroundEvent(input.event_anchor_slug, input))
     : withWeather(buildPlan(input));
 }
 

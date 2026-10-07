@@ -1,3 +1,4 @@
+import { isResolvableEventSlug } from "@/lib/events/resolvable-event-slug";
 import type { Metadata } from "next";
 import PlanBuilder from "@/components/plan/PlanBuilder";
 import { decodeSpec, reconstructPlan } from "@/lib/integrations/planner";
@@ -36,7 +37,7 @@ export default async function PlanPage({
   const { p, place: placeSlug, event: eventSlug, in: scopeParam, returnTo } = await searchParams;
   const spec = p ? decodeSpec(p) : null;
   const shared = spec ? await resolveSharedPlan(spec) : null;
-  const eventSeed = !p && eventSlug && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(eventSlug) && eventSlug.length < 160
+  const eventSeed = !p && isResolvableEventSlug(eventSlug)
     ? await planAroundEvent(eventSlug) : null;
   const eventInputs = eventSeed ? decodeSpec(eventSeed.share)?.i : undefined;
   const place = !p && placeSlug ? clientPlaceBySlug(placeSlug) : null;
