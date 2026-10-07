@@ -34,22 +34,6 @@
       "regenerationCommand": null
     },
     {
-      "path": "public/brand/posters/whole-county.png",
-      "category": "design-archive",
-      "maxBytes": 3000000,
-      "deploymentRequired": false,
-      "provenance": "PNG handoff export generated from the tracked Frederick Radius brand system.",
-      "regenerationCommand": "npm run build:brand"
-    },
-    {
-      "path": "public/brand/posters/you-are-here.png",
-      "category": "design-archive",
-      "maxBytes": 3000000,
-      "deploymentRequired": false,
-      "provenance": "PNG handoff export generated from the tracked Frederick Radius brand system.",
-      "regenerationCommand": "npm run build:brand"
-    },
-    {
       "path": "public/brand/social/facebook-cover-photo.png",
       "category": "design-archive",
       "maxBytes": 1600000,

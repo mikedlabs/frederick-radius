@@ -476,9 +476,11 @@
       "height": 2400,
       "role": "Portrait poster using owned Frederick photography",
       "exports": [
-        "svg",
-        "png"
-      ]
+        "svg"
+      ],
+      "localExports": {
+        "png": "output/brand/posters/you-are-here.png"
+      }
     },
     {
       "file": "posters/whole-county.svg",
@@ -486,9 +488,11 @@
       "height": 2400,
       "role": "Portrait countywide launch poster using owned Frederick photography",
       "exports": [
-        "svg",
-        "png"
-      ]
+        "svg"
+      ],
+      "localExports": {
+        "png": "output/brand/posters/whole-county.png"
+      }
     },
     {
       "file": "posters/product-today.svg",
