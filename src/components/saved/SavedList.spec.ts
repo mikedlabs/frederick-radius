@@ -3,7 +3,9 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  EMPTY_RECENT_LIMIT,
   EmptyState,
+  recentPlaceFact,
   SavedEventRefreshNotice,
   fetchSavedEventsBySlugs,
   fetchSavedEventsHydration,
@@ -68,6 +70,114 @@ describe("SavedList empty state", () => {
     expect(html).not.toContain('href="/events"');
     expect(html).not.toContain('href="/ask"');
     expect(html).not.toContain("min-h-[34rem]");
+  });
+
+  it("states its purpose once, in one 16px sentence", () => {
+    const html = renderToStaticMarkup(createElement(EmptyState));
+    const source = readFileSync("src/components/saved/SavedList.tsx", "utf8");
+
+    // One sentence at body size, not an 18px headline stacked under a caps
+    // standfirst that said the same thing.
+    expect(html).toContain("text-[16px]");
+    expect(html).not.toContain("text-[18px]");
+    expect(html.match(/<p\b/g)).toHaveLength(1);
+    expect(source).not.toContain("Places, events, buses, and stops you want to keep");
+    // The empty branch renders the masthead without a standfirst.
+    const emptyBranch = source.slice(
+      source.indexOf("savedTransitBuses.length === 0\n  ) {"),
+      source.indexOf("// Cluster signal"),
+    );
+    expect(emptyBranch).toContain("<Masthead />");
+    expect(emptyBranch).not.toContain("stand=");
+  });
+
+  it("makes Find something to save the single filled Brick button and keeps transit a Creek text link", () => {
+    const html = renderToStaticMarkup(createElement(EmptyState));
+    const search = html.slice(html.lastIndexOf("<a", html.indexOf('href="/search"')), html.indexOf("</a>", html.indexOf('href="/search"')));
+    const transit = html.slice(html.lastIndexOf("<a", html.indexOf('href="/transit"')), html.indexOf("</a>", html.indexOf('href="/transit"')));
+
+    // Button size="lg": 48px tall, radius-md, Brick fill with on-brand text.
+    expect(search).toContain("h-12");
+    expect(search).toContain("rounded-[var(--app-radius-md)]");
+    expect(search).toContain("background-color:var(--app-brand-press)");
+    expect(search).toContain("color:var(--app-on-brand)");
+    expect(search).not.toContain("rounded-full");
+    expect(search).not.toContain("background:var(--app-ink)");
+
+    // Transit stays a quiet Creek link with a 44px effective target.
+    expect(transit).toContain("color:var(--app-cool)");
+    expect(transit).toContain("tap-44");
+    expect(transit).toContain("underline");
+    expect(transit).not.toContain("background");
+    expect(transit).not.toContain("border");
+
+    // Exactly one filled action on the page.
+    expect(html.match(/var\(--app-brand-press\)/g)).toHaveLength(1);
+    expect(html).not.toContain("var(--app-ink);color:var(--app-bg)");
+  });
+
+  it("offers up to three places the person just looked at, each one tap from saved", () => {
+    const recent = [
+      { slug: "beans-in-belfry", name: "Beans in the Belfry", category: "coffee", municipality: "brunswick", city: "Brunswick", address: "122 W Potomac St", google_photo_url: "/api/place-photo?name=places%2FChIJbelfry%2Fphotos%2Fa&w=800", open_status: { state: "open", closesAt: "21:00", closingSoon: false } },
+      { slug: "griffins-tavern", name: "Griffin's Tavern", category: "restaurant", municipality: "frederick", city: "Frederick", address: "", open_status: { state: "unknown" } },
+      { slug: "third", name: "Third Place", category: "coffee", municipality: "frederick", city: "Frederick", address: "", open_status: { state: "unknown" } },
+      { slug: "fourth", name: "Fourth Place", category: "coffee", municipality: "frederick", city: "Frederick", address: "", open_status: { state: "unknown" } },
+    ] as PlaceCardData[];
+
+    const html = renderToStaticMarkup(
+      createElement(EmptyState, { recentPlaces: recent, onClearRecent: () => {} }),
+    );
+
+    expect(EMPTY_RECENT_LIMIT).toBe(3);
+    expect(html).toContain("You looked at these recently");
+    expect(html.match(/data-saved-empty-recent-row=/g)).toHaveLength(3);
+    expect(html).not.toContain("Fourth Place");
+    // Visual first: a real photo when the loader approved one, else the mark.
+    expect(html).toContain('data-place-media="photo"');
+    expect(html).toContain('data-place-media="fallback"');
+    expect(html.indexOf('data-place-media="photo"')).toBeLessThan(html.indexOf("Beans in the Belfry"));
+    // Name, one fact line, and the shared save toggle for every row.
+    expect(html).toContain("Brunswick · Open till 9 PM");
+    expect(html.match(/data-save-ref="place:/g)).toHaveLength(3);
+    expect(html).toContain('data-save-ref="place:beans-in-belfry"');
+    expect(html).toContain("/places/beans-in-belfry");
+    expect(html).toContain("Clear");
+    // The places come before the way to go find something else.
+    expect(html.indexOf("You looked at these recently")).toBeLessThan(html.indexOf('href="/search"'));
+  });
+
+  it("omits the recent section when nothing has been viewed", () => {
+    const html = renderToStaticMarkup(createElement(EmptyState, { recentPlaces: [] }));
+
+    expect(html).not.toContain("You looked at these recently");
+    expect(html).not.toContain("data-save-ref");
+  });
+
+  it("feeds recently viewed places into the empty branch and softens its rule", () => {
+    const source = readFileSync("src/components/saved/SavedList.tsx", "utf8");
+    const css = readFileSync("src/components/saved/SavedList.module.css", "utf8");
+
+    expect(source).toContain("<EmptyState recentPlaces={recentPlaces} onClearRecent={clearRecent} />");
+    // The Home Screen row keeps a 1px border hairline, not the colophon's
+    // heavy Ink rule, on the empty page only.
+    expect(source).toContain("styles.emptyKeep");
+    expect(css).toMatch(/\.emptyKeep :global\(\.sv-colophon\) \{\s*border-top: 0;\s*padding-top: 0;/);
+    expect(css).toContain("border-top: 1px solid var(--app-border)");
+    expect(css).not.toContain("var(--app-ink)");
+  });
+
+  it("writes the recent fact line from the town and a known clock state only", () => {
+    const open = { municipality: "brunswick", city: "Brunswick", open_status: { state: "open", closesAt: "21:00", closingSoon: false } } as PlaceCardData;
+    const closed = { municipality: "frederick", city: "Frederick", open_status: { state: "closed", opensAt: "17:00", opensToday: true } } as PlaceCardData;
+    const unverified = { municipality: "frederick", city: "Frederick", open_status: { state: "unverified" } } as PlaceCardData;
+    const unknownTown = { municipality: "", city: "Adamstown", open_status: { state: "unknown" } } as PlaceCardData;
+
+    expect(recentPlaceFact(open)).toBe("Brunswick · Open till 9 PM");
+    // Town names follow the wallet (owner call: "Frederick City", not the
+    // ambiguous bare "Frederick" in a county guide).
+    expect(recentPlaceFact(closed)).toBe("Frederick City · Opens 5 PM");
+    expect(recentPlaceFact(unverified)).toBe("Frederick City");
+    expect(recentPlaceFact(unknownTown)).toBe("Adamstown");
   });
 
   it("leads with useful saved content and keeps transit quiet before one organizer reveal", () => {

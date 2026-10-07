@@ -29,7 +29,11 @@ import SavedTransitSection from "@/components/saved/SavedTransitSection";
 import { useSavedTransitBuses } from "@/components/transit/useSavedTransitBuses";
 import { useSavedTransitStops } from "@/components/transit/useSavedTransitStops";
 import KeepRadiusCard from "@/components/pwa/KeepRadiusCard";
-import { fmtClockShort } from "@/components/saved/walletFacts";
+import SaveButton from "@/components/saved/SaveButton";
+import { fmtClockShort, lipFact } from "@/components/saved/walletFacts";
+import { PlaceMedallion } from "@/components/place/PlaceMedallion";
+import { Button } from "@/components/ui/Button";
+import styles from "./SavedList.module.css";
 import AppMapClient from "@/components/map/AppMapClient";
 import ShareButton from "@/components/place/ShareButton";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -322,15 +326,17 @@ function EventRow({ event, today }: { event: DecoratedEvent; today: boolean }) {
 
 /** The page masthead: title + a mono standfirst that carries the counts as
  *  supporting detail, plus the 44px settings gear. Rendered by every branch
- *  (skeleton, empty, full) so the page opens the same way in all three. */
-function Masthead({ stand }: { stand: ReactNode }) {
+ *  (skeleton, empty, full) so the page opens the same way in all three. The
+ *  empty branch omits the standfirst: its one sentence already says what the
+ *  page is for, and a caps line above it said the same thing twice. */
+function Masthead({ stand }: { stand?: ReactNode }) {
   return (
     <header className="sv-mast">
       <div className="min-w-0">
         <h1 id="saved-page-heading" tabIndex={-1}>
           Saved
         </h1>
-        <p className="sv-stand">{stand}</p>
+        {stand ? <p className="sv-stand">{stand}</p> : null}
       </div>
       <Link href="/settings" aria-label="Settings" className="sv-gear tactile tactile-interactive">
         <Settings className="h-[17px] w-[17px]" strokeWidth={2} aria-hidden />
@@ -938,11 +944,16 @@ export default function SavedList({
     savedTransitStops.length === 0 &&
     savedTransitBuses.length === 0
   ) {
+    // Places the person just opened are the likeliest first save, so the
+    // empty page offers them instead of pretending nothing has happened yet.
+    // recentPlaces already excludes saved slugs and unresolved records.
     return (
       <div className="space-y-4">
-        <Masthead stand="Places, events, buses, and stops you want to keep" />
-        <EmptyState />
-        <KeepRadiusCard variant="row" />
+        <Masthead />
+        <EmptyState recentPlaces={recentPlaces} onClearRecent={clearRecent} />
+        <div className={`${styles.emptyKeep ?? ""} empty:hidden`}>
+          <KeepRadiusCard variant="row" />
+        </div>
       </div>
     );
   }
@@ -1585,40 +1596,135 @@ export default function SavedList({
 }
 
 
-/** Honest and never a dead end: one sentence, then the two places where saves
- * begin. The app shell already exposes the rest of Radius. */
-export function EmptyState() {
+/** How many recently viewed places the empty page offers. Three rows fit
+ *  above the fold on a 375px phone together with the sentence and the action. */
+export const EMPTY_RECENT_LIMIT = 3;
+
+/** The one fact line under a recently viewed place on the empty page: its
+ *  town, then its open or closed state when the loader knows it. The tile
+ *  beside it (photo, or category mark) already says what kind of place it
+ *  is, and category names are plural shelf labels, so they stay out of a
+ *  line about one place. Reuses
+ *  the wallet's lipFact wording for the clock so both surfaces say the same
+ *  thing, and never invents a value (unverified hours add nothing). */
+export function recentPlaceFact(
+  place: Pick<PlaceCardData, "municipality" | "city" | "open_status">,
+): string {
+  const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name || place.city || null;
+  const state = place.open_status.state;
+  const clock =
+    state === "open" || state === "closing-soon" || state === "closed"
+      ? (lipFact({ open_status: place.open_status }, null)?.text ?? null)
+      : null;
+  return [town, clock].filter(Boolean).join(" · ");
+}
+
+/** Honest and never a dead end: one sentence, the places the person just
+ *  looked at (each one tap from saved), then one primary way to find
+ *  something and a quiet transit link. The app shell exposes the rest. */
+export function EmptyState({
+  recentPlaces = [],
+  onClearRecent,
+}: {
+  recentPlaces?: readonly PlaceCardData[];
+  onClearRecent?: () => void;
+}) {
+  const recent = recentPlaces.slice(0, EMPTY_RECENT_LIMIT);
   return (
-    <div data-saved-empty-state="true" className="max-w-sm space-y-4 py-2">
+    <div data-saved-empty-state="true" className="max-w-md space-y-5 py-1">
       <p
-        className="px-0.5 font-sans text-[18px] font-semibold leading-snug"
+        className="px-0.5 font-sans text-[16px] leading-relaxed"
         style={{ color: "var(--app-ink)" }}
       >
         Save a place, event, bus trip, or stop to keep it here for later.
       </p>
-      <div className="flex flex-wrap gap-2">
-        <Link
+      {recent.length > 0 && (
+        <section aria-labelledby="saved-empty-recent" className="space-y-1">
+          <header className="flex items-center gap-2">
+            <h2
+              id="saved-empty-recent"
+              className="min-w-0 flex-1 text-[14px] font-semibold"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              You looked at these recently
+            </h2>
+            {onClearRecent && (
+              <button
+                type="button"
+                onClick={onClearRecent}
+                aria-label="Clear recently viewed places"
+                className="tap-44 shrink-0 text-[12px] font-semibold underline-offset-2 hover:underline"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                Clear
+              </button>
+            )}
+          </header>
+          <ul data-saved-empty-recent="true">
+            {recent.map((place) => (
+              <RecentPlaceRow key={place.slug} place={place} />
+            ))}
+          </ul>
+        </section>
+      )}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <Button
           href="/search"
-          className="tap-44 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[12.5px] font-semibold"
-          style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
+          size="lg"
+          iconLeft={<Search className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />}
         >
-          <Search className="h-4 w-4" strokeWidth={2} aria-hidden />
           Find something to save
-          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-        </Link>
+        </Button>
         <Link
           href="/transit"
-          className="tap-44 inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-[12.5px] font-semibold"
-          style={{
-            borderColor: "var(--app-control-border)",
-            color: "var(--app-cool)",
-            background: "var(--app-bg-elevated-solid)",
-          }}
+          className="tap-44 inline-flex items-center gap-1.5 text-[14px] font-semibold underline decoration-1 underline-offset-4"
+          style={{ color: "var(--app-cool)" }}
         >
           <BusFront className="h-4 w-4" strokeWidth={2} aria-hidden />
           Find a bus or stop
         </Link>
       </div>
     </div>
+  );
+}
+
+/** One recently viewed place: the photo or category mark first, the name and
+ *  one fact, and the shared 44px save toggle. Saving it moves the page out of
+ *  the empty state, where the wallet takes over. */
+function RecentPlaceRow({ place }: { place: PlaceCardData }) {
+  // Same disambiguation PlaceCard uses, so two branches of one chain never
+  // share a screen-reader name.
+  const actionName = place.address
+    ? `${place.name} at ${place.address}`
+    : place.city
+      ? `${place.name} in ${place.city}`
+      : place.name;
+  const fact = recentPlaceFact(place);
+  return (
+    <li className="flex items-center gap-2" data-saved-empty-recent-row={place.slug}>
+      <Link
+        href={withBrowseReturnTo(`/places/${place.slug}`, "/my-radius")}
+        className="flex min-h-[60px] min-w-0 flex-1 items-center gap-3 rounded-[var(--app-radius-md)] py-1.5 pr-1"
+      >
+        <PlaceMedallion place={place} size={48} />
+        <span className="min-w-0 flex-1">
+          <span
+            className="block truncate text-[15px] font-semibold leading-snug"
+            style={{ color: "var(--app-ink)" }}
+          >
+            {place.name}
+          </span>
+          {fact && (
+            <span
+              className="mt-0.5 block truncate text-[13px] leading-snug"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              {fact}
+            </span>
+          )}
+        </span>
+      </Link>
+      <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
+    </li>
   );
 }

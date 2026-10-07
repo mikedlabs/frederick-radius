@@ -1,0 +1,15 @@
+/* Empty Saved page only (SavedList EmptyState branch).
+
+   The populated page keeps the almanac colophon's heavy Ink rule from the
+   shared .sv-colophon rule in globals.css. On an empty page that rule was the
+   heaviest mark on the screen and outweighed the one sentence above it, so the
+   Home Screen row sits under a single 1px var(--app-border) hairline instead:
+   the outer Ink rule and its gap are removed and the inner hairline remains. */
+.emptyKeep :global(.sv-colophon) {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.emptyKeep :global(.sv-colophon .inner) {
+  border-top: 1px solid var(--app-border);
+}
