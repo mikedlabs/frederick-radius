@@ -22,6 +22,7 @@ import {
   nearbyQueryNeedsAreaChoice,
   preferredAskScope,
   queryNeedsNearbyContext,
+  reasonRepeatsStatus,
   queryIsLocalDiscovery,
   scheduleAskDeadline,
   sourceHasDistinctDetail,
@@ -564,5 +565,17 @@ describe("Ask Radius starter questions", () => {
         "Where can I get coffee tomorrow morning in Frederick City?",
       ),
     ).toBe("town:frederick");
+  });
+});
+
+describe("reasonRepeatsStatus", () => {
+  it("drops a reason that only restates the hours status", () => {
+    expect(reasonRepeatsStatus({ reason: "Hours not confirmed", status: "Hours not confirmed" })).toBe(true);
+    expect(reasonRepeatsStatus({ reason: " hours not confirmed ", status: "Hours not confirmed" })).toBe(true);
+  });
+
+  it("keeps a reason that says something the status does not", () => {
+    expect(reasonRepeatsStatus({ reason: "Nearest cataloged coffee shop", status: "Hours not confirmed" })).toBe(false);
+    expect(reasonRepeatsStatus({ reason: "Hours not confirmed", status: null })).toBe(false);
   });
 });
