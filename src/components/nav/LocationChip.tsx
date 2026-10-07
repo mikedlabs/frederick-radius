@@ -8,7 +8,7 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { haptic } from "@/lib/haptics";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance } from "@/lib/geo";
-import { getScope, parseScope, setScope, scopeTownSlug, scopeLabel, subscribeScopeChange, type Scope } from "@/lib/scope";
+import { getScope, NEAR_ME_BENEFIT, parseScope, setScope, scopeTownSlug, scopeLabel, subscribeScopeChange, type Scope } from "@/lib/scope";
 import { locationScopeHref } from "./locationScopeNavigation";
 
 /**
@@ -123,8 +123,10 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
   const scopeTown = scopeTownSlug(scope);
 
   // The chip label follows the scope first; "near me" borrows the live
-  // geolocation readout so it still reads "Near Brunswick" once granted.
-  let label = scope ? scopeLabel(scope) : compact ? "Frederick County" : "Frederick, MD";
+  // geolocation readout so it still reads "Near Brunswick" once granted. An
+  // unset scope shows the whole county and says so with the same contract
+  // label, never a place name that reads like a fourth choice.
+  let label = scopeLabel(scope);
   let LabelIcon = MapPin;
   let labelColor: string = scope ? "var(--app-ink-2)" : "var(--app-ink-3)";
   if (scope === "nearme") {
@@ -145,15 +147,18 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
     } else {
       LabelIcon = Navigation;
     }
-  } else if (scope === "county") {
+  } else if (scope === "county" || scope === null) {
+    // Same label, same mark: an unset lens is the whole county.
     LabelIcon = Globe;
   }
-  const compactLabel =
-    scope === "nearme"
-      ? "Near me"
-      : scopeTown && MUNICIPALITY_BY_SLUG[scopeTown]
-        ? MUNICIPALITY_BY_SLUG[scopeTown].name
-        : "County";
+  // Only the whole-county label has a narrow form. "Near me" and town names
+  // are already their own short labels.
+  const countyWide = !(scope === "nearme" || (scopeTown && MUNICIPALITY_BY_SLUG[scopeTown]));
+  const compactLabel = !countyWide ? scopeLabel(scope) : "County";
+  // A browser prompt can still follow a Near me tap. Explain the benefit
+  // before it appears; a granted fix or a refusal will not prompt again.
+  const nearMeMayPrompt =
+    state.status === "idle" || state.status === "loading" || state.status === "error";
 
   return (
     <div ref={wrapRef} className="relative min-w-0 shrink-0">
@@ -171,7 +176,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
         aria-controls="location-scope-choices"
         aria-label={`Change town or location scope. Current scope: ${label}`}
         title={`Town and location: ${label}`}
-        className="inline-flex h-11 min-w-11 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-full border bg-[var(--app-bg-elevated)] px-2 text-[12px] font-semibold leading-none transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:max-w-none sm:justify-start"
+        className="inline-flex h-11 min-w-11 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-full border bg-[var(--app-bg-elevated)] px-2 text-[12px] font-semibold leading-none transition hover:bg-[var(--app-bg-sunken)] active:scale-95 min-[448px]:max-w-[140px] sm:max-w-none sm:justify-start"
         style={{ borderColor: "var(--app-border)", color: labelColor }}
       >
         <LabelIcon
@@ -191,10 +196,30 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
               {label}
             </span>
           </>
+        ) : countyWide ? (
+          <>
+            {/* "Whole county" needs about 38px more than "County". Measured
+                against the phone header with its Tools label and a visible
+                county status (checking, unknown, or alerts), it fits from
+                448px. Narrower phones keep the complete short word rather
+                than pushing Tools past the edge. */}
+            <span
+              data-location-scope-label="compact"
+              className="hidden min-w-0 truncate min-[390px]:block min-[448px]:hidden"
+            >
+              {compactLabel}
+            </span>
+            <span
+              data-location-scope-label="full"
+              className="hidden min-w-0 truncate min-[448px]:block sm:max-w-[160px]"
+            >
+              {label}
+            </span>
+          </>
         ) : (
           <>
             {/* At the common 390px phone width, show one complete scope word
-                instead of squeezing "Frederick, MD" into a clipped chip.
+                instead of a clipped readout such as "2.1 mi from Brunswick".
                 Wider headers restore the full readout. */}
             <span
               data-location-scope-label="compact"
@@ -244,7 +269,10 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
           <div className="min-h-0 overflow-y-auto overscroll-contain">
           {/* Near me — sets scope AND requests the fix (the two go together;
               a nearme scope with no device fix falls back to home server-side
-              but the granted position sharpens client surfaces). */}
+              but the granted position sharpens client surfaces). While a tap
+              can still open the browser's permission prompt, the row says
+              what location is for first. The name stays "Near me"; the
+              benefit is its description. */}
           <button
             type="button"
             onClick={() => {
@@ -252,11 +280,25 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
               applyScope("nearme");
             }}
             aria-pressed={scope === "nearme"}
+            aria-labelledby="location-near-me-label"
+            aria-describedby={nearMeMayPrompt ? "location-near-me-benefit" : undefined}
             className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
             style={{ color: scope === "nearme" ? "var(--app-brand)" : "var(--app-ink-2)" }}
           >
-            <Navigation className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: scope === "nearme" ? "var(--app-brand)" : "var(--app-cool)" }} />
-            Near me
+            <Navigation className={`h-3.5 w-3.5 shrink-0${nearMeMayPrompt ? " mt-0.5 self-start" : ""}`} strokeWidth={2} aria-hidden style={{ color: scope === "nearme" ? "var(--app-brand)" : "var(--app-cool)" }} />
+            <span className="min-w-0">
+              <span id="location-near-me-label" className="block">{scopeLabel("nearme")}</span>
+              {nearMeMayPrompt && (
+                <span
+                  id="location-near-me-benefit"
+                  data-near-me-benefit
+                  className="mt-0.5 block text-[11px] font-normal leading-snug"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {NEAR_ME_BENEFIT}
+                </span>
+              )}
+            </span>
             {scope === "nearme" && <Check className="ml-auto h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />}
           </button>
 
@@ -269,7 +311,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
             style={{ color: scope === "county" ? "var(--app-brand)" : "var(--app-ink-2)" }}
           >
             <Globe className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-            Whole county
+            {scopeLabel("county")}
             {scope === "county" && <Check className="ml-auto h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />}
           </button>
 

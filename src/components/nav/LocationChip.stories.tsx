@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, userEvent, within } from "storybook/test";
 
+import { NEAR_ME_BENEFIT } from "@/lib/scope";
 import LocationChip from "./LocationChip";
 
 const meta = {
@@ -11,7 +13,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The one shared area control. Mobile widths show a complete short scope; larger screens restore the full place label.",
+          "The one shared area control. An unset scope reads Whole county. Phone headers narrower than 448px have room only for the complete short word County, and wider headers show the full label. Near me explains what location is for before the browser can ask.",
       },
     },
   },
@@ -54,6 +56,35 @@ export const MapAt320: Story = {
 export const DesktopFullLabel: Story = {
   globals: {
     viewport: { value: "radiusTablet", isRotated: false },
+  },
+};
+
+export const WholeCountyOnDesktop: Story = {
+  globals: {
+    viewport: { value: "radiusDesktop", isRotated: false },
+  },
+  play: async ({ canvasElement }) => {
+    const chip = within(canvasElement).getByRole("button", {
+      name: /Current scope: Whole county$/,
+    });
+    await expect(
+      chip.querySelector('[data-location-scope-label="full"]'),
+    ).toHaveTextContent("Whole county");
+  },
+};
+
+export const NearMeExplainsBeforeAsking: Story = {
+  globals: {
+    viewport: { value: "radiusMobile", isRotated: false },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole("button", { name: /Current scope: Whole county$/ }),
+    );
+    await expect(
+      await canvas.findByRole("button", { name: "Near me" }),
+    ).toHaveAccessibleDescription(NEAR_ME_BENEFIT);
   },
 };
 

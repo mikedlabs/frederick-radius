@@ -9,6 +9,9 @@ import {
   effectiveOriginSlug,
   resolveServerTownRankingContext,
   resolveDecisionContext,
+  NEAR_ME_BENEFIT,
+  WHOLE_COUNTY_LABEL,
+  type Scope,
 } from "./scope";
 
 describe("parseScope", () => {
@@ -68,7 +71,31 @@ describe("scope helpers", () => {
     expect(scopeLabel("nearme")).toBe("Near me");
     expect(scopeLabel("county")).toBe("Whole county");
     expect(scopeLabel("town:frederick")).toBe("Frederick City");
-    expect(scopeLabel(null)).toBe("Frederick County");
+  });
+
+  it("labels an unset or unknown scope with the contract's Whole county", () => {
+    // The contract names only Near me, Whole county, or a town. An unset
+    // lens used to fall back to "Frederick County" here and to "Frederick,
+    // MD" in the header chip, which read as a fourth choice.
+    expect(scopeLabel(null)).toBe(WHOLE_COUNTY_LABEL);
+    expect(scopeLabel("town:atlantis" as Scope)).toBe(WHOLE_COUNTY_LABEL);
+    expect(WHOLE_COUNTY_LABEL).toBe("Whole county");
+    expect(resolveDecisionContext({}).label).toBe(WHOLE_COUNTY_LABEL);
+    expect(resolveDecisionContext({ scopeRaw: "county" }).label).toBe(
+      WHOLE_COUNTY_LABEL,
+    );
+  });
+});
+
+describe("NEAR_ME_BENEFIT", () => {
+  it("explains the benefit in complete sentences without promising a prompt", () => {
+    expect(NEAR_ME_BENEFIT).not.toMatch(/[–—]/);
+    const sentences = NEAR_ME_BENEFIT.split(/(?<=\.)\s+/);
+    expect(sentences).toHaveLength(2);
+    for (const sentence of sentences) expect(sentence).toMatch(/^[A-Z].*\.$/);
+    // A browser that already trusts the site does not ask again, so the
+    // copy may not claim that it always will.
+    expect(NEAR_ME_BENEFIT).toMatch(/\bmay ask\b/);
   });
 });
 

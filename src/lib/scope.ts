@@ -72,12 +72,28 @@ export function scopeCentroid(scope: Scope | null): LngLat | null {
   return slug ? (MUNICIPALITY_BY_SLUG[slug]?.centroid ?? null) : null;
 }
 
-/** Human label for the chip / caption. */
+/**
+ * The interaction contract names exactly three kinds of scope: Near me, Whole
+ * county, or a town. An unset scope shows the whole county, so it carries the
+ * same label. Surfaces once filled that gap with "Frederick, MD" or
+ * "Frederick County", which read as a fourth, unexplained choice.
+ */
+export const WHOLE_COUNTY_LABEL = "Whole county";
+
+/**
+ * The benefit a Near me request explains before the browser's permission
+ * prompt can appear (USER_FIRST_INTERACTION_CONTRACT). "May" is deliberate: a
+ * browser that already trusts this site does not ask again, and the sentence
+ * has to stay true for that returning visitor too.
+ */
+export const NEAR_ME_BENEFIT =
+  "Your location puts the closest places first. Your browser may ask before sharing it.";
+
+/** Human label for the chip / caption. Unset reads as the whole county. */
 export function scopeLabel(scope: Scope | null): string {
   if (scope === "nearme") return "Near me";
-  if (scope === "county") return "Whole county";
   const slug = scopeTownSlug(scope);
-  return (slug && MUNICIPALITY_BY_SLUG[slug]?.name) || "Frederick County";
+  return (slug && MUNICIPALITY_BY_SLUG[slug]?.name) || WHOLE_COUNTY_LABEL;
 }
 
 /**
@@ -255,7 +271,7 @@ export function resolveDecisionContext({
       origin: null,
       filterMunicipality: null,
       source: "county",
-      label: "Whole county",
+      label: WHOLE_COUNTY_LABEL,
       canShowDistance: false,
       fallbackReason: null,
     };
@@ -319,7 +335,7 @@ export function resolveDecisionContext({
     origin: null,
     filterMunicipality: null,
     source: "none",
-    label: "Whole county",
+    label: WHOLE_COUNTY_LABEL,
     canShowDistance: false,
     fallbackReason:
       approximateStatus === "outside-county" ? "outside-county" : "location-unavailable",

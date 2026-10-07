@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { locationScopeHref } from "@/components/nav/locationScopeNavigation";
 import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
 import {
   getScope,
+  NEAR_ME_BENEFIT,
   parseScope,
+  scopeLabel,
   scopeTownSlug,
   setScope,
   subscribeScopeChange,
@@ -77,6 +79,7 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
   } = useGeolocation();
   const requestedHere = useRef(false);
   const grantedCheckDone = useRef(false);
+  const benefitId = useId();
   const hasDeviceLocation = location.status === "granted";
   const locationBlocked =
     location.status === "denied" || location.status === "unavailable";
@@ -146,8 +149,8 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
           className="min-h-11 max-w-full rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-3 text-[16px]"
           style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
         >
-          <option value="county">Whole county</option>
-          {scope === "nearme" && <option value="nearme">Near me</option>}
+          <option value="county">{scopeLabel("county")}</option>
+          {scope === "nearme" && <option value="nearme">{scopeLabel("nearme")}</option>}
           {MUNICIPALITIES.map((town) => <option key={town.slug} value={`town:${town.slug}`}>{town.name}</option>)}
         </select>
       </label>
@@ -168,18 +171,36 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
               : "Location is unavailable. Choose a town to keep browsing."}
           </p>
         ) : (
-          <button
-            type="button"
-            onClick={useMyLocation}
-            disabled={location.status === "loading"}
-            className="tap-44 inline-flex h-11 shrink-0 items-center rounded-full px-2.5 text-[13px] font-semibold transition active:scale-[0.98] disabled:opacity-55"
-            style={{
-              color: "var(--app-brand-press)",
-              background: "var(--app-brand-tint-6)",
-            }}
-          >
-            {location.status === "loading" ? "Finding you…" : "Use my location"}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={useMyLocation}
+              disabled={location.status === "loading"}
+              aria-describedby={hasDeviceLocation ? undefined : benefitId}
+              className="tap-44 inline-flex h-11 shrink-0 items-center rounded-full px-2.5 text-[13px] font-semibold transition active:scale-[0.98] disabled:opacity-55"
+              style={{
+                color: "var(--app-brand-press)",
+                background: "var(--app-brand-tint-6)",
+              }}
+            >
+              {location.status === "loading" ? "Finding you…" : "Use my location"}
+            </button>
+            {/* The contract asks for the benefit before the browser's
+                permission prompt. It sits beside the button rather than
+                behind a second tap, so the request stays one step. With a
+                fix already in hand the tap only changes the lens and no
+                prompt follows, so the sentence steps aside. */}
+            {hasDeviceLocation ? null : (
+              <p
+                id={benefitId}
+                data-testid="today-location-benefit"
+                className="max-w-[34ch] text-[12px] leading-normal"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                {NEAR_ME_BENEFIT}
+              </p>
+            )}
+          </>
         )
       ) : null}
     </div>

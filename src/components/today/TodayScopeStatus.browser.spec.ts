@@ -4,7 +4,7 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TodayScopeStatus from "./TodayScopeStatus";
-import { getScope, setScope } from "@/lib/scope";
+import { getScope, NEAR_ME_BENEFIT, setScope } from "@/lib/scope";
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
@@ -134,6 +134,41 @@ describe("TodayScopeStatus location memory", () => {
     );
   });
 
+  it("shows the benefit before the tap that can open the browser prompt", async () => {
+    setScope("county");
+    let benefitWhenAsked: string | null | undefined;
+    const { getCurrentPosition } = mockNavigator({
+      getCurrentPosition: vi.fn((success: PositionCallback) => {
+        // Capture what was on screen at the moment the browser would ask.
+        benefitWhenAsked = container.querySelector(
+          '[data-testid="today-location-benefit"]',
+        )?.textContent;
+        success({
+          coords: { longitude: -77.4105, latitude: 39.4143, accuracy: 18 },
+        } as GeolocationPosition);
+      }),
+    });
+
+    await render();
+    const button = container.querySelector("button")!;
+    const benefit = container.querySelector(
+      '[data-testid="today-location-benefit"]',
+    );
+    expect(benefit?.textContent).toBe(NEAR_ME_BENEFIT);
+    expect(button.getAttribute("aria-describedby")).toBe(benefit?.id);
+
+    await act(async () => button.click());
+
+    expect(getCurrentPosition).toHaveBeenCalledOnce();
+    expect(benefitWhenAsked).toBe(NEAR_ME_BENEFIT);
+    // Once the fix is granted no prompt can follow, so the sentence and the
+    // button both step aside for the Near me readout.
+    expect(getScope()).toBe("nearme");
+    expect(
+      container.querySelector('[data-testid="today-location-benefit"]'),
+    ).toBeNull();
+  });
+
   it("offers manual town selection after location is denied", async () => {
     setScope("county");
     mockNavigator({
@@ -156,6 +191,10 @@ describe("TodayScopeStatus location memory", () => {
     ).toBe(
       "Location is off. Choose a town to keep browsing.",
     );
+    // A refusal cannot be re-prompted, so the "may ask" sentence goes too.
+    expect(
+      container.querySelector('[data-testid="today-location-benefit"]'),
+    ).toBeNull();
   });
 
   it("keeps the retry button on a timeout error", async () => {
