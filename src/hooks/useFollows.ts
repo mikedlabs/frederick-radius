@@ -557,12 +557,20 @@ function getFollowQueue(userId: string, slug: string, confirmed: boolean): Follo
 function syncConfirmedFollowTopic(queue: FollowWriteQueue) {
   if (!queue.topicDirty || queue.pending || queue.uncertain || queue.transport) return;
   const epoch = followWriteEpoch;
-  const generation = authGeneration;
-  const isCurrent = () => followWriteEpoch === epoch && authGeneration === generation
-    && remoteStoreUserId === queue.userId && remoteStore?.has(queue.slug) === queue.confirmed;
+  const followed = queue.confirmed;
+  const key = JSON.stringify([queue.userId, queue.slug]);
+  const isCurrent = () => {
+    const currentQueue = followWrites.get(key);
+    // A same-account snapshot can still confirm this device operation. A new
+    // optimistic intent cannot: wait for its own confirmed topic sync instead.
+    return followWriteEpoch === epoch && remoteStoreUserId === queue.userId
+      && remoteStore?.has(queue.slug) === followed
+      && (!currentQueue || (!currentQueue.pending && !currentQueue.uncertain
+        && !currentQueue.transport && currentQueue.confirmed === followed));
+  };
   if (!isCurrent()) return;
   queue.topicDirty = false;
-  void syncFollowPushTopic(queue.slug, queue.confirmed, isCurrent);
+  void syncFollowPushTopic(queue.slug, followed, isCurrent);
 }
 
 /** A cancelled read is safe; a cancelled mutation is not proof of rollback. */

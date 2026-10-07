@@ -287,6 +287,63 @@ describe("SaveButton with the real follow persistence hook", () => {
     expect(imports).toHaveLength(1);
   });
 
+  it.each(["ready", "subscription"])("keeps one confirmed topic sync across a same-account bootstrap during delayed %s", async (phase) => {
+    const ready = deferred<{ pushManager: { getSubscription: () => Promise<{ endpoint: string }> } }>();
+    const subscription = deferred<{ endpoint: string }>();
+    const getSubscription = vi.fn(() => phase === "subscription" ? subscription.promise : Promise.resolve({ endpoint: "https://push.example.test/consented" }));
+    const registration = { pushManager: { getSubscription } };
+    vi.stubGlobal("navigator", { serviceWorker: { ready: phase === "ready" ? ready.promise : Promise.resolve(registration) } });
+    await render();
+    await click();
+    await settle(0);
+    expect(button().disabled).toBe(false);
+    expect(mocks.toast.success).toHaveBeenCalledTimes(1);
+    expect(topics).toHaveLength(0);
+    await render(["test-stop"]);
+    await render(["test-stop"]);
+    await act(async () => {
+      ready.resolve(registration);
+      subscription.resolve({ endpoint: "https://push.example.test/consented" });
+    });
+    expect(topics).toEqual([expect.objectContaining({ add: ["biz:test-stop"] })]);
+    expect(getSubscription).toHaveBeenCalledTimes(1);
+    expect(writes).toHaveLength(1);
+    expect(mocks.toast.success).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["opposite", "other-account", "same-account-reset"])("does not send a delayed topic for an obsolete %s confirmation", async (replacement) => {
+    const subscription = deferred<{ endpoint: string }>();
+    vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription: () => subscription.promise } }) } });
+    await render();
+    await click();
+    await settle(0);
+    if (replacement === "other-account") bootstrap = { ...bootstrap, user: { id: `other-${accountSequence}`, email: null } };
+    if (replacement === "same-account-reset") resetFollowsSyncFlag();
+    await render(replacement === "opposite" ? [] : ["test-stop"]);
+    await act(async () => subscription.resolve({ endpoint: "https://push.example.test/consented" }));
+    expect(topics).toHaveLength(0);
+    expect(writes).toHaveLength(1);
+    expect(mocks.toast.success).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not send a delayed confirmed topic against a matching but unsettled optimistic intent", async () => {
+    const subscription = deferred<{ endpoint: string }>();
+    vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription: () => subscription.promise } }) } });
+    await render();
+    await click(0);
+    await settle(0);
+    await click(0);
+    await click(1);
+    expect(writes).toHaveLength(2);
+    expect(saved()).toBe("test-stop");
+    await act(async () => subscription.resolve({ endpoint: "https://push.example.test/consented" }));
+    expect(topics).toHaveLength(0);
+    await settle(1, 503);
+    expect(topics).toEqual([expect.objectContaining({ add: ["biz:test-stop"] })]);
+    expect(writes).toHaveLength(2);
+    expect(saved()).toBe("test-stop");
+  });
+
   it("finishes one bulk import before queued save and remove intents can mutate its place", async () => {
     mocks.hasSynced.mockReturnValue(false);
     localStorage.setItem("fr:saved:v1", JSON.stringify([{ type: "place", id: "test-stop", saved_at: "2026-10-07T00:00:00.000Z" }]));
