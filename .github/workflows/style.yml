@@ -57,3 +57,8 @@ jobs:
 
       - name: Layer scale lint
         run: npm run lint:zindex
+
+      # Ratchet on hand-sized type, tracked caps, press-scale and stroke
+      # literals. Counts may fall, never rise; see scripts/check-type-scale.mjs.
+      - name: Type scale lint
+        run: npm run lint:type-scale

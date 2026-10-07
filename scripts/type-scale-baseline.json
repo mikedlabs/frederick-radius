@@ -1,0 +1,1866 @@
+{
+  "note": "Type-scale debt per file. Counts may fall, never rise. Regenerate with `npm run lint:type-scale -- --write` to lock in a reduction or an owner-reviewed exception. See scripts/check-type-scale.mjs.",
+  "rules": {
+    "arbitraryTextSize": "Tailwind text size written as a bracketed length instead of a named step",
+    "subElevenFont": "font size below the 11 px caption floor",
+    "uppercaseTracking": "uppercase text with changed letter spacing, the tracked-caps eyebrow",
+    "activeScale": "press-shrink scale literal",
+    "strokeWidthLiteral": "numeric stroke width literal"
+  },
+  "totals": {
+    "arbitraryTextSize": 3264,
+    "subElevenFont": 544,
+    "uppercaseTracking": 488,
+    "activeScale": 128,
+    "strokeWidthLiteral": 1049
+  },
+  "files": {
+    "src/app/(app)/about/page.tsx": {
+      "arbitraryTextSize": 17,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 10
+    },
+    "src/app/(app)/access/page.tsx": {
+      "arbitraryTextSize": 10,
+      "strokeWidthLiteral": 3
+    },
+    "src/app/(app)/amenities/page.tsx": {
+      "arbitraryTextSize": 13,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 7
+    },
+    "src/app/(app)/archive/page.tsx": {
+      "arbitraryTextSize": 14,
+      "subElevenFont": 4,
+      "uppercaseTracking": 3
+    },
+    "src/app/(app)/beer/page.tsx": {
+      "arbitraryTextSize": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/app/(app)/brunch/page.tsx": {
+      "arbitraryTextSize": 11,
+      "subElevenFont": 3,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 4
+    },
+    "src/app/(app)/cameras/page.tsx": {
+      "arbitraryTextSize": 3,
+      "strokeWidthLiteral": 1
+    },
+    "src/app/(app)/category/[slug]/page.tsx": {
+      "arbitraryTextSize": 7,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/app/(app)/check-a-date/page.tsx": {
+      "arbitraryTextSize": 17,
+      "subElevenFont": 4,
+      "uppercaseTracking": 3,
+      "strokeWidthLiteral": 4
+    },
+    "src/app/(app)/collections/[slug]/page.tsx": {
+      "arbitraryTextSize": 18,
+      "strokeWidthLiteral": 4
+    },
+    "src/app/(app)/collections/page.tsx": {
+      "arbitraryTextSize": 7,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 4
+    },
+    "src/app/(app)/contacts/page.tsx": {
+      "arbitraryTextSize": 2
+    },
+    "src/app/(app)/deals/page.tsx": {
+      "arbitraryTextSize": 10,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/app/(app)/dear-frederick/[slug]/page.tsx": {
+      "arbitraryTextSize": 13,
+      "subElevenFont": 2,
+      "uppercaseTracking": 4,
+      "strokeWidthLiteral": 3
+    },
+    "src/app/(app)/dear-frederick/page.tsx": {
+      "arbitraryTextSize": 10,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/app/(app)/dear-frederick/submit/SubmitForm.tsx": {
+      "arbitraryTextSize": 12,
+      "uppercaseTracking": 1
+    },
+    "src/app/(app)/dear-frederick/submit/page.tsx": {
+      "arbitraryTextSize": 6,
+      "strokeWidthLiteral": 1
+    },
+    "src/app/(app)/emergency-vet/page.tsx": {
+      "arbitraryTextSize": 19,
+      "strokeWidthLiteral": 4
+    },
+    "src/app/(app)/emergency/page.tsx": {
+      "arbitraryTextSize": 29,
+      "strokeWidthLiteral": 8
+    },
+    "src/app/(app)/error.tsx": {
+      "arbitraryTextSize": 3,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/app/(app)/events/(list)/calendar/page.tsx": {
+      "arbitraryTextSize": 2,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/app/(app)/events/(list)/page.tsx": {
+      "arbitraryTextSize": 8,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 2
+    },
+    "src/app/(app)/events/[slug]/not-found.tsx": {
+      "arbitraryTextSize": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/app/(app)/events/[slug]/page.tsx": {
+      "arbitraryTextSize": 30,
+      "subElevenFont": 2,
+      "uppercaseTracking": 5,
+      "activeScale": 1,
+      "strokeWidthLiteral": 27
+    },
+    "src/app/(app)/food-trucks/claim/ClaimForm.tsx": {
+      "arbitraryTextSize": 7,
+      "uppercaseTracking": 1
+    },
+    "src/app/(app)/food-trucks/claim/page.tsx": {
+      "arbitraryTextSize": 6,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/app/(app)/food-trucks/page.tsx": {
+      "arbitraryTextSize": 24,
+      "subElevenFont": 5,
+      "uppercaseTracking": 3,
+      "strokeWidthLiteral": 9
+    },
+    "src/app/(app)/happy-hour/page.tsx": {
+      "arbitraryTextSize": 6,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/app/(app)/history/page.tsx": {
+      "arbitraryTextSize": 36,
+      "subElevenFont": 9,
+      "uppercaseTracking": 6,
+      "strokeWidthLiteral": 9
+    },
+    "src/app/(app)/install/page.tsx": {
+      "arbitraryTextSize": 8
+    },
+    "src/app/(app)/live-music/page.tsx": {
+      "arbitraryTextSize": 19,
+      "subElevenFont": 3,
+      "uppercaseTracking": 3,
+      "strokeWidthLiteral": 2
+    },
+    "src/app/(app)/m/[municipality]/page.tsx": {
+      "arbitraryTextSize": 14,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 4
+    },
+    "src/app/(app)/markers/page.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 1
+    },
+    "src/app/(app)/moments/[slug]/page.tsx": {
+      "arbitraryTextSize": 19,
+      "subElevenFont": 3,
+      "uppercaseTracking": 7,
+      "strokeWidthLiteral": 6
+    },
+    "src/app/(app)/nonprofits/[ein]/page.tsx": {
+      "arbitraryTextSize": 12,
+      "subElevenFont": 2,
+      "strokeWidthLiteral": 4
+    },
+    "src/app/(app)/nonprofits/page.tsx": {
+      "arbitraryTextSize": 12,
+      "subElevenFont": 3,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/app/(app)/numbers/page.tsx": {
+      "arbitraryTextSize": 10,
+      "strokeWidthLiteral": 1
+    },
+    "src/app/(app)/open-now/page.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/app/(app)/overhead/page.tsx": {
+      "arbitraryTextSize": 4,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/app/(app)/parking/page.tsx": {
+      "arbitraryTextSize": 28,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 9
+    },
+    "src/app/(app)/parks/page.tsx": {
+      "arbitraryTextSize": 8,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/app/(app)/places/[slug]/page.tsx": {
+      "arbitraryTextSize": 8,
+      "strokeWidthLiteral": 9
+    },
+    "src/app/(app)/places/page.tsx": {
+      "arbitraryTextSize": 8,
+      "strokeWidthLiteral": 5
+    },
+    "src/app/(app)/plan/page.tsx": {
+      "arbitraryTextSize": 2
+    },
+    "src/app/(app)/privacy/page.tsx": {
+      "arbitraryTextSize": 4
+    },
+    "src/app/(app)/proto/almanac/page.tsx": {
+      "arbitraryTextSize": 3,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1
+    },
+    "src/app/(app)/proto/page.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1
+    },
+    "src/app/(app)/proto/today/page.tsx": {
+      "arbitraryTextSize": 3,
+      "uppercaseTracking": 1
+    },
+    "src/app/(app)/pulse/page.tsx": {
+      "arbitraryTextSize": 40,
+      "subElevenFont": 11,
+      "uppercaseTracking": 9,
+      "activeScale": 1,
+      "strokeWidthLiteral": 5
+    },
+    "src/app/(app)/reserve/page.tsx": {
+      "arbitraryTextSize": 11,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/app/(app)/rhythm/page.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/app/(app)/rivers/page.tsx": {
+      "arbitraryTextSize": 8,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 5
+    },
+    "src/app/(app)/scanner/page.tsx": {
+      "arbitraryTextSize": 5,
+      "strokeWidthLiteral": 3
+    },
+    "src/app/(app)/search/page.tsx": {
+      "arbitraryTextSize": 22,
+      "subElevenFont": 1,
+      "uppercaseTracking": 2,
+      "activeScale": 1,
+      "strokeWidthLiteral": 14
+    },
+    "src/app/(app)/settings/notifications/page.tsx": {
+      "arbitraryTextSize": 3,
+      "strokeWidthLiteral": 1
+    },
+    "src/app/(app)/settings/page.tsx": {
+      "arbitraryTextSize": 7,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/app/(app)/settings/sync/page.tsx": {
+      "arbitraryTextSize": 9,
+      "strokeWidthLiteral": 1
+    },
+    "src/app/(app)/shipping/page.tsx": {
+      "arbitraryTextSize": 3,
+      "strokeWidthLiteral": 1
+    },
+    "src/app/(app)/signals/page.tsx": {
+      "arbitraryTextSize": 15,
+      "subElevenFont": 3,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 3
+    },
+    "src/app/(app)/sports/page.tsx": {
+      "arbitraryTextSize": 25,
+      "subElevenFont": 6,
+      "uppercaseTracking": 6,
+      "strokeWidthLiteral": 5
+    },
+    "src/app/(app)/styleguide/page.tsx": {
+      "arbitraryTextSize": 14,
+      "subElevenFont": 7,
+      "uppercaseTracking": 4
+    },
+    "src/app/(app)/terms/page.tsx": {
+      "arbitraryTextSize": 5
+    },
+    "src/app/(app)/today/page.tsx": {
+      "arbitraryTextSize": 8,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 3
+    },
+    "src/app/(app)/today/tonight/page.tsx": {
+      "arbitraryTextSize": 1
+    },
+    "src/app/(app)/towns/page.tsx": {
+      "arbitraryTextSize": 1
+    },
+    "src/app/(app)/trails/page.tsx": {
+      "arbitraryTextSize": 9,
+      "subElevenFont": 1,
+      "activeScale": 1,
+      "strokeWidthLiteral": 4
+    },
+    "src/app/(app)/transit/page.tsx": {
+      "arbitraryTextSize": 18,
+      "strokeWidthLiteral": 11
+    },
+    "src/app/(app)/trust/page.tsx": {
+      "arbitraryTextSize": 19,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/admin/OwnerAlertsCard.tsx": {
+      "arbitraryTextSize": 3,
+      "uppercaseTracking": 1
+    },
+    "src/components/admin/SourceCoverageControlPlane.tsx": {
+      "arbitraryTextSize": 7,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1
+    },
+    "src/components/admin/SourceHealthLedger.tsx": {
+      "arbitraryTextSize": 2
+    },
+    "src/components/admin/kit.tsx": {
+      "arbitraryTextSize": 33,
+      "subElevenFont": 4,
+      "uppercaseTracking": 8,
+      "strokeWidthLiteral": 9
+    },
+    "src/components/amenities/NearbyEssentials.tsx": {
+      "arbitraryTextSize": 16,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 6
+    },
+    "src/components/archive/ArchiveDoorway.tsx": {
+      "arbitraryTextSize": 7,
+      "subElevenFont": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/archive/ArchiveLens.tsx": {
+      "arbitraryTextSize": 58,
+      "subElevenFont": 10,
+      "uppercaseTracking": 6
+    },
+    "src/components/archive/NearbyArchiveContext.tsx": {
+      "arbitraryTextSize": 7,
+      "subElevenFont": 3,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/ask/AskComposer.tsx": {
+      "arbitraryTextSize": 2,
+      "activeScale": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/ask/AskCorrectionControl.tsx": {
+      "arbitraryTextSize": 6,
+      "subElevenFont": 1,
+      "activeScale": 1
+    },
+    "src/components/ask/AskFrederick.tsx": {
+      "arbitraryTextSize": 65,
+      "subElevenFont": 21,
+      "uppercaseTracking": 6,
+      "activeScale": 10,
+      "strokeWidthLiteral": 7
+    },
+    "src/components/beer/BeerIndex.tsx": {
+      "arbitraryTextSize": 19,
+      "subElevenFont": 3,
+      "uppercaseTracking": 1,
+      "activeScale": 1,
+      "strokeWidthLiteral": 5
+    },
+    "src/components/beer/BeerMasthead.tsx": {
+      "arbitraryTextSize": 2
+    },
+    "src/components/beer/BeerMosaic.tsx": {
+      "arbitraryTextSize": 6,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1,
+      "activeScale": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/beer/BeerSheet.tsx": {
+      "arbitraryTextSize": 8,
+      "subElevenFont": 2,
+      "uppercaseTracking": 3,
+      "activeScale": 2,
+      "strokeWidthLiteral": 4
+    },
+    "src/components/beer/BeerSpinner.tsx": {
+      "arbitraryTextSize": 18,
+      "subElevenFont": 4,
+      "uppercaseTracking": 3,
+      "strokeWidthLiteral": 4
+    },
+    "src/components/beer/BeerTaproomEvents.tsx": {
+      "arbitraryTextSize": 17,
+      "subElevenFont": 6,
+      "uppercaseTracking": 3
+    },
+    "src/components/beer/BeerTasteFlight.tsx": {
+      "arbitraryTextSize": 18,
+      "subElevenFont": 9,
+      "uppercaseTracking": 2
+    },
+    "src/components/beer/BeerWorkspace.tsx": {
+      "arbitraryTextSize": 2
+    },
+    "src/components/beer/BreweryLogo.tsx": {
+      "arbitraryTextSize": 1
+    },
+    "src/components/beer/BreweryPhoto.tsx": {
+      "arbitraryTextSize": 4,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1
+    },
+    "src/components/beer/BreweryStrip.tsx": {
+      "arbitraryTextSize": 10,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/beer/MyTaps.tsx": {
+      "arbitraryTextSize": 7,
+      "subElevenFont": 4,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/beer/OnTapNow.tsx": {
+      "arbitraryTextSize": 10,
+      "subElevenFont": 3,
+      "uppercaseTracking": 2
+    },
+    "src/components/beer/TaproomMap.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1
+    },
+    "src/components/beta/BetaEmailField.tsx": {
+      "arbitraryTextSize": 6
+    },
+    "src/components/beta/CoverFlight.tsx": {
+      "arbitraryTextSize": 2,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1
+    },
+    "src/components/beta/GuideContents.tsx": {
+      "arbitraryTextSize": 11,
+      "subElevenFont": 1,
+      "uppercaseTracking": 3
+    },
+    "src/components/business/ListingConfirmationPanel.tsx": {
+      "arbitraryTextSize": 22,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/business/ManagePanel.tsx": {
+      "arbitraryTextSize": 4,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/cameras/TrafficCameraWall.tsx": {
+      "arbitraryTextSize": 13,
+      "subElevenFont": 5,
+      "uppercaseTracking": 2,
+      "activeScale": 1,
+      "strokeWidthLiteral": 5
+    },
+    "src/components/category/CategoryBriefing.tsx": {
+      "arbitraryTextSize": 1
+    },
+    "src/components/category/CategorySection.tsx": {
+      "arbitraryTextSize": 1
+    },
+    "src/components/category/CategoryView.tsx": {
+      "arbitraryTextSize": 6,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/contacts/ContactsDirectory.tsx": {
+      "arbitraryTextSize": 32,
+      "subElevenFont": 8,
+      "uppercaseTracking": 7,
+      "activeScale": 1,
+      "strokeWidthLiteral": 22
+    },
+    "src/components/deals/DealsBrowser.tsx": {
+      "arbitraryTextSize": 31,
+      "subElevenFont": 5,
+      "uppercaseTracking": 5,
+      "strokeWidthLiteral": 12
+    },
+    "src/components/event/DatePlate.tsx": {
+      "arbitraryTextSize": 4,
+      "subElevenFont": 3,
+      "uppercaseTracking": 1
+    },
+    "src/components/event/EventActions.tsx": {
+      "arbitraryTextSize": 1,
+      "activeScale": 2,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/event/EventAgenda.tsx": {
+      "arbitraryTextSize": 9,
+      "activeScale": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/event/EventCalendarButton.tsx": {
+      "strokeWidthLiteral": 1
+    },
+    "src/components/event/EventCard.tsx": {
+      "arbitraryTextSize": 23,
+      "subElevenFont": 5,
+      "uppercaseTracking": 5,
+      "activeScale": 4,
+      "strokeWidthLiteral": 6
+    },
+    "src/components/event/EventImageAttribution.tsx": {
+      "arbitraryTextSize": 1,
+      "subElevenFont": 1
+    },
+    "src/components/event/EventLookupRecovery.tsx": {
+      "arbitraryTextSize": 2,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/event/EventPosterCard.tsx": {
+      "arbitraryTextSize": 15,
+      "subElevenFont": 5,
+      "uppercaseTracking": 5
+    },
+    "src/components/event/EventSheet.tsx": {
+      "arbitraryTextSize": 22,
+      "subElevenFont": 1,
+      "uppercaseTracking": 3,
+      "strokeWidthLiteral": 7
+    },
+    "src/components/event/EventSmartPairings.tsx": {
+      "arbitraryTextSize": 6,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/event/EventSourceLink.tsx": {
+      "strokeWidthLiteral": 1
+    },
+    "src/components/event/EventVisualCredit.tsx": {
+      "arbitraryTextSize": 1,
+      "subElevenFont": 1
+    },
+    "src/components/event/EventWeekRibbon.tsx": {
+      "arbitraryTextSize": 3,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1,
+      "activeScale": 1
+    },
+    "src/components/event/EventsBoardDock.tsx": {
+      "arbitraryTextSize": 2,
+      "strokeWidthLiteral": 9
+    },
+    "src/components/event/EventsExplorer.tsx": {
+      "arbitraryTextSize": 19,
+      "subElevenFont": 1,
+      "activeScale": 2,
+      "strokeWidthLiteral": 7
+    },
+    "src/components/event/EventsIntentRail.tsx": {
+      "arbitraryTextSize": 3,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/event/EventsMapInner.tsx": {
+      "arbitraryTextSize": 3,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/event/GettingThere.tsx": {
+      "arbitraryTextSize": 4
+    },
+    "src/components/event/MonthGrid.tsx": {
+      "arbitraryTextSize": 4,
+      "subElevenFont": 1,
+      "uppercaseTracking": 2,
+      "activeScale": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/event/SeriesCard.tsx": {
+      "arbitraryTextSize": 8,
+      "subElevenFont": 4,
+      "uppercaseTracking": 3,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/event/SpotlightHero.tsx": {
+      "arbitraryTextSize": 6,
+      "subElevenFont": 5,
+      "uppercaseTracking": 4,
+      "activeScale": 3,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/fair/FairArrivalStatus.tsx": {
+      "arbitraryTextSize": 24,
+      "uppercaseTracking": 4
+    },
+    "src/components/fair/FairBoothExplorer.module.css": {
+      "strokeWidthLiteral": 7
+    },
+    "src/components/fair/FairCarMemoryPanel.tsx": {
+      "arbitraryTextSize": 18,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1
+    },
+    "src/components/fair/FairDayWorkspace.tsx": {
+      "arbitraryTextSize": 149,
+      "subElevenFont": 12,
+      "uppercaseTracking": 21,
+      "activeScale": 8,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/fair/FairDiscoveryChoices.tsx": {
+      "arbitraryTextSize": 5,
+      "uppercaseTracking": 2,
+      "activeScale": 1
+    },
+    "src/components/fair/FairGrandstandSpotlight.tsx": {
+      "arbitraryTextSize": 8,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1,
+      "activeScale": 2
+    },
+    "src/components/fair/FairGroundsMapInner.tsx": {
+      "arbitraryTextSize": 98,
+      "subElevenFont": 4,
+      "uppercaseTracking": 14,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/fair/FairGroundsMapMasthead.tsx": {
+      "arbitraryTextSize": 5,
+      "uppercaseTracking": 1
+    },
+    "src/components/fair/FairKeepGuide.tsx": {
+      "arbitraryTextSize": 8
+    },
+    "src/components/fair/FairLiveTransit.tsx": {
+      "arbitraryTextSize": 4
+    },
+    "src/components/fair/FairMapActionBar.tsx": {
+      "arbitraryTextSize": 1
+    },
+    "src/components/fair/FairMapExperience.tsx": {
+      "arbitraryTextSize": 10
+    },
+    "src/components/fair/FairPartyPlanner.tsx": {
+      "arbitraryTextSize": 16,
+      "uppercaseTracking": 1
+    },
+    "src/components/fair/FairPhotoExplorer.tsx": {
+      "arbitraryTextSize": 14,
+      "subElevenFont": 3,
+      "uppercaseTracking": 4
+    },
+    "src/components/fair/FairPhotoMap.tsx": {
+      "arbitraryTextSize": 2,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 5
+    },
+    "src/components/fair/FairPlanStatusRibbon.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1
+    },
+    "src/components/fair/FairPracticalAnswers.tsx": {
+      "arbitraryTextSize": 18,
+      "uppercaseTracking": 1
+    },
+    "src/components/fair/FairQuest.tsx": {
+      "arbitraryTextSize": 5,
+      "activeScale": 1
+    },
+    "src/components/fair/FairShareButton.tsx": {
+      "arbitraryTextSize": 1,
+      "activeScale": 1
+    },
+    "src/components/fair/FairTravelPanel.tsx": {
+      "arbitraryTextSize": 18,
+      "uppercaseTracking": 2
+    },
+    "src/components/fair/FairUpNext.tsx": {
+      "arbitraryTextSize": 4,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "activeScale": 1
+    },
+    "src/components/fair/FairVendorExplorer.tsx": {
+      "arbitraryTextSize": 31,
+      "uppercaseTracking": 4
+    },
+    "src/components/fair/FairWeatherWidget.tsx": {
+      "arbitraryTextSize": 4,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1
+    },
+    "src/components/feedback/FeedbackLink.tsx": {
+      "arbitraryTextSize": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/feedback/FeedbackWidget.tsx": {
+      "arbitraryTextSize": 12,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/food-trucks/FoodTruckBoard.tsx": {
+      "arbitraryTextSize": 26,
+      "subElevenFont": 4,
+      "uppercaseTracking": 4,
+      "strokeWidthLiteral": 4
+    },
+    "src/components/food-trucks/FoodTruckJourneys.tsx": {
+      "strokeWidthLiteral": 1
+    },
+    "src/components/food-trucks/FoodTruckNearMe.tsx": {
+      "arbitraryTextSize": 24,
+      "subElevenFont": 6,
+      "uppercaseTracking": 3,
+      "strokeWidthLiteral": 9
+    },
+    "src/components/food-trucks/TruckHomeStatus.tsx": {
+      "arbitraryTextSize": 2,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/food-trucks/TruckLiveStatus.tsx": {
+      "arbitraryTextSize": 4,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/from-above/AerialTimeMachine.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 1
+    },
+    "src/components/from-above/AerialTimeMachineClient.tsx": {
+      "arbitraryTextSize": 5
+    },
+    "src/components/from-above/ExitChip.tsx": {
+      "arbitraryTextSize": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/glyphs/index.tsx": {
+      "strokeWidthLiteral": 2
+    },
+    "src/components/happy/HappyHourBrowser.tsx": {
+      "arbitraryTextSize": 13,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/happy/HappyHourGuide.tsx": {
+      "arbitraryTextSize": 29,
+      "subElevenFont": 3,
+      "uppercaseTracking": 8,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/history/HistoryTimeline.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 3,
+      "uppercaseTracking": 2
+    },
+    "src/components/icons/RestroomMark.tsx": {
+      "strokeWidthLiteral": 2
+    },
+    "src/components/in-the-streets/InTheStreetsTimelineCard.tsx": {
+      "activeScale": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/in-the-streets/InTheStreetsWorkspace.tsx": {
+      "arbitraryTextSize": 5,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/live-data/FloodGauge.tsx": {
+      "arbitraryTextSize": 1,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1
+    },
+    "src/components/live-data/MetricCard.tsx": {
+      "arbitraryTextSize": 7,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2,
+      "activeScale": 1
+    },
+    "src/components/live-data/Sparkline.tsx": {
+      "strokeWidthLiteral": 2
+    },
+    "src/components/map/AppMap.tsx": {
+      "arbitraryTextSize": 6,
+      "subElevenFont": 3,
+      "uppercaseTracking": 3,
+      "activeScale": 1,
+      "strokeWidthLiteral": 7
+    },
+    "src/components/map/AppMapDeck.tsx": {
+      "arbitraryTextSize": 1,
+      "activeScale": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/map/AppMapSelectionSurfaces.tsx": {
+      "arbitraryTextSize": 8,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/map/CityMobilityOverlay.tsx": {
+      "subElevenFont": 4,
+      "uppercaseTracking": 1
+    },
+    "src/components/map/FloodContext.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/map/LiveBuses.tsx": {
+      "arbitraryTextSize": 2,
+      "subElevenFont": 5,
+      "uppercaseTracking": 1,
+      "activeScale": 2,
+      "strokeWidthLiteral": 5
+    },
+    "src/components/map/LiveIncidents.tsx": {
+      "arbitraryTextSize": 4,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/map/LiveMarcTrains.tsx": {
+      "strokeWidthLiteral": 2
+    },
+    "src/components/map/LiveRotorcraft.tsx": {
+      "arbitraryTextSize": 11,
+      "subElevenFont": 7,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/map/MapDiscoveryPeek.tsx": {
+      "strokeWidthLiteral": 4
+    },
+    "src/components/map/MapDock.tsx": {
+      "arbitraryTextSize": 2,
+      "strokeWidthLiteral": 50
+    },
+    "src/components/map/MapEdgeTools.tsx": {
+      "strokeWidthLiteral": 6
+    },
+    "src/components/map/MapEntityPeek.tsx": {
+      "strokeWidthLiteral": 13
+    },
+    "src/components/map/MapFoodTruckPeek.tsx": {
+      "arbitraryTextSize": 3,
+      "strokeWidthLiteral": 5
+    },
+    "src/components/map/MapInViewPlacesDisclosure.tsx": {
+      "arbitraryTextSize": 7,
+      "subElevenFont": 2,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/map/MapList.tsx": {
+      "arbitraryTextSize": 2,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/map/MapLoadingScene.module.css": {
+      "subElevenFont": 2,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 6
+    },
+    "src/components/map/MapOverlays.tsx": {
+      "subElevenFont": 9,
+      "uppercaseTracking": 1
+    },
+    "src/components/map/MapParkingPeek.tsx": {
+      "strokeWidthLiteral": 2
+    },
+    "src/components/map/MapPeek.tsx": {
+      "strokeWidthLiteral": 7
+    },
+    "src/components/map/MapResultSurface.tsx": {
+      "strokeWidthLiteral": 1
+    },
+    "src/components/map/MapSpotPeek.tsx": {
+      "arbitraryTextSize": 1,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/map/OwnedMiniMap.tsx": {
+      "arbitraryTextSize": 1,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/map/RoadWorkZones.tsx": {
+      "arbitraryTextSize": 7,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/map/SnowRoutes.tsx": {
+      "arbitraryTextSize": 6,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/map/StaticMapPreview.tsx": {
+      "strokeWidthLiteral": 1
+    },
+    "src/components/map/TimeScrubber.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 5
+    },
+    "src/components/map/TrafficCameras.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/map/popups.tsx": {
+      "subElevenFont": 17,
+      "uppercaseTracking": 10,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/markers/MarkersExplorer.tsx": {
+      "arbitraryTextSize": 14,
+      "subElevenFont": 4,
+      "uppercaseTracking": 3,
+      "strokeWidthLiteral": 4
+    },
+    "src/components/marketing/MasterSceneManager.tsx": {
+      "activeScale": 2
+    },
+    "src/components/marketing/scenes/Scene01_CinematicReveal.tsx": {
+      "uppercaseTracking": 1
+    },
+    "src/components/marketing/scenes/Scene02_InteractiveMap.tsx": {
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/marketing/scenes/Scene03_NoiseToSignal.tsx": {
+      "arbitraryTextSize": 1,
+      "subElevenFont": 1
+    },
+    "src/components/marketing/scenes/Scene05_DataStory.tsx": {
+      "uppercaseTracking": 4
+    },
+    "src/components/marketing/scenes/Scene06_CommercialIntegration.tsx": {
+      "uppercaseTracking": 3
+    },
+    "src/components/marketing/scenes/Scene07_Ecosystem.tsx": {
+      "uppercaseTracking": 2
+    },
+    "src/components/marketing/scenes/Scene08_RadiusCoin.tsx": {
+      "uppercaseTracking": 3,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/marketing/scenes/Scene09_CivicHub.tsx": {
+      "uppercaseTracking": 3
+    },
+    "src/components/marketing/scenes/Scene10_Vision.tsx": {
+      "uppercaseTracking": 2
+    },
+    "src/components/municipality/CivicCard.tsx": {
+      "arbitraryTextSize": 13,
+      "subElevenFont": 4,
+      "uppercaseTracking": 3,
+      "strokeWidthLiteral": 7
+    },
+    "src/components/municipality/LivingHere.tsx": {
+      "arbitraryTextSize": 4,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1
+    },
+    "src/components/municipality/StayDeepLinks.tsx": {
+      "arbitraryTextSize": 7,
+      "uppercaseTracking": 1,
+      "activeScale": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/municipality/TownAlmanac.tsx": {
+      "arbitraryTextSize": 11,
+      "subElevenFont": 4,
+      "uppercaseTracking": 4
+    },
+    "src/components/municipality/TownLinks.tsx": {
+      "arbitraryTextSize": 3,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/municipality/TownStrip.tsx": {
+      "arbitraryTextSize": 1,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1
+    },
+    "src/components/nav/AppFooter.tsx": {
+      "arbitraryTextSize": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/nav/BottomNav.tsx": {
+      "arbitraryTextSize": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/nav/CompassHub.tsx": {
+      "arbitraryTextSize": 34,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2,
+      "activeScale": 1,
+      "strokeWidthLiteral": 19
+    },
+    "src/components/nav/LocationChip.tsx": {
+      "arbitraryTextSize": 10,
+      "activeScale": 1,
+      "strokeWidthLiteral": 13
+    },
+    "src/components/nav/NavChrome.module.css": {
+      "activeScale": 2
+    },
+    "src/components/nav/PulseIndicator.tsx": {
+      "arbitraryTextSize": 3,
+      "subElevenFont": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/nav/ScopeBar.tsx": {
+      "arbitraryTextSize": 2,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/nav/SideRail.tsx": {
+      "arbitraryTextSize": 1,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/nav/ToolDeckDialog.tsx": {
+      "arbitraryTextSize": 2,
+      "activeScale": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/nav/TopBar.tsx": {
+      "arbitraryTextSize": 8,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1,
+      "activeScale": 2,
+      "strokeWidthLiteral": 6
+    },
+    "src/components/nonprofits/NonprofitList.tsx": {
+      "arbitraryTextSize": 7,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/now/RightNow.tsx": {
+      "arbitraryTextSize": 22,
+      "subElevenFont": 1,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 5
+    },
+    "src/components/now/WantAnswerPanel.tsx": {
+      "arbitraryTextSize": 32,
+      "subElevenFont": 5,
+      "uppercaseTracking": 4,
+      "strokeWidthLiteral": 6
+    },
+    "src/components/now/WantsAccordion.tsx": {
+      "arbitraryTextSize": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/overhead/OverheadMap.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/overhead/PlanesOverhead.tsx": {
+      "arbitraryTextSize": 10,
+      "subElevenFont": 3,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/place/AerialBeat.tsx": {
+      "arbitraryTextSize": 3,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1
+    },
+    "src/components/place/BeenHereToggle.tsx": {
+      "strokeWidthLiteral": 3
+    },
+    "src/components/place/BusinessExtrasCard.tsx": {
+      "arbitraryTextSize": 4,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 5
+    },
+    "src/components/place/CategoryIcon.tsx": {
+      "strokeWidthLiteral": 1
+    },
+    "src/components/place/CommerceActions.tsx": {
+      "arbitraryTextSize": 3,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/place/CourseInfoStrip.tsx": {
+      "arbitraryTextSize": 2
+    },
+    "src/components/place/FieldNoteTag.tsx": {
+      "arbitraryTextSize": 4,
+      "subElevenFont": 4,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/place/FieldNotesCard.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/place/GoogleHours.tsx": {
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/place/GooglePlaceContext.tsx": {
+      "arbitraryTextSize": 1,
+      "uppercaseTracking": 1
+    },
+    "src/components/place/HoursBlock.tsx": {
+      "arbitraryTextSize": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/place/KnownForCard.tsx": {
+      "arbitraryTextSize": 5,
+      "uppercaseTracking": 3,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/place/MapReturnLink.tsx": {
+      "arbitraryTextSize": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/place/MyRadiusButton.tsx": {
+      "arbitraryTextSize": 3,
+      "activeScale": 2,
+      "strokeWidthLiteral": 6
+    },
+    "src/components/place/PlaceAmenityIcons.tsx": {
+      "arbitraryTextSize": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/place/PlaceAudienceTags.tsx": {
+      "arbitraryTextSize": 1
+    },
+    "src/components/place/PlaceCard.tsx": {
+      "arbitraryTextSize": 23,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 5
+    },
+    "src/components/place/PlaceCommunicationAccess.tsx": {
+      "arbitraryTextSize": 4,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/place/PlaceHero.tsx": {
+      "arbitraryTextSize": 2,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/place/PlaceIndex.tsx": {
+      "arbitraryTextSize": 9,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/place/PlaceList.tsx": {
+      "arbitraryTextSize": 2,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/place/PlaceListsCard.tsx": {
+      "arbitraryTextSize": 6,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 4
+    },
+    "src/components/place/PlaceMarginTools.tsx": {
+      "arbitraryTextSize": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/place/PlaceMedallion.tsx": {
+      "strokeWidthLiteral": 1
+    },
+    "src/components/place/PlaceNoteCard.tsx": {
+      "arbitraryTextSize": 7,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 6
+    },
+    "src/components/place/PlacePhoto.tsx": {
+      "arbitraryTextSize": 1
+    },
+    "src/components/place/PlacePhotoGallery.tsx": {
+      "activeScale": 1
+    },
+    "src/components/place/PlaceSheet.tsx": {
+      "arbitraryTextSize": 17,
+      "subElevenFont": 4,
+      "uppercaseTracking": 3,
+      "activeScale": 1,
+      "strokeWidthLiteral": 10
+    },
+    "src/components/place/PlaceStatus.tsx": {
+      "arbitraryTextSize": 1
+    },
+    "src/components/place/PlaceVisitDetailsCard.tsx": {
+      "arbitraryTextSize": 1,
+      "subElevenFont": 1
+    },
+    "src/components/place/ReportLinkButton.tsx": {
+      "arbitraryTextSize": 8,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/place/ShareButton.tsx": {
+      "activeScale": 1
+    },
+    "src/components/place/SourceBadge.tsx": {
+      "arbitraryTextSize": 2,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/places/NearbyContext.tsx": {
+      "arbitraryTextSize": 4
+    },
+    "src/components/plan/PlanBuilder.tsx": {
+      "arbitraryTextSize": 60,
+      "subElevenFont": 1,
+      "activeScale": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/plan/PlanFromPlaceLink.tsx": {
+      "arbitraryTextSize": 1
+    },
+    "src/components/privacy/AnalyticsOptOut.tsx": {
+      "arbitraryTextSize": 3
+    },
+    "src/components/proto/BigType.tsx": {
+      "arbitraryTextSize": 7,
+      "subElevenFont": 1,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/proto/FolderTabs.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 1,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/proto/ProtoFrame.tsx": {
+      "arbitraryTextSize": 4,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1
+    },
+    "src/components/proto/TimeLens.tsx": {
+      "arbitraryTextSize": 10,
+      "subElevenFont": 2,
+      "uppercaseTracking": 3
+    },
+    "src/components/proto/TodayBlock.tsx": {
+      "arbitraryTextSize": 4,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/proto/WeekFolders.tsx": {
+      "arbitraryTextSize": 8,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/pulse/BusesReveal.tsx": {
+      "arbitraryTextSize": 6,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1,
+      "activeScale": 2,
+      "strokeWidthLiteral": 5
+    },
+    "src/components/pulse/CivicPress.tsx": {
+      "arbitraryTextSize": 10,
+      "subElevenFont": 4,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 5
+    },
+    "src/components/pulse/PulseBoard.module.css": {
+      "uppercaseTracking": 1
+    },
+    "src/components/pulse/PulseBoard.tsx": {
+      "arbitraryTextSize": 3,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 10
+    },
+    "src/components/pulse/PulseFreshness.tsx": {
+      "arbitraryTextSize": 3,
+      "subElevenFont": 2
+    },
+    "src/components/pulse/PulseWeatherPanel.tsx": {
+      "arbitraryTextSize": 14,
+      "subElevenFont": 6,
+      "uppercaseTracking": 7,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/pulse/ScannerTimeline.tsx": {
+      "arbitraryTextSize": 14,
+      "subElevenFont": 5,
+      "uppercaseTracking": 3,
+      "activeScale": 2,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/pwa/InstallPrompt.tsx": {
+      "arbitraryTextSize": 6,
+      "activeScale": 1,
+      "strokeWidthLiteral": 4
+    },
+    "src/components/pwa/KeepRadiusCard.tsx": {
+      "arbitraryTextSize": 3,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/radius/RadiusBuilder.tsx": {
+      "arbitraryTextSize": 40,
+      "subElevenFont": 5,
+      "uppercaseTracking": 3,
+      "activeScale": 6,
+      "strokeWidthLiteral": 17
+    },
+    "src/components/radius/RadiusMap.tsx": {
+      "arbitraryTextSize": 7,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1,
+      "activeScale": 5,
+      "strokeWidthLiteral": 6
+    },
+    "src/components/radius/RadiusPresets.tsx": {
+      "arbitraryTextSize": 3,
+      "uppercaseTracking": 1,
+      "activeScale": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/radius/WithinReach.tsx": {
+      "arbitraryTextSize": 3,
+      "subElevenFont": 1,
+      "activeScale": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/rhythm/RhythmField.tsx": {
+      "arbitraryTextSize": 10,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2
+    },
+    "src/components/saved/Passport.tsx": {
+      "arbitraryTextSize": 6,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 26
+    },
+    "src/components/saved/SaveButton.tsx": {
+      "arbitraryTextSize": 2,
+      "activeScale": 2,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/saved/SavedEventWallet.tsx": {
+      "strokeWidthLiteral": 4
+    },
+    "src/components/saved/SavedList.tsx": {
+      "arbitraryTextSize": 33,
+      "subElevenFont": 2,
+      "uppercaseTracking": 6,
+      "strokeWidthLiteral": 10
+    },
+    "src/components/saved/SavedTransitSection.tsx": {
+      "arbitraryTextSize": 19,
+      "subElevenFont": 5,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 9
+    },
+    "src/components/saved/SavedWallet.tsx": {
+      "strokeWidthLiteral": 3
+    },
+    "src/components/saved/SharedRadiusView.tsx": {
+      "arbitraryTextSize": 11,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 4
+    },
+    "src/components/scanner/ScannerBoard.tsx": {
+      "arbitraryTextSize": 13,
+      "subElevenFont": 3,
+      "uppercaseTracking": 4,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/scanner/ScannerPatterns.tsx": {
+      "arbitraryTextSize": 15,
+      "subElevenFont": 2,
+      "uppercaseTracking": 5,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/search/SearchInput.tsx": {
+      "arbitraryTextSize": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/search/SearchOverlay.tsx": {
+      "arbitraryTextSize": 28,
+      "subElevenFont": 10,
+      "uppercaseTracking": 7,
+      "activeScale": 6,
+      "strokeWidthLiteral": 21
+    },
+    "src/components/search/SearchRefinements.tsx": {
+      "arbitraryTextSize": 3,
+      "uppercaseTracking": 1,
+      "activeScale": 1
+    },
+    "src/components/settings/DataBackup.tsx": {
+      "arbitraryTextSize": 7,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 4
+    },
+    "src/components/settings/NotificationsCard.tsx": {
+      "arbitraryTextSize": 32,
+      "subElevenFont": 1,
+      "activeScale": 2,
+      "strokeWidthLiteral": 6
+    },
+    "src/components/settings/PreferencesPanel.tsx": {
+      "arbitraryTextSize": 19,
+      "uppercaseTracking": 2,
+      "activeScale": 5,
+      "strokeWidthLiteral": 9
+    },
+    "src/components/settings/SignOutButton.tsx": {
+      "arbitraryTextSize": 5,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/settings/SyncStatus.tsx": {
+      "arbitraryTextSize": 6
+    },
+    "src/components/shipping/ShippingGuide.tsx": {
+      "arbitraryTextSize": 12,
+      "subElevenFont": 4,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 5
+    },
+    "src/components/signals/CivicSignalCard.tsx": {
+      "arbitraryTextSize": 22,
+      "subElevenFont": 4,
+      "uppercaseTracking": 3,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/signals/SourceReadiness.tsx": {
+      "arbitraryTextSize": 11,
+      "subElevenFont": 4,
+      "uppercaseTracking": 3,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/sports/KeysHomeGames.tsx": {
+      "arbitraryTextSize": 6,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2
+    },
+    "src/components/sports/LocalSportsSchedule.tsx": {
+      "arbitraryTextSize": 14,
+      "subElevenFont": 4,
+      "uppercaseTracking": 3
+    },
+    "src/components/submit/SubmitEventForm.tsx": {
+      "arbitraryTextSize": 7,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/submit/SubmitPlaceForm.tsx": {
+      "arbitraryTextSize": 9,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/today/AnimatedSkyGlyph.tsx": {
+      "strokeWidthLiteral": 10
+    },
+    "src/components/today/BrowsePlacesDisclosure.tsx": {
+      "arbitraryTextSize": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/today/CivicAlerts.tsx": {
+      "arbitraryTextSize": 13,
+      "subElevenFont": 3,
+      "uppercaseTracking": 3,
+      "activeScale": 2,
+      "strokeWidthLiteral": 4
+    },
+    "src/components/today/CommunityNotes.tsx": {
+      "arbitraryTextSize": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/today/CreekWatch.tsx": {
+      "arbitraryTextSize": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/today/DaypartNeeds.tsx": {
+      "arbitraryTextSize": 16,
+      "uppercaseTracking": 2,
+      "activeScale": 4,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/today/EventWalkTime.tsx": {
+      "arbitraryTextSize": 1,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/today/FcpsBeat.tsx": {
+      "arbitraryTextSize": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/today/FreshnessGuard.tsx": {
+      "arbitraryTextSize": 3,
+      "activeScale": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/today/FromYourSaved.tsx": {
+      "arbitraryTextSize": 1
+    },
+    "src/components/today/GoldenHourCard.tsx": {
+      "arbitraryTextSize": 5,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/today/HappyHourWallet.tsx": {
+      "arbitraryTextSize": 15,
+      "uppercaseTracking": 6,
+      "strokeWidthLiteral": 5
+    },
+    "src/components/today/HolidayNote.tsx": {
+      "arbitraryTextSize": 3,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/today/KeysCard.tsx": {
+      "arbitraryTextSize": 8,
+      "subElevenFont": 4,
+      "uppercaseTracking": 5,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/today/KeysScore.tsx": {
+      "arbitraryTextSize": 14,
+      "uppercaseTracking": 7,
+      "activeScale": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/today/LocalSportsScoreboard.tsx": {
+      "arbitraryTextSize": 7,
+      "uppercaseTracking": 1
+    },
+    "src/components/today/MajorEventTakeover.tsx": {
+      "arbitraryTextSize": 3,
+      "uppercaseTracking": 1,
+      "activeScale": 1
+    },
+    "src/components/today/MarketsTodayBeat.tsx": {
+      "arbitraryTextSize": 2,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/today/MomentSpotlight.tsx": {
+      "arbitraryTextSize": 20,
+      "subElevenFont": 4,
+      "uppercaseTracking": 5,
+      "strokeWidthLiteral": 9
+    },
+    "src/components/today/MunicipalityStrip.tsx": {
+      "arbitraryTextSize": 4,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/today/PhotoMosaic.tsx": {
+      "arbitraryTextSize": 1,
+      "subElevenFont": 1
+    },
+    "src/components/today/PoolsToday.tsx": {
+      "arbitraryTextSize": 3,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/today/PullToRefresh.tsx": {
+      "strokeWidthLiteral": 1
+    },
+    "src/components/today/SeasonalBeat.tsx": {
+      "arbitraryTextSize": 2,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/today/SkyHero.tsx": {
+      "strokeWidthLiteral": 1
+    },
+    "src/components/today/TodayAsk.tsx": {
+      "strokeWidthLiteral": 6
+    },
+    "src/components/today/TodayCard.tsx": {
+      "arbitraryTextSize": 8
+    },
+    "src/components/today/TodayEventsRecovery.tsx": {
+      "arbitraryTextSize": 4,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/today/TodayFairFeature.tsx": {
+      "arbitraryTextSize": 10,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/today/TodayLocalGuides.tsx": {
+      "arbitraryTextSize": 2,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/today/TodayPlanTonightLink.tsx": {
+      "arbitraryTextSize": 1
+    },
+    "src/components/today/TodayScopeStatus.tsx": {
+      "arbitraryTextSize": 5,
+      "activeScale": 1
+    },
+    "src/components/today/TodaySectionHeading.tsx": {
+      "arbitraryTextSize": 4,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/today/TodaysDealsStack.tsx": {
+      "arbitraryTextSize": 7,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/today/TomorrowPreview.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/today/TonightExperience.module.css": {
+      "uppercaseTracking": 1
+    },
+    "src/components/today/TonightExperience.tsx": {
+      "strokeWidthLiteral": 4
+    },
+    "src/components/today/TonightHeadline.tsx": {
+      "arbitraryTextSize": 4,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/today/TonightParkingPlan.tsx": {
+      "arbitraryTextSize": 2,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/today/TonightWeather.tsx": {
+      "arbitraryTextSize": 2
+    },
+    "src/components/today/WeekendPreview.tsx": {
+      "arbitraryTextSize": 2,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/town/TownPicker.tsx": {
+      "arbitraryTextSize": 7,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/trails/TrailsMap.tsx": {
+      "arbitraryTextSize": 5,
+      "subElevenFont": 2
+    },
+    "src/components/transit/NextStopsBoard.tsx": {
+      "arbitraryTextSize": 14,
+      "subElevenFont": 4,
+      "uppercaseTracking": 1
+    },
+    "src/components/transit/NextTrainBoard.tsx": {
+      "arbitraryTextSize": 13,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/transit/RoutePearls.tsx": {
+      "arbitraryTextSize": 9,
+      "subElevenFont": 6,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/transit/StopArrivalsPopup.tsx": {
+      "subElevenFont": 4,
+      "uppercaseTracking": 1
+    },
+    "src/components/transit/TransitMap.tsx": {
+      "arbitraryTextSize": 7,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 2
+    },
+    "src/components/transit/TransitMapClient.tsx": {
+      "arbitraryTextSize": 1
+    },
+    "src/components/transit/TransitNow.tsx": {
+      "arbitraryTextSize": 29,
+      "subElevenFont": 2,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 6
+    },
+    "src/components/transit/TransitRouteFinder.tsx": {
+      "arbitraryTextSize": 9,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 6
+    },
+    "src/components/transit/TransitServiceAlerts.tsx": {
+      "arbitraryTextSize": 10,
+      "subElevenFont": 3,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 7
+    },
+    "src/components/transit/TransitStopFinder.tsx": {
+      "arbitraryTextSize": 45,
+      "subElevenFont": 15,
+      "uppercaseTracking": 2,
+      "strokeWidthLiteral": 17
+    },
+    "src/components/trust/CostTransparency.tsx": {
+      "arbitraryTextSize": 8,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/ui/BottomDrawer.tsx": {
+      "arbitraryTextSize": 2,
+      "activeScale": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/ui/BottomSheet.tsx": {
+      "arbitraryTextSize": 1,
+      "activeScale": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/ui/Button.tsx": {
+      "arbitraryTextSize": 3,
+      "activeScale": 1
+    },
+    "src/components/ui/Chip.tsx": {
+      "arbitraryTextSize": 1,
+      "subElevenFont": 1
+    },
+    "src/components/ui/CollapsibleSection.tsx": {
+      "arbitraryTextSize": 1,
+      "subElevenFont": 1,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/ui/DecorativeDivider.tsx": {
+      "arbitraryTextSize": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/ui/EmptyState.tsx": {
+      "arbitraryTextSize": 4,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/ui/ErrorBoundary.tsx": {
+      "strokeWidthLiteral": 1
+    },
+    "src/components/ui/FieldStamp.tsx": {
+      "subElevenFont": 2,
+      "strokeWidthLiteral": 6
+    },
+    "src/components/ui/FreshnessChip.tsx": {
+      "arbitraryTextSize": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/ui/IconStamp.tsx": {
+      "strokeWidthLiteral": 1
+    },
+    "src/components/ui/LazySheetFallback.tsx": {
+      "arbitraryTextSize": 1
+    },
+    "src/components/ui/MobileActionBar.tsx": {
+      "arbitraryTextSize": 2,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/ui/PhotoLightbox.tsx": {
+      "arbitraryTextSize": 1,
+      "activeScale": 3,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/ui/Pill.tsx": {
+      "arbitraryTextSize": 3,
+      "subElevenFont": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/ui/ReasonChip.tsx": {
+      "arbitraryTextSize": 1,
+      "subElevenFont": 1
+    },
+    "src/components/ui/Row.tsx": {
+      "arbitraryTextSize": 3,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/ui/SectionHeading.tsx": {
+      "arbitraryTextSize": 3,
+      "activeScale": 1,
+      "strokeWidthLiteral": 1
+    },
+    "src/components/ui/Sheet.tsx": {
+      "arbitraryTextSize": 2
+    },
+    "src/components/ui/SlowSuspenseFallback.tsx": {
+      "arbitraryTextSize": 3
+    },
+    "src/components/ui/SortDropdown.tsx": {
+      "arbitraryTextSize": 3,
+      "activeScale": 1,
+      "strokeWidthLiteral": 3
+    },
+    "src/components/ui/TrustChip.tsx": {
+      "arbitraryTextSize": 2
+    },
+    "src/components/welcome/WelcomeFlow.tsx": {
+      "arbitraryTextSize": 11,
+      "activeScale": 3,
+      "strokeWidthLiteral": 10
+    },
+    "src/components/wlr/WlrRoadReady.tsx": {
+      "arbitraryTextSize": 43,
+      "subElevenFont": 7,
+      "uppercaseTracking": 8,
+      "strokeWidthLiteral": 9
+    }
+  }
+}

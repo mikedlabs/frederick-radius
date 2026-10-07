@@ -44,3 +44,21 @@ Once references for the current platform exist, compare them with:
 ```sh
 npm run test:visual:compare
 ```
+
+## Type-scale ratchet
+
+Screenshots catch a surface that changes. The type-scale ratchet catches a
+source change that adds hand-sized type before anyone takes a screenshot. It
+runs in the style workflow and needs no browser:
+
+```sh
+npm run lint:type-scale
+```
+
+`scripts/check-type-scale.mjs` counts, per file under `src/app/(app)` and
+`src/components`, bracketed Tailwind text sizes, any font size below the 11 px
+caption, uppercase text with added letter spacing, press-scale literals, and
+numeric stroke widths. The check fails when a file's count rises above
+`scripts/type-scale-baseline.json`. Counts may fall freely. Lock a reduction in
+with `npm run lint:type-scale -- --write`, and review the baseline diff before
+committing it, because any number that rose there is new debt.
