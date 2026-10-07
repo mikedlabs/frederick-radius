@@ -20,3 +20,47 @@ describe("place page trust line", () => {
     expect(source).toContain("formatTrustDate(place.hours_updated_at)");
   });
 });
+
+describe("place page visual first", () => {
+  it("hands the hero the place's block instead of a category pill", () => {
+    expect(source).toContain("map={heroMap}");
+    expect(source).toContain("placeHeroMap(place)");
+    expect(source).not.toMatch(/<PlaceHero[^>]*category=/);
+  });
+
+  it("prints the Google rating with its attribution on the identity line", () => {
+    expect(source).toContain("googleRatingSummary(place.google_rating, place.google_rating_count)");
+    expect(source).toContain('<span translate="no">Google Maps</span>');
+  });
+
+  it("orders Location as address, landmark, parking, then one map row", () => {
+    const location = source.slice(
+      source.indexOf('id="place-location-heading"'),
+      source.indexOf("</section>", source.indexOf('id="place-location-heading"')),
+    );
+    const order = [
+      "<CopyAddressButton",
+      "data-place-landmark",
+      "data-place-parking",
+      "Open on the Radius map",
+    ].map((marker) => location.indexOf(marker));
+    expect(order.every((index) => index > 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    // The block is the hero now; Location does not draw a second mini map.
+    expect(location).not.toContain("<PlaceMiniMap");
+    expect(location).not.toContain("<AerialBeat");
+    expect(source).toContain("<FieldNotesCard slug={place.slug} omitParking />");
+  });
+
+  it("places the aerial after Nearby and gates it on the municipality", () => {
+    expect(source).toContain(
+      "<AerialBeat lat={place.geom.lat} lng={place.geom.lng} municipality={place.municipality} />",
+    );
+    expect(source.indexOf("<AerialBeat")).toBeGreaterThan(source.indexOf(">Nearby</h2>"));
+    expect(source).not.toContain("label={place.city");
+  });
+
+  it("adds house beers for the guided breweries", () => {
+    expect(source).toContain("<HouseBeersSection slug={place.slug} />");
+  });
+});

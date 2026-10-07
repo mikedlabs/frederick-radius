@@ -133,11 +133,20 @@ export function fieldNotesVerificationLine(
   return `${summary.undated} of ${summary.total} notes ${summary.undated === 1 ? "has" : "have"} no recorded verification date.`;
 }
 
-export default function FieldNotesCard({ slug }: { slug: string }) {
-  const fn = fieldNotesFor(slug);
+export default function FieldNotesCard({
+  slug,
+  omitParking = false,
+}: {
+  slug: string;
+  /** The place page prints the parking note in its Location section. */
+  omitParking?: boolean;
+}) {
+  const stored = fieldNotesFor(slug);
+  const fn = stored && omitParking ? { ...stored, parking: undefined } : stored;
   if (!fn) return null;
 
   const all = fieldNoteSources(fn);
+  if (all.length === 0) return null;
   const verification = fieldNotesVerificationSummary(all);
   // Lead with visit decisions. Event-like deals and extra local color remain
   // one tap away, so a rich record does not turn the place page into a wall.

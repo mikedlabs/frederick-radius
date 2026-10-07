@@ -192,15 +192,23 @@ test("Place field notes lead with visit decisions and disclose the rest", async 
   const primaryRows = notes.locator(":scope > ul").first().locator(":scope > li");
   await expect(primaryRows).toHaveCount(2);
   await expect(primaryRows.nth(0)).toContainText("Happy hour");
-  await expect(primaryRows.nth(1)).toContainText("Park");
-  await expect(notes.getByText(/Open mic night every Monday/)).toBeHidden();
+  await expect(primaryRows.nth(1)).toContainText("Open mic night every Monday");
+  await expect(notes.getByText(/Karaoke on Wednesdays/)).toBeHidden();
   await expect(notes.getByRole("link", { name: "cafe-nola.com" }).first()).toBeVisible();
   // One trust date format (trust-language): "Checked Jun 15", never "verified 3mo ago".
   await expect(notes.getByText(/Checked [A-Z][a-z]{2} \d{1,2}/).first()).toBeVisible();
 
   await notes.locator("summary").click();
-  await expect(notes.getByText(/Open mic night every Monday/)).toBeVisible();
+  await expect(notes.getByText(/Karaoke on Wednesdays/)).toBeVisible();
   await expect(notes.getByRole("link", { name: "cafe-nola.com" }).first()).toBeVisible();
+
+  // Parking is a getting-there fact: it is printed once, in Location, beside
+  // the address, and the Field Notes card no longer repeats it.
+  const location = page.getByRole("region", { name: "Location" });
+  await expect(location.getByText(/Carroll Creek Garage/)).toBeVisible();
+  await expect(notes.getByText(/Carroll Creek Garage/)).toHaveCount(0);
+  await expect(location.getByRole("button", { name: /Copy the address of/ })).toBeVisible();
+  await expect(location.getByRole("link", { name: "Open on the Radius map" })).toBeVisible();
 });
 
 test("Saved keeps organizer controls behind one disclosure", async ({ page }) => {

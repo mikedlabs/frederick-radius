@@ -1,38 +1,90 @@
 import Image from "next/image";
-import { nearestAerial, currentSeason } from "@/lib/aerial";
+import { nearestAerial, currentSeason, type Aerial } from "@/lib/aerial";
+import { resolveMunicipality } from "@/lib/location";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
+/** A place page shows a drone frame only when it was taken this close. */
+export const PLACE_AERIAL_MAX_METERS = 150;
+
+const CAPTURE_MONTH = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  month: "long",
+  year: "numeric",
+});
+
+/** "October 2024" on the Frederick clock, or null without a capture time. */
+export function aerialCaptureMonth(takenAt: string | null | undefined): string | null {
+  if (!takenAt) return null;
+  const time = Date.parse(takenAt);
+  return Number.isFinite(time) ? CAPTURE_MONTH.format(time) : null;
+}
+
+export type AerialFrame = {
+  aerial: Aerial & { distance_m: number };
+  /** The municipality the frame was taken in, named from its own geotag. */
+  area: string;
+  captured: string | null;
+};
+
 /**
- * AerialBeat — a "from above" cinematic beat that drops the nearest
- * geotagged drone shot onto a coordinate-bearing surface (place detail,
- * the Frederick town page). Server component.
+ * The nearest aerial that honestly shows this spot, named for where the
+ * drone actually was. The frame's own geotag is resolved against the county's
+ * municipal extents (resolveMunicipality, the same static table the location
+ * chip uses), and the frame is used only when that municipality is the one
+ * the caller is about. A Frederick drone shot therefore never appears on a
+ * Walkersville page captioned "Walkersville from the air", and an aerial
+ * whose geotag falls outside every town is not given a town's name.
+ */
+export function aerialFrameFor(
+  at: { lng: number; lat: number },
+  {
+    municipality,
+    maxMeters = PLACE_AERIAL_MAX_METERS,
+    now = new Date(),
+  }: { municipality: string; maxMeters?: number; now?: Date },
+): AerialFrame | null {
+  const aerial = nearestAerial(at, { maxMeters, preferSeason: currentSeason(now) });
+  if (!aerial) return null;
+  const hit = resolveMunicipality({ lng: aerial.lng, lat: aerial.lat });
+  if (!hit.inside || hit.municipality.slug !== municipality) return null;
+  return {
+    aerial,
+    area: hit.municipality.name,
+    captured: aerialCaptureMonth(aerial.takenAt),
+  };
+}
+
+/**
+ * AerialBeat — a "from above" beat that drops the nearest geotagged drone
+ * shot onto a coordinate-bearing surface (place detail, the Frederick town
+ * page). Server component.
  *
- * Self-hiding by design: renders nothing unless a real aerial sits
- * within `maxMeters` of the point, so it only ever appears where a shot
- * genuinely shows that spot — never a downtown-Frederick photo captioned
- * as somewhere it isn't.
+ * Self-hiding by design: renders nothing unless a real aerial sits within
+ * `maxMeters` of the point and inside the caller's municipality, so it only
+ * ever appears where a shot genuinely shows that spot. The caption names the
+ * area from the frame's own geotag and dates it from its capture time.
  */
 export default function AerialBeat({
   lat,
   lng,
-  label,
-  maxMeters = 800,
+  municipality,
+  maxMeters = PLACE_AERIAL_MAX_METERS,
   className = "",
 }: {
   lat: number;
   lng: number;
-  /** Honest area name for the caption, e.g. "Frederick". */
-  label: string;
+  /** Municipality slug of the page; the frame must have been taken inside it. */
+  municipality: string;
   maxMeters?: number;
   className?: string;
 }) {
-  const a = nearestAerial({ lng, lat }, { maxMeters, preferSeason: currentSeason() });
-  if (!a) return null;
+  const frame = aerialFrameFor({ lng, lat }, { municipality, maxMeters });
+  if (!frame) return null;
+  const { aerial, area, captured } = frame;
 
-  const seasonLabel = a.season.charAt(0).toUpperCase() + a.season.slice(1);
   const meta = [
-    seasonLabel,
-    typeof a.altM === "number" ? `~${Math.round(a.altM)}m up` : null,
+    captured,
+    typeof aerial.altM === "number" ? `~${Math.round(aerial.altM)}m up` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -44,8 +96,8 @@ export default function AerialBeat({
     >
       <div className="relative aspect-[16/10] w-full sm:aspect-[2/1]">
         <Image
-          src={a.src}
-          alt={`${label} seen from above`}
+          src={aerial.src}
+          alt={captured ? `${area} seen from above in ${captured}` : `${area} seen from above`}
           fill
           sizes="(max-width: 720px) 100vw, 720px"
           placeholder="blur"
@@ -69,7 +121,7 @@ export default function AerialBeat({
               className="font-serif text-[18px] font-semibold leading-tight text-white"
               style={{ textShadow: "0 1px 3px rgba(0,0,0,0.55)" }}
             >
-              {label} from the air
+              {area} from the air
             </p>
           </div>
           {meta && (

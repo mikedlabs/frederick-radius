@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Fragment, Suspense } from "react";
-import { AlertCircle, Apple, ArrowRight, CalendarCheck, Car, ChevronDown, ExternalLink, Globe, Instagram, Mail, MapPin, Navigation, Phone, ShoppingBag, UtensilsCrossed } from "lucide-react";
+import { AlertCircle, Apple, ArrowRight, CalendarCheck, Car, ChevronDown, ExternalLink, Globe, Instagram, Mail, MapPin, Navigation, Phone, ShoppingBag, Signpost, UtensilsCrossed } from "lucide-react";
 import ShareButton from "@/components/place/ShareButton";
 import { PLACES } from "@/data/places";
 import { getPlaceBySlug } from "@/lib/loaders/places";
@@ -24,15 +24,16 @@ import PlaceAudienceTags from "@/components/place/PlaceAudienceTags";
 import BusinessExtrasCard from "@/components/place/BusinessExtrasCard";
 import FieldNotesCard from "@/components/place/FieldNotesCard";
 import PlaceMarginTools from "@/components/place/PlaceMarginTools";
-import { hasFieldNotes } from "@/lib/loaders/fieldNotes";
+import { fieldNotesFor, hasFieldNotes, verifiedLabel } from "@/lib/loaders/fieldNotes";
 import {
   businessInfoFor,
   commerceLinksFromBusinessInfo,
 } from "@/lib/loaders/businessInfo";
 import PlaceVisitTracker from "@/components/place/PlaceVisitTracker";
-import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
-import PlaceMiniMap from "@/components/place/PlaceMiniMap";
+import PlaceHero from "@/components/place/PlaceHero";
 import AerialBeat from "@/components/place/AerialBeat";
+import CopyAddressButton from "@/components/place/CopyAddressButton";
+import HouseBeersSection from "@/components/beer/HouseBeers";
 import PlacePhotoGallery from "@/components/place/PlacePhotoGallery";
 import BeenHereToggle from "@/components/place/BeenHereToggle";
 import PlaceAmenityIcons from "@/components/place/PlaceAmenityIcons";
@@ -60,6 +61,14 @@ import PlanFromPlaceLink from "@/components/plan/PlanFromPlaceLink";
 import { isDestinationCategory, isRecommendable } from "@/lib/relevance";
 import type { DecisionAction } from "@/lib/decision/telemetry";
 import { formatTrustDate, placeTrustSegments, REPORT_A_CHANGE } from "@/lib/trust-language";
+import {
+  googleMapsHref,
+  googleRatingSummary,
+  nearbyLandmark,
+  placeAddress,
+  placeHeroMap,
+  sourceHost,
+} from "@/lib/place-page";
 
 /**
  * Phase 2: never render scraped second-person copy (quality bar 9,
@@ -237,6 +246,17 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   // Preserve the exact place context. A municipality-wide list can silently
   // jump several miles away, especially near town boundaries.
   const exploreAreaHref = `/map?c=${place.geom.lng.toFixed(5)},${place.geom.lat.toFixed(5)},15.5`;
+  // Visual first (docs/VISUAL_FIRST.md): with no photo that loads, the hero is
+  // the place's own block on the self-hosted map, captioned with its street.
+  const heroMap = placeHeroMap(place);
+  const rating = googleRatingSummary(place.google_rating, place.google_rating_count);
+  const ratingHref = googleMapsHref(place.google_maps_uri);
+  const address = placeAddress(place);
+  const landmark = nearbyLandmark(place.geom, place.name);
+  // Parking is a getting-there fact, so the Location section carries it and
+  // the Field Notes card leaves it out instead of printing it twice.
+  const parkingNote = fieldNotesFor(place.slug)?.parking ?? null;
+  const parkingHost = sourceHost(parkingNote?.source_url);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -300,10 +320,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               <li><Link href={`/m/${place.municipality}`} className="-mx-1 -my-3.5 inline-flex min-w-11 items-center justify-center px-1 py-3.5 hover:underline">{town.name}</Link></li>
             </>
           )}
-          {/* Category already appears in the hero pill, the identity line,
-              and the footer's explicit "More …" link. Repeating it here made
-              the first phone screen say the same noun three times before the
-              place name; this crumb now stays a simple place → town path. */}
+          {/* Category already appears in the identity line and the footer's
+              explicit "More …" link. Repeating it here made the first phone
+              screen say the same noun again before the place name; this crumb
+              stays a simple place → town path. */}
         </ol>
       </nav>
 
@@ -315,16 +335,21 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         data-decision-id={place.slug}
         data-decision-position="detail"
       >
+        {/* A photo that loads, else the place's block on the map, else
+            nothing: the identity block below then leads, never an empty
+            band. The category is not pinned on the hero; the identity line
+            directly below already states it. */}
         <PlaceHero
           slug={place.slug}
           name={place.name}
-          category={place.category}
           aspectRatio="16/10"
           size="hero"
           priority
           photoSrc={place.google_photo_url}
           photoAttribution={place.google_photo_attribution}
           googleMapsUri={place.google_maps_uri}
+          map={heroMap}
+          address={place.address}
         />
         <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
           <Suspense fallback={null}>
@@ -340,11 +365,41 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               {place.name}
             </h1>
             {/* Identity line: what it is + where, at a glance. The street
-                address lives in ONE place — the Location plate beside the
-                map + directions — instead of being printed here too
-                (July 2026 review: same fact twice above the fold). */}
+                address lives in ONE place — the Location section, with its
+                Copy link — instead of being printed here too (July 2026
+                review: same fact twice above the fold). */}
+            {/* The Google rating rides this line when enough people rated
+                the place to mean something (20 or more), with the Google
+                Maps attribution its terms require. The place sheet already
+                showed it; the full page used to drop it. */}
             <p className="mt-1 text-sm" style={{ color: "var(--app-ink-3)" }}>
               {cat?.name ?? place.category} · {place.municipality_name}
+              {rating ? (
+                <>
+                  {" · "}
+                  <span data-place-rating className="whitespace-nowrap">
+                    <span aria-hidden style={{ color: "var(--app-ink-2)" }}>★</span>
+                    <span className="sr-only">Rated</span>{" "}
+                    <span className="font-semibold tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+                      {rating.rating}
+                    </span>{" "}
+                    <span className="tabular-nums">({rating.count}</span> on{" "}
+                    {ratingHref ? (
+                      <a
+                        href={ratingHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="tap-44-y inline-flex items-center underline underline-offset-2"
+                      >
+                        <span translate="no">Google Maps</span>
+                      </a>
+                    ) : (
+                      <span translate="no">Google Maps</span>
+                    )}
+                    )
+                  </span>
+                </>
+              ) : null}
             </p>
             {/* The visit-decision facts — open/closed, price, provenance —
                 sit directly under the address, first screenful. They lived
@@ -468,13 +523,17 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         <CourseInfoStrip slug={place.slug} />
         <PlaceAudienceTags tags={place.tags} />
         {hasFieldNotes(place.slug) ? (
-          <FieldNotesCard slug={place.slug} />
+          <FieldNotesCard slug={place.slug} omitParking />
         ) : (
           <BusinessExtrasCard info={businessInfo} />
         )}
         <LiveGooglePlaceContext slug={place.slug} showSummary={!desc} />
         <PlaceMarginTools slug={place.slug} />
       </div>
+
+      {/* For the guided breweries: up to four flagships from the beer guide
+          and the brewery's own tap list. Self-hides for every other place. */}
+      <HouseBeersSection slug={place.slug} />
 
       {/* Waze-style amenity icon row. Lives right after the primary
           action grid so the user gets the "what's here?" answer in
@@ -533,21 +592,70 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         placeGoogleMapsUri={place.google_maps_uri}
       />
 
-      <section className="space-y-2">
-        <h2 className="eyebrow">
+      {/* Location reads in the order someone uses it: the address (with
+          Copy), the landmark a local would steer by, where to park, then the
+          live map. The block itself is the hero when no photo loads, so the
+          section ends in one map row instead of a second mini map. */}
+      <section aria-labelledby="place-location-heading" className="space-y-2">
+        <h2 id="place-location-heading" className="eyebrow">
           Location
         </h2>
-        <PlaceMiniMap lng={place.geom.lng} lat={place.geom.lat} name={place.name} color={cat?.color} />
-        {/* "From above" — the nearest geotagged drone shot, when one
-            genuinely covers this spot (downtown Frederick). Self-hides
-            elsewhere so it never fakes an aerial of a place we don't have. */}
-        <AerialBeat lat={place.geom.lat} lng={place.geom.lng} label={place.city || "Frederick"} />
-        <div className="flex items-start gap-2 border-b py-3 text-sm" style={{ borderColor: "var(--app-border)" }}>
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-          <div>
-            <p style={{ color: "var(--app-ink)" }}>{place.address}</p>
-            <p style={{ color: "var(--app-ink-3)" }}>{place.city}, {place.state} {place.postal_code}</p>
+        <div className="border-t text-sm" style={{ borderColor: "var(--app-border)" }}>
+          <div className="flex items-start gap-2 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p style={{ color: "var(--app-ink)" }}>{address.street}</p>
+              {address.locality ? <p style={{ color: "var(--app-ink-3)" }}>{address.locality}</p> : null}
+            </div>
+            <CopyAddressButton address={address.full} placeName={place.name} />
           </div>
+          {landmark ? (
+            <p
+              data-place-landmark
+              className="flex items-center gap-2 border-b py-3"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            >
+              <Signpost className="h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+              Near {landmark}
+            </p>
+          ) : null}
+          {parkingNote ? (
+            <div data-place-parking className="flex items-start gap-2 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
+              <Car className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-cool)" }} aria-hidden />
+              <div className="min-w-0">
+                <p style={{ color: "var(--app-ink-2)" }}>
+                  <span className="font-semibold" style={{ color: "var(--app-ink)" }}>Parking </span>
+                  {parkingNote.text}
+                </p>
+                <p className="text-caption mt-1 flex flex-wrap items-center gap-x-1" style={{ color: "var(--app-ink-3)" }}>
+                  <span>{verifiedLabel(parkingNote.last_verified) ?? "Verification date not recorded"}</span>
+                  {parkingHost && parkingNote.source_url ? (
+                    <>
+                      <span aria-hidden>·</span>
+                      <a
+                        href={parkingNote.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="tap-44-y inline-flex items-center gap-0.5 underline-offset-2 hover:underline"
+                      >
+                        {parkingHost}
+                        <ExternalLink className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />
+                      </a>
+                    </>
+                  ) : null}
+                </p>
+              </div>
+            </div>
+          ) : null}
+          <Link
+            href={exploreAreaHref}
+            prefetch={false}
+            className="flex min-h-11 items-center justify-between gap-2 border-b py-2 font-semibold"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+          >
+            Open on the Radius map
+            <ArrowRight aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2} />
+          </Link>
         </div>
       </section>
 
@@ -620,6 +728,12 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         ) : null}
       </section>
 
+      {/* "From above": the nearest owner drone frame, only when it was taken
+          within 150 m of this place and inside the same municipality. It is
+          named and dated from its own geotag and capture time, so a Frederick
+          frame never appears on a Walkersville page as "Walkersville". */}
+      <AerialBeat lat={place.geom.lat} lng={place.geom.lng} municipality={place.municipality} />
+
       {/* "Around here" — nearest Wikipedia articles (the what-am-I-looking-at
           context layer). Streamed so a slow Wikipedia fetch never blocks the
           page; renders nothing when there's no nearby history. */}
@@ -628,7 +742,8 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       </Suspense>
 
       <footer className="space-y-2 pt-4">
-        <PhotoCredit slug={place.slug} hasGooglePhoto={Boolean(place.google_photo_url)} />
+        {/* Photo credit is set on the hero photo itself, and only after that
+            photo has loaded, so it is no longer printed here. */}
         {/* One trust line in the trust-language vocabulary: when the details
             were checked, what Radius can say about the hours, and the way to
             correct either ("Details checked May 20 · Hours not confirmed ·

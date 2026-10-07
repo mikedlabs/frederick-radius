@@ -293,7 +293,7 @@ export default async function MunicipalityPage(
 
       {/* "{Town} from above" — the nearest geotagged drone shot. Only towns
           the aerial archive covers render this; everywhere else self-hides. */}
-      <AerialBeat lat={m.centroid.lat} lng={m.centroid.lng} label={m.name} maxMeters={1500} />
+      <AerialBeat lat={m.centroid.lat} lng={m.centroid.lng} municipality={m.slug} maxMeters={1500} />
 
       {/* Upcoming — "what's happening." Kept tight (max 3); empty state
           surfaces the submit door + a nearby fallback. */}

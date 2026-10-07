@@ -67,3 +67,19 @@ describe("FieldNotesCard trust labels", () => {
     expect(html).not.toContain("Verification date not recorded");
   });
 });
+
+describe("FieldNotesCard on the place page", () => {
+  it("leaves parking to the Location section when asked", () => {
+    const full = renderToStaticMarkup(createElement(FieldNotesCard, { slug: "cafe-nola" }));
+    const withoutParking = renderToStaticMarkup(
+      createElement(FieldNotesCard, { slug: "cafe-nola", omitParking: true }),
+    );
+
+    expect(full).toContain("Carroll Creek Garage");
+    expect(withoutParking).not.toContain("Carroll Creek Garage");
+    expect(withoutParking).toContain("Happy hour");
+    // The count in the footer describes only the rows this card prints.
+    expect(full).toContain("5 of 7 notes have no recorded verification date.");
+    expect(withoutParking).toContain("5 of 6 notes have no recorded verification date.");
+  });
+});
