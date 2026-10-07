@@ -6918,7 +6918,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   transition: top var(--app-dur-med) var(--app-ease-out);
 }
 
-/* The pinned head: nameplate + filter bar + sub bar. Frosted paper so the
+/* The pinned head: nameplate + Display + the date chip row. Frosted paper so the
    list scrolls legibly beneath it. Kept a SEPARATE element from .eb-dock so
    the fixed scrim / absolute pane below are NOT inside its backdrop-filter
    (which would trap fixed positioning). */
@@ -6942,7 +6942,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   overflow: hidden;
   max-height: 96px;
   opacity: 1;
-  padding: 12px 14px 6px;
+  /* The right inset keeps the title clear of the 44px Display button. */
+  padding: 12px 64px 6px 14px;
   transition: max-height 0.3s ease, opacity 0.22s ease, padding 0.3s ease;
 }
 .eb-dock.eb-collapsed .eb-masthead,
@@ -6971,18 +6972,23 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: var(--app-brand-press);
 }
 
-/* The when-ribbon — date shortcuts within the event controls. It collapses
-   with the masthead and keeps a single nowrap row of .eb-chip pills. */
+/* The chip row — date shortcuts, then the one Filters doorway at its end. It
+   stays pinned when the nameplate folds, so the filters remain one tap away
+   while scrolling. The date chips scroll sideways; Filters never does. */
+.eb-chiprow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 10px 10px 14px;
+}
 .eb-whenribbon {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-wrap: nowrap;
   gap: 7px;
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 2px 14px 10px;
-  max-height: 56px;
-  opacity: 1;
-  transition: max-height 0.3s ease, opacity 0.22s ease, padding 0.3s ease;
 }
 .eb-whenribbon::-webkit-scrollbar {
   display: none;
@@ -6995,49 +7001,25 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .eb-whenribbon .eb-chip:not([data-on]) .eb-chip-dot {
   display: none;
 }
-.eb-dock.eb-collapsed .eb-whenribbon,
-.eb-dock.eb-open .eb-whenribbon {
-  max-height: 0;
-  opacity: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  overflow-y: hidden;
-  pointer-events: none;
-}
 
-/* The cold state has one filter control. The three filter dimensions live
-   inside the sheet, so the first event—not interface chrome—owns the page. */
-.eb-filterbar {
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
-  padding: 0 10px 7px;
-}
+/* The one filter doorway, closing the chip row. The three filter dimensions
+   live inside the sheet, so the first event—not interface chrome—owns the
+   page. */
 .eb-filter-trigger {
-  min-width: 0;
-  min-height: 48px;
-  flex: 1 1 auto;
-  display: flex;
+  flex: 0 0 auto;
+  display: inline-flex;
   align-items: center;
-  gap: 9px;
-  padding: 7px 11px;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-md);
   background: var(--app-bg-elevated);
   color: var(--app-ink-2);
   box-shadow: var(--app-edge), var(--app-hi);
-  text-align: left;
 }
-.eb-filter-trigger > svg:last-child {
-  color: var(--app-ink-3);
-  transition: transform var(--app-dur-fast) var(--app-ease-out);
-}
-.eb-filter-copy {
-  min-width: 0;
-  flex: 1 1 auto;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+.eb-filter-trigger[data-on] {
+  border-color: color-mix(in srgb, var(--app-brand) 40%, var(--app-border));
 }
 .eb-filter-label {
   flex: 0 0 auto;
@@ -7045,13 +7027,19 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-weight: 700;
   color: var(--app-ink);
 }
+/* The What · When · Where readout stays in the Filters button's accessible
+   name (screen readers hear the active scope); the pressed chips and the
+   count badge carry it visually. */
 .eb-filter-summary {
-  min-width: 0;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
   overflow: hidden;
-  text-overflow: ellipsis;
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
-  font-size: 11.5px;
-  color: var(--app-ink-3);
+  border: 0;
 }
 .eb-filter-count {
   min-width: 20px;
@@ -7072,6 +7060,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: var(--app-brand-press);
   font-size: 12px;
   font-weight: 700;
+}
+/* Reset sits beside Done in the sheet head, so the board row ends on Filters. */
+.eb-pane-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .eb-pane-tabs {
   display: grid;
@@ -7096,51 +7090,56 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-1);
 }
 
-/* The sub bar — the mono count line (also the polite live region) on the
-   left, the "how you look" controls (sort + view lens) on the right. Kept
-   visually distinct from the caption so a viewing choice never reads as a
-   filter. */
-.eb-subbar {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 12px 7px;
-  border-top: 1px solid var(--app-border);
-}
-.eb-countline {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 11px;
-  color: var(--app-ink-3);
-  letter-spacing: 0.02em;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
+/* Display — the "how you look" controls (sort + view lens) behind one 44px
+   icon button in the title row, kept apart from the filters so a viewing
+   choice never reads as a filter. It folds away with the nameplate. */
 .eb-display-options {
-  display: none;
-  flex: 0 0 auto;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  transition: opacity 0.22s ease;
+}
+.eb-dock.eb-collapsed .eb-display-options,
+.eb-dock.eb-open .eb-display-options {
+  opacity: 0;
+  pointer-events: none;
 }
 .eb-display-options > summary {
-  display: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
   list-style: none;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg-elevated);
+  color: var(--app-ink-2);
+  cursor: pointer;
 }
 .eb-display-options > summary::-webkit-details-marker {
   display: none;
 }
-.eb-display-panel {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.eb-display-options[open] > summary {
+  color: var(--app-brand-press);
 }
-.eb-display-desktop {
+.eb-display-options:not([open]) > .eb-display-panel {
+  display: none;
+}
+.eb-display-panel {
+  position: absolute;
+  z-index: var(--z-dropdown);
+  top: calc(100% + 6px);
+  right: 0;
   display: flex;
   align-items: center;
   gap: 4px;
-  flex: 0 0 auto;
+  padding: 8px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  /* Opaque for the same reason as .eb-pane: the popover sits over event
+     text, which showed through the translucent surface. */
+  background: var(--app-bg-elevated-solid);
+  box-shadow: var(--app-shadow-2);
 }
 
 @media (max-width: 480px) {
@@ -7153,7 +7152,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     align-items: baseline;
     gap: 8px;
     max-height: 48px;
-    padding: 7px 12px 4px;
+    padding: 7px 60px 4px 12px;
   }
   .eb-dateline {
     display: none;
@@ -7161,83 +7160,16 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .eb-title {
     font-size: 21px;
   }
+  .eb-display-options {
+    top: 2px;
+    right: 8px;
+  }
+  .eb-chiprow {
+    gap: 6px;
+    padding: 0 8px 6px 10px;
+  }
   .eb-whenribbon {
     gap: 6px;
-    max-height: 48px;
-    padding: 0 10px 5px;
-  }
-  /* The component supplies exactly the three primary date decisions on
-     phones. Longer-range choices remain in the canonical Filters sheet. */
-  .eb-filterbar {
-    padding: 0 8px 6px;
-  }
-  .eb-filter-trigger {
-    min-height: 44px;
-    padding-block: 5px;
-  }
-  .eb-subbar {
-    min-height: 44px;
-    padding: 2px 10px 3px;
-  }
-  .eb-display-options > summary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    min-width: 88px;
-    border: 1px solid var(--app-border);
-    border-radius: 999px;
-    color: var(--app-ink-2);
-    background: var(--app-bg-elevated);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .eb-display-options {
-    display: block;
-  }
-  .eb-display-desktop {
-    display: none;
-  }
-  .eb-display-options > summary svg {
-    color: var(--app-ink-3);
-    transition: transform var(--app-dur-fast) var(--app-ease-out);
-  }
-  .eb-display-options[open] > summary svg {
-    transform: rotate(180deg);
-  }
-  .eb-display-options:not([open]) > .eb-display-panel {
-    display: none;
-  }
-  .eb-display-panel {
-    position: absolute;
-    z-index: var(--z-dropdown);
-    top: calc(100% - 2px);
-    right: 8px;
-    padding: 8px;
-    border: 1px solid var(--app-border);
-    border-radius: var(--app-radius-md);
-    /* Opaque for the same reason as .eb-pane: the popover sits over event
-       text, which showed through the translucent surface. */
-    background: var(--app-bg-elevated-solid);
-    box-shadow: var(--app-shadow-2);
-  }
-}
-
-@media (max-width: 360px) {
-  .eb-filter-summary {
-    /* Keep the active filter summary in the button's accessible name even
-       when the 320px layout cannot afford it visually. `display:none` made
-       screen readers hear only "Filters" and hid the selected time/scope. */
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
   }
 }
 

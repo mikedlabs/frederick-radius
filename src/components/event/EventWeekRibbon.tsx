@@ -13,8 +13,12 @@
  * just decoration. Today/active days get a quiet brand wash.
  *
  * Controlled by EventsExplorer so a pick updates in place without a
- * navigation or remount. Counts are the complete server-computed day summary,
- * not the bounded event preview shipped for the first paint.
+ * navigation or remount. It sits directly under the date chip row (visual
+ * first: the week reads before any sentence), and every day carries its real
+ * count. Counts are the complete server-computed day summary, or the
+ * complete filtered collection once one is loaded, never the bounded first
+ * paint preview. `null` means a narrowed board is still loading: the cells
+ * stay pickable but print no numbers rather than countywide ones.
  */
 
 const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"] as const;
@@ -62,12 +66,12 @@ export default function EventWeekRibbon({
   onPickDay,
 }: {
   nowISO: string;
-  countByDate: Record<string, number>;
+  countByDate: Record<string, number> | null;
   activeDay: string | null;
   onPickDay: (day: string | null) => void;
 }) {
   const now = new Date(nowISO);
-  const todayKey = easternDateKey(now);
+  const countsKnown = countByDate !== null;
 
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = dateForOffset(now, i);
@@ -85,7 +89,7 @@ export default function EventWeekRibbon({
       ),
       isToday: i === 0,
       isWeekend: dow === 0 || dow === 6,
-      count: countByDate[key] ?? 0,
+      count: countByDate?.[key] ?? 0,
     };
   });
 
@@ -123,7 +127,9 @@ export default function EventWeekRibbon({
               .filter(Boolean)
               .join(", ") || "none",
         };
-        const ariaLabel = `${d.full} ${d.dom}${d.isToday ? ", today" : ""}, ${d.count} ${d.count === 1 ? "event" : "events"}`;
+        const ariaLabel = `${d.full} ${d.dom}${d.isToday ? ", today" : ""}${
+          countsKnown ? `, ${d.count} ${d.count === 1 ? "event" : "events"}` : ""
+        }`;
         const cellInner = (
           <>
             <span
@@ -144,28 +150,31 @@ export default function EventWeekRibbon({
             >
               {d.dom}
             </span>
-            {/* The ribbon is a date picker, not a tally grid. Today keeps
-                its count (the one day the exact number helps); every other
-                day is a presence DOT — brand-tinted when something's on, a
-                muted dot when it's honestly empty. Same slot, calm baseline. */}
-            {d.count > 0 && d.key === todayKey ? (
+            {/* Every day prints its real count, so the week's shape reads
+                at a glance: a filled pill on the highlighted day, quiet
+                numerals elsewhere, and a muted dot when a day is honestly
+                empty. While a narrowed board loads, the slot stays blank
+                (same height) instead of showing countywide numbers. */}
+            {!countsKnown ? (
+              <span aria-hidden className="block h-4" />
+            ) : d.count > 0 ? (
               <span
                 className="inline-flex min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums leading-[16px]"
-                style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
+                style={
+                  highlighted
+                    ? { background: "var(--app-brand-press)", color: "var(--app-on-brand)" }
+                    : { color: "var(--app-ink-2)" }
+                }
               >
                 {d.count}
               </span>
             ) : (
-              <span
-                aria-hidden
-                className="block h-[6px] w-[6px] rounded-full"
-                style={{
-                  background:
-                    d.count > 0
-                      ? "color-mix(in srgb, var(--app-brand) 55%, transparent)"
-                      : "color-mix(in srgb, var(--app-ink-3) 35%, transparent)",
-                }}
-              />
+              <span className="grid h-4 place-items-center" aria-hidden>
+                <span
+                  className="block h-[6px] w-[6px] rounded-full"
+                  style={{ background: "color-mix(in srgb, var(--app-ink-3) 35%, transparent)" }}
+                />
+              </span>
             )}
           </>
         );

@@ -4,6 +4,9 @@ import {
   countLine,
   formatDayLabel,
   nextMastheadCollapsed,
+  parseTimeParams,
+  primaryWhenPresets,
+  showMoreLabel,
   whatCaption,
   whenCaption,
   WHEN_PRESETS,
@@ -44,8 +47,11 @@ describe("whenCaption", () => {
     expect(whenCaption({ dayLabel: null, lens: "weekend", tod: null }).text).toBe("This weekend");
     expect(whenCaption({ dayLabel: null, lens: "week", tod: null }).text).toBe("Later this week");
   });
-  it("composes Tonight from today + evening", () => {
-    expect(whenCaption({ dayLabel: null, lens: "today", tod: "evening" }).text).toBe("Tonight");
+  it("reads Tonight and Tomorrow as their own windows", () => {
+    expect(whenCaption({ dayLabel: null, lens: "tonight", tod: null }).text).toBe("Tonight");
+    expect(whenCaption({ dayLabel: null, lens: "tomorrow", tod: null }).text).toBe("Tomorrow");
+    // Today plus a chosen Evening daypart is now just that compound.
+    expect(whenCaption({ dayLabel: null, lens: "today", tod: "evening" }).text).toBe("Today · Evening");
   });
   it("composes a standalone daypart and a compound window", () => {
     expect(whenCaption({ dayLabel: null, lens: "all", tod: "morning" }).text).toBe("Morning");
@@ -75,13 +81,71 @@ describe("activeWhenPreset ↔ ?lens/?tod mapping", () => {
       expect(activeWhenPreset({ lens: p.lens, tod: p.tod })).toBe(p.key);
     }
   });
-  it("Tonight wins over Today when the evening daypart is on", () => {
-    expect(activeWhenPreset({ lens: "today", tod: "evening" })).toBe("tonight");
+  it("makes Tonight one token instead of Today plus the Evening daypart", () => {
+    expect(WHEN_PRESETS.find((p) => p.key === "tonight")).toMatchObject({ lens: "tonight", tod: null });
+    expect(WHEN_PRESETS.find((p) => p.key === "tomorrow")).toMatchObject({ lens: "tomorrow", tod: null });
+    expect(activeWhenPreset({ lens: "tonight", tod: null })).toBe("tonight");
     expect(activeWhenPreset({ lens: "today", tod: null })).toBe("today");
   });
   it("a lens narrowed by an extra daypart is no longer a bare preset", () => {
     expect(activeWhenPreset({ lens: "weekend", tod: "morning" })).toBeNull();
     expect(activeWhenPreset({ lens: "all", tod: "late" })).toBeNull();
+  });
+});
+
+describe("parseTimeParams (shared links keep working)", () => {
+  it("opens the old lens=today&tod=evening Tonight link as the one Tonight filter", () => {
+    expect(parseTimeParams({ lens: "today", tod: "evening", fallback: "all" })).toEqual({
+      time: "tonight",
+      tod: null,
+    });
+  });
+  it("reads the new tokens and leaves a standalone daypart alone", () => {
+    expect(parseTimeParams({ lens: "tonight", tod: null, fallback: "all" })).toEqual({ time: "tonight", tod: null });
+    expect(parseTimeParams({ lens: "tomorrow", tod: null, fallback: "all" })).toEqual({ time: "tomorrow", tod: null });
+    expect(parseTimeParams({ lens: null, tod: "evening", fallback: "all" })).toEqual({ time: "all", tod: "evening" });
+    expect(parseTimeParams({ lens: "nonsense", tod: null, fallback: "weekend" })).toEqual({ time: "weekend", tod: null });
+  });
+});
+
+describe("primaryWhenPresets (the chip row follows the clock)", () => {
+  const labels = (args: Parameters<typeof primaryWhenPresets>[0]) =>
+    primaryWhenPresets(args).map((preset) => preset.label);
+
+  it("offers Today, Tonight and This weekend while something is listed tonight", () => {
+    expect(labels({ tonightListed: true, todayListed: true, active: null })).toEqual([
+      "Today",
+      "Tonight",
+      "This weekend",
+    ]);
+  });
+  it("moves on to Tomorrow once nothing is still listed tonight", () => {
+    expect(labels({ tonightListed: false, todayListed: false, active: null })).toEqual([
+      "Tomorrow",
+      "This weekend",
+    ]);
+    expect(labels({ tonightListed: false, todayListed: true, active: null })).toEqual([
+      "Today",
+      "Tomorrow",
+      "This weekend",
+    ]);
+  });
+  it("keeps a chosen window visible so it can be turned off", () => {
+    expect(labels({ tonightListed: false, todayListed: false, active: "tonight" })).toEqual([
+      "Tonight",
+      "Tomorrow",
+      "This weekend",
+    ]);
+  });
+});
+
+describe("showMoreLabel", () => {
+  it("names the window the link expands", () => {
+    expect(showMoreLabel({ lens: "weekend" })).toBe("Show more this weekend");
+    expect(showMoreLabel({ lens: "tonight" })).toBe("Show more tonight");
+    expect(showMoreLabel({ lens: "all", dayLabel: "Wed 8" })).toBe("Show more on Wed 8");
+    expect(showMoreLabel({ lens: "all", groupLabel: "Coming up" })).toBe("Show more coming up");
+    expect(showMoreLabel({ lens: "all" })).toBe("Show more");
   });
 });
 

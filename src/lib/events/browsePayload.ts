@@ -77,82 +77,156 @@ export function slimEventForBrowse(e: EventWithMeta): BrowseEvent {
 }
 
 /**
- * Collapse an explicitly recurring series to its next useful occurrence on
- * the whole board. Unmarked repetitions remain distinct nearby and collapse
- * only in the long-tail `later` horizon, preserving exact near-term dates.
+ * Collapse every repeated series to its next useful occurrence on the whole
+ * board. A weekly trivia night used to appear under Today, Later this week and
+ * Coming up because unmarked repeats collapsed only in the `later` horizon and
+ * the key changed with the publisher's is_recurring flag. The key is now the
+ * title stem, venue and town; the kept row carries a cadence read from the
+ * dates themselves ("Every Wednesday"). The name stays for existing callers.
  */
 export function collapseLaterSeries(
   events: EventWithMeta[],
   bounds: HorizonBounds,
 ): EventWithMeta[] {
-  const out: EventWithMeta[] = [];
-  const representatives = new Map<string, EventWithMeta>();
-  const counts = new Map<string, number>();
+  const groups = new Map<string, EventWithMeta[]>();
   const sorted = [...events].sort(
     (a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at),
   );
 
   for (const event of sorted) {
-    const horizon = horizonOf(event, bounds);
     // Do not serialize already-ended rows merely for the client to discard.
-    if (!horizon) continue;
-    if (horizon !== "later" && !event.is_recurring) {
-      out.push(event);
-      continue;
-    }
+    if (!horizonOf(event, bounds)) continue;
     const key = seriesKey(event);
-    if (!representatives.has(key)) {
-      representatives.set(key, event);
-      counts.set(key, 1);
-      out.push(event);
-    } else {
-      counts.set(key, (counts.get(key) ?? 1) + 1);
-    }
+    const group = groups.get(key);
+    if (group) group.push(event);
+    else groups.set(key, [event]);
   }
 
-  return out.map((event) => {
-    const key = seriesKey(event);
-    const count = counts.get(key) ?? 1;
-    if (count <= 1 || representatives.get(key) !== event) return event;
-    return {
-      ...event,
-      is_recurring: true,
-      recurrence_text: recurrenceContext(event.recurrence_text, count),
-    };
-  });
+  const out: EventWithMeta[] = [];
+  for (const group of groups.values()) {
+    const dayOf = (event: EventWithMeta) => easternDayKey(new Date(event.starts_at));
+    const firstDay = dayOf(group[0]);
+    // Every showing on the next day stays (a matinee and an evening show are
+    // both real choices); same-start rows are one listing told twice.
+    const kept = mergeDuplicateListings(group.filter((event) => dayOf(event) === firstDay));
+    const days = [...new Set(group.map(dayOf))];
+    if (days.length <= 1) {
+      out.push(...kept);
+      continue;
+    }
+    for (const event of kept) {
+      out.push({
+        ...event,
+        is_recurring: true,
+        recurrence_text:
+          seriesCadence(days) ?? recurrenceContext(event.recurrence_text, days.length),
+      });
+    }
+  }
+  return out.sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
 }
 
-function normalizedSeriesPart(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function normalizedSeriesPart(value: string | undefined): string {
+  return (value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+/** A campaign label some feeds prepend ("Centennial Event: Fall Fest"). */
+const CAMPAIGN_PREFIX = /^(?:[\p{L}\p{N}'’&.-]+\s+){0,4}events?:\s*/iu;
+
+function withoutCampaignPrefix(title: string): string {
+  const stripped = title.replace(CAMPAIGN_PREFIX, "").trim();
+  return stripped || title;
 }
 
 /**
  * Publishers often append the weekly act after a pipe or middle dot. Those
- * changing act names must not turn one recurring series into twenty cards.
- * This stem is used only when the source explicitly marks the rows recurring.
+ * changing act names must not turn one series into twenty cards, whether or
+ * not the publisher marked the rows recurring.
  */
-function recurringTitleStem(title: string): string {
-  const [candidate] = title.split(/\s+(?:\||·)\s+/u);
+function seriesTitleStem(title: string): string {
+  const [candidate] = withoutCampaignPrefix(title).split(/\s+(?:\||·)\s+/u);
   return candidate
     .replace(/:\s*(?:opening night|season finale)$/i, "")
     .trim();
 }
 
 function seriesKey(
-  event: Pick<
-    EventWithMeta,
-    "title" | "venue_name" | "municipality" | "is_recurring" | "recurrence_text"
-  >,
+  event: Pick<EventWithMeta, "title" | "venue_name" | "municipality">,
 ): string {
-  const title = event.is_recurring
-    ? recurringTitleStem(event.title)
-    : event.title;
   return [
-    normalizedSeriesPart(title),
+    normalizedSeriesPart(seriesTitleStem(event.title)),
     normalizedSeriesPart(event.venue_name),
     normalizedSeriesPart(event.municipality),
-    event.is_recurring ? normalizedSeriesPart(event.recurrence_text ?? "") : "",
   ].join("@@");
+}
+
+/** Prefer the row with a picture, then the plainer (shorter) title. */
+function betterListing(a: EventWithMeta, b: EventWithMeta): EventWithMeta {
+  if (Boolean(a.hero_image) !== Boolean(b.hero_image)) return a.hero_image ? a : b;
+  return b.title.length < a.title.length ? b : a;
+}
+
+/**
+ * Merge one listing that two feeds published under different labels, such as
+ * "Centennial Event: X" and "X" at the same venue and the same start. Rows
+ * stay distinct when the venue or start differs.
+ */
+export function mergeDuplicateListings<E extends EventWithMeta>(events: E[]): E[] {
+  const byKey = new Map<string, E>();
+  const order: string[] = [];
+  for (const event of events) {
+    const key = [
+      normalizedSeriesPart(withoutCampaignPrefix(event.title)),
+      normalizedSeriesPart(event.venue_name),
+      event.starts_at,
+    ].join("@@");
+    const kept = byKey.get(key);
+    if (!kept) {
+      byKey.set(key, event);
+      order.push(key);
+    } else {
+      byKey.set(key, betterListing(kept, event) as E);
+    }
+  }
+  return order.map((key) => byKey.get(key)!);
+}
+
+const WEEKDAY_NAMES = [
+  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+] as const;
+
+function dayNumber(dayKey: string): number {
+  const [y, m, d] = dayKey.split("-").map(Number);
+  return Date.UTC(y, m - 1, d) / 86_400_000;
+}
+
+/**
+ * A cadence read from the listed dates, never from a guess: "Every
+ * Wednesday" for dates a week apart on one weekday, "Every other Friday" for
+ * two-week gaps, "Thursdays" for one weekday at uneven gaps, and "Daily
+ * through Oct 12" for consecutive days. Anything else returns null.
+ */
+export function seriesCadence(dayKeys: string[]): string | null {
+  const days = [...new Set(dayKeys)].sort();
+  if (days.length < 2) return null;
+  const numbers = days.map(dayNumber);
+  const gaps = numbers.slice(1).map((n, i) => n - numbers[i]);
+  if (gaps.every((gap) => gap === 1)) {
+    const last = new Date(numbers[numbers.length - 1] * 86_400_000);
+    const label = new Intl.DateTimeFormat("en-US", {
+      timeZone: "UTC",
+      month: "short",
+      day: "numeric",
+    }).format(last);
+    return `Daily through ${label}`;
+  }
+  const weekday = (n: number) => new Date(n * 86_400_000).getUTCDay();
+  const first = weekday(numbers[0]);
+  if (!numbers.every((n) => weekday(n) === first)) return null;
+  const name = WEEKDAY_NAMES[first];
+  if (gaps.every((gap) => gap === 7)) return `Every ${name}`;
+  if (gaps.every((gap) => gap === 14)) return `Every other ${name}`;
+  return `${name}s`;
 }
 
 function recurrenceContext(current: string | undefined, count: number): string {
@@ -174,9 +248,13 @@ export function prepareEventsForBrowse(
   events: EventWithMeta[],
   bounds: HorizonBounds,
 ): BrowseEvent[] {
-  return events
-    .map(slimEventForBrowse)
-    .filter((event) => horizonOf(event, bounds) !== null);
+  // One listing published twice under two labels ("Centennial Event: X" and
+  // "X", same venue and start) is merged here, so every view agrees.
+  return mergeDuplicateListings(
+    events
+      .map(slimEventForBrowse)
+      .filter((event) => horizonOf(event, bounds) !== null),
+  );
 }
 
 /**

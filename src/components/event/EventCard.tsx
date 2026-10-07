@@ -297,6 +297,14 @@ export default function EventCard({
                   {venueLabel}
                 </>
               )}
+              {/* A collapsed series shows its cadence, read from its dates
+                  ("Every Wednesday"), so one row stands for the run. */}
+              {event.is_recurring && event.recurrence_text && (
+                <>
+                  {" · "}
+                  {event.recurrence_text}
+                </>
+              )}
               {event.is_free && (
                 <>
                   {" · "}

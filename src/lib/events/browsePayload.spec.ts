@@ -6,6 +6,7 @@ import {
   collapseLaterSeries,
   initialEventsForBrowse,
   prepareEventsForBrowse,
+  seriesCadence,
   slimEventForBrowse,
   summarizeEventsForBrowse,
 } from "./browsePayload";
@@ -107,8 +108,64 @@ describe("events browse payload", () => {
       "later-2",
       "later-3",
     ]);
+    // Two showings on the same next day are both real choices.
     expect(displayed.map((item) => item.slug)).toEqual(["near-1", "near-2", "later-1"]);
-    expect(displayed[2].recurrence_text).toBe("3 upcoming dates");
+    // August 1, 8 and 15, 2026 are Saturdays a week apart.
+    expect(displayed[2].recurrence_text).toBe("Every Saturday");
+  });
+
+  it("collapses an unmarked weekly series across every horizon to its next date", () => {
+    // UI audit: a weekly trivia night appeared under Today, Later this week
+    // and Coming up because only `later` rows collapsed and the key changed
+    // with the publisher's is_recurring flag.
+    const prepared = prepareEventsForBrowse([
+      event("trivia-1", "2026-07-15T23:00:00.000Z", { title: "Trivia Night | Round 1", venue_name: "Olde Mother" }),
+      event("trivia-2", "2026-07-22T23:00:00.000Z", { title: "Trivia Night | Round 2", venue_name: "Olde Mother" }),
+      event("trivia-3", "2026-07-29T23:00:00.000Z", { title: "Trivia Night", venue_name: "Olde Mother", is_recurring: true }),
+      event("other-venue", "2026-07-22T23:00:00.000Z", { title: "Trivia Night", venue_name: "Steinhardt" }),
+    ], BOUNDS);
+    const displayed = collapseLaterSeries(prepared, BOUNDS);
+
+    expect(displayed.map((item) => item.slug)).toEqual(["trivia-1", "other-venue"]);
+    expect(displayed[0]).toMatchObject({ is_recurring: true, recurrence_text: "Every Wednesday" });
+    expect(displayed[1].recurrence_text).toBeUndefined();
+  });
+
+  it("merges 'Centennial Event: X' with 'X' at the same venue and start", () => {
+    const prepared = prepareEventsForBrowse([
+      event("centennial-fall-fest", "2026-07-18T14:00:00.000Z", {
+        title: "Centennial Event: Fall Fest",
+        venue_name: "Baker Park",
+      }),
+      event("fall-fest", "2026-07-18T14:00:00.000Z", {
+        title: "Fall Fest",
+        venue_name: "Baker Park",
+        hero_image: "/api/place-photo?name=baker-park",
+      }),
+      event("fall-fest-later", "2026-07-18T18:00:00.000Z", {
+        title: "Fall Fest",
+        venue_name: "Baker Park",
+      }),
+      event("fall-fest-elsewhere", "2026-07-18T14:00:00.000Z", {
+        title: "Fall Fest",
+        venue_name: "Carroll Creek",
+      }),
+    ], BOUNDS);
+
+    expect(prepared.map((item) => item.slug)).toEqual([
+      "fall-fest",
+      "fall-fest-later",
+      "fall-fest-elsewhere",
+    ]);
+  });
+
+  it("reads a cadence from the dates, never a guess", () => {
+    expect(seriesCadence(["2026-10-07", "2026-10-14", "2026-10-21"])).toBe("Every Wednesday");
+    expect(seriesCadence(["2026-10-09", "2026-10-23"])).toBe("Every other Friday");
+    expect(seriesCadence(["2026-10-08", "2026-10-22", "2026-10-29"])).toBe("Thursdays");
+    expect(seriesCadence(["2026-10-10", "2026-10-11", "2026-10-12"])).toBe("Daily through Oct 12");
+    expect(seriesCadence(["2026-10-07", "2026-10-09"])).toBeNull();
+    expect(seriesCadence(["2026-10-07"])).toBeNull();
   });
 
   it("retains recurring dates for filters while the default initial list shows one representative", () => {

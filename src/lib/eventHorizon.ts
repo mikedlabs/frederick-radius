@@ -217,6 +217,133 @@ export function groupByHorizon<E extends EventLike>(
 }
 
 /**
+ * "Tonight" as a local means it: from 4 PM until 4 AM Eastern. The local day
+ * turns over at 4 AM, so at 1 AM the night still in progress is yesterday's
+ * evening and "Tomorrow" is the coming daytime, not the day after it. The old
+ * Tonight chip was Today plus the 4-9 PM daypart, which went empty at 9 PM and
+ * told an 11 PM visitor nothing was on while a 10 PM set was still playing.
+ */
+export const NIGHT_START_HOUR = 16;
+export const NIGHT_END_HOUR = 4;
+
+/** A half-open [start, end) span of instants, in ms. */
+export type InstantWindow = { start: number; end: number };
+
+type EasternDate = { year: number; month: number; day: number };
+
+/** The Eastern calendar date `days` after `base`, walked via noon UTC so
+ *  month/year rollover and DST stay correct (mirrors buildHorizonBounds). */
+function shiftEasternDate(base: EasternDate, days: number): EasternDate {
+  const p = easternParts(new Date(Date.UTC(base.year, base.month - 1, base.day + days, 12)));
+  return { year: p.year, month: p.month, day: p.day };
+}
+
+/** The Eastern date whose evening `now` belongs to (yesterday before 4 AM). */
+function eveningDate(now: Date): EasternDate {
+  const p = easternParts(now);
+  const today = { year: p.year, month: p.month, day: p.day };
+  return p.hour < NIGHT_END_HOUR ? shiftEasternDate(today, -1) : today;
+}
+
+/** The 4 PM to 4 AM night `dayOffset` nights after the current one. */
+export function nightWindow(now: Date, dayOffset = 0): InstantWindow {
+  const first = shiftEasternDate(eveningDate(now), dayOffset);
+  const next = shiftEasternDate(first, 1);
+  return {
+    start: Date.parse(easternWallToUtcISO(first.year, first.month, first.day, NIGHT_START_HOUR, 0)),
+    end: Date.parse(easternWallToUtcISO(next.year, next.month, next.day, NIGHT_END_HOUR, 0)),
+  };
+}
+
+/** Eastern "YYYY-MM-DD" key for the local day after tonight's evening. */
+export function tomorrowDayKey(now: Date): string {
+  const d = shiftEasternDate(eveningDate(now), 1);
+  return `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`;
+}
+
+type TimedLike = { starts_at: string; ends_at: string; is_all_day?: boolean };
+
+/**
+ * One Tonight rule for every surface: a timed listing that has not ended and
+ * either starts inside tonight's 4 PM to 4 AM window or, once the evening has
+ * begun, is still running from earlier. All-day rows and in-progress date
+ * ranges make no claim about the evening, so they stay out.
+ */
+export function isTonightEvent(e: TimedLike, nowMs: number): boolean {
+  if (e.is_all_day) return false;
+  const start = Date.parse(e.starts_at);
+  if (!Number.isFinite(start)) return false;
+  const night = nightWindow(new Date(nowMs));
+  if (isRangeListing(e)) {
+    return start >= night.start && start < night.end && Date.parse(e.ends_at) > nowMs;
+  }
+  if (isEventEnded(e, new Date(nowMs))) return false;
+  if (start >= night.start && start < night.end) return true;
+  return nowMs >= night.start && start <= nowMs;
+}
+
+/** Listings that start on tomorrow's Eastern day and have not ended. A date
+ *  range already open before tomorrow makes no claim about that day. */
+export function isTomorrowEvent(e: TimedLike, nowMs: number): boolean {
+  const start = Date.parse(e.starts_at);
+  if (!Number.isFinite(start)) return false;
+  if (easternDayKey(new Date(start)) !== tomorrowDayKey(new Date(nowMs))) return false;
+  if (isRangeListing(e)) return Date.parse(e.ends_at) > nowMs;
+  return !isEventEnded(e, new Date(nowMs));
+}
+
+/** Timed listings that start during tomorrow's 4 PM to 4 AM evening. */
+export function isTomorrowEveningEvent(e: TimedLike, nowMs: number): boolean {
+  if (e.is_all_day) return false;
+  const start = Date.parse(e.starts_at);
+  if (!Number.isFinite(start)) return false;
+  const night = nightWindow(new Date(nowMs), 1);
+  return start >= night.start && start < night.end;
+}
+
+export type DayGroup<E> = { key: string; label: string; events: E[] };
+
+/**
+ * Group an already-ordered list under Eastern calendar-day subheads, days in
+ * chronological order and the caller's order kept inside each day. Labels are
+ * "Today", "Tomorrow", then "Friday, October 9".
+ */
+export function groupByEasternDay<E extends { starts_at: string }>(
+  events: E[],
+  nowMs: number,
+): DayGroup<E>[] {
+  const now = new Date(nowMs);
+  const todayKey = easternDayKey(now);
+  const p = easternParts(now);
+  const next = shiftEasternDate({ year: p.year, month: p.month, day: p.day }, 1);
+  const nextKey = `${next.year}-${String(next.month).padStart(2, "0")}-${String(next.day).padStart(2, "0")}`;
+  const byDay = new Map<string, E[]>();
+  for (const e of events) {
+    const start = new Date(e.starts_at);
+    if (!Number.isFinite(start.getTime())) continue;
+    const key = easternDayKey(start);
+    const arr = byDay.get(key);
+    if (arr) arr.push(e);
+    else byDay.set(key, [e]);
+  }
+  return [...byDay.keys()].sort().map((key) => ({
+    key,
+    label:
+      key === todayKey
+        ? "Today"
+        : key === nextKey
+          ? "Tomorrow"
+          : new Intl.DateTimeFormat("en-US", {
+              timeZone: "America/New_York",
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            }).format(new Date(`${key}T16:00:00Z`)),
+    events: byDay.get(key)!,
+  }));
+}
+
+/**
  * Build the horizon time-bounds for an instant, in America/New_York wall
  * time. THE weekend-window fix lives here: when today is Fri/Sat/Sun the
  * weekend the user is standing in CONTAINS today, instead of the old

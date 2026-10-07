@@ -23,6 +23,14 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const NoPhotography: Story = {};
 export const CountyComparison: Story = { args: { variant: "compact" } };
+/** A collapsed weekly series: one row carries the cadence read from its dates. */
+export const CompactSeriesCadence: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: {
+    event: { ...sample, title: "Trivia Night", is_recurring: true, recurrence_text: "Every Wednesday" },
+    variant: "compact",
+  },
+};
 export const MissingEndAt320: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   args: { event: { ...sample, ends_at: sample.starts_at }, variant: "glance" },

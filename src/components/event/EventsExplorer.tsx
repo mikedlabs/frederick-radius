@@ -12,12 +12,30 @@ import EventsMap from "@/components/event/EventsMap";
 import EventsBoardDock, { type ViewKey, type EventSortKey } from "@/components/event/EventsBoardDock";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import EventWeekRibbon from "@/components/event/EventWeekRibbon";
 import { isUtilityEvent } from "@/lib/event-kind";
-import { groupByHorizon, isRangeListing, RANGE_LISTING_STALE_AFTER_MS } from "@/lib/eventHorizon";
+import {
+  groupByEasternDay,
+  groupByHorizon,
+  isRangeListing,
+  isTonightEvent,
+  isTomorrowEvent,
+  isTomorrowEveningEvent,
+  RANGE_LISTING_STALE_AFTER_MS,
+  type DayGroup,
+} from "@/lib/eventHorizon";
 import {
   collapseLaterSeries,
   type EventBrowseSummary,
 } from "@/lib/events/browsePayload";
+import {
+  formatDayLabel,
+  LENS_LABEL,
+  parseTimeParams,
+  showMoreLabel,
+  type TimeKey as BoardTimeKey,
+} from "@/components/event/boardCaption";
+import { haptic } from "@/lib/haptics";
 import {
   eventIntentOf,
   eventDaypart,
@@ -64,7 +82,93 @@ import {
 import type { LngLat } from "@/lib/geo";
 import { fetchEventsBrowse } from "@/lib/events/fetchBrowse";
 
-export type TimeKey = "all" | "today" | "weekend" | "week";
+export type TimeKey = BoardTimeKey;
+
+/** Rows a chosen time window shows before "Show more", grouped by day. */
+export const WINDOW_PEEK = 12;
+/** Rows any expanded group shows inline before handing off to the calendar. */
+export const EXPANDED_CAP = 40;
+
+/** The roll-forward line an empty Tonight shows above tomorrow evening. */
+export const TONIGHT_ROLL_FORWARD =
+  "Nothing else is listed for tonight. Here is tomorrow evening.";
+
+/**
+ * A time window chosen on the board (a date chip, a picked day) is a short,
+ * specific question, so it gets up to WINDOW_PEEK rows under day subheads
+ * instead of the two or three row horizon peek built for open browsing.
+ */
+export function isWindowedList({
+  time,
+  day,
+  view,
+  sort,
+}: {
+  time: TimeKey;
+  day: string | null;
+  view: ViewKey;
+  sort: EventSortKey;
+}): boolean {
+  return (
+    view === "list" &&
+    (sort === "recommended" || sort === "time") &&
+    (time !== "all" || day !== null)
+  );
+}
+
+/**
+ * Day groups for a windowed list. Tonight runs past midnight, so its rows
+ * stay under one "Tonight" subhead instead of splitting at 12 AM.
+ */
+export function windowedDayGroups<E extends { starts_at: string }>(
+  events: E[],
+  time: TimeKey,
+  nowMs: number,
+): DayGroup<E>[] {
+  if (events.length === 0) return [];
+  if (time === "tonight") return [{ key: "tonight", label: "Tonight", events }];
+  return groupByEasternDay(events, nowMs);
+}
+
+/** Eastern start-day counts for the week ribbon. */
+export function eventDayCounts(
+  events: ReadonlyArray<Pick<EventWithMeta, "starts_at">>,
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const event of events) {
+    const start = new Date(event.starts_at);
+    if (!Number.isFinite(start.getTime())) continue;
+    const key = dayKeyEastern(event.starts_at);
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/**
+ * Week-ribbon counts must describe the board the person is looking at. The
+ * server summary is exact for the unfiltered county; once a filter narrows
+ * the board, only a complete collection can count it. Until then the ribbon
+ * shows no numbers rather than countywide numbers under a narrowed board.
+ */
+export function weekRibbonCounts({
+  dataComplete,
+  facetFilterActive,
+  summaryCounts,
+  matchingEvents,
+}: {
+  dataComplete: boolean;
+  facetFilterActive: boolean;
+  summaryCounts: Record<string, number>;
+  matchingEvents: () => ReadonlyArray<Pick<EventWithMeta, "starts_at">>;
+}): Record<string, number> | null {
+  if (dataComplete) return eventDayCounts(matchingEvents());
+  return facetFilterActive ? null : summaryCounts;
+}
+
+/** The removal-chip label for the chosen time window (one chip, one choice). */
+export function timeRelaxationLabel(time: Exclude<TimeKey, "all">): string {
+  return LENS_LABEL[time];
+}
 
 /** A device-relative ranking must see the complete event population before it
  * can honestly say "near you." Town and category filters already trigger the
@@ -161,6 +265,10 @@ const DAYPART_KEYS: Daypart[] = DAYPARTS.map((d) => d.key);
 type Props = {
   /** Bounded, server-rendered preview. The full collection loads on intent. */
   events: EventWithMeta[];
+  /** Civic meetings and town reminders classified out of the public feed.
+   *  They share the board's one "Government & notices" disclosure with the
+   *  utility rows of the public feed, so civic business reads as one lane. */
+  notices?: { civic: EventWithMeta[]; reminders: EventWithMeta[] };
   liveSlugs: string[];
   categories: { slug: string; name: string }[];
   towns: { slug: string; name: string }[];
@@ -339,9 +447,10 @@ export function eventsBrowseRequest(forceRefresh = false): {
 // Facet <-> shared ViewState. Search text is intentionally excluded: a
 // lens is a structural view, not an ephemeral query, and the confirmed
 // ViewState shape has no free-text field. "all" and the forward-compat
-// "upcoming" both mean "no time constraint" here.
+// "upcoming" both mean "no time constraint" here. Tonight and Tomorrow have
+// no shared ViewState word; they travel as ?lens only.
 const timeToWhen = (t: TimeKey): When | undefined =>
-  t === "all" ? undefined : t;
+  t === "today" || t === "weekend" || t === "week" ? t : undefined;
 const whenToTime = (w?: When): TimeKey =>
   w === "today" || w === "weekend" || w === "week" ? w : "all";
 
@@ -375,6 +484,10 @@ export function eventMatchesTimeWindow(
   const nowDate = new Date(bounds.now);
   const start = Date.parse(event.starts_at);
   if (!Number.isFinite(start)) return false;
+  // Tonight (4 PM to 4 AM) and Tomorrow are their own windows, shared with
+  // lib/eventHorizon so the chip row and the list agree on what is listed.
+  if (time === "tonight") return isTonightEvent(event, bounds.now);
+  if (time === "tomorrow") return isTomorrowEvent(event, bounds.now);
   if (isRangeListing(event)) {
     // A range is not one continuous live session. Keep its published span
     // discoverable, subject to the existing stale-range limit, without using
@@ -424,6 +537,7 @@ function chronoKey(e: EventWithMeta, nowISO: string): number {
 
 export default function EventsExplorer({
   events,
+  notices,
   liveSlugs,
   categories,
   towns,
@@ -519,11 +633,14 @@ export default function EventsExplorer({
     };
 
     setCat(parsed.cats?.[0] ?? null);
-    setTime(
-      lens === "all" || lens === "today" || lens === "weekend" || lens === "week"
-        ? lens
-        : whenToTime(parsed.when),
-    );
+    // ?lens=today&tod=evening was the old Tonight chip; it reopens as the one
+    // Tonight filter, never as Today plus Evening.
+    const timeState = parseTimeParams({
+      lens,
+      tod: DAYPART_KEYS.includes(todParam as Daypart) ? todParam as Daypart : null,
+      fallback: whenToTime(parsed.when),
+    });
+    setTime(timeState.time);
     // Canonical ?in= wins, then legacy ?m= (upgraded on the next URL write),
     // then the shared scope. A remembered Events-only town is the final
     // backwards-compatible fallback. Crucially, explicit near-me/county
@@ -548,7 +665,7 @@ export default function EventsExplorer({
     setDay(dayParam && /^\d{4}-\d{2}-\d{2}$/.test(dayParam) ? dayParam : null);
     setFreeOnly(bool("free"));
     setHappyOnly(bool("happy"));
-    setTod(DAYPART_KEYS.includes(todParam as Daypart) ? todParam as Daypart : null);
+    setTod(timeState.tod);
     setKidsOnly(bool("kids"));
     setLgbtqOnly(bool("lgbtq"));
     setCommunicationAccessOnly(bool("access"));
@@ -656,11 +773,60 @@ export default function EventsExplorer({
     [deviceOrigin, eventPool, nearMeActive],
   );
 
+  const timeBounds = useMemo(
+    () => ({
+      now,
+      next24: +new Date(next24ISO),
+      weekendStart: +new Date(weekendStartISO),
+      weekendEnd: +new Date(weekendEndISO),
+    }),
+    [now, next24ISO, weekendStartISO, weekendEndISO],
+  );
+
+  // Every facet except time and the category dimension. Shared by the main
+  // list, the week ribbon counts, the Tonight roll-forward and the notices
+  // lane so all four describe the same board.
+  const facetMatch = useCallback((e: EventWithMeta): boolean => {
+    const term = q.trim().toLowerCase();
+    if (town && e.municipality !== town) return false;
+    if (freeOnly && !e.is_free) return false;
+    if (tod && eventDaypart(e) !== tod) return false;
+    if (kidsOnly && !isForKids(e)) return false;
+    if (lgbtqOnly && !isLgbtqEvent(e)) return false;
+    if (
+      communicationAccessOnly &&
+      !hasDeafCommunityOrCommunicationAccess(e)
+    ) return false;
+    if (recurringOnly && !isRecurringEvent(e)) return false;
+    if (happyOnly) {
+      // Match against title + venue + description so we catch both
+      // event-level happy hours ("Tuesday happy hour at X") and the
+      // venue-level recurring lineups some publishers tag this way.
+      const hay = `${e.title} ${e.venue_name ?? ""} ${e.description ?? ""}`;
+      if (!/\bhappy\s*hour\b/i.test(hay)) return false;
+    }
+    if (
+      term &&
+      !`${e.title} ${e.venue_name ?? ""} ${e.category_name ?? ""} ${e.description ?? ""} ${e.organizer ?? ""} ${e.source}`
+        .toLowerCase()
+        .includes(term)
+    )
+      return false;
+    return true;
+  }, [town, q, freeOnly, happyOnly, tod, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly]);
+
+  // The category dimension (intent roll-up + sub + the legacy exact cat).
+  const categoryMatch = useCallback((e: EventWithMeta): boolean => {
+    if (intent && eventIntentOf(e) !== intent) return false;
+    if (sub && e.category !== sub) return false;
+    if (cat && e.category !== cat) return false;
+    return true;
+  }, [intent, sub, cat]);
+
   // Stage 1 — everything EXCEPT the category dimension (intent / sub /
   // exact cat). The canonical filter sheet applies those choices in stage 2
   // so they compose cleanly with time, town, access, and search.
   const baseFiltered = useMemo(() => {
-    const term = q.trim().toLowerCase();
     return decisionEventPool.filter((e) => {
       // FINISHED events never render, on ANY path. The horizon grouping
       // already dropped them, but the flat paths — the week ribbon's ?d= day
@@ -668,41 +834,12 @@ export default function EventsExplorer({
       // only, so tapping "today" at 11 PM listed the whole day's ended
       // events as if they were still worth your time. One gate here covers
       // every mode. (All-day events run to the end of their Eastern day.)
-      if (!eventMatchesTimeWindow(e, day ? "all" : time, {
-        now,
-        next24: +new Date(next24ISO),
-        weekendStart: +new Date(weekendStartISO),
-        weekendEnd: +new Date(weekendEndISO),
-      })) return false;
+      if (!eventMatchesTimeWindow(e, day ? "all" : time, timeBounds)) return false;
       // Day filter wins over time-window filters when both are set.
       if (day && dayKeyEastern(e.starts_at) !== day) return false;
-      if (town && e.municipality !== town) return false;
-      if (freeOnly && !e.is_free) return false;
-      if (tod && eventDaypart(e) !== tod) return false;
-      if (kidsOnly && !isForKids(e)) return false;
-      if (lgbtqOnly && !isLgbtqEvent(e)) return false;
-      if (
-        communicationAccessOnly &&
-        !hasDeafCommunityOrCommunicationAccess(e)
-      ) return false;
-      if (recurringOnly && !isRecurringEvent(e)) return false;
-      if (happyOnly) {
-        // Match against title + venue + description so we catch both
-        // event-level happy hours ("Tuesday happy hour at X") and the
-        // venue-level recurring lineups some publishers tag this way.
-        const hay = `${e.title} ${e.venue_name ?? ""} ${e.description ?? ""}`;
-        if (!/\bhappy\s*hour\b/i.test(hay)) return false;
-      }
-      if (
-        term &&
-        !`${e.title} ${e.venue_name ?? ""} ${e.category_name ?? ""} ${e.description ?? ""} ${e.organizer ?? ""} ${e.source}`
-          .toLowerCase()
-          .includes(term)
-      )
-        return false;
-      return true;
+      return facetMatch(e);
     });
-  }, [decisionEventPool, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
+  }, [decisionEventPool, day, time, timeBounds, facetMatch]);
 
   // Stage 2 — the category dimension (intent roll-up + sub + the legacy
   // exact-cat from the Type drawer / deep-links), then the chosen sort.
@@ -730,15 +867,63 @@ export default function EventsExplorer({
       }
       return chronoKey(a, nowISO) - chronoKey(b, nowISO);
     };
-    return baseFiltered
-      .filter((e) => {
-        if (intent && eventIntentOf(e) !== intent) return false;
-        if (sub && e.category !== sub) return false;
-        if (cat && e.category !== cat) return false;
-        return true;
-      })
-      .sort(sortFn);
-  }, [baseFiltered, intent, sub, cat, sort, nowISO, featured, nearMeActive, deviceOrigin]);
+    return baseFiltered.filter(categoryMatch).sort(sortFn);
+  }, [baseFiltered, categoryMatch, sort, nowISO, featured, nearMeActive, deviceOrigin]);
+
+  // The chip row follows the clock: once nothing is still listed tonight it
+  // offers Tomorrow instead of an empty Tonight. Civic business does not
+  // count as something on tonight; it lives in Government & notices.
+  const tonightListed = useMemo(
+    () => eventPool.some((e) => !isUtilityEvent(e) && isTonightEvent(e, now)),
+    [eventPool, now],
+  );
+  const todayListed = useMemo(
+    () =>
+      eventPool.some(
+        (e) => !isUtilityEvent(e) && eventMatchesTimeWindow(e, "today", timeBounds),
+      ),
+    [eventPool, timeBounds],
+  );
+
+  // An empty Tonight rolls forward to tomorrow evening under the same
+  // filters, earliest first, instead of ending on a zero state.
+  const tomorrowEvening = useMemo(
+    () =>
+      time === "tonight"
+        ? decisionEventPool
+            .filter(
+              (e) =>
+                !isUtilityEvent(e) &&
+                isTomorrowEveningEvent(e, now) &&
+                facetMatch(e) &&
+                categoryMatch(e),
+            )
+            .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
+            .slice(0, WINDOW_PEEK)
+        : [],
+    [time, decisionEventPool, now, facetMatch, categoryMatch],
+  );
+
+  const facetFilterActive =
+    cat !== null || intent !== null || sub !== null || town !== null ||
+    q.trim() !== "" || freeOnly || happyOnly || tod !== null || kidsOnly ||
+    lgbtqOnly || communicationAccessOnly || recurringOnly;
+  const ribbonCounts = useMemo(
+    () =>
+      weekRibbonCounts({
+        dataComplete,
+        facetFilterActive,
+        summaryCounts: summary.dayCounts,
+        matchingEvents: () =>
+          decisionEventPool.filter(
+            (e) =>
+              eventMatchesTimeWindow(e, "all", timeBounds) &&
+              facetMatch(e) &&
+              categoryMatch(e),
+          ),
+      }),
+    [dataComplete, facetFilterActive, summary.dayCounts, decisionEventPool, timeBounds, facetMatch, categoryMatch],
+  );
 
   // A healthy server snapshot knows the complete unfiltered totals even
   // though the first React payload contains only a bounded preview. Once a
@@ -954,8 +1139,29 @@ export default function EventsExplorer({
   // event-derived towns list — a town with zero matching events would
   // otherwise render as its raw slug ("burkittsville") in the zero state.
   if (town) relaxations.push({ key: "town", label: towns.find((t) => t.slug === town)?.name ?? MUNICIPALITY_BY_SLUG[town]?.name ?? town, drop: () => chooseTown(null) });
-  if (time !== "all") relaxations.push({ key: "time", label: time === "today" ? "Today" : time === "weekend" ? "This weekend" : "This week", drop: () => setTime("all") });
-  if (day) relaxations.push({ key: "day", label: "That day", drop: () => setDay(null) });
+  // One chip per choice the person made: Tonight is one token, so it drops as
+  // "Tonight", never as the "Today" plus "Evening" pair the old preset wrote.
+  if (time !== "all") relaxations.push({ key: "time", label: timeRelaxationLabel(time), drop: () => setTime("all") });
+  if (day) relaxations.push({ key: "day", label: formatDayLabel(day), drop: () => setDay(null) });
+
+  const nearbyLabel = nearMeActive
+    ? nearbyEventsWhereLabel({
+        hasOrigin: Boolean(deviceOrigin),
+        dataComplete,
+        loading: loadingAll,
+        failed: Boolean(loadError),
+      })
+    : null;
+
+  // A ribbon pick is a single day; it replaces any window or daypart.
+  const pickRibbonDay = (key: string | null) => {
+    haptic("light");
+    setDay(key);
+    if (key) {
+      setTime("all");
+      setTod(null);
+    }
+  };
 
   const emptyState = eventsEmptyState({
     loading: loadingAll,
@@ -971,6 +1177,64 @@ export default function EventsExplorer({
     resultCount: filtered.length,
     horizonCount: horizonGroups.length,
   });
+
+  // A chosen window lists up to WINDOW_PEEK rows under day subheads. Its lead
+  // is the primary lead when that already sits above the results; otherwise
+  // the window's first row earns the feature card.
+  const windowed = isWindowedList({ time, day, view, sort });
+  const windowLead = windowed
+    ? showPrimaryLeadBeforeRail
+      ? primaryLead
+      : crowdFiltered[0] ?? null
+    : null;
+  const windowRest = windowed
+    ? crowdFiltered.filter((event) => event !== windowLead)
+    : [];
+  // Keyed by the window, so expanding This weekend does not expand Tonight.
+  const windowKey = `window:${day ?? time}`;
+  const windowOpen = openGroups.has(windowKey);
+  const windowVisible = windowRest.slice(0, windowOpen ? EXPANDED_CAP : WINDOW_PEEK);
+  const windowGroups = windowedDayGroups(windowVisible, time, now);
+  const windowMoreLabel = showMoreLabel({
+    lens: time,
+    dayLabel: day ? formatDayLabel(day) : null,
+  });
+
+  // An empty Tonight rolls forward once the calendar has answered; while it
+  // is still loading, the honest loading state stays in place.
+  const rollForwardReady =
+    !loadingAll && (dataComplete || currentSourceHealth.degraded);
+  const showTonightRollForward =
+    time === "tonight" &&
+    day === null &&
+    crowdFiltered.length === 0 &&
+    rollForwardReady &&
+    tomorrowEvening.length > 0 &&
+    (view === "list" || filtered.length === 0);
+
+  // Government & notices: the public feed's civic rows plus the meetings and
+  // town reminders classified out of it, one disclosure under the same
+  // filters as the board.
+  const noticeMatch = (event: EventWithMeta) =>
+    eventMatchesTimeWindow(event, day ? "all" : time, timeBounds) &&
+    (!day || dayKeyEastern(event.starts_at) === day) &&
+    facetMatch(event) &&
+    categoryMatch(event);
+  const civicNoticeMap = new Map<string, EventWithMeta>();
+  for (const event of [...utilityFiltered, ...(notices?.civic ?? []).filter(noticeMatch)]) {
+    civicNoticeMap.set(eventIdentity(event), event);
+  }
+  const civicNotices = [...civicNoticeMap.values()]
+    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
+    .slice(0, 80);
+  const reminderNotices = (notices?.reminders ?? []).filter(noticeMatch).slice(0, 24);
+  // Other views already list the public feed's civic rows among everything
+  // else, so their disclosure carries only the classified notices.
+  const governmentMeetings = view === "list"
+    ? civicNotices
+    : civicNotices.filter((event) => !utilityFiltered.includes(event));
+  const governmentLoadMore =
+    view === "list" && !dataComplete && summary.utilityCount > utilityFiltered.length;
 
   // Sheet boundary: a plain tap on any event link below opens the
   // EventSheet in place (essentials without a page navigation; the
@@ -1036,22 +1300,14 @@ export default function EventsExplorer({
           no saved rail above the first event — the board leads with events. */}
       <EventsBoardDock
         nowISO={nowISO}
-        dayCounts={summary.dayCounts}
+        tonightListed={tonightListed}
+        todayListed={todayListed}
         filteredCount={mastheadCount.eventCount}
         resultTownCount={mastheadTownCount}
         countComplete={mastheadCount.complete}
         categories={availableCategories}
         towns={availableTowns}
-        whereLabel={
-          nearMeActive
-            ? nearbyEventsWhereLabel({
-                hasOrigin: Boolean(deviceOrigin),
-                dataComplete,
-                loading: loadingAll,
-                failed: Boolean(loadError),
-              })
-            : null
-        }
+        whereLabel={nearbyLabel}
         intent={intent}
         setIntent={setIntent}
         sub={sub}
@@ -1087,6 +1343,32 @@ export default function EventsExplorer({
         sort={sort}
         setSort={setSort}
       />
+
+      {/* Visual first: the week reads as seven day cells with real counts
+          before any sentence, and a tap on a day picks it (?d=). */}
+      <EventWeekRibbon
+        nowISO={nowISO}
+        countByDate={ribbonCounts}
+        activeDay={day}
+        onPickDay={pickRibbonDay}
+      />
+
+      {nearMeActive && deviceOrigin && nearbyLabel ? (
+        <p
+          role="status"
+          data-events-nearby-status
+          className="flex min-w-0 items-center gap-2 px-1 text-[12px] font-semibold"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          <LocateFixed
+            aria-hidden
+            className="h-4 w-4 shrink-0"
+            strokeWidth={2.2}
+            style={{ color: "var(--app-brand-press)" }}
+          />
+          <span className="min-w-0 truncate">{nearbyLabel}</span>
+        </p>
+      ) : null}
 
       {nearMeActive && !deviceOrigin ? (
         <section
@@ -1251,6 +1533,17 @@ export default function EventsExplorer({
             </li>
           )}
         </ol>
+      ) : showTonightRollForward ? (
+        // Tonight is spent: one plain sentence, then tomorrow evening's
+        // first rows under the same filters, so a late visitor gets a plan
+        // instead of a zero and removal chips for filters they never chose.
+        <section data-events-tonight-roll-forward className="space-y-3">
+          <p className="px-1 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            {TONIGHT_ROLL_FORWARD}
+          </p>
+          <SectionHeading title="Tomorrow evening" size="sm" />
+          <CompactEventList events={tomorrowEvening} live={live} nowISO={nowISO} />
+        </section>
       ) : filtered.length === 0 ? (
         // Composed empty state — soft category-tinted block, serif line,
         // one quiet sentence, primary action. Replaces the bare bordered
@@ -1363,15 +1656,52 @@ export default function EventsExplorer({
             </li>
           )}
         </motion.ul>
+      ) : windowed ? (
+        // One chosen window (a date chip or a picked day): a real answer of
+        // up to WINDOW_PEEK rows under day subheads, not a two-row peek.
+        <div className="space-y-4" data-events-window={day ?? time}>
+          {windowLead && !(showPrimaryLeadBeforeRail && windowLead === primaryLead) ? (
+            <PromotedEvent
+              event={windowLead}
+              visual={eventCardVisual(windowLead)}
+              live={live.has(windowLead.slug)}
+              priorityImage
+              nowISO={nowISO}
+            />
+          ) : null}
+          {windowGroups.map((group) => (
+            <section key={group.key} className="space-y-2">
+              <SectionHeading title={group.label} size="sm" />
+              <CompactEventList events={group.events} live={live} nowISO={nowISO} />
+            </section>
+          ))}
+          {windowRest.length > WINDOW_PEEK && (
+            <ShowMoreLink
+              open={windowOpen}
+              dataComplete={dataComplete}
+              loading={loadingAll}
+              label={windowMoreLabel}
+              onClick={() => {
+                if (windowOpen && !dataComplete) void ensureAllEvents();
+                else toggleGroup(windowKey);
+              }}
+            />
+          )}
+          {windowOpen && windowRest.length > EXPANDED_CAP && (
+            <CalendarOverflowLink
+              label={dataComplete ? `${windowRest.length - EXPANDED_CAP} more on the calendar` : "See more on the calendar"}
+            />
+          )}
+        </div>
       ) : (
         // Grouped by human time horizon — "what's on now / today / this
         // weekend / later" — so the page is navigable at a glance, not
         // a 400-row chronological scroll. Each group shows a scannable
-        // peek and expands in place; nothing is hidden.
+        // peek and expands in place; nothing is hidden. Headings carry no
+        // counts: counts are supporting detail, never the headline.
         <div className="space-y-4">
           {horizonGroups.map((g, groupIdx) => {
             const isOpen = openGroups.has(g.key);
-            const EXPANDED_CAP = 40;
             // Every horizon gets one lead. The immediate horizon earns the
             // full poster; later windows use the restrained glance card, whose
             // own resolver allows only safe thumbnails or a category seal.
@@ -1383,7 +1713,7 @@ export default function EventsExplorer({
               lead && leadVariant === "feature" ? eventCardVisual(lead) : null;
             const rest = lead ? g.events.slice(1) : g.events;
             const PEEK = leadVariant === "feature" ? 2 : 3;
-            const { groupCount, totalRest, canExpand } = eventGroupRenderState({
+            const { totalRest, canExpand } = eventGroupRenderState({
               summaryCount: summary.horizonCounts[g.key],
               loadedCount: g.events.length,
               dataComplete,
@@ -1393,7 +1723,7 @@ export default function EventsExplorer({
               peek: PEEK,
             });
             // When the sole event in the first horizon has already moved
-            // above the interest rail, do not leave an empty "Today 1"
+            // above the interest rail, do not leave an empty "Today"
             // heading directly above the next horizon. That visual orphan
             // made Wednesday's first card look mislabeled as today.
             if (leadMovedBeforeRail && totalRest === 0) return null;
@@ -1402,7 +1732,7 @@ export default function EventsExplorer({
             const overflow = isOpen ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
             return (
               <section key={g.key} className="space-y-3">
-                <SectionHeading title={g.label} count={groupCount} />
+                <SectionHeading title={g.label} />
                 {lead && !leadMovedBeforeRail && leadVariant === "feature" ? (
                   <PromotedEvent
                     event={lead}
@@ -1433,45 +1763,20 @@ export default function EventsExplorer({
                         otherwise the peek already shows everything. */}
                     {canExpand && (
                       <>
-                        <button
-                          type="button"
+                        <ShowMoreLink
+                          open={isOpen}
+                          dataComplete={dataComplete}
+                          loading={loadingAll}
+                          label={showMoreLabel({ lens: "all", groupLabel: g.label })}
                           onClick={() => {
                             if (isOpen && !dataComplete) void ensureAllEvents();
                             else toggleGroup(g.key);
                           }}
-                          aria-expanded={isOpen}
-                          disabled={isOpen && loadingAll}
-                          className="tactile tactile-interactive flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-4 py-2.5 text-[13px] font-semibold"
-                          style={{
-                            borderColor: "var(--app-border)",
-                            background: "var(--app-bg-elevated)",
-                            color: "var(--app-cool)",
-                          }}
-                        >
-                          {isOpen && !dataComplete
-                            ? loadingAll
-                              ? "Loading more…"
-                              : "Try loading more"
-                            : isOpen
-                              ? "Show fewer"
-                              : "Show more"}
-                          <ChevronDown
-                            className="h-4 w-4 transition-transform"
-                            strokeWidth={2.25}
-                            style={{ transform: isOpen ? "rotate(180deg)" : "none" }}
-                            aria-hidden
-                          />
-                        </button>
+                        />
                         {overflow > 0 && (
-                          <div className="px-1 pt-1 text-center">
-                            <Link
-                              href="/events/calendar"
-                              className="tap-44 inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
-                              style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
-                            >
-                              {dataComplete ? `${overflow} more on the calendar` : "See more on the calendar"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
-                            </Link>
-                          </div>
+                          <CalendarOverflowLink
+                            label={dataComplete ? `${overflow} more on the calendar` : "See more on the calendar"}
+                          />
                         )}
                       </>
                     )}
@@ -1480,51 +1785,127 @@ export default function EventsExplorer({
               </section>
             );
           })}
-
-          {/* ── Civic & meetings — the utility tail. Council / NAC /
-              commission business, kept OUT of the main flow (it's not
-              what most people come for) but one tap away for the people
-              who want it. Sits just above the page's "Official calendars"
-              municipal-series block, so all the civic-utility weight
-              lives together at the bottom. */}
-          {utilityFiltered.length > 0 && (
-            <CollapsibleSection
-              title="Civic & meetings"
-              count={!dataComplete && !contentFilterActive ? summary.utilityCount : utilityFiltered.length}
-              storageKey="fr.events.civic"
-              defaultOpen={false}
-              className="[&>button]:min-h-11"
-            >
-              <ol
-                className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
-                style={{ borderColor: "var(--app-border)" }}
-              >
-                {utilityFiltered.slice(0, 80).map((e) => (
-                  <li key={`${e.slug}-${e.starts_at}`}>
-                    <EventCard event={e} variant="compact" nowISO={nowISO} />
-                  </li>
-                ))}
-                {!dataComplete && summary.utilityCount > utilityFiltered.length && (
-                  <li className="p-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => void ensureAllEvents()}
-                      className="tap-44-y px-3 text-[12px] font-semibold underline"
-                      style={{ color: "var(--app-cool)" }}
-                    >
-                      Load all {summary.utilityCount} civic events
-                    </button>
-                  </li>
-                )}
-              </ol>
-            </CollapsibleSection>
-          )}
         </div>
       )}
+
+      {/* ── Government & notices — ONE civic lane. The public feed's council,
+          commission and hearing rows used to sit in a "Civic & meetings"
+          disclosure right above the page's separate "Government & notices >
+          Civic meetings" section, so civic business read as two lanes. Both
+          now share this disclosure, kept out of the main flow but one tap
+          away. Other views already list the public civic rows, so there it
+          carries only the classified meetings and town reminders. */}
+      {governmentMeetings.length > 0 || reminderNotices.length > 0 || governmentLoadMore ? (
+        <div id="civic-meetings" className="scroll-mt-20">
+          <CollapsibleSection
+            title="Government & notices"
+            count={governmentMeetings.length + reminderNotices.length}
+            countLabel={governmentMeetings.length + reminderNotices.length === 1 ? "listing" : "listings"}
+            countAriaOnly
+            headingLevel={2}
+            storageKey="fr.events.government"
+            defaultOpen={false}
+            className="[&>button]:min-h-11"
+          >
+            <div className="space-y-4">
+              {(governmentMeetings.length > 0 || governmentLoadMore) && (
+                <section className="space-y-2">
+                  <SectionHeading title="Meetings and hearings" size="sm" />
+                  <ol
+                    className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    {governmentMeetings.map((e) => (
+                      <li key={`${e.slug}-${e.starts_at}`}>
+                        <EventCard event={e} variant="compact" nowISO={nowISO} />
+                      </li>
+                    ))}
+                    {governmentLoadMore && (
+                      <li className="p-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => void ensureAllEvents()}
+                          className="tap-44-y px-3 text-[12px] font-semibold underline"
+                          style={{ color: "var(--app-cool)" }}
+                        >
+                          Load all {summary.utilityCount} civic events
+                        </button>
+                      </li>
+                    )}
+                  </ol>
+                </section>
+              )}
+              {reminderNotices.length > 0 && (
+                <section className="space-y-2">
+                  <SectionHeading title="Town reminders" size="sm" />
+                  <ol
+                    className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    {reminderNotices.map((e) => (
+                      <li key={`${e.slug}-${e.starts_at}`}>
+                        <EventCard event={e} variant="compact" nowISO={nowISO} />
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              )}
+            </div>
+          </CollapsibleSection>
+        </div>
+      ) : null}
       </div>
       </EventSheetBoundary>
       </div>
     </div>
+  );
+}
+
+/** The quiet expansion under a group: a 44px text link, not a boxed button. */
+function ShowMoreLink({
+  open,
+  dataComplete,
+  loading,
+  label,
+  onClick,
+}: {
+  open: boolean;
+  dataComplete: boolean;
+  loading: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={open}
+      disabled={open && loading}
+      className="tap-44-y inline-flex min-h-11 items-center gap-1 px-1 text-[13px] font-semibold underline underline-offset-4 disabled:opacity-55"
+      style={{ color: "var(--app-brand-press)" }}
+    >
+      {open && !dataComplete
+        ? loading
+          ? "Loading more…"
+          : "Try loading more"
+        : open
+          ? "Show fewer"
+          : label}
+    </button>
+  );
+}
+
+/** Past the inline cap, the long tail lives on the calendar page. */
+function CalendarOverflowLink({ label }: { label: string }) {
+  return (
+    <Link
+      href="/events/calendar"
+      className="tap-44-y inline-flex min-h-11 items-center gap-1 px-1 text-[13px] font-semibold"
+      style={{ color: "var(--app-brand-press)" }}
+    >
+      {label}
+      <ArrowRight aria-hidden className="h-3.5 w-3.5" strokeWidth={2.25} />
+    </Link>
   );
 }
 

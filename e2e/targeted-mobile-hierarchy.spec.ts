@@ -40,13 +40,21 @@ test("Events keeps one discovery doorway visible and nests filter and display ch
   await expect(page.getByRole("button", { name: /^Order:/ })).toBeVisible();
 });
 
-test("Events keeps display choices inline on wider screens", async ({ page }) => {
+test("Events keeps Display as one 44px title-row button on wider screens", async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 800 });
   await page.goto("/events");
 
+  // UI audit: the count row is gone and Display lives in the title row on
+  // every width, so view and order sit behind the same one button.
+  const display = page.locator("summary").filter({ hasText: "Display" });
+  await expect(display).toBeVisible();
+  const box = await display.boundingBox();
+  expect(box?.width).toBeGreaterThanOrEqual(44);
+  expect(box?.height).toBeGreaterThanOrEqual(44);
+  await expect(page.getByRole("button", { name: "List view" })).toBeHidden();
+  await display.click();
   await expect(page.getByRole("button", { name: "List view" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Order:/ })).toBeVisible();
-  await expect(page.locator("summary").filter({ hasText: "Display" })).toBeHidden();
 });
 
 test("Events interest choices replace legacy exact-category filters", async ({ page }) => {
@@ -106,10 +114,11 @@ test("Events loads the complete board before claiming a Near me ranking", async 
   await page.goto("/events?in=nearme", { waitUntil: "domcontentloaded" });
 
   await expect.poll(() => continuationRequests).toBe(1);
-  await expect(page.getByText("Ranking nearby events…", { exact: true })).toBeVisible();
-  await expect(page.getByText("Ranked near you", { exact: true })).toBeHidden();
+  // The ranking state is a visible status line now that the count row is gone.
+  const nearbyStatus = page.locator("[data-events-nearby-status]");
+  await expect(nearbyStatus).toHaveText("Ranking nearby events…");
   releaseContinuation();
-  await expect(page.getByText("Ranked near you", { exact: true })).toBeVisible();
+  await expect(nearbyStatus).toHaveText("Ranked near you");
 });
 
 test("Events calendar overflow link navigates instead of opening a detail sheet", async ({ page }) => {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { featuredEventSlugs } from "@/lib/events/featured";
 import { Suspense } from "react";
-import { ArrowRight, Building2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { loadEventArchiveSnapshot } from "@/lib/loaders/todayEventSnapshot";
 import { classifyEvent } from "@/lib/events/classify";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
@@ -14,12 +14,10 @@ import {
 } from "@/lib/events/browsePayload";
 import EventsExplorer from "@/components/event/EventsExplorer";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
-import EventCard from "@/components/event/EventCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 import PageBloom from "@/components/ui/PageBloom";
-import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
 import SlowSuspenseFallback from "@/components/ui/SlowSuspenseFallback";
 import { isEventLiveNow } from "@/lib/eventWhenLabel";
@@ -239,6 +237,7 @@ async function EventsBoard({
       <div className="min-h-[calc(100dvh-var(--app-topbar-h))]">
         <EventsExplorer
           events={initialEvents}
+          notices={{ civic: civicEvents.slice(0, 48), reminders: reminderEvents.slice(0, 24) }}
           liveSlugs={liveSlugs}
           categories={categories}
           towns={towns}
@@ -251,78 +250,10 @@ async function EventsBoard({
         />
       </div>
 
-      {/* ── 6b. GOVERNMENT & NOTICES — civic meetings + town reminders,
-          fenced off from social discovery by a clear divider + label so
-          municipal listings never read as "something to do". The #civic-
-          meetings anchor is the target of the Civic mood tile above. */}
-      {(civicEvents.length > 0 || reminderEvents.length > 0) && (
-        <div
-          id="civic-meetings"
-          className="flex items-center gap-3 scroll-mt-20 pt-2"
-        >
-          <span className="h-px flex-1" style={{ background: "var(--app-border)" }} aria-hidden />
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-            <Building2 className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            Government &amp; notices
-          </span>
-          <span className="h-px flex-1" style={{ background: "var(--app-border)" }} aria-hidden />
-        </div>
-      )}
-
-      {/* CIVIC MEETINGS — boards, commissions, hearings, council sessions
-          classified out of the live feed. Present + findable in their own
-          lane, never in "What's on". COLLAPSED, self-hides. */}
-      {civicEvents.length > 0 && (
-        <CollapsibleSection
-          title="Civic meetings"
-          count={civicEvents.length}
-          countLabel={civicEvents.length === 1 ? "meeting" : "meetings"}
-          countAriaOnly
-          storageKey="fr.events.civic-meetings"
-          defaultOpen={false}
-          className="[&>button]:min-h-11"
-        >
-          <ol className="space-y-2">
-            {civicEvents.slice(0, 24).map((e) => (
-              <li key={`${e.slug}-${e.starts_at}`}>
-                <EventCard
-                  event={e}
-                  variant="glance"
-                  live={liveSlugs.includes(e.slug)}
-                  nowISO={now.toISOString()}
-                />
-              </li>
-            ))}
-          </ol>
-        </CollapsibleSection>
-      )}
-
-      {/* ── 6c. TOWN REMINDERS — municipal service notices (trash, yard
-          waste, curbside, closures). Useful, but not "something to do". */}
-      {reminderEvents.length > 0 && (
-        <CollapsibleSection
-          title="Town reminders"
-          count={reminderEvents.length}
-          countLabel={reminderEvents.length === 1 ? "notice" : "notices"}
-          countAriaOnly
-          storageKey="fr.events.town-reminders"
-          defaultOpen={false}
-          className="[&>button]:min-h-11"
-        >
-          <ol className="space-y-2">
-            {reminderEvents.slice(0, 24).map((e) => (
-              <li key={`${e.slug}-${e.starts_at}`}>
-                <EventCard
-                  event={e}
-                  variant="glance"
-                  live={false}
-                  nowISO={now.toISOString()}
-                />
-              </li>
-            ))}
-          </ol>
-        </CollapsibleSection>
-      )}
+      {/* ── 6b. GOVERNMENT & NOTICES — civic meetings and town reminders
+          now render inside the board's one "Government & notices"
+          disclosure (EventsExplorer `notices`), beside the public feed's
+          civic rows, so civic business reads as one lane, not two. */}
 
       {/* ── 7. SUBSCRIBE — the county in your own calendar app. webcal://
           is the subscription protocol every major calendar client claims

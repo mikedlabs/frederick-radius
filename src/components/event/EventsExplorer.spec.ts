@@ -12,6 +12,13 @@ import {
   initialBrowseIsComplete,
   reconcileBrowseResponse,
   eventsEmptyState,
+  eventDayCounts,
+  isWindowedList,
+  timeRelaxationLabel,
+  TONIGHT_ROLL_FORWARD,
+  weekRibbonCounts,
+  windowedDayGroups,
+  WINDOW_PEEK,
 } from "./EventsExplorer";
 
 function event(
@@ -425,5 +432,129 @@ describe("EventsExplorer event time windows", () => {
         now: Date.parse("2026-08-01T19:00:00-04:00"),
       }),
     ).toBe(false);
+  });
+});
+
+describe("EventsExplorer at night (UI audit: 11:17 PM showed 0 listings)", () => {
+  // Wednesday, October 7, 2026, 11:17 PM Eastern.
+  const late = {
+    now: Date.parse("2026-10-07T23:17:00-04:00"),
+    next24: Date.parse("2026-10-08T00:00:00-04:00"),
+    weekendStart: Date.parse("2026-10-09T17:00:00-04:00"),
+    weekendEnd: Date.parse("2026-10-12T00:00:00-04:00"),
+  };
+
+  it("keeps a 10 PM set in Tonight after the old 4-9 PM Evening daypart closed", () => {
+    const set = event("late-set", "music", "2026-10-07T22:00:00-04:00");
+    set.ends_at = "2026-10-08T01:00:00-04:00";
+    const early = event("early-show", "music", "2026-10-07T19:00:00-04:00");
+    early.ends_at = "2026-10-07T21:00:00-04:00";
+    expect(eventMatchesTimeWindow(set, "tonight", late)).toBe(true);
+    expect(eventMatchesTimeWindow(early, "tonight", late)).toBe(false);
+  });
+
+  it("reads Tomorrow as Thursday at 11:17 PM", () => {
+    const thursday = event("thursday", "food", "2026-10-08T11:00:00-04:00");
+    const friday = event("friday", "food", "2026-10-09T11:00:00-04:00");
+    expect(eventMatchesTimeWindow(thursday, "tomorrow", late)).toBe(true);
+    expect(eventMatchesTimeWindow(friday, "tomorrow", late)).toBe(false);
+  });
+
+  it("drops Tonight with one removal chip, not Today plus Evening", () => {
+    expect(timeRelaxationLabel("tonight")).toBe("Tonight");
+    expect(timeRelaxationLabel("tomorrow")).toBe("Tomorrow");
+    const source = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
+    expect(source).toContain('label: timeRelaxationLabel(time)');
+    expect(source).not.toContain('"That day"');
+  });
+
+  it("rolls an empty Tonight forward with one plain sentence", () => {
+    expect(TONIGHT_ROLL_FORWARD).toBe(
+      "Nothing else is listed for tonight. Here is tomorrow evening.",
+    );
+    const source = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
+    expect(source).toContain("{TONIGHT_ROLL_FORWARD}");
+    expect(source).toContain("isTomorrowEveningEvent(e, now)");
+  });
+});
+
+describe("EventsExplorer windowed list (UI audit: 2-3 row peek)", () => {
+  it("lists a chosen window or day instead of the horizon peek", () => {
+    expect(isWindowedList({ time: "weekend", day: null, view: "list", sort: "recommended" })).toBe(true);
+    expect(isWindowedList({ time: "all", day: "2026-10-09", view: "list", sort: "time" })).toBe(true);
+    expect(isWindowedList({ time: "all", day: null, view: "list", sort: "recommended" })).toBe(false);
+    expect(isWindowedList({ time: "weekend", day: null, view: "calendar", sort: "recommended" })).toBe(false);
+    expect(isWindowedList({ time: "weekend", day: null, view: "list", sort: "az" })).toBe(false);
+    expect(WINDOW_PEEK).toBe(12);
+  });
+
+  it("groups rows by day, and keeps Tonight under one subhead past midnight", () => {
+    const now = Date.parse("2026-10-09T10:00:00-04:00");
+    const rows = [
+      event("fri", "music", "2026-10-09T19:00:00-04:00"),
+      event("sat", "music", "2026-10-10T19:00:00-04:00"),
+      event("sun", "music", "2026-10-11T13:00:00-04:00"),
+    ];
+    expect(windowedDayGroups(rows, "weekend", now).map((group) => group.label)).toEqual([
+      "Today",
+      "Tomorrow",
+      "Sunday, October 11",
+    ]);
+    const night = [
+      event("eleven", "music", "2026-10-09T23:00:00-04:00"),
+      event("one-am", "music", "2026-10-10T01:00:00-04:00"),
+    ];
+    expect(windowedDayGroups(night, "tonight", now)).toEqual([
+      { key: "tonight", label: "Tonight", events: night },
+    ]);
+    expect(windowedDayGroups([], "weekend", now)).toEqual([]);
+  });
+
+  it("drops counts from section headings and boxes from Show more", () => {
+    const source = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
+    expect(source).not.toMatch(/<SectionHeading[^>]*\bcount=/);
+    expect(source).not.toContain("flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border");
+    expect(source).toContain("<ShowMoreLink");
+  });
+});
+
+describe("EventsExplorer week ribbon counts", () => {
+  it("counts by Eastern start day", () => {
+    expect(
+      eventDayCounts([
+        { starts_at: "2026-10-08T01:30:00.000Z" }, // 9:30 PM Oct 7 Eastern
+        { starts_at: "2026-10-08T15:00:00.000Z" },
+        { starts_at: "2026-10-08T22:00:00.000Z" },
+      ]),
+    ).toEqual({ "2026-10-07": 1, "2026-10-08": 2 });
+  });
+
+  it("never shows countywide numbers under a narrowed, still-loading board", () => {
+    const summaryCounts = { "2026-10-08": 300 };
+    const matching = () => [{ starts_at: "2026-10-08T15:00:00.000Z" }];
+    expect(weekRibbonCounts({ dataComplete: false, facetFilterActive: false, summaryCounts, matchingEvents: matching })).toBe(summaryCounts);
+    expect(weekRibbonCounts({ dataComplete: false, facetFilterActive: true, summaryCounts, matchingEvents: matching })).toBeNull();
+    expect(weekRibbonCounts({ dataComplete: true, facetFilterActive: true, summaryCounts, matchingEvents: matching })).toEqual({ "2026-10-08": 1 });
+  });
+
+  it("renders the ribbon on the board, directly after the dock", () => {
+    const source = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
+    const dockEnd = source.indexOf("setSort={setSort}\n      />");
+    const ribbon = source.indexOf("<EventWeekRibbon", dockEnd);
+    expect(dockEnd).toBeGreaterThan(0);
+    expect(ribbon).toBeGreaterThan(dockEnd);
+    expect(source.slice(dockEnd, ribbon)).not.toMatch(/<(section|div|p)\b/);
+  });
+});
+
+describe("Government & notices (UI audit: two civic lanes)", () => {
+  it("folds the civic lanes into one disclosure", () => {
+    const explorer = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
+    const page = readFileSync("src/app/(app)/events/(list)/page.tsx", "utf8");
+    expect(explorer).not.toContain('title="Civic & meetings"');
+    expect(explorer.match(/title="Government & notices"/g)).toHaveLength(1);
+    expect(page).toContain("notices={{ civic: civicEvents");
+    expect(page).not.toContain('title="Civic meetings"');
+    expect(page).not.toContain('title="Town reminders"');
   });
 });

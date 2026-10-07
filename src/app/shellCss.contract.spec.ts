@@ -144,10 +144,8 @@ describe("shell surfaces", () => {
     const pane = top.find((block) => normalize(block.prelude) === ".eb-pane");
     expect(pane?.body).toContain("background: var(--app-bg-elevated-solid);");
 
-    const popover = top
-      .filter((block) => block.prelude.startsWith("@media"))
-      .flatMap((block) => blocks(block.body))
-      .find((block) => normalize(block.prelude) === ".eb-display-panel");
+    // The Display popover is one rule on every width now (events-board).
+    const popover = top.find((block) => normalize(block.prelude) === ".eb-display-panel");
     expect(popover?.body).toContain("background: var(--app-bg-elevated-solid);");
   });
 

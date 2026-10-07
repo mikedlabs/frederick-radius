@@ -2,6 +2,12 @@ import { describe, it, expect } from "vitest";
 import { EVENT_BY_SLUG } from "@/data/events";
 import { isEventLiveNow } from "./eventWhenLabel";
 import {
+  groupByEasternDay,
+  isTomorrowEveningEvent,
+  isTomorrowEvent,
+  isTonightEvent,
+  nightWindow,
+  tomorrowDayKey,
   groupByHorizon,
   horizonOf,
   isEventListingEnded,
@@ -230,5 +236,89 @@ describe("groupByHorizon — chronological section order", () => {
 
     expect(groups.map((group) => group.key)).toEqual(["weekend", "week"]);
     expect(groups.map((group) => group.label)).toEqual(["This weekend", "Next week"]);
+  });
+});
+
+describe("Tonight and Tomorrow windows (UI audit: 11:17 PM dead end)", () => {
+  const at = (iso: string) => Date.parse(iso);
+  const show = (start: string, end: string, extra: { is_all_day?: boolean } = {}) => ({
+    starts_at: new Date(start).toISOString(),
+    ends_at: new Date(end).toISOString(),
+    ...extra,
+  });
+  const LATE = at("2026-10-07T23:17:00-04:00");
+
+  it("runs tonight from 4 PM to 4 AM Eastern, and keeps yesterday's night before 4 AM", () => {
+    const tonight = {
+      start: at("2026-10-07T16:00:00-04:00"),
+      end: at("2026-10-08T04:00:00-04:00"),
+    };
+    expect(nightWindow(new Date(LATE))).toEqual(tonight);
+    expect(nightWindow(new Date("2026-10-07T14:00:00-04:00"))).toEqual(tonight);
+    expect(nightWindow(new Date("2026-10-08T01:30:00-04:00"))).toEqual(tonight);
+    expect(nightWindow(new Date(LATE), 1)).toEqual({
+      start: at("2026-10-08T16:00:00-04:00"),
+      end: at("2026-10-09T04:00:00-04:00"),
+    });
+  });
+
+  it("keeps a 10 PM set that is still playing at 11:17 PM and drops the 7 PM show that ended", () => {
+    expect(isTonightEvent(show("2026-10-07T22:00:00-04:00", "2026-10-08T01:00:00-04:00"), LATE)).toBe(true);
+    expect(isTonightEvent(show("2026-10-07T23:30:00-04:00", "2026-10-08T01:30:00-04:00"), LATE)).toBe(true);
+    expect(isTonightEvent(show("2026-10-07T19:00:00-04:00", "2026-10-07T21:00:00-04:00"), LATE)).toBe(false);
+    expect(isTonightEvent(show("2026-10-08T05:00:00-04:00", "2026-10-08T07:00:00-04:00"), LATE)).toBe(false);
+    expect(
+      isTonightEvent(
+        show("2026-10-07T00:00:00-04:00", "2026-10-08T00:00:00-04:00", { is_all_day: true }),
+        LATE,
+      ),
+    ).toBe(false);
+  });
+
+  it("counts an earlier start only once the evening has begun and it is still running", () => {
+    const happyHour = show("2026-10-07T15:00:00-04:00", "2026-10-07T19:00:00-04:00");
+    expect(isTonightEvent(happyHour, at("2026-10-07T14:00:00-04:00"))).toBe(false);
+    expect(isTonightEvent(happyHour, at("2026-10-07T17:00:00-04:00"))).toBe(true);
+    expect(
+      isTonightEvent(
+        show("2026-10-07T19:00:00-04:00", "2026-10-07T21:00:00-04:00"),
+        at("2026-10-07T14:00:00-04:00"),
+      ),
+    ).toBe(true);
+  });
+
+  it("treats tomorrow as the coming local day, even after midnight", () => {
+    expect(tomorrowDayKey(new Date(LATE))).toBe("2026-10-08");
+    expect(tomorrowDayKey(new Date("2026-10-08T01:00:00-04:00"))).toBe("2026-10-08");
+    expect(tomorrowDayKey(new Date("2026-10-08T09:00:00-04:00"))).toBe("2026-10-09");
+    const thursdayMorning = show("2026-10-08T10:00:00-04:00", "2026-10-08T12:00:00-04:00");
+    expect(isTomorrowEvent(thursdayMorning, LATE)).toBe(true);
+    expect(isTomorrowEvent(thursdayMorning, at("2026-10-08T01:00:00-04:00"))).toBe(true);
+    expect(isTomorrowEvent(show("2026-10-09T10:00:00-04:00", "2026-10-09T12:00:00-04:00"), LATE)).toBe(false);
+  });
+
+  it("finds tomorrow evening for the empty-Tonight roll-forward", () => {
+    expect(isTomorrowEveningEvent(show("2026-10-08T19:00:00-04:00", "2026-10-08T21:00:00-04:00"), LATE)).toBe(true);
+    expect(isTomorrowEveningEvent(show("2026-10-09T02:00:00-04:00", "2026-10-09T03:00:00-04:00"), LATE)).toBe(true);
+    expect(isTomorrowEveningEvent(show("2026-10-08T10:00:00-04:00", "2026-10-08T12:00:00-04:00"), LATE)).toBe(false);
+  });
+
+  it("labels day subheads Today, Tomorrow, then the full date", () => {
+    const groups = groupByEasternDay(
+      [
+        { slug: "sat", starts_at: "2026-10-10T19:00:00-04:00" },
+        { slug: "wed", starts_at: "2026-10-07T19:00:00-04:00" },
+        { slug: "thu", starts_at: "2026-10-08T19:00:00-04:00" },
+        { slug: "wed-2", starts_at: "2026-10-07T12:00:00-04:00" },
+      ],
+      at("2026-10-07T10:00:00-04:00"),
+    );
+    expect(groups.map((group) => group.label)).toEqual([
+      "Today",
+      "Tomorrow",
+      "Saturday, October 10",
+    ]);
+    // The caller's order is kept inside a day.
+    expect(groups[0].events.map((event) => event.slug)).toEqual(["wed", "wed-2"]);
   });
 });

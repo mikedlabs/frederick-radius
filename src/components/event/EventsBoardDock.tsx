@@ -39,7 +39,6 @@ const INTENT_ICONS: Record<string, any> = {
   Landmark,
 };
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
-import EventWeekRibbon from "@/components/event/EventWeekRibbon";
 import { haptic } from "@/lib/haptics";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -54,6 +53,7 @@ import {
   activeWhenPreset,
   countLine,
   formatDayLabel,
+  primaryWhenPresets,
   whatCaption,
   whenCaption,
   nextMastheadCollapsed,
@@ -86,23 +86,25 @@ const DAYPARTS: ReadonlyArray<{ key: Daypart; label: string }> = [
   { key: "late", label: "Late" },
 ];
 
-/** The questions most people arrive with stay visible. Longer-range and
- * exact-date planning remain available in the single Filters sheet. */
-export const EVENTS_PRIMARY_WHEN_PRESETS = WHEN_PRESETS.filter(
-  (preset) =>
-    preset.key === "today" ||
-    preset.key === "tonight" ||
-    preset.key === "weekend",
-);
+/** The questions most people arrive with stay visible while tonight still
+ * lists something. Longer-range and exact-date planning remain in the single
+ * Filters sheet, and the week ribbon under the row picks a day. */
+export const EVENTS_PRIMARY_WHEN_PRESETS = primaryWhenPresets({
+  tonightListed: true,
+  todayListed: true,
+  active: null,
+});
 
 type Pane = "what" | "when" | "where";
 
 export type EventsBoardDockProps = {
-  /** Server `now` (ISO) — the dateline + the ribbon's "today". */
+  /** Server `now` (ISO) — the dateline and the date input's minimum. */
   nowISO: string;
-  /** Complete server-computed counts for the When pane's 7-day ribbon. */
-  dayCounts: Record<string, number>;
-  /** True count of the filtered set (the mono count line). */
+  /** Something is still listed tonight; when false the row offers Tomorrow. */
+  tonightListed: boolean;
+  /** Something is still listed today. */
+  todayListed: boolean;
+  /** True count of the filtered set (announced to screen readers only). */
   filteredCount: number;
   /** Towns represented by the same result set as filteredCount. */
   resultTownCount: number;
@@ -263,7 +265,8 @@ const FOCUSABLE =
 export default function EventsBoardDock(props: EventsBoardDockProps) {
   const {
     nowISO,
-    dayCounts,
+    tonightListed,
+    todayListed,
     filteredCount,
     resultTownCount,
     countComplete,
@@ -310,7 +313,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   const [collapsed, setCollapsed] = useState(false);
   const paneRef = useRef<HTMLDivElement>(null);
   const whenRibbonRef = useRef<HTMLDivElement>(null);
-  const mobileDisplayRef = useRef<HTMLDetailsElement>(null);
+  const displayRef = useRef<HTMLDetailsElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
 
   // ── Collapse the nameplate on scroll (window scroll). Under
@@ -463,6 +466,11 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
         : "what";
 
   const activePreset = activeWhenPreset({ lens, tod });
+  const rowPresets = primaryWhenPresets({
+    tonightListed,
+    todayListed,
+    active: activePreset,
+  });
   const [pendingWhenPreset, setPendingWhenPreset] = useState<
     (typeof WHEN_PRESETS)[number]["key"] | null | undefined
   >(undefined);
@@ -552,10 +560,11 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     setTod(null);
     setDay(null);
   };
-  const closeMobileDisplay = () => {
-    if (mobileDisplayRef.current) mobileDisplayRef.current.open = false;
+  const closeDisplay = () => {
+    if (displayRef.current) displayRef.current.open = false;
   };
-  const viewLabel = VIEW_ITEMS.find((item) => item.key === view)?.label ?? "List";
+  const viewItem = VIEW_ITEMS.find((item) => item.key === view) ?? VIEW_ITEMS[0];
+  const ViewIcon = viewItem.Icon;
   const sortLabel = SORT_OPTIONS.find((item) => item.key === sort)?.label ?? "Recommended";
 
   return (
@@ -572,108 +581,81 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           </h2>
         </div>
 
-        {/* The three date questions people use most stay one tap away.
-            Tomorrow, later this week, dayparts, and exact dates remain in
-            the one canonical Filters sheet. */}
-        <div
-          className="eb-whenribbon"
-          role="group"
-          aria-label="When"
-          aria-hidden={collapsed}
-          inert={collapsed}
-          ref={whenRibbonRef}
+        {/* Display (view and order) is one 44px icon button in the title
+            row, the same on every width. Its glyph is the current view. It
+            folds away with the nameplate on scroll. */}
+        <details
+          ref={displayRef}
+          className="eb-display-options"
+          aria-hidden={collapsed || pane !== null}
+          inert={collapsed || pane !== null}
         >
-          {EVENTS_PRIMARY_WHEN_PRESETS.map((p) => (
-            <EbChip
-              key={p.key}
-              on={visibleWhenPreset === p.key}
-              color="var(--app-brand)"
-              onClick={() => pickPreset(p)}
-            >
-              {p.label}
-            </EbChip>
-          ))}
-        </div>
-
-        {/* One quiet filter control keeps the cold state focused on events.
-            What, When, and Where remain one tap away inside the sheet. */}
-        <div className="eb-filterbar">
-          <button
-            type="button"
-            aria-expanded={pane !== null}
-            aria-controls="eb-pane"
-            aria-haspopup="dialog"
-            className="eb-filter-trigger"
-            onClick={() => toggle(pane ?? firstActivePane)}
+          <summary
+            className="tap-44"
+            aria-label={`Change event display. ${viewItem.label} view, ${sortLabel} order.`}
           >
-            <SlidersHorizontal className="h-[16px] w-[16px] shrink-0" strokeWidth={2.2} aria-hidden />
-            <span className="eb-filter-copy">
-              <span className="eb-filter-label">Filters</span>
-              <span className="eb-filter-summary">{filterSummary}</span>
-            </span>
-            {activeFilterGroups > 0 && (
-              <span className="eb-filter-count" aria-hidden>
-                {activeFilterGroups}
-              </span>
-            )}
-            <ChevronDown
-              className="h-[15px] w-[15px] shrink-0"
-              strokeWidth={2.2}
-              aria-hidden
-              style={{ transform: pane ? "rotate(180deg)" : undefined }}
-            />
-          </button>
-          {anyFilter && (
-            <button
-              type="button"
-              className="eb-filter-reset tap-44"
-              onClick={() => {
-                haptic("light");
-                clear();
-              }}
-              aria-label="Reset all event filters"
-            >
-              Reset
-            </button>
-          )}
-        </div>
-
-        {/* The sub bar keeps the result count visible. Mobile gets one native
-            disclosure for view and order; desktop retains the same controls
-            inline. Neither surface puts a control wall in front of the first
-            event. */}
-        <div className="eb-subbar">
-          <span className="eb-countline" aria-live="polite">
-            {line}
-          </span>
-          <details ref={mobileDisplayRef} className="eb-display-options">
-            <summary
-              className="tap-44"
-              style={{ minHeight: 44 }}
-              aria-label={`Change event display. ${viewLabel} view, ${sortLabel} order.`}
-            >
-              <span>Display</span>
-              <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            </summary>
-            <div className="eb-display-panel">
-              <EventDisplayControls
-                view={view}
-                setView={setView}
-                sort={sort}
-                setSort={setSort}
-                onSelect={closeMobileDisplay}
-              />
-            </div>
-          </details>
-          <div className="eb-display-desktop">
+            <ViewIcon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+            <span className="sr-only">Display</span>
+          </summary>
+          <div className="eb-display-panel">
             <EventDisplayControls
               view={view}
               setView={setView}
               sort={sort}
               setSort={setSort}
+              onSelect={closeDisplay}
             />
           </div>
+        </details>
+
+        {/* The date questions people use most stay one tap away, and the
+            one Filters doorway closes the row. The row follows the clock:
+            once nothing is listed tonight it offers Tomorrow instead. */}
+        <div className="eb-chiprow">
+          <div
+            className="eb-whenribbon"
+            role="group"
+            aria-label="When"
+            ref={whenRibbonRef}
+          >
+            {rowPresets.map((p) => (
+              <EbChip
+                key={p.key}
+                on={visibleWhenPreset === p.key}
+                color="var(--app-brand)"
+                onClick={() => pickPreset(p)}
+              >
+                {p.label}
+              </EbChip>
+            ))}
+          </div>
+          <button
+            type="button"
+            aria-expanded={pane !== null}
+            aria-controls="eb-pane"
+            aria-haspopup="dialog"
+            className="eb-filter-trigger tap-44-y"
+            data-on={activeFilterGroups > 0 || undefined}
+            onClick={() => toggle(pane ?? firstActivePane)}
+          >
+            <SlidersHorizontal className="h-[16px] w-[16px] shrink-0" strokeWidth={2.2} aria-hidden />
+            <span className="eb-filter-label">Filters</span>
+            {/* The full What · When · Where readout stays in the button's
+                accessible name; the chips and badge carry it visually. */}
+            <span className="eb-filter-summary">{filterSummary}</span>
+            {activeFilterGroups > 0 && (
+              <span className="eb-filter-count" aria-hidden>
+                {activeFilterGroups}
+              </span>
+            )}
+          </button>
         </div>
+
+        {/* Counts are supporting detail, never the headline: the result
+            count is announced to screen readers and not printed. */}
+        <p className="sr-only" role="status" aria-live="polite">
+          {line}
+        </p>
       </div>
 
       {/* Scrim — dims the list; a tap closes the open pane. */}
@@ -697,9 +679,24 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
         <div className="eb-pane-scroll">
           <div className="dock-pane-head">
             <span className="dock-pane-title font-serif">Filters</span>
-            <button type="button" className="dock-done" onClick={closePane}>
-              Done
-            </button>
+            <span className="eb-pane-actions">
+              {anyFilter && (
+                <button
+                  type="button"
+                  className="eb-filter-reset tap-44"
+                  onClick={() => {
+                    haptic("light");
+                    clear();
+                  }}
+                  aria-label="Reset all event filters"
+                >
+                  Reset
+                </button>
+              )}
+              <button type="button" className="dock-done" onClick={closePane}>
+                Done
+              </button>
+            </span>
           </div>
           <div className="eb-pane-tabs" role="tablist" aria-label="Event filter sections">
             {(["what", "when", "where"] as const).map((section) => (
@@ -875,14 +872,6 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                   </EbChip>
                 ))}
               </div>
-
-              <Sect>Pick a day</Sect>
-              <EventWeekRibbon
-                nowISO={nowISO}
-                countByDate={dayCounts}
-                activeDay={day}
-                onPickDay={pickDay}
-              />
 
               <button type="button" className="eb-jumpwk tap-44" onClick={jumpNextWeekend}>
                 <CalendarRange className="h-[15px] w-[15px]" strokeWidth={2.1} aria-hidden />

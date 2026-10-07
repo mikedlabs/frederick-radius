@@ -16,8 +16,29 @@ import type { IntentId } from "@/lib/events/intents";
 import { LENS_WORDS } from "@/lib/timeLens";
 import { BRAND } from "@/lib/brand";
 
-/** The board's time lens (?lens=), matching EventsExplorer's TimeKey. */
-export type TimeKey = "all" | "today" | "weekend" | "week";
+/** The board's time lens (?lens=), matching EventsExplorer's TimeKey.
+ *  "tonight" is one token (4 PM to 4 AM, lib/eventHorizon), not Today plus a
+ *  daypart, so it carries one removal chip and survives the 9 PM boundary. */
+export type TimeKey = "all" | "today" | "tonight" | "tomorrow" | "weekend" | "week";
+
+export const TIME_KEYS: readonly TimeKey[] = [
+  "all", "today", "tonight", "tomorrow", "weekend", "week",
+];
+
+/**
+ * Read ?lens (and the legacy ?tod) into the board's time state. The old
+ * Tonight chip wrote lens=today&tod=evening; those shared links must keep
+ * opening Tonight as one filter rather than as two the person never chose.
+ */
+export function parseTimeParams(args: {
+  lens: string | null;
+  tod: Daypart | null;
+  fallback: TimeKey;
+}): { time: TimeKey; tod: Daypart | null } {
+  const lens = TIME_KEYS.includes(args.lens as TimeKey) ? (args.lens as TimeKey) : null;
+  if (lens === "today" && args.tod === "evening") return { time: "tonight", tod: null };
+  return { time: lens ?? args.fallback, tod: args.tod };
+}
 
 /**
  * Per-intent accent for the caption ink + the What-pane chip dots. Event
@@ -44,9 +65,32 @@ export const EVENT_INTENT_COLOR: Record<IntentId, string> = {
  *  board and the map dock can never drift (UX-03). */
 export const LENS_LABEL: Record<Exclude<TimeKey, "all">, string> = {
   today: LENS_WORDS.today,
+  tonight: LENS_WORDS.tonight,
+  tomorrow: LENS_WORDS.tomorrow,
   weekend: LENS_WORDS.weekend,
   week: LENS_WORDS.laterWeek,
 };
+
+/** Lower-case phrase for "Show more …" links under a time window. */
+const SHOW_MORE_PHRASE: Record<Exclude<TimeKey, "all">, string> = {
+  today: "today",
+  tonight: "tonight",
+  tomorrow: "tomorrow",
+  weekend: "this weekend",
+  week: "this week",
+};
+
+/** The quiet expansion link under a window: "Show more this weekend". */
+export function showMoreLabel(args: {
+  lens: TimeKey;
+  dayLabel?: string | null;
+  groupLabel?: string | null;
+}): string {
+  if (args.dayLabel) return `Show more on ${args.dayLabel}`;
+  if (args.lens !== "all") return `Show more ${SHOW_MORE_PHRASE[args.lens]}`;
+  if (args.groupLabel) return `Show more ${args.groupLabel.toLowerCase()}`;
+  return "Show more";
+}
 
 /** Human label for each Eastern daypart. */
 export const DAYPART_LABEL: Record<Daypart, string> = {
@@ -57,42 +101,64 @@ export const DAYPART_LABEL: Record<Daypart, string> = {
 };
 
 /**
- * The When pane's four presets, mapped ONTO the existing ?lens (+ the
- * live "on now" gate via the evening daypart for Tonight). We do NOT
- * migrate ?lens→?when: a preset writes lens + tod, and the caption reads
- * them back. "Tonight" = today's evening (the on-now window a local
- * means); the others are pure lens windows.
+ * The When pane's presets, each one ?lens window. We do NOT migrate
+ * ?lens→?when: a preset writes the lens (and clears any daypart), and the
+ * caption reads it back. Tonight and Tomorrow are their own windows.
  */
-export type WhenPresetKey = "today" | "tonight" | "weekend" | "week";
+export type WhenPresetKey = Exclude<TimeKey, "all">;
 
-export const WHEN_PRESETS: ReadonlyArray<{
+export type WhenPreset = {
   key: WhenPresetKey;
   label: string;
   lens: TimeKey;
   tod: Daypart | null;
-}> = [
+};
+
+export const WHEN_PRESETS: ReadonlyArray<WhenPreset> = [
   { key: "today", label: LENS_WORDS.today, lens: "today", tod: null },
-  { key: "tonight", label: LENS_WORDS.tonight, lens: "today", tod: "evening" },
+  { key: "tonight", label: LENS_WORDS.tonight, lens: "tonight", tod: null },
+  { key: "tomorrow", label: LENS_WORDS.tomorrow, lens: "tomorrow", tod: null },
   { key: "weekend", label: LENS_WORDS.weekend, lens: "weekend", tod: null },
   { key: "week", label: LENS_WORDS.laterWeek, lens: "week", tod: null },
 ];
 
+const PRESET_BY_KEY = Object.fromEntries(
+  WHEN_PRESETS.map((preset) => [preset.key, preset]),
+) as Record<WhenPresetKey, WhenPreset>;
+
 /**
- * Which preset (if any) the current lens+tod expresses. Tonight wins over
- * Today when the evening daypart is on; a bare lens matches its window
- * only when no daypart narrows it further (so "today + morning" is not
- * "Today", it's the compound caption).
+ * The date chips that stay on the board. While something is still listed
+ * tonight they are Today, Tonight and This weekend. Once tonight is spent the
+ * row moves on to Tomorrow and This weekend, keeping Today only while today
+ * still lists something, so an 11 PM visitor is never offered an empty
+ * Tonight. A chosen window always stays visible so it can be turned off.
+ */
+export function primaryWhenPresets(args: {
+  tonightListed: boolean;
+  todayListed: boolean;
+  active: WhenPresetKey | null;
+}): WhenPreset[] {
+  const keys: WhenPresetKey[] = args.tonightListed
+    ? ["today", "tonight", "weekend"]
+    : args.todayListed
+      ? ["today", "tomorrow", "weekend"]
+      : ["tomorrow", "weekend"];
+  if (args.active && !keys.includes(args.active)) keys.unshift(args.active);
+  return keys.map((key) => PRESET_BY_KEY[key]);
+}
+
+/**
+ * Which preset (if any) the current lens+tod expresses. A bare lens matches
+ * its window only when no daypart narrows it further (so "today + morning"
+ * is not "Today", it's the compound caption).
  */
 export function activeWhenPreset(args: {
   lens: TimeKey;
   tod: Daypart | null;
 }): WhenPresetKey | null {
   const { lens, tod } = args;
-  if (lens === "today" && tod === "evening") return "tonight";
-  if (lens === "today" && tod === null) return "today";
-  if (lens === "weekend" && tod === null) return "weekend";
-  if (lens === "week" && tod === null) return "week";
-  return null;
+  if (lens === "all" || tod !== null) return null;
+  return lens;
 }
 
 const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -158,9 +224,6 @@ export function whenCaption(args: {
   tod: Daypart | null;
 }): WhenCaption {
   if (args.dayLabel) return { text: args.dayLabel, mono: true };
-  if (args.lens === "today" && args.tod === "evening") {
-    return { text: "Tonight", mono: false };
-  }
   const bits: string[] = [];
   if (args.lens !== "all") bits.push(LENS_LABEL[args.lens]);
   if (args.tod) bits.push(DAYPART_LABEL[args.tod]);
