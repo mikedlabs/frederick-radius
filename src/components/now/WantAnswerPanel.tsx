@@ -17,7 +17,6 @@
  * response UI should never wait on the site's decorative entrance motion.
  */
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -32,7 +31,8 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { getWantAnswer } from "@/lib/want-cache";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
+import RadiusPhoto from "@/components/ui/RadiusPhoto";
 
 type WantRow = {
   slug: string;
@@ -71,53 +71,41 @@ type WantAnswer = {
   fallbackReason: "outside-county" | "location-unavailable" | null;
 };
 
+/**
+ * A row's picture: the place photo once it really loads, else the craving's
+ * category mark. Never the proxy's fallback plate and never an initial, which
+ * reads as a logo the place does not have.
+ */
 function AnswerThumb({
   row,
   accent,
+  category,
   size = 36,
+  radius = "rounded-[10px]",
 }: {
   row: WantRow;
   accent: string;
+  /** The craving's category slug, when the craving is one. */
+  category?: string;
   size?: number;
+  radius?: string;
 }) {
-  if (row.photo) {
-    return (
-      <span
-        aria-hidden
-        className="relative shrink-0 overflow-hidden rounded-[10px] bg-[var(--app-bg-sunken)]"
-        style={{
-          height: size,
-          width: size,
-          boxShadow: "var(--app-edge), var(--app-hi)",
-        }}
-      >
-        <Image
-          src={row.photo}
-          alt=""
-          fill
-          unoptimized={row.photo.startsWith("/api/place-photo")}
-          sizes={`${size}px`}
-          placeholder="blur"
-          blurDataURL={PAPER_CREAM_BLUR}
-          className="object-cover"
-        />
-      </span>
-    );
-  }
   return (
-    <span
-      aria-hidden
-      className="grid shrink-0 place-items-center rounded-[10px] font-serif text-[14px] font-semibold"
-      style={{
-        height: size,
-        width: size,
-        background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-elevated))`,
-        color: `color-mix(in srgb, ${accent} 78%, var(--app-ink))`,
-      }}
-    >
-      {row.name.slice(0, 1)}
-    </span>
+    <RadiusPhoto
+      src={row.photo}
+      size={size}
+      category={category}
+      color={accent}
+      className={radius}
+      style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
+    />
   );
+}
+
+/** A craving key doubles as the mark's category only when it names one. */
+function markCategory(cKey: string): string | undefined {
+  if (cKey === "movies") return "theater";
+  return CATEGORY_BY_SLUG[cKey] ? cKey : undefined;
 }
 
 /** Scope label in mid-sentence form: "strongest matches {…}". The raw chip
@@ -296,26 +284,13 @@ export default function WantAnswerPanel({
               onClick={() => openPlace(answer.hero!.slug)}
               className="tactile-interactive flex w-full items-center gap-3.5 px-4 py-3 text-left"
             >
-              {answer.hero.photo ? (
-                // eslint-disable-next-line @next/next/no-img-element -- 56px thumb, proxied/cached upstream; next/image adds nothing at this size
-                <img
-                  src={answer.hero.photo}
-                  alt=""
-                  className="h-14 w-14 shrink-0 rounded-[12px] object-cover"
-                  style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
-                />
-              ) : (
-                <span
-                  aria-hidden
-                  className="grid h-14 w-14 shrink-0 place-items-center rounded-[12px] font-serif text-[22px] font-semibold"
-                  style={{
-                    background: `color-mix(in srgb, ${accent} 16%, var(--app-bg-elevated))`,
-                    color: `color-mix(in srgb, ${accent} 80%, var(--app-ink))`,
-                  }}
-                >
-                  {answer.hero.name.slice(0, 1)}
-                </span>
-              )}
+              <AnswerThumb
+                row={answer.hero}
+                accent={accent}
+                category={markCategory(cKey)}
+                size={56}
+                radius="rounded-[12px]"
+              />
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
                   <span className="min-w-0 truncate font-serif text-[18px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -385,7 +360,7 @@ export default function WantAnswerPanel({
                       onClick={() => openPlace(r.slug)}
                       className="tap-44-y flex w-full items-center gap-3 py-2 text-left"
                     >
-                      <AnswerThumb row={r} accent={accent} />
+                      <AnswerThumb row={r} accent={accent} category={markCategory(cKey)} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[14px] font-medium" style={{ color: "var(--app-ink)" }}>
                           {r.name}
@@ -436,7 +411,7 @@ export default function WantAnswerPanel({
                       onClick={() => openPlace(r.slug)}
                       className="tap-44-y flex w-full items-center gap-3 py-2 text-left"
                     >
-                      <AnswerThumb row={r} accent={accent} />
+                      <AnswerThumb row={r} accent={accent} category={markCategory(cKey)} />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2">
                           <span className="min-w-0 truncate text-[14px] font-medium" style={{ color: "var(--app-ink)" }}>
@@ -479,7 +454,7 @@ export default function WantAnswerPanel({
                         onClick={() => openPlace(r.slug)}
                         className="tap-44-y flex w-full items-center gap-3 py-2 text-left"
                       >
-                        <AnswerThumb row={r} accent={accent} size={32} />
+                        <AnswerThumb row={r} accent={accent} category={markCategory(cKey)} size={32} />
                         <span className="min-w-0 truncate text-[14px]" style={{ color: "var(--app-ink-2)" }}>
                           {r.name}
                         </span>
@@ -554,26 +529,13 @@ export function MovieShowtimeChoices({
             className="flex gap-3 border-t py-3"
             style={{ borderColor: "var(--app-border)" }}
           >
-            {row.photo ? (
-              // eslint-disable-next-line @next/next/no-img-element -- compact answer thumb; source is already proxied/cached upstream
-              <img
-                src={row.photo}
-                alt=""
-                className="h-12 w-12 shrink-0 rounded-[11px] object-cover"
-                style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
-              />
-            ) : (
-              <span
-                aria-hidden
-                className="grid h-12 w-12 shrink-0 place-items-center rounded-[11px] font-serif text-[19px] font-semibold"
-                style={{
-                  background: `color-mix(in srgb, ${accent} 16%, var(--app-bg-elevated))`,
-                  color: `color-mix(in srgb, ${accent} 80%, var(--app-ink))`,
-                }}
-              >
-                {row.name.slice(0, 1)}
-              </span>
-            )}
+            <AnswerThumb
+              row={row}
+              accent={accent}
+              category={markCategory("movies")}
+              size={48}
+              radius="rounded-[11px]"
+            />
 
             <div className="min-w-0 flex-1">
               <button

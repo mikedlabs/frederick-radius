@@ -3,11 +3,10 @@
 import { useMemo, useState } from "react";
 import { townAccent } from "@/lib/townAccent";
 import Link from "next/link";
-import Image from "next/image";
-import { BadgeCheck, Martini } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 import DealLines from "@/components/happy/DealLines";
 import { figureCount } from "@/lib/happyHourDeal";
-import { proxyPhotoAtWidth } from "@/lib/format/img";
+import RadiusPhoto from "@/components/ui/RadiusPhoto";
 import type { Hours } from "@/data/places";
 
 /**
@@ -29,6 +28,8 @@ export type HHRow = {
   slug: string;
   name: string;
   town?: string;
+  /** Place category for the photoless mark; the guide's rows default to bar. */
+  category?: string;
   photo?: string;
   deal?: string;
   parking?: string;
@@ -63,14 +64,6 @@ function fmtWindows(ws: HHWindowLite[]): string {
   return ws.map((w) => (w.start === 0 && w.end >= 1440 ? "All day" : `${fmtMin(w.start)}–${fmtMin(w.end)}`)).join(", ");
 }
 
-function PhotoFallback() {
-  return (
-    <div aria-hidden className="grid h-full w-full place-items-center" style={{ background: "linear-gradient(150deg, color-mix(in srgb, var(--app-accent) 28%, var(--app-brand-2)) 0%, var(--app-brand-2) 70%)" }}>
-      <Martini className="h-5 w-5" strokeWidth={1.75} style={{ color: "color-mix(in srgb, var(--app-accent) 60%, #fff)" }} />
-    </div>
-  );
-}
-
 // A deterministic accent per town so each town reads as its own colored
 // "chapter" of the guide (same family the Saved page uses).
 
@@ -92,10 +85,10 @@ function RowCard({ r, when, live, endsAt, accent, hideTown }: { r: HHRow; when: 
       {/* Stretched link needs its own name — the card text is OUTSIDE the
           anchor, so without a label a screen reader announces nothing. */}
       <Link href={`/places/${r.slug}`} aria-label={r.name} className="block outline-none"><span className="absolute inset-0" aria-hidden /></Link>
-      <div className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-[10px]">
-        {/* 52px tile: ask the proxy for 52px, not the stored 800px hero. */}
-        {r.photo ? <Image src={proxyPhotoAtWidth(r.photo, 52)} alt="" fill sizes="52px" unoptimized={r.photo.startsWith("/api/place-photo")} className="object-cover" /> : <PhotoFallback />}
-      </div>
+      {/* 52px tile: RadiusPhoto asks the proxy for 52px, not the stored 800px
+          hero, and a failed photo becomes the drinks mark instead of a
+          cropped fallback plate. Every row here is a drinks deal. */}
+      <RadiusPhoto src={r.photo} size={52} category={r.category ?? "bar"} className="rounded-[10px]" />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <h3 className="min-w-0 truncate text-[14px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>

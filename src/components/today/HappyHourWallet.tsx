@@ -1,6 +1,6 @@
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowRight, Martini, Star } from "lucide-react";
+import { ArrowRight, Star } from "lucide-react";
+import placeHues from "@/data/place-hues.json";
 import { placesWithFieldHappyHour } from "@/lib/loaders/fieldNotes";
 // eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
@@ -10,6 +10,7 @@ import { isClosedNow } from "@/lib/hours";
 import { dealQuality } from "@/lib/happyHourDeal";
 import DealLines from "@/components/happy/DealLines";
 import { PlaceMedallion } from "@/components/place/PlaceMedallion";
+import RadiusPhoto from "@/components/ui/RadiusPhoto";
 
 /**
  * HappyHourWallet — the happy hours ON NOW, on /today.
@@ -46,19 +47,18 @@ function fmtMin(m: number): string {
   return mm === 0 ? `${h12} ${mer}` : `${h12}:${String(mm).padStart(2, "0")} ${mer}`;
 }
 
-/** The Cover's photo-less fallback, sized for a thumbnail. */
-function PhotoFallback() {
-  return (
-    <div aria-hidden className="grid h-full w-full place-items-center" style={{ background: "linear-gradient(150deg, color-mix(in srgb, var(--app-accent) 30%, var(--app-brand-2)) 0%, var(--app-brand-2) 72%)" }}>
-      <Martini className="h-5 w-5" strokeWidth={1.5} style={{ color: "color-mix(in srgb, var(--app-accent) 60%, var(--app-on-brand))" }} />
-    </div>
-  );
-}
+/**
+ * Per-place hue for the photoless mark. A server component, so the hue table
+ * stays out of the client bundle; only the one hue string crosses over.
+ */
+const PLACE_HUES = placeHues as Record<string, string>;
 
 type LivePour = {
   slug: string;
   name: string;
   town?: string;
+  category: string;
+  hue?: string;
   photo?: string;
   rating?: number;
   deal: string;
@@ -135,6 +135,8 @@ export default function HappyHourWallet({ now }: { now: Date }) {
       slug: v.slug,
       name: p.name,
       town: p.municipality ? (MUNICIPALITY_BY_SLUG[p.municipality]?.name ?? undefined) : undefined,
+      category: p.category,
+      hue: PLACE_HUES[v.slug],
       photo: p.google_photo_url,
       rating: p.google_rating,
       deal: v.happy_hour.details || "",
@@ -247,21 +249,16 @@ export default function HappyHourWallet({ now }: { now: Date }) {
                     cue that sets the live board apart from the briefing dossier. */}
                 <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: pour.lastCall ? "var(--app-brand-press)" : "var(--app-brand)" }} />
 
-                {/* Photo thumbnail — text stays on paper beside it (readable). */}
-                <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[var(--app-radius-sm)]" style={{ backgroundColor: "var(--app-brand-2)" }}>
-                  {pour.photo ? (
-                    <Image
-                      src={pour.photo}
-                      alt=""
-                      fill
-                      unoptimized={pour.photo.startsWith("/api/place-photo")}
-                      sizes="72px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <PhotoFallback />
-                  )}
-                </div>
+                {/* Photo thumbnail, with text on paper beside it. A failed or
+                    missing photo becomes the venue's category mark on its own
+                    hue, never the proxy's plate cropped into a thumbnail. */}
+                <RadiusPhoto
+                  src={pour.photo}
+                  size={72}
+                  category={pour.category}
+                  hue={pour.hue}
+                  className="rounded-[var(--app-radius-sm)]"
+                />
 
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   {/* Live timing leads — the urgent fact ("till 7 PM"), in

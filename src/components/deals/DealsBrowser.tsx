@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   BadgeCheck,
@@ -13,7 +12,7 @@ import {
   Tag,
   X,
 } from "lucide-react";
-import { proxyPhotoAtWidth } from "@/lib/format/img";
+import RadiusPhoto from "@/components/ui/RadiusPhoto";
 import { townAccent } from "@/lib/townAccent";
 import { todayDealAvailability, type DealAvailability } from "@/lib/today/dealAvailability";
 import {
@@ -145,25 +144,6 @@ function countLabel(offerCount: number, venueCount: number): string {
   }`;
 }
 
-function PhotoFallback() {
-  return (
-    <div
-      aria-hidden
-      className="grid h-full w-full place-items-center"
-      style={{
-        background:
-          "linear-gradient(145deg, color-mix(in srgb, var(--app-brand) 22%, var(--app-bg-sunken)) 0%, color-mix(in srgb, var(--app-cool) 18%, var(--app-bg-sunken)) 100%)",
-      }}
-    >
-      <Tag
-        className="h-9 w-9"
-        strokeWidth={1.45}
-        style={{ color: "color-mix(in srgb, var(--app-brand) 58%, var(--app-ink-3))" }}
-      />
-    </div>
-  );
-}
-
 function OfferStatus({
   availability,
   hours,
@@ -266,7 +246,7 @@ function OfferEntry({ item }: { item: DisplayOffer }) {
   );
 }
 
-function DealCard({
+export function DealCard({
   group,
   day,
   today,
@@ -305,69 +285,77 @@ function DealCard({
         (a.availability?.rank ?? 2) - (b.availability?.rank ?? 2) ||
         a.headline.localeCompare(b.headline),
     );
-  const photo = venue.photo
-    ? proxyPhotoAtWidth(venue.photo, featured ? 720 : 520)
-    : undefined;
+  // A venue photo leads only while it is real. A missing or failed photo
+  // drops the band (no gradient art standing in for a picture) and the card
+  // reads from its header, with the category said in words.
+  const [missingPhoto, setMissingPhoto] = useState<string | null>(null);
+  const photo = venue.photo && venue.photo !== missingPhoto ? venue.photo : null;
 
   return (
     <article
+      data-deal-photo={photo ? "photo" : "none"}
       className={`relative h-full overflow-hidden rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated)] ${
-        featured
+        featured && photo
           ? "sm:col-span-2 sm:grid sm:grid-cols-[minmax(15rem,0.88fr)_minmax(0,1.12fr)]"
-          : "flex flex-col"
+          : featured
+            ? "flex flex-col sm:col-span-2"
+            : "flex flex-col"
       }`}
       style={{
         borderColor: featured
           ? "color-mix(in srgb, var(--app-positive) 26%, var(--app-border))"
           : "var(--app-border)",
+        ...(photo ? {} : { borderTopColor: color, borderTopWidth: 3 }),
         boxShadow: featured
           ? "var(--app-elev-2), var(--app-edge), var(--app-hi)"
           : "var(--app-elev-1), var(--app-edge), var(--app-hi)",
       }}
     >
-      <div
-        className={`relative overflow-hidden ${
-          featured ? "h-44 sm:h-full sm:min-h-[18rem]" : "h-32 sm:h-36"
-        }`}
-      >
-        {photo ? (
-          <Image
-            src={photo}
-            alt=""
-            fill
-            sizes={
-              featured
-                ? "(min-width: 1024px) 400px, (min-width: 640px) 40vw, 100vw"
-                : "(min-width: 1024px) 440px, (min-width: 640px) 50vw, 100vw"
-            }
-            loading={featured || eagerImage ? "eager" : "lazy"}
-            fetchPriority={featured || eagerImage ? "high" : "auto"}
-            unoptimized={photo.startsWith("/api/place-photo")}
-            className="object-cover transition-transform duration-500 hover:scale-[1.025] motion-reduce:transition-none"
-          />
-        ) : (
-          <PhotoFallback />
-        )}
-        <div
-          aria-hidden
-          className="absolute inset-x-0 bottom-0 h-16"
-          style={{ background: "linear-gradient(transparent, rgba(24, 20, 16, 0.42))" }}
-        />
-        <span
-          className="absolute bottom-2.5 left-3 inline-flex min-h-7 items-center rounded-full px-2.5 text-[10px] font-semibold text-white backdrop-blur-sm"
-          style={{ background: "rgba(24, 20, 16, 0.62)" }}
+      {photo ? (
+        <RadiusPhoto
+          src={photo}
+          size={featured ? 720 : 520}
+          sizes={
+            featured
+              ? "(min-width: 1024px) 400px, (min-width: 640px) 40vw, 100vw"
+              : "(min-width: 1024px) 440px, (min-width: 640px) 50vw, 100vw"
+          }
+          loading={featured || eagerImage ? "eager" : "lazy"}
+          fetchPriority={featured || eagerImage ? "high" : "auto"}
+          className={featured ? "h-44 sm:h-full sm:min-h-[18rem]" : "h-32 sm:h-36"}
+          imageClassName="transition-transform duration-500 hover:scale-[1.025] motion-reduce:transition-none"
+          onMissing={() => setMissingPhoto(photo)}
         >
-          {categoryLabel(venue.category)}
-        </span>
-        <span
-          aria-hidden
-          className="absolute inset-x-0 bottom-0 h-1"
-          style={{ background: color }}
-        />
-      </div>
+          <span
+            aria-hidden
+            className="absolute inset-x-0 bottom-0 h-16"
+            style={{ background: "linear-gradient(transparent, rgba(24, 20, 16, 0.42))" }}
+          />
+          <span
+            className="absolute bottom-2.5 left-3 inline-flex min-h-7 items-center rounded-full px-2.5 text-[10px] font-semibold text-white backdrop-blur-sm"
+            style={{ background: "rgba(24, 20, 16, 0.62)" }}
+          >
+            {categoryLabel(venue.category)}
+          </span>
+          <span
+            aria-hidden
+            className="absolute inset-x-0 bottom-0 h-1"
+            style={{ background: color }}
+          />
+        </RadiusPhoto>
+      ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col p-4">
         <header className="space-y-1">
+          {photo ? null : (
+            <p
+              className="flex items-center gap-1.5 text-[11px] font-semibold"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              <Tag className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+              {categoryLabel(venue.category)}
+            </p>
+          )}
           <h3 className="text-[15px] font-semibold leading-tight tracking-[-0.01em]">
             <Link
               href={`/places/${venue.slug}`}

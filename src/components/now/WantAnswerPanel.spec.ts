@@ -59,4 +59,35 @@ describe("MovieShowtimeChoices", () => {
     );
     expect(html).not.toContain("confirmed open");
   });
+
+  it("paints a cinema photo through the failure signal and marks the rest", () => {
+    const row = {
+      slug: "warehouse-cinemas-frederick-frederick",
+      name: "Warehouse Cinemas Frederick",
+      fact: "Choose a film and showtime.",
+      distance: null,
+      where: "Frederick",
+      detail: null,
+      tip: null,
+      deal: null,
+    };
+    const html = renderToStaticMarkup(
+      createElement(MovieShowtimeChoices, {
+        accent: "var(--app-accent)",
+        onOpen: vi.fn(),
+        rows: [
+          { ...row, photo: "/api/place-photo?name=places%2Fwarehouse&w=800" },
+          { ...row, slug: "regal-westview-frederick", name: "Regal Westview", photo: null },
+        ],
+      }),
+    );
+
+    // A raw <img> painted the proxy's fallback plate as if it were a photo.
+    expect(html).toContain(
+      'src="/api/place-photo?name=places%2Fwarehouse&amp;w=96&amp;fallback=signal"',
+    );
+    expect(html.match(/data-radius-photo="mark"/g)).toHaveLength(1);
+    // No initial-letter plate standing in for a logo the cinema does not have.
+    expect(html).not.toMatch(/>R<\/span>/);
+  });
 });

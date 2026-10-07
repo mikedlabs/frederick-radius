@@ -88,7 +88,7 @@ describe("TonightHeadline", () => {
     expect(html).not.toContain("unattributed-event.jpg");
   });
 
-  it("keeps approved event photography and its attribution", () => {
+  it("shows an approved flyer whole, with its caption waiting for the load", () => {
     const html = renderToStaticMarkup(
       createElement(TonightHeadline, {
         event: event({
@@ -101,11 +101,14 @@ describe("TonightHeadline", () => {
 
     expect(html).toContain("<img");
     expect(html).toContain("approved-event.jpg");
-    expect(html).toContain("Event image · Ticketmaster");
+    expect(html).toContain("object-contain");
+    expect(html).not.toContain("ken-burns");
     expect(html).not.toContain(">View event<");
+    // The caption renders after the image loads (TonightHeadline.browser.spec).
+    expect(html).not.toContain("Event image · Ticketmaster");
   });
 
-  it("keeps the full venue-photo credit outside the event link", () => {
+  it("asks for the venue photo's failure signal and holds its credit", () => {
     const html = renderToStaticMarkup(
       createElement(TonightHeadline, {
         event: event({
@@ -128,21 +131,22 @@ describe("TonightHeadline", () => {
       }),
     );
 
-    expect(html).toContain("Venue · Test venue");
-    expect(html).toContain("Test photographer");
-    expect(html).toContain("Report photo");
-    expect(html.indexOf("</a>")).toBeLessThan(html.indexOf("Venue · Test venue"));
-    expect(html).toContain('src="/api/place-photo?name=places%2Fvenue-photo"');
+    // Placement of the full credit outside the link, once the photo has
+    // loaded, is covered in TonightHeadline.browser.spec.
+    expect(html).not.toContain("Venue · Test venue");
+    expect(html).not.toContain("Test photographer");
+    expect(html).not.toContain("Report photo");
+    expect(html).toContain(
+      'src="/api/place-photo?name=places%2Fvenue-photo&amp;w=1440&amp;fallback=signal"',
+    );
     expect(html).not.toContain("/_next/image");
   });
 
   it("uses the one-shot editorial photo treatment while keeping link motion optional", () => {
+    // Only Radius's own photography moves; Baker Park maps to an owned frame.
     const imageHtml = renderToStaticMarkup(
       createElement(TonightHeadline, {
-        event: event({
-          source: "ticketmaster",
-          hero_image: "https://s1.ticketm.net/dam/a/approved-event.jpg",
-        }),
+        event: event({ venue_place_slug: "baker-park-frederick" }),
         now,
       }),
     );
@@ -153,7 +157,7 @@ describe("TonightHeadline", () => {
       }),
     );
 
-    expect(imageHtml).toContain("ken-burns object-cover");
+    expect(imageHtml).toContain("object-cover ken-burns");
     expect(noImageHtml).toContain(
       "motion-safe:group-hover:translate-x-0.5",
     );

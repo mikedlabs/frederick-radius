@@ -144,6 +144,26 @@ export function eventCardVisual(event: EventWithMeta): EventCardVisual | null {
   return VENUE_VISUALS[event.venue_place_slug] ?? null;
 }
 
+/**
+ * How a surface may present an approved visual.
+ *
+ * - `owned`: Radius's own photography. The only kind a surface may set type
+ *   over, because the photo is ours to dress.
+ * - `flyer`: a publisher's event image. Shown whole at its own aspect on a
+ *   sunken paper panel, never cropped, scrimmed, animated or written over.
+ * - `venue`: a credited photograph of the venue. It may be cropped, but it is
+ *   someone else's picture, so the title sits on Cream beside or below it.
+ */
+export type EventVisualTreatment = "owned" | "flyer" | "venue";
+
+export function eventVisualTreatment(
+  visual: EventCardVisual,
+): EventVisualTreatment {
+  if (visual.key.startsWith("event:")) return "flyer";
+  if (visual.key.startsWith("radius-")) return "owned";
+  return "venue";
+}
+
 export type HorizonVisualPlan = {
   leadVisual: EventCardVisual | null;
   promotedIndex: number;

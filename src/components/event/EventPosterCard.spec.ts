@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import EventPosterCard, { eventPosterPhotoSrc } from "@/components/event/EventPosterCard";
+import EventPosterCard from "@/components/event/EventPosterCard";
 import EventCard from "@/components/event/EventCard";
 
 function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
@@ -34,17 +34,40 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+const venueAttribution = {
+  kind: "venue" as const,
+  venue_name: "Baker Park",
+  provider: "google_maps" as const,
+  source_uri: "https://www.google.com/maps/place/example-photo",
+  authors: [
+    {
+      display_name: "Local photographer",
+      uri: "https://maps.google.com/maps/contrib/123",
+    },
+  ],
+};
+
+function imgSrc(html: string): URL {
+  const src = html.match(/<img[^>]*\ssrc="([^"]+)"/)?.[1]?.replace(/&amp;/g, "&");
+  expect(src).toBeDefined();
+  return new URL(src!, "https://frederickradius.local");
+}
+
 describe("EventPosterCard visual trust", () => {
   it("asks the place-photo proxy for a detectable failure signal", () => {
-    const src = new URL(
-      eventPosterPhotoSrc("/api/place-photo?name=Baker+Park&w=800"),
-      "https://frederickradius.local",
+    const html = renderToStaticMarkup(
+      createElement(EventPosterCard, {
+        event: event({
+          hero_image: "/api/place-photo?name=Baker+Park&w=800",
+          hero_image_attribution: venueAttribution,
+        }),
+      }),
     );
+    const src = imgSrc(html);
 
+    expect(src.pathname).toBe("/api/place-photo");
     expect(src.searchParams.get("fallback")).toBe("signal");
     expect(src.searchParams.get("w")).toBe("800");
-    expect(eventPosterPhotoSrc("https://s1.ticketm.net/dam/a/event.jpg"))
-      .toBe("https://s1.ticketm.net/dam/a/event.jpg");
   });
 
   it("falls back to honest category artwork for an unattributed place photo", () => {
@@ -65,7 +88,7 @@ describe("EventPosterCard visual trust", () => {
     expect(html).not.toContain("/api/place-photo");
   });
 
-  it("renders a source-captioned image approved by eventCardVisual", () => {
+  it("shows a publisher flyer whole on paper with the title on Cream below", () => {
     const html = renderToStaticMarkup(
       createElement(EventPosterCard, {
         event: event({
@@ -76,43 +99,55 @@ describe("EventPosterCard visual trust", () => {
     );
 
     expect(html).toContain('data-event-poster="photo"');
-    expect(html).toContain("Event image · Ticketmaster");
+    expect(html).toContain('data-event-visual="flyer"');
     expect(html).toContain('alt=""');
     expect(html).not.toContain("data-event-fallback");
+    // Audit, Oct 2026: white type over object-cover flyers cropped the
+    // publisher's own art and wrote over it.
+    expect(html).toContain("object-contain");
+    expect(html).not.toContain("object-cover");
+    expect(html).toContain("var(--app-bg-sunken)");
+    expect(html).not.toContain("ken-burns");
+    expect(html).not.toContain("linear-gradient");
+    expect(html).not.toContain("color:#fff");
+    expect(html.indexOf("<img")).toBeLessThan(html.indexOf(">Summer concert<"));
+    // The caption names an image, so it waits for one to load
+    // (EventPosterCard.browser.spec).
+    expect(html).not.toContain("Event image · Ticketmaster");
   });
 
-  it("renders a credited venue image with its author and direct Google Maps source", () => {
+  it("keeps a credited venue photo free of overlaid type and its credit until load", () => {
     const html = renderToStaticMarkup(
       createElement(EventPosterCard, {
         event: event({
           hero_image: "/api/place-photo?name=credited",
-          hero_image_attribution: {
-            kind: "venue",
-            venue_name: "Baker Park",
-            provider: "google_maps",
-            source_uri: "https://www.google.com/maps/place/example-photo",
-            authors: [
-              {
-                display_name: "Local photographer",
-                uri: "https://maps.google.com/maps/contrib/123",
-              },
-            ],
-          },
+          hero_image_attribution: venueAttribution,
         }),
       }),
     );
 
     expect(html).toContain('data-event-poster="photo"');
-    expect(html).toContain("data-event-photo-credit");
+    expect(html).toContain('data-event-visual="venue"');
     expect(html).toContain("fallback=signal");
-    expect(html).toContain("Local photographer");
-    expect(html).toContain("Google Maps");
-    expect(html).toContain("https://www.google.com/maps/place/example-photo");
-    const posterEnd = html.indexOf("</article>");
-    const creditStart = html.indexOf("data-event-photo-credit");
-    expect(posterEnd).toBeGreaterThan(-1);
-    expect(creditStart).toBeGreaterThan(posterEnd);
+    expect(html).toContain("object-cover");
+    expect(html).not.toContain("linear-gradient");
+    expect(html).not.toContain("color:#fff");
+    expect(html).not.toContain("data-event-photo-credit");
+    expect(html).not.toContain("Local photographer");
     expect(html).not.toContain("bg-black/55");
+  });
+
+  it("keeps the overlay treatment for Radius's own photography", () => {
+    const html = renderToStaticMarkup(
+      createElement(EventPosterCard, {
+        event: event({ venue_place_slug: "baker-park-frederick" }),
+      }),
+    );
+
+    expect(html).toContain('data-event-visual="owned"');
+    expect(html).toContain("ken-burns");
+    expect(html).toContain("linear-gradient");
+    expect(html).toContain("color:#fff");
   });
 
   it("gives a photo-less EventCard feature a compact date-led layout", () => {
