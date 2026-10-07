@@ -191,12 +191,20 @@ describe("OwnedMiniMap", () => {
 
   it("mounts after the first paint when IntersectionObserver is missing", async () => {
     vi.stubGlobal("IntersectionObserver", undefined);
-    await render(null);
-    expect(canvas()).toBeNull();
+    // The fallback mount is a setTimeout(0). With real timers an async act()
+    // on a busy machine can let it fire before the first assertion, so hold
+    // the clock and release it explicitly.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      await render(null);
+      expect(canvas()).toBeNull();
 
-    await act(async () => {
-      await new Promise((resolve) => window.setTimeout(resolve, 0));
-    });
+      await act(async () => {
+        vi.runOnlyPendingTimers();
+      });
+    } finally {
+      vi.useRealTimers();
+    }
 
     expect(box()?.dataset.ownedMiniMap).toBe("loading");
     expect(canvas()).not.toBeNull();
