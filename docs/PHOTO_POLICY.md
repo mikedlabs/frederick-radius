@@ -3,6 +3,8 @@
 **Status:** Amended (2026-06-16). Owner-approved.
 **Scope:** Where photography may and may not appear in the UI.
 **Companion:** implementation phases at the bottom — *no code until the plan is approved.*
+**Related:** `docs/VISUAL_FIRST.md` (owner direction, 2026-10-07) sets the
+visual-first rule and the honest image ladder that this policy sits inside.
 
 ---
 
