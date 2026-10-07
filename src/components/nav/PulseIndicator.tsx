@@ -166,9 +166,24 @@ export default function PulseIndicator() {
           : unknown
             ? "County status: unavailable"
             : "County status: no active alerts";
-  const stateLabel = earlier ? "Earlier" : checking ? "Checking" : unknown ? "Unknown" : "";
-  const mobileVisible = current || active || unknown || checking;
   const currentAlerts = active && !unverified;
+  // A current report with alerts names them even when another source is
+  // down. "Unknown" and the hollow ring are kept for a check that reported
+  // nothing; the count is the same phrase the accessible name reads.
+  const partialAlerts = currentAlerts && status?.ok === false;
+  const stateLabel = earlier
+    ? "Earlier"
+    : checking
+      ? "Checking"
+      : partialAlerts
+        ? alertCount
+        : unknown
+          ? "Unknown"
+          : "";
+  // The word carries its own color so it always matches what it says, even
+  // on /pulse, where the rest of the link takes the current-page color.
+  const stateColor = partialAlerts ? TONE_COLOR[tone] : "var(--app-ink-2)";
+  const mobileVisible = current || active || unknown || checking;
 
   return (
     <AppTransitionLink
@@ -196,6 +211,7 @@ export default function PulseIndicator() {
         <Activity className="h-4 w-4" strokeWidth={1.75} />
         {currentAlerts && (
           <span
+            data-pulse-dot={tone}
             className="absolute -right-1 -top-1 inline-flex h-2 w-2 items-center justify-center rounded-full"
             style={{
               background: TONE_COLOR[tone],
@@ -210,15 +226,16 @@ export default function PulseIndicator() {
             as the calm all-clear state (audit FR-002). */}
         {(!currentAlerts && (unknown || earlier)) && (
           <span
+            data-pulse-dot="unknown"
             className="absolute -right-1 -top-1 inline-flex h-2 w-2 rounded-full"
             style={{ boxShadow: "0 0 0 2px var(--app-bg-elevated), inset 0 0 0 1.5px var(--app-ink-3)" }}
           />
         )}
       </span>
-      {stateLabel && <span data-pulse-mobile-state className="text-[9px] font-semibold leading-none sm:hidden">{stateLabel}</span>}
+      {stateLabel && <span data-pulse-mobile-state className="text-[9px] font-semibold leading-none sm:hidden" style={{ color: stateColor }}>{stateLabel}</span>}
       <span className="hidden flex-col gap-0.5 sm:inline-flex">
         <span className="text-[14px] font-semibold leading-none">County status</span>
-        {stateLabel && <span className="text-[10px] leading-none">{earlier ? "Earlier report" : stateLabel}</span>}
+        {stateLabel && <span data-pulse-desktop-state className="text-[10px] leading-none" style={{ color: stateColor }}>{earlier ? "Earlier report" : stateLabel}</span>}
       </span>
     </AppTransitionLink>
   );

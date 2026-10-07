@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
+import { isInFrederickCountyArea } from "@/lib/geo";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
 import { selectPulseStatus } from "@/lib/live/currentSituationModel";
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
+import type {
+  RoadAttentionSignal,
+  RoadIntelligenceSnapshot,
+} from "@/lib/live/roadIntelligenceModel";
 import { getOfficialCivicAlertsSnapshot } from "@/lib/live/officialSignals";
 import { isLocallyRelevantCivicAlert } from "@/lib/integrations/official-alert-feeds";
 
@@ -12,12 +17,13 @@ import { isLocallyRelevantCivicAlert } from "@/lib/integrations/official-alert-f
  * to paint it.
  *
  * Pulls NWS alerts, FCPS notices, MD traffic incidents, electric outages,
- * privacy-filtered PulsePoint calls, and AirNow observations, then reduces
- * them to:
+ * privacy-filtered PulsePoint calls, AirNow observations, MDOT road signals,
+ * and official civic alerts, then reduces them to:
  *   - active: boolean — anything worth showing?
  *   - count:  number  — total active items across all feeds
- *   - tone:   "alert" (weather/severe-incident grade), "caution"
- *             (school/elevated-air), or "quiet" (none)
+ *   - tone:   "alert" (weather/severe-incident grade, a road emergency, or
+ *             a city emergency), "caution" (school, elevated air, or any
+ *             other road signal), or "quiet" (none)
  *
  * Cached 5 min via Next's revalidate so a polled header indicator
  * doesn't hammer the source feeds. The /pulse page itself uses
@@ -25,6 +31,27 @@ import { isLocallyRelevantCivicAlert } from "@/lib/integrations/official-alert-f
  * data is consistent across surfaces.
  */
 export const revalidate = 300;
+
+/**
+ * Road signals the header may count. CHART's message-sign feed is statewide,
+ * and on Oct 6 a Howard County sign ("ROADWORK AT EXIT 76 MD 97 2 LEFT LANES
+ * CLOSED") lit every page header. A sign carries its physical position, so a
+ * sign outside the county area is not a county signal. A sign inside the
+ * county can still describe a road past the line; its text is not parsed here.
+ */
+function countyRoadSignals(
+  road: RoadIntelligenceSnapshot | null,
+): RoadAttentionSignal[] {
+  if (!road) return [];
+  const signs = new Map(
+    road.sources.messages.data.map((sign) => [`highway-message:${sign.id}`, sign]),
+  );
+  return road.attention.filter((signal) => {
+    if (signal.kind !== "highway-message") return true;
+    const sign = signs.get(signal.id);
+    return !sign || isInFrederickCountyArea(sign.lng, sign.lat);
+  });
+}
 
 export async function GET() {
   const [situation, road, civic] = await Promise.all([
@@ -35,19 +62,20 @@ export async function GET() {
   const base = selectPulseStatus(situation);
   const localCivicAlerts =
     civic?.alerts.filter(isLocallyRelevantCivicAlert) ?? [];
-  const roadCount = road?.summary.activeCount ?? 0;
-  const count = base.count + roadCount + localCivicAlerts.length;
-  const hasUrgentRoadSignal = Boolean(
-    road?.attention.some(
-      (signal) =>
-        signal.severity === "warning" || signal.severity === "emergency",
-    ),
+  const roadSignals = countyRoadSignals(road);
+  const count = base.count + roadSignals.length + localCivicAlerts.length;
+  // /pulse paints only an emergency road signal (an active snow emergency)
+  // as Urgent; closures, pavement reports, and sign messages read there as
+  // an Advisory. The header dot must not outrank the page it opens, so
+  // road-only evidence stops at caution unless it is an emergency.
+  const hasRoadEmergency = roadSignals.some(
+    (signal) => signal.severity === "emergency",
   );
   const hasEmergencyCivicSignal = localCivicAlerts.some(
     (alert) => alert.kind === "city-emergency",
   );
   const tone =
-    base.tone === "alert" || hasUrgentRoadSignal || hasEmergencyCivicSignal
+    base.tone === "alert" || hasRoadEmergency || hasEmergencyCivicSignal
       ? "alert"
       : count > 0
         ? "caution"

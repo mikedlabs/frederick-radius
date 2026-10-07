@@ -116,7 +116,45 @@ describe("PulseIndicator status transport", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ ...alerts, ok: false })));
     await act(async () => root.render(createElement(PulseIndicator)));
     expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: 2 alerts reported; some sources unavailable");
-    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unknown");
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("2 alerts");
+  });
+  // Oct 7, 2 AM: the header read "Unknown" in alert red beside a red dot while
+  // its accessible name said "1 alert reported; some sources unavailable".
+  it.each([
+    ["alert", "var(--app-danger)"],
+    ["caution", "var(--app-warning)"],
+  ])("names a report in the %s tone with a source down instead of calling it Unknown", async (tone, color) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ ...alerts, count: 1, tone, ok: false })));
+    await act(async () => root.render(createElement(PulseIndicator)));
+    const link = container.querySelector<HTMLElement>("[data-pulse-indicator]");
+    const mobile = container.querySelector<HTMLElement>("[data-pulse-mobile-state]");
+    const desktop = container.querySelector<HTMLElement>("[data-pulse-desktop-state]");
+    expect(link?.getAttribute("aria-label")).toBe("County status: 1 alert reported; some sources unavailable");
+    expect(link?.textContent).not.toContain("Unknown");
+    expect(mobile?.textContent).toBe("1 alert");
+    expect(desktop?.textContent).toBe("1 alert");
+    expect(mobile?.style.color).toBe(color);
+    expect(desktop?.style.color).toBe(color);
+    expect(container.querySelector(`[data-pulse-dot="${tone}"]`)).not.toBeNull();
+    expect(container.querySelector('[data-pulse-dot="unknown"]')).toBeNull();
+  });
+  it("keeps the alert word in its tone on /pulse, where the link takes the current-page color", async () => {
+    harness.pathname = "/pulse";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ ...alerts, count: 1, ok: false })));
+    await act(async () => root.render(createElement(PulseIndicator)));
+    expect(container.querySelector<HTMLElement>("[data-pulse-indicator]")?.style.color).toBe("var(--app-brand-press)");
+    expect(container.querySelector<HTMLElement>("[data-pulse-mobile-state]")?.style.color).toBe("var(--app-danger)");
+  });
+  it("keeps Unknown neutral with the hollow ring when a partial check reported nothing", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ ...quiet, ok: false })));
+    await act(async () => root.render(createElement(PulseIndicator)));
+    const mobile = container.querySelector<HTMLElement>("[data-pulse-mobile-state]");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: unavailable");
+    expect(mobile?.textContent).toBe("Unknown");
+    expect(mobile?.style.color).toBe("var(--app-ink-2)");
+    expect(container.querySelector<HTMLElement>("[data-pulse-indicator]")?.style.color).toBe("var(--app-ink-2)");
+    expect(container.querySelector('[data-pulse-dot="unknown"]')).not.toBeNull();
+    expect(container.querySelector('[data-pulse-dot="alert"]')).toBeNull();
   });
   it("cancels pending work and all polling on unmount", async () => {
     const body = deferred<unknown>(); const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => body.promise }); vi.stubGlobal("fetch", fetchMock);
