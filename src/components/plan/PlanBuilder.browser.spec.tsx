@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { act } from "react";
-import { createRoot, type Root } from "react-dom/client";
+import { createRoot, hydrateRoot, type Root } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Plan, PlanSpec } from "@/lib/integrations/planner";
 import { decodeSpec, encodeSpec } from "@/lib/integrations/planner";
-const mocks = vi.hoisted(() => ({ remove: vi.fn(), check: vi.fn(), generate: vi.fn(), share: vi.fn(), params: new URLSearchParams("returnTo=%2Fevents%2Fruntime-concert") }));
+const mocks = vi.hoisted(() => ({ remove: vi.fn(), check: vi.fn(), generate: vi.fn(), swapOptions: vi.fn(), share: vi.fn(), params: new URLSearchParams("returnTo=%2Fevents%2Fruntime-concert") }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => mocks.params }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...props }: { href: string; children: React.ReactNode }) => <a href={href} {...props}>{children}</a> }));
 vi.mock("next/image", () => ({ default: () => null }));
@@ -16,7 +17,8 @@ vi.mock("@/lib/integrations/nws", () => ({ getNwsForecast: vi.fn(async () => nul
 vi.mock("./actions", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./actions")>();
   mocks.remove.mockImplementation(actual.removeStop);
-  return { ...actual, removeStop: mocks.remove, planFromToken: mocks.check, generatePlan: mocks.generate };
+  mocks.swapOptions.mockImplementation(actual.stopSwapOptions);
+  return { ...actual, stopSwapOptions: mocks.swapOptions, removeStop: mocks.remove, planFromToken: mocks.check, generatePlan: mocks.generate };
 });
 import PlanBuilder from "./PlanBuilder";
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -68,6 +70,31 @@ describe("event outing recovery and edit presentation", () => {
     expect(mocks.remove).toHaveBeenCalledWith(plan.share, 1);
     expect(decodeSpec(new URL(window.location.href).searchParams.get("p")!)?.s).toEqual([{ e: "unresolved" }]);
     expect(host.textContent).not.toContain("Dinner");
+  });
+  it("keeps both nearby controls disabled in the server preview and usable after hydration", async () => {
+    const plan = unavailable();
+    plan.notices = [];
+    plan.share = encodeSpec({ ...spec, s: [...spec.s, { p: "nearby" }] });
+    plan.unscheduled = [{ spec_index: 1, place: { slug: "nearby", name: "Nearby dinner", category: "restaurant" } as NonNullable<Plan["unscheduled"]>[number]["place"], why: "Confirm hours before visiting." }];
+    act(() => root.unmount());
+    const preview = <PlanBuilder initialPlan={plan} initialInputs={spec.i} />;
+    host.innerHTML = renderToString(preview);
+    for (const name of ["Change nearby option", "Remove nearby option"]) {
+      expect(button(name).disabled).toBe(true);
+      button(name).click();
+    }
+    expect(mocks.swapOptions).not.toHaveBeenCalled();
+    expect(mocks.remove).not.toHaveBeenCalled();
+
+    await act(async () => { root = hydrateRoot(host, preview); });
+    expect(button("Change nearby option").disabled).toBe(false);
+    expect(button("Remove nearby option").disabled).toBe(false);
+    await act(async () => button("Change nearby option").click());
+    expect(mocks.swapOptions).toHaveBeenCalledWith(plan.share, 1);
+    await act(async () => button("Remove nearby option").click());
+    expect(mocks.remove).toHaveBeenCalledWith(plan.share, 1);
+    expect(decodeSpec(new URL(window.location.href).searchParams.get("p")!)?.s).toEqual(spec.s);
+    expect(host.textContent).not.toContain("Nearby dinner");
   });
   it("removes an untimed nearby option from a matching real token slot", async () => {
     const plan = unavailable();

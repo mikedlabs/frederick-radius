@@ -530,8 +530,8 @@ export default function PlanBuilder({
                 <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--app-ink-3)" }}>Hours unconfirmed. Not included in the timed route.</p>
                 <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{option.why}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <button type="button" disabled={pending} onClick={() => openSwap(option.spec_index)} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-ink-2)" }}>Change nearby option</button>
-                  <button type="button" disabled={pending} onClick={() => mutate(() => removeStop(plan.share, option.spec_index), option.spec_index, "The nearby option has been removed.")} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-ink-2)" }}>Remove nearby option</button>
+                  <button type="button" disabled={!eventControlsReady || pending} onClick={() => openSwap(option.spec_index)} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-ink-2)" }}>Change nearby option</button>
+                  <button type="button" disabled={!eventControlsReady || pending} onClick={() => mutate(() => removeStop(plan.share, option.spec_index), option.spec_index, "The nearby option has been removed.")} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-ink-2)" }}>Remove nearby option</button>
                 </div>
               </article>)}
             </section>
