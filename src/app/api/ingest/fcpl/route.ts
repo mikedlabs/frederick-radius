@@ -21,6 +21,7 @@ import {
   type GeocodeStats,
 } from "@/lib/ingest/geocode";
 import { fcplMapFeed, FCPL_SOURCE_DOMAIN } from "@/lib/ingest/fcpl";
+import { readFcplPublisher, observeFcplBatch } from "@/lib/ingest/fcpl-observations";
 import { startIngestRun, finishIngestRun } from "@/lib/ingest/run-log";
 import { checkEventSchemaReadiness } from "@/lib/ingest/event-schema-readiness";
 import {
@@ -34,8 +35,6 @@ export const runtime = "nodejs";
 export const maxDuration = 300; // the feed alone is ~16s; upserts add more
 export const dynamic = "force-dynamic";
 
-const FEED_URL = "https://frederick.librarycalendar.com/events/feed/json";
-const UA = "FrederickRadius/1.0 (+https://frederickradius.app; library event index)";
 const GEOCODE_CAP = 800;
 const ROUTE_DEADLINE_MS = 285_000;
 
@@ -56,21 +55,6 @@ function deferredGeocode(reason: "route-budget" | "upstream", error?: string): G
     budgetStopped: reason === "route-budget" ? 1 : 0,
     error,
   };
-}
-
-async function fetchFeed(): Promise<unknown[] | null> {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 45000); // the feed is slow (~16s); allow headroom
-  try {
-    const res = await fetch(FEED_URL, { headers: { "User-Agent": UA }, redirect: "follow", signal: ctrl.signal });
-    if (!res.ok) return null;
-    const json = await res.json();
-    return Array.isArray(json) ? json : null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(t);
-  }
 }
 
 export async function GET(req: NextRequest) {
@@ -128,11 +112,13 @@ export async function GET(req: NextRequest) {
       }, { status: 503 });
     }
   }
-  const feed = await fetchFeed();
-  if (!feed) {
+  const publisherRead = await readFcplPublisher(req.signal);
+  if (!publisherRead) {
     await finishIngestRun(runId, { status: "error", error: "feed fetch failed" });
     return Response.json({ ok: false, error: "feed fetch failed", dry }, { status: 502 });
   }
+
+  const { feed, receipt } = publisherRead;
 
   // Wrap the mapper so a parser throw stamps the run as error rather than
   // leaving a dangling 'running' row that getRecentIngestRuns surfaces forever.
@@ -153,6 +139,7 @@ export async function GET(req: NextRequest) {
   let failed = 0;
   let budgetStopped = 0;
   let firstWriteError: string | undefined;
+  const observations = { attempted: 0, observed: 0, held: 0, unconfirmedBatches: 0 };
 
   // Bounded-concurrency upserts with a hard time budget. The old strictly
   // sequential loop scaled linearly with the feed and outgrew maxDuration
@@ -169,18 +156,29 @@ export async function GET(req: NextRequest) {
       break;
     }
     const chunk = mapped.slice(i, i + POOL);
+    const successful: typeof mapped = [];
     await Promise.all(
       chunk.map(async ({ event, municipality, category }) => {
         perMunicipality[municipality] = (perMunicipality[municipality] ?? 0) + 1;
         if (dry || !sql) return;
         try {
           await upsertEvent(sql, { sourceDomain: FCPL_SOURCE_DOMAIN, municipality, category }, event, stats);
+          successful.push({ event, municipality, category });
         } catch (error) {
           failed++;
           firstWriteError ??= safeIngestWriteError(error);
         }
       }),
     );
+    if (!dry && sql && successful.length) {
+      const checked = await observeFcplBatch(sql, successful, receipt, {
+        deadlineAt: Math.min(routeDeadlineAt, t0 + BUDGET_MS), signal: req.signal,
+      });
+      observations.attempted += checked.attempted;
+      observations.observed += checked.observed;
+      observations.held += checked.held;
+      observations.unconfirmedBatches += Number(checked.status === "unconfirmed");
+    }
   }
 
   // Geocode pass after ingest (skipped on dry run).
@@ -224,6 +222,9 @@ export async function GET(req: NextRequest) {
       ? `time budget: stopped with ${budgetStopped} of ${mapped.length} rows remaining`
       : undefined,
     writeOutcome.error,
+    observations.held > 0
+      ? `publisher observations: ${observations.held} exact checks held; ${observations.unconfirmedBatches} batches unconfirmed`
+      : undefined,
     geocodeDegraded
       ? `geocode degraded: ${geocodeDegradedReason}${
           geocodeError ? ` (${safeIngestWriteError(geocodeError)})` : ""
@@ -234,7 +235,7 @@ export async function GET(req: NextRequest) {
   let runStatus: IngestWriteStatus = writeOutcome.status;
   if (budgetStopped > 0 || writeOutcome.status === "error") {
     runStatus = "error";
-  } else if (geocodeDegraded || writeOutcome.status === "partial") {
+  } else if (geocodeDegraded || writeOutcome.status === "partial" || observations.held > 0) {
     runStatus = "partial";
   }
 
@@ -246,12 +247,12 @@ export async function GET(req: NextRequest) {
     error: runError,
     records_in: mapped.length,
     records_upserted: stats.normUpserted,
-    records_failed: failed,
+    records_failed: failed + observations.held,
   });
 
-  // isr-1: real ingest wrote fresh rows — bust the event caches so /today,
-  // /events, and /map pick up the new library programs immediately.
-  if (!dry && sql && stats.normUpserted > 0) {
+  // Include unchanged-source observations and uncertain commit outcomes: a
+  // late acknowledged transaction must not leave cached check dates untouched.
+  if (!dry && sql && (stats.normUpserted > 0 || observations.attempted > 0)) {
     revalidateTag("ingested-events", "max");
     revalidateTag("events", "max");
   }
@@ -266,6 +267,7 @@ export async function GET(req: NextRequest) {
     failed,
     perMunicipality,
     stats: dry ? undefined : stats,
+    observations: dry ? undefined : observations,
     geocode,
     duration_ms: Date.now() - t0,
     finishedAt: new Date().toISOString(),

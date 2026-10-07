@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   startIngestRun: vi.fn(),
   finishIngestRun: vi.fn(),
   checkEventSchemaReadiness: vi.fn(),
+  observeFcplBatch: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ revalidateTag: mocks.revalidateTag }));
@@ -33,6 +34,10 @@ vi.mock("@/lib/ingest/geocode", () => ({
 vi.mock("@/lib/ingest/fcpl", () => ({
   FCPL_SOURCE_DOMAIN: "frederick.librarycalendar.com",
   fcplMapFeed: mocks.fcplMapFeed,
+}));
+vi.mock("@/lib/ingest/fcpl-observations", async (original) => ({
+  ...await original<typeof import("@/lib/ingest/fcpl-observations")>(),
+  observeFcplBatch: mocks.observeFcplBatch,
 }));
 vi.mock("@/lib/ingest/run-log", () => ({
   startIngestRun: mocks.startIngestRun,
@@ -85,12 +90,13 @@ describe("GET /api/ingest/fcpl geocode budget", () => {
       },
     ]);
     mocks.upsertEvent.mockResolvedValue(undefined);
+    mocks.observeFcplBatch.mockImplementation(async (_sql, rows) => ({ attempted: rows.length, observed: rows.length, held: 0, status: "ok" }));
     mocks.geocodeLimitForRemaining.mockReturnValue(6);
     mocks.geocodePending.mockResolvedValue(HEALTHY_GEOCODE);
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify([{ id: "library-1" }]), { status: 200 }),
+        Object.defineProperty(new Response(JSON.stringify([{ id: "library-1" }]), { status: 200 }), "url", { value: "https://frederick.librarycalendar.com/events/feed/json" }),
       ),
     );
   });
@@ -271,6 +277,22 @@ describe("GET /api/ingest/fcpl geocode budget", () => {
     expect(runError).not.toContain("do-not-log");
     expect(runError).not.toContain("postgres://");
     expect(mocks.revalidateTag).not.toHaveBeenCalled();
+  });
+
+  it("marks failed exact checks partial and invalidates uncertain stored observations", async () => {
+    mocks.observeFcplBatch.mockResolvedValue({ attempted: 1, observed: 0, held: 1, status: "unconfirmed" });
+    const response = await GET(request());
+    expect(await response.json()).toMatchObject({ ok: false, status: "partial", observations: { held: 1, unconfirmedBatches: 1 } });
+    expect(mocks.finishIngestRun).toHaveBeenCalledWith("run-fcpl", expect.objectContaining({ status: "partial", records_failed: 1 }));
+    expect(mocks.revalidateTag).toHaveBeenCalledWith("ingested-events", "max");
+  });
+
+  it("never observes a failed upsert and keeps batches within eight successful rows", async () => {
+    mocks.fcplMapFeed.mockReturnValue(Array.from({ length: 17 }, (_, i) => ({ event: { uid: String(i) }, municipality: "frederick", category: "family" })));
+    mocks.upsertEvent.mockRejectedValueOnce(new Error("write failed"));
+    await GET(request());
+    expect(mocks.observeFcplBatch.mock.calls.map((call) => call[1].length)).toEqual([7, 8, 1]);
+    expect(mocks.observeFcplBatch.mock.calls.flatMap((call) => call[1]).map((row) => row.event.uid)).not.toContain("0");
   });
 
   it("marks a mixed write batch partial instead of ok", async () => {

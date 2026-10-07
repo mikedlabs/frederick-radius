@@ -16,6 +16,8 @@
 import type { ParsedEvent } from "./parser";
 import { deriveEventStatus, stripStatusMarker, type EventStatus } from "@/lib/event-status";
 
+import { fcplPublisherPayload, hasFcplReservedKeys } from "./fcpl-observation-envelope";
+
 const SOURCE_DOMAIN = "frederick.librarycalendar.com";
 
 /** One raw record from the lc_calendar JSON feed (only the fields we use).
@@ -332,7 +334,8 @@ export function fcplStoredLifecycle(
   let raw: FcplRaw | undefined;
   if (typeof rawVevent === "string") {
     try {
-      const parsed: unknown = JSON.parse(rawVevent);
+      const publisher = fcplPublisherPayload(rawVevent);
+      const parsed: unknown = publisher ? JSON.parse(publisher) : null;
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         raw = parsed as FcplRaw;
       }
@@ -354,6 +357,7 @@ export type FcplMapped = { event: ParsedEvent; municipality: string; category: s
 /** Map one raw feed record to a ParsedEvent + its municipality/category, or
  *  null if it's not a usable public, future-dated, time-stamped program. */
 export function fcplMapOne(raw: FcplRaw, now: Date): FcplMapped | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw) || hasFcplReservedKeys(raw)) return null;
   if (raw.public === false || raw.published === false) return null;
   const title = asText(raw.title).trim();
   const uid = String(raw.id ?? raw.uuid ?? "").trim();
