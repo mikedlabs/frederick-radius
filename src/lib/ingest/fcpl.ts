@@ -14,6 +14,7 @@
  * tested against real records.
  */
 import type { ParsedEvent } from "./parser";
+import { deriveEventStatus, stripStatusMarker, type EventStatus } from "@/lib/event-status";
 
 const SOURCE_DOMAIN = "frederick.librarycalendar.com";
 
@@ -27,6 +28,7 @@ export type FcplRaw = {
   uuid?: string;
   public?: boolean;
   published?: boolean;
+  moderation_state?: unknown;
   url?: unknown;
   changed?: unknown;
   start_date?: unknown;
@@ -317,6 +319,34 @@ export function localToUtcIso(local: unknown, tzid = "America/New_York"): string
   if (Number.isNaN(asUtc)) return null;
   const off = tzOffsetMs(tzid, new Date(asUtc));
   return new Date(asUtc - off).toISOString();
+}
+
+/** Read the official occurrence state already retained in raw_events. A
+ * cancelled program stays public/published in FCPL, so those flags are not a
+ * lifecycle signal. Missing or malformed JSON retains the explicit title
+ * fallback; no feed request or new database column is needed at read time. */
+export function fcplStoredLifecycle(
+  rawVevent: unknown,
+  storedTitle: string,
+): { status: EventStatus; title: string } {
+  let raw: FcplRaw | undefined;
+  if (typeof rawVevent === "string") {
+    try {
+      const parsed: unknown = JSON.parse(rawVevent);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        raw = parsed as FcplRaw;
+      }
+    } catch { /* Legacy or malformed payload: use the stored title. */ }
+  }
+  const title = asText(raw?.title).trim() || storedTitle;
+  const state = asText(raw?.moderation_state).trim().toLowerCase();
+  const status = state === "postponed"
+    ? "postponed"
+    : deriveEventStatus(title, state);
+  return {
+    status,
+    title: status === "scheduled" ? title : stripStatusMarker(title),
+  };
 }
 
 export type FcplMapped = { event: ParsedEvent; municipality: string; category: string };
