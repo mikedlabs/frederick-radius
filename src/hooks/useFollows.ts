@@ -136,6 +136,12 @@ export function shouldCancelPlaceReturnBridgeAfterDelete(
 let remoteStore: Set<string> | null = null;
 let remoteStoreUserId: string | null = null;
 let remoteStoreTruncated = false;
+type FollowSnapshot = { slugs: Set<string>; truncated: boolean };
+type FollowTransport = {
+  promise: Promise<Response>;
+  outcome: "pending" | "response" | "rejected";
+  observation?: { epoch: number; generation: number; promise: Promise<FollowSnapshot> };
+};
 type FollowWriteQueue = {
   userId: string;
   slug: string;
@@ -144,10 +150,14 @@ type FollowWriteQueue = {
   tail: Promise<void>;
   pending: number;
   uncertain: boolean;
-  transport: { promise: Promise<Response>; outcome: "pending" | "response" | "rejected" } | null;
+  transport: FollowTransport | null;
+  topicDirty: boolean;
   reconciling: Promise<void> | null;
 };
 const followWrites = new Map<string, FollowWriteQueue>();
+// One batch per account/document. Pending or lost transports must not be retried
+// implicitly and race with an explicit removal. A new document may retry.
+const followImports = new Map<string, Promise<void>>();
 let followWriteEpoch = 0;
 const remoteListeners = new Set<() => void>();
 function readRemote(): Set<string> | null {
@@ -489,12 +499,12 @@ export function useIsFollowed(slug: string): boolean {
  * owner, so an unclaimed `biz:<slug>` simply never fires. Best-effort and
  * fire-and-forget — a failed topic sync must never affect the follow itself.
  */
-async function syncFollowPushTopic(slug: string, follow: boolean): Promise<void> {
+async function syncFollowPushTopic(slug: string, follow: boolean, isCurrent: () => boolean): Promise<void> {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
   try {
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
-    if (!sub) return; // no notification consent on this device → nothing to wire
+    if (!sub || !isCurrent()) return; // no notification consent on this device → nothing to wire
     const topic = businessTopic(slug);
     await fetch("/api/push/topics", {
       method: "POST",
@@ -512,6 +522,7 @@ async function syncFollowPushTopic(slug: string, follow: boolean): Promise<void>
 
 export const FOLLOW_WRITE_TIMEOUT_MS = 15_000;
 const UNCONFIRMED = "We could not confirm this change. Please try again.";
+const FULL_LIST = `You have saved ${MAX_FOLLOWED_PLACES} places. Remove a place from Saved before adding another.`;
 const CHANGED_LIST = "Your saved list changed while we checked your account. Check this place and try again.";
 const PENDING_WRITE = "This change is still pending. Wait for it to finish before making another change to this place.";
 const UNKNOWN_WRITE = "The connection ended before this change could be confirmed. Refresh Saved to check your list.";
@@ -532,8 +543,30 @@ function releaseFollowQueue(queue: FollowWriteQueue) {
   }
 }
 
+function getFollowQueue(userId: string, slug: string, confirmed: boolean): FollowWriteQueue {
+  const key = JSON.stringify([userId, slug]);
+  let queue = followWrites.get(key);
+  if (!queue) {
+    queue = { userId, slug, confirmed, latest: 0, tail: Promise.resolve(), pending: 0, uncertain: false, transport: null, topicDirty: false, reconciling: null };
+    followWrites.set(key, queue);
+  }
+  return queue;
+}
+
+/** Sync only a settled, confirmed intent, including a failed newer rollback. */
+function syncConfirmedFollowTopic(queue: FollowWriteQueue) {
+  if (!queue.topicDirty || queue.pending || queue.uncertain || queue.transport) return;
+  const epoch = followWriteEpoch;
+  const generation = authGeneration;
+  const isCurrent = () => followWriteEpoch === epoch && authGeneration === generation
+    && remoteStoreUserId === queue.userId && remoteStore?.has(queue.slug) === queue.confirmed;
+  if (!isCurrent()) return;
+  queue.topicDirty = false;
+  void syncFollowPushTopic(queue.slug, queue.confirmed, isCurrent);
+}
+
 /** A cancelled read is safe; a cancelled mutation is not proof of rollback. */
-async function readFollowMembership(slug: string): Promise<boolean> {
+async function readFollowSnapshot(): Promise<FollowSnapshot> {
   const deadline = createAbortDeadline(FOLLOW_WRITE_TIMEOUT_MS);
   let onAbort: () => void = () => {};
   const interrupted = new Promise<never>((_, reject) => {
@@ -550,9 +583,7 @@ async function readFollowMembership(slug: string): Promise<boolean> {
       interrupted,
     ]);
     if (!Array.isArray(payload.slugs)) throw new Error("Invalid saved list");
-    const followed = normalizeFollowSlugs(payload.slugs).includes(slug);
-    if (!followed && payload.truncated === true) throw new Error("Saved membership unresolved");
-    return followed;
+    return { slugs: new Set(normalizeFollowSlugs(payload.slugs)), truncated: payload.truncated === true };
   } finally {
     deadline.signal.removeEventListener("abort", onAbort);
     deadline.dispose();
@@ -568,13 +599,26 @@ function reconcileFollowQueue(queue: FollowWriteQueue): Promise<void> {
   }
   const epoch = followWriteEpoch;
   const generation = authGeneration;
-  const reconcile = readFollowMembership(queue.slug)
-    .then((followed) => {
+  // Imported places share one bounded observation rather than fan out reads.
+  let observation = transport.observation;
+  if (!observation || observation.epoch !== epoch || observation.generation !== generation) {
+    observation = { epoch, generation, promise: readFollowSnapshot() };
+    transport.observation = observation;
+    const currentObservation = observation;
+    void observation.promise.finally(() => {
+      if (transport.observation === currentObservation) delete transport.observation;
+    }).catch(() => {});
+  }
+  const reconcile = observation.promise
+    .then((snapshot) => {
+      const followed = snapshot.slugs.has(queue.slug);
+      if (!followed && snapshot.truncated) return;
       if (followWriteEpoch !== epoch || authGeneration !== generation || remoteStoreUserId !== queue.userId || queue.transport !== transport) return;
       queue.confirmed = followed;
       queue.uncertain = false;
       queue.transport = null;
       writeFollowMembership(queue.slug, followed);
+      syncConfirmedFollowTopic(queue);
       releaseFollowQueue(queue);
     })
     .catch(() => {
@@ -607,18 +651,14 @@ function persistFollowToggle(
   source: string,
   onFailure?: (description: string) => void,
 ): Promise<boolean> {
-  const key = JSON.stringify([userId, slug]);
-  let queue = followWrites.get(key);
-  if (!queue) {
-    queue = { userId, slug, confirmed: wasFollowed, latest: 0, tail: Promise.resolve(), pending: 0, uncertain: false, transport: null, reconciling: null };
-    followWrites.set(key, queue);
-  }
-  const activeQueue = queue;
+  const activeQueue = getFollowQueue(userId, slug, wasFollowed);
+  activeQueue.topicDirty = true;
   const revision = ++activeQueue.latest;
   activeQueue.pending++;
   const epoch = followWriteEpoch;
+  const generation = authGeneration;
   const followed = !wasFollowed;
-  const isCurrentAccount = () => followWriteEpoch === epoch && remoteStoreUserId === userId;
+  const isCurrentAccount = () => followWriteEpoch === epoch && authGeneration === generation && remoteStoreUserId === userId;
   const fail = () => {
     if (isCurrentAccount() && activeQueue.latest === revision) writeFollowMembership(slug, activeQueue.confirmed);
     onFailure?.(activeQueue.uncertain ? followFailureCopy(activeQueue) : UNCONFIRMED);
@@ -670,10 +710,12 @@ function persistFollowToggle(
       } else if (followed && remoteStore?.has(slug)) {
         signalReturnBridgeValue("place");
       }
-      if (remoteStore?.has(slug) === followed) void syncFollowPushTopic(slug, followed);
       return followed;
     } finally {
       activeQueue.pending--;
+      // The operation may be obsolete while a fresh read has confirmed this
+      // account. The helper validates that settled membership independently.
+      syncConfirmedFollowTopic(activeQueue);
       releaseFollowQueue(activeQueue);
     }
   });
@@ -710,7 +752,10 @@ export function useToggleFollow(slug: string, source?: string, onFailure?: (desc
       return startedFollowed;
     }
     const { next, wasFollowed } = toggleSlug(current, slug);
-    if (!wasFollowed && next.size > MAX_FOLLOWED_PLACES) return false;
+    if (!wasFollowed && next.size > MAX_FOLLOWED_PLACES) {
+      onFailure?.(FULL_LIST);
+      return false;
+    }
     if (remoteStoreUserId !== auth.user.id) writeAccountRemote(auth.user.id, current);
     writeRemote(next);
     return persistFollowToggle(auth.user.id, slug, wasFollowed, source ?? "place_detail", onFailure);
@@ -737,38 +782,89 @@ function readIsSavedSync(slug: string): boolean {
  * subsequent renders don't re-sync. Idempotent on the server.
  */
 async function maybeSync(localSlugs: Set<string>, remoteSlugs: Set<string>, userId: string) {
-  if (getSyncedFlag(userId)) return;
-  // Local saves are stored oldest-first. Send newest-first so the bounded
-  // account import keeps the person's most recent, most relevant choices.
+  if (getSyncedFlag(userId) || followImports.has(userId)) return;
+  // An explicit intent already owns its place. Do not import an older device
+  // save over a removal or an unresolved write, even if optimism hides it now.
   const toUpload = [...localSlugs]
     .reverse()
-    .filter((s) => !remoteSlugs.has(s))
+    .filter((slug) => !remoteSlugs.has(slug) && !followWrites.has(JSON.stringify([userId, slug])))
     .slice(0, MAX_FOLLOWED_PLACES);
   if (toUpload.length === 0) {
     setSyncedFlag(userId);
     return;
   }
-  try {
-    const res = await fetch("/api/follows/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slugs: toUpload }),
-    });
-    if (res.ok) {
-      const data = (await res.json()) as { acceptedSlugs?: unknown };
-      setSyncedFlag(userId);
-      // Fold the just-synced slugs into the shared store so the UI
-      // reflects them without waiting for a remount.
-      const merged = new Set(remoteStore ?? remoteSlugs);
-      const accepted = Array.isArray(data.acceptedSlugs)
-        ? normalizeFollowSlugs(data.acceptedSlugs)
-        : [];
-      accepted.forEach((slug) => merged.add(slug));
-      writeRemote(merged);
+  const epoch = followWriteEpoch;
+  const generation = authGeneration;
+  const isCurrentAccount = () => followWriteEpoch === epoch && authGeneration === generation && remoteStoreUserId === userId;
+  // Reserve every imported place synchronously, before the single batch is
+  // sent. Its queue tail bounds waiting intents without aborting the import.
+  const reservations = toUpload.map((slug) => {
+    const queue = getFollowQueue(userId, slug, remoteSlugs.has(slug));
+    const revision = ++queue.latest;
+    queue.pending++;
+    return { queue, revision };
+  });
+  let sent = false;
+  const transport: FollowTransport = {
+    promise: Promise.resolve().then(() => {
+      if (!isCurrentAccount()) throw new Error("Saved account changed");
+      sent = true;
+      return fetch("/api/follows/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slugs: toUpload }),
+      });
+    }),
+    outcome: "pending",
+  };
+  for (const { queue } of reservations) queue.transport = transport;
+  void transport.promise.then((response) => {
+    transport.outcome = "response";
+    // HTTP success means the batch finished on the server, even if reading its
+    // body later times out. Do not silently re-import old device saves again.
+    if (response.ok) setSyncedFlag(userId);
+    for (const { queue } of reservations) {
+      if (queue.transport === transport && queue.uncertain) void reconcileFollowQueue(queue);
     }
-  } catch {
-    /* try again next mount */
-  }
+  }, () => { transport.outcome = "rejected"; });
+  const operation = (async () => {
+    try {
+      const result = await withDeadlineOutcome(transport.promise.then(async (response) => {
+        if (!response.ok) throw new Error("Saved import failed");
+        const data = await response.json() as { acceptedSlugs?: unknown };
+        if (!Array.isArray(data.acceptedSlugs)) throw new Error("Invalid saved import");
+        return new Set(normalizeFollowSlugs(data.acceptedSlugs));
+      }), FOLLOW_WRITE_TIMEOUT_MS);
+      const merged = new Set(remoteStore ?? []);
+      for (const { queue, revision } of reservations) {
+        if (queue.transport !== transport) continue;
+        if (!sent) {
+          queue.transport = null;
+        } else if (result.status !== "fulfilled" || !isCurrentAccount()) {
+          queue.uncertain = true;
+          void reconcileFollowQueue(queue);
+        } else {
+          queue.confirmed = result.value.has(queue.slug);
+          queue.transport = null;
+          if (queue.latest === revision) {
+            if (queue.confirmed) merged.add(queue.slug);
+            else merged.delete(queue.slug);
+          }
+        }
+      }
+      if (sent && result.status === "fulfilled" && isCurrentAccount()) writeRemote(merged);
+    } finally {
+      for (const { queue } of reservations) {
+        queue.pending--;
+        releaseFollowQueue(queue);
+      }
+    }
+  })();
+  for (const { queue } of reservations) queue.tail = operation.then(() => {}, () => {});
+  followImports.set(userId, operation);
+  await operation;
+  // No request was sent, so there is no uncertain server write to retain.
+  if (!sent && followImports.get(userId) === operation) followImports.delete(userId);
 }
 
 /** Exported for the sign-out path to reset session caches so a

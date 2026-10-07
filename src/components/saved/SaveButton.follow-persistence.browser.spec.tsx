@@ -9,6 +9,8 @@ import { FOLLOW_WRITE_TIMEOUT_MS, resetFollowsSyncFlag, useFollowedSlugs, type F
 
 const mocks = vi.hoisted(() => ({
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
+  hasSynced: vi.fn(() => true),
+  markSynced: vi.fn(),
 }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
 vi.mock("@/lib/haptics", () => ({ haptic: vi.fn() }));
@@ -17,7 +19,7 @@ vi.mock("@/lib/decision/telemetry", () => ({ decisionContextFromPath: () => ({ s
 vi.mock("@/lib/persistence", () => ({ ensurePersistentStorage: vi.fn() }));
 vi.mock("@/lib/pwa-display", () => ({ isStandalone: () => false, isInstallPromptSuppressedPath: () => false }));
 vi.mock("@/lib/return-bridge", () => ({ currentReturnBridgeState: () => ({ completed: true, valueKind: null }), openReturnBridge: vi.fn(), cancelPendingReturnBridgeValue: vi.fn(), signalReturnBridgeValue: vi.fn() }));
-vi.mock("@/lib/follows-sync", () => ({ clearFollowsSync: vi.fn(), hasCompletedFollowsSync: () => true, markFollowsSyncComplete: vi.fn() }));
+vi.mock("@/lib/follows-sync", () => ({ clearFollowsSync: vi.fn(), hasCompletedFollowsSync: mocks.hasSynced, markFollowsSyncComplete: mocks.markSynced }));
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -46,19 +48,34 @@ describe("SaveButton with the real follow persistence hook", () => {
   let identity: ReturnType<typeof deferred<Response>> | undefined;
   let blockedRead: ReturnType<typeof deferred<Response>> | undefined;
   let reads: Array<{ signal?: AbortSignal }>;
+  let imports: Array<{ slugs: string[]; request: ReturnType<typeof deferred<Response>> }>;
+  let topics: Array<{ add?: string[]; remove?: string[] }>;
 
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.hasSynced.mockReturnValue(true);
+    mocks.markSynced.mockImplementation(() => mocks.hasSynced.mockReturnValue(true));
     resetFollowsSyncFlag();
     localStorage.clear();
     writes = [];
     reads = [];
+    imports = [];
+    topics = [];
     serverSlugs = new Set();
     identity = undefined;
     blockedRead = undefined;
     bootstrap = { user: { id: `account-${++accountSequence}`, email: null }, slugs: [] };
     vi.stubGlobal("fetch", vi.fn<typeof fetch>((input, init) => {
+      if (String(input) === "/api/follows/sync") {
+        const request = deferred<Response>();
+        imports.push({ slugs: JSON.parse(String(init?.body)).slugs, request });
+        return request.promise;
+      }
+      if (String(input) === "/api/push/topics") {
+        topics.push(JSON.parse(String(init?.body)));
+        return Promise.resolve(response());
+      }
       if (String(input) === "/api/auth/me" && identity) return identity.promise;
       if (String(input) === "/api/follows" && !init?.method) {
         reads.push({ signal: init?.signal as AbortSignal | undefined });
@@ -193,6 +210,189 @@ describe("SaveButton with the real follow persistence hook", () => {
     expect(button(0).getAttribute("aria-pressed")).toBe("true");
     expect(button(1).getAttribute("aria-pressed")).toBe("true");
     expect(mocks.toast.error).toHaveBeenCalledWith("Could not remove from Saved", expect.any(Object));
+  });
+
+  it("does not apply an old successful write over a newer same-account bootstrap", async () => {
+    await render();
+    await click();
+    await render(["fresh-snapshot"], ["test-stop"]);
+    blockedRead = deferred<Response>();
+    await settle(0);
+    expect(saved()).toBe("fresh-snapshot");
+    expect(reads).toHaveLength(1);
+    expect(mocks.toast.success).not.toHaveBeenCalled();
+    expect(mocks.toast.error).toHaveBeenCalledTimes(1);
+    await act(async () => blockedRead!.resolve(response(200, { slugs: [...serverSlugs] })));
+    expect(saved()).toBe("fresh-snapshot,test-stop");
+  });
+
+  it.each(["icon", "place"])("explains the known account capacity refusal in the %s control", async (control) => {
+    const full = Array.from({ length: 100 }, (_, index) => `saved-${index}`);
+    await render(full, []);
+    await act(async () => root.render(<>
+      <Snapshot bootstrap={bootstrap} />
+      {control === "icon" ? <SaveButton refType="place" refId="test-stop" label="Save test-stop" /> : <MyRadiusButton slug="test-stop" name="Test Stop" />}
+    </>));
+    await click();
+    expect(writes).toHaveLength(0);
+    expect(saved()!.split(",")).toHaveLength(100);
+    expect(button().disabled).toBe(false);
+    expect(mocks.toast.success).not.toHaveBeenCalled();
+    expect(mocks.toast.error).toHaveBeenLastCalledWith(control === "icon" ? "Could not save this item" : "Could not save this place", {
+      description: "You have saved 100 places. Remove a place from Saved before adding another.",
+    });
+  });
+
+  it("syncs the device topic from the final confirmed save after a queued removal fails", async () => {
+    vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription: async () => ({ endpoint: "https://push.example.test/consented" }) } }) } });
+    await render();
+    await click(0);
+    await click(1);
+    await settle(0);
+    expect(topics).toHaveLength(0);
+    await settle(1, 503);
+    expect(saved()).toBe("test-stop");
+    expect(topics).toEqual([expect.objectContaining({ add: ["biz:test-stop"] })]);
+  });
+
+  it("keeps the final confirmed device topic after an old-generation queued intent settles", async () => {
+    vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription: async () => ({ endpoint: "https://push.example.test/consented" }) } }) } });
+    await render([], Array.from({ length: 8 }, () => "test-stop"));
+    for (let index = 0; index < 8; index++) await click(index);
+    await render(["fresh-snapshot"], ["test-stop"]);
+    await settle(0);
+    expect(writes).toHaveLength(1);
+    expect(saved()).toBe("fresh-snapshot,test-stop");
+    expect(mocks.toast.success).not.toHaveBeenCalled();
+    expect(topics).toEqual([expect.objectContaining({ add: ["biz:test-stop"] })]);
+  });
+
+  it("releases an import reservation canceled before send so the same account can try its first import", async () => {
+    mocks.hasSynced.mockReturnValue(false).mockImplementationOnce(() => {
+      // Invalidate after reservations are queued but before the fetch microtask.
+      queueMicrotask(() => resetFollowsSyncFlag());
+      return false;
+    });
+    localStorage.setItem("fr:saved:v1", JSON.stringify([{ type: "place", id: "test-stop", saved_at: "2026-10-07T00:00:00.000Z" }]));
+    await render();
+    expect(imports).toHaveLength(0);
+    expect(writes).toHaveLength(0);
+    await render();
+    expect(imports).toHaveLength(1);
+    await act(async () => {
+      serverSlugs.add("test-stop");
+      imports[0].request.resolve(response(200, { acceptedSlugs: ["test-stop"] }));
+    });
+    expect(saved()).toBe("test-stop");
+    expect(imports).toHaveLength(1);
+  });
+
+  it("finishes one bulk import before queued save and remove intents can mutate its place", async () => {
+    mocks.hasSynced.mockReturnValue(false);
+    localStorage.setItem("fr:saved:v1", JSON.stringify([{ type: "place", id: "test-stop", saved_at: "2026-10-07T00:00:00.000Z" }]));
+    await render();
+    await click(0);
+    await click(1);
+    expect(imports).toHaveLength(1);
+    expect(writes).toHaveLength(0);
+    expect(saved()).toBe("");
+    await act(async () => {
+      serverSlugs.add("test-stop");
+      imports[0].request.resolve(response(200, { acceptedSlugs: ["test-stop"] }));
+    });
+    expect(saved()).toBe("");
+    expect(writes).toHaveLength(1);
+    expect(writes[0].method).toBe("POST");
+    await settle(0);
+    expect(writes).toHaveLength(2);
+    expect(writes[1].method).toBe("DELETE");
+    await settle(1);
+    expect(saved()).toBe("");
+    expect([...serverSlugs]).toEqual([]);
+    expect(imports).toHaveLength(1);
+    expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved", expect.any(Object));
+  });
+
+  it("bounds a hung import body, shares one fresh read, and ignores its late accepted slugs after removal", async () => {
+    vi.useFakeTimers();
+    mocks.hasSynced.mockReturnValue(false);
+    localStorage.setItem("fr:saved:v1", JSON.stringify(["test-stop", "second-import"].map((id) => ({ type: "place", id, saved_at: "2026-10-07T00:00:00.000Z" }))));
+    await render([], ["test-stop", "other-stop"]);
+    const body = deferred<unknown>();
+    await act(async () => {
+      serverSlugs.add("test-stop");
+      serverSlugs.add("second-import");
+      imports[0].request.resolve({ ok: true, status: 200, json: () => body.promise } as Response);
+    });
+    await click(0);
+    expect(writes).toHaveLength(0);
+    await act(async () => { await vi.advanceTimersByTimeAsync(FOLLOW_WRITE_TIMEOUT_MS); });
+    expect(button().disabled).toBe(false);
+    expect(writes).toHaveLength(0);
+    expect(reads).toHaveLength(1);
+    expect(saved()).toBe("second-import,test-stop");
+    expect(mocks.toast.success).not.toHaveBeenCalled();
+    await click(0);
+    expect(writes[0].method).toBe("DELETE");
+    await settle(0);
+    expect(saved()).toBe("second-import");
+    await act(async () => body.resolve({ acceptedSlugs: ["test-stop", "second-import"] }));
+    expect(saved()).toBe("second-import");
+    expect([...serverSlugs]).toEqual(["second-import"]);
+    expect(imports).toHaveLength(1);
+  });
+
+  it("holds a lost import outcome without a second batch or conflicting write and permits unrelated saves", async () => {
+    vi.useFakeTimers();
+    mocks.hasSynced.mockReturnValue(false);
+    localStorage.setItem("fr:saved:v1", JSON.stringify([{ type: "place", id: "test-stop", saved_at: "2026-10-07T00:00:00.000Z" }]));
+    await render([], ["test-stop", "other-stop"]);
+    await click(0);
+    await act(async () => { await vi.advanceTimersByTimeAsync(FOLLOW_WRITE_TIMEOUT_MS); });
+    expect(button().disabled).toBe(false);
+    expect(writes).toHaveLength(0);
+    expect(mocks.toast.error).toHaveBeenLastCalledWith("Could not save this item", { description: "This change is still pending. Wait for it to finish before making another change to this place." });
+    await act(async () => imports[0].request.reject(new Error("Connection lost")));
+    await click(0);
+    expect(writes).toHaveLength(0);
+    expect(mocks.toast.error).toHaveBeenLastCalledWith("Could not save this item", { description: "The connection ended before this change could be confirmed. Refresh Saved to check your list." });
+    await click(1);
+    await settle(0);
+    expect(saved()).toBe("other-stop");
+    expect(imports).toHaveLength(1);
+  });
+
+  it("orders the one-shot import before a same-place removal while another place remains usable", async () => {
+    mocks.hasSynced.mockReturnValue(false);
+    localStorage.setItem("fr:saved:v1", JSON.stringify([{ type: "place", id: "test-stop", saved_at: "2026-10-07T00:00:00.000Z" }]));
+    await render([], ["test-stop", "other-stop"]);
+    expect(imports).toHaveLength(1);
+    expect(imports[0].slugs).toEqual(["test-stop"]);
+    // A new verified page can see the import before its browser response arrives.
+    await render(["test-stop"], ["test-stop", "other-stop"]);
+    await click(0);
+    expect(writes).toHaveLength(0);
+    await click(1);
+    expect(writes).toHaveLength(1);
+    expect(writes[0].slug).toBe("other-stop");
+    await settle(0);
+    mocks.toast.success.mockClear();
+    await act(async () => {
+      serverSlugs.add("test-stop");
+      imports[0].request.resolve(response(200, { acceptedSlugs: ["test-stop"] }));
+    });
+    expect(imports).toHaveLength(1);
+    expect(mocks.toast.success).not.toHaveBeenCalled();
+    // The queued intent was invalidated by the intervening verified page; retry
+    // against its reconciled current membership, never acknowledge the old tap.
+    expect(saved()).toBe("other-stop,test-stop");
+    await click(0);
+    expect(writes).toHaveLength(2);
+    expect(writes[1].method).toBe("DELETE");
+    await settle(1);
+    expect(saved()).toBe("other-stop");
+    expect([...serverSlugs]).toEqual(["other-stop"]);
+    expect(imports).toHaveLength(1);
   });
 
   it("allows independent places to persist concurrently and preserves a different place on failure", async () => {
@@ -342,9 +542,11 @@ describe("SaveButton with the real follow persistence hook", () => {
     blockedRead = deferred<Response>();
     blockedRead.resolve(response(200, { slugs: ["other-stop"], truncated: true }));
     await settle(0, 503);
-    expect(saved()).toBe("other-stop,test-stop");
+    // The old-generation failure must not rewrite the new page. Its truncated
+    // read cannot establish absence, so the transport remains held for retry.
+    expect(saved()).toBe("other-stop");
     expect(button().disabled).toBe(false);
-    expect(button().getAttribute("aria-pressed")).toBe("true");
+    expect(button().getAttribute("aria-pressed")).toBe("false");
     expect(mocks.toast).not.toHaveBeenCalled();
     expect(mocks.toast.success).not.toHaveBeenCalled();
     expect(mocks.toast.error).toHaveBeenLastCalledWith("Could not remove from Saved", expect.any(Object));
