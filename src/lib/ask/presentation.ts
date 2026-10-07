@@ -241,7 +241,17 @@ export function askResponseSectionOrder(
         "detail",
       ];
     case "recovery":
-      return ["summary", "primary-action"];
+      // A recovery answer still owes the reader its reason, the records it
+      // names ("These places have contact details..."), and every way
+      // forward. Hiding them left plan recoveries pointing at nothing.
+      return [
+        "summary",
+        "detail",
+        "primary-action",
+        "primary-source",
+        "supporting-sources",
+        "secondary-actions",
+      ];
     default:
       return [
         "summary",

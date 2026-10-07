@@ -535,22 +535,81 @@ test.describe("Ask Radius deterministic workspace", () => {
       .toBeLessThanOrEqual(2);
   });
 
-  test("asks a first-time visitor for an area before the dinner shortcut runs", async ({
+  test("runs the town-named coffee starter for a first-time visitor without the area chooser", async ({
     page,
   }) => {
     let calls = 0;
+    let requestBody: { query?: string; scope?: string } = {};
     await page.route("**/api/ask", async (route) => {
       calls += 1;
-      await fulfill(route, answer({ answer: "Dinner answer." }));
+      requestBody = route.request().postDataJSON() as typeof requestBody;
+      await fulfill(route, answer({ answer: "Coffee answer." }));
     });
 
     await page.goto("/ask");
-    await page.getByRole("button", { name: "Dinner tonight" }).click();
-    await expect(page.locator("#ask-area-chooser")).toBeVisible();
-    expect(calls).toBe(0);
-    await page.getByLabel("Choose a town").selectOption("frederick");
-    await expect(page.getByText("Dinner answer.")).toBeVisible();
+    await expect(
+      page.locator('[data-ask-interaction-ready="true"]'),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Search area: not chosen. Choose area." }),
+    ).toContainText("Choose area");
+    await page
+      .getByRole("button", { name: /^Find coffee in Frederick City/ })
+      .click();
+    await expect(page.getByText("Coffee answer.")).toBeVisible();
+    await expect(page.locator("#ask-area-chooser")).toHaveCount(0);
     expect(calls).toBe(1);
+    expect(requestBody.query).toMatch(
+      /^Where can I get coffee (?:tomorrow morning )?in Frederick City\?$/,
+    );
+    expect(requestBody.scope).toBe("town:frederick");
+  });
+
+  test("shows a recovery answer's reason, named places, and every next step", async ({
+    page,
+  }) => {
+    await page.route("**/api/ask", (route) =>
+      fulfill(
+        route,
+        answer({
+          status: "empty",
+          answer:
+            "I can’t confirm a 3-hour plan in Brunswick tonight. Radius does not have current verified hours for the places in this area.",
+          sources: [
+            {
+              ...source(2),
+              reason: "This is a place to check, not a scheduled stop.",
+            },
+          ],
+          actions: [
+            { label: "Check Brunswick places", kind: "open", href: "/m/brunswick" },
+            {
+              label: "See Brunswick on the map",
+              kind: "open",
+              href: "/map?in=brunswick",
+            },
+          ],
+        }),
+      ),
+    );
+
+    await page.goto("/ask");
+    await submit(page, "recovery example");
+    await expect(
+      page.getByText("I can’t confirm a 3-hour plan in Brunswick tonight."),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Radius does not have current verified hours for the places in this area.",
+      ),
+    ).toBeVisible();
+    await expect(page.getByText("Source 2", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Check Brunswick places" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "See Brunswick on the map" }),
+    ).toBeVisible();
   });
 
   test("does not treat a saved home as the user's current location", async ({
@@ -576,17 +635,21 @@ test.describe("Ask Radius deterministic workspace", () => {
     expect(calls).toBe(0);
   });
 
+  // The dated starter follows the Eastern clock (today, tonight, or
+  // tomorrow), so it is matched by pattern rather than by one fixed label.
   for (const shortcut of [
     {
-      label: "Dinner tonight",
-      query: "Where should I eat tonight?",
+      name: "The dated events starter",
+      label: /^See events (?:today|tonight|tomorrow)$/,
+      query: /^What events are happening (?:today|tonight|tomorrow)\?$/,
     },
     {
-      label: "What is on tonight?",
-      query: "What is worth doing tonight?",
+      name: "The weekend events starter",
+      label: /^See events this weekend$/,
+      query: /^What events are happening this weekend\?$/,
     },
   ]) {
-    test(`${shortcut.label} uses home as a ranking fallback without hard-filtering it`, async ({ page }) => {
+    test(`${shortcut.name} uses home as a ranking fallback without hard-filtering it`, async ({ page }) => {
       await page.addInitScript(() => {
         window.localStorage.setItem("fr:home-muni:v1", "frederick");
       });
@@ -605,7 +668,7 @@ test.describe("Ask Radius deterministic workspace", () => {
       await page.getByRole("button", { name: shortcut.label }).click();
       await expect(page.getByText("Scoped shortcut answer.")).toBeVisible();
 
-      expect(requestBody.query).toBe(shortcut.query);
+      expect(requestBody.query).toMatch(shortcut.query);
       expect(requestBody).not.toHaveProperty("scope");
     });
   }

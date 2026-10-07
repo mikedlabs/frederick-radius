@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ASK_CLIENT_DEADLINE_MS,
+  askAreaChipLabel,
+  askAreaNeedsChoice,
   askCorrectionResultRef,
+  askSourcePhotoSrc,
+  askStarterWindow,
+  askStarters,
+  askStartersForWindow,
   askEvidenceLabels,
   askFailureForAbortReason,
   askQuestionPath,
@@ -293,5 +299,185 @@ describe("Ask Radius nearby context", () => {
       href: "/events/live-music",
       photo_url: "/images/events/live-music.jpg",
     })).toBe(true);
+  });
+});
+
+describe("Ask Radius source thumbnails", () => {
+  it("requests the proxy's failure signal instead of the photo-unavailable plate", () => {
+    const src = askSourcePhotoSrc({
+      href: "/places/cafe-nola",
+      photo_url: "/api/place-photo?name=places%2Fid%2Fphotos%2Fphoto&w=800",
+    });
+    expect(src).not.toBeNull();
+    const url = new URL(src!, "https://frederickradius.app");
+    expect(url.pathname).toBe("/api/place-photo");
+    expect(url.searchParams.get("fallback")).toBe("signal");
+    expect(url.searchParams.get("name")).toBe("places/id/photos/photo");
+  });
+
+  it("leaves a first-party image alone and skips photos it cannot attribute", () => {
+    expect(
+      askSourcePhotoSrc({
+        href: "/events/live-music",
+        photo_url: "/images/events/live-music.jpg",
+      }),
+    ).toBe("/images/events/live-music.jpg");
+    expect(
+      askSourcePhotoSrc({
+        href: "/events/live-music",
+        photo_url: "/api/place-photo?name=places%2Fid%2Fphotos%2Fphoto",
+      }),
+    ).toBeNull();
+    expect(askSourcePhotoSrc({ href: "/places/cafe-nola" })).toBeNull();
+  });
+});
+
+describe("Ask Radius area chip", () => {
+  it("asks for an area instead of claiming the county when nothing is chosen", () => {
+    expect(askAreaNeedsChoice(null, false, null)).toBe(true);
+    expect(askAreaChipLabel(null, false, null)).toBe("Choose area");
+  });
+
+  it("treats a remembered Near me choice without a device fix as unchosen", () => {
+    expect(askAreaNeedsChoice("nearme", false, null)).toBe(true);
+    expect(askAreaNeedsChoice("nearme", false, "town:frederick")).toBe(true);
+    expect(askAreaChipLabel("nearme", false, null)).toBe("Choose area");
+  });
+
+  it("keeps a deliberate county, town, device fix, or saved home", () => {
+    expect(askAreaChipLabel("county", false, null)).toBe("County");
+    expect(askAreaChipLabel("town:frederick", false, null)).toBe("Frederick");
+    expect(askAreaChipLabel("nearme", true, null)).toBe("Near me");
+    expect(askAreaChipLabel(null, true, null)).toBe("Near me");
+    expect(askAreaChipLabel(null, false, "town:frederick")).toBe(
+      "Home · Frederick",
+    );
+    for (const [scope, device, home] of [
+      ["county", false, null],
+      ["town:urbana", false, null],
+      [null, true, null],
+      [null, false, "town:brunswick"],
+    ] as const) {
+      expect(askAreaNeedsChoice(scope, device, home)).toBe(false);
+    }
+  });
+
+  it("says Choose area exactly when a local hunt would stop to ask", () => {
+    const localHunt = "Where can I get pizza?";
+    for (const [scope, device, home] of [
+      [null, false, null],
+      ["nearme", false, null],
+      ["county", false, null],
+      ["town:frederick", false, null],
+      [null, true, null],
+      [null, false, "town:brunswick"],
+    ] as const) {
+      const gateScope = scope ?? home;
+      expect(nearbyQueryNeedsAreaChoice(localHunt, gateScope, device)).toBe(
+        askAreaNeedsChoice(scope, device, home),
+      );
+    }
+  });
+});
+
+describe("Ask Radius starter questions", () => {
+  const LATE_EVENING = new Date("2026-10-07T22:45:00-04:00");
+  const AFTERNOON = new Date("2026-10-07T14:30:00-04:00");
+  const EARLY_EVENING = new Date("2026-10-07T18:15:00-04:00");
+  const OVERNIGHT = new Date("2026-10-08T01:30:00-04:00");
+  const WINDOWS = ["overnight", "daytime", "evening", "late-evening"] as const;
+
+  it("offers tomorrow's events and tomorrow-morning coffee at 10:45 PM", () => {
+    expect(askStarterWindow(LATE_EVENING)).toBe("late-evening");
+    expect(askStarters(LATE_EVENING)).toEqual([
+      {
+        label: "See events tomorrow",
+        query: "What events are happening tomorrow?",
+      },
+      {
+        label: "See events this weekend",
+        query: "What events are happening this weekend?",
+      },
+      {
+        label: "Find coffee in Frederick City tomorrow",
+        query: "Where can I get coffee tomorrow morning in Frederick City?",
+      },
+    ]);
+  });
+
+  it("offers tonight's events and town coffee in the afternoon", () => {
+    expect(askStarterWindow(AFTERNOON)).toBe("daytime");
+    expect(askStarters(AFTERNOON)).toEqual([
+      {
+        label: "See events tonight",
+        query: "What events are happening tonight?",
+      },
+      {
+        label: "See events this weekend",
+        query: "What events are happening this weekend?",
+      },
+      {
+        label: "Find coffee in Frederick City",
+        query: "Where can I get coffee in Frederick City?",
+      },
+    ]);
+  });
+
+  it("switches from tonight to tomorrow at 8 PM Eastern in either offset", () => {
+    expect(askStarters(new Date("2026-10-07T19:59:00-04:00"))[0].query).toBe(
+      "What events are happening tonight?",
+    );
+    expect(askStarters(new Date("2026-10-07T20:00:00-04:00"))[0].query).toBe(
+      "What events are happening tomorrow?",
+    );
+    // A UTC server reads 01:00 on the next day; Frederick is still at 8 PM.
+    expect(askStarters(new Date("2026-12-10T20:00:00-05:00"))[0].query).toBe(
+      "What events are happening tomorrow?",
+    );
+    expect(askStarters(new Date("2026-12-10T19:30:00-05:00"))[0].query).toBe(
+      "What events are happening tonight?",
+    );
+  });
+
+  it("keeps tonight's events in the early evening but looks ahead for coffee", () => {
+    expect(askStarterWindow(EARLY_EVENING)).toBe("evening");
+    expect(askStarters(EARLY_EVENING).map((starter) => starter.query)).toEqual([
+      "What events are happening tonight?",
+      "What events are happening this weekend?",
+      "Where can I get coffee tomorrow morning in Frederick City?",
+    ]);
+  });
+
+  it("calls the new calendar day today after midnight", () => {
+    expect(askStarterWindow(OVERNIGHT)).toBe("overnight");
+    expect(askStarters(OVERNIGHT)[0].query).toBe(
+      "What events are happening today?",
+    );
+  });
+
+  it("never offers a dinner, open-late, or planner starter", () => {
+    for (const starterWindow of WINDOWS) {
+      for (const starter of askStartersForWindow(starterWindow)) {
+        expect(starter.query).not.toMatch(
+          /\b(?:plan|dinner|eat|open late|still open|worth doing)\b/i,
+        );
+        expect(starter.label).not.toMatch(/\b(?:plan|dinner)\b/i);
+      }
+    }
+  });
+
+  it("runs every starter without stopping at the area chooser", () => {
+    for (const starterWindow of WINDOWS) {
+      for (const starter of askStartersForWindow(starterWindow)) {
+        expect(nearbyQueryNeedsAreaChoice(starter.query, null, false)).toBe(
+          false,
+        );
+      }
+    }
+    expect(
+      explicitAreaInQuery(
+        "Where can I get coffee tomorrow morning in Frederick City?",
+      ),
+    ).toBe("town:frederick");
   });
 });

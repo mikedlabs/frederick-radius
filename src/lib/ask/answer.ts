@@ -3459,7 +3459,9 @@ export async function askFrederick(
   };
 }
 
-function deterministicAnswer({
+/** The source-backed line used when no model answer is available. Exported
+ * so its count wording can be pinned for singular and plural results. */
+export function deterministicAnswer({
   civic,
   department,
   municipal,
@@ -3527,7 +3529,7 @@ function deterministicAnswer({
   }
   if (count === 0) return "I couldn’t find a reliable match in Radius yet. Try a shorter search or open the full map.";
   if (reservation) {
-    return `Radius can’t see live OpenTable inventory or place the reservation yet. ${count === 1 ? "This is" : "These are"} the ${count} catalog match${count === 1 ? "" : "es"} with actual evidence for your request; use OpenTable to check which are bookable${requestedTime ? ` at ${requestedTime}` : ""}.`;
+    return `Radius can’t see live OpenTable inventory or place the reservation yet. ${count === 1 ? "This is" : "These are"} the ${count} catalog match${count === 1 ? "" : "es"} with actual evidence for your request; use OpenTable to check ${count === 1 ? "whether it is" : "which are"} bookable${requestedTime ? ` at ${requestedTime}` : ""}.`;
   }
   if (regions?.length && sources?.length) return regionalAnswer(regions, sources);
   if (nearMe && !nearMeApplied) {
@@ -3559,7 +3561,9 @@ function deterministicAnswer({
     const subject = category.toLowerCase();
     return `I found ${count} match${count === 1 ? "" : "es"} for ${subject}${openNow ? " with current open hours" : ""}.`;
   }
-  return `I found ${count} result${count === 1 ? "" : "s"} that match the wording of your request.`;
+  return count === 1
+    ? "I found 1 result that matches the wording of your request."
+    : `I found ${count} results that match the wording of your request.`;
 }
 
 /**

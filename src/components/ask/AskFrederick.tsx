@@ -31,7 +31,13 @@ import {
   AskComposerSubmit,
 } from "@/components/ask/AskComposer";
 import AskCorrectionControl from "@/components/ask/AskCorrectionControl";
+import CategoryIcon from "@/components/place/CategoryIcon";
+import {
+  isPlacePhotoFailureSignal,
+  placePhotoFailureSignalSrc,
+} from "@/components/place/PlaceHeroMedia";
 import Sheet from "@/components/ui/Sheet";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
 import { answerCanLocalize } from "@/lib/ask/localize";
@@ -44,6 +50,7 @@ import type {
   AskResult,
   AskSource,
 } from "@/lib/ask/answer";
+import { daypart } from "@/lib/daypart";
 import { haptic } from "@/lib/haptics";
 import { prefersReducedMotion } from "@/lib/motion";
 import { getHomeMuni, getInterests } from "@/lib/personalize";
@@ -58,6 +65,7 @@ import {
 } from "@/lib/scope";
 import type { TodayPrompt } from "@/lib/today-prompts";
 import { track } from "@/lib/track";
+import { easternParts } from "@/lib/tz";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import {
   askResponsePresentation,
@@ -79,39 +87,99 @@ const ASK_CACHE_TTL_MS = 45_000;
 export const ASK_CLIENT_DEADLINE_MS = 22_000;
 const MAX_QUERY_LENGTH = 300;
 
-const QUICK_ASKS = [
-  {
-    label: "Breakfast nearby",
-    query: "Where can I get a good breakfast sandwich near me?",
+/**
+ * Starter questions follow the Eastern clock. At 10:45 PM the old first
+ * starter was "Dinner tonight", and "What is worth doing tonight?" drew an
+ * air-quality non-answer. Every starter here is a phrasing Ask answers from
+ * real records: dated event questions, and a coffee question that names its
+ * town so it never stalls on the area chooser. Open-late and planner
+ * phrasings stay out while unverified hours are held back from answers.
+ */
+export type AskStarterWindow =
+  | "overnight"
+  | "daytime"
+  | "evening"
+  | "late-evening";
+
+const ASK_STARTERS = {
+  eventsToday: {
+    label: "See events today",
+    query: "What events are happening today?",
   },
-  {
-    label: "Build a date night",
-    query: "Plan a walkable date night for this evening.",
-  },
-  {
-    label: "Plan an afternoon",
-    query: "Plan an easy afternoon in Frederick County.",
-  },
-  {
-    label: "What is on tonight?",
+  eventsTonight: {
+    label: "See events tonight",
     query: "What events are happening tonight?",
   },
-] satisfies TodayPrompt[];
+  eventsTomorrow: {
+    label: "See events tomorrow",
+    query: "What events are happening tomorrow?",
+  },
+  eventsWeekend: {
+    label: "See events this weekend",
+    query: "What events are happening this weekend?",
+  },
+  // "Frederick City" is the town's name in Radius. A bare "Frederick" is
+  // ambiguous with the county, so neither the area gate nor the server's
+  // town matcher treats it as a deliberate town choice.
+  coffeeInTown: {
+    label: "Find coffee in Frederick City",
+    query: "Where can I get coffee in Frederick City?",
+  },
+  coffeeTomorrow: {
+    label: "Find coffee in Frederick City tomorrow",
+    query: "Where can I get coffee tomorrow morning in Frederick City?",
+  },
+} satisfies Record<string, TodayPrompt>;
 
-const WORKSPACE_ASKS = [
-  {
-    label: "Dinner tonight",
-    query: "Where should I eat tonight?",
-  },
-  {
-    label: "What is on tonight?",
-    query: "What is worth doing tonight?",
-  },
-  {
-    label: "Find a restroom",
-    query: "Where is the nearest public restroom?",
-  },
-] as const;
+/** Tonight's events give way to tomorrow's at about 8 PM. After midnight the
+ * new calendar day is "today", because "tomorrow" would skip it. */
+export function askStarterWindow(now: Date = new Date()): AskStarterWindow {
+  if (easternParts(now).hour >= 20) return "late-evening";
+  const part = daypart(now);
+  if (part === "late") return "overnight";
+  if (part === "evening") return "evening";
+  return "daytime";
+}
+
+export function askStartersForWindow(
+  starterWindow: AskStarterWindow,
+): TodayPrompt[] {
+  const events =
+    starterWindow === "overnight"
+      ? ASK_STARTERS.eventsToday
+      : starterWindow === "late-evening"
+        ? ASK_STARTERS.eventsTomorrow
+        : ASK_STARTERS.eventsTonight;
+  // Once the day turns to evening, the useful coffee question is tomorrow
+  // morning's, not one that depends on a shop still being open tonight.
+  const coffee =
+    starterWindow === "evening" || starterWindow === "late-evening"
+      ? ASK_STARTERS.coffeeTomorrow
+      : ASK_STARTERS.coffeeInTown;
+  return [events, ASK_STARTERS.eventsWeekend, coffee];
+}
+
+export function askStarters(now: Date = new Date()): TodayPrompt[] {
+  return askStartersForWindow(askStarterWindow(now));
+}
+
+/** The starter window for the visible clock. It refreshes each minute while
+ * starters are on screen, so a page left open past 8 PM stops offering
+ * tonight's events. Storing the window, not the time, keeps re-renders to
+ * real changes. */
+function useAskStarterWindow(active: boolean): AskStarterWindow {
+  const [starterWindow, setStarterWindow] = useState<AskStarterWindow>(() =>
+    askStarterWindow(),
+  );
+  useEffect(() => {
+    if (!active) return;
+    const refresh = () => setStarterWindow(askStarterWindow());
+    refresh();
+    const intervalId = globalThis.setInterval(refresh, 60_000);
+    return () => globalThis.clearInterval(intervalId);
+  }, [active]);
+  return starterWindow;
+}
 
 const LOADING_MESSAGE = "Radius is checking current local data and sources.";
 
@@ -322,6 +390,36 @@ function compactContextLabel(label: string): string {
   return label.replace(/ City$/, "");
 }
 
+/**
+ * True when nothing tells Ask where the visitor is looking: no chosen town or
+ * county, no device fix, and no saved home to rank from. A remembered Near me
+ * choice without a current fix is just as unresolved, because the request
+ * drops it. In this state the area gate asks for a town, so the chip must not
+ * claim the whole county.
+ */
+export function askAreaNeedsChoice(
+  scope: Scope | null,
+  hasDevicePosition: boolean,
+  homeScope: Scope | null,
+): boolean {
+  if (hasDevicePosition) return false;
+  if (scope === "nearme") return true;
+  return scope === null && homeScope === null;
+}
+
+export function askAreaChipLabel(
+  scope: Scope | null,
+  hasDevicePosition: boolean,
+  homeScope: Scope | null,
+): string {
+  if (askAreaNeedsChoice(scope, hasDevicePosition, homeScope)) {
+    return "Choose area";
+  }
+  return compactContextLabel(
+    activeContextLabel(scope, hasDevicePosition, homeScope),
+  );
+}
+
 function requestScope(
   query: string,
   selectedScope: Scope | null,
@@ -497,6 +595,64 @@ export function canDisplayAskSourcePhoto(
   return !isGooglePhoto || /^\/places\//.test(source.href);
 }
 
+/**
+ * The thumbnail Ask actually requests. The place-photo proxy answers a
+ * missing photo with a branded "photo unavailable" plate, and a square crop of
+ * that plate reads as fragments of a name. Asking for the transparent failure
+ * signal lets the card show its category tile instead.
+ */
+export function askSourcePhotoSrc(
+  source: Pick<AskSource, "href" | "photo_url">,
+): string | null {
+  if (!source.photo_url || !canDisplayAskSourcePhoto(source)) return null;
+  return placePhotoFailureSignalSrc(source.photo_url);
+}
+
+function AskSourceMedia({
+  source,
+}: {
+  source: Pick<AskSource, "category" | "href" | "photo_url">;
+}) {
+  const photoSrc = askSourcePhotoSrc(source);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const tint =
+    CATEGORY_BY_SLUG[source.category]?.color ?? "var(--app-brand-press)";
+  const showPhoto = Boolean(photoSrc) && failedSrc !== photoSrc;
+  return (
+    <>
+      <span
+        data-ask-source-tile
+        aria-hidden
+        className="absolute inset-0 grid place-items-center"
+        style={{
+          background: `color-mix(in srgb, ${tint} 11%, var(--app-bg-sunken))`,
+          color: tint,
+        }}
+      >
+        <CategoryIcon slug={source.category} className="h-7 w-7" strokeWidth={1.5} />
+      </span>
+      {showPhoto && photoSrc ? (
+        <Image
+          src={photoSrc}
+          alt=""
+          fill
+          sizes="(max-width: 639px) 68px, 104px"
+          unoptimized={photoSrc.startsWith("/api/place-photo")}
+          placeholder="blur"
+          blurDataURL={PAPER_CREAM_BLUR}
+          className="object-cover"
+          onLoad={(event) => {
+            if (isPlacePhotoFailureSignal(event.currentTarget)) {
+              setFailedSrc(photoSrc);
+            }
+          }}
+          onError={() => setFailedSrc(photoSrc)}
+        />
+      ) : null}
+    </>
+  );
+}
+
 function AskSourceCard({
   source,
   index,
@@ -509,7 +665,6 @@ function AskSourceCard({
   const external = source.href.startsWith("http");
   const saveTarget = sourceSaveTarget(source);
   const phone = source.phone?.replace(/[^+\d]/g, "");
-  const displayPhoto = canDisplayAskSourcePhoto(source);
   const decisionEntity = saveTarget?.type ?? "source";
   const decisionId = saveTarget?.id ?? source.slug;
   const decisionPosition = source.isPrimaryRankedResult ? "lead" : "result";
@@ -538,27 +693,7 @@ function AskSourceCard({
           data-ask-source-media
           className="relative m-3 aspect-square w-[68px] overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] sm:m-0 sm:h-full sm:min-h-[112px] sm:w-auto sm:aspect-auto sm:rounded-none"
         >
-          {displayPhoto && source.photo_url ? (
-            <>
-              <Image
-                src={source.photo_url}
-                alt=""
-                fill
-                sizes="(max-width: 639px) 68px, 104px"
-                unoptimized={source.photo_url.startsWith("/api/place-photo")}
-                placeholder="blur"
-                blurDataURL={PAPER_CREAM_BLUR}
-                className="object-cover"
-              />
-            </>
-          ) : (
-            <span
-              className="absolute inset-0 grid place-items-center"
-              style={{ background: "var(--app-bg-sunken)", color: "var(--app-brand-press)" }}
-            >
-              <MapPin className="h-7 w-7" strokeWidth={1.5} aria-hidden />
-            </span>
-          )}
+          <AskSourceMedia source={source} />
         </div>
 
         <div className="min-w-0 p-3.5">
@@ -694,6 +829,68 @@ function AskSourceCard({
   );
 }
 
+/** A plan stop shows its photo only when the proxy returns real photography.
+ * The photo-unavailable plate falls back to the numbered stop tile. */
+function AskPlanStopMarker({
+  order,
+  photoUrl,
+}: {
+  order: number;
+  photoUrl?: string;
+}) {
+  const photoSrc = photoUrl ? placePhotoFailureSignalSrc(photoUrl) : null;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (!photoSrc || failedSrc === photoSrc) {
+    return (
+      <span
+        className="relative z-10 grid h-11 w-11 place-items-center rounded-[12px] text-[11px] font-bold"
+        style={{
+          background:
+            "color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated))",
+          color: "var(--app-brand-press)",
+          boxShadow: "var(--app-edge), var(--app-hi)",
+        }}
+      >
+        {order}
+      </span>
+    );
+  }
+  return (
+    <span
+      aria-hidden
+      className="relative z-10 h-11 w-11 overflow-hidden rounded-[12px] bg-[var(--app-bg-sunken)]"
+      style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
+    >
+      <Image
+        src={photoSrc}
+        alt=""
+        fill
+        unoptimized={photoSrc.startsWith("/api/place-photo")}
+        sizes="44px"
+        placeholder="blur"
+        blurDataURL={PAPER_CREAM_BLUR}
+        className="object-cover"
+        onLoad={(event) => {
+          if (isPlacePhotoFailureSignal(event.currentTarget)) {
+            setFailedSrc(photoSrc);
+          }
+        }}
+        onError={() => setFailedSrc(photoSrc)}
+      />
+      <span
+        className="absolute left-1 top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full px-1 text-[9px] font-bold"
+        style={{
+          background: "var(--app-brand-press)",
+          color: "var(--app-on-brand, #fff)",
+          boxShadow: "0 1px 4px rgba(0,0,0,.22)",
+        }}
+      >
+        {order}
+      </span>
+    </span>
+  );
+}
+
 function AskPlanCard({
   plan,
   onInternalOpen,
@@ -755,46 +952,7 @@ function AskPlanCard({
                 aria-hidden
               />
             ) : null}
-            {stop.photo_url ? (
-              <span
-                aria-hidden
-                className="relative z-10 h-11 w-11 overflow-hidden rounded-[12px] bg-[var(--app-bg-sunken)]"
-                style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
-              >
-                <Image
-                  src={stop.photo_url}
-                  alt=""
-                  fill
-                  unoptimized={stop.photo_url.startsWith("/api/place-photo")}
-                  sizes="44px"
-                  placeholder="blur"
-                  blurDataURL={PAPER_CREAM_BLUR}
-                  className="object-cover"
-                />
-                <span
-                  className="absolute left-1 top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full px-1 text-[9px] font-bold"
-                  style={{
-                    background: "var(--app-brand-press)",
-                    color: "var(--app-on-brand, #fff)",
-                    boxShadow: "0 1px 4px rgba(0,0,0,.22)",
-                  }}
-                >
-                  {stop.order}
-                </span>
-              </span>
-            ) : (
-              <span
-                className="relative z-10 grid h-11 w-11 place-items-center rounded-[12px] text-[11px] font-bold"
-                style={{
-                  background:
-                    "color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated))",
-                  color: "var(--app-brand-press)",
-                  boxShadow: "var(--app-edge), var(--app-hi)",
-                }}
-              >
-                {stop.order}
-              </span>
-            )}
+            <AskPlanStopMarker order={stop.order} photoUrl={stop.photo_url} />
             <div className="min-w-0">
               <div className="flex items-start justify-between gap-3">
                 <Link
@@ -1103,6 +1261,8 @@ function WorkspaceComposer({
   inputRef,
   areaTriggerRef,
   contextLabel,
+  areaLabel,
+  areaNeedsChoice,
   expanded,
   loading,
   compact,
@@ -1115,6 +1275,8 @@ function WorkspaceComposer({
   inputRef: RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
   areaTriggerRef: RefObject<HTMLButtonElement | null>;
   contextLabel: string;
+  areaLabel: string;
+  areaNeedsChoice: boolean;
   expanded: boolean;
   loading: boolean;
   compact: boolean;
@@ -1144,17 +1306,21 @@ function WorkspaceComposer({
       disabled={loading}
       aria-expanded={expanded}
       aria-controls="ask-area-chooser"
-      aria-label={`Search area: ${contextLabel}. Change area.`}
-      title={contextLabel}
-      className="tap-44 inline-flex h-11 min-h-11 min-w-11 max-w-[96px] shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98] disabled:opacity-55"
+      aria-label={
+        areaNeedsChoice
+          ? "Search area: not chosen. Choose area."
+          : `Search area: ${contextLabel}. Change area.`
+      }
+      title={areaNeedsChoice ? areaLabel : contextLabel}
+      className="tap-44 inline-flex h-11 min-h-11 min-w-11 max-w-[104px] shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98] disabled:opacity-55"
       style={{
         background: "var(--app-bg-sunken)",
         color: "var(--app-ink-2)",
       }}
     >
       <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      <span className="max-w-[58px] truncate min-[350px]:max-w-[70px]">
-        {compactContextLabel(contextLabel)}
+      <span className="max-w-[60px] truncate min-[350px]:max-w-[64px]">
+        {areaLabel}
       </span>
     </button>
   );
@@ -1162,8 +1328,10 @@ function WorkspaceComposer({
   return (
     <>
       <span id="ask-composer-context" className="sr-only">
-        Current search area: {contextLabel}. Add a time, area, budget, or other
-        constraint for a more useful answer.
+        {areaNeedsChoice
+          ? "No search area is chosen yet."
+          : `Current search area: ${contextLabel}.`}{" "}
+        Add a time, area, budget, or other constraint for a more useful answer.
       </span>
       <div className="flex items-center gap-1.5">
         {!compact ? <AskComposerMark compact /> : null}
@@ -1268,7 +1436,7 @@ export default function AskFrederick({
   initialQuery = "",
   initialScope = null,
   mode = "compact",
-  quickAsks = QUICK_ASKS,
+  quickAsks,
   placeholder = "Ask for a place, a plan, or what is happening",
 }: AskFrederickProps = {}) {
   const [q, setQ] = useState(initialQuery);
@@ -1327,6 +1495,15 @@ export default function AskFrederick({
     hasDevicePosition,
     homeScope,
   );
+  const areaNeedsChoice = askAreaNeedsChoice(
+    currentScope,
+    hasDevicePosition,
+    homeScope,
+  );
+  const areaLabel = askAreaChipLabel(currentScope, hasDevicePosition, homeScope);
+  // Workspace starters show only before an answer; compact chips stay put.
+  const starterWindow = useAskStarterWindow(workspace ? !res : !quickAsks);
+  const starters = quickAsks ?? askStartersForWindow(starterWindow);
   visibleResultRef.current = res;
   submittedQueryRef.current = submittedQuery;
 
@@ -2052,6 +2229,8 @@ export default function AskFrederick({
                 inputRef={inputRef}
                 areaTriggerRef={areaTriggerRef}
                 contextLabel={contextLabel}
+                areaLabel={areaLabel}
+                areaNeedsChoice={areaNeedsChoice}
                 expanded={showAreaChooser}
                 loading={loading}
                 compact={Boolean(res)}
@@ -2124,9 +2303,9 @@ export default function AskFrederick({
           </div>
         ) : null}
 
-        {!workspace && quickAsks.length > 0 ? (
+        {!workspace && starters.length > 0 ? (
           <div className="mt-2 flex min-w-0 gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Questions to try">
-            {quickAsks.map((prompt) => (
+            {starters.map((prompt) => (
               <button
                 key={prompt.label}
                 type="button"
@@ -2206,7 +2385,7 @@ export default function AskFrederick({
               role="group"
               aria-label="Questions to try"
             >
-              {WORKSPACE_ASKS.map((prompt, index) => (
+              {starters.map((prompt, index) => (
                 <button
                   key={prompt.label}
                   type="button"
@@ -2642,6 +2821,21 @@ export default function AskFrederick({
               }
 
               if (section === "detail") {
+                if (!responsePresentation.detail) return null;
+                if (responsePresentation.layout === "recovery") {
+                  // The reason belongs with the limitation it explains, so it
+                  // reads as the rest of the answer rather than extra context.
+                  return (
+                    <p
+                      key={section}
+                      data-ask-section={section}
+                      className="mt-2 whitespace-pre-wrap px-1 text-[14px] leading-[1.55]"
+                      style={{ color: "var(--app-ink-2)" }}
+                    >
+                      {responsePresentation.detail}
+                    </p>
+                  );
+                }
                 return responsePresentation.detail ? (
                   <div
                     key={section}

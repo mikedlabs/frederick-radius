@@ -43,6 +43,15 @@ const SOURCES: AskSource[] = [
   },
 ];
 
+const RECOVERY_ORDER = [
+  "summary",
+  "detail",
+  "primary-action",
+  "primary-source",
+  "supporting-sources",
+  "secondary-actions",
+];
+
 function result(overrides: Partial<AskResult> = {}): AskResult {
   return {
     status: "matches",
@@ -216,7 +225,7 @@ describe("Ask response hierarchy", () => {
     ]);
   });
 
-  it("reduces an empty result to one honest limitation and one recovery action", () => {
+  it("keeps an empty result's reason and every recovery action", () => {
     const decorated = withAskResponsePresentation(result({
       status: "empty",
       answer:
@@ -233,10 +242,9 @@ describe("Ask response hierarchy", () => {
       summary: "I couldn’t confirm a solid match.",
       detail: "Change the area or the time and try again.",
     });
-    expect(askResponseSectionOrder(decorated.presentation!)).toEqual([
-      "summary",
-      "primary-action",
-    ]);
+    expect(askResponseSectionOrder(decorated.presentation!)).toEqual(
+      RECOVERY_ORDER,
+    );
   });
 
   it("uses the recovery layout for a medium-confidence answer with no evidence", () => {
@@ -256,10 +264,46 @@ describe("Ask response hierarchy", () => {
     }), "Find somewhere unusual");
 
     expect(decorated.presentation?.layout).toBe("recovery");
-    expect(askResponseSectionOrder(decorated.presentation!)).toEqual([
-      "summary",
-      "primary-action",
-    ]);
+    expect(askResponseSectionOrder(decorated.presentation!)).toEqual(
+      RECOVERY_ORDER,
+    );
+  });
+
+  it("shows a failed plan's reason, the places it names, and the map action", () => {
+    const decorated = withAskResponsePresentation(result({
+      status: "empty",
+      answer:
+        "I can’t confirm a 3-hour plan in Brunswick tonight. Radius does not have current verified hours for the places in this area. These places have contact details so you can check before going.",
+      intent: { ...PLACE_INTENT, kind: "plan", label: "Build a real plan" },
+      sources: [{
+        ...SOURCES[0],
+        eyebrow: "Coffee · Check before going",
+        reason: "This is a place to check, not a scheduled stop.",
+      }],
+      actions: [
+        { label: "Check Brunswick places", kind: "open", href: "/m/brunswick" },
+        { label: "See Brunswick on the map", kind: "open", href: "/map?in=brunswick" },
+      ],
+      plan: null,
+    }), "Plan a 3 hour evening in Brunswick tonight");
+
+    expect(decorated.presentation).toEqual({
+      layout: "recovery",
+      summary: "I can’t confirm a 3-hour plan in Brunswick tonight.",
+      detail:
+        "Radius does not have current verified hours for the places in this area. These places have contact details so you can check before going.",
+    });
+    const order = askResponseSectionOrder(decorated.presentation!);
+    // The reason sits directly under the limitation it explains.
+    expect(order.slice(0, 2)).toEqual(["summary", "detail"]);
+    // The answer names places, so their cards must render with it.
+    expect(order).toContain("primary-source");
+    // The second action is a real way forward, not clutter to drop.
+    expect(order).toContain("secondary-actions");
+    // A plan recovery has no route, so the reader is never shown one.
+    expect(order).not.toContain("plan");
+    // Recommendation language stays off a check-before-going list.
+    expect(decorated.sources[0].isPrimaryRankedResult).toBeUndefined();
   });
 
   it("does not split a complete conclusion at a local road abbreviation", () => {

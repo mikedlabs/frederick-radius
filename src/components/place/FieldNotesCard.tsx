@@ -5,6 +5,7 @@ import {
   fieldNoteSources,
   fieldNotesVerificationSummary,
   verifiedLabel,
+  type FieldNotesVerificationSummary,
   type FNSourced,
 } from "@/lib/loaders/fieldNotes";
 
@@ -117,6 +118,21 @@ function renderRow(row: NoteRow) {
   }
 }
 
+/** The card's trust footer. The noun follows the total ("1 of 3 notes") and
+ * the verb follows the undated count ("1 of 3 notes has"), so a single row
+ * never reads as "1 of 3 note has". A lone note is described directly. */
+export function fieldNotesVerificationLine(
+  summary: Pick<FieldNotesVerificationSummary, "total" | "undated" | "allDated">,
+): string {
+  if (summary.allDated) {
+    return summary.total === 1
+      ? "This note has a recorded verification date."
+      : "Every note has a recorded verification date.";
+  }
+  if (summary.total === 1) return "This note has no recorded verification date.";
+  return `${summary.undated} of ${summary.total} notes ${summary.undated === 1 ? "has" : "have"} no recorded verification date.`;
+}
+
 export default function FieldNotesCard({ slug }: { slug: string }) {
   const fn = fieldNotesFor(slug);
   if (!fn) return null;
@@ -191,9 +207,7 @@ export default function FieldNotesCard({ slug }: { slug: string }) {
             className="-my-1 shrink-0"
           />
           <p className="min-w-0 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            {verification.allDated
-              ? "Every note has a recorded verification date."
-              : `${verification.undated} of ${verification.total} ${verification.undated === 1 ? "note has" : "notes have"} no recorded verification date.`}
+            {fieldNotesVerificationLine(verification)}
           </p>
         </div>
       )}
