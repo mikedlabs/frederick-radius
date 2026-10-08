@@ -927,6 +927,8 @@ async function WhatsOn({
   // an empty day. Do not leave a heading with a blank body or claim that
   // nothing is happening; the full Events board remains available in the
   // global navigation while this optional briefing section stays quiet.
+  // The recovery renders under the events chapter's h2, which already names
+  // the daypart, so it adds no heading of its own (headed={false}).
   if (!shouldRenderTodayEventSection({
     degraded: sourceHealth.degraded,
     featurePromoted: featureIsPromoted,
@@ -935,7 +937,7 @@ async function WhatsOn({
   })) {
     return (
       <>
-        <TodayEventsRecovery />
+        <TodayEventsRecovery headed={false} />
         {comingDayAnswer}
       </>
     );

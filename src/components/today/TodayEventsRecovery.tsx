@@ -73,12 +73,58 @@ function waitForRetry(signal: AbortSignal): Promise<void> {
   });
 }
 
+/**
+ * The recovery's frame. Standalone it is the normal "Events today" section.
+ * Inside Today's events chapter, whose h2 already names the daypart
+ * ("Tonight", "Overnight and today"), it drops its own heading so the page
+ * never stacks two headings over one sentence, and keeps one plain link to
+ * the full board.
+ */
+function RecoveryFrame({
+  headed,
+  cta,
+  meta,
+  children,
+}: {
+  headed: boolean;
+  cta: string;
+  meta: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  if (headed) {
+    return (
+      <section className="mt-5 space-y-3" aria-label="Events today" data-today-event-recovery="true">
+        <DismissibleSection id="upcoming" title="Events today" href="/events" cta={cta} flat meta={meta}>
+          {children}
+        </DismissibleSection>
+      </section>
+    );
+  }
+  return (
+    <div className="mt-2 space-y-2" data-today-event-recovery="true">
+      {children}
+      <Link
+        href="/events"
+        prefetch={false}
+        className="inline-flex min-h-11 items-center gap-1 text-meta-lg font-semibold"
+        style={{ color: "var(--app-brand-press)" }}
+      >
+        {cta === "Full board" ? "See the full events board" : "See all events"}
+        <ChevronRight aria-hidden className="h-4 w-4" />
+      </Link>
+    </div>
+  );
+}
+
 export function TodayEventsRecoveryView({
   response,
   failed = false,
+  headed = true,
 }: {
   response: TodayEventResponse | null;
   failed?: boolean;
+  /** False inside Today's events chapter, which already has the h2. */
+  headed?: boolean;
 }) {
   const events = response?.events ?? [];
   const healthyEmpty = response?.partial === false && events.length === 0;
@@ -101,45 +147,20 @@ export function TodayEventsRecoveryView({
         : "Today's event picks are still loading.";
 
     return (
-      <section
-        className="mt-5 space-y-3"
-        aria-label="Events today"
-        data-today-event-recovery="true"
-      >
-        <DismissibleSection
-          id="upcoming"
-          title="Events today"
-          href="/events"
-          cta="Full board"
-          flat
-          meta={meta}
+      <RecoveryFrame headed={headed} cta="Full board" meta={meta}>
+        <p
+          role="status"
+          className="px-0.5 text-[13.5px] leading-snug"
+          style={{ color: "var(--app-ink-2)" }}
         >
-          <p
-            role="status"
-            className="px-0.5 text-[13.5px] leading-snug"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            {status}
-          </p>
-        </DismissibleSection>
-      </section>
+          {status}
+        </p>
+      </RecoveryFrame>
     );
   }
 
   return (
-    <section
-      className="mt-5 space-y-3"
-      aria-label="Events today"
-      data-today-event-recovery="true"
-    >
-      <DismissibleSection
-        id="upcoming"
-        title="Events today"
-        href="/events"
-        cta="See all"
-        flat
-        meta={meta}
-      >
+    <RecoveryFrame headed={headed} cta="See all" meta={meta}>
         <ul>
           {events.map((event) => (
             <li key={event.slug}>
@@ -192,8 +213,7 @@ export function TodayEventsRecoveryView({
             </li>
           ))}
         </ul>
-      </DismissibleSection>
-    </section>
+    </RecoveryFrame>
   );
 }
 
@@ -205,7 +225,7 @@ export function TodayEventsRecoveryView({
  * passive recovery is not an explicit visitor refresh and must not consume
  * the separate, rate-limited cache-bypass allowance.
  */
-export default function TodayEventsRecovery() {
+export default function TodayEventsRecovery({ headed = true }: { headed?: boolean } = {}) {
   const [state, setState] = useState<RecoveryState>({ status: "loading" });
 
   useEffect(() => {
@@ -244,6 +264,7 @@ export default function TodayEventsRecovery() {
     <TodayEventsRecoveryView
       response={state.status === "ready" ? state.response : null}
       failed={state.status === "failed"}
+      headed={headed}
     />
   );
 }

@@ -154,7 +154,7 @@ describe("Today decision hierarchy", () => {
     expect(events).toContain("data-today-program-all");
     // The recovery note still stands in for a degraded empty program; after
     // 9 PM the coming day's rows may follow it.
-    expect(events).toMatch(/return \(\s*<>\s*<TodayEventsRecovery \/>\s*\{comingDayAnswer\}/);
+    expect(events).toMatch(/return \(\s*<>\s*<TodayEventsRecovery(?: headed=\{false\})? \/>\s*\{comingDayAnswer\}/);
     expect(events).not.toContain("Some event sources are still updating.");
   });
 

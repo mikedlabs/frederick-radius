@@ -100,6 +100,18 @@ describe("TodayEventsRecoveryView", () => {
     }
   });
 
+  it("adds no heading of its own inside Today's events chapter", () => {
+    // The chapter's h2 already names the daypart ("Tonight", "Overnight and
+    // today"), so a second "Events today" heading would stack over one line.
+    const html = renderToStaticMarkup(
+      createElement(TodayEventsRecoveryView, { response: null, failed: true, headed: false }),
+    );
+    expect(html).not.toMatch(/<h[1-6]/);
+    expect(html).toContain("Today&#x27;s event picks could not load.");
+    expect(html).toContain('href="/events"');
+    expect(html).toContain("See the full events board");
+  });
+
   it("keeps partial coverage explicit when usable rows survive", () => {
     const html = renderToStaticMarkup(
       createElement(TodayEventsRecoveryView, {
