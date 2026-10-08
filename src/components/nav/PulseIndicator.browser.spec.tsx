@@ -181,7 +181,10 @@ describe("PulseIndicator status transport", () => {
     expect(dot?.hasAttribute("data-pulse-dot-count")).toBe(false);
     expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Urgent");
   });
-  it("says Quiet on /pulse, the word the page's own masthead uses for a calm county", async () => {
+  // Quiet stands for the masthead's "All quiet". The endpoint now grades the
+  // page's river and police evidence too, so a quiet payload is one the page
+  // also calls calm (api/pulse/status/route.spec.ts checks the two agree).
+  it("says Quiet on /pulse for a complete report with nothing graded", async () => {
     harness.pathname = "/pulse";
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(quiet)));
     await act(async () => root.render(createElement(PulseIndicator)));

@@ -160,8 +160,13 @@ test.describe("Pulse public road incidents", () => {
 
     const word = await statusMap.getAttribute("data-pulse-status-map");
     const headline = (await page.locator("main h1").innerText()).trim();
+    // The header chip reads /api/pulse/status, which grades the same list,
+    // so it never prints Quiet over a masthead that names an item.
+    const chip = page.locator("[data-pulse-indicator]").first();
+    await expect(chip).not.toHaveAttribute("data-pulse-state", "checking", { timeout: 20_000 });
     if (word === "Urgent" || word === "Advisory") {
       expect(headline.startsWith(`${word}: `)).toBe(true);
+      await expect(chip).not.toHaveAttribute("aria-label", /^County status: Quiet/);
     } else {
       await expect(statusMap).toContainText(
         /No incidents are mapped in the county right now\.|Radius could not reach the road feeds, so nothing is mapped\.|No incidents are mapped right now, but some county feeds did not answer\./,

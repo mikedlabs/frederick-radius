@@ -21,11 +21,17 @@ import {
   CHART_ROAD_SOURCES,
   type ChartHighwayMessage,
 } from "@/lib/integrations/mdot-road-feeds";
+import type { CivicPressItem } from "@/lib/integrations/civic-press";
+import { FLOOD_STAGES } from "@/lib/integrations/floodStage";
+import type { WaterSite, WaterSitesResult } from "@/lib/integrations/usgsWater";
 
 const mocks = vi.hoisted(() => ({
   getCurrentSituationSnapshot: vi.fn(),
   getOfficialCivicAlertsSnapshot: vi.fn(),
+  getOfficialStormReportsSnapshot: vi.fn(),
   getRoadIntelligenceSnapshot: vi.fn(),
+  getCivicPressReleasesResult: vi.fn(),
+  getFrederickWaterSitesWithHistoryResult: vi.fn(),
 }));
 
 vi.mock("@/lib/live/currentSituation", () => ({
@@ -34,13 +40,30 @@ vi.mock("@/lib/live/currentSituation", () => ({
 
 vi.mock("@/lib/live/officialSignals", () => ({
   getOfficialCivicAlertsSnapshot: mocks.getOfficialCivicAlertsSnapshot,
+  getOfficialStormReportsSnapshot: mocks.getOfficialStormReportsSnapshot,
 }));
 
 vi.mock("@/lib/live/roadIntelligence", () => ({
   getRoadIntelligenceSnapshot: mocks.getRoadIntelligenceSnapshot,
 }));
 
+// Only the fetch is replaced: featuredPoliceRelease stays the real rule
+// /pulse uses to pick its breaking strip.
+vi.mock("@/lib/integrations/civic-press", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/integrations/civic-press")>()),
+  getCivicPressReleasesResult: mocks.getCivicPressReleasesResult,
+}));
+
+vi.mock("@/lib/integrations/usgsWater", () => ({
+  getFrederickWaterSitesWithHistoryResult: mocks.getFrederickWaterSitesWithHistoryResult,
+}));
+
 import { GET } from "./route";
+import { pulseChipWord, type PulseStatus } from "@/components/nav/PulseIndicator";
+import { pulseStatusWord } from "@/components/pulse/PulseBoard";
+import { featuredPoliceRelease } from "@/lib/integrations/civic-press";
+import { currentFloodCoverage } from "@/lib/integrations/floodStage";
+import { countyStatusSentence, selectCountyStatus } from "@/lib/live/countyStatus";
 
 const GENERATED_AT = "2026-07-28T16:00:00.000Z";
 
@@ -140,6 +163,37 @@ function road(sources: RoadIntelligenceSources = quietRoadSources()) {
   return buildRoadIntelligenceSnapshot({ sources, now: ROAD_NOW });
 }
 
+/** All six NWS forecast-point gauges, current and well below action stage. */
+function gauges(heights: Record<string, number> = {}): WaterSite[] {
+  return Object.keys(FLOOD_STAGES).map((id) => ({
+    id,
+    name: `GAUGE ${id}`,
+    river: id === "01643000" ? "MONOCACY RIVER" : "TEST CREEK",
+    gageHeightFt: heights[id] ?? 2,
+    observedAt: "2026-07-28T15:45:00.000Z",
+    floodStages: FLOOD_STAGES[id],
+    municipality: "frederick",
+    lng: -77.4,
+    lat: 39.4,
+  }));
+}
+
+function press(items: CivicPressItem[] = []) {
+  return { items, sourceHealth: { degraded: false, unavailable: [] } };
+}
+
+/** A fresh City police release of the kind /pulse leads with as Urgent. */
+function shootingRelease(): CivicPressItem {
+  return {
+    title: "Frederick Police investigating shooting on West Patrick Street",
+    url: "https://www.cityoffrederickmd.gov/CivicAlerts.aspx?AID=901",
+    source: "City of Frederick",
+    sourceShort: "City",
+    publishedAt: "2026-07-28T15:10:00.000Z",
+    lane: "police",
+  };
+}
+
 /** The sign text that lit every page header at 11:03 PM on Oct 6, 2026. */
 const EXIT_76_ROADWORK = "ROADWORK AT EXIT 76 MD 97 2 LEFT LANES CLOSED";
 
@@ -164,6 +218,16 @@ describe("GET /api/pulse/status", () => {
       alerts: [],
       available: true,
       degraded: false,
+    });
+    mocks.getOfficialStormReportsSnapshot.mockResolvedValue({
+      reports: [],
+      available: true,
+      degraded: false,
+    });
+    mocks.getCivicPressReleasesResult.mockResolvedValue(press());
+    mocks.getFrederickWaterSitesWithHistoryResult.mockResolvedValue({
+      data: gauges(),
+      available: true,
     });
   });
 
@@ -456,5 +520,168 @@ describe("GET /api/pulse/status", () => {
       lastUpdated: GENERATED_AT,
       ...QUIET_FIELDS,
     });
+  });
+});
+
+/**
+ * The header chip and the /pulse masthead, built from the same evidence. The
+ * page side is the call /pulse makes; the chip side is this route's payload
+ * read through pulseChipWord. Review of 6a297ca9: only the page graded a
+ * breaking police release or a river at flood stage, so the chip printed
+ * "Quiet" directly above "Urgent: {release title}."
+ */
+describe("the header chip and the /pulse masthead read one list", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mocks.getCurrentSituationSnapshot.mockResolvedValue(snapshot());
+    mocks.getRoadIntelligenceSnapshot.mockResolvedValue(road());
+    mocks.getOfficialCivicAlertsSnapshot.mockResolvedValue({
+      alerts: [],
+      available: true,
+      degraded: false,
+    });
+    mocks.getOfficialStormReportsSnapshot.mockResolvedValue({
+      reports: [],
+      available: true,
+      degraded: false,
+    });
+    mocks.getCivicPressReleasesResult.mockResolvedValue(press());
+    mocks.getFrederickWaterSitesWithHistoryResult.mockResolvedValue({
+      data: gauges(),
+      available: true,
+    });
+  });
+
+  /** What /pulse prints for the same inputs: the masthead word and the h1. */
+  async function pulsePage() {
+    const situation = await mocks.getCurrentSituationSnapshot();
+    const now = new Date(situation.generatedAt);
+    const rivers: WaterSitesResult = await mocks.getFrederickWaterSitesWithHistoryResult();
+    const storms = await mocks.getOfficialStormReportsSnapshot();
+    const flood = currentFloodCoverage(rivers.available, rivers.data, now);
+    const status = selectCountyStatus({
+      situation,
+      road: await mocks.getRoadIntelligenceSnapshot(),
+      civic: await mocks.getOfficialCivicAlertsSnapshot(),
+      pulseOnly: {
+        flood: flood.worst,
+        police: featuredPoliceRelease(
+          (await mocks.getCivicPressReleasesResult()).items,
+          now.getTime(),
+        ),
+        complete: flood.status === "current" && storms.available,
+      },
+    });
+    // pulseUrgentFeedsDegraded: a river check that is not current or a storm
+    // report feed that did not answer keeps /pulse partial.
+    const degraded = flood.status !== "current" || !storms.available;
+    return {
+      word: pulseStatusWord({
+        allClear: status.count === 0 && !degraded,
+        degraded,
+        hasLead: status.count > 0,
+        tone: status.tone === "alert" ? "danger" : "warning",
+        status,
+      }),
+      headline: countyStatusSentence(status),
+    };
+  }
+
+  async function chip() {
+    const body = (await (await GET()).json()) as PulseStatus & { word: string; items: unknown[] };
+    return { body, word: pulseChipWord(body, "ready") };
+  }
+
+  it("grades a fresh police release Urgent in the chip, as the masthead does", async () => {
+    mocks.getCivicPressReleasesResult.mockResolvedValue(press([shootingRelease()]));
+
+    const { body, word } = await chip();
+    const page = await pulsePage();
+
+    expect(body).toMatchObject({ active: true, count: 1, tone: "alert", word: "Urgent", ok: true });
+    expect(word).toBe("Urgent");
+    expect(page.word).toBe(word);
+    expect(page.headline).toBe(
+      "Urgent: Frederick Police investigating shooting on West Patrick Street.",
+    );
+  });
+
+  it("grades a river at flood stage in the chip with the title /pulse prints", async () => {
+    mocks.getFrederickWaterSitesWithHistoryResult.mockResolvedValue({
+      data: gauges({ "01643000": 15.5 }),
+      available: true,
+    });
+
+    const { body, word } = await chip();
+    const page = await pulsePage();
+
+    expect(body.items).toEqual([
+      expect.objectContaining({
+        family: "water",
+        severity: "urgent",
+        title: "Monocacy River minor flooding",
+        href: "/pulse?open=rivers",
+      }),
+    ]);
+    expect(word).toBe("Urgent");
+    expect(page.word).toBe(word);
+    expect(page.headline).toBe("Urgent: Monocacy River minor flooding.");
+  });
+
+  it("keeps a quiet county Quiet when the only police release is older than the strip's window", async () => {
+    mocks.getCivicPressReleasesResult.mockResolvedValue(
+      press([{ ...shootingRelease(), publishedAt: "2026-07-28T08:00:00.000Z" }]),
+    );
+
+    const { body, word } = await chip();
+    const page = await pulsePage();
+
+    expect(body).toMatchObject({ active: false, ok: true, word: "All quiet" });
+    expect(word).toBe("Quiet");
+    expect(page.word).toBe("All quiet");
+  });
+
+  it.each([
+    [
+      "the river gauges did not answer",
+      () =>
+        mocks.getFrederickWaterSitesWithHistoryResult.mockResolvedValue({
+          data: [],
+          available: false,
+        }),
+    ],
+    [
+      "the NWS storm reports did not answer",
+      () =>
+        mocks.getOfficialStormReportsSnapshot.mockResolvedValue({
+          reports: [],
+          available: false,
+          degraded: true,
+        }),
+    ],
+  ])("says Unknown, never Quiet, when %s and /pulse says Partial data", async (_label, fail) => {
+    fail();
+
+    const { body, word } = await chip();
+    const page = await pulsePage();
+
+    expect(body).toMatchObject({ active: false, ok: false, word: "Unknown" });
+    expect(word).toBe("Unknown");
+    expect(page.word).toBe("Partial data");
+  });
+
+  it("answers within the feed bound when the press feed never responds", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.getCivicPressReleasesResult.mockReturnValue(new Promise(() => {}));
+      const pending = GET();
+      await vi.advanceTimersByTimeAsync(6_000);
+      const body = await (await pending).json();
+      // /pulse shows no breaking strip without the feed either; its police
+      // tile names the outage instead.
+      expect(body).toMatchObject({ active: false, ok: true, word: "All quiet" });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

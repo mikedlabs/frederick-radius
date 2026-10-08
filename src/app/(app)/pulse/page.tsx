@@ -69,9 +69,8 @@ import { sourceDisplayState } from "@/lib/live/currentSituationModel";
 import {
   countyStatusDetailKey,
   countyStatusSentence,
-  floodStatusItem,
-  policeStatusItem,
   selectCountyStatus,
+  titleCaseRiver,
   type CountyStatusItem,
 } from "@/lib/live/countyStatus";
 import COUNTY_OUTLINE from "@/data/county-boundary.json";
@@ -238,13 +237,8 @@ function alertEndLabel(iso: string | undefined): string | undefined {
 }
 
 // ── River display helpers (mirror /rivers so the two surfaces agree) ──
-function titleCaseRiver(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/\b([a-z])/g, (m) => m.toUpperCase())
-    .replace(/\b(Nr|Ab|Bl|At|Md)\b/gi, (m) => m.toUpperCase())
-    .replace(/\bOf\b/g, "of");
-}
+// titleCaseRiver lives in countyStatus.ts, so the river item the header
+// endpoint grades carries the same title this page prints.
 /** "MONOCACY RIVER AT JUG BRIDGE NEAR FREDERICK, MD" → "At Jug Bridge near Frederick". */
 function riverLocationOf(name: string): string {
   const m = name.match(/\s+(NEAR|AT|ABOVE|BELOW|NR|BL|AB)\s+(.+?)(?:,\s*MD)?$/i);
@@ -2223,33 +2217,18 @@ export default async function PulsePage() {
 
   // The masthead status word reads the selector the header dot reads, so a
   // crash the header paints amber is an Advisory here too. River stage and a
-  // breaking police release are Pulse-only evidence, graded the same way.
+  // breaking police release are graded from the same evidence the header
+  // endpoint (/api/pulse/status) reads, so the chip never prints "Quiet"
+  // above "Urgent: {release title}." on this page.
   const countyStatus = selectCountyStatus({
     situation,
     road: roadIntelligence,
     civic: officialSignals.civic,
-    extraItems: [
-      ...(floodActive && worstFlood
-        ? [
-            floodStatusItem({
-              id: worstFlood.site.id,
-              title: `${titleCaseRiver(worstFlood.site.river)} ${worstFlood.category.label.toLowerCase()}`,
-              tone: worstFlood.category.tone,
-              observedAt: worstFlood.observedAt,
-            }),
-          ]
-        : []),
-      ...(breakingPolice
-        ? [
-            policeStatusItem({
-              url: breakingPolice.url,
-              title: breakingPolice.title,
-              source: breakingPolice.source,
-              publishedAt: breakingPolice.publishedAt,
-            }),
-          ]
-        : []),
-    ],
+    pulseOnly: {
+      flood: worstFlood,
+      police: breakingPolice,
+      complete: riversCurrent && officialSignals.stormReports.available,
+    },
   });
 
   // The masthead names the worst graded item: "{Word}: {title}." with its

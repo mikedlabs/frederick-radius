@@ -64,10 +64,12 @@ const TONE_COLOR: Record<PulseStatus["tone"], string> = {
 export type PulseChipWord = "Urgent" | "Advisory" | "Quiet" | "Unknown" | "Checking";
 
 /**
- * The one word the header chip prints. It follows selectCountyStatus's own
- * grading, so the chip says the word /pulse prints: an Urgent item makes the
- * alert tone, Advisory items the caution tone, and a quiet report is Quiet
- * only when every source answered. Anything unverified is Unknown.
+ * The one word the header chip prints. /api/pulse/status grades the list the
+ * /pulse masthead grades, river stage and a breaking police release included,
+ * so the chip says the word the page prints: an Urgent item makes the alert
+ * tone, Advisory items the caution tone, and a quiet report is Quiet (the
+ * page's "All quiet") only when every source the page needs answered.
+ * Anything unverified is Unknown, where the page says Partial data.
  */
 export function pulseChipWord(
   status: Pick<PulseStatus, "active" | "tone" | "ok"> | null,

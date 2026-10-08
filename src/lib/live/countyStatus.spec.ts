@@ -24,7 +24,9 @@ import {
   countyStatusSentence,
   floodStatusItem,
   policeStatusItem,
+  pulseOnlyStatusItems,
   selectCountyStatus,
+  titleCaseRiver,
   townsAt,
   type CountyStatusItem,
 } from "./countyStatus";
@@ -368,21 +370,94 @@ describe("selectCountyStatus", () => {
     expect(status).toMatchObject({ word: "Urgent", tone: "alert", count: 1 });
   });
 
+  const monocacy = (key: string, label: string, tone: "danger" | "warning" | "neutral") => ({
+    site: { id: "01643000", river: "MONOCACY RIVER" },
+    category: { key, label, tone },
+    observedAt: "2026-10-07T02:45:00.000Z",
+  });
+
   it("grades Pulse-only river and police evidence with the same rules", () => {
     const status = selectCountyStatus({
       situation: situation(),
       road: quietRoad(),
       civic: quietCivic,
-      extraItems: [
-        floodStatusItem({ id: "01643000", title: "Monocacy River near flood stage", tone: "warning" }),
-      ],
+      pulseOnly: {
+        flood: monocacy("action", "Near flood stage", "warning"),
+        police: null,
+        complete: true,
+      },
     });
-    expect(status).toMatchObject({ word: "Advisory", count: 1 });
-    expect(status.items[0].href).toBe("/pulse?open=rivers");
+    expect(status).toMatchObject({ word: "Advisory", count: 1, ok: true });
+    expect(status.items[0]).toMatchObject({
+      id: "usgs:01643000",
+      title: "Monocacy River near flood stage",
+      href: "/pulse?open=rivers",
+      source: "USGS",
+    });
 
     expect(
       policeStatusItem({ url: "https://example.org/release", title: "Missing person" }),
     ).toMatchObject({ family: "police", severity: "urgent", href: "/pulse?open=police" });
+  });
+
+  it("puts a breaking police release ahead of a road advisory, as the masthead does", () => {
+    const status = selectCountyStatus({
+      situation: situation(),
+      road: quietRoad(),
+      civic: quietCivic,
+      pulseOnly: {
+        flood: monocacy("normal", "Normal", "neutral"),
+        police: {
+          url: "https://example.org/shooting",
+          title: "Police investigating shooting on West Patrick Street",
+          source: "City of Frederick",
+          publishedAt: "2026-10-07T02:30:00.000Z",
+        },
+        complete: true,
+      },
+    });
+    expect(status).toMatchObject({ word: "Urgent", tone: "alert", count: 1 });
+    expect(status.items[0]).toMatchObject({ family: "police", source: "City of Frederick" });
+  });
+
+  it("does not call the county All quiet when the river or storm report check is incomplete", () => {
+    const status = selectCountyStatus({
+      situation: situation(),
+      road: quietRoad(),
+      civic: quietCivic,
+      pulseOnly: { flood: null, police: null, complete: false },
+    });
+    expect(status).toMatchObject({ word: "Unknown", ok: false, count: 0 });
+  });
+});
+
+describe("pulseOnlyStatusItems", () => {
+  it("adds nothing for a river at normal stage or no breaking release", () => {
+    expect(
+      pulseOnlyStatusItems({
+        flood: {
+          site: { id: "01643000", river: "MONOCACY RIVER" },
+          category: { key: "normal", label: "Normal", tone: "neutral" },
+        },
+        police: null,
+      }),
+    ).toEqual([]);
+    expect(pulseOnlyStatusItems({ flood: null, police: null })).toEqual([]);
+  });
+
+  it("titles a flooding river the way /pulse prints it and grades it Urgent", () => {
+    expect(
+      pulseOnlyStatusItems({
+        flood: {
+          site: { id: "01643000", river: "MONOCACY RIVER" },
+          category: { key: "minor", label: "Minor flooding", tone: "danger" },
+        },
+        police: null,
+      }),
+    ).toEqual([
+      floodStatusItem({ id: "01643000", title: "Monocacy River minor flooding", tone: "danger" }),
+    ]);
+    expect(titleCaseRiver("SOUTH BRANCH OF CATOCTIN CREEK")).toBe("South Branch of Catoctin Creek");
   });
 });
 

@@ -382,8 +382,17 @@ export function civicStatusItems(
   );
 }
 
-/** A river at NWS action stage or above. Only /pulse reads river gauges, so
- * the page adds this item to its own status through the same grading. */
+/** "MONOCACY RIVER" → "Monocacy River", the way /rivers and /pulse print a
+ *  USGS river name. */
+export function titleCaseRiver(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\b([a-z])/g, (m) => m.toUpperCase())
+    .replace(/\b(Nr|Ab|Bl|At|Md)\b/gi, (m) => m.toUpperCase())
+    .replace(/\bOf\b/g, "of");
+}
+
+/** A river at NWS action stage or above, graded like every other item. */
 export function floodStatusItem(flood: {
   id: string;
   title: string;
@@ -419,6 +428,64 @@ export function policeStatusItem(release: {
     source: release.source,
     seen: seenAt(release.publishedAt, "Published"),
   });
+}
+
+/**
+ * The evidence Live conditions reads beyond the shared snapshots: the worst
+ * river gauge against its NWS flood categories, and a fresh, urgent police
+ * release. /pulse and /api/pulse/status both pass it to selectCountyStatus,
+ * so the header chip grades the same list the masthead names. Before this,
+ * only the page graded it, and the chip could say "Quiet" directly above
+ * "Urgent: {police release title}." (review of 6a297ca9).
+ */
+export type PulseOnlyEvidence = {
+  /** currentFloodCoverage().worst: the worst current forecast-point reading,
+   *  which may still be Normal. */
+  flood: {
+    site: { id: string; river: string };
+    category: { key: string; label: string; tone: "danger" | "warning" | "neutral" };
+    observedAt?: string | null;
+  } | null;
+  /** featuredPoliceRelease(): a fresh, urgent official release, or null. */
+  police: {
+    url: string;
+    title: string;
+    source?: string;
+    publishedAt?: string | null;
+  } | null;
+  /** Every forecast-point gauge is current and the NWS storm reports
+   *  answered. /pulse needs both, beyond the shared snapshots, before it
+   *  says All quiet, so a quiet status needs them too. */
+  complete: boolean;
+};
+
+/** The graded items for the evidence only Live conditions reads. */
+export function pulseOnlyStatusItems(
+  evidence: Pick<PulseOnlyEvidence, "flood" | "police">,
+): CountyStatusItem[] {
+  const { flood, police } = evidence;
+  return [
+    ...(flood && flood.category.key !== "normal"
+      ? [
+          floodStatusItem({
+            id: flood.site.id,
+            title: `${titleCaseRiver(flood.site.river)} ${flood.category.label.toLowerCase()}`,
+            tone: flood.category.tone,
+            observedAt: flood.observedAt,
+          }),
+        ]
+      : []),
+    ...(police
+      ? [
+          policeStatusItem({
+            url: police.url,
+            title: police.title,
+            source: police.source,
+            publishedAt: police.publishedAt,
+          }),
+        ]
+      : []),
+  ];
 }
 
 /** Urgent first, then the /pulse family order; equal items keep feed order. */
@@ -470,13 +537,14 @@ export function selectCountyStatus({
   situation,
   road,
   civic,
-  extraItems = [],
+  pulseOnly,
 }: {
   situation: CurrentSituationSnapshot;
   road: RoadIntelligenceSnapshot | null;
   civic: CivicAlertsInput | null;
-  /** Page-only evidence (river stage, a police release) graded the same way. */
-  extraItems?: readonly CountyStatusItem[];
+  /** River stage and a breaking police release. The header endpoint and
+   *  /pulse both pass it, so they grade one list. */
+  pulseOnly?: PulseOnlyEvidence;
 }): CountyStatus {
   const ok =
     situation.summary.coverage === "complete" &&
@@ -484,13 +552,14 @@ export function selectCountyStatus({
     road.summary.coverage === "complete" &&
     civic !== null &&
     civic.available &&
-    !civic.degraded;
+    !civic.degraded &&
+    (pulseOnly?.complete ?? true);
   return countyStatusFromItems(
     [
       ...situationStatusItems(situation),
       ...roadStatusItems(road),
       ...civicStatusItems(civic),
-      ...extraItems,
+      ...(pulseOnly ? pulseOnlyStatusItems(pulseOnly) : []),
     ],
     { ok, lastUpdated: situation.generatedAt },
   );
