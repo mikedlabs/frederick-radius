@@ -299,6 +299,9 @@ describe("scheduled data workflow contracts", () => {
     "%s fails closed when its optional Firecrawl fallback is misconfigured",
     (name, scope) => {
       const workflow = workflowText(name);
+      const paidMode = name === "ingest-venues.yml"
+        ? "github.event_name == 'workflow_dispatch' && inputs.include_model_sources && "
+        : "";
 
       expect(workflow).toMatch(
         /Validate optional Firecrawl fallback|Require venue extraction configuration/,
@@ -307,10 +310,10 @@ describe("scheduled data workflow contracts", () => {
         "FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}",
       );
       expect(workflow).toContain(
-        `FIRECRAWL_FETCH_FALLBACK: \${{ vars.${scope}_FIRECRAWL_FETCH_FALLBACK || '0' }}`,
+        `FIRECRAWL_FETCH_FALLBACK: \${{ ${paidMode}vars.${scope}_FIRECRAWL_FETCH_FALLBACK || '0' }}`,
       );
       expect(workflow).toContain(
-        `FIRECRAWL_FALLBACK_MAX_REQUESTS: \${{ vars.${scope}_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}`,
+        `FIRECRAWL_FALLBACK_MAX_REQUESTS: \${{ ${paidMode}vars.${scope}_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}`,
       );
       expect(workflow).toContain('if [ -z "$FIRECRAWL_API_KEY" ]; then');
       expect(workflow).toContain('"$FIRECRAWL_FALLBACK_MAX_REQUESTS" -gt 2');
@@ -326,7 +329,7 @@ describe("scheduled data workflow contracts", () => {
             : name === "ingest-business-info.yml"
               ? "Ingest business deep-info"
               : "Ingest municipal civic data") +
-          ` (firecrawl=\${{ vars.${scope}_FIRECRAWL_FETCH_FALLBACK || '0' }}, cap=\${{ vars.${scope}_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }})`,
+          ` (firecrawl=\${{ ${paidMode}vars.${scope}_FIRECRAWL_FETCH_FALLBACK || '0' }}, cap=\${{ ${paidMode}vars.${scope}_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }})`,
       );
       expect(workflow).toContain("actions: read");
       expect(workflow).toContain(
@@ -366,6 +369,38 @@ describe("scheduled data workflow contracts", () => {
     expect(workflow).toContain(
       "if: ${{ always() && steps.extract.outcome == 'success' && steps.verify.outcome == 'success' }}",
     );
+  });
+
+  it("runs free venue feeds daily and exposes paid sources only after an explicit manual choice", () => {
+    const workflow = parse(workflowText("ingest-venues.yml")) as {
+      on: { workflow_dispatch: { inputs: Record<string, { default: boolean; type: string }> } };
+      "run-name": string;
+      jobs: { ingest: { steps: Array<{ name?: string; if?: string; env?: Record<string, string>; run?: string }> } };
+    };
+    const inputs = workflow.on.workflow_dispatch.inputs;
+    expect(inputs.include_model_sources).toMatchObject({ default: false, type: "boolean" });
+    expect(inputs.refresh_open_review.default).toBe(false);
+    const steps = workflow.jobs.ingest.steps;
+    const manual = "${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources }}";
+    expect(steps.find((step) => step.name === "Require venue extraction configuration")?.if).toBe(manual);
+    expect(steps.find((step) => step.name === "Install Chromium")?.if).toBe(manual);
+    const budget = steps.find((step) => step.name === "Enforce shared Firecrawl fallback budget")!;
+    const collect = steps.find((step) => step.name === "Extract venue events")!;
+    for (const setting of ["FIRECRAWL_FETCH_FALLBACK", "FIRECRAWL_FALLBACK_MAX_REQUESTS"]) {
+      expect(collect.env?.[setting]).toBe(budget.env?.[setting]);
+      expect(budget.env?.[setting]).toContain("github.event_name == 'workflow_dispatch' && inputs.include_model_sources &&");
+    }
+    expect(workflow["run-name"]).toBe(
+      `Ingest venue events (firecrawl=${budget.env?.FIRECRAWL_FETCH_FALLBACK}, cap=${budget.env?.FIRECRAWL_FALLBACK_MAX_REQUESTS})`,
+    );
+    expect(collect.env?.ANTHROPIC_API_KEY).toBe(
+      "${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources && secrets.ANTHROPIC_VENUE_EVENTS_API_KEY || '' }}",
+    );
+    expect(collect.env?.INCLUDE_MODEL_SOURCES).toBe(
+      "${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources || 'false' }}",
+    );
+    expect(collect.run).toContain('if [ "$INCLUDE_MODEL_SOURCES" = "true" ]; then');
+    expect(collect.run).toMatch(/else\n\s+npm run ingest:venues -- --deterministic-only/);
   });
 
   it("keeps the business Firecrawl request behind the browser fallback", () => {
@@ -449,7 +484,9 @@ describe("scheduled data workflow contracts", () => {
     const workflow = workflowText(name);
 
     expect(workflow).toContain("refresh_open_review:");
-    expect(workflow).toContain("Pause paid extraction while its review is open");
+    expect(workflow).toContain(name === "ingest-venues.yml"
+      ? "Pause collection while its review is open"
+      : "Pause paid extraction while its review is open");
     expect(workflow).toContain(`const branch = '${branch}';`);
     expect(workflow).toContain("pull-requests: read");
     expect(workflow).toContain(

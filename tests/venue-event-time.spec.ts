@@ -110,7 +110,11 @@ describe("venue event time normalization", () => {
       expect(ownedRows.length).toBeGreaterThan(0);
 
       for (const row of ownedRows) {
-        for (const value of [row.starts_at, row.ends_at]) {
+        const times = [row.starts_at];
+        if ("ends_at" in row && typeof row.ends_at === "string") {
+          times.push(row.ends_at);
+        }
+        for (const value of times) {
           if (!value) continue;
           expect(value).toMatch(/(?:Z|[+-]\d{2}:\d{2})$/);
           const wallClock = value.replace(/(?:Z|[+-]\d{2}:\d{2})$/, "");

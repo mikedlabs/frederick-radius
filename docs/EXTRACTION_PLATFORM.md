@@ -28,7 +28,7 @@ new system. The engine, dedupe, scheduling, and provenance are shared.
 
 ## Collection methods — cleanest rung first
 
-Not every source hides the same way, so the engine offers four collectors.
+Not every source hides the same way, so the engine offers five collectors.
 A venue/source declares its `method`; the agent picks the cheapest one
 that works and falls back as needed. Prefer a structured feed over the
 model whenever one exists — it is exact, free, and survives redesigns.
@@ -36,6 +36,7 @@ model whenever one exists — it is exact, free, and survives redesigns.
 | Method       | When                                                   | How                                                                                                                                         | Model?       |
 | ------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | **`feed`**   | Squarespace events page (very common for small venues) | `fetchSquarespaceEvents(url)` reads `<url>?format=json` and `parseSquarespaceEvents()` maps `upcoming[]` (ms-epoch dates) deterministically | **No**       |
+| **`weinberg`** | Weinberg and New Spire calendars | `fetchWeinbergEventsResult()` reads the bounded official Load More endpoint, including multiple performances and exact venue taxonomy | **No** |
 | **`render`** | JS-rendered or 403s a bare fetch                       | headless Chromium → text → `extractJson()`                                                                                                  | Yes (text)   |
 | **`fetch`**  | static HTML                                            | plain fetch → text → `extractJson()`                                                                                                        | Yes (text)   |
 | **`image`**  | calendar published only as a graphic (e.g. a Wix PNG)  | `extractJsonFromImage(url)` reads the image with Claude vision                                                                              | Yes (vision) |

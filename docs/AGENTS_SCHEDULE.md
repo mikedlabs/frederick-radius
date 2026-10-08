@@ -39,7 +39,7 @@ food-truck jobs.
 | Daily 12:00/13:00 UTC                                                      | `daily-briefing`              | Builds the daily briefing payload.                                                                                                                                                                                                                          | Vercel cron (`/api/cron/daily-briefing`)                                 |
 | Daily 08:00 UTC                                                            | **ingest-business-info**      | Reads eligible food and drink websites in a bounded batch, rebuilds the description review queue, and opens a review PR.                                                                                                                                    | GitHub Actions (`.github/workflows/ingest-business-info.yml`)            |
 | Daily 08:30 UTC                                                            | **ingest-civic**              | Refreshes municipal civic information from configured government sources and opens a review PR.                                                                                                                                                             | GitHub Actions (`.github/workflows/ingest-civic.yml`)                    |
-| Daily 09:30 UTC                                                            | **ingest-venues**             | Refreshes events from configured venue websites, runs copy and provenance checks, and opens a review PR.                                                                                                                                                    | GitHub Actions (`.github/workflows/ingest-venues.yml`)                   |
+| Daily 09:30 UTC                                                            | **ingest-venues**             | Collects complete official Weinberg, New Spire, and Banyan calendars without a model key, runs copy and provenance checks, and opens a review PR. Model-assisted venues require an explicit manual run.                                                        | GitHub Actions (`.github/workflows/ingest-venues.yml`)                   |
 | Nightly 09:00 UTC                                                          | **data-steward**              | Pulls the business-status and hours snapshots, rebuilds public data, blocks critical safety failures, reports high-severity debt, and opens a review PR for incremental improvements.                                                                       | GitHub Actions (`.github/workflows/data-steward.yml`)                    |
 | Manual                                                                     | **feed-health**               | Runs the deeper all-source diagnostic on demand. Scheduled Vercel collectors own source heartbeats, and the nightly health reporter owns the recurring signal, so GitHub does not pay to probe the same endpoints again.                                   | Manual `workflow_dispatch` (`.github/workflows/feed-health.yml`)         |
 | Manual                                                                     | **legacy data snapshot**      | Fetches the isolated `data-snapshots` branch for pipeline development. Production does not read this branch, so refresh and freshness verification remain manual until a production consumer is approved.                                                 | Manual `workflow_dispatch` (`data-refresh.yml`, `freshness-check.yml`)   |
@@ -90,10 +90,13 @@ produces a _repo_ artifact rather than a live-store write:
 - **feed-health** is an operator diagnostic. It has no `|| true`, so a dead
   critical feed fails a manual run, but recurring source health comes from the
   collectors' durable heartbeats and the single nightly reporter.
-- **ingest-business-info**, **ingest-civic**, and **ingest-venues** use
+- **ingest-business-info** and **ingest-civic** use
   Claude to extract structured facts from configured first-party websites.
   Each workflow runs its own checks and opens a review PR; none publishes
   generated changes directly to the product.
+- **ingest-venues** runs free official-feed collectors daily. Manual runs may
+  explicitly include model-assisted sources using the dedicated venue key.
+  Both modes retain the open-review pause and publish only through a reviewed PR.
 - **discovery** is judgment-gated by design. The dry run costs $0 and
   only prints the plan; a future Claude review step (see the TODO in the
   workflow) reads that plan and recommends which categories/towns are

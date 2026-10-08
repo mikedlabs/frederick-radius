@@ -306,6 +306,28 @@ Neither provider belongs in the request path for Today, Search, Map, Events, or 
 
 ## Secrets and connections
 
+### Event scraper and application integration
+
+Muse's October 8 scraper lives in its workspace at
+`~/workspace/projects/frederick-radius-scraper/`, outside this repository.
+Its sitemap-to-JSON-LD approach is useful for reconnaissance, but the Weinberg
+sitemap includes performance pages without Event JSON-LD. It must not replace
+the complete official calendar collector or assign all Weinberg-hosted shows
+to the same venue.
+
+The application's collector is `scripts/ingest-venue-events.ts`. Run
+`npm run ingest:venues -- --deterministic-only` to collect Weinberg, New Spire,
+and Banyan without model calls. The daily `ingest-venues.yml` workflow uses this
+mode; model-assisted sources require the explicit `include_model_sources`
+manual input. An incomplete official read retains its prior rows and check
+dates and holds publication. An existing review is preserved until it is
+reviewed or intentionally replaced with `refresh_open_review`.
+
+Reviewed venue snapshots and their release manifest feed
+`src/lib/loaders/unifiedEvents.ts`, shared by Today and Events. DFP already
+joins that assembly through its native Vibemap feed. Visit Frederick remains
+disabled until its documented written factual-reuse permission is supplied.
+
 The unattended REST tools use:
 
 - `FIRECRAWL_API_KEY` for `scripts/lib/firecrawl-rest.ts`;
