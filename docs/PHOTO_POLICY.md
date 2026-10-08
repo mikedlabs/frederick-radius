@@ -9,8 +9,9 @@
 > venue photo (see "Dense event rows" below).
 
 **Status:** Owner-approved 2026-06-06. Amended 2026-06-16, 2026-07-07 and
-2026-10-07. Everything on this page is in force unless it says "Pending owner
-call".
+2026-10-07. "Rules in force" and "Dense event rows" are in force except where
+they say "Pending owner call". "How /events implements this today" describes
+the current code and is not a rule.
 **Scope:** Where photography may and may not appear. VISUAL_FIRST owns the
 image ladder, missing-photo fallbacks and the visual-floor check. This page
 keeps only the placement rules that the ladder does not cover.
@@ -40,15 +41,15 @@ It is history, not instructions, and nothing in it gates code.
   module hides. `PhotoMosaic` draws from Google photos and has no caller
   today (`grep -rn PhotoMosaic src`), so re-adding it needs that gate first.
   (2026-06-06)
-- **One image claims the LCP preload on /events.** Only the first lead's
-  poster card sets the next/image `priority` preload (`priorityImage` on
-  `EventCard`), and every other event image loads lazily, because competing
-  preloads slow the real LCP. (2026-07-07)
-- **At most one image-led card per events horizon group.** The first horizon
-  group leads with the poster card, and each later group leads with a glance
-  card that may show one small approved thumbnail (`horizonLeadVariant` in
-  `src/components/event/eventsExplorerLayout.ts`). A group without an
-  approved image keeps its normal card. (2026-07-07)
+- **One photo lead per events horizon group.** On /events, each horizon
+  group's lead may carry one approved image, so a group's lead shows at most
+  one photograph. A lead without an approved image does not get an enlarged
+  glyph in its place (see the last rule below). The rows under a lead are
+  covered by "Dense event rows". (2026-07-07)
+- **One image per page claims the LCP preload on /events.** Only one event
+  image on the page sets the next/image `priority` preload, and every other
+  event image loads lazily, because competing preloads slow the real LCP. The
+  flag is `priorityImage` on `EventCard`. (2026-07-07)
 - **Venue photos are borrowed only through trusted matches.**
   `withVenueThumbs` in `src/lib/loaders/eventThumb.ts` gives an event its
   venue's photo through the shared venue resolver (canonical slug, a reviewed
@@ -83,6 +84,24 @@ for venues with a precise geocode? VISUAL_FIRST says every row carries one,
 while the 2026-06-16 and 2026-07-07 amendments kept these rows photoless.
 Until the owner answers, add no photographs to these rows.
 
+## How /events implements this today
+
+This section describes the code at the time of writing. It is not a rule, and
+nothing here needs an amendment to change.
+
+Today only the first horizon group leads with the poster card.
+`horizonLeadVariant` in `src/components/event/eventsExplorerLayout.ts` returns
+`"feature"` for the first group and `"glance"` for every later one.
+`EventsExplorer.tsx` renders that lead through `PromotedEvent`, which is the
+only feature card on the page and the one event image that sets
+`priorityImage`. A glance lead shows a 72 px lazy thumbnail only when
+`eventCardVisual` approves an image. That is narrower than the 2026-07-07 rule
+allows. The rules above limit how many photographs a lead carries and which
+image claims the preload. They do not require the poster card, the glance card
+or any particular lead layout. VISUAL_FIRST asks each events section to lead
+with flyers shown whole, so a change to the lead layout in that direction is
+consistent with this page.
+
 ## No longer in force
 
 These earlier rules were overturned and are kept only in the archive.
@@ -99,6 +118,3 @@ These earlier rules were overturned and are kept only in the archive.
 - Compact, utility and agenda event rows stay photoless (2026-06-16,
   2026-07-07). Map tiles may go there now, and photographs wait on the
   pending owner call above.
-- Every horizon group's lead renders the poster card when it has a photo
-  (2026-07-07). The code has since limited the poster to the first group, and
-  later groups lead with a glance card that may carry a thumbnail.

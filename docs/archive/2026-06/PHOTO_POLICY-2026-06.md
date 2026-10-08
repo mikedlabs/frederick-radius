@@ -44,10 +44,12 @@ radius (see `src/lib/loaders/eventThumb.ts`), and now runs in the
 > **Superseded in part (2026-10-08):** "compact/utility/agenda stay
 > photoless" no longer stops a venue map tile, which is not a photo. Whether
 > those rows may also carry a flyer or venue photo is a pending owner call
-> recorded in `docs/PHOTO_POLICY.md`. Separately, the code has since narrowed
-> the poster lead to the first horizon group only (`horizonLeadVariant` in
-> `src/components/event/eventsExplorerLayout.ts`); later groups lead with a
-> glance card.
+> recorded in `docs/PHOTO_POLICY.md`. The rest of this amendment, one photo
+> lead per horizon group and one LCP preload per page, is still in force. As
+> of 2026-10-08 the code shows the poster card only in the first horizon group
+> (`horizonLeadVariant` in `src/components/event/eventsExplorerLayout.ts`), and
+> later groups lead with a glance card that may carry a small thumbnail. That
+> is the current implementation, not a change to the rule.
 
 ## ⚠️ Revision — 2026-06-16 (places now lead with photos)
 
