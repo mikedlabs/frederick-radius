@@ -704,7 +704,7 @@ function FairPhotoMasthead({
                 ? "var(--app-ink-inverse)"
                 : "var(--app-brand-press)",
             }}
-            aria-label="Back to Fair Today"
+            aria-label="Back to the Fair guide"
           >
             <ArrowLeft className="h-[18px] w-[18px]" aria-hidden />
           </button>
@@ -2102,7 +2102,7 @@ export default function FairDayWorkspace({
                 onClick={() => chooseMode("now")}
                 className="fair-hero-control tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full"
                 style={{ color: "var(--app-brand-press)" }}
-                aria-label="Back to Fair Today"
+                aria-label="Back to the Fair guide"
               >
                 <ArrowLeft className="h-[18px] w-[18px]" aria-hidden />
               </button>

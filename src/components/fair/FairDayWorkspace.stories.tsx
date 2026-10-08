@@ -447,6 +447,15 @@ export const PostFair: Story = {
       slug: "catoctin-colorfest-2026",
     },
   },
+  beforeEach: () => {
+    // Stories share one preview URL, and the workspace opens the mode its
+    // hash names. Program's play leaves #program behind, so start on Home.
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${window.location.search}#now`,
+    );
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() =>
@@ -454,9 +463,12 @@ export const PostFair: Story = {
         canvasElement.querySelector("[data-fair-mode-content]"),
       ).not.toHaveAttribute("hidden"),
     );
-    await expect(
-      canvas.getByText("The 2026 Great Frederick Fair ran September 18 to 26."),
-    ).toBeVisible();
+    // The Home panel fades in from opacity 0, so wait for the record itself.
+    await waitFor(() =>
+      expect(
+        canvas.getByText("The 2026 Great Frederick Fair ran September 18 to 26."),
+      ).toBeVisible(),
+    );
     await expect(
       canvas.getByRole("link", { name: "See what's on this weekend" }),
     ).toHaveAttribute("href", "/events?lens=weekend");
