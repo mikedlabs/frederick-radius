@@ -48,7 +48,7 @@ const QUICK_ICON: Record<IntentIcon, typeof Clock> = {
 // the overlay doesn't need clientPlaceBySlug / EVENT_BY_SLUG either.
 import TrustChip from "@/components/ui/TrustChip";
 import { TRUST_COLOR, type TrustSignal } from "@/lib/trust";
-import { useRecentSearches, usePushRecentSearch, useClearRecentSearches } from "@/hooks/useRecentSearches";
+import { useRecentSearches, usePushRecentSearch, useClearRecentSearches, useRecentSearchStatus, type RecentSearchStatus } from "@/hooks/useRecentSearches";
 import { frederickHour } from "@/lib/search-suggestions";
 
 const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
@@ -359,6 +359,7 @@ export default function SearchOverlay({
   const returnScrollYRef = useRef<number | null>(returnScrollY ?? null);
   const leavingFindRef = useRef(false);
   const recent = useRecentSearches();
+  const recentStatus = useRecentSearchStatus();
   const pushRecent = usePushRecentSearch();
   const clearRecent = useClearRecentSearches();
   const closeFindLayer = useCallback(() => {
@@ -893,6 +894,7 @@ export default function SearchOverlay({
           {!query.trim() ? (
             <EmptyHint
               recent={recent}
+              recentStatus={recentStatus}
               onPick={updateQuery}
               onClearRecent={clearRecent}
               onNavigate={navigateFromSearch}
@@ -1226,11 +1228,13 @@ function KbdHint({ label, desc }: { label: string; desc: string }) {
 
 function EmptyHint({
   recent,
+  recentStatus,
   onPick,
   onClearRecent,
   onNavigate,
 }: {
   recent: string[];
+  recentStatus: RecentSearchStatus;
   onPick: (s: string) => void;
   onClearRecent: () => void;
   onNavigate: (href: string) => void;
@@ -1250,16 +1254,16 @@ function EmptyHint({
 
   return (
     <div className="px-4 py-5 sm:px-5">
-      {recent.length > 0 ? (
-        <div>
-          <div className="flex items-baseline justify-between">
-            <p
-              className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
-              Recent searches
-            </p>
+      <section aria-label="Recent searches on this device">
+        <div className="flex items-baseline justify-between">
+          <p
+            className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
+            Recent searches
+          </p>
+          {recentStatus.available && recent.length > 0 && (
             <button
               type="button"
               onClick={onClearRecent}
@@ -1269,25 +1273,40 @@ function EmptyHint({
             >
               Clear
             </button>
-          </div>
+          )}
+        </div>
+        {!recentStatus.available ? (
+          <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            Recent searches are unavailable on this device.
+          </p>
+        ) : recent.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-2">
             {recent.slice(0, 3).map((s) => (
-                <button
-                  key={`recent-${s}`}
-                  type="button"
-                  onClick={() => onPick(s)}
-                  className="tactile-interactive flex h-9 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[12.5px] font-medium shadow-[var(--app-shadow-1)] transition-transform hover:scale-[1.02] active:scale-95"
-                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-                >
-                  <Clock className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-                  <span className="truncate max-w-[140px]">{s}</span>
-                </button>
+              <button
+                key={`recent-${s}`}
+                type="button"
+                onClick={() => onPick(s)}
+                className="tactile-interactive flex h-9 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[12.5px] font-medium shadow-[var(--app-shadow-1)] transition-transform hover:scale-[1.02] active:scale-95"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+              >
+                <Clock className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+                <span className="truncate max-w-[140px]">{s}</span>
+              </button>
             ))}
           </div>
-        </div>
-      ) : null}
+        ) : (
+          <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            No recent searches on this device.
+          </p>
+        )}
+        {recentStatus.clearFailed && (
+          <p role="status" className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            Could not clear recent searches. Please try again.
+          </p>
+        )}
+      </section>
 
-      <div className={recent.length > 0 ? "mt-5" : undefined}>
+      <div className="mt-5">
         <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
           Useful now
         </p>
