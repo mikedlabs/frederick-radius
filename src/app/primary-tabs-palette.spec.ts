@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import postcss from "postcss";
-import { act, createElement } from "react";
+import { act, createElement, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -11,6 +11,8 @@ import TodayPlanTonightLink from "@/components/today/TodayPlanTonightLink";
 import { TodayEventsRecoveryView } from "@/components/today/TodayEventsRecovery";
 import { ReasonChipRow } from "@/components/ui/ReasonChip";
 import { eventReasons } from "@/lib/event-reasons";
+import EventSheet from "@/components/event/EventSheet";
+import SavedEventWallet from "@/components/saved/SavedEventWallet";
 import type { MapPinPlace } from "@/components/map/types";
 import type { OpenStatus } from "@/lib/hours";
 import type { CountyStatusSummary } from "@/lib/pulse/county-status";
@@ -21,6 +23,12 @@ vi.mock("next/navigation", () => ({
   usePathname: () => navigation.pathname,
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
+}));
+// The shell's portal/focus/drag behavior is covered separately. Render the
+// actual event content here so contrast checks follow the roles it paints.
+vi.mock("@/components/ui/BottomSheet", () => ({
+  default: ({ children, present }: { children: (dismiss: () => void) => ReactNode; present: boolean }) => present ? children(() => {}) : null,
+  SheetHandle: () => null,
 }));
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -87,9 +95,68 @@ function declaration(css: postcss.Root, selector: string, property: string): str
   return value;
 }
 
+const detailEvent = {
+  slug: "detail-contrast", title: "Community arts afternoon", description: "This is a sample event.",
+  category: "arts", category_name: "Arts & culture", municipality: "frederick", municipality_name: "Frederick", venue_name: "Community hall", address: "Frederick County",
+  starts_at: "2029-10-10T18:00:00.000Z", ends_at: "2029-10-10T20:00:00.000Z", timezone: "America/New_York",
+  audience: [], is_free: true, is_verified: false, geom: { lat: 39.414, lng: -77.41 }, geo_confidence: "area", source: "manual", source_url: "https://example.com/event",
+  source_id: "contrast-fixture", license: "Demonstration fixture", confidence: "curated", first_seen_at: "2029-10-01T12:00:00Z", last_verified_at: "2029-10-01T12:00:00Z",
+} satisfies EventWithMeta;
+
+function minimumHeight(element: Element): string | undefined {
+  // The focused rule has greater specificity than the shared deck base;
+  // checking it against real markup also proves its event/single/closed scope.
+  const compact = '[data-app-primary-tab="/my-radius"] .sw-slot[id^="swe-slot-"]:first-child:last-child:not(.is-open) > .sw-card';
+  let height = declaration(stylesheet, ".sw-card", "min-height");
+  stylesheet.walkRules(compact, (rule) => {
+    if (element.matches(compact)) rule.walkDecls("min-height", (entry) => { height = entry.value; });
+  });
+  return height;
+}
+
 describe("primary tab palette contrast", () => {
+  it("compacts a single closed event while multi-item and expanded cards retain the deck height", () => {
+    const events = [detailEvent, { ...detailEvent, slug: "second-detail", title: "Second event" }];
+    for (const deck of [[detailEvent], events]) {
+      for (const openSlug of [null, deck.at(-1)!.slug]) {
+        const template = document.createElement("template");
+        template.innerHTML = renderToStaticMarkup(createElement("div", { "data-app-primary-tab": "/my-radius" },
+          createElement(SavedEventWallet, { events: deck, now: new Date("2029-10-08T12:00:00.000Z"), openSlug })));
+        const cards = [...template.content.querySelectorAll(".sw-card")];
+        for (const card of cards) expect(minimumHeight(card)).toBe(deck.length === 1 && openSlug === null ? "calc(var(--app-space-4) * 4)" : "186px");
+        expect(cards.at(-1)!.querySelector(".sw-disclosure")?.getAttribute("aria-expanded")).toBe(String(openSlug !== null));
+      }
+    }
+    const placeSlot = document.createElement("div");
+    placeSlot.innerHTML = '<div data-app-primary-tab="/my-radius"><div class="sw-stack"><div class="sw-slot" id="sw-slot-place"><div class="sw-card"></div></div></div></div>';
+    expect(minimumHeight(placeSlot.querySelector(".sw-card")!)).toBe("186px");
+  });
+  it("uses the shared safe-area-aware horizontal gutter on the recovery heading, count, and list", () => {
+    for (const selector of [".map-error-fallback-head", ".map-error-fallback .map-list"]) {
+      const padding = declaration(stylesheet, selector, "padding");
+      expect(padding).toContain("max(var(--app-space-4), env(safe-area-inset-right, 0px))");
+      expect(padding).toContain("max(var(--app-space-4), env(safe-area-inset-left, 0px))");
+    }
+    expect(declaration(stylesheet, '.map-error-fallback .map-list > [aria-live="polite"]', "padding-inline")).toBe("0");
+  });
   for (const mode of ["light", "dark"] as const) {
     const values = palette(mode === "dark");
+    it(`${mode} actual photo-less event detail facts and links clear AA on the sheet surface`, () => {
+      const template = document.createElement("template");
+      template.innerHTML = renderToStaticMarkup(createElement(EventSheet, { event: detailEvent, onClose: () => {}, historyLayerId: "contrast-detail" }));
+      const paragraphs = [...template.content.querySelectorAll<HTMLParagraphElement>("p")];
+      const facts = paragraphs.filter((node) => ["Free", "Arts & culture"].includes(node.textContent!));
+      expect(facts).toHaveLength(2);
+      const links = [...template.content.querySelectorAll<HTMLAnchorElement>("a")].filter((node) => /See full page|Check event details/.test(node.textContent!));
+      expect(links).toHaveLength(2);
+      for (const node of [...facts, ...links]) {
+        expect(expressionContrast(values, node.style.color, "var(--app-bg-elevated-solid)"), node.textContent).toBeGreaterThanOrEqual(4.5);
+      }
+      const categoryIcon = template.content.querySelector<HTMLSpanElement>("header > span[aria-hidden]");
+      expect(categoryIcon).not.toBeNull();
+      expect(expressionContrast(values, categoryIcon!.style.color, categoryIcon!.style.background)).toBeGreaterThanOrEqual(4.5);
+      expect(template.content.querySelector('[style*="linear-gradient(to bottom"]')).toBeNull();
+    });
     for (const surface of ["--app-bg", "--app-bg-elevated-solid", "--app-bg-sunken"]) {
       it(`${mode} text, links, and actual status copy clear AA on ${surface}`, () => {
         for (const foreground of ["--app-ink", "--app-ink-2", "--app-ink-3", "--app-link", "--state-open", "--state-closing", "--app-danger-text", "--app-live-text"]) {
@@ -188,8 +255,11 @@ describe("primary tab palette contrast", () => {
       }
     });
     it(`${mode} actual Today Find quiet controls and filled launcher retain contrast`, () => {
-      for (const selector of [".shortcut:hover", ".shortcut svg"]) {
-        expect(expressionContrast(values, declaration(findStyles, selector, "color"), declaration(findStyles, selector, "background")), selector).toBeGreaterThanOrEqual(4.5);
+      const icon = declaration(findStyles, ".shortcut svg", "color");
+      for (const selector of [".shortcut", ".shortcut:hover"]) {
+        const ground = declaration(findStyles, selector, "background");
+        expect(expressionContrast(values, declaration(findStyles, selector, "color"), ground), selector).toBeGreaterThanOrEqual(4.5);
+        expect(expressionContrast(values, icon, ground), `shortcut icon on ${selector}`).toBeGreaterThanOrEqual(4.5);
       }
       const foreground = declaration(findStyles, ".launcher", "color");
       for (const selector of [".launcher", ".launcher:hover"]) {

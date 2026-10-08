@@ -389,6 +389,12 @@
 [data-app-primary-tab="/my-radius"] .sw-art,
 [data-app-primary-tab="/my-radius"] .sw-glyph { display: none; }
 [data-app-primary-tab="/my-radius"] .sw-face { padding: var(--app-space-4); }
+/* A single closed event needs only its reading row. Multi-item decks retain
+ * their covered-card height and tuck so earlier faces cannot protrude below
+ * the final card. Expanded cards keep the complete ledger and actions. */
+[data-app-primary-tab="/my-radius"] .sw-slot[id^="swe-slot-"]:first-child:last-child:not(.is-open) > .sw-card {
+  min-height: calc(var(--app-space-4) * 4);
+}
 [data-app-primary-tab="/my-radius"] .sw-name { text-shadow: none; }
 [data-app-primary-tab="/my-radius"] .sw-brand svg { filter: none; }
 [data-app-primary-tab="/my-radius"] .sw-brand:focus-visible,
@@ -6814,9 +6820,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   gap: 16px;
   padding:
     max(14px, env(safe-area-inset-top, 0px))
-    max(14px, env(safe-area-inset-right, 0px))
+    max(var(--app-space-4), env(safe-area-inset-right, 0px))
     12px
-    max(14px, env(safe-area-inset-left, 0px));
+    max(var(--app-space-4), env(safe-area-inset-left, 0px));
   border-bottom: 1px solid var(--app-border);
   background: var(--app-bg-elevated-solid);
 }
@@ -6833,9 +6839,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   flex: 1 1 auto;
   padding:
     14px
-    max(12px, env(safe-area-inset-right, 0px))
+    max(var(--app-space-4), env(safe-area-inset-right, 0px))
     max(18px, env(safe-area-inset-bottom, 0px))
-    max(12px, env(safe-area-inset-left, 0px));
+    max(var(--app-space-4), env(safe-area-inset-left, 0px));
+}
+.map-error-fallback .map-list > [aria-live="polite"] {
+  padding-inline: 0;
 }
 /* Renderer failure changes the dock into a search-only instrument. Preserve a
    clear lane for it instead of letting a recovery heading or the last result

@@ -10,21 +10,21 @@
 .launcher {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 92px;
-  padding: 14px;
+  gap: var(--app-space-3);
+  min-height: 80px;
+  padding: var(--app-space-4);
   border: 1px solid var(--app-brand-press);
   border-radius: var(--app-radius-md);
   color: var(--app-on-brand);
   background: var(--app-brand-press);
-  box-shadow: var(--app-shadow-2), var(--app-hi);
+  box-shadow: none;
   outline-offset: 4px;
   transition: background-color var(--app-dur-fast) var(--app-ease-out), box-shadow var(--app-dur-fast) var(--app-ease-out);
 }
 
 .launcher:hover {
   background: color-mix(in srgb, var(--app-brand-press) 90%, var(--app-media-ink));
-  box-shadow: var(--app-shadow-3), var(--app-hi);
+  box-shadow: none;
 }
 
 .launcher:focus-visible {
@@ -63,21 +63,20 @@
 .shortcuts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding-block: 12px;
+  gap: 0 var(--app-space-4);
+  padding-block: var(--app-space-2);
 }
 
 .shortcut {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 64px;
-  padding: 10px;
-  border: 1px solid var(--app-border);
-  background: var(--app-bg-elevated-solid);
-  box-shadow: var(--app-shadow-1);
+  gap: var(--app-space-2);
+  min-height: 48px;
+  padding: var(--app-space-2) 0;
+  border-bottom: 1px solid var(--app-border);
+  background: transparent;
   transition: color var(--app-dur-fast) var(--app-ease-out), border-color var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out);
-  border-radius: var(--app-radius-sm);
+  border-radius: 0;
   color: var(--app-ink-2);
   font-size: 15px;
   font-weight: 550;
@@ -87,7 +86,7 @@
 .shortcut:hover {
   color: var(--app-link);
   border-color: var(--app-brand);
-  background: var(--app-brand-tint-6);
+  background: var(--app-bg-sunken);
 }
 
 .shortcut:focus-visible {
@@ -96,11 +95,8 @@
 }
 
 .shortcut svg {
-  width: 30px;
-  height: 30px;
-  padding: 6px;
-  border-radius: var(--app-radius-sm);
-  background: var(--app-brand-tint-6);
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
   color: var(--app-link);
 }
@@ -117,17 +113,17 @@
 
 @media (min-width: 640px) {
   .launcher {
-    min-height: 88px;
-    padding-inline: 20px;
+    min-height: 80px;
+    padding-inline: var(--app-space-5);
   }
 
   .prompt {
-    font-size: 24px;
+    font-size: 22px;
   }
 
   .shortcuts {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
+    gap: var(--app-space-4);
   }
 }
 
@@ -140,8 +136,8 @@
 
 @media (max-width: 359px) {
   .launcher {
-    padding: 12px;
-    gap: 8px;
+    padding: var(--app-space-3);
+    gap: var(--app-space-2);
   }
 
   .prompt {
@@ -153,8 +149,8 @@
   }
 
   .shortcut {
-    gap: 6px;
-    padding-inline: 8px;
+    gap: var(--app-space-2);
+    padding-inline: 0;
     font-size: 14px;
   }
 }

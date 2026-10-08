@@ -7,6 +7,8 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import MyRadiusButton from "@/components/place/MyRadiusButton";
 import SaveButton from "./SaveButton";
 import SavedWallet from "./SavedWallet";
+import SavedEventWallet from "./SavedEventWallet";
+import type { Event } from "@/data/events";
 
 const SLUG = "workshop-stop";
 const KEY = "fr:saved:v1";
@@ -146,3 +148,45 @@ export const ConfirmedRemoval: Story = { beforeEach: () => sample(true), play: a
   await expect(canvas.queryByRole("list", { name: "Saved places, as a card wallet" })).toBeNull();
   await confirmedControls(canvasElement, false);
 } };
+
+const eventSample = {
+  slug: "workshop-saved-event", title: "Community concert", description: "The event is a sample for review.",
+  starts_at: "2029-10-10T14:00:00-04:00", ends_at: "2029-10-10T16:00:00-04:00", timezone: "America/New_York",
+  venue_name: "Community hall", address: "Frederick County", municipality: "frederick", category: "music", audience: [], is_free: true, source: "manual", is_verified: false,
+  geom: { lat: 39.414, lng: -77.41 },
+} satisfies Event;
+const eventNow = new Date("2029-10-08T12:00:00-04:00");
+function EventDeck({ multiple = false }: { multiple?: boolean }) {
+  return <div data-app-primary-tab="/my-radius" className="w-[min(30rem,100vw)] p-4">
+    <SavedEventWallet events={multiple ? [eventSample, { ...eventSample, slug: "workshop-second-event", title: "Library story afternoon" }] : [eventSample]} now={eventNow} />
+  </div>;
+}
+export const SingleCollapsedEventAt390: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  beforeEach: () => sample(), render: () => <EventDeck />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = canvas.getByRole("listitem").firstElementChild!;
+    const disclosure = canvas.getByRole("button", { name: "Show details for Community concert" });
+    await expect(card.getBoundingClientRect().height).toBeLessThanOrEqual(96);
+    await expect(disclosure.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    await userEvent.click(disclosure);
+    await waitFor(() => expect(canvas.getByRole("link", { name: /Open event/ })).toBeVisible());
+    await expect(card.getBoundingClientRect().height).toBeGreaterThanOrEqual(186);
+    await userEvent.click(canvas.getByRole("button", { name: "Hide details for Community concert" }));
+    await expect(card.getBoundingClientRect().height).toBeLessThanOrEqual(96);
+  },
+};
+export const MultipleCollapsedEventsAt390: Story = {
+  ...SingleCollapsedEventAt390, render: () => <EventDeck multiple />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const [first, last] = canvas.getAllByRole("listitem");
+    await expect(first.firstElementChild!.getBoundingClientRect().height).toBe(186);
+    await expect(last.firstElementChild!.getBoundingClientRect().height).toBe(186);
+    await expect(Math.abs(last.getBoundingClientRect().top - first.getBoundingClientRect().top - 62)).toBeLessThanOrEqual(1);
+    await userEvent.click(canvas.getByRole("button", { name: "Show details for Library story afternoon" }));
+    await expect(last.firstElementChild!.getBoundingClientRect().height).toBeGreaterThanOrEqual(186);
+    await waitFor(() => expect(canvas.getByRole("link", { name: /Open event/ })).toBeVisible());
+  },
+};

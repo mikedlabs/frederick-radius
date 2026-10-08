@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { fn } from "storybook/test";
+import { expect, fn, within } from "storybook/test";
 import MapList from "./MapList";
 
 const meta = {
@@ -33,3 +33,23 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const NeutralRowsWithOpenStatus: Story = {};
 export const EmptyList: Story = { args: { places: [] } };
+export const RecoveryGuttersAt390: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  args: { failureMode: true },
+  decorators: [(Story) => (
+    <div className="map-error-fallback">
+      <div className="map-error-fallback-head">
+        <h2 className="text-[16px] font-semibold">Map view is not enabled right now</h2>
+      </div>
+      <Story />
+    </div>
+  )],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const heading = canvas.getByRole("heading", { name: "Map view is not enabled right now" });
+    const row = canvas.getByRole("button", { name: /Sample Frederick place/ });
+    const count = canvas.getByText("1 place available");
+    await expect(Math.abs(heading.getBoundingClientRect().left - row.getBoundingClientRect().left)).toBeLessThanOrEqual(1);
+    await expect(Math.abs(count.getBoundingClientRect().left - row.getBoundingClientRect().left)).toBeLessThanOrEqual(1);
+  },
+};

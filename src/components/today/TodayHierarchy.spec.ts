@@ -22,19 +22,21 @@ describe("Today decision hierarchy", () => {
     expect(eventClose).toBeGreaterThan(placeClose);
   });
 
-  it("puts Find and useful place and event answers before secondary weather", () => {
+  it("puts the single weather glance before Find and the place and event answers", () => {
     const weather = renderedPage.indexOf("<section data-today-weather");
     const lead = renderedPage.indexOf("{decisionLead}");
     const find = renderedPage.indexOf("<TodayAsk embedded");
     const events = renderedPage.indexOf("{whatsOn}");
 
     expect(weather).toBeGreaterThan(-1);
+    expect(renderedPage.match(/<section data-today-weather/g)).toHaveLength(1);
+    expect(renderedPage.match(/<TodayCard\s*\//g)).toHaveLength(1);
     expect(find).toBeGreaterThan(-1);
-    expect(find).toBeLessThan(weather);
+    expect(find).toBeGreaterThan(weather);
     expect(lead).toBeGreaterThan(find);
-    expect(lead).toBeLessThan(weather);
+    expect(lead).toBeGreaterThan(weather);
     expect(events).toBeGreaterThan(lead);
-    expect(events).toBeLessThan(weather);
+    expect(events).toBeGreaterThan(weather);
   });
 
   it("shows an honest live scope readout before weather on narrow screens", () => {
@@ -78,7 +80,8 @@ describe("Today decision hierarchy", () => {
     expect(find).toBeGreaterThan(masthead);
     expect(fair).toBeGreaterThan(renderedPage.indexOf("{whatsOn}"));
     expect(renderedPage).toContain("<TodayPlanTonightLink />");
-    expect(weather).toBeGreaterThan(fair);
+    expect(weather).toBeLessThan(find);
+    expect(weather).toBeLessThan(fair);
     expect(renderedPage).toContain("fairPromotionPhase ? (");
     expect(renderedPage).toContain(": civicMoment ? (");
     expect(renderedPage.match(/<TodayFairFeature\b/g)).toHaveLength(1);

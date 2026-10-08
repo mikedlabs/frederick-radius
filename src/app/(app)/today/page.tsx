@@ -17,7 +17,6 @@ import MastheadNotes from "@/components/today/MastheadNotes";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import TonightHeadline from "@/components/today/TonightHeadline";
-import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
 import WeekendPreview from "@/components/today/WeekendPreview";
@@ -76,11 +75,12 @@ import {
  * Spine (top to bottom — matches the render below):
  *
  *   1. Identity       → active alerts and the time-aware masthead
- *   2. Decide now     → one Find doorway before campaigns and weather
+ *   2. Conditions     → one verified weather glance before browsing
+   3. Decide now     → one Find doorway before campaigns
  *                       + a location-aware place answer
- *   3. Follow the day → a short chronological civic and event program
- *   4. Plan the rest  → scheduled utilities, sports, light, and tomorrow
- *   5. Keep exploring → local guides and saved places, collapsed
+ *   4. Follow the day → a short chronological civic and event program
+ *   5. Plan the rest  → scheduled utilities, sports, light, and tomorrow
+ *   6. Keep exploring → local guides and saved places, collapsed
  *
  * (The old generated "best move now" card was removed 2026-06-18 because it
  *  promoted ideas without enough evidence. Today may recommend carefully when
@@ -230,7 +230,6 @@ export default async function HomePage() {
     // Real anchors, SEO, and modified clicks all pass through untouched.
     <EventSheetBoundary fetchMissing className="relative">
       <PlaceSheetBoundary fetchMissing>
-      <PageBloom motif />
 
       {/* Stale-shell guard (June-9 review P0): a cached SW/CDN shell can
           present a days-old render as "Right now." The client compares the
@@ -271,6 +270,7 @@ export default async function HomePage() {
           clock; the page ISRs every 300s so a boundary rolls within minutes.
           This is the real document h1. Sits below an active civic alert (alerts
           still lead) and above the weather. */}
+      <div className={styles.arrival}>
       {(() => {
         const frame = todayFrame(easternStartHour(now.toISOString()));
         return (
@@ -280,7 +280,7 @@ export default async function HomePage() {
                 {frame.title}
               </h1>
               <figure className={styles.portrait}>
-                <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" priority fill sizes="(min-width: 1024px) 960px, (min-width: 768px) 720px, calc(100vw - 32px)" alt="Carroll Creek in Frederick in June 2023, photographed by Mike D." />
+                <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" priority fill sizes="(min-width: 960px) 520px, (min-width: 768px) 720px, calc(100vw - 32px)" alt="Carroll Creek in Frederick in June 2023, photographed by Mike D." />
                 <figcaption className={styles.photoCredit}>Archive · Carroll Creek · June 2023 · Mike D</figcaption>
               </figure>
             </div>
@@ -291,15 +291,36 @@ export default async function HomePage() {
         );
       })()}
 
+      {/* Conditions precede every browsing decision. This is the existing
+          bounded weather read, kept outside the Find and event stream. */}
+      <section data-today-weather className={styles.weather}>
+        <AppTransitionLink
+          href="/pulse?open=weather"
+          prefetch={false}
+          className={styles.forecastLink}
+        >
+        <div className={styles.contextHeading}>
+          <span>Weather in Frederick</span>
+          <span className={styles.forecastLabel}>Full forecast <ChevronRight aria-hidden className="h-4 w-4" /></span>
+        </div>
+          <Suspense fallback={<Skeleton.Block height={110} round="var(--app-radius-md)" />}>
+            <TodayCard />
+          </Suspense>
+          <span className="sr-only">Open the full forecast.</span>
+        </AppTransitionLink>
+      </section>
+      </div>
+
       <div data-today-briefing className={styles.briefing}>
-        {/* The universal request doorway is Today's primary action. Keep it
-            immediately after the scope control: a seasonal campaign must not
-            push it more than a screen down on a phone. Active alerts still
-            lead the document because they can change a visitor's plans. */}
+        {/* Find follows the conditions glance as the sole primary action.
+            Seasonal campaigns and the event stream cannot bury either. */}
         <div className="today-arrival today-arrival--find">
           <TodayAsk embedded>
             <CravingStrip />
           </TodayAsk>
+          <div className={styles.planLink}>
+            <Suspense fallback={null}><TodayPlanTonightLink /></Suspense>
+          </div>
         </div>
 
       <div data-today-current-content className={styles.currentContent}>
@@ -333,6 +354,7 @@ export default async function HomePage() {
           from Sep 2–26, then retires itself on Sep 27. When another civic
           moment overlaps the Fair campaign, it appears in Follow the day
           above instead of disappearing. */}
+      {(fairPromotionPhase || civicMoment) && (
       <div className={styles.context}>
       {fairPromotionPhase ? (
         <TodayFairFeature phase={fairPromotionPhase} briefing />
@@ -342,31 +364,9 @@ export default async function HomePage() {
         </div>
       ) : null}
 
-      {/* The verified weather glance remains one link to the full forecast.
-          Its quiet reading surface shares the row with the current campaign
-          without making either one a second page headline. */}
-      <section data-today-weather className={styles.weather}>
-        <div className={styles.contextHeading}>
-          <span>Countywide weather</span>
-          <Suspense fallback={null}><TodayPlanTonightLink /></Suspense>
-        </div>
-        <AppTransitionLink
-          href="/pulse?open=weather"
-          prefetch={false}
-          className="group relative block outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-        >
-          <Suspense fallback={<Skeleton.Block height={110} round="var(--app-radius-md)" />}>
-            <TodayCard />
-          </Suspense>
-          <span className="sr-only">Open the full forecast.</span>
-          <ChevronRight
-            aria-hidden
-            strokeWidth={2.25}
-            className="absolute bottom-2 right-2 h-4 w-4 opacity-50 transition-transform group-hover:translate-x-0.5"
-          />
-        </AppTransitionLink>
-      </section>
+
       </div>
+      )}
 
       </div>
 

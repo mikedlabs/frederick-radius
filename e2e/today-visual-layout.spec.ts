@@ -20,10 +20,23 @@ for (const width of [320, 375, 390, 430, 1366]) {
     });
     const mastheadBox = (await masthead.boundingBox())!;
     const findBox = (await find.boundingBox())!;
+    const weatherBox = (await page.locator("[data-today-weather]").boundingBox())!;
     expect(findBox.y).toBeGreaterThanOrEqual(mastheadBox.y + mastheadBox.height);
-    // Exclude variable active alerts above the masthead. The normal arrival
-    // and its primary action fit comfortably before the phone's bottom nav.
-    expect(findBox.y + findBox.height - mastheadBox.y).toBeLessThan(380);
+    // Keep the original masthead + Find density budget, excluding only the
+    // newly prioritized weather band. Desktop weather shares the arrival row.
+    const addedWeatherBand = width < 960
+      ? Math.max(0, weatherBox.y + weatherBox.height - (mastheadBox.y + mastheadBox.height))
+      : 0;
+    expect(findBox.y + findBox.height - mastheadBox.y - addedWeatherBand).toBeLessThan(380);
+    if (width < 640) {
+      const primaryNav = page.locator("[data-bottom-nav-shell]").getByRole("navigation", {
+        name: "Primary", exact: true,
+      });
+      await expect(primaryNav).toBeVisible();
+      const primaryNavBox = (await primaryNav.boundingBox())!;
+      expect(findBox.y).toBeGreaterThanOrEqual(0);
+      expect(findBox.y + findBox.height).toBeLessThanOrEqual(primaryNavBox.y);
+    }
     expect(await masthead.evaluate((element) => ({
       border: getComputedStyle(element).borderTopWidth,
       shadow: getComputedStyle(element).boxShadow,
@@ -51,8 +64,13 @@ for (const width of [320, 375, 390, 430, 1366]) {
       expect(box.x + box.width).toBeLessThanOrEqual(width + 1);
     }
 
-    const weatherBox = (await page.locator("[data-today-weather]").boundingBox())!;
-    expect(weatherBox.y).toBeGreaterThan(findBox.y + findBox.height);
+    if (width < 960) {
+      expect(weatherBox.y).toBeGreaterThanOrEqual(mastheadBox.y + mastheadBox.height);
+    } else {
+      expect(Math.abs(weatherBox.y - mastheadBox.y)).toBeLessThanOrEqual(1);
+      expect(weatherBox.x).toBeGreaterThanOrEqual(mastheadBox.x + mastheadBox.width);
+    }
+    expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(findBox.y);
     const campaign = page.locator("[data-today-fair-feature]");
     if (await campaign.count()) {
       const campaignBox = (await campaign.boundingBox())!;
@@ -65,8 +83,8 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const events = page.getByRole("group", { name: "Follow the day", exact: true });
     const placesBox = (await places.boundingBox())!;
     const eventsBox = (await events.boundingBox())!;
-    expect(weatherBox.y).toBeGreaterThanOrEqual(placesBox.y + placesBox.height);
-    expect(weatherBox.y).toBeGreaterThanOrEqual(eventsBox.y + eventsBox.height);
+    expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(placesBox.y);
+    expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(eventsBox.y);
     if (width >= 640) {
       expect(Math.abs(placesBox.y - eventsBox.y)).toBeLessThanOrEqual(1);
       expect(eventsBox.x).toBeGreaterThan(placesBox.x + placesBox.width);
