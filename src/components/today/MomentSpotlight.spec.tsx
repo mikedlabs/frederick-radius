@@ -2,10 +2,13 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { momentBySlug } from "@/data/civic-moments";
 import MomentSpotlight, {
   momentSpotlightDecision,
   type SpotlightMoment,
 } from "./MomentSpotlight";
+
+const COLORFEST: SpotlightMoment = momentBySlug("catoctin-colorfest-2026")!;
 
 const IN_THE_STREETS: SpotlightMoment = {
   slug: "in-the-street-2026",
@@ -72,5 +75,49 @@ describe("MomentSpotlight", () => {
     expect(html).toContain("This weekend");
     expect(html).toContain("Plan your day");
     expect(html).toContain('aria-label="Dismiss"');
+  });
+
+  it("leads a moment with its licensed town photo, credited only after load", () => {
+    const html = renderToStaticMarkup(
+      createElement(MomentSpotlight, { moment: COLORFEST }),
+    );
+
+    expect(html).toContain('data-moment-spotlight="catoctin-colorfest-2026"');
+    expect(html).toContain('data-radius-photo="loading"');
+    expect(html).toContain('width:96px;height:96px');
+    expect(html).not.toContain("data-moment-spotlight-credit");
+    // next/image encodes the already-encoded Commons file name once more.
+    expect(html).toContain("Thurmont%2520Town%2520Square%2520Park.jpg");
+    expect(html).not.toContain("CraigShipp.com Photos");
+    expect(html).toContain("Sat Oct 10 and Sun Oct 11");
+    expect(html).toContain(">Free<");
+    expect(html).toContain('href="/moments/catoctin-colorfest-2026"');
+    expect(html).not.toContain("gradient");
+  });
+
+  it("falls back to the first day's date plate without a photo", () => {
+    const html = renderToStaticMarkup(
+      createElement(MomentSpotlight, {
+        moment: { ...COLORFEST, heroPhoto: undefined },
+      }),
+    );
+
+    expect(html).not.toContain("<img");
+    expect(html).toContain(">Oct<");
+    expect(html).toContain(">10<");
+    expect(html).not.toContain("gradient");
+  });
+
+  it("never states an unsourced fact in the compact lead", () => {
+    const html = renderToStaticMarkup(
+      createElement(MomentSpotlight, {
+        moment: {
+          ...COLORFEST,
+          spotlightFacts: [{ label: "Parking", value: "$10 cash" }],
+        },
+      }),
+    );
+
+    expect(html).not.toContain("$10 cash");
   });
 });

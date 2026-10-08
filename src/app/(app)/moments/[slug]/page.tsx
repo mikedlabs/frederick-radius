@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { Sparkles, Flag, TriangleAlert, Star, Info, ExternalLink, CloudSun } from "lucide-react";
 import { CIVIC_MOMENTS, momentBySlug, type MomentItem, type MomentItemKind } from "@/data/civic-moments";
 import FairDayPage from "@/components/fair/FairDayPage";
 import InTheStreetsWorkspace from "@/components/in-the-streets/InTheStreetsWorkspace";
-import PageBloom from "@/components/ui/PageBloom";
+import MomentDays from "@/components/moment/MomentDays";
+import MomentFacts from "@/components/moment/MomentFacts";
+import MomentHero from "@/components/moment/MomentHero";
+import MomentVenue from "@/components/moment/MomentVenue";
+import { momentDateLine, momentHeroImage, sourceHost } from "@/components/moment/momentGuide";
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { jsonLdScript } from "@/lib/seo/jsonld";
-import { easternDayKey } from "@/lib/tz";
 
 const FAIR_DAY_SLUG = "great-frederick-fair-2026";
 const IN_THE_STREETS_SLUG = "in-the-street-2026";
@@ -18,6 +21,13 @@ const IN_THE_STREETS_SLUG = "in-the-street-2026";
  * Fair, the holiday markets). Closed set (dynamicParams=false, prerendered from
  * CIVIC_MOMENTS), so an unknown slug is an honest 404, not a soft shell. Content
  * is hand-curated + sourced; pattern-confidence items carry a "confirm" hedge.
+ *
+ * The Fair and In The Streets keep their own workspaces. Every other moment
+ * renders the shared template in src/components/moment: the hero picture
+ * ladder (MomentHero), one date plate per day (MomentDays), sourced fact
+ * tiles (MomentFacts), and the venue map with Directions as the one filled
+ * action (MomentVenue), followed by sections and the FAQ as ruled rows on
+ * Cream. The template draws no gradient wash, glow or eyebrow.
  */
 export const dynamicParams = false;
 export const revalidate = 3600;
@@ -79,55 +89,64 @@ const KIND_ICON: Record<MomentItemKind, typeof Sparkles> = {
   tip: Info,
 };
 
-function Item({ item, accent }: { item: MomentItem; accent: string }) {
+/** One source for a whole section, when every item shares it. A section
+ *  whose items cite different pages keeps a link on each row instead. */
+function sharedSource(items: MomentItem[]): string | null {
+  const first = items[0]?.source_url;
+  if (!first) return null;
+  return items.every((item) => item.source_url === first) ? first : null;
+}
+
+function OfficialLink({ href, label = "Official page" }: { href: string; label?: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex min-h-11 items-center gap-1 text-meta-lg font-semibold"
+      style={{ color: "var(--app-brand-press)" }}
+    >
+      {label}
+      <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+    </a>
+  );
+}
+
+function Item({ item, showSource }: { item: MomentItem; showSource: boolean }) {
   const Icon = KIND_ICON[item.kind];
   return (
-    <li className="flex gap-3 py-3">
-      <span
-        aria-hidden
-        className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
-        style={{ background: `color-mix(in srgb, ${accent} 12%, transparent)`, color: accent }}
-      >
-        <Icon className="h-4 w-4" strokeWidth={2.25} />
-      </span>
+    <li className="flex gap-3 border-b py-4" style={{ borderColor: "var(--app-border)" }}>
+      <Icon aria-hidden className="mt-0.5 h-5 w-5 shrink-0" style={{ color: "var(--app-ink-3)" }} />
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <h3 className="font-serif text-[16px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <h3 className="text-title-sm" style={{ color: "var(--app-ink)" }}>
             {item.title}
           </h3>
           {item.confidence === "pattern" && (
-            <span className="rounded-full px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider" style={{ background: "var(--app-ink-tint-6)", color: "var(--app-ink-3)" }}>
-              Confirm time
+            <span
+              className="rounded-full px-2 text-caption font-semibold"
+              style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}
+            >
+              Confirm the time
             </span>
           )}
         </div>
         {item.where && (
-          <p className="font-mono text-[11px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
+          <p className="mt-0.5 text-meta-lg" style={{ color: "var(--app-ink-3)" }}>
             {item.where}
           </p>
         )}
         {item.when && (
-          <p className="mt-1 text-[13px] font-medium" style={{ color: "var(--app-ink)" }}>
+          <p className="mt-1 text-meta-lg font-semibold tabular-nums" style={{ color: "var(--app-ink)" }}>
             {item.when}
           </p>
         )}
         {item.note && (
-          <p className="mt-0.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+          <p className="mt-1 text-body" style={{ color: "var(--app-ink-2)" }}>
             {item.note}
           </p>
         )}
-        {item.source_url && (
-          <a
-            href={item.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-1 inline-flex items-center gap-1 text-[11.5px] font-semibold"
-            style={{ color: "var(--app-brand-press)" }}
-          >
-            Official page
-            <ExternalLink className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          </a>
-        )}
+        {showSource && item.source_url && <OfficialLink href={item.source_url} />}
       </div>
     </li>
   );
@@ -137,7 +156,6 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const m = momentBySlug(slug);
   if (!m) notFound();
-  const isDayOf = easternDayKey(new Date()) === m.ends;
 
   if (slug === FAIR_DAY_SLUG) {
     return <FairDayPage />;
@@ -146,128 +164,110 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
     return <InTheStreetsWorkspace />;
   }
 
-  return (
-    <div className="relative mx-auto max-w-screen-sm space-y-6 pb-10">
-      <PageBloom variant="warm-cool" />
+  // The catalog record is the venue's single source of truth; the moment's
+  // own coordinates are a fallback for a slug the catalog no longer carries.
+  const venuePlace = m.venue ? clientPlaceBySlug(m.venue.placeSlug) : undefined;
+  const venueGeom = m.venue ? (venuePlace?.geom ?? { lng: m.venue.lng, lat: m.venue.lat }) : null;
+  const directionsUrl = m.venue && venueGeom
+    ? (m.spotlightDirectionsUrl ??
+      `https://www.google.com/maps/dir/?api=1&destination=${venueGeom.lat},${venueGeom.lng}`)
+    : null;
 
-      <nav aria-label="Breadcrumb" className="text-xs">
-        <Link href="/today" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline" style={{ color: "var(--app-ink-3)" }}>
+  return (
+    <article className="relative mx-auto max-w-screen-sm pb-10" data-moment-guide={m.slug}>
+      <nav aria-label="Breadcrumb" className="mb-3 text-meta-lg">
+        <Link href="/today" className="inline-flex min-h-11 items-center hover:underline" style={{ color: "var(--app-ink-3)" }}>
           Today
         </Link>
       </nav>
 
-      {/* Hero */}
-      <header
-        className="relative overflow-hidden rounded-[var(--app-radius-xl)] border p-6"
-        style={{
-          borderColor: `color-mix(in srgb, ${m.accent} 40%, var(--app-border))`,
-          background: `linear-gradient(140deg, color-mix(in srgb, ${m.accent} 14%, var(--app-bg-elevated-solid)), color-mix(in srgb, var(--app-accent) 10%, var(--app-bg-elevated-solid)))`,
-        }}
-      >
-        <span aria-hidden className="pointer-events-none absolute -right-10 -top-12 h-48 w-48 rounded-full" style={{ background: `radial-gradient(circle, color-mix(in srgb, ${m.accent} 22%, transparent), transparent 70%)` }} />
-        <p className="relative inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: m.accent }}>
-          <Sparkles className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          {isDayOf ? "Today in Frederick County" : "This weekend in Frederick County"}
+      <MomentHero
+        title={m.title}
+        dateLine={momentDateLine(m.days)}
+        image={momentHeroImage(m)}
+      />
+
+      <div className="mt-5 space-y-3">
+        <p className="max-w-[60ch] text-body-lg" style={{ color: "var(--app-ink)" }}>
+          {m.intro}
         </p>
-        <h1 className="relative mt-2 font-serif font-semibold leading-[1.02] tracking-tight" style={{ color: "var(--app-ink)", fontSize: "clamp(28px, 7vw, 40px)" }}>
-          {m.title}
-        </h1>
         {m.disclosure && (
-          <p
-            className="relative mt-3 flex items-start gap-2 rounded-[var(--app-radius-md)] border px-3 py-2.5 text-[12.5px] font-semibold leading-relaxed"
-            style={{
-              borderColor: `color-mix(in srgb, ${m.accent} 38%, var(--app-border))`,
-              background: "var(--app-bg-elevated-solid)",
-              color: "var(--app-ink)",
-            }}
-          >
-            <Info className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: m.accent }} aria-hidden />
+          <p className="flex max-w-[60ch] items-start gap-2 text-meta-lg" style={{ color: "var(--app-ink-2)" }}>
+            <Info className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-ink-3)" }} aria-hidden />
             <span>{m.disclosure}</span>
           </p>
         )}
-        <p className="relative mt-2 max-w-[40ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          {m.intro}
-        </p>
-        {m.spotlightImage && (
-          <figure className="relative mt-5 aspect-[16/9] overflow-hidden rounded-[var(--app-radius-lg)]" style={{ boxShadow: "var(--app-elev-1), var(--app-edge)" }}>
-            <Image
-              src={m.spotlightImage.src}
-              alt={m.spotlightImage.alt}
-              fill
-              priority
-              sizes="(max-width: 640px) 100vw, 640px"
-              className="object-cover object-center"
-            />
-            <span
-              aria-hidden
-              className="absolute inset-x-0 bottom-0 h-1/2"
-              style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 74%, transparent), transparent)" }}
-            />
-            <figcaption className="absolute inset-x-0 bottom-0 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-on-brand)]">
-              {m.spotlightImage.credit}
-            </figcaption>
-          </figure>
-        )}
-        {m.spotlightFacts && m.spotlightFacts.length > 0 && (
-          <dl className="relative mt-5 grid gap-px overflow-hidden rounded-[var(--app-radius-md)] border sm:grid-cols-3" style={{ borderColor: "color-mix(in srgb, var(--app-ink) 14%, var(--app-border))", background: "color-mix(in srgb, var(--app-ink) 8%, transparent)" }}>
-            {m.spotlightFacts.map((fact) => (
-              <div key={fact.label} className="px-3.5 py-3" style={{ background: "color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent)" }}>
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>{fact.label}</dt>
-                <dd className="mt-0.5 text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>{fact.value}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
         {m.spotlightSourceUrl && (
-          <a href={m.spotlightSourceUrl} target="_blank" rel="noopener noreferrer" className="relative mt-5 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-3.5 text-[13px] font-semibold" style={{ background: "var(--app-brand)", color: "var(--app-bg)" }}>
-            Official event details
-            <ExternalLink className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          </a>
+          <OfficialLink href={m.spotlightSourceUrl} label="Official event page" />
         )}
-      </header>
+      </div>
+
+      {((m.days?.length ?? 0) > 0 || (m.spotlightFacts?.length ?? 0) > 0) && (
+        <div className="mt-6 space-y-4">
+          <MomentDays days={m.days} />
+          <MomentFacts facts={m.spotlightFacts} />
+        </div>
+      )}
+
+      {m.venue && venueGeom && directionsUrl && (
+        <div className="mt-8">
+          <MomentVenue venue={m.venue} geom={venueGeom} directionsUrl={directionsUrl} />
+        </div>
+      )}
 
       {m.weatherSensitive && (
-        <p className="flex items-center gap-2 rounded-[var(--app-radius-md)] border px-3.5 py-2.5 text-[12.5px]" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}>
-          <CloudSun className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
-          These are outdoor and weather-dependent. Check the sky and the organizer&rsquo;s page before you head out.
+        <p className="mt-8 flex items-start gap-2 border-t pt-4 text-meta-lg" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
+          <CloudSun className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
+          <span>
+            This happens outdoors, so check the forecast and the organizer&rsquo;s page before you head out.{" "}
+            <Link href="/pulse?open=weather" className="font-semibold underline underline-offset-2" style={{ color: "var(--app-brand-press)" }}>
+              See the forecast
+            </Link>
+          </span>
         </p>
       )}
 
-      {m.sections.map((section) => (
-        <section key={section.heading}>
-          <h2 className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: m.accent }}>
-            {section.heading}
-          </h2>
-          <ul className="mt-1 divide-y" style={{ borderColor: "var(--app-border)" }}>
-            {section.items.map((item, i) => (
-              <Item key={i} item={item} accent={m.accent} />
-            ))}
-          </ul>
-        </section>
-      ))}
+      <div className="mt-8 space-y-8">
+        {m.sections.map((section) => {
+          const source = sharedSource(section.items);
+          return (
+            <section key={section.heading} aria-label={section.heading}>
+              <h2 className="text-title" style={{ color: "var(--app-ink)" }}>
+                {section.heading}
+              </h2>
+              <ul className="mt-2 border-t" style={{ borderColor: "var(--app-border)" }}>
+                {section.items.map((item, i) => (
+                  <Item key={i} item={item} showSource={!source} />
+                ))}
+              </ul>
+              {source && <OfficialLink href={source} label={`From ${sourceHost(source)}`} />}
+            </section>
+          );
+        })}
 
-      {m.faq && m.faq.length > 0 && (
-        <section>
-          <h2 className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: m.accent }}>
-            Good to know
-          </h2>
-          <dl className="mt-1 divide-y" style={{ borderColor: "var(--app-border)" }}>
-            {m.faq.map((f) => (
-              <div key={f.q} className="py-3">
-                <dt className="font-serif text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                  {f.q}
-                </dt>
-                <dd className="mt-0.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                  {f.a}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      )}
+        {m.faq && m.faq.length > 0 && (
+          <section aria-label="Good to know">
+            <h2 className="text-title" style={{ color: "var(--app-ink)" }}>
+              Good to know
+            </h2>
+            <dl className="mt-2 border-t" style={{ borderColor: "var(--app-border)" }}>
+              {m.faq.map((f) => (
+                <div key={f.q} className="border-b py-4" style={{ borderColor: "var(--app-border)" }}>
+                  <dt className="text-title-sm" style={{ color: "var(--app-ink)" }}>
+                    {f.q}
+                  </dt>
+                  <dd className="mt-1 text-body" style={{ color: "var(--app-ink-2)" }}>
+                    {f.a}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
+      </div>
 
       {m.note && (
-        <p className="rounded-[var(--app-radius-md)] px-1 text-[11.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+        <p className="mt-6 text-meta-lg" style={{ color: "var(--app-ink-3)" }}>
           {m.note}
         </p>
       )}
@@ -291,6 +291,6 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
           }}
         />
       )}
-    </div>
+    </article>
   );
 }

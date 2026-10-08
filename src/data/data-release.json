@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:cc9f7d356db79bb8942476649ad6dbd5876c2403d4c8669e13037a8776d27e0f",
+  "data_version": "sha256:44da1e6adf9dc5e7dadafaa068ef472490a759fe498b8783980b579a2e7b221e",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-10-02T21:13:36.676Z",
+      "promoted_at": "2026-10-08T02:58:35.176Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -126,9 +126,9 @@
         },
         {
           "path": "src/data/events.ts",
-          "sha256": "ff7dc59a711d43f65c0c5d876c254513d7b7bb70aa0958fdf7831e6596f316ba",
+          "sha256": "31dfce6dc8b2ed2ea7a2188f1adf8766554e4f7fea96f93d708a9dfb2c19d29e",
           "records": null,
-          "bytes": 30641
+          "bytes": 31159
         },
         {
           "path": "src/data/cravings.ts",
