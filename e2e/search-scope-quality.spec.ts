@@ -11,7 +11,7 @@ test("changing the search area refreshes matches and Back restores the previous 
   await expect(brunswick).toHaveAttribute("aria-pressed", "true", { timeout: 20_000 });
   await expect(county).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator('a[href^="/places/beans-in-the-belfry-brunswick"]')).toBeVisible();
-  await expect(page.getByRole("link", { name: "View on map", exact: true })).toHaveAttribute("href", /in=brunswick/);
+  await expect(page.getByRole("link", { name: "Open in the full map", exact: true })).toHaveAttribute("href", /in=brunswick/);
   expect(new URL(page.url()).searchParams.get("kind")).toBe("place");
   await page.goBack();
   await expect(county).toHaveAttribute("aria-pressed", "true", { timeout: 20_000 });

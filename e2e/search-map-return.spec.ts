@@ -43,7 +43,7 @@ test("a scoped search keeps its query, filters, and comparison position through 
   });
   const searchPath = "/search?q=coffee&in=brunswick&kind=place";
   await page.goto(searchPath, { waitUntil: "domcontentloaded" });
-  const mapLink = page.getByRole("link", { name: "View on map", exact: true });
+  const mapLink = page.getByRole("link", { name: "Open in the full map", exact: true });
   await expect(mapLink).toBeVisible({ timeout: 20_000 });
   await mapLink.scrollIntoViewIfNeeded();
   const scrollBefore = await page.evaluate(() => window.scrollY);

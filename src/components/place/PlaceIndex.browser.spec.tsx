@@ -10,6 +10,10 @@ vi.mock("./PlaceSheetProvider", () => ({
 vi.mock("@/data/place-hues.json", () => ({
   default: { "black-hog-bbq-bar": "#3684E2" },
 }));
+// The pin map's MapLibre chunk never mounts here; the pins are drawn in DOM.
+vi.mock("next/dynamic", () => ({
+  default: () => () => null,
+}));
 
 import PlaceIndex, { type IndexRow } from "./PlaceIndex";
 
@@ -55,12 +59,12 @@ describe("PlaceIndex picture rows", () => {
     );
   };
 
-  it("draws the mark in Brick press, in sentence case, never Plum", async () => {
+  it("draws the mark in neutral ink, in sentence case, never Plum", async () => {
     await render([row()]);
 
     const mark = container.querySelector<HTMLElement>("[data-row-mark]");
     expect(mark?.textContent).toBe("Happy hour");
-    expect(mark?.style.color).toBe("var(--app-brand-press)");
+    expect(mark?.style.color).toBe("var(--app-ink-2)");
     expect(container.innerHTML).not.toContain("--app-accent");
   });
 
@@ -95,5 +99,126 @@ describe("PlaceIndex picture rows", () => {
     expect(items.every((item) => item.style.borderBottom === "1px solid var(--app-border)")).toBe(
       true,
     );
+  });
+});
+
+describe("PlaceIndex pin map", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+        takeRecords() {
+          return [];
+        }
+      },
+    );
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  // Ranked order is Cafe, Bistro, Alehouse, Diner; A to Z reverses the
+  // first three. The diner has no catalog point.
+  const rows = [
+    row({ slug: "cafe", name: "Cafe", lng: -77.41, lat: 39.414, closesMin: 1300 }),
+    row({ slug: "bistro", name: "Bistro", lng: -77.412, lat: 39.415, closesMin: 1200 }),
+    row({ slug: "alehouse", name: "Alehouse", lng: -77.409, lat: 39.416, closesMin: 1400 }),
+    row({ slug: "diner", name: "Diner", closesMin: 1100 }),
+  ];
+
+  const renderPinned = async () => {
+    await act(async () =>
+      root.render(
+        <PlaceIndex
+          sections={[
+            { key: "eat", label: "Eat & drink", rows },
+            { key: "shop", label: "Shops & markets", rows: [row({ slug: "shop", name: "Shop" })] },
+          ]}
+          pinMap={{
+            sectionKey: "eat",
+            name: "places open now",
+            fullMap: { href: "/map?mode=browse&open=now", label: "Open the full map" },
+          }}
+        />,
+      ),
+    );
+  };
+
+  const numberBySlug = () =>
+    Object.fromEntries(
+      [...container.querySelectorAll<HTMLElement>("[data-place-row]")].map((cell) => [
+        cell.getAttribute("aria-label")?.split(".")[0],
+        cell.querySelector("[data-pin-number]")?.textContent ?? "none",
+      ]),
+    );
+
+  it("leads the pinned section with the map and a quiet link to the full map", async () => {
+    await renderPinned();
+
+    const map = container.querySelector("[data-index-pin-map]");
+    expect(map).not.toBeNull();
+    expect(map?.compareDocumentPosition(container.querySelector("section")!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(map?.querySelector('[role="img"]')?.getAttribute("aria-label")).toBe(
+      "Locations of places open now: 1 Cafe, 2 Bistro, 3 Alehouse",
+    );
+    const link = [...container.querySelectorAll("a")].find(
+      (anchor) => anchor.textContent === "Open the full map",
+    );
+    expect(link?.getAttribute("href")).toBe("/map?mode=browse&open=now");
+    expect(container.querySelectorAll("[data-index-pin-map]")).toHaveLength(1);
+  });
+
+  it("numbers the pinned rows like their pins and keeps the column for a row with no point", async () => {
+    await renderPinned();
+
+    expect(numberBySlug()).toEqual({
+      Cafe: "1",
+      Bistro: "2",
+      Alehouse: "3",
+      Diner: "",
+      // Other sections are not numbered and keep no column.
+      Shop: "none",
+    });
+  });
+
+  it("recomputes the numbers when the sort changes", async () => {
+    await renderPinned();
+    const az = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "A to Z",
+    )!;
+    await act(async () => az.click());
+
+    expect(numberBySlug()).toMatchObject({ Alehouse: "1", Bistro: "2", Cafe: "3", Diner: "" });
+    expect(
+      container.querySelector('[role="img"]')?.getAttribute("aria-label"),
+    ).toBe("Locations of places open now: 1 Alehouse, 2 Bistro, 3 Cafe");
+  });
+
+  it("prints no numbers when fewer than two rows can be pinned", async () => {
+    await act(async () =>
+      root.render(
+        <PlaceIndex
+          sections={[{ key: "eat", label: "Eat & drink", rows: [rows[0], rows[3]] }]}
+          pinMap={{ sectionKey: "eat" }}
+        />,
+      ),
+    );
+
+    expect(container.querySelector('[role="img"]')).toBeNull();
+    expect(container.querySelector("[data-pin-number]")).toBeNull();
   });
 });

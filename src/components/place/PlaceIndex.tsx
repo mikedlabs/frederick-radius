@@ -12,12 +12,17 @@
  * one mark. Rows are flat and separated by a 1px rule, so the list scans as
  * names and pictures rather than a plate of boxes.
  *
+ * With `pinMap`, one section leads with the numbered pin map Ask uses
+ * (ResultsPinMap): its first screenful of rows become pins 1 to n, and each
+ * of those rows prints the same number before its tile.
+ *
  * Tap opens the global PlaceSheet (the map's no-navigation detail
  * layer), hydrating the slim row via /api/places/by-slugs; a failed
  * hydration falls through to the place page, so a tap is never dead.
  */
 import { useState } from "react";
-import { Star } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Star } from "lucide-react";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import { RATING_STAR_COLOR, usePlaceHue } from "@/components/place/PlaceCard";
 import RadiusPhoto from "@/components/ui/RadiusPhoto";
@@ -25,6 +30,11 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { haptic } from "@/lib/haptics";
 import { usePlacePhoto } from "@/components/place/usePlacePhoto";
 import { track } from "@/lib/track";
+import ResultsPinMap, {
+  PinNumber,
+  PinNumberGutter,
+  mappedPinNumbers,
+} from "@/components/map/ResultsPinMap";
 
 export type IndexRow = {
   slug: string;
@@ -49,12 +59,28 @@ export type IndexRow = {
   mark: string | null;
   /** Preformatted distance ("6 min walk" / "1.2 mi") — only when honest. */
   distance: string | null;
+  /** The place's catalog point. Only rows of a pinned section need it, so
+   *  pages may leave it off everywhere else to keep the payload small. */
+  lng?: number;
+  lat?: number;
 };
 
 export type IndexSection = {
   key: string;
   label: string;
   rows: IndexRow[];
+};
+
+/**
+ * The numbered pin map over one section. Its first screenful of rows, in the
+ * current sort order, become pins 1 to n and print the same numbers.
+ */
+export type IndexPinMap = {
+  sectionKey: string;
+  /** What the pins are, for the map's accessible name. */
+  name?: string;
+  /** A quiet text link under the map into the full map surface. */
+  fullMap?: { href: string; label: string };
 };
 
 type SortKey = "ranked" | "closing" | "az";
@@ -80,10 +106,13 @@ export default function PlaceIndex({
   showSort = true,
   prioritizeFirstPhoto = false,
   lazyPhotos = false,
+  pinMap,
 }: {
   sections: IndexSection[];
   showSort?: boolean;
   prioritizeFirstPhoto?: boolean;
+  /** Lead one section with the numbered pin map Ask uses. One per page. */
+  pinMap?: IndexPinMap;
   /** Hydrate row photos on scroll instead of expecting them inline. Set by
    *  surfaces that deliberately withhold photo URLs from the RSC payload:
    *  each Google photo token is ~700B of incompressible base64, and the 800
@@ -101,8 +130,39 @@ export default function PlaceIndex({
   // Closing-soonest only makes sense when some cell knows its closing time.
   const canSortClosing = populated.some((s) => s.rows.some((r) => r.closesMin != null));
 
+  // The pinned rows are the section's first screenful in the current sort,
+  // so the numbers recompute when the sort changes and never point at a row
+  // hidden behind "Show more".
+  const pinnedSection = pinMap
+    ? populated.find((section) => section.key === pinMap.sectionKey)
+    : undefined;
+  const pinnedRows = pinnedSection
+    ? sortRows(pinnedSection.rows, sort).slice(0, INITIAL_ROWS)
+    : [];
+  const pinNumbers = mappedPinNumbers(pinnedRows);
+  // The map draws exactly when rows are numbered; the full-map link stays
+  // even when it does not, because it is the page's one door to the map.
+  const mapBlock = pinnedSection && (pinNumbers.size > 0 || pinMap?.fullMap) ? (
+    <div data-index-pin-map={pinnedSection.key}>
+      <ResultsPinMap rows={pinnedRows} name={pinMap?.name} />
+      {pinMap?.fullMap && (
+        <Link
+          href={pinMap.fullMap.href}
+          className="text-meta-lg mt-1 inline-flex min-h-11 items-center gap-1 font-semibold hover:underline"
+          style={{ color: "var(--app-brand-press)" }}
+        >
+          {pinMap.fullMap.label}
+          <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+        </Link>
+      )}
+    </div>
+  ) : null;
+  // A map over the first section leads the whole index, sort row included.
+  const mapLeads = pinnedSection !== undefined && pinnedSection === populated[0];
+
   return (
     <div className="space-y-5">
+      {mapLeads && mapBlock}
       {showSort && (
         <div
           className="flex items-center justify-end gap-4 font-mono text-[12px]"
@@ -132,15 +192,27 @@ export default function PlaceIndex({
         </div>
       )}
 
-      {populated.map((section) => (
-        <IndexSectionBlock
-          key={section.key}
-          section={section}
-          sort={sort}
-          priorityPhotoSlug={priorityPhotoSlug}
-          lazyPhotos={lazyPhotos}
-        />
-      ))}
+      {populated.map((section) => {
+        const pinned = section === pinnedSection;
+        const block = (
+          <IndexSectionBlock
+            key={section.key}
+            section={section}
+            sort={sort}
+            priorityPhotoSlug={priorityPhotoSlug}
+            lazyPhotos={lazyPhotos}
+            pinNumbers={pinned ? pinNumbers : undefined}
+          />
+        );
+        return pinned && !mapLeads ? (
+          <div key={section.key} className="space-y-5">
+            {mapBlock}
+            {block}
+          </div>
+        ) : (
+          block
+        );
+      })}
     </div>
   );
 }
@@ -150,16 +222,22 @@ function IndexSectionBlock({
   sort,
   priorityPhotoSlug,
   lazyPhotos = false,
+  pinNumbers,
 }: {
   section: IndexSection;
   sort: SortKey;
   priorityPhotoSlug?: string;
   lazyPhotos?: boolean;
+  /** Slug to pin number when this section leads under the pin map. */
+  pinNumbers?: ReadonlyMap<string, number>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const rows = sortRows(section.rows, sort);
   const visible = expanded ? rows : rows.slice(0, INITIAL_ROWS);
   const hidden = rows.length - visible.length;
+  // Once any row is numbered, every row keeps the number column so the
+  // tiles stay in one line.
+  const numbered = pinNumbers !== undefined && pinNumbers.size > 0;
 
   return (
     <section aria-label={section.label}>
@@ -196,6 +274,7 @@ function IndexSectionBlock({
               row={row}
               eagerPhoto={row.slug === priorityPhotoSlug}
               lazyPhoto={lazyPhotos}
+              pinNumber={numbered ? (pinNumbers.get(row.slug) ?? null) : undefined}
             />
           </li>
         ))}
@@ -223,10 +302,14 @@ function PlaceCell({
   row,
   eagerPhoto = false,
   lazyPhoto = false,
+  pinNumber,
 }: {
   row: IndexRow;
   eagerPhoto?: boolean;
   lazyPhoto?: boolean;
+  /** The row's pin number. Null keeps the empty number column; undefined
+   *  means the list is not numbered. */
+  pinNumber?: number | null;
 }) {
   const { openSheet } = usePlaceSheet();
 
@@ -250,7 +333,8 @@ function PlaceCell({
 
   const statusColor = row.status?.kind === "soon" ? "var(--app-warning)" : "var(--app-positive)";
   // Marks arrive lower case from the page ("happy hour"); a row prints them
-  // as sentence-case words in Brick press, the deal color, never Plum.
+  // as sentence-case words in neutral ink. They are supporting facts, so
+  // they take neither Plum nor the Brick of a pin or an action.
   const mark = row.mark ? row.mark.charAt(0).toUpperCase() + row.mark.slice(1) : null;
 
   return (
@@ -262,6 +346,11 @@ function PlaceCell({
       style={{ minHeight: 68 }}
       aria-label={`${row.name}. ${row.meta}${row.status ? `. ${row.status.label}` : ""}`}
     >
+      {pinNumber === null ? (
+        <PinNumberGutter />
+      ) : pinNumber !== undefined ? (
+        <PinNumber n={pinNumber} />
+      ) : null}
       <CellVisual row={row} eagerPhoto={eagerPhoto} lazyPhoto={lazyPhoto} />
 
       <span className="min-w-0 flex-1">
@@ -315,7 +404,7 @@ function PlaceCell({
               <span
                 data-row-mark
                 className="truncate font-semibold"
-                style={{ color: "var(--app-brand-press)" }}
+                style={{ color: "var(--app-ink-2)" }}
               >
                 {mark}
               </span>

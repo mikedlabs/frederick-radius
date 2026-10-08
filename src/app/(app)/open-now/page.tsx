@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { ArrowLeft, MapIcon, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import {
   getOpenNowSnapshot,
   likelyOpenPlaces,
@@ -21,7 +21,11 @@ import {
   OPEN_NOW_TITLE,
   openNowSummary,
 } from "@/lib/trust-language";
-import PlaceIndex, { type IndexRow, type IndexSection } from "@/components/place/PlaceIndex";
+import PlaceIndex, {
+  type IndexPinMap,
+  type IndexRow,
+  type IndexSection,
+} from "@/components/place/PlaceIndex";
 import PageBloom from "@/components/ui/PageBloom";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 
@@ -33,7 +37,9 @@ import FreshnessGuard from "@/components/today/FreshnessGuard";
  * door for the most time-critical need. The review's rule: question →
  * list answer first → optional map. This page is that list: server-
  * rendered, no Mapbox, ranked from the user's home town (fr_home_muni
- * cookie, downtown fallback) exactly like category pages (C2).
+ * cookie, downtown fallback) exactly like category pages (C2). The list
+ * leads with a still, numbered pin map of its first rows (ResultsPinMap, the
+ * self-hosted basemap Ask uses), which loads only near the viewport.
  *
  * Honesty rules:
  *   - The headline count is derived from THE SAME list rendered below,
@@ -219,6 +225,39 @@ export default async function OpenNowPage() {
     },
   ];
 
+  // Show before tell: the first non-empty section leads with the numbered
+  // pin map Ask uses. Only that section's rows carry their catalog point,
+  // rounded to about a meter, because any of them can reach the first
+  // screenful under a client re-sort and the rest of the page never needs
+  // one. Pins are Brick for every row and never encode open state.
+  const pointBySlug = new Map(
+    [...verified, ...likely].map((p) => [p.slug, p.geom] as const),
+  );
+  const roundPoint = (value: number) => Math.round(value * 1e5) / 1e5;
+  const withPoints = (section: IndexSection): IndexSection => ({
+    ...section,
+    rows: section.rows.map((row) => {
+      const point = pointBySlug.get(row.slug);
+      return point && Number.isFinite(point.lng) && Number.isFinite(point.lat)
+        ? { ...row, lng: roundPoint(point.lng), lat: roundPoint(point.lat) }
+        : row;
+    }),
+  });
+  const firstVerifiedKey = sections.find((s) => s.rows.length > 0)?.key;
+  const pinnedKey = firstVerifiedKey ?? (likely.length > 0 ? "likely" : null);
+  const verifiedSections = sections.map((s) => (s.key === pinnedKey ? withPoints(s) : s));
+  const likelyIndexSections = likelySections.map((s) =>
+    s.key === pinnedKey ? withPoints(s) : s,
+  );
+  const fullMapHref = "/map?mode=browse&open=now";
+  const pinMap: IndexPinMap | undefined = pinnedKey
+    ? {
+        sectionKey: pinnedKey,
+        name: "places open now",
+        fullMap: { href: fullMapHref, label: "Open the full map" },
+      }
+    : undefined;
+
   return (
     <div className="relative space-y-6">
       <PageBloom variant="single" />
@@ -269,44 +308,43 @@ export default async function OpenNowPage() {
         municipalities={MUNICIPALITIES.map((m) => ({ slug: m.slug, name: m.name }))}
       />
 
+      {/* The numbered pin map leads whichever list renders first, and its
+          quiet "Open the full map" link under it is the ONE door into the
+          heavy map surface. With nothing listed, that link stands alone. */}
       {verified.length > 0 ? (
-        <PlaceIndex sections={sections} prioritizeFirstPhoto lazyPhotos />
+        <PlaceIndex
+          sections={verifiedSections}
+          prioritizeFirstPhoto
+          lazyPhotos
+          pinMap={pinnedKey === firstVerifiedKey ? pinMap : undefined}
+        />
       ) : likely.length === 0 ? (
         // Nothing to list at all: point at the map link that follows. When
         // the likely list does render, the header already says what it is
         // and to check before going, so no second caveat appears here.
-        <p className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>
-          Open the map to look for places nearby, or check back a little later.
-        </p>
+        <div className="space-y-1">
+          <p className="text-body" style={{ color: "var(--app-ink-2)" }}>
+            Open the map to look for places nearby, or check back a little later.
+          </p>
+          <Link
+            href={fullMapHref}
+            className="text-meta-lg inline-flex min-h-11 items-center gap-1 font-semibold hover:underline"
+            style={{ color: "var(--app-brand-press)" }}
+          >
+            Open the full map
+            <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       ) : null}
 
-      {likely.length > 0 && <PlaceIndex sections={likelySections} showSort={false} lazyPhotos />}
-
-      {/* Optional map fallback — the review's rule: list answer first,
-          map second. This is the ONE door into the heavy surface. */}
-      <Link
-        href="/map?mode=browse&open=now"
-        className="tactile-interactive group flex min-h-[52px] items-center gap-3 border-y px-1 py-2.5"
-        style={{
-          borderColor: "var(--app-border)",
-        }}
-      >
-        <MapIcon
-          className="h-[18px] w-[18px] shrink-0"
-          strokeWidth={2.25}
-          style={{ color: "var(--app-brand)" }}
-          aria-hidden
+      {likely.length > 0 && (
+        <PlaceIndex
+          sections={likelyIndexSections}
+          showSort={false}
+          lazyPhotos
+          pinMap={pinnedKey === "likely" ? pinMap : undefined}
         />
-        <span className="min-w-0 flex-1 text-[14px] font-medium" style={{ color: "var(--app-ink-2)" }}>
-          View open places on the map
-        </span>
-        <ArrowRight
-          className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
-          strokeWidth={2.5}
-          style={{ color: "var(--app-brand)" }}
-          aria-hidden
-        />
-      </Link>
+      )}
     </div>
   );
 }

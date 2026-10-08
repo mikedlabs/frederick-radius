@@ -28,6 +28,14 @@ import {
   withMapSearchQuery,
 } from "@/lib/map-return";
 import { browseSafePhotoUrl } from "@/lib/google-photo-policy";
+import { HOURS_NOT_CONFIRMED } from "@/lib/trust-language";
+import ResultsPinMap, {
+  PinNumber,
+  PinNumberGutter,
+  RESULTS_PIN_CAP,
+  mappedPinNumbers,
+  pinRowFor,
+} from "@/components/map/ResultsPinMap";
 
 const PAID_SUBMITTED_SEARCH_PHOTO_LIMIT = 4;
 
@@ -55,6 +63,10 @@ export const metadata: Metadata = {
  *     description for towns / categories)
  *   - Whole row is a single tap target into the canonical detail
  *     page (/places/[slug], /events/[slug], /m/[slug], /category/[slug])
+ *
+ * On All and Places, the first nine visible place matches lead with the
+ * numbered pin map Ask uses (ResultsPinMap), and those rows print the same
+ * number before their picture.
  *
  * No PlaceCard / EventCard here — the search row is its own tighter
  * unit purpose-built for ranked results. Saves bytes and gives the
@@ -151,6 +163,7 @@ function SearchResultRow({
   mapReturnTo,
   allowPaidPhoto = false,
   lead = false,
+  pin,
 }: {
   hit: SearchHit;
   dominantType?: string;
@@ -162,6 +175,9 @@ function SearchResultRow({
    * owned imagery or their category marks. */
   allowPaidPhoto?: boolean;
   lead?: boolean;
+  /** The row's number on the results pin map. Null keeps the empty number
+   * column in a numbered list; undefined means the list is not numbered. */
+  pin?: number | null;
 }) {
   const d = displayFor(hit, showBranchAddress);
   const Icon = d.Icon;
@@ -172,6 +188,14 @@ function SearchResultRow({
       ? browseSafePhotoUrl(hit.place.hero_image, hit.place.google_photo_url) ??
         (allowPaidPhoto ? hit.place.google_photo_url : undefined)
       : undefined;
+  // "Hours not confirmed" is said once, in the results caption. A row prints
+  // only hours that say something about this place.
+  const hoursLine =
+    hit.type === "place"
+      ? hit.place.open_status
+        ? formatHoursLine(hit.place.open_status)
+        : "Hours not posted"
+      : null;
   return (
     <li style={divided ? { borderTop: "1px solid var(--app-border)" } : undefined}>
       <Link
@@ -185,6 +209,13 @@ function SearchResultRow({
         prefetch={false}
         className="group flex min-h-[88px] items-start gap-3 px-1 py-4 sm:gap-4 transition-[background-color,transform] duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)] active:scale-[0.995]"
       >
+        {pin !== undefined && (
+          // Centered on the row's picture, which is 56px with a photo and
+          // 48px with a mark.
+          <span className={`flex shrink-0 items-center ${placePhoto ? "h-14" : "h-12"}`}>
+            {pin === null ? <PinNumberGutter /> : <PinNumber n={pin} />}
+          </span>
+        )}
         {placePhoto ? (
           <span
             aria-hidden
@@ -225,9 +256,9 @@ function SearchResultRow({
               {d.subtitle}
             </span>
           )}
-          {hit.type === "place" && (
+          {hit.type === "place" && hoursLine && hoursLine !== HOURS_NOT_CONFIRMED && (
             <span className="mt-1.5 block text-[12px] leading-normal" style={{ color: hit.place.open_status?.state === "open" ? "var(--app-positive)" : "var(--app-ink-2)" }}>
-              {hit.place.open_status ? formatHoursLine(hit.place.open_status) : "Hours not posted"}
+              {hoursLine}
             </span>
           )}
         </span>
@@ -349,6 +380,39 @@ export default async function SearchPage({
   const dominantType = [...typeCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
   const primaryHits = rankedHits.slice(0, 12);
   const remainingHits = rankedHits.slice(12);
+  // Show before tell: on All and Places, the first nine place matches the
+  // reader can see lead with the numbered pin map Ask uses, and those rows
+  // print the same numbers. Fewer than two pins draws no map and no numbers.
+  const pinRows =
+    kind === "all" || kind === "place"
+      ? primaryHits
+          .flatMap((hit) => (hit.type === "place" ? [pinRowFor(hit.place)] : []))
+          .slice(0, RESULTS_PIN_CAP)
+      : [];
+  const pinNumbers = mappedPinNumbers(pinRows);
+  const pinFor = (hit: SearchHit): number | null | undefined =>
+    pinNumbers.size === 0
+      ? undefined
+      : hit.type === "place"
+        ? (pinNumbers.get(hit.place.slug) ?? null)
+        : null;
+  // "Hours not confirmed" on every row was 27 copies of one caveat. The
+  // caption says it once: for the whole list when no place match has
+  // confirmed hours, or for the rows that print no hours otherwise.
+  const placeHits = rankedHits.filter(
+    (hit): hit is Extract<SearchHit, { type: "place" }> => hit.type === "place",
+  );
+  const unconfirmedCount = placeHits.filter(
+    (hit) =>
+      hit.place.open_status &&
+      formatHoursLine(hit.place.open_status) === HOURS_NOT_CONFIRMED,
+  ).length;
+  const hoursCaption =
+    unconfirmedCount === 0
+      ? ""
+      : unconfirmedCount === placeHits.length
+        ? ` · ${HOURS_NOT_CONFIRMED}`
+        : ` · ${HOURS_NOT_CONFIRMED} where no hours are shown`;
   const zeroResults =
     Boolean(query) &&
     rankedHits.length === 0 &&
@@ -566,13 +630,15 @@ export default async function SearchPage({
       {eventsUnavailable && <p role="status" className="border-l-2 pl-3 text-[14px] leading-relaxed" style={{ borderColor: "var(--app-amber)", color: "var(--app-ink-2)" }}>The current event schedule is unavailable, so these matches may be incomplete. <Link href={contextualSearchResult({ type: "action", id: "events", title: "Events", subtitle: "", href: "/events" }, { ...result.meta, scopeMunicipality: town }, query, "county").href} className="underline underline-offset-2">Check the events board.</Link></p>}
       {rankedHits.length > 0 && (
         <section className="space-y-2" aria-label={`${rankedHits.length} results for ${query}`}>
+          <ResultsPinMap rows={pinRows} name={`the matches for ${query}`} />
           <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>
             {rankedHits.length} {rankedHits.length === 1 ? "match" : "matches"}
             {town ? ` · ${context.filterMunicipality === town ? context.label : MUNICIPALITY_BY_SLUG[town]?.name ?? town.replace(/-/g, " ")}` : " · Frederick County"}
             {result.meta.eventWindow?.label ? ` · ${result.meta.eventWindow.label}` : ""}
+            {hoursCaption}
           </p>
-          {hasPlaceHits && <Link href={mapHref} className="inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}><MapPin className="h-4 w-4" aria-hidden />View on map</Link>}
+          {hasPlaceHits && <Link href={mapHref} className="inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}><MapPin className="h-4 w-4" aria-hidden />Open in the full map</Link>}
           </div>
           <ul
             className="reveal-up overflow-hidden border-y"
@@ -588,6 +654,7 @@ export default async function SearchPage({
                 lead={index === 0}
                 showBranchAddress={hit.type === "place" && duplicateBranches.has(branchKey(hit))}
                 mapReturnTo={browseReturnTo}
+                pin={pinFor(hit)}
               />
             ))}
           </ul>

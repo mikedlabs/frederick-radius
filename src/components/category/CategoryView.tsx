@@ -12,6 +12,8 @@ import {
 import PlaceCard from "@/components/place/PlaceCard";
 import PlaceList from "@/components/place/PlaceList";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import SectionHeading from "@/components/ui/SectionHeading";
+import ResultsPinMap, { mappedPinNumbers, pinRowFor } from "@/components/map/ResultsPinMap";
 import CategoryBriefing from "./CategoryBriefing";
 import ScopeBar from "@/components/nav/ScopeBar";
 import CategorySection from "./CategorySection";
@@ -79,6 +81,10 @@ export default function CategoryView({
   // three times down the page. "Across the county" + "Full browse" below
   // stay the complete tail. See lib/category-ranking selectCuratedStack.
   const { best, openNow, favs, nearby } = selectCuratedStack(rec, ctx);
+  // Show before tell: "Start here" leads with the numbered pin map Ask uses,
+  // and each pick prints its pin number. No map, no numbers.
+  const bestPins = best.map(pinRowFor);
+  const bestNumbers = mappedPinNumbers(bestPins);
 
   // Across the county: every town except the user's, one top pick each. With
   // no town context, do not silently treat Frederick City as home; include it
@@ -133,11 +139,23 @@ export default function CategoryView({
       {/* Compact row cards (the default) so "Worth your time" matches the
           other sections and every other listing surface — no oversized
           fixed-width tiles breaking the rhythm on the way to a place. */}
-      <CategorySection
-        title="Start here"
-        color={category.color}
-        places={best}
-      />
+      {best.length > 0 && (
+        <section className="space-y-2.5">
+          <ResultsPinMap rows={bestPins} name="the places to start with" />
+          <SectionHeading title="Start here" count={best.length} accent={category.color} />
+          <ul className="space-y-2">
+            {best.map((p) => (
+              <li key={p.slug}>
+                <PlaceCard
+                  place={p}
+                  variant="row"
+                  index={bestNumbers.size > 0 ? (bestNumbers.get(p.slug) ?? null) : undefined}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <CategorySection title="Open now" color={category.color} places={openNow} />
 

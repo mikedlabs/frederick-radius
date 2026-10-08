@@ -197,6 +197,27 @@ describe("PlaceCard picture row", () => {
       "category",
     );
   });
+
+  it("prints its pin number before the tile in a numbered list", async () => {
+    await render(<PlaceCard place={place()} index={2} />);
+
+    const disc = container.querySelector<HTMLElement>("[data-pin-number]");
+    expect(disc?.textContent).toBe("2");
+    expect(disc?.getAttribute("aria-hidden")).toBe("true");
+    expect(disc?.style.background).toBe("var(--app-brand)");
+    const thumb = container.querySelector("[data-place-thumb]")!;
+    expect(disc!.compareDocumentPosition(thumb)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it("keeps an empty number column for a row with no pin, and none outside a numbered list", async () => {
+    await render(<PlaceCard place={place()} index={null} />);
+    const gutter = container.querySelector<HTMLElement>("[data-pin-number]");
+    expect(gutter?.textContent).toBe("");
+    expect(gutter?.className).toContain("w-[22px]");
+
+    await render(<PlaceCard place={place()} />);
+    expect(container.querySelector("[data-pin-number]")).toBeNull();
+  });
 });
 
 describe("PlaceCard lead and shelf variants", () => {

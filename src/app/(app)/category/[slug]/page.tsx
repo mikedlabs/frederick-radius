@@ -19,6 +19,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryView from "@/components/category/CategoryView";
 import ScopeBar from "@/components/nav/ScopeBar";
+import ResultsPinMap, { mappedPinNumbers, pinRowFor } from "@/components/map/ResultsPinMap";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import type { LngLat } from "@/lib/geo";
 import { resolveServerTownRankingContext } from "@/lib/scope";
@@ -196,6 +197,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       return ac - bc;
     })
     .slice(0, 3);
+  // Show before tell: the picks lead with the numbered pin map Ask uses, and
+  // each pick prints its pin number. No map, no numbers.
+  const topPickPins = topPicks.map(pinRowFor);
+  const topPickNumbers = mappedPinNumbers(topPickPins);
 
   // Structured data (June-9 audit P2): the category as a CollectionPage
   // with an ItemList of its top places, so category pages stop being
@@ -291,6 +296,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           row via PlaceCard's responsive layout. */}
       {topPicks.length > 0 && (
         <section className="space-y-2.5">
+          <ResultsPinMap rows={topPickPins} name="the places to start with" />
           <SectionHeading title="Start here" accent={c.color} />
           {/* Compact row cards — the SAME dense card /nearby and the browse
               list use — so the visual language stays consistent from Today
@@ -300,7 +306,11 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           <ul className="space-y-2">
             {topPicks.map((p) => (
               <li key={p.slug}>
-                <PlaceCard place={p} variant="row" />
+                <PlaceCard
+                  place={p}
+                  variant="row"
+                  index={topPickNumbers.size > 0 ? (topPickNumbers.get(p.slug) ?? null) : undefined}
+                />
               </li>
             ))}
           </ul>

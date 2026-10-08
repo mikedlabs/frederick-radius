@@ -118,3 +118,31 @@ export const BrowseListAt430: Story = {
   ...BrowseList,
   globals: { viewport: { value: "radiusMobileLarge", isRotated: false } },
 };
+
+/**
+ * Rows under a ResultsPinMap print their pin number before the tile. A row
+ * with no pin keeps the empty number column (index null) so tiles align.
+ */
+export const NumberedRows: Story = {
+  render: () => (
+    <ul>
+      <li>
+        <PlaceCard place={barbecue} index={1} />
+      </li>
+      <li>
+        <PlaceCard place={brewery} index={2} />
+      </li>
+      <li>
+        <PlaceCard place={shop} index={null} />
+      </li>
+      <li>
+        <PlaceCard place={park} index={3} />
+      </li>
+    </ul>
+  ),
+};
+
+export const NumberedRowsAt320: Story = {
+  ...NumberedRows,
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+};

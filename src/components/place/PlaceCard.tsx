@@ -16,6 +16,7 @@ import { Star, NotebookPen, Tag } from "lucide-react";
 import SourceBadge from "./SourceBadge";
 import FieldNoteTag from "./FieldNoteTag";
 import { ReasonChipRow, type ReasonTone } from "@/components/ui/ReasonChip";
+import { PinNumber, PinNumberGutter } from "@/components/map/ResultsPinMap";
 import {
   placeReasons,
   placeRowMark,
@@ -253,8 +254,13 @@ export default function PlaceCard({
   showSource = variant === "answer" || variant === "feature",
   neutral = false,
   lazyPhoto = false,
+  index,
 }: {
   place: PlaceCardData;
+  /** Row variant only: the number this place carries on the list's
+   *  ResultsPinMap, printed as a Brick disc before the tile. Null keeps the
+   *  empty number column for a row with no pin in a numbered list. */
+  index?: number | null;
   /** Legacy: compact rows used to drop the status, rating and price line,
    *  which left list mode telling places apart by name alone. Every row now
    *  keeps it; the prop is accepted so existing callers compile. */
@@ -572,7 +578,8 @@ export default function PlaceCard({
   // Rows are flat: no paper card, no category rail and no per-row shadow.
   // A 1px rule separates them, so a long list scans as names and pictures,
   // not a stack of boxes. The whole row opens the single PlaceSheet; Save is
-  // its own 44px target.
+  // its own 44px target. Under a ResultsPinMap the row prints its pin number
+  // before the tile, so the list and the map point at each other.
   const typeLabel =
     curatedKnownFor(place) ?? placeTypeLabel(place, cat) ?? place.category;
   const factLine = [typeLabel, streetLine(place.address)]
@@ -601,7 +608,12 @@ export default function PlaceCard({
         aria-label={`View ${actionName} details`}
         className="absolute inset-0 z-0 rounded-[var(--app-radius-sm)] text-left outline-none transition-colors hover:bg-[var(--app-bg-sunken)] active:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
       />
-      <div className="pointer-events-none relative z-10 self-start">
+      <div className="pointer-events-none relative z-10 flex shrink-0 items-center gap-2 self-start">
+        {index === null ? (
+          <PinNumberGutter />
+        ) : index !== undefined ? (
+          <PinNumber n={index} />
+        ) : null}
         <Thumb place={place} category={place.category} color={color} size={48} lazyPhoto={lazyPhoto} />
       </div>
       <div className="pointer-events-none relative z-10 min-w-0 flex-1">
