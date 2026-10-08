@@ -145,7 +145,7 @@ Activate live features by setting these on Vercel (or `.env.local`):
 | `ASK_RADIUS_AGENT=1` | Explicitly opts complex Gateway requests into the multi-step tool agent. Each step reserves from the same daily model-call cap; default is off. |
 | `ASK_AI_RUNTIME_EMBEDDINGS_ENABLED=1` + `ASK_AI_EMBEDDING_DAILY_LIMIT` | Optional visitor-time semantic recall. Postgres FTS remains the default and fallback. |
 
-The keyed event and data feeds, with the env var each one needs, are listed in [docs/FEEDS_SETUP.md](docs/FEEDS_SETUP.md). Weinberg and Delaplaine need no env var: Delaplaine's public iCal is read directly in `src/lib/integrations/ical-live.ts`, and Weinberg has no feed of its own there.
+The keyed event and data feeds, with the env var each one needs, are listed in [docs/FEEDS_SETUP.md](docs/FEEDS_SETUP.md). Weinberg and Delaplaine need no env var: Delaplaine's public iCal is read directly in `src/lib/integrations/ical-live.ts`, and Weinberg's official calendar is read by the venue-lineup ingest (`config/venue-sources.json`).
 The Starter-plan goal list and installation check are in [docs/PLAUSIBLE_STARTER.md](docs/PLAUSIBLE_STARTER.md).
 The complete value-free setup template is [`.env.example`](./.env.example).
 

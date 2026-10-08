@@ -519,13 +519,19 @@ are the live event feeds — if they stay dead, /events coverage thins.
 - [ ] **#421 `/mock`** — premium-redesign mockups (predates the locked
       brand deck; likely superseded — confirm + close).
 - [ ] **#420 `/fly`** — cinematic descent prototype.
-- [ ] **#265** — Weinberg + Delaplaine event feeds, **inert** until
+- [x] ~~**#265** — Weinberg + Delaplaine event feeds, **inert** until
       `WEINBERG_CALENDAR_URL` / `DELAPLAINE_CALENDAR_URL` env vars point at
       real iCal URLs (venues don't expose one at the obvious paths).
-      Decision: close, or chase the venues for a calendar URL. **Update
-      2026-10-08:** neither env var exists in the code any more. Delaplaine is
-      read directly from its public iCal in `src/lib/integrations/ical-live.ts`;
-      Weinberg still has no feed of its own.
+      Decision: close, or chase the venues for a calendar URL.~~ Closed
+      2026-10-08: neither env var exists in the code any more, and both
+      venues already reach the unified event set. Delaplaine is read directly
+      from its public iCal in `src/lib/integrations/ical-live.ts`. Weinberg
+      Center and New Spire Arts come from the official Weinberg calendar
+      through the venue-lineup ingest (`config/venue-sources.json`, method
+      `"weinberg"`; `scripts/lib/weinberg-events.ts`, shipped in #1630).
+      Neither venue needs an env var. Check with
+      `grep -n '"method": "weinberg"' config/venue-sources.json`. PR #265
+      itself was closed unmerged on 2026-08-01, so nothing is left to triage.
 
 ### 📋 AUDIT.md half-working / broken (carried from `docs/archive/2026-06/AUDIT.md`)
 - [ ] `/business/manage/[token]` — email-the-token flow not firing (no SMTP).
