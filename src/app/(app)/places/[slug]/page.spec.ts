@@ -90,6 +90,39 @@ describe("place page on paper", () => {
     expect(header.indexOf("<PlaceHero")).toBeLessThan(header.indexOf("<h1"));
   });
 
+  it("draws the hero link's focus ring on the frame, above the map", () => {
+    // The map hero is one link exactly the size of this overflow-hidden
+    // frame, so the link's own offset outline is clipped on every side and
+    // an inset one paints under the map's positioned layers (October 2026
+    // review, Black Hog at 390 and 1366). The frame carries the ring instead.
+    const frameClass = /data-place-hero-frame\s+className="([^"]+)"/.exec(header)?.[1] ?? "";
+    const classes = frameClass.split(/\s+/);
+    // Still clips the picture, so the ring has to live on the frame.
+    expect(classes).toContain("overflow-hidden");
+    // A positioned, isolated frame: the ::after anchors to it, and its layer
+    // can never climb over the sticky TopBar.
+    expect(classes).toContain("relative");
+    expect(classes).toContain("isolate");
+    // An inert ::after covering the frame, above the map, following its radius.
+    for (const cls of [
+      "after:pointer-events-none",
+      "after:absolute",
+      "after:inset-0",
+      "after:z-30",
+      "after:rounded-[inherit]",
+      "after:-outline-offset-3",
+    ]) {
+      expect(classes).toContain(cls);
+    }
+    // Only while the hero link itself has keyboard focus, in Brick, as an
+    // outline so forced-colors mode keeps it.
+    expect(classes).toContain(
+      "has-[a[data-place-hero]:focus-visible]:after:[outline:3px_solid_var(--app-brand)]",
+    );
+    // The frame still disappears when no picture renders.
+    expect(classes).toContain("empty:hidden");
+  });
+
   it("sets Save and Plan from here as text buttons in one row", () => {
     const row = header.slice(header.indexOf("data-place-header-actions"));
     expect(row).toContain('<MyRadiusButton slug={place.slug} name={place.name} appearance="text" />');

@@ -153,6 +153,10 @@ function WikimediaCreditLine({ photo }: { photo: WikimediaPhoto }) {
  * map), with the Brick pin on the place. The caption names the street instead
  * of repeating the place name the h1 prints directly below. The whole frame
  * opens the same framing on /map.
+ *
+ * The link fills the place page's overflow-hidden hero frame exactly, so its
+ * own focus outline is clipped. The frame draws the ring instead by matching
+ * `a[data-place-hero]:focus-visible`; keep this an anchor with that attribute.
  */
 function PlaceHeroMap({
   plan,

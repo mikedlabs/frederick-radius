@@ -345,10 +345,22 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             nothing: the identity block below then leads, never an empty
             band. The category is not pinned on the hero; the identity line
             directly below already states it. `empty:hidden` drops the frame
-            when no picture renders, so it never leaves a gap. */}
+            when no picture renders, so it never leaves a gap.
+
+            Focus: the map hero is one link exactly the size of this
+            overflow-hidden frame, so its own outline is clipped on every
+            side, and an inset outline paints under the map's positioned
+            layers. The frame draws the ring instead: a pointer-events-none
+            ::after above the picture shows an inset Brick outline while the
+            hero link has keyboard focus. It is an outline rather than a
+            box-shadow so it survives forced-colors mode. `isolate` keeps
+            that layer inside the frame so it never paints over the sticky
+            TopBar, and a pseudo-element does not count against
+            `empty:hidden`. Photo credit links sit well inside the frame and
+            keep their own ring. */}
         <div
           data-place-hero-frame
-          className="-mx-4 overflow-hidden empty:hidden sm:mx-0 sm:rounded-[var(--app-radius-lg)]"
+          className="relative isolate -mx-4 overflow-hidden empty:hidden sm:mx-0 sm:rounded-[var(--app-radius-lg)] after:pointer-events-none after:absolute after:inset-0 after:z-30 after:rounded-[inherit] after:-outline-offset-3 has-[a[data-place-hero]:focus-visible]:after:[outline:3px_solid_var(--app-brand)]"
         >
           <PlaceHero
             slug={place.slug}

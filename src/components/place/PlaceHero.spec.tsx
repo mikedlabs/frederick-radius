@@ -26,6 +26,10 @@ describe("PlaceHero", () => {
     );
 
     expect(html).toContain('data-place-hero-kind="map"');
+    // The place page's hero frame draws this link's focus ring through
+    // `has-[a[data-place-hero]:focus-visible]`, so the hero stays an anchor
+    // that carries data-place-hero.
+    expect(html).toMatch(/^<a [^>]*\sdata-place-hero="/);
     expect(html).toContain('data-owned-mini-map="placeholder"');
     expect(html).toContain("South Market St, near Carroll Creek");
     expect(html).toContain('aria-label="Open Black Hog BBQ on the Radius map"');
