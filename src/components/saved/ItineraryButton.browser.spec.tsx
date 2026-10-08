@@ -9,7 +9,7 @@ import { useSavedList } from "@/hooks/useSaved";
 
 const mocks = vi.hoisted(() => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
-vi.mock("@/hooks/useFollows", () => ({ useIsFollowed: () => false, useToggleFollow: () => vi.fn() }));
+vi.mock("@/hooks/useFollows", () => ({ useFollowMutationState: () => "idle", useIsFollowed: () => false, useToggleFollow: () => vi.fn() }));
 vi.mock("@/lib/haptics", () => ({ haptic: vi.fn() }));
 vi.mock("@/lib/track", () => ({ track: vi.fn() }));
 vi.mock("@/lib/decision/telemetry", () => ({ decisionContextFromPath: () => ({ surface: "events", position: "detail" }), trackDecision: vi.fn() }));

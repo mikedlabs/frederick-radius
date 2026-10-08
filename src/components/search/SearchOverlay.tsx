@@ -683,7 +683,7 @@ export default function SearchOverlay({
           style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
         >
           <div className="min-w-0">
-            <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-press)" }}>
+            <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
               Ask or find
             </p>
             <h2 id="radius-find-title" className="truncate font-serif text-[20px] font-semibold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
@@ -707,7 +707,7 @@ export default function SearchOverlay({
           className="search-field-shell mx-4 mb-3 flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] px-3 shadow-[var(--app-shadow-1)] transition focus-within:ring-2 focus-within:ring-[color-mix(in_srgb,var(--app-brand)_18%,transparent)] sm:mx-5 backdrop-blur-md"
           style={{ background: "color-mix(in srgb, var(--app-bg-elevated-solid) 70%, transparent)", boxShadow: "inset 0 1px 3px rgba(34,28,21,0.04), 0 2px 8px rgba(34,28,21,0.04)" }}
         >
-          <Search className="h-5 w-5 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+          <Search className="h-5 w-5 shrink-0" strokeWidth={2} style={{ color: "var(--app-link)" }} aria-hidden />
           <input
             ref={inputRef}
             type="text"
@@ -756,7 +756,7 @@ export default function SearchOverlay({
               The North Star front door, on real data. */}
           {hasAnswer && (
             <div className="px-3 py-2.5 pb-4 shadow-sm" style={{ background: "color-mix(in srgb, var(--app-brand) 4%, transparent)" }}>
-              <p className="eyebrow mb-2 px-1" style={{ color: "var(--app-brand-press)" }}>Direct answer</p>
+              <p className="eyebrow mb-2 px-1" style={{ color: "var(--app-ink-3)" }}>Direct answer</p>
               {visibleQuickAnswers.length > 0 && (
                 <ul className="mb-1.5 space-y-1.5">
                   {visibleQuickAnswers.map((qa) => {
@@ -773,7 +773,7 @@ export default function SearchOverlay({
                           className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5 transition active:scale-[0.99]"
                           style={{ borderColor: "var(--app-border)" }}
                         >
-                          <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-brand) 12%, transparent)", color: "var(--app-brand)" }}>
+                          <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-brand) 12%, transparent)", color: "var(--app-link)" }}>
                             <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
                           </span>
                           <span className="min-w-0 flex-1">
@@ -797,7 +797,7 @@ export default function SearchOverlay({
                       style={{ borderColor: "var(--app-border)" }}
                     >
                       <div className="flex items-start gap-2.5">
-                        <span aria-hidden className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-cool)" }}>
+                        <span aria-hidden className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-link)" }}>
                           <Building2 className="h-3.5 w-3.5" strokeWidth={2.25} />
                         </span>
                         <div className="min-w-0 flex-1">
@@ -855,7 +855,7 @@ export default function SearchOverlay({
                         className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5 transition active:scale-[0.99]"
                         style={{ borderColor: "var(--app-border)" }}
                       >
-                        <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-cool)" }}>
+                        <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-link)" }}>
                           <Building2 className="h-3.5 w-3.5" strokeWidth={2.25} />
                         </span>
                         <span className="min-w-0 flex-1">
@@ -917,7 +917,7 @@ export default function SearchOverlay({
                   className="tap-44 mt-3 inline-flex min-h-11 items-center justify-center rounded-[var(--app-radius-sm)] border px-4 text-[12px] font-semibold"
                   style={{
                     borderColor: "var(--app-brand-press)",
-                    color: "var(--app-brand-press)",
+                    color: "var(--app-link)",
                   }}
                 >
                   Try again
@@ -931,7 +931,7 @@ export default function SearchOverlay({
                     <a
                       href={`/search?q=${encodeURIComponent(query.trim())}`}
                       className="font-semibold underline"
-                      style={{ color: "var(--app-brand-press)" }}
+                      style={{ color: "var(--app-link)" }}
                     >
                       Open the full search page
                     </a>
@@ -965,7 +965,7 @@ export default function SearchOverlay({
                       Radius will check current places, events, conditions, and local services.
                     </span>
                   </span>
-                  <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+                  <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-link)" }} aria-hidden />
                 </button>
               </div>
             ) : hasAnswer ? null : (
@@ -1022,7 +1022,7 @@ export default function SearchOverlay({
                     className={idx === 0
                       ? "grid h-16 w-16 shrink-0 place-items-center rounded-[var(--app-radius-md)]"
                       : "mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"}
-                    style={{ background: `color-mix(in srgb, ${color} 12%, var(--app-bg-sunken))`, color }}
+                    style={{ background: `color-mix(in srgb, ${color} 12%, var(--app-bg-sunken))`, color: "var(--app-link)" }}
                   >
                     <Icon className={idx === 0 ? "h-6 w-6" : "h-4 w-4"} strokeWidth={1.9} />
                   </span>
@@ -1043,7 +1043,7 @@ export default function SearchOverlay({
                       <div className="flex items-start gap-3 p-3">
                         {art}
                         <div className="min-w-0 flex-1">
-                          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em]" style={{ color }}>
+                          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
                             Best match · {LABEL_BY_TYPE[r.type]}
                           </p>
                           <p className="mt-1 line-clamp-2 font-serif text-[19px] font-semibold leading-[1.05] tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
@@ -1078,7 +1078,7 @@ export default function SearchOverlay({
                               navigateFromSearch(mapHref);
                             }}
                             className="flex min-h-11 items-center justify-center gap-1.5 border-l px-3 text-[12px] font-semibold"
-                            style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+                            style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
                           >
                             <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
                             Map
@@ -1104,7 +1104,7 @@ export default function SearchOverlay({
                     >
                       {art}
                       <span className="min-w-0 flex-1">
-                        <span className="block font-mono text-[9px] font-semibold uppercase tracking-[0.11em]" style={{ color }}>
+                        <span className="block font-mono text-[9px] font-semibold uppercase tracking-[0.11em]" style={{ color: "var(--app-ink-3)" }}>
                           {LABEL_BY_TYPE[r.type]}
                         </span>
                         <span className="mt-0.5 block truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -1158,7 +1158,7 @@ export default function SearchOverlay({
                     No exact listing matched. Radius can still work from this request.
                   </span>
                 </span>
-                <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+                <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-link)" }} aria-hidden />
               </Link>
             </div>
           ) : null}
@@ -1323,7 +1323,7 @@ function EmptyHint({
               className="tactile tactile-interactive group relative flex flex-col gap-2 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)] transition-transform hover:-translate-y-0.5 hover:shadow-[var(--app-shadow-2)] active:scale-[0.98] active:translate-y-0"
               style={{ borderColor: "var(--app-border)" }}
             >
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--app-radius-md)]" style={{ color: "var(--app-brand-press)", background: "var(--app-brand-tint-6)" }}>
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--app-radius-md)]" style={{ color: "var(--app-link)", background: "var(--app-brand-tint-6)" }}>
                 <item.Icon className="h-4 w-4" strokeWidth={2.1} aria-hidden />
               </span>
               <span className="min-w-0 flex-1">

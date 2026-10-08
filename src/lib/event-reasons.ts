@@ -77,7 +77,7 @@ export function eventReasons(
       const isWeekend = dow === 5 || dow === 6 || dow === 0;
       const within7Days = startsMs - nowMs <= 7 * 24 * 3600_000;
       if (isWeekend && within7Days) {
-        out.push({ kind: "weekend", label: "Weekend", tone: "open" });
+        out.push({ kind: "weekend", label: "Weekend", tone: "neutral" });
       }
     }
   }

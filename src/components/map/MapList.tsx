@@ -35,11 +35,11 @@ import type { EventPin, MapPinPlace } from "./types";
 function openLine(p: MapPinPlace): { text: string; tone: string } | null {
   switch (p.open_status.state) {
     case "open":
-      return { text: "Open now", tone: "var(--app-positive)" };
+      return { text: "Open now", tone: "var(--state-open)" };
     case "closing-soon":
       // "Closing soon" everywhere else (PlaceStatus, RightNow, PlaceIndex).
       // The map list was the one surface saying "Closes soon".
-      return { text: "Closing soon", tone: "var(--app-warning-press, #8F5600)" };
+      return { text: "Closing soon", tone: "var(--state-closing)" };
     case "closed":
       return { text: "Closed", tone: "var(--app-ink-3)" };
     default:
@@ -197,7 +197,7 @@ export default function MapList({
       </div>
       {empty ? (
         <div className="map-list-empty">
-          <p className="font-serif map-list-empty-title">
+          <p className="font-sans map-list-empty-title">
             {failureMode ? "No fallback results are available" : "Nothing matches yet"}
           </p>
           <p className="map-list-empty-sub">
@@ -240,7 +240,7 @@ export default function MapList({
                         <span className="map-list-main">
                           <span className="map-list-name">{event.title}</span>
                           <span className="map-list-sub">
-                            <span style={{ color: "var(--app-brand-press)", fontWeight: 650 }}>
+                            <span style={{ color: "var(--app-ink-2)", fontWeight: 650 }}>
                               {eventClock(event.starts_at)}
                             </span>
                             <span aria-hidden className="map-list-mid">·</span>

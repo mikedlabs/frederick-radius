@@ -20,7 +20,7 @@ export default function TodayPlanTonightLink() {
   return (
     <Link href={tonightEntryHref(params.get("in"), storedScope)} prefetch={false}
       className="mt-1 inline-flex min-h-11 items-center gap-1.5 text-[15px] font-semibold"
-      style={{ color: "var(--app-brand-press)" }}>
+      style={{ color: "var(--app-link)" }}>
       Plan tonight <ChevronRight aria-hidden className="h-4 w-4" />
     </Link>
   );

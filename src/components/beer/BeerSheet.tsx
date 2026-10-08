@@ -8,6 +8,7 @@ import { FAMILY_BY_KEY, beerKey, type BeerWithBrewery } from "@/data/beers";
 import { useIsSaved, useToggleSave } from "@/hooks/useSaved";
 import type { BreweryPhotoAsset } from "@/lib/beer/brewery-media";
 import { haptic } from "@/lib/haptics";
+import { toast } from "sonner";
 
 /**
  * BeerSheet — a beer's detail in a bottom sheet, so tapping a pour opens its
@@ -105,7 +106,14 @@ function BeerSheetBody({
       <div className="mt-4">
         <button
           type="button"
-          onClick={() => { toggle(); haptic("light"); }}
+          onClick={() => {
+            try {
+              toggle(!saved);
+              haptic("light");
+            } catch {
+              toast.error(saved ? "Could not remove this pour" : "Could not save this pour", { description: "We could not confirm this change. Please try again." });
+            }
+          }}
           aria-pressed={saved}
           className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full text-[13px] font-semibold transition active:scale-[0.98]"
           style={

@@ -34,8 +34,7 @@ function read(): SavedRef[] {
     return cachedSnapshot;
   }
   try {
-    const parsed = JSON.parse(raw);
-    cachedSnapshot = Array.isArray(parsed) ? parsed : [];
+    cachedSnapshot = parseSavedItems(raw);
   } catch {
     cachedSnapshot = [];
   }
@@ -47,10 +46,36 @@ function readServer(): SavedRef[] {
   return SERVER_SNAPSHOT;
 }
 
+/** One row validator for strict event reads and every confirmed local mutation. */
+function parseSavedItems(raw: string | null): SavedRef[] {
+  if (raw === null) return [];
+  const parsed: unknown = JSON.parse(raw);
+  const valid = Array.isArray(parsed) && parsed.every((item: unknown) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return false;
+    const row = item as Record<string, unknown>;
+    return typeof row.type === "string" && ["place", "event", "radius", "beer"].includes(row.type)
+      && typeof row.id === "string" && row.id.trim().length > 0
+      && typeof row.saved_at === "string";
+  });
+  if (!valid) throw new Error("The saved list could not be read.");
+  return parsed as SavedRef[];
+}
+
+/** Display reads may fail soft; a mutation must not overwrite unreadable data. */
+function readForMutation(): SavedRef[] {
+  if (typeof window === "undefined") throw new Error("Device storage is unavailable.");
+  return parseSavedItems(window.localStorage.getItem(KEY));
+}
+
 function write(items: SavedRef[]) {
   if (typeof window === "undefined") return;
   const next = JSON.stringify(items);
   window.localStorage.setItem(KEY, next);
+  // A storage shim or browser policy can refuse a write without throwing.
+  // Publish only the exact value this device confirms it retained.
+  if (window.localStorage.getItem(KEY) !== next) {
+    throw new Error("This device could not confirm the saved change.");
+  }
   // The user just saved something worth protecting — ask the browser to
   // move this origin's storage from best-effort (evictable; iOS clears
   // it after ~7 idle days) to persistent. Idempotent, promptless.
@@ -91,14 +116,7 @@ function readConfirmedSaved(): { raw: string | null; items: SavedRef[] } {
   if (typeof window === "undefined") throw new Error("Device storage unavailable");
   const raw = window.localStorage.getItem(KEY);
   if (raw === confirmedRaw) return { raw, items: confirmedItems };
-  const parsed: unknown = raw === null ? [] : JSON.parse(raw);
-  if (!Array.isArray(parsed) || !parsed.every((item: unknown) => {
-    if (!item || typeof item !== "object" || Array.isArray(item)) return false;
-    const ref = item as Partial<SavedRef>;
-    return ["place", "event", "radius", "beer"].includes(ref.type ?? "")
-      && typeof ref.id === "string" && ref.id.length > 0
-      && typeof ref.saved_at === "string";
-  })) throw new Error("Saved list could not be read");
+  const parsed = parseSavedItems(raw);
   confirmedRaw = raw;
   confirmedItems = parsed as SavedRef[];
   return { raw, items: confirmedItems };
@@ -155,12 +173,14 @@ export function useSetEventSaved(id: string) {
 }
 
 export function useToggleSave(type: SavedRef["type"], id: string) {
-  return useCallback(() => {
-    const items = read();
+  return useCallback((desired?: boolean): boolean => {
+    const items = readForMutation();
     const exists = items.some((s) => s.type === type && s.id === id);
-    const next = exists
-      ? items.filter((s) => !(s.type === type && s.id === id))
-      : [...items, { type, id, saved_at: new Date().toISOString() }];
+    const saved = desired ?? !exists;
+    if (saved === exists) return exists;
+    const next = saved
+      ? [...items, { type, id, saved_at: new Date().toISOString() }]
+      : items.filter((s) => !(s.type === type && s.id === id));
     write(next);
     if (!exists && type !== "beer") signalReturnBridgeValue(type);
     if (
@@ -173,14 +193,14 @@ export function useToggleSave(type: SavedRef["type"], id: string) {
     if (!exists && typeof navigator !== "undefined" && "vibrate" in navigator) {
       try { (navigator as Navigator & { vibrate?: (p: number) => void }).vibrate?.(8); } catch {}
     }
-    return !exists;
+    return saved;
   }, [type, id]);
 }
 
 /** Imperative save (no hook), for event handlers like the deck's "love" swipe.
  *  No-ops if the ref is already saved. */
 export function addSaved(type: SavedRef["type"], id: string) {
-  const items = read();
+  const items = readForMutation();
   if (items.some((s) => s.type === type && s.id === id)) return;
   write([...items, { type, id, saved_at: new Date().toISOString() }]);
   if (type !== "beer") signalReturnBridgeValue(type);

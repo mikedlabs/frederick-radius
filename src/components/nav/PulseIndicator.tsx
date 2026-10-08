@@ -51,6 +51,11 @@ const TONE_COLOR: Record<PulseStatus["tone"], string> = {
   caution: "var(--app-warning)",
   quiet: "var(--app-positive)",
 };
+const TONE_FOREGROUND: Record<PulseStatus["tone"], string> = {
+  alert: "var(--app-danger-text)",
+  caution: "var(--state-closing)",
+  quiet: "var(--state-open)",
+};
 
 export default function PulseIndicator() {
   const pathname = usePathname();
@@ -180,9 +185,9 @@ export default function PulseIndicator() {
       style={{
         borderColor: current ? "var(--app-brand)" : "var(--app-border)",
         color: current
-          ? "var(--app-brand-press)"
+          ? "var(--app-link)"
           : currentAlerts
-            ? TONE_COLOR[tone]
+            ? TONE_FOREGROUND[tone]
             : "var(--app-ink-2)",
         background: current ? "var(--app-brand-tint-6)" : undefined,
       }}

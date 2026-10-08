@@ -39,7 +39,7 @@ describe("map interaction state contracts", () => {
     const source = readFileSync("src/components/map/MapPeek.tsx", "utf8");
 
     expect(source).toContain("useIsFollowed(place.slug)");
-    expect(source).toContain('useToggleFollow(place.slug, "map_peek")');
+    expect(source).toMatch(/useToggleFollow\(place\.slug,\s*"map_peek"(?:,|\))/);
     expect(source).not.toContain('useToggleSave("place"');
     expect(source).not.toContain('useIsSaved("place"');
   });

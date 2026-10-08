@@ -28,3 +28,11 @@ export const MissingEndAt320: Story = {
   args: { event: { ...sample, ends_at: sample.starts_at }, variant: "glance" },
 };
 export const Online: Story = { args: { event: { ...sample, attendance_mode: "online" }, variant: "glance" } };
+export const PrimaryTabRows: Story = {
+  decorators: [(Story) => <div data-app-primary-tab="/events"><Story /></div>],
+  args: { variant: "glance" },
+};
+export const PrimaryTabLiveLead: Story = {
+  decorators: [(Story) => <div data-app-primary-tab="/events"><Story /></div>],
+  args: { variant: "feature", live: true, nowISO: "2026-09-10T19:00:00-04:00" },
+};

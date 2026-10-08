@@ -44,7 +44,7 @@ export default function ItineraryButton({
       title={savedState === null ? "Saved state unavailable" : isSaved ? "Saved" : "Save"}
       className={`tap-44 relative grid h-9 w-9 shrink-0 place-items-center rounded-full border transition-colors ${className}`}
       style={{
-        color: isSaved ? "var(--app-cool)" : "var(--app-ink-2)",
+        color: isSaved ? "var(--app-link)" : "var(--app-ink-2)",
         background: "var(--app-surface)",
         borderColor: "var(--app-border)",
       }}

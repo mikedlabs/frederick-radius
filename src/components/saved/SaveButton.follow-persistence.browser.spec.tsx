@@ -124,11 +124,41 @@ describe("SaveButton with the real follow persistence hook", () => {
     });
   }
 
-  it("shows the bookmark immediately but waits for account persistence before acknowledging it", async () => {
+  it.each([
+    ["null entry", "[null]"],
+    ["malformed object", '[{"type":"event","id":"test-event","saved_at":null}]'],
+    ["whitespace id", '[{"type":"event","id":"   ","saved_at":"2026-10-07T00:00:00.000Z"}]'],
+  ])("mounts the real event save hooks with an unavailable %s without changing stored bytes", async (_kind, raw) => {
+    identity = deferred<Response>();
+    identity.resolve(response(200, { user: null }));
+    localStorage.setItem("fr:saved:v1", raw);
+    const storageWrites = vi.spyOn(Storage.prototype, "setItem");
+    try {
+      await act(async () => root.render(
+        <SaveButton refType="event" refId="test-event" label="Save Test event" barLabel="Save" />,
+      ));
+      expect(button().getAttribute("aria-hidden")).toBeNull();
+      expect(button().disabled).toBe(true);
+      expect(button().hasAttribute("aria-pressed")).toBe(false);
+      expect(button().getAttribute("aria-label")).toBe("Saved state unavailable for Test event");
+      expect(button().textContent).toBe("Unavailable");
+      expect(button().querySelector(".save-pop, .save-ring")).toBeNull();
+      await click();
+      expect(storageWrites).not.toHaveBeenCalled();
+      expect(localStorage.getItem("fr:saved:v1")).toBe(raw);
+      expect(writes).toHaveLength(0);
+      expect(imports).toHaveLength(0);
+      expect(mocks.toast.success).not.toHaveBeenCalled();
+    } finally {
+      storageWrites.mockRestore();
+    }
+  });
+
+  it("keeps an unsaved bookmark unselected until account persistence confirms it", async () => {
     await render();
     await click();
-    expect(saved()).toBe("test-stop");
-    expect(button().getAttribute("aria-pressed")).toBe("true");
+    expect(saved()).toBe("");
+    expect(button().getAttribute("aria-pressed")).toBe("false");
     expect(button().getAttribute("aria-busy")).toBe("true");
     expect(button().disabled).toBe(true);
     expect(writes).toHaveLength(1);
@@ -162,7 +192,8 @@ describe("SaveButton with the real follow persistence hook", () => {
   it("keeps a failed removal saved and confirms removal only after a successful retry", async () => {
     await render(["other-stop", "test-stop"]);
     await click();
-    expect(saved()).toBe("other-stop");
+    expect(saved()).toBe("other-stop,test-stop");
+    expect(button().getAttribute("aria-pressed")).toBe("true");
     expect(writes[0].method).toBe("DELETE");
     expect(mocks.toast).not.toHaveBeenCalled();
     await settle(0, 503);
@@ -185,7 +216,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     expect(button(0).disabled).toBe(false);
     expect(button(1).disabled).toBe(false);
     expect(mocks.toast.success).not.toHaveBeenCalled();
-    expect(mocks.toast.error).toHaveBeenCalledTimes(2);
+    expect(mocks.toast.error).toHaveBeenCalledTimes(1);
     await act(async () => blockedRead!.resolve(response(200, { slugs: ["test-stop"] })));
     blockedRead = undefined;
     await click(1);
@@ -195,14 +226,17 @@ describe("SaveButton with the real follow persistence hook", () => {
     expect(saved()).toBe("");
   });
 
-  it("rolls a failed newer intent back to the last successful write without flickering over pending intent", async () => {
+  it("keeps duplicate controls on confirmed membership through a later failed removal", async () => {
     await render();
     await click(0);
     await click(1);
     expect(saved()).toBe("");
     expect(writes).toHaveLength(1);
     await settle(0);
-    expect(saved()).toBe("");
+    expect(saved()).toBe("test-stop");
+    expect(writes).toHaveLength(1);
+    await click(1);
+    expect(saved()).toBe("test-stop");
     expect(writes).toHaveLength(2);
     expect(writes[1].method).toBe("DELETE");
     await settle(1, 503);
@@ -243,13 +277,15 @@ describe("SaveButton with the real follow persistence hook", () => {
     });
   });
 
-  it("syncs the device topic from the final confirmed save after a queued removal fails", async () => {
+  it("keeps the device topic aligned with a confirmed save after a later removal fails", async () => {
     vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription: async () => ({ endpoint: "https://push.example.test/consented" }) } }) } });
     await render();
     await click(0);
     await click(1);
     await settle(0);
-    expect(topics).toHaveLength(0);
+    expect(topics).toEqual([expect.objectContaining({ add: ["biz:test-stop"] })]);
+    topics.length = 0;
+    await click(1);
     await settle(1, 503);
     expect(saved()).toBe("test-stop");
     expect(topics).toEqual([expect.objectContaining({ add: ["biz:test-stop"] })]);
@@ -344,10 +380,12 @@ describe("SaveButton with the real follow persistence hook", () => {
     expect(saved()).toBe("test-stop");
   });
 
-  it("finishes one bulk import before queued save and remove intents can mutate its place", async () => {
+  it("publishes a confirmed bulk import before an explicit removal can remove its place", async () => {
     mocks.hasSynced.mockReturnValue(false);
     localStorage.setItem("fr:saved:v1", JSON.stringify([{ type: "place", id: "test-stop", saved_at: "2026-10-07T00:00:00.000Z" }]));
     await render();
+    expect(button(0).disabled).toBe(true);
+    expect(button(1).disabled).toBe(true);
     await click(0);
     await click(1);
     expect(imports).toHaveLength(1);
@@ -357,13 +395,13 @@ describe("SaveButton with the real follow persistence hook", () => {
       serverSlugs.add("test-stop");
       imports[0].request.resolve(response(200, { acceptedSlugs: ["test-stop"] }));
     });
-    expect(saved()).toBe("");
+    expect(saved()).toBe("test-stop");
+    expect(writes).toHaveLength(0);
+    await click(0);
     expect(writes).toHaveLength(1);
-    expect(writes[0].method).toBe("POST");
+    expect(writes[0].method).toBe("DELETE");
+    expect(saved()).toBe("test-stop");
     await settle(0);
-    expect(writes).toHaveLength(2);
-    expect(writes[1].method).toBe("DELETE");
-    await settle(1);
     expect(saved()).toBe("");
     expect([...serverSlugs]).toEqual([]);
     expect(imports).toHaveLength(1);
@@ -408,7 +446,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(FOLLOW_WRITE_TIMEOUT_MS); });
     expect(button().disabled).toBe(false);
     expect(writes).toHaveLength(0);
-    expect(mocks.toast.error).toHaveBeenLastCalledWith("Could not save this item", { description: "This change is still pending. Wait for it to finish before making another change to this place." });
+    expect(mocks.toast.error).not.toHaveBeenCalled();
     await act(async () => imports[0].request.reject(new Error("Connection lost")));
     await click(0);
     expect(writes).toHaveLength(0);

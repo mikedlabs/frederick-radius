@@ -486,7 +486,7 @@ function DaypartPickCard({
           className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
           style={{
             background:
-              "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 84%, transparent), color-mix(in srgb, var(--app-ink) 36%, transparent) 46%, transparent)",
+              "linear-gradient(to top, color-mix(in srgb, var(--app-media-ink) 84%, transparent), color-mix(in srgb, var(--app-media-ink) 36%, transparent) 46%, transparent)",
           }}
         />
         <span className="relative z-10 min-w-0 px-2.5 pb-2">
@@ -508,9 +508,9 @@ function DaypartPickCard({
               style={{
                 background:
                   place.confidence === "confirmed"
-                    ? "var(--app-positive)"
+                    ? "var(--state-open)"
                     : place.confidence === "likely"
-                      ? "var(--app-warning)"
+                      ? "var(--state-closing)"
                       : "var(--app-ink-3)",
               }}
             />
@@ -541,9 +541,7 @@ function DaypartPickCard({
       style={{
         borderColor: "var(--app-border)",
         boxShadow: "var(--app-edge), var(--app-hi)",
-        background: lead
-          ? "linear-gradient(118deg, color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 68%)"
-          : "var(--app-bg-elevated)",
+        background: lead ? "var(--app-bg-elevated-solid)" : "var(--app-bg-elevated)",
       }}
     >
       {lead ? (
@@ -558,8 +556,8 @@ function DaypartPickCard({
         aria-hidden
         className={`relative z-10 grid shrink-0 place-items-center rounded-[var(--app-radius-sm)] ${lead ? "h-11 w-11" : "h-9 w-9"}`}
         style={{
-          color: "var(--app-brand-press)",
-          background: "var(--app-brand-tint-6)",
+          color: "var(--app-ink-2)",
+          background: "var(--app-bg-sunken)",
         }}
       >
         <CategoryIcon slug={category} className="h-[18px] w-[18px]" strokeWidth={1.9} />
@@ -646,7 +644,7 @@ function OpeningSoonPick({
           aria-hidden
           className="m-3 grid h-11 w-11 shrink-0 place-items-center self-center rounded-[var(--app-radius-sm)]"
           style={{
-            color: "var(--app-warning-press)",
+            color: "var(--state-closing)",
             background: "var(--app-warning-tint-14)",
           }}
         >
@@ -656,7 +654,7 @@ function OpeningSoonPick({
       <span className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2.5">
         <span
           className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.11em]"
-          style={{ color: "var(--app-warning-press)" }}
+          style={{ color: "var(--state-closing)" }}
         >
           Opening soon
         </span>
@@ -1075,7 +1073,7 @@ export default function DaypartNeeds({
               >
                 <span
                   className="shrink-0 font-mono text-[9.5px] font-semibold uppercase tracking-[0.1em]"
-                  style={{ color: "var(--app-brand-press)" }}
+                  style={{ color: "var(--app-ink-3)" }}
                 >
                   Why it leads
                 </span>
@@ -1106,7 +1104,7 @@ export default function DaypartNeeds({
                 href={active.href}
                 prefetch={false}
                 className="tap-44 shrink-0 text-[12px] font-semibold underline decoration-1 underline-offset-4"
-                style={{ color: "var(--app-brand-press)" }}
+                style={{ color: "var(--app-link)" }}
               >
                 Browse
               </Link>

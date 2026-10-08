@@ -109,7 +109,7 @@ export default function MomentSpotlight({ moment, isDayOf }: { moment: Spotlight
           <span
             aria-hidden
             className="absolute inset-x-0 bottom-0 h-1/2"
-            style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 76%, transparent), transparent)" }}
+            style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-media-ink) 76%, transparent), transparent)" }}
           />
           <figcaption className="absolute inset-x-0 bottom-0 px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-on-brand)] sm:px-6">
             {moment.spotlightImage.credit}
@@ -133,7 +133,7 @@ export default function MomentSpotlight({ moment, isDayOf }: { moment: Spotlight
       )}
 
       <div className="relative">
-        <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: moment.accent }}>
+        <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: `var(--app-list-fact-color, ${moment.accent})` }}>
           <Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
           {isDayOf ? "Today in Frederick County" : "This weekend"}
         </p>
@@ -156,7 +156,7 @@ export default function MomentSpotlight({ moment, isDayOf }: { moment: Spotlight
         )}
 
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Link href={`/moments/${moment.slug}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-3.5 text-[13px] font-semibold" style={{ background: "var(--app-brand)", color: "var(--app-bg)" }} onClick={() => {
+          <Link href={`/moments/${moment.slug}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-3.5 text-[13px] font-semibold" style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }} onClick={() => {
             trackDecision(momentSpotlightDecision(moment.slug, "open", "open"));
             track("moment_spotlight_open", { slug: moment.slug, day_of: isDayOf ? "true" : "false" });
           }}>
@@ -164,7 +164,7 @@ export default function MomentSpotlight({ moment, isDayOf }: { moment: Spotlight
             <ArrowRight className="h-4 w-4" strokeWidth={2.5} aria-hidden />
           </Link>
           {moment.spotlightSourceUrl && (
-            <a href={moment.spotlightSourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }} onClick={() => trackDecision(momentSpotlightDecision(moment.slug, "action", "website"))}>
+            <a href={moment.spotlightSourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-link)" }} onClick={() => trackDecision(momentSpotlightDecision(moment.slug, "action", "website"))}>
               Official event details
               <ExternalLink className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </a>
@@ -211,7 +211,7 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
         <span
           aria-hidden
           className="absolute inset-0"
-          style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 86%, transparent) 0%, color-mix(in srgb, var(--app-ink) 40%, transparent) 45%, transparent 74%)" }}
+          style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-media-ink) 86%, transparent) 0%, color-mix(in srgb, var(--app-media-ink) 40%, transparent) 45%, transparent 74%)" }}
         />
         <div className="absolute inset-x-0 bottom-0 p-5 pr-28 sm:p-7 sm:pr-36">
           <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--app-on-brand)]">
@@ -230,7 +230,7 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
         </div>
         <figcaption
           className="absolute right-3 top-3 max-w-[8.5rem] rounded-[var(--app-radius-xs)] px-2 py-1 text-right text-[8px] font-semibold uppercase leading-tight tracking-[0.1em] text-[var(--app-on-brand)] sm:right-5 sm:top-5 sm:max-w-none sm:text-[9px]"
-          style={{ background: "color-mix(in srgb, var(--app-ink) 58%, transparent)" }}
+          style={{ background: "color-mix(in srgb, var(--app-media-ink) 58%, transparent)" }}
         >
           {image.credit}
         </figcaption>
@@ -253,7 +253,7 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
           <Link
             href={`/moments/${moment.slug}`}
             className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] px-4 text-[13px] font-semibold sm:w-auto"
-            style={{ background: "var(--app-brand)", color: "var(--app-bg)" }}
+            style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}
             onClick={() => {
               trackDecision(momentSpotlightDecision(moment.slug, "open", "open"));
               track("moment_spotlight_open", { slug: moment.slug, day_of: "true" });
@@ -264,13 +264,13 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
           </Link>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             {moment.spotlightDirectionsUrl && (
-              <a href={moment.spotlightDirectionsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }} onClick={() => trackDecision(momentSpotlightDecision(moment.slug, "action", "directions"))}>
+              <a href={moment.spotlightDirectionsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-link)" }} onClick={() => trackDecision(momentSpotlightDecision(moment.slug, "action", "directions"))}>
                 Get directions
                 <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
               </a>
             )}
             {moment.spotlightSourceUrl && (
-              <a href={moment.spotlightSourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }} onClick={() => trackDecision(momentSpotlightDecision(moment.slug, "action", "website"))}>
+              <a href={moment.spotlightSourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-link)" }} onClick={() => trackDecision(momentSpotlightDecision(moment.slug, "action", "website"))}>
                 Official schedule
                 <ExternalLink className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
               </a>

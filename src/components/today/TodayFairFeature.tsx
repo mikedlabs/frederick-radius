@@ -107,7 +107,7 @@ export default function TodayFairFeature({
           <span className="min-w-0 self-center p-4">
             <span className="block text-[11px] leading-normal" style={{ color: "var(--app-ink-2)" }}>{copy.eyebrow}</span>
             <span className="mt-1 block text-[26px] font-bold leading-tight tracking-[-0.025em]">{status ? headline : "The Fair opens September 18"}</span>
-            <span className="mt-2 flex items-center gap-2 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>{cta}<ArrowRight className="h-4 w-4" aria-hidden /></span>
+            <span className="mt-2 flex items-center gap-2 text-[13px] font-semibold" style={{ color: "var(--app-link)" }}>{cta}<ArrowRight className="h-4 w-4" aria-hidden /></span>
           </span>
         </Link>
       </section>
@@ -122,7 +122,7 @@ export default function TodayFairFeature({
         data-today-fair-feature={phase}
         data-today-fair-plan={status ? "saved" : "new"}
         data-fair-feature-tone="photograph"
-        className="group relative isolate block min-h-[320px] overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-ink)] text-[var(--app-on-brand)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--app-bg)] sm:min-h-[380px]"
+        className="group relative isolate block min-h-[320px] overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-media-ink)] text-[var(--app-on-brand)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--app-bg)] sm:min-h-[380px]"
         style={{ borderColor: "var(--app-border-strong)" }}
       >
         <picture className="absolute inset-0 block">
@@ -149,7 +149,7 @@ export default function TodayFairFeature({
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 96%, transparent), color-mix(in srgb, var(--app-ink) 65%, transparent) 42%, transparent 90%)",
+              "linear-gradient(to top, color-mix(in srgb, var(--app-media-ink) 96%, transparent), color-mix(in srgb, var(--app-media-ink) 65%, transparent) 42%, transparent 90%)",
           }}
         />
 
