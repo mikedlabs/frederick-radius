@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   MessageSquare, Inbox, Store, Flag, MapPin, CalendarClock, RadioTower,
   Activity, Receipt, Database, MapPinned, ChevronRight, CircleCheck,
-  TrendingUp, TrendingDown,
+  TrendingUp, TrendingDown, BellRing, Mail, ShieldCheck, Webhook, Github,
 } from "lucide-react";
 import { getSql } from "@/lib/db/client";
 import { plausibleKeys, fetchAggregate } from "@/lib/integrations/plausible-stats";
@@ -14,6 +14,31 @@ import SCORES_RAW from "@/data/copy-scores.json" with { type: "json" };
 import { getNeedsReviewPlaces } from "@/lib/loaders/places";
 import { getNeedsReviewEvents } from "@/lib/loaders/events";
 import { easternDayKey } from "@/lib/tz";
+import {
+  getCachedPublicHealthSnapshot,
+  type PublicHealthSnapshot,
+} from "@/lib/public-health";
+import {
+  publicDataSnapshot,
+  publicHoursProductHealth,
+  type PublicHoursProductHealth,
+} from "@/lib/public-data-snapshot";
+import { hasCompleteVapidConfiguration } from "@/lib/push";
+import { OWNER_ALERTS_TOPIC } from "@/lib/push-topics";
+import {
+  HairlineList,
+  HairlineRow,
+  StatusPill,
+  toneInk,
+  toneTint,
+  type Tone,
+} from "@/components/admin/kit";
+import {
+  operationsHealthLevel,
+  ownerPushReadiness,
+  sentryReadiness,
+  type OperationsHealthLevel,
+} from "./operations-status";
 
 /**
  * The desk's data sections, split out of page.tsx so each can stream
@@ -92,6 +117,7 @@ function SystemLine({ href, icon: Icon, children }: { href: string; icon: Lucide
 export function DeskSkeleton() {
   return (
     <div className="mt-5 animate-pulse space-y-6" aria-hidden>
+      <div className="h-32 rounded-[var(--app-radius-md)]" style={{ background: "var(--app-bg-elevated)" }} />
       <div className="space-y-2">
         {[0, 1, 2].map((i) => (
           <div key={i} className="h-12 rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }} />
@@ -131,6 +157,7 @@ type Core = {
   new24h: { signups: number; feedback: number; claims: number; subs: number };
   fieldPoints: number;
   fieldPoints7d: number;
+  ownerAlertDevices: number;
 };
 
 type Health = {
@@ -173,7 +200,8 @@ async function loadDesk(): Promise<{
           (select count(*)::int from submissions where kind = 'business_claim' and created_at > now() - interval '24 hours') as new_claims_24h,
           (select count(*)::int from submissions where kind in ('place', 'event') and created_at > now() - interval '24 hours') as new_subs_24h,
           (select count(*)::int from field_amenities where status = 'approved') as field_points,
-          (select count(*)::int from field_amenities where status = 'approved' and created_at > now() - interval '7 days') as field_points_7d
+          (select count(*)::int from field_amenities where status = 'approved' and created_at > now() - interval '7 days') as field_points_7d,
+          (select count(*)::int from push_subscriptions where topics ? ${OWNER_ALERTS_TOPIC}) as owner_alert_devices
       `
     )[0] as Record<string, number>;
     core = {
@@ -195,6 +223,7 @@ async function loadDesk(): Promise<{
       },
       fieldPoints: r.field_points ?? 0,
       fieldPoints7d: r.field_points_7d ?? 0,
+      ownerAlertDevices: r.owner_alert_devices ?? 0,
     };
   } catch (e) {
     return { core: null, health: null, costs: null, dbReason: e instanceof Error ? e.message.slice(0, 80) : "query failed" };
@@ -305,9 +334,338 @@ function datasetTones(): { total: number; fresh: number; aging: number; stale: n
   };
 }
 
+type DeploymentHealth = {
+  snapshot: PublicHealthSnapshot;
+  hours: PublicHoursProductHealth;
+};
+
+async function loadDeploymentHealth(): Promise<DeploymentHealth | null> {
+  try {
+    const snapshot = await getCachedPublicHealthSnapshot();
+    const hours = publicHoursProductHealth(publicDataSnapshot());
+    return { snapshot, hours };
+  } catch {
+    // Keep the owner surface standing if a future health dependency escapes
+    // its own fail-soft boundary. Unknown is intentionally not rendered green.
+    console.warn("[admin] deployment health was unavailable");
+    return null;
+  }
+}
+
+const LEVEL_PRESENTATION: Record<
+  OperationsHealthLevel,
+  { tone: Tone; label: string; title: string; summary: string }
+> = {
+  operational: {
+    tone: "positive",
+    label: "Operational",
+    title: "The public experience is ready",
+    summary: "The public health checks and Open Now coverage are ready.",
+  },
+  "policy-hold": {
+    tone: "cool",
+    label: "Operational",
+    title: "Core production checks are ready",
+    summary: "Current-hours refresh is intentionally paused. This is a known product limit, not a production incident.",
+  },
+  degraded: {
+    tone: "warning",
+    label: "Degraded",
+    title: "Current data needs attention",
+    summary: "The app is answering, but at least one current-data check needs attention.",
+  },
+  blocked: {
+    tone: "danger",
+    label: "Action required",
+    title: "A required public check is on hold",
+    summary: "A required dependency or public surface is not ready. Review the details before treating the site as healthy.",
+  },
+  unknown: {
+    tone: "warning",
+    label: "Unknown",
+    title: "Production status is unavailable",
+    summary: "The health check did not answer, so this page will not assume the site is healthy.",
+  },
+};
+
+const SURFACE_LABELS = {
+  today: "Today",
+  ask: "Ask",
+  map: "Map",
+  events: "Events",
+} as const;
+
+function checkedAt(value: string): string {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "Check time unavailable";
+  return `Checked ${date.toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })} ET`;
+}
+
+function countLine(
+  current: number | null,
+  total: number | null,
+  noun: string,
+): string {
+  if (current === null || total === null) return `${noun} count unavailable.`;
+  return `${current.toLocaleString()} of ${total.toLocaleString()} ${noun} are current.`;
+}
+
+function ProductionStatus({ health }: { health: DeploymentHealth | null }) {
+  const snapshot = health?.snapshot ?? null;
+  const hours = health?.hours ?? null;
+  const level = operationsHealthLevel(snapshot, hours);
+  const presentation = LEVEL_PRESENTATION[level];
+  const environment = snapshot?.deployment.environment;
+  const environmentLabel =
+    environment === "production"
+      ? "Production"
+      : environment === "preview"
+        ? "Preview deployment"
+        : environment === "development"
+          ? "Development"
+          : "Deployment";
+  const databaseTone: Tone =
+    snapshot?.database.status === "reachable" ? "positive" : "danger";
+  const dataTone: Tone =
+    snapshot?.data.status === "current"
+      ? "positive"
+      : snapshot?.data.status === "unavailable"
+        ? "danger"
+        : "warning";
+  const hoursTone: Tone =
+    hours?.status === "current"
+      ? "positive"
+      : hours?.status === "policy_hold"
+        ? "cool"
+        : "warning";
+  const hoursDetail =
+    hours?.status === "policy_hold"
+      ? hours.operatorMessage ?? "Current-hours refresh is intentionally paused."
+      : hours
+        ? countLine(hours.current, hours.expected, "places")
+        : "Current-hours coverage did not answer.";
+  const hoursLabel =
+    hours?.status === "policy_hold"
+      ? "Policy hold"
+      : hours?.coveragePct !== null && hours?.coveragePct !== undefined
+        ? `${hours.coveragePct}%`
+        : "Unknown";
+  const surfaces = snapshot
+    ? Object.entries(snapshot.readiness.surfaces).map(([key, value]) => ({
+        label: SURFACE_LABELS[key as keyof typeof SURFACE_LABELS],
+        status: value.status,
+      }))
+    : [];
+  const held = surfaces.filter((surface) => surface.status === "hold");
+  const partial = surfaces.filter((surface) => surface.status === "partial");
+  const surfaceTone: Tone = held.length > 0 ? "danger" : partial.length > 0 ? "warning" : snapshot ? "positive" : "warning";
+  const surfaceLabel = held.length > 0 ? "On hold" : partial.length > 0 ? "Partial" : snapshot ? "Ready" : "Unknown";
+  const surfaceDetail = held.length > 0
+    ? `${held.map((surface) => surface.label).join(", ")} ${held.length === 1 ? "is" : "are"} on hold.`
+    : partial.length > 0
+      ? `${partial.map((surface) => surface.label).join(", ")} ${partial.length === 1 ? "has" : "have"} partial data.`
+      : snapshot
+        ? "Today, Ask, Map, and Events passed their readiness checks."
+        : "Surface readiness did not answer.";
+
+  return (
+    <section className="mt-5" aria-labelledby="production-status-heading">
+      <div
+        className="rounded-[var(--app-radius-md)] border-l-4 px-4 py-4"
+        style={{
+          borderColor: toneInk(presentation.tone),
+          background: toneTint(presentation.tone, 8),
+        }}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+              {environmentLabel} status
+            </p>
+            <h2 id="production-status-heading" className="mt-1 text-[20px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+              {presentation.title}
+            </h2>
+          </div>
+          <span className="shrink-0">
+            <StatusPill tone={presentation.tone}>{presentation.label}</StatusPill>
+          </span>
+        </div>
+        <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          {presentation.summary}
+        </p>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+          <span>
+            {snapshot ? checkedAt(snapshot.generatedAt) : "No completed health check"}
+            {snapshot?.deployment.revision ? ` · Revision ${snapshot.deployment.revision.slice(0, 7)}` : ""}
+          </span>
+          <Link href="/admin/data-health" className="tap-44 inline-flex items-center font-semibold" style={{ color: "var(--app-cool)" }}>
+            Open data health →
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-2">
+        <HairlineList>
+          <HairlineRow
+            index={0}
+            dot={databaseTone}
+            title="Database"
+            subtitle={
+              snapshot?.database.status === "reachable"
+                ? `Answered in ${snapshot.database.latencyMs ?? "unknown"} ms.`
+                : "The database check did not answer."
+            }
+            badge={<StatusPill tone={databaseTone}>{snapshot?.database.status === "reachable" ? "Reachable" : snapshot?.database.status ?? "Unknown"}</StatusPill>}
+          />
+          <HairlineRow
+            index={1}
+            dot={dataTone}
+            title="Current sources"
+            subtitle={snapshot ? countLine(snapshot.data.current, snapshot.data.tracked, "sources") : "Source health did not answer."}
+            badge={<StatusPill tone={dataTone}>{snapshot?.data.status ?? "Unknown"}</StatusPill>}
+          />
+          <HairlineRow
+            index={2}
+            dot={hoursTone}
+            title="Open Now coverage"
+            subtitle={hoursDetail}
+            badge={<StatusPill tone={hoursTone}>{hoursLabel}</StatusPill>}
+          />
+          <HairlineRow
+            index={3}
+            dot={surfaceTone}
+            title="Public surfaces"
+            subtitle={surfaceDetail}
+            badge={<StatusPill tone={surfaceTone}>{surfaceLabel}</StatusPill>}
+          />
+        </HairlineList>
+      </div>
+    </section>
+  );
+}
+
+function AlertReadiness({ ownerDevices }: { ownerDevices: number | null }) {
+  const configured = (value: string | undefined) => Boolean(value?.trim());
+  const vapidConfigured = hasCompleteVapidConfiguration();
+  const ownerPush = ownerPushReadiness(vapidConfigured, ownerDevices);
+  const serverSentryConfigured =
+    configured(process.env.SENTRY_DSN) ||
+    configured(process.env.NEXT_PUBLIC_SENTRY_DSN);
+  const browserSentryConfigured = configured(process.env.NEXT_PUBLIC_SENTRY_DSN);
+  const sentry = sentryReadiness(
+    serverSentryConfigured,
+    browserSentryConfigured,
+  );
+  const resendConfigured = configured(process.env.RESEND_API_KEY);
+  const slackConfigured = configured(process.env.SLACK_WEBHOOK_URL);
+
+  const ownerTone: Tone = ownerPush === "ready" ? "positive" : ownerPush === "unconfigured" ? "danger" : "warning";
+  const ownerLabel = ownerPush === "ready"
+    ? `${ownerDevices} device${ownerDevices === 1 ? "" : "s"}`
+    : ownerPush === "no-device"
+      ? "No device"
+      : ownerPush === "unconfigured"
+        ? "Not configured"
+        : "Unknown";
+  const ownerDetail = ownerPush === "ready"
+    ? "Subscribed owner devices are targeted for feedback and signup alerts, including during quiet hours. Use the test control to verify delivery."
+    : ownerPush === "no-device"
+      ? "Push is configured, but no owner device is subscribed."
+      : ownerPush === "unconfigured"
+        ? "The VAPID set is incomplete. All three values are required."
+        : "Push is configured, but the owner subscription count did not answer.";
+  const sentryTone: Tone = sentry === "ready" ? "positive" : "warning";
+  const sentryLabel = sentry === "ready"
+    ? "Server + browser"
+    : sentry === "server-only"
+      ? "Server only"
+      : sentry === "browser-only"
+        ? "Browser only"
+        : "Not configured";
+  const sentryDetail = sentry === "ready"
+    ? "Server and browser errors can be captured."
+    : sentry === "server-only"
+      ? "Browser error capture is not configured."
+      : sentry === "browser-only"
+        ? "Server error capture is not configured."
+        : "Sentry error capture is not configured.";
+
+  return (
+    <section className="mt-6" aria-labelledby="alert-readiness-heading">
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <div>
+          <h2 id="alert-readiness-heading" className="text-[12px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+            Alert coverage
+          </h2>
+          <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+            These checks confirm the wiring on this deployment, not delivery to an inbox or device.
+          </p>
+        </div>
+        <Link href="/admin/notify" className="tap-44 inline-flex shrink-0 items-center text-[12px] font-semibold" style={{ color: "var(--app-cool)" }}>
+          Broadcast →
+        </Link>
+      </div>
+      <HairlineList>
+        <HairlineRow
+          index={0}
+          href="/admin/beta"
+          icon={BellRing}
+          iconTone={ownerTone}
+          title="Owner push"
+          subtitle={ownerDetail}
+          badge={<StatusPill tone={ownerTone}>{ownerLabel}</StatusPill>}
+        />
+        <HairlineRow
+          index={1}
+          href="/admin/beta-emails"
+          icon={Mail}
+          iconTone={resendConfigured ? "positive" : "warning"}
+          title="Owner email"
+          subtitle={resendConfigured ? "Submission and claim emails can leave the app." : "Resend is not configured for owner email."}
+          badge={<StatusPill tone={resendConfigured ? "positive" : "warning"}>{resendConfigured ? "Configured" : "Not configured"}</StatusPill>}
+        />
+        <HairlineRow
+          index={2}
+          icon={ShieldCheck}
+          iconTone={sentryTone}
+          title="Error capture"
+          subtitle={sentryDetail}
+          badge={<StatusPill tone={sentryTone}>{sentryLabel}</StatusPill>}
+        />
+        <HairlineRow
+          index={3}
+          icon={Webhook}
+          iconTone={slackConfigured ? "positive" : "warning"}
+          title="Health escalation"
+          subtitle={slackConfigured ? "Data-health anomalies can request a Slack alert." : "No Slack webhook is configured for data-health anomalies."}
+          badge={<StatusPill tone={slackConfigured ? "positive" : "warning"}>{slackConfigured ? "Configured" : "Not configured"}</StatusPill>}
+        />
+        <HairlineRow
+          index={4}
+          href="https://github.com/mikedlabs/frederick-radius/actions/workflows/production-health-alert.yml"
+          icon={Github}
+          iconTone="cool"
+          title="Daily health issue"
+          subtitle="The workflow is in this release. Confirm its latest run in GitHub."
+          badge={<StatusPill tone="cool">Verify run</StatusPill>}
+        />
+      </HairlineList>
+    </section>
+  );
+}
+
 // ── The streamed DB block: queue + vitals + system ──────────────────────
 
 export async function DeskSections() {
+  // Keep the database work sequential. Both loaders touch the production pool,
+  // whose max:1 constraint makes parallel reads look like outages.
+  const deploymentHealth = await loadDeploymentHealth();
   const desk = await loadDesk();
   const reviewPlaces = getNeedsReviewPlaces().length;
   const reviewEvents = getNeedsReviewEvents().length;
@@ -351,6 +709,9 @@ export async function DeskSections() {
 
   return (
     <>
+      <ProductionStatus health={deploymentHealth} />
+      <AlertReadiness ownerDevices={desk.core?.ownerAlertDevices ?? null} />
+
       {/* ── The queue: a light list, hairlines not cards. Rows exist only when
           something is waiting; otherwise a clean all-clear. ── */}
       <section className="mt-5">
@@ -365,7 +726,7 @@ export async function DeskSections() {
             }}
           >
             <CircleCheck className="h-5 w-5 shrink-0" strokeWidth={2} style={{ color: "var(--app-positive)" }} aria-hidden />
-            <span className="text-[14px] font-medium" style={{ color: "var(--app-positive)" }}>All clear. Nothing is waiting on you.</span>
+            <span className="text-[14px] font-medium" style={{ color: "var(--app-positive)" }}>The review queue is clear. No submissions or data reviews are waiting.</span>
           </div>
         ) : (
           <>

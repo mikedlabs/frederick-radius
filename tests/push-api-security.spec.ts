@@ -104,4 +104,48 @@ describe("push API security boundary", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toContain("no-store");
   });
+
+  it.each([
+    ["only the public key", "public-key", undefined, undefined],
+    ["a missing private key", "public-key", undefined, "mailto:owner@example.com"],
+    ["a whitespace private key", "public-key", "   ", "mailto:owner@example.com"],
+    ["a missing subject", "public-key", "private-key", undefined],
+  ])(
+    "does not advertise push when VAPID has %s",
+    async (_label, publicValue, privateValue, subjectValue) => {
+      if (publicValue !== undefined) process.env.VAPID_PUBLIC_KEY = publicValue;
+      if (privateValue !== undefined) process.env.VAPID_PRIVATE_KEY = privateValue;
+      if (subjectValue !== undefined) process.env.VAPID_SUBJECT = subjectValue;
+
+      const response = await publicKey(
+        new Request("https://frederickradius.app/api/push/public-key", {
+          headers: {
+            referer:
+              "https://frederickradius.app/settings/notifications",
+          },
+        }),
+      );
+
+      expect(await response.json()).toEqual({ key: null, enabled: false });
+    },
+  );
+
+  it("returns the trimmed public key only when the complete VAPID set exists", async () => {
+    process.env.VAPID_PUBLIC_KEY = " public-key ";
+    process.env.VAPID_PRIVATE_KEY = " private-key ";
+    process.env.VAPID_SUBJECT = " mailto:owner@example.com ";
+
+    const response = await publicKey(
+      new Request("https://frederickradius.app/api/push/public-key", {
+        headers: {
+          referer: "https://frederickradius.app/settings/notifications",
+        },
+      }),
+    );
+
+    expect(await response.json()).toEqual({
+      key: "public-key",
+      enabled: true,
+    });
+  });
 });
