@@ -173,6 +173,16 @@ describe("event detail picture-first hero", () => {
     expect(html).toMatch(/Open the (?:<!-- -->)?Catoctin Colorfest(?:<!-- -->)? guide/);
     expect(count(html, "<h1")).toBe(1);
 
+    // Frederick Road is closed and the park has no parking during the show,
+    // so even on the morning of the show Directions is walking only, is never
+    // the filled action, and the page points drivers at parking and shuttles.
+    vi.setSystemTime(new Date("2026-10-10T08:30:00-04:00"));
+    const morning = await renderEvent(colorfest, "seed");
+    expect(morning).toContain('data-event-arrival="catoctin-colorfest-2026"');
+    expect(morning).toContain('href="/moments/catoctin-colorfest-2026#getting-there"');
+    expect(morning).toContain("travelmode=walking");
+    expect(morning).not.toMatch(/data-decision-action="directions" data-bar-primary="true"/);
+
     // After the moment's window closes, the guide link goes with it.
     vi.setSystemTime(new Date("2026-10-12T09:00:00-04:00"));
     const after = await renderEvent(colorfest, "seed");

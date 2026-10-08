@@ -86,6 +86,12 @@ export type MomentVenue = {
   note?: string;
   /** The official page that states `note`. Required when `note` is set. */
   source_url?: string;
+  /**
+   * Heading of the guide section a visitor needs before driving, set when the
+   * venue has no car access. The guide then leads with that section and
+   * offers walking directions, never driving directions to a closed road.
+   */
+  arrivalSection?: string;
 };
 
 /** One day the occasion itself runs (an Eastern YYYY-MM-DD civil date). */
@@ -688,8 +694,6 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
       },
     ],
     spotlightSourceUrl: "https://colorfest.org/plan-your-visit/",
-    spotlightDirectionsUrl:
-      "https://www.google.com/maps/dir/?api=1&destination=19%20Frederick%20Rd%2C%20Thurmont%2C%20MD%2021788",
     heroPhoto: {
       townSlug: "thurmont",
       depicts: "Thurmont Town Square Park, the town center",
@@ -702,6 +706,7 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
       address: "19 Frederick Rd, Thurmont, MD 21788",
       note: "The park has no parking or car access during the show, so park at a stop-and-park area and ride the free shuttle.",
       source_url: "https://colorfest.org/plan-your-visit/",
+      arrivalSection: "Getting there",
     },
     days: [{ date: "2026-10-10" }, { date: "2026-10-11" }],
     eventSlugs: ["catoctin-colorfest-thurmont-2026"],

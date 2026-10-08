@@ -228,6 +228,23 @@ export function sourcedMomentFacts(
 }
 
 /** "colorfest.org" for a source link's visible text. */
+/** In-page anchor id for a guide section heading ("Getting there" -> "getting-there"). */
+export function momentSectionId(heading: string): string {
+  return heading.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+/**
+ * Directions to a moment venue. A venue with no car access gets walking
+ * directions, so nobody is routed by car onto a road the organizer closed.
+ */
+export function momentDirectionsUrl(
+  geom: { lng: number; lat: number },
+  options: { walking?: boolean } = {},
+): string {
+  const base = `https://www.google.com/maps/dir/?api=1&destination=${geom.lat},${geom.lng}`;
+  return options.walking ? `${base}&travelmode=walking` : base;
+}
+
 export function sourceHost(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");

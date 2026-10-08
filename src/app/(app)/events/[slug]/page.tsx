@@ -73,6 +73,8 @@ import {
 } from "@/components/place/PlacePhotoState";
 import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import GettingThere from "@/components/event/GettingThere";
+import { momentForEventSlug } from "@/data/civic-moments";
+import { momentSectionId } from "@/components/moment/momentGuide";
 import VenueMiniMap from "@/components/event/VenueMiniMap";
 import { eventSaveCount } from "@/lib/loaders/eventSaves";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -290,8 +292,14 @@ export default async function EventPage({
     Boolean(venuePlace),
   );
   const pinGeom = venuePlace?.geom ?? event.geom;
+  // A moment whose venue has no car access (Colorfest closes Frederick Road)
+  // must not route drivers to the venue. Directions turns into a walking link
+  // and never becomes the filled primary; the guide's parking and shuttle
+  // section is offered instead.
+  const arrivalMoment = momentForEventSlug(event.slug);
+  const noCarAccess = Boolean(arrivalMoment?.venue?.arrivalSection);
   const directionsUrl = hasPreciseLocation
-    ? `https://www.google.com/maps/dir/?api=1&destination=${pinGeom.lat},${pinGeom.lng}`
+    ? `https://www.google.com/maps/dir/?api=1&destination=${pinGeom.lat},${pinGeom.lng}${noCarAccess ? "&travelmode=walking" : ""}`
     : null;
   const hasDirections = Boolean(physicalAttendance && hasPreciseLocation && directionsUrl);
   const hasTrustworthyEnd = eventHasTrustworthyEnd(event);
@@ -389,7 +397,7 @@ export default async function EventPage({
     startsAt: event.starts_at,
     endsAt: hasTrustworthyEnd ? event.ends_at : null,
     isAllDay: Boolean(event.is_all_day) || isDateOnlyEventAnchor(event),
-    hasDirections,
+    hasDirections: hasDirections && !noCarAccess,
     status: eventStatus,
   });
   const visualTreatment = eventVisual ? eventVisualTreatment(eventVisual) : null;
@@ -1002,6 +1010,27 @@ export default async function EventPage({
       {/* Practical attendance context uses the same precise location as
           Directions. The venue map renders here only when a photograph
           leads the page; otherwise it is already the hero. */}
+      {noCarAccess && arrivalMoment?.venue?.note && eventStatus === "scheduled" && !hasEnded && (
+        <section
+          aria-label="Parking and shuttle"
+          data-event-arrival={arrivalMoment.slug}
+          className="flex items-start gap-3 border-t py-4"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <CarFront className="mt-0.5 h-5 w-5 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
+          <div className="min-w-0">
+            <p className="text-body" style={{ color: "var(--app-ink)" }}>{arrivalMoment.venue.note}</p>
+            <Link
+              href={`/moments/${arrivalMoment.slug}#${momentSectionId(arrivalMoment.venue.arrivalSection ?? "")}`}
+              className="mt-1 inline-flex min-h-11 items-center gap-1 font-semibold underline underline-offset-2"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              Parking and shuttle
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </div>
+        </section>
+      )}
       {physicalAttendance && hasPreciseLocation && eventStatus === "scheduled" && !hasEnded && (
         <GettingThere
           geom={pinGeom}
