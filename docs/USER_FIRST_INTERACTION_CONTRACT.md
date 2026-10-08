@@ -48,6 +48,8 @@ same decision. Directories and raw inventories stay behind a deliberate
 secondary action. Unavailable readings and empty modules do not take primary
 space.
 
+Every answer that shows data also passes the trust gate in `docs/DATA_CONFIDENCE_GATE.md`.
+
 ## Mobile acceptance checks
 
 - A common need can reach a useful answer within two actions after location

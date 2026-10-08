@@ -1,3 +1,5 @@
+> Superseded. Current owner decisions live in CLAUDE.md. The 5-item nav and the Fraunces type recorded here were both retired. History, not instructions.
+
 # Premium Overhaul: Decisions Log
 
 One entry per judgment call, reasoning in two sentences or fewer. No em

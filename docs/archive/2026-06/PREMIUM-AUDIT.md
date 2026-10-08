@@ -1,3 +1,5 @@
+> Superseded. Current: CLAUDE.md and docs/VISUAL_FIRST.md. History, not instructions.
+
 # Frederick Radius Premium Overhaul: Phase 0 Audit
 
 This is the Phase 0 deliverable for the Premium Overhaul brief. It is

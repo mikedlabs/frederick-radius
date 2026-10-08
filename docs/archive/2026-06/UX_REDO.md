@@ -1,3 +1,5 @@
+> Superseded by the "Build order" in `docs/VISUAL_FIRST.md`. The data-confidence gate now lives in `docs/DATA_CONFIDENCE_GATE.md`. History, not instructions.
+
 # Frederick Radius — UX Redo Plan (plan of record)
 
 > The sequenced plan to move the app from feature-rich-but-diffuse to the
@@ -130,63 +132,9 @@ passes the gate, and no surface is left hand-styled.
 
 ---
 
-## The data-confidence gate (runs through every layer)
+## The data-confidence gate
 
-"Trust is the product." This gate is not a phase; it is a check every
-change to a data-bearing surface must pass. Visual work does not ship
-ahead of the data it presents.
-
-### Confidence tiers
-
-Every fact the UI states carries one of three tiers, and the UI treats
-them differently:
-
-- **Verified** — official/curated source, or Google-confirmed within the
-  freshness window. May assert facts ("Open now," hours, category).
-- **Probable** — enriched but aging past the window. Assert with a hedge
-  and the date ("hours as of 3 weeks ago").
-- **Unconfirmed** — raw feed, OSM, or unvetted submission. Never assert
-  open/closed or precise facts; show "not confirmed."
-
-### Cross-cutting trust primitives (one each, used everywhere)
-
-- **Source badge** — one `SourceChip`, one source taxonomy (Google,
-  County, NWS, OSM, curated, submitted), on every place / event / civic /
-  real-time answer. Never restyled per surface.
-- **Freshness** — one `FreshnessChip`, one threshold table, consistent
-  wording. Stale degrades the claim; it is never hidden.
-- **Open status** — one engine (`hours.ts` / `googleHours.ts`), one rule:
-  assert open/closed only on Verified or Probable hours; otherwise "hours
-  not confirmed." Never a confident "Open now" on unverified hours.
-
-### Per-surface requirements
-
-| Surface / element | The requirement |
-| --- | --- |
-| **Today (home)** | Every answer it surfaces is traceable and fresh. No "open now" pick without verified hours. If confidence is low, hedge or omit. The intelligence layer never states what it cannot source. |
-| **Places** | Category shown as verified vs inferred; open status only when verified; source + freshness on the card and sheet; deduped; closed/nonexistent suppressed (`isOperational`); distance only with a known origin. |
-| **Events** | Correct `America/New_York` instant (the recurring time-bug class); source + freshness; recurrence collapsed to one series; cancelled/postponed surfaced honestly; civic separated from the fun feed; nothing labeled "tonight" that is not. |
-| **Map** | Pins only for valid coordinates (`coord-audit`); honest open/closed pin states; overlays cite source + freshness; **filters and the visible count always agree.** |
-| **Radius** | Within-reach reflects real travel time (isochrone), not straight-line distance dressed as a drive time; the origin is a real user location or a clearly stated assumed center, never a faked "8 min away." |
-| **Source badges** | One component, one taxonomy, every data-bearing surface. |
-| **Freshness** | One component, one threshold table; visible, never silently stale. |
-| **Open status** | One rule, one engine; "hours not confirmed" beats a confident lie. |
-| **Categories** | One canonical taxonomy; one primary category per place; inferred categories flagged; never render a raw Google `primary_type` or a government department string as a category. |
-| **Municipalities** | Correct assignment (or "unincorporated"); a town page shows only places in or near that town; the 12-town parity gap is tracked, not faked. |
-| **Distance** | Computed only with a known origin; units shown; travel-time and straight-line labeled distinctly; never imply precision we do not have. |
-| **Filters** | A filter and its result count always agree; zero results show an honest empty state, never stale results; no filter silently no-ops. |
-| **Empty states** | Designed, not accidental: tell the truth ("nothing on the calendar tonight"), offer a real next move (a populated adjacent slice, or a browse fallback), and never look like a broken or still-loading screen. |
-
-### The PR rule (adds to the existing NORTH_STAR PR question)
-
-NORTH_STAR already asks every PR: *which interaction law does this serve,
-and how many taps does it save?* Data-bearing changes add a second
-question:
-
-> **What is the source, how fresh is it, and what does this show when the
-> data is missing or unverified?**
-
-A PR touching a data surface that cannot answer all three does not merge.
+This section moved to `docs/DATA_CONFIDENCE_GATE.md` on 2026-10-08, where it is kept current.
 
 ---
 
