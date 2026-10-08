@@ -15,19 +15,26 @@ Pre-computed:
 
 Rules this repo has learned the hard way:
 
-1. **Verify before committing.** `npx tsc --noEmit`, `npx eslint <changed>`, and
-   `npx vitest run` must pass. CI's `verify` / `style-lint` are pre-existing
-   infra reds (account-level Actions limits), so the local run is the gate.
+1. **Verify before committing** with the gate in CLAUDE.md "Verification
+   norms" (run `/verify` for the full report):
+   - Every commit: `npm run typecheck`, `npx eslint <changed>` and
+     `npx vitest run`, plus `npm run test:node` and `npm run test:helpers`
+     after copy, data or helper changes.
+   - UI changes: `npm run style:lint && npm run lint:colors &&
+     npm run lint:zindex && npm run lint:type-scale && npm run lint:place-photo`.
 
-2. **Stage explicitly. Never `git add -A`.** Exploration agents and dev servers
-   write files into this tree — `predev` rewrites `src/data/places-client.json`
-   and `places-client-hours.json` on every dev start, and subagents leave scratch
-   files. `git add -A` bundles them into the wrong PR. Add the exact paths you
+   CI `verify` and `style-lint` are required; a red is real until shown
+   otherwise.
+
+2. **Stage explicitly. Never `git add -A`.** Subagents leave scratch files in
+   this tree, and an explicit data rebuild (`npm run build:client-places` or
+   `npm run dev:refresh-data`) rewrites tracked files under `src/data/`.
+   `git add -A` bundles them into the wrong PR. Add the exact paths you
    changed, then re-read `git status` to confirm nothing else came along.
 
-3. **Branch from CURRENT origin/main.** Fetch first — deploy-wait scripts often
-   leave the checkout on a stale branch. If this branch is far behind, say so
-   rather than opening a PR against a stale base.
+3. **Branch from CURRENT origin/main.** Fetch first, because deploy-wait scripts
+   often leave the checkout on a stale branch. If this branch is far behind, say
+   so rather than opening a PR against a stale base.
 
 4. **One concern per PR.** If the diff spans unrelated concerns, split it.
 
@@ -41,7 +48,8 @@ Rules this repo has learned the hard way:
    and PR bodies with:
    `🤖 Generated with [Claude Code](https://claude.com/claude-code)`
 
-Confirm the plan with me before pushing or opening the PR — pushing is
+Confirm the plan with me before pushing or opening the PR, because pushing is
 outward-facing. After merge, prod deploys automatically in ~3-4 minutes; verify
-on prod with `scripts/prod-audit.mjs` plus a check specific to this change, and
-remember stale ISR entries persist briefly, so test a never-seen URL.
+on prod with `scripts/prod-audit.mjs` (with `EXPECTED_SHA`) plus a check
+specific to this change, and remember stale ISR entries persist briefly, so
+test a never-seen URL.

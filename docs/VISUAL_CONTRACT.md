@@ -5,9 +5,10 @@ surfaces at the 375 × 812 mobile viewport and a 1366 × 900 desktop viewport.
 The checks turn off animation, wait for the actual product fonts, suppress the
 first-visit install invitation, and mask the live map canvas and attribution.
 They intentionally test the app's existing routes instead of a parallel demo
-page. The visual scripts also bypass the repository's data-regenerating
-`predev` hook, so a UI review uses the committed release and leaves tracked
-place data untouched.
+page. The test server starts through `npm run dev`, whose `predev` hook only
+validates the committed data release (`data:release:check` writes nothing), so
+a UI review uses that release and leaves tracked place data untouched
+(`tests/local-command-data-safety.spec.ts`).
 
 ## Why the first run is capture-only
 
@@ -44,6 +45,25 @@ Once references for the current platform exist, compare them with:
 ```sh
 npm run test:visual:compare
 ```
+
+## Running browser checks in a sandbox or worktree
+
+The installed Playwright expects a Chromium revision that agent sandboxes do
+not ship, so a default launch fails there. Point Playwright and the Storybook
+tests at the preinstalled browser; `playwright.config.ts`, `vitest.config.ts`
+and `scripts/check-visual-floor.mjs` all read the same variable:
+
+```sh
+export PW_CHROMIUM_PATH=$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome | head -1)
+npm run test:ux
+```
+
+`npm run test:storybook` also fails in a git worktree whose `node_modules` is a
+symlink to a checkout outside the worktree, because the test browser cannot
+load the Storybook setup file from outside the tree. Run it from the main
+checkout instead. When no
+browser can run at all, say so in the PR and dispatch `ux-audit.yml` before
+merging a large visual change.
 
 ## Type-scale ratchet
 

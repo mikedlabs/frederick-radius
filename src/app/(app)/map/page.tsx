@@ -105,9 +105,11 @@ function MapLoadingSurface() {
   );
 }
 
-/** Radius ("Nearby") mode — no UI entry point (owner call 2026-07-08),
- * reachable via /map?mode=radius. The reach controls and committed places
- * render immediately; optional amenities and events hydrate client-side. */
+/** Radius ("Nearby") mode at /map?mode=radius. The browse map has no floating
+ * toggle for it (owner call 2026-07-08); the dock's "Compare travel reach",
+ * the within-15-minutes scene and Find actions open it. The reach controls and
+ * committed places render immediately; optional amenities and events hydrate
+ * client-side. */
 function RadiusMode() {
   return (
     <div className="relative mx-auto max-w-screen-md space-y-3 lg:max-w-screen-lg">
