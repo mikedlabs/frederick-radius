@@ -6,9 +6,9 @@ import SearchOverlay from "./SearchOverlay";
 
 /** Query-only parent state matches the overlay's real lazy-mount contract.
  * Full header/session/history behavior is covered by the interactive specs. */
-function FindWorkshop() {
+function FindWorkshop({ initialQuery = "coffee" }: { initialQuery?: string }) {
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState("coffee");
+  const [draft, setDraft] = useState(initialQuery);
   const openerRef = useRef<HTMLElement | null>(null);
   const close = useCallback(() => setOpen(false), []);
   return (
@@ -98,6 +98,39 @@ const meta = {
 } satisfies Meta<typeof FindWorkshop>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const NoSubmittedSearches: Story = {
+  args: { initialQuery: "" },
+  beforeEach: () => {
+    const restoreFetch = sampleSearch("ready");
+    const keys = ["fr:recent-search:v1", "fr:recent-search:v2"];
+    const previous = keys.map((key) => window.localStorage.getItem(key));
+    // This legacy fixture deliberately has no real submission provenance.
+    window.localStorage.setItem(keys[0], JSON.stringify(["Sample legacy query"]));
+    window.localStorage.removeItem(keys[1]);
+    return () => {
+      restoreFetch();
+      keys.forEach((key, index) => {
+        if (previous[index] === null) window.localStorage.removeItem(key);
+        else window.localStorage.setItem(key, previous[index]!);
+      });
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Open sample Find" }));
+    const dialog = within(await canvas.findByRole("dialog", { name: "What do you need?" }));
+    const recents = within(dialog.getByRole("region", { name: "Recent searches on this device" }));
+    await expect(recents.getByText("No recent searches on this device.")).toBeVisible();
+    await expect(recents.queryByRole("button")).not.toBeInTheDocument();
+    await expect(dialog.queryByText("Sample legacy query")).not.toBeInTheDocument();
+    await userEvent.type(dialog.getByRole("searchbox"), "Sample typed draft");
+    await userEvent.click(dialog.getByRole("button", { name: "Clear search" }));
+    await expect(within(dialog.getByRole("region", { name: "Recent searches on this device" }))
+      .getByText("No recent searches on this device.")).toBeVisible();
+    await expect(window.localStorage.getItem("fr:recent-search:v2")).toBeNull();
+  },
+};
 
 export const RestoredQuery: Story = {
   beforeEach: () => sampleSearch("ready"),

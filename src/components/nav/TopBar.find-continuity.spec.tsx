@@ -201,8 +201,16 @@ describe("Find continuity through the real lazy header and overlay", () => {
   });
 
   it("repeats a recent phrase and then resumes it without persisting result data", async () => {
-    window.localStorage.setItem("fr:recent-search:v1", JSON.stringify(["coffee"]));
+    fetchMock.mockImplementation(async () => response("Fresh fixture result"));
     await open();
+    await type("coffee");
+    await settle();
+    await act(async () => {
+      input().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(navigation.leaveTo).toHaveBeenCalledOnce();
+    await open();
+    await act(async () => { button("Clear search").click(); });
     await act(async () => { button("coffee").click(); });
     await settle();
     expect(container.textContent).toContain("Fresh fixture result");
