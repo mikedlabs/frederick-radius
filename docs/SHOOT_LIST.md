@@ -24,9 +24,10 @@ week of August 17 down to 241 in the week of September 28.
 
 So the camera goes to Today and to the big moments, not to individual
 businesses. A place page is a long-tail visit, and its picture should come
-from the self-hosted mini map (already built) and, later, from the business
-itself through a reviewed upload. Photographing every place in the catalog
-would take weeks for pages that see a few visits a month.
+from the self-hosted mini map (already built) and, if public claiming is
+turned back on, from the business itself through a reviewed upload (see the
+last section). Photographing every place in the catalog would take weeks for
+pages that see a few visits a month.
 
 ## 1. Today's photo band, by season and time of day
 
@@ -90,7 +91,16 @@ Gambrill State Park, Cunningham Falls and the Catoctin Mountain trails.
 
 ## Not a shoot: business photos
 
-Owners can claim a listing but cannot add a photo. A reviewed upload on the
-manage page (`src/app/business`) is the right supply for place pages: owned,
-free, current, and credited to the business. It is a product feature to
-build, not something to photograph.
+Public business claiming is off. `src/app/business/claim/page.tsx` is a
+coming-soon page, and its header comment makes turning claiming on a deferred
+owner decision. `/business/manage/[token]` opens only for a claim an admin
+already approved, so no new owner can reach it or add a photo.
+
+Pending owner call: turn public business claiming back on so owners can add a
+reviewed photo, or keep it off and remove the business photo upload from
+build step 6 of `docs/VISUAL_FIRST.md`?
+
+If claiming returns, a reviewed upload on the manage page is the right supply
+for place pages: owned, free, current, and credited to the business. It is a
+product feature to build, not something to photograph, and it waits until
+that call is made.
