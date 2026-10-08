@@ -309,13 +309,29 @@ export type RibbonSelection = {
 const NO_SELECTION: RibbonSelection = { days: [], pressedDay: null, weekend: false };
 
 /**
+ * Between midnight and 4 AM Eastern the night in progress began on the
+ * previous calendar day (lib/eventHorizon turns the local day over at 4 AM),
+ * while the ribbon's first cell is already the new calendar day.
+ */
+export function isSmallHours(nowISO: string): boolean {
+  const now = new Date(nowISO);
+  if (!Number.isFinite(now.getTime())) return false;
+  return easternParts(now).hour < NIGHT_END_HOUR;
+}
+
+/**
  * How the board's time state reads on the week ribbon. Shared links keep
- * their meaning: ?d= selects its day, ?lens=today and ?lens=tonight select
- * today's cell, ?lens=tomorrow selects the local tomorrow (the coming
- * daytime, so 1 AM still reads as the night before), and ?lens=weekend
- * outlines the weekend's days with "This weekend" pressed. ?lens=all, and the
- * rolling seven-day ?lens=week, select no single cell; the answer sentence
- * names those.
+ * their meaning: ?d= selects its day, ?lens=today selects today's cell,
+ * ?lens=tonight selects today's cell from 4 AM on, ?lens=tomorrow selects the
+ * local tomorrow (the coming daytime), and ?lens=weekend outlines the
+ * weekend's days with "This weekend" pressed. ?lens=all, and the rolling
+ * seven-day ?lens=week, select no single cell; the answer sentence names
+ * those.
+ *
+ * Between midnight and 4 AM tonight is the previous day's evening, which is
+ * not on the ribbon, so ?lens=tonight presses no cell rather than the new
+ * day's. ?lens=tomorrow then presses the new day's cell, which is named
+ * today, so the answer sentence names that day by its date, not "tomorrow".
  */
 export function ribbonSelection(args: {
   lens: TimeKey;
@@ -329,6 +345,8 @@ export function ribbonSelection(args: {
   switch (args.lens) {
     case "today":
     case "tonight": {
+      // From 4 AM on, tonight is the evening of today's cell.
+      if (args.lens === "tonight" && isSmallHours(args.nowISO)) return NO_SELECTION;
       const key = easternDayKey(now);
       return { days: [key], pressedDay: key, weekend: false };
     }
@@ -398,8 +416,16 @@ function answerSubject(args: {
       return { name: "today", events: "today's events", underway: true };
     case "tonight":
       return { name: "tonight", events: "tonight's events", underway: true };
-    case "tomorrow":
+    case "tomorrow": {
+      // Before 4 AM the local tomorrow is the new calendar day, whose ribbon
+      // cell is named today. Its date agrees with both words.
+      const now = new Date(args.nowISO);
+      if (Number.isFinite(now.getTime()) && isSmallHours(args.nowISO)) {
+        const label = longDayLabel(tomorrowDayKey(now));
+        return { name: label, events: `the events on ${label}`, underway: true };
+      }
       return { name: "tomorrow", events: "tomorrow's events", underway: false };
+    }
     case "weekend":
       return {
         name: "this weekend",
@@ -426,6 +452,38 @@ function nextHorizonPhrase(horizon: Horizon, weekendIsNow: boolean): string | nu
 }
 
 /**
+ * The evening an empty Tonight rolls forward to, as its heading. Before
+ * 4 AM that evening falls on the new calendar day, which the ribbon and the
+ * default list already call today, so it is "This evening".
+ */
+export function rollForwardHeading(nowISO: string): "This evening" | "Tomorrow evening" {
+  return isSmallHours(nowISO) ? "This evening" : "Tomorrow evening";
+}
+
+/**
+ * Where tonight's listings sit on the grouped default list, read from the
+ * rows the list actually shows rather than from the clock:
+ *   "leads"  a Happening now or Today group holds one of tonight's listings;
+ *   "later"  one is listed, but under a later heading (a set that starts
+ *            after midnight sits under Later this week at 9 PM);
+ *   "none"   no listed row is one of tonight's.
+ */
+export type TonightPlacement = "leads" | "later" | "none";
+
+export function tonightPlacement<E>(
+  groups: ReadonlyArray<{ key: Horizon; events: readonly E[] }>,
+  isTonight: (event: E) => boolean,
+): TonightPlacement {
+  let later = false;
+  for (const group of groups) {
+    if (!group.events.some(isTonight)) continue;
+    if (group.key === "live" || group.key === "today") return "leads";
+    later = true;
+  }
+  return later ? "later" : "none";
+}
+
+/**
  * The one sentence under the week ribbon that answers "what is on" for the
  * current selection, in complete words. Counts may appear here and only
  * here, and only when the board holds the complete collection; a partial or
@@ -433,7 +491,12 @@ function nextHorizonPhrase(horizon: Horizon, weekendIsNow: boolean): string | nu
  * when there is nothing honest to say (an empty board that is still
  * loading, whose empty state already speaks).
  *
- *   all, today still listed   "Tonight's events are listed first, and later days follow."
+ * On the default list from 4 PM to 4 AM, the lead comes from the rows
+ * (`tonight`), never from the clock alone: at 1 AM the Today group holds
+ * the new calendar day, and tonight began the evening before.
+ *
+ *   all, tonight leads        "Tonight's events are listed first, and later days follow."
+ *   all, 1 AM, today listed   "Nothing else is listed for tonight, so here is today."
  *   all, today spent          "Nothing else is listed for tonight, so here is the rest of the week."
  *   tonight, rolled forward   "Nothing else is listed for tonight, so here is tomorrow evening."
  *   weekend, counted          "23 events are listed for this weekend."
@@ -450,30 +513,53 @@ export function boardAnswer(args: {
   countKnown: boolean;
   /** A What, Where, daypart or search filter also narrows the board. */
   narrowed: boolean;
-  /** Tonight was empty, so the board rolled forward to tomorrow evening. */
+  /** Tonight was empty, so the board rolled forward to the next evening. */
   rolledForward?: boolean;
   /** The default list's first horizon, or null when it lists nothing. Only
    *  the grouped default list passes this; other displays get no sentence
    *  without a selection. */
   firstHorizon?: Horizon | null;
+  /** Where tonight's listings sit on that grouped list (tonightPlacement).
+   *  Omitted means none of its rows is one of tonight's. */
+  tonight?: TonightPlacement;
   weekendIsNow?: boolean;
 }): string | null {
   const weekendIsNow = args.weekendIsNow ?? false;
   const match = args.narrowed ? "that matches your filters " : "";
 
   if (args.rolledForward) {
-    return `Nothing else ${match}is listed for tonight, so here is tomorrow evening.`;
+    const evening = rollForwardHeading(args.nowISO).toLowerCase();
+    return `Nothing else ${match}is listed for tonight, so here is ${evening}.`;
   }
 
   if (args.lens === "all" && !args.day) {
-    if (!args.firstHorizon) return null;
-    const rest = isEveningHour(args.nowISO) ? "tonight" : "today";
-    if (args.firstHorizon === "live" || args.firstHorizon === "today") {
-      const lead = rest === "tonight" ? "Tonight" : "Today";
-      return `${lead}'s events are listed first, and later days follow.`;
+    const first = args.firstHorizon;
+    if (!first) return null;
+    const leadIsToday = first === "live" || first === "today";
+    const next = leadIsToday ? null : nextHorizonPhrase(first, weekendIsNow);
+    const todayFirst = "Today's events are listed first, and later days follow.";
+    if (!isEveningHour(args.nowISO)) {
+      if (leadIsToday) return todayFirst;
+      return next ? `Nothing else ${match}is listed for today, so here is ${next}.` : null;
     }
-    const next = nextHorizonPhrase(args.firstHorizon, weekendIsNow);
-    return next ? `Nothing else ${match}is listed for ${rest}, so here is ${next}.` : null;
+    // From 4 PM to 4 AM the question is tonight, answered from the rows.
+    const tonight = args.tonight ?? "none";
+    if (tonight === "leads") return "Tonight's events are listed first, and later days follow.";
+    if (tonight === "later") {
+      // One of tonight's listings sits under a later heading, so neither
+      // "tonight leads" nor "nothing tonight" would be true.
+      return leadIsToday ? todayFirst : null;
+    }
+    const smallHours = isSmallHours(args.nowISO);
+    if (leadIsToday) {
+      // At 1 AM the Today group is the new calendar day; in the evening it
+      // holds only what lasts the rest of today, such as all-day listings.
+      const rest = smallHours ? "today" : "the rest of today";
+      return `Nothing else ${match}is listed for tonight, so here is ${rest}.`;
+    }
+    // Before 4 AM an empty Today group means the new day lists nothing yet.
+    const spent = smallHours ? "tonight or today" : "tonight";
+    return next ? `Nothing else ${match}is listed for ${spent}, so here is ${next}.` : null;
   }
 
   const subject = answerSubject({

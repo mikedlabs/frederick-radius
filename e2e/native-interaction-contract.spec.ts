@@ -272,7 +272,7 @@ test("event filters and map layers acknowledge the tap before data work finishes
 }) => {
   await page.goto("/events", { waitUntil: "domcontentloaded" });
   const when = page.getByRole("group", { name: "When" });
-  const weekend = when.getByRole("button", { name: "This weekend" });
+  const weekend = when.getByRole("button", { name: "This weekend", exact: true });
   await expect(weekend).toHaveAttribute("aria-pressed", "false");
   await weekend.click();
   await expect(weekend).toHaveAttribute("aria-pressed", "true", {

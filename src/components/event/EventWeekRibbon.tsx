@@ -22,7 +22,9 @@ import {
  * "This weekend" text button. Tapping a day picks that day alone (?d=),
  * including Saturday while the weekend is selected. The board's named lenses
  * (?lens=today, tonight, tomorrow and weekend) map onto the same cells
- * through ribbonSelection(), so shared links keep their answers.
+ * through ribbonSelection(), so shared links keep their answers. Between
+ * midnight and 4 AM ?lens=tonight presses no cell, because tonight began on
+ * the previous day, which is not on the ribbon.
  *
  * The selection is a 1.5px Ink outline with an Ink numeral, drawn as one
  * run across consecutive days (the weekend), never a Brick fill. Today keeps
@@ -179,9 +181,13 @@ export default function EventWeekRibbon({
           const nextSelected = i < days.length - 1 && selected.has(days[i + 1].key);
           const isPressed = selection.pressedDay === d.key;
           const inWeekend = selection.weekend && isSelected;
+          // The weekend cells are outlined but not pressed (a tap means that
+          // day alone), so their names say they sit in the selection. The
+          // words must never contain "This weekend": that is the pressed
+          // button's name, and "click This weekend" must reach one control.
           const ariaLabel = `${d.full} ${d.dom}${d.isToday ? ", today" : ""}${
             countsKnown ? `, ${d.count} ${d.count === 1 ? "event" : "events"}` : ""
-          }${inWeekend ? ", part of this weekend" : ""}`;
+          }${inWeekend ? ", in the selected weekend" : ""}`;
           return (
             <button
               key={d.key}

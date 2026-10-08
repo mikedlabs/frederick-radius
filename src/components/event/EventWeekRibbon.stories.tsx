@@ -38,7 +38,10 @@ function RibbonHarness({ lens: initialLens = "all", day: initialDay = null, coun
     count: day ? counts?.[day] ?? 0 : lens === "weekend" ? 28 : 0,
     countKnown: counts !== null,
     narrowed: false,
+    // The screenshot's default list: nothing of tonight's is listed, and
+    // Thursday's show leads under Later this week.
     firstHorizon: lens === "all" && !day ? "week" : undefined,
+    tonight: "none",
   });
   return (
     <div className="space-y-3 p-4" style={{ background: "var(--app-bg)" }}>

@@ -99,6 +99,24 @@ describe("EventWeekRibbon (the one date control on /events)", () => {
     expect(render(null, { lens: "all" })).not.toMatch(/aria-pressed="true"/);
   });
 
+  it("does not press the new day's cell for ?lens=tonight at 1 AM", () => {
+    // 1:00 AM Thursday: tonight is Wednesday's evening, which is off the ribbon.
+    const at1am = (lens: TimeKey) =>
+      renderToStaticMarkup(
+        createElement(EventWeekRibbon, {
+          nowISO: "2026-10-08T05:00:00.000Z",
+          countByDate: null,
+          lens,
+          day: null,
+          weekendDays: WEEKEND,
+          onPickDay: () => undefined,
+          onToggleWeekend: () => undefined,
+        }),
+      );
+    expect(at1am("tonight")).not.toMatch(/aria-pressed="true"/);
+    expect(cell(at1am("today"), "Thursday 8, today")).toContain('aria-pressed="true"');
+  });
+
   it("draws the weekend as one outlined run with This weekend pressed", () => {
     const html = render({ "2026-10-10": 5 }, { lens: "weekend" });
     expect(html).toMatch(/aria-pressed="true"[^>]*>This weekend<\/button>/);
@@ -108,9 +126,14 @@ describe("EventWeekRibbon (the one date control on /events)", () => {
     // Tapping Saturday still means Saturday alone, so no cell is pressed.
     for (const day of [friday, saturday, sunday]) {
       expect(day).toContain('aria-pressed="false"');
-      expect(day).toContain(", part of this weekend");
+      expect(day).toContain(", in the selected weekend");
       expect(day).toContain('data-selected="true"');
     }
+    // Names match as case-insensitive substrings (Playwright, voice
+    // control), so "This weekend" must name exactly one control.
+    const names = [...html.matchAll(/aria-label="([^"]*)"/g)].map((m) => m[1]);
+    expect(names.filter((name) => /this weekend/i.test(name))).toEqual([]);
+    expect(html.match(/>This weekend<\/button>/g)).toHaveLength(1);
     // Only the run's ends close the outline.
     expect(friday).toContain("inset 1.5px 0 0 0 var(--app-ink)");
     expect(friday).not.toContain("inset -1.5px 0 0 0 var(--app-ink)");

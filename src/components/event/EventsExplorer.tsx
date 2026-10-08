@@ -41,7 +41,9 @@ import {
   LENS_LABEL,
   PARTIAL_SENTENCE,
   parseTimeParams,
+  rollForwardHeading,
   showMoreLabel,
+  tonightPlacement,
   weekendDayKeys,
   type TimeKey as BoardTimeKey,
 } from "@/components/event/boardCaption";
@@ -1029,6 +1031,13 @@ export default function EventsExplorer({
       }),
     [crowdFiltered, now, next24ISO, weekendStartISO, weekendEndISO, live],
   );
+  // Whether tonight leads the grouped list, read from the rows it shows (so
+  // filters and dropped rows count), not from the clock. At 1 AM the Today
+  // group is the new calendar day and may hold nothing of tonight's.
+  const tonightListed = useMemo(
+    () => tonightPlacement(horizonGroups, (e) => isTonightEvent(e, now)),
+    [horizonGroups, now],
+  );
 
   const mapPins = useMemo(
     () =>
@@ -1151,7 +1160,7 @@ export default function EventsExplorer({
 
   // The week ribbon is the board's one date control. A day pick replaces
   // any window, and clearing a pressed cell clears the window it stood for
-  // (?lens=tonight reads as today's cell). A time of day chosen in Filters
+  // (from 4 AM on, ?lens=tonight reads as today's cell). A time of day chosen in Filters
   // stays, so Saturday plus Evening is one question.
   const pickRibbonDay = (key: string | null) => {
     haptic("light");
@@ -1248,6 +1257,7 @@ export default function EventsExplorer({
     narrowed: facetFilterActive,
     rolledForward: showTonightRollForward,
     firstHorizon: groupedDefaultList ? horizonGroups[0]?.key ?? null : undefined,
+    tonight: tonightListed,
     weekendIsNow,
   });
   const partial = currentSourceHealth.degraded;
@@ -1554,11 +1564,12 @@ export default function EventsExplorer({
         />
       ) : showTonightRollForward ? (
         // Tonight is spent: the answer sentence under the ribbon says so,
-        // then tomorrow evening's first rows follow under the same filters,
+        // then the next evening's first rows follow under the same filters
+        // ("This evening" before 4 AM, when it falls on the new day),
         // so a late visitor gets a plan instead of a zero and removal chips
         // for filters they never chose.
         <section data-events-tonight-roll-forward className="space-y-3">
-          <SectionHeading title="Tomorrow evening" size="sm" />
+          <SectionHeading title={rollForwardHeading(nowISO)} size="sm" />
           <EventRowList events={tomorrowEvening} live={live} nowISO={nowISO} />
         </section>
       ) : filtered.length === 0 ? (

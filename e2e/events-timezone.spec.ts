@@ -48,13 +48,18 @@ test("the week ribbon is the one date control, starting on today", async ({ page
   });
   await expect(days).toHaveCount(7);
   await expect(days.first()).toHaveAttribute("aria-label", /, today\b/);
-  await expect(when.getByRole("button", { name: "This weekend" })).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
+  const weekend = when.getByRole("button", { name: "This weekend", exact: true });
+  await expect(weekend).toHaveAttribute("aria-pressed", "false");
 
   const dock = page.locator(".eb-dock");
   for (const chip of ["Today", "Tonight", "Tomorrow", "This weekend"]) {
     await expect(dock.getByRole("button", { name: chip, exact: true })).toHaveCount(0);
   }
+
+  // Selecting the weekend outlines Friday to Sunday, but no cell's name may
+  // contain the button's name: Playwright and voice control both match it
+  // as a substring, and "This weekend" must still reach one control.
+  await weekend.click();
+  await expect(weekend).toHaveAttribute("aria-pressed", "true");
+  await expect(when.getByRole("button", { name: "This weekend" })).toHaveCount(1);
 });

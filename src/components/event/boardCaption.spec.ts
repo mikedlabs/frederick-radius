@@ -1,16 +1,24 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildHorizonBounds,
+  groupByHorizon,
+  isTonightEvent,
+} from "@/lib/eventHorizon";
+import {
   activeWhenPreset,
   boardAnswer,
   countLine,
   formatDayLabel,
   isEveningHour,
+  isSmallHours,
   nextMastheadCollapsed,
   parseTimeParams,
   PARTIAL_SENTENCE,
   ribbonMonthCaption,
   ribbonSelection,
+  rollForwardHeading,
   showMoreLabel,
+  tonightPlacement,
   weekDayKeys,
   weekendDayKeys,
   whatCaption,
@@ -217,6 +225,18 @@ describe("ribbonSelection (?lens and ?d map onto the ribbon)", () => {
     expect(select("today").pressedDay).toBe("2026-10-07");
     expect(select("tonight", null, WED_921PM).pressedDay).toBe("2026-10-07");
   });
+  it("presses no cell for ?lens=tonight between midnight and 4 AM", () => {
+    // At 1 AM Thursday tonight is Wednesday's evening, and Wednesday is not
+    // on the ribbon. Pressing Thursday would call the coming day tonight.
+    expect(isSmallHours(THU_1AM)).toBe(true);
+    expect(isSmallHours(WED_921PM)).toBe(false);
+    expect(select("tonight", null, THU_1AM)).toEqual({
+      days: [],
+      pressedDay: null,
+      weekend: false,
+    });
+    expect(select("today", null, THU_1AM).pressedDay).toBe("2026-10-08");
+  });
   it("reads ?lens=tomorrow as the local tomorrow, which at 1 AM is the coming day", () => {
     expect(select("tomorrow").pressedDay).toBe("2026-10-08");
     expect(select("tomorrow", null, THU_1AM).pressedDay).toBe("2026-10-08");
@@ -261,14 +281,83 @@ describe("boardAnswer (one sentence under the ribbon)", () => {
     expect(boardAnswer({ ...base, firstHorizon: "today" })).toBe(
       "Today's events are listed first, and later days follow.",
     );
-    expect(boardAnswer({ ...base, nowISO: WED_921PM, firstHorizon: "live" })).toBe(
-      "Tonight's events are listed first, and later days follow.",
+    // In the daytime, tonight's place on the list changes nothing.
+    expect(boardAnswer({ ...base, firstHorizon: "today", tonight: "leads" })).toBe(
+      "Today's events are listed first, and later days follow.",
     );
+    expect(
+      boardAnswer({ ...base, nowISO: WED_921PM, firstHorizon: "live", tonight: "leads" }),
+    ).toBe("Tonight's events are listed first, and later days follow.");
+  });
+
+  it("says tonight leads at 1 AM only when a listed row is one of tonight's", () => {
+    // 1:00 AM Thursday: the Today group is Thursday, and nothing of
+    // Wednesday night is still listed (the review's Las Áñez case).
+    expect(
+      boardAnswer({ ...base, nowISO: THU_1AM, firstHorizon: "today", tonight: "none" }),
+    ).toBe("Nothing else is listed for tonight, so here is today.");
+    expect(boardAnswer({ ...base, nowISO: THU_1AM, firstHorizon: "today" })).toBe(
+      "Nothing else is listed for tonight, so here is today.",
+    );
+    expect(
+      boardAnswer({
+        ...base,
+        nowISO: THU_1AM,
+        firstHorizon: "today",
+        tonight: "none",
+        narrowed: true,
+      }),
+    ).toBe("Nothing else that matches your filters is listed for tonight, so here is today.");
+    // A set still playing from Wednesday night does lead.
+    expect(
+      boardAnswer({ ...base, nowISO: THU_1AM, firstHorizon: "live", tonight: "leads" }),
+    ).toBe("Tonight's events are listed first, and later days follow.");
+    // Thursday lists nothing either, so both are spent.
+    expect(
+      boardAnswer({ ...base, nowISO: THU_1AM, firstHorizon: "week", tonight: "none" }),
+    ).toBe("Nothing else is listed for tonight or today, so here is the rest of the week.");
+  });
+
+  it("does not call today's all-day rows tonight's events in the evening", () => {
+    expect(
+      boardAnswer({ ...base, nowISO: WED_921PM, firstHorizon: "today", tonight: "none" }),
+    ).toBe("Nothing else is listed for tonight, so here is the rest of today.");
+    // A set after midnight sits under a later heading, so neither "tonight
+    // leads" nor "nothing tonight" holds; the sentence says only what leads.
+    expect(
+      boardAnswer({ ...base, nowISO: WED_921PM, firstHorizon: "today", tonight: "later" }),
+    ).toBe("Today's events are listed first, and later days follow.");
+    expect(
+      boardAnswer({ ...base, nowISO: WED_921PM, firstHorizon: "week", tonight: "later" }),
+    ).toBeNull();
   });
 
   it("rolls an empty Tonight forward in one sentence", () => {
     expect(boardAnswer({ ...base, lens: "tonight", nowISO: WED_921PM, rolledForward: true })).toBe(
       "Nothing else is listed for tonight, so here is tomorrow evening.",
+    );
+    // At 1 AM the next evening falls on the new calendar day, already today.
+    expect(boardAnswer({ ...base, lens: "tonight", nowISO: THU_1AM, rolledForward: true })).toBe(
+      "Nothing else is listed for tonight, so here is this evening.",
+    );
+    expect(rollForwardHeading(WED_921PM)).toBe("Tomorrow evening");
+    expect(rollForwardHeading(THU_1AM)).toBe("This evening");
+  });
+
+  it("names ?lens=tomorrow by its date at 1 AM, when its cell is named today", () => {
+    const tomorrow = { ...base, lens: "tomorrow" as const, nowISO: THU_1AM };
+    expect(boardAnswer({ ...tomorrow, count: 6 })).toBe(
+      "6 events are listed for Thursday, October 8.",
+    );
+    expect(boardAnswer({ ...tomorrow, count: 6, countKnown: false })).toBe(
+      "These are the events on Thursday, October 8.",
+    );
+    expect(boardAnswer({ ...tomorrow, count: 0 })).toBe(
+      "Nothing else is listed for Thursday, October 8.",
+    );
+    // From 4 AM on, tomorrow is the next cell and keeps its word.
+    expect(boardAnswer({ ...base, lens: "tomorrow", count: 3, countKnown: false })).toBe(
+      "These are tomorrow's events.",
     );
   });
 
@@ -324,6 +413,80 @@ describe("boardAnswer (one sentence under the ribbon)", () => {
   it("states partial results as a full sentence", () => {
     expect(PARTIAL_SENTENCE).toBe(
       "Some calendars did not load, so this list may be missing events.",
+    );
+  });
+});
+
+describe("tonightPlacement (the default lead comes from the rows, not the clock)", () => {
+  type Row = { slug: string; starts_at: string; ends_at: string; is_all_day?: boolean };
+  const row = (slug: string, starts_at: string, ends_at: string, is_all_day = false): Row => ({
+    slug,
+    starts_at,
+    ends_at,
+    is_all_day,
+  });
+  /** The grouped default list's lead and the sentence it gets at `nowISO`. */
+  const answerFor = (nowISO: string, rows: Row[]) => {
+    const now = new Date(nowISO);
+    const groups = groupByHorizon(rows, buildHorizonBounds(now));
+    const tonight = tonightPlacement(groups, (e) => isTonightEvent(e, +now));
+    return {
+      firstHorizon: groups[0]?.key ?? null,
+      tonight,
+      sentence: boardAnswer({
+        lens: "all",
+        day: null,
+        nowISO,
+        count: rows.length,
+        countKnown: true,
+        narrowed: false,
+        firstHorizon: groups[0]?.key ?? null,
+        tonight,
+      }),
+    };
+  };
+  const lasAnez = row("las-anez", "2026-10-08T19:30:00-04:00", "2026-10-08T21:30:00-04:00");
+
+  it("at 1:20 AM Thursday, Thursday's 7:30 PM show is today's, not tonight's", () => {
+    expect(answerFor("2026-10-08T05:20:00.000Z", [lasAnez])).toEqual({
+      firstHorizon: "today",
+      tonight: "none",
+      sentence: "Nothing else is listed for tonight, so here is today.",
+    });
+  });
+
+  it("at 1 AM, a set still playing from last night leads", () => {
+    const lateSet = row("late-set", "2026-10-07T22:00:00-04:00", "2026-10-08T02:00:00-04:00");
+    expect(answerFor(THU_1AM, [lateSet, lasAnez])).toEqual({
+      firstHorizon: "live",
+      tonight: "leads",
+      sentence: "Tonight's events are listed first, and later days follow.",
+    });
+  });
+
+  it("at 9:21 PM, a Today group of all-day rows does not make tonight lead", () => {
+    const fair = row("fair", "2026-10-07T00:00:00-04:00", "2026-10-08T00:00:00-04:00", true);
+    expect(answerFor(WED_921PM, [fair, lasAnez])).toEqual({
+      firstHorizon: "today",
+      tonight: "none",
+      sentence: "Nothing else is listed for tonight, so here is the rest of today.",
+    });
+  });
+
+  it("at 9:21 PM, a set after midnight is tonight's but listed under a later heading", () => {
+    const fair = row("fair", "2026-10-07T00:00:00-04:00", "2026-10-08T00:00:00-04:00", true);
+    const afterMidnight = row("dj", "2026-10-08T00:30:00-04:00", "2026-10-08T02:00:00-04:00");
+    expect(answerFor(WED_921PM, [fair, afterMidnight])).toEqual({
+      firstHorizon: "today",
+      tonight: "later",
+      sentence: "Today's events are listed first, and later days follow.",
+    });
+  });
+
+  it("at 9:21 PM, a 10 PM show leads", () => {
+    const show = row("show", "2026-10-07T22:00:00-04:00", "2026-10-07T23:30:00-04:00");
+    expect(answerFor(WED_921PM, [show, lasAnez]).sentence).toBe(
+      "Tonight's events are listed first, and later days follow.",
     );
   });
 });
