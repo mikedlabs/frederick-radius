@@ -16,9 +16,10 @@
  *   fetch  — static HTML → model extraction.
  *
  * Run:  npm run ingest:venues            (all venues)
- *       npm run ingest:venues banyan     (one venue)
- * Needs: ANTHROPIC_API_KEY (feed-only venues don't, but the run preflights
- * once). Scheduled by .github/workflows/ingest-venues.yml.
+ *       npm run ingest:venues -- banyan  (one venue)
+ *       npm run ingest:venues -- --deterministic-only (free official feeds)
+ * The daily workflow uses deterministic-only collection. Model-assisted
+ * sources require an explicit manual run and ANTHROPIC_API_KEY.
  *
  * Social-only venues aren't scraped here (ToS/access) — see
  * docs/EXTRACTION_PLATFORM.md for the partnership/vision/human path.
@@ -61,6 +62,10 @@ import {
 } from "./lib/weinberg-events";
 import { inferredNonMusicCategory } from "../src/lib/events/live-music";
 import { lintSourceText } from "./style-lint";
+import {
+  parseVenueCollectionArgs,
+  selectVenueCollectionSources,
+} from "./lib/venue-collection-mode";
 
 const OUT = resolve("src/data/venue-events.json");
 const SOURCE_INVENTORY_OUT = resolve(
@@ -570,10 +575,13 @@ export async function collect(
 
 async function main() {
   resetFirecrawlFallbackUsage();
-  const only = process.argv[2];
+  const options = parseVenueCollectionArgs(process.argv.slice(2));
   const cfg = JSON.parse(readFileSync(CONFIG, "utf8")) as {
     venues: VenueSource[];
   };
+  // Validate selection before reading or writing any snapshot. A misspelled
+  // selector must fail, rather than prune data without collecting a source.
+  const venues = selectVenueCollectionSources(cfg.venues, options);
   // The public artifact intentionally omits exact duplicates from the known
   // Weinberg/New Spire pair. Seed promotion from the unsuppressed source
   // inventory when available so a hidden Weinberg row remains recoverable if
@@ -589,7 +597,6 @@ async function main() {
     return normalized ? [normalized] : [];
   });
   const byKey = new Map(existing.map((e) => [keyOf(e), e]));
-  const venues = cfg.venues.filter((v) => (only ? v.slug === only : true));
   const sourceState = loadVenueSourceState();
   const sourceStateBefore = serializeVenueSourceState(sourceState);
 
@@ -605,6 +612,7 @@ async function main() {
 
   let added = 0;
   let unchangedSources = 0;
+  let failedSources = 0;
   const runStartedAt = Date.now();
   for (const venue of venues) {
     const hasSource = venue.urls?.length || venue.imageUrl;
@@ -635,6 +643,7 @@ async function main() {
       modelUnavailable = true;
       console.log(`  – model unavailable; prior venue data retained`);
     }
+    if (status === "failed") failedSources += 1;
     if (status === "unchanged") {
       const fetchedAt = nowISO();
       for (const [key, event] of byKey) {
@@ -699,6 +708,7 @@ async function main() {
   }
   console.log(
     `\nDone. +${added} new, ${unchangedSources} unchanged source(s) skipped, ` +
+      `${failedSources} failed source(s) retained, ` +
       `${suppressed} exact cross-venue duplicate(s) suppressed, ` +
       `${kept.length} published / ${sourceInventory.length} retained ` +
       `→ src/data/venue-events.json`,
@@ -709,6 +719,12 @@ async function main() {
       : "Venue source fingerprints updated.",
   );
   console.log(formatFirecrawlFallbackUsageSummary());
+  if (options.deterministicOnly && failedSources > 0) {
+    console.error(
+      "Official venue collection is incomplete. Failed sources kept their previous rows and check dates; review publication is held.",
+    );
+    process.exitCode = 1;
+  }
   if (modelUnavailable && process.env.CI) {
     console.error(
       "Deterministic and unchanged venue sources were preserved, but at least one changed model-assisted source could not run.",

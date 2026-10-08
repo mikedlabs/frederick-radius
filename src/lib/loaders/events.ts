@@ -17,7 +17,7 @@ import {
   logPlacementWarnings,
   type Placement,
 } from "@/lib/validation/placement";
-import { cleanDescription } from "@/lib/events/normalize";
+import { areDistinctPublishedVenueOccurrences, cleanDescription } from "@/lib/events/normalize";
 import {
   eventAttendanceMode,
   hasPhysicalAttendance,
@@ -494,6 +494,7 @@ export function dedupeCuratedClusters(events: EventWithMeta[]): EventWithMeta[] 
     const dupeIdx = out.findIndex((kept) => {
       const kt = +new Date(kept.starts_at);
       if (Math.abs(kt - t) > 60 * 60 * 1000) return false;
+      if (areDistinctPublishedVenueOccurrences(e, kept)) return false;
       return (
         titlesMatchStrong(kept.title, e.title) ||
         (sameEventVenue(kept, e) &&

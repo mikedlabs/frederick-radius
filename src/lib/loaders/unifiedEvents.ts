@@ -648,7 +648,9 @@ const cachedAssemble = unstable_cache(
   // v34: FCPL occurrence cancellations survive series collapse for archive
   // updates, while public discovery advances to the next scheduled sibling.
   // v35: lifecycle bypasses all discovery-only filters and deduplication.
-  ["unified-events-v35"],
+  // v36: distinct published venue performances retain separate routes and
+  // survive same-day fuzzy deduplication.
+  ["unified-events-v36"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.

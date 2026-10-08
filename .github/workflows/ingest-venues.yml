@@ -1,11 +1,12 @@
 name: Ingest venue events
-run-name: Ingest venue events (firecrawl=${{ vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}, cap=${{ vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }})
+run-name: Ingest venue events (firecrawl=${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources && vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}, cap=${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources && vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }})
 
 # Captures lineups from venues that only post on their own site
 # (the official Weinberg calendar, The Banyan, Sky Stage, and others). Runs the venue
-# extraction agent, refreshes src/data/venue-events.json, commits.
-# Uses a standard Anthropic API key dedicated to this workflow in the GitHub
-# Data Enrichment environment. Never use an Anthropic Admin API key here.
+# collectors, refreshes src/data/venue-events.json, and opens a review PR.
+# Daily collection uses only complete official feeds and no model key.
+# Explicit manual model collection uses the dedicated standard Anthropic key
+# in Data Enrichment. Never use an Anthropic Admin API key here.
 # Configure: config/venue-sources.json
 
 on:
@@ -13,8 +14,13 @@ on:
     - cron: "30 9 * * *"
   workflow_dispatch:
     inputs:
+      include_model_sources:
+        description: "Also collect model-assisted venues using the dedicated paid API key"
+        required: false
+        type: boolean
+        default: false
       refresh_open_review:
-        description: "I want to replace the currently open venue-event review with a fresh paid run"
+        description: "I want to replace the currently open venue-event review with a fresh collection"
         required: false
         type: boolean
         default: false
@@ -22,6 +28,7 @@ on:
 permissions: {}
 
 concurrency:
+  # Both modes share the same lock because they replace the same review branch.
   group: ${{ vars.VENUE_FIRECRAWL_FETCH_FALLBACK == '1' && 'operator-firecrawl-fallback-budget' || 'ingest-venue-events' }}
   cancel-in-progress: false
 
@@ -35,7 +42,7 @@ jobs:
     outputs:
       should_run: ${{ steps.review.outputs.should_run }}
     steps:
-      - name: Pause paid extraction while its review is open
+      - name: Pause collection while its review is open
         id: review
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
@@ -57,10 +64,10 @@ jobs:
             );
 
             if (review && !override) {
-              core.notice(`Skipping paid extraction while review PR #${review.number} is open: ${review.html_url}`);
+              core.notice(`Skipping collection while review PR #${review.number} is open: ${review.html_url}`);
               core.summary
                 .addHeading('Venue extraction paused')
-                .addRaw(`Review PR [#${review.number}](${review.html_url}) before spending on another run.\n`)
+                .addRaw(`Review PR [#${review.number}](${review.html_url}) before replacing its collected data.\n`)
                 .addRaw('Use the manual refresh_open_review override only when replacing that review is intentional.\n');
               await core.summary.write();
               core.setOutput('should_run', 'false');
@@ -68,7 +75,7 @@ jobs:
             }
 
             if (review && override) {
-              core.notice(`Manual override accepted; paid extraction may update review PR #${review.number}.`);
+              core.notice(`Manual override accepted; collection may update review PR #${review.number}.`);
             }
             core.setOutput('should_run', 'true');
 
@@ -87,10 +94,11 @@ jobs:
       artifact_name: ${{ steps.artifact-name.outputs.name }}
     steps:
       - name: Require venue extraction configuration
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_VENUE_EVENTS_API_KEY }}
-          FIRECRAWL_FETCH_FALLBACK: ${{ vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}
-          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}
+          FIRECRAWL_FETCH_FALLBACK: ${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources && vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}
+          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources && vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}
         run: |
           if [ -z "$ANTHROPIC_API_KEY" ]; then
             echo "::error title=Missing ANTHROPIC_VENUE_EVENTS_API_KEY::Add the standard API key to the Data Enrichment environment before running venue extraction."
@@ -123,8 +131,8 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           CURRENT_WORKFLOW_FILE: ingest-venues.yml
-          FIRECRAWL_FETCH_FALLBACK: ${{ vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}
-          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}
+          FIRECRAWL_FETCH_FALLBACK: ${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources && vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}
+          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources && vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}
           FIRECRAWL_LEGACY_DISABLED_RUN_IDS: ${{ vars.FIRECRAWL_LEGACY_DISABLED_RUN_IDS || '' }}
         with:
           script: |
@@ -144,6 +152,7 @@ jobs:
           node-version: "22"
       - run: npm ci
       - name: Install Chromium
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources }}
         timeout-minutes: 10
         run: npx playwright install --with-deps chromium
       - name: Extract venue events
@@ -151,11 +160,17 @@ jobs:
         if: ${{ success() && steps.firecrawl-budget.outputs.allowed == 'true' }}
         continue-on-error: true
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_VENUE_EVENTS_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources && secrets.ANTHROPIC_VENUE_EVENTS_API_KEY || '' }}
           FIRECRAWL_API_KEY: ${{ steps.firecrawl-budget.outputs.allowed == 'true' && steps.firecrawl-budget.outputs.enabled == 'true' && secrets.FIRECRAWL_API_KEY || '' }}
-          FIRECRAWL_FETCH_FALLBACK: ${{ vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}
-          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}
-        run: npm run ingest:venues
+          FIRECRAWL_FETCH_FALLBACK: ${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources && vars.VENUE_FIRECRAWL_FETCH_FALLBACK || '0' }}
+          FIRECRAWL_FALLBACK_MAX_REQUESTS: ${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources && vars.VENUE_FIRECRAWL_FALLBACK_MAX_REQUESTS || '1' }}
+          INCLUDE_MODEL_SOURCES: ${{ github.event_name == 'workflow_dispatch' && inputs.include_model_sources || 'false' }}
+        run: |
+          if [ "$INCLUDE_MODEL_SOURCES" = "true" ]; then
+            npm run ingest:venues
+          else
+            npm run ingest:venues -- --deterministic-only
+          fi
       # Commits pushed with GITHUB_TOKEN do not start another workflow run.
       # Run the copy/provenance gates here before the bot writes to main.
       - name: Verify venue copy provenance and voice
@@ -194,8 +209,8 @@ jobs:
       - name: Enforce complete venue extraction
         if: ${{ always() && steps.extract.outcome != 'success' }}
         run: |
-          echo "The deterministic venue feeds were allowed to refresh, but at least one model-assisted source could not run."
-          echo "Check ANTHROPIC_VENUE_EVENTS_API_KEY in the Data Enrichment environment and the extraction log above."
+          echo "Venue collection is incomplete; the previous published snapshot is retained."
+          echo "Check the failed source in the extraction log. For an explicitly enabled model run, also check its Data Enrichment key."
           exit 1
 
   publish:
