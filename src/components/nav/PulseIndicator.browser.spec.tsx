@@ -9,7 +9,7 @@ vi.mock("./AppTransitionLink", () => ({ default: (props: Record<string, unknown>
   void _prefetch;
   return createElement("a", anchorProps);
 } }));
-import PulseIndicator, { PULSE_STATUS_TIMEOUT_MS } from "./PulseIndicator";
+import PulseIndicator, { PULSE_STATUS_TIMEOUT_MS, pulseChipWord } from "./PulseIndicator";
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const quiet = { active: false, count: 0, tone: "quiet", ok: true, lastUpdated: "2026-10-07T03:00:00.000Z" };
 const alerts = { ...quiet, active: true, count: 2, tone: "alert" };
@@ -31,17 +31,18 @@ describe("PulseIndicator status transport", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ active: false, count: 0, tone: "quiet", ok: true, lastUpdated: "2026-10-07T03:00:00.000Z" }) }).mockRejectedValueOnce(new Error("offline"));
     vi.stubGlobal("fetch", fetchMock);
     await act(async () => root.render(createElement(PulseIndicator)));
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: no active alerts");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Quiet, no active alerts");
     await act(async () => vi.advanceTimersByTimeAsync(5 * 60 * 1000));
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toContain("unavailable");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unknown");
   });
   it("keeps earlier alerts but labels them unverified after a failed check", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(response(alerts)).mockRejectedValueOnce(new Error("offline")));
     await act(async () => root.render(createElement(PulseIndicator)));
     await act(async () => vi.advanceTimersByTimeAsync(5 * 60 * 1000));
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toContain("Earlier report had 2 alerts; current alerts are unverified");
-    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Earlier");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unknown. Earlier report had 2 alerts; current alerts are unverified.");
+    // An earlier report is not a current claim, so the chip says Unknown.
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unknown");
     expect(container.querySelector("[data-pulse-indicator]")?.getAttribute("data-pulse-state")).toBe("unavailable");
   });
   it.each([
@@ -55,7 +56,7 @@ describe("PulseIndicator status transport", () => {
   ])("rejects %s without promoting it to all-clear", async (_label, payload) => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(payload)));
     await act(async () => root.render(createElement(PulseIndicator)));
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: unavailable");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unknown");
     expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unknown");
     expect(container.querySelector("a")?.className.split(/\s+/)).toContain("inline-flex");
   });
@@ -73,7 +74,7 @@ describe("PulseIndicator status transport", () => {
     expect(container.querySelector("a")?.getAttribute("aria-label")).toContain("unverified");
     await act(async () => vi.advanceTimersByTimeAsync(5 * 60 * 1000));
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: no active alerts");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Quiet, no active alerts");
     expect(container.querySelector("[data-pulse-mobile-state]")).toBeNull();
     expect(container.querySelector("a")?.getAttribute("data-pulse-state")).toBe("ready");
   });
@@ -82,7 +83,7 @@ describe("PulseIndicator status transport", () => {
     await act(async () => root.render(createElement(PulseIndicator)));
     await act(async () => vi.advanceTimersByTimeAsync(PULSE_STATUS_TIMEOUT_MS));
     await act(async () => body.reject(new Error("late body failure")));
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: unavailable");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unknown");
   });
   it("bounds ignored header abort and schedules one later retry instead of overlapping polls", async () => {
     const transport = deferred<Response>(); const fetchMock = vi.fn().mockReturnValue(transport.promise); vi.stubGlobal("fetch", fetchMock);
@@ -110,29 +111,29 @@ describe("PulseIndicator status transport", () => {
     await act(async () => document.dispatchEvent(new Event("visibilitychange")));
     expect(fetchMock).toHaveBeenCalledTimes(2);
     await act(async () => body.resolve(alerts));
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: no active alerts");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Quiet, no active alerts");
   });
   it("reports known alerts with incomplete coverage without suggesting an all-clear", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ ...alerts, ok: false })));
     await act(async () => root.render(createElement(PulseIndicator)));
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: 2 alerts reported; some sources unavailable");
-    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("2 alerts");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Urgent, 2 alerts reported; some sources unavailable");
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Urgent");
   });
   // Oct 7, 2 AM: the header read "Unknown" in alert red beside a red dot while
   // its accessible name said "1 alert reported; some sources unavailable".
   it.each([
-    ["alert", "var(--app-danger)"],
-    ["caution", "var(--app-warning)"],
-  ])("names a report in the %s tone with a source down instead of calling it Unknown", async (tone, color) => {
+    ["alert", "Urgent", "var(--app-danger)"],
+    ["caution", "Advisory", "var(--app-warning)"],
+  ])("names a report in the %s tone with a source down instead of calling it Unknown", async (tone, word, color) => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ ...alerts, count: 1, tone, ok: false })));
     await act(async () => root.render(createElement(PulseIndicator)));
     const link = container.querySelector<HTMLElement>("[data-pulse-indicator]");
     const mobile = container.querySelector<HTMLElement>("[data-pulse-mobile-state]");
     const desktop = container.querySelector<HTMLElement>("[data-pulse-desktop-state]");
-    expect(link?.getAttribute("aria-label")).toBe("County status: 1 alert reported; some sources unavailable");
+    expect(link?.getAttribute("aria-label")).toBe(`County status: ${word}, 1 alert reported; some sources unavailable`);
     expect(link?.textContent).not.toContain("Unknown");
-    expect(mobile?.textContent).toBe("1 alert");
-    expect(desktop?.textContent).toBe("1 alert");
+    expect(mobile?.textContent).toBe(word);
+    expect(desktop?.textContent).toBe(word);
     expect(mobile?.style.color).toBe(color);
     expect(desktop?.style.color).toBe(color);
     expect(container.querySelector(`[data-pulse-dot="${tone}"]`)).not.toBeNull();
@@ -149,12 +150,43 @@ describe("PulseIndicator status transport", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ ...quiet, ok: false })));
     await act(async () => root.render(createElement(PulseIndicator)));
     const mobile = container.querySelector<HTMLElement>("[data-pulse-mobile-state]");
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: unavailable");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unknown");
     expect(mobile?.textContent).toBe("Unknown");
-    expect(mobile?.style.color).toBe("var(--app-ink-2)");
-    expect(container.querySelector<HTMLElement>("[data-pulse-indicator]")?.style.color).toBe("var(--app-ink-2)");
+    expect(mobile?.className).toContain("text-caption");
+    expect(mobile?.style.color).toBe("var(--app-ink-3)");
+    expect(container.querySelector<HTMLElement>("[data-pulse-indicator]")?.style.color).toBe("var(--app-ink-3)");
     expect(container.querySelector('[data-pulse-dot="unknown"]')).not.toBeNull();
     expect(container.querySelector('[data-pulse-dot="alert"]')).toBeNull();
+  });
+  it("prints the readable word on the phone and moves the count to the name and the dot", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ ...alerts, count: 3, tone: "caution" })));
+    await act(async () => root.render(createElement(PulseIndicator)));
+    const link = container.querySelector<HTMLElement>("[data-pulse-indicator]");
+    const mobile = container.querySelector<HTMLElement>("[data-pulse-mobile-state]");
+    expect(link?.getAttribute("aria-label")).toBe("County status: Advisory, 3 alerts reported");
+    expect(mobile?.textContent).toBe("Advisory");
+    expect(mobile?.className.split(/\s+/)).toEqual(expect.arrayContaining(["text-caption", "font-semibold"]));
+    expect(mobile?.className).not.toMatch(/text-\[/);
+    expect(link?.textContent).not.toContain("alert");
+    const dot = container.querySelector<HTMLElement>('[data-pulse-dot="caution"]');
+    expect(dot?.textContent).toBe("3");
+    expect(dot?.getAttribute("data-pulse-dot-count")).toBe("3");
+    expect(dot?.className).toContain("text-caption");
+  });
+  it("keeps a single report's dot plain, without a numeral", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ ...alerts, count: 1 })));
+    await act(async () => root.render(createElement(PulseIndicator)));
+    const dot = container.querySelector<HTMLElement>('[data-pulse-dot="alert"]');
+    expect(dot?.textContent).toBe("");
+    expect(dot?.hasAttribute("data-pulse-dot-count")).toBe(false);
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Urgent");
+  });
+  it("says Quiet on /pulse, the word the page's own masthead uses for a calm county", async () => {
+    harness.pathname = "/pulse";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(quiet)));
+    await act(async () => root.render(createElement(PulseIndicator)));
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Quiet");
+    expect(container.querySelector("[data-pulse-desktop-state]")?.textContent).toBe("Quiet");
   });
   it("cancels pending work and all polling on unmount", async () => {
     const body = deferred<unknown>(); const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => body.promise }); vi.stubGlobal("fetch", fetchMock);
@@ -173,16 +205,16 @@ describe("PulseIndicator status transport", () => {
     const payload = { ...quiet, lastUpdated: new Date(Date.now() + offset).toISOString() };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(payload)));
     await act(async () => root.render(createElement(PulseIndicator)));
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: unavailable");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unknown");
     expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unknown");
   });
   it("expires a still-displayed quiet snapshot at its age boundary without another provider request", async () => {
     const payload = { ...quiet, lastUpdated: new Date(Date.now() - 6 * 60 * 1000 + 1).toISOString() };
     const fetchMock = vi.fn().mockResolvedValue(response(payload)); vi.stubGlobal("fetch", fetchMock);
     await act(async () => root.render(createElement(PulseIndicator)));
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: no active alerts");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Quiet, no active alerts");
     await act(async () => vi.advanceTimersByTimeAsync(1));
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: unavailable");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unknown");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
   it("keeps an expired positive snapshot labeled earlier rather than current", async () => {
@@ -197,7 +229,7 @@ describe("PulseIndicator status transport", () => {
     const payload = { ...quiet, lastUpdated: new Date(Date.now() + 5 * 60 * 1000).toISOString() };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(payload)));
     await act(async () => root.render(createElement(PulseIndicator)));
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: no active alerts");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Quiet, no active alerts");
   });
 
   it("keeps mobile checking visible after failure until a valid recovery clears it", async () => {
@@ -213,4 +245,19 @@ describe("PulseIndicator status transport", () => {
     expect(container.querySelector("[data-pulse-mobile-state]")).toBeNull();
   });
 
+});
+
+describe("pulseChipWord", () => {
+  it.each([
+    [{ active: true, tone: "alert", ok: true }, "ready", "Urgent"],
+    [{ active: true, tone: "caution", ok: true }, "ready", "Advisory"],
+    [{ active: true, tone: "caution", ok: false }, "ready", "Advisory"],
+    [{ active: false, tone: "quiet", ok: true }, "ready", "Quiet"],
+    [{ active: false, tone: "quiet", ok: false }, "ready", "Unknown"],
+    [{ active: true, tone: "alert", ok: true }, "unavailable", "Unknown"],
+    [null, "unavailable", "Unknown"],
+    [null, "checking", "Checking"],
+  ] as const)("maps %o while %s to %s", (status, phase, word) => {
+    expect(pulseChipWord(status, phase)).toBe(word);
+  });
 });

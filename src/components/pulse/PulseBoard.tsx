@@ -42,8 +42,14 @@ import PulseFreshness, {
   PulseStatusLabel,
 } from "@/components/pulse/PulseFreshness";
 import { track } from "@/lib/track";
-import type { CountyStatus } from "@/lib/live/countyStatus";
+import { prefersReducedMotion } from "@/lib/motion";
+import type { CountyStatus, CountyStatusWord } from "@/lib/live/countyStatus";
 import { Button } from "@/components/ui/Button";
+import CountyOverviewMap, {
+  OVERVIEW_POINT_TONE,
+  type CountyOverviewPoint,
+  type CountyOverviewPointTone,
+} from "@/components/map/CountyOverviewMap";
 import styles from "./PulseBoard.module.css";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -201,6 +207,75 @@ export function pulseStatusWord({
   return "Watch";
 }
 
+/** One graded county status item as the status map and its rows show it. */
+export type PulseStatusMapItem = {
+  id: string;
+  title: string;
+  severity: "urgent" | "advisory";
+  /** The detail tile the row opens (the item's /pulse?open= key). */
+  tileKey?: string;
+  /** "MDOT CHART · Reported 20m ago": the source and its time, when known. */
+  meta?: string;
+  /** Overlay position from projectOverview. Set only for an item whose source
+   *  locates the event itself inside the county (countyStatus.ts). */
+  point?: { x: number; y: number };
+};
+
+export type PulseStatusMapData = {
+  /** overviewPath() of the county outline, projected on the server. */
+  outline: string;
+  word: CountyStatusWord;
+  /** Worst first, the order selectCountyStatus ranks them. */
+  items: PulseStatusMapItem[];
+  /** The road feeds answered, so an empty map says something true. */
+  roadFeedsComplete: boolean;
+};
+
+/** The point color for a graded item. Advisory reads as a caution. */
+export function pulseStatusPointTone(
+  severity: PulseStatusMapItem["severity"],
+): CountyOverviewPointTone {
+  return severity === "urgent" ? "urgent" : "caution";
+}
+
+/** Items with a map point, numbered in rank order, then the rest. The numbers
+ *  on the map and on the rows come from this one split. */
+export function pulseStatusMapRows(items: readonly PulseStatusMapItem[]): {
+  located: Array<PulseStatusMapItem & { point: { x: number; y: number }; number: number }>;
+  countywide: PulseStatusMapItem[];
+} {
+  const located: Array<PulseStatusMapItem & { point: { x: number; y: number }; number: number }> = [];
+  const countywide: PulseStatusMapItem[] = [];
+  for (const item of items) {
+    if (item.point) located.push({ ...item, point: item.point, number: located.length + 1 });
+    else countywide.push(item);
+  }
+  return { located, countywide };
+}
+
+/** One honest line under the status map. An empty map is only called empty
+ *  when the road feeds answered; otherwise it says why nothing is drawn. */
+export function pulseStatusMapCaption({
+  word,
+  total,
+  located,
+  roadFeedsComplete,
+}: {
+  word: CountyStatusWord;
+  total: number;
+  located: number;
+  roadFeedsComplete: boolean;
+}): string {
+  if (located > 1) return "Tap a numbered point to find its report.";
+  if (located === 1) return "Tap the point to find its report.";
+  if (total > 0) return "None of these reports gives a location Radius can map.";
+  if (!roadFeedsComplete) return "Radius could not reach the road feeds, so nothing is mapped.";
+  if (word === "Unknown") {
+    return "No incidents are mapped right now, but some county feeds did not answer.";
+  }
+  return "No incidents are mapped in the county right now.";
+}
+
 export type PulseTile = {
   key: string;
   label: string;
@@ -231,7 +306,9 @@ export type PulseTile = {
   /** A direct measurement. Do not add a visual fill unless the provider
    * publishes a meaningful threshold for that exact value. */
   gauge?: { value: number; unit: string; decimals?: number; comma?: boolean };
-  feature?: { temp: number; condition: string; hl?: string };
+  /** `rain` is the chance of rain over the next hours as NWS forecasts it,
+   *  printed only when the forecast carries one. */
+  feature?: { temp: number; condition: string; hl?: string; rain?: string };
   action?: { href: string; label: string };
   body: ReactNode;
 };
@@ -554,6 +631,7 @@ function pulseTileReading(tile: PulseTile): string {
       `${tile.feature.temp} degrees`,
       tile.feature.condition,
       tile.feature.hl,
+      tile.feature.rain,
     ].filter(Boolean).join(", ");
   }
   if (tile.gauge) {
@@ -622,6 +700,7 @@ function PulseSmartBlock({
             <span className={styles.weatherContext}>
               <span className={styles.condition}>{tile.feature.condition}</span>
               {tile.feature.hl ? <span className={styles.readingContext}>{tile.feature.hl}</span> : null}
+              {tile.feature.rain ? <span className={styles.readingContext}>{tile.feature.rain}</span> : null}
             </span>
           </span>
         ) : tile.gauge ? (
@@ -898,6 +977,181 @@ function SecondarySignals({
   );
 }
 
+function statusRowId(index: number): string {
+  return `pulse-status-row-${index}`;
+}
+
+/** A ruled row for one graded item. It opens the item's detail sheet, and its
+ *  mark is the same disc the map draws for it. */
+function StatusRow({
+  item,
+  rowId,
+  word,
+  number,
+  canOpen,
+  onOpen,
+}: {
+  item: PulseStatusMapItem;
+  rowId: string;
+  word: string;
+  number?: number;
+  canOpen: boolean;
+  onOpen: (key: string) => void;
+}) {
+  const interactionReady = useContext(PulseInteractionReady);
+  const tone = OVERVIEW_POINT_TONE[pulseStatusPointTone(item.severity)];
+  const meta = [word, item.meta].filter(Boolean).join(" · ");
+  const inner = (
+    <>
+      {number ? (
+        <span
+          aria-hidden
+          className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 text-caption font-bold leading-none tabular-nums ${tone}`}
+        >
+          {number}
+        </span>
+      ) : (
+        <span aria-hidden className={`ml-1 mr-1 block h-3 w-3 shrink-0 rounded-full border-2 ${tone}`} />
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="block text-title-sm" style={{ color: "var(--app-ink)" }}>
+          {number ? <span className="sr-only">{`${number}. `}</span> : null}
+          {item.title}
+        </span>
+        <span className="mt-0.5 block text-meta-lg" style={{ color: "var(--app-ink-3)" }}>
+          {meta}
+        </span>
+      </span>
+      {canOpen ? <ArrowRight aria-hidden className={styles.rowArrow} /> : null}
+    </>
+  );
+  return (
+    <li id={rowId} className={styles.statusRowItem}>
+      {canOpen && item.tileKey ? (
+        <button
+          type="button"
+          disabled={!interactionReady}
+          data-pulse-interaction-ready={String(interactionReady)}
+          data-pulse-status-row={item.id}
+          onClick={() => onOpen(item.tileKey!)}
+          className={styles.statusRow}
+        >
+          {inner}
+        </button>
+      ) : (
+        <span data-pulse-status-row={item.id} className={styles.statusRow}>
+          {inner}
+        </span>
+      )}
+    </li>
+  );
+}
+
+/**
+ * Where the county's graded items are. The map draws a numbered point for
+ * each item whose source locates the event itself; the rows under it carry
+ * the same numbers, and items with no point are listed under Countywide. A
+ * point is a pointer shortcut that brings its row into view; the rows are
+ * the keyboard path and open the same detail sheets as the rest of the board.
+ */
+function StatusMap({
+  data,
+  validKeys,
+  onOpen,
+}: {
+  data: PulseStatusMapData;
+  validKeys: ReadonlySet<string>;
+  onOpen: (key: string) => void;
+}) {
+  const { located, countywide } = pulseStatusMapRows(data.items);
+  const rowIdFor = new Map(data.items.map((item, index) => [item.id, statusRowId(index)]));
+  const points: CountyOverviewPoint[] = located.map((item) => ({
+    id: item.id,
+    x: item.point.x,
+    y: item.point.y,
+    label: null,
+    tone: pulseStatusPointTone(item.severity),
+    badge: String(item.number),
+  }));
+  const caption = pulseStatusMapCaption({
+    word: data.word,
+    total: data.items.length,
+    located: located.length,
+    roadFeedsComplete: data.roadFeedsComplete,
+  });
+  const mapLabel = located.length > 0
+    ? `Map of Frederick County with ${located.length} mapped ${located.length === 1 ? "report" : "reports"}`
+    : "Map of Frederick County with no mapped reports";
+  const wordFor = (item: PulseStatusMapItem) => (item.severity === "urgent" ? "Urgent" : "Advisory");
+
+  const showRow = (id: string) => {
+    const rowId = rowIdFor.get(id);
+    const row = rowId ? document.getElementById(rowId) : null;
+    if (!row) return;
+    row.scrollIntoView({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    const target = row.querySelector<HTMLElement>("button:not(:disabled)");
+    target?.focus({ preventScroll: true });
+  };
+
+  return (
+    <section
+      aria-labelledby="pulse-status-map-heading"
+      data-pulse-status-map={data.word}
+      className={styles.statusMap}
+    >
+      <GroupHeading id="pulse-status-map-heading" title="On the map" />
+      <div className={styles.statusMapLayout} data-has-rows={data.items.length > 0 || undefined}>
+        <CountyOverviewMap
+          label={mapLabel}
+          outline={data.outline}
+          points={points}
+          aspect="wide"
+          caption={caption}
+          onPointSelect={showRow}
+        />
+        {data.items.length > 0 ? (
+          <div className={styles.statusLists}>
+            {located.length > 0 ? (
+              <ol className={styles.statusRows} aria-label="Mapped reports">
+                {located.map((item) => (
+                  <StatusRow
+                    key={item.id}
+                    item={item}
+                    rowId={rowIdFor.get(item.id)!}
+                    word={wordFor(item)}
+                    number={item.number}
+                    canOpen={Boolean(item.tileKey && validKeys.has(item.tileKey))}
+                    onOpen={onOpen}
+                  />
+                ))}
+              </ol>
+            ) : null}
+            {countywide.length > 0 ? (
+              <div>
+                <h3 id="pulse-status-countywide" className="text-title-sm" style={{ color: "var(--app-ink)" }}>
+                  Countywide
+                </h3>
+                <ul className={styles.statusRows} aria-labelledby="pulse-status-countywide">
+                  {countywide.map((item) => (
+                    <StatusRow
+                      key={item.id}
+                      item={item}
+                      rowId={rowIdFor.get(item.id)!}
+                      word={wordFor(item)}
+                      canOpen={Boolean(item.tileKey && validKeys.has(item.tileKey))}
+                      onOpen={onOpen}
+                    />
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 /** A live situation row with the context the compact readings intentionally omit. */
 function AttentionTile({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
   const interactionReady = useContext(PulseInteractionReady);
@@ -938,11 +1192,14 @@ export default function PulseBoard({
   chips,
   tiles,
   breaking,
+  statusMap,
 }: {
   hero: PulseHero;
   chips: PulseHeroChip[];
   tiles: PulseTile[];
   breaking?: ReactNode;
+  /** The graded county items for the map under the masthead. */
+  statusMap?: PulseStatusMapData;
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const [interactionReady, setInteractionReady] = useState(false);
@@ -1005,16 +1262,24 @@ export default function PulseBoard({
   // The status word and its color come from the county status whenever it
   // holds an item, the same selector the header dot reads.
   const heroColor = CHIP_TONE[pulseCountyStatusTone(hero.status) ?? heroTone];
+  // A detail the status rows already list is not repeated under Needs
+  // attention: the row opens the same sheet.
+  const statusKeys = new Set(
+    (statusMap?.items ?? [])
+      .map((item) => item.tileKey)
+      .filter((key): key is string => Boolean(key && validKeys.has(key))),
+  );
   const attentionChips = pulseAttentionChips(chips, {
     allClear: hero.allClear,
     showAlertData: false,
     leadKey: hero.leadKey,
-  });
-  const summarizedKeys = new Set(
-    attentionChips
+  }).filter((chip) => !chip.key || !statusKeys.has(chip.key));
+  const summarizedKeys = new Set([
+    ...attentionChips
       .map((chip) => chip.key)
       .filter((key): key is string => Boolean(key)),
-  );
+    ...statusKeys,
+  ]);
   const displayGroups = pulseDisplayGroups(tiles, {
     leadKey: hero.leadKey,
     summarizedKeys,
@@ -1061,31 +1326,33 @@ export default function PulseBoard({
           <div className={styles.freshness}><PulseFreshness renderedAt={hero.renderedAt} /></div>
         </div>
         <h1 className={styles.headline}>{hero.line}</h1>
-        <p className={styles.summary}>{hero.sub}</p>
-        {(hero.leadMeta || lead) && (
+        {/* The source and its time sit on the line under the sentence they
+            support, so the claim and its receipt read together. */}
+        {hero.leadMeta && (
+          <p className={styles.leadMeta}>
+            <Clock aria-hidden className="h-4 w-4 shrink-0" />
+            {hero.leadMeta}
+          </p>
+        )}
+        {hero.sub ? <p className={styles.summary}>{hero.sub}</p> : null}
+        {lead && (
           <div className={styles.briefingAction}>
-            {hero.leadMeta && (
-              <p className={styles.leadMeta}>
-                <Clock aria-hidden className="h-4 w-4 shrink-0" />
-                {hero.leadMeta}
-              </p>
-            )}
-            {lead && (
-              <Button
-                variant="secondary"
-                disabled={!interactionReady}
-                data-decision-action="open-status-details"
-                onClick={() => openTile(lead.key)}
-                className={styles.leadButton}
-                style={{ backgroundColor: "var(--app-bg-elevated-solid)", color: "var(--app-ink)" }}
-                iconRight={<ArrowRight aria-hidden className="h-4 w-4" />}
-              >
-                {hero.actionLabel ?? "See what this means"}
-              </Button>
-            )}
+            <Button
+              variant="secondary"
+              disabled={!interactionReady}
+              data-decision-action="open-status-details"
+              onClick={() => openTile(lead.key)}
+              className={styles.leadButton}
+              style={{ backgroundColor: "var(--app-bg-elevated-solid)", color: "var(--app-ink)" }}
+              iconRight={<ArrowRight aria-hidden className="h-4 w-4" />}
+            >
+              {hero.actionLabel ?? "See what this means"}
+            </Button>
           </div>
         )}
       </header>
+
+      {statusMap ? <StatusMap data={statusMap} validKeys={validKeys} onOpen={openTile} /> : null}
 
       {breaking}
 
@@ -1118,6 +1385,26 @@ export default function PulseBoard({
           </section>
         )}
 
+        {displayGroups.readings.length > 0 && (
+          <section aria-labelledby="pulse-readings-heading" className="min-w-0 space-y-2.5">
+            <GroupHeading id="pulse-readings-heading" title="Current conditions" />
+            <ul
+              data-pulse-bank="readings"
+              className={styles.readingsGrid}
+            >
+              {displayGroups.readings.map((tile) => (
+                <PulseSmartBlock
+                  key={tile.key}
+                  tile={tile}
+                  bankKey="readings"
+                  wideMobile={wideReadingKeys.has(tile.key)}
+                  onOpen={() => openTile(tile.key)}
+                />
+              ))}
+            </ul>
+          </section>
+        )}
+
         {displayGroups.actionable.length > 0 && (
           <section aria-labelledby="pulse-live-board-heading" className="min-w-0 space-y-2.5">
             <GroupHeading
@@ -1136,26 +1423,6 @@ export default function PulseBoard({
                 <AttentionTile key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
               ))}
             </div>
-          </section>
-        )}
-
-        {displayGroups.readings.length > 0 && (
-          <section aria-labelledby="pulse-readings-heading" className="min-w-0 space-y-2.5">
-            <GroupHeading id="pulse-readings-heading" title="Current conditions" />
-            <ul
-              data-pulse-bank="readings"
-              className={styles.readingsGrid}
-            >
-              {displayGroups.readings.map((tile) => (
-                <PulseSmartBlock
-                  key={tile.key}
-                  tile={tile}
-                  bankKey="readings"
-                  wideMobile={wideReadingKeys.has(tile.key)}
-                  onOpen={() => openTile(tile.key)}
-                />
-              ))}
-            </ul>
           </section>
         )}
 

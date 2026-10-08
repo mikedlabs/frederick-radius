@@ -231,9 +231,9 @@ for (const viewport of VIEWPORTS) {
             await expect.poll(async () => {
               const label = await countyStatus.getAttribute("aria-label");
               const visible = await countyStatus.isVisible();
-              if (label === "County status: no active alerts") return !visible;
-              return (/^County status: (checking|unavailable)(?:\. Earlier report had \d+ alerts?; current alerts are unverified\.)?$/.test(label ?? "")
-                || /^County status: \d+ alerts? reported(?:; some sources unavailable)?$/.test(label ?? "")) && visible;
+              if (label === "County status: Quiet, no active alerts") return !visible;
+              return (/^County status: (checking|Unknown)(?:\. Earlier report had \d+ alerts?; current alerts are unverified\.)?$/.test(label ?? "")
+                || /^County status: (?:Urgent|Advisory), \d+ alerts? reported(?:; some sources unavailable)?$/.test(label ?? "")) && visible;
             }).toBe(true);
           }
           await expect(

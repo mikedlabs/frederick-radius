@@ -160,6 +160,59 @@ describe("CountyOverviewMap on the server", () => {
   });
 });
 
+function statusMap(onPointSelect?: (id: string) => void) {
+  return createElement(CountyOverviewMap, {
+    label: "Map of Frederick County with 3 mapped reports",
+    outline: OUTLINE,
+    points: [
+      { id: "crash", ...projectOverview(-77.4105, 39.4143), label: null, tone: "urgent", badge: "1" },
+      { id: "closure", ...projectOverview(-77.64, 39.31), label: null, tone: "caution", badge: "2" },
+      { id: "marc", ...projectOverview(-77.38, 39.42), label: null, tone: "transit" },
+    ],
+    aspect: "wide",
+    caption: "Tap a numbered point to find its report.",
+    onPointSelect,
+  });
+}
+
+describe("CountyOverviewMap with per-point tones", () => {
+  it("draws the square county centered in a wide strip, on the same projection", () => {
+    const html = renderToStaticMarkup(statusMap());
+    expect(html).toContain('data-overview-aspect="wide"');
+    expect(html).toContain("h-[220px] w-full");
+    // The county box itself stays square, so nothing is reprojected.
+    expect(html).toContain("mx-auto h-[220px] w-[220px]");
+    expect(html).not.toContain("aspect-square");
+  });
+
+  it("colors each point by its own tone with tokens only", () => {
+    const html = renderToStaticMarkup(statusMap());
+    expect(html).toContain('data-overview-tone="urgent"');
+    expect(html).toContain("bg-[color:var(--app-danger)]");
+    // Amber always travels with Ink: an Ink ring and an Ink numeral.
+    expect(html).toContain(
+      "border-[color:var(--app-ink)] bg-[color:var(--app-amber)] text-[color:var(--app-ink)]",
+    );
+    expect(html).toContain("bg-[color:var(--app-cool)]");
+    expect(html).not.toMatch(/#[0-9a-f]{6}/i);
+    expect(html).not.toContain("bg-[color:var(--app-brand)]");
+  });
+
+  it("prints a badge as a numeral on a disc and leaves an unbadged point a dot", () => {
+    const html = renderToStaticMarkup(statusMap());
+    expect(html).toMatch(/grid h-5 w-5 place-items-center text-caption font-bold[^"]*">1</);
+    expect(html).toMatch(/grid h-5 w-5 place-items-center text-caption font-bold[^"]*">2</);
+    expect(html).toMatch(/data-overview-tone="transit" class="[^"]*block h-2\.5 w-2\.5/);
+  });
+
+  it("keeps the square town map class for class when no point carries a tone", () => {
+    const html = renderToStaticMarkup(townMap());
+    expect(html).not.toContain("data-overview-aspect");
+    expect(html).not.toContain("data-overview-tone");
+    expect(html).toContain("relative aspect-square w-full overflow-hidden");
+  });
+});
+
 describe("CountyOverviewMap in the browser", () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -230,6 +283,27 @@ describe("CountyOverviewMap in the browser", () => {
     expect(MockIntersectionObserver.instances).toHaveLength(0);
     expect(canvas()).toBeNull();
     expect(container.querySelectorAll("[data-overview-label]")).toHaveLength(13);
+  });
+
+  it("hands a tapped point's id back, as a pointer shortcut outside the tab order", async () => {
+    const selected: string[] = [];
+    await act(async () => root.render(statusMap((id) => selected.push(id))));
+    const points = container.querySelectorAll<HTMLButtonElement>("button[data-overview-point]");
+    expect(points).toHaveLength(3);
+    for (const point of points) {
+      expect(point.tabIndex).toBe(-1);
+      expect(point.closest('[aria-hidden="true"]')).not.toBeNull();
+    }
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('button[data-overview-point="closure"]')?.click();
+    });
+    expect(selected).toEqual(["closure"]);
+  });
+
+  it("draws marks only, with no buttons, when no handler is given", async () => {
+    await act(async () => root.render(statusMap()));
+    expect(container.querySelectorAll("button")).toHaveLength(0);
+    expect(container.querySelectorAll("[data-overview-point]")).toHaveLength(3);
   });
 
   it("lays the labels out again for the measured width", async () => {

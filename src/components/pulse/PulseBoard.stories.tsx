@@ -1,4 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, within } from "storybook/test";
+import COUNTY_OUTLINE from "@/data/county-boundary.json";
+import { overviewPath, projectOverview } from "@/components/map/countyOverview";
 import { RADIUS_STORY_NOW } from "../../../.storybook/preview";
 import PulseBoard, { type PulseHero, type PulseTile } from "./PulseBoard";
 
@@ -169,6 +172,80 @@ export const RoadAdvisory: Story = {
       river,
       power,
     ],
+  },
+};
+
+/** The Oct 2026 status map: the masthead names the worst item, and the map
+ * under the card puts a numbered point where the source located it. The
+ * basemap is held in its Save-Data state so the drawn layer reviews alone. */
+export const RoadAdvisoryWithMap: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  beforeEach: () => {
+    const original = Object.getOwnPropertyDescriptor(navigator, "connection");
+    Object.defineProperty(navigator, "connection", { configurable: true, value: { saveData: true } });
+    return () => {
+      if (original) Object.defineProperty(navigator, "connection", original);
+      else Reflect.deleteProperty(navigator, "connection");
+    };
+  },
+  args: {
+    hero: {
+      ...hero,
+      allClear: false,
+      tone: "warning",
+      leadKey: "traffic",
+      line: "Advisory: MD 75 work-zone closure.",
+      leadMeta: "Maryland WZDx · Sample time",
+      sub: "All lanes are closed in this sample. Check the road details before choosing a route.",
+      actionLabel: "Check the road details",
+      status: { word: "Advisory", tone: "caution", count: 2 },
+    },
+    statusMap: {
+      outline: overviewPath(COUNTY_OUTLINE),
+      word: "Advisory",
+      roadFeedsComplete: true,
+      items: [
+        {
+          id: "sample-closure",
+          title: "MD 75 work-zone closure",
+          severity: "advisory",
+          tileKey: "traffic",
+          meta: "Maryland WZDx · Sample time",
+          point: projectOverview(-77.3, 39.48),
+        },
+        {
+          id: "sample-heat",
+          title: "Heat Advisory",
+          severity: "advisory",
+          meta: "National Weather Service · Sample time",
+        },
+      ],
+    },
+    tiles: [
+      {
+        key: "traffic",
+        label: "Traffic",
+        iconName: "Construction",
+        sourceLabel: "MDOT CHART + Maryland WZDx",
+        countLabel: "1 closure",
+        accent: "var(--app-warning)",
+        active: true,
+        attention: true,
+        kind: "status",
+        body: <p>This closure is a component sample, not a current report.</p>,
+      },
+      weather,
+      river,
+      power,
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { level: 1, name: "Advisory: MD 75 work-zone closure." })).toBeVisible();
+    const section = canvasElement.querySelector<HTMLElement>("[data-pulse-status-map]");
+    await expect(section).not.toBeNull();
+    await expect(within(section!).getByRole("heading", { name: "Countywide" })).toBeVisible();
+    await expect(within(section!).getByText("Tap the point to find its report.")).toBeVisible();
   },
 };
 

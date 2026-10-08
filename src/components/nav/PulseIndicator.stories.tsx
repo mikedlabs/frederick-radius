@@ -34,7 +34,7 @@ const meta = { title: "Radius Chrome/County status recovery", component: StatusW
 export default meta;
 type Story = StoryObj<typeof meta>;
 const unavailable = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
-  const canvas = within(canvasElement); await expect(await canvas.findByRole("link", { name: "County status: unavailable" })).toHaveAttribute("data-pulse-state", "unavailable");
+  const canvas = within(canvasElement); await expect(await canvas.findByRole("link", { name: "County status: Unknown" })).toHaveAttribute("data-pulse-state", "unavailable");
 };
 export const UnknownAt320: Story = { globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } }, beforeEach: () => sampleStatus("error"), play: unavailable };
 export const UnknownAt390: Story = { globals: { viewport: { value: "radiusMobile", isRotated: false } }, beforeEach: () => sampleStatus("error"), play: unavailable };
@@ -43,11 +43,11 @@ export const EarlierAndRecoveryAt375: Story = {
   globals: { viewport: { value: "radiusMobileCompact", isRotated: false } }, beforeEach: () => sampleStatus("ready"),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByRole("link", { name: "County status: 2 alerts reported" });
+    await canvas.findByRole("link", { name: "County status: Urgent, 2 alerts reported" });
     await userEvent.click(canvas.getByRole("button", { name: "Show failed check" }));
     await expect(await canvas.findByRole("link", { name: /Earlier report had 2 alerts; current alerts are unverified/ })).toHaveAttribute("data-pulse-state", "unavailable");
     await userEvent.click(canvas.getByRole("button", { name: "Restore sample report" }));
-    await expect(await canvas.findByRole("link", { name: "County status: 2 alerts reported" })).toHaveAttribute("data-pulse-state", "ready");
+    await expect(await canvas.findByRole("link", { name: "County status: Urgent, 2 alerts reported" })).toHaveAttribute("data-pulse-state", "ready");
   },
 };
 export const CheckingAt390: Story = { globals: { viewport: { value: "radiusMobile", isRotated: false } }, parameters: { nextjs: { navigation: { pathname: "/pulse" } } }, beforeEach: () => sampleStatus("loading"), play: async ({ canvasElement }) => { await expect(within(canvasElement).getByRole("link", { name: "County status: checking" })).toHaveAttribute("data-pulse-state", "checking"); } };
@@ -57,10 +57,10 @@ export const EarlierOnDesktop: Story = { ...EarlierAndRecoveryAt375, globals: { 
 export const PartialCoverageAlertAt320: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } }, beforeEach: () => sampleStatus("partial"),
   play: async ({ canvasElement }) => {
-    const link = await within(canvasElement).findByRole("link", { name: "County status: 1 alert reported; some sources unavailable" });
+    const link = await within(canvasElement).findByRole("link", { name: "County status: Urgent, 1 alert reported; some sources unavailable" });
     await expect(link).toHaveAttribute("data-pulse-state", "ready");
     await expect(link).not.toHaveTextContent("Unknown");
-    await expect(link.querySelector("[data-pulse-mobile-state]")).toHaveTextContent("1 alert");
+    await expect(link.querySelector("[data-pulse-mobile-state]")).toHaveTextContent("Urgent");
   },
 };
 export const PartialCoverageAlertOnDesktop: Story = { ...PartialCoverageAlertAt320, globals: { viewport: { value: "radiusDesktop", isRotated: false } } };

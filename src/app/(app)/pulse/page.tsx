@@ -67,15 +67,21 @@ import { getOfficialSignalsSnapshot } from "@/lib/live/officialSignals";
 import { isLocallyRelevantCivicAlert } from "@/lib/integrations/official-alert-feeds";
 import { sourceDisplayState } from "@/lib/live/currentSituationModel";
 import {
+  countyStatusDetailKey,
+  countyStatusSentence,
   floodStatusItem,
   policeStatusItem,
   selectCountyStatus,
+  type CountyStatusItem,
 } from "@/lib/live/countyStatus";
+import COUNTY_OUTLINE from "@/data/county-boundary.json";
+import { overviewPath, projectOverview } from "@/components/map/countyOverview";
 import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
 import PulseBoard, {
   type PulseTile,
   type PulseHero,
   type PulseHeroChip,
+  type PulseStatusMapData,
 } from "@/components/pulse/PulseBoard";
 import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
 import BusesReveal from "@/components/pulse/BusesReveal";
@@ -113,6 +119,30 @@ function timeAgo(iso: string): string {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
   return `${Math.floor(h / 24)}d ago`;
+}
+
+/** "MDOT CHART · Reported 20m ago": a graded item's source and time, each
+ * only when the source gave it. */
+function statusItemMeta(item: CountyStatusItem): string | undefined {
+  const ago = item.seen ? timeAgo(item.seen.at) : "";
+  const line = [item.source, ago && item.seen ? `${item.seen.verb} ${ago}` : null]
+    .filter(Boolean)
+    .join(" · ");
+  return line || undefined;
+}
+
+/** The highest NWS chance of rain in the next twelve hourly periods, as a
+ * reading label, or undefined when the forecast carries no chance at all. */
+function rainChanceLabel(hours: readonly { probabilityOfPrecipitation?: number }[] | undefined): string | undefined {
+  const chances = (hours ?? [])
+    .slice(0, 12)
+    .map((hour) => hour.probabilityOfPrecipitation)
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  if (chances.length === 0) return undefined;
+  const max = Math.max(...chances);
+  return max > 0
+    ? `Up to ${Math.round(max)}% chance of rain in the next 12 hours`
+    : "0% chance of rain in the next 12 hours";
 }
 
 /** Give the observation its date as well as its hour. Around midnight, a bare
@@ -1179,6 +1209,7 @@ export default async function PulsePage() {
             temp: wxCur.temperature,
             condition: wxCondition ?? "Frederick",
             hl: wxHl,
+            rain: rainChanceLabel(forecast?.hourly),
           },
           sourceLabel: "NWS · weather.gov",
           body: <PulseWeatherPanel forecast={forecast} aqiObs={freshAqiObs} />,
@@ -2204,16 +2235,98 @@ export default async function PulsePage() {
               id: worstFlood.site.id,
               title: `${titleCaseRiver(worstFlood.site.river)} ${worstFlood.category.label.toLowerCase()}`,
               tone: worstFlood.category.tone,
+              observedAt: worstFlood.observedAt,
             }),
           ]
         : []),
-      ...(breakingPolice ? [policeStatusItem(breakingPolice)] : []),
+      ...(breakingPolice
+        ? [
+            policeStatusItem({
+              url: breakingPolice.url,
+              title: breakingPolice.title,
+              source: breakingPolice.source,
+              publishedAt: breakingPolice.publishedAt,
+            }),
+          ]
+        : []),
     ],
   });
 
+  // The masthead names the worst graded item: "{Word}: {title}." with its
+  // source and time on the next line, the same item the header chip counts
+  // first. Before this, /pulse could print "The available feeds show no major
+  // disruptions." under a header that said "1 alert" (local/pulse-m.png). The
+  // lead candidate's own sentence and action stay when they describe the
+  // same item; otherwise the item's detail and its own sheet speak for it.
+  const leadCandidateItemId = (() => {
+    switch (leadCandidate?.id) {
+      case "weather-alert":
+        return leadAlert ? `nws:${leadAlert.id}` : null;
+      case "official-alert":
+        return leadOfficialAlert ? `official:${leadOfficialAlert.url}` : null;
+      case "fire-rescue":
+        return leadSafety ? `pulsepoint:${leadSafety.id}` : null;
+      case "police":
+        return breakingPolice ? `police:${breakingPolice.url}` : null;
+      case "schools":
+        return leadSchool ? `fcps:${leadSchool.id}` : null;
+      case "road-intelligence":
+        return roadLead ? `mdot-road:${roadLead.id}` : null;
+      case "traffic-incident":
+        return leadTraffic ? `mdot-chart:${leadTraffic.id}` : null;
+      case "power":
+        return "firstenergy:outage";
+      case "air":
+        return "airnow:worst";
+      case "flood":
+        return worstFlood ? `usgs:${worstFlood.site.id}` : null;
+      default:
+        return null;
+    }
+  })();
+  const statusLead = countyStatus.items[0] ?? null;
+  const statusSentence = countyStatusSentence(countyStatus);
+  if (statusLead && statusSentence) {
+    heroLine = statusSentence;
+    heroTone = statusLead.severity === "urgent" ? "danger" : "warning";
+    if (leadCandidateItemId === statusLead.id && heroLeadMeta) {
+      // The lead's own line already carries its time and often its place
+      // ("until 8:00 PM", the road and direction). Name the publisher in
+      // front of it when the line does not already.
+      const publisher = statusLead.source?.split(" ")[0] ?? "";
+      if (statusLead.source && publisher && !heroLeadMeta.includes(publisher)) {
+        heroLeadMeta = `${statusLead.source} · ${heroLeadMeta}`;
+      }
+    } else {
+      heroLeadMeta = statusItemMeta(statusLead);
+    }
+    if (leadCandidateItemId !== statusLead.id) {
+      heroSub = statusLead.detail ?? "Open the details for the source and the latest report.";
+      heroLeadKey = countyStatusDetailKey(statusLead) ?? undefined;
+      heroActionLabel = "See the details";
+    }
+  }
+
+  // The county map under the masthead: a numbered point for each graded item
+  // whose source locates the event itself, and the rest listed as Countywide.
+  const statusMap: PulseStatusMapData = {
+    outline: overviewPath(COUNTY_OUTLINE),
+    word: countyStatus.word,
+    roadFeedsComplete: roadCheckComplete,
+    items: countyStatus.items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      severity: item.severity,
+      tileKey: countyStatusDetailKey(item) ?? undefined,
+      meta: statusItemMeta(item),
+      point: item.point ? projectOverview(item.point.lng, item.point.lat) : undefined,
+    })),
+  };
+
   // ── Hero + ticker for the board ──────────────────────────────────
   const hero: PulseHero = {
-    allClear,
+    // A graded item is never an all-clear, whatever the page's own flags say.
+    allClear: allClear && countyStatus.count === 0,
     operational: !leadCandidate && hasOperational,
     degraded: urgentDegraded,
     tone: heroTone,
@@ -2313,6 +2426,7 @@ export default async function PulsePage() {
         hero={hero}
         chips={heroChipsCapped}
         tiles={pulseTiles}
+        statusMap={statusMap}
         breaking={breakingPolice ? <PoliceBreakingStrip item={breakingPolice} now={nowMs} /> : undefined}
       />
 

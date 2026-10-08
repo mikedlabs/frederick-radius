@@ -9,6 +9,9 @@ import {
   secondarySignalsHeadline,
   secondarySignalsSummary,
   pulseCountyStatusTone,
+  pulseStatusMapCaption,
+  pulseStatusMapRows,
+  pulseStatusPointTone,
   pulseStatusWord,
   pulseTileBanks,
   pulseTileState,
@@ -372,5 +375,51 @@ describe("Pulse quiet-strip naming", () => {
 
     expect([...pulseWideReadingKeys([weather, river])]).toEqual(["river"]);
     expect([...pulseWideReadingKeys([weather, river, air])]).toEqual([]);
+  });
+});
+
+describe("Pulse status map", () => {
+  const item = (
+    id: string,
+    point?: { x: number; y: number },
+    severity: "urgent" | "advisory" = "advisory",
+  ) => ({ id, title: id, severity, tileKey: "traffic", point });
+
+  it("numbers located items in rank order and lists the rest as countywide", () => {
+    const { located, countywide } = pulseStatusMapRows([
+      item("nws", undefined, "urgent"),
+      item("crash", { x: 500, y: 500 }),
+      item("sign"),
+      item("closure", { x: 200, y: 700 }),
+    ]);
+    expect(located.map((row) => [row.id, row.number])).toEqual([
+      ["crash", 1],
+      ["closure", 2],
+    ]);
+    expect(countywide.map((row) => row.id)).toEqual(["nws", "sign"]);
+  });
+
+  it("colors urgent items red and advisories as a caution", () => {
+    expect(pulseStatusPointTone("urgent")).toBe("urgent");
+    expect(pulseStatusPointTone("advisory")).toBe("caution");
+  });
+
+  it("only calls an empty map empty when the road feeds answered", () => {
+    const caption = (
+      word: "Urgent" | "Advisory" | "All quiet" | "Unknown",
+      total: number,
+      located: number,
+      roadFeedsComplete = true,
+    ) => pulseStatusMapCaption({ word, total, located, roadFeedsComplete });
+    expect(caption("All quiet", 0, 0)).toBe("No incidents are mapped in the county right now.");
+    expect(caption("Unknown", 0, 0, false)).toBe(
+      "Radius could not reach the road feeds, so nothing is mapped.",
+    );
+    expect(caption("Unknown", 0, 0, true)).toBe(
+      "No incidents are mapped right now, but some county feeds did not answer.",
+    );
+    expect(caption("Advisory", 2, 0)).toBe("None of these reports gives a location Radius can map.");
+    expect(caption("Advisory", 2, 1)).toBe("Tap the point to find its report.");
+    expect(caption("Urgent", 3, 2)).toBe("Tap a numbered point to find its report.");
   });
 });

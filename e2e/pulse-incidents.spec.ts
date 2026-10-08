@@ -132,4 +132,63 @@ test.describe("Pulse public road incidents", () => {
       page.getByRole("heading", { name: "Road incidents" }),
     ).toBeHidden();
   });
+
+  // Oct 2026 review (local/pulse-m.png, prod/pulse-full.png): the masthead
+  // said "no major disruptions" under a header that counted an alert, nothing
+  // showed where anything was, and the weather sat below MARC. Live feeds
+  // decide which state this run sees, so each branch is checked when present.
+  test("names the problem, maps it under the card, and keeps weather above transit", async ({
+    page,
+  }) => {
+    const response = await page.goto("/pulse", { waitUntil: "domcontentloaded" });
+    expect(response?.status()).toBe(200);
+
+    const briefing = page.locator("[data-pulse-briefing]");
+    const statusMap = page.locator("[data-pulse-status-map]");
+    await expect(statusMap).toBeVisible();
+    await expect(statusMap.getByRole("heading", { name: "On the map" })).toBeVisible();
+    await expect(
+      statusMap.getByRole("img", { name: /^Map of Frederick County with / }),
+    ).toBeVisible();
+    expect(
+      await briefing.evaluate((element) =>
+        element.nextElementSibling?.hasAttribute("data-pulse-status-map"),
+      ),
+    ).toBe(true);
+    const strip = await statusMap.locator('[data-overview-aspect="wide"]').boundingBox();
+    expect(Math.round(strip?.height ?? 0)).toBe(220);
+
+    const word = await statusMap.getAttribute("data-pulse-status-map");
+    const headline = (await page.locator("main h1").innerText()).trim();
+    if (word === "Urgent" || word === "Advisory") {
+      expect(headline.startsWith(`${word}: `)).toBe(true);
+    } else {
+      await expect(statusMap).toContainText(
+        /No incidents are mapped in the county right now\.|Radius could not reach the road feeds, so nothing is mapped\.|No incidents are mapped right now, but some county feeds did not answer\./,
+      );
+    }
+
+    const points = statusMap.locator("button[data-overview-point]");
+    if ((await points.count()) > 0) {
+      await expect(briefing).toHaveAttribute("data-pulse-interaction-ready", "true");
+      const id = await points.first().getAttribute("data-overview-point");
+      await points.first().locator("[data-overview-tone]").click();
+      await expect(page.locator(":focus")).toHaveAttribute("data-pulse-status-row", id ?? "");
+    }
+
+    const readings = page.locator("#pulse-readings-heading");
+    const transit = page.locator("#pulse-live-board-heading");
+    if ((await readings.count()) > 0 && (await transit.count()) > 0) {
+      const order = await readings.evaluate(
+        (element, other) => element.compareDocumentPosition(other as Node),
+        await transit.elementHandle(),
+      );
+      expect(order & 4).toBe(4);
+    }
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
+  });
 });

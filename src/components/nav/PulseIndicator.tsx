@@ -17,8 +17,14 @@ import { createAbortDeadline } from "@/lib/promise-deadline";
  * unavailable data without making the navigation appear and disappear.
  *
  * Lives in TopBar between the LocationChip and Tools.
+ *
+ * The chip prints one readable word that matches the /pulse masthead:
+ * Urgent, Advisory, Quiet or Unknown (Checking while a request is in flight).
+ * The count lives in the accessible name and, when there is more than one
+ * report, as a small numeral on the dot. The old 9px "1 alert" label was too
+ * small to read and did not match the word the page printed (Oct 2026 review).
  */
-type PulseStatus = {
+export type PulseStatus = {
   active: boolean;
   count: number;
   tone: "alert" | "caution" | "quiet";
@@ -54,6 +60,24 @@ const TONE_COLOR: Record<PulseStatus["tone"], string> = {
   caution: "var(--app-warning)",
   quiet: "var(--app-positive)",
 };
+
+export type PulseChipWord = "Urgent" | "Advisory" | "Quiet" | "Unknown" | "Checking";
+
+/**
+ * The one word the header chip prints. It follows selectCountyStatus's own
+ * grading, so the chip says the word /pulse prints: an Urgent item makes the
+ * alert tone, Advisory items the caution tone, and a quiet report is Quiet
+ * only when every source answered. Anything unverified is Unknown.
+ */
+export function pulseChipWord(
+  status: Pick<PulseStatus, "active" | "tone" | "ok"> | null,
+  phase: "checking" | "ready" | "unavailable",
+): PulseChipWord {
+  if (phase === "checking") return "Checking";
+  if (phase !== "ready" || !status) return "Unknown";
+  if (status.active) return status.tone === "alert" ? "Urgent" : "Advisory";
+  return status.ok ? "Quiet" : "Unknown";
+}
 
 export default function PulseIndicator() {
   const pathname = usePathname();
@@ -154,36 +178,33 @@ export default function PulseIndicator() {
   const unknown = phase === "unavailable" || (phase === "ready" && status?.ok === false);
   const current = pathname === "/pulse" || pathname.startsWith("/pulse/");
   const earlier = unverified && active;
+  const currentAlerts = active && !unverified;
+  const word = pulseChipWord(status, phase);
   const alertCount = `${count} ${count === 1 ? "alert" : "alerts"}`;
+  // The accessible name starts with the word the chip shows, so a voice user
+  // can say what they see, then carries the count the chip no longer prints.
   const statusLabel = earlier
-    ? `County status: ${checking ? "checking" : "unavailable"}. Earlier report had ${alertCount}; current alerts are unverified.`
+    ? `County status: ${checking ? "checking" : "Unknown"}. Earlier report had ${alertCount}; current alerts are unverified.`
     : checking
       ? "County status: checking"
-      : phase === "unavailable"
-        ? "County status: unavailable"
-        : active
-          ? `County status: ${alertCount} reported${status?.ok === false ? "; some sources unavailable" : ""}`
-          : unknown
-            ? "County status: unavailable"
-            : "County status: no active alerts";
-  const currentAlerts = active && !unverified;
-  // A current report with alerts names them even when another source is
-  // down. "Unknown" and the hollow ring are kept for a check that reported
-  // nothing; the count is the same phrase the accessible name reads.
-  const partialAlerts = currentAlerts && status?.ok === false;
-  const stateLabel = earlier
-    ? "Earlier"
-    : checking
-      ? "Checking"
-      : partialAlerts
-        ? alertCount
-        : unknown
-          ? "Unknown"
-          : "";
+      : currentAlerts
+        ? `County status: ${word}, ${alertCount} reported${status?.ok === false ? "; some sources unavailable" : ""}`
+        : word === "Quiet"
+          ? "County status: Quiet, no active alerts"
+          : "County status: Unknown";
   // The word carries its own color so it always matches what it says, even
   // on /pulse, where the rest of the link takes the current-page color.
-  const stateColor = partialAlerts ? TONE_COLOR[tone] : "var(--app-ink-2)";
+  // Unknown is never a danger color: it is muted ink beside a hollow ring.
+  const stateColor = currentAlerts
+    ? TONE_COLOR[tone]
+    : word === "Unknown"
+      ? "var(--app-ink-3)"
+      : "var(--app-ink-2)";
   const mobileVisible = current || active || unknown || checking;
+  // On a phone a quiet county shows no chip outside /pulse, so the word only
+  // renders where the chip does.
+  const showMobileWord = word !== "Quiet" || current;
+  const dotNumeral = currentAlerts && count > 1 ? (count > 9 ? "9+" : String(count)) : null;
 
   return (
     <AppTransitionLink
@@ -194,7 +215,10 @@ export default function PulseIndicator() {
       aria-label={statusLabel}
       aria-current={current ? "page" : undefined}
       title={statusLabel}
-      className={`relative h-11 min-w-11 shrink-0 items-center justify-center flex-col gap-0.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] sm:inline-flex sm:flex-row sm:gap-1.5 sm:px-2.5 ${
+      // px-1 on phones: the 11px word is wider than the old 9px label, and
+      // the tighter inset keeps the header row the width it was at 320 and
+      // 390px. The chip still grows to fit its word and never drops below 44px.
+      className={`relative h-11 min-w-11 shrink-0 items-center justify-center flex-col gap-0.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-1 transition hover:bg-[var(--app-bg-sunken)] sm:inline-flex sm:flex-row sm:gap-1.5 sm:px-2.5 ${
         mobileVisible ? "inline-flex" : "hidden"
       }`}
       style={{
@@ -203,7 +227,9 @@ export default function PulseIndicator() {
           ? "var(--app-brand-press)"
           : currentAlerts
             ? TONE_COLOR[tone]
-            : "var(--app-ink-2)",
+            : word === "Unknown"
+              ? "var(--app-ink-3)"
+              : "var(--app-ink-2)",
         background: current ? "var(--app-brand-tint-6)" : undefined,
       }}
     >
@@ -212,15 +238,23 @@ export default function PulseIndicator() {
         {currentAlerts && (
           <span
             data-pulse-dot={tone}
-            className="absolute -right-1 -top-1 inline-flex h-2 w-2 items-center justify-center rounded-full"
+            data-pulse-dot-count={dotNumeral ?? undefined}
+            className={
+              dotNumeral
+                ? "absolute -right-2 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-caption font-bold leading-none tabular-nums"
+                : "absolute -right-1 -top-1 inline-flex h-2 w-2 items-center justify-center rounded-full"
+            }
             style={{
               background: TONE_COLOR[tone],
+              color: "var(--app-on-brand)",
               boxShadow:
                 tone === "alert"
                   ? `0 0 0 2px var(--app-bg-elevated), 0 0 0 3px color-mix(in srgb, ${TONE_COLOR[tone]} 50%, transparent)`
                   : `0 0 0 2px var(--app-bg-elevated)`,
             }}
-          />
+          >
+            {dotNumeral}
+          </span>
         )}
         {/* Unavailable: a hollow ring, so "we don't know" never looks the same
             as the calm all-clear state (audit FR-002). */}
@@ -232,10 +266,10 @@ export default function PulseIndicator() {
           />
         )}
       </span>
-      {stateLabel && <span data-pulse-mobile-state className="text-[9px] font-semibold leading-none sm:hidden" style={{ color: stateColor }}>{stateLabel}</span>}
+      {showMobileWord && <span data-pulse-mobile-state className="text-caption font-semibold leading-none sm:hidden" style={{ color: stateColor }}>{word}</span>}
       <span className="hidden flex-col gap-0.5 sm:inline-flex">
         <span className="text-[14px] font-semibold leading-none">County status</span>
-        {stateLabel && <span data-pulse-desktop-state className="text-[10px] leading-none" style={{ color: stateColor }}>{earlier ? "Earlier report" : stateLabel}</span>}
+        <span data-pulse-desktop-state className="text-caption font-semibold leading-none" style={{ color: stateColor }}>{word}</span>
       </span>
     </AppTransitionLink>
   );

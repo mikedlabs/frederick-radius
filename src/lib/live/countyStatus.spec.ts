@@ -19,7 +19,9 @@ import {
   type RoadIntelligenceSources,
 } from "./roadIntelligenceModel";
 import {
+  countyStatusDetailKey,
   countyStatusFromItems,
+  countyStatusSentence,
   floodStatusItem,
   policeStatusItem,
   selectCountyStatus,
@@ -406,6 +408,157 @@ describe("countyStatusFromItems", () => {
     );
     expect(status.items.map((entry) => entry.id)).toEqual(["fire", "school", "road"]);
     expect(status).toMatchObject({ count: 3, word: "Urgent", tone: "alert" });
+  });
+});
+
+describe("county status map points", () => {
+  function workZone(coordinates: Array<[number, number]>) {
+    const sources = roadSources();
+    sources.workZones.data = [
+      {
+        id: "wz-md75",
+        road: "MD 75",
+        roadNames: ["MD 75"],
+        direction: "northbound",
+        description: "MD 75 NORTH BETWEEN BALTO NATIONAL PIKE AND FINGERBOARD RD",
+        status: "active",
+        startAt: "2026-10-06T23:00:00.000Z",
+        endAt: null,
+        updatedAt: NOW,
+        geometry: { type: "LineString", coordinates },
+        lanes: { total: 1, closed: 1, summary: "all-lanes-closed" },
+        positionConfidence: "approximate",
+        sourceUrl: MDOT_WZDX_SOURCE_URL,
+      },
+    ];
+    return selectCountyStatus({
+      situation: situation(),
+      road: buildRoadIntelligenceSnapshot({ sources, now: new Date(NOW) }),
+      civic: quietCivic,
+    });
+  }
+
+  it("places a CHART incident at its own coordinates and names the source and time", () => {
+    const status = selectCountyStatus({
+      situation: situation({ traffic: envelope("mdot-chart", [crash()]) }),
+      road: quietRoad(),
+      civic: quietCivic,
+    });
+    expect(status.items[0]).toMatchObject({
+      point: { lng: -77.4105, lat: 39.4143 },
+      source: "MDOT CHART",
+      seen: { at: "2026-10-07T02:50:00.000Z", verb: "Reported" },
+      detail: "A crash is blocking lanes.",
+    });
+  });
+
+  it("drops the point of an incident outside the county instead of pulling it to the line", () => {
+    const status = selectCountyStatus({
+      situation: situation({
+        traffic: envelope("mdot-chart", [crash({ id: "chart-pa", lng: -77.41, lat: 39.8 })]),
+      }),
+      road: quietRoad(),
+      civic: quietCivic,
+    });
+    // The feed still files it under Frederick, so it still counts; it simply
+    // has no place on the county map.
+    expect(status.count).toBe(1);
+    expect(status.items[0].point).toBeUndefined();
+  });
+
+  it("puts a work zone on one of its own in-county vertices", () => {
+    // The first vertex sits across the Potomac in Virginia.
+    const status = workZone([[-77.63, 39.25], [-77.64, 39.31], [-77.62, 39.315]]);
+    expect(status.items[0]).toMatchObject({
+      title: "MD 75 work-zone closure",
+      source: "Maryland WZDx",
+      seen: { at: NOW, verb: "Observed" },
+    });
+    expect(status.items[0].point).toEqual({ lng: -77.64, lat: 39.31 });
+  });
+
+  it("gives a work zone no point when none of its vertices is in the county", () => {
+    const status = workZone([[-77.63, 39.25], [-77.8, 39.5]]);
+    expect(status.count).toBe(1);
+    expect(status.items[0].point).toBeUndefined();
+  });
+
+  it("never locates a message sign, even one standing inside the county", () => {
+    const sources = roadSources();
+    sources.messages.data = [
+      {
+        id: "dms-i70-e-52",
+        location: "I-70 East prior to exit 52 US 15",
+        message: "ROADWORK AT EXIT 76 MD 97 RIGHT LANE CLOSED",
+        lat: 39.4143,
+        lng: -77.4105,
+        observedAt: NOW,
+        beaconsEnabled: true,
+        evidence: "device-observation",
+        sourceUrl: CHART_ROAD_SOURCES.messages,
+      },
+    ];
+    const status = selectCountyStatus({
+      situation: situation(),
+      road: buildRoadIntelligenceSnapshot({ sources, now: new Date(NOW) }),
+      civic: quietCivic,
+    });
+    expect(status.count).toBe(1);
+    expect(status.items[0].point).toBeUndefined();
+    expect(status.items[0].towns).toBeUndefined();
+    expect(status.items[0].detail).toBe(
+      "This message is on an official highway sign at I-70 East prior to exit 52 US 15.",
+    );
+  });
+
+  it("leaves weather, schools and civic notices unlocated, with their publishers", () => {
+    const status = selectCountyStatus({
+      situation: situation({ weather: envelope("nws", [nws()]) }),
+      road: quietRoad(),
+      civic: { alerts: [civic()], available: true, degraded: false },
+    });
+    for (const item of status.items) expect(item.point).toBeUndefined();
+    expect(status.items.find((item) => item.family === "weather")).toMatchObject({
+      source: "National Weather Service",
+      seen: { verb: "Issued" },
+      detail: "Heat Advisory in effect",
+    });
+    expect(status.items.find((item) => item.family === "civic")).toMatchObject({
+      source: "City of Frederick",
+      seen: { at: NOW, verb: "Published" },
+    });
+  });
+});
+
+describe("countyStatusSentence", () => {
+  const item = (title: string): CountyStatusItem => ({
+    id: "x",
+    family: "roads",
+    severity: "advisory",
+    title,
+    href: "/pulse?open=traffic",
+  });
+
+  it("names the worst item after the word", () => {
+    expect(
+      countyStatusSentence({ word: "Advisory", items: [item("MD 75 work-zone closure"), item("Crash")] }),
+    ).toBe("Advisory: MD 75 work-zone closure.");
+  });
+
+  it("does not double the closing punctuation", () => {
+    expect(countyStatusSentence({ word: "Urgent", items: [item("Shelter in place now.")] })).toBe(
+      "Urgent: Shelter in place now.",
+    );
+  });
+
+  it("has nothing to say when nothing is graded", () => {
+    expect(countyStatusSentence({ word: "All quiet", items: [] })).toBeNull();
+    expect(countyStatusSentence({ word: "Unknown", items: [] })).toBeNull();
+  });
+
+  it("reads the detail key from the item's /pulse link", () => {
+    expect(countyStatusDetailKey(item("Crash"))).toBe("traffic");
+    expect(countyStatusDetailKey({ href: "/pulse" })).toBeNull();
   });
 });
 

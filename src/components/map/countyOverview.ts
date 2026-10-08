@@ -20,6 +20,15 @@ export const OVERVIEW_VIEW_HEIGHT = 1000;
 export const OVERVIEW_ASPECT = OVERVIEW_VIEW_WIDTH / OVERVIEW_VIEW_HEIGHT;
 
 /**
+ * Height in CSS pixels of the wide overview (the /pulse status map): a full
+ * column-width strip that holds the same square frame, centered, at this size.
+ * The square keeps every layer on one projection, so the wide box needs no
+ * second frame and the MapLibre canvas fits the same bounds it always does.
+ * CountyOverviewMap's wide classes use this number literally.
+ */
+export const OVERVIEW_WIDE_HEIGHT = 220;
+
+/**
  * Frederick County's TIGER outline extent (src/data/county-boundary.json),
  * [west, south, east, north]. Hardcoded so client code never bundles the
  * outline just to know the frame; the spec checks it against the file.
