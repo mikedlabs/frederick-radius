@@ -451,8 +451,6 @@ export function buildFairDayWorkspaceData(
   );
   const firstDay = pack.schedule.days[0];
   const todayAtFair = fairLocalDate(asOf);
-  const initialDay =
-    pack.schedule.days.find((day) => day.date === todayAtFair) ?? firstDay;
   const entry = entryCopy(pack);
   const eventPhase =
     todayAtFair < pack.manifest.startsOn
@@ -460,6 +458,14 @@ export function buildFairDayWorkspaceData(
       : todayAtFair > pack.manifest.endsOn
         ? "post-fair"
         : "fair-day";
+  // Only a published Fair day inside the run can be today. Before and after
+  // the run the guide still opens on the first day, but as a record of the
+  // program, never as the current day.
+  const fairDayToday =
+    eventPhase === "fair-day"
+      ? (pack.schedule.days.find((day) => day.date === todayAtFair) ?? null)
+      : null;
+  const initialDay = fairDayToday ?? firstDay;
   const partyOffers = buildFairPartyOffers(pack.offers, asOf.toISOString());
   const partyOfferIds = new Set(partyOffers.map((offer) => offer.id));
 
@@ -478,7 +484,7 @@ export function buildFairDayWorkspaceData(
         ? "Before the Fair"
         : eventPhase === "fair-day"
           ? "Fair day"
-          : "Fair details",
+          : "After the Fair",
     dates: pack.schedule.days.map((day) => ({
       date: day.date,
       weekdayLabel: new Intl.DateTimeFormat("en-US", {
@@ -491,6 +497,7 @@ export function buildFairDayWorkspaceData(
       gateClosesAt: day.gateEndsAt,
     })),
     initialDate: initialDay.date,
+    todayDate: fairDayToday?.date ?? null,
     offers: pack.offers.map((offer) => ({
       id: offer.id,
       label: offer.label,

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { activeMoment } from "@/data/civic-moments";
 import {
   greatFrederickFair2026Pack,
   greatFrederickFair2026PackPointer,
@@ -7,6 +8,8 @@ import {
 
 import { buildFairDayWorkspaceData } from "./buildFairDayWorkspaceData";
 import FairDayWorkspace from "./FairDayWorkspace";
+
+const FAIR_MOMENT_SLUG = "great-frederick-fair-2026";
 
 /**
  * Server adapter for the canonical reviewed pack. It emits useful schedule,
@@ -18,7 +21,14 @@ export default function FairDayPage({ asOf = new Date() }: { asOf?: Date }) {
     greatFrederickFair2026PackPointer,
     asOf,
   );
-  
+  // After the run, the record can hand visitors to whichever other county
+  // guide is live. Resolve it here so the moment registry stays on the server.
+  const liveMoment = activeMoment(asOf);
+  const afterwardMoment =
+    liveMoment && liveMoment.slug !== FAIR_MOMENT_SLUG
+      ? { title: liveMoment.title, slug: liveMoment.slug }
+      : null;
+
   const serverHeroBackground = (
     <>
       <picture className="absolute inset-0 block">
@@ -58,5 +68,11 @@ export default function FairDayPage({ asOf = new Date() }: { asOf?: Date }) {
     </>
   );
 
-  return <FairDayWorkspace data={data} serverHeroBackground={serverHeroBackground} />;
+  return (
+    <FairDayWorkspace
+      data={data}
+      serverHeroBackground={serverHeroBackground}
+      afterwardMoment={afterwardMoment}
+    />
+  );
 }
