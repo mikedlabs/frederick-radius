@@ -60,10 +60,18 @@ function write(items: SavedRef[]) {
   listeners.forEach((l) => l());
 }
 
+function onSavedStorage(event: StorageEvent) {
+  if (event.key !== null && event.key !== KEY) return;
+  if (event.storageArea !== null && event.storageArea !== window.localStorage) return;
+  listeners.forEach((listener) => listener());
+}
+
 const subscribe: (cb: Listener) => () => void = (cb) => {
+  if (listeners.size === 0) window.addEventListener("storage", onSavedStorage);
   listeners.add(cb);
   return () => {
     listeners.delete(cb);
+    if (listeners.size === 0) window.removeEventListener("storage", onSavedStorage);
   };
 };
 
@@ -71,9 +79,79 @@ export function useSavedList(): SavedRef[] {
   return useSyncExternalStore(subscribe, read, readServer);
 }
 
-export function useIsSaved(type: SavedRef["type"], id: string): boolean {
+export function useIsSaved(type: SavedRef["type"], id: string, enabled = true): boolean {
   const list = useSavedList();
-  return list.some((s) => s.type === type && s.id === id);
+  return enabled && list.some((s) => s.type === type && s.id === id);
+}
+
+let confirmedRaw: string | null | undefined;
+let confirmedItems: SavedRef[] = [];
+
+function readConfirmedSaved(): { raw: string | null; items: SavedRef[] } {
+  if (typeof window === "undefined") throw new Error("Device storage unavailable");
+  const raw = window.localStorage.getItem(KEY);
+  if (raw === confirmedRaw) return { raw, items: confirmedItems };
+  const parsed: unknown = raw === null ? [] : JSON.parse(raw);
+  if (!Array.isArray(parsed) || !parsed.every((item: unknown) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return false;
+    const ref = item as Partial<SavedRef>;
+    return ["place", "event", "radius", "beer"].includes(ref.type ?? "")
+      && typeof ref.id === "string" && ref.id.length > 0
+      && typeof ref.saved_at === "string";
+  })) throw new Error("Saved list could not be read");
+  confirmedRaw = raw;
+  confirmedItems = parsed as SavedRef[];
+  return { raw, items: confirmedItems };
+}
+
+/** Null means this device cannot currently confirm the event's saved state. */
+export function useEventSavedState(id: string | null): boolean | null {
+  const snapshot = useCallback(() => {
+    if (id === null) return false;
+    try { return readConfirmedSaved().items.some((item) => item.type === "event" && item.id === id); }
+    catch { return null; }
+  }, [id]);
+  return useSyncExternalStore(subscribe, snapshot, () => null);
+}
+
+/** Event detail and full-page controls share Saved's existing device list.
+ * Apply the rendered save/remove intent rather than reversing a newer save.
+ * A rejected, corrupt, or unconfirmed device write never earns success UI. */
+export function setEventSaved(id: string, saved: boolean): boolean {
+  try {
+    const { raw, items } = readConfirmedSaved();
+    const exists = items.some((item) => item.type === "event" && item.id === id);
+    const nextItems = exists === saved ? items : saved
+      ? [...items, { type: "event" as const, id, saved_at: new Date().toISOString() }]
+      : items.filter((item) => !(item.type === "event" && item.id === id));
+    const next = JSON.stringify(nextItems);
+    if (exists !== saved) {
+      window.localStorage.setItem(KEY, next);
+      if (window.localStorage.getItem(KEY) !== next) {
+        // Publish what the device retained, never the requested write.
+        read();
+        throw new Error("Saved change could not be confirmed");
+      }
+    }
+    cachedRaw = exists === saved ? raw : next;
+    cachedSnapshot = nextItems;
+    listeners.forEach((listener) => listener());
+    if (exists !== saved) {
+      ensurePersistentStorage();
+      if (saved) signalReturnBridgeValue("event");
+      else if (!nextItems.some((item) => item.type === "event")) cancelPendingReturnBridgeValue("event");
+    }
+    return saved;
+  } catch (error) {
+    // A readback error also invalidates the old selected state. Event controls
+    // show unavailable rather than claiming that a removal did not commit.
+    listeners.forEach((listener) => listener());
+    throw error;
+  }
+}
+
+export function useSetEventSaved(id: string) {
+  return useCallback((saved: boolean) => setEventSaved(id, saved), [id]);
 }
 
 export function useToggleSave(type: SavedRef["type"], id: string) {

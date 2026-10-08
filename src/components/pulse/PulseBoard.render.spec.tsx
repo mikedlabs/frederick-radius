@@ -18,7 +18,7 @@ describe("Pulse briefing presentation", () => {
   it("keeps one lead heading, page freshness and visible source alongside current readings", () => {
     const container = render({});
     expect(container.querySelectorAll("h1")).toHaveLength(1);
-    expect(container.querySelector("[data-pulse-briefing]")?.textContent).toContain("All quiet");
+    expect(container.querySelector("[data-pulse-briefing]")?.textContent).toContain("Clear");
     expect(container.querySelector("[data-pulse-briefing] time")?.getAttribute("datetime")).toBeTruthy();
     const reading = container.querySelector('[data-pulse-key="weather"]');
     expect(reading?.getAttribute("aria-label")).toContain("72 degrees");
@@ -27,7 +27,7 @@ describe("Pulse briefing presentation", () => {
   });
   it("keeps an unavailable source out of current readings, behind the existing named disclosure", () => {
     const container = render({ allClear: false, degraded: true }, [{ ...weather, active: true, degraded: true, feature: undefined, availability: "unavailable", countLabel: "Weather feed unavailable" }]);
-    expect(container.querySelector("[data-pulse-briefing]")?.textContent).toContain("Partial data");
+    expect(container.querySelector("[data-pulse-briefing]")?.textContent).toContain("Unknown");
     expect(container.querySelector('[data-pulse-bank="readings"]')).toBeNull();
     const disclosure = container.querySelector('section[aria-labelledby="pulse-secondary-heading"] details');
     expect(disclosure?.hasAttribute("open")).toBe(false);

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { CurrentSituationSnapshot } from "@/lib/live/currentSituationModel";
+import { buildCurrentSituationSnapshot, sourceEnvelope, type CurrentSituationSnapshot, type CurrentSituationSources } from "@/lib/live/currentSituationModel";
 
 const mocks = vi.hoisted(() => ({
   getCurrentSituationSnapshot: vi.fn(),
@@ -24,25 +24,26 @@ import { GET } from "./route";
 function snapshot(
   overrides: Partial<CurrentSituationSnapshot["summary"]> = {},
 ): CurrentSituationSnapshot {
-  return {
-    generatedAt: "2026-07-28T16:00:00.000Z",
-    summary: {
-      status: "quiet",
-      coverage: "complete",
-      tone: "quiet",
-      activeCount: 0,
-      activeByCategory: {
-        weather: 0,
-        schools: 0,
-        roads: 0,
-        power: 0,
-        fireRescue: 0,
-        air: 0,
-      },
-      degradedSources: [],
-      ...overrides,
-    },
-  } as CurrentSituationSnapshot;
+  const now = "2026-07-28T16:00:00.000Z";
+  const envelope = <T,>(source: Parameters<typeof sourceEnvelope<T>>[0]["source"], data: T) => sourceEnvelope({
+    source, data, availability: "available", requiredForQuiet: true,
+    capturedAt: now, asOf: now, asOfBasis: "retrieval", staleAfterSeconds: 300,
+  });
+  const sources: CurrentSituationSources = {
+    weather: envelope("nws", []),
+    schools: envelope("fcps", []),
+    traffic: envelope("mdot-chart", []),
+    scanner: envelope("frederick-scanner", []),
+    power: envelope("firstenergy", { total_out: 0, total_served: 100_000, munis: [] }),
+    fireRescue: envelope("pulsepoint", []),
+    air: envelope("airnow", []),
+  };
+  const current = buildCurrentSituationSnapshot({
+    sources,
+    roadFusion: { incidents: [], matchedChartIncidentIds: [], unmatchedChartIncidentIds: [] },
+    now,
+  });
+  return { ...current, summary: { ...current.summary, ...overrides } };
 }
 
 describe("GET /api/pulse/status", () => {
@@ -75,6 +76,7 @@ describe("GET /api/pulse/status", () => {
       active: false,
       count: 0,
       tone: "quiet",
+      level: "Clear",
       ok: true,
       lastUpdated: "2026-07-28T16:00:00.000Z",
     });
@@ -95,13 +97,14 @@ describe("GET /api/pulse/status", () => {
     await expect(response.json()).resolves.toEqual({
       active: true,
       count: 2,
-      tone: "alert",
+      tone: "caution",
+      level: "Advisory",
       ok: false,
       lastUpdated: "2026-07-28T16:00:00.000Z",
     });
   });
 
-  it("counts an urgent road closure shown on Pulse", async () => {
+  it("keeps a warning-grade road closure advisory, matching Pulse", async () => {
     mocks.getCurrentSituationSnapshot.mockResolvedValue(snapshot());
     mocks.getRoadIntelligenceSnapshot.mockResolvedValue({
       summary: {
@@ -120,7 +123,8 @@ describe("GET /api/pulse/status", () => {
     await expect(response.json()).resolves.toEqual({
       active: true,
       count: 1,
-      tone: "alert",
+      tone: "caution",
+      level: "Advisory",
       ok: true,
       lastUpdated: "2026-07-28T16:00:00.000Z",
     });
@@ -146,6 +150,7 @@ describe("GET /api/pulse/status", () => {
       active: false,
       count: 0,
       tone: "quiet",
+      level: "Clear",
       ok: true,
       lastUpdated: "2026-07-28T16:00:00.000Z",
     });

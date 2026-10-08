@@ -56,14 +56,14 @@ describe("Pulse status language", () => {
       degraded: true,
       hasLead: false,
       tone: "warning",
-    })).toBe("Partial data");
+    })).toBe("Unknown");
 
     expect(pulseStatusWord({
       allClear: true,
       degraded: true,
       hasLead: false,
       tone: "positive",
-    })).toBe("Partial data");
+    })).toBe("Unknown");
 
     expect(pulseStatusWord({
       allClear: false,
@@ -86,7 +86,7 @@ describe("Pulse status language", () => {
       degraded: true,
       hasLead: false,
       tone: "positive",
-    })).toBe("Partial data");
+    })).toBe("Unknown");
   });
 
   it("keeps verified quiet conditions separate from advisories", () => {
@@ -97,7 +97,7 @@ describe("Pulse status language", () => {
       degraded: false,
       hasLead: false,
       tone: "positive",
-    })).toBe("All quiet");
+    })).toBe("Clear in checked feeds");
 
     expect(pulseStatusWord({
       allClear: false,

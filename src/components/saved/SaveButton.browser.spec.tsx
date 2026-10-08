@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   toggleLocal: vi.fn<() => boolean>(),
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
 }));
-vi.mock("@/hooks/useSaved", () => ({ useMounted: () => true, useIsSaved: () => mocks.saved, useToggleSave: () => mocks.toggleLocal, useSavedList: () => [] }));
+vi.mock("@/hooks/useSaved", () => ({ useMounted: () => true, useIsSaved: () => mocks.saved, useEventSavedState: () => mocks.saved, useToggleSave: () => mocks.toggleLocal, useSetEventSaved: () => mocks.toggleLocal, useSavedList: () => [] }));
 vi.mock("@/hooks/useFollows", () => ({ useIsFollowed: () => mocks.saved, useToggleFollow: () => mocks.togglePlace }));
 vi.mock("@/lib/haptics", () => ({ haptic: vi.fn() }));
 vi.mock("@/lib/track", () => ({ track: vi.fn() }));

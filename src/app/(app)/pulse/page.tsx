@@ -89,6 +89,7 @@ import {
   selectPulseLeadCandidate,
 } from "@/lib/pulse/signal-priority";
 import { aqiObservationLabel, aqiParameterLabel, hasObservationForAlert, isElevatedAirQualityPeriodActive, summarizeAirQualityAlert } from "@/lib/air-quality";
+import { deriveCountyStatus } from "@/lib/pulse/county-status-model";
 import { PRODUCT_NAMES } from "@/lib/product-names";
 
 export const metadata: Metadata = {
@@ -2187,6 +2188,7 @@ export default async function PulsePage() {
 
   // ── Hero + ticker for the board ──────────────────────────────────
   const hero: PulseHero = {
+    countyStatus: deriveCountyStatus(situation, roadIntelligence, officialSignals.civic),
     allClear,
     operational: !leadCandidate && hasOperational,
     degraded: urgentDegraded,
