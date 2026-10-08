@@ -37,7 +37,9 @@ describe("CollapsibleSection deferred mounting", () => {
 });
 
 describe("CollapsibleSection disclosure row", () => {
-  function renderParks(props: { countAriaOnly?: boolean; headingLevel?: 2 | 3 } = {}) {
+  function renderParks(
+    props: { countAriaOnly?: boolean; headingLevel?: 2 | 3; className?: string; ruled?: boolean } = {},
+  ) {
     return renderToStaticMarkup(
       <CollapsibleSection
         title="Frederick City"
@@ -63,10 +65,27 @@ describe("CollapsibleSection disclosure row", () => {
     expect(html).not.toMatch(/text-\[/);
   });
 
-  it("is a 52px row under one Border rule", () => {
+  it("is a 52px row under one Border rule drawn by a class", () => {
     const html = renderParks();
 
-    expect(html).toMatch(/<section [^>]*style="border-top:1px solid var\(--app-border\)"/);
+    expect(html).toMatch(/<section [^>]*class="border-t"/);
+    expect(html).toMatch(/<section [^>]*style="border-top-color:var\(--app-border\)"/);
+    expect(html).not.toMatch(/border-top:1px/);
+    expect(html).toMatch(/<button [^>]*style="min-height:52px"/);
+  });
+
+  it("adds no second rule when the caller also asks for border-t", () => {
+    const html = renderParks({ className: "today-disclosure mt-6 border-t pt-2" });
+
+    expect(html).toMatch(/<section [^>]*class="border-t today-disclosure mt-6 border-t pt-2"/);
+  });
+
+  it("drops its rule when the edge above is already drawn", () => {
+    const html = renderParks({ ruled: false, className: "space-y-3" });
+
+    expect(html).toMatch(/<section [^>]*class="space-y-3"/);
+    expect(html).not.toMatch(/border-t\b/);
+    expect(html).not.toMatch(/border-top/);
     expect(html).toMatch(/<button [^>]*style="min-height:52px"/);
   });
 

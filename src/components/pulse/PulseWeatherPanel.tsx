@@ -295,7 +295,7 @@ export default async function PulseWeatherPanel({
         {/* MORE DETAIL — the deeper forecast (hourly curve, sun, 7-day) is
             revealed on tap, so the card leads with current conditions and the
             depth is one tap away (matching the dashboard tiles' reveal). */}
-        <div className="border-t pt-1" style={{ borderColor: "var(--app-border)" }}>
+        <div>
           <CollapsibleSection title="Hourly & 7-day" storageKey="fr.pulse.weather.detail" defaultOpen={false}>
             <div className="space-y-4 pt-1">
               {/* hourly curve */}

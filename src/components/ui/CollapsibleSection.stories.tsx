@@ -39,7 +39,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The one disclosure heading. A collapsed section is a 52px ruled row: a 1px Border rule, the title in .text-title-sm Ink and sentence case, an optional count in quiet .text-meta-lg metadata, and a chevron. It replaces the old tracked-caps eyebrow, so a stack of disclosures reads as a list of named sections. The open or closed choice is remembered per storageKey.",
+          "The one disclosure heading. A collapsed section is a 52px ruled row: a 1px Border rule, the title in .text-title-sm Ink and sentence case, an optional count in quiet .text-meta-lg metadata, and a chevron. It replaces the old tracked-caps eyebrow, so a stack of disclosures reads as a list of named sections. The rule is a border-t class, so a caller's own border-t is the same rule. When something directly above already draws that edge, pass ruled={false} instead of stacking a second hairline. The open or closed choice is remembered per storageKey.",
       },
     },
   },
@@ -84,7 +84,34 @@ export const Closed: Story = {
     await expect(titleStyle.textTransform).toBe("none");
 
     const section = canvasElement.querySelector("section")!;
-    await expect(getComputedStyle(section).borderTopWidth).toBe("1px");
+    const sectionStyle = getComputedStyle(section);
+    await expect(sectionStyle.borderTopWidth).toBe("1px");
+    await expect(sectionStyle.borderTopStyle).toBe("solid");
+  },
+};
+
+/**
+ * A caller whose wrapper already draws the edge above the row, as the /pulse
+ * weather panel did. With ruled={false} the section adds no second hairline.
+ */
+export const UnderAnExistingRule: Story = {
+  args: {
+    storageKey: "storybook.collapsible.unruled",
+    ruled: false,
+  },
+  render: (args) => (
+    <div data-testid="ruled-wrapper" style={{ borderTop: "1px solid var(--app-border)" }}>
+      <CollapsibleSection {...args} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const trigger = await readyTrigger(canvasElement, "Frederick City");
+    await expect(trigger.getBoundingClientRect().height).toBeGreaterThanOrEqual(52);
+
+    const wrapper = within(canvasElement).getByTestId("ruled-wrapper");
+    await expect(getComputedStyle(wrapper).borderTopWidth).toBe("1px");
+    const section = canvasElement.querySelector("section")!;
+    await expect(getComputedStyle(section).borderTopWidth).toBe("0px");
   },
 };
 

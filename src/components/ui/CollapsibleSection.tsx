@@ -19,8 +19,13 @@ import MotionDisclosure from "@/components/ui/MotionDisclosure";
  * Border rule, the title in `.text-title-sm` Ink and sentence case, the
  * count in quiet `.text-meta-lg` metadata, and a chevron. Headings are type
  * (docs/brand/BRAND_GUIDE.md), so a stack of disclosures reads as a list of
- * named sections instead of tiny tracked caps. The rule sits on the section
- * itself, so a caller that already draws `border-t` gets one rule, not two.
+ * named sections instead of tiny tracked caps.
+ *
+ * The rule is the section's own `border-t` class with a Border color, not an
+ * inline border, so a caller that puts `border-t` on the section still gets
+ * one rule. A caller that already draws an edge directly above the row (a
+ * ruled wrapper, or the top of a bordered box) passes `ruled={false}` rather
+ * than stacking a second hairline on it.
  *
  * Children remain server-rendered and mounted by default so opening never
  * refetches. Costly browse tails can opt into `mountOnOpen`; those children
@@ -43,6 +48,7 @@ export default function CollapsibleSection({
   mountOnOpen = false,
   children,
   className = "",
+  ruled = true,
 }: {
   title: string;
   /** Optional count shown beside the title (e.g. "6 picks"). */
@@ -63,6 +69,9 @@ export default function CollapsibleSection({
   mountOnOpen?: boolean;
   children: ReactNode;
   className?: string;
+  /** Draw the 1px Border rule above the row (default). Pass false only when
+   *  something directly above already draws that edge, so it is not doubled. */
+  ruled?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [contentMounted, setContentMounted] = useState(
@@ -153,8 +162,8 @@ export default function CollapsibleSection({
       aria-label={ariaTitle}
       aria-busy={!mounted}
       data-collapsible-interaction-ready={mounted ? "true" : "false"}
-      className={className}
-      style={{ borderTop: "1px solid var(--app-border)" }}
+      className={ruled ? `border-t ${className}`.trim() : className || undefined}
+      style={ruled ? { borderTopColor: "var(--app-border)" } : undefined}
     >
       {headingLevel === 2 ? <h2>{trigger}</h2> : headingLevel === 3 ? <h3>{trigger}</h3> : trigger}
       <MotionDisclosure id={contentId} open={open} innerClassName="pt-1.5">

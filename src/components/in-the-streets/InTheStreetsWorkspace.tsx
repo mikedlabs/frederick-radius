@@ -75,7 +75,7 @@ export default function InTheStreetsWorkspace() {
         <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--app-ink-3)] mb-2 px-1">
           Getting There & Logistics
         </h2>
-        <div className="bg-[var(--app-bg-elevated)] border border-[var(--app-border)] rounded-[var(--app-radius-lg)] overflow-hidden">
+        <div>
           <CollapsibleSection title="Road Closures & Parking" storageKey="its-logistics">
             <div className="text-[14px] text-[var(--app-ink-2)] leading-relaxed pb-4">
               <p className="mb-2">
@@ -86,7 +86,6 @@ export default function InTheStreetsWorkspace() {
               </p>
             </div>
           </CollapsibleSection>
-          <div className="h-[1px] w-full bg-[var(--app-border)]" />
           <CollapsibleSection title="Is the festival free?" storageKey="its-free">
             <div className="text-[14px] text-[var(--app-ink-2)] leading-relaxed pb-4">
               Yes! The street festival is entirely free to walk. The Craft Beverage tasting garden and the Market Street Mile run are the only ticketed add-ons.
