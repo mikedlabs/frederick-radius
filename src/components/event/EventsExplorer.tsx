@@ -10,7 +10,7 @@ import {
 } from "react";
 import { featuredEventSlugs } from "@/lib/events/featured";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, ChevronDown, LocateFixed, X } from "lucide-react";
+import { ArrowRight, CalendarDays, LocateFixed, X } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import EventAgenda from "@/components/event/EventAgenda";
@@ -36,10 +36,13 @@ import {
   type EventBrowseSummary,
 } from "@/lib/events/browsePayload";
 import {
+  boardAnswer,
   formatDayLabel,
   LENS_LABEL,
+  PARTIAL_SENTENCE,
   parseTimeParams,
   showMoreLabel,
+  weekendDayKeys,
   type TimeKey as BoardTimeKey,
 } from "@/components/event/boardCaption";
 import { haptic } from "@/lib/haptics";
@@ -98,10 +101,6 @@ export const HORIZON_PEEK = 4;
 const LIST_COLUMN = "space-y-3 lg:max-w-[720px]";
 /** Rows any expanded group shows inline before handing off to the calendar. */
 export const EXPANDED_CAP = 40;
-
-/** The roll-forward line an empty Tonight shows above tomorrow evening. */
-export const TONIGHT_ROLL_FORWARD =
-  "Nothing else is listed for tonight. Here is tomorrow evening.";
 
 /**
  * A time window chosen on the board (a date chip, a picked day) is a short,
@@ -567,6 +566,8 @@ export default function EventsExplorer({
   );
   const [loadingAll, setLoadingAll] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // The partial-results reason, opened from the answer sentence's "Why".
+  const [whyOpen, setWhyOpen] = useState(false);
   const requestRef = useRef<Promise<void> | null>(null);
   const eventPoolRef = useRef(events);
   const liveSlugsRef = useRef(liveSlugs);
@@ -880,21 +881,6 @@ export default function EventsExplorer({
     return baseFiltered.filter(categoryMatch).sort(sortFn);
   }, [baseFiltered, categoryMatch, sort, nowISO, featured, nearMeActive, deviceOrigin]);
 
-  // The chip row follows the clock: once nothing is still listed tonight it
-  // offers Tomorrow instead of an empty Tonight. Civic business does not
-  // count as something on tonight; it lives in Government & notices.
-  const tonightListed = useMemo(
-    () => eventPool.some((e) => !isUtilityEvent(e) && isTonightEvent(e, now)),
-    [eventPool, now],
-  );
-  const todayListed = useMemo(
-    () =>
-      eventPool.some(
-        (e) => !isUtilityEvent(e) && eventMatchesTimeWindow(e, "today", timeBounds),
-      ),
-    [eventPool, timeBounds],
-  );
-
   // An empty Tonight rolls forward to tomorrow evening under the same
   // filters, earliest first, instead of ending on a zero state.
   const tomorrowEvening = useMemo(
@@ -1163,15 +1149,24 @@ export default function EventsExplorer({
       })
     : null;
 
-  // A ribbon pick is a single day; it replaces any window or daypart.
+  // The week ribbon is the board's one date control. A day pick replaces
+  // any window, and clearing a pressed cell clears the window it stood for
+  // (?lens=tonight reads as today's cell). A time of day chosen in Filters
+  // stays, so Saturday plus Evening is one question.
   const pickRibbonDay = (key: string | null) => {
     haptic("light");
     setDay(key);
-    if (key) {
-      setTime("all");
-      setTod(null);
-    }
+    setTime("all");
   };
+  const toggleRibbonWeekend = (on: boolean) => {
+    haptic("light");
+    setDay(null);
+    setTime(on ? "weekend" : "all");
+  };
+  const weekendDays = useMemo(
+    () => weekendDayKeys(weekendStartISO, weekendEndISO),
+    [weekendStartISO, weekendEndISO],
+  );
 
   const emptyState = eventsEmptyState({
     loading: loadingAll,
@@ -1237,6 +1232,26 @@ export default function EventsExplorer({
   const governmentLoadMore =
     view === "list" && !dataComplete && summary.utilityCount > utilityFiltered.length;
 
+  // The answer sentence under the ribbon. Counts print only when the board
+  // holds the complete collection; otherwise it names the selection.
+  const weekendIsNow = now >= timeBounds.weekendStart && now < timeBounds.weekendEnd;
+  const groupedDefaultList =
+    view === "list" && (sort === "recommended" || sort === "time") && !windowed;
+  // An empty Tonight that rolled forward says so here, once, above
+  // tomorrow evening's rows.
+  const answer = boardAnswer({
+    lens: time,
+    day,
+    nowISO,
+    count: view === "list" ? crowdFiltered.length : filtered.length,
+    countKnown: dataComplete && !loadingAll,
+    narrowed: facetFilterActive,
+    rolledForward: showTonightRollForward,
+    firstHorizon: groupedDefaultList ? horizonGroups[0]?.key ?? null : undefined,
+    weekendIsNow,
+  });
+  const partial = currentSourceHealth.degraded;
+
   // Sheet boundary: a plain tap on any event link below opens the
   // EventSheet in place (essentials without a page navigation; the
   // full page stays one tap away and every anchor stays real).
@@ -1301,8 +1316,6 @@ export default function EventsExplorer({
           no saved rail above the first event — the board leads with events. */}
       <EventsBoardDock
         nowISO={nowISO}
-        tonightListed={tonightListed}
-        todayListed={todayListed}
         filteredCount={mastheadCount.eventCount}
         resultTownCount={mastheadTownCount}
         countComplete={mastheadCount.complete}
@@ -1345,14 +1358,69 @@ export default function EventsExplorer({
         setSort={setSort}
       />
 
-      {/* Visual first: the week reads as seven day cells with real counts
-          before any sentence, and a tap on a day picks it (?d=). */}
+      {/* Visual first: the week reads as seven day cells before any
+          sentence. It is the board's one date control: a tap picks a day
+          (?d=), and "This weekend" on its caption line picks the weekend. */}
       <EventWeekRibbon
         nowISO={nowISO}
         countByDate={ribbonCounts}
-        activeDay={day}
+        lens={time}
+        day={day}
+        weekendDays={weekendDays}
         onPickDay={pickRibbonDay}
+        onToggleWeekend={toggleRibbonWeekend}
       />
+
+      {/* One sentence answers "what is on" for the selection. A partial
+          board says so in the same paragraph, with the reason one tap away,
+          instead of a full-width box between the rows. */}
+      {answer || partial ? (
+        <div data-events-answer className="px-1">
+          <p className="text-body text-pretty" style={{ color: "var(--app-ink-2)" }}>
+            {answer}
+            {answer && partial ? " " : null}
+            {partial ? (
+              <>
+                {PARTIAL_SENTENCE}{" "}
+                <button
+                  type="button"
+                  aria-expanded={whyOpen}
+                  aria-controls="events-partial-why"
+                  onClick={() => setWhyOpen((open) => !open)}
+                  className="tap-44 px-1 font-semibold underline underline-offset-4"
+                  style={{ color: "var(--app-brand-press)" }}
+                >
+                  Why
+                </button>
+              </>
+            ) : null}
+          </p>
+          {partial ? (
+            <div
+              id="events-partial-why"
+              hidden={!whyOpen}
+              className="mt-2 flex items-start justify-between gap-3 text-meta-lg"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              <p>
+                {!dataComplete
+                  ? "Some live calendars did not answer. Radius kept the last available events instead of treating missing feeds as empty."
+                  : "Some live calendars did not answer. This board only includes events Radius could confirm."}
+              </p>
+              {!dataComplete && (
+                <button
+                  type="button"
+                  onClick={() => void ensureAllEvents(true)}
+                  className="tap-44-y inline-flex min-h-11 shrink-0 items-center font-semibold underline"
+                  style={{ color: "var(--app-cool)" }}
+                >
+                  Check again
+                </button>
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <EventFlyerRail items={flyerRail} nowISO={nowISO} />
 
@@ -1428,43 +1496,6 @@ export default function EventsExplorer({
         </section>
       ) : null}
 
-      {currentSourceHealth.degraded && (
-        <details
-          className="group rounded-[var(--app-radius-md)] border px-3 text-[12px] leading-relaxed"
-          style={{
-            borderColor: "color-mix(in srgb, var(--app-warning) 35%, var(--app-border))",
-            background: "color-mix(in srgb, var(--app-warning) 7%, var(--app-bg-elevated))",
-            color: "var(--app-ink-2)",
-          }}
-        >
-          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 font-semibold">
-            <span>Why these results are partial</span>
-            <ChevronDown
-              className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
-              strokeWidth={2.2}
-              aria-hidden
-            />
-          </summary>
-          <div className="flex items-start justify-between gap-3 border-t py-3" style={{ borderColor: "var(--app-border)" }}>
-            <span>
-              {!dataComplete
-                ? "Some live calendars did not answer. Radius kept the last available events instead of treating missing feeds as empty."
-                : "Some live calendars did not answer. This board only includes events Radius could confirm."}
-            </span>
-            {!dataComplete && (
-              <button
-                type="button"
-                onClick={() => void ensureAllEvents(true)}
-                className="tap-44-y inline-flex min-h-11 shrink-0 items-center font-semibold underline"
-                style={{ color: "var(--app-cool)" }}
-              >
-                Check again
-              </button>
-            )}
-          </div>
-        </details>
-      )}
-
       {loadingAll && (
         <p
           role="status"
@@ -1522,13 +1553,11 @@ export default function EventsExplorer({
           }
         />
       ) : showTonightRollForward ? (
-        // Tonight is spent: one plain sentence, then tomorrow evening's
-        // first rows under the same filters, so a late visitor gets a plan
-        // instead of a zero and removal chips for filters they never chose.
+        // Tonight is spent: the answer sentence under the ribbon says so,
+        // then tomorrow evening's first rows follow under the same filters,
+        // so a late visitor gets a plan instead of a zero and removal chips
+        // for filters they never chose.
         <section data-events-tonight-roll-forward className="space-y-3">
-          <p className="px-1 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            {TONIGHT_ROLL_FORWARD}
-          </p>
           <SectionHeading title="Tomorrow evening" size="sm" />
           <EventRowList events={tomorrowEvening} live={live} nowISO={nowISO} />
         </section>

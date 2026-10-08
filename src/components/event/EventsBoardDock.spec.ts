@@ -2,18 +2,13 @@ import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import EventsBoardDock, {
-  EVENTS_PRIMARY_WHEN_PRESETS,
-  type EventsBoardDockProps,
-} from "./EventsBoardDock";
+import EventsBoardDock, { type EventsBoardDockProps } from "./EventsBoardDock";
 
 const noop = () => undefined;
 
 function renderDock(overrides: Partial<EventsBoardDockProps> = {}): string {
   const props: EventsBoardDockProps = {
     nowISO: "2026-10-07T14:00:00.000Z",
-    tonightListed: true,
-    todayListed: true,
     filteredCount: 1149,
     resultTownCount: 10,
     countComplete: true,
@@ -58,7 +53,7 @@ function renderDock(overrides: Partial<EventsBoardDockProps> = {}): string {
   return renderToStaticMarkup(createElement(EventsBoardDock, props));
 }
 
-/** The chip row's markup, from its opening tag to the sr-only status. */
+/** The Filters row's markup, from its opening tag to the sr-only status. */
 function chipRow(html: string): string {
   const start = html.indexOf('class="eb-chiprow"');
   const end = html.indexOf('role="status"', start);
@@ -66,16 +61,37 @@ function chipRow(html: string): string {
 }
 
 describe("EventsBoardDock hierarchy (UI audit: events board)", () => {
-  it("keeps one preset row that ends on the one Filters doorway", () => {
-    expect(EVENTS_PRIMARY_WHEN_PRESETS.map((preset) => preset.label)).toEqual([
-      "Today",
-      "Tonight",
-      "This weekend",
-    ]);
-    const row = chipRow(renderDock());
-    expect(row).toContain('aria-label="When"');
-    const lastChip = Math.max(row.lastIndexOf(">Today<"), row.lastIndexOf(">This weekend<"));
-    expect(row.indexOf(">Filters<")).toBeGreaterThan(lastChip);
+  it("titles the board in Ink only, with no two-tone accent", () => {
+    const html = renderDock();
+    expect(html).toContain('<h2 class="eb-title font-serif">What’s on</h2>');
+    expect(html).not.toContain("eb-title-on");
+  });
+
+  it("keeps no date chips: the week ribbon is the one date control", () => {
+    const html = renderDock();
+    expect(html).not.toContain('aria-label="When"');
+    expect(html).not.toContain("eb-whenribbon");
+    const row = chipRow(html);
+    expect(row).not.toContain(">Tomorrow<");
+    expect(row).not.toContain(">This weekend<");
+    expect(row).not.toContain(">Tonight<");
+    expect(row).not.toContain(">Today<");
+  });
+
+  it("puts Display at the end of the Filters row as one 44px icon button", () => {
+    const html = renderDock({ view: "map", sort: "time" });
+    const row = chipRow(html);
+    expect(row.indexOf(">Filters<")).toBeGreaterThan(-1);
+    expect(row.indexOf("data-events-display")).toBeGreaterThan(row.indexOf(">Filters<"));
+    expect(html.match(/data-events-display/g)).toHaveLength(1);
+    expect(html).not.toContain("eb-display-options");
+    expect(html).toContain('aria-label="Change event display. Map view, Soonest order."');
+    // 44px square summary, pushed to the row's end, and never squeezed.
+    expect(row).toMatch(/class="group relative ml-auto shrink-0"/);
+    expect(row).toMatch(/<summary class="grid h-11 w-11 /);
+    // The Filters button may shrink and truncate, so at 320px the two never
+    // overlap.
+    expect(row).toContain("eb-filter-trigger tap-44-y !min-w-0 !flex-[0_1_auto]");
   });
 
   it("prints no count row: the count is announced, not shown", () => {
@@ -85,38 +101,40 @@ describe("EventsBoardDock hierarchy (UI audit: events board)", () => {
     expect(html).toMatch(/<p class="sr-only" role="status" aria-live="polite">1149 event listings · 10 towns<\/p>/);
   });
 
-  it("puts Display in the title row as one 44px icon button on every width", () => {
-    const html = renderDock({ view: "map", sort: "time" });
-    expect(html.match(/class="eb-display-options"/g)).toHaveLength(1);
-    expect(html).not.toContain("eb-display-desktop");
-    expect(html).toContain('aria-label="Change event display. Map view, Soonest order."');
-    const styles = readFileSync("src/app/globals.css", "utf8");
-    const summaryRule = styles.slice(styles.indexOf(".eb-display-options > summary {"));
-    expect(summaryRule).toMatch(/width: 44px;\s+height: 44px;/);
+  it("keeps the full readout in the Filters name but shows only the sheet's choices", () => {
+    const weekend = chipRow(renderDock({ lens: "weekend", freeOnly: true, anyFilter: true }));
+    expect(weekend).toContain('<span class="eb-filter-summary">Free · This weekend</span>');
+    // The ribbon already draws the weekend, so the eye reads only "Free".
+    expect(weekend).toMatch(/data-filter-visible-summary="true"[^>]*>Free<\/span>/);
+    expect(weekend).toMatch(/<span class="eb-filter-count" aria-hidden="true">1<\/span>/);
+
+    const picked = chipRow(renderDock({ day: "2026-10-10", tod: "evening", anyFilter: true }));
+    expect(picked).toContain('<span class="eb-filter-summary">Sat 10 · Evening</span>');
+    expect(picked).toMatch(/data-filter-visible-summary="true"[^>]*>Evening<\/span>/);
+
+    const farDate = chipRow(renderDock({ day: "2026-12-05", anyFilter: true }));
+    expect(farDate).toMatch(/data-filter-visible-summary="true"[^>]*>Sat 5<\/span>/);
+
+    const plain = chipRow(renderDock());
+    expect(plain).not.toContain("data-filter-visible-summary");
+    expect(plain).not.toContain("eb-filter-count");
   });
 
-  it("offers Tomorrow instead of an empty Tonight once tonight is spent", () => {
-    const row = chipRow(renderDock({ tonightListed: false, todayListed: false }));
-    expect(row).toContain(">Tomorrow<");
-    expect(row).toContain(">This weekend<");
-    expect(row).not.toContain(">Tonight<");
-    expect(row).not.toContain(">Today<");
-  });
-
-  it("keeps a chosen Tonight pressed as one chip, with the summary in the Filters name", () => {
-    const html = renderDock({ lens: "tonight", tonightListed: false, todayListed: false, anyFilter: true });
+  it("keeps Reset in the sheet head, so the row ends on Display", () => {
+    const html = renderDock({ lens: "tonight", anyFilter: true });
     const row = chipRow(html);
-    expect(row).toMatch(/aria-pressed="true"[^>]*>(?:<span[^>]*><\/span>)?<span class="truncate">Tonight</);
-    expect(row).toContain('<span class="eb-filter-summary">Tonight</span>');
-    // Reset moved into the sheet head, so the row still ends on Filters.
     expect(row).not.toContain("Reset all event filters");
     expect(html).toContain("Reset all event filters");
   });
 
-  it("moves the week ribbon out of the When pane", () => {
+  it("keeps What, When and Where in the sheet, with When down to dayparts and a date", () => {
     const source = readFileSync("src/components/event/EventsBoardDock.tsx", "utf8");
     expect(source).not.toContain("EventWeekRibbon");
     expect(source).not.toContain("Pick a day");
+    expect(source).not.toContain("WHEN_PRESETS");
+    expect(source).not.toContain("Jump to next weekend");
+    expect(source).toContain("<Sect>Time of day</Sect>");
+    expect(source).toContain("Jump to a date");
     expect(source).toContain('aria-label="Event filter sections"');
     expect(source).toContain('aria-label="Event interests"');
     expect(source).toContain("More specific categories");

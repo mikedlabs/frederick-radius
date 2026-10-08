@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { boardAnswer } from "./boardCaption";
 import {
   eventsForDefaultList,
   eventsMastheadCountState,
@@ -15,7 +16,6 @@ import {
   eventDayCounts,
   isWindowedList,
   timeRelaxationLabel,
-  TONIGHT_ROLL_FORWARD,
   weekRibbonCounts,
   windowedDayGroups,
   WINDOW_PEEK,
@@ -468,12 +468,27 @@ describe("EventsExplorer at night (UI audit: 11:17 PM showed 0 listings)", () =>
     expect(source).not.toContain('"That day"');
   });
 
-  it("rolls an empty Tonight forward with one plain sentence", () => {
-    expect(TONIGHT_ROLL_FORWARD).toBe(
-      "Nothing else is listed for tonight. Here is tomorrow evening.",
-    );
+  it("rolls an empty Tonight forward with one plain sentence, said once", () => {
+    expect(
+      boardAnswer({
+        lens: "tonight",
+        day: null,
+        nowISO: "2026-10-07T23:17:00-04:00",
+        count: 0,
+        countKnown: true,
+        narrowed: false,
+        rolledForward: true,
+      }),
+    ).toBe("Nothing else is listed for tonight, so here is tomorrow evening.");
     const source = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
-    expect(source).toContain("{TONIGHT_ROLL_FORWARD}");
+    // The answer sentence under the ribbon says it; the roll-forward section
+    // no longer repeats it above its rows.
+    expect(source).toContain("rolledForward: showTonightRollForward");
+    const section = source.slice(
+      source.indexOf("<section data-events-tonight-roll-forward"),
+      source.indexOf("</section>", source.indexOf("<section data-events-tonight-roll-forward")),
+    );
+    expect(section).not.toContain("<p");
     expect(source).toContain("isTomorrowEveningEvent(e, now)");
   });
 });
@@ -544,6 +559,44 @@ describe("EventsExplorer week ribbon counts", () => {
     expect(dockEnd).toBeGreaterThan(0);
     expect(ribbon).toBeGreaterThan(dockEnd);
     expect(source.slice(dockEnd, ribbon)).not.toMatch(/<(section|div|p)\b/);
+  });
+
+  it("drives the ribbon from the board's lens and day, and keeps a daypart on a day pick", () => {
+    const source = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
+    const ribbon = source.slice(source.indexOf("<EventWeekRibbon"), source.indexOf("/>", source.indexOf("<EventWeekRibbon")));
+    expect(ribbon).toContain("lens={time}");
+    expect(ribbon).toContain("day={day}");
+    expect(ribbon).toContain("onToggleWeekend={toggleRibbonWeekend}");
+    const pick = source.slice(source.indexOf("const pickRibbonDay"), source.indexOf("const toggleRibbonWeekend"));
+    expect(pick).toContain('setTime("all")');
+    expect(pick).not.toContain("setTod(");
+  });
+});
+
+describe("Events answer sentence (one sentence answers the selection)", () => {
+  const source = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
+
+  it("sits directly under the ribbon, ahead of the flyer rail", () => {
+    const ribbonEnd = source.indexOf("/>", source.indexOf("<EventWeekRibbon"));
+    const answer = source.indexOf("data-events-answer", ribbonEnd);
+    const rail = source.indexOf("<EventFlyerRail", ribbonEnd);
+    expect(answer).toBeGreaterThan(ribbonEnd);
+    expect(rail).toBeGreaterThan(answer);
+  });
+
+  it("replaces the full-width partial box with a sentence and an inline Why", () => {
+    expect(source).not.toContain("Why these results are partial");
+    expect(source).toContain("{PARTIAL_SENTENCE}");
+    expect(source).toContain('aria-controls="events-partial-why"');
+    expect(source).toContain('id="events-partial-why"');
+    expect(source).toContain("hidden={!whyOpen}");
+    // The explanation and its Check again keep their old words.
+    expect(source).toContain("Radius kept the last available events instead of treating missing feeds as empty.");
+  });
+
+  it("sets the sentence in body type and ink-2, with counts only from a complete board", () => {
+    expect(source).toMatch(/<p className="text-body text-pretty" style=\{\{ color: "var\(--app-ink-2\)" \}\}>/);
+    expect(source).toContain("countKnown: dataComplete && !loadingAll");
   });
 });
 

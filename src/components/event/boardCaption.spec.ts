@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   activeWhenPreset,
+  boardAnswer,
   countLine,
   formatDayLabel,
+  isEveningHour,
   nextMastheadCollapsed,
   parseTimeParams,
-  primaryWhenPresets,
+  PARTIAL_SENTENCE,
+  ribbonMonthCaption,
+  ribbonSelection,
   showMoreLabel,
+  weekDayKeys,
+  weekendDayKeys,
   whatCaption,
   whenCaption,
   WHEN_PRESETS,
@@ -63,6 +69,11 @@ describe("whenCaption", () => {
       mono: true,
     });
   });
+  it("composes a picked day with a time of day, since the ribbon and the sheet compose", () => {
+    expect(whenCaption({ dayLabel: "Sat 10", lens: "all", tod: "evening" }).text).toBe(
+      "Sat 10 · Evening",
+    );
+  });
 });
 
 describe("formatDayLabel (picked-day-as-mono)", () => {
@@ -105,37 +116,6 @@ describe("parseTimeParams (shared links keep working)", () => {
     expect(parseTimeParams({ lens: "tomorrow", tod: null, fallback: "all" })).toEqual({ time: "tomorrow", tod: null });
     expect(parseTimeParams({ lens: null, tod: "evening", fallback: "all" })).toEqual({ time: "all", tod: "evening" });
     expect(parseTimeParams({ lens: "nonsense", tod: null, fallback: "weekend" })).toEqual({ time: "weekend", tod: null });
-  });
-});
-
-describe("primaryWhenPresets (the chip row follows the clock)", () => {
-  const labels = (args: Parameters<typeof primaryWhenPresets>[0]) =>
-    primaryWhenPresets(args).map((preset) => preset.label);
-
-  it("offers Today, Tonight and This weekend while something is listed tonight", () => {
-    expect(labels({ tonightListed: true, todayListed: true, active: null })).toEqual([
-      "Today",
-      "Tonight",
-      "This weekend",
-    ]);
-  });
-  it("moves on to Tomorrow once nothing is still listed tonight", () => {
-    expect(labels({ tonightListed: false, todayListed: false, active: null })).toEqual([
-      "Tomorrow",
-      "This weekend",
-    ]);
-    expect(labels({ tonightListed: false, todayListed: true, active: null })).toEqual([
-      "Today",
-      "Tomorrow",
-      "This weekend",
-    ]);
-  });
-  it("keeps a chosen window visible so it can be turned off", () => {
-    expect(labels({ tonightListed: false, todayListed: false, active: "tonight" })).toEqual([
-      "Tonight",
-      "Tomorrow",
-      "This weekend",
-    ]);
   });
 });
 
@@ -182,5 +162,168 @@ describe("nextMastheadCollapsed (scroll-collapse threshold)", () => {
   it("springs back only near the very top", () => {
     expect(nextMastheadCollapsed(8, true)).toBe(false);
     expect(nextMastheadCollapsed(9, true)).toBe(true);
+  });
+});
+
+// Wednesday, October 7, 2026 in Eastern time.
+const WED_10AM = "2026-10-07T14:00:00.000Z";
+const WED_921PM = "2026-10-08T01:21:00.000Z";
+const THU_1AM = "2026-10-08T05:00:00.000Z";
+const WEEKEND = ["2026-10-09", "2026-10-10", "2026-10-11"];
+
+describe("weekDayKeys and weekendDayKeys", () => {
+  it("lists the ribbon's seven Eastern days, today first", () => {
+    expect(weekDayKeys(WED_921PM)).toEqual([
+      "2026-10-07",
+      "2026-10-08",
+      "2026-10-09",
+      "2026-10-10",
+      "2026-10-11",
+      "2026-10-12",
+      "2026-10-13",
+    ]);
+    expect(weekDayKeys("nope")).toEqual([]);
+  });
+  it("reads the Friday 5 PM to Monday midnight weekend as Friday, Saturday and Sunday", () => {
+    expect(
+      weekendDayKeys("2026-10-09T21:00:00.000Z", "2026-10-12T04:00:00.000Z"),
+    ).toEqual(WEEKEND);
+    expect(weekendDayKeys("2026-10-12T04:00:00.000Z", "2026-10-09T21:00:00.000Z")).toEqual([]);
+  });
+  it("names the month, or both months when the week crosses one", () => {
+    expect(ribbonMonthCaption(weekDayKeys(WED_10AM))).toBe("October");
+    expect(ribbonMonthCaption(weekDayKeys("2026-10-28T14:00:00.000Z"))).toBe(
+      "October and November",
+    );
+  });
+});
+
+describe("ribbonSelection (?lens and ?d map onto the ribbon)", () => {
+  const select = (lens: Parameters<typeof ribbonSelection>[0]["lens"], day: string | null = null, nowISO = WED_10AM) =>
+    ribbonSelection({ lens, day, nowISO, weekendDays: WEEKEND });
+
+  it("selects nothing for ?lens=all", () => {
+    expect(select("all")).toEqual({ days: [], pressedDay: null, weekend: false });
+  });
+  it("selects the picked day for ?d=, over any lens", () => {
+    expect(select("all", "2026-10-10")).toEqual({
+      days: ["2026-10-10"],
+      pressedDay: "2026-10-10",
+      weekend: false,
+    });
+    expect(select("weekend", "2026-10-10").weekend).toBe(false);
+  });
+  it("reads ?lens=today and ?lens=tonight as today's cell", () => {
+    expect(select("today").pressedDay).toBe("2026-10-07");
+    expect(select("tonight", null, WED_921PM).pressedDay).toBe("2026-10-07");
+  });
+  it("reads ?lens=tomorrow as the local tomorrow, which at 1 AM is the coming day", () => {
+    expect(select("tomorrow").pressedDay).toBe("2026-10-08");
+    expect(select("tomorrow", null, THU_1AM).pressedDay).toBe("2026-10-08");
+  });
+  it("outlines the weekend's days for ?lens=weekend without pressing a single day", () => {
+    expect(select("weekend")).toEqual({ days: WEEKEND, pressedDay: null, weekend: true });
+  });
+  it("leaves the rolling seven-day lens to the answer sentence", () => {
+    expect(select("week")).toEqual({ days: [], pressedDay: null, weekend: false });
+  });
+});
+
+describe("boardAnswer (one sentence under the ribbon)", () => {
+  const base = {
+    lens: "all" as const,
+    day: null,
+    nowISO: WED_10AM,
+    count: 0,
+    countKnown: true,
+    narrowed: false,
+  };
+
+  it("says tonight is over and where the board goes next", () => {
+    expect(isEveningHour(WED_921PM)).toBe(true);
+    expect(isEveningHour(WED_10AM)).toBe(false);
+    expect(isEveningHour(THU_1AM)).toBe(true);
+    expect(boardAnswer({ ...base, nowISO: WED_921PM, firstHorizon: "week" })).toBe(
+      "Nothing else is listed for tonight, so here is the rest of the week.",
+    );
+    expect(boardAnswer({ ...base, nowISO: WED_921PM, firstHorizon: "weekend" })).toBe(
+      "Nothing else is listed for tonight, so here is this weekend.",
+    );
+    expect(
+      boardAnswer({ ...base, nowISO: WED_921PM, firstHorizon: "weekend", weekendIsNow: true }),
+    ).toBe("Nothing else is listed for tonight, so here is the rest of the weekend.");
+    expect(boardAnswer({ ...base, firstHorizon: "later" })).toBe(
+      "Nothing else is listed for today, so here is what is coming up.",
+    );
+  });
+
+  it("leads with today while today still lists something", () => {
+    expect(boardAnswer({ ...base, firstHorizon: "today" })).toBe(
+      "Today's events are listed first, and later days follow.",
+    );
+    expect(boardAnswer({ ...base, nowISO: WED_921PM, firstHorizon: "live" })).toBe(
+      "Tonight's events are listed first, and later days follow.",
+    );
+  });
+
+  it("rolls an empty Tonight forward in one sentence", () => {
+    expect(boardAnswer({ ...base, lens: "tonight", nowISO: WED_921PM, rolledForward: true })).toBe(
+      "Nothing else is listed for tonight, so here is tomorrow evening.",
+    );
+  });
+
+  it("answers the weekend, with a count only when the board is complete", () => {
+    expect(boardAnswer({ ...base, lens: "weekend", count: 23 })).toBe(
+      "23 events are listed for this weekend.",
+    );
+    expect(boardAnswer({ ...base, lens: "weekend", count: 1 })).toBe(
+      "1 event is listed for this weekend.",
+    );
+    expect(boardAnswer({ ...base, lens: "weekend", count: 23, countKnown: false })).toBe(
+      "These are this weekend's events.",
+    );
+    expect(boardAnswer({ ...base, lens: "weekend", count: 4, narrowed: true })).toBe(
+      "4 events that match your filters are listed for this weekend.",
+    );
+    expect(
+      boardAnswer({ ...base, lens: "weekend", count: 4, countKnown: false, narrowed: true }),
+    ).toBe("These are this weekend's events that match your filters.");
+  });
+
+  it("names a picked day in words", () => {
+    expect(boardAnswer({ ...base, day: "2026-10-10", count: 14 })).toBe(
+      "14 events are listed for Saturday, October 10.",
+    );
+    expect(boardAnswer({ ...base, day: "2026-10-10", count: 0 })).toBe(
+      "Nothing is listed for Saturday, October 10.",
+    );
+    expect(boardAnswer({ ...base, day: "2026-10-08", count: 3, countKnown: false })).toBe(
+      "These are tomorrow's events.",
+    );
+    expect(boardAnswer({ ...base, day: "2026-10-07", count: 0, narrowed: true })).toBe(
+      "Nothing else that matches your filters is listed for today.",
+    );
+  });
+
+  it("stays quiet when an empty board is still loading or there is no selection to name", () => {
+    expect(boardAnswer({ ...base, lens: "tonight", count: 0, countKnown: false })).toBeNull();
+    expect(boardAnswer({ ...base })).toBeNull();
+    expect(boardAnswer({ ...base, firstHorizon: null })).toBeNull();
+  });
+
+  it("never puts a count anywhere but the sentence, and never in a heading word", () => {
+    for (const sentence of [
+      boardAnswer({ ...base, lens: "tomorrow", count: 9 }),
+      boardAnswer({ ...base, lens: "today", count: 2 }),
+      boardAnswer({ ...base, lens: "week", count: 30 }),
+    ]) {
+      expect(sentence).toMatch(/^\d+ events? (?:is|are) listed for [a-z ]+\.$/);
+    }
+  });
+
+  it("states partial results as a full sentence", () => {
+    expect(PARTIAL_SENTENCE).toBe(
+      "Some calendars did not load, so this list may be missing events.",
+    );
   });
 });

@@ -26,3 +26,35 @@ test("events list renders New York times, not UTC", async ({ page }) => {
   expect(punch).toContain("8:00 PM");
   expect(punch).not.toContain("4:00 PM");
 });
+
+/**
+ * The week ribbon reads Eastern days and is the board's one date control
+ * (UI review, Oct 2026: "Tomorrow" and "This weekend" chips repeated ribbon
+ * cells above it). Seven day cells, today first, and the only weekend
+ * shortcut sits on the ribbon's caption line, not in the dock.
+ */
+test("the week ribbon is the one date control, starting on today", async ({ page }) => {
+  await page.goto("/events");
+  await expect(page.locator("[data-events-interaction-ready]")).toHaveAttribute(
+    "data-events-interaction-ready",
+    "true",
+    { timeout: 30_000 },
+  );
+
+  const when = page.getByRole("group", { name: "When" });
+  await expect(when).toHaveCount(1);
+  const days = when.getByRole("button", {
+    name: /^(?:Sun|Mon|Tues|Wednes|Thurs|Fri|Satur)day \d+/,
+  });
+  await expect(days).toHaveCount(7);
+  await expect(days.first()).toHaveAttribute("aria-label", /, today\b/);
+  await expect(when.getByRole("button", { name: "This weekend" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+
+  const dock = page.locator(".eb-dock");
+  for (const chip of ["Today", "Tonight", "Tomorrow", "This weekend"]) {
+    await expect(dock.getByRole("button", { name: chip, exact: true })).toHaveCount(0);
+  }
+});

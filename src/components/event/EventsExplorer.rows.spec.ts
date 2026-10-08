@@ -59,13 +59,19 @@ describe("Events board rows (UI review: three row styles in one section)", () =>
 });
 
 describe("Events flyer rail placement", () => {
-  it("sits directly under the week ribbon, outside the capped list column", () => {
+  it("sits under the week ribbon and its answer sentence, outside the capped list column", () => {
     const ribbon = source.indexOf("<EventWeekRibbon");
+    const answer = source.indexOf("data-events-answer", ribbon);
     const rail = source.indexOf("<EventFlyerRail", ribbon);
     const results = source.indexOf(": LIST_COLUMN}");
     expect(ribbon).toBeGreaterThan(0);
-    expect(rail).toBeGreaterThan(ribbon);
-    expect(source.slice(source.indexOf("/>", ribbon), rail)).not.toMatch(/<(section|div|p)\b/);
+    expect(rail).toBeGreaterThan(answer);
+    expect(answer).toBeGreaterThan(ribbon);
+    // Only the one answer sentence comes between the ribbon and the rail.
+    const between = source.slice(source.indexOf("/>", ribbon), rail);
+    expect(between.match(/<(section|div)\b/g) ?? []).toHaveLength(2);
+    expect(between).toContain("data-events-answer");
+    expect(between).toContain('id="events-partial-why"');
     expect(results).toBeGreaterThan(rail);
   });
 

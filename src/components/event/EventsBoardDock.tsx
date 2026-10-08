@@ -5,7 +5,6 @@ import {
   useEffect,
   useRef,
   useState,
-  useTransition,
   type ReactNode,
 } from "react";
 import {
@@ -13,7 +12,6 @@ import {
   Rows3,
   CalendarDays,
   Map as MapIcon,
-  CalendarRange,
   ChevronDown,
   Search,
   SlidersHorizontal,
@@ -49,14 +47,14 @@ import {
 } from "@/lib/events/intents";
 import type { Daypart } from "@/lib/daypart";
 import {
-  WHEN_PRESETS,
-  activeWhenPreset,
+  DAYPART_LABEL,
+  LENS_LABEL,
   countLine,
   formatDayLabel,
-  primaryWhenPresets,
   whatCaption,
   whenCaption,
   nextMastheadCollapsed,
+  weekDayKeys,
   type TimeKey,
 } from "./boardCaption";
 
@@ -86,24 +84,11 @@ const DAYPARTS: ReadonlyArray<{ key: Daypart; label: string }> = [
   { key: "late", label: "Late" },
 ];
 
-/** The questions most people arrive with stay visible while tonight still
- * lists something. Longer-range and exact-date planning remain in the single
- * Filters sheet, and the week ribbon under the row picks a day. */
-export const EVENTS_PRIMARY_WHEN_PRESETS = primaryWhenPresets({
-  tonightListed: true,
-  todayListed: true,
-  active: null,
-});
-
 type Pane = "what" | "when" | "where";
 
 export type EventsBoardDockProps = {
   /** Server `now` (ISO) — the dateline and the date input's minimum. */
   nowISO: string;
-  /** Something is still listed tonight; when false the row offers Tomorrow. */
-  tonightListed: boolean;
-  /** Something is still listed today. */
-  todayListed: boolean;
   /** True count of the filtered set (announced to screen readers only). */
   filteredCount: number;
   /** Towns represented by the same result set as filteredCount. */
@@ -265,8 +250,6 @@ const FOCUSABLE =
 export default function EventsBoardDock(props: EventsBoardDockProps) {
   const {
     nowISO,
-    tonightListed,
-    todayListed,
     filteredCount,
     resultTownCount,
     countComplete,
@@ -312,7 +295,6 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   const [pane, setPane] = useState<Pane | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const paneRef = useRef<HTMLDivElement>(null);
-  const whenRibbonRef = useRef<HTMLDivElement>(null);
   const displayRef = useRef<HTMLDetailsElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
 
@@ -352,6 +334,8 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   };
   const toggle = (p: Pane) => {
     haptic("light");
+    // One overlay at a time: opening the filter sheet closes Display.
+    if (displayRef.current) displayRef.current.open = false;
     if (pane === p) {
       closePane();
     } else {
@@ -448,7 +432,20 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   );
   const whenActive = Boolean(day || tod || lens !== "all");
   const whereActive = Boolean(town || whereLabel);
-  const activeFilterGroups = [whatActive, whenActive, whereActive].filter(Boolean).length;
+  // The week ribbon shows the date it selects, so the Filters button only
+  // carries the time state the ribbon cannot draw: a time of day, a date
+  // past the ribbon's seven days, or the rolling seven-day lens.
+  const ribbonDays = weekDayKeys(nowISO);
+  const dayOffRibbon = Boolean(day && !ribbonDays.includes(day));
+  const paneWhenActive = Boolean(tod || dayOffRibbon || (!day && lens === "week"));
+  const paneWhenText = [
+    dayOffRibbon && dayLabel ? dayLabel : null,
+    !day && lens === "week" ? LENS_LABEL.week : null,
+    tod ? DAYPART_LABEL[tod] : null,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" · ");
+  const activeFilterGroups = [whatActive, paneWhenActive, whereActive].filter(Boolean).length;
   const filterSummary =
     [
       whatActive ? (q.trim() ? `“${q.trim()}”` : what.text) : null,
@@ -457,45 +454,22 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     ]
       .filter((value): value is string => Boolean(value))
       .join(" · ") || "Everything · Anytime · Whole county";
+  // What the eye reads beside "Filters": only the choices made in the sheet.
+  // The full readout above stays in the button's accessible name.
+  const visibleSummary = [
+    whatActive ? (q.trim() ? `“${q.trim()}”` : what.text) : null,
+    paneWhenActive ? paneWhenText : null,
+    whereActive ? whereText : null,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" · ");
   const firstActivePane: Pane = whatActive
     ? "what"
-    : whenActive
+    : paneWhenActive
       ? "when"
       : whereActive
         ? "where"
         : "what";
-
-  const activePreset = activeWhenPreset({ lens, tod });
-  const rowPresets = primaryWhenPresets({
-    tonightListed,
-    todayListed,
-    active: activePreset,
-  });
-  const [pendingWhenPreset, setPendingWhenPreset] = useState<
-    (typeof WHEN_PRESETS)[number]["key"] | null | undefined
-  >(undefined);
-  const visibleWhenPreset = pendingWhenPreset === undefined
-    ? activePreset
-    : pendingWhenPreset;
-  const [, startWhenTransition] = useTransition();
-  // A deep link such as /weekend can select a chip beyond the narrow phone
-  // viewport. Keep the active choice in view without moving the page itself.
-  useEffect(() => {
-    const ribbon = whenRibbonRef.current;
-    const active = ribbon?.querySelector<HTMLElement>('[aria-pressed="true"]');
-    if (!ribbon || !active) return;
-
-    const visibleStart = ribbon.scrollLeft;
-    const visibleEnd = visibleStart + ribbon.clientWidth;
-    const activeStart = active.offsetLeft;
-    const activeEnd = activeStart + active.offsetWidth;
-    if (activeStart >= visibleStart && activeEnd <= visibleEnd) return;
-
-    ribbon.scrollLeft = Math.max(
-      0,
-      activeStart - (ribbon.clientWidth - active.offsetWidth) / 2,
-    );
-  }, [activePreset, day]);
 
   // ── Pane control handlers ──
   const pickEverything = () => {
@@ -521,44 +495,15 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     setSub(null);
     setCat(cat === nextCategory ? null : nextCategory);
   };
-  const pickPreset = (p: (typeof WHEN_PRESETS)[number]) => {
-    haptic("light");
-    const turningOff = visibleWhenPreset === p.key;
-    const nextPreset = turningOff ? null : p.key;
-    // A discrete local state update acknowledges the tap in the current
-    // frame. The larger event-board re-slice remains a transition, so a busy
-    // live feed cannot make the chip look ignored.
-    setPendingWhenPreset(nextPreset);
-    window.requestAnimationFrame(() => {
-      startWhenTransition(() => {
-        if (turningOff) {
-          setLens("all");
-          setTod(null);
-        } else {
-          setLens(p.lens);
-          setTod(p.tod);
-        }
-        setDay(null);
-        setPendingWhenPreset(undefined);
-      });
-    });
-  };
   const pickDaypart = (d: Daypart) => {
     haptic("light");
     setTod(tod === d ? null : d);
   };
+  // A jumped-to date replaces any window. A chosen time of day stays, so
+  // "Evening" and a date compose the way the ribbon and the sheet do.
   const pickDay = (key: string | null) => {
     setDay(key);
-    if (key) {
-      setLens("all");
-      setTod(null);
-    }
-  };
-  const jumpNextWeekend = () => {
-    haptic("light");
-    setLens("weekend");
-    setTod(null);
-    setDay(null);
+    if (key) setLens("all");
   };
   const closeDisplay = () => {
     if (displayRef.current) displayRef.current.open = false;
@@ -576,79 +521,77 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           <div className="eb-dateline">
             {dlWeekday} &middot; {dlDate}
           </div>
-          <h2 className="eb-title font-serif">
-            What&rsquo;s <span className="eb-title-on">on</span>
-          </h2>
+          <h2 className="eb-title font-serif">What&rsquo;s on</h2>
         </div>
 
-        {/* Display (view and order) is one 44px icon button in the title
-            row, the same on every width. Its glyph is the current view. It
-            folds away with the nameplate on scroll. */}
-        <details
-          ref={displayRef}
-          className="eb-display-options"
-          aria-hidden={collapsed || pane !== null}
-          inert={collapsed || pane !== null}
-        >
-          <summary
-            className="tap-44"
-            aria-label={`Change event display. ${viewItem.label} view, ${sortLabel} order.`}
-          >
-            <ViewIcon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
-            <span className="sr-only">Display</span>
-          </summary>
-          <div className="eb-display-panel">
-            <EventDisplayControls
-              view={view}
-              setView={setView}
-              sort={sort}
-              setSort={setSort}
-              onSelect={closeDisplay}
-            />
-          </div>
-        </details>
-
-        {/* The date questions people use most stay one tap away, and the
-            one Filters doorway closes the row. The row follows the clock:
-            once nothing is listed tonight it offers Tomorrow instead. */}
+        {/* One row under the nameplate: the Filters doorway, then Display
+            at its right edge. The week ribbon under the dock is the board's
+            one date control, so no date chips repeat its days here. Both
+            controls stay pinned when the nameplate folds on scroll. */}
         <div className="eb-chiprow">
-          <div
-            className="eb-whenribbon"
-            role="group"
-            aria-label="When"
-            ref={whenRibbonRef}
-          >
-            {rowPresets.map((p) => (
-              <EbChip
-                key={p.key}
-                on={visibleWhenPreset === p.key}
-                color="var(--app-brand)"
-                onClick={() => pickPreset(p)}
-              >
-                {p.label}
-              </EbChip>
-            ))}
-          </div>
           <button
             type="button"
             aria-expanded={pane !== null}
             aria-controls="eb-pane"
             aria-haspopup="dialog"
-            className="eb-filter-trigger tap-44-y"
+            className="eb-filter-trigger tap-44-y !min-w-0 !flex-[0_1_auto]"
             data-on={activeFilterGroups > 0 || undefined}
             onClick={() => toggle(pane ?? firstActivePane)}
           >
             <SlidersHorizontal className="h-[16px] w-[16px] shrink-0" strokeWidth={2.2} aria-hidden />
             <span className="eb-filter-label">Filters</span>
             {/* The full What · When · Where readout stays in the button's
-                accessible name; the chips and badge carry it visually. */}
+                accessible name. The eye reads only the sheet's own choices,
+                since the ribbon already shows the date it selects. */}
             <span className="eb-filter-summary">{filterSummary}</span>
+            {visibleSummary ? (
+              <span
+                aria-hidden
+                data-filter-visible-summary
+                className="min-w-0 truncate text-meta-lg"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                {visibleSummary}
+              </span>
+            ) : null}
             {activeFilterGroups > 0 && (
               <span className="eb-filter-count" aria-hidden>
                 {activeFilterGroups}
               </span>
             )}
           </button>
+
+          {/* Display (view and order) is one 44px icon button at the end of
+              the Filters row, the same on every width. Its glyph is the
+              current view. It never opens over the filter sheet. */}
+          <details
+            ref={displayRef}
+            data-events-display
+            className="group relative ml-auto shrink-0"
+            aria-hidden={pane !== null}
+            inert={pane !== null}
+          >
+            <summary
+              className="grid h-11 w-11 cursor-pointer list-none place-items-center rounded-[var(--app-radius-md)] border text-[var(--app-ink-2)] group-open:text-[var(--app-brand-press)] [&::-webkit-details-marker]:hidden"
+              style={{
+                borderColor: "var(--app-border)",
+                background: "var(--app-bg-elevated)",
+              }}
+              aria-label={`Change event display. ${viewItem.label} view, ${sortLabel} order.`}
+            >
+              <ViewIcon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+              <span className="sr-only">Display</span>
+            </summary>
+            <div className="eb-display-panel">
+              <EventDisplayControls
+                view={view}
+                setView={setView}
+                sort={sort}
+                setSort={setSort}
+                onSelect={closeDisplay}
+              />
+            </div>
+          </details>
         </div>
 
         {/* Counts are supporting detail, never the headline: the result
@@ -845,20 +788,9 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           {/* ── WHEN ── */}
           {pane === "when" && (
             <div>
-              <Sect>Time</Sect>
-              <div className="eb-chips">
-                {WHEN_PRESETS.map((p) => (
-                  <EbChip
-                    key={p.key}
-                    on={activePreset === p.key}
-                    color="var(--app-brand)"
-                    onClick={() => pickPreset(p)}
-                  >
-                    {p.label}
-                  </EbChip>
-                ))}
-              </div>
-
+              {/* The week ribbon on the board picks the day and the weekend.
+                  This pane adds what the ribbon cannot: a time of day, and
+                  a date past its seven days. */}
               <Sect>Time of day</Sect>
               <div className="eb-chips">
                 {DAYPARTS.map((d) => (
@@ -872,11 +804,6 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                   </EbChip>
                 ))}
               </div>
-
-              <button type="button" className="eb-jumpwk tap-44" onClick={jumpNextWeekend}>
-                <CalendarRange className="h-[15px] w-[15px]" strokeWidth={2.1} aria-hidden />
-                Jump to next weekend
-              </button>
 
               {/* Any date, any distance — the week ribbon only reaches seven
                   days, and "get me to December" took a scroll marathon (beta
