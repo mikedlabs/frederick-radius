@@ -25,6 +25,7 @@ const SOURCE_INTELLIGENCE_SCHEDULES = Object.freeze({
 
 const MANUAL_TOOLS = new Set([
   "tavily-plan",
+  "tavily-recover",
   "tavily-scout",
   "firecrawl-watch",
 ]);
@@ -93,6 +94,21 @@ function manualSelection(input) {
     input.initializeState ?? false,
     "initializeState",
   );
+  if (tool === "tavily-recover") {
+    if (confirmLive || initializeState) {
+      throw new Error(
+        "Tavily recovery requires confirmLive and initializeState to be false; it makes no provider requests.",
+      );
+    }
+    return {
+      mode: "recovery",
+      tool,
+      profile: "",
+      source: "",
+      live: false,
+      initializeState: false,
+    };
+  }
   const isTavily = tool === "tavily-plan" || tool === "tavily-scout";
   const profile = isTavily ? (input.profile ?? "") : "";
   const source = tool === "firecrawl-watch" ? (input.source ?? "") : "";

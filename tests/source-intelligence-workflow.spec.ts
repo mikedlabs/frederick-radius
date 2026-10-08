@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 const ROOT = process.cwd();
+const require = createRequire(resolve(ROOT, "package.json"));
 const WORKFLOW_PATH = resolve(
   ROOT,
   ".github/workflows/source-intelligence.yml",
@@ -75,7 +77,7 @@ type HistoryRun = {
 type BudgetScriptResult = {
   failures: string[];
   outputs: Record<string, string>;
-  paginateArguments?: Record<string, unknown>;
+  historyArguments?: Record<string, unknown>;
 };
 
 type SourceScoutConfig = {
@@ -153,19 +155,22 @@ async function runDurableBudgetScript(options: {
   const currentAttempt = options.currentAttempt ?? 1;
   const failures: string[] = [];
   const outputs: Record<string, string> = {};
-  let paginateArguments: Record<string, unknown> | undefined;
-  const listWorkflowRuns = () => undefined;
+  let historyArguments: Record<string, unknown> | undefined;
   const github = {
-    rest: { actions: { listWorkflowRuns } },
-    paginate: async (
-      route: unknown,
-      args: Record<string, unknown>,
-    ): Promise<HistoryRun[]> => {
-      expect(route).toBe(listWorkflowRuns);
-      paginateArguments = args;
-      if (options.historyError) throw options.historyError;
-      return options.runs ?? [];
-    },
+    rest: { actions: {
+      getWorkflow: async () => ({ data: { id: 10, path: ".github/workflows/source-intelligence.yml" } }),
+      listWorkflowRuns: async (args: Record<string, unknown>) => {
+        historyArguments = args;
+        if (options.historyError) throw options.historyError;
+        const runs = (options.runs ?? []).map((run) => ({
+          workflow_id: 10, path: ".github/workflows/source-intelligence.yml",
+          repository: { full_name: "mikedlabs/frederick-radius" },
+          head_repository: { full_name: "mikedlabs/frederick-radius" },
+          event: "workflow_dispatch", created_at: "2026-01-01T00:00:00Z", ...run,
+        }));
+        return { data: { total_count: runs.length, workflow_runs: runs } };
+      },
+    } },
   };
   const core = {
     setFailed: (message: unknown) => failures.push(String(message)),
@@ -190,6 +195,7 @@ async function runDurableBudgetScript(options: {
     "context",
     "core",
     "process",
+    "require",
     durableBudgetStep().with?.script ?? "",
   );
   await execute(
@@ -200,8 +206,9 @@ async function runDurableBudgetScript(options: {
     },
     core,
     fakeProcess,
+    require,
   );
-  return { failures, outputs, paginateArguments };
+  return { failures, outputs, historyArguments };
 }
 
 function historyRun(overrides: Partial<HistoryRun> = {}): HistoryRun {
@@ -331,7 +338,7 @@ describe("Source Intelligence workflow", () => {
     expect(inputs.tool).toMatchObject({
       type: "choice",
       required: true,
-      options: ["tavily-plan", "tavily-scout", "firecrawl-watch"],
+      options: ["tavily-plan", "tavily-recover", "tavily-scout", "firecrawl-watch"],
     });
     expect(inputs.profile).toMatchObject({
       type: "choice",
@@ -501,29 +508,15 @@ describe("Source Intelligence workflow", () => {
     expect(budget.if).toContain("steps.selection.outputs.live == 'true'");
     expect(budget.env).toEqual({
       SELECTED_TOOL: "${{ steps.selection.outputs.tool }}",
+      INITIALIZE_STATE: "${{ steps.selection.outputs.initialize_state }}",
     });
-    expect(script).toContain("github.paginate");
-    expect(script).toContain("listWorkflowRuns");
-    expect(script).toContain('workflow_id: "source-intelligence.yml"');
+    expect(script).toContain("scripts/lib/source-intelligence-budget.cjs");
+    expect(script).toContain("readSourceIntelligenceHistory");
+    expect(script).toContain("calculateReservationFloor");
+    expect(script).toContain("assertFirstProviderInitialization");
     expect(script).toContain("GITHUB_RUN_ID");
     expect(script).toContain("GITHUB_RUN_ATTEMPT");
-    expect(script).toContain("run.run_attempt");
-    expect(script).toContain("providerTotals.dailyAttempts += runAttempt");
-    expect(script).toContain("providerTotals.monthlyAttempts += runAttempt");
-    expect(script).toContain("currentSeen");
-    expect(script).toContain("if (!currentSeen)");
-    expect(script).toContain("unrecognized spend classification");
-    expect(script).toContain("const legacyRunNames = new Set");
-    expect(script).toContain('"Source intelligence pilot"');
-    expect(script).toContain('"Source intelligence"');
-    expect(script).toContain('provider: "tavily"');
-    expect(script).toContain("reservation: 12");
-    expect(script).toContain("dailyCeiling: 24");
-    expect(script).toContain("monthlyCeiling: 300");
-    expect(script).toContain('provider: "firecrawl"');
-    expect(script).toContain("reservation: 1");
-    expect(script).toContain("dailyCeiling: 2");
-    expect(script).toContain("monthlyCeiling: 30");
+    expect(script).toContain("context.runId");
     expect(script).not.toContain("run.conclusion");
     expect(script).not.toContain("run.status");
     expect(budgetIndex).toBeGreaterThan(-1);
@@ -559,11 +552,12 @@ describe("Source Intelligence workflow", () => {
       "daily-reserved-credits": "24",
       "monthly-reserved-credits": "24",
     });
-    expect(result.paginateArguments).toMatchObject({
+    expect(result.historyArguments).toMatchObject({
       owner: "mikedlabs",
       repo: "frederick-radius",
-      workflow_id: "source-intelligence.yml",
+      workflow_id: 10,
       per_page: 100,
+      page: 1,
     });
   });
 
@@ -692,12 +686,12 @@ describe("Source Intelligence workflow", () => {
       label: "malformed timestamp",
       currentAttempt: 1,
       runs: [historyRun({ updated_at: "not-a-timestamp" })],
-      failure: "uncertain workflow-run history",
+      failure: "valid UTC timestamp",
     },
     {
       label: "unknown recent classification",
       currentAttempt: 1,
-      runs: [historyRun({ display_title: "unexpected run title" })],
+      runs: [historyRun(), historyRun({ id: 99, display_title: "unexpected run title" })],
       failure: "unrecognized spend classification",
     },
   ])("fails closed for $label", async ({ currentAttempt, runs, failure }) => {
@@ -712,12 +706,11 @@ describe("Source Intelligence workflow", () => {
   });
 
   it("fails the step when paginated history cannot be loaded", async () => {
-    await expect(
-      runDurableBudgetScript({
-        tool: "firecrawl-watch",
-        historyError: new Error("history unavailable"),
-      }),
-    ).rejects.toThrow("history unavailable");
+    const result = await runDurableBudgetScript({
+      tool: "firecrawl-watch", historyError: new Error("history unavailable"),
+    });
+    expect(result.failures).toEqual(["history unavailable"]);
+    expect(result.outputs).toEqual({});
   });
 
   it("uploads review evidence briefly and has no publishing path", () => {
@@ -785,22 +778,17 @@ describe("Source Intelligence workflow", () => {
     expect(save?.with?.key).toContain("github.run_id");
     expect(save?.with?.key).toContain("github.run_attempt");
 
-    const initializeGuard = steps.find((step) => {
-      const text = JSON.stringify(step);
-      return (
-        text.includes("steps.source-state.outputs.cache-matched-key") &&
-        text.includes("initialize_state") &&
-        runText(step).includes("exit 1")
-      );
+    const initializeGuard = steps.find((step) => step.name === "Protect persistent budgets and comparison state");
+    expect(initializeGuard?.if).toContain("initialize_state != 'true'");
+    expect(initializeGuard?.env).toEqual({
+      VALIDATED_CACHE_READY: "${{ steps.validate-cache.outputs.ready }}",
+      VALIDATED_CHECKPOINT_READY: "${{ steps.checkpoint-restore.outputs.ready }}",
     });
-    expect(initializeGuard).toBeDefined();
-    expect(initializeGuard?.env).toMatchObject({
-      RESTORED_STATE_KEY: "${{ steps.source-state.outputs.cache-matched-key }}",
-      SELECTED_TOOL: "${{ steps.selection.outputs.tool }}",
-    });
-    expect(runText(initializeGuard!)).not.toContain(
-      "assertScheduledFirecrawlBaseline",
-    );
+    expect(runText(initializeGuard!)).toContain("exit 1");
+    const validation = steps.find((step) => step.id === "validate-cache");
+    expect(validation?.with?.script).toContain("inspectLocalState");
+    expect(validation?.with?.script).toContain('allowUninitialized: process.env.INITIALIZE_STATE === "true"');
+
   });
 
   it("updates a compact per-source issue before advancing Firecrawl fingerprints", () => {
@@ -900,4 +888,53 @@ describe("Source Intelligence workflow", () => {
     expect(serialized).toContain("refs/heads/main");
     expect(serialized).toContain("steps.selection.outputs.live");
   });
+  it("stages exact authenticated artifacts and validates them before exposing provider secrets", () => {
+    const steps = allSteps(loadWorkflow());
+    const selection = steps.find((step) => step.id === "checkpoint-selection");
+    const download = steps.find((step) => step.id === "checkpoint-download");
+    const restore = steps.find((step) => step.id === "checkpoint-restore");
+    const firstSecretIndex = steps.findIndex((step) => JSON.stringify(step.env ?? {}).includes("secrets."));
+    expect(selection?.if).toContain("steps.source-state.outputs.cache-matched-key == ''");
+    expect(selection?.with?.script).toContain("selectStateCheckpoint");
+    expectImmutableAction(download, "actions/download-artifact");
+    expect(download?.with).toMatchObject({
+      "artifact-ids": "${{ steps.checkpoint-selection.outputs.artifact-id }}",
+      "github-token": "${{ github.token }}", repository: "${{ github.repository }}",
+      "run-id": "${{ steps.checkpoint-selection.outputs.run-id }}", path: "scripts/reports/source-state-restore",
+    });
+    expect(restore?.with?.script).toContain("restoreStateCheckpoint");
+    expect(steps.indexOf(restore!)).toBeLessThan(firstSecretIndex);
+    expect(restore?.env?.TAVILY_API_KEY).toBeUndefined();
+    expect(restore?.env?.FIRECRAWL_API_KEY).toBeUndefined();
+  });
+  it("keeps recovery manual, zero-spend, and distinct from provider/issue steps", () => {
+    const steps = allSteps(loadWorkflow());
+    const recover = steps.find((step) => step.id === "tavily-recovery");
+    expect(recover?.if).toContain("steps.selection.outputs.mode == 'recovery'");
+    expect(recover?.with?.script).toContain("readSourceIntelligenceHistory");
+    expect(recover?.with?.script).toContain("recoverTavilyState");
+    expect(recover?.with?.script).toContain("installValidatedScoutState");
+    expect(JSON.stringify(recover)).not.toMatch(/secrets\.|source:scout|source:watch|updateSource.*Issues/);
+    expect(steps.find((step) => step.name === "Require explicit live confirmation")?.if).toContain("tool != 'tavily-recover'");
+    expect(steps.find((step) => step.name === "Keep live budget state on main")?.if).toContain("mode == 'recovery'");
+    for (const step of steps.filter((step) => /review queue/.test(step.name ?? ""))) {
+      expect(step.if).toContain("steps.selection.outputs.live == 'true'");
+    }
+  });
+  it("uses a separate bounded ninety-day state checkpoint and preserves provider failure semantics", () => {
+    const steps = allSteps(loadWorkflow());
+    const prepare = steps.find((step) => step.id === "checkpoint-write");
+    const upload = steps.find((step) => step.id === "checkpoint-upload");
+    expect(prepare?.with?.script).toContain("checkpointRetentionDays(process.env.GITHUB_RETENTION_DAYS)");
+    expect(prepare?.if).toContain("github.ref == 'refs/heads/main'");
+    expect(prepare?.if).toContain("steps.tavily-live.outcome == 'failure'");
+    expect(prepare?.if).toContain("steps.source-watch-review-queue.outcome == 'success'");
+    expect(prepare?.if).toContain("steps.tavily-recovery.outcome == 'success'");
+    expectImmutableAction(upload, "actions/upload-artifact");
+    expect(upload?.with?.name).toBe("source-intelligence-state-v1-${{ github.run_id }}-${{ github.run_attempt }}");
+    expect(upload?.with?.["retention-days"]).toBe("${{ steps.checkpoint-write.outputs.retention-days }}");
+    expect(upload?.with?.["if-no-files-found"]).toBe("error");
+    expect(upload?.if).toContain("steps.checkpoint-write.outcome == 'success'");
+  });
+
 });

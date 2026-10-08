@@ -26,12 +26,13 @@ on:
   workflow_dispatch:
     inputs:
       tool:
-        description: "Choose a zero-cost plan or one capped live provider run"
+        description: "Choose a zero-cost plan/recovery or one capped live provider run"
         required: true
         type: choice
         default: tavily-plan
         options:
           - tavily-plan
+          - tavily-recover
           - tavily-scout
           - firecrawl-watch
       profile:
@@ -167,16 +168,105 @@ jobs:
           npm run source:watch -- --source="$WATCH_SOURCE" 2>&1 | tee source-intelligence.log
 
       - name: Require explicit live confirmation
-        if: ${{ steps.selection.outputs.tool != 'tavily-plan' && steps.selection.outputs.live != 'true' }}
+        if: ${{ steps.selection.outputs.tool != 'tavily-plan' && steps.selection.outputs.tool != 'tavily-recover' && steps.selection.outputs.live != 'true' }}
         run: |
           echo "::error title=Live confirmation required::Run the workflow again with confirm_live checked."
           exit 1
 
       - name: Keep live budget state on main
-        if: ${{ steps.selection.outputs.live == 'true' && github.ref != 'refs/heads/main' }}
+        if: ${{ (steps.selection.outputs.live == 'true' || steps.selection.outputs.mode == 'recovery') && github.ref != 'refs/heads/main' }}
         run: |
           echo "::error title=Live pilots run from main only::Choose the main branch so provider budgets and comparison state cannot split across branch-scoped caches."
           exit 1
+
+      - name: Validate restored cache state
+        id: validate-cache
+        if: ${{ steps.selection.outputs.live == 'true' || steps.selection.outputs.mode == 'recovery' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SELECTED_TOOL: ${{ steps.selection.outputs.tool }}
+          INITIALIZE_STATE: ${{ steps.selection.outputs.initialize_state }}
+        with:
+          script: |
+            const { inspectLocalState } = require("./scripts/lib/source-intelligence-state.cjs");
+            const state = inspectLocalState({
+              root: process.cwd(), tool: process.env.SELECTED_TOOL,
+              allowUninitialized: process.env.INITIALIZE_STATE === "true",
+            });
+            core.setOutput("ready", String(state.ready));
+
+      - name: Find newest durable state checkpoint on cache miss
+        id: checkpoint-selection
+        if: ${{ (steps.selection.outputs.live == 'true' || steps.selection.outputs.mode == 'recovery') && steps.source-state.outputs.cache-matched-key == '' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { selectStateCheckpoint } = require("./scripts/lib/source-intelligence-state.cjs");
+            const checkpoint = await selectStateCheckpoint({ github, repo: context.repo });
+            if (checkpoint) {
+              core.setOutput("artifact-id", String(checkpoint.artifactId));
+              core.setOutput("run-id", String(checkpoint.provenance.runId));
+              core.setOutput("expected", JSON.stringify(checkpoint));
+            } else {
+              core.info("No durable checkpoint exists. Live runs remain blocked unless this is an explicit first initialization; Tavily history recovery is a separate zero-spend choice.");
+            }
+
+      - name: Download exact trusted state checkpoint into staging
+        id: checkpoint-download
+        if: ${{ steps.checkpoint-selection.outputs.artifact-id != '' }}
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ steps.checkpoint-selection.outputs.artifact-id }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.checkpoint-selection.outputs.run-id }}
+          path: scripts/reports/source-state-restore
+          merge-multiple: true
+
+      - name: Validate and install durable state checkpoint
+        id: checkpoint-restore
+        if: ${{ steps.checkpoint-selection.outputs.artifact-id != '' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          EXPECTED_CHECKPOINT: ${{ steps.checkpoint-selection.outputs.expected }}
+          SELECTED_TOOL: ${{ steps.selection.outputs.tool }}
+          INITIALIZE_STATE: ${{ steps.selection.outputs.initialize_state }}
+        with:
+          script: |
+            const { restoreStateCheckpoint } = require("./scripts/lib/source-intelligence-state.cjs");
+            const restored = restoreStateCheckpoint({
+              root: process.cwd(), staging: "scripts/reports/source-state-restore",
+              expected: JSON.parse(process.env.EXPECTED_CHECKPOINT), tool: process.env.SELECTED_TOOL,
+              allowUninitialized: process.env.INITIALIZE_STATE === "true",
+            });
+            core.setOutput("ready", String(restored.ready));
+            core.info("Restored state from a validated main-branch workflow checkpoint.");
+
+      - name: Recover Tavily reservations without provider calls
+        id: tavily-recovery
+        if: ${{ steps.selection.outputs.mode == 'recovery' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { readSourceIntelligenceHistory, recoverTavilyState } = require("./scripts/lib/source-intelligence-budget.cjs");
+            const { inspectLocalState, installValidatedScoutState } = require("./scripts/lib/source-intelligence-state.cjs");
+            const runId = Number(process.env.GITHUB_RUN_ID);
+            if (runId !== Number(context.runId)) throw new Error("Current run context is uncertain; recovery stopped.");
+            const now = new Date();
+            const history = await readSourceIntelligenceHistory({
+              github, repo: context.repo, now, currentRunId: runId,
+              currentAttempt: Number(process.env.GITHUB_RUN_ATTEMPT),
+            });
+            const existing = inspectLocalState({ root: process.cwd(), tool: "tavily-recover" });
+            const recovered = recoverTavilyState({
+              history, now,
+              existingUsage: existing.files["scripts/reports/source-scout-usage.json"]?.value,
+              existingCache: existing.files["scripts/reports/source-scout-cache.json"]?.value,
+            });
+            installValidatedScoutState({ root: process.cwd(), ...recovered });
+            core.setOutput("recovery", JSON.stringify(recovered.recovery));
+            core.info(`Zero-spend recovery preserved conservative reservations. Query cache: ${recovered.recovery.queryCache}; Firecrawl comparison baseline was not initialized.`);
+            await core.summary.addRaw(`Tavily reservations recovered from complete authenticated workflow history: ${recovered.recovery.dailyReservedCredits} credits today, ${recovered.recovery.monthlyReservedCredits} this UTC month. Query cache: ${recovered.recovery.queryCache}. No provider request or review issue was made. Firecrawl baseline remains unchanged.\n`).write();
 
       - name: Enforce durable provider spend ceilings
         id: durable-budget
@@ -184,205 +274,42 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           SELECTED_TOOL: ${{ steps.selection.outputs.tool }}
+          INITIALIZE_STATE: ${{ steps.selection.outputs.initialize_state }}
         with:
           script: |
-            const policies = {
-              "tavily-scout": {
-                provider: "tavily",
-                liveRunName: "Source intelligence (tavily-live)",
-                reservation: 12,
-                dailyCeiling: 24,
-                monthlyCeiling: 300,
-              },
-              "firecrawl-watch": {
-                provider: "firecrawl",
-                liveRunName: "Source intelligence (firecrawl-live)",
-                reservation: 1,
-                dailyCeiling: 2,
-                monthlyCeiling: 30,
-              },
-            };
-            const planRunName = "Source intelligence (plan)";
-            const legacyRunNames = new Set([
-              "Source intelligence pilot",
-              // Runs created before the immutable provider-specific run-name
-              // expression landed use the workflow's plain display name.
-              // They may have spent against either provider, so reserve them
-              // against both instead of failing every future scheduled run.
-              "Source intelligence",
-            ]);
-            const policy = policies[process.env.SELECTED_TOOL];
-            if (!policy) {
-              core.setFailed("The selected live provider has no durable budget policy; no provider request is allowed.");
-              return;
+            const { readSourceIntelligenceHistory, calculateReservationFloor, assertFirstProviderInitialization } = require("./scripts/lib/source-intelligence-budget.cjs");
+            try {
+              const runId = Number(process.env.GITHUB_RUN_ID);
+              if (runId !== Number(context.runId)) throw new Error("Current run context is uncertain; no provider request is allowed.");
+              const now = new Date();
+              const history = await readSourceIntelligenceHistory({
+                github, repo: context.repo, now, currentRunId: runId,
+                currentAttempt: Number(process.env.GITHUB_RUN_ATTEMPT),
+              });
+              const floor = calculateReservationFloor(history, { tool: process.env.SELECTED_TOOL, now });
+              if (process.env.INITIALIZE_STATE === "true") {
+                assertFirstProviderInitialization(history, { tool: process.env.SELECTED_TOOL, now });
+              }
+              core.setOutput("provider", floor.provider);
+              core.setOutput("day", floor.day);
+              core.setOutput("month", floor.month);
+              core.setOutput("daily-reserved-credits", String(floor.dailyReservedCredits));
+              core.setOutput("monthly-reserved-credits", String(floor.monthlyReservedCredits));
+              core.info(`${floor.provider} durable reservation floor: ${floor.dailyReservedCredits}/${floor.dailyCeiling} credits today; ${floor.monthlyReservedCredits}/${floor.monthlyCeiling} this UTC month.`);
+            } catch (error) {
+              core.setFailed(error.message);
             }
-
-            const currentRunId = Number(process.env.GITHUB_RUN_ID);
-            const contextRunId = Number(context.runId);
-            const currentAttempt = Number(process.env.GITHUB_RUN_ATTEMPT);
-            if (
-              !Number.isSafeInteger(currentRunId) ||
-              currentRunId < 1 ||
-              currentRunId !== contextRunId ||
-              !Number.isInteger(currentAttempt) ||
-              currentAttempt < 1
-            ) {
-              core.setFailed("GitHub did not provide a valid current run ID and attempt; no provider request is allowed.");
-              return;
-            }
-
-            const now = new Date();
-            const nowMs = now.getTime();
-            const day = now.toISOString().slice(0, 10);
-            const month = day.slice(0, 7);
-            const dayStartMs = Date.parse(`${day}T00:00:00.000Z`);
-            const monthStartMs = Date.parse(`${month}-01T00:00:00.000Z`);
-            if (!Number.isFinite(nowMs) || !Number.isFinite(dayStartMs) || !Number.isFinite(monthStartMs)) {
-              core.setFailed("The UTC budget window could not be determined; no provider request is allowed.");
-              return;
-            }
-
-            // Workflow history is the durable reservation ledger. It survives
-            // cache loss and a runner dying after a provider request. Fetch all
-            // pages, count every attempt regardless of conclusion, and stop on
-            // any uncertain record before either provider secret is exposed.
-            const runs = await github.paginate(
-              github.rest.actions.listWorkflowRuns,
-              {
-                ...context.repo,
-                workflow_id: "source-intelligence.yml",
-                per_page: 100,
-              },
-            );
-            if (!Array.isArray(runs)) {
-              core.setFailed("GitHub returned malformed workflow history; no provider request is allowed.");
-              return;
-            }
-
-            const totals = Object.fromEntries(
-              Object.values(policies).map(({ provider }) => [
-                provider,
-                { dailyAttempts: 0, monthlyAttempts: 0 },
-              ]),
-            );
-            const liveNameToPolicy = new Map(
-              Object.values(policies).map((item) => [item.liveRunName, item]),
-            );
-            let currentSeen = false;
-            for (const run of runs) {
-              if (!run || typeof run !== "object") {
-                core.setFailed("GitHub returned a malformed workflow run; no provider request is allowed.");
-                return;
-              }
-              const runId = Number(run.id);
-              const runAttempt = Number(run.run_attempt);
-              const updatedAtMs =
-                typeof run.updated_at === "string"
-                  ? Date.parse(run.updated_at)
-                  : Number.NaN;
-              if (
-                !Number.isSafeInteger(runId) ||
-                runId < 1 ||
-                !Number.isInteger(runAttempt) ||
-                runAttempt < 1 ||
-                !Number.isFinite(updatedAtMs) ||
-                updatedAtMs > nowMs + 300_000 ||
-                typeof run.display_title !== "string" ||
-                typeof run.head_branch !== "string"
-              ) {
-                core.setFailed("GitHub returned uncertain workflow-run history; no provider request is allowed.");
-                return;
-              }
-              if (updatedAtMs < monthStartMs || run.head_branch !== "main") {
-                continue;
-              }
-              if (run.display_title === planRunName) {
-                continue;
-              }
-              if (legacyRunNames.has(run.display_title)) {
-                // Runs made before immutable provider names cannot be
-                // classified safely. Reserve each one against both providers
-                // rather than ignoring possible historical spend.
-                for (const providerTotals of Object.values(totals)) {
-                  providerTotals.monthlyAttempts += runAttempt;
-                  if (updatedAtMs >= dayStartMs) {
-                    providerTotals.dailyAttempts += runAttempt;
-                  }
-                }
-                continue;
-              }
-              const runPolicy = liveNameToPolicy.get(run.display_title);
-              if (!runPolicy) {
-                core.setFailed("A recent main-branch run has an unrecognized spend classification; no provider request is allowed.");
-                return;
-              }
-              const providerTotals = totals[runPolicy.provider];
-              providerTotals.monthlyAttempts += runAttempt;
-              if (updatedAtMs >= dayStartMs) {
-                providerTotals.dailyAttempts += runAttempt;
-              }
-              if (runId === currentRunId) {
-                if (currentSeen || run.display_title !== policy.liveRunName) {
-                  core.setFailed("GitHub history does not uniquely classify the current provider run; no provider request is allowed.");
-                  return;
-                }
-                currentSeen = true;
-                if (runAttempt !== currentAttempt) {
-                  core.setFailed("GitHub run history has not indexed the exact current attempt; no provider request is allowed.");
-                  return;
-                }
-              }
-            }
-            if (!currentSeen) {
-              core.setFailed("The current live run ID and attempt are absent from durable GitHub history; no provider request is allowed.");
-              return;
-            }
-
-            const providerTotals = totals[policy.provider];
-            const dailyReserved = providerTotals.dailyAttempts * policy.reservation;
-            const monthlyReserved = providerTotals.monthlyAttempts * policy.reservation;
-            if (
-              dailyReserved > policy.dailyCeiling ||
-              monthlyReserved > policy.monthlyCeiling
-            ) {
-              core.setFailed(
-                `${policy.provider} durable reservation ceiling reached: ${dailyReserved}/${policy.dailyCeiling} credits today and ${monthlyReserved}/${policy.monthlyCeiling} this UTC month. No provider request is allowed.`,
-              );
-              return;
-            }
-            core.setOutput("provider", policy.provider);
-            core.setOutput("day", day);
-            core.setOutput("month", month);
-            core.setOutput("daily-reserved-credits", String(dailyReserved));
-            core.setOutput("monthly-reserved-credits", String(monthlyReserved));
-            core.info(
-              `${policy.provider} durable reservation floor: ${dailyReserved}/${policy.dailyCeiling} credits today; ${monthlyReserved}/${policy.monthlyCeiling} this UTC month.`,
-            );
 
       - name: Protect persistent budgets and comparison state
         if: ${{ steps.selection.outputs.live == 'true' && steps.selection.outputs.initialize_state != 'true' }}
         env:
-          RESTORED_STATE_KEY: ${{ steps.source-state.outputs.cache-matched-key }}
-          SELECTED_TOOL: ${{ steps.selection.outputs.tool }}
+          VALIDATED_CACHE_READY: ${{ steps.validate-cache.outputs.ready }}
+          VALIDATED_CHECKPOINT_READY: ${{ steps.checkpoint-restore.outputs.ready }}
         run: |
-          if [ -z "$RESTORED_STATE_KEY" ]; then
-            echo "::error title=Source state was not restored::If this is the first intentional live run, check initialize_state. Otherwise stop and recover the previous state before spending credits."
+          if [ "$VALIDATED_CACHE_READY" != "true" ] && [ "$VALIDATED_CHECKPOINT_READY" != "true" ]; then
+            echo "::error title=Validated source state is missing::Recover the existing state before spending credits. Tavily recovery reconstructs conservative reservations only; it does not recover a lost query cache or Firecrawl baseline."
             exit 1
           fi
-          case "$SELECTED_TOOL" in
-            tavily-scout)
-              test -f scripts/reports/source-scout-usage.json || {
-                echo "::error title=Tavily usage ledger is missing::Check initialize_state only for the first intentional run."
-                exit 1
-              }
-              ;;
-            firecrawl-watch)
-              test -f scripts/reports/source-watch/state.json || {
-                echo "::error title=Firecrawl comparison baseline is missing::Check initialize_state only for the first intentional run."
-                exit 1
-              }
-              ;;
-          esac
 
       - name: Run capped Tavily Source Scout
         id: tavily-live
@@ -459,8 +386,42 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      # Tavily reserves attempted credits before each request, including failed
+      # requests. Preserve those ledgers even when the provider or issue fails.
+      # Firecrawl comparison hashes advance only after review-queue delivery.
+      - name: Prepare durable state checkpoint
+        id: checkpoint-write
+        if: ${{ always() && github.ref == 'refs/heads/main' && ((steps.selection.outputs.mode == 'recovery' && steps.tavily-recovery.outcome == 'success') || (steps.selection.outputs.live == 'true' && ((steps.selection.outputs.tool == 'tavily-scout' && (steps.tavily-live.outcome == 'success' || steps.tavily-live.outcome == 'failure')) || (steps.selection.outputs.tool == 'firecrawl-watch' && steps.source-watch-review-queue.outcome == 'success')))) }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SELECTED_TOOL: ${{ steps.selection.outputs.tool }}
+          RECOVERY_EVIDENCE: ${{ steps.tavily-recovery.outputs.recovery }}
+        with:
+          script: |
+            const { readCheckpointProvenance, prepareStateCheckpoint, checkpointRetentionDays } = require("./scripts/lib/source-intelligence-state.cjs");
+            core.setOutput("retention-days", String(checkpointRetentionDays(process.env.GITHUB_RETENTION_DAYS)));
+            const provenance = await readCheckpointProvenance({
+              github, repo: context.repo, runId: Number(context.runId),
+              attempt: Number(process.env.GITHUB_RUN_ATTEMPT),
+            });
+            prepareStateCheckpoint({
+              root: process.cwd(), destination: "scripts/reports/source-state-checkpoint",
+              provenance, tool: process.env.SELECTED_TOOL,
+              recovery: process.env.RECOVERY_EVIDENCE ? JSON.parse(process.env.RECOVERY_EVIDENCE) : undefined,
+            });
+
+      - name: Upload durable state checkpoint
+        id: checkpoint-upload
+        if: ${{ always() && steps.checkpoint-write.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: source-intelligence-state-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: scripts/reports/source-state-checkpoint/
+          if-no-files-found: error
+          retention-days: ${{ steps.checkpoint-write.outputs.retention-days }}
+
       - name: Save source intelligence state
-        if: ${{ always() && steps.selection.outputs.live == 'true' && (steps.selection.outputs.tool != 'firecrawl-watch' || steps.source-watch-review-queue.outcome == 'success') }}
+        if: ${{ always() && steps.checkpoint-write.outcome == 'success' && (steps.selection.outputs.tool != 'firecrawl-watch' || steps.source-watch-review-queue.outcome == 'success') }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
