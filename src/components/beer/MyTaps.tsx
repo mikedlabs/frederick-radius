@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { useSavedList, useToggleSave, useMounted } from "@/hooks/useSaved";
 import { BEER_BY_KEY, FAMILY_BY_KEY, type BeerWithBrewery } from "@/data/beers";
 import { BreweryLogo } from "./BreweryLogo";
+import { toast } from "sonner";
 
 const prettyTown = (slug: string) =>
   slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -81,7 +82,10 @@ function TapRow({ beer, savedKey, index }: { beer: BeerWithBrewery; savedKey: st
         </span>
         <button
           type="button"
-          onClick={remove}
+          onClick={() => {
+            try { remove(false); }
+            catch { toast.error("Could not remove this pour", { description: "We could not confirm this change. Please try again." }); }
+          }}
           aria-label={`Remove ${beer.name} from saved pours`}
           className="grid h-11 w-11 shrink-0 place-items-center border border-white/24 bg-black/20 text-white/72 backdrop-blur-sm"
         >

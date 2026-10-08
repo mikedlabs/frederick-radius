@@ -7,10 +7,8 @@
  * deck of place cards above and a deck of event cards below read as the
  * same wallet, just for events (owner ask 2026-07-08).
  *
- * Each card wears its event CATEGORY's hue as a DARKENED gradient ground
- * (so cream text clears AA), mirroring how a place card wears its business
- * brand hue. Vermilion stays on its diet: only the live dot + live ring,
- * when isEventLiveNow says the show is on this minute.
+ * Neutral card faces keep event details readable in both themes. Published
+ * lifecycle changes and genuinely live events keep their status treatment.
  *
  * The deck: every card tucks to a 62px lip (serif title + ONE mono fact by
  * value — "On now" beats the compact when). A dedicated disclosure control
@@ -24,7 +22,8 @@
  * the shared event helpers (eventLipFact / eventWhenParts / eventPriceLabel,
  * built on eventDateBlock + isEventLiveNow) so no claim outruns the data.
  */
-import { useState, type CSSProperties } from "react";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import CategoryIcon from "@/components/place/CategoryIcon";
@@ -34,7 +33,6 @@ import type { Event } from "@/data/events";
 import { googleMapsDirections } from "@/lib/integrations/deeplinks";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
-import { BRAND } from "@/lib/brand";
 import { savedDateLabel } from "@/components/saved/walletFacts";
 import { useToggleSave } from "@/hooks/useSaved";
 import { eventLipFact, eventPriceLabel, eventWhenParts } from "@/components/saved/eventWalletFacts";
@@ -58,43 +56,21 @@ function eventMotifClass(category: string): string {
   return `sw-m-${EVENT_MOTIF[category] ?? "swirl"}`;
 }
 
-/**
- * Wallet card GROUND per event category — a jewel-toned set deliberately
- * OFF vermilion (CLAUDE.md: vermilion rides only the live dot / live ring),
- * mirroring the place wallet's WALLET_GROUND intent for the categories
- * events actually use. The darkened gradient below clears WCAG AA for cream
- * text over any of these; the map just keeps families recognizable (arts
- * purple, family amber, market/outdoors green, civic blue).
- */
-const EVENT_GROUND: Record<string, string> = {
-  music: "#A63F5C", arts: "#7A2E9F", theater: "#7A2E9F", gallery: "#8E2C6F",
-  museum: "#5B3A8F", "public-art": "#9B3F8A", film: "#5B3A8F", comedy: "#A63F5C",
-  family: BRAND.colors.functionalAmber, library: "#285C8A",
-  market: "#3E8E41", "food-truck": BRAND.colors.functionalAmber, food: BRAND.colors.functionalAmber, restaurant: "#C23A22",
-  outdoors: "#315A43", park: "#315A43", sports: "#315A43", agritourism: "#6B8E23",
-  festival: "#B85C1E",
-  civic: "#285D73", community: "#3E6488", government: "#285D73", education: "#285C8A",
-};
 
 function Card({
   event,
-  index,
   open,
   savedAt,
   now,
   onToggle,
 }: {
   event: Event;
-  index: number;
   open: boolean;
   savedAt?: string;
   now: Date;
   onToggle: () => void;
 }) {
   const cat = CATEGORY_BY_SLUG[event.category];
-  // Category-first hue: the jewel ground for the category, then the category
-  // ink, then a default arts purple (events skew arts). Never raw vermilion.
-  const hue = EVENT_GROUND[event.category] ?? cat?.color ?? "#7A2E9F";
   const town = MUNICIPALITY_BY_SLUG[event.municipality]?.name ?? null;
   const kind = cat?.name ?? "Event";
   const fact = eventLipFact(event, now);
@@ -102,6 +78,8 @@ function Card({
   // side wrote with. One tap, no confirm: events are device-local by
   // contract and re-saving costs one tap on the event page.
   const toggleSave = useToggleSave("event", event.slug);
+  const removingRef = useRef(false);
+  const [removing, setRemoving] = useState(false);
   // The app already pushes a cancellation notice to this reader's phone, and
   // /api/events/by-slugs runs a 60-second edge window specifically so a
   // cancelled row cannot sit stale in a saved deck. The card then never read
@@ -135,15 +113,7 @@ function Card({
   return (
     <div
       className={`sw-card${open ? " is-open" : ""}${fact.live ? " sw-live-card" : ""}`}
-      style={
-        {
-          // Darkened category ground so cream text always clears AA — never
-          // the raw hue. Mixed toward Ink (the palette's dark), with a 40%
-          // hue floor so the tail never goes blacker than the brand allows.
-          background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, var(--app-ink)), color-mix(in srgb, ${hue} 40%, var(--app-ink)))`,
-          "--sw-i": index,
-        } as CSSProperties
-      }
+      style={{ background: "var(--app-bg-elevated-solid)" }}
     >
       {/* Same full-card motif + watermark treatment the place cards wear, so
           the two decks read as one wallet. One texture idea per card. */}
@@ -173,7 +143,7 @@ function Card({
               // Replaces the lip fact rather than joining it. A cancelled show
               // has no useful "when" left, and the struck title beside this
               // carries the same meaning for anyone who reads shape before text.
-              <span className="sw-lipfact is-status" style={{ background: statusFill }}>
+              <span className="sw-lipfact is-status" style={{ background: statusFill, color: "var(--app-on-brand)" }}>
                 {statusText}
               </span>
             ) : (
@@ -267,14 +237,26 @@ function Card({
           <button
             type="button"
             onClick={() => {
-              haptic("light");
-              toggleSave();
+              if (removingRef.current) return;
+              removingRef.current = true;
+              setRemoving(true);
+              try {
+                if (toggleSave(false)) throw new Error("Removal not confirmed");
+                haptic("light");
+              } catch {
+                toast.error("Could not remove from Saved", { description: "We could not confirm this change. Please try again." });
+              } finally {
+                setRemoving(false);
+                removingRef.current = false;
+              }
             }}
+            disabled={removing}
+            aria-busy={removing}
             className="sw-act-quiet"
             style={{ marginLeft: "auto" }}
             aria-label={`Remove ${event.title} from saved`}
           >
-            Remove
+            {removing ? "Removing…" : "Remove"}
           </button>
         </div>
       </div>
@@ -328,7 +310,6 @@ export default function SavedEventWallet({
           >
             <Card
               event={e}
-              index={i}
               open={open}
               savedAt={savedAt?.[e.slug]}
               now={now}

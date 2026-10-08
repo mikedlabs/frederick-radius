@@ -187,7 +187,7 @@ for (const viewport of VIEWPORTS) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
-          json: { active: false, count: 0, tone: "quiet", ok: true, lastUpdated: assembledAt },
+          json: { active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: assembledAt },
         });
       });
     });

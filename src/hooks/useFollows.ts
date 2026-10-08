@@ -29,19 +29,11 @@ import {
  *   - When the user is signed in: reads/writes via /api/follows so
  *     the list lives in the DB and syncs across devices.
  *
- * Shared store + optimistic writes (the premium-feel path):
- *   Authed follow slugs live in ONE module-level store, mirrored into
- *   React via useSyncExternalStore — the same pattern useSaved uses.
- *   That buys two things the previous component-state design couldn't:
- *     1. A toggle in any control (the place-page CTA, an icon button,
- *        a card) updates EVERY follow control on screen at once.
- *     2. The toggle flips the store immediately and reconciles with
- *        the server in the background, so there's no spinner and no
- *        GET-then-write round trip. Completion waits for persistence;
- *        a failed write restores the last confirmed membership.
- *   The previous design re-rendered only the button that was tapped
- *   and left every other `useFollowedSlugs()` reader showing stale
- *   membership until the page remounted.
+ * Shared confirmed store:
+ *   Account memberships live in one module-level store mirrored into React
+ *   via useSyncExternalStore. Every reader sees the same confirmed list.
+ *   Pending intent is exposed separately so an unfinished write never claims
+ *   a place is saved or removes a previously confirmed row.
  *
  * One-shot localStorage -> DB sync: the first time we detect (signed
  * in + non-empty localStorage), POST the cache to /api/follows/sync.
@@ -99,9 +91,7 @@ function clearSyncedFlag(userId: string) {
 
 /**
  * Pure helper: return the follow set with `slug` toggled, plus whether
- * it was followed before the toggle. Never mutates the input set — the
- * optimistic path and the revert path both rely on the original
- * staying intact. Exported for unit tests.
+ * it was followed before the toggle. Never mutates the input set. Exported for unit tests.
  */
 export function toggleSlug(
   set: Set<string>,
@@ -146,6 +136,7 @@ type FollowWriteQueue = {
   userId: string;
   slug: string;
   confirmed: boolean;
+  desired: boolean;
   latest: number;
   tail: Promise<void>;
   pending: number;
@@ -160,6 +151,29 @@ const followWrites = new Map<string, FollowWriteQueue>();
 const followImports = new Map<string, Promise<void>>();
 let followWriteEpoch = 0;
 const remoteListeners = new Set<() => void>();
+export type FollowMutationState = "idle" | "saving" | "removing" | "unconfirmed";
+type FollowIntent = { generation: number; desired: boolean };
+const followIntents = new Map<string, FollowIntent>();
+const mutationListeners = new Set<() => void>();
+function notifyFollowMutation() {
+  mutationListeners.forEach((listener) => listener());
+}
+const subscribeMutation = (listener: () => void) => {
+  mutationListeners.add(listener);
+  return () => { mutationListeners.delete(listener); };
+};
+function readFollowMutation(slug: string): FollowMutationState {
+  const queue = remoteStoreUserId ? followWrites.get(JSON.stringify([remoteStoreUserId, slug])) : undefined;
+  if (queue?.uncertain) return "unconfirmed";
+  const intent = followIntents.get(slug);
+  if (intent?.generation === authGeneration) return intent.desired ? "saving" : "removing";
+  if (queue?.pending) return queue.desired ? "saving" : "removing";
+  return "idle";
+}
+/** Shared progress/hold state; membership remains the last confirmed value. */
+export function useFollowMutationState(slug: string): FollowMutationState {
+  return useSyncExternalStore(subscribeMutation, () => readFollowMutation(slug), () => "idle");
+}
 function readRemote(): Set<string> | null {
   return remoteStore;
 }
@@ -189,6 +203,7 @@ function writeAccountRemote(
   remoteStoreUserId = userId;
   remoteStoreTruncated = Boolean(userId) && truncated;
   writeRemote(next);
+  notifyFollowMutation();
 }
 const subscribeRemote = (cb: () => void) => {
   remoteListeners.add(cb);
@@ -528,7 +543,7 @@ const PENDING_WRITE = "This change is still pending. Wait for it to finish befor
 const UNKNOWN_WRITE = "The connection ended before this change could be confirmed. Refresh Saved to check your list.";
 const CHECKING_WRITE = "Your saved list must be checked before another change to this place can be made. Please wait, then try again.";
 
-/** Set one membership without overwriting unrelated optimistic saves. */
+/** Set one confirmed membership without overwriting unrelated saves. */
 function writeFollowMembership(slug: string, followed: boolean) {
   const next = new Set(remoteStore ?? []);
   if (followed) next.add(slug);
@@ -541,13 +556,14 @@ function releaseFollowQueue(queue: FollowWriteQueue) {
   if (queue.pending === 0 && !queue.uncertain && !queue.transport && followWrites.get(key) === queue) {
     followWrites.delete(key);
   }
+  notifyFollowMutation();
 }
 
 function getFollowQueue(userId: string, slug: string, confirmed: boolean): FollowWriteQueue {
   const key = JSON.stringify([userId, slug]);
   let queue = followWrites.get(key);
   if (!queue) {
-    queue = { userId, slug, confirmed, latest: 0, tail: Promise.resolve(), pending: 0, uncertain: false, transport: null, topicDirty: false, reconciling: null };
+    queue = { userId, slug, confirmed, desired: confirmed, latest: 0, tail: Promise.resolve(), pending: 0, uncertain: false, transport: null, topicDirty: false, reconciling: null };
     followWrites.set(key, queue);
   }
   return queue;
@@ -562,7 +578,7 @@ function syncConfirmedFollowTopic(queue: FollowWriteQueue) {
   const isCurrent = () => {
     const currentQueue = followWrites.get(key);
     // A same-account snapshot can still confirm this device operation. A new
-    // optimistic intent cannot: wait for its own confirmed topic sync instead.
+    // pending intent cannot: wait for its own confirmed topic sync instead.
     return followWriteEpoch === epoch && remoteStoreUserId === queue.userId
       && remoteStore?.has(queue.slug) === followed
       && (!currentQueue || (!currentQueue.pending && !currentQueue.uncertain
@@ -656,6 +672,7 @@ function persistFollowToggle(
   userId: string,
   slug: string,
   wasFollowed: boolean,
+  followed: boolean,
   source: string,
   onFailure?: (description: string) => void,
 ): Promise<boolean> {
@@ -663,9 +680,10 @@ function persistFollowToggle(
   activeQueue.topicDirty = true;
   const revision = ++activeQueue.latest;
   activeQueue.pending++;
+  activeQueue.desired = followed;
+  notifyFollowMutation();
   const epoch = followWriteEpoch;
   const generation = authGeneration;
-  const followed = !wasFollowed;
   const isCurrentAccount = () => followWriteEpoch === epoch && authGeneration === generation && remoteStoreUserId === userId;
   const fail = () => {
     if (isCurrentAccount() && activeQueue.latest === revision) writeFollowMembership(slug, activeQueue.confirmed);
@@ -679,6 +697,7 @@ function persistFollowToggle(
         void reconcileFollowQueue(activeQueue);
         return fail();
       }
+      if (activeQueue.confirmed === followed) return followed;
       let sent = false;
       const transport = {
         promise: Promise.resolve().then(() => {
@@ -711,7 +730,7 @@ function persistFollowToggle(
       }
       activeQueue.transport = null;
       activeQueue.confirmed = followed;
-      if (activeQueue.latest === revision) writeFollowMembership(slug, followed);
+      writeFollowMembership(slug, followed);
       track("save_place", { on: followed, source, synced: true });
       if (shouldCancelPlaceReturnBridgeAfterDelete(wasFollowed, remoteStore, slug)) {
         cancelPendingReturnBridgeValue("place");
@@ -731,42 +750,57 @@ function persistFollowToggle(
   return operation;
 }
 
-/** A settled unchanged result means failure; discard callers stay compatible. */
+/** Optional explicit intent keeps Remove and Undo independent of stale toggles. */
 export function useToggleFollow(slug: string, source?: string, onFailure?: (description: string) => void) {
   const localToggle = useToggleSave("place", slug);
-  return useCallback(async (): Promise<boolean> => {
+  return useCallback(async (desired?: boolean): Promise<boolean> => {
     const generation = authGeneration;
     const startedFollowed = remoteStore?.has(slug) ?? readIsSavedSync(slug);
-    const auth = await detectAuth();
-    // An old identity lookup cannot mutate a new account or its local saves.
-    // Normal first hydration does not change this auth generation.
-    if (authGeneration !== generation) {
-      onFailure?.(UNCONFIRMED);
+    const followed = desired ?? !startedFollowed;
+    if (followIntents.get(slug)?.generation === generation) {
+      onFailure?.(PENDING_WRITE);
       return startedFollowed;
     }
-    if (auth === "anonymous" || auth === "unknown") {
-      localToggle();
-      const on = readIsSavedSync(slug);
-      track("save_place", { on, source: source ?? "place_detail", synced: false });
-      return on;
+    // Reserve before auth discovery so another control cannot reverse or
+    // duplicate this intent while the identity lookup is still pending.
+    const intent: FollowIntent = { generation, desired: followed };
+    followIntents.set(slug, intent);
+    notifyFollowMutation();
+    try {
+      const auth = await detectAuth();
+      if (authGeneration !== generation) {
+        onFailure?.(UNCONFIRMED);
+        return startedFollowed;
+      }
+      if (auth === "anonymous" || auth === "unknown") {
+        try {
+          const on = localToggle(followed);
+          if (on !== startedFollowed) track("save_place", { on, source: source ?? "place_detail", synced: false });
+          return on;
+        } catch {
+          onFailure?.("This device could not confirm the saved change. Please try again.");
+          return startedFollowed;
+        }
+      }
+      const current = remoteStoreUserId === auth.user.id && remoteStore
+        ? remoteStore
+        : new Set<string>();
+      // The intent belongs to the membership shown when the person tapped.
+      if (current.has(slug) !== startedFollowed) {
+        onFailure?.(CHANGED_LIST);
+        return startedFollowed;
+      }
+      if (followed && !startedFollowed && current.size >= MAX_FOLLOWED_PLACES) {
+        onFailure?.(FULL_LIST);
+        return false;
+      }
+      if (remoteStoreUserId !== auth.user.id) writeAccountRemote(auth.user.id, current);
+      if (followed === startedFollowed && !followWrites.has(JSON.stringify([auth.user.id, slug]))) return followed;
+      return await persistFollowToggle(auth.user.id, slug, startedFollowed, followed, source ?? "place_detail", onFailure);
+    } finally {
+      if (followIntents.get(slug) === intent) followIntents.delete(slug);
+      notifyFollowMutation();
     }
-    const current = remoteStoreUserId === auth.user.id && remoteStore
-      ? remoteStore
-      : new Set<string>();
-    // The tap belongs to the list the person saw. If account discovery
-    // changes that membership, refuse rather than sending the opposite action.
-    if (current.has(slug) !== startedFollowed) {
-      onFailure?.(CHANGED_LIST);
-      return startedFollowed;
-    }
-    const { next, wasFollowed } = toggleSlug(current, slug);
-    if (!wasFollowed && next.size > MAX_FOLLOWED_PLACES) {
-      onFailure?.(FULL_LIST);
-      return false;
-    }
-    if (remoteStoreUserId !== auth.user.id) writeAccountRemote(auth.user.id, current);
-    writeRemote(next);
-    return persistFollowToggle(auth.user.id, slug, wasFollowed, source ?? "place_detail", onFailure);
   }, [slug, source, localToggle, onFailure]);
 }
 
@@ -792,7 +826,7 @@ function readIsSavedSync(slug: string): boolean {
 async function maybeSync(localSlugs: Set<string>, remoteSlugs: Set<string>, userId: string) {
   if (getSyncedFlag(userId) || followImports.has(userId)) return;
   // An explicit intent already owns its place. Do not import an older device
-  // save over a removal or an unresolved write, even if optimism hides it now.
+  // save over a removal or an unresolved write.
   const toUpload = [...localSlugs]
     .reverse()
     .filter((slug) => !remoteSlugs.has(slug) && !followWrites.has(JSON.stringify([userId, slug])))
@@ -808,10 +842,12 @@ async function maybeSync(localSlugs: Set<string>, remoteSlugs: Set<string>, user
   // sent. Its queue tail bounds waiting intents without aborting the import.
   const reservations = toUpload.map((slug) => {
     const queue = getFollowQueue(userId, slug, remoteSlugs.has(slug));
-    const revision = ++queue.latest;
+    ++queue.latest;
     queue.pending++;
-    return { queue, revision };
+    queue.desired = true;
+    return { queue };
   });
+  notifyFollowMutation();
   let sent = false;
   const transport: FollowTransport = {
     promise: Promise.resolve().then(() => {
@@ -844,7 +880,7 @@ async function maybeSync(localSlugs: Set<string>, remoteSlugs: Set<string>, user
         return new Set(normalizeFollowSlugs(data.acceptedSlugs));
       }), FOLLOW_WRITE_TIMEOUT_MS);
       const merged = new Set(remoteStore ?? []);
-      for (const { queue, revision } of reservations) {
+      for (const { queue } of reservations) {
         if (queue.transport !== transport) continue;
         if (!sent) {
           queue.transport = null;
@@ -854,10 +890,8 @@ async function maybeSync(localSlugs: Set<string>, remoteSlugs: Set<string>, user
         } else {
           queue.confirmed = result.value.has(queue.slug);
           queue.transport = null;
-          if (queue.latest === revision) {
-            if (queue.confirmed) merged.add(queue.slug);
-            else merged.delete(queue.slug);
-          }
+          if (queue.confirmed) merged.add(queue.slug);
+          else merged.delete(queue.slug);
         }
       }
       if (sent && result.status === "fulfilled" && isCurrentAccount()) writeRemote(merged);

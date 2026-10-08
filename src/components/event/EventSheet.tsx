@@ -229,7 +229,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 {categoryLabel}
               </p>
               <h2
-                className={`mt-1 font-serif text-[24px] font-semibold leading-tight tracking-tight text-white ${isCancelled ? "line-through opacity-80" : ""}`}
+                className={`mt-1 font-sans text-[24px] font-semibold leading-tight tracking-tight text-white ${isCancelled ? "line-through opacity-80" : ""}`}
                 style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
               >
                 {event.title}
@@ -267,7 +267,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                   {categoryLabel}
                 </p>
                 <h2
-                  className={`font-serif text-[22px] font-semibold leading-tight tracking-tight ${isCancelled ? "line-through opacity-80" : ""}`}
+                  className={`font-sans text-[22px] font-semibold leading-tight tracking-tight ${isCancelled ? "line-through opacity-80" : ""}`}
                   style={{ color: "var(--app-ink)" }}
                 >
                   {event.title}

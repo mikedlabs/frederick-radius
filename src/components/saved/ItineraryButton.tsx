@@ -1,10 +1,11 @@
 "use client";
 
-import { useIsInItinerary, useToggleItinerary } from "@/hooks/useItinerary";
-import { Plus, Check } from "lucide-react";
-import { motion } from "framer-motion";
+import { useEventSavedState, useMounted, useSetEventSaved } from "@/hooks/useSaved";
+import { Bookmark } from "lucide-react";
 import { toast } from "sonner";
 
+/** Retain the existing event-card call sites while using the same event save
+ * authority as the full page and Saved tab. Legacy Day Plan data is untouched. */
 export default function ItineraryButton({
   eventId,
   label,
@@ -14,35 +15,41 @@ export default function ItineraryButton({
   label?: string;
   className?: string;
 }) {
-  const isSaved = useIsInItinerary(eventId);
-  const toggle = useToggleItinerary();
+  const mounted = useMounted();
+  const savedState = useEventSavedState(eventId);
+  const isSaved = savedState === true;
+  const setSaved = useSetEventSaved(eventId);
+  const eventName = label?.replace(/^Add\s+/, "").replace(/\s+to itinerary$/, "") || "event";
 
   return (
     <button
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        toggle(eventId);
-        if (!isSaved) {
-          toast.success("Added to Day Plan");
-        } else {
-          toast("Removed from Day Plan");
+      type="button"
+      data-save-ref={`event:${eventId}`}
+      disabled={!mounted || savedState === null}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        try {
+          const saved = setSaved(!isSaved);
+          if (saved) toast.success(`Saved · ${eventName}`);
+          else toast("Removed from Saved");
+        } catch {
+          toast.error(isSaved ? "Could not remove from Saved" : "Could not save this event", {
+            description: "We could not confirm this change. Please try again.",
+          });
         }
       }}
-      aria-label={label || (isSaved ? "Remove from Itinerary" : "Add to Itinerary")}
-      className={`relative flex items-center justify-center shrink-0 w-8 h-8 rounded-full border transition-all ${
-        isSaved
-          ? "bg-[var(--app-positive)] border-[var(--app-positive)] text-white shadow-sm"
-          : "bg-white/90 dark:bg-zinc-800/90 border-[var(--app-border)] text-[var(--app-ink-2)] hover:border-[var(--app-ink)] hover:text-[var(--app-ink)]"
-      } ${className}`}
+      aria-pressed={savedState === null ? undefined : mounted && isSaved}
+      aria-label={savedState === null ? `Saved state unavailable for ${eventName}` : isSaved ? `Remove ${eventName} from Saved` : `Save ${eventName}`}
+      title={savedState === null ? "Saved state unavailable" : isSaved ? "Saved" : "Save"}
+      className={`tap-44 relative grid h-9 w-9 shrink-0 place-items-center rounded-full border transition-colors ${className}`}
+      style={{
+        color: isSaved ? "var(--app-link)" : "var(--app-ink-2)",
+        background: "var(--app-surface)",
+        borderColor: "var(--app-border)",
+      }}
     >
-      <motion.div
-        initial={false}
-        animate={{ scale: isSaved ? 1 : 0.9, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      >
-        {isSaved ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-      </motion.div>
+      <Bookmark className="h-4 w-4" strokeWidth={isSaved ? 0 : 1.75} fill={isSaved ? "currentColor" : "none"} aria-hidden />
     </button>
   );
 }

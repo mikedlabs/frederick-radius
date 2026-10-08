@@ -12,6 +12,7 @@ import DecisionTelemetryObserver from "@/components/analytics/DecisionTelemetry"
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
 import { PLATFORM_BRAND } from "@/lib/platform-brand";
+import { BRAND } from "@/lib/brand";
 
 /**
  * Brand typography is self-hosted through next/font (see ./fonts.ts) so
@@ -104,14 +105,9 @@ export const viewport: Viewport = {
   // Keep fixed-bottom UI (BottomNav, sheets, the search overlay) above the
   // on-screen keyboard on Android Chrome instead of being shoved/covered.
   interactiveWidget: "resizes-content",
-  // Brand Book No. 01: paper-cream is the canonical ground, so the status bar
-  // tints warm-paper in light mode. The marketing/dark surfaces (and iOS
-  // dark-mode users) get the ink ground so the bar doesn't clash.
+  // Match the default Cream ground and the OS-preferred secondary Ink ground.
   themeColor: [
-    // The product has no dark theme. Keep installed-app chrome on Cream even
-    // when the device prefers dark mode so it never frames a light page with
-    // an unrelated dark bar.
-    { media: "(prefers-color-scheme: dark)", color: PLATFORM_BRAND.themeColor },
+    { media: "(prefers-color-scheme: dark)", color: BRAND.colors.ink },
     // Must match the canonical paper ground (--app-bg = #F4EEE2) or installed
     // PWAs show a status-bar/page seam.
     // Viewport metadata can't read CSS vars, so this literal is kept in sync.

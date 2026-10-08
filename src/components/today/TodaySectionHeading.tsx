@@ -66,7 +66,7 @@ export default function TodaySectionHeading({
             className="today-section-heading__cta tap-44-y -my-2 inline-flex min-h-11 shrink-0 items-center gap-1 rounded-[var(--app-radius-sm)] px-1.5 text-[12px] font-semibold tracking-tight outline-none"
             style={{
               color:
-                "var(--today-section-ink, var(--app-brand-press))",
+                "var(--app-heading-action, var(--today-section-ink, var(--app-brand-press)))",
             }}
           >
             {cta}
@@ -86,7 +86,7 @@ export default function TodaySectionHeading({
           className="today-section-heading__registration-accent h-[3px] w-8 shrink-0 rounded-full"
           style={{
             background:
-              "var(--today-section-accent, var(--app-brand))",
+              "var(--app-heading-rule, var(--today-section-accent, var(--app-brand)))",
           }}
         />
         <span

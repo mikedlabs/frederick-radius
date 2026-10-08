@@ -11,6 +11,7 @@ import {
   type BeerWithBrewery,
 } from "@/data/beers";
 import { addSaved, useSavedList } from "@/hooks/useSaved";
+import { toast } from "sonner";
 import {
   buildTasteFlight,
   tastePathStats,
@@ -43,7 +44,8 @@ export default function BeerTasteFlight() {
   const allSaved = flight.length > 0 && flight.every((beer) => savedKeys.has(beerKey(beer)));
 
   function saveFlight() {
-    for (const beer of flight) addSaved("beer", beerKey(beer));
+    try { for (const beer of flight) addSaved("beer", beerKey(beer)); }
+    catch { toast.error("Could not save the full flight", { description: "Pours already saved remain in My taps. Please try again." }); }
   }
 
   return (
@@ -126,7 +128,10 @@ function PourCard({ beer, index, saved, pathKey }: { beer: BeerWithBrewery; inde
         {untappdUrl ? <a href={untappdUrl} target="_blank" rel="noreferrer" aria-label={`Open ${beer.name} by ${beer.breweryName} on Untappd`} className="ml-2 inline-flex min-h-11 items-center gap-1 text-[9px] text-[var(--app-ink-3)] hover:text-[var(--app-ink-2)]">Untappd <ArrowUpRight className="h-3 w-3" aria-hidden /></a> : null}
       </div>
 
-      <button type="button" onClick={() => addSaved("beer", key)} disabled={saved} aria-label={saved ? `${beer.name} is saved to My taps` : `Save ${beer.name} to My taps`} className="m-1.5 grid h-11 w-11 place-items-center self-start rounded-[var(--app-radius-sm)] border text-[var(--app-ink-3)] disabled:opacity-50" style={{ borderColor: "var(--app-border)" }}>
+      <button type="button" onClick={() => {
+        try { addSaved("beer", key); }
+        catch { toast.error("Could not save this pour", { description: "We could not confirm this change. Please try again." }); }
+      }} disabled={saved} aria-label={saved ? `${beer.name} is saved to My taps` : `Save ${beer.name} to My taps`} className="m-1.5 grid h-11 w-11 place-items-center self-start rounded-[var(--app-radius-sm)] border text-[var(--app-ink-3)] disabled:opacity-50" style={{ borderColor: "var(--app-border)" }}>
         {saved ? <Check className="h-4 w-4" aria-hidden /> : <Bookmark className="h-4 w-4" aria-hidden />}
       </button>
     </li>

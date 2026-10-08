@@ -1,3 +1,4 @@
+import { expect, within } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { RADIUS_STORY_NOW } from "../../../.storybook/preview";
 import PulseBoard, { type PulseHero, type PulseTile } from "./PulseBoard";
@@ -215,3 +216,22 @@ export const ReducedMotion: Story = {
     motion: "reduce",
   },
 };
+
+
+function sharedStatusStory(level: "Urgent" | "Advisory" | "Clear" | "Unknown", count: number, ok: boolean): Story {
+  return {
+    globals: { viewport: { value: "radiusMobile", isRotated: false } },
+    render: (args) => <PulseBoard {...args} hero={{ ...args.hero, countyStatus: {
+      level, count, ok, active: count > 0,
+      tone: level === "Urgent" ? "alert" : level === "Advisory" ? "caution" : "quiet",
+      lastUpdated: new Date().toISOString(),
+    } }} />,
+    play: async ({ canvasElement }) => {
+      const label = level === "Clear" ? "Clear in checked feeds" : level;
+      await expect(within(canvasElement).getByText(label, { exact: true })).toBeVisible();
+    },
+  };
+}
+export const SharedAdvisoryWithPartialCoverage = sharedStatusStory("Advisory", 3, false);
+export const SharedClearInCheckedFeeds = sharedStatusStory("Clear", 0, true);
+export const SharedUnknownWithIncompleteChecks = sharedStatusStory("Unknown", 0, false);

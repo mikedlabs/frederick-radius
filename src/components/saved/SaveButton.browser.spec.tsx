@@ -6,12 +6,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   saved: false,
+  eventUnavailable: false,
   togglePlace: vi.fn<() => Promise<boolean>>(),
   toggleLocal: vi.fn<() => boolean>(),
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
 }));
-vi.mock("@/hooks/useSaved", () => ({ useMounted: () => true, useIsSaved: () => mocks.saved, useToggleSave: () => mocks.toggleLocal, useSavedList: () => [] }));
-vi.mock("@/hooks/useFollows", () => ({ useIsFollowed: () => mocks.saved, useToggleFollow: () => mocks.togglePlace }));
+vi.mock("@/hooks/useSaved", () => ({ useMounted: () => true, useIsSaved: () => mocks.saved, useToggleSave: () => mocks.toggleLocal, useSetEventSaved: () => mocks.toggleLocal, useEventSavedState: (id: string | null) => id === null ? false : mocks.eventUnavailable ? null : mocks.saved, useSavedList: () => [] }));
+vi.mock("@/hooks/useFollows", () => ({ useFollowMutationState: () => "idle", useIsFollowed: () => mocks.saved, useToggleFollow: () => mocks.togglePlace }));
 vi.mock("@/lib/haptics", () => ({ haptic: vi.fn() }));
 vi.mock("@/lib/track", () => ({ track: vi.fn() }));
 vi.mock("@/lib/decision/telemetry", () => ({ decisionContextFromPath: () => ({ surface: "saved", position: "list" }), trackDecision: vi.fn() }));
@@ -29,6 +30,7 @@ describe("SaveButton truthful save feedback", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.saved = false;
+    mocks.eventUnavailable = false;
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -41,6 +43,16 @@ describe("SaveButton truthful save feedback", () => {
     act(() => root.render(<SaveButton refType={refType} refId="test-stop" label="Save Test stop" />));
   }
   function button() { return container.querySelector("button")!; }
+
+  it("withholds selected state and action when the event store is unavailable", () => {
+    mocks.eventUnavailable = true;
+    render("event");
+    expect(button().disabled).toBe(true);
+    expect(button().hasAttribute("aria-pressed")).toBe(false);
+    expect(button().getAttribute("aria-label")).toBe("Saved state unavailable for Test stop");
+    expect(button().querySelector(".save-pop, .save-ring")).toBeNull();
+    expect(mocks.toast.success).not.toHaveBeenCalled();
+  });
 
   it("does not claim a save when the follow limit refuses it", async () => {
     mocks.togglePlace.mockResolvedValue(false);
@@ -80,11 +92,28 @@ describe("SaveButton truthful save feedback", () => {
     await act(async () => { button().click(); button().click(); });
     expect(mocks.togglePlace).toHaveBeenCalledTimes(1);
     expect(button().getAttribute("aria-busy")).toBe("true");
+    expect(button().getAttribute("aria-pressed")).toBe("false");
+    expect(button().getAttribute("aria-label")).toBe("Saving Test stop");
+    expect(button().querySelector(".save-pop, .save-ring")).toBeNull();
     expect(mocks.toast.success).not.toHaveBeenCalled();
     await act(async () => { mocks.saved = true; complete(true); });
     expect(button().disabled).toBe(false);
     expect(button().getAttribute("aria-pressed")).toBe("true");
     expect(mocks.toast.success).toHaveBeenCalledTimes(1);
+  });
+
+  it("retains confirmed selection while removal is pending and reports a failed removal", async () => {
+    mocks.saved = true;
+    let fail!: (error: Error) => void;
+    mocks.togglePlace.mockReturnValue(new Promise<boolean>((_resolve, reject) => { fail = reject; }));
+    render();
+    await act(async () => button().click());
+    expect(button().getAttribute("aria-pressed")).toBe("true");
+    expect(button().getAttribute("aria-label")).toBe("Removing Test stop");
+    expect(mocks.toast).not.toHaveBeenCalled();
+    await act(async () => fail(new Error("Unavailable")));
+    expect(button().getAttribute("aria-pressed")).toBe("true");
+    expect(mocks.toast.error).toHaveBeenCalledTimes(1);
   });
 
   it("keeps a saved item selected when removal or Undo fails", async () => {
