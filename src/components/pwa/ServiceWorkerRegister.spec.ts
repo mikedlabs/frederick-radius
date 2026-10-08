@@ -113,6 +113,54 @@ describe("service-worker update prompt lifecycle", () => {
     expect(toastMock).not.toHaveBeenCalled();
   });
 
+  it("does not promote a controller claim during the initial updatefound cycle into an update notice", async () => {
+    await mount();
+    const first = new MockWorker("installing");
+    registration.installing = first;
+    registration.dispatchEvent(new Event("updatefound"));
+    const claimed = new MockWorker();
+    registration.active = claimed;
+    workers.controller = claimed;
+    workers.dispatchEvent(new Event("controllerchange"));
+    registration.installing = null;
+    registration.waiting = first;
+    first.state = "installed";
+    first.dispatchEvent(new Event("statechange"));
+    expect(toastMock).not.toHaveBeenCalled();
+  });
+
+  it.each(["activating", "activated"] as const)("offers a later update after the first install claims a long-lived page while %s", async (state) => {
+    await mount();
+    const first = new MockWorker("installing");
+    install(first);
+    expect(toastMock).not.toHaveBeenCalled();
+
+    registration.waiting = null;
+    registration.active = first;
+    first.state = state;
+    workers.controller = first;
+    workers.dispatchEvent(new Event("controllerchange"));
+    expect(toastMock).not.toHaveBeenCalled();
+
+    first.state = "activated";
+    install(new MockWorker("installing"));
+    expect(toastMock).toHaveBeenCalledOnce();
+  });
+
+  it("keeps registration quiet but remembers an already settled first controller for later updates", async () => {
+    const first = new MockWorker();
+    workers.register.mockImplementation(async () => {
+      workers.controller = first;
+      registration.active = first;
+      return registration;
+    });
+    await mount();
+    expect(toastMock).not.toHaveBeenCalled();
+
+    install(new MockWorker("installing"));
+    expect(toastMock).toHaveBeenCalledOnce();
+  });
+
   it("offers a distinct waiting update over the previously active controller", async () => {
     const older = new MockWorker();
     const newer = new MockWorker("installed");
