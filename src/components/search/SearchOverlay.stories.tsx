@@ -3,10 +3,12 @@ import { expect, userEvent, within } from "storybook/test";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import SearchOverlay from "./SearchOverlay";
+import { usePushRecentSearch } from "@/hooks/useRecentSearches";
 
 /** Query-only parent state matches the overlay's real lazy-mount contract.
  * Full header/session/history behavior is covered by the interactive specs. */
-function FindWorkshop({ initialQuery = "coffee" }: { initialQuery?: string }) {
+function FindWorkshop({ initialQuery = "coffee", sampleRecentQuery }: { initialQuery?: string; sampleRecentQuery?: string }) {
+  const pushRecent = usePushRecentSearch();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(initialQuery);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -21,9 +23,10 @@ function FindWorkshop({ initialQuery = "coffee" }: { initialQuery?: string }) {
         </p>
         <Button onClick={(event) => {
           openerRef.current = event.currentTarget;
+          if (sampleRecentQuery) pushRecent(sampleRecentQuery);
           setOpen(true);
         }}>
-          Open sample Find
+          {sampleRecentQuery ? "Submit sample recent search" : "Open sample Find"}
         </Button>
       </main>
       {open && (
@@ -82,6 +85,36 @@ function sampleSearch(state: "ready" | "loading" | "error") {
   };
 }
 
+/** Scoped storage failures for the workshop, restored after each story. */
+function sampleHistoryFailure(state: "unavailable" | "clear-failed") {
+  const key = "fr:recent-search:v2";
+  const storage = window.localStorage;
+  const previous = storage.getItem(key);
+  storage.removeItem(key);
+  const originalRead = Storage.prototype.getItem;
+  const originalWrite = Storage.prototype.setItem;
+  const fixtureRead: typeof originalRead = function (this: Storage, name) {
+    if (this === storage && name === key && state === "unavailable") {
+      throw new DOMException("Sample history unavailable", "SecurityError");
+    }
+    return originalRead.call(this, name);
+  };
+  const fixtureWrite: typeof originalWrite = function (this: Storage, name, value) {
+    if (this === storage && name === key && state === "clear-failed" && JSON.parse(value).queries?.length === 0) {
+      throw new DOMException("Sample Clear refused", "QuotaExceededError");
+    }
+    originalWrite.call(this, name, value);
+  };
+  Storage.prototype.getItem = fixtureRead;
+  Storage.prototype.setItem = fixtureWrite;
+  return () => {
+    if (Storage.prototype.getItem === fixtureRead) Storage.prototype.getItem = originalRead;
+    if (Storage.prototype.setItem === fixtureWrite) Storage.prototype.setItem = originalWrite;
+    if (previous === null) storage.removeItem(key);
+    else storage.setItem(key, previous);
+  };
+}
+
 const meta = {
   title: "Radius UI/Find continuity",
   component: FindWorkshop,
@@ -129,6 +162,44 @@ export const NoSubmittedSearches: Story = {
     await expect(within(dialog.getByRole("region", { name: "Recent searches on this device" }))
       .getByText("No recent searches on this device.")).toBeVisible();
     await expect(window.localStorage.getItem("fr:recent-search:v2")).toBeNull();
+  },
+};
+
+export const UnavailableRecentSearches: Story = {
+  args: { initialQuery: "" },
+  beforeEach: () => {
+    const restoreFetch = sampleSearch("ready");
+    const restoreHistory = sampleHistoryFailure("unavailable");
+    return () => { restoreHistory(); restoreFetch(); };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Open sample Find" }));
+    const dialog = within(await canvas.findByRole("dialog", { name: "What do you need?" }));
+    const recents = within(dialog.getByRole("region", { name: "Recent searches on this device" }));
+    await expect(recents.getByText("Recent searches are unavailable on this device.")).toBeVisible();
+    await expect(recents.queryByText("No recent searches on this device.")).not.toBeInTheDocument();
+    await expect(recents.queryByRole("button")).not.toBeInTheDocument();
+  },
+};
+
+export const ClearRecentSearchesFailure: Story = {
+  args: { initialQuery: "", sampleRecentQuery: "Sample submitted phrase" },
+  parameters: { docs: { description: { story: "Submitting this labeled sample records its phrase through the real submission hook. Clear is deliberately refused to demonstrate truthful failure feedback." } } },
+  beforeEach: () => {
+    const restoreFetch = sampleSearch("ready");
+    const restoreHistory = sampleHistoryFailure("clear-failed");
+    return () => { restoreHistory(); restoreFetch(); };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Submit sample recent search" }));
+    const dialog = within(await canvas.findByRole("dialog", { name: "What do you need?" }));
+    const recents = within(dialog.getByRole("region", { name: "Recent searches on this device" }));
+    await userEvent.click(recents.getByRole("button", { name: "Clear recent searches" }));
+    await expect(recents.getByText("Could not clear recent searches. Please try again.")).toBeVisible();
+    await expect(recents.getByRole("button", { name: "Sample submitted phrase" })).toBeVisible();
+    await expect(recents.queryByText("No recent searches on this device.")).not.toBeInTheDocument();
   },
 };
 

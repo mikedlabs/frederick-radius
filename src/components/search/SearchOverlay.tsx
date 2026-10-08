@@ -48,7 +48,7 @@ const QUICK_ICON: Record<IntentIcon, typeof Clock> = {
 // the overlay doesn't need clientPlaceBySlug / EVENT_BY_SLUG either.
 import TrustChip from "@/components/ui/TrustChip";
 import { TRUST_COLOR, type TrustSignal } from "@/lib/trust";
-import { useRecentSearches, usePushRecentSearch, useClearRecentSearches } from "@/hooks/useRecentSearches";
+import { useRecentSearches, usePushRecentSearch, useClearRecentSearches, useRecentSearchStatus, type RecentSearchStatus } from "@/hooks/useRecentSearches";
 import { frederickHour } from "@/lib/search-suggestions";
 
 const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
@@ -359,6 +359,7 @@ export default function SearchOverlay({
   const returnScrollYRef = useRef<number | null>(returnScrollY ?? null);
   const leavingFindRef = useRef(false);
   const recent = useRecentSearches();
+  const recentStatus = useRecentSearchStatus();
   const pushRecent = usePushRecentSearch();
   const clearRecent = useClearRecentSearches();
   const closeFindLayer = useCallback(() => {
@@ -893,6 +894,7 @@ export default function SearchOverlay({
           {!query.trim() ? (
             <EmptyHint
               recent={recent}
+              recentStatus={recentStatus}
               onPick={updateQuery}
               onClearRecent={clearRecent}
               onNavigate={navigateFromSearch}
@@ -1226,11 +1228,13 @@ function KbdHint({ label, desc }: { label: string; desc: string }) {
 
 function EmptyHint({
   recent,
+  recentStatus,
   onPick,
   onClearRecent,
   onNavigate,
 }: {
   recent: string[];
+  recentStatus: RecentSearchStatus;
   onPick: (s: string) => void;
   onClearRecent: () => void;
   onNavigate: (href: string) => void;
@@ -1259,7 +1263,7 @@ function EmptyHint({
             <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
             Recent searches
           </p>
-          {recent.length > 0 && (
+          {recentStatus.available && recent.length > 0 && (
             <button
               type="button"
               onClick={onClearRecent}
@@ -1271,7 +1275,11 @@ function EmptyHint({
             </button>
           )}
         </div>
-        {recent.length > 0 ? (
+        {!recentStatus.available ? (
+          <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            Recent searches are unavailable on this device.
+          </p>
+        ) : recent.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-2">
             {recent.slice(0, 3).map((s) => (
               <button
@@ -1289,6 +1297,11 @@ function EmptyHint({
         ) : (
           <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             No recent searches on this device.
+          </p>
+        )}
+        {recentStatus.clearFailed && (
+          <p role="status" className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            Could not clear recent searches. Please try again.
           </p>
         )}
       </section>

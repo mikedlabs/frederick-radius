@@ -25,6 +25,17 @@ const listeners = new Set<Listener>();
 
 let cachedRaw: string | null | undefined;
 let cachedSnapshot = EMPTY;
+export type RecentSearchStatus = { readonly available: boolean; readonly clearFailed: boolean };
+const SERVER_STATUS: RecentSearchStatus = { available: false, clearFailed: false };
+let cachedStatus: RecentSearchStatus = { available: true, clearFailed: false };
+function setStatus(available: boolean, clearFailed: boolean) {
+  if (cachedStatus.available !== available || cachedStatus.clearFailed !== clearFailed) {
+    cachedStatus = { available, clearFailed };
+  }
+}
+function notify() {
+  listeners.forEach((listener) => listener());
+}
 
 function normalize(items: string[]): string[] {
   const seen = new Set<string>();
@@ -47,25 +58,25 @@ function read(): string[] {
     // Discard the memory cache as well, so a previous read is not a claim.
     cachedRaw = undefined;
     cachedSnapshot = EMPTY;
+    setStatus(false, cachedStatus.clearFailed);
     return EMPTY;
   }
   if (raw === cachedRaw) return cachedSnapshot;
   cachedRaw = raw;
-  if (!raw) {
+  if (raw === null) {
     cachedSnapshot = EMPTY;
+    setStatus(true, false);
     return cachedSnapshot;
   }
   try {
     const parsed = JSON.parse(raw);
-    cachedSnapshot =
-      parsed &&
-      parsed.source === SOURCE &&
-      Array.isArray(parsed.queries) &&
-      parsed.queries.every((query: unknown) => typeof query === "string")
-        ? normalize(parsed.queries)
-        : EMPTY;
+    const valid = parsed && parsed.source === SOURCE && Array.isArray(parsed.queries)
+      && parsed.queries.every((query: unknown) => typeof query === "string");
+    cachedSnapshot = valid ? normalize(parsed.queries) : EMPTY;
+    setStatus(Boolean(valid), false);
   } catch {
     cachedSnapshot = EMPTY;
+    setStatus(false, false);
   }
   return cachedSnapshot;
 }
@@ -74,19 +85,22 @@ function readServer(): string[] {
   return EMPTY;
 }
 
-function write(items: string[]) {
-  if (typeof window === "undefined") return;
+function write(items: string[]): boolean {
+  if (typeof window === "undefined") return false;
   const next = JSON.stringify({ source: SOURCE, queries: items });
   try {
     window.localStorage.setItem(KEY, next);
+    if (window.localStorage.getItem(KEY) !== next) throw new Error("History write was not confirmed");
   } catch {
-    // History is optional. A blocked or full browser store must not prevent
-    // the submitted search from opening its real destination.
-    return;
+    // History is optional. Keep the actual readable list when a durable write
+    // fails, and hide history if its storage cannot establish the current list.
+    read();
+    return false;
   }
   cachedRaw = next;
   cachedSnapshot = items;
-  listeners.forEach((l) => l());
+  setStatus(true, false);
+  return true;
 }
 
 const subscribe: (cb: Listener) => () => void = (cb) => {
@@ -105,6 +119,14 @@ export function useRecentSearches(): string[] {
   return useSyncExternalStore(subscribe, read, readServer);
 }
 
+/** Availability and Clear feedback are separate from the compatible array API. */
+export function useRecentSearchStatus(): RecentSearchStatus {
+  return useSyncExternalStore(subscribe, () => {
+    read();
+    return cachedStatus;
+  }, () => SERVER_STATUS);
+}
+
 /**
  * Push a new query onto the recent-searches list. De-duplicates
  * case-insensitively so "Coffee" doesn't sit next to "coffee", and
@@ -115,12 +137,19 @@ export function usePushRecentSearch(): (q: string) => void {
     const trimmed = q.trim();
     if (!trimmed) return;
     const current = read();
+    if (!cachedStatus.available) { notify(); return; }
     const norm = trimmed.toLowerCase();
     const filtered = current.filter((s) => s.toLowerCase() !== norm);
     write([trimmed, ...filtered].slice(0, MAX));
+    notify();
   }, []);
 }
 
-export function useClearRecentSearches(): () => void {
-  return useCallback(() => write([]), []);
+export function useClearRecentSearches(): () => boolean {
+  return useCallback(() => {
+    const cleared = write([]);
+    if (!cleared) setStatus(cachedStatus.available, true);
+    notify();
+    return cleared;
+  }, []);
 }
