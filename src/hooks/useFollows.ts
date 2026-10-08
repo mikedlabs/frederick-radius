@@ -690,6 +690,14 @@ function persistFollowToggle(
     onFailure?.(activeQueue.uncertain ? followFailureCopy(activeQueue) : UNCONFIRMED);
     return wasFollowed;
   };
+  const publishConfirmedChange = () => {
+    track("save_place", { on: followed, source, synced: true });
+    if (shouldCancelPlaceReturnBridgeAfterDelete(wasFollowed, remoteStore, slug)) {
+      cancelPendingReturnBridgeValue("place");
+    } else if (followed && remoteStore?.has(slug)) {
+      signalReturnBridgeValue("place");
+    }
+  };
   const operation = activeQueue.tail.then(async () => {
     try {
       if (!isCurrentAccount()) return fail();
@@ -697,7 +705,11 @@ function persistFollowToggle(
         void reconcileFollowQueue(activeQueue);
         return fail();
       }
-      if (activeQueue.confirmed === followed) return followed;
+      if (activeQueue.confirmed === followed) {
+        // An import may confirm this queued intent without another request.
+        if (wasFollowed !== followed) publishConfirmedChange();
+        return followed;
+      }
       let sent = false;
       const transport = {
         promise: Promise.resolve().then(() => {
@@ -731,12 +743,7 @@ function persistFollowToggle(
       activeQueue.transport = null;
       activeQueue.confirmed = followed;
       writeFollowMembership(slug, followed);
-      track("save_place", { on: followed, source, synced: true });
-      if (shouldCancelPlaceReturnBridgeAfterDelete(wasFollowed, remoteStore, slug)) {
-        cancelPendingReturnBridgeValue("place");
-      } else if (followed && remoteStore?.has(slug)) {
-        signalReturnBridgeValue("place");
-      }
+      publishConfirmedChange();
       return followed;
     } finally {
       activeQueue.pending--;

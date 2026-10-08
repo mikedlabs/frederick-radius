@@ -180,6 +180,47 @@ describe("submitted searches stored only in the current browser", () => {
     expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({ source: "submitted-on-device", queries: [] });
   });
 
+  it.each(["throws", "silently refuses"])("keeps a failed Clear visible after a successful submission when Clear %s", async (failure) => {
+    await mount();
+    await act(async () => pushSearch("earlier private query"));
+    const writeSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      if (failure === "throws") throw new DOMException("Storage full", "QuotaExceededError");
+    });
+    await act(async () => { expect(clearSearches()).toBe(false); });
+    writeSpy.mockRestore();
+
+    await act(async () => pushSearch("new actual submission"));
+    expect(recent()).toEqual(["new actual submission", "earlier private query"]);
+    expect(JSON.parse(window.localStorage.getItem(KEY)!).queries).toEqual(recent());
+    expect(container.querySelector("output")?.dataset.clearFailed).toBe("true");
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await mount();
+    expect(container.querySelector("output")?.dataset.clearFailed).toBe("true");
+
+    await act(async () => { expect(clearSearches()).toBe(true); });
+    expect(recent()).toEqual([]);
+    expect(container.querySelector("output")?.dataset.clearFailed).toBe("false");
+  });
+
+  it("keeps the failed Clear warning when a nonempty storage update retains history", async () => {
+    await mount();
+    await act(async () => pushSearch("earlier private query"));
+    const writeSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {});
+    await act(async () => { expect(clearSearches()).toBe(false); });
+    writeSpy.mockRestore();
+    await act(async () => {
+      window.localStorage.setItem(KEY, JSON.stringify({
+        source: "submitted-on-device", queries: ["another submission", "earlier private query"],
+      }));
+      window.dispatchEvent(new StorageEvent("storage", { key: KEY }));
+    });
+    expect(recent()).toEqual(["another submission", "earlier private query"]);
+    expect(container.querySelector("output")?.dataset.clearFailed).toBe("true");
+    await act(async () => { expect(clearSearches()).toBe(true); });
+    expect(container.querySelector("output")?.dataset.clearFailed).toBe("false");
+  });
+
   it("does not publish optional history when a query write silently refuses persistence", async () => {
     await mount();
     await act(async () => pushSearch("earlier actual query"));
