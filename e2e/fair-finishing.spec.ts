@@ -2,6 +2,14 @@ import { expect, test } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 
 const fair = "/moments/great-frederick-fair-2026";
+// The 2026 Fair ended on September 26 and its Home is now a record. These
+// journeys check the Fair-week guide, so the browser clock stays in the
+// planning window they were written for.
+const FAIR_WEEK_CLOCK = new Date("2026-09-10T16:00:00Z");
+
+test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(FAIR_WEEK_CLOCK);
+});
 
 test.describe("mobile friction checks", () => {
   test.use({ hasTouch: true, isMobile: true });

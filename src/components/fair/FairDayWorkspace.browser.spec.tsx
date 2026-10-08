@@ -505,8 +505,15 @@ describe("FairDayWorkspace app journey", () => {
         (item) => item.title === "Daughtry",
       );
       expect(Boolean(daughtry?.sourceReview)).toBe(reviewed);
+      // The second boundary is after the run, when the dock drops Program.
+      // Open the 2026 program the way an old shared link does.
+      window.history.replaceState(
+        {},
+        "",
+        "/moments/great-frederick-fair-2026#program",
+      );
       await renderFair(data);
-      await openFullProgram();
+      await act(async () => vi.advanceTimersByTimeAsync(20));
       const day = container.querySelector<HTMLSelectElement>(
         'select[aria-label="Fair day to explore"]',
       );

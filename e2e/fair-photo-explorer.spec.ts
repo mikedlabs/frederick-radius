@@ -2,12 +2,20 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const FAIR_PATH = "/moments/great-frederick-fair-2026";
 const EXPLORER_NAME = "Explore the Fair at night";
+// The 2026 Fair ended on September 26 and its Home is now a record. These
+// journeys check the Fair-week guide, so the browser clock stays in the
+// planning window they were written for.
+const FAIR_WEEK_CLOCK = new Date("2026-09-10T16:00:00Z");
 
 test.use({
   viewport: { width: 390, height: 844 },
   locale: "en-US",
   timezoneId: "America/New_York",
   serviceWorkers: "block",
+});
+
+test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(FAIR_WEEK_CLOCK);
 });
 
 async function openFair(page: Page) {

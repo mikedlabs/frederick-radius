@@ -3,9 +3,16 @@ import type { AxeResults } from "axe-core";
 import { expect, test } from "@playwright/test";
 
 const FAIR_PATH = "/moments/great-frederick-fair-2026#program";
+// The 2026 Fair ended on September 26 and its dock now drops Program. These
+// journeys check the Fair-week guide, so the browser clock stays in the
+// planning window they were written for.
+const FAIR_WEEK_CLOCK = new Date("2026-09-10T16:00:00Z");
 
 test.describe("Fair direct program discovery", () => {
   test.use({ locale: "en-US", timezoneId: "America/New_York", serviceWorkers: "block" });
+  test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(FAIR_WEEK_CLOCK);
+  });
 
   for (const width of [320, 375, 390, 430, 1280]) {
     test(`shows events immediately with accessible categories at ${width}px`, async ({ page }) => {
