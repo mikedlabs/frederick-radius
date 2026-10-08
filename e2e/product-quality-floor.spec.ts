@@ -64,7 +64,9 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(mastheadBox).not.toBeNull();
     const leadingNoticeSpace = Math.max(0, mastheadBox!.y - 80);
     expect(findBox!.y + findBox!.height - leadingNoticeSpace).toBeLessThan(height - 80);
-    const weather = page.getByRole("link", { name: "Today in Frederick Open the full forecast.", exact: true });
+    // The weather row's link name carries live conditions, so find it by its
+    // section hook, as e2e/today-visual-layout.spec.ts does.
+    const weather = page.locator("[data-today-weather]").getByRole("link");
     const weatherBox = await weather.boundingBox();
     expect(weatherBox!.y).toBeGreaterThan(findBox!.y + findBox!.height);
     const campaign = page.locator("[data-today-fair-feature]");
