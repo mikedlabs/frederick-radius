@@ -18,6 +18,9 @@ const meta = {
     const previousFetch = window.fetch;
     const fixtureFetch: typeof fetch = (input, init) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (new URL(url, window.location.origin).pathname === "/api/places/by-slugs") {
+        return Promise.resolve(Response.json({ places: [{ slug: "story-place", google_photo_url: null }] }));
+      }
       if (url.startsWith("/api/place-photo")) return Promise.resolve(new Response(null, { status: 503 }));
       return previousFetch(input, init);
     };

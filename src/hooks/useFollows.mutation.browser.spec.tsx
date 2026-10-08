@@ -12,11 +12,11 @@ import {
   type FollowedSlugsBootstrap,
 } from "./useFollows";
 
-const mocks = vi.hoisted(() => ({ failure: vi.fn(), synced: vi.fn(() => true), track: vi.fn() }));
+const mocks = vi.hoisted(() => ({ failure: vi.fn(), synced: vi.fn(() => true), track: vi.fn(), signalBridge: vi.fn(), cancelBridge: vi.fn() }));
 vi.mock("@/lib/track", () => ({ track: mocks.track }));
 vi.mock("@/lib/persistence", () => ({ ensurePersistentStorage: vi.fn() }));
 vi.mock("@/lib/follows-sync", () => ({ clearFollowsSync: vi.fn(), hasCompletedFollowsSync: mocks.synced, markFollowsSyncComplete: vi.fn() }));
-vi.mock("@/lib/return-bridge", () => ({ signalReturnBridgeValue: vi.fn(), cancelPendingReturnBridgeValue: vi.fn() }));
+vi.mock("@/lib/return-bridge", () => ({ signalReturnBridgeValue: mocks.signalBridge, cancelPendingReturnBridgeValue: mocks.cancelBridge }));
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 function deferred<T>() {
@@ -246,12 +246,59 @@ describe("confirmed follow membership and shared mutation state", () => {
     expect(saved()).toBe("");
   });
 
+  it("completes a queued Save's return bridge once when the existing import confirms that place", async () => {
+    mocks.synced.mockReturnValue(false);
+    imported = deferred<Response>();
+    localStorage.setItem("fr:saved:v1", JSON.stringify([{ type: "place", id: "test-stop", saved_at: "2026-10-07T00:00:00.000Z" }]));
+    await render();
+    const { result } = await begin(0, true);
+    expect(saved()).toBe("");
+    expect(requests).toHaveLength(0);
+    expect(mocks.track).not.toHaveBeenCalled();
+    expect(mocks.signalBridge).not.toHaveBeenCalled();
+    await act(async () => {
+      serverSlugs.add("test-stop");
+      imported!.resolve(response({ acceptedSlugs: ["test-stop"] }));
+    });
+    expect(await result).toBe(true);
+    expect(saved()).toBe("test-stop");
+    expect(requests).toHaveLength(0);
+    expect(mocks.track).toHaveBeenCalledExactlyOnceWith("save_place", { on: true, source: "test", synced: true });
+    expect(mocks.signalBridge).toHaveBeenCalledExactlyOnceWith("place");
+    expect(mocks.cancelBridge).not.toHaveBeenCalled();
+    await act(async () => { expect(await mutate[1](true)).toBe(true); });
+    expect(mocks.track).toHaveBeenCalledTimes(1);
+    expect(mocks.signalBridge).toHaveBeenCalledTimes(1);
+    expect(states()).toEqual(["idle", "idle", "idle"]);
+  });
+
+  it("does not publish an old account's queued Save effects after its import settles", async () => {
+    mocks.synced.mockReturnValue(false);
+    imported = deferred<Response>();
+    localStorage.setItem("fr:saved:v1", JSON.stringify([{ type: "place", id: "test-stop", saved_at: "2026-10-07T00:00:00.000Z" }]));
+    await render();
+    const { result } = await begin(0, true);
+    mocks.synced.mockReturnValue(true);
+    bootstrap = { user: { id: `replacement-${accountSequence}`, email: null }, slugs: ["only-new-account"] };
+    await render(["only-new-account"]);
+    await act(async () => imported!.resolve(response({ acceptedSlugs: ["test-stop"] })));
+    expect(await result).toBe(false);
+    expect(saved()).toBe("only-new-account");
+    expect(requests).toHaveLength(0);
+    expect(mocks.track).not.toHaveBeenCalled();
+    expect(mocks.signalBridge).not.toHaveBeenCalled();
+    expect(mocks.cancelBridge).not.toHaveBeenCalled();
+    expect(states()).toEqual(["idle", "idle", "idle"]);
+  });
+
   it("does not issue a write or success effects for an already-confirmed explicit intent", async () => {
     await render(["test-stop"]);
     await act(async () => { expect(await mutate[0](true)).toBe(true); });
     expect(requests).toHaveLength(0);
     expect(saved()).toBe("test-stop");
     expect(mocks.track).not.toHaveBeenCalled();
+    expect(mocks.signalBridge).not.toHaveBeenCalled();
+    expect(mocks.cancelBridge).not.toHaveBeenCalled();
     expect(mocks.failure).not.toHaveBeenCalled();
     expect(states()).toEqual(["idle", "idle", "idle"]);
   });
