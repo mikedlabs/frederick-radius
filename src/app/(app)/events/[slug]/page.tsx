@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
-import { Accessibility, AlertTriangle, ArrowLeft, ArrowRight, Ban, Calendar, ChevronDown, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
+import { Accessibility, AlertTriangle, ArrowLeft, ArrowRight, Ban, Calendar, CarFront, ChevronDown, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { EVENTS } from "@/data/events";
 import { formatEventWhen, seriesOccurrenceLabel, eventDateBlock } from "@/lib/loaders/events";
@@ -58,6 +58,8 @@ import {
   PlacePhotoWhen,
 } from "@/components/place/PlacePhotoState";
 import GettingThere from "@/components/event/GettingThere";
+import { momentForEventSlug } from "@/data/civic-moments";
+import { momentSectionId } from "@/components/moment/momentGuide";
 import VenueMiniMap from "@/components/event/VenueMiniMap";
 import { eventSaveCount } from "@/lib/loaders/eventSaves";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -280,8 +282,13 @@ export default async function EventPage({
     Boolean(venuePlace),
   );
   const pinGeom = venuePlace?.geom ?? event.geom;
+  // A moment whose venue has no car access (Colorfest closes Frederick Road)
+  // must not route drivers to the venue. Directions turns into a walking link
+  // and is never promoted; the guide's parking and shuttle section is offered.
+  const arrivalMoment = momentForEventSlug(event.slug);
+  const noCarAccess = Boolean(arrivalMoment?.venue?.arrivalSection);
   const directionsUrl = hasPreciseLocation
-    ? `https://www.google.com/maps/dir/?api=1&destination=${pinGeom.lat},${pinGeom.lng}`
+    ? `https://www.google.com/maps/dir/?api=1&destination=${pinGeom.lat},${pinGeom.lng}${noCarAccess ? "&travelmode=walking" : ""}`
     : null;
   const hasTrustworthyEnd = eventHasTrustworthyEnd(event);
   const timeCaution = eventTimeCaution(event);
@@ -769,7 +776,7 @@ export default async function EventPage({
           event.source_url ? { href: event.source_url, external: true, Icon: ExternalLink, label: "Official page" } :
           null;
         const hasThird = thirdAction !== null;
-        const dirPrimary = physicalAttendance && hasPreciseLocation && !hasThird;
+        const dirPrimary = physicalAttendance && hasPreciseLocation && !hasThird && !noCarAccess;
         const gridCols =
           1 +
           (physicalAttendance && hasPreciseLocation ? 1 : 0) +
@@ -879,6 +886,28 @@ export default async function EventPage({
           nearbyFood={nearbyFood}
           parkingDecision={null}
         />
+      )}
+
+      {noCarAccess && arrivalMoment?.venue?.note && eventStatus === "scheduled" && !hasEnded && (
+        <section
+          aria-label="Parking and shuttle"
+          data-event-arrival={arrivalMoment.slug}
+          className="flex items-start gap-3 border-t py-4"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <CarFront className="mt-0.5 h-5 w-5 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
+          <div className="min-w-0">
+            <p className="text-body" style={{ color: "var(--app-ink)" }}>{arrivalMoment.venue.note}</p>
+            <Link
+              href={`/moments/${arrivalMoment.slug}#${momentSectionId(arrivalMoment.venue.arrivalSection ?? "")}`}
+              className="mt-1 inline-flex min-h-11 items-center gap-1 font-semibold underline underline-offset-2"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              Parking and shuttle
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </div>
+        </section>
       )}
 
       {/* Practical attendance context uses the same precise location as Directions. */}

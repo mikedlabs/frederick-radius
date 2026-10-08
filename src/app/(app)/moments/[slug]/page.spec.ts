@@ -71,11 +71,16 @@ describe("generic moment template", () => {
     expect(html).toContain('data-moment-fact="Admission"');
     expect(html).toContain(">Free<");
     expect(html).toContain('data-moment-venue="thurmont-community-park-thurmont"');
-    // Directions is the one filled action.
-    expect(html.match(/data-moment-directions/g)).toHaveLength(1);
-    expect(html).toContain(
-      'href="https://www.google.com/maps/dir/?api=1&amp;destination=19%20Frederick%20Rd%2C%20Thurmont%2C%20MD%2021788"',
-    );
+    // The park has no car access during the show (the organizer closes
+    // Frederick Road), so the one filled action is the parking and shuttle
+    // section, and Directions is walking only. No link may drive anyone onto
+    // the closed road.
+    expect(html.match(/data-moment-arrival/g)).toHaveLength(1);
+    expect(html).toContain('href="#getting-there"');
+    expect(html).toContain('id="getting-there"');
+    expect(html).toContain('data-moment-directions="walking"');
+    expect(html).toMatch(/destination=39\.6213,-77\.4127594&amp;travelmode=walking/);
+    expect(html).not.toContain("destination=19%20Frederick%20Rd");
     expect(html).toContain("Ride the free shuttle");
     // The credit waits for the photo to load.
     expect(html).not.toContain("CraigShipp.com Photos");

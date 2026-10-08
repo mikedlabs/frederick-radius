@@ -9,7 +9,7 @@ import MomentDays from "@/components/moment/MomentDays";
 import MomentFacts from "@/components/moment/MomentFacts";
 import MomentHero from "@/components/moment/MomentHero";
 import MomentVenue from "@/components/moment/MomentVenue";
-import { momentDateLine, momentHeroImage, sourceHost } from "@/components/moment/momentGuide";
+import { momentDateLine, momentDirectionsUrl, momentHeroImage, momentSectionId, sourceHost } from "@/components/moment/momentGuide";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { jsonLdScript } from "@/lib/seo/jsonld";
 
@@ -168,9 +168,12 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
   // own coordinates are a fallback for a slug the catalog no longer carries.
   const venuePlace = m.venue ? clientPlaceBySlug(m.venue.placeSlug) : undefined;
   const venueGeom = m.venue ? (venuePlace?.geom ?? { lng: m.venue.lng, lat: m.venue.lat }) : null;
+  // A venue with no car access gets walking directions to the catalog point;
+  // drivers are sent to the guide's parking and shuttle section instead.
   const directionsUrl = m.venue && venueGeom
-    ? (m.spotlightDirectionsUrl ??
-      `https://www.google.com/maps/dir/?api=1&destination=${venueGeom.lat},${venueGeom.lng}`)
+    ? m.venue.arrivalSection
+      ? momentDirectionsUrl(venueGeom, { walking: true })
+      : (m.spotlightDirectionsUrl ?? momentDirectionsUrl(venueGeom))
     : null;
 
   return (
@@ -231,7 +234,7 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
         {m.sections.map((section) => {
           const source = sharedSource(section.items);
           return (
-            <section key={section.heading} aria-label={section.heading}>
+            <section key={section.heading} id={momentSectionId(section.heading)} aria-label={section.heading} className="scroll-mt-20">
               <h2 className="text-title" style={{ color: "var(--app-ink)" }}>
                 {section.heading}
               </h2>
