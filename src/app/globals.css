@@ -5420,9 +5420,128 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   transform: scale(0.94);
 }
 
+/* ── Feed status indicators (map & data surfaces) ──────────────────────────
+   Consolidated status for feeds, layers, and live data. Groups multiple
+   statuses to avoid overlapping chips on mobile. */
+.feed-status {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 11px;
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg-elevated-solid);
+  border: 1px solid var(--app-border);
+  font-size: 12.5px;
+  line-height: 1.35;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08), var(--app-edge);
+  color: var(--app-ink-2);
+}
+
+.feed-status[data-status="error"] {
+  border-color: var(--app-warning);
+  color: var(--app-warning);
+}
+
+.feed-status[data-status="stale"] {
+  border-color: var(--app-amber);
+  color: var(--app-amber-text);
+}
+
+.feed-status-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.feed-status-icon {
+  flex-shrink: 0;
+  color: currentColor;
+}
+
+.feed-status-icon-loading {
+  animation: spin 1.2s linear infinite;
+}
+
+.feed-status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.feed-status-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.feed-status-message {
+  font-weight: 600;
+}
+
+.feed-status-detail {
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.feed-status-retry {
+  flex-shrink: 0;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--app-warning);
+  color: var(--app-on-brand);
+  font-weight: 700;
+  font-size: 11px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.08s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+.feed-status-retry:active {
+  transform: scale(0.96);
+}
+
+/* Group container for multiple feed statuses */
+.feed-status-group {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  bottom: 14px;
+  right: max(12px, env(safe-area-inset-right, 0px));
+  z-index: var(--z-map-control);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: min(400px, calc(100% - 24px));
+  pointer-events: none;
+}
+
+.feed-status-group > * {
+  pointer-events: auto;
+}
+
+@media (max-width: 1023.98px) {
+  .feed-status-group {
+    bottom: 72px;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Honest GTFS-Realtime boot state. The pill appears only until vehicles load
    (or when the public feed is empty/unavailable), then yields the canvas to the
-   actual moving buses. */
+   actual moving buses. LEGACY: migrate to FeedStatus component. */
 .map-live-status {
   position: absolute;
   left: max(12px, env(safe-area-inset-left, 0px));
@@ -5517,6 +5636,26 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @media (max-width: 1023.98px) {
   .map-live-status {
     bottom: 72px;
+  }
+  
+  /* Feed status group adapts to mobile chrome (BottomNav) */
+  .feed-status-group {
+    bottom: 72px;
+  }
+  
+  /* Tighter spacing on narrow mobile (320-375px) */
+  @media (max-width: 375px) {
+    .feed-status {
+      padding: 7px 9px;
+      font-size: 11.5px;
+      min-height: 36px;
+    }
+    
+    .feed-status-retry {
+      min-height: 28px;
+      padding: 0 10px;
+      font-size: 10px;
+    }
   }
 }
 .dock-host[data-dock-pane="open"] :is(
