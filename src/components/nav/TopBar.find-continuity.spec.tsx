@@ -228,7 +228,7 @@ describe("Find continuity through the real lazy header and overlay", () => {
     await open();
     expect(button("coffee")).toBeDefined();
     const originalSet = Storage.prototype.setItem;
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, name: string, value: string) {
+    const writeSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, name: string, value: string) {
       if (name === key) {
         if (failure === "throws") throw new DOMException("Storage full", "QuotaExceededError");
         return;
@@ -245,6 +245,21 @@ describe("Find continuity through the real lazy header and overlay", () => {
     await open();
     expect(button("coffee")).toBeDefined();
     expect(window.localStorage.getItem(key)).toBe(raw);
+    writeSpy.mockRestore();
+    await type("new actual phrase");
+    await settle();
+    await act(async () => {
+      input().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(navigation.leaveTo).toHaveBeenCalledWith("/places/fixture");
+    await open();
+    await act(async () => { button("Clear search").click(); });
+    expect(button("coffee")).toBeDefined();
+    expect(button("new actual phrase")).toBeDefined();
+    expect(container.textContent).toContain("Could not clear recent searches. Please try again.");
+    await act(async () => { button("Clear recent searches").click(); });
+    expect(container.textContent).not.toContain("Could not clear recent searches. Please try again.");
+    expect(container.textContent).toContain("No recent searches on this device.");
   });
 
   it("shows unavailable recent history instead of claiming absence when storage cannot be read", async () => {

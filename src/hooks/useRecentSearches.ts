@@ -73,10 +73,11 @@ function read(): string[] {
     const valid = parsed && parsed.source === SOURCE && Array.isArray(parsed.queries)
       && parsed.queries.every((query: unknown) => typeof query === "string");
     cachedSnapshot = valid ? normalize(parsed.queries) : EMPTY;
-    setStatus(Boolean(valid), false);
+    // A new submission or another tab adding history does not confirm Clear.
+    setStatus(Boolean(valid), valid && cachedSnapshot.length === 0 ? false : cachedStatus.clearFailed);
   } catch {
     cachedSnapshot = EMPTY;
-    setStatus(false, false);
+    setStatus(false, cachedStatus.clearFailed);
   }
   return cachedSnapshot;
 }
@@ -99,7 +100,7 @@ function write(items: string[]): boolean {
   }
   cachedRaw = next;
   cachedSnapshot = items;
-  setStatus(true, false);
+  setStatus(true, items.length === 0 ? false : cachedStatus.clearFailed);
   return true;
 }
 
