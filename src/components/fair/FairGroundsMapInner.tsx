@@ -187,7 +187,7 @@ const FILTERS: Array<{
   {
     id: "program",
     label: "On this day",
-    compactLabel: "Today",
+    compactLabel: "This day",
     tone: "var(--app-accent)",
     icon: CalendarClock,
   },

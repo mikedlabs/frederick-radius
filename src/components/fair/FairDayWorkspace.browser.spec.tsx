@@ -237,13 +237,13 @@ describe("FairDayWorkspace app journey", () => {
 
     await openMode("Program");
     const fairBack = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Back to Fair Today"]',
+      'button[aria-label="Back to the Fair guide"]',
     );
     expect(fairBack?.textContent?.trim()).toBe("");
 
     await openMode("Map");
     const mapBack = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Back to Fair Today"]',
+      'button[aria-label="Back to the Fair guide"]',
     );
     const mapHelp = container.querySelector<HTMLButtonElement>(
       'button[aria-label="Help & access"]',

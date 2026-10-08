@@ -9,6 +9,10 @@ const LAYOUT_PATH = "/fair/layouts/great-frederick-fair-2026.json";
 const OFFICIAL_GUIDE = "https://mobile.eventhub-floorplan.net/?Show_ID=18209";
 const SEARCH_NAME = "Find a vendor or booth";
 const VENDOR_NAME = "White Rabbit x Rad Pies";
+// The 2026 Fair ended on September 26, and the guide changes shape after the
+// run. Like the other Fair specs, these journeys open the Fair-week guide, so
+// the browser clock stays in the planning window they were written for.
+const FAIR_WEEK_CLOCK = new Date("2026-09-10T16:00:00Z");
 
 function publishedLayout(): FairLayoutData {
   return JSON.parse(readFileSync(`public${LAYOUT_PATH}`, "utf8")) as FairLayoutData;
@@ -99,6 +103,7 @@ test.describe("Fair numbered booth layout", () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(FAIR_WEEK_CLOCK);
     // Optional provider photos are outside this local layout release check.
     await page.route("**/api/place-photo?*", (route) => route.fulfill({
       status: 200,
