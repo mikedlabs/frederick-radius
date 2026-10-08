@@ -35,8 +35,51 @@ describe("place detail save failure recovery", () => {
     act(() => root.unmount());
     container.remove();
   });
-  function render() { act(() => root.render(<MyRadiusButton slug="test-stop" name="Test stop" />)); }
+  function render(appearance?: "pill" | "text") {
+    act(() => root.render(<MyRadiusButton slug="test-stop" name="Test stop" appearance={appearance} />));
+  }
   function button() { return container.querySelector("button")!; }
+
+  it("sets the text appearance as a 44px Brick-press text button with no pill", () => {
+    render("text");
+    const save = button();
+    expect(save.getAttribute("aria-label")).toBe("Save Test stop");
+    expect(save.getAttribute("aria-pressed")).toBe("false");
+    expect(save.dataset.appearance).toBe("text");
+    expect(save.dataset.placeSave).toBe("test-stop");
+    expect(save.textContent).toBe("Save");
+    expect(save.style.color).toBe("var(--app-brand-press)");
+    expect(save.style.background).toBe("");
+    expect(save.style.borderColor).toBe("");
+    expect(save.className).toContain("min-h-11");
+    expect(save.className).toContain("text-body");
+    expect(save.className).not.toContain("rounded-full");
+    expect(save.className).not.toContain("border");
+    expect(save.className).not.toContain("tactile");
+  });
+
+  it("keeps the text appearance's Saved state a text button", () => {
+    mocks.saved = true;
+    render("text");
+    const saved = button();
+    expect(saved.getAttribute("aria-pressed")).toBe("true");
+    expect(saved.getAttribute("aria-label")).toBe("Saved. Tap to remove Test stop");
+    expect(saved.textContent).toBe("Saved");
+    expect(saved.style.color).toBe("var(--app-brand-press)");
+    expect(saved.style.background).toBe("");
+    expect(saved.className).toContain("min-h-11");
+    expect(saved.className).not.toContain("rounded-full");
+  });
+
+  it("saves from the text appearance through the same toggle", async () => {
+    mocks.toggle.mockImplementationOnce(async () => { mocks.saved = true; return true; });
+    render("text");
+    await act(async () => button().click());
+    expect(mocks.toggle).toHaveBeenCalledTimes(1);
+    expect(button().getAttribute("aria-pressed")).toBe("true");
+    expect(button().dataset.appearance).toBe("text");
+    expect(mocks.toast.success).toHaveBeenCalledTimes(1);
+  });
 
   it("keeps Save an outlined secondary so Directions stays the one Brick primary", () => {
     render();

@@ -1,4 +1,5 @@
 import { tagName } from "@/data/tags";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 /**
  * PlaceAudienceTags — surfaces the AUDIENCE facet (Toddler/Kid/Teen Friendly,
@@ -40,9 +41,7 @@ export default function PlaceAudienceTags({ tags }: { tags?: string[] }) {
       className="border-y py-4"
       style={{ borderColor: "var(--app-border)" }}
     >
-      <h2 className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-        Good to know
-      </h2>
+      <SectionHeading size="sm" title="Good to know" />
       <ul className="mt-2.5 flex flex-wrap gap-2">
         {shown.map((slug) => (
           <li

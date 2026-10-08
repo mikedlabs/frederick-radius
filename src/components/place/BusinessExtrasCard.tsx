@@ -1,6 +1,7 @@
 import { Clock3, Tag, Sparkles, Award, ExternalLink } from "lucide-react";
 import type { BusinessInfo } from "@/lib/loaders/businessInfo";
 import { freshnessLabel } from "@/lib/loaders/businessInfo";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 /**
  * BusinessExtrasCard — the buried-info moat, made visible.
@@ -39,18 +40,10 @@ export default function BusinessExtrasCard({ info }: { info: BusinessInfo | null
   const fresh = freshnessLabel(source.fetchedAt);
 
   return (
-    <section
-      aria-labelledby="extras-heading"
-      className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
-      style={{ borderColor: "var(--app-border)" }}
-    >
-      <h3
-        id="extras-heading"
-        className="text-[11px] font-bold uppercase tracking-[0.12em]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        Good to know
-      </h3>
+    // The same slot as Field notes, so it reads the same way: a sentence-case
+    // section heading on paper, not a caps label in a box.
+    <section aria-label="Good to know">
+      <SectionHeading size="sm" title="Good to know" />
 
       <dl className="mt-3 space-y-2.5">
         {/* What they're known for, straight from their own site — the most

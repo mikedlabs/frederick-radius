@@ -37,6 +37,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import RestroomMark from "@/components/icons/RestroomMark";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 type AmenityMeta = {
   /** Lucide icon component. */
@@ -90,14 +91,12 @@ export default function PlaceAmenityIcons({
   if (!amenities || amenities.length === 0) return null;
   return (
     <section aria-label="Amenities">
-      <h2 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>
-        What you&rsquo;ll find
-      </h2>
+      <SectionHeading size="sm" title="What you’ll find" />
       <ul
         // grid-cols layout instead of a wrapped flex row keeps every
         // tile the same width — the labels under the icons align
         // cleanly across rows regardless of label length.
-        className="grid grid-cols-4 gap-x-2 gap-y-3 sm:grid-cols-6"
+        className="mt-2.5 grid grid-cols-4 gap-x-2 gap-y-3 sm:grid-cols-6"
       >
         {amenities.map((slug) => {
           const m = metaFor(slug);

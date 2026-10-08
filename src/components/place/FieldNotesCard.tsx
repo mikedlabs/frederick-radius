@@ -1,5 +1,6 @@
 import { ChevronDown, Clock3, Tag, Car, Lightbulb, ExternalLink, type LucideIcon } from "lucide-react";
 import FieldStamp from "@/components/ui/FieldStamp";
+import SectionHeading from "@/components/ui/SectionHeading";
 import {
   fieldNotesFor,
   fieldNoteSources,
@@ -55,12 +56,12 @@ function Row({
       >
         <Icon className="h-[15px] w-[15px]" strokeWidth={2} />
       </span>
-      <span className="min-w-0 flex-1 text-[13.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+      <span className="min-w-0 flex-1 text-body leading-snug" style={{ color: "var(--app-ink-2)" }}>
         <span>
           {lead && <span className="font-semibold" style={{ color: "var(--app-ink)" }}>{lead} </span>}
           {children}
         </span>
-        <span className="mt-1 flex flex-wrap items-center gap-x-1 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+        <span className="text-caption mt-1 flex flex-wrap items-center gap-x-1" style={{ color: "var(--app-ink-3)" }}>
           <span>{verified ?? "Verification date not recorded"}</span>
           {host && evidence.source_url ? (
             <>
@@ -171,18 +172,12 @@ export default function FieldNotesCard({
   const visibleRows = rows.slice(0, 2);
   const moreRows = rows.slice(2);
 
+  // A section on paper, not a card: a sentence-case heading over the rows.
+  // Field notes sit among the page's other sections and inside the place
+  // sheet, so a bordered, shadowed box here was a container in a container.
   return (
-    <section
-      aria-labelledby="fieldnotes-heading"
-      className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
-      style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
-    >
-      <div className="flex items-center gap-2">
-        <h2 id="fieldnotes-heading" className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-press)" }}>
-          Field notes
-        </h2>
-        <span aria-hidden className="h-px flex-1" style={{ background: "var(--app-border)" }} />
-      </div>
+    <section aria-label="Field notes" data-field-notes>
+      <SectionHeading size="sm" title="Field notes" />
 
       <ul className="mt-3 space-y-3">
         {visibleRows.map(renderRow)}
@@ -191,7 +186,7 @@ export default function FieldNotesCard({
       {moreRows.length > 0 && (
         <details className="group mt-2">
           <summary
-            className="tap-44 flex cursor-pointer list-none items-center justify-between rounded-xl px-1 text-[12px] font-semibold [&::-webkit-details-marker]:hidden"
+            className="tap-44 text-meta-lg flex cursor-pointer list-none items-center justify-between rounded-xl px-1 font-semibold [&::-webkit-details-marker]:hidden"
             style={{ color: "var(--app-brand-press)" }}
           >
             <span>{moreRows.length} more {moreRows.length === 1 ? "note" : "notes"}</span>
@@ -215,7 +210,7 @@ export default function FieldNotesCard({
             size={40}
             className="-my-1 shrink-0"
           />
-          <p className="min-w-0 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          <p className="text-caption min-w-0 leading-snug" style={{ color: "var(--app-ink-3)" }}>
             {fieldNotesVerificationLine(verification)}
           </p>
         </div>

@@ -23,6 +23,20 @@ const SAVE_OUTLINE_STYLE = {
   color: "var(--app-ink)",
 } as const;
 
+/** Text appearance: a Brick-press label set on the page itself, with no pill,
+ * border or fill. The place page puts Save and "Plan from here" in one row of
+ * text buttons under the title, so Directions stays the one filled action. */
+const SAVE_TEXT_STYLE = { color: "var(--app-brand-press)" } as const;
+
+/** The pill keeps its 36px chip with the invisible 44px extender. The text
+ * button is a real 44px row. Both dim while a write is in flight. */
+const PILL_CLASS =
+  "tap-44-y tactile tactile-interactive inline-flex h-9 items-center gap-1.5 rounded-full border text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60";
+const TEXT_CLASS =
+  "inline-flex min-h-11 items-center gap-1.5 text-body font-semibold underline-offset-4 hover:underline disabled:opacity-60";
+
+export type MyRadiusButtonAppearance = "pill" | "text";
+
 /**
  * MyRadiusButton — the labeled text-style follow CTA the user
  * spec'd for place detail pages (the single save affordance on the page).
@@ -62,14 +76,23 @@ const SAVE_OUTLINE_STYLE = {
  *   - Followed: subtle outlined pill with a checked bookmark icon.
  *   - Hover (desktop) on the followed state: red-tinted "Remove".
  *   - Loading: spinner in place of the icon; click is no-op.
+ *   - `appearance="text"`: the same states as a 44px Brick-press text
+ *     button with no pill, border or fill. The place page uses it so the
+ *     header reads as a page with one row of quiet actions under the title
+ *     (October 2026 review: seven outlined controls shared the first screen).
  */
 export default function MyRadiusButton({
   slug,
   name,
+  appearance = "pill",
 }: {
   slug: string;
   name: string;
+  /** `pill` is the outlined chip; `text` is the place page's text button. */
+  appearance?: MyRadiusButtonAppearance;
 }) {
+  const text = appearance === "text";
+  const iconSize = text ? "h-4 w-4" : "h-3.5 w-3.5";
   const mounted = useMounted();
   const isFollowed = useIsFollowed(slug);
   const { authed } = useFollowedSlugs();
@@ -91,12 +114,13 @@ export default function MyRadiusButton({
       <button
         type="button"
         data-place-save={slug}
+        data-appearance={appearance}
         aria-hidden
         tabIndex={-1}
-        className="tap-44-y inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[12px] font-semibold"
-        style={SAVE_OUTLINE_STYLE}
+        className={text ? TEXT_CLASS : `${PILL_CLASS} px-3.5`}
+        style={text ? SAVE_TEXT_STYLE : SAVE_OUTLINE_STYLE}
       >
-        <Bookmark className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-brand-press)" }} />
+        <Bookmark className={iconSize} strokeWidth={2.25} aria-hidden style={{ color: "var(--app-brand-press)" }} />
         Save
       </button>
     );
@@ -195,26 +219,29 @@ export default function MyRadiusButton({
         disabled={busy}
         aria-pressed={true}
         aria-label={busy ? `Saving ${name}` : `Saved. Tap to remove ${name}`}
-        className="tap-44-y tactile tactile-interactive inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
-        style={{
-          borderColor: showRemove ? "var(--app-danger)" : "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-          color: showRemove ? "var(--app-danger)" : "var(--app-ink-2)",
-        }}
+        data-appearance={appearance}
+        className={text ? TEXT_CLASS : `${PILL_CLASS} px-3`}
+        style={text
+          ? { color: showRemove ? "var(--app-danger)" : "var(--app-brand-press)" }
+          : {
+              borderColor: showRemove ? "var(--app-danger)" : "var(--app-border)",
+              background: "var(--app-bg-elevated)",
+              color: showRemove ? "var(--app-danger)" : "var(--app-ink-2)",
+            }}
       >
         {busy ? (
           <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
+            <Loader2 className={`${iconSize} animate-spin`} strokeWidth={2.5} aria-hidden />
             Saving…
           </>
         ) : showRemove ? (
           <>
-            <X className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+            <X className={iconSize} strokeWidth={2.5} aria-hidden />
             Remove
           </>
         ) : (
           <>
-            <BookmarkCheck className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+            <BookmarkCheck className={iconSize} strokeWidth={2.5} aria-hidden />
             Saved
           </>
         )}
@@ -230,17 +257,18 @@ export default function MyRadiusButton({
       disabled={busy}
       aria-pressed={false}
       aria-label={busy ? `Removing ${name}` : `Save ${name}`}
-      className="tap-44-y tactile tactile-interactive inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
-      style={SAVE_OUTLINE_STYLE}
+      data-appearance={appearance}
+      className={text ? TEXT_CLASS : `${PILL_CLASS} px-3.5`}
+      style={text ? SAVE_TEXT_STYLE : SAVE_OUTLINE_STYLE}
     >
       {busy ? (
         <>
-          <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
+          <Loader2 className={`${iconSize} animate-spin`} strokeWidth={2.5} aria-hidden />
           Removing…
         </>
       ) : (
         <>
-          <Bookmark className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-brand-press)" }} />
+          <Bookmark className={iconSize} strokeWidth={2.25} aria-hidden style={{ color: "var(--app-brand-press)" }} />
           Save
         </>
       )}

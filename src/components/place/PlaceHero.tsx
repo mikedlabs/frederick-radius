@@ -38,6 +38,10 @@ type Props = {
  * 3. Otherwise nothing: the identity block leads the page. The old 148px band
  *    with a category seal on a radial glow read as an empty placeholder, and
  *    the category pill repeated what the identity line already says.
+ *
+ * The hero draws no frame of its own. The place page sets it edge to edge on
+ * phones and gives it radius-lg from 640px up, with the title on Cream below
+ * it rather than inside a card (October 2026 review).
  */
 export default function PlaceHero({
   slug,

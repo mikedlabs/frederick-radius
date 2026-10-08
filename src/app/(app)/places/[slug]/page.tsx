@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Fragment, Suspense } from "react";
-import { AlertCircle, Apple, ArrowRight, CalendarCheck, Car, ChevronDown, ExternalLink, Globe, Instagram, Mail, MapPin, Navigation, Phone, ShoppingBag, Signpost, UtensilsCrossed } from "lucide-react";
+import { AlertCircle, Apple, ArrowRight, CalendarCheck, Car, ChevronDown, ExternalLink, Globe, Mail, MapPin, Navigation, Phone, ShoppingBag, Signpost, UtensilsCrossed } from "lucide-react";
 import ShareButton from "@/components/place/ShareButton";
 import { PLACES } from "@/data/places";
 import { getPlaceBySlug } from "@/lib/loaders/places";
@@ -43,6 +43,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { getVisibleEvents } from "@/lib/events/visible";
 import { classifyDescription } from "@/lib/copy-quality";
 import { Button } from "@/components/ui/Button";
+import SectionHeading from "@/components/ui/SectionHeading";
 import { MobileActionBar, MobileBarLink } from "@/components/ui/MobileActionBar";
 import SourceBadge from "@/components/place/SourceBadge";
 import {
@@ -327,8 +328,13 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         </ol>
       </nav>
 
+      {/* The header is the page itself, not a card holding the map, the
+          title and seven controls (October 2026 review, Black Hog at 390px).
+          The picture runs edge to edge on phones and keeps radius-lg from
+          640px up; the title block sits on Cream inside the normal gutter. */}
       <header
-        className="overflow-hidden rounded-[var(--app-radius-xl)] tactile tactile-e2"
+        className="space-y-4"
+        data-place-header
         data-decision-impression="true"
         data-decision-surface="place"
         data-decision-entity="place"
@@ -338,28 +344,34 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         {/* A photo that loads, else the place's block on the map, else
             nothing: the identity block below then leads, never an empty
             band. The category is not pinned on the hero; the identity line
-            directly below already states it. */}
-        <PlaceHero
-          slug={place.slug}
-          name={place.name}
-          aspectRatio="16/10"
-          size="hero"
-          priority
-          photoSrc={place.google_photo_url}
-          photoAttribution={place.google_photo_attribution}
-          googleMapsUri={place.google_maps_uri}
-          map={heroMap}
-          address={place.address}
-        />
-        <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
+            directly below already states it. `empty:hidden` drops the frame
+            when no picture renders, so it never leaves a gap. */}
+        <div
+          data-place-hero-frame
+          className="-mx-4 overflow-hidden empty:hidden sm:mx-0 sm:rounded-[var(--app-radius-lg)]"
+        >
+          <PlaceHero
+            slug={place.slug}
+            name={place.name}
+            aspectRatio="16/10"
+            size="hero"
+            priority
+            photoSrc={place.google_photo_url}
+            photoAttribution={place.google_photo_attribution}
+            googleMapsUri={place.google_maps_uri}
+            map={heroMap}
+            address={place.address}
+          />
+        </div>
+        <div className="space-y-3">
           <Suspense fallback={null}>
             <MapReturnLink />
           </Suspense>
           {/* Title row carries the place name + address only. Save
-              lives in exactly one place — the prominent "Add to My
-              Radius" CTA below — so the visitor sees a single save
-              action, not an icon pair crowding the title. Sharing
-              stays in the footer ShareButton. */}
+              lives in exactly one place, the Save text button below,
+              so the visitor sees a single save action, not an icon
+              pair crowding the title. Sharing stays in the footer
+              ShareButton. */}
           <div className="min-w-0">
             <h1 className="display-2 breathe-in" style={{ color: "var(--app-ink)" }}>
               {place.name}
@@ -426,10 +438,9 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
                   crowding the open/closed decision zone. */}
             </div>
           </div>
-          {/* Prominent text-style follow CTA — Phase 1's
-              "Add to My Radius" / "In My Radius" pattern. Sits below
-              the title row so it reads as the primary action on the
-              place, not a header chrome icon. PendingFollowApplier
+          {/* Save and "Plan from here" are one row of 44px Brick-press text
+              buttons under the title, with no pills, so Directions stays the
+              page's one filled action. PendingFollowApplier
               consumes ?follow=<slug> from a post-sign-in redirect
               and applies it once before clearing the query param.
 
@@ -440,11 +451,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           <Suspense fallback={null}>
             <PendingFollowApplier slug={place.slug} name={place.name} />
           </Suspense>
-          <div className="-mt-1 flex flex-wrap items-center gap-2">
-            <MyRadiusButton slug={place.slug} name={place.name} />
+          <div data-place-header-actions className="-my-1 flex flex-wrap items-center gap-x-6">
+            <MyRadiusButton slug={place.slug} name={place.name} appearance="text" />
             {isDestinationCategory(place.category) && isRecommendable(place) && place.is_operational !== "closed_permanently" && (
               <Suspense fallback={null}>
-                <PlanFromPlaceLink slug={place.slug} name={place.name} />
+                <PlanFromPlaceLink slug={place.slug} name={place.name} appearance="text" />
               </Suspense>
             )}
           </div>
@@ -452,7 +463,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             <div>
               {/* max-w-[68ch]: cap the reading measure — on desktop the content
                   column is ~900px, which ran this prose past 100ch (UX audit). */}
-              <p className="max-w-[68ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              <p className="text-body max-w-[68ch] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 {desc}
               </p>
               <PlaceDescriptionCredit
@@ -482,12 +493,28 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         />
       )}
 
-      <div className="hidden grid-cols-2 gap-2 lg:grid">
-        <ActionButton href={googleUrl} icon={Navigation} label="Directions" decisionAction="directions" external primary />
-        {place.email && <ActionButton href={`mailto:${place.email}`} icon={Mail} label="Email" decisionAction="email" />}
-        {place.phone && <ActionButton href={`tel:${place.phone}`} icon={Phone} label="Call" decisionAction="call" />}
+      {/* Desktop actions: one row, not four 450px tiles. Directions is the
+          only filled Brick button, sized to its label; the rest are 44px
+          text buttons. The phone dock below carries the same actions. */}
+      <div
+        data-place-desktop-actions
+        className="hidden flex-wrap items-center gap-x-6 gap-y-1 lg:flex"
+      >
+        <Button
+          variant="primary"
+          size="lg"
+          href={googleUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Directions to ${place.name}`}
+          data-decision-action="directions"
+          iconLeft={<Navigation className="h-4 w-4" aria-hidden />}
+        >
+          Directions
+        </Button>
+        {place.phone && <ActionTextLink href={`tel:${place.phone}`} icon={Phone} label="Call" decisionAction="call" />}
         {place.website && (
-          <ActionButton
+          <ActionTextLink
             href={place.website}
             icon={Globe}
             label="Website"
@@ -495,19 +522,8 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             external
           />
         )}
-        <ActionButton href={appleUrl} icon={Apple} label="Apple Maps" decisionAction="directions" external />
-      </div>
-
-      <CommerceActions
-        links={commerceLinks}
-        placeSlug={place.slug}
-        placeName={place.name}
-      />
-
-      {/* Personal "been here" marker — demoted below the directional/contact
-          grid; it's a quiet device-local note, not a primary action. */}
-      <div className="flex">
-        <BeenHereToggle placeSlug={place.slug} label={place.name} />
+        <ActionTextLink href={appleUrl} icon={Apple} label="Apple Maps" decisionAction="directions" external />
+        {place.email && <ActionTextLink href={`mailto:${place.email}`} icon={Mail} label="Email" decisionAction="email" />}
       </div>
 
       {/* Secondary visit context is outside the identity hero and follows
@@ -529,6 +545,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         )}
         <LiveGooglePlaceContext slug={place.slug} showSummary={!desc} />
         <PlaceMarginTools slug={place.slug} />
+        {/* Personal "been here" marker: a quiet device-local text toggle at
+            the end of the visit section, off the first screen. */}
+        <div className="flex">
+          <BeenHereToggle placeSlug={place.slug} label={place.name} />
+        </div>
       </div>
 
       {/* For the guided breweries: up to four flagships from the beer guide
@@ -565,7 +586,6 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 
       {parkActions.length > 0 && (
         <IntegrationRow
-          icon={Car}
           title="Pay for parking"
           actions={parkActions}
         />
@@ -573,7 +593,6 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 
       {socialActions.length > 0 && (
         <IntegrationRow
-          icon={Instagram}
           title="Follow"
           actions={socialActions}
         />
@@ -584,6 +603,14 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       ) : place.google_hours && place.google_hours.length > 0 ? (
         <GoogleHours lines={place.google_hours} />
       ) : null}
+
+      {/* Menu and ordering comes after the hours and visit details, as ruled
+          link rows. The phone dock keeps its own order affordance. */}
+      <CommerceActions
+        links={commerceLinks}
+        placeSlug={place.slug}
+        placeName={place.name}
+      />
 
       <PlacePhotoGallery
         photos={place.google_photos ?? []}
@@ -596,10 +623,8 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           Copy), the landmark a local would steer by, where to park, then the
           live map. The block itself is the hero when no photo loads, so the
           section ends in one map row instead of a second mini map. */}
-      <section aria-labelledby="place-location-heading" className="space-y-2">
-        <h2 id="place-location-heading" className="eyebrow">
-          Location
-        </h2>
+      <section aria-label="Location" data-place-location className="space-y-2">
+        <SectionHeading size="sm" title="Location" />
         <div className="border-t text-sm" style={{ borderColor: "var(--app-border)" }}>
           <div className="flex items-start gap-2 border-b py-3" style={{ borderColor: "var(--app-border)" }}>
             <MapPin className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
@@ -803,7 +828,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       />
 
       {/* Mobile-only thumb-reachable dock. Desktop keeps the inline action
-          grid above; this reuses the same directions/call links, pinned
+          row above; this reuses the same directions/call links, pinned
           within thumb reach. Directions is the one vermilion primary. Save
           is NOT here: it lives in exactly one place — the header CTA above
           the fold — so the page never shows two bookmark affordances at
@@ -860,30 +885,27 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   );
 }
 
-function ActionButton({
-  href, icon: Icon, label, decisionAction, external, primary = false,
+/** A desktop secondary action: a 44px icon-plus-label text button. */
+function ActionTextLink({
+  href, icon: Icon, label, decisionAction, external,
 }: {
   href: string;
   icon: typeof Phone;
   label: string;
   decisionAction: DecisionAction;
   external?: boolean;
-  primary?: boolean;
 }) {
-  const Comp = external ? "a" : Link;
   return (
-    <Comp
+    <a
       href={href}
       data-decision-action={decisionAction}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      className="tap-44 tactile tactile-interactive flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border py-3 text-xs font-semibold"
-      style={primary
-        ? { background: "var(--app-brand-press)", borderColor: "var(--app-brand-press)", color: "var(--app-on-brand)" }
-        : { background: "var(--app-bg-elevated)", borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+      className="inline-flex min-h-11 items-center gap-1.5 text-body font-semibold underline-offset-4 hover:underline"
+      style={{ color: "var(--app-brand-press)" }}
     >
-      <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden style={{ color: primary ? "var(--app-on-brand)" : "var(--app-brand-press)" }} />
+      <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
       {label}
-    </Comp>
+    </a>
   );
 }
 
@@ -920,18 +942,14 @@ function ClosureBanner({
 }
 
 function IntegrationRow({
-  icon: Icon, title, actions,
+  title, actions,
 }: {
-  icon: typeof Phone;
   title: string;
   actions: Array<{ key: string; label: string; href: string }>;
 }) {
   return (
     <section className="space-y-2">
-      <h2 className="eyebrow inline-flex items-center gap-1.5">
-        <Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-cool)" }} />
-        {title}
-      </h2>
+      <SectionHeading size="sm" title={title} />
       <div className="flex flex-wrap gap-1.5">
         {actions.map((a) => (
           <Button

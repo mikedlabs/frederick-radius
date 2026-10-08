@@ -45,9 +45,26 @@ describe("BeenHereToggle render stability", () => {
     expect(buttonText(fallback)).toBe("Mark as visited");
     expect(buttonText(mounted)).toBe("Mark as visited");
     for (const markup of [fallback, mounted]) {
-      expect(markup).toContain("tap-44-y");
-      expect(markup).toContain("background:var(--app-bg-elevated)");
+      // A quiet 44px text toggle: no pill, border or fill.
+      expect(markup).toContain("min-h-11");
       expect(markup).toContain("color:var(--app-ink-2)");
+      expect(markup).not.toContain("background");
+      expect(markup).not.toContain("rounded-full");
+      expect(markup).not.toMatch(/class="[^"]*\bborder\b/);
     }
+  });
+
+  it("marks a visit in Ink without a filled chip or raw white", () => {
+    state.mounted = true;
+    state.been = true;
+    const markup = renderToStaticMarkup(
+      <BeenHereToggle placeSlug="test-place" label="Test Place" />,
+    );
+
+    expect(buttonText(markup)).toBe("Been here");
+    expect(markup).toContain('aria-pressed="true"');
+    expect(markup).toContain("color:var(--app-ink)");
+    expect(markup).not.toContain("background");
+    expect(markup).not.toContain("white");
   });
 });

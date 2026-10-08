@@ -1,5 +1,6 @@
+import { Fragment } from "react";
 import { UtensilsCrossed, ShoppingBag, CalendarCheck, Bike, ChefHat, Gift, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import SectionHeading from "@/components/ui/SectionHeading";
 import { formatChecked } from "@/lib/trust";
 import type { CommerceLink, CommerceLinkType } from "@/lib/commerce/types";
 import {
@@ -31,17 +32,37 @@ function decisionActionForCommerce(type: CommerceLinkType): DecisionAction {
 }
 
 /**
- * The place-detail commerce section — one calm block that supersedes the old
- * separate Reserve/Order rows. Renders resolved commerce links (menu / order /
- * reserve / delivery / catering) as outlined secondary buttons with the lead
- * action first, honest Toast labeling, trust/freshness where it's real, and a
- * broken-link report. Self-hides when a place has no commerce links.
+ * The quiet line under the rows. The Toast handoff is named once: when it
+ * leads, the trust line's own "Toast" provider token is dropped so the line
+ * never reads "Ordering via Toast · Toast · Imported".
+ */
+export function commerceSupportSegments(toastOrdering: boolean, trustLine: string): string[] {
+  const trust = trustLine ? trustLine.split(" · ") : [];
+  return toastOrdering
+    ? ["Ordering via Toast", ...trust.filter((token) => token !== "Toast")]
+    : trust;
+}
+
+/** The section title follows what the links actually offer. */
+export function commerceSectionTitle(links: CommerceLink[]): string {
+  if (links.some((l) => l.type === "menu" || l.type === "order")) return "Menu and ordering";
+  if (links.some((l) => l.type === "reservation")) return "Reservations";
+  return "Ordering";
+}
+
+/**
+ * The place-detail commerce section: a "Menu and ordering" section on paper,
+ * set after the hours and visit details. Each resolved link (order, menu,
+ * reserve, delivery, catering, gift card) is one 52px ruled row with its type
+ * icon, its label and the external-link mark, because each opens another
+ * site. The lead action comes first, Toast is named as a handoff, trust and
+ * freshness print only when they are real, and a broken link can be reported.
+ * Self-hides when a place has no commerce links.
  *
- * No link here is Brick-filled: Directions is the place page's one primary
- * action, and a filled "Order on Toast" beside a filled Save and the filled
- * Directions dock spent Brick on three controls in the first phone viewport.
- * The buttons keep the shared Button's radius-md corner rather than capsules,
- * and each carries the external-link mark because each opens another site.
+ * No row is a button or a Brick fill: Directions is the place page's one
+ * primary action, and the phone dock keeps its own order affordance. Four
+ * outlined chips in the first phone screen (October 2026 review) read as a
+ * card of controls, not a page.
  */
 export default function CommerceActions({
   links,
@@ -73,9 +94,7 @@ export default function CommerceActions({
       link.provider === "toast" &&
       (link.type === "menu" || link.type === "order"),
   );
-  const hasMenuOrOrder = ordered.some((l) => l.type === "menu" || l.type === "order");
-  const hasReservation = ordered.some((l) => l.type === "reservation");
-  const title = hasMenuOrOrder ? "Menu & ordering" : hasReservation ? "Reservations" : "Order";
+  const title = commerceSectionTitle(ordered);
 
   // Trust line only when it says something real (verified / owner / dated) —
   // a bare "Curated link" under every restaurant would just be noise.
@@ -86,59 +105,41 @@ export default function CommerceActions({
       primary.source === "owner")
       ? commerceTrustLine(primary, formatChecked(primary.last_verified_at))
       : "";
+  const support = commerceSupportSegments(toastOrdering, trustLine);
 
   return (
-    <section className="space-y-2">
-      <h2 className="eyebrow inline-flex items-center gap-1.5">
-        <UtensilsCrossed className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-cool)" }} />
-        {title}
-        {toastOrdering && (
-          <span
-            className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal"
-            style={{
-              background: "color-mix(in srgb, var(--app-brand) 12%, transparent)",
-              color: "var(--app-brand-press)",
-            }}
-          >
-            Ordering via Toast
-          </span>
-        )}
-      </h2>
+    <section aria-label={title} data-place-commerce className="space-y-2">
+      <SectionHeading size="sm" title={title} />
 
-      <div className="flex flex-wrap gap-1.5">
+      <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
         {displayLinks.map((l) => {
           const Icon = TYPE_ICON[l.type];
           return (
-            <Button
-              key={`${l.type}-${l.url}`}
-              variant="secondary"
-              size="sm"
-              href={l.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-decision-action={decisionActionForCommerce(l.type)}
-              iconLeft={<Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />}
-              iconRight={
-                <ExternalLink className="h-3 w-3" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-              }
-            >
-              {commerceActionLabel(l)}
-            </Button>
+            <li key={`${l.type}-${l.url}`} className="border-b" style={{ borderColor: "var(--app-border)" }}>
+              <a
+                href={l.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-decision-action={decisionActionForCommerce(l.type)}
+                className="flex min-h-13 items-center gap-3 text-body font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:bg-[var(--app-bg-sunken)]"
+                style={{ color: "var(--app-ink)" }}
+              >
+                <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+                <span className="min-w-0 flex-1">{commerceActionLabel(l)}</span>
+                <ExternalLink className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+              </a>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
-      <div className="flex flex-wrap items-center gap-x-2">
-        {trustLine && (
-          <>
-            <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-              {trustLine}
-            </p>
-            <span aria-hidden className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-              ·
-            </span>
-          </>
-        )}
+      <div className="text-meta flex flex-wrap items-center gap-x-2" style={{ color: "var(--app-ink-3)" }}>
+        {support.map((segment) => (
+          <Fragment key={segment}>
+            <p>{segment}</p>
+            <span aria-hidden>·</span>
+          </Fragment>
+        ))}
         <ReportLinkButton
           placeSlug={placeSlug}
           placeName={placeName}

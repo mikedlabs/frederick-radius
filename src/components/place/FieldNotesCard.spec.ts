@@ -68,6 +68,23 @@ describe("FieldNotesCard trust labels", () => {
   });
 });
 
+describe("FieldNotesCard on paper", () => {
+  it("names the region with a sentence-case section heading and no box", () => {
+    const html = renderToStaticMarkup(createElement(FieldNotesCard, { slug: "cafe-nola" }));
+    const open = html.match(/^<section[^>]*>/)?.[0] ?? "";
+
+    expect(open).toContain('aria-label="Field notes"');
+    expect(open).not.toContain("class=");
+    expect(open).not.toContain("box-shadow");
+    const heading = html.match(/<h2[^>]*>[\s\S]*?<\/h2>/)?.[0] ?? "";
+    expect(heading).toContain("Field notes");
+    expect(heading).not.toContain("uppercase");
+    expect(heading).not.toContain("font-mono");
+    expect(html).not.toContain("tracking-[0.14em]");
+    expect(html).not.toMatch(/text-\[1[01](?:\.5)?px\]/);
+  });
+});
+
 describe("FieldNotesCard on the place page", () => {
   it("leaves parking to the Location section when asked", () => {
     const full = renderToStaticMarkup(createElement(FieldNotesCard, { slug: "cafe-nola" }));
