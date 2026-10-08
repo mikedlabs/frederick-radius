@@ -49,13 +49,17 @@ describe("aerialFrameFor", () => {
 });
 
 describe("AerialBeat", () => {
-  it("captions the frame with its own area and capture month", () => {
+  it("names the frame with its own area and capture month, and holds the caption until it decodes", () => {
     const html = renderToStaticMarkup(
       <AerialBeat lat={FALL_COLORS.lat} lng={FALL_COLORS.lng} municipality="frederick" />,
     );
-    expect(html).toContain("Frederick City from the air");
-    expect(html).toMatch(/(January|February|March|April|May|June|July|August|September|October|November|December) \d{4}/);
+    expect(html).toMatch(
+      /alt="Frederick City seen from above in (January|February|March|April|May|June|July|August|September|October|November|December) \d{4}"/,
+    );
     expect(html).not.toContain("Walkersville");
+    // The scrim and caption wait for a decoded image (AerialBeat.browser.spec).
+    expect(html).not.toContain("from the air");
+    expect(html).not.toContain("<figcaption");
   });
 
   it("renders nothing for a page in another municipality", () => {

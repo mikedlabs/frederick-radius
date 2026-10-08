@@ -1,13 +1,25 @@
+"use client";
+
 import Image from "next/image";
-import type { CSSProperties } from "react";
+import { useState, type SyntheticEvent } from "react";
+import { Truck } from "lucide-react";
 import type { FoodTruck } from "@/data/food-trucks";
 import FOOD_TRUCK_MARKS from "@/data/food-truck-marks.json";
-import {
-  foodTruckInitials,
-  foodTruckVisualTone,
-} from "@/lib/food-trucks/presentation";
 
 export type FoodTruckIdentitySize = "thumb" | "card" | "hero" | "detail";
+
+/**
+ * Painted size of the square in CSS pixels. A stop row uses the 48px thumb;
+ * every other surface uses 64px. The masthead lineup may grow its tiles on
+ * wide screens through CSS, which is why `hero` is sized there rather than
+ * inline.
+ */
+export const FOOD_TRUCK_IDENTITY_PX: Record<FoodTruckIdentitySize, number> = {
+  thumb: 48,
+  card: 64,
+  hero: 64,
+  detail: 64,
+};
 
 type FoodTruckIdentityProps = {
   truck: Pick<FoodTruck, "slug" | "name" | "cuisine" | "kind" | "media">;
@@ -17,12 +29,33 @@ type FoodTruckIdentityProps = {
   decorative?: boolean;
 };
 
+type FoodTruckMark = {
+  file: string;
+  sourcePage: string;
+  plate: string;
+};
+
+/** A decode with no pixels is a broken or empty file, not a logo. */
+function decodedEmpty(event: SyntheticEvent<HTMLImageElement>): boolean {
+  const image = event.currentTarget;
+  return image.naturalWidth <= 1 || image.naturalHeight <= 1;
+}
+
 /**
- * A vendor's real visual identity, with an honest designed fallback.
+ * A vendor's real visual identity, or an honest mark when Radius has none.
  *
- * The public marks come from the vendor-controlled pages recorded in
- * food-truck-marks.json. Website photo candidates never enter this component
- * until the roster records display permission.
+ * The ladder:
+ * - a roster photo, only when the roster records display permission, shown
+ *   in the square with its credit after it loads (detail size only);
+ * - the vendor's own logo from food-truck-marks.json, fetched from a page the
+ *   vendor controls, contained in the square on Cream. A logo published as
+ *   light artwork for a dark ground (`plate: "dark"`) sits on Ink instead,
+ *   because the vendor drew it for that ground;
+ * - otherwise the Truck mark: a flat Brick tint with a Brick-press glyph.
+ *
+ * A logo or photo that fails to load, or decodes empty, falls back to the
+ * mark. There are no initials, halftones, rings or caption caps: a mark must
+ * never pose as a picture of the business.
  */
 export default function FoodTruckIdentity({
   truck,
@@ -30,131 +63,113 @@ export default function FoodTruckIdentity({
   priority = false,
   decorative = false,
 }: FoodTruckIdentityProps) {
-  if (truck.media) {
-    return (
-      <div
-        className="food-truck-vendor-visual relative overflow-hidden"
+  const [failed, setFailed] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState<string | null>(null);
+  const px = FOOD_TRUCK_IDENTITY_PX[size];
+  const sizes = size === "hero" ? "(max-width: 480px) 64px, 120px" : `${px}px`;
+  const mark = (FOOD_TRUCK_MARKS as Record<string, FoodTruckMark>)[truck.slug];
+
+  const media = truck.media && failed !== truck.media.src ? truck.media : null;
+  if (media) {
+    const showCredit = size === "detail" && loaded === media.src;
+    const frame = (
+      <span
+        className="food-truck-identity"
         data-kind={truck.kind}
         data-photo-state="verified"
         data-size={size}
       >
         <Image
-          src={truck.media.src}
-          alt={decorative ? "" : truck.media.alt}
+          src={media.src}
+          alt={decorative ? "" : media.alt}
           fill
           priority={priority}
-          sizes={
-            size === "detail"
-              ? "(max-width: 640px) 100vw, 560px"
-              : size === "hero"
-                ? "(max-width: 640px) 45vw, 260px"
-                : size === "thumb"
-                  ? "112px"
-                  : "(max-width: 640px) 50vw, 260px"
-          }
+          sizes={sizes}
           className="object-cover"
+          onLoad={(event) => {
+            if (decodedEmpty(event)) setFailed(media.src);
+            else setLoaded(media.src);
+          }}
+          onError={() => setFailed(media.src)}
         />
-        {size === "detail" && truck.media.sourceUrl ? (
-          <a
-            href={truck.media.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="food-truck-media-credit"
-            aria-label={`Photo credit: ${truck.media.credit}`}
-          >
-            {truck.media.credit}
-          </a>
-        ) : (
-          <span
-            className="food-truck-media-credit"
-            aria-hidden={decorative || undefined}
-          >
-            {truck.media.credit}
-          </span>
-        )}
-      </div>
+      </span>
+    );
+    if (size !== "detail") return frame;
+    return (
+      <figure className="food-truck-identity-figure">
+        {frame}
+        {showCredit ? (
+          <figcaption className="text-caption" style={{ color: "var(--app-ink-3)" }}>
+            {media.sourceUrl ? (
+              <a href={media.sourceUrl} target="_blank" rel="noopener noreferrer" className="tap-44-y inline-flex items-center underline">
+                Photo: {media.credit}
+              </a>
+            ) : (
+              <>Photo: {media.credit}</>
+            )}
+          </figcaption>
+        ) : null}
+      </figure>
     );
   }
 
-  const mark =
-    FOOD_TRUCK_MARKS[truck.slug as keyof typeof FOOD_TRUCK_MARKS];
-  const visualStyle = {
-    "--truck-tone": foodTruckVisualTone(truck.slug),
-  } as CSSProperties;
-
-  if (mark) {
-    return (
-      <div
-        className="food-truck-vendor-visual food-truck-mark-visual"
+  if (mark && failed !== mark.file) {
+    const frame = (
+      <span
+        className="food-truck-identity"
         data-kind={truck.kind}
         data-photo-state="official-mark"
+        data-plate={mark.plate === "dark" ? "dark" : "light"}
         data-size={size}
-        style={visualStyle}
         aria-hidden={decorative || undefined}
       >
-        <span className="food-truck-mark-kicker">
-          {size === "hero" ? "Local vendor" : "Frederick County vendor"}
-        </span>
-        <span className="food-truck-mark-plate" data-plate={mark.plate}>
+        <span className="food-truck-identity-art">
           <Image
             src={mark.file}
             alt={decorative ? "" : `${truck.name} logo`}
             fill
             priority={priority}
-            sizes={
-              size === "detail"
-                ? "280px"
-                : size === "hero"
-                  ? "180px"
-                  : size === "thumb"
-                    ? "84px"
-                    : "180px"
-            }
+            sizes={sizes}
             className="object-contain"
+            onLoad={(event) => {
+              if (decodedEmpty(event)) setFailed(mark.file);
+            }}
+            onError={() => setFailed(mark.file)}
           />
         </span>
-        {/* The cuisine belongs to whichever element is the label. When a card
-            or drawer names the vendor immediately afterward it prints the
-            cuisine too, so printing it here as well stamped every roster card
-            with "Barbecue / Barbecue / Blues BBQ". */}
-        {decorative ? null : <span className="food-truck-mark-cuisine">{truck.cuisine}</span>}
-        {size === "detail" && !decorative ? (
+      </span>
+    );
+    if (size !== "detail" || decorative) return frame;
+    return (
+      <figure className="food-truck-identity-figure">
+        {frame}
+        <figcaption className="text-caption">
           <a
             href={mark.sourcePage}
             target="_blank"
             rel="noopener noreferrer"
-            className="food-truck-media-credit"
+            className="tap-44-y inline-flex items-center underline"
+            style={{ color: "var(--app-ink-3)" }}
             aria-label={`${truck.name} official logo source`}
           >
             Logo source
           </a>
-        ) : null}
-      </div>
+        </figcaption>
+      </figure>
     );
   }
 
   return (
-    <div
-      className="food-truck-vendor-visual food-truck-vendor-fallback"
+    <span
+      className="food-truck-identity"
       data-kind={truck.kind}
       data-photo-state="fallback"
       data-size={size}
-      style={visualStyle}
       role={decorative ? undefined : "img"}
       aria-hidden={decorative || undefined}
-      aria-label={
-        decorative
-          ? undefined
-          : `${truck.name} branded placeholder. An approved vendor photo has not been added yet.`
-      }
+      aria-label={decorative ? undefined : `${truck.name} has no logo on file yet.`}
     >
-      <span className="food-truck-fallback-kicker">Frederick County</span>
-      <strong className="food-truck-vendor-mark">{foodTruckInitials(truck.name)}</strong>
-      <span className="food-truck-fallback-rule" aria-hidden />
-      {/* Same reason as the mark variant above: the labelling card prints the
-          cuisine, so repeating it here read as a stutter on every card. */}
-      {decorative ? null : <span className="food-truck-vendor-cuisine">{truck.cuisine}</span>}
-      <span className="food-truck-fallback-footer">Mobile vendor</span>
-    </div>
+      <Truck className="food-truck-identity-glyph" aria-hidden />
+    </span>
   );
 }

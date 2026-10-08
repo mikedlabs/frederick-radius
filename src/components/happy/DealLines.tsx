@@ -10,19 +10,19 @@ import { dealClauses, emphasizeFigures } from "@/lib/happyHourDeal";
  *   25% off crab legs
  *   $1 oysters
  *
- * Hierarchy comes from the gold mono figure + serif name above, NOT a bullet —
- * so there is no leading symbol and no "+N more" truncation tail (a deal links
- * to its full place page). `tone` flips the palette for photo overlays.
+ * Hierarchy comes from the figure set in semibold Ink inside its own clause,
+ * NOT a bullet or a second color, so there is no leading symbol and no "+N
+ * more" truncation tail (a deal links to its full place page). Prices are
+ * plain information, so they never borrow Plum, the arts accent.
  *
  * `vague` is for the figureless-at-source entries (the venue only says "food
  * and drink specials"): we render their real text as ONE muted, italic line so
- * they read as a visibly lower-confidence class than the gold-figure deals,
+ * they read as a visibly lower-confidence class than the figure-bearing deals,
  * never dressed up as a concrete discount.
  */
 export default function DealLines({
   deal,
   max = 3,
-  tone = "ink",
   vague = false,
   layout = "stacked",
   className = "",
@@ -30,7 +30,6 @@ export default function DealLines({
   deal: string | null | undefined;
   /** Cap visible clauses (the full deal lives on the place page). */
   max?: number;
-  tone?: "ink" | "onPhoto";
   /** The deal names no figure — render as one muted "specials vary" line. */
   vague?: boolean;
   /** "stacked" = one clause per line (hero/intel). "inline" = clauses flow on a
@@ -42,14 +41,10 @@ export default function DealLines({
   const clauses = dealClauses(deal);
   if (clauses.length === 0) return null;
 
-  const subColor = tone === "onPhoto" ? "rgba(255,255,255,0.92)" : "var(--app-ink-2)";
-  const figColor = tone === "onPhoto" ? "color-mix(in srgb, var(--app-accent) 72%, #fff)" : "var(--app-accent-press)";
-  const vagueColor = tone === "onPhoto" ? "rgba(255,255,255,0.78)" : "var(--app-ink-3)";
-
-  // Figureless at source: one honest, visibly-muted line, never gold figures.
+  // Figureless at source: one honest, visibly-muted line, never bold figures.
   if (vague) {
     return (
-      <p className={`italic leading-snug ${className}`} style={{ color: vagueColor }}>
+      <p className={`italic leading-snug ${className}`} style={{ color: "var(--app-ink-3)" }}>
         {clauses.join(" · ")}
       </p>
     );
@@ -58,7 +53,7 @@ export default function DealLines({
   const renderClause = (clause: string) =>
     emphasizeFigures(clause).map((part, j) =>
       part.figure ? (
-        <span key={j} className="font-mono font-bold tabular-nums" style={{ color: figColor }}>
+        <span key={j} className="font-semibold tabular-nums" style={{ color: "var(--app-ink)" }}>
           {part.text}
         </span>
       ) : (
@@ -70,10 +65,10 @@ export default function DealLines({
   // each venue compact so more fit on screen at once.
   if (layout === "inline") {
     return (
-      <p className={`leading-snug ${className}`} style={{ color: subColor }}>
+      <p className={`leading-snug ${className}`} style={{ color: "var(--app-ink-2)" }}>
         {clauses.slice(0, max).map((clause, i) => (
           <span key={i}>
-            {i > 0 && <span aria-hidden style={{ color: vagueColor }}>{"  ·  "}</span>}
+            {i > 0 && <span aria-hidden style={{ color: "var(--app-ink-3)" }}>{"  ·  "}</span>}
             {renderClause(clause)}
           </span>
         ))}
@@ -82,7 +77,7 @@ export default function DealLines({
   }
 
   return (
-    <ul className={className} style={{ color: subColor }}>
+    <ul className={className} style={{ color: "var(--app-ink-2)" }}>
       {clauses.slice(0, max).map((clause, i) => (
         <li key={i} className="leading-snug">
           {renderClause(clause)}

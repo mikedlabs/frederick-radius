@@ -50,12 +50,22 @@ test("the weekly board promotes useful stops and folds stops that already ended"
   await page.goto("/food-trucks");
 
   const leadCards = page.locator(
-    "#this-week > .food-truck-stop-grid > .food-truck-stop-card",
+    "#this-week > .food-truck-stop-list > li > .food-truck-stop-row",
   );
   const leadTiming = await leadCards.evaluateAll((cards) =>
     cards.map((card) => card.getAttribute("data-stop-timing")),
   );
   expect(leadTiming).not.toContain("ended");
+  // Each stop is one ruled row with a 44px outlined Directions button, and no
+  // vendor is drawn as lettered initials on a plate.
+  if (leadTiming.length > 0) {
+    const directions = leadCards.first().getByRole("link", { name: /^Directions to / });
+    await expect(directions).toBeVisible();
+    const box = await directions.boundingBox();
+    expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+  await expect(page.locator(".food-truck-vendor-mark, .food-truck-vendor-fallback")).toHaveCount(0);
   expect(leadTiming).toEqual(
     [...leadTiming].sort((a, b) => {
       const priority: Record<string, number> = { active: 0, upcoming: 1 };
@@ -64,7 +74,7 @@ test("the weekly board promotes useful stops and folds stops that already ended"
   );
 
   const earlierCards = page.locator(
-    "[data-earlier-food-truck-stops] .food-truck-stop-card",
+    "[data-earlier-food-truck-stops] .food-truck-stop-row",
   );
   const earlierCount = await earlierCards.count();
   if (earlierCount > 0) {

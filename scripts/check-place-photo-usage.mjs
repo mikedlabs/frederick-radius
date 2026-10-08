@@ -64,9 +64,7 @@ export const PENDING = new Set([
   "src/components/ui/PhotoLightbox.tsx",
   "src/components/place/PlacePhoto.tsx",
   "src/components/plan/PlanBuilder.tsx",
-  "src/components/map/MapList.tsx",
   "src/components/today/PhotoMosaic.tsx",
-  "src/components/happy/HappyHourGuide.tsx",
   // Internal review tool, not a public surface.
   "src/app/admin/discovered-review/page.tsx",
 ]);

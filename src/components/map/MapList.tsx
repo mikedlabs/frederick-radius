@@ -1,20 +1,13 @@
 "use client";
 
-import Image from "next/image";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { haptic } from "@/lib/haptics";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
-import CategoryIcon from "@/components/place/CategoryIcon";
+import { usePlaceHue } from "@/components/place/PlaceCard";
+import RadiusPhoto from "@/components/ui/RadiusPhoto";
 import { mapListPhotoLoader } from "./map-list-photo-loader";
 import type { EventPin, MapPinPlace } from "./types";
 
@@ -57,6 +50,13 @@ function inlinePhoto(place: MapPinPlace): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
+/**
+ * The row's 44px visual. A photo, when the place has one, is painted by
+ * RadiusPhoto, which asks the proxy for its failure signal: the proxy answers a
+ * daily cap or upstream error with its own Radius plate, and a plain image drew
+ * that plate as if it were the place. Anything short of a decoded photo is the
+ * same flat category mark on the place's hue that every other list row uses.
+ */
 function MapListPlaceVisual({
   place,
   color,
@@ -65,6 +65,8 @@ function MapListPlaceVisual({
   color: string;
 }) {
   const anchorRef = useRef<HTMLSpanElement>(null);
+  const hue = usePlaceHue(place.slug);
+  const [missingPhoto, setMissingPhoto] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null | undefined>(
     () => inlinePhoto(place) ?? mapListPhotoLoader.peek(place.slug),
   );
@@ -105,32 +107,23 @@ function MapListPlaceVisual({
     };
   }, [photoUrl, place.slug]);
 
+  const photo = photoUrl && missingPhoto !== photoUrl ? photoUrl : null;
   return (
     <span
       ref={anchorRef}
       aria-hidden
       className="map-list-place-visual"
-      data-photo-state={photoUrl ? "ready" : "fallback"}
-      style={{ "--map-list-place-color": color } as CSSProperties}
+      data-photo-state={photo ? "ready" : "fallback"}
     >
-      {photoUrl ? (
-        <Image
-          src={photoUrl}
-          alt=""
-          fill
-          unoptimized={photoUrl.startsWith("/api/place-photo")}
-          sizes="44px"
-          placeholder="blur"
-          blurDataURL={PAPER_CREAM_BLUR}
-          className="object-cover"
-        />
-      ) : (
-        <CategoryIcon
-          slug={place.category}
-          className="h-5 w-5"
-          strokeWidth={1.8}
-        />
-      )}
+      <RadiusPhoto
+        src={photo}
+        size={44}
+        alt=""
+        category={place.category}
+        hue={hue}
+        color={color}
+        onMissing={() => setMissingPhoto(photoUrl ?? null)}
+      />
     </span>
   );
 }

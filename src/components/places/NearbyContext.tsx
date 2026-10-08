@@ -1,4 +1,4 @@
-import Image from "next/image";
+import RadiusPhoto, { RadiusPhotoScope, RadiusPhotoWhen } from "@/components/ui/RadiusPhoto";
 import { getNearbyWikipedia } from "@/lib/integrations/wikiContext";
 
 /**
@@ -13,6 +13,8 @@ function distanceLabel(m: number): string {
   if (ft < 1000) return `${Math.round(ft / 10) * 10} ft`;
   return `${(m / 1609.34).toFixed(1)} mi`;
 }
+
+const THUMB_PX = 56;
 
 export default async function NearbyContext({
   lat,
@@ -41,18 +43,21 @@ export default async function NearbyContext({
       <ul className="space-y-3">
         {items.map((p) => (
           <li key={p.pageId} className="flex items-start gap-3">
-            {/* The article's own lead image — requested from the API since the
-                start and dropped at render until Aug 2026. Decorative next to
-                the linked title, so empty alt; self-hides when absent. */}
+            {/* The article's own lead image, decorative next to the linked
+                title, so empty alt. It holds its square only while it is
+                loading or loaded: a thumbnail that fails collapses and the
+                row reads as text, never an empty frame. */}
             {p.thumbnail ? (
-              <Image
-                src={p.thumbnail}
-                alt=""
-                width={56}
-                height={56}
-                className="mt-0.5 h-14 w-14 shrink-0 rounded-[var(--app-radius-sm)] object-cover"
-                style={{ boxShadow: "var(--app-edge)" }}
-              />
+              <RadiusPhotoScope src={p.thumbnail} size={THUMB_PX}>
+                <RadiusPhotoWhen is="visible">
+                  <RadiusPhoto
+                    size={THUMB_PX}
+                    alt=""
+                    className="mt-0.5 rounded-[var(--app-radius-sm)]"
+                    style={{ boxShadow: "var(--app-edge)" }}
+                  />
+                </RadiusPhotoWhen>
+              </RadiusPhotoScope>
             ) : null}
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <div className="flex items-baseline justify-between gap-3">

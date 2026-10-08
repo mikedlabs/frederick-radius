@@ -5,8 +5,6 @@ import {
   CalendarDays,
   ChevronDown,
   Clock3,
-  ExternalLink,
-  MapPin,
 } from "lucide-react";
 import { FOOD_TRUCK_BY_SLUG, FOOD_TRUCKS } from "@/data/food-trucks";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -14,14 +12,15 @@ import { resolveHomeBase } from "@/lib/food-trucks/live";
 import { getFreshestBeaconByTruck } from "@/lib/loaders/truckBeacons";
 import { getFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import {
-  foodTruckStopDirectionsUrl,
   foodTruckStopTiming,
   prioritizeFoodTruckStops,
-  type FoodTruckStopTiming,
 } from "@/lib/food-trucks/presentation";
 import { settleFoodTruckPageData } from "@/lib/food-trucks/page-data";
 import type { FoodTruckScheduleStop } from "@/lib/food-trucks/schedule-types";
-import FoodTruckBoard, { type FoodTruckBoardItem } from "@/components/food-trucks/FoodTruckBoard";
+import FoodTruckBoard, {
+  FoodTruckStopList,
+  type FoodTruckBoardItem,
+} from "@/components/food-trucks/FoodTruckBoard";
 import FoodTruckIdentity from "@/components/food-trucks/FoodTruckIdentity";
 import FoodTruckJourneys from "@/components/food-trucks/FoodTruckJourneys";
 import FoodTruckNearMe from "@/components/food-trucks/FoodTruckNearMe";
@@ -84,127 +83,10 @@ function formatTime(iso: string): string {
   }).format(new Date(iso));
 }
 
-function formatDateBadge(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "short",
-    month: "short",
-  }).format(new Date(iso)).replace(",", " ·");
-}
-
-function scheduleTime(stop: FoodTruckScheduleStop): string {
-  const start = formatTime(stop.startsAt);
-  return stop.endsAt ? `${start}–${formatTime(stop.endsAt)}` : start;
-}
-
-function vendorHref(vendor: FoodTruckScheduleStop["vendors"][number]): string | undefined {
-  if (!vendor.slug) return undefined;
-  return FOOD_TRUCK_BY_SLUG.has(vendor.slug) ? `#truck-${vendor.slug}` : undefined;
-}
-
 /** A stop vendor we have no roster entry for. Named by the host's calendar,
  *  so the truck is real and out working, it just has no listing yet. */
 function isUnlistedStopVendor(vendor: FoodTruckScheduleStop["vendors"][number]): boolean {
   return !vendor.slug || !FOOD_TRUCK_BY_SLUG.has(vendor.slug);
-}
-
-function stopVendorIdentity(vendor: FoodTruckScheduleStop["vendors"][number]) {
-  const truck = vendor.slug ? FOOD_TRUCK_BY_SLUG.get(vendor.slug) : undefined;
-  return truck ?? {
-    slug: vendor.slug ?? vendor.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-    name: vendor.name,
-    // Was "Guest truck", which read as a downgrade to the exact operators we
-    // most want to reach: these are working trucks on a published calendar
-    // that simply have not claimed a listing.
-    cuisine: "Not listed yet",
-    kind: "food" as const,
-  };
-}
-
-function StopCard({
-  stop,
-  timing,
-}: {
-  stop: FoodTruckScheduleStop;
-  timing: FoodTruckStopTiming;
-}) {
-  return (
-    <article className="food-truck-stop-card" data-stop-timing={timing}>
-      <div className="food-truck-stop-visual">
-        {stop.vendors.slice(0, 3).map((vendor) => (
-          <FoodTruckIdentity
-            key={`${stop.id}-${vendor.name}`}
-            truck={stopVendorIdentity(vendor)}
-            size="thumb"
-            decorative
-          />
-        ))}
-        <time className="food-truck-stop-date" dateTime={stop.startsAt}>
-          <span>{formatDateBadge(stop.startsAt)}</span>
-          <strong>{new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", day: "numeric" }).format(new Date(stop.startsAt))}</strong>
-        </time>
-      </div>
-      <div className="min-w-0 flex-1 p-4">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
-          {timing === "active" ? (
-            <span style={{ color: "var(--app-positive)" }}>Scheduled now</span>
-          ) : null}
-          <span className="inline-flex items-center gap-1.5">
-            <Clock3 className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-            {scheduleTime(stop)}
-          </span>
-          {stop.municipality ? <span>{stop.municipality}</span> : null}
-        </div>
-        <h3 className="mt-2 font-serif text-[21px] font-semibold leading-[1.08]" style={{ color: "var(--app-ink)" }}>
-          {stop.vendors.map((vendor, index) => {
-            const href = vendorHref(vendor);
-            const label = `${vendor.name}${index < stop.vendors.length - 1 ? " ·" : ""}`;
-            return href ? (
-              <Link
-                key={`${vendor.name}-${href}`}
-                href={href}
-                aria-label={`Find ${vendor.name} in the vendor roster`}
-                className="mr-1 inline-flex min-h-11 items-center underline decoration-[color:var(--app-border-strong)] decoration-1 underline-offset-4 transition hover:decoration-[color:var(--app-brand)]"
-              >
-                {label}
-              </Link>
-            ) : (
-              <span key={vendor.name} className="mr-1">{label}</span>
-            );
-          })}
-        </h3>
-        <p className="mt-1.5 inline-flex items-start gap-1.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-          <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: FOOD_ACCENT }} />
-          <span>{stop.venueName}</span>
-        </p>
-        {stop.serviceNote ? (
-          <p className="mt-2 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{stop.serviceNote}</p>
-        ) : null}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <a
-            href={foodTruckStopDirectionsUrl(stop)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="tap-44 inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[11.5px] font-semibold"
-            style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
-          >
-            Directions
-            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
-          </a>
-          <a
-            href={stop.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="tap-44 inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-[11.5px] font-semibold"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-          >
-            {stop.sourceName} source
-            <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-          </a>
-        </div>
-      </div>
-    </article>
-  );
 }
 
 /**
@@ -404,15 +286,7 @@ export default async function FoodTrucksPage({
         </div>
 
         {currentStops.length > 0 ? (
-          <div className="food-truck-stop-grid">
-            {currentStops.map((stop) => (
-              <StopCard
-                key={stop.id}
-                stop={stop}
-                timing={foodTruckStopTiming(stop, boardAsOf)}
-              />
-            ))}
-          </div>
+          <FoodTruckStopList stops={currentStops} asOf={nearbyAsOf} />
         ) : schedule.stops.length > 0 ? (
           <div className="food-truck-empty-board">
             <Clock3 className="h-6 w-6" strokeWidth={1.8} aria-hidden style={{ color: FOOD_ACCENT }} />
@@ -464,10 +338,8 @@ export default async function FoodTrucksPage({
                 <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
               </span>
             </summary>
-            <div className="food-truck-stop-grid border-t p-3" style={{ borderColor: "var(--app-border)" }}>
-              {earlierStops.map((stop) => (
-                <StopCard key={stop.id} stop={stop} timing="ended" />
-              ))}
+            <div className="px-4">
+              <FoodTruckStopList stops={earlierStops} asOf={nearbyAsOf} />
             </div>
           </details>
         ) : null}

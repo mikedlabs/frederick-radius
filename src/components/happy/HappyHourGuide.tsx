@@ -2,25 +2,24 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { Martini, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import HappyHourBrowser, { type HHRow } from "./HappyHourBrowser";
-import { dealHook, splitDeal, figureCount, dealQuality } from "@/lib/happyHourDeal";
+import { dealClauses, dealHook, figureCount, dealQuality } from "@/lib/happyHourDeal";
 import { isClosedNow } from "@/lib/hours";
 import DealLines from "@/components/happy/DealLines";
+import RadiusPhoto from "@/components/ui/RadiusPhoto";
 
 /**
  * HappyHourGuide — "The Last Pour", /happy-hour as a live city-magazine bar
  * guide (picked from a 5-direction design panel: top-scored on beauty +
  * cleverness + brand-fit + making the amount-off the hero).
  *
- * The page opens on a COVER STORY: the single most time-sensitive pour right
- * now (on-now, ending soonest), as a full-bleed photo with the venue name in
- * serif and its extracted deal hook ("50% OFF", "$5 DRAFTS") set huge in gold
- * mono. Below is THE GUIDE: a leader-dotted priced index where every line is
- * "VENUE ········· $5 MARGARITAS" — a serif name, a real dotted leader, the
- * gold mono hook flush-right, like a wine list's contents page. The amount-off
- * is welded to the name as the hero, exactly as asked.
+ * The page opens on a COVER: the single most time-sensitive pour right now
+ * (on-now, ending soonest). A real place photo leads it only when one actually
+ * loads; the venue and its deal sit on a paper price plate, never over the
+ * photo, with the deal figure set large in Ink. Below is THE GUIDE: a priced
+ * index where each venue carries its own deal clauses, figures in semibold Ink
+ * glued to what they are for.
  *
  * The editorial frame IS the live engine: the cover re-casts as windows open
  * and last-call hits (a 45s Eastern re-sync, seeded server-side so first paint
@@ -126,74 +125,94 @@ function coverScore(it: Item): number {
   return dealQuality(it.r.deal) * 1000 + (it.r.photo ? 100 : 0) + (it.lastCall ? 40 : 0);
 }
 
-function PhotoFallback({ big }: { big?: boolean }) {
+const HALF_FIGURE = /\bhalf[-\s]?(?:off|price)\b|\b1\/2\s*(?:price|off)\b/i;
+
+/**
+ * The cover's lead line: the clause that carries dealHook's figure, so the
+ * plate reads "$5 house spirits" rather than a bare "$5". The other clauses
+ * stay in their posted order underneath. A deal with no figure has no lead,
+ * and a hook no clause can be matched to falls back to the hook itself.
+ */
+export function coverDeal(deal: string | null | undefined): { lead: string | null; rest: string[] } {
+  const clauses = dealClauses(deal);
+  const hook = dealHook(deal);
+  if (!hook || clauses.length === 0) return { lead: null, rest: clauses };
+  const figure = hook.replace(/^FROM\s+/i, "").replace(/\s+OFF$/i, "");
+  const pattern = figure
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/^\\\$/, "\\$\\s*");
+  const exact = new RegExp(`(?<![\\d.])${pattern}(?![\\d.])`, "i");
+  let index = clauses.findIndex((clause) => exact.test(clause));
+  if (index === -1 && figure === "50%") index = clauses.findIndex((clause) => HALF_FIGURE.test(clause));
+  if (index === -1) {
+    const spoken = hook.replace(/^FROM /, "From ").replace(/ OFF$/, " off");
+    return { lead: spoken, rest: clauses };
+  }
+  return { lead: clauses[index], rest: clauses.filter((_, i) => i !== index) };
+}
+
+/**
+ * The live line under the deal. Amber marks a real open window, so the dot and
+ * "On now until" appear only while the parsed window is open; otherwise the
+ * venue's posted schedule is printed as text, never as a live state.
+ */
+function CoverWhen({ it }: { it: Item }) {
+  if (it.kind === "live") {
+    return (
+      <p className="text-meta-lg inline-flex items-center gap-2 font-semibold" style={{ color: "var(--app-ink)" }}>
+        <span aria-hidden className="live-dot h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--app-amber)" }} />
+        On now until {fmtMin(it.endsAt!)}
+      </p>
+    );
+  }
   return (
-    <div aria-hidden className="grid h-full w-full place-items-center" style={{ background: "linear-gradient(150deg, color-mix(in srgb, var(--app-accent) 30%, var(--app-brand-2)) 0%, var(--app-brand-2) 72%)" }}>
-      <Martini className={big ? "h-10 w-10" : "h-5 w-5"} strokeWidth={1.5} style={{ color: "color-mix(in srgb, var(--app-accent) 60%, #fff)" }} />
-    </div>
+    <p className="text-meta-lg line-clamp-2" style={{ color: "var(--app-ink-2)" }}>
+      {it.r.schedule}
+    </p>
   );
 }
 
-/** The status tab + label for the cover, by kind. */
-function coverTab(it: Item): { label: string; tone: "live" | "lastcall" | "soon" } {
-  if (it.kind === "live") {
-    if (it.lastCall) return { label: `Last call · till ${fmtMin(it.endsAt!)}`, tone: "lastcall" };
-    return { label: it.endsAt! >= 1440 ? "On now · till close" : `On now · till ${fmtMin(it.endsAt!)}`, tone: "live" };
-  }
-  if (it.kind === "later") return { label: `Next pour · opens ${fmtMin(it.startsAt!)}`, tone: "soon" };
-  return { label: `Opens ${DAY_ABBR[it.day!]} · ${fmtMin(it.startsAt!)}`, tone: "soon" };
-}
-
+/**
+ * The lead pour. A real place photo, painted by RadiusPhoto so the proxy's
+ * failure plate can never pass for one, sits above (or beside, on wider
+ * screens) a paper price plate. Nothing is set over the photo. With no photo,
+ * or when it fails, the plate stands alone on Cream: the venue, the deal
+ * figure, the live or posted window, and the town. There is no stand-in
+ * picture.
+ */
 function Cover({ it, bloom }: { it: Item; bloom?: boolean }) {
-  const tab = coverTab(it);
-  // Press variants, not the raw tokens: this badge carries WHITE 10px text,
-  // and neither the brand red nor the gold holds 4.5:1 under white.
-  const tabColor = tab.tone === "lastcall" || tab.tone === "live" ? "var(--app-brand-press)" : "var(--app-accent-press)";
+  const { lead, rest } = coverDeal(it.r.deal);
+  const vague = Boolean(it.r.deal) && figureCount(it.r.deal) === 0;
   return (
     <Link
       href={`/places/${it.r.slug}`}
       aria-label={`${it.r.name}${it.hook ? `: ${it.hook}` : ""}${it.r.deal ? `. ${it.r.deal}` : ""}`}
-      className={`tactile-interactive relative block aspect-[16/9] overflow-hidden rounded-[var(--app-radius-lg)]${bloom ? " pop-in" : ""}`}
-      style={{ boxShadow: "var(--app-elev-1), var(--app-hi)" }}
+      data-happy-cover
+      className={`tactile-interactive block overflow-hidden rounded-[var(--app-radius-lg)] border sm:flex${bloom ? " pop-in" : ""}`}
+      style={{ borderColor: "var(--app-border)", background: "var(--app-bg)" }}
     >
-      {it.r.photo ? <Image src={it.r.photo} alt="" fill sizes="(max-width: 640px) 100vw, 640px" unoptimized={it.r.photo.startsWith("/api/place-photo")} className="object-cover" /> : <PhotoFallback big />}
-      {/* Bottom ink scrim for legibility + a faint warm sheen up top. */}
-      <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 92%, transparent) 4%, color-mix(in srgb, var(--app-ink) 60%, transparent) 34%, transparent 62%), linear-gradient(to bottom, color-mix(in srgb, var(--app-accent) 14%, transparent), transparent 30%)" }} />
-
-      {/* Status tab, top-left. */}
-      <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-white" style={{ background: tabColor }}>
-        {(tab.tone === "live" || tab.tone === "lastcall") && <span aria-hidden className="live-dot h-1 w-1 rounded-full bg-white" />}
-        {tab.label}
-      </span>
-
-      {/* Cover plate, bottom — venue, then the deal. A single clean discount
-          gets the big gold figure (the punch the hero needs); a multi-part deal
-          shows its clauses stacked (figure glued to each item, never one ripped
-          out); a vague-at-source entry shows a muted honest line. */}
-      <div className="absolute inset-x-0 bottom-0 p-4">
-        {it.r.town && <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "color-mix(in srgb, var(--app-accent) 60%, #fff)" }}>{it.r.town}</p>}
-        <h2 className="mt-0.5 font-serif text-[26px] font-semibold leading-[1.02] tracking-[-0.01em] text-white">{it.r.name}</h2>
-        {(() => {
-          const gold = "color-mix(in srgb, var(--app-accent) 72%, #fff)";
-          if (!it.r.deal) {
-            return <p className="mt-2 font-serif text-[20px] font-semibold" style={{ color: gold }}>Specials</p>;
-          }
-          const figs = figureCount(it.r.deal);
-          if (figs === 0) {
-            return <DealLines deal={it.r.deal} tone="onPhoto" vague className="mt-2 max-w-prose text-[14px]" />;
-          }
-          const { hook, rest } = splitDeal(it.r.deal);
-          if (figs === 1 && hook) {
-            const subject = rest && rest.toLowerCase() !== hook.toLowerCase() ? rest : "";
-            return (
-              <>
-                <p className="mt-1.5 font-serif font-bold leading-none tracking-[-0.01em]" style={{ fontSize: 40, color: gold }}>{hook}</p>
-                {subject && <p className="mt-1.5 max-w-prose text-[15px] font-medium leading-snug" style={{ color: "rgba(255,255,255,0.92)" }}>{subject}</p>}
-              </>
-            );
-          }
-          return <DealLines deal={it.r.deal} max={3} tone="onPhoto" className="mt-2 max-w-prose space-y-1 text-[15px] font-medium" />;
-        })()}
+      <RadiusPhoto
+        src={it.r.photo}
+        size={640}
+        alt=""
+        category={it.r.category ?? "bar"}
+        sizes="(max-width: 640px) 100vw, 360px"
+        className="aspect-[2/1] w-full sm:aspect-auto sm:min-h-44 sm:w-1/2"
+      />
+      <div className="min-w-0 flex-1 space-y-2 p-4">
+        <p className="text-title" style={{ color: "var(--app-ink)" }}>{it.r.name}</p>
+        {lead ? (
+          <>
+            <p className="display-3 font-bold" style={{ color: "var(--app-ink)" }}>{lead}</p>
+            {rest.length > 0 && <DealLines deal={rest.join("; ")} max={2} className="text-body space-y-0.5" />}
+          </>
+        ) : it.r.deal ? (
+          <DealLines deal={it.r.deal} max={3} vague={vague} className="text-body space-y-0.5" />
+        ) : (
+          <p className="text-body" style={{ color: "var(--app-ink-2)" }}>Specials</p>
+        )}
+        <CoverWhen it={it} />
+        {it.r.town && <p className="text-meta-lg" style={{ color: "var(--app-ink-3)" }}>{it.r.town}</p>}
       </div>
     </Link>
   );
@@ -379,7 +398,7 @@ export default function HappyHourGuide({
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search happy hours by deal, venue, or town"
             placeholder="Search: drafts, wine, oysters, a spot…"
-            className="w-full rounded-[var(--app-radius-md)] border py-2.5 pl-10 pr-10 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]"
+            className="w-full rounded-[var(--app-radius-md)] border py-2.5 pl-10 pr-10 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
             style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated-solid)", color: "var(--app-ink)", boxShadow: "var(--app-hi)" }}
           />
           {query && (
@@ -402,7 +421,7 @@ export default function HappyHourGuide({
                     className="inline-flex min-h-11 items-center rounded-full border px-3 py-1.5 text-[12.5px] font-semibold"
                     style={
                       on
-                        ? { borderColor: "var(--app-accent)", background: "var(--app-accent)", color: "var(--app-on-brand, #fff)" }
+                        ? { borderColor: "var(--app-ink)", background: "var(--app-ink)", color: "var(--app-bg)" }
                         : { borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }
                     }
                   >
@@ -433,23 +452,16 @@ export default function HappyHourGuide({
               the headline is the answer ("pouring now"), not just a photo.
               Hidden while searching: a filtered set wants results, not a pick. */}
           {!searching && cover && (
-            <div className="space-y-2">
-              <p className="fg-eyebrow flex items-center gap-1.5">
-                {cover.kind === "live" ? (
-                  <>
-                    <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
-                    <span style={{ color: "var(--app-brand-press)" }}>Pouring now · {liveCount} {liveCount === 1 ? "spot" : "spots"}</span>
-                  </>
-                ) : (
-                  <span>{cover.kind === "later" ? "Next pour today" : "Next pour this week"}</span>
-                )}
-              </p>
+            <section className="space-y-2" aria-labelledby="happy-cover-heading">
+              <h2 id="happy-cover-heading" className="text-title-sm" style={{ color: "var(--app-ink)" }}>
+                {cover.kind === "live" ? "Pouring now" : cover.kind === "later" ? "Next pour today" : "Next pour this week"}
+              </h2>
               <Cover it={cover} bloom={coverBloom} />
-            </div>
+            </section>
           )}
 
           <IndexSection label="Also pouring now" count={liveRest.length} tone="var(--app-brand-press)" items={liveRest} nowMin={nowMin} />
-          <IndexSection label="Opening later today" count={laterRest.length} tone="var(--app-accent-press)" items={laterRest} nowMin={nowMin} />
+          <IndexSection label="Opening later today" count={laterRest.length} tone="var(--app-ink-2)" items={laterRest} nowMin={nowMin} />
           <IndexSection label="More this week" count={otherRest.length} tone="var(--app-ink-2)" items={moreVisible} nowMin={nowMin} />
           {hiddenMoreCount > 0 && (
             <button

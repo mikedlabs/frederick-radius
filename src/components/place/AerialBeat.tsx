@@ -1,10 +1,12 @@
-import Image from "next/image";
+import RadiusPhoto, { RadiusPhotoScope, RadiusPhotoWhen } from "@/components/ui/RadiusPhoto";
 import { nearestAerial, currentSeason, type Aerial } from "@/lib/aerial";
 import { resolveMunicipality } from "@/lib/location";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 /** A place page shows a drone frame only when it was taken this close. */
 export const PLACE_AERIAL_MAX_METERS = 150;
+
+/** Painted width of the frame at its widest, in CSS pixels. */
+const AERIAL_PX = 720;
 
 const CAPTURE_MONTH = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
@@ -62,7 +64,8 @@ export function aerialFrameFor(
  * Self-hiding by design: renders nothing unless a real aerial sits within
  * `maxMeters` of the point and inside the caller's municipality, so it only
  * ever appears where a shot genuinely shows that spot. The caption names the
- * area from the frame's own geotag and dates it from its capture time.
+ * area from the frame's own geotag and dates it from its capture time, and it
+ * renders only after the image decodes (the RadiusPhotoScope pattern).
  */
 export default function AerialBeat({
   lat,
@@ -89,55 +92,57 @@ export default function AerialBeat({
     .filter(Boolean)
     .join(" · ");
 
+  // The frame holds its space while the photo loads, but the scrim, the
+  // "From above" label and the capture date appear only once a real image has
+  // decoded. A frame that fails to load removes the whole figure, so the page
+  // never shows a caption over nothing.
   return (
-    <figure
-      className={`relative overflow-hidden rounded-[var(--app-radius-lg)] ${className}`}
-      style={{ boxShadow: "var(--app-edge), var(--app-elev-2)" }}
-    >
-      <div className="relative aspect-[16/10] w-full sm:aspect-[2/1]">
-        <Image
-          src={aerial.src}
-          alt={captured ? `${area} seen from above in ${captured}` : `${area} seen from above`}
-          fill
-          sizes="(max-width: 720px) 100vw, 720px"
-          placeholder="blur"
-          blurDataURL={PAPER_CREAM_BLUR}
-          className="object-cover"
-        />
-        <div
-          aria-hidden
-          className="absolute inset-0"
-          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.74) 0%, rgba(0,0,0,0.12) 42%, transparent 70%)" }}
-        />
-        <figcaption className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3.5">
-          <div className="min-w-0">
-            <p
-              className="text-[10px] font-bold uppercase tracking-[0.14em]"
-              style={{ color: "rgba(255,255,255,0.8)", textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}
-            >
-              From above
-            </p>
-            <p
-              className="font-serif text-[18px] font-semibold leading-tight text-white"
-              style={{ textShadow: "0 1px 3px rgba(0,0,0,0.55)" }}
-            >
-              {area} from the air
-            </p>
-          </div>
-          {meta && (
-            <span
-              className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold backdrop-blur"
+    <RadiusPhotoScope src={aerial.src} size={AERIAL_PX}>
+      <RadiusPhotoWhen is="visible">
+        <figure
+          data-aerial-beat
+          className={`relative overflow-hidden rounded-[var(--app-radius-lg)] ${className}`}
+          style={{ boxShadow: "var(--app-edge), var(--app-elev-2)" }}
+        >
+          <RadiusPhoto
+            size={AERIAL_PX}
+            alt={captured ? `${area} seen from above in ${captured}` : `${area} seen from above`}
+            sizes="(max-width: 720px) 100vw, 720px"
+            className="aspect-[16/10] w-full sm:aspect-[2/1]"
+          />
+          <RadiusPhotoWhen is="ready">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0"
               style={{
-                background: "rgba(255,255,255,0.16)",
-                color: "white",
-                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.2)",
+                background:
+                  "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 78%, transparent) 0%, color-mix(in srgb, var(--app-ink) 14%, transparent) 42%, transparent 70%)",
               }}
-            >
-              {meta}
-            </span>
-          )}
-        </figcaption>
-      </div>
-    </figure>
+            />
+            <figcaption className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3.5">
+              <div className="min-w-0">
+                <p className="text-caption font-semibold" style={{ color: "var(--app-ink-inverse)" }}>
+                  From above
+                </p>
+                <p className="text-title" style={{ color: "var(--app-ink-inverse)" }}>
+                  {area} from the air
+                </p>
+              </div>
+              {meta && (
+                <span
+                  className="text-caption shrink-0 rounded-full px-2 py-0.5 font-semibold"
+                  style={{
+                    background: "color-mix(in srgb, var(--app-ink) 55%, transparent)",
+                    color: "var(--app-ink-inverse)",
+                  }}
+                >
+                  {meta}
+                </span>
+              )}
+            </figcaption>
+          </RadiusPhotoWhen>
+        </figure>
+      </RadiusPhotoWhen>
+    </RadiusPhotoScope>
   );
 }
