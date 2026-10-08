@@ -43,14 +43,12 @@ not fail the command.
 
 ## Current baseline
 
-The July 22 public-product pass scanned 1,193 files and excluded 81 files that
-belong to the separate surfaces above.
-
-| Signal | Public product | All surfaces | Reading |
-|---|---:|---:|---|
-| High | 0 | 31 | Violet gradients and gradient text remain isolated to the internal pitch world. |
-| Medium | 323 | Not the release gate | The main debt is 307 uses of oversized rounding or capsules. This is real repetition, not a reason to call the product finished. |
-| Low | 1 | Not the release gate | One source-owned sentence matches a generic-copy expression. Review its provenance before changing it. |
+Run `npm run scan:devibe` for the current counts; this page does not record
+them, because dated counts here went stale within weeks. The shipping bar is
+zero high findings in the public product. CI does not run this scan, so the
+checklist below is where that bar is held. Medium and low findings are a
+review list, not a pass mark, and most of the medium debt is oversized
+rounding and capsules.
 
 Zero high findings means the public product avoids the loudest stock defaults.
 It does not mean the visual system is done. Repeated pills, generic cards, and
@@ -68,8 +66,9 @@ The product should read like a field guide, not a stack of floating SaaS cards.
   action, navigation item, content card, or source row should not be a pill.
 - Shadows indicate a real layer such as a menu or sheet. Routine content stays
   flat. Decorative glows are not part of the public product.
-- Missing photography is labeled honestly. Do not simulate a photo with random
-  gradients, generated textures, arbitrary initials, or seed-based artwork.
+- A missing photo falls down the image ladder in `docs/VISUAL_FIRST.md`. Do
+  not simulate a photo with random gradients, generated textures, initials or
+  seed artwork.
 - Motion should explain a state change or spatial relationship. A repeated
   fade-in, hover-grow, or shimmer is not polish by itself.
 - Real Frederick photography, the Radius ripple, local map language, and clear
@@ -81,8 +80,8 @@ The product should read like a field guide, not a stack of floating SaaS cards.
 - The public palette does not use violet, indigo, or purple as its primary
   product color.
 - Headlines use solid ink instead of gradient-filled text.
-- Libre Caslon Display and Public Sans are the named Warm Civic type system,
-  not untouched library defaults.
+- Libre Caslon Display and Public Sans are the named type of the Frederick
+  Radius Brand System, not untouched library defaults.
 - Brick, Cream, Ink, Forest, Creek, Plum, and Ochre come from the Radius brand
   tokens.
 - User-facing icons use the established SVG system instead of emoji.
@@ -93,7 +92,7 @@ The product should read like a field guide, not a stack of floating SaaS cards.
 - [ ] Review new medium findings in the browser instead of dismissing the raw count.
 - [ ] Check that each container has a job. Remove the box if spacing or a rule can do it.
 - [ ] Check shape by role. Pills are for status, toggles, and compact filters only.
-- [ ] Check every placeholder. It must state that imagery is missing and must not impersonate a real photograph.
+- [ ] Check every image slot against the VISUAL_FIRST ladder. No fallback carries text inside the image or impersonates a photograph.
 - [ ] Check motion with reduced motion enabled.
 - [ ] Run the all-surfaces scan before changing the visibility of any excluded route.
 

@@ -154,10 +154,16 @@ In a thin town, don't fake depth — say the honest thing and point onward.
 
 State, don't sell. The place's own facts do the work.
 
+Status, hours, time and distance are labels, drawn as a dot, a strip or a
+plate ("Open till 10", "0.4 mi"), never a sentence. The sentence rule applies
+to the one descriptive line a card carries and to its empty state. Never
+restate a fact the row already shows. A lead reason, such as a "Why it leads"
+line, must add something the card lacks, or it is dropped.
+
 | Ship this | Not this |
 |---|---|
-| It is open till 10 in downtown Frederick. | Conveniently located and open late for your enjoyment! |
-| It opens Saturdays at 8am and closes when it sells out. | A must-visit local favorite you won't want to miss! |
+| The bakery sells out most Saturdays by noon. | Conveniently located and open late for your enjoyment! |
+| The taproom pours its own lagers and lets you bring food from the trucks outside. | A must-visit local favorite you won't want to miss! |
 | The outdoor event is free. Dogs are welcome. | The perfect spot for the whole family! |
 
 ### Empty states (honest, never dead-ends)
@@ -201,8 +207,7 @@ State, don't sell. The place's own facts do the work.
 
 - **No em dashes.** Comma or a full stop instead.
 - **Times are Eastern**, rendered like a person reads them: "6pm," "8am,"
-  "till 10," not "18:00" or "10:00 PM" in body copy. (Mono/data surfaces
-  keep tabular time; prose does not.)
+  "till 10," not "18:00" or "10:00 PM" in body copy.
 - **No trailing "!"** except a genuine human moment.
 - **Sentence case** for headings and buttons, not Title Case. ("Open now,"
   not "Open Now.") Proper nouns keep their caps.

@@ -29,9 +29,13 @@ mono family is unnecessary. Legacy `.font-serif` components intentionally
 compute to Public Sans. Use `.font-brand` for the wordmark and
 `.font-editorial` only for a deliberate editorial hero.
 
-Map canvas labels use the cartographic face supplied by Mapbox. That exception
-is limited to labels drawn inside the map canvas; every Radius map control,
-sheet, popup, and list uses Public Sans.
+Map canvas labels are the one exception to the two families, and the stack
+depends on the engine. Mapbox surfaces (/map, radius, transit) use Mapbox label
+stacks (`MAPBOX_LABEL_FONT_*` in `src/components/map/mapboxFieldGuideStyle.ts`).
+MapLibre surfaces use the vendored Noto Sans stacks in `MAP_LABEL_FONT_*`
+(`src/lib/map/frederickFlavorStyle.ts`, glyphs in `public/basemap/fonts`). Name
+no other stack. Overlays Radius draws itself, such as map controls, sheets,
+popups and lists, use Public Sans.
 
 ### Role-based scale
 
@@ -59,7 +63,25 @@ explanation. Product headings use Public Sans. Libre Caslon Display begins at
 earns it.
 
 Plus `.eyebrow` for uppercase 11px with `0.1em` tracking (already
-canonical — kept).
+canonical — kept). It serves existing labels; new headings do not add tracked
+caps (see "Section headings").
+
+### Section headings
+
+- Use `SectionHeading` (`src/components/ui/SectionHeading.tsx`, with a
+  Storybook story) or, on Today, `TodaySectionHeading`. Do not hand-build a
+  section header.
+- The title is Public Sans at the `.text-title` size (20 px, SectionHeading
+  `size="lg"`) or the `.text-title-sm` size (16 px, `size="sm"`).
+- Add no new tracked caps, and set no heading text below 11 px.
+  TodaySectionHeading's 10 px `.fg-eyebrow` and 10.5 px meta line are
+  existing debt. Do not copy them or spread them into SectionHeading,
+  EmptyState or another shared primitive.
+- Keep counts out of the heading. SectionHeading still accepts `count` for
+  older callers, and new code does not pass it.
+- `npm run lint:type-scale` blocks new sub-11 px sizes and tracked caps in
+  `src/app/(app)` and `src/components`, but it does not read
+  `src/app/globals.css`, so a new CSS class can slip past it.
 
 ### Color is NOT baked into typography classes
 
@@ -97,6 +119,50 @@ context. Callers set color explicitly (Tailwind `color:` or `style`).
 | `--app-warning`  | #925E16  | Text-safe Ochre warning                  |
 | `--app-danger`   | **#B4231E** | **was #A02929** — too close to brand brown; now unmistakably stop-sign red |
 | `--app-info`     | #285D73  | Supporting information                   |
+
+### Contrast
+
+WCAG AA asks for 4.5:1 for normal text and 3:1 for large text, icons and
+control boundaries. These ratios were measured on 2026-10-08 against the
+tokens in `src/app/globals.css`. Bold figures fall below 4.5:1 for a text
+token, or below 3:1 for the fill, decoration and boundary tokens (Amber, sage
+and the control border). Re-measure any pair from the repo root with the
+shared helper:
+
+```sh
+npx tsx -e 'import { contrastRatio } from "./src/lib/color/readableText.ts"; console.log(contrastRatio("#B5462B", "#EAE1D1").toFixed(2))'
+```
+
+| Foreground | Cream `--app-bg` | Card `--app-bg-elevated-solid` | Sunken `--app-bg-sunken` |
+|---|---:|---:|---:|
+| `--app-ink` | 14.60 | 15.89 | 13.00 |
+| `--app-ink-2` | 6.57 | 7.15 | 5.85 |
+| `--app-ink-3` | 5.11 | 5.56 | 4.55 |
+| `--app-brand` | 4.69 | 5.11 | **4.18** |
+| `--app-brand-press` | 7.11 | 7.74 | 6.33 |
+| `--app-warning`, `--app-amber-text` | 4.74 | 5.16 | **4.22** |
+| `--app-amber` | **2.58** | **2.80** | **2.29** |
+| `--app-sage` | **2.91** | 3.17 | **2.59** |
+| `--app-control-border` (3:1 bar) | 3.34 | 3.64 | **2.98** |
+
+- Small or normal-weight text in Brick uses `--app-brand-press`, because raw
+  `--app-brand` fails on Sunken. `tests/design/brand-text-contrast.spec.ts`
+  fails small text set in `--app-brand`. Keep `--app-brand` for fills, icons,
+  borders and large display text.
+- `--app-warning` and `--app-amber-text` are text-safe on Cream and cards
+  only. On Sunken, mix them toward Ink; the note beside `--app-amber-text` in
+  `globals.css` gives 85% for 5.04:1.
+- `--app-amber` is a fill, never text. Put Ink on it (5.67:1), never Cream
+  (2.58:1).
+- `--app-sage` is for topo lines and decoration, never text.
+- Cream text (`--app-on-brand`) passes on the Brick (4.69:1), Forest (6.80:1),
+  Creek (6.26:1), danger (5.68:1), warning (4.74:1) and Plum (7.34:1) fills.
+- `--app-accent` is Plum, not the gold it once was, and it passes as text on
+  every ground. It stays a limited arts and editorial accent. Any note or
+  comment that calls it gold is stale.
+- `src/lib/brand.spec.ts` holds the core brand pairs on Cream to these bars.
+  The July 2026 pass that this section replaces is recorded, as history, in
+  `docs/CONTRAST_AUDIT.md`.
 
 ### Tint utilities (NEW — replaces inline color-mix)
 
@@ -171,8 +237,9 @@ button, avatar, dot, or the round portion of the Radius mark.
   ambient blobs. A feature state may use one solid registration rule.
 - Do not create fake visual variety with seeded gradients, randomized icon
   angles, artificial textures, or giant initials that resemble photography.
-- A missing image is a data state. Label it honestly and use one stable brand
-  plate until a licensed or owner-supplied photograph is available.
+- A missing image falls down the image ladder in
+  [`docs/VISUAL_FIRST.md`](VISUAL_FIRST.md). Never put text in an image plate
+  or show a credit before the photo loads.
 
 ---
 

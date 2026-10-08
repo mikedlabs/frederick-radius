@@ -45,11 +45,16 @@ adoption, and most surface complaints resolve at once.**
 - **Weight monotony.** 624 `font-semibold` vs 168 medium / 149 bold /
   32 light. Hierarchy is carried by *size alone*; nothing reads as
   "quiet caption" vs "strong label," so dense screens feel noisy.
-- **Display face underused.** ~~Fraunces~~ *(STALE — the shipped display
-  face is **Newsreader**; see CLAUDE.md for the current brand deck. Two
-  external audits imported this line as "the locked spec," so it's
-  corrected in place.)* The original point stands historically: the
-  display face was underused; section ledes defaulted to sans.
+- **Display face underused.** ~~Fraunces~~ *(Stale, corrected in place on
+  2026-10-08. The current faces are Libre Caslon Display, for the wordmark
+  and rare editorial moments, and Public Sans, for everything else including
+  page and section titles. See CLAUDE.md and
+  `docs/brand/BRAND_GUIDE.md`. An earlier correction here named Newsreader,
+  which has also been retired. Two external audits imported this line as
+  "the locked spec.")* The original point is history: the display face of
+  the time was underused. Under the current system, section titles are
+  Public Sans by design, so this finding is not a reason to add display
+  type.
 
 **Fix:** adopt the existing semantic classes everywhere; map the ~20
 ad-hoc sizes onto 6 steps. Define a 3-weight rule (e.g. `400` body /
