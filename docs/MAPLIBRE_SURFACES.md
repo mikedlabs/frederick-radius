@@ -9,20 +9,20 @@ and the traps that come with it.
 > old file kept asserting "every GL surface in the app now renders that way"
 > and listing traffic and hillshade as lost, all of which stopped being true
 > the day #1552 merged. The migration narrative is gone; the operational
-> knowledge below is still live and still governs six production surfaces.
+> knowledge below is still live and governs every MapLibre surface.
 
 ## Who renders what
 
 | Engine | Surfaces |
 | --- | --- |
-| **Mapbox GL 3.27** — `mapbox://styles/mapbox/standard` via the field-guide config, DEM hillshade, live traffic | `/map`, `/map?mode=radius`, `/transit`, plus the AppMap embeds on `/beer`, `/trails`, `/my-radius`, and the fifteen shared overlay children |
-| **MapLibre GL 6.4** — self-hosted county PMTiles, no token, no per-load billing | `/events` map view (`EventsMapInner`), `/overhead`, `/collect`, `/report`, `/from-above/time-machine`, `/fair` (`FairGroundsMapInner`, with its aerial and live-transit layers) |
+| **Mapbox GL 3.27**: `mapbox://styles/mapbox/standard` via the field-guide config, DEM hillshade, live traffic | `/map`, `/map?mode=radius`, `/transit`, plus the AppMap embeds on `/beer`, `/trails`, `/my-radius`, and the fifteen shared overlay children |
+| **MapLibre GL 6.4**: self-hosted county PMTiles, no token, no per-load billing | `/events` map view (`EventsMapInner`), `/overhead`, `/collect`, `/report`, `/from-above/time-machine`, `/fair` (`FairGroundsMapInner`, with its aerial and live-transit layers), `OwnedMiniMap` (the place page hero when no photo loads, the event venue map and the Ask results map), and `CountyOverviewMap` (`/towns`, `/parks`) |
 
 The split is not arbitrary and it is not a migration in progress. Mapbox
 carries the immersive surfaces because it supplies terrain and traffic that
 MapLibre has no licensed equivalent for. MapLibre carries the locator and
-field-tool surfaces because they need a plain, cheap, reliable basemap and
-those six would otherwise bill per load for nothing.
+field-tool surfaces because they need a plain, cheap, reliable basemap, and
+each of them would bill per load for nothing if it ran on Mapbox.
 
 The two cannot be mixed **within** one component tree: react-map-gl's
 `/mapbox` and `/maplibre` entries have separate React contexts, so a `Source`
@@ -49,7 +49,7 @@ shipping a mismatched worker pair.
 
 ## Traps, all paid for
 
-Every one of these still applies to the six surfaces above.
+Every one of these applies to every MapLibre surface, including any new one.
 
 - **The worker.** Turbopack does not rewrite MapLibre's
   `new Worker(new URL(...))`, so the worker is constructed with an EMPTY url
@@ -63,9 +63,15 @@ Every one of these still applies to the six surfaces above.
 - **Font stacks.** MapLibre answers a missing glyph range with a console
   warning and renders the codepoint with a local browser font, so a wrong or
   absent `text-font` yields labels that are subtly wrong rather than missing.
-  Every symbol layer must name a vendored stack explicitly; silence inherits
-  the spec default of Open Sans, which we do not serve.
-  `src/lib/map/mapLabelFonts.spec.ts` enforces both halves.
+  Every symbol layer must name a vendored stack explicitly, through
+  `MAP_LABEL_FONT_MEDIUM` or `MAP_LABEL_FONT_REGULAR` in
+  `src/lib/map/frederickFlavorStyle.ts`; silence inherits the spec default of
+  Open Sans, which we do not serve. The Mapbox surfaces use the Mapbox-hosted
+  `MAPBOX_LABEL_FONT_*` stacks in `src/components/map/mapboxFieldGuideStyle.ts`
+  instead. `src/lib/map/mapLabelFonts.spec.ts` checks that the MapLibre
+  constants name only vendored stacks, but its explicit-`text-font` check reads
+  only the Mapbox files in its `SYMBOL_LAYER_SOURCES` list, so a new MapLibre
+  symbol layer has to get this right by hand.
 - **CSS class names.** MapLibre emits `.maplibregl-*`, Mapbox emits
   `.mapboxgl-*`. With both engines shipping, a selector written for one is
   silently dead on the other — attribution positioning, popup chrome, and the

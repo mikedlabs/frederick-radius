@@ -23,6 +23,13 @@ have very different caching and rendering needs.
 2. The route shell contains layout, controls, and small task-specific context.
    The county place catalog is fetched from a same-origin, five-minute cached
    URL and warmed in parallel with the MapLibre bundle.
+
+   *Amended 2026-10-08:* /map renders with Mapbox GL (`react-map-gl/mapbox` in
+   `AppMap.tsx`, restored by #1552), so `MapWarmup` warms the Mapbox `AppMap`
+   chunk through `warmAppMapChunk()` in `src/components/map/AppMapClient.tsx`,
+   not a MapLibre bundle. MapLibre draws the surfaces listed in
+   `docs/MAPLIBRE_SURFACES.md`.
+
 3. The place response is an explicit allowlist of pin fields. Full place
    records, photos, menus, and editorial detail load only when a person opens
    a result.
