@@ -34,6 +34,14 @@ describe("Open now trust contract", () => {
     expect(source).toContain("label: LIKELY_OPEN_CHECK_HOURS");
   });
 
+  it("names the pin map for what its pinned list claims, never 'open now' for likely rows", () => {
+    expect(source).not.toMatch(/name:\s*"places open now"/);
+    expect(source).toMatch(
+      /pinnedKey === "likely"\s*\?\s*"places likely open at this hour"\s*:\s*"places whose recently checked hours say they are open"/,
+    );
+    expect(source).toContain("name: pinMapName");
+  });
+
   it("marks happy hour only inside a structured window and never parses notes text", () => {
     expect(source).toContain("happyHourOnAt(p.slug, now)");
     expect(source).not.toContain("fieldNotesFor");

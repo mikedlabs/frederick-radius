@@ -150,7 +150,7 @@ describe("ResultsPinMap", () => {
             { slug: "none", name: "No point" },
             { slug: "alley", name: "Brewer's Alley", lng: -77.4105, lat: 39.4161 },
           ]}
-          name="places open now"
+          name="the places to start with"
         />,
       ),
     );
@@ -161,7 +161,7 @@ describe("ResultsPinMap", () => {
     expect(pins.sort()).toEqual(["1", "2"]);
     const map = container.querySelector('[role="img"]');
     expect(map?.getAttribute("aria-label")).toBe(
-      "Locations of places open now: 1 Black Hog BBQ Bar, 2 Brewer's Alley",
+      "Locations of the places to start with: 1 Black Hog BBQ Bar, 2 Brewer's Alley",
     );
     expect(container.querySelector("[data-owned-mini-map]")?.className).toContain("h-44");
     expect(container.innerHTML).not.toContain("--app-positive");

@@ -33,7 +33,7 @@ const meta = {
       </div>
     ),
   ],
-  args: { rows: DOWNTOWN, name: "places open now" },
+  args: { rows: DOWNTOWN, name: "places whose recently checked hours say they are open" },
 } satisfies Meta<typeof ResultsPinMap>;
 
 export default meta;
@@ -50,43 +50,71 @@ export const OnePinDrawsNothing: Story = {
   args: { rows: DOWNTOWN.slice(0, 1) },
 };
 
-const place = (row: ResultsPinRow, overrides: Partial<PlaceCardData>) =>
+/**
+ * A catalog place for the rows below. Catalog places always carry a point,
+ * and PlaceCard's row reads it for its nearest-landmark line, so the fixture
+ * requires one.
+ */
+type CatalogPoint = { slug: string; name: string; lng: number; lat: number };
+
+const place = ({ slug, name, lng, lat }: CatalogPoint, overrides: Partial<PlaceCardData>) =>
   ({
-    slug: row.slug,
-    name: row.name,
+    slug,
+    name,
     municipality: "frederick",
     city: "Frederick",
     tags: [],
     open_status: { state: "unknown" },
-    geom: row.lng != null && row.lat != null ? { lng: row.lng, lat: row.lat } : undefined,
+    geom: { lng, lat },
     ...overrides,
   }) as unknown as PlaceCardData;
 
 const PICKS: PlaceCardData[] = [
-  place(DOWNTOWN[0], {
-    category: "restaurant",
-    primary_type: "barbecue_restaurant",
-    address: "118 S Market St, Frederick, MD 21701",
-    google_rating: 4.6,
-    google_rating_count: 1728,
-  }),
-  place(DOWNTOWN[2], {
-    category: "restaurant",
-    primary_type: "restaurant",
-    address: "20 N Market St, Frederick, MD 21701",
-  }),
-  place(DOWNTOWN[1], {
-    category: "brewery",
-    primary_type: "brewery",
-    address: "124 N Market St, Frederick, MD 21701",
-    google_rating: 4.4,
-    google_rating_count: 3998,
-  }),
+  place(
+    { slug: "black-hog-bbq-bar", name: "Black Hog BBQ Bar", lng: -77.4111035, lat: 39.4111452 },
+    {
+      category: "restaurant",
+      primary_type: "barbecue_restaurant",
+      address: "118 S Market St, Frederick, MD 21701",
+      google_rating: 4.6,
+      google_rating_count: 1728,
+    },
+  ),
+  place(
+    { slug: "cacique-frederick", name: "Cacique Frederick", lng: -77.4106278, lat: 39.4146801 },
+    {
+      category: "restaurant",
+      primary_type: "restaurant",
+      address: "26 N Market St, Frederick, MD 21701",
+    },
+  ),
+  place(
+    { slug: "brewers-alley-frederick", name: "Brewer's Alley", lng: -77.4104615, lat: 39.4160924 },
+    {
+      category: "brewery",
+      primary_type: "brewery",
+      address: "124 N Market St, Frederick, MD 21701",
+      google_rating: 4.4,
+      google_rating_count: 3998,
+    },
+  ),
 ];
 
-/** The category "Start here" pattern: the map, then the numbered rows. */
+/**
+ * The category "Start here" pattern: the map, then the numbered rows. The
+ * middle pick's pin row carries no point, so it gets no pin and keeps an
+ * empty number column, and the third pick becomes pin 2. The place itself
+ * still has its catalog point, as every catalog place does.
+ */
 export const WithNumberedRows: Story = {
-  args: { rows: PICKS.map(pinRowFor), name: "the places to start with" },
+  args: {
+    rows: [
+      pinRowFor(PICKS[0]),
+      { slug: PICKS[1].slug, name: PICKS[1].name },
+      pinRowFor(PICKS[2]),
+    ],
+    name: "the places to start with",
+  },
   render: (args) => {
     const numbers = mappedPinNumbers(args.rows);
     return (

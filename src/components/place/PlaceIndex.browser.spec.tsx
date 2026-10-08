@@ -15,6 +15,7 @@ vi.mock("next/dynamic", () => ({
   default: () => () => null,
 }));
 
+import { LIKELY_OPEN_CHECK_HOURS } from "@/lib/trust-language";
 import PlaceIndex, { type IndexRow } from "./PlaceIndex";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
@@ -148,7 +149,7 @@ describe("PlaceIndex pin map", () => {
           ]}
           pinMap={{
             sectionKey: "eat",
-            name: "places open now",
+            name: "places whose recently checked hours say they are open",
             fullMap: { href: "/map?mode=browse&open=now", label: "Open the full map" },
           }}
         />,
@@ -173,7 +174,7 @@ describe("PlaceIndex pin map", () => {
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
     expect(map?.querySelector('[role="img"]')?.getAttribute("aria-label")).toBe(
-      "Locations of places open now: 1 Cafe, 2 Bistro, 3 Alehouse",
+      "Locations of places whose recently checked hours say they are open: 1 Cafe, 2 Bistro, 3 Alehouse",
     );
     const link = [...container.querySelectorAll("a")].find(
       (anchor) => anchor.textContent === "Open the full map",
@@ -205,7 +206,9 @@ describe("PlaceIndex pin map", () => {
     expect(numberBySlug()).toMatchObject({ Alehouse: "1", Bistro: "2", Cafe: "3", Diner: "" });
     expect(
       container.querySelector('[role="img"]')?.getAttribute("aria-label"),
-    ).toBe("Locations of places open now: 1 Alehouse, 2 Bistro, 3 Cafe");
+    ).toBe(
+      "Locations of places whose recently checked hours say they are open: 1 Alehouse, 2 Bistro, 3 Cafe",
+    );
   });
 
   it("prints no numbers when fewer than two rows can be pinned", async () => {
@@ -220,5 +223,29 @@ describe("PlaceIndex pin map", () => {
 
     expect(container.querySelector('[role="img"]')).toBeNull();
     expect(container.querySelector("[data-pin-number]")).toBeNull();
+  });
+
+  it("reads likely-open pins as likely, the way /open-now names them when that list leads", async () => {
+    // /open-now with no recently checked hours: only the likely list renders,
+    // unsorted, and it carries the map. Its pins must not be read aloud as
+    // places that are open now.
+    await act(async () =>
+      root.render(
+        <PlaceIndex
+          sections={[{ key: "likely", label: LIKELY_OPEN_CHECK_HOURS, rows }]}
+          showSort={false}
+          pinMap={{
+            sectionKey: "likely",
+            name: "places likely open at this hour",
+            fullMap: { href: "/map?mode=browse&open=now", label: "Open the full map" },
+          }}
+        />,
+      ),
+    );
+
+    const label = container.querySelector('[role="img"]')?.getAttribute("aria-label");
+    expect(label).toBe("Locations of places likely open at this hour: 1 Cafe, 2 Bistro, 3 Alehouse");
+    expect(label).not.toMatch(/open now/i);
+    expect(numberBySlug()).toEqual({ Cafe: "1", Bistro: "2", Alehouse: "3", Diner: "" });
   });
 });

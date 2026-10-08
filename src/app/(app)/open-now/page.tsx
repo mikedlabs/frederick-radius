@@ -250,10 +250,17 @@ export default async function OpenNowPage() {
     s.key === pinnedKey ? withPoints(s) : s,
   );
   const fullMapHref = "/map?mode=browse&open=now";
+  // The map's accessible name claims no more than the pinned list does. The
+  // likely list is an estimate from usual hours that the header says to
+  // check, so its pins are never read aloud as places open now.
+  const pinMapName =
+    pinnedKey === "likely"
+      ? "places likely open at this hour"
+      : "places whose recently checked hours say they are open";
   const pinMap: IndexPinMap | undefined = pinnedKey
     ? {
         sectionKey: pinnedKey,
-        name: "places open now",
+        name: pinMapName,
         fullMap: { href: fullMapHref, label: "Open the full map" },
       }
     : undefined;
