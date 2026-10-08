@@ -206,6 +206,81 @@ describe("Directions lead on the way to an in-person event", () => {
     ).toBe("directions");
   });
 
+  it("keeps an evening opening day open through the night, past the final day's closing clock", () => {
+    // Fri 6 PM to Sun 5 PM. Sunday's 5 PM close says nothing about Friday,
+    // which opens an hour after it. The window used to shut at 5 PM Friday
+    // and fall back to Add to calendar for the whole opening night.
+    const fridayNight = {
+      ...colorfest,
+      startsAt: "2026-10-09T18:00:00-04:00",
+      endsAt: "2026-10-11T17:00:00-04:00",
+    };
+    const at = (now: string) =>
+      eventMobilePrimaryAction({ ...fridayNight, now: new Date(now) });
+    expect(at("2026-10-09T16:59:00-04:00")).toBe("directions");
+    expect(at("2026-10-09T17:01:00-04:00")).toBe("directions");
+    expect(at("2026-10-09T18:30:00-04:00")).toBe("directions");
+    expect(at("2026-10-09T21:00:00-04:00")).toBe("directions");
+    expect(at("2026-10-09T23:59:00-04:00")).toBe("directions");
+    // Saturday is a middle day and keeps the 7 AM to 5 PM clock.
+    expect(at("2026-10-10T00:30:00-04:00")).toBe("calendar");
+    expect(at("2026-10-10T16:59:00-04:00")).toBe("directions");
+    expect(at("2026-10-10T17:01:00-04:00")).toBe("calendar");
+  });
+
+  it("keeps a Fri 5 PM opening open when the festival closes at 4 PM on Sunday", () => {
+    const at = (now: string) =>
+      eventMobilePrimaryAction({
+        ...colorfest,
+        startsAt: "2026-10-09T17:00:00-04:00",
+        endsAt: "2026-10-11T16:00:00-04:00",
+        now: new Date(now),
+      });
+    expect(at("2026-10-09T13:59:00-04:00")).toBe("calendar");
+    expect(at("2026-10-09T14:00:00-04:00")).toBe("directions");
+    expect(at("2026-10-09T16:01:00-04:00")).toBe("directions");
+    expect(at("2026-10-09T19:00:00-04:00")).toBe("directions");
+  });
+
+  it("stays open through the first afternoon of a 24-hour event", () => {
+    const at = (now: string) =>
+      eventMobilePrimaryAction({
+        ...colorfest,
+        startsAt: "2026-10-10T10:00:00-04:00",
+        endsAt: "2026-10-11T10:00:00-04:00",
+        now: new Date(now),
+      });
+    expect(at("2026-10-10T06:59:00-04:00")).toBe("calendar");
+    expect(at("2026-10-10T07:00:00-04:00")).toBe("directions");
+    expect(at("2026-10-10T14:00:00-04:00")).toBe("directions");
+    expect(at("2026-10-10T22:00:00-04:00")).toBe("directions");
+    expect(at("2026-10-11T09:59:00-04:00")).toBe("directions");
+    expect(at("2026-10-11T10:00:00-04:00")).toBe("calendar");
+  });
+
+  it("gives a late-afternoon opening at least a 3-hour first day", () => {
+    // Fri 3 PM leaves only 2 hours before a 5 PM close, so Friday stays open.
+    const threePm = (now: string) =>
+      eventMobilePrimaryAction({
+        ...colorfest,
+        startsAt: "2026-10-09T15:00:00-04:00",
+        endsAt: "2026-10-11T17:00:00-04:00",
+        now: new Date(now),
+      });
+    expect(threePm("2026-10-09T17:30:00-04:00")).toBe("directions");
+    expect(threePm("2026-10-09T20:00:00-04:00")).toBe("directions");
+    // Fri 2 PM already has 3 hours before the close, which still applies.
+    const twoPm = (now: string) =>
+      eventMobilePrimaryAction({
+        ...colorfest,
+        startsAt: "2026-10-09T14:00:00-04:00",
+        endsAt: "2026-10-11T17:00:00-04:00",
+        now: new Date(now),
+      });
+    expect(twoPm("2026-10-09T16:59:00-04:00")).toBe("directions");
+    expect(twoPm("2026-10-09T17:01:00-04:00")).toBe("calendar");
+  });
+
   it("runs an all-day event from 7 AM to midnight on each of its days", () => {
     const market = {
       attendance: "physical" as const,

@@ -56,6 +56,10 @@ export type EventDirectionsWindowInput = {
  *   event's closing clock time (until midnight when it closes after midnight
  *   or is all day), and never past the final end. On the first day the window
  *   also waits until 3 hours before the start.
+ * - The closing clock comes from the final day, so it says nothing about an
+ *   opening day that starts late. When it would leave the first day less than
+ *   a 3-hour runtime, as with a Friday 6 PM opening of a festival that closes
+ *   at 5 PM on Sunday, the first day stays open until midnight instead.
  *
  * Every clock here is Eastern, because that is the clock the event keeps.
  */
@@ -101,6 +105,13 @@ export function isEventDirectionsWindow({
     closesMs = closesAfterOpening
       ? easternInstant(today, close.hour, close.minute)
       : easternInstant(today, 24);
+    // Radius does not know a late opening day's hours, so it stays open until
+    // midnight. Without this, Fri 6 PM to Sun 5 PM closed Friday's window at
+    // 5 PM, an hour before the doors opened, and fell back to Add to calendar
+    // for the whole opening night.
+    if (today === firstDay && closesMs - startMs < UNKNOWN_END_RUNTIME_MS) {
+      closesMs = easternInstant(today, 24);
+    }
   }
   return nowMs >= opensMs && nowMs < closesMs;
 }
