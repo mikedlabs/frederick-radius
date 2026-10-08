@@ -1,7 +1,9 @@
 .masthead {
   display: grid;
-  gap: 12px;
-  margin-block: 8px 16px;
+  /* The area line is a 44px row with its own air, so it sits close under
+     the band. */
+  gap: 4px;
+  margin-block: 8px 12px;
   /* Keep the useful arrival stable while the page scrolls. */
   animation: none;
 }
@@ -46,18 +48,10 @@
   text-shadow: 0 1px 2px color-mix(in srgb, var(--app-ink) 60%, transparent);
 }
 
-.scope > div {
-  margin-top: 0;
-}
-
-.scope label {
-  flex: 1 1 130px;
-  max-width: 180px;
-}
-
-.scope select {
-  width: 100%;
-  box-shadow: var(--app-shadow-1);
+/* The area line reads search parameters, so the static page streams it after
+   hydration. Reserve its one 44px row so Find does not move when it lands. */
+.scope {
+  min-height: 44px;
 }
 
 .portrait {
@@ -138,7 +132,13 @@
   min-width: 0;
 }
 
-.places,
+/* On phones the place answers sit on the page itself: a heading and two
+   picture tiles on Cream, with no card around them. The wider two-column
+   briefing keeps its framed columns until the desktop pass. */
+.places {
+  margin: 0;
+}
+
 .events {
   margin: 0;
   padding: 16px;
@@ -148,33 +148,7 @@
   box-shadow: var(--app-shadow-1);
 }
 
-.places > section {
-  margin-top: 0;
-}
-
 .places [data-today-section-heading] p {
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.places [data-today-decision-density="brief"] :global(.today-answer-shelf) {
-  display: block;
-  padding-right: 0;
-}
-
-.places [data-today-decision-density="brief"] [data-today-place-lead] {
-  width: 100%;
-  min-height: 112px;
-}
-
-.places [data-today-pick-name] {
-  font-size: 18px;
-  line-height: 1.2;
-}
-
-.places [data-today-pick-context] {
-  flex-wrap: wrap;
-  white-space: normal;
   font-size: 12px;
   line-height: 1.4;
 }
@@ -301,6 +275,10 @@
   .places,
   .events {
     padding: 20px;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-lg);
+    background: var(--app-bg-elevated-solid);
+    box-shadow: var(--app-shadow-1);
   }
 }
 
@@ -321,7 +299,6 @@
     font-size: 12px;
   }
 
-  .places,
   .events {
     padding: 12px;
   }

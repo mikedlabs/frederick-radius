@@ -69,12 +69,19 @@ test("a denied location still offers every town without another permission reque
     }, configurable: true });
   });
   await page.goto("/today");
+  const area = page.getByRole("combobox", { name: "Choose your area" });
+  await expect(area).toBeEnabled();
+  // Choosing Near me explains what location is for and keeps the county in
+  // effect. Only the one button under that sentence can ask the browser.
+  await area.selectOption("nearme");
+  await expect(page.getByTestId("today-location-benefit")).toBeVisible();
+  await expect(area).toHaveValue("county");
   await page.getByRole("button", { name: "Use my location", exact: true }).click();
-  // The first tap explains what location is for; the second one asks.
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByTestId("today-location-blocked")).toContainText("Choose a town");
-  await page.getByRole("combobox", { name: "Choose your area" }).selectOption("town:brunswick");
+  await expect(page.getByRole("button", { name: "Use my location", exact: true })).toHaveCount(0);
+  await area.selectOption("town:brunswick");
   await expect(page.getByTestId("today-scope-status")).toContainText("Brunswick");
+  await expect(page.getByTestId("today-location-blocked")).toHaveCount(0);
 });
 
 test("official resource search leads with the supported public action", async ({ page }) => {

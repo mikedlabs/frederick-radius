@@ -4,8 +4,7 @@ import Link from "next/link";
 import { ArrowRight, Clock3, MapPin, Search, Route, Building2 } from "lucide-react";
 import { requestFind } from "@/lib/findBridge";
 import { haptic } from "@/lib/haptics";
-import BrowsePlacesDisclosure from "./BrowsePlacesDisclosure";
-import { useSyncExternalStore, type ReactNode } from "react";
+import { useSyncExternalStore } from "react";
 import { getScope, scopeToParam, subscribeScopeChange } from "@/lib/scope";
 import styles from "./TodayAsk.module.css";
 
@@ -14,14 +13,14 @@ import styles from "./TodayAsk.module.css";
  * The global Find surface decides whether the request belongs in deterministic
  * search or the reasoning workspace. People never have to choose the tool.
  *
- * Four practical shortcuts stay visible. The full category index is available in
- * the attached disclosure, but it no longer occupies the page by default.
+ * Four practical shortcuts sit under it in one row from 360px up, an icon over
+ * a short label, so the place answers below them reach the first screen. The
+ * full category index lives after the place shelf (BrowsePlacesDisclosure in
+ * the Today page), not inside this doorway.
  */
 export default function TodayAsk({
-  children,
   embedded = false,
 }: {
-  children?: ReactNode;
   embedded?: boolean;
 }) {
   const scope = useSyncExternalStore(subscribeScopeChange, getScope, () => null);
@@ -86,7 +85,7 @@ export default function TodayAsk({
           className={styles.shortcut}
         >
           <Clock3 strokeWidth={1.8} aria-hidden />
-          <span>
+          <span className={`text-meta-lg font-semibold ${styles.shortcutLabel}`}>
             Open now
           </span>
         </Link>
@@ -96,23 +95,23 @@ export default function TodayAsk({
           className={styles.shortcut}
         >
           <MapPin strokeWidth={1.8} aria-hidden />
-          <span>
+          <span className={`text-meta-lg font-semibold ${styles.shortcutLabel}`}>
             Public essentials
           </span>
         </Link>
         <Link href={planHref} prefetch={false} className={styles.shortcut}>
           <Route strokeWidth={1.8} aria-hidden />
-          Plan a few hours
+          <span className={`text-meta-lg font-semibold ${styles.shortcutLabel}`}>
+            Plan a few hours
+          </span>
         </Link>
         <Link href="/contacts" prefetch={false} className={styles.shortcut}>
           <Building2 strokeWidth={1.8} aria-hidden />
-          Local services
+          <span className={`text-meta-lg font-semibold ${styles.shortcutLabel}`}>
+            Local services
+          </span>
         </Link>
       </div>
-
-      {children ? (
-        <BrowsePlacesDisclosure embedded>{children}</BrowsePlacesDisclosure>
-      ) : null}
     </section>
   );
 }

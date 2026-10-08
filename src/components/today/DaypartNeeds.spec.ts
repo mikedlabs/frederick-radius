@@ -5,12 +5,12 @@ import DaypartNeeds, {
   DaypartEmptyState,
   daypartBrowseHref,
   daypartEmptyCopy,
-  daypartLeadReason,
   daypartPhotoSrc,
   daypartPickScopeLabel,
   daypartShelfConfidenceRank,
   daypartShelfHeading,
   daypartShelfTier,
+  daypartTileFact,
   daypartUsablePickCount,
   initialDaypartCategory,
   isPhotoFailureSignal,
@@ -60,9 +60,9 @@ describe("DaypartNeeds", () => {
     expect(html).toContain("Coffee");
     expect(html).toContain("Bakeries");
     expect(html).toContain("First Cup");
-    expect(html).toContain("Across Frederick County");
     expect(html).not.toContain("Countywide picks");
-    expect(html).toContain("Urbana");
+    // A countywide tile names its town after the hours fact.
+    expect(html).toContain("Open now · Urbana");
     expect(html).not.toContain("Nearby picks");
     expect(html).not.toContain("Right now, around here");
     expect(html).not.toContain("Second Loaf");
@@ -597,7 +597,7 @@ describe("DaypartNeeds", () => {
     });
   });
 
-  it("explains the lead with current hours and consented-device distance first", () => {
+  it("states a tile's current hours and consented-device distance first", () => {
     const shelf = liveShelfFromWantAnswer(
       {
         hero: {
@@ -629,80 +629,112 @@ describe("DaypartNeeds", () => {
       "nearme",
     );
 
-    expect(daypartLeadReason(shelf.picks)).toBe(
-      "It is open until 4pm and is a 4-minute walk from you.",
+    expect(daypartTileFact(shelf.picks[0], shelf.contextSource)).toBe(
+      "Open until 4pm · 4 min walk",
     );
   });
 
-  it("uses evidence-backed availability before generic popularity evidence", () => {
-    expect(daypartLeadReason([{
+  it("shows distance only with a device fix and the town on a countywide shelf", () => {
+    const pick = {
       slug: "nearby-only",
       name: "Nearby Only",
       rating: null,
-      confidence: "confirmed",
-      fact: "Open now",
-      decisionReasons: [
-        { id: "availability", label: "Its current hours show it open now.", evidenceIds: [] },
-        { id: "review-evidence", label: "It has substantial Google review history.", evidenceIds: [] },
-      ],
-    }])).toBe("Current hours show it is open now.");
-  });
-
-  it("pairs an exact distance with current hours instead of review history", () => {
-    expect(daypartLeadReason([{
-      slug: "nearby-only",
-      name: "Nearby Only",
-      rating: null,
-      confidence: "confirmed",
+      confidence: "confirmed" as const,
+      fact: "Open until 10pm",
+      where: "Brunswick",
       distance: "0.4 mi",
+    };
+    expect(daypartTileFact(pick, "device")).toBe("Open until 10pm · 0.4 mi");
+    // A town centroid or IP origin is not the reader's own position, so its
+    // distance would read as theirs. The town says where the place is.
+    expect(daypartTileFact(pick, "ip")).toBe("Open until 10pm · Brunswick");
+    expect(daypartTileFact(pick, "county")).toBe("Open until 10pm · Brunswick");
+    // Inside a chosen town every pick shares the town, so only hours remain.
+    expect(daypartTileFact(pick, "town")).toBe("Open until 10pm");
+  });
+
+  it("quotes a confirmed hours line and falls back to open now without one", () => {
+    const confirmed = {
+      slug: "nearby-only",
+      name: "Nearby Only",
+      rating: null,
+      confidence: "confirmed" as const,
       decisionReasons: [
         { id: "review-evidence", label: "It has substantial Google review history.", evidenceIds: [] },
       ],
-    }])).toBe("Current hours show it is open now, and it is 0.4 miles from you.");
+    };
+    expect(daypartTileFact(confirmed, "town")).toBe("Open now");
+    expect(daypartTileFact({ ...confirmed, fact: "Closing soon · 9:30pm" }, "town")).toBe(
+      "Closing soon · 9:30pm",
+    );
+    expect(daypartTileFact({ ...confirmed, fact: "Open 24 hours" }, "town")).toBe(
+      "Open 24 hours",
+    );
   });
 
-  it("never leads with curation or reviews when the hours are not confirmed", () => {
+  it("never states curation, reviews or open when the hours are not confirmed", () => {
     // Today, Oct 6, 10:55 PM: "Why it leads: Radius has this marked as a
-    // local favorite" sat under a bar whose hours were not confirmed. A
-    // right-now shelf may only explain its lead with hours evidence.
+    // local favorite" sat under a bar whose hours were not confirmed. A tile
+    // without hours evidence names only its town.
     const unconfirmed = {
       slug: "mcclintocks-back-bar",
       name: "McClintock's Back Bar",
       rating: null,
       confidence: "unconfirmed" as const,
       fact: "Hours not confirmed",
+      where: "Frederick",
       decisionReasons: [
         { id: "local-favorite", label: "Radius has this marked as a local favorite.", evidenceIds: ["radius-curation"] },
         { id: "review-evidence", label: "It has substantial Google review history.", evidenceIds: ["google-places"] },
       ],
     };
-    expect(daypartLeadReason([unconfirmed])).toBeNull();
-    // Distance alone is not a time-relevant reason either.
-    expect(daypartLeadReason([{ ...unconfirmed, distance: "4 min walk" }])).toBeNull();
+    expect(daypartTileFact(unconfirmed)).toBe("Frederick");
+    expect(daypartTileFact({ ...unconfirmed, distance: "4 min walk" }, "device")).toBe(
+      "Frederick",
+    );
+    expect(daypartTileFact({ ...unconfirmed, where: null })).toBeNull();
   });
 
-  it("explains a likely lead by its usual hours, not by its curation", () => {
+  it("says a likely pick is likely open and never prints its closing time", () => {
     const likely = {
       slug: "hootch-and-banter-frederick",
       name: "Hootch & Banter",
       rating: null,
       confidence: "likely" as const,
-      fact: "Likely open · check hours",
+      fact: "Open until 2am",
+      where: "Frederick",
       decisionReasons: [
         { id: "local-favorite", label: "Radius has this marked as a local favorite.", evidenceIds: ["radius-curation"] },
       ],
     };
-    expect(daypartLeadReason([likely])).toBe(
-      "Its usual hours include this time of day.",
-    );
-    expect(daypartLeadReason([{ ...likely, distance: "4 min walk" }])).toBe(
-      "Its usual hours include this time of day, and it is a 4-minute walk from you.",
+    expect(daypartTileFact(likely, "town")).toBe("Likely open · check hours");
+    expect(daypartTileFact(likely)).toBe("Likely open · check hours · Frederick");
+    expect(daypartTileFact({ ...likely, distance: "4 min walk" }, "device")).toBe(
+      "Likely open · check hours · 4 min walk",
     );
   });
 
-  it("renders the lead reason at the 11px type floor", () => {
+  it("gives an opening-soon tile only its opening time, never an open claim", () => {
+    const soon = {
+      slug: "gravel-and-grind-frederick",
+      name: "Gravel & Grind",
+      rating: 4.8,
+      where: "Frederick",
+      confidence: "confirmed" as const,
+      fact: "Opens 8am",
+    };
+    expect(daypartTileFact(soon, "county", { openingSoon: true })).toBe(
+      "Opens 8am · Frederick",
+    );
+    expect(daypartTileFact({ ...soon, fact: null }, "town", { openingSoon: true })).toBe(
+      "Opening time available",
+    );
+  });
+
+  it("drops the caps lead label and keeps each fact at the type floor", () => {
     const html = renderToStaticMarkup(
       createElement(DaypartNeeds, {
+        variant: "brief",
         rows: [
           {
             category: "bar",
@@ -712,6 +744,7 @@ describe("DaypartNeeds", () => {
               slug: "late-bar",
               name: "Late Bar",
               rating: 4.6,
+              where: "Frederick",
               confidence: "confirmed",
               fact: "Open until 1am",
             }],
@@ -720,13 +753,13 @@ describe("DaypartNeeds", () => {
       }),
     );
 
-    const reason = html.match(
-      /<p data-today-decision-reason="true"[\s\S]*?<\/p>/,
-    )?.[0];
-    expect(reason).toContain("Why it leads");
-    expect(reason).toContain("It is open until 1am.");
-    expect(reason).toContain("text-[11px]");
-    expect(reason).not.toMatch(/text-\[(?:[0-9]|10)(?:\.\d+)?px\]/);
+    expect(html).not.toContain("Why it leads");
+    expect(html).not.toContain("data-today-decision-reason");
+    const fact = html.match(/<span data-today-pick-context[^>]*>[\s\S]*?<\/span>/)?.[0];
+    expect(fact).toContain("Open until 1am · Frederick");
+    expect(fact).toContain("text-meta-lg");
+    expect(html).not.toMatch(/text-\[(?:[0-9]|10)(?:\.\d+)?px\]/);
+    expect(html).not.toMatch(/uppercase/);
   });
 
   it("never turns an unknown-hours best-fit row into an open-now card", () => {
@@ -976,14 +1009,65 @@ describe("DaypartNeeds", () => {
     const withoutPhoto = renderPick();
     expect(withoutPhoto).not.toContain("<img");
     expect(withoutPhoto).not.toContain('data-radius-plate="gravel-and-grind"');
-    expect(withoutPhoto).toContain("min-h-[84px]");
+    // No photo: the flat category mark fills the same frame. Never initials,
+    // a gradient, a rotated watermark glyph, or a map canvas.
+    expect(withoutPhoto).toContain('data-radius-photo="mark"');
+    expect(withoutPhoto).not.toContain("gradient");
+    expect(withoutPhoto).not.toContain("rotate-");
+    expect(withoutPhoto).not.toContain("maplibre");
     expect(withoutPhoto).toContain('data-today-place-lead="true"');
-    expect(withoutPhoto).toContain("w-[14.5rem]");
-    // A place name identifies the place, so it wraps instead of clipping.
-    // "National Museum of Civil War Medicine" truncated to "National Museum
-    // of Ci…" is not a recommendation the reader can act on.
-    expect(withoutPhoto).toContain("line-clamp-3 text-[14px]");
-    expect(withoutPhoto).toContain('class="h-[18px] w-[18px]"');
+    // One pick is a single full-width tile with the larger 140px frame.
+    expect(withoutPhoto).toContain('data-today-tile="single"');
+    expect(withoutPhoto).toContain("height:140px");
+    // A place name identifies the place, so it wraps to two lines instead of
+    // clipping on one. "National Museum of Ci…" is not an answer.
+    expect(withoutPhoto).toContain("text-title-sm line-clamp-2");
+  });
+
+  it("shows two picture tiles of the same size on the brief shelf", () => {
+    const html = renderToStaticMarkup(
+      createElement(DaypartNeeds, {
+        variant: "brief",
+        rows: [
+          {
+            category: "bar",
+            label: "Bars open late",
+            href: "/category/bar",
+            picks: [
+              {
+                slug: "first-bar",
+                name: "First Bar",
+                rating: 4.6,
+                photo: "/api/place-photo?name=places%2FChIJfirst%2Fphotos%2Ffront&w=800",
+                where: "Frederick",
+                confidence: "likely" as const,
+              },
+              {
+                slug: "second-bar",
+                name: "Second Bar",
+                rating: 4.5,
+                where: "Brunswick",
+                confidence: "likely" as const,
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(html.match(/data-today-tile="pair"/g)).toHaveLength(2);
+    expect(
+      html.match(/data-today-tile-frame="true" class="[^"]*" style="height:104px/g),
+    ).toHaveLength(2);
+    expect(html).toContain("grid-cols-2 gap-3");
+    // The photo asks the proxy for its failure signal at the painted width.
+    expect(html).toContain("fallback=signal");
+    expect(html).toContain("w=400");
+    // The second pick has no photo, so its frame holds the category mark.
+    expect(html).toContain('data-radius-photo="mark"');
+    expect(html).toContain("Likely open · check hours · Frederick");
+    expect(html).toContain("Likely open · check hours · Brunswick");
+    expect(html).not.toMatch(/until \d/);
   });
 
   it("edits Today to one lead and two alternatives", () => {
@@ -1012,7 +1096,7 @@ describe("DaypartNeeds", () => {
     expect(html).not.toContain("Fourth");
   });
 
-  it("keeps the briefing variant to one useful lead with a route to every choice", () => {
+  it("keeps the briefing variant to two answers with a route to every open place", () => {
     const html = renderToStaticMarkup(
       createElement(DaypartNeeds, {
         variant: "brief",
@@ -1044,13 +1128,18 @@ describe("DaypartNeeds", () => {
     expect(html).toContain('data-today-decision-density="brief"');
     expect(html).toContain('aria-label="Open places right now"');
     expect(html).not.toContain("Open now and soon");
+    expect(html).toContain("Places open now");
     expect(html).toContain("Lead");
-    expect(html).not.toContain("Second");
+    expect(html).toContain("Second");
     expect(html).not.toContain("Third");
     expect(html).not.toContain("Opening Next");
     expect(html).not.toContain('role="tablist"');
-    expect(html).toContain('href="/category/coffee"');
-    expect(html).toContain("Browse places");
+    // The heading's one route goes to every open place.
+    expect(html).toContain('href="/open-now"');
+    expect(html).toContain("See all");
+    expect(html).not.toContain('href="/category/coffee"');
+    // No card inside a card: the tiles are links on the page, not boxes.
+    expect(html).not.toContain("border bg-[var(--app-bg-elevated)]");
   });
 
   it("lets an opening-soon transition replace an uncertain briefing pick", () => {
@@ -1117,10 +1206,12 @@ describe("DaypartNeeds", () => {
     expect(html).toContain("Hours Unknown");
     expect(html).toContain('data-today-place-lead="true"');
     expect(html).toContain("Places to try");
-    expect(html).toContain("Hours not confirmed");
-    expect(html).toContain('href="/category/museum"');
-    expect(html.match(/href="\/category\/museum"/g)).toHaveLength(1);
-    expect(html).toContain("Browse places");
+    // The shelf says once that the hours are unknown; the tile names its town.
+    expect(html).toContain("Hours not confirmed · call ahead");
+    expect(html).toMatch(/data-today-pick-context[^>]*>Frederick</);
+    expect(html).not.toContain("Likely open");
+    expect(html.match(/href="\/open-now"/g)).toHaveLength(1);
+    expect(html).toContain("See all");
   });
 
   it("counts opening soon inside the three-choice decision set", () => {
@@ -1156,7 +1247,11 @@ describe("DaypartNeeds", () => {
     expect(html).toContain("Opening Next");
     expect(html).not.toContain("Third");
     expect(html).not.toContain("Fourth");
-    expect(html).toContain('data-shelf-two="true"');
+    // Three tiles: the first spans the row so no tile is stranded at half
+    // width, and the transition keeps its own opening-soon identity.
+    expect(html.match(/data-today-tile="single"/g)).toHaveLength(1);
+    expect(html.match(/data-today-tile="pair"/g)).toHaveLength(2);
+    expect(html).toContain('data-today-opening-soon="true"');
   });
 
   it("uses the photo proxy signal and recognizes its 1x1 failure image", () => {

@@ -24,33 +24,39 @@ describe("TodayScopeStatus", () => {
     expect(todayScopeStatusText(null)).toBe("Countywide briefing");
   });
 
-  it("renders an accessible live status and an explicit location opt-in", () => {
+  it("renders one area line with an accessible live status", () => {
     const html = renderToStaticMarkup(createElement(TodayScopeStatus));
 
     expect(html).toContain('role="status"');
     expect(html).toContain('aria-live="polite"');
     expect(html).toContain('data-testid="today-scope-status"');
     expect(html).toContain("Countywide briefing");
-    expect(html).toContain('type="button"');
-    expect(html).toContain("Use my location");
+    expect(html).toContain('<span class="sr-only">Choose your area</span>');
+    // The select is set as 16px semibold text, not a bordered box, so iOS
+    // does not zoom on focus and the line reads as type.
+    expect(html).toMatch(/<select[^>]*class="[^"]*text-body-lg[^"]*appearance-none[^"]*border-0[^"]*bg-transparent/);
+    expect(html).toMatch(/<select[^>]*class="[^"]*min-h-11/);
+    expect(html).not.toContain("rounded-full");
   });
 
-  it("keeps the location explanation off the first screen until it is asked for", () => {
+  it("keeps the location explanation and its button off the first screen", () => {
     const html = renderToStaticMarkup(createElement(TodayScopeStatus));
 
-    // Today's Find launcher has a first-screen budget (owner PR #1734). The
-    // benefit sentence appears on the first tap, before any browser prompt,
-    // inside a live region that is already mounted.
-    expect(html).toContain("Use my location");
+    // The benefit sentence and the one button that can open the browser
+    // prompt appear only after someone chooses Near me. The live region that
+    // will announce them is already mounted.
+    expect(html).not.toContain("Use my location");
     expect(html).not.toContain(NEAR_ME_BENEFIT);
-    expect(html).not.toMatch(/<button[^>]*aria-describedby=/);
-    expect(html).toContain('aria-live="polite" class="sr-only"');
+    expect(html).not.toContain("<button");
+    expect(html).toContain('<div aria-live="polite"></div>');
   });
 
-  it("names the area choices with the shared scope labels", () => {
+  it("names the area choices with the shared scope labels, Near me second", () => {
     const html = renderToStaticMarkup(createElement(TodayScopeStatus));
 
-    expect(html).toContain(`<option value="county" selected="">${scopeLabel("county")}</option>`);
+    expect(html).toContain(
+      `<option value="county" selected="">${scopeLabel("county")}</option><option value="nearme">${scopeLabel("nearme")}</option><option value="town:`,
+    );
     expect(html).not.toContain("Frederick, MD");
   });
 });

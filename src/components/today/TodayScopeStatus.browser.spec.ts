@@ -38,6 +38,12 @@ function mockNavigator(options: {
   return { query, getCurrentPosition };
 }
 
+const grantedFix = vi.fn((success: PositionCallback) => {
+  success({
+    coords: { longitude: -77.4105, latitude: 39.4143, accuracy: 18 },
+  } as GeolocationPosition);
+});
+
 describe("TodayScopeStatus location memory", () => {
   let root: Root;
   let container: HTMLDivElement;
@@ -58,6 +64,7 @@ describe("TodayScopeStatus location memory", () => {
     });
     window.sessionStorage.clear();
     window.history.replaceState(null, "", "/today");
+    grantedFix.mockClear();
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -80,69 +87,79 @@ describe("TodayScopeStatus location memory", () => {
     });
   };
 
+  const select = () => container.querySelector("select")!;
+  const choose = async (value: string) => {
+    await act(async () => {
+      select().value = value;
+      select().dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  };
+  const benefit = () =>
+    container.querySelector('[data-testid="today-location-benefit"]');
+  const locationButton = () =>
+    [...container.querySelectorAll("button")].find((button) =>
+      /Use my location|Finding you/.test(button.textContent ?? ""),
+    ) ?? null;
+
   it("uses an explicit county URL over a saved town and carries a later town change into links", async () => {
     setScope("town:brunswick");
     window.history.replaceState(null, "", "/today?in=county&intent=dinner#find-radius");
     mockNavigator({});
     await render();
     expect(getScope()).toBe("county");
-    expect(container.querySelector("select")?.value).toBe("county");
+    expect(select().value).toBe("county");
     expect(container.textContent).toContain("Countywide briefing");
 
-    await act(async () => {
-      const select = container.querySelector("select")!;
-      select.value = "town:brunswick";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    await choose("town:brunswick");
     expect(getScope()).toBe("town:brunswick");
-    expect(container.querySelector("select")?.value).toBe("town:brunswick");
+    expect(select().value).toBe("town:brunswick");
     expect(window.location.search).toBe("?in=brunswick&intent=dinner");
     expect(window.location.hash).toBe("#find-radius");
+  });
+
+  it("lists Near me between the county and the towns and shows no location button by default", async () => {
+    setScope("county");
+    const { query, getCurrentPosition } = mockNavigator({
+      permissionState: "granted",
+    });
+
+    await render();
+
+    const values = [...select().options].map((option) => option.value);
+    expect(values[0]).toBe("county");
+    expect(values[1]).toBe("nearme");
+    expect(values.slice(2).every((value) => value.startsWith("town:"))).toBe(true);
+    // County and town lenses never check or request location.
+    expect(query).not.toHaveBeenCalled();
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+    expect(locationButton()).toBeNull();
+    expect(benefit()).toBeNull();
   });
 
   it("silently refreshes an already-granted fix when the lens is Near me", async () => {
     setScope("nearme");
     const { query, getCurrentPosition } = mockNavigator({
       permissionState: "granted",
-      getCurrentPosition: vi.fn((success: PositionCallback) => {
-        success({
-          coords: { longitude: -77.4105, latitude: 39.4143, accuracy: 18 },
-        } as GeolocationPosition);
-      }),
+      getCurrentPosition: grantedFix,
     });
 
     await render();
 
     expect(query).toHaveBeenCalledWith({ name: "geolocation" });
     expect(getCurrentPosition).toHaveBeenCalledOnce();
-    // With the fix restored the row no longer offers a location action.
-    expect(container.querySelector("button")).toBeNull();
+    // With the fix restored the row offers no location action.
+    expect(locationButton()).toBeNull();
+    expect(select().value).toBe("nearme");
+    expect(container.textContent).toContain("Nearby place picks");
   });
 
-  it("never checks or requests location outside the Near me lens", async () => {
-    setScope("county");
-    const { query, getCurrentPosition } = mockNavigator({
-      permissionState: "granted",
-    });
-
-    await render();
-
-    expect(query).not.toHaveBeenCalled();
-    expect(getCurrentPosition).not.toHaveBeenCalled();
-    expect(container.querySelector("button")?.textContent).toBe(
-      "Use my location",
-    );
-  });
-
-  it("shows the benefit before the tap that can open the browser prompt", async () => {
+  it("explains location when Near me is chosen and asks only from the button", async () => {
     setScope("county");
     let benefitWhenAsked: string | null | undefined;
     const { getCurrentPosition } = mockNavigator({
       getCurrentPosition: vi.fn((success: PositionCallback) => {
         // Capture what was on screen at the moment the browser would ask.
-        benefitWhenAsked = container.querySelector(
-          '[data-testid="today-location-benefit"]',
-        )?.textContent;
+        benefitWhenAsked = benefit()?.textContent;
         success({
           coords: { longitude: -77.4105, latitude: 39.4143, accuracy: 18 },
         } as GeolocationPosition);
@@ -150,32 +167,58 @@ describe("TodayScopeStatus location memory", () => {
     });
 
     await render();
-    const button = container.querySelector("button")!;
-    expect(
-      container.querySelector('[data-testid="today-location-benefit"]'),
-    ).toBeNull();
+    expect(benefit()).toBeNull();
 
-    // The first tap explains and never prompts.
-    await act(async () => button.click());
-    const benefit = container.querySelector(
-      '[data-testid="today-location-benefit"]',
-    );
+    // Choosing Near me explains and never prompts. The county stays selected
+    // because it is still the area in effect.
+    await choose("nearme");
     expect(getCurrentPosition).not.toHaveBeenCalled();
-    expect(benefit?.textContent).toBe(NEAR_ME_BENEFIT);
-    expect(button.textContent).toBe("Continue");
-    expect(button.getAttribute("aria-describedby")).toBe(benefit?.id);
+    expect(getScope()).toBe("county");
+    expect(select().value).toBe("county");
+    expect(benefit()?.textContent).toBe(NEAR_ME_BENEFIT);
+    const button = locationButton()!;
+    expect(button.textContent).toBe("Use my location");
+    expect(button.getAttribute("aria-describedby")).toBe(benefit()?.id);
 
-    // The second tap is the one that can open the browser prompt.
+    // The button is the one control that can open the browser prompt.
     await act(async () => button.click());
 
     expect(getCurrentPosition).toHaveBeenCalledOnce();
     expect(benefitWhenAsked).toBe(NEAR_ME_BENEFIT);
-    // Once the fix is granted no prompt can follow, so the sentence and the
-    // button both step aside for the Near me readout.
+    // A grant applies Near me through the same path as every other area.
     expect(getScope()).toBe("nearme");
-    expect(
-      container.querySelector('[data-testid="today-location-benefit"]'),
-    ).toBeNull();
+    expect(select().value).toBe("nearme");
+    expect(window.location.search).toBe("?in=nearme");
+    expect(benefit()).toBeNull();
+    expect(locationButton()).toBeNull();
+  });
+
+  it("applies Near me at once when this device already has a fix", async () => {
+    setScope("county");
+    const { getCurrentPosition } = mockNavigator({ getCurrentPosition: grantedFix });
+    window.sessionStorage.setItem(
+      "fr_geo_v1",
+      JSON.stringify({ lng: -77.4105, lat: 39.4143, accuracy: 18, timestamp: Date.now() }),
+    );
+
+    await render();
+    await choose("nearme");
+
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+    expect(getScope()).toBe("nearme");
+    expect(benefit()).toBeNull();
+  });
+
+  it("drops the explanation when another area is chosen instead", async () => {
+    setScope("county");
+    mockNavigator({});
+    await render();
+
+    await choose("nearme");
+    expect(benefit()).not.toBeNull();
+    await choose("town:brunswick");
+    expect(benefit()).toBeNull();
+    expect(getScope()).toBe("town:brunswick");
   });
 
   it("offers manual town selection after location is denied", async () => {
@@ -189,24 +232,23 @@ describe("TodayScopeStatus location memory", () => {
     });
 
     await render();
-    // First tap explains, second tap asks.
-    await act(async () => {
-      (container.querySelector("button") as HTMLButtonElement).click();
-    });
-    await act(async () => {
-      (container.querySelector("button") as HTMLButtonElement).click();
-    });
+    await choose("nearme");
+    await act(async () => locationButton()!.click());
 
-    expect(container.querySelector("button")).toBeNull();
+    expect(locationButton()).toBeNull();
     expect(
       container.querySelector('[data-testid="today-location-blocked"]')
         ?.textContent,
-    ).toBe(
-      "Location is off. Choose a town to keep browsing.",
-    );
+    ).toBe("Location is off. Choose a town to keep browsing.");
     // A refusal cannot be re-prompted, so the "may ask" sentence goes too.
+    expect(benefit()).toBeNull();
+    expect(getScope()).toBe("county");
+
+    await choose("town:brunswick");
+    expect(getScope()).toBe("town:brunswick");
+    expect(container.textContent).toContain("Brunswick place picks");
     expect(
-      container.querySelector('[data-testid="today-location-benefit"]'),
+      container.querySelector('[data-testid="today-location-blocked"]'),
     ).toBeNull();
   });
 
@@ -221,15 +263,10 @@ describe("TodayScopeStatus location memory", () => {
     });
 
     await render();
-    // First tap explains, second tap asks.
-    await act(async () => {
-      (container.querySelector("button") as HTMLButtonElement).click();
-    });
-    await act(async () => {
-      (container.querySelector("button") as HTMLButtonElement).click();
-    });
+    await choose("nearme");
+    await act(async () => locationButton()!.click());
 
-    const button = container.querySelector("button");
+    const button = locationButton();
     expect(button?.textContent).toBe("Use my location");
     expect(button?.hasAttribute("disabled")).toBe(false);
     expect(

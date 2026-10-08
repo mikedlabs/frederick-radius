@@ -64,30 +64,29 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  padding-block: 12px;
+  padding-top: 12px;
 }
 
+/* Below 360px the four shortcuts keep the 2x2 grid with the icon beside its
+   label. From 360px up they share one row, an icon over a short label, so the
+   place answers below reach a 390x844 first screen. Plain ruled cells: no
+   tinted icon squares and no shadow. */
 .shortcut {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 64px;
-  padding: 10px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 10px;
   border: 1px solid var(--app-border);
-  background: var(--app-bg-elevated-solid);
-  box-shadow: var(--app-shadow-1);
+  border-radius: var(--app-radius-md);
+  color: var(--app-ink);
   transition: color var(--app-dur-fast) var(--app-ease-out), border-color var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out);
-  border-radius: var(--app-radius-sm);
-  color: var(--app-ink-2);
-  font-size: 15px;
-  font-weight: 550;
-  line-height: 1.35;
 }
 
 .shortcut:hover {
-  color: var(--app-brand-press);
   border-color: var(--app-brand);
-  background: var(--app-brand-tint-6);
+  background: var(--app-bg-sunken);
 }
 
 .shortcut:focus-visible {
@@ -96,23 +95,37 @@
 }
 
 .shortcut svg {
-  width: 30px;
-  height: 30px;
-  padding: 6px;
-  border-radius: var(--app-radius-sm);
-  background: var(--app-brand-tint-6);
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
-  color: var(--app-brand-press);
+  color: var(--app-ink-2);
 }
 
-.find [data-surface-row="browse"] > :is(button, a) {
-  border-top: 0;
-  padding-inline: 4px;
+/* Two classes, so the tighter two-line leading outranks the global
+   .text-meta-lg step whatever order the stylesheets load in. */
+.shortcut .shortcutLabel {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  line-height: 1.25;
 }
 
-.find [data-surface-row="browse"] > :is(button, a) > span:first-child {
-  width: 16px;
-  height: 24px;
+@media (min-width: 360px) {
+  .shortcuts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .shortcut {
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    min-height: 72px;
+    padding: 8px 4px;
+    text-align: center;
+  }
 }
 
 @media (min-width: 640px) {
@@ -123,11 +136,6 @@
 
   .prompt {
     font-size: 24px;
-  }
-
-  .shortcuts {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
   }
 }
 
@@ -149,12 +157,6 @@
   }
 
   .hint {
-    font-size: 14px;
-  }
-
-  .shortcut {
-    gap: 6px;
-    padding-inline: 8px;
     font-size: 14px;
   }
 }

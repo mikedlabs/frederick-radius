@@ -27,7 +27,7 @@ describe("BrowsePlacesDisclosure", () => {
     expect(html).toContain('data-surface-row="browse"');
     expect(html).toContain('href="/places"');
     expect(html).toContain('id="browse-places-panel"');
-    expect(html).toContain("Browse all places");
+    expect(html).toContain("Browse all kinds of places");
     expect(html).toContain("Category choices");
     expect(html).toContain('data-state="closed"');
     expect(html).toContain('aria-hidden="true"');
@@ -64,7 +64,7 @@ describe("BrowsePlacesDisclosure", () => {
     const trigger = container.querySelector<HTMLButtonElement>(
       'button[aria-controls="browse-places-panel"]',
     );
-    expect(trigger?.textContent).toContain("Browse all categories");
+    expect(trigger?.textContent).toContain("Browse all kinds of places");
     expect(trigger?.getAttribute("aria-expanded")).toBe("false");
     expect(container.querySelector('a[href="/places"]')).toBeNull();
 

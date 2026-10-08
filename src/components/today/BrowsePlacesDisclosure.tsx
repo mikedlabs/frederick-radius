@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ArrowRight, LayoutGrid, ChevronDown } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import MotionDisclosure from "@/components/ui/MotionDisclosure";
 
 /**
- * The full category index is the deeper route inside Today's one Find surface.
- * It is intentionally quiet and closed unless the URL restores a selected
- * answer. The everyday search doorway and two urgent shortcuts should answer
- * most visits without exposing the product's entire taxonomy.
+ * The full category index, placed on Today right after the place shelf. It is
+ * a quiet ruled row, closed unless the URL restores a selected answer
+ * (/today?want=...). The Find doorway and its four shortcuts answer most
+ * visits without putting the product's whole taxonomy above the places.
  *
  * Children ship in the HTML and open without a fetch. The reveal stays
  * visually attached to the row and the closed controls remain inert.
@@ -19,6 +19,8 @@ export function shouldOpenBrowseFromSearch(search: string): boolean {
   const want = new URLSearchParams(search).get("want");
   return Boolean(want?.trim());
 }
+
+const TITLE = "Browse all kinds of places";
 
 export default function BrowsePlacesDisclosure({
   children,
@@ -48,25 +50,22 @@ export default function BrowsePlacesDisclosure({
   };
 
   const panelId = "browse-places-panel";
-  const triggerClass = `tap-pop flex min-h-11 w-full items-center gap-2.5 border-t px-3 py-2 text-left transition hover:bg-[var(--app-bg-sunken)] ${
+  // A ruled row, not a card: the title is type, the icon is plain, and the
+  // 52px row is the whole target.
+  const triggerClass = `flex min-h-[52px] w-full items-center gap-3 border-t px-0.5 py-2 text-left outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] ${
     embedded ? "" : "border-b"
   }`;
-  const triggerStyle = {
-    borderColor: "var(--app-border)",
-    // Full-width row: a gentle push-out, not the chip-scale 1.06.
-    "--pop": "1.015",
-  } as CSSProperties;
+  const triggerStyle = { borderColor: "var(--app-border)" };
   const triggerLabel = (
     <>
-      <span
+      <LayoutGrid
         aria-hidden
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
-        style={{ color: "var(--app-brand-press)", background: "var(--app-brand-tint-6)" }}
-      >
-        <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
-      </span>
-      <span className="min-w-0 flex-1 text-[12.5px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
-        {mounted ? "Browse all categories" : "Browse all places"}
+        className="h-5 w-5 shrink-0"
+        strokeWidth={2.25}
+        style={{ color: "var(--app-ink-2)" }}
+      />
+      <span className="text-title-sm min-w-0 flex-1" style={{ color: "var(--app-ink)" }}>
+        {TITLE}
       </span>
     </>
   );
@@ -75,7 +74,7 @@ export default function BrowsePlacesDisclosure({
     <section
       aria-label="Browse places by category"
       data-surface-row={embedded ? "browse" : undefined}
-      className={embedded ? "" : "mt-3"}
+      className={embedded ? "" : "mt-5"}
     >
       {mounted ? (
         <button
@@ -115,7 +114,7 @@ export default function BrowsePlacesDisclosure({
         id={panelId}
         open={open}
         className={embedded ? "border-t border-[var(--app-border)]" : ""}
-        innerClassName={embedded ? "px-3 pb-3 pt-3" : "mt-3"}
+        innerClassName={embedded ? "px-3 pb-3 pt-3" : "pb-3 pt-3"}
       >
         {children}
       </MotionDisclosure>

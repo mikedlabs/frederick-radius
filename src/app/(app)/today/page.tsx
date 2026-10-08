@@ -46,6 +46,7 @@ import EventWalkTime from "@/components/today/EventWalkTime";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import PlaceSheetBoundary from "@/components/place/PlaceSheetBoundary";
 import TodayAsk from "@/components/today/TodayAsk";
+import BrowsePlacesDisclosure from "@/components/today/BrowsePlacesDisclosure";
 import {
   mastheadWeatherPhrase,
   todayFrame,
@@ -335,14 +336,18 @@ export default async function HomePage() {
             push it more than a screen down on a phone. Active alerts still
             lead the document because they can change a visitor's plans. */}
         <div className="today-arrival today-arrival--find">
-          <TodayAsk embedded>
-            <CravingStrip />
-          </TodayAsk>
+          <TodayAsk embedded />
         </div>
 
       <div data-today-current-content className={styles.currentContent}>
+        {/* Two picture answers sit above the phone's bottom nav, so the full
+            category index follows them instead of sitting between Find and
+            the places. /today?want=... still opens it on arrival. */}
         <div aria-label="Places for your area" className={styles.places}>
           {decisionLead}
+          <BrowsePlacesDisclosure>
+            <CravingStrip />
+          </BrowsePlacesDisclosure>
         </div>
 
       <PageChapter

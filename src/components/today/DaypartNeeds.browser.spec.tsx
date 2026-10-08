@@ -64,13 +64,15 @@ async function render() {
 }
 
 describe("Today hydrated scope agrees with its area control", () => {
-  it("uses explicit county for an unset visitor and retains it in the browse link", async () => {
+  it("uses explicit county for an unset visitor and routes See all to every open place", async () => {
     await render();
     expect(container.querySelector("select")?.value).toBe("county");
     expect(container.textContent).toContain("Countywide briefing");
     expect(container.textContent).not.toContain("Frederick City picks");
     expect(state.answer).toHaveBeenCalledWith("cat:coffee", null, "county");
-    expect(container.querySelector('a[href="/nearby?c=coffee&in=county"]')).not.toBeNull();
+    // The heading's See all opens /open-now, which ranks from the same
+    // shared scope cookie the area select writes.
+    expect(container.querySelector('a[href="/open-now"]')?.textContent).toContain("See all");
     expect(state.request).not.toHaveBeenCalled();
     expect(state.requestIfGranted).not.toHaveBeenCalled();
   });
@@ -82,7 +84,11 @@ describe("Today hydrated scope agrees with its area control", () => {
     expect(container.querySelector("select")?.value).toBe("town:frederick");
     expect(container.textContent).toContain("Frederick City place picks");
     expect(state.answer).toHaveBeenCalledWith("cat:coffee", null, "town:frederick");
-    expect(container.querySelector('a[href="/nearby?c=coffee&in=frederick"]')).not.toBeNull();
+    // The live town answer replaced the shelf. Its pick has no hours
+    // evidence, so the tile names only its town and claims nothing about open.
+    expect(container.textContent).toContain("Listed cafe");
+    expect(container.querySelector("[data-today-pick-context]")?.textContent).toBe("Frederick");
+    expect(container.textContent).toContain("Hours not confirmed · call ahead");
   });
 
   it("keeps a likely server shelf when the live answer only has unconfirmed hours", async () => {
@@ -128,7 +134,7 @@ describe("Today hydrated scope agrees with its area control", () => {
       expect(state.answer).toHaveBeenCalledWith("cat:bar", null, "county");
       expect(container.textContent).toContain("Hootch & Banter");
       expect(container.textContent).toContain("Places likely open");
-      expect(container.textContent).toContain("Its usual hours include this time of day.");
+      expect(container.textContent).toContain("Likely open · check hours");
       expect(container.textContent).not.toContain("McClintock's Back Bar");
       expect(container.textContent).not.toContain("Hours not confirmed");
       expect(container.textContent).not.toContain("local favorite");
@@ -143,7 +149,7 @@ describe("Today hydrated scope agrees with its area control", () => {
     await render();
     expect(container.querySelector("select")?.value).toBe("county");
     expect(state.answer.mock.calls.every((call) => call[2] === "county")).toBe(true);
-    expect(container.querySelector('a[href="/nearby?c=coffee&in=county"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/open-now"]')).not.toBeNull();
     expect(container.textContent).not.toContain("Frederick City picks");
   });
 });

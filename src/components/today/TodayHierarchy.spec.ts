@@ -262,8 +262,22 @@ describe("Today decision hierarchy", () => {
   it("uses the upper decision surface instead of repeating the Toolbox teaser", () => {
     expect(todayPage).toContain("<TodayAsk embedded");
     expect(todayPage.match(/<TodayAsk embedded/g)).toHaveLength(1);
-    expect(todayPage).not.toContain("<BrowsePlacesDisclosure");
     expect(todayPage).toContain("<CravingStrip");
     expect(todayPage).not.toContain("ToolboxTeaser");
+  });
+
+  it("puts the category index after the place answers, not between Find and them", () => {
+    const find = renderedPage.indexOf("<TodayAsk embedded />");
+    const lead = renderedPage.indexOf("{decisionLead}");
+    const browse = renderedPage.indexOf("<BrowsePlacesDisclosure>");
+    const events = renderedPage.indexOf("{whatsOn}");
+
+    expect(find).toBeGreaterThan(-1);
+    expect(lead).toBeGreaterThan(find);
+    expect(browse).toBeGreaterThan(lead);
+    expect(browse).toBeLessThan(events);
+    expect(renderedPage.match(/<BrowsePlacesDisclosure\b/g)).toHaveLength(1);
+    expect(renderedPage.slice(browse, renderedPage.indexOf("</BrowsePlacesDisclosure>")))
+      .toContain("<CravingStrip />");
   });
 });

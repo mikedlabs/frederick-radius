@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import CategoryIcon from "@/components/place/CategoryIcon";
+import { usePlaceHue } from "@/components/place/PlaceCard";
 import TodaySectionHeading from "@/components/today/TodaySectionHeading";
+import SectionHeading from "@/components/ui/SectionHeading";
+import { RadiusPhotoMark } from "@/components/ui/RadiusPhoto";
 import type { DaypartPick, DaypartRow } from "@/lib/loaders/daypartPicks";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
@@ -386,61 +388,52 @@ export function daypartPickScopeLabel(
   return "Countywide picks";
 }
 
-function leadAvailabilityClause(place: DaypartPick): string | null {
-  // The curated fallback is a usual-hours statement, not a current one. Say
-  // exactly that; the card itself already asks the reader to check hours.
-  if (place.confidence === "likely") {
-    return "Its usual hours include this time of day";
-  }
+/** What the hours evidence lets a tile say about right now. A confirmed pick
+ * quotes its current hours line; a likely pick says so and never prints a
+ * closing time, because its window is a usual-hours statement, not a current
+ * one; a pick without hours evidence says nothing about being open. */
+function tileAvailability(place: DaypartPick): string | null {
+  if (place.confidence === "likely") return "Likely open · check hours";
   if (place.confidence !== "confirmed") return null;
   const fact = place.fact?.trim() ?? "";
-  const until = fact.match(/^Open until\s+(.+)$/i);
-  if (until) return `It is open until ${until[1]}`;
-  const closing = fact.match(/^Closing soon\s*[·-]\s*(.+)$/i);
-  if (closing) return `It closes soon at ${closing[1]}`;
-  if (/^Open 24 hours$/i.test(fact)) return "It is open 24 hours";
+  if (/^(?:Open until\s+\S|Closing soon\b|Open 24 hours$)/i.test(fact)) {
+    return fact;
+  }
   // A confirmed pick is open by its current hours even when the server shelf
   // sent no hours line to quote.
-  return "Current hours show it is open now";
+  return "Open now";
 }
 
-function leadDistanceClause(distance: string | null | undefined): string | null {
-  const value = distance?.trim();
-  if (!value) return null;
-  const walk = value.match(/^(\d+)\s+min walk$/i);
-  if (walk) return `a ${walk[1]}-minute walk from you`;
-  const miles = value.match(/^([\d.]+)\s+mi$/i);
-  if (miles) return `${miles[1]} ${miles[1] === "1" ? "mile" : "miles"} from you`;
-  const feet = value.match(/^(\d+)\s+ft$/i);
-  if (feet) return `${feet[1]} feet from you`;
-  return `${value} from you`;
-}
-
-/** Explain the lead only with evidence about right now: its current or usual
- * hours, joined by consented-device distance when Radius has it. A shelf that
- * answers "what is open now" cannot be led by curation or review volume, so a
- * lead without hours evidence gets no "Why it leads" line at all; "Radius has
- * this marked as a local favorite" on its own read as a reason to go to a
- * place whose hours were not confirmed (Today, Oct 6, 10:55 PM). */
-export function daypartLeadReason(
-  picks: readonly DaypartPick[],
+/**
+ * The one fact line under a shelf tile, from the same hours evidence the shelf
+ * heading uses. The availability leads. A consented device fix adds the walk
+ * or distance; a countywide shelf adds the town instead, because the same
+ * heading can hold a Frederick bar and a Thurmont one. A pick with no hours
+ * evidence shows only its town, never curation or review history: "a local
+ * favorite" under a bar whose hours were not confirmed read as a reason to go
+ * (Today, Oct 6, 10:55 PM).
+ */
+export function daypartTileFact(
+  place: DaypartPick,
+  contextSource: NonNullable<WantAnswer["contextSource"]> = "county",
+  { openingSoon = false }: { openingSoon?: boolean } = {},
 ): string | null {
-  const lead = picks[0];
-  if (!lead) return null;
-  const availability = leadAvailabilityClause(lead);
-  if (!availability) return null;
-  const distance = leadDistanceClause(lead.distance);
-  if (!distance) return `${availability}.`;
-  // "It is open until 9pm and is…" shares its subject; a clause about the
-  // hours themselves needs its own subject for the distance.
-  return availability.startsWith("It ")
-    ? `${availability} and is ${distance}.`
-    : `${availability}, and it is ${distance}.`;
+  const town = place.where?.trim() || null;
+  // An opening-soon tile states only its own opening time, so a closed place
+  // never borrows the shelf's open grammar before the opening minute.
+  const availability = openingSoon
+    ? place.fact?.trim() || "Opening time available"
+    : tileAvailability(place);
+  if (!availability) return town;
+  const distance =
+    contextSource === "device" ? place.distance?.trim() || null : null;
+  const where = distance ?? (contextSource === "town" ? null : town);
+  return where ? `${availability} · ${where}` : availability;
 }
 
-/** Ask the photo proxy for its 1x1 failure signal. This particular shelf can
- * replace a failed photograph with a much better compact category card, so it
- * should never render the proxy's large decorative placeholder as content. */
+/** Ask the photo proxy for its 1x1 failure signal. This shelf replaces a
+ * failed photograph with the place's flat category mark, so it should never
+ * render the proxy's large decorative placeholder as content. */
 export function daypartPhotoSrc(src: string): string {
   if (!src.startsWith("/api/place-photo")) return src;
   const url = new URL(src, "https://frederickradius.local");
@@ -473,7 +466,7 @@ export function DaypartEmptyState({
   groupLabel?: string;
 } = {}) {
   return (
-    <section aria-label="Open places right now" className="mt-6">
+    <section aria-label="Open places right now">
       <TodaySectionHeading
         title={label}
         meta={contextLabel}
@@ -490,7 +483,7 @@ export function DaypartEmptyState({
           color: "var(--app-ink-2)",
         }}
       >
-        <p className="text-[12px] leading-snug">
+        <p className="text-meta">
           {daypartEmptyCopy(
             contextLabel,
             countywide,
@@ -503,232 +496,91 @@ export function DaypartEmptyState({
   );
 }
 
-function DaypartPickCard({
+/** Frame heights: a lone tile gets the larger picture. */
+const TILE_FRAME = { pair: 104, single: 140 } as const;
+/** Painted widths for the proxy request (it doubles them for DPR). */
+const TILE_PAINT_WIDTH = { pair: 200, single: 400 } as const;
+
+/**
+ * One shelf answer as a picture tile: a real photo that actually loaded, or
+ * the place's flat category mark on its own hue, then its name and one fact.
+ * The whole tile is one link. Never initials, a gradient, or a map canvas
+ * here, so Today's first paint mounts no WebGL.
+ *
+ * An opening-soon tile keeps its own data attributes and prints only its
+ * opening fact, so a closed place never borrows the shelf's open grammar.
+ */
+function DaypartTile({
   place,
   category,
+  single,
   eager = false,
   lead = false,
+  openingSoon = false,
+  contextSource,
 }: {
   place: DaypartPick;
   category: string;
+  single: boolean;
   eager?: boolean;
   lead?: boolean;
+  openingSoon?: boolean;
+  contextSource: NonNullable<WantAnswer["contextSource"]>;
 }) {
-  // Narrow the proxy request to what the card actually paints (lead 232px,
-  // alternates 172px; proxyPhotoAtWidth doubles for DPR). The stored URL is
-  // the w=800 hero, and because these render `unoptimized` (the proxy is an
-  // opaque route Next cannot resize) the `sizes` hint is inert — so every
-  // /today visit was downloading ~247KB per lead and ~104KB per alternate,
-  // re-paid on each visit since /api/place-photo is deliberately no-store
-  // (a Google licensing constraint). Measured by the friction audit: 819KB
-  // saved across the shelf's double paint. Narrowing composes with the
-  // failure signal below: the proxy returns its 1x1 at every width, so the
-  // honest broken-photo path is unchanged. Same missed-adopter fix as
-  // PlaceCard's Thumb (commit 31c91814 created the helper for this bug).
+  const shape = single ? "single" : "pair";
+  // Narrow the proxy request to what the frame paints. The stored URL is the
+  // w=800 hero and these render `unoptimized` (the proxy is an opaque route
+  // Next cannot resize), so the request width is the only size control.
+  // Narrowing composes with the failure signal: the proxy returns its 1x1 at
+  // every width, so the honest broken-photo path is unchanged.
   const signaledPhoto = place.photo
-    ? daypartPhotoSrc(proxyPhotoAtWidth(place.photo, lead ? 232 : 172))
+    ? daypartPhotoSrc(proxyPhotoAtWidth(place.photo, TILE_PAINT_WIDTH[shape]))
     : null;
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const showPhoto = Boolean(signaledPhoto && failedSrc !== signaledPhoto);
-  const detail =
-    place.fact ||
-    (place.confidence === "confirmed"
-      ? "Open now"
-      : place.confidence === "likely"
-        ? "Likely open"
-        : "Hours not confirmed");
-  const placeContext = place.distance
-    ? ` · ${place.distance}`
-    : place.where
-      ? ` · ${place.where}`
-      : "";
-
-  if (showPhoto && signaledPhoto) {
-    return (
-      <Link
-        href={`/places/${place.slug}`}
-        prefetch={false}
-        data-today-place-lead={lead ? "true" : undefined}
-        data-decision-impression="true"
-        data-decision-surface="today"
-        data-decision-entity="place"
-        data-decision-id={place.slug}
-        data-decision-position={lead ? "lead" : "alternative"}
-        data-decision-action="open"
-        className={`group relative flex h-[7.35rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985] ${
-          lead ? "w-full sm:w-[14.5rem] lg:w-[17.5rem]" : "w-full sm:w-[10.75rem] lg:w-[13.5rem]"
-        }`}
-        style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
-      >
-        <Image
-          src={signaledPhoto}
-          alt=""
-          fill
-          unoptimized={signaledPhoto.startsWith("/api/place-photo")}
-          priority={eager}
-          fetchPriority={eager ? "high" : "auto"}
-          placeholder="blur"
-          blurDataURL={PAPER_CREAM_BLUR}
-          className="object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.025]"
-          onLoad={(event) => {
-            if (isPhotoFailureSignal(event.currentTarget)) {
-              setFailedSrc(signaledPhoto);
-            }
-          }}
-          onError={() => setFailedSrc(signaledPhoto)}
-        />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-          style={{
-            background:
-              "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 84%, transparent), color-mix(in srgb, var(--app-ink) 36%, transparent) 46%, transparent)",
-          }}
-        />
-        <span className="relative z-10 min-w-0 px-2.5 pb-2">
-          <span
-            data-today-pick-name
-            className="line-clamp-2 font-sans text-[14.5px] font-semibold leading-tight"
-            style={{ color: "var(--app-on-brand)" }}
-          >
-            {place.name}
-          </span>
-          <span
-            data-today-pick-context
-            className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px] tabular-nums"
-            style={{ color: "color-mix(in srgb, var(--app-on-brand) 86%, transparent)" }}
-          >
-            <span
-              aria-hidden
-              className="h-1.5 w-1.5 rounded-full"
-              style={{
-                background:
-                  place.confidence === "confirmed"
-                    ? "var(--app-positive)"
-                    : place.confidence === "likely"
-                      ? "var(--app-warning)"
-                      : "var(--app-ink-3)",
-              }}
-            />
-            {detail}
-            {place.distance ? <span>· {place.distance}</span> : null}
-            {!place.distance && place.where ? <span>· {place.where}</span> : null}
-            {!place.fact && place.rating ? <span>· {place.rating.toFixed(1)}★</span> : null}
-          </span>
-        </span>
-      </Link>
-    );
-  }
+  const hue = usePlaceHue(place.slug);
+  const frameHeight = TILE_FRAME[shape];
+  const fact = daypartTileFact(place, contextSource, { openingSoon });
 
   return (
     <Link
       href={`/places/${place.slug}`}
       prefetch={false}
       data-today-place-lead={lead ? "true" : undefined}
+      data-today-opening-soon={openingSoon ? "true" : undefined}
+      data-place-availability={openingSoon ? "opening-soon" : undefined}
+      data-today-tile={shape}
       data-decision-impression="true"
       data-decision-surface="today"
       data-decision-entity="place"
       data-decision-id={place.slug}
-      data-decision-position={lead ? "lead" : "alternative"}
+      data-decision-position={
+        openingSoon ? "opening-soon" : lead ? "lead" : "alternative"
+      }
       data-decision-action="open"
-      className={`group relative flex h-full min-h-[84px] items-center gap-2.5 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-2.5 py-2.5 transition active:scale-[0.985] ${
-        lead ? "w-full sm:w-[14.5rem] lg:w-[17.5rem]" : "w-full sm:w-[10.75rem] lg:w-[13.5rem]"
-      }`}
-      style={{
-        borderColor: "var(--app-border)",
-        boxShadow: "var(--app-edge), var(--app-hi)",
-        background: lead
-          ? "linear-gradient(118deg, color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 68%)"
-          : "var(--app-bg-elevated)",
-      }}
+      className="group flex min-w-0 flex-col gap-2 rounded-[var(--app-radius-md)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--app-bg)]"
     >
-      {lead ? (
-        <CategoryIcon
-          slug={category}
-          aria-hidden
-          className="pointer-events-none absolute -right-2 -top-2 h-[74px] w-[74px] rotate-[-7deg] opacity-[0.055] transition-transform duration-300 motion-safe:group-hover:rotate-0 motion-safe:group-hover:scale-[1.03]"
-          strokeWidth={1.35}
-        />
-      ) : null}
       <span
-        aria-hidden
-        className={`relative z-10 grid shrink-0 place-items-center rounded-[var(--app-radius-sm)] ${lead ? "h-11 w-11" : "h-9 w-9"}`}
-        style={{
-          color: "var(--app-brand-press)",
-          background: "var(--app-brand-tint-6)",
-        }}
+        data-today-tile-frame
+        className="relative block w-full overflow-hidden rounded-[var(--app-radius-md)]"
+        style={{ height: frameHeight, background: "var(--app-bg-sunken)" }}
       >
-        <CategoryIcon slug={category} className="h-[18px] w-[18px]" strokeWidth={1.9} />
-      </span>
-      <span className="relative z-10 min-w-0 flex-1">
-        <span
-          data-today-pick-name
-          className="line-clamp-3 text-[14px] font-semibold leading-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          {place.name}
-        </span>
-        <span
-          data-today-pick-context
-          className="mt-1 block truncate text-[11.5px]"
-          style={{ color: "var(--app-ink-2)" }}
-        >
-          {detail}
-          {placeContext}
-        </span>
-      </span>
-    </Link>
-  );
-}
-
-/** A closed door with a useful near-term transition. It is deliberately not a
- * DaypartPickCard: the separate treatment prevents a confirmed schedule from
- * borrowing the shelf's "open now" grammar before the opening minute. */
-function OpeningSoonPick({
-  place,
-  category,
-}: {
-  place: DaypartPick;
-  category: string;
-}) {
-  const signaledPhoto = place.photo
-    ? daypartPhotoSrc(proxyPhotoAtWidth(place.photo, 192))
-    : null;
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const showPhoto = Boolean(signaledPhoto && failedSrc !== signaledPhoto);
-  const context = place.distance || place.where;
-
-  return (
-    <Link
-      href={`/places/${place.slug}`}
-      prefetch={false}
-      data-today-opening-soon="true"
-      data-place-availability="opening-soon"
-      data-decision-impression="true"
-      data-decision-surface="today"
-      data-decision-entity="place"
-      data-decision-id={place.slug}
-      data-decision-position="opening-soon"
-      data-decision-action="open"
-      className="group mt-2 flex min-h-[84px] w-full overflow-hidden rounded-[var(--app-radius-md)] border transition active:scale-[0.985]"
-      style={{
-        borderColor:
-          "color-mix(in srgb, var(--app-amber) 42%, var(--app-border))",
-        background:
-          "linear-gradient(112deg, color-mix(in srgb, var(--app-amber) 11%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 64%)",
-        boxShadow: "var(--app-edge), var(--app-hi)",
-      }}
-    >
-      {showPhoto && signaledPhoto ? (
-        <span className="relative min-h-[84px] w-[5.75rem] shrink-0 overflow-hidden">
+        {showPhoto && signaledPhoto ? (
           <Image
             src={signaledPhoto}
             alt=""
             fill
+            sizes={
+              single
+                ? "(min-width: 640px) 400px, calc(100vw - 32px)"
+                : "(min-width: 640px) 200px, calc(50vw - 22px)"
+            }
             unoptimized={signaledPhoto.startsWith("/api/place-photo")}
+            priority={eager}
+            fetchPriority={eager ? "high" : "auto"}
             placeholder="blur"
             blurDataURL={PAPER_CREAM_BLUR}
-            className="object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.025]"
+            className="object-cover"
             onLoad={(event) => {
               if (isPhotoFailureSignal(event.currentTarget)) {
                 setFailedSrc(signaledPhoto);
@@ -736,41 +588,50 @@ function OpeningSoonPick({
             }}
             onError={() => setFailedSrc(signaledPhoto)}
           />
-        </span>
-      ) : (
+        ) : (
+          <RadiusPhotoMark
+            category={category}
+            hue={hue}
+            size={72}
+            height={frameHeight}
+            style={{ width: "100%" }}
+          />
+        )}
+      </span>
+      <span className="block min-w-0 px-0.5">
         <span
-          aria-hidden
-          className="m-3 grid h-11 w-11 shrink-0 place-items-center self-center rounded-[var(--app-radius-sm)]"
-          style={{
-            color: "var(--app-warning-press)",
-            background: "var(--app-warning-tint-14)",
-          }}
-        >
-          <CategoryIcon slug={category} className="h-5 w-5" strokeWidth={1.9} />
-        </span>
-      )}
-      <span className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2.5">
-        <span
-          className="font-mono text-[11px] font-semibold uppercase tracking-[0.08em]"
-          style={{ color: "var(--app-warning-press)" }}
-        >
-          Opening soon
-        </span>
-        <span
-          className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-tight"
+          data-today-pick-name
+          className="text-title-sm line-clamp-2 decoration-1 underline-offset-2 group-hover:underline"
           style={{ color: "var(--app-ink)" }}
         >
           {place.name}
         </span>
-        <span
-          className="mt-1 text-[11.5px] leading-snug"
-          style={{ color: "var(--app-ink-2)" }}
-        >
-          {place.fact || "Opening time available"}
-          {context ? <span> · {context}</span> : null}
-        </span>
+        {fact ? (
+          <span
+            data-today-pick-context
+            className="text-meta-lg mt-0.5 line-clamp-2 tabular-nums"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {fact}
+          </span>
+        ) : null}
       </span>
     </Link>
+  );
+}
+
+/** Loading tiles in the loaded shape, so the answer lands without a jump. */
+function DaypartTileSkeleton() {
+  return (
+    <div className="flex flex-col gap-2" aria-hidden>
+      <Skeleton.Block
+        width="100%"
+        height={TILE_FRAME.pair}
+        round="var(--app-radius-md)"
+      />
+      <Skeleton.Block width="80%" height={16} round="var(--app-radius-sm)" />
+      <Skeleton.Block width="60%" height={13} round="var(--app-radius-sm)" />
+    </div>
   );
 }
 
@@ -797,7 +658,6 @@ export default function DaypartNeeds({
   const [contextRevision, setContextRevision] = useState(0);
   const resolvedCategoriesRef = useRef<Record<string, boolean>>({});
   const mayAutoAdvanceRef = useRef(true);
-  const shelfRef = useRef<HTMLUListElement>(null);
 
   const baseActive = rows.find((row) => row.category === selectedCategory) ?? rows[0] ?? null;
   const activeCategory = baseActive?.category ?? "";
@@ -822,21 +682,6 @@ export default function DaypartNeeds({
     active?.picks.length === 0 &&
     !active?.openingSoon &&
     !resolvedCategories[activeCategory];
-  const activePickKey = active
-    ? [
-        ...active.picks.map((place) => place.slug),
-        active.openingSoon?.slug ?? "",
-      ].join("|")
-    : "";
-
-  // A town/location refresh replaces this ranked shelf in place. Browsers can
-  // preserve the old horizontal offset as that list changes, which made the
-  // new first (and therefore best) answer arrive half off-screen. A new shelf
-  // always begins with its first result; ordinary user scrolling is untouched
-  // because this only runs when the category or result identities change.
-  useEffect(() => {
-    shelfRef.current?.scrollTo({ left: 0, behavior: "auto" });
-  }, [activeCategory, activePickKey]);
 
   // The server renders useful cards immediately, then this shared decision
   // endpoint applies the user's real browsing context. It is the same ranking
@@ -972,52 +817,62 @@ export default function DaypartNeeds({
     variant === "brief" &&
     Boolean(active.openingSoon) &&
     (openingSoonFirst || decisionPicks.length === 0);
-  // The heading describes what is actually visible. A brief answer may know
-  // about both a current place and an opening-soon transition, but it presents
-  // only the stronger of those two rather than promising both in its label.
-  const shelfHeading =
-    variant === "brief"
-      ? daypartShelfHeading(
-          briefUsesOpeningSoon ? [] : decisionPicks.slice(0, 1),
-          briefUsesOpeningSoon ? active.openingSoon : null,
-        )
-      : daypartShelfHeading(active.picks, active.openingSoon);
-  // The default Today briefing asks this component for one concise answer.
-  // Its full mode remains available for contexts that need comparison. When
-  // opening soon is the more useful transition, it replaces the current-place
-  // card instead of becoming a second recommendation.
+  // Today's briefing shows two picture answers above the nav, or the
+  // opening-soon transition in their place when it is the more useful answer.
+  // The full shelf keeps a three-choice decision set for comparison contexts,
+  // where an opening-soon transition consumes the third slot.
   const visiblePicks = decisionPicks.slice(
     0,
     variant === "brief"
       ? briefUsesOpeningSoon
         ? 0
-        : 1
+        : 2
       : active.openingSoon
         ? 2
         : 3,
   );
+  const soon =
+    active.openingSoon && (variant === "full" || briefUsesOpeningSoon)
+      ? active.openingSoon
+      : null;
+  // The heading describes what is actually visible. A brief answer may know
+  // about both current places and an opening-soon transition, but it presents
+  // only the stronger of the two rather than promising both in its label.
+  const shelfHeading = daypartShelfHeading(visiblePicks, soon);
+  const tiles: { place: DaypartPick; openingSoon: boolean }[] = [
+    ...(soon && openingSoonFirst ? [{ place: soon, openingSoon: true }] : []),
+    ...visiblePicks.map((place) => ({ place, openingSoon: false })),
+    ...(soon && !openingSoonFirst ? [{ place: soon, openingSoon: true }] : []),
+  ];
   const showCategoryTabs = variant === "full" && rows.length > 1;
-  // When the transition leads visually, a reason about picks[0] would explain
-  // the wrong card. The opening-soon card already carries its actionable hours
-  // evidence, so reserve "Why it leads" for a current place that truly leads.
-  const leadReason = openingSoonFirst ? null : daypartLeadReason(decisionPicks);
-  const hasVisibleRecommendation =
-    visiblePicks.length > 0 || Boolean(active.openingSoon);
+  const visibleTier = daypartShelfTier(visiblePicks);
+  // Each likely tile already says "check hours". Tiles without hours evidence
+  // show only their town, so the shelf says once that the hours are unknown.
+  // The full shelf keeps its ranking line for comparison contexts.
+  const shelfCaveat = awaitingLive
+    ? "Checking nearby"
+    : visiblePicks.length === 0
+      ? null
+      : visibleTier === "unconfirmed"
+        ? variant === "brief"
+          ? "Hours not confirmed · call ahead"
+          : `${pickScopeLabel} · Hours not confirmed; call ahead`
+        : variant === "full" && visibleTier === "likely"
+          ? `${pickScopeLabel} · Posted hours; check before going`
+          : null;
 
   return (
     <section
       aria-label={shelfHeading.aria}
-      className="mt-6"
       data-today-decision-density={variant}
     >
-      <TodaySectionHeading
+      <SectionHeading
         title={shelfHeading.title}
-        meta={contextLabel}
-        href={active.href}
-        cta={variant === "brief" ? "Browse places" : "See all"}
+        href={variant === "brief" ? "/open-now" : active.href}
+        cta="See all"
       />
       {note ? (
-        <p className="-mt-1 px-0.5 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+        <p className="text-meta-lg mt-1 px-0.5" style={{ color: "var(--app-ink-2)" }}>
           {note}
         </p>
       ) : null}
@@ -1062,7 +917,7 @@ export default function DaypartNeeds({
                   );
                   tabs?.[nextIndex]?.focus();
                 }}
-                className="tap-44 min-h-11 shrink-0 rounded-full border px-3 text-[12.5px] font-semibold transition active:scale-[0.98]"
+                className="tap-44 text-meta-lg min-h-11 shrink-0 rounded-full border px-3 font-semibold transition active:scale-[0.98]"
                 style={{
                   borderColor: selected ? "var(--app-brand)" : "var(--app-border)",
                   background: selected
@@ -1077,7 +932,7 @@ export default function DaypartNeeds({
           })}
         </div>
       ) : variant === "full" ? (
-        <h3 className="mt-3 text-[13px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+        <h3 className="text-meta-lg mt-3 font-semibold" style={{ color: "var(--app-ink-2)" }}>
           {active.label}
         </h3>
       ) : null}
@@ -1087,116 +942,53 @@ export default function DaypartNeeds({
         id="daypart-active-panel"
         role={showCategoryTabs ? "tabpanel" : undefined}
         aria-labelledby={showCategoryTabs ? `daypart-tab-${active.category}` : undefined}
-        className={`${showCategoryTabs ? "mt-2" : "mt-1"} today-decision-swap`}
+        className="mt-2 today-decision-swap"
       >
-        {awaitingLive ||
-        (visiblePicks.length > 0 && shelfTier !== "confirmed") ? <div className="px-0.5">
-          <p className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-            {awaitingLive
-              ? "Checking nearby"
-              : shelfTier === "likely"
-                ? `${pickScopeLabel} · Posted hours; check before going`
-                : `${pickScopeLabel} · Hours not confirmed; call ahead`}
+        {shelfCaveat ? (
+          <p className="text-meta-lg px-0.5" style={{ color: "var(--app-ink-3)" }}>
+            {shelfCaveat}
           </p>
-        </div> : null}
+        ) : null}
 
         {awaitingLive ? (
           <div
-            className="today-answer-shelf mt-2 flex gap-2.5 overflow-hidden pb-1"
+            className="mt-2 grid grid-cols-2 gap-3"
             aria-busy="true"
             aria-label={`Loading open ${active.label.toLocaleLowerCase()} places`}
           >
-            {/* Mirrors the loaded shape (grid on phones, rail from sm) so the
-                answer does not jump from a row to a grid when it arrives. */}
-            {(variant === "brief" ? [0] : [0, 1, 2]).map((slot) => (
-              <div
-                key={slot}
-                className="w-full shrink-0 sm:w-auto"
-                data-shelf-lead={slot === 0 ? "true" : undefined}
-              >
-                <Skeleton.Block
-                  width="100%"
-                  height="7.35rem"
-                  round="var(--app-radius-md)"
-                  className={slot === 0 ? "sm:!w-[14.5rem]" : "sm:!w-[10.75rem]"}
-                />
-              </div>
-            ))}
+            <DaypartTileSkeleton />
+            <DaypartTileSkeleton />
           </div>
-        ) : hasVisibleRecommendation ? (
-          <div>
-            {openingSoonFirst && active.openingSoon ? (
-              <OpeningSoonPick
-                place={active.openingSoon}
-                category={active.category}
-              />
-            ) : null}
-            {/* Phones get an edited grid, not a hidden horizontal rail. One
-                lead and two alternatives fit as a complete decision set; See
-                all owns the longer inventory. From sm up the same three cards
-                become a rail, where the column has room. The decision role is
-                layout-independent, so "Why it leads" keeps its subject. */}
-            {visiblePicks.length > 0 ? (
-              <ul
-                ref={shelfRef}
-                data-shelf-two={
-                  active.openingSoon && visiblePicks.length === 2
-                    ? "true"
-                    : undefined
-                }
-                className="shelf-rail today-answer-shelf mt-2 gap-2.5 pb-1"
-              >
-                {visiblePicks.map((place, index) => (
-                  <li
-                    key={place.slug}
-                    className="shrink-0"
-                    data-shelf-lead={index === 0 ? "true" : undefined}
-                  >
-                    <DaypartPickCard
-                      place={place}
-                      category={active.category}
-                      eager={index === 0}
-                      lead={index === 0}
-                    />
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {!openingSoonFirst &&
-            active.openingSoon &&
-            (variant === "full" || visiblePicks.length === 0) ? (
-              <OpeningSoonPick
-                place={active.openingSoon}
-                category={active.category}
-              />
-            ) : null}
-            {leadReason ? (
-              <p
-                data-today-decision-reason="true"
-                className="mt-2 flex items-baseline gap-2 px-0.5 text-[11.5px] leading-snug"
-                style={{ color: "var(--app-ink-2)" }}
-              >
-                <span
-                  className="shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[0.08em]"
-                  style={{ color: "var(--app-brand-press)" }}
+        ) : tiles.length > 0 ? (
+          // Two tiles share a row. An odd count lets the first tile span the
+          // row with the larger picture, so no tile is stranded at half width.
+          <ul className="mt-2 grid grid-cols-2 gap-3">
+            {tiles.map(({ place, openingSoon }, index) => {
+              const single = index === 0 && tiles.length % 2 === 1;
+              return (
+                <li
+                  key={`${openingSoon ? "soon" : "pick"}-${place.slug}`}
+                  className={`min-w-0 ${single ? "col-span-2" : ""}`}
                 >
-                  Why it leads
-                </span>
-                <span>{leadReason}</span>
-              </p>
-            ) : null}
-          </div>
+                  <DaypartTile
+                    place={place}
+                    category={active.category}
+                    single={single}
+                    eager={index === 0}
+                    lead={!openingSoon && place.slug === visiblePicks[0]?.slug}
+                    openingSoon={openingSoon}
+                    contextSource={contextSource}
+                  />
+                </li>
+              );
+            })}
+          </ul>
         ) : (
           <div
             role="status"
-            className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5"
-            style={{
-              borderColor: "var(--app-border)",
-              background: "var(--app-bg-elevated)",
-              boxShadow: "var(--app-hi)",
-            }}
+            className="mt-2 flex min-h-11 items-center justify-between gap-3"
           >
-            <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            <p className="text-meta-lg px-0.5" style={{ color: "var(--app-ink-2)" }}>
               {daypartEmptyCopy(
                 contextLabel,
                 isDaypartCountywideContext(contextSource),
@@ -1208,7 +1000,7 @@ export default function DaypartNeeds({
               <Link
                 href={active.href}
                 prefetch={false}
-                className="tap-44 shrink-0 text-[12px] font-semibold underline decoration-1 underline-offset-4"
+                className="tap-44 text-meta-lg shrink-0 font-semibold underline decoration-1 underline-offset-4"
                 style={{ color: "var(--app-brand-press)" }}
               >
                 Browse

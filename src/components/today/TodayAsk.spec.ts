@@ -5,9 +5,7 @@ import TodayAsk from "./TodayAsk";
 
 describe("Today universal Find launcher", () => {
   it("uses the shared Find doorway instead of a second Ask form", () => {
-    const html = renderToStaticMarkup(
-      createElement(TodayAsk, null, createElement("span", null, "Category choices")),
-    );
+    const html = renderToStaticMarkup(createElement(TodayAsk));
 
     expect(html).toContain('aria-label="Find a place, service, event, or answer"');
     expect(html).toContain('href="/search"');
@@ -17,9 +15,9 @@ describe("Today universal Find launcher", () => {
     );
     expect(html).toContain('href="/open-now"');
     expect(html).toContain('href="/amenities"');
-    expect(html).toContain('href="/places"');
-    expect(html).toContain("Browse all places");
-    expect(html).toContain("Category choices");
+    // The category index follows the place shelf on Today, not this doorway.
+    expect(html).not.toContain('href="/places"');
+    expect(html).not.toContain("browse-places-panel");
     expect(html).not.toContain('action="/ask"');
     expect(html).not.toContain("data-ask-composer");
   });
@@ -33,5 +31,10 @@ describe("Today universal Find launcher", () => {
     expect(html).toContain('href="/contacts"');
     expect(html).toContain("Plan a few hours");
     expect(html).not.toContain("magic-card");
+    // Each label is its own element so it can center and clamp to two lines
+    // under its icon.
+    for (const label of ["Open now", "Public essentials", "Plan a few hours", "Local services"]) {
+      expect(html).toMatch(new RegExp(`<span class="text-meta-lg font-semibold[^"]*">${label}</span>`));
+    }
   });
 });

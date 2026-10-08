@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { locationScopeHref } from "@/components/nav/locationScopeNavigation";
 import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
 import {
@@ -48,17 +49,20 @@ const subscribe = (onStoreChange: () => void) =>
   subscribeScopeChange(() => onStoreChange());
 
 /**
- * The LocationChip intentionally hides its text below 390px. Keep the active
- * lens visible in the page itself and announce changes without pretending the
- * fixed-center weather or county event program is filtered to one town.
+ * Today's one area line: the native area select set as text, a chevron, and a
+ * plain readout of what that area changes. TopBar keeps the LocationChip off
+ * /today, so this line is the page's scope control (owner question, October
+ * 2026: keep one in-page control for now). It replaced a bordered select and
+ * an always-visible "Use my location" pill, about 60px of the first screen.
  *
- * `dateline` carries the calendar date as this line's first segment. It used
- * to be its own decorated eyebrow ABOVE the h1 (brick dash + uppercase),
- * which meant two supporting rows bracketed the title and the largest thing
- * in the masthead was still smaller than the section headings below it. One
- * quiet line under the title now holds both supporting facts.
+ * Near me is always listed. Choosing it without a device fix never calls
+ * geolocation: the area in effect stays selected and one sentence explains
+ * what location is for, with one "Use my location" button under it. Only that
+ * button can open the browser's prompt (USER_FIRST_INTERACTION_CONTRACT), and
+ * a grant applies Near me through the same applyTodayScope as every other
+ * choice.
  */
-export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
+export default function TodayScopeStatus() {
   const ready = useSyncExternalStore(subscribeReady, () => true, () => false);
   const storedScope = useSyncExternalStore(subscribe, getScope, () => null);
   const searchParams = useSearchParams();
@@ -71,7 +75,6 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
   useEffect(() => {
     if (urlScope && getScope() !== urlScope) setScope(urlScope);
   }, [urlScope]);
-  const townScoped = Boolean(scopeTownSlug(scope));
   const {
     state: location,
     request: requestLocation,
@@ -80,15 +83,16 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
   const requestedHere = useRef(false);
   const grantedCheckDone = useRef(false);
   const benefitId = useId();
-  // The first tap explains what location is for; only the second can open
-  // the browser prompt (USER_FIRST_INTERACTION_CONTRACT). Asking first keeps
-  // the sentence off Today's first screen until someone wants location.
-  const [explaining, setExplaining] = useState(false);
+  // Near me was chosen from the select while this device had no fix. The
+  // select keeps showing the area that is still in effect.
+  const [askedForNearMe, setAskedForNearMe] = useState(false);
   const hasDeviceLocation = location.status === "granted";
   const locationBlocked =
     location.status === "denied" || location.status === "unavailable";
-  const showLocationAction =
-    !townScoped && (scope !== "nearme" || !hasDeviceLocation);
+  // A returning Near me visitor without a fix needs the same explanation as
+  // someone choosing Near me now.
+  const needsLocation =
+    ready && !hasDeviceLocation && (askedForNearMe || scope === "nearme");
 
   // A returning Near me visitor whose browser already granted geolocation
   // should not read "Location needed" over a button for a permission they
@@ -110,118 +114,103 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
     applyTodayScope("nearme");
   }, [location.status]);
 
+  const chooseArea = (value: Scope) => {
+    if (value === "nearme" && !hasDeviceLocation) {
+      setAskedForNearMe(true);
+      return;
+    }
+    setAskedForNearMe(false);
+    applyTodayScope(value);
+  };
+
   const useMyLocation = () => {
-    if (hasDeviceLocation) {
-      applyTodayScope("nearme");
-      return;
-    }
-    if (!explaining) {
-      setExplaining(true);
-      return;
-    }
-    setExplaining(false);
     requestedHere.current = true;
     requestLocation();
   };
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-      <p
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        data-testid="today-scope-status"
-        className="flex w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] leading-normal"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        {dateline && (
-          <>
-            <span style={{ color: "var(--app-ink-2)" }}>{dateline}</span>
-            <span aria-hidden>·</span>
-          </>
-        )}
-        <span
-          aria-hidden
-          className="h-1.5 w-1.5 shrink-0 rounded-full"
-          style={{
-            background: townScoped ? "var(--app-brand)" : "var(--app-cool)",
-          }}
-        />
-        {todayScopeStatusText(scope, hasDeviceLocation)}
-      </p>
-      <label className="inline-flex min-h-11 max-w-full items-center gap-2 text-[13px] font-medium">
-        <span className="sr-only">Choose your area</span>
-        <select
-          disabled={!ready}
-          value={scope ?? "county"}
-          onChange={(event) => applyTodayScope(event.target.value as Scope)}
-          className="min-h-11 max-w-full rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-3 text-[16px]"
-          style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
-        >
-          <option value="county">{scopeLabel("county")}</option>
-          {scope === "nearme" && <option value="nearme">{scopeLabel("nearme")}</option>}
-          {MUNICIPALITIES.map((town) => <option key={town.slug} value={`town:${town.slug}`}>{town.name}</option>)}
-        </select>
-      </label>
-      {showLocationAction ? (
-        locationBlocked ? (
-          // A denial cannot be re-prompted in this page session, so keeping
-          // the button would make every tap a dead "Finding you…" call. Name
-          // the cause and point at the browser's own site setting, the only
-          // place the permission can be turned back on. The 8s timeout
-          // ("error") keeps the button because a retry there can succeed.
-          <p
-            data-testid="today-location-blocked"
-            className="max-w-[30ch] text-[12px] leading-normal"
-            style={{ color: "var(--app-ink-3)" }}
+    <div>
+      {/* The readout wraps inside its own column, so a long town readout
+          never strands the separator at the end of a line. */}
+      <div className="flex min-h-11 items-center gap-x-1.5">
+        <label className="relative inline-flex min-h-11 shrink-0 items-center">
+          <span className="sr-only">Choose your area</span>
+          {/* 16px text keeps iOS from zooming the page when the select takes
+              focus. field-sizing fits the select to the area it shows, so the
+              chevron sits beside the words where the browser supports it. */}
+          <select
+            disabled={!ready}
+            value={scope ?? "county"}
+            onChange={(event) => chooseArea(event.target.value as Scope)}
+            className="text-body-lg field-sizing-content min-h-11 min-w-11 cursor-pointer appearance-none rounded-[var(--app-radius-sm)] border-0 bg-transparent py-0 pl-0 pr-6 font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] disabled:cursor-default"
+            style={{ color: "var(--app-ink)" }}
           >
-            {location.status === "denied"
-              ? "Location is off. Choose a town to keep browsing."
-              : "Location is unavailable. Choose a town to keep browsing."}
-          </p>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={useMyLocation}
-              disabled={location.status === "loading"}
-              aria-describedby={explaining ? benefitId : undefined}
-              className="tap-44 inline-flex h-11 shrink-0 items-center rounded-full px-2.5 text-[13px] font-semibold transition active:scale-[0.98] disabled:opacity-55"
-              style={{
-                color: "var(--app-brand-press)",
-                background: "var(--app-brand-tint-6)",
-              }}
+            <option value="county">{scopeLabel("county")}</option>
+            <option value="nearme">{scopeLabel("nearme")}</option>
+            {MUNICIPALITIES.map((town) => <option key={town.slug} value={`town:${town.slug}`}>{town.name}</option>)}
+          </select>
+          <ChevronDown
+            aria-hidden
+            className="pointer-events-none absolute right-0.5 h-4 w-4"
+            style={{ color: "var(--app-ink-2)" }}
+          />
+        </label>
+        <span aria-hidden className="text-meta-lg shrink-0" style={{ color: "var(--app-ink-3)" }}>
+          ·
+        </span>
+        <p
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          data-testid="today-scope-status"
+          className="text-meta-lg min-w-0 flex-1"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          {todayScopeStatusText(scope, hasDeviceLocation)}
+        </p>
+      </div>
+      {/* The live region stays mounted so a screen reader hears the sentence
+          that answers a Near me choice the select has not applied yet. */}
+      <div aria-live="polite">
+        {needsLocation ? (
+          locationBlocked ? (
+            // A denial cannot be re-prompted in this page session, so a button
+            // would make every tap a dead "Finding you…" call. Name the cause
+            // and point at the towns, which need no permission. The 8s timeout
+            // ("error") keeps the button because a retry there can succeed.
+            <p
+              data-testid="today-location-blocked"
+              className="text-meta-lg max-w-[40ch] pb-1"
+              style={{ color: "var(--app-ink-3)" }}
             >
-              {location.status === "loading"
-                ? "Finding you…"
-                : explaining
-                  ? "Continue"
-                  : "Use my location"}
-            </button>
-            {/* The contract asks for the benefit before the browser's
-                permission prompt. A permanent sentence here pushed Today's
-                Find launcher past the owner's first-screen budget (PR #1734),
-                so the first tap shows it and the second tap asks. With a fix
-                already in hand the tap only changes the lens and no prompt
-                follows, so there is nothing to explain. */}
-            {/* The live region stays mounted (and out of the layout) so a
-                screen reader hears the sentence when the first tap fills it. */}
-            {hasDeviceLocation ? null : (
+              {location.status === "denied"
+                ? "Location is off. Choose a town to keep browsing."
+                : "Location is unavailable. Choose a town to keep browsing."}
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-x-3">
               <p
-                aria-live="polite"
-                className={explaining ? "max-w-[34ch] text-[12px] leading-normal" : "sr-only"}
+                id={benefitId}
+                data-testid="today-location-benefit"
+                className="text-meta-lg max-w-[44ch]"
                 style={{ color: "var(--app-ink-3)" }}
               >
-                {explaining ? (
-                  <span id={benefitId} data-testid="today-location-benefit">
-                    {NEAR_ME_BENEFIT}
-                  </span>
-                ) : null}
+                {NEAR_ME_BENEFIT}
               </p>
-            )}
-          </>
-        )
-      ) : null}
+              <button
+                type="button"
+                onClick={useMyLocation}
+                disabled={location.status === "loading"}
+                aria-describedby={benefitId}
+                className="text-meta-lg inline-flex min-h-11 shrink-0 items-center rounded-[var(--app-radius-sm)] font-semibold underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] disabled:opacity-55"
+                style={{ color: "var(--app-brand-press)" }}
+              >
+                {location.status === "loading" ? "Finding you…" : "Use my location"}
+              </button>
+            </div>
+          )
+        ) : null}
+      </div>
     </div>
   );
 }

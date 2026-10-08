@@ -37,9 +37,11 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(photoBox.width).toBeGreaterThanOrEqual(mastheadBox.width * 0.95);
     await expect(masthead.locator("figcaption")).toContainText("Archive");
 
+    const shortcutRows = new Set<number>();
     for (const name of ["Open now", "Public essentials", "Plan a few hours", "Local services"]) {
       const shortcut = page.getByRole("link", { name, exact: true });
       const box = (await shortcut.boundingBox())!;
+      shortcutRows.add(Math.round(box.y));
       // CSS transforms can report 43.999969px for an exact 44px target.
       // Check the declared minimum and round only subpixel representation.
       expect(await shortcut.evaluate((element) => parseFloat(getComputedStyle(element).minHeight)))
@@ -49,6 +51,29 @@ for (const width of [320, 375, 390, 430, 1366]) {
       expect(box.width).toBeGreaterThanOrEqual(44);
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(width + 1);
+    }
+    // One row of four from 360px up; the 2x2 grid below that.
+    expect(shortcutRows.size).toBe(width >= 360 ? 1 : 2);
+
+    // The place shelf answers with pictures on the first screen. Normalize a
+    // leading safety alert the way the quality floor does: it may push the
+    // page down, and it leads on purpose.
+    if (width === 390) {
+      const placeAnswers = page.locator('[aria-label="Places for your area"]');
+      const tileFrame = placeAnswers.locator("[data-today-tile-frame]").first();
+      const emptyAnswer = placeAnswers.getByRole("status");
+      await expect(tileFrame.or(emptyAnswer).first()).toBeVisible({ timeout: 15_000 });
+      if (await tileFrame.count()) {
+        const frameBox = (await tileFrame.boundingBox())!;
+        const leadingNoticeSpace = Math.max(0, mastheadBox.y - 80);
+        expect(frameBox.y).toBeGreaterThanOrEqual(findBox.y + findBox.height);
+        expect(frameBox.y + frameBox.height - leadingNoticeSpace).toBeLessThanOrEqual(760);
+      } else {
+        testInfo.annotations.push({
+          type: "today-shelf",
+          description: "No place was open or likely open at run time, so the tile check was skipped.",
+        });
+      }
     }
 
     const weatherBox = (await page.locator("[data-today-weather]").boundingBox())!;
@@ -87,7 +112,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     );
     await expect(page.getByRole("link", { name: "Plan a few hours", exact: true }))
       .toHaveAttribute("href", /in=brunswick/);
-    await expect(page.getByRole("button", { name: "Browse all categories", exact: true }))
+    await expect(page.getByRole("button", { name: "Browse all kinds of places", exact: true }))
       .toHaveAttribute("aria-expanded", "false");
   });
 }
