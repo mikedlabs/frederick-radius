@@ -1,5 +1,5 @@
 import type { CurrentSituationSnapshot } from "@/lib/live/currentSituationModel";
-import { selectPulseStatus, sourceDisplayState } from "@/lib/live/currentSituationModel";
+import { isUnexpiredWeatherAlert, selectPulseStatus, sourceDisplayState } from "@/lib/live/currentSituationModel";
 import type { RoadIntelligenceSnapshot } from "@/lib/live/roadIntelligenceModel";
 import type { OfficialCivicAlertsResult } from "@/lib/integrations/official-alert-feeds";
 import { isLocallyRelevantCivicAlert } from "@/lib/integrations/official-alert-feeds";
@@ -27,7 +27,7 @@ export function deriveCountyStatus(
   // advisories, small outages, and ordinary road closures to emergencies.
   const urgent = situation.summary.activeByCategory.fireRescue > 0
     || (sourceDisplayState(weather) === "current" && weather.data.some((alert) =>
-      (!Number.isFinite(Date.parse(alert.ends_at)) || Date.parse(alert.ends_at) > now) && pulseAlertPriority(alert) <= 4))
+      isUnexpiredWeatherAlert(alert, now) && pulseAlertPriority(alert) <= 4))
     || (situation.summary.activeByCategory.power > 0
       && sourceDisplayState(power) === "current"
       && powerOutageTone(power.data.total_out, power.data.total_served) === "danger")

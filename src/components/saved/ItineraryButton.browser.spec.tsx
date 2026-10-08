@@ -60,11 +60,20 @@ describe("Event detail save uses the Saved tab's device store", () => {
 
   it("never displays saved or emits success when storage rejects the write", async () => {
     await render();
-    const seen: Array<string | null> = [];
-    const observer = new MutationObserver(() => seen.push(button().getAttribute("aria-pressed")));
-    observer.observe(button(), { attributes: true, attributeFilter: ["aria-pressed"] });
+    const control = button();
+    const seen: Array<string | null> = [control.getAttribute("aria-pressed")];
+    const recordChanges = (records: MutationRecord[]) => {
+      // oldValue catches a transient true -> false change in one delivery turn.
+      for (const record of records) seen.push(record.oldValue);
+      seen.push(control.getAttribute("aria-pressed"));
+    };
+    const observer = new MutationObserver(recordChanges);
+    observer.observe(control, { attributes: true, attributeFilter: ["aria-pressed"], attributeOldValue: true });
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("Full", "QuotaExceededError"); });
-    await click(); observer.disconnect();
+    await click();
+    await Promise.resolve(); // Deliver observer callbacks before stopping it.
+    recordChanges(observer.takeRecords());
+    observer.disconnect();
     expect(button().getAttribute("aria-pressed")).toBe("false");
     expect(seen).not.toContain("true");
     expect(saved()).toEqual([]); expect(mocks.toast.success).not.toHaveBeenCalled();

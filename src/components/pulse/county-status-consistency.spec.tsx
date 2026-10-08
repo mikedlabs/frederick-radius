@@ -8,6 +8,7 @@ import type { NwsAlert } from "@/lib/integrations/nws-alerts";
 import type { RoadIntelligenceSnapshot } from "@/lib/live/roadIntelligenceModel";
 import type { OfficialCivicAlertsResult } from "@/lib/integrations/official-alert-feeds";
 import { deriveCountyStatus } from "@/lib/pulse/county-status-model";
+import { COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS } from "@/lib/pulse/county-status";
 
 const mocks = vi.hoisted(() => ({ situation: vi.fn(), road: vi.fn(), civic: vi.fn() }));
 vi.mock("@/lib/live/currentSituation", () => ({ getCurrentSituationSnapshot: mocks.situation }));
@@ -56,8 +57,8 @@ describe("County status API, visible pill and Pulse masthead", () => {
     ["Clear", [], false, false, 0],
     ["Unknown", [], true, false, 0],
     ["Unknown", [], false, true, 0],
-    ["Unknown", [], false, false, 6 * 60_000],
-    ["Unknown", [alert("Flash Flood Warning")], false, false, 6 * 60_000],
+    ["Unknown", [], false, false, COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS],
+    ["Unknown", [alert("Flash Flood Warning")], false, false, COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS],
   ] as const)("keeps %s consistent for the actual shared projection and rendered callers", async (level, alerts, partial, roadFailure, elapsed) => {
     const situation = buildCurrentSituationSnapshot({ sources: sources([...alerts], partial), roadFusion: { incidents: [], matchedChartIncidentIds: [], unmatchedChartIncidentIds: [] }, now: NOW });
     mocks.situation.mockResolvedValue(situation);
@@ -99,7 +100,7 @@ describe("County status API, visible pill and Pulse masthead", () => {
       createElement(PulseBoard, { hero: { countyStatus: summary, allClear: true, line: "No issue is reported in these sample checks.", sub: "Other sources keep their own details.", renderedAt: Date.now() }, chips: [], tiles: [] }),
     )));
     expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Clear in checked feeds");
-    await act(async () => vi.advanceTimersByTimeAsync(6 * 60_000 - 1));
+    await act(async () => vi.advanceTimersByTimeAsync(COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS - 1));
     expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Clear in checked feeds");
     await act(async () => vi.advanceTimersByTimeAsync(1));
     expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Unknown");
@@ -113,14 +114,14 @@ describe("County status API, visible pill and Pulse masthead", () => {
     const renderBoard = (countyStatus: typeof summary) => createElement(PulseBoard, { hero: { countyStatus, allClear: true, line: "These are sample shared checks.", sub: "Keep source details attached.", renderedAt: Date.now() }, chips: [], tiles: [] });
     await act(async () => root.render(renderBoard(summary)));
     await act(async () => vi.advanceTimersByTimeAsync(20_000)); // Before the 30-second label tick.
-    const stale = { ...summary, lastUpdated: new Date(Date.parse(NOW) - 6 * 60_000 + 10_000).toISOString() };
+    const stale = { ...summary, lastUpdated: new Date(Date.parse(NOW) - COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS + 10_000).toISOString() };
     await act(async () => root.render(renderBoard(stale)));
     expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Unknown");
   });
 
   it("gives a newly supplied copy of the same cached timestamp a current clock before paint", async () => {
     const situation = buildCurrentSituationSnapshot({ sources: sources([], false), roadFusion: { incidents: [], matchedChartIncidentIds: [], unmatchedChartIncidentIds: [] }, now: NOW });
-    const summary = { ...deriveCountyStatus(situation, road, civic), lastUpdated: new Date(Date.parse(NOW) - 6 * 60_000 + 10_000).toISOString() };
+    const summary = { ...deriveCountyStatus(situation, road, civic), lastUpdated: new Date(Date.parse(NOW) - COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS + 10_000).toISOString() };
     const renderBoard = (countyStatus: typeof summary) => createElement(PulseBoard, { hero: { countyStatus, allClear: true, line: "These are sample shared checks.", sub: "Keep source details attached.", renderedAt: Date.parse(NOW) }, chips: [], tiles: [] });
     await act(async () => root.render(renderBoard(summary)));
     expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Clear in checked feeds");

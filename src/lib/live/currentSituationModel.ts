@@ -178,11 +178,14 @@ export function sourceDisplayState(
     : "unavailable";
 }
 
+/** Unknown expiry cannot establish that a published weather alert has ended. */
+export function isUnexpiredWeatherAlert(alert: Pick<NwsAlert, "ends_at">, nowMs: number): boolean {
+  const endsAt = Date.parse(alert.ends_at);
+  return !Number.isFinite(endsAt) || endsAt > nowMs;
+}
+
 function activeWeather(alerts: readonly NwsAlert[], nowMs: number): NwsAlert[] {
-  return alerts.filter((alert) => {
-    const endsAt = Date.parse(alert.ends_at);
-    return !Number.isFinite(endsAt) || endsAt > nowMs;
-  });
+  return alerts.filter((alert) => isUnexpiredWeatherAlert(alert, nowMs));
 }
 
 function currentSchoolNotices(alerts: readonly FcpsAlert[]): FcpsAlert[] {

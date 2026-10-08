@@ -90,8 +90,7 @@ describe("Pulse status language", () => {
   });
 
   it("keeps verified quiet conditions separate from advisories", () => {
-    // "All quiet", not "Checked" — PulseFreshness already prints "Checked Nm
-    // ago" in the same masthead row, and the repeated word read as a stutter.
+    // Status describes the checked feeds; PulseFreshness owns the check time.
     expect(pulseStatusWord({
       allClear: true,
       degraded: false,

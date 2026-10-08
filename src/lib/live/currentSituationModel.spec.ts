@@ -10,6 +10,7 @@ import type { IncidentFusionResult } from "@/lib/live/incidentFusion";
 import { fuseScannerWithChartIncidents } from "@/lib/live/incidentFusion";
 import {
   buildCurrentSituationSnapshot,
+  isUnexpiredWeatherAlert,
   selectChartIncidentsResult,
   selectMapRoadPins,
   selectPulseStatus,
@@ -29,6 +30,16 @@ const EMPTY_OUTAGES: FrederickOutages = {
   total_served: 0,
   munis: [],
 };
+
+describe("isUnexpiredWeatherAlert", () => {
+  it.each(["", "unknown", "2026-07-28T16:00:00.001Z"])("keeps a published alert active for expiry %j", (ends_at) => {
+    expect(isUnexpiredWeatherAlert({ ends_at }, Date.parse(NOW))).toBe(true);
+  });
+
+  it.each(["2026-07-28T15:59:59.999Z", NOW])("drops a published alert at or after expiry %j", (ends_at) => {
+    expect(isUnexpiredWeatherAlert({ ends_at }, Date.parse(NOW))).toBe(false);
+  });
+});
 
 function envelope<T>(
   source: Parameters<typeof sourceEnvelope<T>>[0]["source"],

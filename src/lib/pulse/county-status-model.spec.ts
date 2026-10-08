@@ -5,13 +5,13 @@ import type { OfficialCivicAlertsResult } from "@/lib/integrations/official-aler
 import { deriveCountyStatus } from "./county-status-model";
 
 const NOW = "2026-10-08T13:00:00.000Z";
-function situation(): CurrentSituationSnapshot {
+function situation(weatherAlerts: CurrentSituationSources["weather"]["data"] = []): CurrentSituationSnapshot {
   const envelope = <T,>(source: Parameters<typeof sourceEnvelope<T>>[0]["source"], data: T) => sourceEnvelope({
     source, data, availability: "available", requiredForQuiet: true,
     capturedAt: NOW, asOf: NOW, asOfBasis: "retrieval", staleAfterSeconds: 300,
   });
   const sources: CurrentSituationSources = {
-    weather: envelope("nws", []),
+    weather: envelope("nws", weatherAlerts),
     schools: envelope("fcps", []),
     traffic: envelope("mdot-chart", []),
     scanner: envelope("frederick-scanner", []),
@@ -62,10 +62,16 @@ describe("Shared county status severity and coverage", () => {
     expect(deriveCountyStatus(situation(), { ...road, summary: { ...road.summary, coverage: "partial" } }, civic).level).toBe("Unknown");
     expect(deriveCountyStatus(situation(), road, { ...civic, degraded: true }).level).toBe("Unknown");
   });
-  it("preserves urgency for an active canonical warning with an unparseable published expiry", () => {
-    const current = situation(); current.summary.status = "active"; current.summary.activeCount = 1; current.summary.activeByCategory.weather = 1;
-    current.sources.weather.data = [{ event: "Flash Flood Warning", headline: "Flash Flood Warning", description: "Official warning", severity: "Severe", ends_at: "unknown" }] as typeof current.sources.weather.data;
-    expect(deriveCountyStatus(current, road, civic).level).toBe("Urgent");
+  it.each([
+    ["unknown", "Urgent"],
+    ["", "Urgent"],
+    ["2026-10-08T12:59:59.999Z", "Clear"],
+    [NOW, "Clear"],
+    ["2026-10-08T13:00:00.001Z", "Urgent"],
+  ] as const)("agrees with the canonical warning count for published expiry %j", (ends_at, level) => {
+    const current = situation([{ event: "Flash Flood Warning", headline: "Flash Flood Warning", description: "Official warning", severity: "Severe", ends_at }] as CurrentSituationSources["weather"]["data"]);
+    expect(current.summary.activeByCategory.weather).toBe(level === "Urgent" ? 1 : 0);
+    expect(deriveCountyStatus(current, road, civic).level).toBe(level);
   });
 
 });
