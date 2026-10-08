@@ -94,6 +94,18 @@ describe("TodayScopeStatus location memory", () => {
       select().dispatchEvent(new Event("change", { bubbles: true }));
     });
   };
+  // Chrome and Edge on Windows, Linux and ChromeOS, and NVDA or JAWS in focus
+  // mode, move a closed select one option per arrow key and fire change on
+  // each step, starting from whatever option the select shows after React
+  // restores its controlled value.
+  const arrow = async (step: 1 | -1) => {
+    await act(async () => {
+      select().selectedIndex += step;
+      select().dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  };
+  const readout = () =>
+    container.querySelector('[data-testid="today-scope-status"]')?.textContent;
   const benefit = () =>
     container.querySelector('[data-testid="today-location-benefit"]');
   const locationButton = () =>
@@ -169,12 +181,13 @@ describe("TodayScopeStatus location memory", () => {
     await render();
     expect(benefit()).toBeNull();
 
-    // Choosing Near me explains and never prompts. The county stays selected
-    // because it is still the area in effect.
+    // Choosing Near me explains and never prompts. The select shows the
+    // choice, but the county stays in effect and the readout still says so.
     await choose("nearme");
     expect(getCurrentPosition).not.toHaveBeenCalled();
     expect(getScope()).toBe("county");
-    expect(select().value).toBe("county");
+    expect(readout()).toBe("Countywide briefing");
+    expect(select().value).toBe("nearme");
     expect(benefit()?.textContent).toBe(NEAR_ME_BENEFIT);
     const button = locationButton()!;
     expect(button.textContent).toBe("Use my location");
@@ -221,6 +234,76 @@ describe("TodayScopeStatus location memory", () => {
     expect(getScope()).toBe("town:brunswick");
   });
 
+  it("lets change events step from the county past Near me to a town", async () => {
+    setScope("county");
+    const { getCurrentPosition } = mockNavigator({});
+    await render();
+
+    await choose("nearme");
+    expect(select().value).toBe("nearme");
+    expect(getScope()).toBe("county");
+    await choose("town:brunswick");
+
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+    expect(getScope()).toBe("town:brunswick");
+    expect(select().value).toBe("town:brunswick");
+    expect(readout()).toBe("Brunswick place picks · Countywide weather and events");
+    expect(benefit()).toBeNull();
+  });
+
+  it("keeps arrow keys moving through Near me in both directions", async () => {
+    setScope("county");
+    const { getCurrentPosition } = mockNavigator({});
+    await render();
+    const towns = [...select().options].slice(2).map((option) => option.value);
+
+    // ArrowDown from the county lands on Near me, which explains location
+    // without applying it, and the next ArrowDown reaches the first town.
+    await arrow(1);
+    expect(select().value).toBe("nearme");
+    expect(getScope()).toBe("county");
+    expect(benefit()).not.toBeNull();
+    await arrow(1);
+    expect(getScope()).toBe(towns[0]);
+    expect(select().value).toBe(towns[0]);
+    await arrow(1);
+    expect(getScope()).toBe(towns[1]);
+
+    // ArrowUp from the first town crosses Near me back to the county.
+    await arrow(-1);
+    await arrow(-1);
+    expect(select().value).toBe("nearme");
+    expect(getScope()).toBe(towns[0]);
+    await arrow(-1);
+    expect(getScope()).toBe("county");
+    expect(select().value).toBe("county");
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+  });
+
+  it("shows the area in effect again once focus leaves the line", async () => {
+    setScope("county");
+    mockNavigator({});
+    const outside = document.createElement("button");
+    document.body.append(outside);
+    await render();
+
+    await act(async () => select().focus());
+    await choose("nearme");
+    expect(select().value).toBe("nearme");
+
+    // Tabbing on to the location button keeps the choice it would finish.
+    await act(async () => locationButton()!.focus());
+    expect(select().value).toBe("nearme");
+
+    await act(async () => outside.focus());
+    expect(select().value).toBe("county");
+    expect(getScope()).toBe("county");
+    // The explanation and its button stay, so the choice can still be made.
+    expect(benefit()?.textContent).toBe(NEAR_ME_BENEFIT);
+    expect(locationButton()).not.toBeNull();
+    outside.remove();
+  });
+
   it("offers manual town selection after location is denied", async () => {
     setScope("county");
     mockNavigator({
@@ -240,10 +323,17 @@ describe("TodayScopeStatus location memory", () => {
       container.querySelector('[data-testid="today-location-blocked"]')
         ?.textContent,
     ).toBe("Location is off. Choose a town to keep browsing.");
-    // A refusal cannot be re-prompted, so the "may ask" sentence goes too.
+    // A refusal cannot be re-prompted, so the "may ask" sentence goes too,
+    // and the select shows the area that is still in effect.
     expect(benefit()).toBeNull();
     expect(getScope()).toBe("county");
+    expect(select().value).toBe("county");
+    expect(readout()).toBe("Countywide briefing");
 
+    // With location off, Near me still lets the arrow keys pass through it.
+    await arrow(1);
+    expect(select().value).toBe("nearme");
+    expect(getScope()).toBe("county");
     await choose("town:brunswick");
     expect(getScope()).toBe("town:brunswick");
     expect(container.textContent).toContain("Brunswick place picks");

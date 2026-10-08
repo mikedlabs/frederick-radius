@@ -72,13 +72,18 @@ test("a denied location still offers every town without another permission reque
   const area = page.getByRole("combobox", { name: "Choose your area" });
   await expect(area).toBeEnabled();
   // Choosing Near me explains what location is for and keeps the county in
-  // effect. Only the one button under that sentence can ask the browser.
+  // effect. The select shows the choice so arrow keys can pass through it.
+  // Only the one button under that sentence can ask the browser.
   await area.selectOption("nearme");
   await expect(page.getByTestId("today-location-benefit")).toBeVisible();
-  await expect(area).toHaveValue("county");
+  await expect(page.getByTestId("today-scope-status")).toHaveText("Countywide briefing");
+  expect(await page.evaluate(() => localStorage.getItem("fr:scope:v1"))).toBe("county");
   await page.getByRole("button", { name: "Use my location", exact: true }).click();
   await expect(page.getByTestId("today-location-blocked")).toContainText("Choose a town");
   await expect(page.getByRole("button", { name: "Use my location", exact: true })).toHaveCount(0);
+  // The refusal leaves the county in effect, and the select says so again.
+  await expect(area).toHaveValue("county");
+  await expect(page.getByTestId("today-scope-status")).toHaveText("Countywide briefing");
   await area.selectOption("town:brunswick");
   await expect(page.getByTestId("today-scope-status")).toContainText("Brunswick");
   await expect(page.getByTestId("today-location-blocked")).toHaveCount(0);

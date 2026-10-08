@@ -4,7 +4,11 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 import { useSearchParams } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { locationScopeHref } from "@/components/nav/locationScopeNavigation";
-import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
+import {
+  readCachedPosition,
+  useGeolocation,
+  type GeoState,
+} from "@/hooks/useGeolocation";
 import {
   getScope,
   NEAR_ME_BENEFIT,
@@ -56,11 +60,11 @@ const subscribe = (onStoreChange: () => void) =>
  * an always-visible "Use my location" pill, about 60px of the first screen.
  *
  * Near me is always listed. Choosing it without a device fix never calls
- * geolocation: the area in effect stays selected and one sentence explains
- * what location is for, with one "Use my location" button under it. Only that
- * button can open the browser's prompt (USER_FIRST_INTERACTION_CONTRACT), and
- * a grant applies Near me through the same applyTodayScope as every other
- * choice.
+ * geolocation: the area in effect stays in effect, the readout keeps naming
+ * it, and one sentence explains what location is for, with one "Use my
+ * location" button under it. Only that button can open the browser's prompt
+ * (USER_FIRST_INTERACTION_CONTRACT), and a grant applies Near me through the
+ * same applyTodayScope as every other choice.
  */
 export default function TodayScopeStatus() {
   const ready = useSyncExternalStore(subscribeReady, () => true, () => false);
@@ -83,10 +87,27 @@ export default function TodayScopeStatus() {
   const requestedHere = useRef(false);
   const grantedCheckDone = useRef(false);
   const benefitId = useId();
-  // Near me was chosen from the select while this device had no fix. The
-  // select keeps showing the area that is still in effect.
+  // Near me was chosen from the select while this device had no fix.
   const [askedForNearMe, setAskedForNearMe] = useState(false);
+  // The select shows Near me before Near me is in effect. Chrome and Edge on
+  // Windows, Linux and ChromeOS, and NVDA or JAWS in focus mode, step a closed
+  // select one option per arrow key and fire change on each step. Snapping the
+  // select back to the area in effect would stop every ArrowDown from the
+  // county at Near me, so no town past it could be reached. The readout and
+  // the place picks keep following `scope`.
+  //
+  // This holds the location status under which Near me was chosen, and any
+  // change of status ends the hold: a fix applies Near me through `scope`, and
+  // a refusal or failure leaves the area in effect showing. Focus leaving this
+  // line, or another choice, ends it too.
+  const [nearMeHeldWhile, setNearMeHeldWhile] = useState<
+    GeoState["status"] | null
+  >(null);
   const hasDeviceLocation = location.status === "granted";
+  const shownArea: Scope =
+    nearMeHeldWhile !== null && nearMeHeldWhile === location.status
+      ? "nearme"
+      : (scope ?? "county");
   const locationBlocked =
     location.status === "denied" || location.status === "unavailable";
   // A returning Near me visitor without a fix needs the same explanation as
@@ -117,19 +138,32 @@ export default function TodayScopeStatus() {
   const chooseArea = (value: Scope) => {
     if (value === "nearme" && !hasDeviceLocation) {
       setAskedForNearMe(true);
+      setNearMeHeldWhile(location.status);
       return;
     }
     setAskedForNearMe(false);
+    setNearMeHeldWhile(null);
     applyTodayScope(value);
   };
 
   const useMyLocation = () => {
     requestedHere.current = true;
+    // The request keeps Near me showing until it settles, so a grant does not
+    // flicker through the county on its way to Near me.
+    if (nearMeHeldWhile !== null) setNearMeHeldWhile("loading");
     requestLocation();
   };
 
   return (
-    <div>
+    <div
+      onBlur={(event) => {
+        // Moving from the select to the location button keeps Near me showing,
+        // because that button is how the choice is finished.
+        const next = event.relatedTarget;
+        if (next instanceof Node && event.currentTarget.contains(next)) return;
+        setNearMeHeldWhile(null);
+      }}
+    >
       {/* The readout wraps inside its own column, so a long town readout
           never strands the separator at the end of a line. */}
       <div className="flex min-h-11 items-center gap-x-1.5">
@@ -140,7 +174,7 @@ export default function TodayScopeStatus() {
               chevron sits beside the words where the browser supports it. */}
           <select
             disabled={!ready}
-            value={scope ?? "county"}
+            value={shownArea}
             onChange={(event) => chooseArea(event.target.value as Scope)}
             className="text-body-lg field-sizing-content min-h-11 min-w-11 cursor-pointer appearance-none rounded-[var(--app-radius-sm)] border-0 bg-transparent py-0 pl-0 pr-6 font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] disabled:cursor-default"
             style={{ color: "var(--app-ink)" }}
