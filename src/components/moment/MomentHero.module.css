@@ -1,0 +1,140 @@
+/*
+ * Moment hub hero. On phones the picture runs to the screen edges by
+ * cancelling the reading column's gutter (.app-main-reading in globals.css:
+ * max(1rem, safe-area inset)). From 640px it sits inside the column with
+ * the large radius.
+ */
+.bleed {
+  margin-left: calc(-1 * max(1rem, env(safe-area-inset-left, 0px)));
+  margin-right: calc(-1 * max(1rem, env(safe-area-inset-right, 0px)));
+}
+
+.gutter {
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
+  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+}
+
+/* Owned photograph: the title rides on it over an Ink scrim. */
+.ownedFrame {
+  position: relative;
+  height: 320px;
+  overflow: hidden;
+  background: var(--app-bg-sunken);
+}
+
+.fill {
+  width: 100%;
+  height: 100%;
+}
+
+/* The scrim covers only the bottom 60%, where the title sits. */
+.scrim {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 60%;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--app-ink) 88%, transparent),
+    color-mix(in srgb, var(--app-ink) 46%, transparent) 55%,
+    transparent
+  );
+}
+
+.titleOnPhoto {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  padding-bottom: 20px;
+  color: var(--app-ink-inverse);
+}
+
+/* Licensed photograph: shown whole at 16:10 with nothing drawn on it. */
+.licensedFigure {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.licensedFrame {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+}
+
+.credit {
+  margin-top: 8px;
+  color: var(--app-ink-3);
+}
+
+.credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.titleOnPaper {
+  padding-top: 16px;
+  color: var(--app-ink);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(40px, 11vw, 72px);
+  font-weight: 400;
+  line-height: 0.96;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.dateLine {
+  margin-top: 10px;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* One Brick rule closes every hero. The five-color band stays fair-only. */
+.rule {
+  display: block;
+  height: 6px;
+  margin-top: 16px;
+  background: var(--app-brand);
+}
+
+.ownedFrame + .rule {
+  margin-top: 0;
+}
+
+@media (min-width: 640px) {
+  .bleed {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .gutter {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .credit.gutter {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .ownedFrame {
+    border-radius: var(--app-radius-lg) var(--app-radius-lg) 0 0;
+  }
+
+  .licensedFrame {
+    border-radius: var(--app-radius-lg);
+  }
+
+  .titleOnPhoto {
+    padding-bottom: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ownedFrame {
+    height: 460px;
+  }
+}
