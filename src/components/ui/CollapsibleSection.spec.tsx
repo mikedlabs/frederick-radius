@@ -35,3 +35,64 @@ describe("CollapsibleSection deferred mounting", () => {
     expect(render()).toContain("Costly photo list");
   });
 });
+
+describe("CollapsibleSection disclosure row", () => {
+  function renderParks(props: { countAriaOnly?: boolean; headingLevel?: 2 | 3 } = {}) {
+    return renderToStaticMarkup(
+      <CollapsibleSection
+        title="Frederick City"
+        count={12}
+        countLabel="parks"
+        storageKey="fr.parks.frederick"
+        {...props}
+      >
+        <p>Baker Park</p>
+      </CollapsibleSection>,
+    );
+  }
+
+  it("names the section in .text-title-sm Ink, never the caps eyebrow", () => {
+    const html = renderParks({ headingLevel: 2 });
+
+    expect(html).toContain(
+      '<span class="text-title-sm text-pretty" style="color:var(--app-ink)">Frederick City</span>',
+    );
+    expect(html).not.toMatch(/class="[^"]*\beyebrow\b/);
+    expect(html).not.toMatch(/uppercase/);
+    expect(html).not.toMatch(/tracking-/);
+    expect(html).not.toMatch(/text-\[/);
+  });
+
+  it("is a 52px row under one Border rule", () => {
+    const html = renderParks();
+
+    expect(html).toMatch(/<section [^>]*style="border-top:1px solid var\(--app-border\)"/);
+    expect(html).toMatch(/<button [^>]*style="min-height:52px"/);
+  });
+
+  it("shows the count in quiet metadata type beside the title", () => {
+    expect(renderParks()).toContain(
+      '<span class="text-meta-lg tabular-nums" style="color:var(--app-ink-3)">12 parks</span>',
+    );
+  });
+
+  it("keeps an aria-only count out of sight and in the section name", () => {
+    const html = renderParks({ countAriaOnly: true });
+
+    expect(html).toContain('aria-label="Frederick City (12 parks)"');
+    expect(html).not.toContain("text-meta-lg");
+  });
+
+  it("wraps the trigger in the requested heading level", () => {
+    expect(renderParks({ headingLevel: 2 })).toMatch(/<h2><button [^>]*aria-expanded="false"/);
+    expect(renderParks({ headingLevel: 3 })).toMatch(/<h3><button /);
+    expect(renderParks()).not.toMatch(/<h[23]>/);
+  });
+
+  it("points the trigger at its panel", () => {
+    const html = renderParks();
+
+    expect(html).toContain('aria-controls="collapsible-fr-parks-frederick"');
+    expect(html).toContain('id="collapsible-fr-parks-frederick"');
+  });
+});

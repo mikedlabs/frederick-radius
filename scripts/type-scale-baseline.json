@@ -5,35 +5,43 @@
     "subElevenFont": "font size below the 11 px caption floor",
     "uppercaseTracking": "uppercase text with changed letter spacing, the tracked-caps eyebrow",
     "activeScale": "press-shrink scale literal",
-    "strokeWidthLiteral": "numeric stroke width literal"
+    "strokeWidthLiteral": "numeric stroke width literal",
+    "eyebrowClass": "global caps-label class (eyebrow, fg-eyebrow, content-chapter__label) instead of a heading in sentence case",
+    "moduleUppercase": "CSS module rule that sets uppercase text"
   },
   "totals": {
-    "arbitraryTextSize": 3230,
-    "subElevenFont": 531,
-    "uppercaseTracking": 480,
-    "activeScale": 124,
-    "strokeWidthLiteral": 1054
+    "arbitraryTextSize": 3226,
+    "subElevenFont": 530,
+    "uppercaseTracking": 479,
+    "activeScale": 123,
+    "strokeWidthLiteral": 1054,
+    "eyebrowClass": 70,
+    "moduleUppercase": 4
   },
   "files": {
     "src/app/(app)/about/page.tsx": {
       "arbitraryTextSize": 17,
       "subElevenFont": 2,
       "uppercaseTracking": 2,
-      "strokeWidthLiteral": 10
+      "strokeWidthLiteral": 10,
+      "eyebrowClass": 3
     },
     "src/app/(app)/access/page.tsx": {
       "arbitraryTextSize": 10,
-      "strokeWidthLiteral": 3
+      "strokeWidthLiteral": 3,
+      "eyebrowClass": 1
     },
     "src/app/(app)/amenities/page.tsx": {
       "arbitraryTextSize": 13,
       "subElevenFont": 1,
-      "strokeWidthLiteral": 7
+      "strokeWidthLiteral": 7,
+      "eyebrowClass": 1
     },
     "src/app/(app)/archive/page.tsx": {
       "arbitraryTextSize": 14,
       "subElevenFont": 4,
-      "uppercaseTracking": 3
+      "uppercaseTracking": 3,
+      "eyebrowClass": 1
     },
     "src/app/(app)/beer/page.tsx": {
       "arbitraryTextSize": 2,
@@ -47,12 +55,14 @@
     },
     "src/app/(app)/cameras/page.tsx": {
       "arbitraryTextSize": 3,
-      "strokeWidthLiteral": 1
+      "strokeWidthLiteral": 1,
+      "eyebrowClass": 1
     },
     "src/app/(app)/category/[slug]/page.tsx": {
       "arbitraryTextSize": 7,
       "uppercaseTracking": 1,
-      "strokeWidthLiteral": 1
+      "strokeWidthLiteral": 1,
+      "eyebrowClass": 1
     },
     "src/app/(app)/check-a-date/page.tsx": {
       "arbitraryTextSize": 17,
@@ -62,7 +72,8 @@
     },
     "src/app/(app)/collections/[slug]/page.tsx": {
       "arbitraryTextSize": 18,
-      "strokeWidthLiteral": 4
+      "strokeWidthLiteral": 4,
+      "eyebrowClass": 1
     },
     "src/app/(app)/collections/page.tsx": {
       "arbitraryTextSize": 7,
@@ -70,7 +81,8 @@
       "strokeWidthLiteral": 4
     },
     "src/app/(app)/contacts/page.tsx": {
-      "arbitraryTextSize": 2
+      "arbitraryTextSize": 2,
+      "eyebrowClass": 1
     },
     "src/app/(app)/deals/page.tsx": {
       "arbitraryTextSize": 10,
@@ -99,11 +111,13 @@
     },
     "src/app/(app)/emergency-vet/page.tsx": {
       "arbitraryTextSize": 19,
-      "strokeWidthLiteral": 4
+      "strokeWidthLiteral": 4,
+      "eyebrowClass": 1
     },
     "src/app/(app)/emergency/page.tsx": {
       "arbitraryTextSize": 29,
-      "strokeWidthLiteral": 8
+      "strokeWidthLiteral": 8,
+      "eyebrowClass": 1
     },
     "src/app/(app)/error.tsx": {
       "arbitraryTextSize": 3,
@@ -123,7 +137,8 @@
     },
     "src/app/(app)/events/[slug]/not-found.tsx": {
       "arbitraryTextSize": 2,
-      "strokeWidthLiteral": 1
+      "strokeWidthLiteral": 1,
+      "eyebrowClass": 1
     },
     "src/app/(app)/events/[slug]/page.tsx": {
       "arbitraryTextSize": 29,
@@ -157,7 +172,8 @@
       "arbitraryTextSize": 36,
       "subElevenFont": 9,
       "uppercaseTracking": 6,
-      "strokeWidthLiteral": 9
+      "strokeWidthLiteral": 9,
+      "eyebrowClass": 1
     },
     "src/app/(app)/install/page.tsx": {
       "arbitraryTextSize": 8
@@ -176,7 +192,8 @@
     },
     "src/app/(app)/markers/page.tsx": {
       "arbitraryTextSize": 5,
-      "subElevenFont": 1
+      "subElevenFont": 1,
+      "eyebrowClass": 1
     },
     "src/app/(app)/moments/[slug]/page.tsx": {
       "arbitraryTextSize": 19,
@@ -187,7 +204,8 @@
     "src/app/(app)/nonprofits/[ein]/page.tsx": {
       "arbitraryTextSize": 12,
       "subElevenFont": 2,
-      "strokeWidthLiteral": 4
+      "strokeWidthLiteral": 4,
+      "eyebrowClass": 1
     },
     "src/app/(app)/nonprofits/page.tsx": {
       "arbitraryTextSize": 12,
@@ -197,7 +215,8 @@
     },
     "src/app/(app)/numbers/page.tsx": {
       "arbitraryTextSize": 10,
-      "strokeWidthLiteral": 1
+      "strokeWidthLiteral": 1,
+      "eyebrowClass": 1
     },
     "src/app/(app)/open-now/page.tsx": {
       "arbitraryTextSize": 5,
@@ -214,15 +233,18 @@
     "src/app/(app)/parking/page.tsx": {
       "arbitraryTextSize": 28,
       "subElevenFont": 1,
-      "strokeWidthLiteral": 9
+      "strokeWidthLiteral": 9,
+      "eyebrowClass": 5
     },
     "src/app/(app)/parks/page.tsx": {
       "arbitraryTextSize": 4,
-      "strokeWidthLiteral": 2
+      "strokeWidthLiteral": 2,
+      "eyebrowClass": 1
     },
     "src/app/(app)/places/[slug]/page.tsx": {
       "arbitraryTextSize": 8,
-      "strokeWidthLiteral": 13
+      "strokeWidthLiteral": 13,
+      "eyebrowClass": 2
     },
     "src/app/(app)/places/page.tsx": {
       "arbitraryTextSize": 8,
@@ -232,7 +254,8 @@
       "arbitraryTextSize": 2
     },
     "src/app/(app)/privacy/page.tsx": {
-      "arbitraryTextSize": 4
+      "arbitraryTextSize": 4,
+      "eyebrowClass": 1
     },
     "src/app/(app)/proto/almanac/page.tsx": {
       "arbitraryTextSize": 3,
@@ -274,31 +297,37 @@
     },
     "src/app/(app)/scanner/page.tsx": {
       "arbitraryTextSize": 5,
-      "strokeWidthLiteral": 3
+      "strokeWidthLiteral": 3,
+      "eyebrowClass": 1
     },
     "src/app/(app)/search/page.tsx": {
       "arbitraryTextSize": 22,
       "subElevenFont": 1,
       "uppercaseTracking": 2,
       "activeScale": 1,
-      "strokeWidthLiteral": 14
+      "strokeWidthLiteral": 14,
+      "eyebrowClass": 1
     },
     "src/app/(app)/settings/notifications/page.tsx": {
       "arbitraryTextSize": 3,
-      "strokeWidthLiteral": 1
+      "strokeWidthLiteral": 1,
+      "eyebrowClass": 1
     },
     "src/app/(app)/settings/page.tsx": {
       "arbitraryTextSize": 7,
       "uppercaseTracking": 1,
-      "strokeWidthLiteral": 3
+      "strokeWidthLiteral": 3,
+      "eyebrowClass": 1
     },
     "src/app/(app)/settings/sync/page.tsx": {
       "arbitraryTextSize": 9,
-      "strokeWidthLiteral": 1
+      "strokeWidthLiteral": 1,
+      "eyebrowClass": 1
     },
     "src/app/(app)/shipping/page.tsx": {
       "arbitraryTextSize": 3,
-      "strokeWidthLiteral": 1
+      "strokeWidthLiteral": 1,
+      "eyebrowClass": 1
     },
     "src/app/(app)/signals/page.tsx": {
       "arbitraryTextSize": 15,
@@ -315,10 +344,12 @@
     "src/app/(app)/styleguide/page.tsx": {
       "arbitraryTextSize": 14,
       "subElevenFont": 7,
-      "uppercaseTracking": 4
+      "uppercaseTracking": 4,
+      "eyebrowClass": 1
     },
     "src/app/(app)/terms/page.tsx": {
-      "arbitraryTextSize": 5
+      "arbitraryTextSize": 5,
+      "eyebrowClass": 1
     },
     "src/app/(app)/today/loading.tsx": {
       "arbitraryTextSize": 1
@@ -332,20 +363,26 @@
     "src/app/(app)/today/tonight/page.tsx": {
       "arbitraryTextSize": 1
     },
+    "src/app/(app)/towns/page.tsx": {
+      "eyebrowClass": 1
+    },
     "src/app/(app)/trails/page.tsx": {
       "arbitraryTextSize": 9,
       "subElevenFont": 1,
       "activeScale": 1,
-      "strokeWidthLiteral": 4
+      "strokeWidthLiteral": 4,
+      "eyebrowClass": 1
     },
     "src/app/(app)/transit/page.tsx": {
       "arbitraryTextSize": 18,
-      "strokeWidthLiteral": 11
+      "strokeWidthLiteral": 11,
+      "eyebrowClass": 2
     },
     "src/app/(app)/trust/page.tsx": {
       "arbitraryTextSize": 19,
       "uppercaseTracking": 1,
-      "strokeWidthLiteral": 2
+      "strokeWidthLiteral": 2,
+      "eyebrowClass": 1
     },
     "src/components/admin/OwnerAlertsCard.tsx": {
       "arbitraryTextSize": 3,
@@ -374,18 +411,21 @@
     "src/components/archive/ArchiveDoorway.tsx": {
       "arbitraryTextSize": 7,
       "subElevenFont": 2,
-      "strokeWidthLiteral": 1
+      "strokeWidthLiteral": 1,
+      "eyebrowClass": 1
     },
     "src/components/archive/ArchiveLens.tsx": {
       "arbitraryTextSize": 58,
       "subElevenFont": 10,
-      "uppercaseTracking": 6
+      "uppercaseTracking": 6,
+      "eyebrowClass": 5
     },
     "src/components/archive/NearbyArchiveContext.tsx": {
       "arbitraryTextSize": 7,
       "subElevenFont": 3,
       "uppercaseTracking": 1,
-      "strokeWidthLiteral": 1
+      "strokeWidthLiteral": 1,
+      "eyebrowClass": 1
     },
     "src/components/ask/AskComposer.tsx": {
       "arbitraryTextSize": 2,
@@ -402,7 +442,8 @@
       "subElevenFont": 14,
       "uppercaseTracking": 3,
       "activeScale": 7,
-      "strokeWidthLiteral": 6
+      "strokeWidthLiteral": 6,
+      "eyebrowClass": 1
     },
     "src/components/beer/BeerIndex.tsx": {
       "arbitraryTextSize": 19,
@@ -518,7 +559,8 @@
     "src/components/category/CategoryView.tsx": {
       "arbitraryTextSize": 6,
       "uppercaseTracking": 1,
-      "strokeWidthLiteral": 1
+      "strokeWidthLiteral": 1,
+      "eyebrowClass": 1
     },
     "src/components/contacts/ContactsDirectory.tsx": {
       "arbitraryTextSize": 32,
@@ -564,7 +606,8 @@
     },
     "src/components/event/EventLookupRecovery.tsx": {
       "arbitraryTextSize": 2,
-      "strokeWidthLiteral": 2
+      "strokeWidthLiteral": 2,
+      "eyebrowClass": 1
     },
     "src/components/event/EventPosterCard.tsx": {
       "arbitraryTextSize": 14,
@@ -775,10 +818,12 @@
     },
     "src/components/from-above/AerialTimeMachine.tsx": {
       "arbitraryTextSize": 5,
-      "subElevenFont": 1
+      "subElevenFont": 1,
+      "eyebrowClass": 1
     },
     "src/components/from-above/AerialTimeMachineClient.tsx": {
-      "arbitraryTextSize": 5
+      "arbitraryTextSize": 5,
+      "eyebrowClass": 1
     },
     "src/components/from-above/ExitChip.tsx": {
       "arbitraryTextSize": 1,
@@ -797,7 +842,8 @@
       "arbitraryTextSize": 29,
       "subElevenFont": 3,
       "uppercaseTracking": 8,
-      "strokeWidthLiteral": 3
+      "strokeWidthLiteral": 3,
+      "eyebrowClass": 1
     },
     "src/components/history/HistoryTimeline.tsx": {
       "arbitraryTextSize": 5,
@@ -914,7 +960,8 @@
     "src/components/map/MapLoadingScene.module.css": {
       "subElevenFont": 2,
       "uppercaseTracking": 2,
-      "strokeWidthLiteral": 6
+      "strokeWidthLiteral": 6,
+      "moduleUppercase": 2
     },
     "src/components/map/MapOverlays.tsx": {
       "subElevenFont": 9,
@@ -1033,7 +1080,8 @@
     },
     "src/components/municipality/TownLinks.tsx": {
       "arbitraryTextSize": 3,
-      "strokeWidthLiteral": 3
+      "strokeWidthLiteral": 3,
+      "eyebrowClass": 1
     },
     "src/components/municipality/TownStrip.tsx": {
       "arbitraryTextSize": 1,
@@ -1143,10 +1191,12 @@
     "src/components/place/CommerceActions.tsx": {
       "arbitraryTextSize": 3,
       "subElevenFont": 1,
-      "strokeWidthLiteral": 3
+      "strokeWidthLiteral": 3,
+      "eyebrowClass": 1
     },
     "src/components/place/CourseInfoStrip.tsx": {
-      "arbitraryTextSize": 2
+      "arbitraryTextSize": 2,
+      "eyebrowClass": 1
     },
     "src/components/place/FieldNoteTag.tsx": {
       "arbitraryTextSize": 4,
@@ -1188,10 +1238,12 @@
     },
     "src/components/place/PlaceAmenityIcons.tsx": {
       "arbitraryTextSize": 1,
-      "strokeWidthLiteral": 1
+      "strokeWidthLiteral": 1,
+      "eyebrowClass": 1
     },
     "src/components/place/PlaceAudienceTags.tsx": {
-      "arbitraryTextSize": 1
+      "arbitraryTextSize": 1,
+      "eyebrowClass": 1
     },
     "src/components/place/PlaceCard.tsx": {
       "arbitraryTextSize": 16,
@@ -1237,14 +1289,16 @@
       "arbitraryTextSize": 1
     },
     "src/components/place/PlacePhotoGallery.tsx": {
-      "activeScale": 1
+      "activeScale": 1,
+      "eyebrowClass": 1
     },
     "src/components/place/PlaceSheet.tsx": {
       "arbitraryTextSize": 17,
       "subElevenFont": 4,
       "uppercaseTracking": 3,
       "activeScale": 1,
-      "strokeWidthLiteral": 10
+      "strokeWidthLiteral": 10,
+      "eyebrowClass": 2
     },
     "src/components/place/PlaceStatus.tsx": {
       "arbitraryTextSize": 1
@@ -1273,7 +1327,8 @@
       "arbitraryTextSize": 60,
       "subElevenFont": 1,
       "activeScale": 1,
-      "strokeWidthLiteral": 1
+      "strokeWidthLiteral": 1,
+      "eyebrowClass": 1
     },
     "src/components/plan/PlanFromPlaceLink.tsx": {
       "arbitraryTextSize": 1
@@ -1329,7 +1384,8 @@
       "strokeWidthLiteral": 5
     },
     "src/components/pulse/PulseBoard.module.css": {
-      "uppercaseTracking": 1
+      "uppercaseTracking": 1,
+      "moduleUppercase": 1
     },
     "src/components/pulse/PulseBoard.tsx": {
       "arbitraryTextSize": 3,
@@ -1386,7 +1442,8 @@
       "arbitraryTextSize": 3,
       "subElevenFont": 1,
       "activeScale": 2,
-      "strokeWidthLiteral": 1
+      "strokeWidthLiteral": 1,
+      "eyebrowClass": 1
     },
     "src/components/rhythm/RhythmField.tsx": {
       "arbitraryTextSize": 10,
@@ -1446,7 +1503,8 @@
       "subElevenFont": 10,
       "uppercaseTracking": 7,
       "activeScale": 6,
-      "strokeWidthLiteral": 21
+      "strokeWidthLiteral": 21,
+      "eyebrowClass": 1
     },
     "src/components/search/SearchRefinements.tsx": {
       "arbitraryTextSize": 3,
@@ -1475,7 +1533,8 @@
       "strokeWidthLiteral": 3
     },
     "src/components/settings/SyncStatus.tsx": {
-      "arbitraryTextSize": 6
+      "arbitraryTextSize": 6,
+      "eyebrowClass": 1
     },
     "src/components/shipping/ShippingGuide.tsx": {
       "arbitraryTextSize": 12,
@@ -1664,7 +1723,8 @@
     "src/components/today/TodaySectionHeading.tsx": {
       "arbitraryTextSize": 4,
       "subElevenFont": 1,
-      "strokeWidthLiteral": 1
+      "strokeWidthLiteral": 1,
+      "eyebrowClass": 1
     },
     "src/components/today/TodaysDealsStack.tsx": {
       "arbitraryTextSize": 7,
@@ -1674,7 +1734,8 @@
       "arbitraryTextSize": 2
     },
     "src/components/today/TonightExperience.module.css": {
-      "uppercaseTracking": 1
+      "uppercaseTracking": 1,
+      "moduleUppercase": 1
     },
     "src/components/today/TonightExperience.tsx": {
       "strokeWidthLiteral": 4
@@ -1696,14 +1757,16 @@
     },
     "src/components/today/WeekendPreview.tsx": {
       "arbitraryTextSize": 2,
-      "strokeWidthLiteral": 2
+      "strokeWidthLiteral": 2,
+      "eyebrowClass": 1
     },
     "src/components/town/TownPicker.tsx": {
       "strokeWidthLiteral": 3
     },
     "src/components/trails/TrailsMap.tsx": {
       "arbitraryTextSize": 5,
-      "subElevenFont": 2
+      "subElevenFont": 2,
+      "eyebrowClass": 1
     },
     "src/components/transit/NextStopsBoard.tsx": {
       "arbitraryTextSize": 14,
@@ -1738,7 +1801,8 @@
       "arbitraryTextSize": 29,
       "subElevenFont": 2,
       "uppercaseTracking": 1,
-      "strokeWidthLiteral": 6
+      "strokeWidthLiteral": 6,
+      "eyebrowClass": 2
     },
     "src/components/transit/TransitRouteFinder.tsx": {
       "arbitraryTextSize": 9,
@@ -1781,9 +1845,6 @@
       "subElevenFont": 1
     },
     "src/components/ui/CollapsibleSection.tsx": {
-      "arbitraryTextSize": 1,
-      "subElevenFont": 1,
-      "uppercaseTracking": 1,
       "strokeWidthLiteral": 1
     },
     "src/components/ui/DecorativeDivider.tsx": {
@@ -1837,8 +1898,6 @@
       "strokeWidthLiteral": 3
     },
     "src/components/ui/SectionHeading.tsx": {
-      "arbitraryTextSize": 3,
-      "activeScale": 1,
       "strokeWidthLiteral": 1
     },
     "src/components/ui/Sheet.tsx": {
@@ -1858,7 +1917,8 @@
     "src/components/welcome/WelcomeFlow.tsx": {
       "arbitraryTextSize": 11,
       "activeScale": 3,
-      "strokeWidthLiteral": 10
+      "strokeWidthLiteral": 10,
+      "eyebrowClass": 1
     },
     "src/components/wlr/WlrRoadReady.tsx": {
       "arbitraryTextSize": 43,

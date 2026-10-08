@@ -130,6 +130,8 @@ describe("type-scale ratchet: CSS modules", () => {
       uppercaseTracking: 1,
       activeScale: 1,
       strokeWidthLiteral: 1,
+      eyebrowClass: 0,
+      moduleUppercase: 2,
     });
   });
 });

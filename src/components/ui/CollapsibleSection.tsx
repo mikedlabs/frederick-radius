@@ -15,8 +15,12 @@ import MotionDisclosure from "@/components/ui/MotionDisclosure";
  * feel: secondary surfaces stay tucked away until the reader asks for
  * them, and the choice is remembered across visits.
  *
- * Header matches the app's `.eyebrow` section-label register so a
- * collapsed section reads as native page furniture, not a widget.
+ * The trigger is a ruled row, not a caps label: a 52px row under a 1px
+ * Border rule, the title in `.text-title-sm` Ink and sentence case, the
+ * count in quiet `.text-meta-lg` metadata, and a chevron. Headings are type
+ * (docs/brand/BRAND_GUIDE.md), so a stack of disclosures reads as a list of
+ * named sections instead of tiny tracked caps. The rule sits on the section
+ * itself, so a caller that already draws `border-t` gets one rule, not two.
  *
  * Children remain server-rendered and mounted by default so opening never
  * refetches. Costly browse tails can opt into `mountOnOpen`; those children
@@ -107,6 +111,8 @@ export default function CollapsibleSection({
       ? `${title} (${count}${countLabel ? ` ${countLabel}` : ""})`
       : title;
 
+  // The 52px minimum is inline so an older caller override such as
+  // `[&>h2>button]:min-h-11` cannot shrink the row back to 44px.
   const trigger = (
     <button
       type="button"
@@ -114,26 +120,27 @@ export default function CollapsibleSection({
       disabled={!mounted}
       aria-expanded={mounted ? open : defaultOpen}
       aria-controls={contentId}
-      className="tap-44 flex w-full items-center justify-between gap-2 px-1 py-1.5 text-left transition active:opacity-70"
+      data-collapsible-trigger
+      style={{ minHeight: 52 }}
+      className="flex w-full items-center justify-between gap-3 px-1 py-2 text-left transition-opacity active:opacity-70"
     >
-      <span className="flex items-baseline gap-2">
-        <span className="eyebrow" style={{ color: "var(--app-ink-3)" }}>{title}</span>
+      <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+        <span className="text-title-sm text-pretty" style={{ color: "var(--app-ink)" }}>
+          {title}
+        </span>
         {typeof count === "number" && !countAriaOnly && (
-          <span
-            className="text-[10px] font-medium uppercase tracking-[0.1em] tabular-nums"
-            style={{ color: "var(--app-ink-3)" }}
-          >
+          <span className="text-meta-lg tabular-nums" style={{ color: "var(--app-ink-3)" }}>
             {count}
             {countLabel ? ` ${countLabel}` : ""}
           </span>
         )}
       </span>
       <ChevronDown
-        className="h-4 w-4 shrink-0 transition-transform duration-200"
+        className="h-4 w-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none"
         strokeWidth={2.25}
         aria-hidden
         style={{
-          color: "var(--app-ink-3)",
+          color: "var(--app-ink-2)",
           transform: open ? "rotate(180deg)" : "none",
           transitionTimingFunction: "var(--app-ease-spring)",
         }}
@@ -147,6 +154,7 @@ export default function CollapsibleSection({
       aria-busy={!mounted}
       data-collapsible-interaction-ready={mounted ? "true" : "false"}
       className={className}
+      style={{ borderTop: "1px solid var(--app-border)" }}
     >
       {headingLevel === 2 ? <h2>{trigger}</h2> : headingLevel === 3 ? <h3>{trigger}</h3> : trigger}
       <MotionDisclosure id={contentId} open={open} innerClassName="pt-1.5">

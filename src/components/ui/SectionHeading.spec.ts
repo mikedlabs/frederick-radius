@@ -7,19 +7,38 @@ function render(props: Parameters<typeof SectionHeading>[0]) {
   return renderToStaticMarkup(createElement(SectionHeading, props));
 }
 
-describe("SectionHeading", () => {
-  it("paints the primary title in solid ink at Public Sans 20 semibold", () => {
-    const html = render({ title: "Worth your time", count: 12, href: "/places" });
-    const heading = html.match(/<h2 class="([^"]*)" style="([^"]*)"/);
+function headingOf(html: string) {
+  const heading = html.match(/<h2 class="([^"]*)" style="([^"]*)">([\s\S]*?)<\/h2>/);
+  expect(heading).not.toBeNull();
+  return { className: heading![1], style: heading![2], inner: heading![3] };
+}
 
-    expect(heading).not.toBeNull();
-    expect(heading![1]).toContain("font-sans");
-    expect(heading![1]).toContain("text-[20px]");
-    expect(heading![1]).toContain("font-semibold");
-    expect(heading![1]).not.toContain("font-serif");
-    expect(heading![1]).not.toContain("uppercase");
-    expect(heading![2]).toBe("color:var(--app-ink)");
-    expect(html).toContain('<span class="truncate">Worth your time</span>');
+describe("SectionHeading", () => {
+  it("sets the primary title as .text-title in solid Ink, never caps", () => {
+    const heading = headingOf(render({ title: "Worth your time", count: 12, href: "/places" }));
+
+    expect(heading.className.split(" ")).toContain("text-title");
+    expect(heading.className).toContain("font-sans");
+    expect(heading.className).not.toContain("font-serif");
+    expect(heading.className).not.toContain("uppercase");
+    expect(heading.className).not.toMatch(/text-\[/);
+    expect(heading.style).toBe("color:var(--app-ink)");
+    expect(heading.inner).toBe("Worth your time");
+  });
+
+  it("keeps the 4px tick on the primary register and drops the trailing hairline", () => {
+    const html = render({ title: "Start here", accent: "var(--app-cool)" });
+
+    expect(html).toContain('data-section-heading-tick="true"');
+    expect(html).toMatch(/class="inline-block h-4 w-1 shrink-0 rounded-full" style="background:var\(--app-cool\)"/);
+    expect(html).not.toContain("background:var(--app-border)");
+    expect(html).not.toContain("h-px");
+  });
+
+  it("falls back to the route accent, then Brick, for the tick", () => {
+    expect(render({ title: "Start here" })).toContain(
+      "background:var(--section-accent, var(--app-brand))",
+    );
   });
 
   it("never renders gradient-filled text or a gradient rule", () => {
@@ -29,24 +48,69 @@ describe("SectionHeading", () => {
       expect(html).not.toMatch(/background-clip/i);
       expect(html).not.toMatch(/text-fill-color/i);
       expect(html).not.toContain("linear-gradient");
-      expect(html).toContain("background:var(--app-border)");
     }
   });
 
-  it("keeps the count quiet at 13 pixels in muted ink", () => {
-    const html = render({ title: "Nearby places", count: 26 });
+  it("moves the count into a link CTA so the heading names only the section", () => {
+    const html = render({ title: "All restaurants", count: 183, href: "/category/restaurant" });
+    const heading = headingOf(html);
 
-    expect(html).toContain(
-      '<span class="font-data text-[13px] font-normal" style="color:var(--app-ink-3)">26</span>',
-    );
-    expect(render({ title: "Nearby places" })).not.toContain("font-data");
+    expect(heading.inner).toBe("All restaurants");
+    expect(html).not.toContain("data-section-heading-count");
+    expect(html).toMatch(/<a [^>]*href="\/category\/restaurant"[^>]*>See all 183<svg/);
   });
 
-  it("keeps the secondary register below the primary title", () => {
-    const html = render({ title: "Pools", size: "sm" });
+  it("renders a count without a link after the title in quiet metadata type", () => {
+    const html = render({ title: "Nearby places", count: 26 });
+    const heading = headingOf(html);
 
-    expect(html).toContain("text-[16px]");
-    expect(html).toContain("font-semibold");
-    expect(html).not.toContain("text-[20px]");
+    expect(heading.inner).toBe("Nearby places");
+    expect(html).toContain(
+      '<span data-section-heading-count="true" class="text-meta-lg tabular-nums" style="color:var(--app-ink-3)">26</span>',
+    );
+    expect(render({ title: "Nearby places" })).not.toContain("data-section-heading-count");
+  });
+
+  it("keeps a toggle CTA's label unchanged and leaves the count after the title", () => {
+    const html = render({ title: "What starts soon", count: 4, cta: "Show all", onCtaClick: () => {} });
+
+    expect(html).toMatch(/<button [^>]*>Show all<\/button>/);
+    expect(html).toContain('data-section-heading-count="true"');
+  });
+
+  it("sets the CTA in Brick press body type with a 44px target", () => {
+    const html = render({ title: "From your saved", href: "/my-radius", cta: "All saved" });
+    const link = html.match(/<a class="([^"]*)" style="([^"]*)" href="\/my-radius">/);
+
+    expect(link).not.toBeNull();
+    const classes = link![1].split(" ");
+    expect(classes).toContain("text-body");
+    expect(classes).toContain("font-semibold");
+    expect(classes).toContain("min-h-11");
+    expect(classes).toContain("min-w-11");
+    expect(link![2]).toBe("color:var(--app-brand-press)");
+    expect(html).toContain("All saved<svg");
+  });
+
+  it("sets the secondary register as .text-title-sm with no tick", () => {
+    const html = render({ title: "Pools", size: "sm" });
+    const heading = headingOf(html);
+
+    expect(heading.className.split(" ")).toContain("text-title-sm");
+    expect(heading.className.split(" ")).not.toContain("text-title");
+    expect(html).not.toContain("data-section-heading-tick");
+  });
+
+  it("renders a trailing control in place of the CTA", () => {
+    const html = render({
+      title: "Nearby places",
+      count: 26,
+      href: "/places",
+      trailing: createElement("button", { type: "button" }, "Sort"),
+    });
+
+    expect(html).toContain("<button type=\"button\">Sort</button>");
+    expect(html).not.toContain('href="/places"');
+    expect(html).toContain('data-section-heading-count="true"');
   });
 });

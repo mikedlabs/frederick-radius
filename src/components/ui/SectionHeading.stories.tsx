@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
-import { expect } from "storybook/test";
+import { expect, within } from "storybook/test";
 
 import { Button } from "./Button";
 import SectionHeading from "./SectionHeading";
@@ -15,7 +15,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The shared section marker. Its type scale establishes hierarchy before borders or extra cards do. The primary title is solid ink in Public Sans 20 semibold, the secondary register is Public Sans 16 semibold, and an optional count sits at 13 pixels in muted ink. Titles are written in sentence case and are never gradient-filled.",
+          "The shared section heading. Hierarchy comes from type: the primary register is .text-title (Public Sans 20 semibold) in solid Ink with a 4px tick, and the secondary register is .text-title-sm with no tick. Titles are written in sentence case, never in tracked caps, and there is no trailing hairline. A count is supporting detail: with a link it rides in the link label (See all 183), and without one it follows the title in quiet metadata type.",
       },
     },
   },
@@ -39,16 +39,36 @@ type Story = StoryObj<typeof meta>;
 
 export const PrimarySection: Story = {
   play: async ({ canvasElement }) => {
-    const heading = canvasElement.querySelector("h2")!;
-    const title = heading.querySelector<HTMLElement>("span.truncate")!;
+    const canvas = within(canvasElement);
+    const heading = canvas.getByRole("heading", { level: 2, name: "Worth your time" });
     const headingStyle = getComputedStyle(heading);
-    const titleStyle = getComputedStyle(title);
     await expect(headingStyle.fontSize).toBe("20px");
     await expect(headingStyle.fontWeight).toBe("600");
+    await expect(headingStyle.textTransform).toBe("none");
     // Solid ink, never gradient-filled text (DESIGN_TELLS; regressed in #1702).
-    await expect(titleStyle.backgroundImage).toBe("none");
-    await expect(titleStyle.getPropertyValue("-webkit-text-fill-color")).not.toBe("rgba(0, 0, 0, 0)");
-    await expect(titleStyle.textTransform).toBe("none");
+    await expect(headingStyle.backgroundImage).toBe("none");
+    await expect(headingStyle.getPropertyValue("-webkit-text-fill-color")).not.toBe("rgba(0, 0, 0, 0)");
+    // The count leaves the heading and rides in the link.
+    const link = canvas.getByRole("link", { name: "See all 12" });
+    await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    await expect(getComputedStyle(link).fontSize).toBe("15px");
+    // No trailing hairline.
+    await expect(canvasElement.querySelector(".h-px")).toBeNull();
+  },
+};
+
+export const CountWithoutLink: Story = {
+  args: {
+    title: "Nearby places",
+    count: 26,
+    href: undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { level: 2 }).textContent).toBe("Nearby places");
+    const count = canvasElement.querySelector<HTMLElement>("[data-section-heading-count]")!;
+    await expect(count.textContent).toBe("26");
+    await expect(getComputedStyle(count).fontSize).toBe("13px");
   },
 };
 
@@ -59,6 +79,11 @@ export const SecondarySection: Story = {
     href: undefined,
     size: "sm",
     accent: "var(--app-cool)",
+  },
+  play: async ({ canvasElement }) => {
+    const heading = within(canvasElement).getByRole("heading", { level: 2, name: "Pools" });
+    await expect(getComputedStyle(heading).fontSize).toBe("16px");
+    await expect(canvasElement.querySelector("[data-section-heading-tick]")).toBeNull();
   },
 };
 
@@ -73,7 +98,7 @@ function InteractiveHeading() {
         cta={showingAll ? "Show less" : "Show all"}
         onCtaClick={() => setShowingAll((value) => !value)}
       />
-      <p aria-live="polite" className="text-xs" style={{ color: "var(--app-ink-3)" }}>
+      <p aria-live="polite" className="text-meta-lg" style={{ color: "var(--app-ink-3)" }}>
         {showingAll ? "Radius is showing events across Frederick County." : "Radius is showing the strongest nearby matches."}
       </p>
     </div>
@@ -111,6 +136,12 @@ export const LongFrederickTitleAt320: Story = {
     count: 14,
     href: "/events?in=county",
     cta: "See county",
+  },
+  play: async ({ canvasElement }) => {
+    // A long title wraps instead of truncating, and nothing scrolls sideways.
+    const heading = within(canvasElement).getByRole("heading", { level: 2 });
+    await expect(heading.scrollWidth).toBeLessThanOrEqual(heading.clientWidth + 1);
+    await expect(heading.textContent).toBe("What is happening outside Downtown Frederick");
   },
 };
 

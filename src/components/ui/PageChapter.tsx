@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import SectionHeading from "./SectionHeading";
 
 export type PageChapterTone =
   | "brand"
@@ -10,9 +11,13 @@ export type PageChapterTone =
 /**
  * A field-guide chapter for long editorial pages.
  *
- * The register makes a real change of subject legible without adding another
- * card or toolbar. Children keep their own semantic headings; this wrapper
- * supplies the visual rhythm, grouping, and optional folio number.
+ * The chapter names a real change of subject with a real heading: the label
+ * renders as an h2 through SectionHeading's primary register (`.text-title`
+ * Ink in sentence case, with the 4px tick in the chapter's tone), not as tiny
+ * tracked caps. Headings are type (docs/brand/BRAND_GUIDE.md). The group keeps
+ * its accessible name equal to the label, because Today's layout tests find
+ * the chapter by role and name. An optional folio number sits before the
+ * heading as quiet tabular metadata.
  */
 export default function PageChapter({
   label,
@@ -37,10 +42,20 @@ export default function PageChapter({
       role="group"
       aria-label={label}
     >
-      <div className="content-chapter__register" aria-hidden>
-        {index ? <span className="content-chapter__folio">{index}</span> : null}
-        <span className="content-chapter__label">{label}</span>
-        <span className="content-chapter__rule" />
+      <div className="content-chapter__register">
+        {index ? (
+          <span
+            aria-hidden
+            data-chapter-folio
+            className="text-meta-lg shrink-0 font-semibold tabular-nums"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {index}
+          </span>
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <SectionHeading title={label} accent="var(--content-chapter-accent, var(--app-brand))" />
+        </div>
       </div>
       <div className={`content-chapter__body${bodyClassName ? ` ${bodyClassName}` : ""}`}>
         {children}

@@ -24,6 +24,17 @@
  *                       variant, a whileTap scale, or an :active CSS rule
  *                       that scales by a number
  *   strokeWidthLiteral  a numeric stroke width on an icon or SVG shape
+ *   eyebrowClass        a use of a global caps-label class (eyebrow,
+ *                       fg-eyebrow, or content-chapter__label) inside a TS
+ *                       or TSX string, counted once per class token
+ *   moduleUppercase     a CSS module rule that sets text-transform to
+ *                       uppercase, with or without added letter spacing
+ *
+ * The last two hold the "Headings are type" rule in the brand guide: caps
+ * belong to date plates, day letters, and the Beta chip, and a section is
+ * named by a SectionHeading or a disclosure row in sentence case. A prop or
+ * variable that happens to be called eyebrow is not a class use, so only
+ * string literals are read for that rule.
  *
  * Counts are per file and per rule, not per line, so moving existing code
  * within a file does not fail the check. Adding another instance does. A count
@@ -79,6 +90,8 @@ export const RULES = {
   uppercaseTracking: "uppercase text with changed letter spacing, the tracked-caps eyebrow",
   activeScale: "press-shrink scale literal",
   strokeWidthLiteral: "numeric stroke width literal",
+  eyebrowClass: "global caps-label class (eyebrow, fg-eyebrow, content-chapter__label) instead of a heading in sentence case",
+  moduleUppercase: "CSS module rule that sets uppercase text",
 };
 const RULE_NAMES = Object.keys(RULES);
 
@@ -116,6 +129,10 @@ const STROKE_WIDTH = /(?<![\w-])strokeWidth\s*(?:=(?!=)|:)\s*/g;
 const KEBAB_STROKE_WIDTH = /(?<![\w-])stroke-width\s*[=:]\s*["']?\s*\d*\.?\d/g;
 
 const SIZE_LITERAL = /^["'`]?\s*(\d*\.?\d+)\s*(px|rem|em)?\s*["'`]?$/;
+
+// A global caps-label class token. The lookarounds keep compound names such
+// as a component's own map-finding-eyebrow class out of the count.
+const EYEBROW_CLASS = /(?<![\w-])(?:fg-eyebrow|eyebrow|content-chapter__label)(?![\w-])/g;
 
 // --- Helpers -------------------------------------------------------------
 
@@ -254,6 +271,82 @@ function countTextSizes(result, line, n) {
   }
 }
 
+/**
+ * Index ranges of string literal contents in comment-blanked TS/TSX code.
+ * Quoted strings end at their line, so a stray apostrophe can only misread the
+ * rest of one line. Template literals may span lines, and their ${}
+ * expressions are read as code again, so a quoted class inside one is found
+ * while an identifier inside one is not.
+ */
+function stringRanges(code) {
+  const ranges = [];
+  const stack = [{ kind: "code", braces: 0 }];
+  let quote = "";
+  let from = -1;
+  const close = (to) => {
+    if (from !== -1 && to > from) ranges.push([from, to]);
+    from = -1;
+  };
+  for (let i = 0; i < code.length; i++) {
+    const c = code[i];
+    const top = stack[stack.length - 1];
+    if (quote) {
+      if (c === "\\" && code[i + 1] !== "\n") i++;
+      else if (c === quote || c === "\n") {
+        close(i);
+        quote = "";
+      }
+      continue;
+    }
+    if (top.kind === "template") {
+      if (c === "\\") i++;
+      else if (c === "`") {
+        close(i);
+        stack.pop();
+      } else if (c === "$" && code[i + 1] === "{") {
+        close(i);
+        stack.push({ kind: "code", braces: 0 });
+        i++;
+      }
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      quote = c;
+      from = i + 1;
+    } else if (c === "`") {
+      stack.push({ kind: "template" });
+      from = i + 1;
+    } else if (c === "{") {
+      top.braces++;
+    } else if (c === "}") {
+      if (top.braces > 0) top.braces--;
+      else if (stack.length > 1) {
+        // The end of a ${} expression: back inside the template literal.
+        stack.pop();
+        from = i + 1;
+      }
+    }
+  }
+  close(code.length);
+  return ranges;
+}
+
+/** A lookup from a character index to its 1-based line number. */
+function lineFinder(text) {
+  const starts = [0];
+  for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) === 10) starts.push(i + 1);
+  return (index) => {
+    let lo = 0;
+    let hi = starts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (starts[mid] <= index) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo + 1;
+  };
+}
+
 // --- Counting ------------------------------------------------------------
 
 function countScript(source) {
@@ -300,10 +393,17 @@ function countScript(source) {
       record(result, "uppercaseTracking", lineOf(code, m.index));
     }
   }
+
+  const lineAt = lineFinder(code);
+  for (const [from, to] of stringRanges(code)) {
+    for (const m of code.slice(from, to).matchAll(EYEBROW_CLASS)) {
+      record(result, "eyebrowClass", lineAt(from + m.index));
+    }
+  }
   return result;
 }
 
-function countStylesheet(source) {
+function countStylesheet(source, isModule = false) {
   const result = { counts: emptyCounts(), lines: emptyLines() };
   const css = source.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
 
@@ -318,6 +418,7 @@ function countStylesheet(source) {
     const [, selector, body] = m;
     const n = lineOf(css, m.index + m[0].indexOf("{"));
     if (CSS_UPPERCASE.test(body) && CSS_LETTER_SPACING.test(body)) record(result, "uppercaseTracking", n);
+    if (isModule && CSS_UPPERCASE.test(body)) record(result, "moduleUppercase", n);
     if (/:active\b/.test(selector) && CSS_NUMERIC_SCALE.test(body)) record(result, "activeScale", n);
   }
   return result;
@@ -325,10 +426,13 @@ function countStylesheet(source) {
 
 /**
  * Count every rule in one file's source. `file` decides the syntax: .css is
- * read as a stylesheet, anything else as TS/TSX.
+ * read as a stylesheet, anything else as TS/TSX. Only a .module.css file is
+ * held to the moduleUppercase rule.
  */
 export function countTypeScale(source, file = "source.tsx") {
-  return file.endsWith(".css") ? countStylesheet(source) : countScript(source);
+  return file.endsWith(".css")
+    ? countStylesheet(source, file.endsWith(".module.css"))
+    : countScript(source);
 }
 
 // --- Tree and baseline ---------------------------------------------------
@@ -459,7 +563,9 @@ function main() {
     console.error(
       "\nUse a step on the named type scale (docs/brand/BRAND_GUIDE.md, Product type scale) at 11 px or larger,\n" +
         "set caps without added letter spacing, reuse the shared press classes in globals.css instead of a new\n" +
-        "scale literal, and leave icon strokes at their default. If the addition is an owner-reviewed exception,\n" +
+        "scale literal, and leave icon strokes at their default. Name a section with SectionHeading or a\n" +
+        "CollapsibleSection row in sentence case instead of an eyebrow class or a CSS module uppercase rule\n" +
+        "(docs/brand/BRAND_GUIDE.md, Headings are type). If the addition is an owner-reviewed exception,\n" +
         "run `npm run lint:type-scale -- --write` and name the exception in the commit message.",
     );
     process.exit(1);

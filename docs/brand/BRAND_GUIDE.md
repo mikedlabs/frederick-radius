@@ -204,6 +204,25 @@ facts, not a feed trying to fill space.
   material, and useful data. A Ripple bloom is an opt-in editorial moment,
   never a default page background. Use one visual idea at a time.
 
+### Paper, not boxes
+
+A section is a heading and its content set directly on Cream, and a list is a
+run of ruled rows. A box is allowed for something that floats above the page
+(a sheet, the Find launcher, or the action bar), for a card whose face is a
+real picture, and for one inline alert. Nothing else gets a box, and
+containers are never nested inside other containers.
+
+### Headings are type
+
+Hierarchy comes from size and weight, not from tiny tracked capitals. A section
+is named in sentence case with `SectionHeading`, which uses `.text-title` for a
+primary section and `.text-title-sm` for a secondary one, and a disclosure is a
+ruled `CollapsibleSection` row. Caps appear only in date plates, day letters,
+and the Beta chip. A count is supporting detail, so it rides in the section's
+link label or follows the title in metadata type rather than joining the
+heading. `npm run lint:type-scale` holds eyebrow class uses and uppercase rules
+in CSS modules at their current counts, so those counts can only fall.
+
 ### Interaction
 
 - Touch targets are at least 44 by 44 px.
