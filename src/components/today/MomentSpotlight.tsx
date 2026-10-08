@@ -164,10 +164,11 @@ export default function MomentSpotlight({ moment, isDayOf }: { moment: Spotlight
             {moment.title}
           </h2>
           {facts.length > 0 && (
-            <dl className="mt-1 flex flex-wrap gap-x-2 text-meta-lg font-semibold" style={{ color: "var(--app-ink)" }}>
-              {facts.map((fact, index) => (
-                <div key={fact.label} className="inline-flex gap-x-2">
-                  {index > 0 && <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>}
+            // One fact per line: in this narrow card a dot separator wrapped
+            // to the start of the next line ("· Free").
+            <dl className="mt-1 space-y-0.5 text-meta-lg font-semibold" style={{ color: "var(--app-ink)" }}>
+              {facts.map((fact) => (
+                <div key={fact.label}>
                   <dt className="sr-only">{fact.label}</dt>
                   <dd>{fact.value}</dd>
                 </div>
@@ -298,9 +299,10 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
           <dl className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
             {facts.map((fact, index) => (
               <div key={fact.label} className="inline-flex items-center gap-x-3">
-                {index > 0 && <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>}
                 <dt className="sr-only">{fact.label}</dt>
                 <dd>{fact.value}</dd>
+                {/* The dot trails its fact, so a wrap never starts a line with it. */}
+                {index < facts.length - 1 && <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>}
               </div>
             ))}
           </dl>
