@@ -331,6 +331,12 @@ published occurrences appear in the served feed. DFP already joins the assembly
 through its native Vibemap feed. Visit Frederick remains disabled until its
 documented written factual-reuse permission is supplied.
 
+Venue source identities remain the venue slug plus the absolute start instant.
+Multiple published performances with the same title and local date keep
+separate cards and routes; only colliding routes gain a full UTC occurrence
+suffix. Singleton routes retain their existing archive aliases. Collision
+checks use the full promoted inventory before hiding ended performances.
+
 The unattended REST tools use:
 
 - `FIRECRAWL_API_KEY` for `scripts/lib/firecrawl-rest.ts`;
