@@ -149,8 +149,11 @@ export function eventCardVisual(event: EventWithMeta): EventCardVisual | null {
  *
  * - `owned`: Radius's own photography. The only kind a surface may set type
  *   over, because the photo is ours to dress.
- * - `flyer`: a publisher's event image. Shown whole at its own aspect on a
- *   sunken paper panel, never cropped, scrimmed, animated or written over.
+ * - `flyer`: a publisher's event image. Radius never crops it further: it sits
+ *   object-contain on a sunken paper panel at its delivered aspect, never
+ *   scrimmed, animated or written over. Do not describe it as the whole flyer
+ *   in copy or alt text: most publisher feeds deliver a pre-cropped version
+ *   (74 of 76 Downtown Frederick Partnership images arrive as 16:9 crops).
  * - `venue`: a credited photograph of the venue. It may be cropped, but it is
  *   someone else's picture, so the title sits on Cream beside or below it.
  */
@@ -162,6 +165,18 @@ export function eventVisualTreatment(
   if (visual.key.startsWith("event:")) return "flyer";
   if (visual.key.startsWith("radius-")) return "owned";
   return "venue";
+}
+
+/**
+ * The publisher flyer a list row or the flyer rail may show, or null.
+ *
+ * Rows and the rail picture only flyers: a venue photograph beside one event
+ * among many reads as a picture of that event, and an owned seasonal photo is
+ * a hero treatment, not a row thumbnail. Everything else gets no frame.
+ */
+export function eventFlyerVisual(event: EventWithMeta): EventCardVisual | null {
+  const visual = eventCardVisual(event);
+  return visual && eventVisualTreatment(visual) === "flyer" ? visual : null;
 }
 
 export type HorizonVisualPlan = {

@@ -196,7 +196,7 @@ describe("EventPosterCard visual trust", () => {
     expect(html).toContain('alt=""');
   });
 
-  it("server-renders no Google venue credit before the glance photo loads", () => {
+  it("server-renders no Google venue photo or credit in a list row", () => {
     const html = renderToStaticMarkup(
       createElement(EventCard, {
         event: event({
@@ -219,9 +219,9 @@ describe("EventPosterCard visual trust", () => {
       }),
     );
 
-    // Placement of the full credit outside the event link, once the photo
-    // has loaded, is covered in EventCard.browser.spec.
-    expect(html).toContain("fallback=signal");
+    // A list row pictures only a publisher flyer, so a credited venue photo
+    // is not requested at all and no credit can precede it.
+    expect(html).not.toContain("/api/place-photo");
     expect(html).not.toContain("Local photographer");
     expect(html).not.toContain("data-event-photo-credit");
     expect(html).not.toContain("Report photo");

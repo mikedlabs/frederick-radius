@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { eventCardVisual, planHorizonVisual } from "./eventVisuals";
+import {
+  eventCardVisual,
+  eventFlyerVisual,
+  eventVisualTreatment,
+  planHorizonVisual,
+} from "./eventVisuals";
 
 function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
   return {
@@ -217,5 +222,49 @@ describe("planHorizonVisual", () => {
     expect(plan.promotedIndex).toBe(1);
     expect(rest[plan.promotedIndex].slug).toBe("third");
     expect(plan.promotedVisual?.key).toBe("radius-baker-park-bandshell");
+  });
+});
+
+describe("eventFlyerVisual", () => {
+  it("returns a publisher flyer for a row or the rail", () => {
+    const flyer = eventFlyerVisual(
+      event({
+        source: "dfp",
+        hero_image: "https://ik.imagekit.io/vibemap/events/example.jpg",
+      }),
+    );
+    expect(flyer?.key).toBe("event:https://ik.imagekit.io/vibemap/events/example.jpg");
+    expect(flyer && eventVisualTreatment(flyer)).toBe("flyer");
+  });
+
+  it("gives venue and owned photographs no row frame", () => {
+    // Owned seasonal photography of the venue is a hero treatment.
+    expect(
+      eventFlyerVisual(event({ venue_place_slug: "carroll-creek-linear-park-frederick" })),
+    ).toBeNull();
+    // A credited Google venue photo would read as a picture of the event.
+    expect(
+      eventFlyerVisual(
+        event({
+          hero_image: "/api/place-photo?name=places%2Fvenue%2Fphotos%2Fone&w=800",
+          hero_image_attribution: {
+            kind: "venue",
+            venue_name: "Test venue",
+            provider: "google_maps",
+            source_uri: "https://www.google.com/maps/place/test",
+            authors: [],
+          },
+        }),
+      ),
+    ).toBeNull();
+    expect(eventFlyerVisual(event())).toBeNull();
+  });
+
+  it("still refuses a flyer on a host the source is not approved for", () => {
+    expect(
+      eventFlyerVisual(
+        event({ source: "dfp", hero_image: "https://example.com/flyer.jpg" }),
+      ),
+    ).toBeNull();
   });
 });

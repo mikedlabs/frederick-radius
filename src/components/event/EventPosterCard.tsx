@@ -130,7 +130,7 @@ export default function EventPosterCard({
         {statusText && <span style={{ color: statusBg }}>{statusText}</span>}
       </div>
       <div className="flex items-start gap-3 sm:gap-4">
-        <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent={accent} />
+        <DatePlate month={date.month} day={date.day} weekday={date.weekday} size="md" />
         <div className="min-w-0 flex-1">
           <Link
             href={`/events/${event.slug}`}

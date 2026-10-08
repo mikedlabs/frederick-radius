@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import EventCard from "./EventCard";
+import type { EventCardVisual } from "./eventVisuals";
+import EventCard, { EventRow } from "./EventCard";
 
 const sample = {
   slug: "story-concert", title: "Community concert at Memorial Park", description: "",
@@ -13,6 +14,32 @@ const sample = {
   geom: { lng: -77.4, lat: 39.62 }, geo_confidence: "area",
 } as EventWithMeta;
 
+const ticketed = {
+  ...sample,
+  slug: "story-hot-sardines",
+  title: "The Hot Sardines",
+  starts_at: "2026-09-10T20:00:00-04:00",
+  ends_at: "2026-09-10T20:00:00-04:00",
+  venue_name: "Weinberg Center for the Arts",
+  address: "20 W Patrick St, Frederick, MD",
+  municipality: "frederick",
+  municipality_name: "Frederick",
+  is_free: false,
+  ticket_url: "https://www.weinbergcenter.org/",
+  geo_confidence: "venue_match",
+} as EventWithMeta;
+
+/**
+ * A stand-in flyer from the repo's own brand posters. Production rows take a
+ * flyer only from an approved publisher host (eventFlyerVisual); the story
+ * passes one directly so it renders without the network.
+ */
+const fixtureFlyer: EventCardVisual = {
+  src: "/brand/posters/ask-radius.png",
+  caption: "Event image · Story fixture",
+  key: "event:/brand/posters/ask-radius.png",
+};
+
 const meta = {
   title: "Events/Decision card", component: EventCard, tags: ["autodocs"],
   parameters: { layout: "centered" },
@@ -21,7 +48,38 @@ const meta = {
 } satisfies Meta<typeof EventCard>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
 export const NoPhotography: Story = {};
+
+/** The one event row with no flyer: plate, title, meta line, Free mark. */
+export const RowFree: Story = { args: { variant: "glance" } };
+
+/** A ticketed show with no listed end: no "end time not listed" in the row. */
+export const RowTickets: Story = { args: { event: ticketed, variant: "compact" } };
+
+/** Confirmed live: an Amber dot and "Now" take the time's place. */
+export const RowLive: Story = {
+  args: { variant: "glance", live: true, nowISO: "2026-09-10T19:00:00-04:00" },
+};
+
+/** A publisher flyer sits uncropped in a 56px frame on the right. */
+export const RowFlyer: Story = {
+  render: (args) => (
+    <EventRow event={{ ...ticketed, title: "Game Night at Frederick Social" }} flyer={fixtureFlyer} now={args.nowISO ? new Date(args.nowISO) : null} />
+  ),
+};
+
+/** Several rows read as one ruled list on paper. */
+export const RowList: Story = {
+  render: (args) => (
+    <ol className="[&>li:last-child_article]:border-b-0">
+      <li><EventCard event={sample} variant="compact" nowISO={args.nowISO} /></li>
+      <li><EventRow event={{ ...ticketed, slug: "story-flyer", title: "Game Night at Frederick Social" }} flyer={fixtureFlyer} /></li>
+      <li><EventCard event={ticketed} variant="compact" nowISO={args.nowISO} /></li>
+    </ol>
+  ),
+};
+
 export const CountyComparison: Story = { args: { variant: "compact" } };
 /** A collapsed weekly series: one row carries the cadence read from its dates. */
 export const CompactSeriesCadence: Story = {
@@ -43,3 +101,5 @@ export const LongVenueAt320: Story = {
     variant: "glance",
   },
 };
+/** Today's earlier-today list names the day in its header, so no plate. */
+export const RowWithoutDate: Story = { args: { variant: "utility", hideDate: true } };

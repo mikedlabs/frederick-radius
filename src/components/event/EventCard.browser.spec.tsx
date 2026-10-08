@@ -5,7 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import EventCard from "./EventCard";
+import EventCard, { eventRowMark } from "./EventCard";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true;
@@ -31,20 +31,20 @@ function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
     category_name: "Music",
     municipality_name: "Frederick",
     last_verified_at: "2026-10-07T12:00:00.000Z",
-    hero_image: "/api/place-photo?name=places%2Fsteinhardt%2Fphotos%2Fone&w=800",
-    hero_image_attribution: {
-      kind: "venue",
-      venue_name: "Steinhardt Brewing Company",
-      provider: "google_maps",
-      source_uri: "https://www.google.com/maps/place/steinhardt",
-      flag_content_uri: "https://www.google.com/local/imagery/report/",
-      authors: [
-        { display_name: "A H", uri: "https://maps.google.com/maps/contrib/1" },
-      ],
-    },
     ...overrides,
   } as EventWithMeta;
 }
+
+/** A Downtown Frederick Partnership listing with its approved flyer. */
+const flyerEvent = (overrides: Partial<EventWithMeta> = {}) =>
+  event({
+    slug: "game-night",
+    title: "Game Night",
+    source: "dfp",
+    source_url: "https://www.downtownfrederick.org/events/game-night",
+    hero_image: "https://ik.imagekit.io/vibemap/events/game-night.jpg",
+    ...overrides,
+  });
 
 async function settle(img: HTMLImageElement, outcome: "photo" | "signal" | "error") {
   await act(async () => {
@@ -64,7 +64,7 @@ async function settle(img: HTMLImageElement, outcome: "photo" | "signal" | "erro
   });
 }
 
-describe("EventCard glance photo honesty", () => {
+describe("EventCard row flyer", () => {
   let container: HTMLDivElement;
   let root: Root;
 
@@ -72,7 +72,7 @@ describe("EventCard glance photo honesty", () => {
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
-    await act(async () => root.render(<EventCard event={event()} variant="glance" />));
+    await act(async () => root.render(<EventCard event={flyerEvent()} variant="glance" />));
   });
 
   afterEach(async () => {
@@ -80,49 +80,147 @@ describe("EventCard glance photo honesty", () => {
     container.remove();
   });
 
-  const credit = () => container.querySelector("[data-event-photo-credit]");
   const thumb = () => container.querySelector("[data-event-card-thumb]");
 
-  it("asks for the failure signal and withholds the credit while loading", () => {
+  it("shows the flyer uncropped, decorative and inside the row's one link", () => {
     const img = container.querySelector("img")!;
+    const links = container.querySelectorAll("a");
 
-    expect(img.getAttribute("src")).toContain("fallback=signal");
-    expect(thumb()).not.toBeNull();
-    expect(credit()).toBeNull();
+    expect(links).toHaveLength(1);
+    expect(links[0].getAttribute("href")).toBe("/events/game-night");
+    expect(links[0].contains(thumb())).toBe(true);
+    expect(img.getAttribute("alt")).toBe("");
+    expect(img.className).toContain("object-contain");
+    expect(img.className).not.toContain("object-cover");
+    // Nothing is drawn over the flyer: the frame holds only the image.
+    expect(thumb()?.querySelectorAll("img")).toHaveLength(1);
+    expect(thumb()?.textContent).toBe("");
   });
 
-  it("credits a real photo outside the event link once it loads", async () => {
+  it("never prints a credit in the row, even after the flyer loads", async () => {
     await settle(container.querySelector("img")!, "photo");
 
-    const link = container.querySelector('a[href="/events/bluegrass-jam"]')!;
-    expect(credit()).not.toBeNull();
-    expect(link.contains(credit())).toBe(false);
-    expect(credit()?.textContent).toContain("Photo by A H");
-    expect(credit()?.textContent).toContain("Report photo");
+    expect(thumb()).not.toBeNull();
+    expect(container.querySelector("[data-event-photo-credit]")).toBeNull();
+    expect(container.textContent).not.toContain("Event image");
   });
 
   it.each(["signal", "error"] as const)(
-    "drops both the thumbnail and its credit on a proxy %s",
+    "removes the frame on a %s and leaves a complete text row",
     async (outcome) => {
       await settle(container.querySelector("img")!, outcome);
 
       expect(thumb()).toBeNull();
       expect(container.querySelector("img")).toBeNull();
-      expect(credit()).toBeNull();
-      expect(container.textContent).not.toContain("Photo by");
-      // The text still reads as a complete card.
-      expect(container.querySelector("h3")?.textContent).toBe("Bluegrass Jam");
+      // No glyph or mark takes the flyer's place.
+      expect(container.querySelector("[data-radius-photo]")).toBeNull();
+      expect(container.querySelector("h3")?.textContent).toBe("Game Night");
+      expect(container.querySelector("[data-date-plate]")).not.toBeNull();
     },
   );
 });
 
-describe("EventCard glance venue line", () => {
-  it("wraps a long venue to two lines instead of cutting it at 160px", () => {
-    const html = renderToStaticMarkup(
-      <EventCard event={event({ hero_image: undefined })} variant="glance" />,
-    );
+describe("EventCard row grammar", () => {
+  const html = (e: EventWithMeta, props: Partial<Parameters<typeof EventCard>[0]> = {}) =>
+    renderToStaticMarkup(<EventCard event={e} variant="glance" {...props} />);
 
-    expect(html).not.toContain("max-w-[160px]");
-    expect(html).toContain('<span class="line-clamp-2 leading-snug">Steinhardt Brewing Company');
+  it.each(["glance", "compact", "utility", "row"] as const)(
+    "renders the %s variant as the one row",
+    (variant) => {
+      const markup = renderToStaticMarkup(<EventCard event={event()} variant={variant} />);
+      expect(markup).toContain("data-event-row");
+      expect(markup).toContain('data-date-plate="sm"');
+      expect(markup).toContain("min-h-[72px]");
+      expect(markup).toContain('<h3 class="text-title-sm line-clamp-2"');
+      // No card chrome, no Plum rail, no category dot.
+      expect(markup).not.toContain("inset 3px 0");
+      expect(markup).not.toContain("rounded-[var(--app-radius-md)] border");
+      expect(markup).not.toContain("--app-elev-1");
+      expect(markup).not.toMatch(/background:#[0-9a-f]{3,8}/i);
+    },
+  );
+
+  it("prints start time, venue and town on one meta line", () => {
+    const markup = html(event({ hero_image: undefined }));
+    const meta = markup.match(/data-event-row-meta="true"[^>]*>(.*?)<\/p>/)?.[1] ?? "";
+    expect(meta.replace(/<[^>]+>/g, "")).toBe("7:00 PM · Steinhardt Brewing Company · Frederick");
+  });
+
+  it("drops the end-time caution from rows", () => {
+    const markup = html(event({ ends_at: "2026-10-08T23:00:00.000Z" }));
+    expect(markup).not.toContain("end time not listed");
+    expect(markup).toContain(">7:00 PM<");
+  });
+
+  it("marks Free in Forest, or Tickets, never both", () => {
+    const free = html(event({ is_free: true, ticket_url: "https://tickets.example/x" }));
+    expect(free).toContain('style="color:var(--app-brand-2)">Free</span>');
+    expect(free).not.toContain(">Tickets<");
+
+    const paid = html(event({ is_free: false, ticket_url: "https://tickets.example/x" }));
+    expect(paid).toContain(">Tickets<");
+    expect(paid).not.toContain(">Free<");
+
+    const none = html(event({ is_free: false, ticket_url: undefined, price_text: undefined }));
+    expect(none).not.toContain("data-event-row-mark");
+
+    expect(eventRowMark({ is_free: false, price_text: "$25" })).toBe("tickets");
+    expect(eventRowMark({ is_free: false, price_text: "  " })).toBeNull();
+  });
+
+  it("shows an Amber dot and Now instead of the time while confirmed live", () => {
+    const live = html(event(), { live: true, nowISO: "2026-10-08T23:30:00.000Z" });
+    expect(live).toContain("live-dot");
+    expect(live).toContain("background:var(--app-amber)");
+    expect(live).toContain("Now</span>");
+    expect(live).not.toContain(">7:00 PM<");
+
+    // A live prop without a usable end is refused.
+    const unknownEnd = html(event({ ends_at: "2026-10-08T23:00:00.000Z" }), {
+      live: true,
+      nowISO: "2026-10-08T23:30:00.000Z",
+    });
+    expect(unknownEnd).not.toContain("live-dot");
+    expect(unknownEnd).toContain("Started at 7:00 PM");
+  });
+
+  it("gives an event without a flyer no picture frame at all", () => {
+    const venuePhoto = html(
+      event({
+        hero_image: "/api/place-photo?name=places%2Fsteinhardt%2Fphotos%2Fone&w=800",
+        hero_image_attribution: {
+          kind: "venue",
+          venue_name: "Steinhardt Brewing Company",
+          provider: "google_maps",
+          source_uri: "https://www.google.com/maps/place/steinhardt",
+          authors: [{ display_name: "A H" }],
+        },
+      }),
+    );
+    expect(venuePhoto).not.toContain("<img");
+    expect(venuePhoto).not.toContain("data-event-card-thumb");
+    expect(venuePhoto).not.toContain("data-radius-photo");
+
+    const owned = html(event({ venue_place_slug: "carroll-creek-linear-park-frederick" }));
+    expect(owned).not.toContain("<img");
+  });
+
+  it("omits the date plate when the surface already names the day", () => {
+    const markup = html(event(), { variant: "utility", hideDate: true });
+    expect(markup).not.toContain("data-date-plate");
+    expect(markup).toContain(">7:00 PM<");
+  });
+
+  it("keeps a cancelled listing visible and says so first", () => {
+    const markup = html(event({ status: "cancelled" }));
+    expect(markup).toContain("line-through");
+    expect(markup).toMatch(/color:var\(--app-danger\)">Cancelled/);
+  });
+
+  it("keeps the Day Plan button beside the row variant, outside its link", () => {
+    const markup = renderToStaticMarkup(<EventCard event={event()} variant="row" />);
+    const link = markup.slice(markup.indexOf("<a "), markup.indexOf("</a>"));
+    expect(markup).toContain('aria-label="Add Bluegrass Jam to itinerary"');
+    expect(link).not.toContain("<button");
   });
 });

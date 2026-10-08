@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Event } from "@/data/events";
-import { eventDecisionLocation, eventDecisionTime, eventTimeCaution } from "./decision-facts";
+import { eventDecisionLocation, eventDecisionTime, eventRowTime, eventTimeCaution } from "./decision-facts";
 import { eventNearbyStation } from "./travel";
 
 const event = (overrides: Partial<Event> = {}): Event => ({
@@ -30,6 +30,39 @@ describe("event decision facts", () => {
     expect(eventDecisionTime(dateOnly)).toBe("Time not listed");
     expect(eventTimeCaution(dateOnly)).toContain("not listed a start time");
     expect(eventTimeCaution(event({ is_all_day: true }))).toContain("daily opening or admission hours");
+  });
+
+  it("gives a row its start time without the end-time caution the sheet carries", () => {
+    expect(eventRowTime(event())).toBe("6:00 PM");
+    const missingEnd = event({ ends_at: "2026-09-10T18:00:00-04:00" });
+    expect(eventRowTime(missingEnd)).toBe("6:00 PM");
+    expect(eventRowTime(missingEnd)).not.toContain("end time");
+    // The caution still exists; it moved to the sheet and the detail page.
+    expect(eventTimeCaution(missingEnd)).toBe("The publisher has not listed an end time.");
+  });
+
+  it("says when an unknown-end event started instead of a clock already past", () => {
+    const missingEnd = event({ ends_at: "2026-09-10T18:00:00-04:00" });
+    // Once it has begun, whether it is still going is the decision, so the
+    // row keeps that one caution.
+    expect(eventRowTime(missingEnd, new Date("2026-09-10T19:00:00-04:00"))).toBe(
+      "Started at 6:00 PM · end time unavailable",
+    );
+    expect(eventRowTime(missingEnd, new Date("2026-09-10T17:00:00-04:00"))).toBe("6:00 PM");
+    // A known end needs no disclosure: the row prints its start time.
+    expect(eventRowTime(event(), new Date("2026-09-10T19:00:00-04:00"))).toBe("6:00 PM");
+    // A cancelled listing never reads as started.
+    expect(eventRowTime({ ...missingEnd, status: "cancelled" }, new Date("2026-09-10T19:00:00-04:00"))).toBe("6:00 PM");
+  });
+
+  it("keeps all-day, date-only and multi-day rows honest without daily-hours copy", () => {
+    expect(eventRowTime(event({ is_all_day: true }))).toBe("All day");
+    const dateOnly = event({ starts_at: "2026-09-10T12:00:00-04:00", ends_at: "2026-09-10T23:59:00-04:00" });
+    expect(eventRowTime(dateOnly)).toBe("Time not listed");
+    const weekend = event({ starts_at: "2026-10-10T09:00:00-04:00", ends_at: "2026-10-11T17:00:00-04:00" });
+    expect(eventRowTime(weekend)).toBe("9:00 AM through Oct 11");
+    expect(eventRowTime(weekend)).not.toContain("check daily hours");
+    expect(eventTimeCaution(weekend)).toContain("spans several days");
   });
 
   it("only joins nearby MARC station coordinates, without inventing a service or route time", () => {

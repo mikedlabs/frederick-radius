@@ -1,7 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { featuredEventSlugs } from "@/lib/events/featured";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, ChevronDown, LocateFixed, X } from "lucide-react";
@@ -13,6 +19,7 @@ import EventsBoardDock, { type ViewKey, type EventSortKey } from "@/components/e
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import EventWeekRibbon from "@/components/event/EventWeekRibbon";
+import EventFlyerRail, { flyerRailItems } from "@/components/event/EventFlyerRail";
 import { isUtilityEvent } from "@/lib/event-kind";
 import {
   groupByEasternDay,
@@ -64,11 +71,6 @@ import {
 import { isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { hasPhysicalAttendance } from "@/lib/events/attendance";
-import { eventCardVisual, type EventCardVisual } from "@/components/event/eventVisuals";
-import {
-  horizonLeadVariant,
-  primaryLeadPrecedesInterestRail,
-} from "@/components/event/eventsExplorerLayout";
 import { compareForLead } from "@/lib/events/lead-rank";
 import {
   compareEventsForDecision,
@@ -86,6 +88,14 @@ export type TimeKey = BoardTimeKey;
 
 /** Rows a chosen time window shows before "Show more", grouped by day. */
 export const WINDOW_PEEK = 12;
+/**
+ * Rows each open-browsing horizon ("Tomorrow", "This weekend") shows before
+ * "Show more". A section's lead is simply its first row, so the peek is the
+ * whole preview: no poster or glance card ahead of it.
+ */
+export const HORIZON_PEEK = 4;
+/** The results column for row lists: capped at 720px from 1024px up. */
+const LIST_COLUMN = "space-y-3 lg:max-w-[720px]";
 /** Rows any expanded group shows inline before handing off to the calendar. */
 export const EXPANDED_CAP = 40;
 
@@ -1169,27 +1179,18 @@ export default function EventsExplorer({
     hasFilters: relaxations.length > 0,
   });
 
-  const primaryHorizon = horizonGroups[0];
-  const primaryLead = primaryHorizon?.events[0] ?? null;
-  const showPrimaryLeadBeforeRail = primaryLeadPrecedesInterestRail({
-    view,
-    sort,
-    resultCount: filtered.length,
-    horizonCount: horizonGroups.length,
-  });
+  // The flyer rail under the ribbon: publisher flyers already in the current
+  // filtered window. It is a list-view discovery aid, so the calendar, map
+  // and compact displays keep their own full answers.
+  const flyerRail = useMemo(
+    () => (view === "list" ? flyerRailItems(filtered, { nowMs: now }) : []),
+    [filtered, now, view],
+  );
 
   // A chosen window lists up to WINDOW_PEEK rows under day subheads. Its lead
-  // is the primary lead when that already sits above the results; otherwise
-  // the window's first row earns the feature card.
+  // is simply its first row: every row in the window shares one grammar.
   const windowed = isWindowedList({ time, day, view, sort });
-  const windowLead = windowed
-    ? showPrimaryLeadBeforeRail
-      ? primaryLead
-      : crowdFiltered[0] ?? null
-    : null;
-  const windowRest = windowed
-    ? crowdFiltered.filter((event) => event !== windowLead)
-    : [];
+  const windowRest = windowed ? crowdFiltered : [];
   // Keyed by the window, so expanding This weekend does not expand Tonight.
   const windowKey = `window:${day ?? time}`;
   const windowOpen = openGroups.has(windowKey);
@@ -1353,6 +1354,8 @@ export default function EventsExplorer({
         onPickDay={pickRibbonDay}
       />
 
+      <EventFlyerRail items={flyerRail} nowISO={nowISO} />
+
       {nearMeActive && deviceOrigin && nearbyLabel ? (
         <p
           role="status"
@@ -1425,18 +1428,6 @@ export default function EventsExplorer({
         </section>
       ) : null}
 
-      {showPrimaryLeadBeforeRail && primaryLead && (
-        <div data-events-primary-lead="before-interest">
-          <PromotedEvent
-            event={primaryLead}
-            visual={eventCardVisual(primaryLead)}
-            live={live.has(primaryLead.slug)}
-            priorityImage
-            nowISO={nowISO}
-          />
-        </div>
-      )}
-
       {currentSourceHealth.degraded && (
         <details
           className="group rounded-[var(--app-radius-md)] border px-3 text-[12px] leading-relaxed"
@@ -1501,38 +1492,35 @@ export default function EventsExplorer({
         </div>
       )}
 
-      {/* Results */}
-      <div aria-busy={loadingAll} className="space-y-3">
+      {/* Results. From 1024px a list column stops at 720px so a row's
+          title, meta line and flyer stay one glance apart; the rail above,
+          the calendar and the map keep the full board width. */}
+      <div
+        aria-busy={loadingAll}
+        className={view === "calendar" || view === "map" ? "space-y-3" : LIST_COLUMN}
+      >
       {view === "calendar" && filtered.length > 0 ? (
         <EventAgenda events={filtered} nowMs={now} />
       ) : view === "map" && filtered.length > 0 ? (
         <EventsMap events={mapPins} />
       ) : view === "compact" && filtered.length > 0 ? (
-        // Compact "Rolodex" mode — flat list of 48px rows, no horizon
-        // grouping, no feature card. Capped at 200 since each row is
-        // ~⅕ the height of a feature card. The user is here for
-        // density, not browsing.
-        <ol
-          className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
-          style={{
-            borderColor: "var(--app-border)",
-            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-          }}
-        >
-          {filtered.slice(0, 200).map((e) => (
-            <li key={`${e.slug}-${e.starts_at}`}>
-              <EventCard event={e} variant="compact" nowISO={nowISO} />
-            </li>
-          ))}
-          {filtered.length > 200 && (
-            <li
-              className="px-3 py-3 text-center text-[11px]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Showing the first 200. Tighten filters or switch to the calendar view for the long tail.
-            </li>
-          )}
-        </ol>
+        // Compact mode — one flat ruled list, no horizon grouping. Capped
+        // at 200 rows. The user is here for density, not browsing.
+        <EventRowList
+          events={filtered.slice(0, 200)}
+          live={live}
+          nowISO={nowISO}
+          footer={
+            filtered.length > 200 ? (
+              <li
+                className="px-3 py-3 text-center text-caption"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                Showing the first 200. Tighten filters or switch to the calendar view for the long tail.
+              </li>
+            ) : null
+          }
+        />
       ) : showTonightRollForward ? (
         // Tonight is spent: one plain sentence, then tomorrow evening's
         // first rows under the same filters, so a late visitor gets a plan
@@ -1542,7 +1530,7 @@ export default function EventsExplorer({
             {TONIGHT_ROLL_FORWARD}
           </p>
           <SectionHeading title="Tomorrow evening" size="sm" />
-          <CompactEventList events={tomorrowEvening} live={live} nowISO={nowISO} />
+          <EventRowList events={tomorrowEvening} live={live} nowISO={nowISO} />
         </section>
       ) : filtered.length === 0 ? (
         // Composed empty state — soft category-tinted block, serif line,
@@ -1628,51 +1616,31 @@ export default function EventsExplorer({
         // grouping so the order the user chose is the order they see.
         // Capped at 100 to keep the page snappy; the rest are reachable
         // by tightening filters or switching to the calendar/map view.
-        // grid-cols-1 (minmax(0,1fr)) clamps the mobile track to the container
-        // — a bare `grid` leaves an auto track that a card with a wide
-        // min-content (one long unbroken token) stretches past the page edge
-        // (397px track in a 358px column, Jul-9 mobile audit).
-        <motion.ul layout className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-          <AnimatePresence>
-            {filtered.slice(0, 100).map((e) => (
-              <motion.li
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                key={`${e.slug}-${e.starts_at}`}
+        // Rows change in place when the sort changes: no entrance or layout
+        // animation, so the list never shuffles under a reader's eye.
+        <EventRowList
+          events={filtered.slice(0, 100)}
+          live={live}
+          nowISO={nowISO}
+          footer={
+            filtered.length > 100 ? (
+              <li
+                className="pt-2 text-center text-caption"
+                style={{ color: "var(--app-ink-3)" }}
               >
-                <EventCard event={e} nowISO={nowISO} />
-              </motion.li>
-            ))}
-          </AnimatePresence>
-          {filtered.length > 100 && (
-            <li
-              className="col-span-full pt-2 text-center text-[11px]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Showing the first 100. Use filters or the calendar view to narrow further.
-            </li>
-          )}
-        </motion.ul>
+                Showing the first 100. Use filters or the calendar view to narrow further.
+              </li>
+            ) : null
+          }
+        />
       ) : windowed ? (
         // One chosen window (a date chip or a picked day): a real answer of
         // up to WINDOW_PEEK rows under day subheads, not a two-row peek.
         <div className="space-y-4" data-events-window={day ?? time}>
-          {windowLead && !(showPrimaryLeadBeforeRail && windowLead === primaryLead) ? (
-            <PromotedEvent
-              event={windowLead}
-              visual={eventCardVisual(windowLead)}
-              live={live.has(windowLead.slug)}
-              priorityImage
-              nowISO={nowISO}
-            />
-          ) : null}
           {windowGroups.map((group) => (
             <section key={group.key} className="space-y-2">
               <SectionHeading title={group.label} size="sm" />
-              <CompactEventList events={group.events} live={live} nowISO={nowISO} />
+              <EventRowList events={group.events} live={live} nowISO={nowISO} />
             </section>
           ))}
           {windowRest.length > WINDOW_PEEK && (
@@ -1700,64 +1668,29 @@ export default function EventsExplorer({
         // peek and expands in place; nothing is hidden. Headings carry no
         // counts: counts are supporting detail, never the headline.
         <div className="space-y-4">
-          {horizonGroups.map((g, groupIdx) => {
+          {horizonGroups.map((g) => {
             const isOpen = openGroups.has(g.key);
-            // Every horizon gets one lead. The immediate horizon earns the
-            // full poster; later windows use the restrained glance card, whose
-            // own resolver allows only safe thumbnails or a category seal.
-            const lead = g.events[0] ?? null;
-            const leadVariant = horizonLeadVariant(groupIdx);
-            const leadMovedBeforeRail =
-              groupIdx === 0 && showPrimaryLeadBeforeRail;
-            const leadVisual =
-              lead && leadVariant === "feature" ? eventCardVisual(lead) : null;
-            const rest = lead ? g.events.slice(1) : g.events;
-            const PEEK = leadVariant === "feature" ? 2 : 3;
+            // A section's lead is simply its first row. Every row in every
+            // horizon shares one grammar, so the eye reads one list instead
+            // of a poster, a glance card and a compact list in turn.
             const { totalRest, canExpand } = eventGroupRenderState({
               summaryCount: summary.horizonCounts[g.key],
               loadedCount: g.events.length,
               dataComplete,
               anyFilter: contentFilterActive,
               sourceDegraded: currentSourceHealth.degraded,
-              hasLead: Boolean(lead),
-              peek: PEEK,
+              hasLead: false,
+              peek: HORIZON_PEEK,
             });
-            // When the sole event in the first horizon has already moved
-            // above the interest rail, do not leave an empty "Today"
-            // heading directly above the next horizon. That visual orphan
-            // made Wednesday's first card look mislabeled as today.
-            if (leadMovedBeforeRail && totalRest === 0) return null;
-            const preview = rest.slice(0, PEEK);
-            const expanded = isOpen ? rest.slice(PEEK, EXPANDED_CAP) : [];
+            const visible = g.events.slice(0, isOpen ? EXPANDED_CAP : HORIZON_PEEK);
             const overflow = isOpen ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
             return (
-              <section key={g.key} className="space-y-3">
+              <section key={g.key} className="space-y-2">
                 <SectionHeading title={g.label} />
-                {lead && !leadMovedBeforeRail && leadVariant === "feature" ? (
-                  <PromotedEvent
-                    event={lead}
-                    visual={leadVisual}
-                    live={live.has(lead.slug)}
-                    priorityImage
-                    nowISO={nowISO}
-                  />
-                ) : lead && !leadMovedBeforeRail ? (
-                  <EventCard
-                    event={lead}
-                    variant="glance"
-                    live={live.has(lead.slug)}
-                    nowISO={nowISO}
-                  />
-                ) : null}
                 {totalRest > 0 && (
                   <>
-                    {preview.length > 0 && (
-                      <CompactEventList events={preview} live={live} nowISO={nowISO} />
-                    )}
-                    {expanded.length > 0 && (
-                      <div className="reveal-up">
-                        <CompactEventList events={expanded} live={live} nowISO={nowISO} />
-                      </div>
+                    {visible.length > 0 && (
+                      <EventRowList events={visible} live={live} nowISO={nowISO} />
                     )}
                     {/* Only when the window holds MORE than the default peek —
                         otherwise the peek already shows everything. */}
@@ -1811,43 +1744,31 @@ export default function EventsExplorer({
               {(governmentMeetings.length > 0 || governmentLoadMore) && (
                 <section className="space-y-2">
                   <SectionHeading title="Meetings and hearings" size="sm" />
-                  <ol
-                    className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
-                    style={{ borderColor: "var(--app-border)" }}
-                  >
-                    {governmentMeetings.map((e) => (
-                      <li key={`${e.slug}-${e.starts_at}`}>
-                        <EventCard event={e} variant="compact" nowISO={nowISO} />
-                      </li>
-                    ))}
-                    {governmentLoadMore && (
-                      <li className="p-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => void ensureAllEvents()}
-                          className="tap-44-y px-3 text-[12px] font-semibold underline"
-                          style={{ color: "var(--app-cool)" }}
-                        >
-                          Load all {summary.utilityCount} civic events
-                        </button>
-                      </li>
-                    )}
-                  </ol>
+                  <EventRowList
+                    events={governmentMeetings}
+                    live={live}
+                    nowISO={nowISO}
+                    footer={
+                      governmentLoadMore ? (
+                        <li className="p-2 text-center">
+                          <button
+                            type="button"
+                            onClick={() => void ensureAllEvents()}
+                            className="tap-44-y px-3 text-[12px] font-semibold underline"
+                            style={{ color: "var(--app-cool)" }}
+                          >
+                            Load all {summary.utilityCount} civic events
+                          </button>
+                        </li>
+                      ) : null
+                    }
+                  />
                 </section>
               )}
               {reminderNotices.length > 0 && (
                 <section className="space-y-2">
                   <SectionHeading title="Town reminders" size="sm" />
-                  <ol
-                    className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
-                    style={{ borderColor: "var(--app-border)" }}
-                  >
-                    {reminderNotices.map((e) => (
-                      <li key={`${e.slug}-${e.starts_at}`}>
-                        <EventCard event={e} variant="compact" nowISO={nowISO} />
-                      </li>
-                    ))}
-                  </ol>
+                  <EventRowList events={reminderNotices} live={live} nowISO={nowISO} />
                 </section>
               )}
             </div>
@@ -1909,81 +1830,40 @@ function CalendarOverflowLink({ label }: { label: string }) {
   );
 }
 
-function CompactEventList({
+/**
+ * Ruled event rows on paper: no outer card, border or shadow, a rule under
+ * each row except the last, and no entrance animation, so a filter change
+ * swaps the rows in place.
+ */
+function EventRowList({
   events,
   live,
   nowISO,
+  footer = null,
 }: {
-  events: EventWithMeta[];
+  events: readonly EventWithMeta[];
   live: ReadonlySet<string>;
   nowISO: string;
+  /** A trailing list item (a cap notice or a load-more control). */
+  footer?: ReactNode;
 }) {
-  if (events.length === 0) return null;
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.05 }
-    }
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 15, scale: 0.98 },
-    show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring" as const, bounce: 0, duration: 0.4 } }
-  };
-
+  if (events.length === 0 && !footer) return null;
   return (
-    <motion.ol
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
-      style={{
-        borderColor: "var(--app-border)",
-        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-      }}
+    <ol
+      data-event-row-list
+      className={footer ? undefined : "[&>li:last-child_article]:border-b-0"}
     >
       {events.map((event) => (
-        <motion.li variants={item} key={`${event.slug}-${event.starts_at}`}>
+        <li key={`${event.slug}-${event.starts_at}`}>
           <EventCard
             event={event}
             variant="compact"
             live={live.has(event.slug)}
             nowISO={nowISO}
           />
-        </motion.li>
+        </li>
       ))}
-    </motion.ol>
-  );
-}
-
-function PromotedEvent({
-  event,
-  visual,
-  priorityImage,
-  live,
-  nowISO,
-}: {
-  event: EventWithMeta;
-  visual: EventCardVisual | null;
-  priorityImage: boolean;
-  live: boolean;
-  nowISO: string;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: "spring", bounce: 0.1, duration: 0.5 }}
-    >
-      <EventCard
-        event={event}
-        variant="feature"
-        live={live}
-        nowISO={nowISO}
-        priorityImage={priorityImage}
-        visual={visual ?? undefined}
-      />
-    </motion.div>
+      {footer}
+    </ol>
   );
 }
