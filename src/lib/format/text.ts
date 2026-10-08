@@ -131,8 +131,9 @@ export function cleanBlurbFragment(blurb: string): string {
  */
 const ADDRESS_LOCALITIES =
   "Frederick|Brunswick|Burkittsville|Emmitsburg|Middletown|Mount\\s+Airy|Myersville|New\\s+Market|Rosemont|Thurmont|Walkersville|Woodsboro|Urbana";
-const ROOM_BEFORE_LOCALITY = new RegExp(
-  `\\b((?:Conference\\s+)?Room|Suite|Floor)\\s+([A-Z0-9][A-Z0-9-]{0,5})(?=(?:${ADDRESS_LOCALITIES})\\b)`,
+const SUBLOCATION = "(?:Conference\\s+)?Room|Suite|Floor|Entrance|Building|Unit";
+const SUBLOCATION_BEFORE_LOCALITY = new RegExp(
+  `\\b(${SUBLOCATION})\\s+([A-Z0-9][A-Z0-9-]{0,5})(?=(?:${ADDRESS_LOCALITIES})\\b)`,
   "g",
 );
 
@@ -146,16 +147,15 @@ export function formatAddress(raw: string): string {
       /\b(Street|Avenue|Road|Drive|Lane|Boulevard|Court|Place|Terrace|Circle|Highway|Parkway|Pike|Way)(?=[A-Z])/g,
       "$1, ",
     )
-    // An address followed by a room needs a separator even when the feed
-    // supplied ordinary whitespace: "140 W Patrick Street Conference Room".
+    // Separate the street from a facility sublocation, including entrance
+    // and building identifiers supplied by civic calendars.
     .replace(
-      /\b(Street|Avenue|Road|Drive|Lane|Boulevard|Court|Place|Terrace|Circle|Highway|Parkway|Pike|Way)(?=\s+(?:Conference\s+)?Room\b)/g,
+      new RegExp(`\\b(Street|Avenue|Road|Drive|Lane|Boulevard|Court|Place|Terrace|Circle|Highway|Parkway|Pike|Way)(?=\\s+(?:${SUBLOCATION})\\b)`, "g"),
       "$1,",
     )
-    // CivicEngage can concatenate a room identifier directly into the city:
-    // "Conference Room CFrederick". The locality allowlist keeps this narrow
-    // enough that a real venue word ending in a capital is left untouched.
-    .replace(ROOM_BEFORE_LOCALITY, "$1 $2, ")
+    // A civic facility identifier can run directly into the postal city.
+    // Match known localities only, so "Entrance Barlow" is not split.
+    .replace(SUBLOCATION_BEFORE_LOCALITY, "$1 $2, ")
     // State code mashed into ZIP: "MD21701".
     .replace(/\b(MD|DC|VA|WV|PA)(\d{5})\b/g, "$1 $2")
     .replace(/\s+/g, " ")
