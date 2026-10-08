@@ -21,9 +21,9 @@ describe("TomorrowPreview", () => {
     );
 
     expect(html).toContain('aria-label="Tomorrow, Wednesday"');
-    expect(html).toContain(">Tomorrow, Wednesday</h2>");
+    expect(html).toContain(">Tomorrow, Wednesday</h3>");
     expect(html.indexOf("The forecast high is 64°")).toBeGreaterThan(
-      html.indexOf("Tomorrow, Wednesday</h2>"),
+      html.indexOf("Tomorrow, Wednesday</h3>"),
     );
     expect(html).toContain("<ul><li>Game Night</li><li>Bluegrass Jam</li></ul>");
     expect(html).toContain('href="/events"');
@@ -37,8 +37,22 @@ describe("TomorrowPreview", () => {
         <li>Wednesday Jam</li>
       </TomorrowPreview>,
     );
-    expect(html).toContain(">Later today, Wednesday</h2>");
+    expect(html).toContain(">Later today, Wednesday</h3>");
     expect(html).toContain('data-today-coming-day="later-today"');
+  });
+
+  it("sits under the events chapter's h2 as an h3 in the item register", () => {
+    // The chapter's h2 ("Tonight and tomorrow") names the late hours, so a
+    // second h2 here would flatten the outline a screen reader navigates.
+    const html = renderToStaticMarkup(
+      <TomorrowPreview day={comingDay(LATE_TUESDAY)} weatherSentence={null} rowCount={1}>
+        <li>Game Night</li>
+      </TomorrowPreview>,
+    );
+    expect(html).not.toContain("<h2");
+    expect(html).toMatch(/<h3 class="text-title-sm[^"]*"[^>]*>Tomorrow, Wednesday<\/h3>/);
+    expect(html).toContain('aria-label="See all: Tomorrow, Wednesday"');
+    expect(html).not.toMatch(/text-\[\d/);
   });
 
   it("points to the full listings with one link when no row can be confirmed", () => {

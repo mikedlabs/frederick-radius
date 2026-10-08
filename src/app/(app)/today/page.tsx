@@ -90,6 +90,7 @@ import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
 import AppTransitionLink from "@/components/nav/AppTransitionLink";
 import PageChapter from "@/components/ui/PageChapter";
+import SectionHeading from "@/components/ui/SectionHeading";
 import styles from "@/components/today/TodayLayout.module.css";
 import {
   TODAY_FAIR_PROMOTION_SLUG,
@@ -362,13 +363,20 @@ export default async function HomePage() {
       {/* The chapter is named by the one daypart clock: "Today's events",
           then "Tonight" from the evening daypart, when the masthead says
           Tonight too. After 9 PM it covers what is still on and the coming
-          day, which leads on its own once tonight is done. Its heading is the
-          section's only heading; the program below adds none of its own. */}
+          day, which leads on its own once tonight is done. The name is a real
+          h2 in the same register as the place heading beside it, so the
+          column reads by type and heading navigation reaches it; the
+          chapter's small register would only repeat it, so the layout hides
+          it here. The program adds no h2 of its own, and the coming day sits
+          under this one as an h3. */}
       <PageChapter
         label={dayProgramLabel(now)}
         variant="plain"
         className={styles.events}
       >
+        <div className="mb-3">
+          <SectionHeading title={dayProgramLabel(now)} />
+        </div>
         {/* A second civic moment still matters during the Fair campaign. Keep
             it with the day's program so it survives without competing with
             the place choices above. */}

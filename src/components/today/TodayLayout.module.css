@@ -144,6 +144,14 @@
   margin: 0;
 }
 
+/* The events column opens with its own h2 in the place heading's register,
+   named by the same daypart label as the chapter. The chapter's register
+   would print that name a second time, so it is hidden here. The group keeps
+   its accessible name. */
+.events :global(.content-chapter__register) {
+  display: none;
+}
+
 .places [data-today-section-heading] p {
   font-size: 12px;
   line-height: 1.4;

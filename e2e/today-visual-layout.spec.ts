@@ -124,10 +124,39 @@ for (const width of [320, 375, 390, 430, 1366]) {
     // The events chapter is named by the daypart: "Today's events", then
     // "Tonight" from the evening daypart.
     const labels = expectedDayProgramLabels();
-    const events = page.getByRole("group", {
-      name: new RegExp(`^(?:${labels.join("|")})$`),
-    });
+    const labelName = new RegExp(`^(?:${labels.join("|")})$`);
+    const events = page.getByRole("group", { name: labelName });
     await expect(events).toHaveCount(1);
+    // The column is named by a real h2 in the same register as the place
+    // heading beside it, so heading navigation reaches the events and the two
+    // columns read by type. The chapter's caps register is not shown.
+    const eventsHeading = events.getByRole("heading", { level: 2, name: labelName });
+    await expect(eventsHeading).toHaveCount(1);
+    await expect(eventsHeading).toBeVisible();
+    await expect(events.locator(".content-chapter__register")).toBeHidden();
+    const placesHeading = page
+      .locator('[aria-label="Places for your area"]')
+      .getByRole("heading", { level: 2 })
+      .first();
+    await expect(placesHeading).toBeVisible({ timeout: 15_000 });
+    const headingType = (locator: typeof eventsHeading) => locator.evaluate((element) => ({
+      size: parseFloat(getComputedStyle(element).fontSize),
+      caps: getComputedStyle(element).textTransform === "uppercase",
+    }));
+    const eventsType = await headingType(eventsHeading);
+    expect(eventsType.caps).toBe(false);
+    expect(eventsType.size).toBeGreaterThanOrEqual(18);
+    // The place shelf's empty state uses Today's own heading, which steps up
+    // a pixel from 640px, so allow that one pixel.
+    expect(Math.abs(eventsType.size - (await headingType(placesHeading)).size))
+      .toBeLessThanOrEqual(1);
+    if (width >= 640) {
+      // Side by side, the two column headings share a top line. The place
+      // heading's See all link may center its title a few pixels lower.
+      const eventsHeadingBox = (await eventsHeading.boundingBox())!;
+      const placesHeadingBox = (await placesHeading.boundingBox())!;
+      expect(Math.abs(eventsHeadingBox.y - placesHeadingBox.y)).toBeLessThanOrEqual(4);
+    }
     const placesBox = (await places.boundingBox())!;
     const eventsBox = (await events.boundingBox())!;
     expect(weatherBox.y).toBeGreaterThanOrEqual(placesBox.y + placesBox.height);

@@ -54,6 +54,35 @@ describe("Today's day program rows", () => {
   });
 });
 
+describe("Today's events chapter heading", () => {
+  const chapter = slice(todayPage, "<PageChapter", "</PageChapter>");
+
+  it("opens the column with a real h2 named by the daypart, in the place heading's register", () => {
+    // SectionHeading is the h2 the place shelf beside it uses, so both columns
+    // read by type at the same size instead of an h2 beside a caps eyebrow.
+    expect(chapter).toContain("label={dayProgramLabel(now)}");
+    expect(chapter).toContain("<SectionHeading title={dayProgramLabel(now)} />");
+    const heading = chapter.indexOf("<SectionHeading");
+    expect(heading).toBeLessThan(chapter.indexOf("<MomentSpotlight"));
+    expect(heading).toBeLessThan(chapter.indexOf("{whatsOn}"));
+    expect(todayPage).toContain(
+      'import SectionHeading from "@/components/ui/SectionHeading";',
+    );
+  });
+
+  it("hides the chapter register that would repeat the heading", () => {
+    expect(
+      slice(layoutCss, ".events :global(.content-chapter__register) {", "}"),
+    ).toContain("display: none;");
+  });
+
+  it("adds no h2 of its own inside the program", () => {
+    expect(whatsOn).not.toContain("<h2");
+    expect(whatsOn).not.toContain("<SectionHeading");
+    expect(whatsOn).not.toContain("TodaySectionHeading");
+  });
+});
+
 describe("Today's day program", () => {
   it("leads the rows with the pin map and numbers rows from the same plan", () => {
     const map = whatsOn.indexOf("<TonightMap");
