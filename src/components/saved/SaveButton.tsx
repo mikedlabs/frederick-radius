@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useIsSaved, useToggleSave, useMounted, useSavedList } from "@/hooks/useSaved";
+import { useIsSaved, useToggleSave, useMounted, useSavedList, useSetEventSaved, useEventSavedState } from "@/hooks/useSaved";
 import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { Bookmark } from "lucide-react";
 import { haptic } from "@/lib/haptics";
@@ -41,9 +41,12 @@ export default function SaveButton({
   const placeFollowed = useIsFollowed(refType === "place" ? refId : "");
   const failureDescriptionRef = useRef<string | null>(null);
   const togglePlace = useToggleFollow(refId, "icon", (description) => { failureDescriptionRef.current = description; });
-  const legacyIsSaved = useIsSaved(refType, refId);
+  const legacyIsSaved = useIsSaved(refType, refId, refType !== "event");
   const legacyToggle = useToggleSave(refType, refId);
-  const isSaved = refType === "place" ? placeFollowed : legacyIsSaved;
+  const setEventSaved = useSetEventSaved(refId);
+  const eventSavedState = useEventSavedState(refType === "event" ? refId : null);
+  const eventSaveUnavailable = refType === "event" && eventSavedState === null;
+  const isSaved = refType === "place" ? placeFollowed : refType === "event" ? eventSavedState === true : legacyIsSaved;
   // The auth-aware place toggle may need one lightweight session lookup before
   // it knows whether to write locally or remotely. Reflect the tap in this
   // button immediately rather than leaving the bookmark visually unchanged
@@ -83,10 +86,10 @@ export default function SaveButton({
     if (busyRef.current) return false;
     busyRef.current = true;
     setBusy(true);
-    setOptimisticSaved(!wasSaved);
+    if (refType !== "event") setOptimisticSaved(!wasSaved);
     failureDescriptionRef.current = null;
     try {
-      const nextSaved = await (refType === "place" ? togglePlace() : legacyToggle());
+      const nextSaved = await (refType === "place" ? togglePlace() : refType === "event" ? setEventSaved(!wasSaved) : legacyToggle());
       // A full followed-place list refuses an addition without throwing.
       if (failureDescriptionRef.current !== null || nextSaved === wasSaved) throw new Error("Save state did not change");
       return true;
@@ -182,18 +185,20 @@ export default function SaveButton({
           });
         }
       }}
-      disabled={busy}
+      disabled={busy || eventSaveUnavailable}
       aria-busy={busy}
-      aria-pressed={renderedSaved}
+      aria-pressed={eventSaveUnavailable ? undefined : renderedSaved}
       // `label` arrives as "Save {name}"; strip the verb so the aria reads
       // cleanly ("Save {name}" / "Remove {name} from Saved") instead of the
       // doubled "Add Save {name} to Saved".
       aria-label={
-        renderedSaved
+        eventSaveUnavailable
+          ? `Saved state unavailable for ${label.replace(/^Save\s+/, "")}`
+          : renderedSaved
           ? `Remove ${label.replace(/^Save\s+/, "")} from Saved`
           : `Save ${label.replace(/^Save\s+/, "")}`
       }
-      title={renderedSaved ? "Saved" : "Save"}
+      title={eventSaveUnavailable ? "Saved state unavailable" : renderedSaved ? "Saved" : "Save"}
       className={barLabel
         ? "tap-44 relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[11px] font-semibold leading-none transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
         : "tap-44 relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92]"}
@@ -210,7 +215,7 @@ export default function SaveButton({
         fill={renderedSaved ? "currentColor" : "none"}
         style={{ transitionTimingFunction: "var(--app-ease-spring)" }}
       />
-      {barLabel ? <span>{renderedSaved ? "Saved" : barLabel}</span> : null}
+      {barLabel ? <span>{eventSaveUnavailable ? "Unavailable" : renderedSaved ? "Saved" : barLabel}</span> : null}
       {celebrate && (
         <span
           aria-hidden

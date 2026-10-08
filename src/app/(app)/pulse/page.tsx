@@ -65,7 +65,7 @@ import {
 } from "@/lib/live/roadIntelligenceModel";
 import { getOfficialSignalsSnapshot } from "@/lib/live/officialSignals";
 import { isLocallyRelevantCivicAlert } from "@/lib/integrations/official-alert-feeds";
-import { sourceDisplayState } from "@/lib/live/currentSituationModel";
+import { isUnexpiredWeatherAlert, sourceDisplayState } from "@/lib/live/currentSituationModel";
 import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
 import PulseBoard, {
   type PulseTile,
@@ -89,6 +89,7 @@ import {
   selectPulseLeadCandidate,
 } from "@/lib/pulse/signal-priority";
 import { aqiObservationLabel, aqiParameterLabel, hasObservationForAlert, isElevatedAirQualityPeriodActive, summarizeAirQualityAlert } from "@/lib/air-quality";
+import { deriveCountyStatus } from "@/lib/pulse/county-status-model";
 import { PRODUCT_NAMES } from "@/lib/product-names";
 
 export const metadata: Metadata = {
@@ -495,13 +496,11 @@ export default async function PulsePage() {
     .filter((area) => area.customers_out > 0)
     .sort((a, b) => b.customers_out - a.customers_out);
 
-  // Only count NWS alerts that haven't already expired. The feed
-  // includes alerts with `ends_at` in the past until the cache cycles,
-  // so we filter here to avoid double-counting a tornado watch the
-  // page still knows about but the weather has moved past.
+  // Drop known expired alerts still retained by the feed cache. An unreadable
+  // expiry remains active, matching the shared county-status projection.
   const nowMs = marcNow.getTime();
   const activeAlerts = alertResult.alerts
-    .filter((a) => !a.ends_at || Date.parse(a.ends_at) > nowMs)
+    .filter((alert) => isUnexpiredWeatherAlert(alert, nowMs))
     .sort(compareAlertPriority);
   const officialCivicAlerts = officialSignals.civic.alerts
     .filter(isLocallyRelevantCivicAlert)
@@ -2187,6 +2186,7 @@ export default async function PulsePage() {
 
   // ── Hero + ticker for the board ──────────────────────────────────
   const hero: PulseHero = {
+    countyStatus: deriveCountyStatus(situation, roadIntelligence, officialSignals.civic),
     allClear,
     operational: !leadCandidate && hasOperational,
     degraded: urgentDegraded,

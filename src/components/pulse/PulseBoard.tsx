@@ -13,6 +13,7 @@ import {
   type CSSProperties,
 } from "react";
 import {
+  Activity,
   AlertTriangle,
   ArrowRight,
   Check,
@@ -41,6 +42,7 @@ import Sheet from "@/components/ui/Sheet";
 import PulseFreshness, {
   PulseStatusLabel,
 } from "@/components/pulse/PulseFreshness";
+import { countyStatusLabel, type CountyStatusSummary } from "@/lib/pulse/county-status";
 import { track } from "@/lib/track";
 import { Button } from "@/components/ui/Button";
 import styles from "./PulseBoard.module.css";
@@ -120,6 +122,8 @@ const TONE_WORD: Record<PulseHeroChip["tone"], string> = {
 };
 
 export type PulseHero = {
+  /** The shared checks also consumed by the header indicator. */
+  countyStatus?: CountyStatusSummary;
   allClear: boolean;
   /** A current service or access change exists, but no urgent condition leads. */
   operational?: boolean;
@@ -168,11 +172,11 @@ export function pulseStatusWord({
   tone: PulseHeroChip["tone"];
 }): string {
   if (operational && !hasLead) return "Live update";
-  if (degraded && !hasLead) return "Partial data";
+  if (degraded && !hasLead) return "Unknown";
   // Not "Checked": PulseFreshness prints "Checked Nm ago" in the same masthead
   // row, and the same word twice in one line read as a stutter. This word's
   // job is the county's state; the freshness stamp owns the checking.
-  if (allClear) return "All quiet";
+  if (allClear) return "Clear in checked feeds";
   if (!hasLead) return "Local issue";
   if (tone === "danger") return "Urgent";
   if (tone === "warning") return "Advisory";
@@ -980,7 +984,10 @@ export default function PulseBoard({
 
   const degraded = hero.degraded ?? false;
   const heroTone = hero.tone ?? (hero.allClear ? "positive" : degraded ? "warning" : "danger");
-  const heroColor = CHIP_TONE[heroTone];
+  const statusTone = hero.countyStatus
+    ? hero.countyStatus.level === "Urgent" ? "danger" : hero.countyStatus.level === "Advisory" ? "warning" : hero.countyStatus.level === "Clear" ? "positive" : "cool"
+    : heroTone;
+  const heroColor = CHIP_TONE[statusTone];
   const attentionChips = pulseAttentionChips(chips, {
     allClear: hero.allClear,
     showAlertData: false,
@@ -1000,7 +1007,7 @@ export default function PulseBoard({
   const quietSignals = displayGroups.quiet;
   const attentionCount = attention.length + attentionChips.length;
   const hasAttention = attentionCount > 0;
-  const statusWord = pulseStatusWord({
+  const statusWord = hero.countyStatus ? countyStatusLabel(hero.countyStatus.level) : pulseStatusWord({
     allClear: hero.allClear,
     degraded,
     hasLead: Boolean(lead),
@@ -1015,7 +1022,9 @@ export default function PulseBoard({
         <div className={styles.briefingTop}>
           <div className={styles.status} style={{ "--pulse-tone": heroColor } as CSSProperties}>
             <span aria-hidden className={styles.statusIcon}>
-              {hero.allClear ? (
+              {hero.countyStatus ? (
+                <Activity className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-ink-2)" }} />
+              ) : hero.allClear && !degraded ? (
                 <Check className="h-5 w-5" strokeWidth={2.25} />
               ) : hero.operational && !lead ? (
                 <Clock className="h-5 w-5" strokeWidth={2} />
@@ -1028,7 +1037,8 @@ export default function PulseBoard({
               <PulseStatusLabel
                 renderedAt={hero.renderedAt}
                 status={statusWord}
-                canClaimCurrent={hero.allClear && !degraded}
+                countyStatus={hero.countyStatus}
+                canClaimCurrent={hero.countyStatus ? hero.countyStatus.level === "Clear" : hero.allClear && !degraded}
                 color={heroColor}
               />
             </span>
@@ -1037,6 +1047,12 @@ export default function PulseBoard({
         </div>
         <h1 className={styles.headline}>{hero.line}</h1>
         <p className={styles.summary}>{hero.sub}</p>
+        {hero.countyStatus && (
+          <p className="mt-3 text-[12px]">
+            County status summarizes available shared weather, school, road, outage, fire and rescue, air-quality, and civic checks.
+            {hero.countyStatus.ok ? " Other conditions keep their own source checks below." : " Some shared checks are unavailable. Other conditions keep their own source checks below."}
+          </p>
+        )}
         {(hero.leadMeta || lead) && (
           <div className={styles.briefingAction}>
             {hero.leadMeta && (

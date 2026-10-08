@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { countyStatusSnapshotLabel, COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS, type CountyStatusSummary } from "@/lib/pulse/county-status";
 import { useRouter } from "next/navigation";
 
 export const PULSE_AUTO_REFRESH_MS = 2 * 60_000;
@@ -55,17 +56,31 @@ export function pulseStatusForSnapshot(
     : status;
 }
 
-export function PulseStatusLabel({
-  renderedAt,
-  status,
-  canClaimCurrent,
-  color,
-}: {
+type PulseStatusLabelProps = {
   renderedAt: number;
   status: string;
   canClaimCurrent: boolean;
   color: string;
-}) {
+  countyStatus?: CountyStatusSummary;
+};
+
+export function PulseStatusLabel(props: PulseStatusLabelProps) {
+  // Every supplied summary owns a fresh clock, including a new copy of the
+  // same cached assembly. Only the inner initializer reads the current time.
+  const [owner, setOwner] = useState(() => ({ summary: props.countyStatus, generation: 0 }));
+  if (owner.summary !== props.countyStatus) {
+    setOwner({ summary: props.countyStatus, generation: owner.generation + 1 });
+  }
+  return <PulseStatusLabelSnapshot key={`${props.renderedAt}:${owner.generation}`} {...props} />;
+}
+
+function PulseStatusLabelSnapshot({
+  renderedAt,
+  status,
+  canClaimCurrent,
+  color,
+  countyStatus,
+}: PulseStatusLabelProps) {
   // Derive the first value during the server render too. A cached stale page
   // must not ship "All quiet" to reader mode and then correct itself only
   // after hydration. The warning suppression covers the narrow case where
@@ -75,10 +90,12 @@ export function PulseStatusLabel({
   useEffect(() => {
     const tick = () => setNow(Date.now());
     const id = window.setInterval(tick, 30_000);
-    return () => window.clearInterval(id);
-  }, [renderedAt]);
+    const remaining = countyStatus ? Date.parse(countyStatus.lastUpdated) + COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS - Date.now() : Number.NaN;
+    const expiry = Number.isFinite(remaining) && remaining > 0 ? window.setTimeout(tick, remaining) : undefined;
+    return () => { window.clearInterval(id); if (expiry !== undefined) window.clearTimeout(expiry); };
+  }, [renderedAt, countyStatus]);
 
-  const label = pulseStatusForSnapshot(
+  const label = countyStatus ? countyStatusSnapshotLabel(countyStatus, now) : pulseStatusForSnapshot(
     status,
     canClaimCurrent,
     renderedAt,
@@ -88,6 +105,7 @@ export function PulseStatusLabel({
 
   return (
     <span
+      data-pulse-status-level
       suppressHydrationWarning
       aria-live="polite"
       className="mt-0.5 block text-[12px] font-semibold"
