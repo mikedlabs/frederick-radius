@@ -1,3 +1,5 @@
+> Superseded. Current: CLAUDE.md and docs/VISUAL_FIRST.md; the open items were carried to docs/BACKLOG.md on 2026-10-08. The UX-18 owner decision (no desktop "In view" side panel on the map) stays in force and is also recorded in src/components/map/AppMapClient.tsx. History, not instructions.
+
 # UX Redesign 2026-07 — reconciled master plan
 
 Source: the owner's commissioned review (Frederick_Radius_UX_Review_July_2026.docx,
@@ -12,6 +14,15 @@ by a 4-agent code audit with file:line evidence — nothing is assumed from the
 review's observations alone, because 10 PRs shipped the same day the review
 was written and several items were already partly built.
 
+## Status, 2026-10-08
+
+Each UX item below now carries a dated status line, re-checked against the
+code on 2026-10-08. The PARTIAL, DONE and MISSING words in the headings are
+the July 10 statuses and are history. Items marked NOT RE-CHECKED keep their
+July status until someone verifies them. The open items (UX-08, UX-14 with
+UX-23, UX-20 and UX-22) were carried to `docs/BACKLOG.md`. The UX-18 owner
+decision (no desktop "In view" side panel on the map) stays in force.
+
 ## Topline
 
 - 1 item effectively DONE (UX-16 — onboarding is already progressive).
@@ -22,6 +33,8 @@ was written and several items were already partly built.
   ranked loaders, trust language, and card systems — but /today doesn't lead
   with an answer, three surfaces speak three time/scope dialects, and the
   Ask input is literally an orphaned component with zero importers.
+  (SUPERSEDED 2026-10-08: `TodayAsk` is now mounted on /today, and
+  `src/lib/scope.ts` and `src/lib/timeLens.ts` unified scope and time words.)
 
 ## Execution batches (review sprints -> shippable PRs)
 
@@ -31,7 +44,7 @@ was written and several items were already partly built.
 3. B1c UX-05 (M): events date ribbon default + 6 recommended before the list.
 4. B1d UX-01 phase 1 (M): mount the orphaned Ask input on /today + slim the
    first paint (five time-appropriate quick choices; merge the in-flight
-   want-answer panel branch).
+   want-answer panel branch). (DONE: `TodayAsk` is mounted on /today.)
 5. B1e UX-11 (S): event canceled/postponed/ongoing display rules.
 
 **Batch 2 — One context (Sprint 1/2 bridge)**
@@ -67,6 +80,8 @@ system answers a common question, explains it, and helps the user act.
 
 ### UX-01 — PARTIAL · effort L
 
+**Status 2026-10-08:** PHASE 1 DONE, REST SUPERSEDED. `TodayAsk` is mounted on /today as the compact Find launcher (`src/app/(app)/today/page.tsx`). The first-viewport target at the end of this item (Ask under a sky hero, a mono data line, three Best bets) is superseded by the Today target in `docs/VISUAL_FIRST.md` ("Surface by surface") and by CLAUDE.md, which puts Ask at `/ask` with a compact launcher on Today. /today no longer imports SkyHero.
+
 **What exists (verified):** Current /today spine (src/app/(app)/today/page.tsx render order): CivicAlerts lead slot (193-197), MomentSpotlight (202-206), one-line welcome (226-231), SkyHero+TodayCard weather hero (233-237), TonightSolo single event card (243-245, component 618-665), masthead plate MastheadTitle/MastheadNotes/ShareTodayButton (257-294), OnNowStrip live chips (304-306), CravingStrip 'I want to…' accordion + LocationPrime (330-339; src/components/now/CravingStrip.tsx:44-80), TomorrowPreview late-only (345-347), daypart-swapped CuratedPicks+WhatsOn (358-374; WhatsOn feature + up-to-8 rail + '+N more' stub, RAIL_MAX=8 at 746), FromYourSaved (382), GoldenHourCard (395), KeysScore (401-403), OnNowBand happy-hour/deals/markets/parking (405-416), PoolsToday (422), TasteNudge (429), BetaIntroCard (466-468), collapsed 'The full briefing' (474) containing VisitorStayPrompt (575) and collapsed 'More for today' (581-596: FoodTruckToday, PartnerAppsRow, WorthALook). Versus the target: (1) context row PARTIAL — date/time/weather live in the big SkyHero card, alerts sit above it, area is absent; (2) Ask input MISSING on the page — TodayAsk + AskFrederick → /api/ask are fully built but orphaned (src/components/today/TodayAsk.tsx:15-27 has zero importers; AskFrederick.tsx:70 says TodayAsk is 'its only current home'); quick choices exist as the time-aware CravingStrip (defaultWant, CravingStrip.tsx:12-20) but as a 7-main accordion, not five chips; (3) three ranked cross-domain Best bets MISSING — TonightSolo is one event, the WIP WantAnswerPanel (branch claude/want-answer-panel, 810657c8) is per-craving; (4) 'Tonight or next' PARTIAL — WhatsOn caps at 8 tiles not 3; (5) plans DONE-ish — CuratedPicks promotes 4 collections (CuratedPicks.tsx:26-31) and /plan PlanBuilder exists (src/app/(app)/plan/page.tsx); (6) collapse PARTIAL — two collapsed sections exist but deals/pools/parking/sports (OnNowBand, PoolsToday, KeysScore) render top-level. First viewport today = welcome line + sky hero + tonight card + masthead, not context-row + Ask + 3 recs.
 
 **Seams:** `src/app/(app)/today/page.tsx`, `src/components/today/TodayAsk.tsx`, `src/components/ask/AskFrederick.tsx`, `src/components/now/CravingStrip.tsx`, `src/components/now/WantsAccordion.tsx`, `src/components/today/SkyHero.tsx`, `src/components/today/TodayCard.tsx`, `src/components/today/CuratedPicks.tsx`, `src/lib/today/tonight.ts`, `src/lib/want-answer.ts (WIP branch)`, `src/lib/loaders/unifiedEvents.ts`
@@ -75,6 +90,8 @@ system answers a common question, explains it, and helps the user act.
 
 
 ### UX-02 — PARTIAL · effort L
+
+**Status 2026-10-08:** DONE. `src/lib/scope.ts` is the one browsing scope, and `src/components/nav/LocationChip.tsx` reads it; CLAUDE.md makes the shared header location control the only scope control.
 
 **What exists (verified):** Five disjoint scope mechanisms, none shared: (1) home muni — localStorage fr:home-muni:v1 mirrored to fr_home_muni cookie (src/lib/personalize.ts:26,49-72), written by SetTownInline (category/SetTownInline.tsx:42) and PreferencesPanel, read server-side by /category/[slug] (page.tsx:77, C2 ranking) and /open-now (page.tsx:49), client-side by MastheadTitle.tsx:25, SavedList, CategoryView; (2) TopBar LocationChip is navigational only — towns are <Link href=/m/<slug>> and geolocation just relabels the chip, it sets no scope (src/components/nav/LocationChip.tsx:148-174); (3) /nearby takes ?town= + an edge IP-geo seed (src/app/(app)/nearby/page.tsx:44-68); (4) map Where pane is ephemeral component state, camera-only, never persisted or URL-encoded (src/components/map/MapDock.tsx:244 whereSel useState, 313, 583-620); (5) events board has its own client-parsed ?m= town filter (src/app/(app)/events/(list)/page.tsx:152,322-324; boardCaption.ts countLine townName). Device fix is a sixth axis: useGeolocation caches a 30-min fix in sessionStorage shared by LocationPrime/craving tiles/map locate (src/hooks/useGeolocation.ts:29-49). /today has no area scope beyond the masthead's home-town cover line. Nothing reads one 'near me / town / Downtown / county' value.
 
@@ -85,6 +102,8 @@ system answers a common question, explains it, and helps the user act.
 
 ### UX-03 — PARTIAL · effort M
 
+**Status 2026-10-08:** DONE. `src/lib/timeLens.ts` owns the time-lens words, and both `src/components/map/dockCaption.ts` and `src/components/event/boardCaption.ts` import it.
+
 **What exists (verified):** Two divergent time models exist and two surfaces have none. Map: TimeMode = 'now'|'tonight'|'weekend'|'all' on the ?t= param with labels 'Happening now / Tonight / This weekend / This week' (src/components/map/dockCaption.ts:12-22; MapDock.tsx:306-307 writes ?t, 373 jump-to-weekend); it also has a smart default (defaultTimeMode, dockCaption.ts:36-42). Events: TimeKey = 'all'|'today'|'weekend'|'week' on ?lens= plus ?tod= daypart and a real custom-day picker ?d=YYYY-MM-DD, with WHEN_PRESETS labels 'Today / Tonight / This weekend / Later this week' (src/components/event/boardCaption.ts:18,62-74,102-110; params parsed client-side per events/(list)/page.tsx:152). Mismatches: different param names (?t vs ?lens), different keys ('now' has no events equivalent; 'today'/'week' have no map equivalent; 'all' label differs: 'This week' vs 'Anytime'), Tonight is a preset on events (lens=today+tod=evening) but a first-class key on the map. /today has no user-facing lens — daypart() only reorders sections (src/lib/daypart.ts:12-25, sectionOrder). Ask/search has no time dimension (SearchOverlay quick answers, findQuickAnswers). 'Tomorrow' exists nowhere as a lens (only the late-night TomorrowPreview, TomorrowPreview.tsx:25); 'Custom' exists only on events via ?d.
 
 **Seams:** `src/lib/ (new timeLens.ts shared pure lib)`, `src/components/map/dockCaption.ts + dockCaption.spec.ts`, `src/components/map/MapDock.tsx + BrowseMapClient.tsx`, `src/components/event/boardCaption.ts + boardCaption.spec.ts`, `src/components/event/EventsBoardDock.tsx`, `src/lib/daypart.ts`, `src/app/(app)/today/page.tsx (if /today gains a lens row)`
@@ -93,6 +112,8 @@ system answers a common question, explains it, and helps the user act.
 
 
 ### UX-04 — PARTIAL · effort L
+
+**Status 2026-10-08:** NOT RE-CHECKED. The planned `src/lib/ask/parse.ts` was never created; Ask has since been rebuilt as the `/ask` workspace, so re-scope against that before building.
 
 **What exists (verified):** The reproduced dead-end is structural, not a bug. Ask (src/components/ask/AskFrederick.tsx:24-58) POSTs freeform text to /api/ask; askFrederick (src/lib/ask/answer.ts:159-231) does keyword retrieval via search(q,18) plus grounded LLM prose — no intent model, no editable chips, no clarifying question. The search overlay's 'Direct answer' block is substring matching over 6 QUICK_INTENTS (src/lib/answers/intents.ts:81-93): 'tonight' inside 'somewhere to eat outside near downtown tonight' trips the generic 'Happening tonight' → /today?t=tonight link, while the ranked core (src/lib/search.ts:177-256) parses no time, no location ('downtown' matches nothing), no constraint ('outside' is not in the 3 INTENT profiles at search.ts:58-81, which only cover kid/rainy/date) — so zero place hits and the footer announces 'No matches' (src/components/search/SearchOverlay.tsx:588-594). Nothing keeps recognized time/location after the failed match. The exact loosen-constraint-chips pattern the review asks for ALREADY EXISTS but only on /events' zero state (EventsExplorer.tsx:387-402 builds per-facet `relaxations`, rendered at :525-553). The never-zero answer shape also exists in-flight: want-answer.ts on branch claude/want-answer-panel (WIP 810657c8) partitions a craving into hero + also-open + opens-later, but is keyed to fixed craving/meal keys, not parsed language.
 
@@ -103,6 +124,8 @@ system answers a common question, explains it, and helps the user act.
 
 ### UX-05 — PARTIAL · effort M
 
+**Status 2026-10-08:** PARTIAL, NOT FULLY RE-CHECKED. The owner-editable `src/data/featured-events.json` exists and `src/lib/events/featured.ts` reads it. The date ribbon and remembered town were not re-checked.
+
 **What exists (verified):** The date presets the review asks for exist, one tap deep: WHEN_PRESETS = Today / Tonight / This weekend / Later this week (src/components/event/boardCaption.ts:63-74), plus 'Pick a day' (7-day EventWeekRibbon + native date input, EventsBoardDock.tsx:654-672) — all inside the dock's When pane behind the caption-bar tab (EventsBoardDock.tsx:394-417). No 'Tomorrow' preset. Default page state (src/app/(app)/events/(list)/page.tsx:160-198 → EventsExplorer) leads with the masthead-dock + horizon-grouped list, not a date ribbon. Scope IS shown as an honest editable readout (the What·When·Where caption, boardCaption whenCaption; dock chips at EventsBoardDock.tsx:113-146) but is NOT remembered across visits — town is useState seeded from the URL only (EventsExplorer.tsx:135); getHomeMuni (src/lib/personalize.ts:38) is unused on /events. Volume rule is close: each horizon group renders 1 lead + PEEK of 5 = 6 before 'Show N more' (EventsExplorer.tsx:594-625). Featured lead is a heuristic, not editorial: pickLeadEvent (src/lib/events/lead-rank.ts:40-61, draw-tier → imagery → soonest); the auto-image-hero failure was already fixed — photoless leads demote to the glance row at the card seam (EventCard.tsx:76) and leadIsFeature requires a real photo (EventsExplorer.tsx:609-621).
 
 **Seams:** `src/components/event/EventsBoardDock.tsx`, `src/components/event/boardCaption.ts`, `src/components/event/EventsExplorer.tsx`, `src/lib/events/lead-rank.ts`, `src/lib/personalize.ts`, `src/data/featured-events.json (new, mirrors src/data/event-notices.json)`
@@ -111,6 +134,8 @@ system answers a common question, explains it, and helps the user act.
 
 
 ### UX-06 — PARTIAL · effort M
+
+**Status 2026-10-08:** NOT RE-CHECKED.
 
 **What exists (verified):** Browse default camera is downtown Frederick at zoom 14, not a town/near-me choice: src/components/map/AppMap.tsx:329-330 (initialCenter = FREDERICK, initialZoom = 14; FREDERICK = [-77.4105, 39.4143] in src/components/map/constants.ts:228), and BrowseMapClient passes no zoom. Near-me recenter EXISTS but is gated: src/components/map/BrowseMapClient.tsx:256 passes recenterToKnownLocation={Boolean(intent)} — only category-tile arrivals with a cached fix open on the user (AppMap.tsx:356-363, readCachedPosition, never prompts). ?c=lng,lat,zoom camera persistence on moveend (AppMap.tsx:1706-1721) + ?at= deep link (BrowseMapClient.tsx:156-164). ALL ~1,700 places render as clustered pins by design (BrowseMapClient.tsx:257-260 'Show the county by default', pinpointDefault={false}); the dock count line counts the whole filtered SET, not the viewport (AppMap.tsx:2792 placeCount={visiblePlaces.length}, visiblePlaces = filter-intersected full set at AppMap.tsx:693-696) — this is the review's '1,593 places'. Quick filters EXIST but split across four dock panes (src/components/map/MapDock.tsx:47-67: What=intent chips, When=Open now+event windows+scrubber, Where=Find me/towns/Whole county camera-only, Layers=Saved lens); filter matches FADE non-matching pins rather than hide (AppMap.tsx:682-689, BrowseMapClient.tsx:231-237). No 'Search this area' button (unneeded for places since filters are dataset-wide; emitInView at AppMap.tsx:703-725 fires on moveend but its onPlacesInView consumer is never passed by /map). No ranked initial ~20 (MapList caps at 200, src/components/map/MapList.tsx:56). Low-confidence pins: RADIUS mode drops centroid-grade events via isGeoPrecise (src/app/(app)/map/page.tsx:335) but BROWSE weekEvents (page.tsx:562-585) has NO geo-confidence filter or subduing — county-centroid events draw as precise-looking pins.
 
@@ -121,6 +146,8 @@ system answers a common question, explains it, and helps the user act.
 
 ### UX-07 — PARTIAL · effort S
 
+**Status 2026-10-08:** NOT RE-CHECKED.
+
 **What exists (verified):** The July reorder already shipped the first-screen contract: identity (h1+address, src/app/(app)/places/[slug]/page.tsx:258-263), decision facts moved to top (LiveOpenStatus + price + SourceBadge directly under address, page.tsx:269-287 with comment citing the July 2026 audit), single Save CTA (MyRadiusButton, page.tsx:303-305; title-row save icon removed by design 252-256), why-go (KnownForCard 318-321, PlaceAudienceTags 331), field notes ALREADY summarized (FieldNotesCard caps deals at 3 + insider at 2, src/components/place/FieldNotesCard.tsx:89,99), sticky mobile actions (MobileActionBar with Directions primary + Call, page.tsx:572-589), ratings NOT rendered on detail (no google_rating usage in page.tsx — KnownForCard/customers_loved is the primary local-fit signal), Wikipedia 'Around here' already second-to-last (NearbyContext, page.tsx:510-512). REMAINING duplicates the review saw: (a) open status renders TWICE — LiveOpenStatus in the header (273) AND HoursBlock's summary line formatHoursLine(status) (page.tsx:452-453 → src/components/place/HoursBlock.tsx:36); (b) source renders twice — SourceBadge header (283) + footer 'Source: …' line (519-520), plus hours provenance inside HoursBlock; (c) address renders twice — header (262) + Location plate (469-475). Photos: gallery sits mid-page after hours (458) but the HERO photo still leads the page (241-250). Logistics exist but scattered: parking pay-links (436-442), amenity icon row (412-428), commerce/reserve (430-434), accessibility only as a PlaceAudienceTags tag — no unified logistics row. Sticky bar lacks Save/Menu: Save exclusion was a deliberate July call (comment 566-571); Website·menu is inline-only (386-392).
 
 **Seams:** `src/app/(app)/places/[slug]/page.tsx`, `src/components/place/HoursBlock.tsx`, `src/components/place/LiveOpenStatus.tsx`, `src/components/place/SourceBadge.tsx`, `src/components/ui/MobileActionBar.tsx`
@@ -129,6 +156,8 @@ system answers a common question, explains it, and helps the user act.
 
 
 ### UX-08 — PARTIAL · effort M
+
+**Status 2026-10-08:** OPEN. `src/components/happy/HappyHourBrowser.tsx` and `src/components/deals/DealsBrowser.tsx` still have no PlaceIndex rows (0 references each). Carried to docs/BACKLOG.md.
 
 **What exists (verified):** The core contract is already unified across the two biggest families: ALL five PlaceCard variants open the global PlaceSheet on whole-card tap (src/components/place/PlaceCard.tsx:225 openDetail → openSheet; feature 253-295, answer 318-391, tile 412-453, grid 471-499, row 530-539 stretched-link) with a separate SaveButton on feature (297), answer (393), tile (460), row (577) — but GRID has NO SaveButton (468-501). PlaceIndex cells (#1047) also whole-cell tap → PlaceSheet with navigate fallback (src/components/place/PlaceIndex.tsx:196-214) and rely on the sheet's own SaveButton (PlaceSheet.tsx:300,335); status dot+label, distance, and one moat mark on the mono data line (PlaceIndex.tsx:271-297). DIVERGENT surfaces: HappyHourBrowser rows NAVIGATE via stretched Link to /places/[slug] (src/components/happy/HappyHourBrowser.tsx:85), DealsBrowser same (src/components/deals/DealsBrowser.tsx:51), /brunch links only the place NAME (src/app/(app)/brunch/page.tsx:86), /today HappyHourWallet cards navigate (src/components/today/HappyHourWallet.tsx:142-167) — none offer Save or the sheet. MapList rows open the map peek, then sheet via 'Details' (AppMap.tsx:2876-2896) — a 2-step variant. EventCard is a plain Link to /events/[slug] (src/components/event/EventCard.tsx:130,448 'card is a Link to the event, full stop') — a different but internally consistent contract (events have no sheet).
 
@@ -139,6 +168,8 @@ system answers a common question, explains it, and helps the user act.
 
 ### UX-09 — PARTIAL · effort S
 
+**Status 2026-10-08:** PARTIAL. `--app-bottomnav-reserve` and `--app-browse-map-height` are defined in `src/app/globals.css`. The iOS keyboard fix and the 320 px sweep were not re-checked.
+
 **What exists (verified):** Most of the review's mobile pass is shipped and verifiable: viewport uses interactiveWidget:'resizes-content' so fixed bottom UI/search stays above the Android keyboard (src/app/layout.tsx:131-148) and does NOT lock zoom (no maximumScale/userScalable — 200% pinch works); iOS input-zoom prevented via 16px form fields under pointer:coarse (src/app/globals.css:354-357, PR #888); tap-44 utility family (globals.css:342+, #888/#889 extended it to Segmented/Sheet/map chips per memory); safe-areas handled at the component level (MobileActionBar bottom = safe-area-inset-bottom + 76px with notch-aware side padding, src/components/ui/MobileActionBar.tsx:38-48; BottomDrawer body pads safe-area-inset-bottom, BottomDrawer.tsx:112); dvh units on sheets (BottomDrawer max-h-[90dvh]:65, SearchOverlay results max-h-[60dvh]:380, mt-[10dvh] keeps the input top-anchored above the keyboard). Sticky detail actions EXIST on both detail pages: places page.tsx:572-589 and events/[slug]/page.tsx:806-841. REMAINING: (a) chrome-height magic numbers persist — the 76px nav clearance is hardcoded in MobileActionBar:43 (and per the mobile-audit memory, matching magic numbers live in FeedbackWidget and map height math) with no shared --app-chrome-* token; (b) interactive-widget is Chromium-only — iOS Safari ignores it, so a visualViewport-based check for the SearchOverlay/dock inputs is unverified; (c) no evidence of a systematic 320px-width or 200%-text-zoom pass (PlaceCard tile is fixed w-[244px] inside scroll shelves — OK, but nothing asserts page-level 320px integrity).
 
 **Seams:** `src/app/globals.css`, `src/components/ui/MobileActionBar.tsx`, `src/components/ui/FeedbackWidget.tsx`, `src/components/search/SearchOverlay.tsx`, `src/app/layout.tsx`
@@ -147,6 +178,8 @@ system answers a common question, explains it, and helps the user act.
 
 
 ### UX-10 — PARTIAL · effort S
+
+**Status 2026-10-08:** NOT RE-CHECKED.
 
 **What exists (verified):** CONFIRMED review finding — /events has NO h1: the list page renders no heading element at all (grep of src/app/(app)/events/(list)/page.tsx returns zero h1/h2) and the visible nameplate is an h2 inside the client board (src/components/event/EventsBoardDock.tsx:389 '<h2 className="eb-title font-serif">'). By contrast /today has a proper sr-only h1 (src/app/(app)/today/page.tsx:176) and /map has sr-only h1s in both modes (map/page.tsx:349,369). Dialogs: SearchOverlay is the gold standard — full Tab trap (SearchOverlay.tsx:228-244), focus return to trigger (196-203), combobox+aria-activedescendant (347-355), persistent aria-live match count incl. zero-case (588-594). Sheet.tsx has trap + restore (100-130). BottomDrawer wraps vaul, which supplies trap/ESC (BottomDrawer.tsx:3-12). GAP: PlaceSheet moves focus in and restores + ESC (PlaceSheet.tsx:62-90) but has NO Tab trap — Tab walks into the obscured page behind the aria-modal dialog (105). aria-pressed on filters: broadly adopted (42 uses — MapDock chips 170/216/554/927, HappyHourBrowser day grid 177, DealsBrowser 121, EventsBoardDock 137/462/549/563, PlaceIndex sort 99). Result counts announced: MapDock countline aria-live (918), EventsBoardDock countline aria-live (452), SearchOverlay role=status (588). Color-never-alone: OpenClosedDot always pairs dot with text or aria-label (src/components/place/OpenClosedDot.tsx:19-27), PlaceIndex status dot carries a text label (PlaceIndex.tsx:273-281). Map list-equivalent exists (MapList + the WebGL fallback's /places link). Residual from the prior UI audit: MapDock uses role=tab/tablist (849-891) without roving tabindex.
 
@@ -157,6 +190,8 @@ system answers a common question, explains it, and helps the user act.
 
 ### UX-11 — PARTIAL · effort S
 
+**Status 2026-10-08:** PARTIAL. The event detail page now offers "Find something else" and an "Organizer's announcement" link (`src/app/(app)/events/[slug]/page.tsx`). Status handling in the Ticketmaster and Bandsintown rows was not re-checked.
+
 **What exists (verified):** Most rules are shipped and centralized. Happening-now vs all-day/range: horizonOf (src/lib/eventHorizon.ts:74-131) — all-day rows never read 'live' (:86-89), in-progress range listings go to 'Coming up' (:90-102) and print 'through <date>' (src/lib/events/format.ts eventDateBlock, the #960 fix), with closing-date chrono sort (EventsExplorer.tsx:93-96); live claims are capped at MAX_LIVE_SESSION_MS (src/lib/eventWhenLabel.ts:57-81). No UTC drift: every label formatter pins America/New_York (events/format.ts:24-30, eventWhenLabel.ts via easternDayKey/easternParts). Cancelled/postponed: derived from iCal STATUS + title sniff (src/lib/event-status.ts:28-40) and owner notices (src/lib/events/notices.ts, stamped last in unifiedEvents.ts:177); classify.ts:52-54 drops them from the public lane; EventCard shows a red/amber badge + struck title in every variant (EventCard.tsx:80-92,133,306-307,393-394); the detail page has a loud banner + dimmed hero + schema.org EventCancelled/EventPostponed (src/app/(app)/events/[slug]/page.tsx:162-168,284-343). GAPS: (a) actions are NOT replaced — Tickets/Add-to-calendar still render on a cancelled event's detail page ([slug]/page.tsx:483,501,803-821); (b) deriveEventStatus is only wired into the iCal adapter (src/lib/integrations/ical-live.ts:734,825) — Ticketmaster/Bandsintown titles never get the sniff.
 
 **Seams:** `src/app/(app)/events/[slug]/page.tsx (action grid ~:483-501 and the mobile bar ~:803-821)`, `src/components/event/EventActions.tsx`, `src/components/event/EventCalendarButton.tsx`, `src/lib/integrations/ (ticketmaster / bandsintown adapters)`, `src/lib/event-status.ts (no change; the shared rule)`
@@ -165,6 +200,8 @@ system answers a common question, explains it, and helps the user act.
 
 
 ### UX-12 — PARTIAL · effort S
+
+**Status 2026-10-08:** SUPERSEDED IN PART. Analytics now sends a small allowlist of goal events (`PLAUSIBLE_GOAL_EVENTS` in `src/lib/track.ts`). The `place_action` and `plan_action` names planned here do not exist.
 
 **What exists (verified):** The rail exists: track() → Plausible custom events, no-op-safe (src/lib/track.ts:12-27; script gate lib/analytics.ts:16-23, components/analytics/Plausible.tsx). Coverage today (~25 events): saves are solid (save_place useFollows.ts:260,270 with source prop; save_event SaveButton.tsx:145; map_peek save MapPeek.tsx:128), calendar_add exists (EventActions.tsx:42), share (share_today ShareTodayButton.tsx:28,38), search_pick (SearchOverlay.tsx:504), index_place_open (PlaceIndex.tsx:206), map suite (map_dock/map_pin/map_layer/map_cluster/map_locate/map_ready), push_optin, feedback_send, report_submit, beta_active, wallet raises. MISSING vs the taxonomy: (1) directions is tracked ONLY on map peeks (MapPeek.tsx:147, MapParkingPeek.tsx:102) — the place-detail MobileActionBar renders plain <a> cells for directions/call with zero onClick (ui/MobileActionBar.tsx:89-121), PlaceSheet's ActionChip (directions/call/website/reserve/order/parking/menu) fires only haptic (PlaceSheet.tsx:677-700), and CommerceActions has no track import at all; (2) call — untracked everywhere; (3) official website — untracked everywhere; (4) plan — PlanBuilder.tsx has zero track calls; (5) Ask outcomes — only ask_submit exists (AskFrederick.tsx:32) and that component is currently unmounted (TodayAsk orphaned); no answered/empty outcome event, and /api/ask logs nothing; (6) zero-results — the SearchOverlay empty branch fires nothing (SearchOverlay.tsx:455-464) and /api/search/route.ts has no tracking. The WIP want branch already adds want_answer/want_place_open (810657c8 WantAnswerPanel.tsx:82,112) — the taxonomy should absorb those names.
 
@@ -175,6 +212,8 @@ system answers a common question, explains it, and helps the user act.
 
 ### UX-13 — PARTIAL · effort M
 
+**Status 2026-10-08:** NOT RE-CHECKED. The planned `src/lib/rank-diversity.ts` was never created.
+
 **What exists (verified):** Four of six layers exist, two are the gap. ELIGIBILITY: done — rankPlaces chains isOperational/isDiscoverable/isSubstantive (src/lib/loaders/places.ts:1291-1297, predicates :992-1046) and getCuratedPicks adds isRecommendable (:1346-1360); events get classify lanes + time-sanity (src/lib/events/visible.ts:70-90). CONFIDENCE: done for ratings — Bayesian shrinkage ratingScore (:910-918) exactly to stop 5.0×3-reviews beating 4.6×800; trust levels exist but don't feed rank (fine). CONTEXT: done — proximity/open/moment-fit blends (visitorScore :977-985; default blend :1327-1328) plus daypart candidate sets in now-picks.ts:37-59. EDITORIAL: done — curationScore feature_score + local_favorite (:927-931); events pickLeadEvent draw-tiers (src/lib/events/lead-rank.ts:40-61). DIVERSITY: missing from every places surface — the ONLY diversity rule in the codebase is the plan builder's 'no two stops of the same category' (src/lib/integrations/planner.ts:307,418); getCuratedPicks can return 12 restaurants. EXPLANATION: partial — placeReasons/eventReasons 'why this is shown' chips exist (src/lib/place-reasons.ts, src/lib/event-reasons.ts) and render on PlaceCard (:231) and EventCard (:266,359), but NOT on PlaceIndex rows (only the single moat mark, src/components/place/PlaceIndex.tsx:44), the want-answer rows, or Ask's source cards.
 
 **Seams:** `src/lib/loaders/places.ts (getCuratedPicks / rankPlaces)`, `src/lib/now-picks.ts`, `src/lib/rank-diversity.ts (new, extracted from src/lib/integrations/planner.ts:307)`, `src/lib/place-reasons.ts`, `src/components/place/PlaceIndex.tsx`, `src/lib/want-answer.ts (once the WIP lands)`
@@ -183,6 +222,8 @@ system answers a common question, explains it, and helps the user act.
 
 
 ### UX-14 — PARTIAL · effort L
+
+**Status 2026-10-08:** OPEN. No plans store exists (`usePlans` and `fr:plans:v1` are absent from `src`). Carried to docs/BACKLOG.md.
 
 **What exists (verified):** Save-with-undo is DONE everywhere: src/components/saved/SaveButton.tsx:156-173 shows sonner toasts with an Undo action on all three branches (remove / first-ever save / normal save), and SaveButton is mounted in PlaceCard, EventCard, PlaceSheet, MobileActionBar and events/[slug]; the place-page CTA mirrors it (src/components/place/MyRadiusButton.tsx:90-96). Organizing exists as personal LISTS, not folders: device-local labels in src/hooks/useSavedTags.ts:15 (fr:lists:v1) surfaced as FilterChips (src/components/saved/SavedList.tsx:739-762), plus Notes (useNotes), Visited (useBeenHere) and Recently-viewed sections (SavedList.tsx:891-990). Sync+reminders exist: auth-aware follows merge with DB-wins (SavedList.tsx:142-161), event-reminder registry + cron (SaveButton.tsx:21-35, src/app/api/cron/saved-reminders). Share-as-clean-link exists for the LIST (/radius/shared?p=..., SavedList.tsx:515-525; page at src/app/(app)/radius/shared/page.tsx) and bridges to the planner exist: planTokenFromSaved (SavedList.tsx:63-72), 'Plan this list' (528-534, 751-760), dominant-town 'Plan a day' line (604-618, 877-886). THE GAP is the plan object: a plan is only a URL token (PlanSpec, src/lib/integrations/planner.ts:76-82) — nothing persists it. SavedRef supports type 'radius' (src/hooks/useSaved.ts:7) but NO code ever writes it (grep: zero writers), and the empty state promises 'Routes' (SavedList.tsx:1101) that never render as a section. No plan date/notes fields (PlanInputs has start_at only, planner.ts:25-38; travel time is baked in via TRAVEL_MIN=12, planner.ts:113), no whole-plan calendar export (lib/ics.ts is per-event only), no data export anywhere (Settings' PreferencesPanel.tsx:126 only clears). Device-local storage IS explained, minimally: colophon fin 'Saved on this device' (SavedList.tsx:1081) + magic-link line (1069-1074). Radius Points promised slot: SavedList.tsx:1054-1057 ('Radius Points, for the field checks you contribute · Coming soon') and SavedWallet.tsx:294-296.
 
@@ -193,6 +234,8 @@ system answers a common question, explains it, and helps the user act.
 
 ### UX-15 — PARTIAL · effort S
 
+**Status 2026-10-08:** SUPERSEDED. The Browse sheet (`MoreSheet`) is gone; Compass (`src/components/nav/CompassHub.tsx`) replaced it.
+
 **What exists (verified):** MoreSheet v7 (src/components/nav/MoreSheet.tsx:110-144) has exactly three groups: 'Around the county' (one ExploreDeck fan of 12 plates), 'Contribute' (4 icon tiles, lines 96-101) and 'App' (4 tiles, 103-108). The DISCOVER order (lines 70-91) already fronts the right-now intents — Open now #1, This weekend #2 (/events?lens=weekend), Live music #3, Check a date #4, Deals #5 — then Collections/Towns/County services/History, with Overhead #10, From Above #11, Time Machine #12 at the tail. But structurally everything is ONE equal-weight fan-in deck (src/components/nav/ExploreDeck.tsx:35-93, pressed-paper plates per #1046): there is no compact 'Right now' quick-action tier, no 'Plan + help' cluster (Check a date and County services sit inside the deck; parking and transportation appear nowhere in the sheet — they live on /today's Getting-around split per #666), and Overhead/Time Machine are full hero plates, not a low-priority tools list. The deliberate no-repeat rule (comment at MoreSheet.tsx:63-69: the sheet must not duplicate Today's craving grid) constrains how far 'Right now' can go.
 
 **Seams:** `src/components/nav/MoreSheet.tsx (split the DISCOVER array into RIGHT_NOW / EXPLORE / PLAN_HELP / MORE_TOOLS; keep CONTRIBUTE + APP)`, `src/components/nav/ExploreDeck.tsx (unchanged — it becomes the Explore group's renderer with ~4-6 plates)`, `src/app/globals.css (.ex-* deck math assumes item count for the fan; a small ruled-list style for MORE_TOOLS)`
@@ -201,6 +244,8 @@ system answers a common question, explains it, and helps the user act.
 
 
 ### UX-16 — DONE · effort S
+
+**Status 2026-10-08:** DONE in July 2026, as recorded below.
 
 **What exists (verified):** Blocking onboarding is already gone: the middleware first-run redirect to /welcome was removed pre-launch (src/middleware.ts:25-27 'Onboarding redirect was REMOVED in the pre-launch pass'; the middleware body has no fr_onboarded read — only WelcomeFlow writes it, WelcomeFlow.tsx:47-49). /welcome survives only as an opt-in settings replay (PreferencesPanel.tsx:134-135 clears the cookie and router.replace('/welcome'); robots.ts:67 noindexes it). Location is progressive and task-anchored: LocationPrime is a consent pill riding the 'I want…' bar that only fires geolocation on explicit tap and self-hides once granted (src/components/today/LocationPrime.tsx:12-17), with the same useGeolocation fix shared by craving tiles, EventWalkTime, and map locate (useGeolocation.ts sessionStorage cache). The resident/visitor first-run choice is gone from the product path: the /today lens picker was removed 2026-07-01 (today/page.tsx:308-315, mode machinery kept silent) and location-on-arrival shipped earlier (#690). Interests after value: TasteNudge infers the dominant craving from the user's own saves instead of asking (today/page.tsx:424-429). Residual: WelcomeFlow itself still asks mood + 'Do you live here?' (WelcomeFlow.tsx:129-139,192-253) for anyone who replays onboarding from settings, and InterestsChip is orphaned inside the unmounted AdaptiveGreeting (AdaptiveGreeting.tsx:144).
 
@@ -211,6 +256,8 @@ system answers a common question, explains it, and helps the user act.
 
 ### UX-17 — PARTIAL · effort M
 
+**Status 2026-10-08:** SUPERSEDED IN PART. Today now keeps secondary modules inside the collapsed "Plan the rest" and "Local guides and saved places" sections. The planned scorer `src/lib/today/relevance.ts` was never created.
+
 **What exists (verified):** Every secondary /today module self-hides, but via binary PRESENCE gates, not a relevance score. Self-hiding today: CivicAlerts (CivicAlerts.tsx:134 alerts+notices empty → null), MomentSpotlight (date window, today/page.tsx:202), OnNowStrip (self-hides per page.tsx:296-306), TonightSolo (page.tsx:621), TomorrowPreview (strict late-daypart clock gate, TomorrowPreview.tsx:25,38), FromYourSaved ('renders nothing unless something's open', page.tsx:377-381), GoldenHourCard (pre-sunset window only, GoldenHourCard.tsx:20), KeysScore (no game → null, KeysScore.tsx:135), OnNowBand (all blocks empty → null, OnNowBand.tsx:102), PoolsToday (season gate ONLY — in season it renders daily regardless of weather/temperature, PoolsToday.tsx:16), CuratedPicks/WorthALook (empty-data gates, CuratedPicks.tsx:37, WorthALook.tsx:23), TasteNudge (needs a clear saves pattern), BetaIntroCard (cookie). Always-render regardless of relevance: CravingStrip, WhatsOn (honest empty state), FoodTruckToday (static roster count, no gate — FoodTruckToday.tsx:14-17, explicitly 'NOT a live claim'), VisitorStayPrompt (gate deliberately removed 2026-07-01, VisitorStayPrompt.tsx:6-11), and HappyHourWallet which 'nearly always renders — it falls back to the next pour' (OnNowBand.tsx:84-87). Ordering intelligence exists (daypart clusterOrder/sectionOrder, src/lib/daypart.ts:33-44,58+) but there is no urgency/location/weather/freshness/preference scorer anywhere — grep for relevance scoring in today components finds only the happy-hour deal-quality sort (HappyHourWallet.tsx:175).
 
 **Seams:** `src/lib/today/ (new relevance.ts pure scorer + spec)`, `src/app/(app)/today/page.tsx (placement decisions)`, `src/components/today/OnNowBand.tsx`, `src/components/today/PoolsToday.tsx (weather input)`, `src/components/today/HappyHourWallet.tsx (coming-up fallback demotion)`, `src/components/today/FoodTruckToday.tsx`, `src/lib/daypart.ts (inputs it already models)`, `src/lib/weather loaders (forecast for the temp/rain signal)`
@@ -219,6 +266,8 @@ system answers a common question, explains it, and helps the user act.
 
 
 ### UX-18 — PARTIAL · effort M
+
+**Status 2026-10-08:** OWNER DECISION IN FORCE. The desktop "In view" side panel stays removed ("the map IS the page"); `src/components/map/AppMapClient.tsx` records it where the panel used to render. Do not re-add it without an owner ask. The viewport-scoped list increment was not re-checked.
 
 **What exists (verified):** A list face EXISTS as a map↔list toggle, not a synced side list: MapDock list toggle with aria-pressed (MapDock.tsx:927), MapList rendered when listView (AppMap.tsx:2872-2885) with honest empty state (MapList.tsx:67-74). List→pin sync works: onPick closes the list, sets selectedSlug, smoothFocus-flies the camera and opens the pin's MapPeek card (AppMap.tsx:2876-2883); peek 'Details' opens the global PlaceSheet with instant pin-field render + by-slugs hydration (AppMap.tsx:2896, 377-407). Pin→list highlight is N/A by construction — list and map are alternate faces, never shown together; the desktop side 'In view' panel was deliberately REMOVED per owner ('the map IS the page', src/components/map/AppMapClient.tsx:145-148), though the plumbing survives (onPlacesInView/focus props AppMap.tsx:256-261, emitInView 703-725, rankInView AppMapClient.tsx:193-198 kept for tests). MapList is NOT viewport-synced — it lists all filtered places capped at 200 (MapList.tsx:46-63). WebGL/location failure fallback EXISTS: hasWebGL check (AppMap.tsx:446-451), branded overlay distinguishing unsupported vs transient with a 'Browse all places' link to /places (AppMap.tsx:1510-1543); geolocation denial gets a graceful message (geoMsg, dock Where pane).
 
@@ -229,6 +278,8 @@ system answers a common question, explains it, and helps the user act.
 
 ### UX-19 — PARTIAL · effort M
 
+**Status 2026-10-08:** DONE. `src/lib/trust-language.ts` is the one trust vocabulary (commit 932abc6e, 2026-10-07). The "Hours uncertain" conflict state was not built.
+
 **What exists (verified):** There is one typed trust SIGNAL but several trust LANGUAGES. The signal: TrustSignal + eventTrust/placeHoursTrust (src/lib/trust.ts:18-95) rendered by TrustChip on SearchOverlay, PlaceSheet, HoursBlock, EventCard. But parallel vocabularies coexist: SourceBadge keeps its own tier map + labels (src/components/place/SourceBadge.tsx:14-46), FreshnessChip has its own age grammar 'Confirmed · 3d ago / Last confirmed Mar 2026' (src/components/ui/FreshnessChip.tsx:24-42), fieldNotes verifiedLabel emits lowercase 'verified 2w ago' (src/lib/loaders/fieldNotes.ts:65-75), trust.ts has ANOTHER relative formatter formatChecked 'Updated X ago' (:106-124), and the hours provenance sentence is bespoke ('Hours from Google, confirmed X ago', src/app/(app)/places/[slug]/page.tsx:161 → HoursBlock provenance). The review's pairing exists in places: 'Open until 9 PM' (formatHoursLine, src/lib/hours.ts:138-151) + FreshnessChip(last_verified_at) sit together on PlaceSheet (:396-412); 'Reported open / Not yet verified' maps to 'Likely open'/'Hours not confirmed' (hours.ts:150, PlaceStatus.tsx silence rule :33-40). MISSING entirely: conflicting-source handling — curated Hours vs Google weekday_hours (parsed by src/lib/googleHours.ts) are never compared, OpenStatus has no 'uncertain' state (hours.ts:32-36), and the Call action only exists on the place detail page (:383), not beside an uncertainty claim.
 
 **Seams:** `src/lib/trust.ts (or a new src/lib/trust-language.ts it re-exports)`, `src/lib/hours.ts (OpenStatus union + getOpenStatus + formatHoursLine)`, `src/lib/googleHours.ts + the hours-resolution spot in src/lib/loaders/places.ts`, `src/components/ui/FreshnessChip.tsx`, `src/lib/loaders/fieldNotes.ts (verifiedLabel)`, `src/components/place/PlaceStatus.tsx / PlaceSheet.tsx / HoursBlock.tsx / SourceBadge.tsx`, `src/app/(app)/places/[slug]/page.tsx:161`
@@ -237,6 +288,8 @@ system answers a common question, explains it, and helps the user act.
 
 
 ### UX-20 — PARTIAL · effort M
+
+**Status 2026-10-08:** PARTIAL. Event sources keep a last good payload and mark it as served stale in `src/lib/integrations/event-source-circuit.ts`. The generic `src/lib/lastGood.ts` wrapper and the /pulse side were never built. Carried to docs/BACKLOG.md.
 
 **What exists (verified):** Three of the four pieces exist; last-good-with-timestamp does not. (a) Fail-soft per section: every event feed races an 8s timeout and degrades to its empty bucket (withTimeout, src/lib/loaders/unifiedEvents.ts:65-84, applied to all 10 feeds at 90-120); /pulse assembles ~18 sources in one Promise.all with per-source fail-softs (src/app/(app)/pulse/page.tsx:200); /today wraps sections in independent Suspense boundaries (src/app/(app)/today/page.tsx:193-283) so no blank page. (b) Whole-page staleness: FreshnessGuard (src/components/today/FreshnessGuard.tsx:27-79) does a one-shot silent reload then an honest 'This page is from <day>' banner — mounted on /today:184, /events:176, /open-now:199. (c) Live age display: PulseFreshness renders a ticking 'updated Ns ago' from the server render timestamp (src/components/pulse/PulseFreshness.tsx:16-40), and page-level ISR (revalidate 300 on /today at page.tsx:154, 120 on /pulse at page.tsx:97) gives stale-while-revalidate last-good at PAGE granularity. THE GAP: when an individual feed fails, its section renders EMPTY — indistinguishable from 'genuinely nothing on' — rather than the previous successful payload with its timestamp. getLiveEvents even returns sources_succeeded/sources_failed (unifiedEvents.ts:92-95) but no surface shows it.
 
@@ -247,6 +300,8 @@ system answers a common question, explains it, and helps the user act.
 
 ### UX-21 — PARTIAL · effort M
 
+**Status 2026-10-08:** NOT RE-CHECKED. `src/lib/today/saved-taste.ts` exists.
+
 **What exists (verified):** A real no-account preference-learning seam exists but only feeds one surface. useSavedTasteWant (src/hooks/useSavedTasteWant.ts:21-43) maps the user's saved places to a dominant craving and picks which 'I want…' category opens by default — consumed in src/components/now/WantsAccordion.tsx:118. The mapping is a pure, unit-tested lib (src/lib/today/saved-taste.ts: MIN_MATCHED=2, DOMINANCE=0.34 plurality gate, specificity-ranked bestCraving; spec at src/lib/today/saved-taste.spec.ts) with an explicit never-guess contract. Supporting signals already captured device-locally: onboarding interests + home muni (src/lib/personalize.ts:26-28, fr:interests:v1 / fr:home-muni:v1, documented as 'bias defaults, never hide content' at lines 17-21), recently-viewed places (src/hooks/useRecentPlaces.ts:17, fr:recent-places:v1, written on PlaceSheet opens), been-here visits (src/hooks/useBeenHere.ts:5), and personal list labels (fr:lists:v1 — user-authored organization, not passive signal). Gaps: learning only reads explicit SAVES (views/visits are collected but unused for taste), there is no decay/recency weighting, and no other surface (search ranking, event rails, collections order) consumes the taste signal.
 
 **Seams:** `src/lib/today/saved-taste.ts + saved-taste.spec.ts (extend the pure lib: blended weighting + decay, keep it client-safe and spec'd)`, `src/hooks/useSavedTasteWant.ts (feed it recent + been-here slugs alongside follows)`, `src/hooks/useRecentPlaces.ts / useBeenHere.ts (read-only inputs, no changes)`, `src/components/now/WantsAccordion.tsx (already wired)`, `second consumer: /today's evergreen Explore fallback ordering (#666) or /collections ordering`
@@ -255,6 +310,8 @@ system answers a common question, explains it, and helps the user act.
 
 
 ### UX-22 — MISSING · effort M
+
+**Status 2026-10-08:** OPEN. No "More like this" or "Not for me" control exists in `src`. Carried to docs/BACKLOG.md.
 
 **What exists (verified):** No per-recommendation feedback affordance exists anywhere: grep for 'not for me' / 'more like this' / thumbs / downvote across src returns nothing UI-related. The only feedback channels are the global beta FeedbackWidget (src/components/feedback/FeedbackWidget.tsx → /api/feedback, free-text into the submissions table per src/lib/feedback.ts:1-10) and the implicit positive of SaveButton on cards (src/components/saved/SaveButton.tsx). A preference substrate already exists client-side: interests + home-muni in localStorage (src/lib/personalize.ts:38-126, getInterests/setInterests) consumed by RightNowGrid and FeaturedTonightPicker (src/components/today/), and an analytics hook track() (src/lib/track) already fires from cards (SearchOverlay.tsx:504).
 
@@ -265,6 +322,8 @@ system answers a common question, explains it, and helps the user act.
 
 ### UX-23 — PARTIAL · effort M
 
+**Status 2026-10-08:** OPEN. It waits on UX-14. Carried to docs/BACKLOG.md with UX-14.
+
 **What exists (verified):** Templates are DONE: 8 curated one-tap presets (PRESETS, src/components/plan/PlanBuilder.tsx:94-103 — Library date, Date night, First date, Girls' night, Family Sunday, Rainy day, Sunny Saturday, Out-of-town friends) plus 5 vibe cards that build a plan in one tap (header comment, src/app/(app)/plan/page.tsx:22-31). The plan IS a durable object in one narrow sense: fully described by a PlanSpec token (v1, src/lib/integrations/planner.ts:76-82) that round-trips through the URL — decoded and rebuilt server-side so a shared link works without JS or a recipient account (plan/page.tsx:44-47), grounded in canonical places only (planner.ts:1-11), editable via server actions (removeStop/swapStop/setStop/addStop/reshuffle, src/components/plan/actions.ts:78-151) with weather note + optional Claude narrative (actions.ts:21-64). Sharing is one-way fork-on-edit: navigator.share/copy of /plan?p=<token> (PlanBuilder.tsx:363-373); every recipient edit mints a NEW token, so there is no shared mutable object, no comments, no co-editing, and no way to keep or name a plan (nothing persists tokens — see UX-14).
 
 **Seams:** `src/components/plan/PlanBuilder.tsx (label the fork explicitly: 'Make it yours' on shared plans; Save-this-plan from UX-14)`, `src/lib/integrations/planner.ts (PlanSpec stays the wire format)`, `src/components/plan/actions.ts (add publishPlan/fetchPlan server actions if server-backed sharing is approved)`, `new Supabase table shared_plans {slug, spec jsonb, updated_at} + migration (follows the community_reports/RLS house pattern)`, `src/app/(app)/plan/page.tsx (resolve ?s=<slug> → spec, falling back to ?p= tokens)`
@@ -273,6 +332,8 @@ system answers a common question, explains it, and helps the user act.
 
 
 ### UX-24 — PARTIAL · effort S
+
+**Status 2026-10-08:** OPEN and deferred until UX-14 ships, as this item says.
 
 **What exists (verified):** The architecture already implements 'optional account, after local value': auth is Supabase magic-link only (/auth/login, /auth/callback, /auth/signout, /api/auth/me routes exist) and explicitly optional everywhere (src/lib/auth.ts:9-12 'Auth is OPTIONAL throughout the app… every page falls back to the logged-out experience'; getServerUser degrades to anonymous even when env vars are missing, auth.ts:33-42). The sync pattern is proven end-to-end for place follows: one-shot localStorage→DB import on first signed-in mount (maybeSync, src/hooks/useFollows.ts:318-342), optimistic shared-store DB writes with revert-on-failure (useFollows.ts:252-297), and DB-wins cross-device merge on the Saved page (SavedList.tsx:142-161). The upsell is correctly value-first and quiet: one ruled colophon line 'Keep this list on your other devices → Magic link' shown only to anonymous users who already have a list (SavedList.tsx:1069-1074), and the signed-in state is acknowledged as 'Synced as <email>' (1081). Everything else — events, notes, tags, been-here, prefs, (future) plans — is device-local by documented contract (useSaved comment 'Events and Radii stay device-local'; useSavedTags.ts:11 'DB sync can layer on later, as useFollows did'). Given auth.users≈0, the gap is adoption and breadth, not architecture: no new build is needed now; when plans/lists prove local value, extend the exact useFollows pattern (one-shot import + optimistic store + reset-on-signout via resetFollowsSyncFlag, useFollows.ts:347-352) to those stores next, and consider surfacing the magic-link line in the plans section too. Effort to extend one more store: S per store.
 

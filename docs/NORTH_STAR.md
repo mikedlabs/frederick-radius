@@ -1,10 +1,9 @@
 # Frederick Radius — North Star
 
-> The single source of truth for what this product *is*, who it's for,
-> and the laws every screen must obey. If a design decision doesn't pass
-> these, it's wrong — no matter how nice it looks. And no screen ships
-> ahead of the data it presents: a beautiful answer that is wrong is
-> worse than no answer.
+> The product thesis and interaction laws. CLAUDE.md is the tiebreaker
+> when this file and another doc disagree. No screen ships ahead of the
+> data it presents: a beautiful answer that is wrong is worse than no
+> answer.
 
 ---
 
@@ -134,7 +133,7 @@ today") — that's what makes it trustworthy where Facebook isn't.
    surface ships ahead of the data it presents: a confident wrong answer
    (a false "open now," a fake distance, a misplaced event) is worse than
    an honest "not confirmed." The per-surface requirements live in
-   `UX_REDO.md`'s data-confidence gate.
+   `docs/DATA_CONFIDENCE_GATE.md`.
 5. **Restraint = confidence.** Calm by default; reveal depth on ask.
    No wall of equal-weight boxes. (See DESIGN_UX_AUDIT "no directories.")
 6. **Local voice.** Plain, authoritative, human — a local dispatch that
@@ -144,15 +143,9 @@ today") — that's what makes it trustworthy where Facebook isn't.
 
 ## Voice & brand
 
-**A calm, authoritative local almanac / dispatch.** It knows the county
-and tells you plainly. Confident through restraint.
-
-- Not cute, not corporate, not bureaucratic. Human and exact.
-- "Good morning. Patio weather." "Recycling's Thursday." "Three places
-  open near you." Short, true, useful.
-- Visual: the field-guide system (warm paper, daypart sky, tactile
-  cards, radius motif) — now with the **voice + interaction laws** above
-  written down, so the brand is a *behavior*, not just a palette.
+Copy follows `docs/VOICE.md`, which supersedes the voice notes this section
+used to hold. Identity, meaning the palette, type, the Ripple mark and
+photography, follows `docs/brand/BRAND_GUIDE.md`.
 
 ---
 
@@ -161,7 +154,9 @@ and tells you plainly. Confident through restraint.
 The organizing metaphor is a naturalist's **field guide** to the county:
 it identifies, locates, and tells you what is notable, with authority and
 economy. Use this language in product and design decisions so the parts
-cohere.
+cohere. It is a design model, not copy: `docs/VOICE.md` keeps field-guide
+metaphors out of the words people read, while `docs/STYLE.md` and the brand
+guide still use the printed field guide as the visual model.
 
 - **Specimen** — a place, venue, or trail, presented as an identified
   entry (photo, a few authoritative facts, source + freshness), not a
@@ -172,13 +167,12 @@ cohere.
 - **Plate / page** — a curated view (a town, a category, a collection)
   composed like a guide's plate: a few specimens with a point of view.
 - **Range / radius** — where a thing is and whether it is within your
-  reach. The radius motif (rings, pulse, within-reach) is the app's
-  signature geometry; own it across the map, loading, and brand.
+  reach. How the Ripple mark and its arcs may appear is set by
+  `docs/brand/BRAND_GUIDE.md`.
 - **Annotation** — every observation cites itself. Source + freshness is
   the field guide's footnote, and our trust signal.
-- **The dispatch** — the voice that reads the guide aloud: calm,
-  authoritative, local, economical. "Patio weather. Recycling's
-  Thursday."
+- **The dispatch** — the voice that reads the guide aloud. Its rules and
+  worked examples are in `docs/VOICE.md`.
 
 A field guide does not open with every species at once. It tells you what
 you are looking at and how to find what you want. That is the
@@ -201,14 +195,18 @@ answer-first home.
 
 ## Execution roadmap
 
-The sequenced **plan of record** now lives in **`UX_REDO.md`** (Layers 0
-to 3, with a data-confidence gate that runs through all of them). The
-commitments below are the product outcomes those layers deliver.
+The current build sequence is the "Build order" in `docs/VISUAL_FIRST.md`
+(owner direction, 2026-10-07). The June 2026 layer plan that used to be the
+plan of record is archived at `docs/archive/2026-06/UX_REDO.md`, and its
+data-confidence gate now lives in `docs/DATA_CONFIDENCE_GATE.md`. The
+commitments below are the product outcomes this thesis asks for.
 
 1. **Front door → answer-first.** An intent-led "ask Frederick" entry
    that routes natural queries (open-now, civic, events, places) to
-   direct answers. Demote the category-box grid to secondary. *(Chosen;
-   delivered in UX_REDO Layer 2.)*
+   direct answers. Demote the category-box grid to secondary. *(Built:
+   Today's primary action is the Find launcher,
+   `src/components/today/TodayAsk.tsx`, and the full Ask workspace lives at
+   `/ask`.)*
 2. **Buried-info moat.** Wire the highest-value civic answers —
    recycling/trash by address first — with source + freshness. *(Chosen
    to build now; depends on acquiring the collection-schedule data.)*
@@ -221,5 +219,6 @@ commitments below are the product outcomes those layers deliver.
 
 > Every PR description should be able to answer: *which interaction law
 > does this serve, and how many taps does it save?* Data-bearing changes
-> answer a second question (see `UX_REDO.md`): *what is the source, how
-> fresh is it, and what does this show when the data is missing?*
+> answer a second question (see `docs/DATA_CONFIDENCE_GATE.md`): *what is
+> the source, how fresh is it, and what does this show when the data is
+> missing?*

@@ -2,7 +2,7 @@
 
 Three-part audit of the data layer: the complete source inventory, the
 quality/gaps report, and an externally-verified scout of new Frederick-specific
-sources. Read like MAP_AUDIT.md / EXPERIENCE_REVIEW.md: a working document.
+sources. It is a dated snapshot, not a work queue.
 
 > **Status update, 2026-07-27:** This document preserves the July 2 audit
 > snapshot below. Since then, hours freshness is strict by default, stale

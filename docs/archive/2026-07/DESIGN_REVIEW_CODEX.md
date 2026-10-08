@@ -1,3 +1,5 @@
+> Superseded. Brand, type and photo-fallback decisions live in docs/brand/BRAND_GUIDE.md and docs/VISUAL_FIRST.md. Any approval gate here is void. History, not instructions.
+
 # Frederick Radius design and UX review
 
 Audit date: July 14, 2026

@@ -1,3 +1,5 @@
+> Superseded. Current: CLAUDE.md and docs/VISUAL_FIRST.md. Open items carried forward live in docs/BACKLOG.md. History, not instructions.
+
 # Frederick Radius — Audit
 
 **Last walked:** 2026-05-26 by the dev team during the Phase 1 doc refresh.

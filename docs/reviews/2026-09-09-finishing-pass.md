@@ -1,6 +1,6 @@
 # Frederick Radius finishing pass
 
-September 9, 2026. **Owner approved merge and publication. Awaiting the required CI gates and production verification.**
+Snapshot 2026-09-09. Owner approved merge and publication. Outcome (checked 2026-10-08): merged to main in #1681 (commit bb70c7e8) on 2026-09-09. This file does not record the production check that followed.
 
 ## Release lineage and scope
 

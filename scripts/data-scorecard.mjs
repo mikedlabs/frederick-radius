@@ -8,7 +8,7 @@
  * (places-enrichment.json). No network, no writes unless --md. The point
  * is to turn "data quality" from a vibe into a number you can watch move
  * after each cleaning pass. Pair it with the cleaning lanes in
- * DATA-STRATEGY-2026-05-30.md.
+ * docs/archive/2026-05/DATA-STRATEGY-2026-05-30.md.
  */
 import fs from "fs";
 import path from "path";
