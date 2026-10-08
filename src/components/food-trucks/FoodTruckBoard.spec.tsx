@@ -20,6 +20,35 @@ function stop(overrides: Partial<FoodTruckScheduleStop> = {}): FoodTruckSchedule
   };
 }
 
+const VOID_TAGS = new Set(["area", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
+
+/**
+ * The text a screen reader can reach: static markup with every aria-hidden
+ * subtree removed and the remaining tags stripped.
+ */
+function accessibleText(html: string): string {
+  let out = "";
+  let hiddenDepth = 0;
+  let last = 0;
+  const tag = /<(\/?)([a-zA-Z][\w-]*)([^>]*?)(\/?)>/g;
+  for (let match = tag.exec(html); match; match = tag.exec(html)) {
+    if (hiddenDepth === 0) out += html.slice(last, match.index);
+    last = tag.lastIndex;
+    const [, closing, name, attrs, selfClosing] = match;
+    const isVoid = Boolean(selfClosing) || VOID_TAGS.has(name.toLowerCase());
+    if (closing) {
+      if (hiddenDepth > 0) hiddenDepth -= 1;
+    } else if (hiddenDepth > 0) {
+      if (!isVoid) hiddenDepth += 1;
+    } else if (/\saria-hidden="true"/.test(attrs) && !isVoid) {
+      hiddenDepth = 1;
+    }
+    if (hiddenDepth === 0) out += " ";
+  }
+  if (hiddenDepth === 0) out += html.slice(last);
+  return out.replace(/\s+/g, " ").trim();
+}
+
 describe("stopWindowLabel", () => {
   it("says the window once when both ends share a meridiem", () => {
     expect(stopWindowLabel(stop())).toBe("5:00 to 9:00 PM");
@@ -57,6 +86,36 @@ describe("FoodTruckStopRow", () => {
     expect(html).not.toContain("food-truck-stop-visual");
   });
 
+  it("tells assistive tech the stop's day, because the date plate is aria-hidden", () => {
+    const html = renderToStaticMarkup(<FoodTruckStopRow stop={stop()} timing="upcoming" />);
+
+    expect(html).toContain('<time dateTime="2026-10-08T21:00:00.000Z" class="sr-only">');
+    const spoken = accessibleText(html);
+    expect(spoken).toContain("Thursday, October 8 · 5:00 to 9:00 PM · Steinhardt Brewing Company · Frederick");
+    // The plate's own letters stay out of the accessible text.
+    expect(spoken).not.toMatch(/\bOct\b/);
+    expect(spoken).not.toMatch(/\bThu\b/);
+  });
+
+  it("reads the day on the Eastern clock, not UTC", () => {
+    // 10:30 PM Eastern on Wed Oct 7 is already Oct 8 in UTC.
+    const html = renderToStaticMarkup(
+      <FoodTruckStopRow
+        stop={stop({ startsAt: "2026-10-08T02:30:00.000Z", endsAt: undefined })}
+        timing="upcoming"
+      />,
+    );
+    expect(accessibleText(html)).toContain("Wednesday, October 7 · 10:30 PM");
+  });
+
+  it("says nothing about a day when the stop has no usable start", () => {
+    const html = renderToStaticMarkup(
+      <FoodTruckStopRow stop={stop({ startsAt: "not a date" })} timing="upcoming" />,
+    );
+    expect(html).not.toContain("<time");
+    expect(accessibleText(html)).toContain("Time not listed");
+  });
+
   it("gives an unlisted vendor the Truck mark", () => {
     const html = renderToStaticMarkup(
       <FoodTruckStopRow stop={stop({ vendors: [{ name: "Three Daughters" }] })} timing="upcoming" />,
@@ -78,5 +137,6 @@ describe("FoodTruckStopList", () => {
     );
     expect(html).toContain('class="food-truck-stop-list"');
     expect(html).toContain('data-stop-timing="active"');
+    expect(accessibleText(html)).toContain("Thursday, October 8 · Scheduled now · 5:00 to 9:00 PM");
   });
 });

@@ -87,6 +87,9 @@ const STOP_MONTH = STOP_PART({ month: "short" });
 const STOP_DAY = STOP_PART({ day: "numeric" });
 const STOP_WEEKDAY = STOP_PART({ weekday: "short" });
 const STOP_CLOCK = STOP_PART({ hour: "numeric", minute: "2-digit" });
+// The spoken date for a stop row. DatePlate is aria-hidden, so without this a
+// screen reader hears the same window, host and town for every day of the week.
+const STOP_SPOKEN_DATE = STOP_PART({ weekday: "long", month: "long", day: "numeric" });
 
 function clockParts(iso: string): { time: string; period: string } | null {
   const date = new Date(iso);
@@ -135,8 +138,10 @@ function stopVendorIdentity(vendor: FoodTruckScheduleStop["vendors"][number]) {
 /**
  * One published stop as a ruled row: the date plate, the lead vendor's logo
  * or Truck mark, the vendor names, then "5:00 to 9:00 PM · host · town" and
- * the public source checked. Directions is a 44px outlined icon button, so the
- * page keeps its one filled action elsewhere.
+ * the public source checked. The plate is decorative, so the meta line opens
+ * with a visually hidden <time> ("Thursday, October 8") that assistive tech
+ * reads in its place. Directions is a 44px outlined icon button, so the page
+ * keeps its one filled action elsewhere.
  */
 export function FoodTruckStopRow({
   stop,
@@ -183,6 +188,11 @@ export function FoodTruckStopRow({
           })}
         </h3>
         <p className="text-meta-lg mt-0.5" style={{ color: "var(--app-ink-2)" }}>
+          {dated ? (
+            <time dateTime={stop.startsAt} className="sr-only">
+              {`${STOP_SPOKEN_DATE.format(starts)} · `}
+            </time>
+          ) : null}
           {timing === "active" ? (
             <span className="font-semibold" style={{ color: "var(--app-positive)" }}>Scheduled now · </span>
           ) : null}

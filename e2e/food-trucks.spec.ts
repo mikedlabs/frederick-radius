@@ -46,6 +46,10 @@ test("food-truck board leads with plans and opens useful vendor details", async 
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
+// The date plate is aria-hidden, so every stop row names its day in a visually
+// hidden <time>, and two stops at the same host stay distinguishable.
+const SPOKEN_STOP_DAY = /^(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day, [A-Z][a-z]+ \d{1,2}\b/;
+
 test("the weekly board promotes useful stops and folds stops that already ended", async ({ page }) => {
   await page.goto("/food-trucks");
 
@@ -64,6 +68,7 @@ test("the weekly board promotes useful stops and folds stops that already ended"
     const box = await directions.boundingBox();
     expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    await expect(leadCards.first().locator("time[datetime]")).toHaveText(SPOKEN_STOP_DAY);
   }
   await expect(page.locator(".food-truck-vendor-mark, .food-truck-vendor-fallback")).toHaveCount(0);
   expect(leadTiming).toEqual(
@@ -83,6 +88,7 @@ test("the weekly board promotes useful stops and folds stops that already ended"
     await expect(earlierCards.first()).toBeHidden();
     await disclosure.locator("summary").click();
     await expect(earlierCards.first()).toBeVisible();
+    await expect(earlierCards.first().locator("time[datetime]")).toHaveText(SPOKEN_STOP_DAY);
     expect(await earlierCards.evaluateAll((cards) =>
       cards.map((card) => card.getAttribute("data-stop-timing")),
     )).toEqual(Array.from({ length: earlierCount }, () => "ended"));
