@@ -10,8 +10,13 @@
  *   md  56 x 64   the lead plate
  *   lg  72 x 84   a hero or moment plate (numeral display-3)
  *
- * The plate is decorative (aria-hidden): every caller prints the date or time
- * in text beside it.
+ * The plate is aria-hidden: it is a picture of a date, so it can never be the
+ * only place the date lives. A caller that renders it must also say the same
+ * day in text, and the time beside the plate is not enough. EventRow, the
+ * EventCard tile and EventPosterCard's date-led body each put the day
+ * ("Thu, Oct 8, ") in visually hidden text ahead of the time, using
+ * eventRowDate. A row whose surface header already names the day
+ * (hideDate, "Earlier today") drops the plate and that text together.
  */
 export type DatePlateSize = "sm" | "md" | "lg";
 

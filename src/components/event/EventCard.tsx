@@ -16,6 +16,7 @@ import DatePlate from "@/components/event/DatePlate";
 import {
   eventDecisionLocation,
   eventDecisionTime,
+  eventRowDate,
   eventRowTime,
 } from "@/lib/events/decision-facts";
 import { communicationAccessLabels } from "@/lib/events/communication-access";
@@ -222,6 +223,8 @@ export default function EventCard({
             {event.title}
           </Link>
           <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+            {/* The plate is aria-hidden; say its day in text. */}
+            <span className="sr-only">{`${eventRowDate(event)}, `}</span>
             <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-2)" }}>{timingText}</span>
             {venueLabel ? <> · {venueLabel}</> : null}
           </p>
@@ -270,6 +273,11 @@ export function eventRowMark(
  * - The meta line is start time, venue and town. A live event shows an Amber
  *   dot and "Now" instead of the time. End-time and daily-hours cautions are
  *   not row facts; the sheet and the detail page say them as sentences.
+ * - The date plate is a picture and hidden from assistive tech, so whenever
+ *   it renders the meta line says the same day in visually hidden text
+ *   ("Thu, Oct 8, 7:00 PM"). With hideDate the surface's own header names
+ *   the day, and the row says only the clock. Not an aria-label: the link's
+ *   name stays its visible text.
  * - The mark is "Free" or "Tickets", never both.
  * - The picture is a publisher flyer in a 56px frame, uncropped on sunken
  *   paper with nothing drawn over it. Any other event has no frame at all:
@@ -351,6 +359,11 @@ export function EventRow({
               <span className="font-semibold" style={{ color: statusColor }}>
                 {statusText}
                 {" · "}
+              </span>
+            )}
+            {!hideDate && (
+              <span data-event-row-date className="sr-only">
+                {`${eventRowDate(event)}, `}
               </span>
             )}
             {live ? (

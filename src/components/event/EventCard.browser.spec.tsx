@@ -143,7 +143,9 @@ describe("EventCard row grammar", () => {
   it("prints start time, venue and town on one meta line", () => {
     const markup = html(event({ hero_image: undefined }));
     const meta = markup.match(/data-event-row-meta="true"[^>]*>(.*?)<\/p>/)?.[1] ?? "";
-    expect(meta.replace(/<[^>]+>/g, "")).toBe("7:00 PM · Steinhardt Brewing Company · Frederick");
+    // What a sighted reader sees: the visually hidden day is left out.
+    const visible = meta.replace(/<span data-event-row-date[^>]*>.*?<\/span>/, "");
+    expect(visible.replace(/<[^>]+>/g, "")).toBe("7:00 PM · Steinhardt Brewing Company · Frederick");
   });
 
   it("drops the end-time caution from rows", () => {
@@ -209,6 +211,82 @@ describe("EventCard row grammar", () => {
     const markup = html(event(), { variant: "utility", hideDate: true });
     expect(markup).not.toContain("data-date-plate");
     expect(markup).toContain(">7:00 PM<");
+  });
+
+  describe("says the plate's day in text for screen readers", () => {
+    /** The row's one link, as assistive tech reads it. */
+    const rowLink = (markup: string) => {
+      const host = document.createElement("div");
+      host.innerHTML = markup;
+      return host.querySelector<HTMLAnchorElement>('a[href^="/events/"]')!;
+    };
+
+    it.each(["glance", "compact", "utility", "row"] as const)(
+      "puts the day in the %s row's link text while the plate renders",
+      (variant) => {
+        const link = rowLink(
+          renderToStaticMarkup(<EventCard event={event()} variant={variant} />),
+        );
+        // The plate itself is hidden from assistive tech.
+        expect(link.querySelector("[data-date-plate]")?.getAttribute("aria-hidden")).toBe("true");
+        const date = link.querySelector("[data-event-row-date]");
+        expect(date?.className).toBe("sr-only");
+        expect(date?.textContent).toBe("Thu, Oct 8, ");
+        expect(link.querySelector("[data-event-row-meta]")?.textContent).toBe(
+          "Thu, Oct 8, 7:00 PM · Steinhardt Brewing Company · Frederick",
+        );
+        expect(link.textContent).toContain("Thu, Oct 8, 7:00 PM");
+        // The link's name stays its visible text, never an aria-label.
+        expect(link.hasAttribute("aria-label")).toBe(false);
+      },
+    );
+
+    it("names the Eastern day, not the UTC day, for a late event", () => {
+      const late = event({
+        starts_at: "2026-10-09T02:30:00.000Z",
+        ends_at: "2026-10-09T04:00:00.000Z",
+      });
+      expect(rowLink(html(late)).textContent).toContain("Thu, Oct 8, 10:30 PM");
+    });
+
+    it("keeps the day ahead of the time after a cancelled status", () => {
+      const meta = rowLink(html(event({ status: "cancelled" }))).querySelector(
+        "[data-event-row-meta]",
+      );
+      expect(meta?.textContent).toBe(
+        "Cancelled · Thu, Oct 8, 7:00 PM · Steinhardt Brewing Company · Frederick",
+      );
+    });
+
+    it("says the day before Now on a confirmed live row", () => {
+      const link = rowLink(html(event(), { live: true, nowISO: "2026-10-08T23:30:00.000Z" }));
+      expect(link.querySelector("[data-event-row-meta]")?.textContent).toMatch(
+        /^Thu, Oct 8, Now · /,
+      );
+    });
+
+    it("omits the day with hideDate, where the surface header names it", () => {
+      const link = rowLink(html(event(), { variant: "utility", hideDate: true }));
+      expect(link.querySelector("[data-date-plate]")).toBeNull();
+      expect(link.querySelector("[data-event-row-date]")).toBeNull();
+      expect(link.textContent).not.toContain("Oct 8");
+      expect(link.textContent).not.toContain("Thu");
+      expect(link.querySelector("[data-event-row-meta]")?.textContent).toBe(
+        "7:00 PM · Steinhardt Brewing Company · Frederick",
+      );
+    });
+
+    it("says the day beside the tile's and the date-led feature's plate", () => {
+      for (const variant of ["tile", "feature"] as const) {
+        const host = document.createElement("div");
+        host.innerHTML = renderToStaticMarkup(
+          <EventCard event={event({ hero_image: undefined })} variant={variant} />,
+        );
+        expect(host.querySelector("[data-date-plate]")).not.toBeNull();
+        const hidden = [...host.querySelectorAll(".sr-only")].map((el) => el.textContent);
+        expect(hidden).toContain("Thu, Oct 8, ");
+      }
+    });
   });
 
   it("keeps a cancelled listing visible and says so first", () => {

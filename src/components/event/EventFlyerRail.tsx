@@ -6,7 +6,7 @@ import {
   eventFlyerVisual,
   type EventCardVisual,
 } from "@/components/event/eventVisuals";
-import { eventDecisionLocation, eventRowTime } from "@/lib/events/decision-facts";
+import { eventDecisionLocation, eventRowDate, eventRowTime } from "@/lib/events/decision-facts";
 import { isUtilityEvent } from "@/lib/event-kind";
 import RadiusPhoto, {
   RadiusPhotoScope,
@@ -33,13 +33,6 @@ const EASTERN_DAY = new Intl.DateTimeFormat("en-CA", {
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
-});
-
-const EASTERN_RAIL_DATE = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/New_York",
-  weekday: "short",
-  month: "short",
-  day: "numeric",
 });
 
 /** Eastern YYYY-MM-DD for `offset` whole days after `nowMs`, anchored at noon. */
@@ -98,8 +91,7 @@ export function flyerRailItems(
 
 /** "Thu, Oct 8 · 7:30 PM": the rail card's date line. */
 export function flyerRailWhen(event: EventWithMeta, now?: Date): string {
-  const day = EASTERN_RAIL_DATE.format(new Date(event.starts_at));
-  return `${day} · ${eventRowTime(event, now)}`;
+  return `${eventRowDate(event)} · ${eventRowTime(event, now)}`;
 }
 
 /**

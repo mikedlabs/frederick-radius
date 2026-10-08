@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { eventReasons } from "@/lib/event-reasons";
-import { eventDecisionLocation, eventDecisionTime } from "@/lib/events/decision-facts";
+import { eventDecisionLocation, eventDecisionTime, eventRowDate } from "@/lib/events/decision-facts";
 import DatePlate from "@/components/event/DatePlate";
 import { communicationAccessLabels } from "@/lib/events/communication-access";
 import { eventDateBlock } from "@/lib/events/format";
@@ -141,7 +141,11 @@ export default function EventPosterCard({
           >
             {event.title}
           </Link>
-          <p className="mt-1.5 text-[13px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>{timingText}</p>
+          <p className="mt-1.5 text-[13px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+            {/* The plate is aria-hidden; say its day in text. */}
+            <span className="sr-only">{`${eventRowDate(event)}, `}</span>
+            {timingText}
+          </p>
           {venueLabel && <p className="mt-0.5 text-[13px]" style={{ color: "var(--app-ink-2)" }}>{venueLabel}</p>}
           {whyItMatters && <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{whyItMatters}</p>}
           {reasons.length > 0 && !confirmedLive && <div className="mt-2"><ReasonChipRow reasons={reasons} /></div>}

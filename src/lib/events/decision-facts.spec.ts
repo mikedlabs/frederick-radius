@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Event } from "@/data/events";
-import { eventDecisionLocation, eventDecisionTime, eventRowTime, eventTimeCaution } from "./decision-facts";
+import { eventDecisionLocation, eventDecisionTime, eventRowDate, eventRowTime, eventTimeCaution } from "./decision-facts";
 import { eventNearbyStation } from "./travel";
 
 const event = (overrides: Partial<Event> = {}): Event => ({
@@ -63,6 +63,12 @@ describe("event decision facts", () => {
     expect(eventRowTime(weekend)).toBe("9:00 AM through Oct 11");
     expect(eventRowTime(weekend)).not.toContain("check daily hours");
     expect(eventTimeCaution(weekend)).toContain("spans several days");
+  });
+
+  it("names a row's start day in words on the Eastern calendar", () => {
+    expect(eventRowDate(event())).toBe("Thu, Sep 10");
+    // 10 PM Eastern is already the next day in UTC; the row keeps the local day.
+    expect(eventRowDate(event({ starts_at: "2026-10-08T22:30:00-04:00" }))).toBe("Thu, Oct 8");
   });
 
   it("only joins nearby MARC station coordinates, without inventing a service or route time", () => {

@@ -44,6 +44,23 @@ const EASTERN_MONTH_DAY = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
 });
 
+const EASTERN_WEEKDAY_MONTH_DAY = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+});
+
+/**
+ * The start day in words, "Thu, Oct 8", on the Eastern calendar. A row's
+ * date plate is a picture of this day and is hidden from assistive tech, so
+ * the row says the day in text for screen readers. The flyer rail prints it
+ * ahead of each card's clock ("Thu, Oct 8 · 7:30 PM").
+ */
+export function eventRowDate(event: Pick<Event, "starts_at">): string {
+  return EASTERN_WEEKDAY_MONTH_DAY.format(new Date(event.starts_at));
+}
+
 /**
  * The clock a list row prints: when it starts, in as few words as the facts
  * allow. A row has one meta line, so the cautions an upcoming row used to
