@@ -1,5 +1,27 @@
 import { expect, test } from "@playwright/test";
 
+/** The events chapter's name on the one daypart clock (src/lib/daypart.ts,
+ *  dayProgramLabel in TomorrowPreview.tsx), for an Eastern hour. */
+function dayProgramLabelAt(instant: Date): string {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      hour: "numeric",
+      hourCycle: "h23",
+    }).format(instant),
+  );
+  if (hour >= 5 && hour < 16) return "Today's events";
+  if (hour >= 16 && hour < 21) return "Tonight";
+  return hour < 5 ? "Overnight and today" : "Tonight and tomorrow";
+}
+
+/** Today revalidates every 300 seconds, so a cached render may predate a
+ *  daypart boundary by a few minutes. Accept the label for either instant. */
+function expectedDayProgramLabels(): string[] {
+  const now = new Date();
+  return [...new Set([dayProgramLabelAt(now), dayProgramLabelAt(new Date(now.getTime() - 6 * 60_000))])];
+}
+
 for (const width of [320, 375, 390, 430, 1366]) {
   test(`Today keeps the editorial layout useful at ${width}px`, async ({ page }, testInfo) => {
     test.setTimeout(120_000);
@@ -86,17 +108,77 @@ for (const width of [320, 375, 390, 430, 1366]) {
       await expect(campaign).toHaveAttribute("data-fair-feature-tone", "briefing");
     }
 
+    // Weather is one link row to the full forecast under a 1px rule, not a
+    // sunken card.
+    const weather = page.locator("[data-today-weather]");
+    await expect(weather.getByRole("link")).toHaveCount(1);
+    await expect(weather.getByRole("link")).toHaveAttribute("href", "/pulse?open=weather");
+    expect(await weather.evaluate((element) => ({
+      rule: getComputedStyle(element).borderTopWidth,
+      background: getComputedStyle(element).backgroundColor,
+    }))).toEqual({ rule: "1px", background: "rgba(0, 0, 0, 0)" });
+    expect(Math.round((await weather.getByRole("link").boundingBox())!.height))
+      .toBeGreaterThanOrEqual(56);
+
     const places = page.locator('[aria-label="Places for your area"]');
-    const events = page.getByRole("group", { name: "Follow the day", exact: true });
+    // The events chapter is named by the daypart: "Today's events", then
+    // "Tonight" from the evening daypart.
+    const labels = expectedDayProgramLabels();
+    const events = page.getByRole("group", {
+      name: new RegExp(`^(?:${labels.join("|")})$`),
+    });
+    await expect(events).toHaveCount(1);
     const placesBox = (await places.boundingBox())!;
     const eventsBox = (await events.boundingBox())!;
     expect(weatherBox.y).toBeGreaterThanOrEqual(placesBox.y + placesBox.height);
     expect(weatherBox.y).toBeGreaterThanOrEqual(eventsBox.y + eventsBox.height);
+    // Paper, not boxes: neither column is a card at any width.
+    for (const column of [places, events]) {
+      expect(await column.evaluate((element) => ({
+        border: getComputedStyle(element).borderTopWidth,
+        shadow: getComputedStyle(element).boxShadow,
+      }))).toEqual({ border: "0px", shadow: "none" });
+    }
     if (width >= 640) {
       expect(Math.abs(placesBox.y - eventsBox.y)).toBeLessThanOrEqual(1);
       expect(eventsBox.x).toBeGreaterThan(placesBox.x + placesBox.width);
     } else {
       expect(eventsBox.y).toBeGreaterThanOrEqual(placesBox.y + placesBox.height);
+    }
+    if (width >= 1024) {
+      // Places on the left at 5 parts, events on the right at 7, 32px apart.
+      expect(eventsBox.width / placesBox.width).toBeGreaterThan(1.3);
+      expect(eventsBox.width / placesBox.width).toBeLessThan(1.5);
+      expect(Math.round(eventsBox.x - (placesBox.x + placesBox.width))).toBe(32);
+    }
+
+    // The pin map draws only when two or more rows have a precise venue, and
+    // only the instance for this breakpoint is displayed.
+    const visibleMaps = events.locator("[data-today-tonight-map]:visible");
+    const mapCount = await visibleMaps.count();
+    expect(mapCount).toBeLessThanOrEqual(1);
+    if (mapCount === 1) {
+      const map = visibleMaps.first();
+      await expect(map).toHaveAttribute(
+        "data-today-tonight-map",
+        width >= 1024 ? "wide" : "compact",
+      );
+      const mapBox = (await map.boundingBox())!;
+      // 176px on phones and 300px from 1024px, plus the 1px frame.
+      expect(Math.round(mapBox.height)).toBe(width >= 1024 ? 302 : 178);
+      const pins = await map.locator("[data-mini-map-pin]").evaluateAll((nodes) =>
+        nodes.map((node) => node.getAttribute("data-mini-map-pin")).sort());
+      const discs = await events.locator("[data-today-pin-disc]:visible").evaluateAll((nodes) =>
+        nodes.map((node) => node.textContent?.trim()).sort());
+      expect(pins.length).toBeGreaterThanOrEqual(2);
+      expect(discs).toEqual(pins);
+    } else {
+      // No map means no numbered discs either.
+      await expect(events.locator("[data-today-pin-disc]:visible")).toHaveCount(0);
+      testInfo.annotations.push({
+        type: "today-tonight-map",
+        description: "Fewer than two listed rows had a precise venue at run time, so no map was drawn.",
+      });
     }
     await expect.poll(() => page.evaluate(() =>
       document.documentElement.scrollWidth - document.documentElement.clientWidth,

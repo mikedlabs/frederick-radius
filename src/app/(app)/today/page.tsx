@@ -14,8 +14,15 @@ import TodayFairFeature from "@/components/today/TodayFairFeature";
 import Image from "next/image";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
-import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
+import {
+  eventCardVisual,
+  eventVisualTreatment,
+} from "@/components/event/eventVisuals";
+import RadiusPhoto, {
+  RadiusPhotoScope,
+  RadiusPhotoWhen,
+} from "@/components/ui/RadiusPhoto";
 import TonightHeadline from "@/components/today/TonightHeadline";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
@@ -32,12 +39,15 @@ import { keepDegradedEventRenderShort } from "@/lib/loaders/unifiedEvents";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
 import { isEventToday, isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { splitTonightFeature, withoutTodayFeature } from "@/lib/today/tonight";
 import PoolsToday from "@/components/today/PoolsToday";
 import TodayLocalGuides, { TodayFoodTruckGuide } from "@/components/today/TodayLocalGuides";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
-import TomorrowPreview from "@/components/today/TomorrowPreview";
+import TomorrowPreview, { dayProgramLabel } from "@/components/today/TomorrowPreview";
+import TonightMap, {
+  tonightMapPlan,
+  type TonightMapPlan,
+} from "@/components/today/TonightMap";
 import WeatherSafeGoldenHour from "@/components/today/WeatherSafeGoldenHour";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
@@ -61,7 +71,6 @@ import {
 } from "@/lib/today/tomorrow";
 import {
   daypart,
-  daypartOfHour,
   easternHour,
   isTonightDaypart,
   programDaypartLabel,
@@ -75,10 +84,7 @@ import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
 import { shouldPromoteTodayHeadliner } from "@/components/today/headlinerTiming";
 import TodayScopeStatus from "@/components/today/TodayScopeStatus";
 import TodayEventsRecovery from "@/components/today/TodayEventsRecovery";
-import {
-  shouldRenderTodayEventSection,
-  todayEventPicksMeta,
-} from "@/lib/today-events";
+import { shouldRenderTodayEventSection } from "@/lib/today-events";
 import { eventTown } from "@/lib/events/eventTown";
 import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
@@ -98,7 +104,10 @@ import {
  *   1. Identity       → active alerts and the time-aware masthead
  *   2. Decide now     → one Find doorway before campaigns and weather
  *                       + a location-aware place answer
- *   3. Follow the day → a short chronological civic and event program
+ *   3. The day's events → a numbered pin map of the precisely located
+ *                       venues over a short chronological program, in a
+ *                       chapter named by the daypart ("Today's events",
+ *                       "Tonight"); weather follows as one link row
  *   4. Plan the rest  → scheduled utilities, sports, light, and tomorrow
  *   5. Keep exploring → local guides and saved places, collapsed
  *
@@ -350,8 +359,13 @@ export default async function HomePage() {
           </BrowsePlacesDisclosure>
         </div>
 
+      {/* The chapter is named by the one daypart clock: "Today's events",
+          then "Tonight" from the evening daypart, when the masthead says
+          Tonight too. After 9 PM it covers what is still on and the coming
+          day, which leads on its own once tonight is done. Its heading is the
+          section's only heading; the program below adds none of its own. */}
       <PageChapter
-        label="Follow the day"
+        label={dayProgramLabel(now)}
         variant="plain"
         className={styles.events}
       >
@@ -367,6 +381,11 @@ export default async function HomePage() {
           </div>
         ) : null}
         {whatsOn}
+        {/* Planning the evening belongs with the evening's events. It used
+            to share the weather card's heading; weather is one link row now,
+            and a second link cannot sit inside it. Retires itself from 9 PM
+            on the visitor's clock. */}
+        <Suspense fallback={null}><TodayPlanTonightLink renderedAt={now.toISOString()} /></Suspense>
       </PageChapter>
       </div>
 
@@ -374,8 +393,8 @@ export default async function HomePage() {
           Find and nearby choices remain ahead of the seasonal campaign.
           Fair Day owns this doorway
           from Sep 2–26, then retires itself on Sep 27. When another civic
-          moment overlaps the Fair campaign, it appears in Follow the day
-          above instead of disappearing. */}
+          moment overlaps the Fair campaign, it appears in the day's events
+          chapter above instead of disappearing. */}
       <div className={styles.context}>
       {fairPromotionPhase ? (
         <TodayFairFeature phase={fairPromotionPhase} briefing />
@@ -385,28 +404,24 @@ export default async function HomePage() {
         </div>
       ) : null}
 
-      {/* The verified weather glance remains one link to the full forecast.
-          Its quiet reading surface shares the row with the current campaign
-          without making either one a second page headline. */}
+      {/* Weather is one link row to the full forecast: the sky glyph, the
+          temperature now, then the condition with today's high and tonight's
+          low, all from the NWS and each left out when the feed lacks it. A
+          1px rule above it replaces the old sunken card. */}
       <section data-today-weather className={styles.weather}>
-        <div className={styles.contextHeading}>
-          <span>Countywide weather</span>
-          {/* Retires itself from 9 PM on the visitor's clock. */}
-          <Suspense fallback={null}><TodayPlanTonightLink renderedAt={now.toISOString()} /></Suspense>
-        </div>
         <AppTransitionLink
           href="/pulse?open=weather"
           prefetch={false}
-          className="group relative block outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+          className={`group ${styles.weatherRow}`}
         >
-          <Suspense fallback={<Skeleton.Block height={110} round="var(--app-radius-md)" />}>
+          <Suspense fallback={<Skeleton.Block height={32} width="60%" round="var(--app-radius-sm)" />}>
             <TodayCard />
           </Suspense>
           <span className="sr-only">Open the full forecast.</span>
           <ChevronRight
             aria-hidden
-            strokeWidth={2.25}
-            className="absolute bottom-2 right-2 h-4 w-4 opacity-50 transition-transform group-hover:translate-x-0.5"
+            className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+            style={{ color: "var(--app-ink-3)" }}
           />
         </AppTransitionLink>
       </section>
@@ -652,23 +667,63 @@ function deriveTodayProgram(
   };
 }
 
-/** One line of the day program: mono time column (the visible sort key),
- *  then title + venue. The editorial tier reads as TYPOGRAPHY — draws get
- *  weight, ink, and their category's color dot; civic/routine rows sit in
- *  the same timeline, smaller and grayer. Live rows swap the clock for a
- *  pulsing "Now". */
+type ProgramEvent = Awaited<EventsPromise>["publicEvents"][number];
+
+/** Rows shown below 1024px, and in the wider two-column briefing. */
+const PROGRAM_COMPACT_MAX = 3;
+const PROGRAM_WIDE_MAX = 5;
+
+/** Painted size of a row's flyer frame. */
+const PROGRAM_FLYER_PX = 56;
+
+const programRowKey = (e: ProgramEvent) => `${e.slug}-${e.starts_at}`;
+
+/** Where a list's pin map is drawn, and so where its rows show the disc
+ *  column: at every width, only from 1024px (the phone's rows held fewer than
+ *  two pins), or nowhere. */
+type ProgramMapScope = "all" | "wide" | null;
+
+function programMapScope(plan: TonightMapPlan): ProgramMapScope {
+  return plan.compact ? "all" : plan.wide ? "wide" : null;
+}
+
+/** The map rows for a list, in display order. */
+function programMapRows(events: readonly ProgramEvent[]) {
+  return events.map((e) => ({
+    key: programRowKey(e),
+    name: e.title,
+    geom: e.geom,
+    geo_confidence: e.geo_confidence,
+  }));
+}
+
+/** One line of the day program: the pin number that matches the map above
+ *  it, the time (the visible sort key), then title and "Venue · town". The
+ *  editorial tier reads as type: draws get the title size in Ink, civic and
+ *  routine rows sit in the same timeline in body size and Ink 2. A live row
+ *  swaps its clock for "Now" with the Amber live dot. A publisher flyer, when
+ *  the event has one, sits whole in a small paper frame on the right with
+ *  nothing drawn over it, and disappears if it fails to load. */
 function ProgramRow({
   event: e,
   quiet,
   now,
+  pin = null,
+  mapScope = null,
+  wideOnly = false,
 }: {
-  event: Awaited<EventsPromise>["publicEvents"][number];
+  event: ProgramEvent;
   quiet: boolean;
   now: Date;
+  /** This row's number on the map above, when it has a pin. */
+  pin?: string | null;
+  /** Where the list's map is drawn; the disc column follows it. */
+  mapScope?: ProgramMapScope;
+  /** Shown only in the wider layout (rows past the phone's three). */
+  wideOnly?: boolean;
 }) {
   const live = isEventLiveNow(e, now);
   const time = eventDateBlock(e).time;
-  const accent = CATEGORY_BY_SLUG[e.category ?? ""]?.color ?? "#7A7975";
   const town = eventTown(e);
   // "Frederick · Frederick": some feeds stamp the town as the venue name.
   // One mention is information, two is noise.
@@ -676,48 +731,68 @@ function ProgramRow({
   const where = [venue, town && town.toLowerCase() !== venue?.toLowerCase() ? town : null]
     .filter(Boolean)
     .join(" · ");
+  const visual = eventCardVisual(e);
+  const flyer = visual && eventVisualTreatment(visual) === "flyer" ? visual : null;
   return (
-    <li>
+    <li className={wideOnly ? "hidden lg:block" : undefined}>
       <Link
         href={`/events/${e.slug}`}
         prefetch={false}
-        className={`tap-44-y flex items-start gap-3 border-b py-2 pr-0.5 ${styles.eventRow}`}
+        data-today-program-row
+        data-today-pin={pin ?? undefined}
+        className={`tap-44-y flex items-start gap-2.5 border-b pr-0.5 ${styles.eventRow}`}
         style={{ borderColor: "var(--app-border)" }}
       >
+        {mapScope ? (
+          // The disc column exists wherever the map is drawn, so pinned and
+          // unpinned rows keep one time column. Only a pinned row fills it.
+          <span
+            aria-hidden
+            data-today-pin-disc={pin ? "" : undefined}
+            className={`${mapScope === "wide" ? "hidden lg:flex" : "flex"} text-caption mt-px h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full font-bold tabular-nums`}
+            style={pin ? { background: "var(--app-brand)", color: "var(--app-bg)" } : undefined}
+          >
+            {pin}
+          </span>
+        ) : null}
         <span
-          className={`flex w-[58px] shrink-0 items-center gap-1 pt-px font-mono text-[11px] font-semibold tabular-nums leading-snug ${styles.eventTime}`}
-          style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-3)" }}
+          className="text-meta-lg flex w-[60px] shrink-0 items-center gap-1.5 font-semibold tabular-nums"
+          style={{ color: live ? "var(--app-ink)" : quiet ? "var(--app-ink-3)" : "var(--app-ink-2)" }}
         >
           {live && (
-            <span aria-hidden className="live-dot h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: "var(--app-brand)" }} />
+            <span aria-hidden className="live-dot h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--app-amber)" }} />
           )}
           {live ? "Now" : time}
         </span>
-        {quiet ? (
-          <span className="min-w-0 flex-1 truncate text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+        <div className="min-w-0 flex-1">
+          <span
+            className={`${quiet ? "text-body" : "text-title-sm"} line-clamp-2`}
+            style={{ color: quiet ? "var(--app-ink-2)" : "var(--app-ink)" }}
+          >
             {e.title}
-            {(venue || town) && (
-              <span style={{ color: "var(--app-ink-3)" }}> · {venue ?? town}</span>
-            )}
           </span>
-        ) : (
-          <div className="min-w-0 flex-1">
-            <span className={`line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight ${styles.eventTitle}`} style={{ color: "var(--app-ink)" }}>
-              {e.title}
+          {where && (
+            <span className="text-meta-lg mt-0.5 block truncate" style={{ color: "var(--app-ink-3)" }}>
+              {where}
             </span>
-            {where && (
-              <span className={`mt-0.5 block truncate text-[11.5px] leading-snug ${styles.eventLocation}`} style={{ color: "var(--app-ink-3)" }}>
-                {where}
-              </span>
-            )}
-            {/* Real walk minutes from the user's cached fix (LocationPrime
-                consent), precisely-located venues only; self-hides. */}
-            {eventHasPreciseDisplayLocation(e) && <EventWalkTime dest={e.geom} />}
-          </div>
-        )}
-        {!quiet && (
-          <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: accent }} />
-        )}
+          )}
+          {/* Real walk minutes from the user's cached fix (LocationPrime
+              consent), precisely-located venues only; self-hides. */}
+          {eventHasPreciseDisplayLocation(e) && <EventWalkTime dest={e.geom} />}
+        </div>
+        {flyer ? (
+          <RadiusPhotoScope src={flyer.src} size={PROGRAM_FLYER_PX}>
+            <RadiusPhotoWhen is="visible">
+              <RadiusPhoto
+                size={PROGRAM_FLYER_PX}
+                fit="contain"
+                alt=""
+                loading="lazy"
+                className="rounded-[var(--app-radius-sm)]"
+              />
+            </RadiusPhotoWhen>
+          </RadiusPhotoScope>
+        ) : null}
       </Link>
     </li>
   );
@@ -754,22 +829,43 @@ async function WhatsOn({
     ? comingDayWeatherSentence(await forecastPromise, now)
     : null;
   const comingHasContent = comingRows.length > 0 || comingWeather != null;
-  const comingDayAnswer = coming ? (
-    <TomorrowPreview
-      day={coming}
-      weatherSentence={comingWeather}
-      rowCount={comingRows.length}
-    >
-      {comingRows.map((e) => (
-        <ProgramRow
-          key={`${e.slug}-${e.starts_at}`}
-          event={e}
-          quiet={isRoutineProgram(e)}
-          now={now}
-        />
-      ))}
-    </TomorrowPreview>
-  ) : null;
+  // The coming day carries the pin map only when it leads the chapter
+  // (nothing is still on tonight). When tonight's rows lead, they own the map
+  // and the numbers, so the coming day's rows stay unnumbered below them.
+  const comingDayAnswerWith = (leads: boolean) => {
+    if (!coming) return null;
+    const plan = leads
+      ? tonightMapPlan(programMapRows(comingRows))
+      : null;
+    const scope = plan ? programMapScope(plan) : null;
+    return (
+      <TomorrowPreview
+        day={coming}
+        weatherSentence={comingWeather}
+        rowCount={comingRows.length}
+        map={
+          scope ? (
+            <TonightMap
+              rows={programMapRows(comingRows)}
+              name={coming.laterToday ? "later today's events" : "tomorrow's events"}
+            />
+          ) : null
+        }
+      >
+        {comingRows.map((e) => (
+          <ProgramRow
+            key={programRowKey(e)}
+            event={e}
+            quiet={isRoutineProgram(e)}
+            now={now}
+            pin={plan?.numbers.get(programRowKey(e)) ?? null}
+            mapScope={scope}
+          />
+        ))}
+      </TomorrowPreview>
+    );
+  };
+  const comingDayAnswer = comingDayAnswerWith(false);
   const featureIsPromoted = feature
     ? shouldPromoteTodayHeadliner(feature, now)
     : false;
@@ -785,42 +881,39 @@ async function WhatsOn({
     ...upcomingRest.map((e) => ({ e, quiet: false })),
     ...remainingAlsoToday.map((e) => ({ e, quiet: true })),
   ].sort((a, b) => Date.parse(a.e.starts_at) - Date.parse(b.e.starts_at));
-  // The front page is a briefing, not the calendar. Eight rows show the shape
-  // of the day without making every visitor scroll through the full feed; the
-  // explicit remainder link preserves complete access.
-  const PROGRAM_MAX = 3;
-  const shown = program.slice(0, PROGRAM_MAX);
-  const programOverflow = program.length - shown.length;
-  // Count only the briefing picks a person can see here. The complete total
-  // remains on /events from the same unifiedEvents set. Labeling this bounded
-  // front-page selection as picks prevents a degraded archive fallback (or a
-  // deliberate three-row brief) from contradicting the full calendar count.
-  const briefingPicks = [
-    ...(featureIsPromoted && feature ? [feature] : []),
-    ...shown.map(({ e }) => e),
-  ];
-  const briefingTonightPicks = briefingPicks.filter(
-    (event) =>
-      !event.is_all_day &&
-      isTonightDaypart(daypartOfHour(easternStartHour(event.starts_at))),
-  ).length;
+  // The front page is a briefing, not the calendar. Three rows show the shape
+  // of the day on a phone without making every visitor scroll through the
+  // full feed; the wider two-column briefing has room for five. The link
+  // under the rows preserves complete access.
+  const shown = program.slice(0, PROGRAM_WIDE_MAX);
+  // Show before tell: a numbered pin map of the precisely located rows leads
+  // the list, and each pinned row carries the same number. Area-level venues
+  // stay listed without a pin, and fewer than two pins draws no map at all.
+  const programRows = shown.map(({ e }) => e);
+  const mapPlan = tonightMapPlan(programMapRows(programRows), PROGRAM_COMPACT_MAX);
+  const mapScope = programMapScope(mapPlan);
+  const chapterLabel = dayProgramLabel(now);
+  const tonight = isTonightDaypart(daypart(now));
   // Group headings come from the same daypart clock as the masthead and the
   // place shelf, so a 4 PM row is "Tonight" exactly when the title is.
   const partOf = (row: (typeof program)[number]): string => {
     if (row.e.is_all_day) return "All day";
     return programDaypartLabel(easternStartHour(row.e.starts_at));
   };
-  const programGroups: { label: string; rows: typeof program }[] = [];
-  for (const row of shown) {
+  const programGroups: {
+    label: string;
+    rows: Array<(typeof program)[number] & { index: number }>;
+  }[] = [];
+  shown.forEach((row, index) => {
     const label = partOf(row);
     const last = programGroups[programGroups.length - 1];
-    if (last && last.label === label) last.rows.push(row);
-    else programGroups.push({ label, rows: [row] });
-  }
-  // Late at night with nothing still on, tonight has no answer to give: lead
-  // with the coming day instead of a heading over a "quiet night" line.
+    if (last && last.label === label) last.rows.push({ ...row, index });
+    else programGroups.push({ label, rows: [{ ...row, index }] });
+  });
+  // Late at night with nothing still on, tonight has no answer to give: the
+  // coming day leads the chapter, with the pin map over its own rows.
   if (late && !featureIsPromoted && program.length === 0 && comingHasContent) {
-    return <div className="mt-5">{comingDayAnswer}</div>;
+    return <div className="mt-1">{comingDayAnswerWith(true)}</div>;
   }
   // A degraded archive with no usable rows is an unknown calendar state, not
   // an empty day. Do not leave a heading with a blank body or claim that
@@ -842,23 +935,9 @@ async function WhatsOn({
 
   return (
     <>
-    <section className="mt-5 space-y-3" aria-label="Events today">
-      <DismissibleSection
-        id="upcoming"
-        title="Events today"
-        href="/events"
-        cta={briefingPicks.length > 0 || feature ? "See all" : "Full board"}
-        flat
-        meta={todayEventPicksMeta({
-          todayPicks: briefingPicks.length,
-          tonightPicks: briefingTonightPicks,
-          degraded: sourceHealth.degraded,
-        })}
-      >
-        {/* Keep degraded-source honesty in the section's own metadata rather
-            than repeating the Events page's full warning card. Today stays
-            calm and scannable; the board remains the place to retry feeds and
-            inspect the complete coverage state. */}
+    {/* The chapter's heading names this section, so it carries none of its
+        own. The link under the rows is the one route to the full board. */}
+    <div data-today-program className="space-y-3">
         {/* A real draw can still earn the editorial feature, but it belongs to
             the explicitly countywide event program. It must never displace the
             town-aware place answer above or make the shared town control feel
@@ -871,43 +950,53 @@ async function WhatsOn({
             {/* ONE-HERO composition, part 2: the quiet-day truth. When no real
                 draw earned the page headline, say so plainly instead of
                 promoting a routine row into a fake hero; the quiet program
-                rows below and the week content further down carry the page.
-                Suppressed when sources are degraded — we can't call a day quiet
-                when a feed just failed to load. */}
+                rows below carry the page. Suppressed when sources are
+                degraded, because a day cannot be called quiet when a feed
+                just failed to load. */}
             {!feature && !sourceHealth.degraded && (
-              <p className="px-0.5 pt-1 text-[13.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                It is a quiet {isTonightDaypart(daypart(now)) ? "night" : "day"} around here. The
-                week ahead is on the{" "}
-                <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
-                  events page
-                </Link>
-                .
+              <p className="text-meta-lg px-0.5" style={{ color: "var(--app-ink-2)" }}>
+                It is a quiet {tonight ? "night" : "day"} around here.
               </p>
             )}
+            {mapScope ? (
+              <TonightMap
+                rows={programMapRows(programRows)}
+                compactCount={PROGRAM_COMPACT_MAX}
+                name={tonight ? "tonight's events" : "today's events"}
+              />
+            ) : null}
             {programGroups.length > 0 && (
               <div className="reveal-up">
-                {programGroups.map((group) => (
-                  <div key={group.label}>
-                    <p className="px-0.5 pb-1 pt-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-                      {group.label}
-                    </p>
-                    <ul>
-                      {group.rows.map(({ e, quiet }) => (
-                        <ProgramRow key={`${e.slug}-${e.starts_at}`} event={e} quiet={quiet} now={now} />
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-                {programOverflow > 0 && (
-                  <Link
-                    href="/events"
-                    className="tap-44-y flex items-center justify-between px-0.5 py-2.5 text-[13px] font-semibold"
-                    style={{ color: "var(--app-brand-press)" }}
-                  >
-                    +{programOverflow} more {late ? "tonight" : "today"}
-                    <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-                  </Link>
-                )}
+                {programGroups.map((group) => {
+                  const wideOnly = group.rows[0].index >= PROGRAM_COMPACT_MAX;
+                  return (
+                    <div
+                      key={`${group.label}-${group.rows[0].index}`}
+                      className={wideOnly ? "hidden lg:block" : undefined}
+                    >
+                      {/* A group named like the chapter ("Tonight" under
+                          "Tonight") would only repeat it. */}
+                      {group.label !== chapterLabel ? (
+                        <p className="text-meta-lg px-0.5 pb-0.5 pt-2 font-semibold" style={{ color: "var(--app-ink-2)" }}>
+                          {group.label}
+                        </p>
+                      ) : null}
+                      <ul>
+                        {group.rows.map(({ e, quiet, index }) => (
+                          <ProgramRow
+                            key={programRowKey(e)}
+                            event={e}
+                            quiet={quiet}
+                            now={now}
+                            pin={mapPlan.numbers.get(programRowKey(e)) ?? null}
+                            mapScope={mapScope}
+                            wideOnly={index >= PROGRAM_COMPACT_MAX}
+                          />
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
               </div>
             )}
             {/* Finished draws collapse to one honest line — the record of the
@@ -915,8 +1004,8 @@ async function WhatsOn({
                 <details>: no client JS. */}
             {remainingEarlierToday.length > 0 && (
               <details className="group">
-                <summary className="tap-44-y flex cursor-pointer list-none items-center gap-1.5 px-0.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-ink-3)" }}>
-                  <ChevronRight aria-hidden className="h-3 w-3 shrink-0 transition-transform group-open:rotate-90" strokeWidth={2.5} />
+                <summary className="text-meta-lg tap-44-y flex min-h-11 cursor-pointer list-none items-center gap-1.5 px-0.5 font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-ink-3)" }}>
+                  <ChevronRight aria-hidden className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none" />
                   Earlier today · {remainingEarlierToday.length} wrapped up
                 </summary>
                 <ul className="mt-1">
@@ -942,16 +1031,33 @@ async function WhatsOn({
             className="text-body py-4"
             style={{ color: "var(--app-ink-3)" }}
           >
-            {/* Only an empty set we TRUST is stated as "no events." The
-                heading already carries the one route to the complete board,
-                so this stays an answer instead of repeating the same link. */}
+            {/* Only an empty set we TRUST is stated as "no events." The link
+                below carries the one route to the complete board, so this
+                stays an answer instead of repeating it. */}
             {late
               ? "Nothing more is listed for tonight."
               : "No events are on the calendar today."}
           </p>
         )}
-      </DismissibleSection>
-    </section>
+        {/* Degraded-source honesty stays one sentence here rather than the
+            Events page's full warning card. It never says the day is empty;
+            the board remains the place to retry feeds and inspect coverage. */}
+        {sourceHealth.degraded ? (
+          <p data-today-program-partial className="text-meta-lg px-0.5" style={{ color: "var(--app-ink-3)" }}>
+            Some calendars did not load, so this list may be missing events.
+          </p>
+        ) : null}
+        <Link
+          href="/events"
+          prefetch={false}
+          data-today-program-all
+          className="text-body tap-44-y inline-flex min-h-11 items-center gap-1.5 px-0.5 font-semibold"
+          style={{ color: "var(--app-brand-press)" }}
+        >
+          {tonight ? "All of tonight's events" : "All of today's events"}
+          <ChevronRight aria-hidden className="h-4 w-4 shrink-0" />
+        </Link>
+    </div>
     {comingDayAnswer}
     </>
   );

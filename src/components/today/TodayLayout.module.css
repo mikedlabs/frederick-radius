@@ -97,34 +97,38 @@
   min-width: 0;
 }
 
+/* Weather is one link row on the page, under a 1px rule: no sunken card. */
 .weather {
   min-width: 0;
-  padding: 14px 16px;
   color: var(--app-ink);
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
+  border-top: 1px solid var(--app-border);
+}
+
+.weatherRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding-block: 8px;
+  padding-inline: 2px;
+  color: var(--app-ink);
+  border-radius: var(--app-radius-sm);
+  outline: none;
+  transition: background-color var(--app-dur-fast) var(--app-ease-out);
+}
+
+.weatherRow:hover {
   background: var(--app-bg-sunken);
 }
 
-.contextHeading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0 12px;
-  margin-bottom: 8px;
-  color: var(--app-ink-2);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.contextHeading > a {
-  margin-top: 0;
+.weatherRow:focus-visible {
+  outline: 2px solid var(--app-brand);
+  outline-offset: 2px;
 }
 
 .currentContent {
   display: grid;
-  align-items: stretch;
+  align-items: start;
   gap: 16px;
 }
 
@@ -132,20 +136,12 @@
   min-width: 0;
 }
 
-/* On phones the place answers sit on the page itself: a heading and two
-   picture tiles on Cream, with no card around them. The wider two-column
-   briefing keeps its framed columns until the desktop pass. */
-.places {
-  margin: 0;
-}
-
+/* Paper, not boxes: the place answers and the day's events sit on the page
+   itself, a heading and its content on Cream, at every width. The events
+   column holds a bordered map, and a map inside a card would nest boxes. */
+.places,
 .events {
   margin: 0;
-  padding: 16px;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
-  background: var(--app-bg-elevated-solid);
-  box-shadow: var(--app-shadow-1);
 }
 
 .places [data-today-section-heading] p {
@@ -153,6 +149,8 @@
   line-height: 1.4;
 }
 
+/* One program row: the whole row is the link, a 1px rule between rows, and
+   a sunken press state. */
 .eventRow {
   min-height: 72px;
   padding-block: 12px;
@@ -160,24 +158,14 @@
   transition: background-color var(--app-dur-fast) var(--app-ease-out);
 }
 
-.eventRow:hover {
+.eventRow:hover,
+.eventRow:active {
   background: var(--app-bg-sunken);
 }
 
 .eventRow:focus-visible {
   outline: 2px solid var(--app-brand);
   outline-offset: 3px;
-}
-
-.eventTitle {
-  font-size: 16px;
-  line-height: 1.3;
-}
-
-.eventTime,
-.eventLocation {
-  font-size: 12px;
-  line-height: 1.4;
 }
 
 .fairLink {
@@ -258,11 +246,6 @@
     grid-column: 1 / -1;
   }
 
-  .weather > a {
-    display: block;
-    width: 100%;
-  }
-
   .fairLink {
     height: 100%;
   }
@@ -271,14 +254,15 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 20px;
   }
+}
 
-  .places,
-  .events {
-    padding: 20px;
-    border: 1px solid var(--app-border);
-    border-radius: var(--app-radius-lg);
-    background: var(--app-bg-elevated-solid);
-    box-shadow: var(--app-shadow-1);
+/* The desktop briefing: places on the left, the day's events on the right,
+   in DOM order. The events column is the wider one because its 300px pin map
+   leads it. */
+@media (min-width: 1024px) {
+  .currentContent {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 32px;
   }
 }
 
@@ -299,10 +283,6 @@
     font-size: 12px;
   }
 
-  .events {
-    padding: 12px;
-  }
-
   .fairLink {
     grid-template-columns: 60px minmax(0, 1fr) 16px;
     gap: 10px;
@@ -315,7 +295,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .eventRow {
+  .eventRow,
+  .weatherRow {
     transition: none;
   }
 }

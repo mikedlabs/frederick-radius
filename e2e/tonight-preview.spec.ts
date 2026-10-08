@@ -119,6 +119,13 @@ test("Today carries explicit county into Tonight despite saved Brunswick", async
   await page.goto(origin + "/today?in=county");
   const entry = page.getByRole("link", { name: "Plan tonight", exact: true });
   await expect(entry).toHaveAttribute("href", "/today/tonight?intent=dinner&in=county");
+  // Planning the evening sits with the day's events. The weather row is a
+  // single link to the forecast, so no second link may live inside it.
+  await expect(entry).toHaveCount(1);
+  expect(await entry.evaluate((element) =>
+    Boolean(element.closest('[role="group"]')) && !element.closest("[data-today-weather]"),
+  )).toBe(true);
+  await expect(page.locator("[data-today-weather]").getByRole("link")).toHaveCount(1);
   const area = page.getByRole("combobox", { name: "Choose your area" });
   await expect(area).toHaveValue("county");
   await area.selectOption("town:brunswick");

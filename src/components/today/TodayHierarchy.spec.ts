@@ -105,7 +105,8 @@ describe("Today decision hierarchy", () => {
 
   it("gives each part of the briefing one purpose and preserves an overlapping civic moment", () => {
     const decide = renderedPage.indexOf("data-today-briefing");
-    const follow = renderedPage.indexOf('label="Follow the day"');
+    // The events chapter is named by the daypart clock (dayProgramLabel).
+    const follow = renderedPage.indexOf("label={dayProgramLabel(now)}");
     const plan = renderedPage.indexOf('title="Plan the rest"');
     const more = renderedPage.indexOf('title="Local guides and saved places"');
 
@@ -147,7 +148,10 @@ describe("Today decision hierarchy", () => {
     expect(eventsStart).toBeGreaterThan(-1);
     expect(events).toContain("featureIsPromoted && feature ?");
     expect(events).toContain("<TonightHeadline event={feature} now={now} embedded />");
-    expect(events).toContain("meta={todayEventPicksMeta({");
+    // The chapter heading names the section; partial coverage is one sentence
+    // and the board is one link under the rows.
+    expect(events).toContain("Some calendars did not load, so this list may be missing events.");
+    expect(events).toContain("data-today-program-all");
     // The recovery note still stands in for a degraded empty program; after
     // 9 PM the coming day's rows may follow it.
     expect(events).toMatch(/return \(\s*<>\s*<TodayEventsRecovery \/>\s*\{comingDayAnswer\}/);
@@ -212,9 +216,12 @@ describe("Today decision hierarchy", () => {
     expect(whatsOn).toContain("<TomorrowPreview");
     expect(whatsOn).toContain("<ProgramRow");
     // What is still on tonight leads; the coming day follows it.
-    expect(whatsOn.lastIndexOf('aria-label="Events today"')).toBeLessThan(
+    expect(whatsOn.lastIndexOf("data-today-program ")).toBeGreaterThan(-1);
+    expect(whatsOn.lastIndexOf("data-today-program ")).toBeLessThan(
       whatsOn.lastIndexOf("{comingDayAnswer}"),
     );
+    // With nothing still on, the coming day leads with its own pin map.
+    expect(whatsOn).toContain("comingDayAnswerWith(true)");
     // After 9 PM nothing is listed under "Earlier today".
     expect(todayPage).toContain("const ended = late ? [] :");
     expect(todayPage).toContain("isStillOnTonight(e, now, tonightEnds)");

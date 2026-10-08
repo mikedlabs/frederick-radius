@@ -257,6 +257,19 @@ describe("miniMapPinsCamera", () => {
     expect(camera.offsets[0].y).toBeGreaterThan(0);
   });
 
+  it("frames a taller, wider box closer in and keeps every pin inside it", () => {
+    const phone = miniMapPinsCamera(DOWNTOWN_PINS);
+    const wide = miniMapPinsCamera(DOWNTOWN_PINS, { width: 480, height: 300 });
+    // More room for the same spread means a closer camera.
+    expect(wide.zoom).toBeGreaterThan(phone.zoom);
+    expect(wide.zoom).toBeLessThanOrEqual(15.5);
+    for (const { x, y } of wide.offsets) {
+      expect(Math.abs(x)).toBeLessThanOrEqual(240 - 13);
+      expect(y - 32).toBeGreaterThanOrEqual(-150);
+      expect(y).toBeLessThanOrEqual(150);
+    }
+  });
+
   it("zooms out to fit pins across the county without going past the county view", () => {
     const camera = miniMapPinsCamera([
       { lng: -77.6743, lat: 39.3229 }, // Brunswick
@@ -339,6 +352,44 @@ describe("OwnedMiniMap with numbered pins", () => {
     expect(container.textContent).not.toContain("Open map");
     // The map uses the whole box instead of reserving the caption bar.
     expect(container.querySelector('[role="img"]')?.className).toContain("bottom-0");
+  });
+
+  it("keeps the default 176px box when no height is given", async () => {
+    await renderPins();
+    const mapBox = container.querySelector<HTMLElement>("[data-owned-mini-map]");
+    expect(mapBox?.className).toContain("h-44");
+    expect(mapBox?.style.height).toBe("");
+  });
+
+  it("draws a custom-height box and hands MapLibre the camera framed for it", async () => {
+    await act(async () => {
+      root.render(
+        createElement(OwnedMiniMap, {
+          pins: DOWNTOWN_PINS,
+          name: "tonight's events",
+          heightPx: 300,
+          fitWidthPx: 480,
+        }),
+      );
+    });
+    const mapBox = container.querySelector<HTMLElement>("[data-owned-mini-map]");
+    expect(mapBox?.className).not.toContain("h-44");
+    expect(mapBox?.style.height).toBe("300px");
+
+    const camera = miniMapPinsCamera(DOWNTOWN_PINS, { width: 480, height: 300 });
+    const ibiza = container.querySelector<SVGElement>('[data-mini-map-pin="1"]');
+    const fromCenter = (px: number) =>
+      px < 0 ? `calc(50% - ${-px}px)` : `calc(50% + ${px}px)`;
+    expect(ibiza?.style.left).toBe(fromCenter(camera.offsets[0].x));
+    expect(ibiza?.style.top).toBe(fromCenter(camera.offsets[0].y));
+
+    await act(async () => MockIntersectionObserver.instances[0].fire(true));
+    expect(canvasHarness.props).toMatchObject({
+      lng: camera.lng,
+      lat: camera.lat,
+      zoom: camera.zoom,
+    });
+    expect(camera.zoom).not.toBe(miniMapPinsCamera(DOWNTOWN_PINS).zoom);
   });
 
   it("renders nothing for an empty pin list", async () => {

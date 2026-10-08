@@ -1,7 +1,10 @@
-import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
+import {
+  getNwsForecast,
+  iconForShortForecast,
+  type NwsForecast,
+} from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
-import DaylightLeftInline from "@/components/today/DaylightLeftInline";
 import { weatherVerdict } from "@/lib/weather-verdict";
 import { getNwsAlertsResult, type NwsAlertsResult } from "@/lib/integrations/nws-alerts";
 import { getAirQuality, isFreshAqiObservation, pickWorstAqi } from "@/lib/integrations/airnow";
@@ -10,65 +13,49 @@ import OfflineTodayCapture from "@/components/pwa/OfflineTodayCapture";
 import { easternDayKey } from "@/lib/tz";
 import { withDeadlineFallback } from "@/lib/promise-deadline";
 
-/** The hero is a glance, not a live-feed loading screen. Cached safety data is
+/** The glance is not a live-feed loading screen. Cached safety data is
  * normally immediate. A cold provider gets enough time to produce a trustworthy
  * first read inside the page's streaming boundary; a degraded provider still
  * collapses to an explicit unavailable note. */
 export const TODAY_SAFETY_GLANCE_DEADLINE_MS = 2_500;
 
 /**
- * TodayCard — the daily hook at the very top of /now.
+ * TodayCard is the content of Today's one weather row.
  *
- * The product thesis is "less list, more lens": within a few seconds a
- * stranger should get a win and understand why this app exists. This
- * card is that moment. It turns the data the page already has — weather
- * now, today's high, sunset, and tonight's headline event — into one
- * editorial readout plus two situational next-steps, instead of making
- * the user assemble it from scattered modules.
+ * The page wraps it in a single link to the full forecast (/pulse?open=weather)
+ * and supplies the row's rule and chevron. This component fills it with what
+ * the National Weather Service actually reported, left to right:
  *
- *   Frederick today
- *   Good morning. Patio weather.
- *   70° now · High 76° · Sunset 8:27 PM
- *   Tonight: Alive @ Five at Carroll Creek
- *   [ Find coffee → ]  [ Open map ]
+ *   [sky glyph]  62°  Clear · High 76° · Low 55°
  *
- * Renders ON the SkyHero gradient (tone-aware via currentColor), so it
- * IS the hero rather than a card stacked on top of one. Server
- * component; the NWS fetch is shared/cached with the rest of the page.
+ * Every piece is optional and simply absent when the forecast does not carry
+ * it, so the row never prints a default or a guess. The sky glyph follows the
+ * current condition and the real sun times. It used to be a sunken card with a
+ * headline, a 40px temperature, a sun-event line and a live daylight counter;
+ * the briefing above it now carries the decisions, so weather is one line.
+ *
+ * Safety still outranks the line. An active NWS alert or an unhealthy air
+ * reading adds one plain sentence from the shared verdict engine
+ * (lib/weather-verdict), the same read the rest of the app shows. Server
+ * component; the NWS fetch is shared and cached with the rest of the page.
  */
 
-// The weather read beside the greeting comes from lib/weather-verdict —
-// the SAME engine NowIntel uses — so the hero and the "right now" line
-// can never disagree about one sky in one viewport. (This card used to
-// carry its own moodLine() with a fog branch the shared engine lacked;
-// the 4:18 AM audit caught "Low and gray." here over "A fine day to get
-// out." below. One engine owns the read now.)
-
-function fmtTime(d: Date | null): string | null {
-  if (!d) return null;
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(d);
-}
-
 /** A feed miss should not turn Today's most valuable screen space into a large
- * failed weather card. The surrounding weather plate remains a real link to
- * Pulse, but the failure itself collapses to one honest, useful row. */
+ * failed weather card. The surrounding row remains a real link to Pulse, but
+ * the failure itself is one honest sentence. */
 export function WeatherUnavailable() {
   return (
-    <section
-      aria-label="Weather unavailable"
+    <div
       data-weather-state="unavailable"
-      className="flex min-h-11 items-center justify-between gap-3 pr-5"
-      style={{ color: "currentColor" }}
+      className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-3"
     >
-      <span className="text-[12.5px] font-medium">The NWS forecast is briefly unavailable.</span>
-      <span className="shrink-0 text-[11.5px] font-semibold opacity-80">
+      <span className="text-meta-lg font-medium" style={{ color: "var(--app-ink-2)" }}>
+        The NWS forecast is briefly unavailable.
+      </span>
+      <span className="text-meta-lg font-semibold" style={{ color: "var(--app-brand-press)" }}>
         County status
       </span>
-    </section>
+    </div>
   );
 }
 
@@ -120,12 +107,68 @@ export function sentenceCaseForecast(value: string): string {
   return normalized ? normalized[0].toUpperCase() + normalized.slice(1) : "";
 }
 
+export type WeatherRowFacts = {
+  /** The current hour's temperature, or null when the hourly feed is empty. */
+  temperature: number | null;
+  /** The current hour's condition in sentence case ("Mostly sunny"). */
+  condition: string | null;
+  /** Today's daytime high, only while today's daytime period is listed. */
+  high: number | null;
+  /** The coming night's low (tonight, or the overnight period after midnight). */
+  low: number | null;
+};
+
+/**
+ * The facts the weather row may print, read only from the NWS forecast.
+ *
+ * NWS drops a period once it ends, so after the afternoon the first daytime
+ * period belongs to tomorrow. Calling that "High" on tonight's row would
+ * mislabel tomorrow's number as today's, so the high is kept only when its
+ * period starts on today's Eastern date, and otherwise left out. The low is
+ * the first night period, which is always the next one to come.
+ */
+export function weatherRowFacts(
+  forecast: NwsForecast | null,
+  now: Date,
+): WeatherRowFacts {
+  const current = forecast?.hourly?.[0] ?? null;
+  const daily = forecast?.daily ?? [];
+  const today = easternDayKey(now);
+  const highPeriod = daily.find(
+    (period) =>
+      period.isDaytime === true &&
+      easternDayKey(new Date(period.startTime)) === today,
+  );
+  const lowPeriod = daily.find((period) => period.isDaytime === false);
+  const finite = (value: number | undefined | null) =>
+    typeof value === "number" && Number.isFinite(value) ? value : null;
+  const condition = current?.shortForecast
+    ? sentenceCaseForecast(current.shortForecast)
+    : "";
+  return {
+    temperature: finite(current?.temperature),
+    condition: condition || null,
+    high: finite(highPeriod?.temperature),
+    low: finite(lowPeriod?.temperature),
+  };
+}
+
+/** "Clear · High 76° · Low 55°", leaving out whatever the forecast lacks. */
+export function weatherRowLine(facts: WeatherRowFacts): string | null {
+  const parts = [
+    facts.condition,
+    facts.high != null ? `High ${facts.high}°` : null,
+    facts.low != null ? `Low ${facts.low}°` : null,
+  ].filter((part): part is string => Boolean(part));
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 export default async function TodayCard() {
   const now = new Date();
 
   // Weather alone cannot authorize "great time to get out." Fetch the official
   // alert feed and current AQI beside it, with short ceilings so a slow safety
-  // provider never holds the whole hero hostage. A failed alert feed is carried
+  // provider never holds the row hostage. A failed alert feed is carried
   // forward explicitly; the verdict then falls back to neutral copy.
   const [forecast, alertResult, airObservations] = await Promise.all([
     withDeadlineFallback(
@@ -147,9 +190,8 @@ export default async function TodayCard() {
     ),
   ]);
   const cur = forecast?.hourly?.[0] ?? null;
-  const tempNow = cur?.temperature ?? null;
   const condition = cur?.shortForecast ?? "";
-  const high = forecast?.daily?.find((p) => p.isDaytime)?.temperature ?? null;
+  const facts = weatherRowFacts(forecast, now);
   const freshAir = (airObservations ?? []).filter((obs) => isFreshAqiObservation(obs, now));
   const worstAir = pickWorstAqi(freshAir);
   const airQualityAvailable = airObservations !== null && freshAir.length > 0;
@@ -157,39 +199,22 @@ export default async function TodayCard() {
     alertResult.alerts.length > 0 ||
     (worstAir !== null && worstAir.aqi > 100);
 
-  // Alerts and measured air quality still deserve the top slot when the
-  // ordinary forecast fails. If every live conditions feed is quiet or
-  // unavailable, collapse to the small handoff above instead of manufacturing
-  // a weather read from defaults.
+  // Alerts and measured air quality still deserve the row when the ordinary
+  // forecast fails. If every live conditions feed is quiet or unavailable,
+  // the row says the forecast is unavailable instead of manufacturing a
+  // weather read from defaults.
   if (!cur && !hasSafetySignal) {
     return <WeatherUnavailable />;
   }
 
-  // The NEXT sun event, not both — sunrise if it hasn't happened yet,
-  // otherwise tonight's sunset, otherwise tomorrow's sunrise. (Replaces
-  // the redundant sunrise+sunset footer that duplicated this.)
-  const st = sunTimes(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
-  let sun: { label: string; time: string } | null = null;
-  if (st.sunrise && now < st.sunrise) {
-    sun = { label: "Sunrise", time: fmtTime(st.sunrise)! };
-  } else if (st.sunset && now < st.sunset) {
-    sun = { label: "Sunset", time: fmtTime(st.sunset)! };
-  } else {
-    const tmrw = sunTimes(new Date(now.getTime() + 86_400_000), FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
-    if (tmrw.sunrise) sun = { label: "Sunrise", time: fmtTime(tmrw.sunrise)! };
-  }
-
-  // Always run the verdict: official alerts/AQI must still surface if the
+  // Always run the verdict: official alerts and AQI must still surface if the
   // ordinary forecast fails. Placeholder weather fields cannot produce a
   // positive read because weatherAvailable explicitly fails closed below.
-  // The hero takes the BRIEF (one observation), never the full advice
-  // line — the greeting already spends words here, and the counsel lives
-  // in NowIntel below (owner report, 2026-07-19: too much text up top).
   const verdict = weatherVerdict({
     temp: cur?.temperature ?? 70,
     shortForecast: cur?.shortForecast ?? "",
     precipNow: cur?.probabilityOfPrecipitation ?? 0,
-    forecastHigh: high,
+    forecastHigh: facts.high,
     activeAlerts: alertResult.alerts,
     airQuality: worstAir ? { aqi: worstAir.aqi, category: worstAir.category.name } : null,
     airQualityParameters: freshAir.map((observation) => observation.parameter),
@@ -207,76 +232,58 @@ export default async function TodayCard() {
     activeAlertCount: alertResult.alerts.length,
     airQualityIndex: worstAir?.aqi ?? null,
   });
+  // Only an actionable signal earns words here. A quiet day's verdict would
+  // repeat the condition, and a missing safety feed makes no claim on a row
+  // that no longer offers advice.
+  const safetySentence = hasSafetySignal ? verdict : null;
 
-  // Daytime by real sun times (the glyph's sun/moon depends on it).
+  // Daytime by real sun times (the glyph's sun or moon depends on it).
+  const st = sunTimes(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
   const isDay = st.sunrise && st.sunset ? now >= st.sunrise && now < st.sunset : true;
   const variant: SkyVariant | null = condition
     ? iconForShortForecast(condition, isDay)
     : null;
-
-  // Secondary stats — high + next sun event. The big temperature carries
-  // "now," so it's dropped from this line to avoid saying it twice.
-  const stats = cur
-    ? [
-        high != null ? `High ${high}°` : null,
-        sun ? `${sun.label} ${sun.time}` : null,
-      ].filter(Boolean)
-    : [];
+  const line = weatherRowLine(facts);
 
   return (
-    <section aria-label="Today in Frederick" style={{ color: "currentColor" }}>
+    // A div, because the sky glyph is one; the page's link around it is a
+    // block-level row, where flow content is valid.
+    <div data-weather-state="ready" className="flex min-w-0 flex-1 items-center gap-3">
       <OfflineTodayCapture
         snapshot={{
           dayKey: easternDayKey(now),
           weather: {
             headline: weatherRead.headline || condition,
             condition: condition || undefined,
-            temperatureF: tempNow ?? undefined,
-            highF: high ?? undefined,
+            temperatureF: facts.temperature ?? undefined,
+            highF: facts.high ?? undefined,
             safetyNote: weatherRead.safetyNote ?? undefined,
           },
         }}
       />
-      {/* The hook — a concise weather read in the display face.
-          The 3-second "I get it" line, now a tighter lead above one compact
-          weather row (was a 28px headline stacked over a 64px number). */}
-      {/* text-wrap balance: the two-line mood ("… chase shade and / AC.")
-          otherwise strands its last word at narrow widths. */}
-      {weatherRead.headline && (
-        <h2 className="font-sans text-[18px] font-semibold leading-snug tracking-tight [text-wrap:balance] sm:text-[20px]">
-          {weatherRead.headline}
-        </h2>
-      )}
-      {weatherRead.safetyNote && (
-        <p className="mt-1 text-[11.5px] font-medium">
-          {weatherRead.safetyNote}
-        </p>
-      )}
-
-      {/* One compact weather row: the animated glyph + the temperature + the
-          high/sunset stats, side by side, so the header stays short. */}
-      {(variant || tempNow != null || stats.length > 0) && (
-        <div className="mt-2 flex items-center gap-3">
-          {variant && (
-            <AnimatedSkyGlyph variant={variant} size={44} className="shrink-0 opacity-95" />
-          )}
-          {tempNow != null && (
-            <span className="font-sans text-[40px] font-light leading-none tracking-tight tabular-nums sm:text-[44px]">
-              {tempNow}&deg;
+      <span className="sr-only">Countywide weather now: </span>
+      {variant ? (
+        <AnimatedSkyGlyph variant={variant} size={32} className="shrink-0" />
+      ) : null}
+      {facts.temperature != null ? (
+        <span data-today-weather-temp className="text-title shrink-0 tabular-nums" style={{ color: "var(--app-ink)" }}>
+          {facts.temperature}&deg;
+        </span>
+      ) : null}
+      {line || safetySentence ? (
+        <span className="min-w-0">
+          {line ? (
+            <span data-today-weather-line className="text-meta-lg block tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+              {line}
             </span>
-          )}
-          {stats.length > 0 && (
-            <span className="text-[12.5px] font-medium leading-snug tabular-nums">
-              {stats.join("  ·  ")}
-              {/* Live daylight-left, moved here from TodayContext (client-side
-                  so it stays accurate; the server card would freeze it). */}
-              <DaylightLeftInline />
+          ) : null}
+          {safetySentence ? (
+            <span data-today-weather-safety className="text-meta-lg block font-semibold" style={{ color: "var(--app-ink)" }}>
+              {safetySentence}
             </span>
-          )}
-        </div>
-      )}
-
-      {/* The selected event lead renders once in the Events today section. */}
-    </section>
+          ) : null}
+        </span>
+      ) : null}
+    </div>
   );
 }

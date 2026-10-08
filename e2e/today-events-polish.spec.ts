@@ -67,17 +67,20 @@ test("Today keeps the first open-place pick in view when photos fall back", asyn
   await expect(firstPick).toBeVisible();
   await expect(firstPick).not.toHaveAttribute("aria-label");
 
-  const rail = page
-    .getByRole("region", { name: "Open places right now" })
-    .locator(".shelf-rail");
-  await expect
-    .poll(() => rail.evaluate((element) => element.scrollLeft))
-    .toBe(0);
-  expect(
-    await rail.evaluate((element) => {
-      const first = element.firstElementChild?.getBoundingClientRect();
-      const frame = element.getBoundingClientRect();
-      return Boolean(first && first.left >= frame.left - 1);
-    }),
-  ).toBe(true);
+  // The shelf is a two-tile grid now, not a sideways rail: both picks sit
+  // inside the 320px column, the first one on the left.
+  const shelf = page.getByRole("region", { name: "Open places right now" });
+  const secondPick = shelf.getByRole("link", { name: /Second local pick/i });
+  await expect(secondPick).toBeVisible();
+  const firstBox = (await firstPick.boundingBox())!;
+  const secondBox = (await secondPick.boundingBox())!;
+  expect(firstBox.x).toBeGreaterThanOrEqual(0);
+  expect(firstBox.x).toBeLessThan(secondBox.x);
+  expect(secondBox.x + secondBox.width).toBeLessThanOrEqual(320 + 1);
+  // The proxy's 1x1 failure signal is never painted as a photograph: each
+  // frame falls back to the flat category mark.
+  const frames = shelf.locator("[data-today-tile-frame]");
+  await expect(frames).toHaveCount(2);
+  await expect(frames.locator('[data-radius-photo="mark"]')).toHaveCount(2);
+  await expect(frames.locator("img")).toHaveCount(0);
 });

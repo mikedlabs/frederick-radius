@@ -47,15 +47,28 @@ type OwnedMiniMapSinglePinProps = OwnedMiniMapCommonProps & {
   lat: number;
   zoom: number;
   pins?: undefined;
+  heightPx?: undefined;
+  fitWidthPx?: undefined;
 };
 
 /**
  * Several numbered pins, framed so every pin fits. This variant has no
  * caption bar and no "Open map" promise because its callers (Ask's ranked
- * results) do not wrap it in a link.
+ * results, Today's day program) do not wrap it in a link.
  */
 type OwnedMiniMapPinsProps = OwnedMiniMapCommonProps & {
   pins: readonly OwnedMiniMapPin[];
+  /**
+   * Box height in CSS pixels (default 176). The camera frames the pins for
+   * this height, so the server render and the drawn map agree.
+   */
+  heightPx?: number;
+  /**
+   * The narrowest width this box is shown at (default 288, a 320 px phone
+   * with 16 px gutters). The camera fits every pin inside it; a wider box
+   * shows more street on either side and never moves a pin.
+   */
+  fitWidthPx?: number;
   lng?: undefined;
   lat?: undefined;
   zoom?: undefined;
@@ -219,7 +232,13 @@ export default function OwnedMiniMap(props: OwnedMiniMapProps) {
   const [stage, setStage] = useState<OwnedMiniMapStage>("placeholder");
   const pins = props.pins ?? null;
   const noPins = Boolean(pins && pins.length === 0);
-  const pinsCamera = pins && pins.length > 0 ? miniMapPinsCamera(pins) : null;
+  // Only the pins variant takes a custom frame. The pin offsets drawn here and
+  // the camera MapLibre receives both come from this one call.
+  const heightPx = pins ? props.heightPx : undefined;
+  const pinsCamera =
+    pins && pins.length > 0
+      ? miniMapPinsCamera(pins, { width: props.fitWidthPx, height: heightPx })
+      : null;
   const camera = pinsCamera ?? {
     lng: props.lng ?? 0,
     lat: props.lat ?? 0,
@@ -274,7 +293,10 @@ export default function OwnedMiniMap(props: OwnedMiniMapProps) {
     <div
       ref={boxRef}
       data-owned-mini-map={stage}
-      className="relative h-44 w-full overflow-hidden bg-[color:var(--app-bg)] text-[color:var(--app-ink)]"
+      className={`relative w-full overflow-hidden bg-[color:var(--app-bg)] text-[color:var(--app-ink)]${
+        heightPx ? "" : " h-44"
+      }`}
+      style={heightPx ? { height: heightPx } : undefined}
     >
       <div
         role="img"
