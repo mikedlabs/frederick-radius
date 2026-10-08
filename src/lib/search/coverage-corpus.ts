@@ -78,7 +78,10 @@ export const COVERAGE_CORPUS: readonly CoverageNeed[] = [
   {
     persona: "Buried civic",
     need: "trash pickup schedule",
-    expect: { kind: "href", pattern: /gov|frederick|recycl|trash|solid-?waste/i },
+    // Narrowed 2026-09-22: the old pattern passed on ANY frederick .gov URL,
+    // so it scored PASS while the app actually routed to the "report a missed
+    // collection" page. Require the real schedule resource.
+    expect: { kind: "href", pattern: /curbside|collection-schedule|3447/i },
     phrasings: ["bare", "whereIs"],
   },
   {
