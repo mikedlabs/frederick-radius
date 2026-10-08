@@ -324,9 +324,12 @@ dates and holds publication. An existing review is preserved until it is
 reviewed or intentionally replaced with `refresh_open_review`.
 
 Reviewed venue snapshots and their release manifest feed
-`src/lib/loaders/unifiedEvents.ts`, shared by Today and Events. DFP already
-joins that assembly through its native Vibemap feed. Visit Frederick remains
-disabled until its documented written factual-reuse permission is supplied.
+`src/lib/loaders/unifiedEvents.ts`. The scheduled `event-archive` worker then
+promotes the assembled cards into the durable event feed read by Today and
+Events. A release is not verified until that archive pass completes and the
+published occurrences appear in the served feed. DFP already joins the assembly
+through its native Vibemap feed. Visit Frederick remains disabled until its
+documented written factual-reuse permission is supplied.
 
 The unattended REST tools use:
 

@@ -207,7 +207,35 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
  * until the agent runs; never fabricated.
  */
 export function venueEventsAsCards(now: Date = new Date()): EventWithMeta[] {
-  return upcomingVenueEvents(now).map(venueEventToCard);
+  // Resolve collisions against the full inventory before hiding ended rows.
+  // Otherwise the evening performance could reclaim the matinee's old route.
+  const valid = DATA.filter((event) => Number.isFinite(Date.parse(event.starts_at)));
+  return venueEventsToCards(valid).filter((event) => isUpcomingEvent(event, now));
+}
+
+function distinguishVenueOccurrenceSlugs(cards: EventWithMeta[]): EventWithMeta[] {
+  const groups = new Map<string, EventWithMeta[]>();
+  for (const card of cards) {
+    const group = groups.get(card.slug) ?? [];
+    group.push(card);
+    groups.set(card.slug, group);
+  }
+  return cards.map((card) => {
+    const group = groups.get(card.slug)!;
+    if (new Set(group.map((event) => event.source_id)).size < 2) return card;
+    const start = Date.parse(card.starts_at);
+    if (!Number.isFinite(start)) return card;
+    // The full UTC instant makes both repeated daylight-saving clocks and
+    // local days spanning two UTC dates distinct. Singleton
+    // routes remain unchanged, including corrected Weinberg/New Spire rows
+    // that must attach to their existing title/date archive alias.
+    const instant = new Date(start).toISOString().replace(/[-:.]/g, "").toLowerCase();
+    const simultaneous = new Set(group
+      .filter((event) => Date.parse(event.starts_at) === start)
+      .map((event) => event.source_id)).size > 1;
+    const venue = simultaneous ? `-${card.source_id?.split(":")[1]}` : "";
+    return { ...card, slug: `${card.slug}-${instant}${venue}` };
+  });
 }
 
 /**
@@ -218,8 +246,9 @@ export function venueEventsAsCards(now: Date = new Date()): EventWithMeta[] {
  * first; the caller (unifiedEvents) handles the time-sanity guard + dedupe.
  */
 export function venueEventsToCards(events: VenueEvent[]): EventWithMeta[] {
-  return events
+  const cards = events
     .slice()
     .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
     .map(venueEventToCard);
+  return distinguishVenueOccurrenceSlugs(cards);
 }

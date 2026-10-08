@@ -360,6 +360,54 @@ describe("seriesStem + series collapse", () => {
 });
 
 describe("dedupeCrossSourceShows", () => {
+  const published = mkEvent({
+    slug: "published-family-performance-matinee",
+    title: "Published Family Performance",
+    venue_name: "Weinberg Center for the Arts",
+    venue_place_slug: "weinberg-center-for-the-arts-frederick",
+    starts_at: "2026-10-25T19:00:00Z",
+    source: "venue-extract",
+    source_id: "venue:weinberg-center:2026-10-25T19:00:00.000Z",
+    is_all_day: false,
+  });
+  const laterPublished = {
+    ...published,
+    slug: "published-family-performance-later",
+    starts_at: "2026-10-25T19:30:00Z",
+    source_id: "venue:weinberg-center:2026-10-25T19:30:00.000Z",
+  };
+
+  it("retains two published occurrence identities even with identical title and venue", () => {
+    expect(dedupeCrossSourceShows([published, laterPublished])).toHaveLength(2);
+    expect(dedupeCrossSourceShows([laterPublished, published])).toHaveLength(2);
+  });
+
+  it("retains simultaneous published occurrences at different resolved venues", () => {
+    const elsewhere = {
+      ...published,
+      slug: "published-family-performance-elsewhere",
+      source_id: "venue:new-spire:2026-10-25T19:00:00.000Z",
+      venue_place_slug: "new-spire-arts-frederick",
+    };
+    expect(dedupeCrossSourceShows([published, elsewhere])).toHaveLength(2);
+  });
+
+  it("still merges duplicate copies of the same published occurrence", () => {
+    expect(dedupeCrossSourceShows([published, { ...published, slug: "runtime-copy" }]))
+      .toHaveLength(1);
+  });
+
+  it.each([
+    { source: "dfp" as const },
+    { source_id: "publisher-item" },
+    { source_id: "venue:weinberg-center:2026-10-25T20:00:00.000Z" },
+    { source_id: published.source_id },
+    { is_all_day: true },
+  ])("keeps approximate-source matching without distinct published clocks: $source_id", (variation) => {
+    expect(dedupeCrossSourceShows([published, { ...laterPublished, ...variation }]))
+      .toHaveLength(1);
+  });
+
   const comedy = mkEvent({
     slug: "comedy-pigs",
     title: "The Comedy Pigs at MET Comedy Night",

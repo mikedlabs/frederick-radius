@@ -111,7 +111,7 @@ describe("venue event time normalization", () => {
 
       for (const row of ownedRows) {
         const times = [row.starts_at];
-        if ("ends_at" in row) {
+        if ("ends_at" in row && row.ends_at != null) {
           expect(typeof row.ends_at).toBe("string");
           if (typeof row.ends_at === "string") {
             times.push(row.ends_at);

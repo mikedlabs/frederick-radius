@@ -608,6 +608,24 @@ function documentation(e: EventWithMeta): number {
   return venue + realTime;
 }
 
+/** Two explicit collected occurrences are not fuzzy copies of one show. */
+export function areDistinctPublishedVenueOccurrences(
+  a: EventWithMeta,
+  b: EventWithMeta,
+): boolean {
+  if (a.source !== "venue-extract" || b.source !== "venue-extract"
+    || a.is_all_day || b.is_all_day || a.source_id === b.source_id) return false;
+  const ownsPublishedClock = (event: EventWithMeta) => {
+    const match = /^venue:[^:]+:(.+)$/.exec(event.source_id ?? "");
+    return match !== null && Number.isFinite(Date.parse(event.starts_at))
+      && Date.parse(match[1]) === Date.parse(event.starts_at);
+  };
+  if (!ownsPublishedClock(a) || !ownsPublishedClock(b)) return false;
+  return Date.parse(a.starts_at) !== Date.parse(b.starts_at)
+    || Boolean(a.venue_place_slug && b.venue_place_slug
+      && a.venue_place_slug !== b.venue_place_slug);
+}
+
 /**
  * Collapse same-day cross-source duplicates of one show. Two feeds title
  * the same gig differently ("REBEKAH FOSTER Acoustic LIVE on Stage!
@@ -636,6 +654,7 @@ export function dedupeCrossSourceShows(events: EventWithMeta[]): EventWithMeta[]
       for (const i of idxs) {
         const other = kept[i];
         if (other.is_recurring) continue;
+        if (areDistinctPublishedVenueOccurrences(e, other)) continue;
         const otherStem = normLoose(seriesStem(other.title));
         if (otherStem.length < CROSS_SOURCE_MIN_STEM) continue;
         const va = normLoose(e.venue_name ?? "");
