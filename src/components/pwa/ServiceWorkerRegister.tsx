@@ -133,6 +133,10 @@ export default function ServiceWorkerRegister() {
       return;
     }
 
+    // Capture the controller before registering. A first install can claim
+    // this page while register() or a statechange callback is still pending;
+    // a controller that appears later is not evidence of an older visit.
+    const previousController = navigator.serviceWorker.controller;
     let toastId: string | number | undefined;
     let updateAccepted = false;
     let reloaded = false;
@@ -188,6 +192,19 @@ export default function ServiceWorkerRegister() {
      * Another update dismisses the old notice before offering the new one.
      */
     const promptForUpdate = (waiting: ServiceWorker) => {
+      // A real update is a distinct installed worker waiting to replace the
+      // same registration's controller that already owned this page. Ignore
+      // first installs and callbacks for workers that have already moved on.
+      if (
+        !previousController ||
+        previousController === waiting ||
+        navigator.serviceWorker.controller !== previousController ||
+        registration?.active !== previousController ||
+        registration.waiting !== waiting ||
+        waiting.state !== "installed"
+      ) {
+        return;
+      }
       if (!shouldOfferUpdatePrompt(snoozedAt(), presentedAt())) return;
       // Both an already-waiting registration and updatefound can describe the
       // same worker. Persist this before creating the toast so route changes
@@ -227,19 +244,14 @@ export default function ServiceWorkerRegister() {
      */
     const wire = (reg: ServiceWorkerRegistration) => {
       registration = reg;
-      if (reg.waiting && navigator.serviceWorker.controller) {
+      if (reg.waiting) {
         promptForUpdate(reg.waiting);
       }
       reg.addEventListener("updatefound", () => {
         const installing = reg.installing;
         if (!installing) return;
         installing.addEventListener("statechange", () => {
-          // "installed" + an existing controller = a true update,
-          // not a fresh first install (which has no controller yet).
-          if (
-            installing.state === "installed" &&
-            navigator.serviceWorker.controller
-          ) {
+          if (installing.state === "installed") {
             promptForUpdate(installing);
           }
         });

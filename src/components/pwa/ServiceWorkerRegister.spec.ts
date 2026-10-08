@@ -1,5 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
-import {
+// @vitest-environment jsdom
+// @vitest-environment-options {"url":"https://frederickradius.app/today"}
+
+import { act, createElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import ServiceWorkerRegister, {
   UPDATE_PROMPT_DURATION_MS,
   UPDATE_PROMPT_SNOOZE_MS,
   requestFairOfflineWarm,
@@ -8,6 +13,181 @@ import {
   shouldWarmFairOffline,
   updatePromptPresentation,
 } from "./ServiceWorkerRegister";
+
+const { toastMock } = vi.hoisted(() => ({
+  toastMock: Object.assign(vi.fn<(...args: unknown[]) => string>(() => "update"), {
+    dismiss: vi.fn(),
+  }),
+}));
+
+vi.mock("next/navigation", () => ({ usePathname: () => "/today" }));
+vi.mock("sonner", () => ({ toast: toastMock }));
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
+  .IS_REACT_ACT_ENVIRONMENT = true;
+
+class MockWorker extends EventTarget {
+  postMessage = vi.fn();
+
+  constructor(public state: ServiceWorkerState = "activated") {
+    super();
+  }
+}
+
+class MockRegistration extends EventTarget {
+  active: MockWorker | null = null;
+  waiting: MockWorker | null = null;
+  installing: MockWorker | null = null;
+  update = vi.fn().mockResolvedValue(undefined);
+}
+
+describe("service-worker update prompt lifecycle", () => {
+  let root: Root;
+  let element: HTMLDivElement;
+  let registration: MockRegistration;
+  let workers: EventTarget & {
+    controller: MockWorker | null;
+    register: ReturnType<typeof vi.fn>;
+    ready: Promise<MockRegistration>;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.sessionStorage.clear();
+    vi.spyOn(document, "readyState", "get").mockReturnValue("complete");
+    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false })));
+    registration = new MockRegistration();
+    workers = Object.assign(new EventTarget(), {
+      controller: null as MockWorker | null,
+      register: vi.fn().mockResolvedValue(registration),
+      ready: Promise.resolve(registration),
+    });
+    vi.stubGlobal("navigator", { serviceWorker: workers });
+    element = document.createElement("div");
+    root = createRoot(element);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    window.sessionStorage.clear();
+  });
+
+  const mount = async () => {
+    await act(async () => root.render(createElement(ServiceWorkerRegister)));
+    expect(workers.register).toHaveBeenCalledWith("/sw.js");
+  };
+
+  const install = (worker: MockWorker) => {
+    registration.installing = worker;
+    registration.dispatchEvent(new Event("updatefound"));
+    registration.installing = null;
+    registration.waiting = worker;
+    worker.state = "installed";
+    worker.dispatchEvent(new Event("statechange"));
+  };
+
+  it("keeps a fresh profile quiet when a controller appears during registration", async () => {
+    const older = new MockWorker();
+    registration.waiting = new MockWorker("installed");
+    workers.register.mockImplementation(async () => {
+      workers.controller = older;
+      registration.active = older;
+      return registration;
+    });
+
+    await mount();
+
+    expect(toastMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps the first installation quiet after another tab claims the page", async () => {
+    await mount();
+    const claimed = new MockWorker();
+    workers.controller = claimed;
+    registration.active = claimed;
+
+    install(new MockWorker("installing"));
+
+    expect(toastMock).not.toHaveBeenCalled();
+  });
+
+  it("offers a distinct waiting update over the previously active controller", async () => {
+    const older = new MockWorker();
+    const newer = new MockWorker("installed");
+    workers.controller = older;
+    registration.active = older;
+    registration.waiting = newer;
+
+    await mount();
+
+    expect(toastMock).toHaveBeenCalledOnce();
+    expect(toastMock).toHaveBeenCalledWith(
+      "A new version is ready",
+      expect.objectContaining({
+        action: expect.objectContaining({ label: "Refresh" }),
+        cancel: expect.objectContaining({ label: "Later" }),
+      }),
+    );
+    const options = toastMock.mock.calls[0][1] as {
+      action: { onClick: () => void };
+    };
+    expect(newer.postMessage).not.toHaveBeenCalled();
+    options.action.onClick();
+    expect(newer.postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
+  });
+
+  it("offers a newly installed update while the original controller remains active", async () => {
+    const older = new MockWorker();
+    workers.controller = older;
+    registration.active = older;
+    await mount();
+
+    install(new MockWorker("installing"));
+
+    expect(toastMock).toHaveBeenCalledOnce();
+  });
+
+  it("ignores installed workers that are no longer waiting", async () => {
+    const older = new MockWorker();
+    workers.controller = older;
+    registration.active = older;
+    await mount();
+    const newer = new MockWorker("installing");
+    registration.installing = newer;
+    registration.dispatchEvent(new Event("updatefound"));
+    registration.installing = null;
+    newer.state = "installed";
+    newer.dispatchEvent(new Event("statechange"));
+
+    expect(toastMock).not.toHaveBeenCalled();
+  });
+
+  it("ignores an update once a different controller has already taken over", async () => {
+    const older = new MockWorker();
+    workers.controller = older;
+    registration.active = older;
+    await mount();
+    const current = new MockWorker();
+    workers.controller = current;
+    registration.active = current;
+
+    install(new MockWorker("installing"));
+
+    expect(toastMock).not.toHaveBeenCalled();
+  });
+
+  it("requires the older controller to belong to this registration", async () => {
+    workers.controller = new MockWorker();
+    registration.active = new MockWorker();
+    registration.waiting = new MockWorker("installed");
+
+    await mount();
+
+    expect(toastMock).not.toHaveBeenCalled();
+  });
+});
 
 describe("service-worker update prompt presentation", () => {
   it("moves the prompt away from the map's bottom controls", () => {

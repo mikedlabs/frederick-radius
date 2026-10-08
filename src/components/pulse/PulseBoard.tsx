@@ -352,6 +352,21 @@ type Snapshot = {
   active: Record<string, string>;
 };
 
+/** Only a valid, already-recorded local visit can support personal recency. */
+function previousPulseVisit(raw: string | null, now: number): Snapshot | null {
+  try {
+    const parsed: unknown = JSON.parse(raw ?? "null");
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const { at, active } = parsed as Partial<Snapshot>;
+    if (typeof at !== "number" || !Number.isFinite(at) || at <= 0 || at > now) return null;
+    if (!active || typeof active !== "object" || Array.isArray(active)) return null;
+    if (!Object.values(active).every((value) => typeof value === "string")) return null;
+    return { at, active };
+  } catch {
+    return null;
+  }
+}
+
 function iconFor(tile: PulseTile) {
   return ICONS[tile.iconName] ?? AlertTriangle;
 }
@@ -455,6 +470,10 @@ function HeroFacts({ chips, onOpen }: { chips: PulseHeroChip[]; onOpen: (key: st
 
 function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
   const [message, setMessage] = useState<string | null>(null);
+  // undefined means unread; null means this device has no valid prior visit.
+  // Hold the baseline for this mounted visit. A live refresh must never read
+  // our just-written current visit and invent a second personal "last look".
+  const priorVisit = useRef<Snapshot | null | undefined>(undefined);
 
   useEffect(() => {
     // Storage is external state. Read it after paint so hydration remains
@@ -465,14 +484,16 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
           .filter((tile) => tile.attention && !tile.degraded)
           .map((tile) => [tile.key, tile.countLabel]),
       );
-      let previous: Snapshot | null = null;
-      try {
-        previous = JSON.parse(window.localStorage.getItem(SNAPSHOT_KEY) ?? "null") as Snapshot | null;
-      } catch {
-        previous = null;
+      if (priorVisit.current === undefined) {
+        try {
+          priorVisit.current = previousPulseVisit(window.localStorage.getItem(SNAPSHOT_KEY), Date.now());
+        } catch {
+          priorVisit.current = null;
+        }
       }
-
-      if (previous?.at) {
+      const previous = priorVisit.current;
+      let nextMessage: string | null = null;
+      if (previous) {
         const added = Object.keys(current).filter((key) => previous?.active[key] !== current[key]);
         const cleared = pulseClearedKeys(previous.active, tiles);
         if (added.length > 0) {
@@ -481,16 +502,17 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
             .filter(Boolean)
             .slice(0, 2)
             .join(" and ");
-          setMessage(`${labels} ${added.length === 1 ? "has" : "have"} changed since ${timeSince(previous.at)}.`);
+          nextMessage = `${labels} ${added.length === 1 ? "has" : "have"} changed since ${timeSince(previous.at)}.`;
         } else if (cleared.length > 0) {
           const labels = cleared
             .map((key) => tiles.find((tile) => tile.key === key)?.label ?? key)
             .slice(0, 2)
             .join(" and ");
-          setMessage(`${labels} ${cleared.length === 1 ? "has" : "have"} cleared since ${timeSince(previous.at)}.`);
+          nextMessage = `${labels} ${cleared.length === 1 ? "has" : "have"} cleared since ${timeSince(previous.at)}.`;
         }
       }
 
+      setMessage(nextMessage);
       try {
         window.localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({ at: Date.now(), active: current } satisfies Snapshot));
       } catch {
