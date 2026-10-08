@@ -10,12 +10,12 @@
     "moduleUppercase": "CSS module rule that sets uppercase text"
   },
   "totals": {
-    "arbitraryTextSize": 3226,
-    "subElevenFont": 530,
-    "uppercaseTracking": 479,
-    "activeScale": 123,
-    "strokeWidthLiteral": 1054,
-    "eyebrowClass": 70,
+    "arbitraryTextSize": 3067,
+    "subElevenFont": 502,
+    "uppercaseTracking": 451,
+    "activeScale": 113,
+    "strokeWidthLiteral": 1021,
+    "eyebrowClass": 64,
     "moduleUppercase": 4
   },
   "files": {
@@ -141,10 +141,9 @@
       "eyebrowClass": 1
     },
     "src/app/(app)/events/[slug]/page.tsx": {
-      "arbitraryTextSize": 29,
+      "arbitraryTextSize": 9,
       "subElevenFont": 2,
-      "uppercaseTracking": 5,
-      "activeScale": 1,
+      "uppercaseTracking": 4,
       "strokeWidthLiteral": 26
     },
     "src/app/(app)/food-trucks/claim/ClaimForm.tsx": {
@@ -157,10 +156,10 @@
       "strokeWidthLiteral": 1
     },
     "src/app/(app)/food-trucks/page.tsx": {
-      "arbitraryTextSize": 24,
+      "arbitraryTextSize": 18,
       "subElevenFont": 5,
       "uppercaseTracking": 3,
-      "strokeWidthLiteral": 9
+      "strokeWidthLiteral": 5
     },
     "src/app/(app)/happy-hour/page.tsx": {
       "arbitraryTextSize": 6,
@@ -195,12 +194,6 @@
       "subElevenFont": 1,
       "eyebrowClass": 1
     },
-    "src/app/(app)/moments/[slug]/page.tsx": {
-      "arbitraryTextSize": 19,
-      "subElevenFont": 3,
-      "uppercaseTracking": 7,
-      "strokeWidthLiteral": 6
-    },
     "src/app/(app)/nonprofits/[ein]/page.tsx": {
       "arbitraryTextSize": 12,
       "subElevenFont": 2,
@@ -219,10 +212,10 @@
       "eyebrowClass": 1
     },
     "src/app/(app)/open-now/page.tsx": {
-      "arbitraryTextSize": 5,
+      "arbitraryTextSize": 3,
       "subElevenFont": 1,
       "uppercaseTracking": 1,
-      "strokeWidthLiteral": 3
+      "strokeWidthLiteral": 1
     },
     "src/app/(app)/overhead/page.tsx": {
       "arbitraryTextSize": 4,
@@ -242,9 +235,8 @@
       "eyebrowClass": 1
     },
     "src/app/(app)/places/[slug]/page.tsx": {
-      "arbitraryTextSize": 8,
-      "strokeWidthLiteral": 13,
-      "eyebrowClass": 2
+      "arbitraryTextSize": 7,
+      "strokeWidthLiteral": 12
     },
     "src/app/(app)/places/page.tsx": {
       "arbitraryTextSize": 8,
@@ -353,12 +345,6 @@
     },
     "src/app/(app)/today/loading.tsx": {
       "arbitraryTextSize": 1
-    },
-    "src/app/(app)/today/page.tsx": {
-      "arbitraryTextSize": 8,
-      "subElevenFont": 2,
-      "uppercaseTracking": 2,
-      "strokeWidthLiteral": 3
     },
     "src/app/(app)/today/tonight/page.tsx": {
       "arbitraryTextSize": 1
@@ -575,11 +561,6 @@
       "uppercaseTracking": 5,
       "strokeWidthLiteral": 12
     },
-    "src/components/event/DatePlate.tsx": {
-      "arbitraryTextSize": 4,
-      "subElevenFont": 3,
-      "uppercaseTracking": 1
-    },
     "src/components/event/EventActions.tsx": {
       "arbitraryTextSize": 1,
       "activeScale": 2,
@@ -594,11 +575,11 @@
       "strokeWidthLiteral": 1
     },
     "src/components/event/EventCard.tsx": {
-      "arbitraryTextSize": 23,
-      "subElevenFont": 5,
-      "uppercaseTracking": 5,
-      "activeScale": 4,
-      "strokeWidthLiteral": 6
+      "arbitraryTextSize": 6,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2,
+      "activeScale": 1,
+      "strokeWidthLiteral": 1
     },
     "src/components/event/EventImageAttribution.tsx": {
       "arbitraryTextSize": 1,
@@ -633,21 +614,15 @@
       "arbitraryTextSize": 1,
       "subElevenFont": 1
     },
-    "src/components/event/EventWeekRibbon.tsx": {
-      "arbitraryTextSize": 3,
-      "subElevenFont": 2,
-      "uppercaseTracking": 1,
-      "activeScale": 1
-    },
     "src/components/event/EventsBoardDock.tsx": {
       "arbitraryTextSize": 2,
-      "strokeWidthLiteral": 8
+      "strokeWidthLiteral": 7
     },
     "src/components/event/EventsExplorer.tsx": {
-      "arbitraryTextSize": 21,
+      "arbitraryTextSize": 17,
       "subElevenFont": 1,
       "activeScale": 2,
-      "strokeWidthLiteral": 7
+      "strokeWidthLiteral": 6
     },
     "src/components/event/EventsIntentRail.tsx": {
       "arbitraryTextSize": 3,
@@ -657,9 +632,6 @@
     "src/components/event/EventsMapInner.tsx": {
       "arbitraryTextSize": 3,
       "strokeWidthLiteral": 1
-    },
-    "src/components/event/GettingThere.tsx": {
-      "arbitraryTextSize": 4
     },
     "src/components/event/MonthGrid.tsx": {
       "arbitraryTextSize": 4,
@@ -793,9 +765,9 @@
       "strokeWidthLiteral": 2
     },
     "src/components/food-trucks/FoodTruckBoard.tsx": {
-      "arbitraryTextSize": 26,
-      "subElevenFont": 4,
-      "uppercaseTracking": 4,
+      "arbitraryTextSize": 22,
+      "subElevenFont": 2,
+      "uppercaseTracking": 2,
       "strokeWidthLiteral": 4
     },
     "src/components/food-trucks/FoodTruckJourneys.tsx": {
@@ -839,11 +811,10 @@
       "strokeWidthLiteral": 1
     },
     "src/components/happy/HappyHourGuide.tsx": {
-      "arbitraryTextSize": 29,
-      "subElevenFont": 3,
-      "uppercaseTracking": 8,
-      "strokeWidthLiteral": 3,
-      "eyebrowClass": 1
+      "arbitraryTextSize": 22,
+      "subElevenFont": 1,
+      "uppercaseTracking": 6,
+      "strokeWidthLiteral": 2
     },
     "src/components/history/HistoryTimeline.tsx": {
       "arbitraryTextSize": 5,
@@ -951,7 +922,7 @@
     "src/components/map/MapList.tsx": {
       "arbitraryTextSize": 2,
       "subElevenFont": 1,
-      "strokeWidthLiteral": 2
+      "strokeWidthLiteral": 1
     },
     "src/components/map/MapListPeek.tsx": {
       "arbitraryTextSize": 15,
@@ -1115,8 +1086,7 @@
       "strokeWidthLiteral": 1
     },
     "src/components/nav/PulseIndicator.tsx": {
-      "arbitraryTextSize": 3,
-      "subElevenFont": 2,
+      "arbitraryTextSize": 1,
       "strokeWidthLiteral": 1
     },
     "src/components/nav/ScopeBar.tsx": {
@@ -1172,27 +1142,19 @@
       "uppercaseTracking": 2,
       "strokeWidthLiteral": 1
     },
-    "src/components/place/AerialBeat.tsx": {
-      "arbitraryTextSize": 3,
-      "subElevenFont": 2,
-      "uppercaseTracking": 1
-    },
     "src/components/place/BeenHereToggle.tsx": {
       "strokeWidthLiteral": 3
     },
     "src/components/place/BusinessExtrasCard.tsx": {
-      "arbitraryTextSize": 4,
-      "uppercaseTracking": 2,
+      "arbitraryTextSize": 3,
+      "uppercaseTracking": 1,
       "strokeWidthLiteral": 5
     },
     "src/components/place/CategoryIcon.tsx": {
       "strokeWidthLiteral": 1
     },
     "src/components/place/CommerceActions.tsx": {
-      "arbitraryTextSize": 3,
-      "subElevenFont": 1,
-      "strokeWidthLiteral": 3,
-      "eyebrowClass": 1
+      "strokeWidthLiteral": 2
     },
     "src/components/place/CourseInfoStrip.tsx": {
       "arbitraryTextSize": 2,
@@ -1205,9 +1167,6 @@
       "strokeWidthLiteral": 2
     },
     "src/components/place/FieldNotesCard.tsx": {
-      "arbitraryTextSize": 5,
-      "subElevenFont": 2,
-      "uppercaseTracking": 1,
       "strokeWidthLiteral": 2
     },
     "src/components/place/GoogleHours.tsx": {
@@ -1232,18 +1191,16 @@
       "strokeWidthLiteral": 1
     },
     "src/components/place/MyRadiusButton.tsx": {
-      "arbitraryTextSize": 3,
-      "activeScale": 2,
+      "arbitraryTextSize": 1,
+      "activeScale": 1,
       "strokeWidthLiteral": 6
     },
     "src/components/place/PlaceAmenityIcons.tsx": {
       "arbitraryTextSize": 1,
-      "strokeWidthLiteral": 1,
-      "eyebrowClass": 1
+      "strokeWidthLiteral": 1
     },
     "src/components/place/PlaceAudienceTags.tsx": {
-      "arbitraryTextSize": 1,
-      "eyebrowClass": 1
+      "arbitraryTextSize": 1
     },
     "src/components/place/PlaceCard.tsx": {
       "arbitraryTextSize": 16,
@@ -1578,7 +1535,6 @@
       "strokeWidthLiteral": 10
     },
     "src/components/today/BrowsePlacesDisclosure.tsx": {
-      "arbitraryTextSize": 1,
       "strokeWidthLiteral": 3
     },
     "src/components/today/CivicAlerts.tsx": {
@@ -1597,10 +1553,7 @@
       "strokeWidthLiteral": 2
     },
     "src/components/today/DaypartNeeds.tsx": {
-      "arbitraryTextSize": 16,
-      "uppercaseTracking": 2,
-      "activeScale": 4,
-      "strokeWidthLiteral": 3
+      "activeScale": 1
     },
     "src/components/today/EventWalkTime.tsx": {
       "arbitraryTextSize": 1,
@@ -1663,10 +1616,9 @@
       "strokeWidthLiteral": 2
     },
     "src/components/today/MomentSpotlight.tsx": {
-      "arbitraryTextSize": 20,
-      "subElevenFont": 4,
-      "uppercaseTracking": 5,
-      "strokeWidthLiteral": 9
+      "arbitraryTextSize": 9,
+      "uppercaseTracking": 1,
+      "strokeWidthLiteral": 5
     },
     "src/components/today/MunicipalityStrip.tsx": {
       "arbitraryTextSize": 4,
@@ -1696,9 +1648,6 @@
     "src/components/today/TodayAsk.tsx": {
       "strokeWidthLiteral": 6
     },
-    "src/components/today/TodayCard.tsx": {
-      "arbitraryTextSize": 8
-    },
     "src/components/today/TodayEventsRecovery.tsx": {
       "arbitraryTextSize": 4,
       "strokeWidthLiteral": 1
@@ -1716,10 +1665,6 @@
     "src/components/today/TodayPlanTonightLink.tsx": {
       "arbitraryTextSize": 1
     },
-    "src/components/today/TodayScopeStatus.tsx": {
-      "arbitraryTextSize": 6,
-      "activeScale": 1
-    },
     "src/components/today/TodaySectionHeading.tsx": {
       "arbitraryTextSize": 4,
       "subElevenFont": 1,
@@ -1729,9 +1674,6 @@
     "src/components/today/TodaysDealsStack.tsx": {
       "arbitraryTextSize": 7,
       "strokeWidthLiteral": 3
-    },
-    "src/components/today/TomorrowPreview.tsx": {
-      "arbitraryTextSize": 2
     },
     "src/components/today/TonightExperience.module.css": {
       "uppercaseTracking": 1,
