@@ -59,6 +59,36 @@ describe("VenueMiniMap", () => {
     expect(html).toContain('aria-label="Location of Carroll Creek Linear Park"');
   });
 
+  it("runs edge to edge as the hero, captioned with the street", () => {
+    process.env.MAPBOX_STATIC_MAPS_ENABLED = "0";
+
+    const html = renderToStaticMarkup(
+      createElement(VenueMiniMap, {
+        geom: { lng: -77.4127594, lat: 39.6213 },
+        name: "Thurmont Community Park",
+        address: "19 Frederick Rd, Thurmont, MD 21788",
+        caption: "Thurmont Community Park, Frederick Rd",
+        variant: "hero",
+      }),
+    );
+
+    expect(html).toContain('data-venue-mini-map="hero"');
+    expect(html).toContain("-mx-4");
+    expect(html).toContain("sm:rounded-[var(--app-radius-lg)]");
+    expect(html).toContain("Thurmont Community Park, Frederick Rd");
+    // The link still names the venue, so its accessible name is stable.
+    expect(html).toContain('aria-label="Open the map centered on Thurmont Community Park"');
+  });
+
+  it("keeps the inline frame inside the column by default", () => {
+    process.env.MAPBOX_STATIC_MAPS_ENABLED = "0";
+
+    const html = renderMap();
+
+    expect(html).toContain('data-venue-mini-map="inline"');
+    expect(html).not.toContain("-mx-4");
+  });
+
   it("uses the static-map image only when the paid path is ready", () => {
     process.env.MAPBOX_STATIC_MAPS_ENABLED = "1";
     process.env.MAPBOX_STATIC_DAILY_REQUEST_CAP = "25";

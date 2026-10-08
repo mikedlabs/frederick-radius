@@ -4,10 +4,10 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
-import { Accessibility, AlertTriangle, ArrowLeft, ArrowRight, Ban, Calendar, ChevronDown, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
+import { Accessibility, AlertTriangle, ArrowLeft, ArrowRight, Ban, Calendar, CarFront, ChevronDown, Clock, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { EVENTS } from "@/data/events";
-import { formatEventWhen, seriesOccurrenceLabel, eventDateBlock } from "@/lib/loaders/events";
+import { seriesOccurrenceLabel, eventDateBlock } from "@/lib/loaders/events";
 import {
   isOperationalEventResolutionError,
   resolveEventMetadataBySlug,
@@ -49,14 +49,29 @@ import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
 import EventSourceLink from "@/components/event/EventSourceLink";
-import { eventCardVisual } from "@/components/event/eventVisuals";
-import { eventMobilePrimaryAction } from "@/components/event/eventActionBar";
+import { eventCardVisual, eventVisualTreatment } from "@/components/event/eventVisuals";
 import {
-  PlacePhotoHeader,
+  eventDesktopActionClass,
+  eventDesktopActionStyle,
+  eventMobilePrimaryAction,
+} from "@/components/event/eventActionBar";
+import {
+  eventDateHeroPlates,
+  eventDetailTimeCaution,
+  eventGlanceGettingIn,
+  eventGlanceParking,
+  eventGlanceWhen,
+  eventGuideMoment,
+  eventMapCaption,
+} from "@/components/event/eventDetailFacts";
+import DatePlate from "@/components/event/DatePlate";
+import GlanceTiles, { type GlanceTile } from "@/components/ui/GlanceTiles";
+import {
   PlacePhotoScope,
   PlacePhotoScopeImage,
   PlacePhotoWhen,
 } from "@/components/place/PlacePhotoState";
+import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import GettingThere from "@/components/event/GettingThere";
 import VenueMiniMap from "@/components/event/VenueMiniMap";
 import { eventSaveCount } from "@/lib/loaders/eventSaves";
@@ -261,11 +276,6 @@ export default async function EventPage({
   const attendance = eventAttendanceMode(event);
   const physicalAttendance = hasPhysicalAttendance(event);
   const onlineActionUrl = eventOnlineActionUrl(event);
-  const mobilePrimary = eventMobilePrimaryAction({
-    ticketUrl: event.ticket_url,
-    attendance,
-    onlineActionUrl,
-  });
   const attendanceLabel = eventDecisionLocation(event);
   const communicationAccess = communicationAccessLabels(event);
 
@@ -283,8 +293,9 @@ export default async function EventPage({
   const directionsUrl = hasPreciseLocation
     ? `https://www.google.com/maps/dir/?api=1&destination=${pinGeom.lat},${pinGeom.lng}`
     : null;
+  const hasDirections = Boolean(physicalAttendance && hasPreciseLocation && directionsUrl);
   const hasTrustworthyEnd = eventHasTrustworthyEnd(event);
-  const timeCaution = eventTimeCaution(event);
+  const timeCaution = eventDetailTimeCaution(event, eventTimeCaution(event));
   const calendarEndsAt = hasTrustworthyEnd
     ? event.ends_at
     : event.starts_at;
@@ -351,14 +362,6 @@ export default async function EventPage({
       : event.ticket_url ? { "@type": "Offer", url: event.ticket_url, availability: "https://schema.org/InStock" } : undefined,
   };
 
-  const when = formatEventWhen(event);
-  // Split the formatted when into its human date and its clock range so the
-  // promoted "when" line can set the date in serif and the time in mono
-  // (the brand's data voice). formatEventWhen joins same-day events as
-  // "Sat, Jun 14 · 5:00 PM–8:00 PM"; multi-day has no " · " and stays whole.
-  const whenSep = when.indexOf(" · ");
-  const whenDate = whenSep >= 0 ? when.slice(0, whenSep) : when;
-  const whenTime = whenSep >= 0 ? when.slice(whenSep + 3) : null;
   // Lifecycle status — drives the cancellation banner + a dimmed hero.
   const eventStatus = event.status ?? "scheduled";
   // The durable archive keeps an event page alive long after the event — a
@@ -375,6 +378,22 @@ export default async function EventPage({
   // Server component: request-time clock is correct here, not impure render.
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
+  const now = new Date(nowMs);
+  // One filled action: Directions on the way to the venue, otherwise the
+  // listing's own lead (eventActionBar). Every clock in the rule is Eastern.
+  const mobilePrimary = eventMobilePrimaryAction({
+    ticketUrl: event.ticket_url,
+    attendance,
+    onlineActionUrl,
+    now,
+    startsAt: event.starts_at,
+    endsAt: hasTrustworthyEnd ? event.ends_at : null,
+    isAllDay: Boolean(event.is_all_day) || isDateOnlyEventAnchor(event),
+    hasDirections,
+    status: eventStatus,
+  });
+  const visualTreatment = eventVisual ? eventVisualTreatment(eventVisual) : null;
+  const guideMoment = eventGuideMoment(event.slug, now);
   const eventPlan = eventPlanEligibility(event, {
     nowMs,
     hasResolvedVenue: Boolean(venuePlace),
@@ -403,6 +422,52 @@ export default async function EventPage({
     physicalAttendance && hasPreciseLocation
       ? nearestEventParking(pinGeom)
       : null;
+  // Glance tiles state only what a field or a cited source supplies. Parking
+  // is that source's own wording, and an absent fact is an absent tile.
+  const whenFact = eventGlanceWhen(event, now);
+  const gettingInFact = eventGlanceGettingIn(event);
+  const parkingFact =
+    physicalAttendance && hasPreciseLocation && eventStatus === "scheduled" && !hasEnded
+      ? eventGlanceParking({
+          fieldNote: event.venue_place_slug
+            ? fieldNotesFor(event.venue_place_slug)?.parking
+            : null,
+          parkingDecision,
+        })
+      : null;
+  const glanceTiles: GlanceTile[] = [];
+  if (whenFact) glanceTiles.push({ id: "when", icon: Clock, label: "When", ...whenFact });
+  if (gettingInFact) glanceTiles.push({ id: "getting-in", icon: Ticket, label: "Getting in", ...gettingInFact });
+  if (parkingFact) glanceTiles.push({ id: "parking", icon: CarFront, label: "Parking", ...parkingFact });
+  const heroPlates = eventDateHeroPlates(event);
+  const breadcrumbs = (
+    <nav aria-label="Breadcrumb" className="text-xs">
+      <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
+        <li><Link href="/events" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">Events</Link></li>
+        <li aria-hidden>·</li>
+        <li>
+          {physicalAttendance && MUNICIPALITY_BY_SLUG[event.municipality] ? (
+            <Link href={`/m/${event.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{event.municipality_name}</Link>
+          ) : (
+            <span>{physicalAttendance ? event.municipality_name : "Online"}</span>
+          )}
+        </li>
+      </ol>
+    </nav>
+  );
+  // The title on Cream, under every picture except Radius's own photo.
+  const titleBlock = (
+    <div className="flex items-start justify-between gap-3" data-event-title>
+      <div className="min-w-0">
+        <p className="text-meta-lg font-semibold" style={{ color: "var(--app-ink-3)" }}>{cat?.name ?? "Event"}</p>
+        <h1 className="display-2 mt-1" style={{ color: "var(--app-ink)" }}>{event.title}</h1>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <EventActions event={event} actions={["share"]} />
+        <div className="hidden lg:block"><SaveButton refType="event" refId={event.slug} label={event.title} /></div>
+      </div>
+    </div>
+  );
   const firstLineupDates = lineup.slice(0, 4);
   const moreLineupDates = lineup.slice(4, 30);
 
@@ -418,48 +483,49 @@ export default async function EventPage({
     >
       <Suspense fallback={null}><MapReturnLink /></Suspense>
 
-      {/* One photo state for the whole hero. A venue photo the proxy could
-          not deliver answers with its failure signal; the page then renders
-          exactly the photoless layout (breadcrumbs, typographic header, no
-          credit) instead of a fallback plate under the title. */}
+      {/* One photo state for the whole first screen. The hero slot follows
+          the honest picture ladder (docs/VISUAL_FIRST.md), chosen by
+          eventVisualTreatment:
+            - owned: Radius's own photo, the only picture type may sit on;
+            - flyer: the publisher's image shown whole on sunken paper, with
+              nothing drawn over it and the title on Cream below;
+            - venue: a credited venue photo, title below;
+            - otherwise, or when the photo fails: the venue's block on the
+              county map for a precisely located in-person event, else the
+              event's days as date plates.
+          A venue photo the proxy could not deliver answers with its failure
+          signal, and the page then renders that photoless layout. The scope
+          reaches down to Getting there so the venue map renders once: in the
+          hero when it is the picture, below when a photo leads. */}
       <PlacePhotoScope src={eventVisual?.src}>
       {/* Visually small breadcrumbs with invisible 44px hit areas
-          (WCAG 2.5.5) — py-3.5/-my-3.5 grows the tap zone only. */}
-      <PlacePhotoWhen is="missing">
-        <nav aria-label="Breadcrumb" className="text-xs">
-          <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
-            <li><Link href="/events" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">Events</Link></li>
-            <li aria-hidden>·</li>
-            <li>
-              {physicalAttendance && MUNICIPALITY_BY_SLUG[event.municipality] ? (
-                <Link href={`/m/${event.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{event.municipality_name}</Link>
-              ) : (
-                <span>{physicalAttendance ? event.municipality_name : "Online"}</span>
-              )}
-            </li>
-          </ol>
-        </nav>
-      </PlacePhotoWhen>
+          (WCAG 2.5.5): py-3.5/-my-3.5 grows the tap zone only. The owned
+          photo hero carries its own Back link instead. */}
+      {visualTreatment === "owned" ? (
+        <PlacePhotoWhen is="missing">{breadcrumbs}</PlacePhotoWhen>
+      ) : (
+        breadcrumbs
+      )}
 
-      {/* Cancellation banner — loud, above the hero, so a user who
-       *  came here for this event sees it's off before anything else.
-       *  Renders when the event is not scheduled, or when an owner
-       *  notice carries an advisory (still on, but know this first).
-       *  A notice adds its one-line detail + the organizer's own
-       *  announcement link, so the claim always shows its source. */}
-      {/* Ended notice — calm and factual, never the alarm treatment: a past
+      {/* Ended notice: calm and factual, never the alarm treatment. A past
           event is a record, not a problem. States the fact in Ink so the rest
           of the page (which stays fully readable as an archive) cannot be
           mistaken for an invitation. */}
       {hasEnded && (
         <div
-          className="flex items-center gap-2 rounded-[var(--app-radius-md)] border px-4 py-2.5 text-[13px] font-medium"
+          className="flex items-center gap-2 rounded-[var(--app-radius-md)] border px-4 py-2.5 text-meta-lg font-medium"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)", background: "var(--app-bg-elevated)" }}
         >
           <Calendar className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} />
           This event has already happened.
         </div>
       )}
+      {/* Cancellation banner: loud, above the hero, so a user who came here
+          for this event sees it's off before anything else. Renders when the
+          event is not scheduled, or when an owner notice carries an advisory
+          (still on, but know this first). A notice adds its one-line detail
+          and the organizer's own announcement link, so the claim always
+          shows its source. */}
       {(eventStatus !== "scheduled" || notice) && (() => {
         const tone = eventStatus === "cancelled" ? "var(--app-danger)" : "var(--app-warning)";
         const BannerIcon = eventStatus === "scheduled" ? AlertTriangle : Ban;
@@ -477,12 +543,12 @@ export default async function EventPage({
               border: `1px solid ${tone}`,
             }}
           >
-            <div className="flex items-center gap-2 text-[13px] font-semibold" style={{ color: tone }}>
+            <div className="flex items-center gap-2 text-meta-lg font-semibold" style={{ color: tone }}>
               <BannerIcon className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
               {lead}
             </div>
             {notice?.note && (
-              <p className="mt-1 pl-6 text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
+              <p className="mt-1 pl-6 text-meta-lg" style={{ color: "var(--app-ink-2)" }}>
                 {notice.note}
               </p>
             )}
@@ -491,7 +557,7 @@ export default async function EventPage({
                 href={notice.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 inline-block pl-6 text-[12px] font-semibold underline"
+                className="mt-1 inline-block pl-6 text-meta font-semibold underline"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 Organizer&rsquo;s announcement
@@ -501,121 +567,176 @@ export default async function EventPage({
         );
       })()}
 
-      {/* Cinematic hero. Two paths:
-       *   - With hero_image: full-bleed 16:11 photo, dark legibility
-       *     gradient, date pill + share/save floating on top, title +
-       *     category eyebrow overlaid at the bottom. Same visual
-       *     language as FeaturedTonight on /today.
-       *   - Without hero_image, or when the photo proxy reports that it
-       *     could not deliver the venue photo: the typographic header.
-       *     Still reads as editorial, not as "missing image."
-       * Shader-rim around the whole card for parity with the Today
-       * editorial moments. */}
-      <PlacePhotoHeader
+      <header
+        className="space-y-4"
         data-decision-impression="true"
         data-decision-surface="events"
         data-decision-entity="event"
         data-decision-id={event.slug}
         data-decision-position="detail"
-        photoClassName="shader-rim overflow-hidden -mx-4 -mt-4 sm:mx-0 sm:mt-0 rounded-none sm:rounded-[var(--app-radius-xl)] border-y sm:border"
-        missingClassName="shader-rim overflow-hidden rounded-[var(--app-radius-xl)] border"
         style={{
-          borderColor: "var(--app-border)",
           opacity: eventStatus === "cancelled" ? 0.85 : 1,
           viewTransitionName: `event-${event.slug}`,
         }}
       >
-        <PlacePhotoWhen is="visible">
-          <div className="relative h-64 w-full overflow-hidden sm:h-72" data-event-hero="photo">
-            <PlacePhotoScopeImage
-              alt=""
-              fill
-              priority
-              sizes="(max-width: 720px) 100vw, 720px"
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              className="object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
-            {/* Top row: action cluster and back button (glassmorphic) */}
-            <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
-              {/* Glassmorphic back button */}
-              <Link
-                href="/events"
-                className="tactile-interactive flex h-9 items-center justify-center gap-1.5 rounded-full px-3.5 text-xs font-semibold text-white shadow-sm backdrop-blur-md transition-transform active:scale-95"
-                style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}
-              >
-                <ArrowLeft className="h-4 w-4" strokeWidth={2.25} />
-                Back
-              </Link>
-              <div className="flex shrink-0 items-center gap-1">
-                <div className="rounded-full backdrop-blur-md" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}>
+        {eventVisual && visualTreatment === "owned" ? (
+          // Radius's own photograph: the one picture the title may sit on,
+          // over an Ink scrim on its bottom 60%.
+          <PlacePhotoWhen is="visible">
+            <div
+              className="relative -mx-4 -mt-4 h-64 overflow-hidden sm:mx-0 sm:mt-0 sm:h-72 sm:rounded-[var(--app-radius-lg)]"
+              style={{ background: "var(--app-bg-sunken)" }}
+              data-event-hero="owned"
+            >
+              <PlacePhotoScopeImage
+                alt=""
+                fill
+                priority
+                sizes="(max-width: 720px) 100vw, 720px"
+                placeholder="blur"
+                blurDataURL={PAPER_CREAM_BLUR}
+                className="object-cover"
+              />
+              <span
+                aria-hidden
+                className="absolute inset-x-0 bottom-0 h-3/5"
+                style={{
+                  background:
+                    "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 88%, transparent), color-mix(in srgb, var(--app-ink) 46%, transparent) 55%, transparent)",
+                }}
+              />
+              <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
+                <Link
+                  href="/events"
+                  className="tactile-interactive inline-flex h-11 items-center justify-center gap-1.5 rounded-full px-3.5 text-meta-lg font-semibold"
+                  style={{ background: "color-mix(in srgb, var(--app-bg) 90%, transparent)", color: "var(--app-ink)" }}
+                >
+                  <ArrowLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+                  Back
+                </Link>
+                <div
+                  className="flex shrink-0 items-center gap-1 rounded-full px-1"
+                  style={{ background: "color-mix(in srgb, var(--app-bg) 90%, transparent)" }}
+                >
                   <EventActions event={event} actions={["share"]} />
-                </div>
-                <div className="hidden lg:block rounded-full backdrop-blur-md" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}>
-                  <SaveButton refType="event" refId={event.slug} label={event.title} />
+                  <div className="hidden lg:block">
+                    <SaveButton refType="event" refId={event.slug} label={event.title} />
+                  </div>
                 </div>
               </div>
-            </div>
-            {/* Bottom: category eyebrow + title */}
-            <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-              <p className="text-[11px] font-medium uppercase tracking-[0.14em] opacity-85">
-                {cat?.name ?? event.category}
-              </p>
-              <h1 className="mt-0.5 font-serif text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]">
-                {event.title}
-              </h1>
-            </div>
-          </div>
-        </PlacePhotoWhen>
-        <PlacePhotoWhen is="missing">
-          <div className="relative bg-[var(--app-bg-elevated)] px-5 pb-2 pt-5" data-event-hero="type">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>{cat?.name ?? "Event"}</p>
-              <div className="flex shrink-0 items-center gap-1">
-                <EventActions event={event} actions={["share"]} />
-                <div className="hidden lg:block"><SaveButton refType="event" refId={event.slug} label={event.title} /></div>
+              <div className="absolute inset-x-0 bottom-0 p-5" style={{ color: "var(--app-ink-inverse)" }}>
+                <p className="text-meta-lg font-semibold">{cat?.name ?? "Event"}</p>
+                <h1 className="display-2 mt-0.5">{event.title}</h1>
               </div>
             </div>
-            <h1 className="text-[26px] font-semibold leading-tight tracking-tight sm:text-[32px]" style={{ color: "var(--app-ink)" }}>{event.title}</h1>
-          </div>
-        </PlacePhotoWhen>
-        {/* Credit only once a real photograph has decoded. */}
-        {eventVisual ? (
-          <PlacePhotoWhen is="ready">
-            <EventVisualCredit
-              visual={eventVisual}
-              className="border-t bg-[var(--app-bg-elevated)] px-5 py-2"
-            />
+            <PlacePhotoWhen is="ready">
+              <EventVisualCredit visual={eventVisual} className="-mt-2" />
+            </PlacePhotoWhen>
+          </PlacePhotoWhen>
+        ) : eventVisual ? (
+          // A publisher's flyer is shown whole at its own aspect on sunken
+          // paper. A venue photo may be cropped. Neither carries type or
+          // controls, and the credit appears only after the image loads.
+          <PlacePhotoWhen is="visible">
+            <figure className="-mx-4 sm:mx-0" data-event-hero={visualTreatment ?? "venue"}>
+              <div
+                data-event-hero-frame
+                className={`relative w-full overflow-hidden sm:rounded-[var(--app-radius-lg)] ${
+                  visualTreatment === "flyer" ? "aspect-[16/10] max-h-[360px]" : "h-56 sm:h-72"
+                }`}
+                style={{ background: "var(--app-bg-sunken)" }}
+              >
+                {visualTreatment === "flyer" ? (
+                  <PlacePhotoScopeImage
+                    alt=""
+                    fill
+                    priority
+                    sizes="(max-width: 720px) 100vw, 720px"
+                    className="object-contain"
+                  />
+                ) : (
+                  <PlacePhotoScopeImage
+                    alt={`Photo of ${eventVisual.attribution?.venue_name ?? event.venue_name}`}
+                    fill
+                    priority
+                    sizes="(max-width: 720px) 100vw, 720px"
+                    placeholder="blur"
+                    blurDataURL={PAPER_CREAM_BLUR}
+                    className="object-cover"
+                  />
+                )}
+              </div>
+              <PlacePhotoWhen is="ready">
+                <figcaption className="px-4 pt-2 sm:px-0">
+                  <EventVisualCredit visual={eventVisual} />
+                </figcaption>
+              </PlacePhotoWhen>
+            </figure>
+            {titleBlock}
           </PlacePhotoWhen>
         ) : null}
-        {/* Below-the-hero metadata strip: trust + description + venue/
-         *  free/recurrence/organizer/freshness. */}
-        <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
-          {/* WHEN — promoted to the page's clear second-strongest element,
-              directly under the title. The full date+time was previously
-              the SMALLEST type on the page (a 10px hero pill / an eyebrow
-              fragment). Date in the display face, time range in tabular Public Sans
-              (the data voice), one calm line, no box. */}
-          <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-            <span className="inline-flex items-baseline gap-1.5">
-              <Calendar className="h-4 w-4 translate-y-0.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand)" }} aria-hidden />
-              <span className="font-serif text-[17px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-                {whenDate}
-              </span>
-            </span>
-            {whenTime && (
-              <span className="font-mono tabular-nums text-[14px]" style={{ color: "var(--app-ink-2)" }}>
-                {whenTime}
-              </span>
-            )}
-            {saveCount !== null && (
-              <span className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                · saved {saveCount} times
-              </span>
-            )}
-          </div>
-          {timeCaution && <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{timeCaution}</p>}
+
+        {/* No photograph, or one that failed: the venue's own block when the
+            location is precise, otherwise the event's days. */}
+        <PlacePhotoWhen is="missing">
+          {physicalAttendance && hasPreciseLocation ? (
+            <div className="space-y-4" data-event-hero="map">
+              <VenueMiniMap
+                variant="hero"
+                geom={pinGeom}
+                name={event.venue_name || event.title}
+                address={event.address}
+                caption={eventMapCaption({ venueName: event.venue_name, address: event.address, geom: pinGeom })}
+              />
+              {titleBlock}
+            </div>
+          ) : (
+            <div
+              className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5"
+              data-event-hero="date"
+            >
+              {heroPlates.plates.length > 0 ? (
+                <ul aria-label="Event dates" className="flex shrink-0 items-center gap-2">
+                  {heroPlates.plates.map((day, index) => (
+                    <li key={day.date} className="flex items-center gap-2">
+                      {heroPlates.range && index > 0 ? (
+                        <span aria-hidden className="text-meta-lg" style={{ color: "var(--app-ink-3)" }}>to</span>
+                      ) : null}
+                      <DatePlate
+                        month={day.month}
+                        day={day.day}
+                        weekday={day.weekday}
+                        accent="var(--app-brand)"
+                        size="md"
+                      />
+                      <span className="sr-only">{heroPlates.range && index > 0 ? `to ${day.label}` : day.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="min-w-0 flex-1">{titleBlock}</div>
+            </div>
+          )}
+        </PlacePhotoWhen>
+
+        <GlanceTiles tiles={glanceTiles} />
+
+        {guideMoment ? (
+          <Link
+            href={`/moments/${guideMoment.slug}`}
+            className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-body font-semibold underline underline-offset-4"
+            style={{ color: "var(--app-brand-press)" }}
+            data-event-guide-link
+          >
+            Open the {guideMoment.title} guide
+            <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </Link>
+        ) : null}
+
+        {timeCaution && <p className="text-meta-lg" style={{ color: "var(--app-ink-3)" }}>{timeCaution}</p>}
+
+        {/* Provenance and the listing's remaining facts, then the description. */}
+        <div className="space-y-3">
           <TrustChip signal={eventTrust(event)} detail />
           <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: "var(--app-ink-3)" }}>
             {attendanceLabel && (
@@ -628,19 +749,15 @@ export default async function EventPage({
                 {attendanceLabel}
               </span>
             )}
-            {event.is_free ? (
-              <span className="font-medium" style={{ color: "var(--app-cool)" }}>Free</span>
-            ) : event.price_text && (
-              <span className="font-mono tabular-nums">{event.price_text}</span>
-            )}
             {event.is_recurring && event.recurrence_text && (
-              <span className="rounded-full bg-[var(--app-bg-sunken)] px-2 py-0.5 text-[11px]">
+              <span className="rounded-full bg-[var(--app-bg-sunken)] px-2 py-0.5 text-caption">
                 {event.recurrence_text}
               </span>
             )}
             {event.organizer && (
               <span>by {event.organizer}</span>
             )}
+            {saveCount ? <span>Saved {saveCount} times</span> : null}
             <FreshnessChip
               iso={event.last_verified_at ?? undefined}
               subject="Event"
@@ -648,51 +765,54 @@ export default async function EventPage({
             />
             {event.source_url && <EventSourceLink href={event.source_url} />}
           </div>
-          {desc && (
-            <div className="max-w-[68ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              <p>{description.preview}</p>
-              {description.rest ? (
-                <details className="group mt-1">
-                  <summary className="tap-44 inline-flex cursor-pointer list-none items-center gap-1 text-[12.5px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
-                    Read full description
-                    <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
-                  </summary>
-                  <p className="pb-1">{description.rest}</p>
-                </details>
-              ) : null}
-            </div>
-          )}
-          {communicationAccess.length > 0 && (
-            <div
-              className="flex items-start gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2.5"
-              style={{
-                borderColor: "color-mix(in srgb, var(--app-cool) 30%, var(--app-border))",
-                background: "color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated))",
-              }}
-            >
-              <Accessibility
-                className="mt-0.5 h-4 w-4 shrink-0"
-                strokeWidth={2}
-                style={{ color: "var(--app-cool)" }}
-                aria-hidden
-              />
-              <div className="min-w-0">
-                <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                  Communication access
-                </p>
-                <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                  {communicationAccess.join(" · ")}
-                </p>
-                <p className="mt-0.5 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                  Shown only when stated by the event publisher.
-                </p>
-              </div>
-            </div>
-          )}
         </div>
-      </PlacePhotoHeader>
-      </PlacePhotoScope>
+        {desc && (
+          <div className="max-w-[68ch] text-body" style={{ color: "var(--app-ink-2)" }}>
+            <p>{description.preview}</p>
+            {description.rest ? (
+              <details className="group mt-1">
+                <summary className="tap-44 inline-flex cursor-pointer list-none items-center gap-1 text-meta-lg font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+                  Read full description
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
+                </summary>
+                <p className="pb-1">{description.rest}</p>
+              </details>
+            ) : null}
+          </div>
+        )}
+        {communicationAccess.length > 0 && (
+          <div
+            className="flex items-start gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2.5"
+            style={{
+              borderColor: "color-mix(in srgb, var(--app-cool) 30%, var(--app-border))",
+              background: "color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated))",
+            }}
+          >
+            <Accessibility
+              className="mt-0.5 h-4 w-4 shrink-0"
+              strokeWidth={2}
+              style={{ color: "var(--app-cool)" }}
+              aria-hidden
+            />
+            <div className="min-w-0">
+              <p className="text-meta font-semibold" style={{ color: "var(--app-ink)" }}>
+                Communication access
+              </p>
+              <p className="mt-0.5 text-meta" style={{ color: "var(--app-ink-2)" }}>
+                {communicationAccess.join(" · ")}
+              </p>
+              <p className="mt-0.5 text-caption" style={{ color: "var(--app-ink-3)" }}>
+                Shown only when stated by the event publisher.
+              </p>
+            </div>
+          </div>
+        )}
+      </header>
 
+      {/* Desktop actions: one row instead of a grid of full-width slabs.
+          The primary is a single 48px filled button sized to its label and
+          leads the row; every other action is a 44px text button. Phones get
+          the same actions in the MobileActionBar below. */}
       {eventStatus !== "scheduled" ? (
         (() => {
           // A cancelled/postponed event must not keep selling the plan
@@ -700,22 +820,18 @@ export default async function EventPage({
           // all invite a trip that won't happen. The two honest actions
           // are the organizer's own word and a way back to tonight.
           const announceUrl = notice?.source_url ?? event.source_url ?? null;
-          const quietCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]";
-          const quietStyle = { borderColor: "var(--app-border)", color: "var(--app-ink)" };
-          const primaryCls = "tactile-glow-brand flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-3 text-xs font-semibold transition";
-          const primaryStyle = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
           return (
-            <div className={`hidden ${announceUrl ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-2 lg:grid`}>
+            <div className="hidden flex-wrap items-center gap-2 lg:flex" data-event-actions="desktop">
+              <Link href="/events?lens=today" className={eventDesktopActionClass(true)} style={eventDesktopActionStyle(true)}>
+                <Calendar className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                Find something else
+              </Link>
               {announceUrl && (
-                <a href={announceUrl} target="_blank" rel="noopener noreferrer" className={quietCls} style={quietStyle}>
-                  <ExternalLink className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                <a href={announceUrl} target="_blank" rel="noopener noreferrer" className={eventDesktopActionClass(false)} style={eventDesktopActionStyle(false)}>
+                  <ExternalLink className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                   Organizer&rsquo;s announcement
                 </a>
               )}
-              <Link href="/events?lens=today" className={primaryCls} style={primaryStyle}>
-                <Calendar className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-on-brand)" }} aria-hidden />
-                Find something else
-              </Link>
             </div>
           );
         })()
@@ -725,10 +841,6 @@ export default async function EventPage({
         // gone. The record stays; the actions become the venue's page (the
         // durable thing a reader can still visit) and a way back to tonight.
         (() => {
-          const quietCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]";
-          const quietStyle = { borderColor: "var(--app-border)", color: "var(--app-ink)" };
-          const primaryCls = "tactile-glow-brand flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-3 text-xs font-semibold transition";
-          const primaryStyle = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
           const recordAction =
             event.venue_place_slug
               ? { href: `/places/${event.venue_place_slug}`, external: false, label: "Venue page" }
@@ -736,109 +848,119 @@ export default async function EventPage({
                 ? { href: event.source_url, external: true, label: "Official page" }
                 : null;
           return (
-            <div className={`hidden ${recordAction ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-2 lg:grid`}>
+            <div className="hidden flex-wrap items-center gap-2 lg:flex" data-event-actions="desktop">
+              <Link href="/events?lens=today" className={eventDesktopActionClass(true)} style={eventDesktopActionStyle(true)}>
+                <Calendar className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                Find something else
+              </Link>
               {recordAction && (recordAction.external ? (
-                <a href={recordAction.href} target="_blank" rel="noopener noreferrer" className={quietCls} style={quietStyle}>
-                  <ExternalLink className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                <a href={recordAction.href} target="_blank" rel="noopener noreferrer" className={eventDesktopActionClass(false)} style={eventDesktopActionStyle(false)}>
+                  <ExternalLink className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                   {recordAction.label}
                 </a>
               ) : (
-                <Link href={recordAction.href} className={quietCls} style={quietStyle}>
-                  <MapPin className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                <Link href={recordAction.href} className={eventDesktopActionClass(false)} style={eventDesktopActionStyle(false)}>
+                  <MapPin className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                   {recordAction.label}
                 </Link>
               ))}
-              <Link href="/events?lens=today" className={primaryCls} style={primaryStyle}>
-                <Calendar className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-on-brand)" }} aria-hidden />
-                Find something else
-              </Link>
             </div>
           );
         })()
       ) : (() => {
-        // One clear primary in the action row (the old layout had three
-        // equal-weight tiles = no primary). Priority for the accent fill:
-        // Tickets -> RSVP -> Venue -> Official; if the event has none of those,
-        // Directions is promoted so there's always exactly one lead action.
+        // Exactly one filled primary. On the way to the venue (eventActionBar)
+        // that is Directions, and Tickets step down to a text button. Otherwise
+        // the listing's own action leads: Tickets, RSVP, online details, the
+        // venue page or the official page, else Directions, else the calendar.
         const thirdAction =
-          event.ticket_url ? { href: event.ticket_url, external: true, Icon: Ticket, label: "Tickets" } :
-          event.rsvp_url ? { href: event.rsvp_url, external: true, Icon: ExternalLink, label: "RSVP" } :
-          attendance !== "physical" && onlineActionUrl ? { href: onlineActionUrl, external: true, Icon: ExternalLink, label: "Online details" } :
-          event.venue_place_slug ? { href: `/places/${event.venue_place_slug}`, external: false, Icon: MapPin, label: "Venue page" } :
-          event.source_url ? { href: event.source_url, external: true, Icon: ExternalLink, label: "Official page" } :
+          event.ticket_url ? { href: event.ticket_url, external: true, Icon: Ticket, label: "Tickets", decision: "ticket" as const } :
+          event.rsvp_url ? { href: event.rsvp_url, external: true, Icon: ExternalLink, label: "RSVP", decision: "reservation" as const } :
+          attendance !== "physical" && onlineActionUrl ? { href: onlineActionUrl, external: true, Icon: ExternalLink, label: "Online details", decision: "website" as const } :
+          event.venue_place_slug ? { href: `/places/${event.venue_place_slug}`, external: false, Icon: MapPin, label: "Venue page", decision: "open" as const } :
+          event.source_url ? { href: event.source_url, external: true, Icon: ExternalLink, label: "Official page", decision: "website" as const } :
           null;
-        const hasThird = thirdAction !== null;
-        const dirPrimary = physicalAttendance && hasPreciseLocation && !hasThird;
-        const gridCols =
-          1 +
-          (physicalAttendance && hasPreciseLocation ? 1 : 0) +
-          (hasThird ? 1 : 0);
+        const primary: "directions" | "third" | "calendar" =
+          mobilePrimary === "directions" && hasDirections
+            ? "directions"
+            : thirdAction
+              ? "third"
+              : hasDirections
+                ? "directions"
+                : "calendar";
+        const iconFor = (isPrimary: boolean) => (isPrimary ? "h-5 w-5" : "h-4 w-4");
 
-        const quietCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]";
-        const quietStyle = { borderColor: "var(--app-border)", color: "var(--app-ink)" };
-        const primaryCls = "tactile-glow-brand flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-3 text-xs font-semibold transition";
-        const primaryStyle = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
-        const iconBrand = { color: "var(--app-brand)" };
-        const iconOnBrand = { color: "var(--app-on-brand)" };
+        const calendar = isLive ? (
+          <EventCalendarButton
+            key="calendar"
+            appearance={primary === "calendar" ? "primary" : "text"}
+            event={{
+              slug: event.slug,
+              title: event.title,
+              starts_at: event.starts_at,
+              ends_at: calendarEndsAt,
+              description: event.description,
+              venue_name: event.venue_name,
+              address: event.address,
+              is_all_day: event.is_all_day,
+            }}
+          />
+        ) : (
+          <a
+            key="calendar"
+            href={icsUrl}
+            download
+            className={eventDesktopActionClass(primary === "calendar")}
+            style={eventDesktopActionStyle(primary === "calendar")}
+          >
+            <Calendar className={iconFor(primary === "calendar")} strokeWidth={1.75} aria-hidden />
+            Add to calendar
+          </a>
+        );
+        const directions = hasDirections && directionsUrl ? (
+          <a
+            key="directions"
+            href={directionsUrl}
+            data-decision-action="directions"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={eventDesktopActionClass(primary === "directions")}
+            style={eventDesktopActionStyle(primary === "directions")}
+          >
+            <Navigation className={iconFor(primary === "directions")} strokeWidth={1.75} aria-hidden />
+            Directions
+          </a>
+        ) : null;
+        const third = thirdAction ? (thirdAction.external ? (
+          <a
+            key="third"
+            href={thirdAction.href}
+            data-decision-action={thirdAction.decision}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={eventDesktopActionClass(primary === "third")}
+            style={eventDesktopActionStyle(primary === "third")}
+          >
+            <thirdAction.Icon className={iconFor(primary === "third")} strokeWidth={1.75} aria-hidden />
+            {thirdAction.label}
+          </a>
+        ) : (
+          <Link
+            key="third"
+            href={thirdAction.href}
+            data-decision-action={thirdAction.decision}
+            className={eventDesktopActionClass(primary === "third")}
+            style={eventDesktopActionStyle(primary === "third")}
+          >
+            <thirdAction.Icon className={iconFor(primary === "third")} strokeWidth={1.75} aria-hidden />
+            {thirdAction.label}
+          </Link>
+        )) : null;
+        const byKind = { calendar, directions, third };
+        const order = [primary, ...(["third", "directions", "calendar"] as const).filter((kind) => kind !== primary)];
 
         return (
-          <div className={`hidden ${gridCols >= 3 ? "lg:grid-cols-3" : gridCols === 2 ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-2 lg:grid`}>
-            {isLive ? (
-              <EventCalendarButton
-                event={{
-                  slug: event.slug,
-                  title: event.title,
-                  starts_at: event.starts_at,
-                  ends_at: calendarEndsAt,
-                  description: event.description,
-                  venue_name: event.venue_name,
-                  address: event.address,
-                  is_all_day: event.is_all_day,
-                }}
-              />
-            ) : (
-              <a href={icsUrl} download className={quietCls} style={quietStyle}>
-                <Calendar className="h-5 w-5" strokeWidth={1.75} style={iconBrand} aria-hidden />
-                Add to calendar
-              </a>
-            )}
-            {physicalAttendance && hasPreciseLocation && directionsUrl && (
-              <a
-                href={directionsUrl}
-                data-decision-action="directions"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={dirPrimary ? primaryCls : quietCls}
-                style={dirPrimary ? primaryStyle : quietStyle}
-              >
-                <Navigation className="h-5 w-5" strokeWidth={1.75} style={dirPrimary ? iconOnBrand : iconBrand} aria-hidden />
-                Directions
-              </a>
-            )}
-            {thirdAction && (thirdAction.external ? (
-              <a
-                href={thirdAction.href}
-                data-decision-action={
-                  event.ticket_url
-                    ? "ticket"
-                    : event.rsvp_url
-                      ? "reservation"
-                      : "website"
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className={primaryCls}
-                style={primaryStyle}
-              >
-                <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={iconOnBrand} aria-hidden />
-                {thirdAction.label}
-              </a>
-            ) : (
-              <Link href={thirdAction.href} data-decision-action="open" className={primaryCls} style={primaryStyle}>
-                <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={iconOnBrand} aria-hidden />
-                {thirdAction.label}
-              </Link>
-            ))}
+          <div className="hidden flex-wrap items-center gap-2 lg:flex" data-event-actions="desktop">
+            {order.map((kind) => byKind[kind])}
           </div>
         );
       })()}
@@ -849,7 +971,7 @@ export default async function EventPage({
           className="border-y py-4"
           style={{ borderColor: "var(--app-border)" }}
         >
-          <p className="text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          <p className="text-body" style={{ color: "var(--app-ink-2)" }}>
             This plan reserves {eventPlanDuration} for the event. It can include one nearby stop when the hours fit.
           </p>
           <Link
@@ -867,11 +989,8 @@ export default async function EventPage({
         </section>
       )}
 
-      {/* Smart pairings — the editorial decision layer the mobile
-          review called out as the killer feature. Synthesizes
-          weather at the event start, closest parking, and the
-          nearest food spot into one card. Self-hides if none of
-          the three signals are available. */}
+      {/* Smart pairings: weather at the event start and the nearest food
+          spot in one card. Self-hides if none of the signals are available. */}
       {physicalAttendance && hasPreciseLocation && eventStatus === "scheduled" && !hasEnded && !event.is_all_day && !isDateOnlyEventAnchor(event) && (
         <EventSmartPairings
           event={event}
@@ -880,20 +999,23 @@ export default async function EventPage({
         />
       )}
 
-      {/* Practical attendance context uses the same precise location as Directions. */}
-      {physicalAttendance && hasPreciseLocation && (
-        <div className="space-y-4">
-          {eventStatus === "scheduled" && !hasEnded && (
-            <GettingThere
-              geom={pinGeom}
-              venuePlaceSlug={event.venue_place_slug ?? undefined}
-              geoPrecise
-              parkingDecision={parkingDecision}
-            />
-          )}
-          <VenueMiniMap geom={pinGeom} name={event.venue_name} />
-        </div>
+      {/* Practical attendance context uses the same precise location as
+          Directions. The venue map renders here only when a photograph
+          leads the page; otherwise it is already the hero. */}
+      {physicalAttendance && hasPreciseLocation && eventStatus === "scheduled" && !hasEnded && (
+        <GettingThere
+          geom={pinGeom}
+          venuePlaceSlug={event.venue_place_slug ?? undefined}
+          geoPrecise
+          parkingDecision={parkingDecision}
+        />
       )}
+      {physicalAttendance && hasPreciseLocation && eventVisual ? (
+        <PlacePhotoWhen is="visible">
+          <VenueMiniMap geom={pinGeom} name={event.venue_name} address={event.address} />
+        </PlacePhotoWhen>
+      ) : null}
+      </PlacePhotoScope>
 
       {event.info && (event.info.admission || event.info.drinks || event.info.food) && (
         <section className="space-y-2">
@@ -1078,14 +1200,16 @@ export default async function EventPage({
       />
 
       {/* Mobile-only thumb-reachable dock. Desktop keeps the inline action
-          grid above; this reuses the same .ics calendar button, ticket +
+          row above; this reuses the same .ics calendar button, ticket +
           directions links, and the SaveButton. Exactly one action is the
-          filled primary (eventMobilePrimaryAction): Tickets when they exist,
-          Online details for an online or hybrid event without tickets,
-          otherwise Add to calendar. A cancelled/
-          postponed event gets the same replacement as the grid: the
-          organizer's word + a way back to tonight (Save stays so a
-          postponed event can be tracked for its new date). */}
+          filled primary (eventMobilePrimaryAction): Directions on the way to
+          a precisely located in-person event, with Tickets beside it and the
+          calendar set aside until the event is over; otherwise Tickets when
+          they exist, Online details for an online or hybrid event without
+          tickets, else Add to calendar. A cancelled/postponed event gets the
+          same replacement as the desktop row: the organizer's word + a way
+          back to tonight (Save stays so a postponed event can be tracked for
+          its new date). */}
       <MobileActionBar ariaLabel={`Actions for ${event.title}`}>
         {eventStatus !== "scheduled" ? (
           <>
@@ -1130,28 +1254,30 @@ export default async function EventPage({
           </>
         ) : (
           <>
-            <EventCalendarButton
-              event={{
-                slug: event.slug,
-                title: event.title,
-                starts_at: event.starts_at,
-                ends_at: calendarEndsAt,
-                description: event.description,
-                venue_name: event.venue_name,
-                address: event.address,
-                is_all_day: event.is_all_day,
-              }}
-              barVariant={mobilePrimary === "calendar" ? "primary" : "quiet"}
-              label="Add to calendar"
-            />
-            {mobilePrimary === "tickets" && event.ticket_url && (
+            {mobilePrimary !== "directions" && (
+              <EventCalendarButton
+                event={{
+                  slug: event.slug,
+                  title: event.title,
+                  starts_at: event.starts_at,
+                  ends_at: calendarEndsAt,
+                  description: event.description,
+                  venue_name: event.venue_name,
+                  address: event.address,
+                  is_all_day: event.is_all_day,
+                }}
+                barVariant={mobilePrimary === "calendar" ? "primary" : "quiet"}
+                label="Add to calendar"
+              />
+            )}
+            {(mobilePrimary === "tickets" || mobilePrimary === "directions") && event.ticket_url && (
               <MobileBarLink
                 href={event.ticket_url}
                 icon={Ticket}
                 label="Tickets"
                 ariaLabel={`Tickets for ${event.title}`}
                 external
-                primary
+                primary={mobilePrimary === "tickets"}
                 decisionAction="ticket"
               />
             )}
@@ -1166,13 +1292,14 @@ export default async function EventPage({
                 decisionAction="website"
               />
             )}
-            {physicalAttendance && hasPreciseLocation && directionsUrl && (
+            {hasDirections && directionsUrl && (
               <MobileBarLink
                 href={directionsUrl}
                 icon={Navigation}
                 label="Directions"
                 ariaLabel={`Directions to ${event.venue_name || event.title}`}
                 external
+                primary={mobilePrimary === "directions"}
                 decisionAction="directions"
               />
             )}

@@ -4,6 +4,7 @@ import { Calendar } from "lucide-react";
 import { buildIcs } from "@/lib/ics";
 import { haptic } from "@/lib/haptics";
 import { barCellClass, barCellStyle, barIconStyle, barLabelClass } from "@/components/ui/MobileActionBar";
+import { eventDesktopActionClass, eventDesktopActionStyle } from "@/components/event/eventActionBar";
 
 /**
  * "Add to calendar" cell for the event detail page, for events that have
@@ -28,6 +29,7 @@ type CalendarEvent = {
 export default function EventCalendarButton({
   event,
   barVariant,
+  appearance,
   label = "Add to calendar",
 }: {
   event: CalendarEvent;
@@ -36,6 +38,8 @@ export default function EventCalendarButton({
    * "primary" gets the vermilion emphasis; "quiet" is a plain cell.
    */
   barVariant?: "primary" | "quiet";
+  /** Render as a cell of the desktop action row (eventDesktopActionClass). */
+  appearance?: "primary" | "text";
   /** Override the visible label (e.g. a shorter "Calendar" in a tight bar). */
   label?: string;
 }) {
@@ -67,6 +71,7 @@ export default function EventCalendarButton({
 
   const inBar = Boolean(barVariant);
   const primary = barVariant === "primary";
+  const rowPrimary = appearance === "primary";
   return (
     <button
       type="button"
@@ -75,15 +80,23 @@ export default function EventCalendarButton({
       className={
         inBar
           ? barCellClass(primary)
-          : "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
+          : appearance
+            ? eventDesktopActionClass(rowPrimary)
+            : "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
       }
-      style={inBar ? barCellStyle(primary) : { borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+      style={
+        inBar
+          ? barCellStyle(primary)
+          : appearance
+            ? eventDesktopActionStyle(rowPrimary)
+            : { borderColor: "var(--app-border)", color: "var(--app-ink)" }
+      }
     >
       <Calendar
         className="h-5 w-5"
         strokeWidth={1.75}
         aria-hidden
-        style={inBar ? barIconStyle(primary) : { color: "var(--app-brand)" }}
+        style={inBar ? barIconStyle(primary) : appearance ? undefined : { color: "var(--app-brand)" }}
       />
       {inBar ? <span className={barLabelClass(primary)}>{label}</span> : label}
     </button>

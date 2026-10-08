@@ -7,6 +7,14 @@ import { BRAND } from "@/lib/brand";
 // The static-map proxy allowlists category colors, and Brick is one of them.
 const STATIC_PIN = BRAND.colors.brick.slice(1).toLowerCase();
 
+const FRAME = {
+  // A section of the page: rounded and outlined inside the reading column.
+  inline: "tactile tactile-interactive block overflow-hidden rounded-[var(--app-radius-md)] border",
+  // The page's picture: edge to edge on phones (cancelling the 16px reading
+  // gutter, like the photo hero), rounded inside the column from 640px.
+  hero: "tactile-interactive -mx-4 block overflow-hidden border-y sm:mx-0 sm:rounded-[var(--app-radius-lg)] sm:border",
+} as const;
+
 /**
  * VenueMiniMap — a map of the venue's block on the event page.
  *
@@ -19,19 +27,29 @@ const STATIC_PIN = BRAND.colors.brick.slice(1).toLowerCase();
  * geo-precise events, so an area-centroid event never draws a confidently
  * wrong pin. Attribution stays visible in both (Mapbox's on its image, the
  * OpenStreetMap credit on the basemap).
+ *
+ * As the `hero`, it is the event page's opening picture when the event has
+ * no photograph: full-bleed on phones, captioned with the venue's street
+ * rather than a repeat of the title printed under it.
  */
 export default function VenueMiniMap({
   geom,
   name,
   address,
+  caption,
+  variant = "inline",
 }: {
   geom: { lng: number; lat: number };
   name: string;
   /** Street address for the placeholder shown before the map draws. */
   address?: string | null;
+  /** The caption bar's text, such as "Thurmont Community Park, Frederick Rd". */
+  caption?: string | null;
+  variant?: keyof typeof FRAME;
 }) {
   const lng = geom.lng.toFixed(5);
   const lat = geom.lat.toFixed(5);
+  const label = caption?.trim() || name;
   // Via /api/static-map, NOT next/image against api.mapbox.com: the
   // token is URL-restricted and the image optimizer fetches with no
   // Referer, so the direct form 403s upstream and 502s to the user
@@ -42,19 +60,20 @@ export default function VenueMiniMap({
     <Link
       href={`/map?c=${lng},${lat},${MINI_MAP_ZOOM}`}
       aria-label={`Open the map centered on ${name}`}
-      className="tactile tactile-interactive block overflow-hidden rounded-[var(--app-radius-md)] border"
+      data-venue-mini-map={variant}
+      className={FRAME[variant]}
       style={{ borderColor: "var(--app-border)" }}
     >
       {miniMapSource() === "static-image" ? (
         <StaticMapPreview
           src={src}
-          alt={`Map showing ${name}`}
+          alt={`Map showing ${label}`}
           width={1280}
           height={560}
-          className="h-[140px] w-full"
+          className={variant === "hero" ? "h-44 w-full" : "h-[140px] w-full"}
         />
       ) : (
-        <OwnedMiniMap lng={geom.lng} lat={geom.lat} zoom={MINI_MAP_ZOOM} name={name} address={address} />
+        <OwnedMiniMap lng={geom.lng} lat={geom.lat} zoom={MINI_MAP_ZOOM} name={label} address={address} />
       )}
     </Link>
   );

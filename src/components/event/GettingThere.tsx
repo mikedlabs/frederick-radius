@@ -1,5 +1,6 @@
 import { CarFront, TrainFront } from "lucide-react";
-import { fieldNotesFor, recordedFieldNoteVerificationDate } from "@/lib/loaders/fieldNotes";
+import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
+import { fieldNoteCheckedDate } from "@/components/event/eventDetailFacts";
 import { eventParkingDirections, type EventParkingDecision } from "@/lib/events/parking";
 import { eventNearbyStation } from "@/lib/events/travel";
 import Link from "next/link";
@@ -12,23 +13,23 @@ export default function GettingThere({ geom, venuePlaceSlug, geoPrecise, parking
   parkingDecision: EventParkingDecision | null;
 }) {
   const parkingNote = venuePlaceSlug ? fieldNotesFor(venuePlaceSlug)?.parking : undefined;
-  const verified = recordedFieldNoteVerificationDate(parkingNote?.last_verified);
+  const checked = fieldNoteCheckedDate(parkingNote?.last_verified);
   const garageLine = parkingNote ? null : eventParkingDirections(parkingDecision);
   const station = geoPrecise ? eventNearbyStation(geom) : null;
   if (!parkingNote && !garageLine && !station) return null;
 
   return (
     <section aria-label="Getting there" className="space-y-3 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
-      <h2 className="text-[16px] font-semibold" style={{ color: "var(--app-ink)" }}>Getting there</h2>
-      <ul className="space-y-3 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+      <h2 className="text-title-sm" style={{ color: "var(--app-ink)" }}>Getting there</h2>
+      <ul className="space-y-3 text-body" style={{ color: "var(--app-ink-2)" }}>
         {(parkingNote || garageLine) && (
           <li className="flex items-start gap-2.5">
             <CarFront className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
             <div>
               <p>{parkingNote?.text ?? garageLine}</p>
-              <div className="flex flex-wrap items-center gap-x-3 text-[12px]">
+              <div className="flex flex-wrap items-center gap-x-3 text-meta">
                 {parkingNote?.source_url && <a href={parkingNote.source_url} target="_blank" rel="noopener noreferrer" className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool)" }}>Parking source</a>}
-                {verified && <span>Checked {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" }).format(new Date(verified))}</span>}
+                {checked && <span>Checked {checked}</span>}
                 {!parkingNote && parkingDecision && <Link href={`/places/${parkingDecision.slug}`} className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool)" }}>See garage &amp; directions</Link>}
                 {!parkingNote && <Link href="/parking" className="tap-44 inline-flex items-center font-semibold underline" style={{ color: "var(--app-cool)" }}>Check parking rates</Link>}
               </div>
@@ -40,7 +41,7 @@ export default function GettingThere({ geom, venuePlaceSlug, geoPrecise, parking
             <TrainFront className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
             <div>
               <p>{station.name} MARC station is {station.distanceLabel} away in a straight line. Check outbound and return service for the event date before planning the trip.</p>
-              <Link href="/transit" className="tap-44 inline-flex items-center text-[12px] font-semibold underline" style={{ color: "var(--app-cool)" }}>Check train schedules</Link>
+              <Link href="/transit" className="tap-44 inline-flex items-center text-meta font-semibold underline" style={{ color: "var(--app-cool)" }}>Check train schedules</Link>
             </div>
           </li>
         )}
