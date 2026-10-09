@@ -19,15 +19,20 @@ export type LiveLayerHealth = {
   reportedCount?: number;
   /** Public source rows outside this layer's safe display projection. */
   notShownCount?: number;
+  /** Rendered report history, separate from the recent count and feed health. */
+  earlierCount?: number;
   source: string;
   /** ISO time supplied by the source or fetch boundary. */
   timestamp: string | null;
+  timestampBasis?: "checked" | "snapshot";
 };
 
 export type LiveLayerHealthInput = {
   count?: number;
   reportedCount?: number;
   notShownCount?: number;
+  earlierCount?: number;
+  timestampBasis?: "checked" | "snapshot";
   source: string;
   timestamp?: string | Date | null;
   disabled?: boolean;
@@ -80,6 +85,8 @@ export function liveLayerHealth(
     count,
     ...(reportedCount === undefined ? {} : { reportedCount }),
     ...(notShownCount === undefined ? {} : { notShownCount }),
+    ...(input.earlierCount === undefined ? {} : { earlierCount: Math.max(0, Math.floor(input.earlierCount)) }),
+    ...(input.timestampBasis === undefined ? {} : { timestampBasis: input.timestampBasis }),
     source: input.source,
     timestamp,
   };

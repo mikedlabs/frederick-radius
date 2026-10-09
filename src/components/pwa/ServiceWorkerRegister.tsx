@@ -133,6 +133,11 @@ export default function ServiceWorkerRegister() {
       return;
     }
 
+    // Capture the controller before registering. A first install can claim
+    // this page while register() or a statechange callback is still pending;
+    // a controller that appears later is not evidence of an older visit.
+    const initialController = navigator.serviceWorker.controller;
+    let previousController = initialController;
     let toastId: string | number | undefined;
     let updateAccepted = false;
     let reloaded = false;
@@ -187,7 +192,20 @@ export default function ServiceWorkerRegister() {
      * Remains long enough to act on without permanently occupying app chrome.
      * Another update dismisses the old notice before offering the new one.
      */
-    const promptForUpdate = (waiting: ServiceWorker) => {
+    const promptForUpdate = (waiting: ServiceWorker, olderController: ServiceWorker | null) => {
+      // A real update is a distinct installed worker waiting to replace the
+      // same registration's controller that already owned this page. Ignore
+      // first installs and callbacks for workers that have already moved on.
+      if (
+        !olderController ||
+        olderController === waiting ||
+        navigator.serviceWorker.controller !== olderController ||
+        registration?.active !== olderController ||
+        registration.waiting !== waiting ||
+        waiting.state !== "installed"
+      ) {
+        return;
+      }
       if (!shouldOfferUpdatePrompt(snoozedAt(), presentedAt())) return;
       // Both an already-waiting registration and updatefound can describe the
       // same worker. Persist this before creating the toast so route changes
@@ -225,25 +243,33 @@ export default function ServiceWorkerRegister() {
      * but never activated it), prompt immediately. Otherwise listen
      * for the next install.
      */
+    // A settled first install becomes the baseline for future update cycles.
+    // It does not earn a notice itself, or turn an in-flight initial install
+    // into an update merely because it claims the page before statechange.
+    const rememberSettledController = () => {
+      const controller = navigator.serviceWorker.controller;
+      if (controller && registration?.active === controller
+        && !registration.installing && !registration.waiting
+        // controllerchange can arrive during activation, before activated.
+        && (controller.state === "activating" || controller.state === "activated")) previousController = controller;
+    };
+
     const wire = (reg: ServiceWorkerRegistration) => {
       registration = reg;
-      if (reg.waiting && navigator.serviceWorker.controller) {
-        promptForUpdate(reg.waiting);
+      if (reg.waiting) {
+        promptForUpdate(reg.waiting, initialController);
       }
       reg.addEventListener("updatefound", () => {
         const installing = reg.installing;
         if (!installing) return;
+        const controllerAtStart = previousController;
         installing.addEventListener("statechange", () => {
-          // "installed" + an existing controller = a true update,
-          // not a fresh first install (which has no controller yet).
-          if (
-            installing.state === "installed" &&
-            navigator.serviceWorker.controller
-          ) {
-            promptForUpdate(installing);
+          if (installing.state === "installed") {
+            promptForUpdate(installing, controllerAtStart);
           }
         });
       });
+      rememberSettledController();
     };
 
     const onLoad = () => {
@@ -287,6 +313,7 @@ export default function ServiceWorkerRegister() {
     // there can erase the visitor's first action. An accepted update still
     // reloads once so the new build takes over immediately.
     const onControllerChange = () => {
+      rememberSettledController();
       if (!shouldReloadForAcceptedUpdate(updateAccepted, reloaded)) return;
       reloaded = true;
       window.location.reload();

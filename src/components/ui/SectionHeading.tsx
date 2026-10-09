@@ -31,7 +31,7 @@ export default function SectionHeading({
   trailing?: React.ReactNode;
   /** Override the route accent for a single heading. */
   accent?: string;
-  /** Heading register. `lg` is the primary section title (Caslon 22 + full
+  /** Heading register. `lg` is the primary section title (Public Sans 22 + full
    *  tick); `sm` is the one lighter subhead register for secondary sections
    *  (Public Sans 16 + a shorter tick), so hierarchy reads from type, not per-section
    *  invention. */
@@ -55,14 +55,14 @@ export default function SectionHeading({
         <span
           aria-hidden
           className={small ? "inline-block h-3 w-1 rounded-full shrink-0" : "inline-block h-4 w-1 rounded-full shrink-0"}
-          style={{ background: tickColor }}
+          style={{ background: `var(--app-heading-rule, ${tickColor})` }}
         />
         <span
           className="truncate"
           style={!small ? {
-            backgroundImage: `linear-gradient(110deg, var(--app-ink) 30%, color-mix(in srgb, ${tickColor} 80%, var(--app-ink)))`,
+            backgroundImage: `var(--app-heading-image, linear-gradient(110deg, var(--app-ink) 30%, color-mix(in srgb, ${tickColor} 80%, var(--app-ink))))`,
             WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
+            WebkitTextFillColor: "var(--app-heading-fill, transparent)",
           } : undefined}
         >
           {title}
@@ -80,7 +80,7 @@ export default function SectionHeading({
         aria-hidden
         className="mb-[0.18rem] hidden h-px min-w-4 flex-1 min-[360px]:block"
         style={{
-          background: `linear-gradient(90deg, color-mix(in srgb, ${tickColor} 34%, var(--app-border)), var(--app-border))`,
+          background: `var(--app-heading-rule, linear-gradient(90deg, color-mix(in srgb, ${tickColor} 34%, var(--app-border)), var(--app-border)))`,
         }}
       />
       {trailing ? (
@@ -90,7 +90,7 @@ export default function SectionHeading({
             type="button"
             onClick={onCtaClick}
             className="tap-44-y -mx-1 inline-flex shrink-0 items-center gap-1 px-1 pb-0.5 text-xs font-semibold tracking-tight transition active:scale-[0.96] max-[359px]:ml-auto"
-            style={{ color: ctaColor }}
+            style={{ color: `var(--app-heading-action, ${ctaColor})` }}
           >
             {cta}
           </button>
@@ -99,7 +99,7 @@ export default function SectionHeading({
             <Link
               href={href}
               className="tap-44-y -mx-1 inline-flex shrink-0 items-center gap-1 px-1 pb-0.5 text-xs font-semibold tracking-tight max-[359px]:ml-auto"
-              style={{ color: ctaColor }}
+              style={{ color: `var(--app-heading-action, ${ctaColor})` }}
             >
               {cta}
               <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />

@@ -34,6 +34,21 @@ describe("cleanBlurbFragment", () => {
 });
 
 describe("formatAddress", () => {
+  it.each(["Entrance", "Suite", "Floor", "Room", "Building", "Unit"])(
+    "repairs a %s identifier merged into its postal locality at the shared boundary",
+    (kind) => {
+      expect(formatAddress(`350 Montevue Lane ${kind} BFrederick`)).toBe(
+        `350 Montevue Lane, ${kind} B, Frederick`,
+      );
+    },
+  );
+
+  it("preserves a real sublocation name that is not a postal locality", () => {
+    expect(formatAddress("350 Montevue Lane Entrance Barlow")).toBe(
+      "350 Montevue Lane, Entrance Barlow",
+    );
+  });
+
   it("repairs a civic room identifier concatenated into the locality", () => {
     expect(
       formatAddress("140 W Patrick Street Conference Room CFrederick"),
@@ -42,6 +57,11 @@ describe("formatAddress", () => {
       "12 E Church St., Frederick, MD 21701",
     );
   });
+
+  it.each(["Market Street Building", "Market Street Unit", "Market Street Conference Room"])(
+    "preserves the non-address venue %s",
+    (name) => expect(formatAddress(name)).toBe(name),
+  );
 
   it("does not split an ordinary venue phrase", () => {
     expect(formatAddress("Market Street Stage")).toBe("Market Street Stage");

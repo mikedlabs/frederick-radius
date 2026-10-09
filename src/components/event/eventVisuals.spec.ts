@@ -35,7 +35,7 @@ describe("eventCardVisual", () => {
       ),
     ).toEqual({
       src: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
-      caption: "Venue · Carroll Creek Linear Park · Radius photo",
+      caption: "Venue · Carroll Creek Linear Park",
       key: "radius-carroll-creek-summer",
     });
   });

@@ -203,9 +203,11 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
               className="absolute inset-x-0 bottom-0 h-1/2"
               style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 74%, transparent), transparent)" }}
             />
-            <figcaption className="absolute inset-x-0 bottom-0 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-on-brand)]">
-              {m.spotlightImage.credit}
-            </figcaption>
+            {m.spotlightImage.credit && (
+              <figcaption className="absolute inset-x-0 bottom-0 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-on-brand)]">
+                {m.spotlightImage.credit}
+              </figcaption>
+            )}
           </figure>
         )}
         {m.spotlightFacts && m.spotlightFacts.length > 0 && (

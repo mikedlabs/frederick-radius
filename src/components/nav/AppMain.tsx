@@ -18,6 +18,7 @@ import { isFairDayPath } from "@/lib/fair/route-policy";
  * the page itself is still a server component passed through `children`.
  */
 const FULL_BLEED_ROUTES = new Set<string>(["/map"]);
+const PRIMARY_TAB_ROUTES = new Set<string>(["/today", "/map", "/events", "/my-radius"]);
 
 export type AppMainMode = "reading" | "full-bleed" | "dedicated-fair";
 
@@ -39,6 +40,7 @@ export default function AppMain({ children }: { children: React.ReactNode }) {
       tabIndex={-1}
       data-bottom-nav-reserve={!fullBleed && bottomNavVisible ? "true" : "false"}
       data-app-main-mode={mode}
+      data-app-primary-tab={PRIMARY_TAB_ROUTES.has(pathname) ? pathname : undefined}
       className={mode === "dedicated-fair"
         ? "min-w-0"
         : mode === "full-bleed"

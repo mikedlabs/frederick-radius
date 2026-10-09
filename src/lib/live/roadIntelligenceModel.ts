@@ -12,6 +12,8 @@ import type {
   MdotWorkZonesResult,
 } from "@/lib/integrations/mdot-wzdx";
 import type { RoadWorkZoneFC } from "@/components/map/types";
+import { MDOT_WZDX_MAX_FEED_AGE_MS } from "@/lib/integrations/mdot-wzdx";
+import { COUNTY_STATUS_FUTURE_TOLERANCE_MS, COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS } from "@/lib/pulse/county-status";
 
 export const ROAD_INTELLIGENCE_SCHEMA_VERSION = 1 as const;
 
@@ -55,6 +57,30 @@ export type RoadIntelligenceSnapshot = {
     unavailable: Array<keyof RoadIntelligenceSources>;
   };
 };
+
+function currentCheckTime(value: string | undefined, now: number, maxAge = COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS): boolean {
+  const age = now - Date.parse(value ?? "");
+  return Number.isFinite(age) && age >= -COUNTY_STATUS_FUTURE_TOLERANCE_MS && age < maxAge;
+}
+
+/** A declaration's occurrence time is never substituted for its source check. */
+export function roadSourceIsCurrent(snapshot: RoadIntelligenceSnapshot, key: keyof RoadIntelligenceSources, now: number): boolean {
+  const source = snapshot.sources?.[key];
+  return Boolean(currentCheckTime(snapshot.generatedAt, now) && source?.available && currentCheckTime(source.checkedAt, now)
+    && (key !== "workZones" || currentCheckTime(source.asOf, now, MDOT_WZDX_MAX_FEED_AGE_MS)));
+}
+
+export function roadAttentionSource(signal: Pick<RoadAttentionSignal, "kind">): keyof RoadIntelligenceSources {
+  const sourceByKind = { "snow-emergency": "snowEmergency", "road-condition": "roadConditions", "work-zone-closure": "workZones", "pavement-weather": "weatherStations", "highway-message": "messages" } as const;
+  return sourceByKind[signal.kind];
+}
+
+export function verifiedRoadAttention(snapshot: RoadIntelligenceSnapshot, now: number): RoadAttentionSignal[] {
+  return snapshot.attention.filter((signal) => {
+    const key = roadAttentionSource(signal);
+    return Boolean(key && roadSourceIsCurrent(snapshot, key, now));
+  });
+}
 
 /** Label the geography Radius actually has. A CHART message carries the
  * physical sign position, not a confirmed crash/closure location contained in
@@ -305,8 +331,9 @@ export function selectRoadWorkZoneFeatureCollection(
 
 export function selectTodayRoadSignal(
   snapshot: RoadIntelligenceSnapshot,
+  now?: number,
 ): RoadAttentionSignal | null {
-  return snapshot.attention[0] ?? null;
+  return (now === undefined ? snapshot.attention : verifiedRoadAttention(snapshot, now))[0] ?? null;
 }
 
 export function selectRoadTravelSummary(

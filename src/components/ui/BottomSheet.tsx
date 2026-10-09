@@ -378,7 +378,7 @@ export function SheetHandle({ onClose, closeLabel }: { onClose: () => void; clos
         type="button"
         onClick={() => { haptic("light"); onClose(); }}
         aria-label={closeLabel}
-        className="inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold transition active:scale-[0.96]"
+        className="relative z-10 inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold transition active:scale-[0.96]"
         style={{ color: "var(--app-ink-2)" }}
       >
         <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />

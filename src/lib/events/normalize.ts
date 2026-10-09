@@ -133,7 +133,14 @@ export function deshoutTitle(raw: string): string {
       if (alpha.length >= 4 && /[AEIOU]/.test(alpha)) return capRuns(tok);
       return tok;
     })
-    .join("");
+    .join("")
+    // Apostrophes do not start a second title word. Repair suffixes in
+    // both newly de-shouted titles and already title-cased publisher text.
+    // Full surnames such as O'Neill and quoted 'N' remain unchanged.
+    .replace(/([A-Za-z])(['’])(S|T|RE|VE|LL|D|M)\b/gi,
+      (_match, letter: string, apostrophe: string, suffix: string) =>
+        `${letter}${apostrophe}${suffix.toLowerCase()}`,
+    );
 }
 
 /**

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowUpRight, Bookmark, Check } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ALL_BEERS,
   BREWERY_BY_SLUG,
@@ -10,7 +10,8 @@ import {
   beerKey,
   type BeerWithBrewery,
 } from "@/data/beers";
-import { addSaved, useSavedList } from "@/hooks/useSaved";
+import { addSaved, useSavedList, savedChangeDescription } from "@/hooks/useSaved";
+import { toast } from "sonner";
 import {
   buildTasteFlight,
   tastePathStats,
@@ -34,6 +35,8 @@ export default function BeerTasteFlight() {
   const [pathKey, setPathKey] = useState<TastePathKey>("hoppy");
   const [strength, setStrength] = useState<BeerStrength>("any");
   const savedList = useSavedList();
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const savedKeys = useMemo(
     () => new Set(savedList.filter((item) => item.type === "beer").map((item) => item.id)),
     [savedList],
@@ -42,8 +45,13 @@ export default function BeerTasteFlight() {
   const path = TASTE_PATH_BY_KEY[pathKey];
   const allSaved = flight.length > 0 && flight.every((beer) => savedKeys.has(beerKey(beer)));
 
-  function saveFlight() {
-    for (const beer of flight) addSaved("beer", beerKey(beer));
+  async function saveFlight() {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try { for (const beer of flight) await addSaved("beer", beerKey(beer)); }
+    catch (error) { toast.error("Could not save the full flight", { description: `${savedChangeDescription(error)} Pours already saved remain in My taps.` }); }
+    finally { savingRef.current = false; setSaving(false); }
   }
 
   return (
@@ -88,8 +96,8 @@ export default function BeerTasteFlight() {
           <p className="text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>{path.shortLabel} picks</p>
           <p className="mt-0.5 text-[10px]" style={{ color: "var(--app-ink-3)" }}>{flight.length} signature beers from {flight.length} breweries</p>
         </div>
-        <button type="button" onClick={saveFlight} disabled={flight.length === 0 || allSaved} className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] border px-3 text-[11.5px] font-semibold disabled:opacity-60" style={{ borderColor: "var(--app-border-strong)", color: "var(--app-ink)" }}>
-          {allSaved ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Bookmark className="h-3.5 w-3.5" aria-hidden />}{allSaved ? "Saved" : "Save flight"}
+        <button type="button" onClick={saveFlight} disabled={flight.length === 0 || allSaved || saving} aria-busy={saving || undefined} className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] border px-3 text-[11.5px] font-semibold disabled:opacity-60" style={{ borderColor: "var(--app-border-strong)", color: "var(--app-ink)" }}>
+          {allSaved ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Bookmark className="h-3.5 w-3.5" aria-hidden />}{saving ? "Saving…" : allSaved ? "Saved" : "Save flight"}
         </button>
       </div>
 
@@ -110,6 +118,8 @@ function PourCard({ beer, index, saved, pathKey }: { beer: BeerWithBrewery; inde
   const brewery = BREWERY_BY_SLUG[beer.brewerySlug];
   const untappdUrl = beer.untappd ?? brewery?.untappd;
   const key = beerKey(beer);
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const visualLabel = pathKey === "old-world" && beer.family === "wheat-hazy" ? "Traditional wheat" : pathKey === "hoppy" && beer.family === "wheat-hazy" ? "Hazy IPA" : family.label;
   return (
     <li
@@ -126,7 +136,14 @@ function PourCard({ beer, index, saved, pathKey }: { beer: BeerWithBrewery; inde
         {untappdUrl ? <a href={untappdUrl} target="_blank" rel="noreferrer" aria-label={`Open ${beer.name} by ${beer.breweryName} on Untappd`} className="ml-2 inline-flex min-h-11 items-center gap-1 text-[9px] text-[var(--app-ink-3)] hover:text-[var(--app-ink-2)]">Untappd <ArrowUpRight className="h-3 w-3" aria-hidden /></a> : null}
       </div>
 
-      <button type="button" onClick={() => addSaved("beer", key)} disabled={saved} aria-label={saved ? `${beer.name} is saved to My taps` : `Save ${beer.name} to My taps`} className="m-1.5 grid h-11 w-11 place-items-center self-start rounded-[var(--app-radius-sm)] border text-[var(--app-ink-3)] disabled:opacity-50" style={{ borderColor: "var(--app-border)" }}>
+      <button type="button" onClick={async () => {
+        if (savingRef.current) return;
+        savingRef.current = true;
+        setSaving(true);
+        try { await addSaved("beer", key); }
+        catch (error) { toast.error("Could not save this pour", { description: savedChangeDescription(error) }); }
+        finally { savingRef.current = false; setSaving(false); }
+      }} disabled={saved || saving} aria-busy={saving || undefined} aria-label={saving ? `Saving ${beer.name} to My taps` : saved ? `${beer.name} is saved to My taps` : `Save ${beer.name} to My taps`} className="m-1.5 grid h-11 w-11 place-items-center self-start rounded-[var(--app-radius-sm)] border text-[var(--app-ink-3)] disabled:opacity-50" style={{ borderColor: "var(--app-border)" }}>
         {saved ? <Check className="h-4 w-4" aria-hidden /> : <Bookmark className="h-4 w-4" aria-hidden />}
       </button>
     </li>

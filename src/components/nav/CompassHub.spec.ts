@@ -254,6 +254,14 @@ describe("Compass feature gates", () => {
 });
 
 describe("compass live lines", () => {
+  it("labels an elapsed accepted road count as an earlier report with its source check time", () => {
+    const accepted = [{ id: "traffic", status: "ok", source: "MDOT CHART", checkedAt: "2026-10-09T15:40:00.000Z", validUntil: "2026-10-09T15:45:00.000Z", faces: [{ value: "2", label: "incidents" }] }];
+    const line = liveLineForIntent("get-around", accepted, Date.parse("2026-10-09T16:00:00.000Z"));
+    expect(line).toContain("Earlier MDOT CHART report: 2 incidents");
+    expect(line).toContain("Unable to verify");
+    expect(line).toContain("checked");
+    expect(liveSuggestionForDeck(accepted, 8, Date.parse("2026-10-09T16:00:00.000Z"))).toBeNull();
+  });
   const key = (id: string, value: string, label: string, status = "ok") => ({
     id,
     status,

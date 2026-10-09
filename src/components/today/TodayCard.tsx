@@ -5,10 +5,14 @@ import DaylightLeftInline from "@/components/today/DaylightLeftInline";
 import { weatherVerdict } from "@/lib/weather-verdict";
 import { getNwsAlertsResult, type NwsAlertsResult } from "@/lib/integrations/nws-alerts";
 import { getAirQuality, isFreshAqiObservation, pickWorstAqi } from "@/lib/integrations/airnow";
-import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
+import type { SkyVariant } from "./AnimatedSkyGlyph";
+import TodayWeatherView, { WeatherUnavailable } from "./TodayWeatherView";
+
 import OfflineTodayCapture from "@/components/pwa/OfflineTodayCapture";
 import { easternDayKey } from "@/lib/tz";
 import { withDeadlineFallback } from "@/lib/promise-deadline";
+
+export { WeatherUnavailable };
 
 /** The hero is a glance, not a live-feed loading screen. Cached safety data is
  * normally immediate. A cold provider gets enough time to produce a trustworthy
@@ -16,26 +20,9 @@ import { withDeadlineFallback } from "@/lib/promise-deadline";
  * collapses to an explicit unavailable note. */
 export const TODAY_SAFETY_GLANCE_DEADLINE_MS = 2_500;
 
-/**
- * TodayCard — the daily hook at the very top of /now.
- *
- * The product thesis is "less list, more lens": within a few seconds a
- * stranger should get a win and understand why this app exists. This
- * card is that moment. It turns the data the page already has — weather
- * now, today's high, sunset, and tonight's headline event — into one
- * editorial readout plus two situational next-steps, instead of making
- * the user assemble it from scattered modules.
- *
- *   Frederick today
- *   Good morning. Patio weather.
- *   70° now · High 76° · Sunset 8:27 PM
- *   Tonight: Alive @ Five at Carroll Creek
- *   [ Find coffee → ]  [ Open map ]
- *
- * Renders ON the SkyHero gradient (tone-aware via currentColor), so it
- * IS the hero rather than a card stacked on top of one. Server
- * component; the NWS fetch is shared/cached with the rest of the page.
- */
+/** Server composition for Today's compact weather read. All three provider
+ * reads keep their existing parallel deadlines; the pure view presents only
+ * derived facts and the forecast's actual issuance time. */
 
 // The weather read beside the greeting comes from lib/weather-verdict —
 // the SAME engine NowIntel uses — so the hero and the "right now" line
@@ -51,25 +38,6 @@ function fmtTime(d: Date | null): string | null {
     hour: "numeric",
     minute: "2-digit",
   }).format(d);
-}
-
-/** A feed miss should not turn Today's most valuable screen space into a large
- * failed weather card. The surrounding weather plate remains a real link to
- * Pulse, but the failure itself collapses to one honest, useful row. */
-export function WeatherUnavailable() {
-  return (
-    <section
-      aria-label="Weather unavailable"
-      data-weather-state="unavailable"
-      className="flex min-h-11 items-center justify-between gap-3 pr-5"
-      style={{ color: "currentColor" }}
-    >
-      <span className="text-[12.5px] font-medium">The NWS forecast is briefly unavailable.</span>
-      <span className="shrink-0 text-[11.5px] font-semibold opacity-80">
-        County status
-      </span>
-    </section>
-  );
 }
 
 export function compactWeatherRead({
@@ -214,17 +182,19 @@ export default async function TodayCard() {
     ? iconForShortForecast(condition, isDay)
     : null;
 
-  // Secondary stats — high + next sun event. The big temperature carries
-  // "now," so it's dropped from this line to avoid saying it twice.
-  const stats = cur
-    ? [
-        high != null ? `High ${high}°` : null,
-        sun ? `${sun.label} ${sun.time}` : null,
-      ].filter(Boolean)
-    : [];
-
   return (
-    <section aria-label="Today in Frederick" style={{ color: "currentColor" }}>
+    <TodayWeatherView
+      headline={weatherRead.headline}
+      condition={sentenceCaseForecast(condition)}
+      temperatureF={tempNow}
+      highF={cur ? high : null}
+      sun={cur ? sun : null}
+      variant={variant}
+      forecastAvailable={Boolean(cur)}
+      issuedAt={forecast?.asOf ?? null}
+      safetyNote={weatherRead.safetyNote}
+      daylight={cur && (high != null || sun) ? <DaylightLeftInline /> : undefined}
+    >
       <OfflineTodayCapture
         snapshot={{
           dayKey: easternDayKey(now),
@@ -237,46 +207,6 @@ export default async function TodayCard() {
           },
         }}
       />
-      {/* The hook — a concise weather read in the display face.
-          The 3-second "I get it" line, now a tighter lead above one compact
-          weather row (was a 28px headline stacked over a 64px number). */}
-      {/* text-wrap balance: the two-line mood ("… chase shade and / AC.")
-          otherwise strands its last word at narrow widths. */}
-      {weatherRead.headline && (
-        <h2 className="font-sans text-[18px] font-semibold leading-snug tracking-tight [text-wrap:balance] sm:text-[20px]">
-          {weatherRead.headline}
-        </h2>
-      )}
-      {weatherRead.safetyNote && (
-        <p className="mt-1 text-[11.5px] font-medium">
-          {weatherRead.safetyNote}
-        </p>
-      )}
-
-      {/* One compact weather row: the animated glyph + the temperature + the
-          high/sunset stats, side by side, so the header stays short. */}
-      {(variant || tempNow != null || stats.length > 0) && (
-        <div className="mt-2 flex items-center gap-3">
-          {variant && (
-            <AnimatedSkyGlyph variant={variant} size={44} className="shrink-0 opacity-95" />
-          )}
-          {tempNow != null && (
-            <span className="font-sans text-[40px] font-light leading-none tracking-tight tabular-nums sm:text-[44px]">
-              {tempNow}&deg;
-            </span>
-          )}
-          {stats.length > 0 && (
-            <span className="text-[12.5px] font-medium leading-snug tabular-nums">
-              {stats.join("  ·  ")}
-              {/* Live daylight-left, moved here from TodayContext (client-side
-                  so it stays accurate; the server card would freeze it). */}
-              <DaylightLeftInline />
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* The selected event lead renders once in the Events today section. */}
-    </section>
+    </TodayWeatherView>
   );
 }
