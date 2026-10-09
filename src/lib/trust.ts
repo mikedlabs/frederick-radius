@@ -122,7 +122,9 @@ export function eventTrust(e: EventTrustInput): TrustSignal {
 /**
  * Trust for a place's hours. "Verified" only when hours are confirmed
  * against a live source; curated-but-unconfirmed hours are honestly
- * "Likely"; no hours at all is "Unconfirmed". Mirrors getOpenStatus.
+ * "Likely"; a schedule withheld as stale and no hours at all are both
+ * "Unconfirmed", with a basis that says which one is true. Mirrors
+ * getOpenStatus and the loader's withheld-hours status.
  */
 export function placeHoursTrust(status: OpenStatus): TrustSignal {
   switch (status.state) {
@@ -141,6 +143,15 @@ export function placeHoursTrust(status: OpenStatus): TrustSignal {
         basis: "Estimated from curated hours, not yet confirmed",
       };
     default:
+      // A withheld schedule is not "no posted hours": Radius has a schedule,
+      // it is just too old to repeat as current.
+      if (status.reason === "stale") {
+        return {
+          level: "unconfirmed",
+          label: "Unconfirmed",
+          basis: "Radius has hours on file, but they have not been confirmed recently. Call ahead to confirm.",
+        };
+      }
       return {
         level: "unconfirmed",
         label: "Unconfirmed",

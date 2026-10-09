@@ -451,6 +451,15 @@ export function askEvidenceLabels(
   };
 }
 
+/** A reason that only restates the hours status is already printed in the
+ * row's meta line; saying it twice made every unconfirmed row read
+ * "Hours not confirmed" above "Hours not confirmed". */
+export function reasonRepeatsStatus(source: { reason?: string | null; status?: string | null }): boolean {
+  const reason = source.reason?.trim().toLowerCase();
+  const status = source.status?.trim().toLowerCase();
+  return Boolean(reason && status && reason === status);
+}
+
 export function askVisibleRecommendationSummary(
   summary: string | null,
   hoursLimitation: string | null,
@@ -593,7 +602,7 @@ function AskSourceCard({
             ) : null}
           </div>
 
-          {source.reason ? (
+          {source.reason && !reasonRepeatsStatus(source) ? (
             <p
               className="mt-1.5 text-[12px] font-medium leading-snug"
               style={{ color: "var(--app-ink-2)" }}

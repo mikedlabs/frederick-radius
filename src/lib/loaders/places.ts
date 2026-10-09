@@ -19,7 +19,12 @@ import {
   isRecommendable,
   SUPPRESSED_JUNK_SLUGS,
 } from "@/lib/relevance";
-import { getOpenStatus, isOpenNow, type OpenStatus } from "@/lib/hours";
+import {
+  getOpenStatus,
+  isOpenNow,
+  withheldHoursStatus,
+  type OpenStatus,
+} from "@/lib/hours";
 import {
   isGooglePlaceId,
   stampPlaceProvenance,
@@ -1172,12 +1177,16 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     hours_source: refreshedHours ? ("google_places" as const) : hours_source,
     hours_updated_at: hoursVerifiedAt,
     // The one decision point of the hours policy: open and closed states render
-    // only from recently verified hours.
-    open_status: getOpenStatus(
-      mayAssertHours ? hours : undefined,
-      { verified: mayAssertHours },
-      now,
-    ),
+    // only from recently verified hours. A withheld schedule still records
+    // that one exists, so the page reads "Hours not confirmed" instead of the
+    // false "Hours not posted". With the Google refresh on hold, every
+    // schedule aged past the window and every place page claimed the
+    // business had never posted hours (UI audit, place-data-truth).
+    open_status: mayAssertHours
+      ? getOpenStatus(hours, { verified: true }, now)
+      : withheldHoursStatus(
+          Boolean(hours) || (enriched.google_hours?.length ?? 0) > 0,
+        ),
     distance_m: origin ? haversineMeters(origin, enriched.geom) : undefined,
     field_notes: hasFieldNotes(p.slug),
     // Standing happy-hour figure only (e.g. "25% OFF") — never a day-specific
