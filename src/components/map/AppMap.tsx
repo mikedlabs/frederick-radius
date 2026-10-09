@@ -1286,6 +1286,9 @@ export default function AppMap({
   const [searchSettledQuery, setSearchSettledQuery] = useState("");
   const [searchUnavailableQuery, setSearchUnavailableQuery] = useState("");
   const [searchAttempt, setSearchAttempt] = useState(0);
+  // The dock's search panel already shows pending or failed search status
+  // and its retry; the recovery list then stays quiet so there is one of each.
+  const [dockSearchPanelVisible, setDockSearchPanelVisible] = useState(false);
   const [searchOpeningId, setSearchOpeningId] = useState<string | null>(null);
   const searchSessionRef = useRef<string | null>(null);
   const searchSessionStartedAtRef = useRef(0);
@@ -4906,6 +4909,7 @@ export default function AppMap({
               sortOrigin={userLoc}
               failureMode
               searchState={q.trim().length < 2 ? "ready" : searchUnavailableQuery === q.trim() ? "unavailable" : searchSettledQuery !== q.trim() ? "pending" : "ready"}
+              searchFeedbackInDock={dockSearchPanelVisible}
               onRetrySearch={() => setSearchAttempt((attempt) => attempt + 1)}
               onPick={openPlaceSheet}
               onPickEvent={(event) => router.push(`/events/${event.slug}`)}
@@ -7385,6 +7389,7 @@ export default function AppMap({
           <MapDock
             browse={dock}
             mapAvailable={!mapError}
+            onSearchPanelVisibleChange={setDockSearchPanelVisible}
             placeCount={inViewPlaces.length}
             eventCount={inViewEvents.length}
             closingSoonCount={closingSoonCount}
