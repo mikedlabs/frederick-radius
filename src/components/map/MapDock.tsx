@@ -188,6 +188,9 @@ export type MapDockProps = {
   /** False keeps the local search instrument available while hiding controls
    * that can only change an interactive renderer. */
   mapAvailable?: boolean;
+  /** Told whether the dock's search panel is showing, so other surfaces do
+   * not repeat its pending or failed status. */
+  onSearchPanelVisibleChange?: (visible: boolean) => void;
 
   /** What's actually drawn (drives the living count line). */
   placeCount: number;
@@ -1392,6 +1395,11 @@ export default function MapDock(props: MapDockProps) {
     !props.searchUnavailable &&
     props.searchPending &&
     visibleSearchMatches.length === 0;
+  const searchPanelVisible = (!mapAvailable || pane === null) && searchPanelOpen;
+  const onSearchPanelVisibleChange = props.onSearchPanelVisibleChange;
+  useEffect(() => {
+    onSearchPanelVisibleChange?.(searchPanelVisible);
+  }, [onSearchPanelVisibleChange, searchPanelVisible]);
   const searchUnavailableVisible =
     (!mapAvailable || pane === null) &&
     searchPanelOpen &&
