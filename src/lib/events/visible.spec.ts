@@ -51,9 +51,30 @@ describe("isUpcomingEvent", () => {
     expect(
       isUpcomingEvent(
         { starts_at: startedAt, ends_at: startedAt },
-        new Date("2026-06-04T19:00:01-04:00"),
+        new Date("2026-06-04T20:00:01-04:00"),
       ),
     ).toBe(false);
+  });
+
+  it("does not let an 11:59 PM placeholder keep an evening hearing upcoming", () => {
+    // The county calendar stamps short evening meetings "5:30 PM-11:59 PM"
+    // (UI audit, Oct 2026). The placeholder is no end, so the shared 3h
+    // runtime applies and the hearing is over by 10:50 PM.
+    const hearing = {
+      starts_at: "2026-10-06T17:30:00-04:00",
+      ends_at: "2026-10-06T23:59:00-04:00",
+    };
+    expect(isUpcomingEvent(hearing, new Date("2026-10-06T20:00:00-04:00"))).toBe(true);
+    expect(isUpcomingEvent(hearing, new Date("2026-10-06T22:50:00-04:00"))).toBe(false);
+  });
+
+  it("keeps a date-only anchor upcoming through its capped listing window", () => {
+    // Noon plus 11:59 PM is a date with no published clock, not a noon start.
+    const anchor = {
+      starts_at: "2026-10-06T12:00:00-04:00",
+      ends_at: "2026-10-06T23:59:00-04:00",
+    };
+    expect(isUpcomingEvent(anchor, new Date("2026-10-06T16:00:00-04:00"))).toBe(true);
   });
 });
 

@@ -130,13 +130,13 @@ describe("buildEventScrubTimes", () => {
     expect(t.dayKey).toBe("2026-08-05");
   });
 
-  it("gives a missing end the same bounded two-hour visibility window as Events", () => {
+  it("gives a missing end the same bounded three-hour visibility window as Events", () => {
     const [t] = buildEventScrubTimes([{ starts_at: "2026-08-05T23:00:00.000Z" }]);
     expect(t.startH).toBeCloseTo(19, 5);
-    expect(t.endH).toBeCloseTo(21, 5);
+    expect(t.endH).toBeCloseTo(22, 5);
   });
 
-  it("caps an end-of-day placeholder instead of implying an all-evening event", () => {
+  it("treats an end-of-day placeholder as no end instead of implying an all-evening event", () => {
     const [t] = buildEventScrubTimes([
       {
         starts_at: "2026-08-05T13:15:00.000Z",
@@ -144,7 +144,7 @@ describe("buildEventScrubTimes", () => {
       },
     ]);
     expect(t.startH).toBeCloseTo(9.25, 5);
-    expect(t.endH).toBeCloseTo(17.25, 5);
+    expect(t.endH).toBeCloseTo(12.25, 5);
   });
 
   it("keeps an all-day row available throughout its date", () => {
