@@ -129,10 +129,36 @@ degraded "1 event listing shown · 1 town · partial results" state repeatedly
 between 12:26 and 13:47 UTC, so its visual floor depends on fixing that state
 first.
 
-The visual-floor check (build step 2) should start from this table: zero name
-plates, and at least one real picture or map of 96 px or more in the first
-viewport. It has to state whether pixels under overlaid type count as picture,
-because the two probes differ by up to 8 points on photos with titles.
+## The visual-floor check
+
+`npm run check:visual-floor` (`scripts/check-visual-floor.mjs`) is the
+enforced version of this table. It loads each surface at 390 x 844 as a
+first-time visitor and asks one question: does the first viewport, between the
+header and the bottom nav, show a real picture or map of at least 96 x 96 px?
+An `<img>` counts once it decodes larger than 1 x 1 (so the photo proxy's
+failure signal never counts), a `<canvas>` counts because the maps draw into
+one, and a `<video>` counts. CSS backgrounds never count, because in this
+product they are paper texture. Pixels under overlaid type do count as
+picture: the floor asks whether a picture is there, and measuring only the
+pixels between letters is what made the two probes above disagree. Anything
+under an opaque sheet does not count.
+
+`scripts/visual-floor-baseline.json` is a ratchet. A surface that meets the
+floor is enforced from then on, and the check fails when an enforced surface
+stops meeting it. `--write` records new measurements and enforces newly
+passing surfaces but never drops one; removing a surface from enforcement is
+a reviewed edit to the JSON. `.github/workflows/visual-floor.yml` runs it
+against production after each successful promotion and on demand. It reports
+and never rolls back.
+
+First run against production, 2026-10-07: /today (20.4%), /map (98.9%),
+/places/carroll-creek-linear-park-frederick (26.1%), /m/frederick (26.5%) and
+/m/brunswick (26.5%) meet the floor and are enforced. The other nine surfaces
+measure 0%. /beer reads 0% under this rule because its brewery logos are
+smaller than 96 px, and logos are marks rather than pictures. Name plates are
+not measured here. The photo proxy's fallback plate no longer carries any
+text, and whether a component asks for the failure signal is a static
+question that belongs with the photo primitive (build step 3).
 
 ## Surface by surface
 
@@ -164,7 +190,8 @@ the October 2026 UI and UX review.
 2. Add a visual-floor check that measures the first viewport of each main tab at
    390 px and fails when a surface that meets the floor regresses. Add each
    surface to the enforced list as it reaches the floor, the same ratchet
-   pattern as `scripts/style-lint-baseline.json`.
+   pattern as `scripts/style-lint-baseline.json`. Built: see "The visual-floor
+   check" above.
 3. One photo primitive for places and events that follows the ladder above,
    with credits only after load.
 4. The picture row primitive (photo or color tile, name, one distinguishing
