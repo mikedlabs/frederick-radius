@@ -57,7 +57,10 @@ export const OwnedVenuePhotography: Story = {
   args: { event: { ...event, venue_name: "Baker Park Bandshell", venue_place_slug: "baker-park-bandshell" } },
   play: async () => {
     const dialog = await within(document.body).findByRole("dialog", { name: event.title });
-    await expect(within(dialog).getByText("Venue · Baker Park Bandshell")).toBeVisible();
+    // The credit waits for the owned photo to decode (no credit before a photo loads).
+    await expect(
+      await within(dialog).findByText("Venue · Baker Park Bandshell", undefined, { timeout: 8000 }),
+    ).toBeVisible();
   },
 };
 export const LoadingDetails: Story = { args: { event: null, pending: true, onOpenFullPage: fn() } };

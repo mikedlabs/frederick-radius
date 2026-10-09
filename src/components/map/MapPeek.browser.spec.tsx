@@ -8,6 +8,7 @@ import type { MapPinPlace } from "./types";
 vi.mock("@/hooks/useFollows", () => ({
   useIsFollowed: () => false,
   useToggleFollow: () => vi.fn(),
+  useFollowMutationState: () => "idle",
 }));
 vi.mock("@/lib/track", () => ({ logActivity: vi.fn(), track: vi.fn() }));
 vi.mock("@/lib/decision/telemetry", () => ({ trackDecision: vi.fn() }));
