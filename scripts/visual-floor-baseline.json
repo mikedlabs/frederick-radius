@@ -1,0 +1,62 @@
+{
+  "surfaces": {
+    "/today": {
+      "enforced": true,
+      "share": 0.204
+    },
+    "/map": {
+      "enforced": true,
+      "share": 0.989
+    },
+    "/events": {
+      "enforced": false,
+      "share": 0
+    },
+    "/my-radius": {
+      "enforced": false,
+      "share": 0
+    },
+    "/ask": {
+      "enforced": false,
+      "share": 0
+    },
+    "/places/black-hog-bbq-bar": {
+      "enforced": false,
+      "share": 0
+    },
+    "/places/carroll-creek-linear-park-frederick": {
+      "enforced": true,
+      "share": 0.261
+    },
+    "/category/restaurant": {
+      "enforced": false,
+      "share": 0
+    },
+    "/open-now": {
+      "enforced": false,
+      "share": 0
+    },
+    "/beer": {
+      "enforced": false,
+      "share": 0
+    },
+    "/towns": {
+      "enforced": false,
+      "share": 0
+    },
+    "/parks": {
+      "enforced": false,
+      "share": 0
+    },
+    "/m/frederick": {
+      "enforced": true,
+      "share": 0.265
+    },
+    "/m/brunswick": {
+      "enforced": true,
+      "share": 0.265
+    }
+  },
+  "measured": "2026-10-07",
+  "base": "https://frederickradius.app"
+}
