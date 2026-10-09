@@ -4,13 +4,14 @@ import { useEffect, useState, useRef, type RefObject } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { ExternalLink, MapPin, Navigation, Ticket, CalendarCheck } from "lucide-react";
+import { CarFront, ExternalLink, MapPin, Navigation, Ticket, CalendarCheck } from "lucide-react";
 import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import ItineraryButton from "@/components/saved/ItineraryButton";
 import EventActions from "@/components/event/EventActions";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
 import { eventCardVisual } from "@/components/event/eventVisuals";
+import { usePlacePhotoState } from "@/components/place/PlacePhotoState";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { eventDateBlock } from "@/lib/events/format";
@@ -23,6 +24,7 @@ import { withBrowseReturnTo, browseReturnFromLocation } from "@/lib/browse-retur
 import { statusLabel } from "@/lib/event-status";
 import { formatDistance } from "@/lib/geo";
 import { directionsHref } from "@/lib/map/directionsHref";
+import { eventArrival } from "@/lib/events/eventArrival";
 import { haptic } from "@/lib/haptics";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { trackDecision, type DecisionAction } from "@/lib/decision/telemetry";
@@ -141,8 +143,15 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
   const preciseGeo =
     physicalAttendance &&
     eventHasPreciseLocation(event);
-  const parking = preciseGeo && canAttend ? nearestEventParking(event.geom) : null;
-  const eventVisual = eventCardVisual(event);
+  // A venue with no car access offers its guide's parking and shuttle section
+  // in place of Directions and a nearby garage (eventArrival).
+  const arrival = physicalAttendance ? eventArrival(event.slug) : null;
+  const parking = preciseGeo && canAttend && !arrival ? nearestEventParking(event.geom) : null;
+  const approvedVisual = eventCardVisual(event);
+  // A venue photo the proxy could not deliver comes back as the failure
+  // signal; the sheet then opens on its photoless header with no credit.
+  const heroPhoto = usePlacePhotoState(approvedVisual?.src);
+  const eventVisual = heroPhoto.status === "missing" ? null : approvedVisual;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll({ container: scrollRef });
@@ -179,22 +188,24 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
          *  category eyebrow + title overlaid (same cinematic pattern as
          *  the place sheet). Photoless events keep their category and
          *  title on the neutral reading surface. */}
-        {eventVisual ? (
-          <div className="relative aspect-[16/9] w-full overflow-hidden">
-            <motion.div 
+        {eventVisual && heroPhoto.src ? (
+          <div className="relative aspect-[16/9] w-full overflow-hidden" data-event-sheet-hero="photo">
+            <motion.div
               className="absolute inset-0 origin-bottom"
               style={{ y: heroY, scale: heroScale }}
             >
               <Image
-                src={eventVisual.src}
+                src={heroPhoto.src}
                 alt=""
                 fill
-                unoptimized={eventVisual.src.startsWith("/api/place-photo")}
+                unoptimized={heroPhoto.src.startsWith("/api/place-photo")}
                 priority
                 sizes="(max-width: 720px) 100vw, 720px"
                 placeholder="blur"
                 blurDataURL={PAPER_CREAM_BLUR}
                 className="object-cover"
+                onLoad={heroPhoto.onLoad}
+                onError={heroPhoto.onError}
               />
             </motion.div>
             <div
@@ -230,7 +241,8 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
             </div>
           </div>
         ) : null}
-        {eventVisual ? (
+        {/* Credit only once a real photograph has decoded. */}
+        {eventVisual && heroPhoto.status === "ready" ? (
           <EventVisualCredit
             visual={eventVisual}
             className="border-b px-5 py-2"
@@ -368,7 +380,41 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 {ticketLabel}
               </a>
             )}
-            {preciseGeo && canAttend && (
+            {arrival && canAttend && (
+              <Link
+                href={arrival.href}
+                onClick={() => {
+                  haptic("light");
+                  trackDecision({
+                    stage: "action",
+                    surface: "events",
+                    entityKind: "event",
+                    entityId: event.slug,
+                    position: "sheet",
+                    action: "open",
+                  });
+                  onClose();
+                }}
+                data-event-parking-action
+                className={`tactile-interactive flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold ${
+                  ticketHref ? "border bg-[var(--app-bg-elevated)]" : "tactile-lift"
+                }`}
+                style={
+                  ticketHref
+                    ? { borderColor: "var(--app-border-strong)", color: "var(--app-ink)" }
+                    : { backgroundColor: "var(--app-brand-press)", color: "var(--app-on-brand)" }
+                }
+              >
+                <CarFront
+                  className="h-4 w-4"
+                  strokeWidth={2.25}
+                  style={{ color: ticketHref ? "var(--app-brand-press)" : "var(--app-on-brand)" }}
+                  aria-hidden
+                />
+                Parking and shuttle
+              </Link>
+            )}
+            {preciseGeo && canAttend && !arrival && (
               <a
                 href={directionsHref(event.geom.lat, event.geom.lng)}
                 onClick={() => {

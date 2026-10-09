@@ -28,6 +28,13 @@ export const MissingEndAt320: Story = {
   args: { event: { ...sample, ends_at: sample.starts_at }, variant: "glance" },
 };
 export const Online: Story = { args: { event: { ...sample, attendance_mode: "online" }, variant: "glance" } };
+export const LongVenueAt320: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: {
+    event: { ...sample, venue_name: "Steinhardt Brewing Company Taproom and Beer Garden", geo_confidence: "venue_match" },
+    variant: "glance",
+  },
+};
 export const PrimaryTabRows: Story = {
   decorators: [(Story) => <div data-app-primary-tab="/events"><Story /></div>],
   args: { variant: "glance" },

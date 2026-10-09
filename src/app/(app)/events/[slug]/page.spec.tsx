@@ -20,6 +20,12 @@ function hasVisitEntry(node: ReactNode): boolean {
   if (!isValidElement<{ children?: ReactNode; "aria-label"?: string }>(node)) return false;
   return node.props["aria-label"] === "Plan this visit" || hasVisitEntry(node.props.children);
 }
+function collectProps(node: ReactNode, visit: (props: Record<string, unknown>) => void): void {
+  if (Array.isArray(node)) { node.forEach((child) => collectProps(child, visit)); return; }
+  if (!isValidElement<Record<string, unknown> & { children?: ReactNode }>(node)) return;
+  visit(node.props);
+  collectProps(node.props.children, visit);
+}
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(now); vi.clearAllMocks();
   mocks.resolve.mockResolvedValue({ kind: "live", event });
@@ -78,5 +84,43 @@ describe("event detail operational recovery rendering", () => {
     await expect(EventPage({ params: Promise.resolve({ slug: event.slug }), searchParams: Promise.resolve({}) })).rejects.toBe(failure);
     expect(mocks.noStore).not.toHaveBeenCalled();
     expect(mocks.captureMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe("event detail arrival for a venue with no car access", () => {
+  it("sends Colorfest visitors to parking and never offers a route to the closed park", async () => {
+    // The organizer closes Frederick Road and there is no parking at the park
+    // during the show (colorfest.org/plan-your-visit, read Oct 8).
+    vi.setSystemTime(new Date("2026-10-10T08:30:00-04:00"));
+    const colorfest: EventWithMeta = {
+      ...event,
+      slug: "catoctin-colorfest-thurmont-2026",
+      title: "Catoctin Colorfest",
+      starts_at: "2026-10-10T09:00:00-04:00",
+      ends_at: "2026-10-11T17:00:00-04:00",
+      venue_name: "Thurmont Community Park",
+      venue_place_slug: "thurmont-community-park-thurmont",
+      address: "19 Frederick Rd, Thurmont, MD 21788",
+      geom: { lng: -77.4127594, lat: 39.6213 },
+      municipality: "thurmont",
+      municipality_name: "Thurmont",
+      is_free: true,
+    };
+    mocks.resolve.mockResolvedValue({ kind: "seed", event: colorfest });
+    mocks.venue.mockReturnValue({ slug: "thurmont-community-park-thurmont", geom: colorfest.geom, is_operational: "operational" });
+    const page = await EventPage({ params: Promise.resolve({ slug: colorfest.slug }), searchParams: Promise.resolve({}) });
+    const arrival: string[] = [];
+    const hrefs: string[] = [];
+    collectProps(page, (props) => {
+      if (typeof props["data-event-arrival"] === "string") arrival.push(props["data-event-arrival"]);
+      if (typeof props.href === "string") hrefs.push(props.href);
+    });
+    const guide = "/moments/catoctin-colorfest-2026#getting-there";
+    expect(arrival).toEqual([guide]);
+    // The desktop row, the mobile dock and the sourced note all lead to the
+    // guide's parking section; no surface offers a route to the closed park.
+    expect(hrefs.filter((href) => href === guide).length).toBeGreaterThanOrEqual(3);
+    expect(hrefs.some((href) => href.startsWith("https://www.google.com/maps/dir/"))).toBe(false);
+    expect(hrefs.some((href) => href.startsWith("https://colorfest.org/"))).toBe(true);
   });
 });

@@ -4,17 +4,32 @@
  * MomentSpotlight — the festive "big weekend" module on /today.
  *
  * When a curated civic moment is live (the Fourth, the Fair, the holiday
- * markets), this rides near the top of Today as a celebratory spotlight (NOT
- * the alarm-toned CivicAlerts): the moment's name, its single most useful line,
- * and a way into the full hub. Pre-event teasers are dismissible for the
+ * markets), this rides on Today as a quiet spotlight (NOT the alarm-toned
+ * CivicAlerts): a real picture, the moment's name, its single most useful
+ * line, and a way into the full hub. The picture is the moment's own photo
+ * or its licensed town photo at 96px, credited after it loads, and otherwise
+ * the first day's date plate. Pre-event teasers are dismissible for the
  * session; on the day itself, the full plan stays available at the top. It
  * self-hides entirely when no moment is live. The active-moment decision is
- * made server-side and passed in; this component only owns the festive shell.
+ * made server-side and passed in; this component only owns the shell.
  */
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Sparkles, X, ArrowRight, ExternalLink, MapPin } from "lucide-react";
+import DatePlate from "@/components/event/DatePlate";
+import {
+  momentDays,
+  momentHeroImage,
+  nextMomentDay,
+  sourcedMomentFacts,
+} from "@/components/moment/momentGuide";
+import MomentPhotoCreditLine from "@/components/moment/MomentPhotoCreditLine";
+import RadiusPhoto, {
+  RadiusPhotoScope,
+  RadiusPhotoWhen,
+} from "@/components/ui/RadiusPhoto";
+import type { MomentDay, MomentHeroPhoto } from "@/data/civic-moments";
 import {
   type DecisionAction,
   type DecisionStage,
@@ -28,7 +43,7 @@ export type SpotlightMoment = {
   title: string;
   spotlightLead: string;
   accent: string;
-  spotlightFacts?: Array<{ label: string; value: string }>;
+  spotlightFacts?: Array<{ label: string; value: string; source_url?: string }>;
   spotlightImage?: {
     src: string;
     alt: string;
@@ -39,6 +54,10 @@ export type SpotlightMoment = {
   spotlightSourceUrl?: string;
   /** A scoped directions link for an event with a well-defined public location. */
   spotlightDirectionsUrl?: string;
+  /** A licensed town photograph for the compact thumbnail. */
+  heroPhoto?: MomentHeroPhoto;
+  /** The days the occasion runs; the first one becomes the fallback plate. */
+  days?: MomentDay[];
 };
 
 export function momentSpotlightDecision(
@@ -56,7 +75,16 @@ export function momentSpotlightDecision(
   };
 }
 
-export default function MomentSpotlight({ moment, isDayOf }: { moment: SpotlightMoment; isDayOf?: boolean }) {
+export default function MomentSpotlight({
+  moment,
+  isDayOf,
+  todayKey,
+}: {
+  moment: SpotlightMoment;
+  isDayOf?: boolean;
+  /** Today's Eastern YYYY-MM-DD from the server, so the fallback plate shows the next remaining day. */
+  todayKey?: string;
+}) {
   const [dismissed, setDismissed] = useState(false);
   const key = `fr.moment-dismissed:${moment.slug}${isDayOf ? ":day-of" : ""}`;
 
@@ -81,43 +109,33 @@ export default function MomentSpotlight({ moment, isDayOf }: { moment: Spotlight
     return <DayOfMomentSpotlight moment={moment} />;
   }
 
-  return (
+  const facts = sourcedMomentFacts(moment.spotlightFacts);
+  const image = momentHeroImage(moment, 320);
+  const plateDay = nextMomentDay(momentDays(moment.days), todayKey);
+  const plate = plateDay ? (
+    <DatePlate
+      month={plateDay.month}
+      day={plateDay.day}
+      weekday={plateDay.weekday}
+      accent="var(--app-brand)"
+      size="md"
+    />
+  ) : null;
+  // A licensed photo links its author and license (CC BY-SA asks for both).
+  const credit =
+    image.kind === "licensed" ? (
+      <MomentPhotoCreditLine credit={image.credit} />
+    ) : image.kind === "owned" ? (
+      image.credit
+    ) : null;
+
+  const card = (
     <section
       aria-label={moment.title}
-      className="relative overflow-hidden rounded-[var(--app-radius-xl)] border p-5 shadow-[var(--app-shadow-1)] sm:p-6"
-      style={{
-        borderColor: `color-mix(in srgb, ${moment.accent} 45%, var(--app-border))`,
-        background: `linear-gradient(135deg, color-mix(in srgb, ${moment.accent} 12%, var(--app-bg-elevated-solid)), color-mix(in srgb, var(--app-accent) 10%, var(--app-bg-elevated-solid)))`,
-      }}
+      data-moment-spotlight={moment.slug}
+      className="relative rounded-[var(--app-radius-lg)] border p-3 sm:p-4"
+      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)" }}
     >
-      {/* One restrained editorial bloom for a shared occasion. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -right-12 -top-16 h-56 w-56 rounded-full"
-        style={{ background: `radial-gradient(circle, color-mix(in srgb, ${moment.accent} 24%, transparent), transparent 70%)` }}
-      />
-      {isDayOf && moment.spotlightImage && (
-        <figure className="relative -mx-5 -mt-5 mb-5 aspect-[16/9] overflow-hidden sm:-mx-6 sm:-mt-6 sm:mb-6 sm:aspect-[21/8]">
-          <Image
-            src={moment.spotlightImage.src}
-            alt={moment.spotlightImage.alt}
-            fill
-            priority
-            sizes="(min-width: 1024px) 68rem, 100vw"
-            className="object-cover object-center"
-          />
-          <span
-            aria-hidden
-            className="absolute inset-x-0 bottom-0 h-1/2"
-            style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-media-ink) 76%, transparent), transparent)" }}
-          />
-          {moment.spotlightImage.credit && (
-            <figcaption className="absolute inset-x-0 bottom-0 px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-on-brand)] sm:px-6">
-              {moment.spotlightImage.credit}
-            </figcaption>
-          )}
-        </figure>
-      )}
       {!isDayOf && (
         <button
           type="button"
@@ -130,50 +148,98 @@ export default function MomentSpotlight({ moment, isDayOf }: { moment: Spotlight
           className="tap-44 absolute right-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full"
           style={{ color: "var(--app-ink-3)" }}
         >
-          <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+          <X className="h-4 w-4" aria-hidden />
         </button>
       )}
 
-      <div className="relative">
-        <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: `var(--app-list-fact-color, ${moment.accent})` }}>
-          <Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          {isDayOf ? "Today in Frederick County" : "This weekend"}
-        </p>
-        <h2 className="mt-1 text-[28px] font-semibold leading-[1.04] tracking-tight sm:text-[32px]" style={{ color: "var(--app-ink)" }}>
-          {moment.title}
-        </h2>
-        <p className="mt-1 max-w-[46ch] text-[15px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-          {moment.spotlightLead}
-        </p>
-
-        {moment.spotlightFacts && moment.spotlightFacts.length > 0 && (
-          <dl className="mt-4 grid max-w-2xl gap-px overflow-hidden rounded-[var(--app-radius-md)] border sm:grid-cols-3" style={{ borderColor: "color-mix(in srgb, var(--app-ink) 14%, var(--app-border))", background: "color-mix(in srgb, var(--app-ink) 8%, transparent)" }}>
-            {moment.spotlightFacts.map((fact) => (
-              <div key={fact.label} className="px-3.5 py-3" style={{ background: "color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent)" }}>
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>{fact.label}</dt>
-                <dd className="mt-0.5 text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>{fact.value}</dd>
-              </div>
-            ))}
-          </dl>
+      <div className="flex gap-3 sm:gap-4">
+        {image.kind === "none" ? (
+          plate
+        ) : (
+          <>
+            <RadiusPhotoWhen is="visible">
+              <RadiusPhoto
+                size={96}
+                alt={image.alt}
+                className="rounded-[var(--app-radius-md)]"
+              />
+            </RadiusPhotoWhen>
+            <RadiusPhotoWhen is="missing">{plate}</RadiusPhotoWhen>
+          </>
         )}
-
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Link href={`/moments/${moment.slug}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-3.5 text-[13px] font-semibold" style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }} onClick={() => {
-            trackDecision(momentSpotlightDecision(moment.slug, "open", "open"));
-            track("moment_spotlight_open", { slug: moment.slug, day_of: isDayOf ? "true" : "false" });
-          }}>
-            Plan your day
-            <ArrowRight className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-          </Link>
-          {moment.spotlightSourceUrl && (
-            <a href={moment.spotlightSourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-link)" }} onClick={() => trackDecision(momentSpotlightDecision(moment.slug, "action", "website"))}>
-              Official event details
-              <ExternalLink className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            </a>
+        <div className={`min-w-0 flex-1 ${isDayOf ? "" : "pr-7"}`}>
+          <p className="text-meta-lg font-semibold" style={{ color: "var(--app-ink-3)" }}>
+            {isDayOf ? "Today" : "This weekend"}
+          </p>
+          <h2 className="text-title mt-0.5" style={{ color: "var(--app-ink)" }}>
+            {moment.title}
+          </h2>
+          {facts.length > 0 && (
+            // One fact per line: in this narrow card a dot separator wrapped
+            // to the start of the next line ("· Free").
+            <dl className="mt-1 space-y-0.5 text-meta-lg font-semibold" style={{ color: "var(--app-ink)" }}>
+              {facts.map((fact) => (
+                <div key={fact.label}>
+                  <dt className="sr-only">{fact.label}</dt>
+                  <dd>{fact.value}</dd>
+                </div>
+              ))}
+            </dl>
           )}
         </div>
       </div>
+
+      <p className="mt-2 text-body" style={{ color: "var(--app-ink-2)" }}>
+        {moment.spotlightLead}
+      </p>
+
+      <div className="flex flex-wrap items-center gap-x-4">
+        <Link
+          href={`/moments/${moment.slug}`}
+          className="inline-flex min-h-11 items-center gap-1.5 text-body font-semibold"
+          style={{ color: "var(--app-link)" }}
+          onClick={() => {
+            trackDecision(momentSpotlightDecision(moment.slug, "open", "open"));
+            track("moment_spotlight_open", { slug: moment.slug, day_of: isDayOf ? "true" : "false" });
+          }}
+        >
+          Plan your day
+          <ArrowRight className="h-4 w-4" aria-hidden />
+        </Link>
+        {moment.spotlightSourceUrl && (
+          <a
+            href={moment.spotlightSourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center gap-1 text-meta-lg font-semibold"
+            style={{ color: "var(--app-link)" }}
+            onClick={() => trackDecision(momentSpotlightDecision(moment.slug, "action", "website"))}
+          >
+            Official event details
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          </a>
+        )}
+      </div>
+
+      {image.kind !== "none" && credit && (
+        <RadiusPhotoWhen is="ready">
+          <p className="text-caption" style={{ color: "var(--app-ink-3)" }} data-moment-spotlight-credit>
+            {credit}
+          </p>
+        </RadiusPhotoWhen>
+      )}
     </section>
+  );
+
+  // The picture, its credit and the date-plate fallback live in different
+  // parts of the card, so one scope shares the photo's load state with all
+  // three. Without a picture there is nothing to scope.
+  return image.kind === "none" ? (
+    card
+  ) : (
+    <RadiusPhotoScope src={image.src} size={96}>
+      {card}
+    </RadiusPhotoScope>
   );
 }
 
@@ -210,10 +276,11 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
           sizes="(min-width: 1024px) 68rem, 100vw"
           className="object-cover object-center"
         />
+        {/* An Ink scrim under the type only: the bottom 60% of the frame. */}
         <span
           aria-hidden
-          className="absolute inset-0"
-          style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-media-ink) 86%, transparent) 0%, color-mix(in srgb, var(--app-media-ink) 40%, transparent) 45%, transparent 74%)" }}
+          className="absolute inset-x-0 bottom-0 h-3/5"
+          style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-media-ink) 86%, transparent) 0%, color-mix(in srgb, var(--app-media-ink) 40%, transparent) 55%, transparent)" }}
         />
         <div className="absolute inset-x-0 bottom-0 p-5 pr-28 sm:p-7 sm:pr-36">
           <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--app-on-brand)]">
@@ -232,7 +299,7 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
         </div>
         {image.credit && (
           <figcaption
-            className="absolute right-3 top-3 max-w-[8.5rem] rounded-[var(--app-radius-xs)] px-2 py-1 text-right text-[8px] font-semibold uppercase leading-tight tracking-[0.1em] text-[var(--app-on-brand)] sm:right-5 sm:top-5 sm:max-w-none sm:text-[9px]"
+            className="absolute right-3 top-3 max-w-[8.5rem] rounded-[var(--app-radius-xs)] px-2 py-1 text-right text-caption font-semibold text-[var(--app-on-brand)] sm:right-5 sm:top-5 sm:max-w-none"
             style={{ background: "color-mix(in srgb, var(--app-media-ink) 58%, transparent)" }}
           >
             {image.credit}
@@ -245,9 +312,10 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
           <dl className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
             {facts.map((fact, index) => (
               <div key={fact.label} className="inline-flex items-center gap-x-3">
-                {index > 0 && <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>}
                 <dt className="sr-only">{fact.label}</dt>
                 <dd>{fact.value}</dd>
+                {/* The dot trails its fact, so a wrap never starts a line with it. */}
+                {index < facts.length - 1 && <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>}
               </div>
             ))}
           </dl>

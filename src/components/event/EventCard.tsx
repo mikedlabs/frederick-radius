@@ -1,8 +1,12 @@
 import Link from "next/link";
-import Image from "next/image";
 import { MapPin, Ticket, Accessibility, Navigation } from "lucide-react";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import CategoryIcon from "@/components/place/CategoryIcon";
+import {
+  PlacePhotoScope,
+  PlacePhotoScopeImage,
+  PlacePhotoWhen,
+} from "@/components/place/PlacePhotoState";
 import type { EventWithMeta } from "@/lib/loaders/events";
 // VALUE import from the DATA-FREE formatter module, never from the loader:
 // a value import of loaders/events would drag its places-client static
@@ -445,6 +449,10 @@ export default function EventCard({
           boxShadow: `var(--app-list-card-shadow, inset 3px 0 0 ${accent}, var(--app-edge), var(--app-hi), var(--app-elev-1))`,
         }}
       >
+        {/* One photo state for the thumbnail inside the link and its credit
+            outside it: a proxy failure removes both, and the credit waits
+            for a real image to decode. */}
+        <PlacePhotoScope src={cardVisual ? proxyPhotoAtWidth(cardVisual.src, 132) : undefined}>
         <Link
           href={`/events/${event.slug}`}
           data-decision-action="open"
@@ -509,10 +517,12 @@ export default function EventCard({
               </p>
               {/* Venue and Meta block — Icon-first representations */}
               <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                {/* The venue wraps to a second line instead of being cut
+                    at a fixed 160px ("Steinhardt Brewing Co…"). */}
                 {venueLabel && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-                    <span className="truncate max-w-[160px] leading-snug">{venueLabel}</span>
+                  <span className="flex min-w-0 items-start gap-1" data-event-card-venue>
+                    <MapPin className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+                    <span className="line-clamp-2 leading-snug">{venueLabel}</span>
                   </span>
                 )}
                 
@@ -539,39 +549,43 @@ export default function EventCard({
               </div>
             </div>
             {/* A fixed-size, lazy thumbnail appears only after the shared
-                source/venue resolver approves it. Credit is rendered below
-                this event link so Google author/source/report links never
-                become invalid nested anchors. */}
+                source/venue resolver approves it, and leaves again if the
+                proxy reports that it could not deliver the photo. Credit is
+                rendered below this event link so Google author/source/report
+                links never become invalid nested anchors. */}
             {cardVisual ? (
-              <figure className="w-[96px] shrink-0 self-stretch sm:w-[132px]">
-                <div className="relative h-full min-h-[96px] w-full overflow-hidden rounded-[var(--app-radius-md)]">
-                  <Image
-                    src={proxyPhotoAtWidth(cardVisual.src, 132)}
-                    alt=""
-                    fill
-                    unoptimized={cardVisual.src.startsWith("/api/place-photo")}
-                    sizes="(min-width: 640px) 132px, 96px"
-                    placeholder="blur"
-                    blurDataURL={PAPER_CREAM_BLUR}
-                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                  />
-                  <span
-                    aria-hidden
-                    className="absolute inset-0 rounded-[10px]"
-                    style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.10)" }}
-                  />
-                </div>
-              </figure>
+              <PlacePhotoWhen is="visible">
+                <figure className="w-[96px] shrink-0 self-stretch sm:w-[132px]" data-event-card-thumb>
+                  <div className="relative h-full min-h-[96px] w-full overflow-hidden rounded-[var(--app-radius-md)]">
+                    <PlacePhotoScopeImage
+                      alt=""
+                      fill
+                      sizes="(min-width: 640px) 132px, 96px"
+                      placeholder="blur"
+                      blurDataURL={PAPER_CREAM_BLUR}
+                      className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                    />
+                    <span
+                      aria-hidden
+                      className="absolute inset-0 rounded-[10px]"
+                      style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.10)" }}
+                    />
+                  </div>
+                </figure>
+              </PlacePhotoWhen>
             ) : null}
           </div>
         </Link>
         {cardVisual ? (
-          <EventVisualCredit
-            visual={cardVisual}
-            compact
-            className="relative z-10 mt-1.5"
-          />
+          <PlacePhotoWhen is="ready">
+            <EventVisualCredit
+              visual={cardVisual}
+              compact
+              className="relative z-10 mt-1.5"
+            />
+          </PlacePhotoWhen>
         ) : null}
+        </PlacePhotoScope>
       </article>
     );
   }

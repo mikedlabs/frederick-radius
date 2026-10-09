@@ -1,11 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "./PlaceCardPhoto";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { usePlacePhoto } from "@/components/place/usePlacePhoto";
+import { usePlacePhotoState } from "@/components/place/PlacePhotoState";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import OpenClosedDot from "./OpenClosedDot";
@@ -173,47 +173,44 @@ function Thumb({
     place.google_photo_url,
     lazyPhoto,
   );
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  if (photoUrl && failedSrc !== photoUrl) {
-    // Narrow the proxy URL to the size actually painted. places-client.json
-    // stores one URL per place at w=800, the size a hero needs, and proxy
-    // responses render `unoptimized` because Next cannot resize an opaque
-    // route — which also makes the `sizes` hint below inert for them. So a
-    // 40px thumbnail was downloading the full 800px asset, dozens of times
-    // per scroll across every list surface. PlaceMedallion has done this for
-    // a while; the card thumbs were simply missed.
-    let src = proxyPhotoAtWidth(photoUrl, size);
-    if (src.startsWith("/api/place-photo")) {
-      const url = new URL(src, "https://frederickradius.local");
-      url.searchParams.set("fallback", "signal");
-      src = `${url.pathname}?${url.searchParams.toString()}`;
-    }
+  // Narrow the proxy URL to the size actually painted. places-client.json
+  // stores one URL per place at w=800, the size a hero needs, and proxy
+  // responses render `unoptimized` because Next cannot resize an opaque
+  // route — which also makes the `sizes` hint below inert for them. So a
+  // 40px thumbnail was downloading the full 800px asset, dozens of times
+  // per scroll across every list surface. PlaceMedallion has done this for
+  // a while; the card thumbs were simply missed.
+  // The proxy's failure signal swaps a failed photo back to the category
+  // mark instead of cropping a fallback plate into a 46px fragment.
+  const photo = usePlacePhotoState(
+    photoUrl ? proxyPhotoAtWidth(photoUrl, size) : null,
+  );
+  if (photo.src && photo.status !== "missing") {
     return (
       <div
         ref={anchorRef}
+        data-place-thumb="photo"
         className="relative shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
         style={{ height: size, width: size, boxShadow: "inset 0 0 0 1px var(--app-ink-tint-8)" }}
       >
         <Image
-          src={src}
+          src={photo.src}
           alt=""
           fill
-          unoptimized={src.startsWith("/api/place-photo")}
+          unoptimized={photo.src.startsWith("/api/place-photo")}
           sizes={`${size}px`}
           placeholder="blur"
           blurDataURL={PAPER_CREAM_BLUR}
           className="object-cover"
-          onLoad={(event) => {
-            if (event.currentTarget.naturalWidth <= 1 || event.currentTarget.naturalHeight <= 1) setFailedSrc(photoUrl);
-          }}
-          onError={() => setFailedSrc(photoUrl)}
+          onLoad={photo.onLoad}
+          onError={photo.onError}
         />
       </div>
     );
   }
   const fallbackSize = Math.min(size, 46);
   return (
-    <div ref={anchorRef} className="shrink-0" style={{ height: fallbackSize, width: fallbackSize }}>
+    <div ref={anchorRef} data-place-thumb="category" className="shrink-0" style={{ height: fallbackSize, width: fallbackSize }}>
       <CategoryMark category={category} color={color} size={fallbackSize} />
     </div>
   );

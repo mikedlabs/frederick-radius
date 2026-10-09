@@ -579,19 +579,27 @@ export const EVENTS: Event[] = [
     description:
       "Massive juried craft and art show in Thurmont, drawing 100,000+ visitors over the second weekend in October. 350+ vendors at Community Park, plus the Town Crafts Show, food and live music.",
     // Sat-Sun Oct 10-11, 2026 per thurmont.com/2236/Colorfest ("Colorfest
-    // will be held October 10th & 11th, 2026"). colorfest.org's Oct 11-12
-    // is a stale year-bump of the 2025 dates (Sun-Mon is implausible).
+    // will be held October 10th & 11th, 2026"). colorfest.org/plan-your-visit
+    // agrees and lists 9 AM to 5 PM each day (both read 2026-10-08).
     starts_at: iso(at(149, 9, 0)),
     ends_at: iso(at(150, 17, 0)),
     timezone: "America/New_York",
+    // The show is in Thurmont Community Park, so the event takes the
+    // catalog record's slug, address and coordinates. The old "615 E Main
+    // St" is the Town Office, which resolveReviewedEventVenue rejects as a
+    // street conflict with the park. Without a resolved venue the seed's
+    // location read as "unknown", so the event page drew no map and offered
+    // no Directions.
+    venue_place_slug: "thurmont-community-park-thurmont",
     venue_name: "Thurmont Community Park",
-    address: "615 E Main St, Thurmont, MD 21788",
-    geom: { lng: -77.4081, lat: 39.6244 },
+    address: "19 Frederick Rd, Thurmont, MD 21788",
+    geom: { lng: -77.4127594, lat: 39.6213 },
     municipality: "thurmont",
     category: "arts",
     audience: ["adults", "groups", "kids-6-12"],
     is_free: true,
     organizer: "Catoctin Colorfest, Inc.",
+    source_url: "https://www.thurmont.com/2236/Colorfest",
     source: "manual",
     is_verified: true,
   },
