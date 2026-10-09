@@ -138,7 +138,9 @@ describe("degraded event renders stay short-lived in the ISR cache", () => {
       "utf8",
     );
 
-    expect(town).toContain("loadEventArchiveSnapshot(now)");
+    expect(town).toMatch(
+      /loadEventArchiveSnapshot\(now, \{\s*timeoutMs: EVENT_PAGE_SNAPSHOT_TIMEOUT_MS,\s*\}\)/,
+    );
     expect(town).toContain("townEventsFrom(eventSet.publicEvents, m.slug, now)");
     expect(town).not.toMatch(/eventsInMunicipality\s*\(/);
     expect(town).not.toMatch(/nearTown\s*\(/);

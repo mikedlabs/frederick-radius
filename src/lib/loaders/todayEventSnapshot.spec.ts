@@ -21,7 +21,9 @@ vi.mock("@/lib/loaders/venueEvents", async (importOriginal) => ({
 import { isPublicEvent } from "@/lib/events/classify";
 import { promotedEventSet } from "@/lib/loaders/unifiedEvents";
 import {
+  EVENT_BROWSE_HORIZON_DAYS,
   EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
+  EVENT_PAGE_SNAPSHOT_TIMEOUT_MS,
   loadEventArchiveSnapshot,
   hydrateTodayEventSnapshot,
   loadTodayEventSnapshot,
@@ -267,7 +269,11 @@ describe("Today durable event snapshot", () => {
       "utf8",
     );
 
-    expect(page).toContain("loadEventArchiveSnapshot(now)");
+    // The ISR page regenerates in the background, so it takes the full
+    // archive ceiling; the browse endpoint keeps the shorter visitor deadline.
+    expect(page).toMatch(
+      /loadEventArchiveSnapshot\(now, \{\s*timeoutMs: EVENT_PAGE_SNAPSHOT_TIMEOUT_MS,\s*\}\)/,
+    );
     expect(page).not.toMatch(/assembleUnifiedEvents\s*\(/);
     expect(endpoint).toContain("loadEventArchiveSnapshot(now)");
     expect(endpoint).not.toMatch(/assembleUnifiedEvents\s*\(/);
@@ -552,6 +558,33 @@ describe("archive read fallbacks", () => {
       "[events] Archive read failed; serving the last answered read.",
       expect.objectContaining({ code: "event_archive_timeout" }),
     );
+  });
+
+  it("logs every archive timeout, including one with nothing remembered", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.useFakeTimers();
+    mocks.getSql.mockReturnValue(hangingSql());
+    const pending = loadEventArchiveSnapshot(NOW, {
+      timeoutMs: EVENT_PAGE_SNAPSHOT_TIMEOUT_MS,
+    });
+    await vi.advanceTimersByTimeAsync(EVENT_PAGE_SNAPSHOT_TIMEOUT_MS + 1);
+    const result = await pending;
+
+    expect(result.sourceHealth.issues.map((issue) => issue.code)).toEqual([
+      "event_archive_timeout",
+    ]);
+    expect(warn).toHaveBeenCalledWith(
+      "[events] Archive read timed out.",
+      expect.objectContaining({
+        timeoutMs: EVENT_PAGE_SNAPSHOT_TIMEOUT_MS,
+        horizonDays: EVENT_BROWSE_HORIZON_DAYS,
+      }),
+    );
+  });
+
+  it("gives ISR event pages the full archive ceiling, above the browse deadline", () => {
+    expect(EVENT_PAGE_SNAPSHOT_TIMEOUT_MS).toBe(5_000);
+    expect(EVENT_PAGE_SNAPSHOT_TIMEOUT_MS).toBeGreaterThan(EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS);
   });
 
   it("stops reusing a remembered read past the archive freshness bound", async () => {

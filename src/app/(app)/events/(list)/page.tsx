@@ -3,7 +3,10 @@ import type { Metadata } from "next";
 import { featuredEventSlugs } from "@/lib/events/featured";
 import { Suspense } from "react";
 import { ArrowRight, Building2 } from "lucide-react";
-import { loadEventArchiveSnapshot } from "@/lib/loaders/todayEventSnapshot";
+import {
+  EVENT_PAGE_SNAPSHOT_TIMEOUT_MS,
+  loadEventArchiveSnapshot,
+} from "@/lib/loaders/todayEventSnapshot";
 import { keepDegradedEventRenderShort } from "@/lib/loaders/unifiedEvents";
 import { classifyEvent } from "@/lib/events/classify";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
@@ -84,7 +87,9 @@ export default async function EventsIndexPage() {
   // The background archive job owns live-provider fan-out. A visitor receives
   // one bounded durable read, so an external calendar can never hold this page
   // open. The promise still streams behind the board fallback on a cold DB.
-  const eventsPromise = loadEventArchiveSnapshot(now);
+  const eventsPromise = loadEventArchiveSnapshot(now, {
+    timeoutMs: EVENT_PAGE_SNAPSHOT_TIMEOUT_MS,
+  });
 
   return (
     <div className="relative space-y-4">

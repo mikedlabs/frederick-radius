@@ -4,7 +4,10 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { townEventsFrom, BY_TOWN_ENABLED } from "@/lib/loaders/events";
-import { loadEventArchiveSnapshot } from "@/lib/loaders/todayEventSnapshot";
+import {
+  EVENT_PAGE_SNAPSHOT_TIMEOUT_MS,
+  loadEventArchiveSnapshot,
+} from "@/lib/loaders/todayEventSnapshot";
 import { keepDegradedEventRenderShort } from "@/lib/loaders/unifiedEvents";
 import { decoratePlace, publicPlacesByMunicipality, slimForList } from "@/lib/loaders/places";
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
@@ -139,7 +142,9 @@ export default async function MunicipalityPage(
   // town. The curated seeds alone said "Nothing is listed for Brunswick yet"
   // while /towns counted 16 Brunswick events this week.
   const now = new Date();
-  const eventSet = await loadEventArchiveSnapshot(now);
+  const eventSet = await loadEventArchiveSnapshot(now, {
+    timeoutMs: EVENT_PAGE_SNAPSHOT_TIMEOUT_MS,
+  });
   await keepDegradedEventRenderShort(eventSet.sourceHealth);
   const eventsIncomplete = eventSet.sourceHealth.degraded;
   const townEvents = townEventsFrom(eventSet.publicEvents, m.slug, now);

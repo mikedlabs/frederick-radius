@@ -54,6 +54,13 @@ export const EVENT_BROWSE_SNAPSHOT_LIMIT = 1_500;
 // connection, but no public request can turn this bounded archive read into a
 // long-running database wait.
 const EVENT_ARCHIVE_MAX_TIMEOUT_MS = 5_000;
+// ISR pages (/events, /m/<town>) regenerate in the background, so no visitor
+// waits on this read, and a page that misses its deadline is cached as the
+// small promoted fallback until the next regeneration. On Oct 8, 2026 a
+// healthy archive read took 2.45 s against the 2.5 s browse deadline, and
+// /events served a one-listing board for hours. These pages take the full
+// ceiling instead.
+export const EVENT_PAGE_SNAPSHOT_TIMEOUT_MS = EVENT_ARCHIVE_MAX_TIMEOUT_MS;
 
 type EventArchiveSnapshotOptions = {
   horizonDays?: number;
@@ -555,10 +562,20 @@ export async function loadEventArchiveSnapshot(
     from (values (1)) as anchor(value)
     left join latest_archive on true
   `;
+  const startedAt = Date.now();
   const outcome = await beforeDeadline(pending, timeoutMs);
   if (!outcome.ok) {
     if ("diagnostic" in outcome) {
       console.error("[events] Archive read rejected.", outcome.diagnostic);
+    } else {
+      // A timeout used to fall back without a trace, so a board stuck on the
+      // fallback looked identical to a quiet week in the logs.
+      console.warn("[events] Archive read timed out.", {
+        timeoutMs,
+        elapsedMs: Date.now() - startedAt,
+        horizonDays,
+        limit,
+      });
     }
     return archiveFallback(now, outcome.code, memoryKey, start);
   }
