@@ -79,7 +79,9 @@ describe("vercel-ignore-preview.sh", () => {
     const work = repo("claude/ui-then-docs");
     commit(work, ["src/components/Card.tsx"], "ui change");
     commit(work, ["docs/README.md"], "docs follow-up");
-    expect(run(work).status).toBe(BUILD);
+    const result = run(work);
+    expect(result.status).toBe(BUILD);
+    expect(result.out).toContain("(main)");
   });
 
   it.each([
@@ -113,6 +115,17 @@ describe("vercel-ignore-preview.sh", () => {
     const result = run(root);
     expect(result.status).toBe(SKIP);
     expect(result.out).toContain("no app tree");
+  });
+
+  it("falls back to the parent commit when main cannot be fetched", () => {
+    const root = mkdtempSync(join(tmpdir(), "vercel-ignore-"));
+    roots.push(root);
+    git(root, "init", "-q", "-b", "claude/no-origin");
+    commit(root, ["package.json", "src/app/page.tsx"], "app");
+    commit(root, ["docs/README.md"], "docs only");
+    const result = run(root);
+    expect(result.status).toBe(SKIP);
+    expect(result.out).toContain("(the parent commit)");
   });
 
   it("builds when there is no commit to compare against", () => {
