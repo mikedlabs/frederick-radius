@@ -7,7 +7,7 @@ guide and sorts it by your location.
 
 **Live:** [frederickradius.app](https://frederickradius.app)
 **Brand system:** [`docs/brand/BRAND_GUIDE.md`](./docs/brand/BRAND_GUIDE.md)
-**Companion docs:** [`docs/NORTH_STAR.md`](./docs/NORTH_STAR.md) (what the product is + the laws) · [`UX_REDO.md`](./UX_REDO.md) (the sequenced redo plan + data-confidence gate) · [`AUDIT.md`](./AUDIT.md) (what works, what's half-working) · [`ROADMAP.md`](./ROADMAP.md) (what's shipping, scaffolded, or unbuilt) · `docs/archive/` (historical decisions, pre-overhaul state).
+**Companion docs:** [`CLAUDE.md`](./CLAUDE.md) (the working rules, and the tiebreaker) · [`docs/VISUAL_FIRST.md`](./docs/VISUAL_FIRST.md) (imagery, first screens, and the current build order) · [`docs/brand/BRAND_GUIDE.md`](./docs/brand/BRAND_GUIDE.md) (identity) · [`docs/USER_FIRST_INTERACTION_CONTRACT.md`](./docs/USER_FIRST_INTERACTION_CONTRACT.md) (interaction) · [`docs/VOICE.md`](./docs/VOICE.md) (copy) · [`docs/NORTH_STAR.md`](./docs/NORTH_STAR.md) (the product thesis and interaction laws) · [`docs/archive/`](./docs/archive/README.md) (history, not instructions).
 
 ---
 
@@ -17,7 +17,7 @@ Four primary tabs (the bottom nav; single source of truth in `src/components/nav
 
 | Tab | URL | What it does |
 |---|---|---|
-| **Today** | `/today` | The home. Today still leads with weather + an events shelf; the answer-first reframe (the "intelligence layer" home) is UX_REDO Layer 2. Mounts a time-aware masthead with SkyHero/TodayCard weather, civic alerts, the moment spotlight and Fair feature, the on-now band, daypart needs, the Today's Ask launcher, and the weekend/tomorrow previews (see `src/app/(app)/today/page.tsx`). Hourly and 7-day forecasts live at `/pulse?open=weather`, which Today links to. |
+| **Today** | `/today` | The home. Active civic alerts lead, then a time-aware masthead with a seasonal photo band, the dateline and current weather, and the location scope. The Find launcher is the primary action, followed by places for the area and the day's event program. The moment spotlight or Fair feature and the `TodayCard` weather glance follow, with "Plan the rest" and local guides collapsed below (see `src/app/(app)/today/page.tsx`). Hourly and 7-day forecasts live at `/pulse?open=weather`, which Today links to. |
 | **Map** | `/map` | Pinpoint-first map with category-color pins + a layers drawer (civic / transit / trails / amenities). Radius is a mode here: `/map?mode=radius`. |
 | **Events** | `/events` | Lens-driven event explorer (Tonight · Tomorrow · Weekend · This week · Free) with month-view calendar. |
 | **Saved** | `/my-radius` | Local and synced saves, recently viewed places, and follows. |
@@ -58,7 +58,7 @@ src/
 │   ├── pitch/               # cinematic marketing demo (investor + press)
 │   ├── (app)/               # the PWA route group
 │   │   ├── page.tsx         # "/" → redirects to /today
-│   │   ├── today/           # the home (answer-first reframe is UX_REDO L2)
+│   │   ├── today/           # the home: masthead, Find launcher, places, and the day's program
 │   │   ├── map/             # the map + radius mode (?mode=radius)
 │   │   ├── events/          # events tab + [slug] + calendar
 │   │   ├── places/          # directory + [slug]
@@ -105,7 +105,7 @@ Three jobs the app does. Every route sits under one of them:
 
 Saved keeps the places, events, and beer picks a user wants to return to.
 
-Renamed routes 301 to their canonical destinations via `next.config.ts`: `/now` → `/today`, `/browse` → `/map`, `/saved` → `/my-radius`, `/radius` → `/map?mode=radius`, `/water` → `/rivers`, plus the older `/discover`, `/tonight`, `/markets`, `/historic`, `/art`, `/amenities`.
+Renamed routes 301 to their canonical destinations via `next.config.ts`: `/now` → `/today`, `/browse` → `/map`, `/saved` → `/my-radius`, `/radius` → `/map?mode=radius`, `/water` → `/rivers`, plus the older `/discover`, `/tonight`, `/markets`, `/historic`, `/art`, `/amenities`. When a route or slug changes, add a redirect so links people already shared keep working.
 
 ## Local dev
 
@@ -124,11 +124,9 @@ Activate live features by setting these on Vercel (or `.env.local`):
 
 | Env var | What it activates |
 |---|---|
-| `HOOD_CALENDAR_URL` | Hood College iCal endpoint override (default points at Trumba) |
-| `WEINBERG_CALENDAR_URL` | Weinberg live feed — inert by default (see AUDIT) |
-| `DELAPLAINE_CALENDAR_URL` | Delaplaine live feed — inert by default |
+| `HOOD_CALENDAR_URL` | Optional Hood College iCal override. The default is the Active Calendar feed set in `src/lib/integrations/ical-live.ts`. |
 | `TICKETMASTER_API_KEY` | Real ticketed shows via Discovery API |
-| `BANDSINTOWN_APP_ID` | Live music shows (also needs a curated artist list) |
+| `BANDSINTOWN_ENABLED=1` + `BANDSINTOWN_APP_ID` | Live music shows (also needs a curated artist list) |
 | `GOOGLE_MAPS_PLATFORM_POLICY_APPROVAL` + `GOOGLE_MAPS_PLATFORM_RUNTIME_ENABLED=1` | Code-level hold for Google maintenance, Routes, and event-address geocoding. The approval value must be exactly `written-google-authorization-confirmed` and should be recorded only after reviewed written authorization covers Radius's actual use; credentials alone never activate those paths. |
 | `GOOGLE_PLACES_API_KEY` | Dedicated Places credential. It preserves the existing attributed, key-safe photo proxy; enrichment and hours remain off unless the platform approval and runtime switch above are also valid. |
 | `GOOGLE_PHOTO_DAILY_CAP` | Eastern-day spike ceiling for the existing no-store place-photo proxy. The 1,500 default preserves normal visual coverage while bounding bots, retries, and accidental eager loads; code will not accept more than 2,000. |
@@ -147,6 +145,7 @@ Activate live features by setting these on Vercel (or `.env.local`):
 | `ASK_RADIUS_AGENT=1` | Explicitly opts complex Gateway requests into the multi-step tool agent. Each step reserves from the same daily model-call cap; default is off. |
 | `ASK_AI_RUNTIME_EMBEDDINGS_ENABLED=1` + `ASK_AI_EMBEDDING_DAILY_LIMIT` | Optional visitor-time semantic recall. Postgres FTS remains the default and fallback. |
 
+The keyed event and data feeds, with the env var each one needs, are listed in [docs/FEEDS_SETUP.md](docs/FEEDS_SETUP.md). Weinberg and Delaplaine need no env var: Delaplaine's public iCal is read directly in `src/lib/integrations/ical-live.ts`, and Weinberg's official calendar is read by the venue-lineup ingest (`config/venue-sources.json`).
 The Starter-plan goal list and installation check are in [docs/PLAUSIBLE_STARTER.md](docs/PLAUSIBLE_STARTER.md).
 The complete value-free setup template is [`.env.example`](./.env.example).
 

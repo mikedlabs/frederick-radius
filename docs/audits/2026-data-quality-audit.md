@@ -2,7 +2,7 @@
 
 Date: 2026-05-15
 Scope: Read-only audit per the Data Quality Fixes spec, section 4. No code changed. No fixes applied.
-Status: Complete. Awaiting approval before Issue 1.
+Status: Snapshot 2026-05-15. Phase 0 was complete. Outcome (checked 2026-10-08): Issues 1 to 5 were never built in the SQL shape this audit assumed. Section 0's recommendation held instead: places are deduplicated through `src/data/places-dedup.json` in the client-places build and corrected through `src/data/places-overrides.json`, event text is cleaned at the boundary in `src/lib/events/normalize.ts`, and the Postgres places table is not the catalog (CLAUDE.md, "Data pipeline").
 
 ---
 

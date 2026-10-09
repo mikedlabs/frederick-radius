@@ -1,3 +1,5 @@
+> Superseded. Current: docs/NORTH_STAR.md for the thesis and the "Build order" in docs/VISUAL_FIRST.md for the sequence. History, not instructions.
+
 # Frederick Radius — The Vision
 
 > What this is, why the foundation can carry it, the universe of what it

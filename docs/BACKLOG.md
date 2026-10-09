@@ -1,34 +1,78 @@
 # Backlog
 
-Tracked, not urgent. Reviewed during the structure pass (June 2026).
+Living. The locks in this file were reviewed on 2026-10-08. Most other items
+date from the June 2026 structure pass and have not been re-checked since, so
+verify an item against the code before you build it.
 
-## ✅ Trust polish shipped (2026-06)
-Frederick Radius now has an **editorial standard. That is the brand.** The site
-doesn't show everything first — it shows the *right* thing first, and it never
-acts certain when the data is only approximate. Shipped:
+**The lock rule.** Every "do NOT" in this file names its owner, its date and
+the condition that lifts it. A lock without those three is a note, not a
+lock. When a later owner direction overrides a lock, mark it LIFTED or
+SUPERSEDED with the date and the decision instead of deleting it. Current
+owner direction lives in `CLAUDE.md` and `docs/VISUAL_FIRST.md`, and they win
+over anything here.
 
-- **Recommendation eligibility (#436/#437).** Institutions, schools, and junk
-  listings stop leading "things to do." `belongs-to-feed ≠ should-be-promoted`
-  — the disease the whole standard is named after.
-- **Event eligibility / lanes (#443).** `/events` "What's on" is public events
-  only. Civic meetings + town reminders get their own collapsed lanes; private
-  rentals + cancelled items are suppressed. Title-only, conservative, validated
-  against the live feed (zero real events mislaned).
-- **News relevance gate (#438).** Today's rail is Frederick-relevant only — no
-  statewide/Montgomery leakage.
-- **Why-this-result reasons (#439).** Promoted cards say *why* (kid-friendly,
-  free, near a landmark, matches intent), capped at 3 — confidence you can read.
-- **Entity decode (#441).** `cleanFeedText` named-entity map + residual guard —
-  `&bull;`/`C&amp;O` never reach the reader (and `C&O`/`AT&T` stay intact).
-- **Photo de-twin (#442).** PhotoMosaic walks the pool sequentially — no more
-  "Looks like Family → Spinners ×6"; every tile is a distinct place.
-- **SEO indexing (#440).** Per-route self-canonicals (no more homepage-canonical
-  collapse) + a redirect-free, data-driven sitemap.
+The shipped June 2026 sections (trust polish, the UI hygiene pass and the
+20-user simulation brief) moved to
+`docs/archive/2026-06/BACKLOG-shipped-2026-06.md` on 2026-10-08.
+
+## Carried over from archived reviews (2026-10-08)
+
+These items were still open when their source docs were archived. Each line
+names its source, now under `docs/archive/2026-07/`, and its status on
+2026-10-08.
+
+- [ ] **PARTIAL · Type-scale adoption** (EXPERIENCE_REVIEW, July 2026).
+      `npm run lint:type-scale` blocks growth file by file, but its baseline
+      still holds the old debt: on 2026-10-08 `node scripts/check-type-scale.mjs`
+      reported 3,230 bracketed text sizes and 531 sizes below the 11 px
+      caption. Burn the baseline down one surface at a time.
+- [ ] **OPEN · Weight rule** (EXPERIENCE_REVIEW). The rule in
+      `src/app/globals.css` is 500 for labels and chips, 600 for titles and
+      700 for numerals only. On 2026-10-08
+      `grep -rho "font-semibold" src --include=*.tsx | wc -l` counted 1,597
+      (the July review counted 841), against 260 for `font-medium`.
+- [ ] **OPEN · EmptyState adoption** (EXPERIENCE_REVIEW). Only 5 shipping
+      files import `@/components/ui/EmptyState` on 2026-10-08
+      (`grep -rlE 'from "@/components/ui/EmptyState"' src --include=*.tsx | grep -vE '\.(spec|stories)\.tsx$' | wc -l`).
+      Bare one-line empties remain, for example the dashed box in
+      `src/components/happy/HappyHourBrowser.tsx`.
+- [ ] **OPEN, not re-measured · /events peek-card overflow** (MOBILE_AUDIT,
+      July 2026). A 397 px grid track sat inside a 358 px container at 390 px.
+      The explorer has changed since, so re-measure before fixing.
+- [ ] **NOT RE-CHECKED · Feed titles with embedded dates and cross-source
+      duplicates** (MOBILE_AUDIT). Same family as T3a below. Fix at the
+      boundary in `src/lib/events/normalize.ts` and bump the cache key.
+- [ ] **OPEN · /report chip selection** (DESIGN-POLISH §3, item 5). Category
+      and subtype chips in `src/app/report/ReportClient.tsx` show the selected
+      state by border and tint only; `aria-pressed` is set. The other §3 items
+      were not re-checked one by one.
+- [ ] **OPEN · UX-08 one list contract** (UX_REDESIGN_2026-07).
+      `src/components/happy/HappyHourBrowser.tsx` and
+      `src/components/deals/DealsBrowser.tsx` still have no PlaceIndex rows.
+- [ ] **OPEN · UX-14 saved plans** (UX_REDESIGN_2026-07). No plans store
+      exists (`usePlans` and `fr:plans:v1` are absent). UX-23 plan templates
+      and UX-24 plan sync wait on it.
+- [ ] **PARTIAL · UX-20 keep last good** (UX_REDESIGN_2026-07). Event sources
+      serve their last good payload through
+      `src/lib/integrations/event-source-circuit.ts`. The /pulse sources still
+      fall back to empty or "unavailable" on a timeout (`withTimeout` and
+      `withTimeoutStatus` in `src/app/(app)/pulse/page.tsx`) instead of a last
+      good payload, and no component reads the `servedStale` flag to show an
+      "as of" time.
+- [ ] **OPEN · UX-22 recommendation feedback** (UX_REDESIGN_2026-07). No
+      "More like this" or "Not for me" control exists.
+
+Checked and already done, so do not redo them: Today's after-9 PM state and
+the event "Getting there" block (EXPERIENCE_REVIEW), and the Today skeleton,
+the live-dot fix and the duplicate live fact (MOBILE_AUDIT). The archived
+files carry a dated status line on each.
 
 ## 🔴 Production audit (2026-06-06) — SEO + data integrity (HIGH PRIORITY)
 Live-prod audit of frederickradius.app. Work **P0 first** (indexing is broken;
-highest-leverage; independent). Constraints: **do NOT change robots.txt** (the
-AI-crawler block is deliberate). Items marked **DECISION** need Mike's call —
+highest-leverage; independent). Constraints: ~~**do NOT change robots.txt**
+(the AI-crawler block is deliberate)~~ **LIFTED by 2026-08-05:**
+`src/app/robots.ts` now allows the answer-engine agents and keeps only the
+training-crawler block, with the reason in its comment. Items marked **DECISION** need Mike's call —
 do not guess; ask, or ship behind an off flag. Prod `curl` acceptance checks
 run after deploy (can't hit prod from the sandbox); I verify code-level + local.
 
@@ -151,133 +195,25 @@ nearest, top 6 + "See all N") and added a "Useful nearby" amenity section
 ## Next structure-pass order
 Owner directive (June 2026), updated: **#433 /map → UI hygiene foundation →
 20-user simulation audit → category pages (coffee) → events.** One clean step
-at a time — do NOT start the next step until the current one is merged. UI
+at a time — do NOT start the next step until the current one is merged.
+**SUPERSEDED 2026-10-07:** the build sequence is now the "Build order" in
+`docs/VISUAL_FIRST.md` (owner direction, 2026-10-07), so this June order no
+longer gates new work. UI
 hygiene was inserted before coffee/events on purpose: every new surface built
 before it inherits the same uncoordinated overlay/z-index problem (see "UI
 cleanliness" below). The simulation audit was inserted before coffee so we
 see what we're missing **before** locking the next major page patterns.
 
-### Pass 2.5 — UI HYGIENE foundation (do AFTER #433 merges, BEFORE coffee)
-A **foundation pass, not a beauty pass.** Owner scope (June 2026): stop every
-floating thing from fighting for the top of the screen. **Do NOT turn this into
-a design-system rewrite** — no restyling the whole app, no rebuilding every
-primitive. Scope is strictly the overlay/stacking class of bugs.
+### Pass 2.5: UI hygiene foundation (shipped)
+Shipped as #434. The layer scale lives in `docs/Z_INDEX.md` and `npm run lint:zindex`
+guards it. The full brief moved to `docs/archive/2026-06/BACKLOG-shipped-2026-06.md`.
+Its boxes were never ticked in this file. The map overlay collision item is
+still tracked under "UI cleanliness" below and has not been re-checked.
 
-Scope:
-- [ ] Create a **named z-index scale** (tokens), e.g. base content < sticky
-      nav < floating buttons (FAB) < drawers < dropdowns < search overlay <
-      modals/sheets < toast/install/pull-to-refresh < lightbox < skip link.
-      (Exact ordering to be finalized in the pass; the point is one owner per
-      layer.)
-- [ ] Replace ad-hoc z-index values **where they affect overlays/floating UI**
-      (leave unrelated local z-10s alone — don't churn the whole app).
-- [ ] Make these stop competing blindly: `BottomDrawer`, `Sheet`,
-      `SearchOverlay`, `PlaceSheet`, `SortDropdown`, `InstallPrompt`,
-      `PullToRefresh`, `FloatingPlanFab`.
-- [ ] Fix the **map overlay collision** (`DESIGN_UX_AUDIT.md` §7): road/alert
-      overlays covering primary controls/drawers.
-- [ ] Add a **short doc** (the layer scale) so future components don't invent
-      their own z-index.
-- [ ] Add a **lightweight lint/check if practical** so random `z-[999]` / new
-      ad-hoc overlay values can't creep back in.
-
-Acceptance criteria:
-- No two unrelated floating systems sit at the same z-index by accident.
-- Map overlays do not cover primary controls/drawers.
-- Search, sheets, dropdowns, lightbox, FABs, install prompt, pull-to-refresh
-  all have predictable stacking.
-- Mobile review shows no obvious overlap/collision.
-- The pass does NOT restyle the whole app or rebuild every primitive.
-- Local verification documented (same as other PRs while Actions is blocked).
-
-### Pass 2.75 — 20-USER SIMULATION AUDIT (do AFTER hygiene, BEFORE coffee)
-A pressure-test, not happy-path theater. Owner directive (June 2026):
-simulate 20 different user types across Frederick County trying to **break,
-misunderstand, stress, and distrust** the app — to expose flaws, leaks,
-confusing flows, weak/stale data, crowding/overlap, and anything that makes it
-feel like a directory instead of "the county finally has an interface."
-
-**Standard:** Frederick Radius should not feel like a directory. It should
-feel like the county finally has an interface.
-
-**Critical instruction:** half the value is from BORING, PRACTICAL, FRUSTRATED
-users — parking, bathrooms, civic info, no location permission, bad weather,
-smaller towns, stale business listings. That's where trust is built or lost.
-Do NOT only simulate users who want fun things.
-
-**The 20 user types:**
-1. Downtown Frederick visitor with 2 hours
-2. Longtime resident who hates tourist fluff
-3. Parent with young kids
-4. Older / low-tech user
-5. Business owner checking their listing
-6. New resident understanding the county
-7. Brunswick user
-8. Thurmont / northern county user
-9. Middletown / Myersville / western county user
-10. Walkersville / Woodsboro user
-11. Weekend visitor from DC or Baltimore
-12. Rainy-day user
-13. User looking for something free
-14. User looking for dinner before an event
-15. User trying to find parking quickly
-16. User looking for restrooms / practical needs
-17. Civic/practical user looking for municipal info
-18. User who only gives the app 30 seconds
-19. User WITHOUT location permission enabled
-20. User who distrusts the data — wants to know what's official, curated,
-    owner-submitted, or feed-based
-
-**Per-user documentation (all 17 fields):** 1 starting town/location · 2 user
-type · 3 mission · 4 expected fastest path · 5 actual path · 6 tap count /
-scroll depth · 7 what worked · 8 what felt confusing · 9 where UI felt
-crowded/overlapped · 10 any drawer/sheet/nav/prompt/map-control collision ·
-11 any incorrect/stale/weak/duplicate/suspicious data · 12 any missing
-source/freshness/trust signal · 13 downtown-biased vs county-wide · 14 clear
-next action? · 15 felt modern/fun/fresh/worth returning? · 16 severity
-(Critical/High/Medium/Low) · 17 recommended fix type (quick copy / UI-layout /
-data-ranking / component-system / larger product change).
-
-**Group findings three ways:** (1) by user type; (2) by app surface — Today,
-Map, Radius, Search/Ask Radius, Category pages, Events, Town pages, Place
-detail, Event detail; (3) by severity.
-
-**Must pressure-test specifically:**
-- Does the app answer quickly, or make users browse?
-- Are categories helping people decide, or just filtering data?
-- Do events feel useful, or like a firehose?
-- Does the map explain the area, or just show pins?
-- Are source/freshness signals strong enough?
-- Are small towns treated seriously (not downtown-biased)?
-- Does the app work without location access?
-- Are practical needs (parking/restrooms/civic) easy to find?
-- Are open-now and worth-your-time results trustworthy?
-- Are weak records promoted too high?
-- Does anything visually overlap or fight for attention?
-
-**Not just bugs — product insight.** Find: what's hard to use, what creates
-doubt, what feels like a database, what feels repetitive, what feels visually
-messy, what makes data seem wrong even if technically correct, what feels
-fresh and worth building on, what could make this a one-of-a-kind county
-experience.
-
-**Output must END with six top-10 lists:** (1) top 10 product problems ·
-(2) top 10 quick wins · (3) top 10 data-trust fixes · (4) top 10 UI/UX fixes ·
-(5) top 10 future-proofing risks · (6) top 10 ideas that make it more fun,
-modern, fresh, and one-of-one.
-
-NOTE on honesty: a simulated walk-through is reasoning over the real code +
-data, NOT a live device session — it can't validate drag-feel/render. Flag
-which findings are code/data-grounded vs would-need-a-device to confirm.
-
-**Also pressure-test the GIS hypotheses** (so a GIS pilot has to *earn* its
-place — see `docs/GIS_FEASIBILITY.md` §4). The simulation must explicitly answer:
-- Do smaller towns feel shortchanged? (→ would justify **County View**)
-- Do visitors need better orientation? (→ County View / First Visit)
-- Do people need parking / road context? (→ Getting Around)
-- Does the map feel generic? (→ all GIS modes)
-- Does county-wide context help users understand where they are? (→ County View)
-If confirmed, GIS becomes a targeted product answer; if not, the pilot waits.
+### Pass 2.75: 20-user simulation audit (done)
+The report is `docs/audits/2026-06-simulation-20-users.md`. The brief moved to
+`docs/archive/2026-06/BACKLOG-shipped-2026-06.md`, and its owner standard moved to
+`docs/PRODUCT_QUALITY_BAR.md`.
 
 ### Pass 3 — category pages, starting with COFFEE (pattern page)
 Goal: *stop making categories feel like directories; make them feel like
@@ -360,13 +296,15 @@ context it treats **downtown Frederick as the default center of gravity** — wh
 breaks the county-wide brand promise for Brunswick / Thurmont / Middletown /
 Walkersville / Woodsboro. This cluster is tracked **alongside** coffee/events;
 do NOT start implementing it yet unless it directly supports coffee (the
-context-ranking rule above does).
+context-ranking rule above does). **LIFTED by 2026-08-05:** the shared scope in
+`src/lib/scope.ts` and the header location control now give surfaces an
+explicit Near me, Whole county or town scope (CLAUDE.md, "Locked
+architecture"). The Cluster A items below are still worth checking one by one.
 
 ### Cluster A0 — Recommendation quality / eligibility 🔴🔴 (TOP — June-5 live audit)
-**The spine of the next phase. Principle (owner): Radius should not show
-everything first — it should show the RIGHT thing first, then let people dig.
-The app currently treats "belongs to category" as "should be recommended."
-They are not the same.** This is editorial strictness, NOT new features.
+**The spine of the next phase.** The owner principle that framed it ("show the
+RIGHT thing first, then let people dig") now lives in
+`docs/PRODUCT_QUALITY_BAR.md`. This is editorial strictness, NOT new features.
 
 Evidence (live, June 5): `/category/family` "Worth your time" leads with
 **Maurice Arenas Guitar Academy, Hood College Admission Office, Lincoln
@@ -399,7 +337,11 @@ are schools/offices/institutions, not family outings. Root cause: these carry
 ## June 5 2026 — live-site strategic review (owner) → priority order
 The product crossed from prototype to real shape; thesis is on screen. Next
 phase = **trust, ranking, restraint, polish — not features.** "Do not expand
-the interface until ranking + trust are tighter." Priorities:
+the interface until ranking + trust are tighter." **SUPERSEDED 2026-10-07** by
+the owner's visual-first direction (CLAUDE.md, "Visual first", and the "Build
+order" in `docs/VISUAL_FIRST.md`), which adds mini maps, the hours week chart
+and the Events flyer rail on purpose. Pending owner call: confirm in one line
+that this June lock and the "Do NOT yet" line below are lifted. Priorities:
 
 **Do now:** 1) category/ranking quality, esp. Family (→ Cluster A0) · 2) reduce
 Today density above the fold (answer-first → best moves → deep briefing) · 3)
@@ -409,6 +351,7 @@ natural-language prompt cards · 5) "why this result" on cards (→ Cluster A0).
 better empty/low-confidence states · more visible town/municipality context ·
 make event pages the model for place pages.
 **Do NOT yet:** add random features / expand UI before ranking + trust tighten.
+**SUPERSEDED 2026-10-07** by the same visual-first direction (see above).
 
 ### Live re-audit follow-ups (June, owner)
 - [x] **Eligibility coverage hole — FOUND + FIXED (#437).** #436 gated only
@@ -518,6 +461,12 @@ not as a layer dump. Full detail: `docs/GIS_FEASIBILITY.md` §4.
   Type: [P].
 - When: **after coffee + events**, gated on this audit (now satisfied).
 
+**SUPERSEDED IN PART 2026-10-07:** County View shipped as `CountyOverviewMap`,
+which leads /towns and /parks (commit 62cd05f5, recorded in
+`docs/VISUAL_FIRST.md` under the owner's visual-first direction). Pending owner
+call: confirm that the June "do NOT implement yet" gate is lifted for the
+remaining GIS modes, First Visit and Getting Around.
+
 ### Cluster D — Device QA / future-proofing 🟡
 - [ ] Confirm **post-#434 overlay behavior on a real device** (the z-index pass
       math is verified; on-device render isn't). Sev: Med · Surfaces: all
@@ -525,9 +474,10 @@ not as a layer dump. Full detail: `docs/GIS_FEASIBILITY.md` §4.
 - [ ] Note the need for a **visual-regression / screenshot harness** later (no
       automated catch for stacking/overlap regressions today). Sev: Med ·
       When: later · Type: [P].
-- [ ] Keep the **GitHub Actions runner block** visible as a process risk (CI
-      trust rests on local runs until billing/runner is fixed). Sev: Med ·
-      When: owner task · Type: [G].
+- [x] ~~Keep the **GitHub Actions runner block** visible as a process risk (CI
+      trust rests on local runs until billing/runner is fixed).~~ **LIFTED by
+      2026-08-19:** CI `verify` and `style-lint` run and are required on main
+      (CLAUDE.md, "Verification norms").
 
 ---
 
@@ -569,12 +519,21 @@ are the live event feeds — if they stay dead, /events coverage thins.
 - [ ] **#421 `/mock`** — premium-redesign mockups (predates the locked
       brand deck; likely superseded — confirm + close).
 - [ ] **#420 `/fly`** — cinematic descent prototype.
-- [ ] **#265** — Weinberg + Delaplaine event feeds, **inert** until
+- [x] ~~**#265** — Weinberg + Delaplaine event feeds, **inert** until
       `WEINBERG_CALENDAR_URL` / `DELAPLAINE_CALENDAR_URL` env vars point at
       real iCal URLs (venues don't expose one at the obvious paths).
-      Decision: close, or chase the venues for a calendar URL.
+      Decision: close, or chase the venues for a calendar URL.~~ Closed
+      2026-10-08: neither env var exists in the code any more, and both
+      venues already reach the unified event set. Delaplaine is read directly
+      from its public iCal in `src/lib/integrations/ical-live.ts`. Weinberg
+      Center and New Spire Arts come from the official Weinberg calendar
+      through the venue-lineup ingest (`config/venue-sources.json`, method
+      `"weinberg"`; `scripts/lib/weinberg-events.ts`, shipped in #1630).
+      Neither venue needs an env var. Check with
+      `grep -n '"method": "weinberg"' config/venue-sources.json`. PR #265
+      itself was closed unmerged on 2026-08-01, so nothing is left to triage.
 
-### 📋 AUDIT.md half-working / broken (still open, see `AUDIT.md`)
+### 📋 AUDIT.md half-working / broken (carried from `docs/archive/2026-06/AUDIT.md`)
 - [ ] `/business/manage/[token]` — email-the-token flow not firing (no SMTP).
 - [ ] `/business/claim` + `/submit/*` — write to DB but no review queue;
       untested end-to-end on prod.
@@ -584,9 +543,10 @@ are the live event feeds — if they stay dead, /events coverage thins.
       card system.
 - [ ] Editorial routes (`/parks` `/trails` `/transit` `/water` `/history`)
       under-surfaced from the main pages — the "connectedness" phase.
-- [ ] NOTE: `AUDIT.md` route names predate the structure pass (it lists
-      `/now`/`/browse`; these are now `/today`/`/map`). Refresh when the
-      structure pass lands.
+- [x] ~~NOTE: `AUDIT.md` route names predate the structure pass.~~ Closed
+      2026-10-08: `AUDIT.md` was archived to `docs/archive/2026-06/AUDIT.md`
+      instead of refreshed. The items above are the ones carried forward and
+      have not been re-checked since June.
 
 ---
 

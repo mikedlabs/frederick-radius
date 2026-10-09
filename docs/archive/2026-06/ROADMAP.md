@@ -1,3 +1,5 @@
+> Superseded. Current: CLAUDE.md and the "Build order" in docs/VISUAL_FIRST.md. History, not instructions.
+
 # Frederick Radius — Roadmap
 
 **Last updated:** 2026-06-04 — added the differentiation roadmap (the moat + the love).
@@ -107,7 +109,8 @@ The architecture overhaul (Pushes 1–7) shipped May 26. The next work is making
 > Why someone deletes Yelp/Google Maps for *this*. Not feature parity —
 > the things a national app structurally cannot do for a single county.
 > Sequenced; each item carries its **data-confidence gate** answer (source,
-> freshness, behavior when data is missing) per `UX_REDO.md`. Items needing
+> freshness, behavior when data is missing) per `UX_REDO.md` (the gate now
+> lives in `docs/DATA_CONFIDENCE_GATE.md`). Items needing
 > data *acquisition* (not engineering) are flagged ⛏.
 
 ### Moat 1 — Identity no competitor can fake (the "alive" layer)

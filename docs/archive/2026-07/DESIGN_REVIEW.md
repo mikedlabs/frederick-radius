@@ -1,3 +1,5 @@
+> Superseded. Brand, type and photo-fallback decisions live in docs/brand/BRAND_GUIDE.md and docs/VISUAL_FIRST.md. Any approval gate here is void. History, not instructions.
+
 # Frederick Radius — Design & UX Review
 
 Reviewer: Claude (design-review command, 5 phases)
