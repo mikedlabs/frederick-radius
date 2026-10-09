@@ -75,13 +75,15 @@ export default function BottomNav() {
       >
         <nav
           aria-label="Primary"
+          aria-busy={pendingIdx !== null}
           className={`${styles.dock} pointer-events-auto relative mx-auto max-w-screen-md overflow-hidden`}
         >
           <ul className="mx-auto grid max-w-screen-md grid-cols-4 px-1 py-1">
             {TABS.map(({ href, label, icon: Icon, prefetch, fillOnActive }, idx) => {
               const isAtDestination = pathname === href || pathname.startsWith(`${href}/`);
               const isRealActive = realIdx === idx;
-              const active = isRealActive || pendingIdx === idx;
+              // A requested destination is pending until its pathname commits.
+              const active = isRealActive;
 
               const handleActivate = (event: React.MouseEvent<HTMLAnchorElement>) => {
                 if (isAtDestination || !isPlainPrimaryNavigation(event.nativeEvent)) {

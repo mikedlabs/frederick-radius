@@ -56,9 +56,8 @@ export type MomentSpotlightFact = {
   value: string;
 };
 
-/** An owned editorial photograph used only where it truthfully depicts the
- * occasion. Keeping the credit with the data makes that provenance visible on
- * both the day-of lead and the fuller guide. */
+/** An editorial photograph used only where it truthfully depicts the occasion.
+ * Third-party credits remain visible; owner photos need no display credit. */
 export type MomentSpotlightImage = {
   src: string;
   alt: string;
@@ -532,8 +531,8 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
     ],
     spotlightImage: {
       src: "/images/moments/in-the-streets-2024-mike-d.jpg",
-      alt: "A packed Market Street during In The Streets in downtown Frederick, photographed in 2024.",
-      credit: "Photograph by Mike D · In The Streets 2024",
+      alt: "A crowd on Market Street during In The Streets in downtown Frederick.",
+      credit: "",
       width: 1920,
       height: 1078,
     },

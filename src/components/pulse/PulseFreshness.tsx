@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { countyStatusSnapshotLabel, countyStatusSnapshotDeadline, type CountyStatusSummary } from "@/lib/pulse/county-status";
 import { useRouter } from "next/navigation";
 
 export const PULSE_AUTO_REFRESH_MS = 2 * 60_000;
@@ -42,6 +43,19 @@ export function formatPulseSnapshotTime(renderedAt: number): string {
   return `${month} ${day}, ${hour}:${minute} ${dayPeriod}`;
 }
 
+/** A source timestamp includes its year and Eastern time zone, so retained
+ * checks cannot look like today's incident time. Invalid times stay unavailable. */
+export function formatPulseSourceTime(asOf: string | null): string | null {
+  const date = new Date(asOf ?? "");
+  if (!Number.isFinite(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric",
+    hour: "numeric", minute: "2-digit", hour12: true, timeZoneName: "short",
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((entry) => entry.type === type)?.value ?? "";
+  return `${part("month")} ${part("day")}, ${part("year")}, ${part("hour")}:${part("minute")} ${part("dayPeriod")} ${part("timeZoneName")}`;
+}
+
 /** A quiet claim expires with the page snapshot. Warning, partial-data, and
  * active-alert labels remain intact because they are already conservative. */
 export function pulseStatusForSnapshot(
@@ -55,17 +69,31 @@ export function pulseStatusForSnapshot(
     : status;
 }
 
-export function PulseStatusLabel({
-  renderedAt,
-  status,
-  canClaimCurrent,
-  color,
-}: {
+type PulseStatusLabelProps = {
   renderedAt: number;
   status: string;
   canClaimCurrent: boolean;
   color: string;
-}) {
+  countyStatus?: CountyStatusSummary;
+};
+
+export function PulseStatusLabel(props: PulseStatusLabelProps) {
+  // Every supplied summary owns a fresh clock, including a new copy of the
+  // same cached assembly. Only the inner initializer reads the current time.
+  const [owner, setOwner] = useState(() => ({ summary: props.countyStatus, generation: 0 }));
+  if (owner.summary !== props.countyStatus) {
+    setOwner({ summary: props.countyStatus, generation: owner.generation + 1 });
+  }
+  return <PulseStatusLabelSnapshot key={`${props.renderedAt}:${owner.generation}`} {...props} />;
+}
+
+function PulseStatusLabelSnapshot({
+  renderedAt,
+  status,
+  canClaimCurrent,
+  color,
+  countyStatus,
+}: PulseStatusLabelProps) {
   // Derive the first value during the server render too. A cached stale page
   // must not ship "All quiet" to reader mode and then correct itself only
   // after hydration. The warning suppression covers the narrow case where
@@ -75,10 +103,13 @@ export function PulseStatusLabel({
   useEffect(() => {
     const tick = () => setNow(Date.now());
     const id = window.setInterval(tick, 30_000);
-    return () => window.clearInterval(id);
-  }, [renderedAt]);
+    const remaining = countyStatus ? (countyStatusSnapshotDeadline(countyStatus) ?? Date.now()) - Date.now() : Number.NaN;
+    // The deadline can pass after render but before this effect starts.
+    const expiry = Number.isFinite(remaining) ? window.setTimeout(tick, Math.max(0, remaining)) : undefined;
+    return () => { window.clearInterval(id); if (expiry !== undefined) window.clearTimeout(expiry); };
+  }, [renderedAt, countyStatus]);
 
-  const label = pulseStatusForSnapshot(
+  const label = countyStatus ? countyStatusSnapshotLabel(countyStatus, now) : pulseStatusForSnapshot(
     status,
     canClaimCurrent,
     renderedAt,
@@ -88,6 +119,7 @@ export function PulseStatusLabel({
 
   return (
     <span
+      data-pulse-status-level
       suppressHydrationWarning
       aria-live="polite"
       className="mt-0.5 block text-[12px] font-semibold"
@@ -99,7 +131,7 @@ export function PulseStatusLabel({
 }
 
 /**
- * PulseFreshness — a live "page refreshed Ns ago" counter measured from when the
+ * PulseFreshness — a live "page assembled Ns ago" counter measured from when the
  * server assembled the page. Individual feeds can be older and show their own
  * timestamps inside the board. Before hydration it renders the server's
  * absolute Eastern timestamp, so reader mode and no-JavaScript visitors still
@@ -156,7 +188,7 @@ export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
         }
         className="shrink-0 whitespace-nowrap text-[10px] font-medium normal-case tracking-normal tabular-nums"
       >
-        As of {formatPulseSnapshotTime(renderedAt)}
+        Page assembled {formatPulseSnapshotTime(renderedAt)}
       </time>
     );
   }
@@ -167,14 +199,13 @@ export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
       : sec < 3600
         ? `${Math.floor(sec / 60)}m ago`
         : `${Math.floor(sec / 3600)}h ago`;
-  const needsRefresh = sec * 1000 >= PULSE_AUTO_REFRESH_MS;
 
   // Inherit the surrounding ink: this renders inside the DARK hero eyebrow,
   // where the old hardcoded --app-ink-3 (a light-ground gray) made the one
   // line proving the page is live nearly invisible.
   return (
     <span className="shrink-0 whitespace-nowrap text-[10px] font-medium normal-case tracking-normal tabular-nums">
-      {needsRefresh ? `Page last refreshed ${label}` : `Page refreshed ${label}`}
+      Page assembled {label}
     </span>
   );
 }

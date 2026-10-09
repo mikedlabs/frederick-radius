@@ -61,7 +61,7 @@ describe("TodayFairFeature", () => {
     expect(html).toContain("Through Sep 26");
     expect(html).toContain("Your Fair day, in one place.");
     expect(html).toContain("Open Radius at the Fair");
-    expect(html).toContain("photographed by Mike D in 2024");
+    expect(html).toContain('alt="The Ferris wheel at The Great Frederick Fair."');
     expect(html.match(/<a\b/g)).toHaveLength(1);
     expect(html).toContain(`href="${TODAY_FAIR_PROMOTION_HREF}"`);
     expect(html).not.toContain("The Fair opens September 18");

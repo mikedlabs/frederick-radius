@@ -10,7 +10,7 @@ describe("compact business photo surfaces", () => {
 
     expect(source.match(/<PlaceMedallion\b/g)).toHaveLength(1);
     expect(source).toContain("place={place}");
-    expect(source).toContain('surface="inverse"');
+    expect(source).toContain('surface="paper"');
   });
 
   it("keeps every Places to play group connected to place media", () => {

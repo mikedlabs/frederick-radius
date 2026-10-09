@@ -141,7 +141,7 @@ export default async function EventsIndexPage() {
           <Link
             href="/submit/event" prefetch={false}
             className="tap-44-y inline-flex min-h-11 items-center underline"
-            style={{ color: "var(--app-cool)" }}
+            style={{ color: "var(--app-link)" }}
           >
             Submit it <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
           </Link>

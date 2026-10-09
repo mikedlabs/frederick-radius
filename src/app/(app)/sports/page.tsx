@@ -142,7 +142,6 @@ export default function SportsPage() {
             </Link>
           </div>
         </div>
-        <span className="sports-photo-credit">Original Frederick Radius photography</span>
       </header>
 
       <div id="sports-schedule" className="scroll-mt-24">

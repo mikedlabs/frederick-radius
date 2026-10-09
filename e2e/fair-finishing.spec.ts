@@ -40,7 +40,7 @@ for (const width of [390, 1440]) {
     await page.goto(fair);
     await expect(page.getByRole("heading", { name: "The Great Frederick Fair", exact: true })).toBeVisible();
     const photo = page.locator("[data-fair-hero] img");
-    await expect(photo).toHaveAttribute("alt", /Mike D.*2024/);
+    await expect(photo).toHaveAttribute("alt", "The illuminated Ferris wheel and midway at The Great Frederick Fair, seen from above.");
     await expect.poll(() => photo.evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     await page.evaluate(() => document.fonts.ready);
     await mkdir("output/playwright/finishing", { recursive: true });

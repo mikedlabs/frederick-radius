@@ -37,7 +37,8 @@ export default function PendingFollowApplier({
   const router = useRouter();
   const sp = useSearchParams();
   const isFollowed = useIsFollowed(slug);
-  const toggle = useToggleFollow(slug, "post_signin");
+  const failureDescriptionRef = useRef<string | null>(null);
+  const toggle = useToggleFollow(slug, "post_signin", (description) => { failureDescriptionRef.current = description; });
   const appliedRef = useRef(false);
 
   useEffect(() => {
@@ -48,11 +49,15 @@ export default function PendingFollowApplier({
     void (async () => {
       // Only fire the toggle if not already followed (covers a quick
       // double-tap or a refresh after the apply already ran).
-      if (!isFollowed) {
-        const nowFollowed = await toggle();
-        if (nowFollowed) {
+      try {
+        if (!isFollowed) {
+          failureDescriptionRef.current = null;
+          const nowFollowed = await toggle(true);
+          if (failureDescriptionRef.current !== null || !nowFollowed) throw new Error("Save not confirmed");
           toast.success(`Saved · ${name}`);
         }
+      } catch {
+        toast.error("Could not save this place", { description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again." });
       }
       // Clean the URL so a back-button + refresh doesn't re-apply.
       const url = new URL(window.location.href);

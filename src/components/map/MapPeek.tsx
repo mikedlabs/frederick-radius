@@ -15,7 +15,8 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { formatHoursLine, type OpenStatus } from "@/lib/hours";
-import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
+import { useFollowMutationState, useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
+import { toast } from "sonner";
 import { haptic } from "@/lib/haptics";
 import { logActivity, track } from "@/lib/track";
 import { trackDecision } from "@/lib/decision/telemetry";
@@ -50,9 +51,9 @@ type MapCardDetails = {
 function statusTone(status: OpenStatus): string {
   switch (status.state) {
     case "open":
-      return "var(--app-positive)";
+      return "var(--state-open)";
     case "closing-soon":
-      return "var(--app-warning-press, #8F5600)";
+      return "var(--state-closing)";
     default:
       return "var(--app-ink-3)";
   }
@@ -143,7 +144,13 @@ export default function MapPeek({
   const cat = CATEGORY_BY_SLUG[place.category];
   const catColor = cat?.color ?? "var(--app-brand)";
   const saved = useIsFollowed(place.slug);
-  const toggleSave = useToggleFollow(place.slug, "map_peek");
+  const failureDescriptionRef = useRef<string | null>(null);
+  const toggleSave = useToggleFollow(place.slug, "map_peek", (description) => { failureDescriptionRef.current = description; });
+  const mutation = useFollowMutationState(place.slug);
+  const saveBusyRef = useRef(false);
+  const [saveIntent, setSaveIntent] = useState<boolean | null>(null);
+  const saving = mutation === "saving" || mutation === "removing" || saveIntent !== null;
+  const adding = saveIntent ?? mutation === "saving";
   const [details, setDetails] = useState<MapCardDetails | null>(null);
   const [detailsResolvedSlug, setDetailsResolvedSlug] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
@@ -327,7 +334,7 @@ export default function MapPeek({
         </button>
 
         <div className="map-peek-text">
-          <span className="map-peek-cat" style={{ color: catColor }}>
+          <span className="map-peek-cat" style={{ color: "var(--app-ink-3)" }}>
             {cat?.name ?? place.category}
           </span>
           <button type="button" className="map-peek-title-button" onClick={openDetails}>
@@ -423,20 +430,36 @@ export default function MapPeek({
           className="map-peek-act"
           data-on={saved || undefined}
           aria-pressed={saved}
-          onClick={() => {
-            haptic("light");
-            track("map_peek", { pick: saved ? "unsave" : "save" });
-            if (!saved) {
-              trackDecision({
-                stage: "action",
-                surface: "map",
-                entityKind: "place",
-                entityId: place.slug,
-                position: "result",
-                action: "save",
+          disabled={saving}
+          aria-busy={saving}
+          onClick={async () => {
+            if (saveBusyRef.current) return;
+            saveBusyRef.current = true;
+            setSaveIntent(!saved);
+            failureDescriptionRef.current = null;
+            try {
+              const nowSaved = await toggleSave(!saved);
+              if (failureDescriptionRef.current !== null || nowSaved === saved) throw new Error("Save state did not change");
+              haptic("light");
+              track("map_peek", { pick: nowSaved ? "save" : "unsave" });
+              if (nowSaved) {
+                trackDecision({
+                  stage: "action",
+                  surface: "map",
+                  entityKind: "place",
+                  entityId: place.slug,
+                  position: "result",
+                  action: "save",
+                });
+              }
+            } catch {
+              toast.error(saved ? "Could not remove from Saved" : "Could not save this place", {
+                description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again.",
               });
+            } finally {
+              setSaveIntent(null);
+              saveBusyRef.current = false;
             }
-            void toggleSave();
           }}
         >
           <Bookmark
@@ -445,7 +468,7 @@ export default function MapPeek({
             fill={saved ? "currentColor" : "none"}
             aria-hidden
           />
-          {saved ? "Saved" : "Save"}
+          {saving ? adding ? "Saving…" : "Removing…" : saved ? "Saved" : "Save"}
         </button>
         <button
           type="button"

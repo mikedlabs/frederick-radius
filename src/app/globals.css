@@ -11,6 +11,8 @@
 }
 
 :root {
+  color-scheme: light;
+  --app-native-scheme: light;
   /* Self-hosted Frederick Radius type system. Public Sans carries the
    * product, including tabular numerals. Caslon is an explicit signature,
    * never an automatic heading treatment.
@@ -87,9 +89,13 @@
   --app-ink-2: #5A5348;
   --app-ink-3: #6C6357;           /* muted text that still clears WCAG AA on Cream */
   --app-ink-inverse: #F4EEE2;     /* Cream on dark */
+  /* Fixed media contrast does not follow the semantic text foreground. */
+  --app-media-ink: #221C15;
+  --app-control-border-safe: color-mix(in srgb, var(--app-control-border) 95%, var(--app-media-ink));
 
   --app-brand: #B5462B;           /* Brick — logo, links, primary actions */
   --app-brand-press: #8C301F;     /* darker Brick for pressed/text states */
+  --app-link: var(--app-brand-press);
   --app-on-brand: #F4EEE2;        /* Cream text/icon on Brick, Catoctin Forest, or Ink */
   --app-brand-2: #315A43;         /* Catoctin Forest — terrain/outdoor accent; never a page wash */
   --app-amber: #C58A32;           /* Ochre Amber — live/caution/sunlight or Beer selection/flagship fill */
@@ -107,6 +113,8 @@
      a glance, so a "danger" alert visually read as a brand-colored
      content card. The new red is unambiguously stop-sign / alarm. */
   --app-danger: #B4231E;
+  --app-danger-text: var(--app-danger);
+  --app-live-text: var(--app-warning-press);
   --app-info: #285D73;
   --app-civic: #285D73;           /* Creek alias for official/government provenance */
 
@@ -115,7 +123,7 @@
      only tokens an open-status dot or badge may use. WCAG AA on paper. */
   --state-open: #315A43;
   --state-open-bg: color-mix(in srgb, #315A43 14%, transparent);
-  --state-closing: #925E16;
+  --state-closing: var(--app-warning-press);
   --state-closing-bg: color-mix(in srgb, #925E16 16%, transparent);
   --state-closed: #8A8479;
   --state-closed-bg: color-mix(in srgb, #8A8479 16%, transparent);
@@ -194,6 +202,13 @@
   --app-radius-lg: 14px;
   --app-radius-xl: 18px;
 
+  /* Reuse Tailwind's 4px scale for the four primary tab surfaces. */
+  --app-space-2: calc(var(--spacing) * 2);
+  --app-space-3: calc(var(--spacing) * 3);
+  --app-space-4: calc(var(--spacing) * 4);
+  --app-space-5: calc(var(--spacing) * 5);
+  --app-space-6: calc(var(--spacing) * 6);
+
   /* Chrome heights — ONE source of truth so the magic numbers (56/48/84) can't
      drift between the map, its loading skeleton, the aerial view, and the
      floating controls (they did, causing a tab-in jump + a nav/toggle overlap).
@@ -266,12 +281,180 @@
   }
 }
 
-/* Dark mode CSS removed during the design-token audit. The paper-
- * cream palette IS the brand and there's no user-facing toggle yet —
- * the ~50 lines of dark overrides were dead CSS shipping on every
- * page. When we wire a real toggle, regen the dark palette in a new
- * .dark { … } block (and re-add the .aurora-grain / .shimmer
- * dark-mode overrides further down). */
+/* Cream remains the default. The OS preference supplies the secondary Ink
+ * surface without a setting, provider, media filter, or alternate map style.
+ * Brick fills and Cream on-brand text stay fixed; links and status text have
+ * their own foregrounds so changing a text color cannot lighten a filled CTA. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --app-native-scheme: dark;
+    --app-bg: var(--app-media-ink);
+    --app-bg-elevated-solid: color-mix(in srgb, var(--app-media-ink) 92%, var(--app-paper));
+    --app-bg-elevated: var(--app-bg-elevated-solid);
+    --app-bg-sunken: color-mix(in srgb, var(--app-media-ink) 96%, var(--app-paper));
+    --app-ink: var(--app-paper);
+    --app-ink-2: color-mix(in srgb, var(--app-paper) 82%, var(--app-media-ink));
+    --app-ink-3: color-mix(in srgb, var(--app-paper) 68%, var(--app-media-ink));
+    --app-border: color-mix(in srgb, var(--app-paper) 22%, var(--app-media-ink));
+    --app-border-strong: var(--app-border);
+    --app-control-border: color-mix(in srgb, var(--app-paper) 55%, var(--app-media-ink));
+    --app-link: color-mix(in srgb, var(--app-brand) 55%, var(--app-paper));
+    --state-open: color-mix(in srgb, var(--app-positive) 55%, var(--app-paper));
+    --state-closing: color-mix(in srgb, var(--app-warning) 50%, var(--app-paper));
+    --state-closed: var(--app-ink-3);
+    --state-unknown: var(--app-ink-3);
+    --state-live: var(--app-amber);
+    --app-danger-text: color-mix(in srgb, var(--app-danger) 55%, var(--app-paper));
+    --app-live-text: var(--app-amber);
+    --app-hi: inset 0 1px 0 color-mix(in srgb, var(--app-paper) 6%, transparent);
+  }
+}
+
+/* Neutral listing grammar belongs only to the four primary destinations.
+ * Detail/specialty pages retain their existing component treatments. */
+[data-app-primary-tab] {
+  --app-heading-image: none;
+  --app-heading-fill: currentColor;
+  --app-heading-rule: var(--app-border);
+  --app-heading-action: var(--app-link);
+  --app-list-fact-color: var(--app-ink-3);
+  --app-list-card-shadow: var(--app-shadow-1);
+  --app-list-header-bg: var(--app-bg-sunken);
+  --app-list-header-ink: var(--app-ink-2);
+}
+[data-app-primary-tab] .event-card--glance {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-bg-elevated-solid);
+  padding: var(--app-space-4);
+  transform: none;
+}
+[data-app-primary-tab] .eb-head {
+  border-radius: 0;
+  box-shadow: none;
+}
+[data-app-primary-tab] .eb-dock.eb-collapsed .eb-head { box-shadow: none; }
+[data-app-primary-tab] .eb-title-on { color: var(--app-ink); }
+[data-app-primary-tab] .eb-masthead { padding: var(--app-space-3) 0 var(--app-space-2); }
+[data-app-primary-tab] .eb-whenribbon {
+  gap: var(--app-space-2);
+  padding-inline: 0;
+}
+[data-app-primary-tab] .eb-filterbar { padding-inline: 0; }
+[data-app-primary-tab] .eb-filter-trigger {
+  gap: var(--app-space-2);
+  padding: var(--app-space-2) var(--app-space-4);
+  border-color: var(--app-control-border-safe);
+  box-shadow: none;
+}
+[data-app-primary-tab] .eb-subbar { padding-inline: 0; }
+[data-app-primary-tab] .eb-chip[data-on],
+[data-app-primary-tab] .dock-chip[data-on],
+[data-app-primary-tab] .dock-chip[data-on][data-ink] {
+  background: var(--app-brand-press);
+  border-color: var(--app-brand-press);
+  color: var(--app-on-brand);
+}
+[data-app-primary-tab] .dock-chip[data-on][data-ink] .dock-chip-dot {
+  background: var(--app-on-brand);
+}
+[data-app-primary-tab] .map-list { padding-inline: var(--app-space-4); }
+[data-app-primary-tab] .map-list-section + .map-list-section { margin-top: var(--app-space-6); }
+[data-app-primary-tab] .map-list-section-title { padding: var(--app-space-3) 0 var(--app-space-2); }
+[data-app-primary-tab] .map-list-row {
+  gap: var(--app-space-3);
+  padding: var(--app-space-3) 0;
+}
+[data-app-primary-tab] .map-list-event { background: transparent; }
+[data-app-primary-tab] .map-list-event-icon,
+[data-app-primary-tab] .map-list-place-visual {
+  color: var(--app-ink-2);
+  background: var(--app-bg-sunken);
+  box-shadow: none;
+}
+
+/* Real place photographs need enough area to identify the storefront. */
+[data-app-primary-tab] .map-list-place-visual[data-photo-state="ready"] {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--app-radius-md);
+}
+
+.place-card-photo-credit { display: none; }
+button:has([data-place-card-photo]) + .place-card-photo-credit { display: block; }
+
+/* The existing wallet still raises and discloses its real saved records.
+ * Neutral stock replaces the category paint, gloss, and entrance animation;
+ * overlap margins and 44px disclosure/action targets retain their geometry. */
+[data-app-primary-tab="/my-radius"] .sw-card,
+[data-app-primary-tab="/my-radius"] .sw-card.is-open {
+  color: var(--app-ink);
+  border-radius: var(--app-radius-lg);
+  box-shadow: inset 0 0 0 1px var(--app-border), var(--app-shadow-1);
+  animation: none;
+}
+[data-app-primary-tab="/my-radius"] .sw-card::before,
+[data-app-primary-tab="/my-radius"] .sw-card::after,
+[data-app-primary-tab="/my-radius"] .sw-art,
+[data-app-primary-tab="/my-radius"] .sw-glyph { display: none; }
+[data-app-primary-tab="/my-radius"] .sw-face { padding: var(--app-space-4); }
+/* A single closed event needs only its reading row. Multi-item decks retain
+ * their covered-card height and tuck so earlier faces cannot protrude below
+ * the final card. Expanded cards keep the complete ledger and actions. */
+[data-app-primary-tab="/my-radius"] .sw-slot[id^="swe-slot-"]:first-child:last-child:not(.is-open) > .sw-card {
+  min-height: calc(var(--app-space-4) * 4);
+}
+[data-app-primary-tab="/my-radius"] .sw-name { text-shadow: none; }
+[data-app-primary-tab="/my-radius"] .sw-brand svg { filter: none; }
+[data-app-primary-tab="/my-radius"] .sw-brand:focus-visible,
+[data-app-primary-tab="/my-radius"] .sw-disclosure:focus-visible {
+  outline-color: var(--app-link);
+}
+[data-app-primary-tab="/my-radius"] .sw-disclosure { background: var(--app-bg-sunken); }
+[data-app-primary-tab="/my-radius"] .sw-tip {
+  color: var(--app-ink);
+  text-shadow: none;
+}
+[data-app-primary-tab="/my-radius"] .sw-lipfact,
+[data-app-primary-tab="/my-radius"] .sw-lipfact.is-dim,
+[data-app-primary-tab="/my-radius"] .sw-tier,
+[data-app-primary-tab="/my-radius"] .sw-tipsrc {
+  color: var(--app-ink-3);
+  opacity: 1;
+}
+[data-app-primary-tab="/my-radius"] .sw-lipfact.is-status { color: var(--app-on-brand); }
+[data-app-primary-tab="/my-radius"] .sw-tipsrc,
+[data-app-primary-tab="/my-radius"] .sw-cell dt { font-size: 11px; }
+[data-app-primary-tab="/my-radius"] .sw-dot { animation: none; box-shadow: none; }
+[data-app-primary-tab="/my-radius"] .sw-dealtag {
+  color: var(--app-ink-2);
+  background: var(--app-bg-sunken);
+  box-shadow: none;
+  text-shadow: none;
+}
+[data-app-primary-tab="/my-radius"] .sw-stub {
+  padding: var(--app-space-3) var(--app-space-4);
+  border-top: 1px solid var(--app-border);
+}
+[data-app-primary-tab="/my-radius"] .sw-stub::before,
+[data-app-primary-tab="/my-radius"] .sw-stub::after { display: none; }
+[data-app-primary-tab="/my-radius"] .sw-star { color: var(--app-ink-3); }
+[data-app-primary-tab="/my-radius"] .sw-act-primary {
+  background: var(--app-brand-press);
+  box-shadow: none;
+}
+[data-app-primary-tab="/my-radius"] .sv-planline .go,
+[data-app-primary-tab="/my-radius"] .sv-colophon-row .v.link { color: var(--app-link); }
+[data-app-primary-tab="/my-radius"] .sv-evrow {
+  gap: var(--app-space-3);
+  padding: var(--app-space-3) 0;
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: transparent;
+}
+[data-app-primary-tab="/my-radius"] .sv-evrow .cal span,
+[data-app-primary-tab="/my-radius"] .sv-evrow .who span.is-today { color: var(--app-ink-3); }
 
 /* Vaul ships its own physics at runtime (a 0.5s cubic-bezier(0.32,0.72,0,1)
    transform plus 0.5s slide keyframes), so a bottom drawer opens slower and
@@ -386,10 +569,10 @@ html, body {
      sticky bug changes. */
   overflow-x: clip;
   /* Native-feel: no gray/blue flash on tap (the biggest "this is a website"
-     tell on Android), native UI (scrollbars/pickers) in the paper palette,
+     tell on Android), native UI (scrollbars/pickers) following the root theme,
      and no browser pull-to-refresh / bottom rubber-band on the document. */
   -webkit-tap-highlight-color: transparent;
-  color-scheme: light;
+  color-scheme: var(--app-native-scheme);
   overscroll-behavior-y: none;
 }
 
@@ -1504,8 +1687,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   /* Inline SVG noise — no extra HTTP request. */
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 }
-/* Dark-mode aurora-grain override removed alongside the html.dark
- * block above — restore when a real dark toggle ships. */
 
 /* ─────────────────────────────────────────────────────
  * Shimmer skeleton — used by loading states.
@@ -1535,8 +1716,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   /* Hold the skeleton as a calm static surface; the sweep is decorative. */
   .shimmer::after { animation: none; }
 }
-/* Dark-mode shimmer override removed alongside the html.dark
- * block above — restore when a real dark toggle ships. */
 
 /* ─────────────────────────────────────────────────────
  * Live dot — standardized "happening now" pulse.
@@ -3094,7 +3273,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .sv-onnow-label {
   flex: none; display: inline-flex; align-items: center; gap: 7px;
   font-family: var(--font-mono, monospace); font-size: 10px; font-weight: 700;
-  letter-spacing: .13em; text-transform: uppercase; color: var(--app-brand-press);
+  letter-spacing: .13em; text-transform: uppercase; color: var(--app-link);
 }
 .sv-onnow-scroll { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; min-width: 0; }
 .sv-onnow-scroll::-webkit-scrollbar { display: none; }
@@ -4233,7 +4412,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   box-shadow: inset 0 0 0 1px var(--app-border);
 }
 .dock-scene[data-on] .dock-scene-icon {
-  color: var(--app-brand-press);
+  color: var(--app-link);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-brand) 28%, var(--app-border));
 }
 .dock-scene-copy {
@@ -4264,7 +4443,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   white-space: nowrap;
 }
 .dock-scene[data-status="caution"] .dock-scene-copy small {
-  color: var(--app-warning);
+  color: var(--state-closing);
 }
 .dock-content-heading {
   padding: 10px 12px 6px;
@@ -4294,7 +4473,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   transform: scale(0.992);
 }
 .dock-content-row[data-on] {
-  color: var(--app-brand-press);
+  color: var(--app-link);
   background: var(--app-brand-tint-6);
 }
 .dock-content-icon {
@@ -4308,7 +4487,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border: 1px solid var(--app-border);
 }
 .dock-content-row[data-on] .dock-content-icon {
-  color: var(--app-brand-press);
+  color: var(--app-link);
   border-color: color-mix(in srgb, var(--app-brand) 28%, var(--app-border));
   background: color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated));
 }
@@ -4546,7 +4725,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   display: block;
 }
 .dock-discovery-eyebrow {
-  color: var(--app-brand-press);
+  color: var(--app-ink-3);
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 8.5px;
   font-weight: 650;
@@ -4711,7 +4890,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-radius: var(--app-radius-sm);
   border: 1px solid color-mix(in srgb, var(--app-positive) 35%, transparent);
   background: var(--app-bg-elevated);
-  color: var(--app-positive);
+  color: var(--state-open);
   font-weight: 600;
   font-size: 14px;
 }
@@ -4783,7 +4962,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .dock-essential-origin[data-on] {
   border-color: color-mix(in srgb, var(--app-positive) 32%, var(--app-border));
   background: color-mix(in srgb, var(--app-positive) 8%, var(--app-bg-elevated));
-  color: var(--app-positive);
+  color: var(--state-open);
 }
 .dock-essential-grid {
   display: grid;
@@ -4812,7 +4991,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .dock-essential-choice[data-on] {
   border-color: color-mix(in srgb, var(--app-brand) 38%, var(--app-border));
   background: var(--app-brand-tint-6);
-  color: var(--app-brand-press);
+  color: var(--app-link);
 }
 .dock-essential-choice-icon {
   width: 28px;
@@ -4826,7 +5005,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .dock-essential-choice[data-on] .dock-essential-choice-icon {
   background: color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated));
-  color: var(--app-brand-press);
+  color: var(--app-link);
 }
 .dock-essential-choice > span:nth-child(2) {
   width: 100%;
@@ -4862,7 +5041,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .dock-essentials-more:hover,
 .dock-essentials-more:focus-visible {
   border-color: color-mix(in srgb, var(--app-brand) 34%, var(--app-border));
-  color: var(--app-brand-press);
+  color: var(--app-link);
 }
 @media (max-width: 350px) {
   .dock-essential-grid {
@@ -4928,7 +5107,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .dock-contents[data-on],
 .dock-contents[aria-expanded="true"] {
-  color: var(--app-brand-press);
+  color: var(--app-link);
   background: transparent;
 }
 /* The count row inside the panel: the living mono count line + the clear ×. */
@@ -6126,7 +6305,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--app-brand-press);
+  color: var(--app-link);
   font-size: 11px;
   font-weight: 700;
 }
@@ -6651,9 +6830,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   gap: 16px;
   padding:
     max(14px, env(safe-area-inset-top, 0px))
-    max(14px, env(safe-area-inset-right, 0px))
+    max(var(--app-space-4), env(safe-area-inset-right, 0px))
     12px
-    max(14px, env(safe-area-inset-left, 0px));
+    max(var(--app-space-4), env(safe-area-inset-left, 0px));
   border-bottom: 1px solid var(--app-border);
   background: var(--app-bg-elevated-solid);
 }
@@ -6670,21 +6849,24 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   flex: 1 1 auto;
   padding:
     14px
-    max(12px, env(safe-area-inset-right, 0px))
+    max(var(--app-space-4), env(safe-area-inset-right, 0px))
     max(18px, env(safe-area-inset-bottom, 0px))
-    max(12px, env(safe-area-inset-left, 0px));
+    max(var(--app-space-4), env(safe-area-inset-left, 0px));
+}
+.map-error-fallback .map-list > [aria-live="polite"] {
+  padding-inline: 0;
 }
 /* Renderer failure changes the dock into a search-only instrument. Preserve a
    clear lane for it instead of letting a recovery heading or the last result
    sit underneath the still-useful control. */
 @media (min-width: 1024px) {
   .dock-host[data-map-error] .map-error-fallback-head {
-    padding-top: 74px;
+    padding-top: calc(var(--map-dock-height, 0px) + var(--app-space-2) + var(--app-space-4));
   }
 }
 @media (max-width: 1023.98px) {
   .dock-host[data-map-error] .map-error-fallback .map-list {
-    padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--map-dock-height, 0px) + var(--app-space-4) + env(safe-area-inset-bottom, 0px));
   }
 }
 @media (max-width: 600px) {
@@ -7040,7 +7222,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   flex: 0 0 auto;
   padding-inline: 9px;
   border-radius: var(--app-radius-md);
-  color: var(--app-brand-press);
+  color: var(--app-link);
   font-size: 12px;
   font-weight: 700;
 }
@@ -7230,7 +7412,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-left: 1px solid var(--app-border);
 }
 .eb-lensseg button.on {
-  color: var(--app-brand-press);
+  color: var(--app-link);
   background: color-mix(in srgb, var(--app-brand) 12%, transparent);
 }
 

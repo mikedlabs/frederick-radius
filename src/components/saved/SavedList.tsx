@@ -248,7 +248,7 @@ export function SavedPlaceRefreshNotice({ unavailableCount, missingCount, onRetr
     <div role="status" className="space-y-2 border-y py-3 text-[13px] leading-relaxed" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
       {unavailableCount > 0 && <p>We could not refresh {unavailableCount} saved place{unavailableCount === 1 ? "" : "s"}. Your saves are still here. Check current hours on the place page.</p>}
       {missingCount > 0 && <p>{missingCount} saved place{missingCount === 1 ? " is" : "s are"} no longer listed. {missingCount === 1 ? "It remains" : "They remain"} saved on this device.</p>}
-      {unavailableCount > 0 && <button type="button" onClick={onRetry} disabled={retrying} className="tap-44 inline-flex items-center text-[13px] font-semibold underline underline-offset-4" style={{ color: "var(--app-brand-press)" }}>{retrying ? "Trying again…" : "Try again"}</button>}
+      {unavailableCount > 0 && <button type="button" onClick={onRetry} disabled={retrying} className="tap-44 inline-flex items-center text-[13px] font-semibold underline underline-offset-4" style={{ color: "var(--app-link)" }}>{retrying ? "Trying again…" : "Try again"}</button>}
     </div>
   );
 }
@@ -1124,7 +1124,7 @@ export default function SavedList({
             />
             <h2
               className="text-[11px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-brand-press)" }}
+              style={{ color: "var(--app-ink-3)" }}
             >
               Upcoming
             </h2>
@@ -1210,16 +1210,16 @@ export default function SavedList({
         id="saved-organizer"
         open={organizerOpen}
         onToggle={(event) => { if (event.currentTarget.open !== organizerOpen) updateJourney({ organizerOpen: event.currentTarget.open }); }}
-        className="group overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)]"
-        style={{ borderColor: "var(--app-border-strong)" }}
+        className="group border-y"
+        style={{ borderColor: "var(--app-border)" }}
       >
-        <summary className="tap-44 flex cursor-pointer list-none items-center gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+        <summary className="tap-44 flex cursor-pointer list-none items-center gap-3 py-3 [&::-webkit-details-marker]:hidden">
           <span
             aria-hidden
             className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px]"
             style={{
-              color: "var(--app-cool)",
-              background: "color-mix(in srgb, var(--app-cool) 11%, transparent)",
+              color: "var(--app-ink-2)",
+              background: "var(--app-bg-sunken)",
             }}
           >
             <Layers className="h-4 w-4" strokeWidth={2.1} />
@@ -1239,7 +1239,7 @@ export default function SavedList({
             aria-hidden
           />
         </summary>
-        <div className="space-y-5 border-t p-3" style={{ borderColor: "var(--app-border)" }}>
+        <div className="space-y-6 border-t py-4" style={{ borderColor: "var(--app-border)" }}>
 
       {places.length > 0 && (
         <section aria-label="Organize saved places" className="space-y-3">
@@ -1302,7 +1302,7 @@ export default function SavedList({
                 <Link
                   href={listPlanHref}
                   className="tap-44-y ml-auto inline-flex shrink-0 items-center gap-1 text-[13px] font-semibold"
-                  style={{ color: "var(--app-brand-press)" }}
+                  style={{ color: "var(--app-link)" }}
                 >
                   Plan this list
                   <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
@@ -1356,31 +1356,29 @@ export default function SavedList({
                       subtitle: null as string | null,
                       group,
                     }))
-              ).map(({ key, label, color, subtitle, group }) => (
+              ).map(({ key, label, subtitle, group }) => (
                 <section key={key} className="space-y-2">
-                  {/* Chapter header — an accent-tinted band in the town's
-                      own color, with a serif name + count + identity line,
-                      so each section reads as its own page of the guide. */}
+                  {/* Group identity is carried by the title and count. */}
                   <header
-                    className="flex items-center gap-2.5 rounded-[var(--app-radius-md)] px-3 py-2"
-                    style={{ background: `color-mix(in srgb, ${color} 10%, transparent)` }}
+                    className="flex items-center gap-3 border-b py-3"
+                    style={{ borderColor: "var(--app-border)" }}
                   >
                     <span
                       aria-hidden
-                      className="block h-7 w-1.5 shrink-0 rounded-full"
-                      style={{ background: color }}
+                      className="block h-5 w-px shrink-0"
+                      style={{ background: "var(--app-border)" }}
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline gap-2">
                         <h3
-                          className="truncate font-serif text-[15px] font-semibold tracking-tight"
+                          className="truncate font-sans text-[15px] font-semibold tracking-tight"
                           style={{ color: "var(--app-ink)" }}
                         >
                           {label}
                         </h3>
                         <span
-                          className="shrink-0 rounded-full px-1.5 text-[10px] font-bold tabular-nums"
-                          style={{ background: `color-mix(in srgb, ${color} 18%, transparent)`, color }}
+                          className="shrink-0 text-[11px] font-medium tabular-nums"
+                          style={{ color: "var(--app-ink-3)" }}
                         >
                           {group.length}
                         </span>
@@ -1478,7 +1476,7 @@ export default function SavedList({
             />
             <h2
               className="text-[11px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-cool)" }}
+              style={{ color: "var(--app-ink-3)" }}
             >
               Visited
             </h2>
@@ -1611,7 +1609,7 @@ export function EmptyState() {
           className="tap-44 inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-[12.5px] font-semibold"
           style={{
             borderColor: "var(--app-control-border)",
-            color: "var(--app-cool)",
+            color: "var(--app-link)",
             background: "var(--app-bg-elevated-solid)",
           }}
         >

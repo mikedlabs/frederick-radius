@@ -54,6 +54,13 @@ export function topBarFindTarget(pathname: string): FindTarget {
   return pathname === "/map" ? "map" : "global";
 }
 
+/** Another active modal owns input until its existing dismissal completes. */
+function anotherModalOwnsInput(): boolean {
+  return Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'))
+    .some((dialog) => dialog.id !== "radius-find-dialog"
+      && !dialog.closest('[inert], [hidden], [aria-hidden="true"]'));
+}
+
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchInitialQuery, setSearchInitialQuery] = useState("");
@@ -163,6 +170,7 @@ export default function TopBar() {
     opener: HTMLElement | null,
     returnScrollY = window.scrollY,
   ) => {
+    if (anotherModalOwnsInput()) return;
     searchOpenerRef.current = opener;
     if (topBarFindTarget(pathname) === "map") {
       setSearchOpen(false);
@@ -210,6 +218,7 @@ export default function TopBar() {
   useEffect(() => {
     const open = () => {
       consumeFindRequest("global");
+      if (anotherModalOwnsInput()) return;
       searchReturnScrollYRef.current = window.scrollY;
       searchOpenerRef.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -328,7 +337,7 @@ export default function TopBar() {
                   style={{
                     borderColor: "var(--app-brand-tint-22)",
                     background: "var(--app-brand-tint-6)",
-                    color: "var(--app-brand-press)",
+                    color: "var(--app-ink-3)",
                   }}
                 >
                   Beta
@@ -414,7 +423,7 @@ export default function TopBar() {
               className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 disabled:cursor-wait disabled:opacity-60 lg:hidden"
               style={{
                 borderColor: searchOpen ? "var(--app-brand)" : "var(--app-border)",
-                color: searchOpen ? "var(--app-brand-press)" : "var(--app-ink-2)",
+                color: searchOpen ? "var(--app-link)" : "var(--app-ink-2)",
                 background: searchOpen ? "var(--app-brand-tint-6)" : undefined,
               }}
             >
@@ -457,7 +466,7 @@ export default function TopBar() {
               className={`${styles.tool} relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 hover:bg-[var(--app-bg-sunken)] sm:px-3`}
               style={{
                 borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
-                color: pathname === "/compass" ? "var(--app-brand-press)" : "var(--app-ink-2)",
+                color: pathname === "/compass" ? "var(--app-link)" : "var(--app-ink-2)",
                 background: pathname === "/compass" ? "var(--app-brand-tint-6)" : undefined,
               }}
             >
@@ -572,7 +581,7 @@ function SearchOverlayFallback({
         <Search
           className="h-5 w-5 shrink-0"
           strokeWidth={2}
-          style={{ color: "var(--app-brand-press)" }}
+          style={{ color: "var(--app-link)" }}
           aria-hidden
         />
         <span

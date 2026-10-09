@@ -1,0 +1,156 @@
+.brief {
+  min-width: 0;
+  color: var(--app-ink);
+  font-family: var(--font-sans);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-space-3);
+}
+
+.heading {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.more {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing);
+  min-height: 44px;
+  color: var(--app-link);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.source {
+  margin: 0 0 var(--app-space-2);
+  color: var(--app-ink-2);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.stories {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stories > li + li {
+  border-top: 1px solid var(--app-border);
+}
+
+.story {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--app-space-3);
+  min-height: 44px;
+  padding: var(--app-space-3) 0;
+  color: var(--app-ink);
+  text-decoration: none;
+}
+
+.storyText {
+  flex: 1;
+  min-width: 0;
+}
+
+.title,
+.lead {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+.lead {
+  font-size: 19px;
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+}
+
+.byline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--app-space-2);
+  margin-top: var(--spacing);
+  color: var(--app-ink-2);
+  font-size: 11px;
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+}
+
+.publisher {
+  font-weight: 600;
+}
+
+.outlink {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: var(--spacing);
+  color: var(--app-link);
+}
+
+.official {
+  border-top: 1px solid var(--app-border);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-2);
+  min-height: 44px;
+  cursor: pointer;
+  color: var(--app-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.summary::before {
+  content: "+";
+  color: var(--app-link);
+}
+
+.official[open] > .summary::before {
+  content: "−";
+}
+
+.summaryDetail {
+  margin-left: auto;
+  color: var(--app-ink-2);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.note {
+  margin: var(--app-space-2) 0 var(--app-space-3);
+  color: var(--app-ink-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.story:hover .title,
+.story:hover .lead,
+.more:hover {
+  text-decoration: underline;
+  text-underline-offset: var(--spacing);
+}
+
+.story:focus-visible,
+.more:focus-visible,
+.summary:focus-visible {
+  outline: 2px solid var(--app-link);
+  outline-offset: var(--spacing);
+  border-radius: var(--app-radius-sm);
+}

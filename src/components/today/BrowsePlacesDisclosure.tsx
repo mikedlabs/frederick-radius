@@ -61,7 +61,7 @@ export default function BrowsePlacesDisclosure({
       <span
         aria-hidden
         className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
-        style={{ color: "var(--app-brand-press)", background: "var(--app-brand-tint-6)" }}
+        style={{ color: "var(--app-link)", background: "var(--app-brand-tint-6)" }}
       >
         <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
       </span>
@@ -107,7 +107,7 @@ export default function BrowsePlacesDisclosure({
             className="h-4 w-4 shrink-0"
             strokeWidth={2.25}
             aria-hidden
-            style={{ color: "var(--app-brand-press)" }}
+            style={{ color: "var(--app-link)" }}
           />
         </Link>
       )}

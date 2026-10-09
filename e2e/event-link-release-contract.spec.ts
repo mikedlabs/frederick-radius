@@ -87,7 +87,7 @@ test("a returning Events view restores its scope before default results can pain
           if (!ready) proof.personalizedBeforeReady = true;
           proof.visibleSummaries.push(
             personalized
-              .querySelector<HTMLElement>(".eb-filter-summary")
+              .querySelector<HTMLElement>('button[aria-controls="eb-pane"]')
               ?.textContent?.trim() ?? "",
           );
         }
@@ -114,9 +114,13 @@ test("a returning Events view restores its scope before default results can pain
   });
   const personalized = page.locator("[data-events-personalized-view]");
   await expect(personalized).toBeVisible();
-  await expect(personalized.locator(".eb-filter-summary")).toContainText(
-    "Free · This weekend · Brunswick",
-  );
+  const filters = personalized.getByRole("button", {
+    name: "Filters Free · This weekend · Brunswick",
+    exact: true,
+  });
+  await expect(filters).toBeVisible();
+  await expect(filters.locator("[data-event-filter-time]")).toHaveText("This weekend");
+  await expect(filters.locator("[data-event-filter-scope]")).toHaveText("Brunswick");
 
   await expect
     .poll(() =>
@@ -152,8 +156,21 @@ test("a returning Events view restores its scope before default results can pain
     "the first and every later personalized paint should carry the restored view",
   ).toBe(true);
   expect(
-    proof!.visibleSummaries.includes("Everything · Anytime · Whole county"),
+    proof!.visibleSummaries.some((summary) =>
+      summary.includes("Everything") && summary.includes("Anytime") && summary.includes("Whole county")),
   ).toBe(false);
+
+  // The restored summary must agree with the actual selected controls inside
+  // the one filter sheet, not just the label on its closed doorway.
+  await filters.click();
+  const dialog = page.getByRole("dialog", { name: "Event filters", exact: true });
+  await expect(dialog.getByRole("button", { name: "Free", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await dialog.getByRole("tab", { name: "When", exact: true }).click();
+  await expect(dialog.getByRole("button", { name: "This weekend", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await dialog.getByRole("tab", { name: "Where", exact: true }).click();
+  await expect(dialog.getByRole("button", { name: "Brunswick", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
+  await expect(filters).toBeFocused();
 });
 
 /**

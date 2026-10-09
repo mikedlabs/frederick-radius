@@ -16,6 +16,20 @@ import { getLocalHeadlines } from "@/lib/integrations/news";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { isEventToday, isEventEnded } from "@/lib/eventWhenLabel";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import { activeNwsAlerts, isFreshNwsAlertsResult, NWS_ALERTS_MAX_CHECK_AGE_MS } from "@/lib/weather-safety";
+import { COUNTY_STATUS_FUTURE_TOLERANCE_MS } from "@/lib/pulse/county-status";
+
+function currentSourceCheck(checkedAt: string | undefined, now: Date, maxAgeMs: number): boolean {
+  const age = now.getTime() - Date.parse(checkedAt ?? "");
+  return Number.isFinite(age) && age >= -COUNTY_STATUS_FUTURE_TOLERANCE_MS && age <= maxAgeMs;
+}
+
+function validUntil(checkedAt: string | undefined, maxAgeMs: number, expiries: string[] = []): string | undefined {
+  const checked = Date.parse(checkedAt ?? "");
+  if (!Number.isFinite(checked)) return undefined;
+  const last = Math.min(checked + maxAgeMs, ...expiries.map((value) => Date.parse(value)).filter(Number.isFinite));
+  return new Date(last).toISOString();
+}
 
 /**
  * The deck — Frederick County's live readings as a board of keys.
@@ -117,6 +131,9 @@ export type DeckKey = {
   note?: string;
   /** Named on the open key, never invented. */
   source: string;
+  /** Source response time and the last instant this count can be claimed current. */
+  checkedAt?: string;
+  validUntil?: string;
 };
 
 const COOL = "var(--app-cool)";
@@ -130,7 +147,7 @@ export type DeckInputs = {
   buses: { available: boolean; stops: Array<{ name: string; etaEpoch?: number }> } | null;
   routes: number | null;
   trains: { available: boolean; count: number; labels: string[] } | null;
-  traffic: { available: boolean; rows: DeckDetailRow[] } | null;
+  traffic: { available: boolean; rows: DeckDetailRow[]; checkedAt?: string; validUntil?: string } | null;
   power: {
     available: boolean;
     out: number;
@@ -139,6 +156,8 @@ export type DeckInputs = {
   weather: {
     available: boolean;
     alerts: string[];
+    checkedAt?: string;
+    validUntil?: string;
     outlook: DeckDetailRow[];
   } | null;
   water: Array<{
@@ -171,6 +190,7 @@ function key(
     detail?: DeckDetailRow[];
     note?: string;
     spark?: Array<{ v: number; at: string }>;
+    verified?: boolean;
   } | null,
 ): DeckKey {
   if (!built || built.faces.length === 0) {
@@ -184,7 +204,7 @@ function key(
   }
   return {
     ...base,
-    status: "ok",
+    status: built.verified === false ? "unavailable" : "ok",
     faces: built.faces,
     detail: (built.detail ?? []).slice(0, DETAIL_MAX),
     note: built.note,
@@ -377,9 +397,12 @@ export function buildDeckKeys(input: DeckInputs, now: Date = new Date()): DeckKe
         accent: traffic?.available && traffic.rows.length > 0 ? AMBER : COOL,
         live: true,
         source: "MDOT CHART",
+        checkedAt: traffic?.checkedAt,
+        validUntil: traffic?.validUntil,
       },
-      traffic?.available
+      traffic && (traffic.available || traffic.rows.length > 0)
         ? {
+            verified: traffic.available,
             faces: [
               traffic.rows.length > 0
                 ? {
@@ -439,9 +462,12 @@ export function buildDeckKeys(input: DeckInputs, now: Date = new Date()): DeckKe
         accent: weather?.available && weather.alerts.length > 0 ? AMBER : COOL,
         live: true,
         source: "National Weather Service",
+        checkedAt: weather?.checkedAt,
+        validUntil: weather?.validUntil,
       },
-      weather?.available
+      weather && (weather.available || weather.alerts.length > 0)
         ? {
+            verified: weather.available,
             faces: [
               weather.alerts.length > 0
                 ? {
@@ -710,7 +736,9 @@ export async function getDeckKeys(now: Date = new Date()): Promise<DeckKey[]> {
       ),
       withTimeout(
         getChartIncidentsFrederickResult().then((r) => ({
-          available: r.available,
+          available: r.available && currentSourceCheck(r.asOf, now, 5 * 60_000),
+          checkedAt: r.asOf,
+          validUntil: validUntil(r.asOf, 5 * 60_000),
           rows: r.data.map((incident) => ({
             lead: clamp(chartRoad(incident) || incident.location || incident.description),
             trail: incident.type,
@@ -730,8 +758,10 @@ export async function getDeckKeys(now: Date = new Date()): Promise<DeckKey[]> {
       ),
       withTimeout(
         getNwsAlertsResult().then((r) => ({
-          available: r.available,
-          alerts: r.alerts.map((alert) => clamp(alert.event)),
+          available: isFreshNwsAlertsResult(r, now),
+          checkedAt: r.checkedAt,
+          validUntil: validUntil(r.checkedAt, NWS_ALERTS_MAX_CHECK_AGE_MS, activeNwsAlerts(r.alerts, now).map((alert) => alert.ends_at)),
+          alerts: activeNwsAlerts(r.alerts, now).map((alert) => clamp(alert.event)),
         })),
         T,
         null,
@@ -809,7 +839,7 @@ export async function getDeckKeys(now: Date = new Date()): Promise<DeckKey[]> {
             // The source rides with the title rather than in the figure slot:
             // "WTOP" set in the key's biggest type read like a measurement.
             lead: clamp(`${headline.title}${headline.source ? ` · ${headline.source}` : ""}`, 72),
-            trail: ageLabel(headline.published_at, now),
+            trail: (headline.published_at ? ageLabel(headline.published_at, now) : undefined) ?? "Publication date unavailable",
           })),
         ),
         T,

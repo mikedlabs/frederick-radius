@@ -51,7 +51,7 @@ describe("Pulse snapshot freshness", () => {
     const html = renderToStaticMarkup(
       createElement(PulseFreshness, { renderedAt: now }),
     );
-    expect(html).toContain("As of Aug 1, 10:00 AM");
+    expect(html).toContain("Page assembled Aug 1, 10:00 AM");
     expect(html).toContain('dateTime="2026-08-01T14:00:00.000Z"');
   });
 
@@ -67,7 +67,7 @@ describe("Pulse snapshot freshness", () => {
     const html = renderToStaticMarkup(
       createElement(PulseFreshness, { renderedAt: now }),
     );
-    expect(html).toContain("As of Aug 1, 10:00 AM");
+    expect(html).toContain("Page assembled Aug 1, 10:00 AM");
     expect(html).not.toContain("Checked");
   });
 
