@@ -58,6 +58,11 @@ describe("formatAddress", () => {
     );
   });
 
+  it.each(["Market Street Building", "Market Street Unit", "Market Street Conference Room"])(
+    "preserves the non-address venue %s",
+    (name) => expect(formatAddress(name)).toBe(name),
+  );
+
   it("does not split an ordinary venue phrase", () => {
     expect(formatAddress("Market Street Stage")).toBe("Market Street Stage");
   });

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Activity } from "lucide-react";
 import { usePathname } from "next/navigation";
 import AppTransitionLink from "./AppTransitionLink";
-import { countyStatusLabel, COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS, COUNTY_STATUS_FUTURE_TOLERANCE_MS, type CountyStatusSummary } from "@/lib/pulse/county-status";
+import { countyStatusLabel, countyStatusSnapshotDeadline, COUNTY_STATUS_FUTURE_TOLERANCE_MS, type CountyStatusSummary } from "@/lib/pulse/county-status";
 import { createAbortDeadline } from "@/lib/promise-deadline";
 
 /**
@@ -12,8 +12,8 @@ import { createAbortDeadline } from "@/lib/promise-deadline";
  * happening in Frederick County (NWS alerts, school alerts, traffic
  * incidents, power outages).
  *
- * Fetches /api/pulse/status on mount + every 5 minutes. The endpoint
- * is cached server-side so polling is cheap. Pulse remains a stable top-level
+ * Fetches /api/pulse/status on mount + every 5 minutes. The underlying source
+ * snapshots retain their cache windows; the summary rechecks source expiry. Pulse remains a stable top-level
  * destination while the indicator communicates active alerts, all-clear, or
  * unavailable data without making the navigation appear and disappear.
  *
@@ -23,9 +23,6 @@ type PulseStatus = CountyStatusSummary;
 
 export const PULSE_STATUS_TIMEOUT_MS = 15_000;
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
-// /api/pulse/status caches 300s over a 60s currentSituation snapshot. This
-// limits the assembly age only; individual publisher checks remain upstream.
-const MAX_SNAPSHOT_AGE_MS = COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS;
 // Match the existing currentSituationModel and PulseFreshness clock tolerance.
 const FUTURE_CLOCK_TOLERANCE_MS = COUNTY_STATUS_FUTURE_TOLERANCE_MS;
 
@@ -43,7 +40,9 @@ function validStatus(value: unknown): value is PulseStatus {
       && status.tone === (status.level === "Urgent" ? "alert" : "caution"))
       || (!status.active && status.level === (status.ok ? "Clear" : "Unknown")))
     && typeof status.lastUpdated === "string"
-    && Number.isFinite(Date.parse(status.lastUpdated));
+    && Number.isFinite(Date.parse(status.lastUpdated))
+    && typeof status.validUntil === "string"
+    && Number.isFinite(Date.parse(status.validUntil));
 }
 
 const TONE_COLOR: Record<PulseStatus["tone"], string> = {
@@ -103,8 +102,10 @@ export default function PulseIndicator() {
           if (!response.ok) throw new Error("Status check failed");
           const payload: unknown = await response.json();
           if (!validStatus(payload)) throw new Error("Invalid status report");
-          const age = Date.now() - Date.parse(payload.lastUpdated);
-          if (!Number.isFinite(age) || age < -FUTURE_CLOCK_TOLERANCE_MS || age >= MAX_SNAPSHOT_AGE_MS) {
+          const now = Date.now();
+          const age = now - Date.parse(payload.lastUpdated);
+          const validUntil = countyStatusSnapshotDeadline(payload);
+          if (!Number.isFinite(age) || age < -FUTURE_CLOCK_TOLERANCE_MS || validUntil === null || now >= validUntil) {
             throw new Error("Status snapshot time is unverified");
           }
           return payload;
@@ -113,10 +114,9 @@ export default function PulseIndicator() {
         if (!disposed && id === generation && !deadline.signal.aborted) {
           setStatus(payload);
           setPhase("ready");
-          // A cached report may be near expiry when it arrives. Do not leave
-          // its quiet claim current until the next poll; no extra fetch occurs.
-          const remaining = Math.max(0, Math.min(MAX_SNAPSHOT_AGE_MS,
-            Date.parse(payload.lastUpdated) + MAX_SNAPSHOT_AGE_MS - Date.now()));
+          // Stop calling a report current at its earliest source/alert expiry,
+          // even between the existing polls. This makes no provider request.
+          const remaining = Math.max(0, (countyStatusSnapshotDeadline(payload) ?? Date.now()) - Date.now());
           expiry = setTimeout(() => {
             if (!disposed && id === generation) setPhase("unavailable");
           }, remaining);

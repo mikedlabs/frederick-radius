@@ -16,6 +16,7 @@ import { ReasonChipRow } from "@/components/ui/ReasonChip";
 import { eventReasons } from "@/lib/event-reasons";
 import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { statusLabel } from "@/lib/event-status";
 import DatePlate from "@/components/event/DatePlate";
 import { eventDecisionLocation, eventDecisionTime } from "@/lib/events/decision-facts";
@@ -542,14 +543,14 @@ export default function EventCard({
                 this event link so Google author/source/report links never
                 become invalid nested anchors. */}
             {cardVisual ? (
-              <figure className="w-[72px] shrink-0 self-center">
-                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[10px]">
+              <figure className="w-[96px] shrink-0 self-stretch sm:w-[132px]">
+                <div className="relative h-full min-h-[96px] w-full overflow-hidden rounded-[var(--app-radius-md)]">
                   <Image
-                    src={cardVisual.src}
+                    src={proxyPhotoAtWidth(cardVisual.src, 132)}
                     alt=""
                     fill
                     unoptimized={cardVisual.src.startsWith("/api/place-photo")}
-                    sizes="72px"
+                    sizes="(min-width: 640px) 132px, 96px"
                     placeholder="blur"
                     blurDataURL={PAPER_CREAM_BLUR}
                     className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"

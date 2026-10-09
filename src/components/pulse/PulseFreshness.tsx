@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { countyStatusSnapshotLabel, COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS, type CountyStatusSummary } from "@/lib/pulse/county-status";
+import { countyStatusSnapshotLabel, countyStatusSnapshotDeadline, type CountyStatusSummary } from "@/lib/pulse/county-status";
 import { useRouter } from "next/navigation";
 
 export const PULSE_AUTO_REFRESH_MS = 2 * 60_000;
@@ -103,8 +103,9 @@ function PulseStatusLabelSnapshot({
   useEffect(() => {
     const tick = () => setNow(Date.now());
     const id = window.setInterval(tick, 30_000);
-    const remaining = countyStatus ? Date.parse(countyStatus.lastUpdated) + COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS - Date.now() : Number.NaN;
-    const expiry = Number.isFinite(remaining) && remaining > 0 ? window.setTimeout(tick, remaining) : undefined;
+    const remaining = countyStatus ? (countyStatusSnapshotDeadline(countyStatus) ?? Date.now()) - Date.now() : Number.NaN;
+    // The deadline can pass after render but before this effect starts.
+    const expiry = Number.isFinite(remaining) ? window.setTimeout(tick, Math.max(0, remaining)) : undefined;
     return () => { window.clearInterval(id); if (expiry !== undefined) window.clearTimeout(expiry); };
   }, [renderedAt, countyStatus]);
 

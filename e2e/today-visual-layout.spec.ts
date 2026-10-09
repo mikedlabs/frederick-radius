@@ -27,12 +27,14 @@ for (const width of [320, 375, 390, 430, 1366]) {
     const findBox = (await find.boundingBox())!;
     const weatherBox = (await page.locator("[data-today-weather]").boundingBox())!;
     expect(findBox.y).toBeGreaterThanOrEqual(mastheadBox.y + mastheadBox.height);
-    // Keep the original masthead + Find density budget, excluding only the
-    // newly prioritized weather band. Desktop weather shares the arrival row.
+    // Keep the non-media masthead + Find density budget. Owned photography
+    // now has meaningful compositional height; mobile still must fit the
+    // complete weather and Find actions above the bottom navigation.
+    const photoBox = (await masthead.locator("figure").boundingBox())!;
     const addedWeatherBand = width < 960
       ? Math.max(0, weatherBox.y + weatherBox.height - (mastheadBox.y + mastheadBox.height))
       : 0;
-    expect(findBox.y + findBox.height - mastheadBox.y - addedWeatherBand).toBeLessThan(380);
+    expect(findBox.y + findBox.height - mastheadBox.y - addedWeatherBand - photoBox.height).toBeLessThan(300);
     if (width < 640) {
       const primaryNav = page.locator("[data-bottom-nav-shell]").getByRole("navigation", {
         name: "Primary", exact: true,
@@ -46,16 +48,13 @@ for (const width of [320, 375, 390, 430, 1366]) {
       border: getComputedStyle(element).borderTopWidth,
       shadow: getComputedStyle(element).boxShadow,
     }))).toEqual({ border: "0px", shadow: "none" });
-    expect(await masthead.locator("figcaption").evaluate((element) =>
-      parseFloat(getComputedStyle(element).fontSize),
-    )).toBeGreaterThanOrEqual(11);
-    // The owned photo is a readable editorial frame, with archival context
-    // visible beside it. It never substitutes for current weather evidence.
-    const photoBox = (await masthead.locator("figure").boundingBox())!;
+    // The owned photo is a visual frame without a credit/date label.
+    // Its place description does not claim to show current conditions.
+    await expect(masthead.locator("img")).toHaveAttribute("alt", "Carroll Creek in Frederick.");
+    await expect(masthead.locator("figcaption")).toHaveCount(0);
     const headingBox = (await masthead.locator("h1").boundingBox())!;
     expect(headingBox.y + headingBox.height).toBeLessThanOrEqual(photoBox.y);
     expect(photoBox.width).toBeGreaterThanOrEqual(mastheadBox.width * 0.95);
-    await expect(masthead.locator("figcaption")).toContainText("Archive");
 
     for (const name of ["Open now", "Public essentials", "Plan a few hours", "Local services"]) {
       const shortcut = page.getByRole("link", { name, exact: true });

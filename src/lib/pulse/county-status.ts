@@ -13,6 +13,8 @@ export type CountyStatusSummary = {
   level: CountyStatusLevel;
   /** Assembly time, not the time every publisher was checked. */
   lastUpdated: string;
+  /** Earliest accepted source/alert expiry. Legacy reports without a deadline are unverified. */
+  validUntil?: string | null;
   checks?: CountySourceCheck[];
   roadCheck?: {
     verified: boolean;
@@ -31,8 +33,17 @@ export function countyStatusLabel(level: CountyStatusLevel): string {
 export const COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS = (300 + 60) * 1000;
 export const COUNTY_STATUS_FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
 
+/** A source deadline may be shorter than the maximum assembly age. */
+export function countyStatusSnapshotDeadline(summary: CountyStatusSummary): number | null {
+  const assembled = Date.parse(summary.lastUpdated);
+  const sourceDeadline = Date.parse(summary.validUntil ?? "");
+  if (!Number.isFinite(assembled) || !Number.isFinite(sourceDeadline)) return null;
+  return Math.min(assembled + COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS, sourceDeadline);
+}
+
 export function countyStatusSnapshotLabel(summary: CountyStatusSummary, now = Date.now()): string {
   const age = now - Date.parse(summary.lastUpdated);
-  if (!Number.isFinite(age) || age < -COUNTY_STATUS_FUTURE_TOLERANCE_MS || age >= COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS) return "Unable to verify";
+  const deadline = countyStatusSnapshotDeadline(summary);
+  if (!Number.isFinite(age) || age < -COUNTY_STATUS_FUTURE_TOLERANCE_MS || deadline === null || now >= deadline) return "Unable to verify";
   return countyStatusLabel(summary.level);
 }

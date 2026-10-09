@@ -33,6 +33,53 @@ const road = {
 const civic = { alerts: [], available: true, degraded: false } as unknown as OfficialCivicAlertsResult;
 
 describe("Shared county status severity and coverage", () => {
+  it("bounds a quiet summary by the earliest original accepted source TTL", () => {
+    expect(deriveCountyStatus(situation(), road, civic, Date.parse(NOW))).toMatchObject({ validUntil: "2026-10-08T13:05:00.000Z", lastUpdated: NOW });
+  });
+  it.each(["NWS", "civic"] as const)("bounds a current warning by its %s expiry before the next status poll", (kind) => {
+    const expiry = "2026-10-08T13:00:10.000Z";
+    const cached = kind === "NWS" ? situation([{ event: "Flash Flood Warning", headline: "Warning", description: "Official warning", severity: "Severe", ends_at: expiry }] as CurrentSituationSources["weather"]["data"]) : situation();
+    const official = kind === "civic" ? { ...civic, alerts: [{ kind: "city-emergency", active: true, state: "active", title: "Frederick emergency", summary: "Official instructions", expiresAt: expiry }] } as OfficialCivicAlertsResult : civic;
+    expect(deriveCountyStatus(cached, road, official, Date.parse(NOW))).toMatchObject({ level: "Urgent", validUntil: expiry, lastUpdated: NOW });
+  });
+  it("bounds a fresh road closure by its underlying publication deadline", () => {
+    const current = { ...road, sources: { ...road.sources, workZones: { ...road.sources.workZones, asOf: "2026-10-08T12:40:05.000Z" } }, attention: [{ kind: "work-zone-closure", severity: "warning" }] } as RoadIntelligenceSnapshot;
+    expect(deriveCountyStatus(situation(), current, civic, Date.parse(NOW))).toMatchObject({ count: 1, validUntil: "2026-10-08T13:00:05.000Z" });
+  });
+  it("does not let an expired failed source erase another current signal's deadline", () => {
+    const current = { ...road, sources: { ...road.sources, snowEmergency: { ...road.sources.snowEmergency, available: false, checkedAt: "2026-10-08T12:00:00.000Z" } }, attention: [{ kind: "work-zone-closure", severity: "warning" }] } as RoadIntelligenceSnapshot;
+    expect(deriveCountyStatus(situation(), current, civic, Date.parse(NOW))).toMatchObject({ level: "Advisory", count: 1, ok: false, validUntil: "2026-10-08T13:05:00.000Z" });
+  });
+  it("expires cached source eligibility at its preserved TTL without changing source times", () => {
+    const cached = situation([{ event: "Flash Flood Warning", headline: "Warning", description: "Official warning", severity: "Severe", ends_at: "2026-10-08T18:00:00.000Z" }] as CurrentSituationSources["weather"]["data"]);
+    const asOf = "2026-10-08T12:55:10.000Z";
+    cached.sources.weather.asOf = asOf;
+    expect(deriveCountyStatus(cached, road, civic, Date.parse(NOW))).toMatchObject({ level: "Urgent", count: 1 });
+    const expired = deriveCountyStatus(cached, road, civic, Date.parse(NOW) + 30_000);
+    expect(expired).toMatchObject({ level: "Unknown", count: 0, ok: false, lastUpdated: NOW });
+    expect(expired.checks).toContainEqual({ source: "NWS", state: "stale", asOf, asOfBasis: "retrieval" });
+    expect(cached.sources.weather).toMatchObject({ asOf, capturedAt: NOW, freshness: "fresh" });
+  });
+  it("does not retain a cached NWS count after expiry or relabel its source as newly checked", () => {
+    const cached = situation([{ event: "Flash Flood Warning", headline: "Warning", description: "Official warning", severity: "Severe", ends_at: "2026-10-08T13:00:10.000Z" }] as CurrentSituationSources["weather"]["data"]);
+    const result = deriveCountyStatus(cached, road, civic, Date.parse(NOW) + 30_000);
+    expect(result).toMatchObject({ level: "Clear", count: 0, lastUpdated: NOW });
+    expect(result.checks).toContainEqual({ source: "NWS", state: "current", asOf: NOW, asOfBasis: "retrieval" });
+  });
+  it.each([
+    ["2026-10-08T13:00:10.000Z", "Clear", 0],
+    ["2026-10-08T13:00:30.000Z", "Clear", 0],
+    [null, "Clear", 0], ["invalid", "Clear", 0],
+    ["2026-10-08T13:00:40.000Z", "Urgent", 1],
+  ] as const)("rechecks cached civic expiry %s at the current request clock", (expiresAt, level, count) => {
+    const cached = { ...civic, alerts: [{ kind: "city-emergency", state: "active", active: true, title: "Frederick emergency", summary: "Official instructions", expiresAt }] } as OfficialCivicAlertsResult;
+    expect(deriveCountyStatus(situation(), road, cached, Date.parse(NOW) + 30_000)).toMatchObject({ level, count, lastUpdated: NOW });
+  });
+  it("expires the underlying road check at request time without re-dating the cached snapshot", () => {
+    const checkedAt = "2026-10-08T12:54:10.000Z";
+    const cached = { ...road, sources: { ...road.sources, snowEmergency: { ...road.sources.snowEmergency, checkedAt } }, attention: [{ kind: "snow-emergency", severity: "emergency" }] } as RoadIntelligenceSnapshot;
+    expect(deriveCountyStatus(situation(), cached, civic, Date.parse(NOW) + 30_000)).toMatchObject({ level: "Unknown", count: 0, lastUpdated: NOW, roadCheck: { currentCount: 0, earlierCount: 1, checkedAt } });
+  });
   it("does not timestamp an old road emergency as a fresh county report", () => {
     const staleRoad = { ...road, generatedAt: "2026-10-08T12:40:00.000Z", summary: { ...road.summary, activeCount: 1 }, attention: [{ kind: "snow-emergency", severity: "emergency", observedAt: "2026-10-07T13:00:00.000Z" }] } as RoadIntelligenceSnapshot;
     expect(deriveCountyStatus(situation(), staleRoad, civic)).toMatchObject({ level: "Unknown", count: 0, ok: false, roadCheck: { verified: false, earlierCount: 1 } });
@@ -87,7 +134,7 @@ describe("Shared county status severity and coverage", () => {
     expect(deriveCountyStatus(current, road, civic).level).toBe("Advisory");
   });
   it("lets an official local emergency retain urgency despite incomplete coverage", () => {
-    const result = deriveCountyStatus(situation(), null, { ...civic, degraded: true, alerts: [{ kind: "city-emergency", title: "Frederick emergency", summary: "Official instructions" }] } as OfficialCivicAlertsResult);
+    const result = deriveCountyStatus(situation(), null, { ...civic, degraded: true, alerts: [{ kind: "city-emergency", state: "active", active: true, expiresAt: "2026-10-08T18:00:00.000Z", title: "Frederick emergency", summary: "Official instructions" }] } as OfficialCivicAlertsResult);
     expect(result).toMatchObject({ level: "Urgent", active: true, ok: false, count: 1 });
   });
   it("does not claim Clear when a shared check fails or lacks complete coverage", () => {

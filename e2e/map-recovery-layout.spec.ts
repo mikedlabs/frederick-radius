@@ -16,7 +16,7 @@ const localPins = coffeePlaces.map((place) => ({
   open_status: { state: "unknown" },
 }));
 
-async function installRecoveryBoundary(page: Page) {
+async function installRecoveryBoundary(page: Page, photosAvailable = false) {
   await page.addInitScript(() => {
     localStorage.setItem("fr_map_location_intro_v1", "dismissed");
     const original = HTMLCanvasElement.prototype.getContext;
@@ -32,6 +32,16 @@ async function installRecoveryBoundary(page: Page) {
       await route.abort("blockedbyclient");
     } else if (url.pathname === "/api/map/places") {
       await route.fulfill({ json: { generatedAt: new Date().toISOString(), places: localPins } });
+    } else if (photosAvailable && url.pathname === "/api/places/by-slugs") {
+      const requested = new Set((url.searchParams.get("slugs") ?? "").split(","));
+      await route.fulfill({ json: { places: coffeePlaces
+        .filter((place) => requested.has(place.slug))
+        .map((place) => ({ slug: place.slug, google_photo_url: place.google_photo_url })) } });
+    } else if (photosAvailable && url.pathname === "/api/place-photo") {
+      // Real catalog photo metadata exercises the ready-media layout. These
+      // clearly labelled fixture bytes never fetch or depict a provider photo.
+      await route.fulfill({ contentType: "image/svg+xml", body:
+        '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#ddd"/><text x="48" y="44" text-anchor="middle" font-size="12">LAYOUT</text><text x="48" y="62" text-anchor="middle" font-size="12">FIXTURE</text></svg>' });
     } else if (url.pathname === "/api/search") {
       // Use real catalog identities at the existing public JSON boundary.
       // Include a neighboring-town result to exercise the recovery scope filter.
@@ -82,12 +92,13 @@ async function recoveryGeometry(page: Page) {
 }
 
 for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 }]) {
-  test.describe(`Map recovery layout at ${viewport.width}px`, () => {
+ for (const photosAvailable of [false, true]) {
+  test.describe(`Map recovery layout at ${viewport.width}px${photosAvailable ? " with ready photos" : ""}`, () => {
     test.use({ viewport });
     test("a closed return/search dock leaves the scoped recovery heading and final result clear", async ({ page }, testInfo) => {
       test.setTimeout(60_000);
       await page.emulateMedia({ reducedMotion: "reduce" });
-      await installRecoveryBoundary(page);
+      await installRecoveryBoundary(page, photosAvailable);
       await page.goto(mapUrl, { waitUntil: "domcontentloaded" });
       await expect(page.locator(".dock-host")).toHaveAttribute("data-map-error", "true", { timeout: 30_000 });
       const dock = page.locator("[data-map-dock]");
@@ -101,6 +112,11 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
       await expect(list.getByRole("button", { name: /Beans in the Belfry/ })).toBeVisible();
       await expect(list.locator(".map-list-row")).toHaveCount(coffeePlaces.filter((place) => place.municipality === "brunswick").length);
       await expect(list).not.toContainText("Market Street Boba Beans");
+      if (photosAvailable) {
+        await expect(list.locator('[data-photo-state="ready"]')).toHaveCount(
+          coffeePlaces.filter((place) => place.municipality === "brunswick" && place.google_photo_url).length,
+        );
+      }
       await page.evaluate(() => document.fonts.ready);
       await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
 
@@ -130,6 +146,10 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
       await testInfo.attach("final-recovery-layout", { body: await page.screenshot({ fullPage: false }), contentType: "image/png" });
       expect(final.lastResult).not.toBeNull();
       expect(final.horizontalOverflow).toBe(false);
+      await expect(search).toHaveValue("coffee");
+      await expect(back).toHaveAttribute("href", returnTo);
+      expect(await back.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+      expect(await search.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
       if (viewport.width < 1024) {
         expect(final.scrollHeight).toBeGreaterThan(final.clientHeight);
         expect(final.scrollTop).toBeGreaterThan(0);
@@ -144,4 +164,5 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
       // This focused layout proof does not navigate or mutate any account data.
     });
   });
+ }
 }

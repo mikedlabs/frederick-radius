@@ -16,11 +16,11 @@
 .mastheadLead {
   position: relative;
   isolation: isolate;
-  min-height: 80px;
+  min-height: 120px;
   overflow: hidden;
   border-radius: var(--app-radius-lg);
   background: var(--app-media-ink);
-  box-shadow: none;
+  box-shadow: var(--app-shadow-1);
 }
 
 .title {
@@ -86,8 +86,12 @@
 .weather {
   min-width: 0;
   color: var(--app-ink);
-  border-block: 1px solid var(--app-border);
+  border: 1px solid var(--app-border);
+  border-top: 3px solid var(--app-brand);
+  border-radius: var(--app-radius-lg);
+  overflow: hidden;
   background: var(--app-bg-elevated-solid);
+  box-shadow: var(--app-shadow-1);
 }
 
 .contextHeading {
@@ -188,7 +192,7 @@
 }
 
 .eventRow {
-  min-height: 72px;
+  min-height: 96px;
   padding-block: var(--app-space-3);
   border-radius: var(--app-radius-sm);
   transition: background-color var(--app-dur-fast) var(--app-ease-out);
@@ -265,7 +269,7 @@
 
 @media (min-width: 640px) {
   .mastheadLead {
-    min-height: 88px;
+    min-height: 180px;
   }
 
   .context {
@@ -292,6 +296,10 @@
   .arrival {
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
     gap: var(--app-space-6);
+  }
+
+  .mastheadLead {
+    min-height: 244px;
   }
 
   .weather {
@@ -335,4 +343,12 @@
   font-size: 18px;
   font-weight: 650;
   line-height: 1.3;
+}
+
+/* A real advisory keeps its place at the top without burying the weather or
+   Find controls. Quiet days keep the larger owned photographic scene. */
+@media (max-width: 639px) {
+  :global(main:has([aria-label="Heads up"])) .mastheadLead {
+    min-height: 80px;
+  }
 }

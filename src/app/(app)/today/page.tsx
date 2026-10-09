@@ -280,8 +280,7 @@ export default async function HomePage() {
             <h1 className={styles.title}>{frame.title}</h1>
             <div className={styles.mastheadLead} data-today-photo-lead>
               <figure className={styles.portrait}>
-                <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" priority fill sizes="(min-width: 960px) 520px, (min-width: 768px) 720px, calc(100vw - 32px)" alt="Carroll Creek in Frederick in June 2023, photographed by Mike D." />
-                <figcaption className={styles.photoCredit}>Archive · Carroll Creek · June 2023 · Mike D</figcaption>
+                <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" priority fill sizes="(min-width: 960px) 520px, (min-width: 768px) 720px, calc(100vw - 32px)" alt="Carroll Creek in Frederick." />
               </figure>
             </div>
             <div className={styles.scope}>

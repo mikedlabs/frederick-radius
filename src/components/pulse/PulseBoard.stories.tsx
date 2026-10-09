@@ -224,7 +224,7 @@ function sharedStatusStory(level: "Urgent" | "Advisory" | "Clear" | "Unknown", c
     render: (args) => <PulseBoard {...args} hero={{ ...args.hero, countyStatus: {
       level, count, ok, active: count > 0,
       tone: level === "Urgent" ? "alert" : level === "Advisory" ? "caution" : "quiet",
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString(),
     } }} />,
     play: async ({ canvasElement }) => {
       const label = level === "Clear" ? "Clear in checked feeds" : level === "Unknown" ? "Unable to verify" : level;
@@ -241,7 +241,7 @@ export const EarlierRoadChecks: Story = {
   render: (args) => <PulseBoard {...args} hero={{ ...args.hero, allClear: false,
     leadKey: "traffic", leadIsEarlier: true, line: "A snow emergency declaration was reported.",
     sub: "Open the source details before relying on its guidance.",
-    countyStatus: { active: false, count: 0, tone: "quiet", ok: false, level: "Unknown", lastUpdated: new Date().toISOString(),
+    countyStatus: { active: false, count: 0, tone: "quiet", ok: false, level: "Unknown", lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString(),
       checks: [
         { source: "MDOT snow emergency", state: "stale", asOf: "2026-10-08T13:00:00.000Z", asOfBasis: "retrieval" },
         { source: "NWS", state: "current", asOf: "2026-10-09T11:30:00.000Z", asOfBasis: "provider" },
@@ -271,7 +271,7 @@ export const CurrentRoadLeadWithPartialChecks: Story = {
     leadKey: "traffic", leadIsEarlier: false,
     line: "MDOT reports a closure on a county route.",
     sub: "Read the official route guidance before leaving.",
-    countyStatus: { active: true, count: 1, tone: "caution", ok: false, level: "Advisory", lastUpdated: new Date().toISOString(),
+    countyStatus: { active: true, count: 1, tone: "caution", ok: false, level: "Advisory", lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString(),
       roadCheck: { verified: false, currentCount: 1, checkedAt: null, earlierCount: 1, unverifiedSources: ["MDOT snow emergency"] },
     },
   }} />,

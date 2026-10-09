@@ -143,6 +143,20 @@ describe("compact local news composition", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it.each(["javascript:alert(1)", "data:text/html,news", "//county.example/news", "https:county.example/news"])("does not turn an unsupported cached article URL into an outlink: %s", (url) => {
+    const doc = documentOf(renderToStaticMarkup(createElement(LocalNewsBriefView, {
+      news: { items: [{ ...HEADLINES[0], url }], status: "available" },
+      official: { items: [{ ...PRESS[0], url }], status: "available" },
+    })));
+    expect(doc.querySelectorAll("a[target='_blank']")).toHaveLength(0);
+    expect(doc.body.textContent).toContain(HEADLINES[0].title);
+    expect(doc.body.textContent).toContain(PRESS[0].title);
+    expect(doc.body.textContent?.match(/Article link unavailable/g)).toHaveLength(2);
+    expect(doc.querySelectorAll("time")).toHaveLength(2);
+    expect(doc.body.textContent).toContain("Local publisher");
+    expect(doc.body.textContent).toContain("Frederick County");
+  });
+
   it("keeps loading distinct from feed failure and leaves Pulse with its six-story limit", () => {
     const loading = documentOf(renderToStaticMarkup(createElement(LocalNewsLoading)));
     expect(loading.querySelector("section")?.getAttribute("aria-busy")).toBe("true");

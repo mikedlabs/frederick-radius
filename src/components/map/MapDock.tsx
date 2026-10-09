@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -473,6 +474,7 @@ export default function MapDock(props: MapDockProps) {
   const [essentialsQuick, setEssentialsQuick] = useState(false);
   const [searchPanelOpen, setSearchPanelOpen] = useState(false);
   const [searchKeyboardOpen, setSearchKeyboardOpen] = useState(false);
+  const [compactRecoveryDock, setCompactRecoveryDock] = useState(false);
   const [searchSelection, setSearchSelection] = useState({
     query: props.q,
     index: -1,
@@ -546,13 +548,17 @@ export default function MapDock(props: MapDockProps) {
   // may use a little more than half the map while it is being operated; the
   // closed state is a compact bar with an optional return link. Recovery uses
   // its measured height so that link cannot cover the heading or final result.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dockElement = dockRef.current;
     const host = dockElement?.closest<HTMLElement>(".dock-host");
     if (!dockElement || !host) return;
 
     const sizePane = () => {
-      const mapHeight = host.getBoundingClientRect().height;
+      const mapBounds = host.getBoundingClientRect();
+      const mapHeight = mapBounds.height;
+      // A two-row return/search dock leaves too little clear list space on a
+      // short phone canvas. Keep Back as a full touch target beside Search.
+      setCompactRecoveryDock(!mapAvailable && mapBounds.width < 1024 && mapHeight < 360);
       host.style.setProperty("--map-dock-height", `${dockElement.getBoundingClientRect().height}px`);
       const available = Math.max(148, mapHeight - 96);
       const minimum = mapHeight < 320 ? 148 : 280;
@@ -572,7 +578,7 @@ export default function MapDock(props: MapDockProps) {
       observer.disconnect();
       host.style.removeProperty("--map-dock-height");
     };
-  }, []);
+  }, [mapAvailable]);
 
   // Keep the thumb-positioned search stable through the initiating tap. Move
   // it to the top shelf only after the visual viewport confirms that a
@@ -1584,7 +1590,7 @@ export default function MapDock(props: MapDockProps) {
         data-search-keyboard={searchKeyboardOpen ? "true" : undefined}
         ref={dockRef}
       >
-        {searchReturnTo && !pane && !searchPanelOpen && (
+        {searchReturnTo && !compactRecoveryDock && !pane && !searchPanelOpen && (
           <a href={searchReturnTo} className="flex min-h-11 items-center gap-1.5 rounded-t-[var(--app-radius-md)] border-b px-3 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-link)", background: "var(--app-bg-elevated-solid)" }}>
             <ChevronLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
             Back to search results
@@ -1645,9 +1651,22 @@ export default function MapDock(props: MapDockProps) {
           style={{
             gridTemplateColumns: mapAvailable
               ? `minmax(0, 1fr) ${props.q.trim() ? "52px" : "80px"}`
-              : "minmax(0, 1fr)",
+              : compactRecoveryDock && searchReturnTo && !pane && !searchPanelOpen
+                ? "44px minmax(0, 1fr)"
+                : "minmax(0, 1fr)",
           }}
         >
+          {compactRecoveryDock && searchReturnTo && !pane && !searchPanelOpen && (
+            <a
+              href={searchReturnTo}
+              className="grid min-h-11 place-items-center rounded-l-[var(--app-radius-md)] border-r"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
+              title="Back to search results"
+            >
+              <ChevronLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+              <span className="sr-only">Back to search results</span>
+            </a>
+          )}
           {/* Search, folded in as the top row — the map's ONE search. */}
           <div
             ref={searchWrapRef}
@@ -1674,7 +1693,7 @@ export default function MapDock(props: MapDockProps) {
               }
             }}
           >
-            <div className="dock-search" role="search">
+            <div className="dock-search" role="search" style={compactRecoveryDock ? { height: 44 } : undefined}>
               <SearchIcon aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.2} />
               <input
                 id="map-search-input"
@@ -2834,7 +2853,9 @@ export default function MapDock(props: MapDockProps) {
                             ? props.incidentHealth.status === "unavailable"
                               ? "Unable to verify current public incident reports."
                               : props.incidentHealth.status === "stale"
-                                ? `Earlier public reports retained${incidentUpdate ? ` from ${incidentUpdate}` : ""}; unable to verify current activity.`
+                                ? (props.incidentHealth.earlierCount ?? 0) > 0
+                                  ? `Earlier public reports retained${incidentUpdate ? ` from ${incidentUpdate}` : ""}; unable to verify current activity.`
+                                  : "Unable to verify current public incident reports."
                                 : props.incidentHealth.status === "disabled"
                                   ? "Checking current public incidents."
                               : props.incidentHealth.status === "empty"

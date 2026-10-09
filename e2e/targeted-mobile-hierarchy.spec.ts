@@ -254,7 +254,7 @@ test.describe("compact page entrances", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ active: true, count: 2, tone: "alert", level: "Urgent", ok: true, lastUpdated: new Date().toISOString() }),
+        body: JSON.stringify({ active: true, count: 2, tone: "alert", level: "Urgent", ok: true, lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString() }),
       });
     });
     await page.goto("/today", { waitUntil: "domcontentloaded" });

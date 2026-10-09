@@ -139,6 +139,7 @@ const SUBLOCATION_BEFORE_LOCALITY = new RegExp(
 
 export function formatAddress(raw: string): string {
   if (!raw) return raw;
+  const numberedAddress = /^\s*\d+[A-Za-z]?(?:-\d+[A-Za-z]?)?\s+\S/.test(raw);
   return raw
     // Abbreviation + period directly before a capital: "St.Frederick".
     .replace(/\b(St|Ave|Rd|Dr|Ln|Blvd|Ct|Pl|Ter|Cir|Hwy|Pkwy)\.(?=[A-Z])/g, "$1., ")
@@ -147,11 +148,11 @@ export function formatAddress(raw: string): string {
       /\b(Street|Avenue|Road|Drive|Lane|Boulevard|Court|Place|Terrace|Circle|Highway|Parkway|Pike|Way)(?=[A-Z])/g,
       "$1, ",
     )
-    // Separate the street from a facility sublocation, including entrance
-    // and building identifiers supplied by civic calendars.
+    // A numbered address supplies evidence for a facility sublocation.
+    // Preserve venue names such as "Market Street Building".
     .replace(
       new RegExp(`\\b(Street|Avenue|Road|Drive|Lane|Boulevard|Court|Place|Terrace|Circle|Highway|Parkway|Pike|Way)(?=\\s+(?:${SUBLOCATION})\\b)`, "g"),
-      "$1,",
+      (street) => numberedAddress ? `${street},` : street,
     )
     // A civic facility identifier can run directly into the postal city.
     // Match known localities only, so "Entrance Barlow" is not split.

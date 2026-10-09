@@ -319,15 +319,15 @@
   --app-heading-rule: var(--app-border);
   --app-heading-action: var(--app-link);
   --app-list-fact-color: var(--app-ink-3);
-  --app-list-card-shadow: none;
+  --app-list-card-shadow: var(--app-shadow-1);
   --app-list-header-bg: var(--app-bg-sunken);
   --app-list-header-ink: var(--app-ink-2);
 }
 [data-app-primary-tab] .event-card--glance {
-  border-width: 0 0 1px;
-  border-radius: 0;
-  background: transparent;
-  padding: var(--app-space-3) 0;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-bg-elevated-solid);
+  padding: var(--app-space-4);
   transform: none;
 }
 [data-app-primary-tab] .eb-head {
@@ -373,6 +373,16 @@
   background: var(--app-bg-sunken);
   box-shadow: none;
 }
+
+/* Real place photographs need enough area to identify the storefront. */
+[data-app-primary-tab] .map-list-place-visual[data-photo-state="ready"] {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--app-radius-md);
+}
+
+.place-card-photo-credit { display: none; }
+button:has([data-place-card-photo]) + .place-card-photo-credit { display: block; }
 
 /* The existing wallet still raises and discloses its real saved records.
  * Neutral stock replaces the category paint, gloss, and entrance animation;

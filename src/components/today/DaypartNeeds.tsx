@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import styles from "./DaypartNeeds.module.css";
 import Link from "next/link";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import TodaySectionHeading from "@/components/today/TodaySectionHeading";
@@ -418,7 +419,7 @@ function DaypartPickCard({
   eager?: boolean;
   lead?: boolean;
 }) {
-  // Narrow the proxy request to what the card actually paints (lead 232px,
+  // Narrow the proxy request to what the card actually paints (lead up to 360px,
   // alternates 172px; proxyPhotoAtWidth doubles for DPR). The stored URL is
   // the w=800 hero, and because these render `unoptimized` (the proxy is an
   // opaque route Next cannot resize) the `sizes` hint is inert — so every
@@ -430,7 +431,7 @@ function DaypartPickCard({
   // honest broken-photo path is unchanged. Same missed-adopter fix as
   // PlaceCard's Thumb (commit 31c91814 created the helper for this bug).
   const signaledPhoto = place.photo
-    ? daypartPhotoSrc(proxyPhotoAtWidth(place.photo, lead ? 232 : 172))
+    ? daypartPhotoSrc(proxyPhotoAtWidth(place.photo, lead ? 360 : 172))
     : null;
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const showPhoto = Boolean(signaledPhoto && failedSrc !== signaledPhoto);
@@ -459,11 +460,12 @@ function DaypartPickCard({
         data-decision-id={place.slug}
         data-decision-position={lead ? "lead" : "alternative"}
         data-decision-action="open"
-        className={`group relative flex h-[7.35rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985] ${
+        className={`group ${styles.photoCard} ${lead ? styles.lead : ""} ${
           lead ? "w-full sm:w-[14.5rem] lg:w-[17.5rem]" : "w-full sm:w-[10.75rem] lg:w-[13.5rem]"
         }`}
-        style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
+        style={{ boxShadow: "var(--app-shadow-1)" }}
       >
+        <span className={styles.photoFace}>
         <Image
           src={signaledPhoto}
           alt=""
@@ -481,26 +483,20 @@ function DaypartPickCard({
           }}
           onError={() => setFailedSrc(signaledPhoto)}
         />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-          style={{
-            background:
-              "linear-gradient(to top, color-mix(in srgb, var(--app-media-ink) 84%, transparent), color-mix(in srgb, var(--app-media-ink) 36%, transparent) 46%, transparent)",
-          }}
-        />
-        <span className="relative z-10 min-w-0 px-2.5 pb-2">
+        </span>
+        <span className={styles.photoRead}>
+
           <span
             data-today-pick-name
             className="line-clamp-2 font-sans text-[14.5px] font-semibold leading-tight"
-            style={{ color: "var(--app-on-brand)" }}
+            style={{ color: "var(--app-ink)" }}
           >
             {place.name}
           </span>
           <span
             data-today-pick-context
             className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] tabular-nums"
-            style={{ color: "color-mix(in srgb, var(--app-on-brand) 86%, transparent)" }}
+            style={{ color: "var(--app-ink-2)" }}
           >
             <span
               aria-hidden
@@ -519,6 +515,7 @@ function DaypartPickCard({
             {!place.distance && place.where ? <span>· {place.where}</span> : null}
             {!place.fact && place.rating ? <span>· {place.rating.toFixed(1)}★</span> : null}
           </span>
+          {place.photoCredit && <span className={styles.credit}>Photo · {place.photoCredit}</span>}
         </span>
       </Link>
     );

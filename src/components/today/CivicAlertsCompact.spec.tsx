@@ -18,13 +18,14 @@ function situation(alerts: NwsAlert[] = []) {
   return {
     generatedAt: "2026-09-30T20:00:00.000Z",
     sources: {
-      weather: { availability: "available", freshness: "fresh", data: alerts },
-      traffic: { availability: "unavailable", freshness: "unknown", data: [] },
+      weather: { source: "nws", availability: "available", freshness: "fresh", data: alerts, asOf: "2026-09-30T20:00:00.000Z", capturedAt: "2026-09-30T20:00:00.000Z", staleAfterSeconds: 300 },
+      traffic: { source: "mdot-chart", availability: "unavailable", freshness: "unknown", data: [] },
     },
   };
 }
 
 beforeEach(() => {
+  vi.useFakeTimers(); vi.setSystemTime("2026-09-30T20:00:00.000Z");
   Object.values(providers).forEach((provider) => provider.mockReset());
   providers.situation.mockResolvedValue(situation());
   providers.roads.mockResolvedValue({ attention: [] });
@@ -32,9 +33,30 @@ beforeEach(() => {
   providers.nps.mockResolvedValue([]);
   vi.stubGlobal("fetch", vi.fn(() => { throw new Error("Unexpected live provider read in offline test"); }));
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe("compact civic alert affected areas", () => {
+  it("expires a road source using the request clock rather than a cached situation assembly", async () => {
+    vi.setSystemTime("2026-09-30T20:00:30.000Z");
+    providers.roads.mockResolvedValue({
+      generatedAt: "2026-09-30T20:00:00.000Z",
+      sources: { workZones: { available: true, checkedAt: "2026-09-30T19:54:10.000Z", asOf: "2026-09-30T20:00:00.000Z", data: [] } },
+      attention: [{ id: "cached-closure", kind: "work-zone-closure", severity: "warning", title: "US 15 work-zone closure", detail: "All lanes closed", scope: "US 15" }],
+    });
+    expect(renderToStaticMarkup(await CivicAlerts({ compact: true }))).not.toContain("US 15 work-zone closure");
+  });
+  it.each([
+    ["2026-09-30T20:00:10.000Z", false],
+    ["2026-09-30T20:00:30.000Z", false],
+    [null, false], ["invalid", false],
+    ["2026-09-30T20:00:40.000Z", true],
+  ] as const)("checks cached civic expiry %s at request time (visible=%s)", async (expiresAt, visible) => {
+    vi.setSystemTime("2026-09-30T20:00:30.000Z");
+    providers.official.mockResolvedValue({ alerts: [{ kind: "city-emergency", state: "active", active: true, title: "Frederick emergency", summary: "Follow official instructions.", expiresAt, scope: "city", url: "https://www.cityoffrederickmd.gov/AlertCenter.aspx" }] });
+    const html = renderToStaticMarkup(await CivicAlerts({ compact: true }));
+    if (visible) expect(html).toContain("Frederick emergency");
+    else expect(html).not.toContain("Frederick emergency");
+  });
   it.each([false, true])("shows only a source-verified road interruption (verified=%s), independent of another failed feed", async (verified) => {
     const checkedAt = verified ? "2026-09-30T20:00:00.000Z" : "2026-09-30T19:30:00.000Z";
     providers.roads.mockResolvedValue({

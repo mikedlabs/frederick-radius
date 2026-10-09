@@ -839,7 +839,7 @@ export async function getDeckKeys(now: Date = new Date()): Promise<DeckKey[]> {
             // The source rides with the title rather than in the figure slot:
             // "WTOP" set in the key's biggest type read like a measurement.
             lead: clamp(`${headline.title}${headline.source ? ` · ${headline.source}` : ""}`, 72),
-            trail: headline.published_at ? ageLabel(headline.published_at, now) : "Publication date unavailable",
+            trail: (headline.published_at ? ageLabel(headline.published_at, now) : undefined) ?? "Publication date unavailable",
           })),
         ),
         T,

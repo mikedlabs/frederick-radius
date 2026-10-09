@@ -22,7 +22,7 @@ function sampleStatus(initial: "ready" | "error" | "loading" | "advisory" | "qui
       : state === "quiet" ? { active: false, count: 0, tone: "quiet", level: "Clear", ok: true }
       : state === "partial" ? { active: false, count: 0, tone: "quiet", level: "Unknown", ok: false }
       : { active: true, count: 2, tone: "alert", level: "Urgent", ok: true };
-    return Promise.resolve(Response.json({ ...sample, lastUpdated: new Date().toISOString() }));
+    return Promise.resolve(Response.json({ ...sample, lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString() }));
   };
   window.fetch = fixture;
   return () => { if (window.fetch === fixture) window.fetch = original; for (const cancel of cancelPending) cancel(); changeSample = () => {}; };

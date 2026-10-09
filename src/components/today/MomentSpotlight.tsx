@@ -111,9 +111,11 @@ export default function MomentSpotlight({ moment, isDayOf }: { moment: Spotlight
             className="absolute inset-x-0 bottom-0 h-1/2"
             style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-media-ink) 76%, transparent), transparent)" }}
           />
-          <figcaption className="absolute inset-x-0 bottom-0 px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-on-brand)] sm:px-6">
-            {moment.spotlightImage.credit}
-          </figcaption>
+          {moment.spotlightImage.credit && (
+            <figcaption className="absolute inset-x-0 bottom-0 px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-on-brand)] sm:px-6">
+              {moment.spotlightImage.credit}
+            </figcaption>
+          )}
         </figure>
       )}
       {!isDayOf && (
@@ -228,12 +230,14 @@ function DayOfMomentSpotlight({ moment }: { moment: SpotlightMoment }) {
             </p>
           )}
         </div>
-        <figcaption
-          className="absolute right-3 top-3 max-w-[8.5rem] rounded-[var(--app-radius-xs)] px-2 py-1 text-right text-[8px] font-semibold uppercase leading-tight tracking-[0.1em] text-[var(--app-on-brand)] sm:right-5 sm:top-5 sm:max-w-none sm:text-[9px]"
-          style={{ background: "color-mix(in srgb, var(--app-media-ink) 58%, transparent)" }}
-        >
-          {image.credit}
-        </figcaption>
+        {image.credit && (
+          <figcaption
+            className="absolute right-3 top-3 max-w-[8.5rem] rounded-[var(--app-radius-xs)] px-2 py-1 text-right text-[8px] font-semibold uppercase leading-tight tracking-[0.1em] text-[var(--app-on-brand)] sm:right-5 sm:top-5 sm:max-w-none sm:text-[9px]"
+            style={{ background: "color-mix(in srgb, var(--app-media-ink) 58%, transparent)" }}
+          >
+            {image.credit}
+          </figcaption>
+        )}
       </figure>
 
       <div className="p-4 sm:px-6 sm:py-5">

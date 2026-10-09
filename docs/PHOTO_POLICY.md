@@ -6,6 +6,21 @@
 
 ---
 
+## October 9, 2026 owner direction: photography in discovery
+
+The owner requested a visibly more photographic app and implementation of that direction. For discovery results, this supersedes the older typographic-only defaults retained below as historical context.
+
+- Specific place results may lead with their canonical, unsuppressed photograph. Feature, answer, tile and grid cards give the image meaningful space; list and Map rows use readable thumbnails.
+- Events may use approved publisher art or a credited photograph of their resolved venue. Captions distinguish the venue from the event. Date, time, location and source remain readable.
+- The owner permits their own photographs without a visible credit or date. Today uses them as scenic context, with a descriptive place alt text and its current heading separate from the photograph. A scenic image does not establish current weather or activity. Required third-party attribution remains visible.
+- Missing, suppressed, failed or transparent images fall back to the real name and facts. An unrelated scenic image never stands in for a business or event.
+- Category navigation retains its glyphs. Source eligibility, venue matching, attribution and duplicate-photo suppression remain in force.
+- On phones, complete weather and Find actions remain reachable above the bottom navigation, including when a real advisory appears. Density rules constrain controls and copy without reducing every photograph to a small stamp.
+
+The earlier photo-removal rules are not instructions to flatten these result cards again.
+
+---
+
 ## ⚠️ Amendment — 2026-07-07 (one photo lead per events horizon group)
 
 Image audit follow-up. On /events, the feature (photo-hero) treatment was

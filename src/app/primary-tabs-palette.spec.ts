@@ -217,7 +217,7 @@ describe("primary tab palette contrast", () => {
           const container = document.createElement("div");
           document.body.append(container);
           const root = createRoot(container);
-          vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ ...summary, ok: true, lastUpdated: new Date().toISOString() })));
+          vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ ...summary, ok: true, lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString() })));
           try {
             await act(async () => { root.render(createElement(PulseIndicator)); });
             const indicator = container.querySelector<HTMLAnchorElement>("[data-pulse-indicator]");

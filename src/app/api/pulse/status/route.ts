@@ -18,12 +18,11 @@ import { getOfficialCivicAlertsSnapshot } from "@/lib/live/officialSignals";
  *   - tone:   "alert" (weather/severe-incident grade), "caution"
  *             (school/elevated-air), or "quiet" (none)
  *
- * Cached 5 min via Next's revalidate so a polled header indicator
- * doesn't hammer the source feeds. The /pulse page itself uses
- * the same underlying calls with their own cache windows, so the
- * data is consistent across surfaces.
+ * Each request rechecks the projection's clock and validity deadline. The
+ * underlying source snapshots retain their existing cache windows; no
+ * summary response cache may extend an alert beyond its accepted deadline.
  */
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const [situation, road, civic] = await Promise.all([
@@ -31,10 +30,10 @@ export async function GET() {
     getRoadIntelligenceSnapshot().catch(() => null),
     getOfficialCivicAlertsSnapshot().catch(() => null),
   ]);
-  const status = deriveCountyStatus(situation, road, civic);
+  const status = deriveCountyStatus(situation, road, civic, Date.now());
 
   return NextResponse.json(
     status,
-    { headers: { "Cache-Control": "public, max-age=60, s-maxage=300" } },
+    { headers: { "Cache-Control": "no-store" } },
   );
 }

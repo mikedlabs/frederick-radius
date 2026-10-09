@@ -49,7 +49,7 @@ describe("Pulse briefing presentation", () => {
       allClear: false,
       countyStatus: {
         active: false, count: 0, tone: "quiet", ok: false, level: "Unknown",
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString(),
         checks: [
           { source: "Maryland road feeds", state: "stale", asOf: "2026-10-08T13:00:00.000Z", asOfBasis: "retrieval" },
           { source: "NWS alerts", state: "current", asOf: "2026-10-09T11:30:00.000Z", asOfBasis: "provider" },
@@ -78,7 +78,7 @@ describe("Pulse briefing presentation", () => {
     const container = render({
       allClear: false, leadKey: "traffic", leadIsEarlier: true, line: "Snow emergency plan is active",
       sub: "Read the official restrictions before driving.",
-      countyStatus: { active: false, count: 0, tone: "quiet", ok: false, level: "Unknown", lastUpdated: new Date().toISOString(),
+      countyStatus: { active: false, count: 0, tone: "quiet", ok: false, level: "Unknown", lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString(),
         roadCheck: { verified: false, currentCount: 0, checkedAt: null, earlierCount: 1, unverifiedSources: ["MDOT snow emergency"] },
       },
     });
@@ -91,7 +91,7 @@ describe("Pulse briefing presentation", () => {
       allClear: false, leadKey: "traffic", leadIsEarlier: false,
       line: "MDOT reports a closure on a county route.",
       sub: "Read the official route guidance before leaving.",
-      countyStatus: { active: true, count: 1, tone: "caution", ok: false, level: "Advisory", lastUpdated: new Date().toISOString(),
+      countyStatus: { active: true, count: 1, tone: "caution", ok: false, level: "Advisory", lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString(),
         roadCheck: { verified: false, currentCount: 1, checkedAt: null, earlierCount: 1, unverifiedSources: ["MDOT snow emergency"] },
       },
     });
@@ -102,7 +102,7 @@ describe("Pulse briefing presentation", () => {
   });
   it("does not present an invalid source timestamp as a check date", () => {
     const container = render({ countyStatus: {
-      active: false, count: 0, tone: "quiet", ok: false, level: "Unknown", lastUpdated: new Date().toISOString(),
+      active: false, count: 0, tone: "quiet", ok: false, level: "Unknown", lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString(),
       checks: [{ source: "NWS alerts", state: "unavailable", asOf: "invalid", asOfBasis: "provider" }],
     } });
     const checks = container.querySelector("[data-pulse-source-checks]");

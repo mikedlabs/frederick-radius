@@ -55,7 +55,7 @@ export default function ItineraryButton({
       className={`tap-44 relative grid h-9 w-9 shrink-0 place-items-center rounded-full border transition-colors ${className}`}
       style={{
         color: isSaved ? "var(--app-link)" : "var(--app-ink-2)",
-        background: "var(--app-surface)",
+        background: "var(--app-bg-elevated-solid)",
         borderColor: "var(--app-border)",
       }}
     >

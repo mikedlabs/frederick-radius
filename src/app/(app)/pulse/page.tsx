@@ -32,7 +32,8 @@ import {
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { getLocalHeadlinesResult, type NewsHeadlinesResult } from "@/lib/integrations/news";
-import LocalNewsBriefView from "@/components/news/LocalNewsBriefView";
+import LocalNewsBriefView, { type OfficialNewsResult } from "@/components/news/LocalNewsBriefView";
+import { pulseNewsTile } from "@/components/news/pulse-news-tile";
 import { getCivicPressReleasesResult, policeReleases, featuredPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
 import { getMarcBoard, getMarcAlerts, marcClockMinutes } from "@/lib/integrations/marcTrains";
 import { airQualityObservedAt, pickWorstAqi, type AqiObservation } from "@/lib/integrations/airnow";
@@ -67,7 +68,7 @@ import {
   verifiedRoadAttention,
 } from "@/lib/live/roadIntelligenceModel";
 import { getOfficialSignalsSnapshot } from "@/lib/live/officialSignals";
-import { isLocallyRelevantCivicAlert } from "@/lib/integrations/official-alert-feeds";
+import { currentLocalCivicAlerts } from "@/lib/integrations/official-alert-feeds";
 import { isUnexpiredWeatherAlert, sourceDisplayState } from "@/lib/live/currentSituationModel";
 import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
 import PulseBoard, {
@@ -385,7 +386,6 @@ export default async function PulsePage() {
     withTimeout(getCampDavidTfr(), FEED_MS, null),
   ]);
 
-  const news = newsResult.items;
   const fixit = fixitResult.data;
   const fixitOpenCount = fixitResult.openCount;
   const fixitAcknowledgedCount = fixitResult.acknowledgedCount;
@@ -401,7 +401,7 @@ export default async function PulsePage() {
   const sourceIsCurrent = (
     source: { availability: string; freshness: string },
   ) => source.availability === "available" && source.freshness === "fresh";
-  const countyStatus = deriveCountyStatus(situation, roadIntelligence, officialSignals.civic);
+  const countyStatus = deriveCountyStatus(situation, roadIntelligence, officialSignals.civic, requestNow.getTime());
   const trafficSource = situation.sources.traffic;
   const powerSource = situation.sources.power;
   const schoolsSource = situation.sources.schools;
@@ -509,8 +509,7 @@ export default async function PulsePage() {
   const activeAlerts = alertResult.alerts
     .filter((alert) => isUnexpiredWeatherAlert(alert, nowMs))
     .sort(compareAlertPriority);
-  const officialCivicAlerts = officialSignals.civic.alerts
-    .filter(isLocallyRelevantCivicAlert)
+  const officialCivicAlerts = currentLocalCivicAlerts(officialSignals.civic.alerts, requestNow.getTime())
     .sort(
       (left, right) =>
         Number(right.kind === "city-emergency") -
@@ -918,12 +917,13 @@ export default async function PulsePage() {
   // the board; they now live INSIDE the dashboard as tap-to-open tiles, so the
   // whole page is one unified, visual grid. Built server-side like every tile.
   const civicNews = press.filter((item) => item.lane === "civic");
+  const officialNews: OfficialNewsResult = {
+    items: civicNews,
+    status: !pressResult.available || pressResult.data.sourceHealth.unavailable.length === 2
+      ? "unavailable" : civicAvailable ? "available" : "partial",
+  };
   const newsBody = (
-    <LocalNewsBriefView news={newsResult} headlineLimit={6} showHeading={false} official={{
-      items: civicNews,
-      status: !pressResult.available || pressResult.data.sourceHealth.unavailable.length === 2
-        ? "unavailable" : civicAvailable ? "available" : "partial",
-    }} />
+    <LocalNewsBriefView news={newsResult} headlineLimit={6} showHeading={false} official={officialNews} />
   );
 
   const policeBody = (
@@ -2074,22 +2074,7 @@ export default async function PulsePage() {
         } as PulseTile]
       : []),
     // ── Reference feeds, first-class status tiles (were stacked text sections).
-    {
-      key: "news",
-      label: "In the news",
-      iconName: "Newspaper",
-      countLabel: news.length > 0 ? `${news.length} ${news.length === 1 ? "story" : "stories"}`
-        : civicNews.length > 0 ? "Official updates"
-        : newsResult.status === "unavailable" ? "Unavailable" : "No headlines returned",
-      accent: "var(--app-cool)",
-      active: false,
-      attention: false,
-      degraded: newsResult.status !== "available" || !civicAvailable,
-      kind: "status",
-      sourceLabel: "Google News · City & county newsrooms",
-      peek: news[0]?.title ?? civicNews[0]?.title,
-      body: newsBody,
-    },
+    pulseNewsTile(newsResult, officialNews, newsBody),
     {
       key: "police",
       label: "Police & safety",

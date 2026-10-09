@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createElement } from "react";
+import { act, createElement, useLayoutEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -24,6 +24,7 @@ vi.mock("@/components/ui/Sheet", () => ({ default: () => null }));
 import { GET } from "@/app/api/pulse/status/route";
 import PulseIndicator from "@/components/nav/PulseIndicator";
 import PulseBoard from "./PulseBoard";
+import { PulseStatusLabel } from "./PulseFreshness";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const NOW = "2026-10-08T13:00:00.000Z";
@@ -110,6 +111,36 @@ describe("County status API, visible pill and Pulse masthead", () => {
     expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Unable to verify");
     expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unverified");
     expect(fetchMock).toHaveBeenCalledTimes(2); // Existing five-minute poll only.
+  });
+
+  it("expires the mounted masthead and header at the accepted source deadline between polls", async () => {
+    const situation = buildCurrentSituationSnapshot({ sources: sources([alert("Flash Flood Warning")], false), roadFusion: { incidents: [], matchedChartIncidentIds: [], unmatchedChartIncidentIds: [] }, now: NOW });
+    const summary = { ...deriveCountyStatus(situation, road, civic), validUntil: new Date(Date.parse(NOW) + 7_000).toISOString() };
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(summary)); vi.stubGlobal("fetch", fetchMock);
+    await act(async () => root.render(createElement("div", null,
+      createElement(PulseIndicator),
+      createElement(PulseBoard, { hero: { countyStatus: summary, allClear: false, line: "Published warning.", sub: "Source checks retain their times.", renderedAt: Date.now() }, chips: [], tiles: [] }),
+    )));
+    expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Urgent");
+    await act(async () => vi.advanceTimersByTimeAsync(6_999));
+    expect(container.querySelector("[data-pulse-desktop-state]")?.textContent).toBe("Urgent");
+    await act(async () => vi.advanceTimersByTimeAsync(1));
+    expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Unable to verify");
+    expect(container.querySelector("[data-pulse-desktop-state]")?.textContent).toBe("Unable to verify");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rechecks a deadline that passes between render and passive-effect setup", async () => {
+    const situation = buildCurrentSituationSnapshot({ sources: sources([], false), roadFusion: { incidents: [], matchedChartIncidentIds: [], unmatchedChartIncidentIds: [] }, now: NOW });
+    const expires = Date.parse(NOW) + 7_000;
+    const summary = { ...deriveCountyStatus(situation, road, civic), validUntil: new Date(expires).toISOString() };
+    function CrossDeadline() {
+      useLayoutEffect(() => { vi.setSystemTime(expires); }, []);
+      return createElement(PulseStatusLabel, { countyStatus: summary, status: "Clear in checked feeds", canClaimCurrent: true, renderedAt: Date.parse(NOW), color: "var(--app-ink)" });
+    }
+    await act(async () => root.render(createElement(CrossDeadline)));
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Unable to verify");
   });
 
   it("never reuses an old render clock to call newly supplied stale cache data Clear", async () => {

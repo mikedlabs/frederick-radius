@@ -26,6 +26,19 @@ async function openReport() {
   return marker;
 }
 describe("Map public report occurrence versus source check", () => {
+  it.each(["missing check time", "invalid check time", "missing availability"] as const)("keeps a recent report historical with %s despite a new assembly time", async (missing) => {
+    const data = snapshot("2026-10-09T15:30:00.000Z");
+    data.items[0].updates = 2;
+    if (missing === "missing availability") delete data.scannerAvailable;
+    else data.scannerCheckedAt = missing === "invalid check time" ? "unreadable" : null;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => data }));
+    await act(async () => root.render(createElement(LiveIncidents, { show: true, onHealth: health })));
+    const marker = await openReport();
+    expect(health).toHaveBeenLastCalledWith(expect.objectContaining({ status: "unavailable", count: 0, earlierCount: 1 }));
+    expect(marker.dataset.stale).toBe("true");
+    expect(host.textContent).not.toContain("Active");
+    expect(host.textContent).toContain("current activity is unverified");
+  });
   it("keeps a 90-minute report as earlier history while the successful source check stays current", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => snapshot("2026-10-09T14:30:00.000Z") }));
     await act(async () => root.render(createElement(LiveIncidents, { show: true, onHealth: health })));

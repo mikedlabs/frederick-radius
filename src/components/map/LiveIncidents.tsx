@@ -100,13 +100,13 @@ export default function LiveIncidents({
       const cached = incidentsRef.current;
       const snapshot = snapshotRef.current;
       const timestamp = snapshot?.scannerCheckedAt ?? snapshot?.updatedAt;
-      const sourceAge = Date.now() - Date.parse(timestamp ?? "");
-      const verified = !failedRef.current && snapshot?.scannerAvailable !== false && Number.isFinite(sourceAge) && sourceAge >= -5 * 60_000 && sourceAge <= SCANNER_SOURCE_CHECK_MAX_AGE_MS;
+      const sourceAge = Date.now() - Date.parse(snapshot?.scannerCheckedAt ?? "");
+      const verified = !failedRef.current && snapshot?.scannerAvailable === true && Number.isFinite(sourceAge) && sourceAge >= -5 * 60_000 && sourceAge <= SCANNER_SOURCE_CHECK_MAX_AGE_MS;
       setSourceVerified(verified);
       const count = verified ? countRecentPublicReports(cached, Date.now()) : 0;
       const health = liveLayerHealth({ source: "FrederickScanner", count,
         earlierCount: cached.length - count, reportedCount: snapshot?.reportedCount, notShownCount: snapshot?.notShownCount,
-        unavailable: !snapshot || snapshot.scannerAvailable === false || !Number.isFinite(sourceAge) || sourceAge < -5 * 60_000,
+        unavailable: !snapshot || snapshot.scannerAvailable !== true || !Number.isFinite(sourceAge) || sourceAge < -5 * 60_000,
         timestamp,
         timestampBasis: snapshot?.scannerCheckedAt ? "checked" : "snapshot",
         maxAgeMs: SCANNER_SOURCE_CHECK_MAX_AGE_MS,

@@ -2,6 +2,7 @@ import { ChevronRight, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import type { NewsHeadlinesResult } from "@/lib/integrations/news";
 import type { CivicPressItem } from "@/lib/integrations/civic-press";
+import { newsArticleUrl } from "@/lib/news-article-url";
 import styles from "./LocalNewsBrief.module.css";
 
 export type OfficialNewsResult = {
@@ -41,18 +42,23 @@ function Publication({ value }: { value: string | null }) {
 function NewsLink({ title, source, url, publishedAt, lead = false }: {
   title: string; source: string; url: string; publishedAt: string | null; lead?: boolean;
 }) {
-  return (
-    <a className={styles.story} href={url} target="_blank" rel="noopener noreferrer">
-      <span className={styles.storyText}>
-        <span className={lead ? styles.lead : styles.title}>{title}</span>
-        <span className={styles.byline}>
-          <span className={styles.publisher}>{source}</span>
-          <Publication value={publishedAt} />
-        </span>
+  const href = newsArticleUrl(url);
+  const content = (
+    <span className={styles.storyText}>
+      <span className={lead ? styles.lead : styles.title}>{title}</span>
+      <span className={styles.byline}>
+        <span className={styles.publisher}>{source}</span>
+        <Publication value={publishedAt} />
+        {!href && <span>Article link unavailable</span>}
       </span>
+    </span>
+  );
+  return href ? (
+    <a className={styles.story} href={href} target="_blank" rel="noopener noreferrer">
+      {content}
       <ExternalLink aria-hidden="true" className={styles.outlink} strokeWidth={1.8} />
     </a>
-  );
+  ) : <div className={styles.story}>{content}</div>;
 }
 
 export function LocalNewsLoading() {

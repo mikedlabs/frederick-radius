@@ -207,6 +207,10 @@ describe("cleanVenueName", () => {
     expect(cleanVenueName("Brewer's Alley")).toBe("Brewer's Alley");
   });
 
+  it("preserves a street-named building as a venue rather than an address", () => {
+    expect(cleanVenueName("Market Street Building")).toBe("Market Street Building");
+  });
+
   it("repairs a civic address and room concatenated into the locality", () => {
     expect(
       cleanVenueName("140 W Patrick Street Conference Room CFrederick"),

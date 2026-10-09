@@ -15,7 +15,7 @@ for (const viewport of [
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: new Date().toISOString() }),
+        body: JSON.stringify({ active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString() }),
       });
     });
     await page.goto("/compass", {
@@ -90,7 +90,7 @@ for (const status of [
   test(`TopBar keeps ${status.label} visible on a phone`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.route("**/api/pulse/status", async (route) => {
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ lastUpdated: new Date().toISOString(), ...status.payload }) });
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString(), ...status.payload }) });
     });
     await page.goto("/today", { waitUntil: "domcontentloaded" });
     const header = page.locator("header").first();
@@ -113,7 +113,7 @@ test("TopBar keeps Checking visible until a valid quiet report arrives", async (
   await page.route("**/api/pulse/status", async (route) => {
     requested = true;
     await held;
-    await route.fulfill({ json: { active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: new Date().toISOString() } });
+    await route.fulfill({ json: { active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString() } });
   });
   try {
     await page.goto("/today", { waitUntil: "domcontentloaded" });

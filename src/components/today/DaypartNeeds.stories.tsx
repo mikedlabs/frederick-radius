@@ -36,3 +36,17 @@ export const OpeningSoon: Story = {
     rows: [{ ...row, picks: [], openingSoon: { slug: "story-opening-soon", name: "Sample coffee place", rating: null, confidence: "confirmed", fact: "Opens at 9am.", where: "Frederick" } }],
   },
 };
+
+export const PhotographLedPlace: Story = {
+  args: {
+    variant: "full",
+    rows: [{
+      category: "outdoors", label: "Parks", href: "/places?category=outdoors",
+      picks: [{
+        slug: "carroll-creek-linear-park-frederick", name: "Carroll Creek Linear Park",
+        photo: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
+        rating: null, confidence: "unconfirmed", fact: "Hours are not confirmed.", where: "Frederick",
+      }],
+    }],
+  },
+};

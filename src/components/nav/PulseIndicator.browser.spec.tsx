@@ -11,7 +11,7 @@ vi.mock("./AppTransitionLink", () => ({ default: (props: Record<string, unknown>
 } }));
 import PulseIndicator, { PULSE_STATUS_TIMEOUT_MS } from "./PulseIndicator";
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-const quiet = { active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: "2026-10-07T03:00:00.000Z" };
+const quiet = { active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: "2026-10-07T03:00:00.000Z", validUntil: "2026-10-07T03:06:00.000Z" };
 const alerts = { ...quiet, active: true, count: 2, tone: "alert", level: "Urgent" };
 function response(payload: unknown): Response { return { ok: true, json: async () => payload } as Response; }
 function deferred<T>() { let resolve!: (value: T) => void; let reject!: (reason: unknown) => void; const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
@@ -28,7 +28,7 @@ describe("PulseIndicator status transport", () => {
     await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); vi.unstubAllGlobals();
   });
   it("marks a failed later poll unavailable instead of retaining a current all-clear", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: "2026-10-07T03:00:00.000Z" }) }).mockRejectedValueOnce(new Error("offline"));
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: "2026-10-07T03:00:00.000Z", validUntil: quiet.validUntil }) }).mockRejectedValueOnce(new Error("offline"));
     vi.stubGlobal("fetch", fetchMock);
     await act(async () => root.render(createElement(PulseIndicator)));
     expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Clear in checked feeds; no active alerts");
@@ -54,6 +54,10 @@ describe("PulseIndicator status transport", () => {
     ["unsupported tone", { ...quiet, tone: "safe" }],
     ["quiet positive report", { ...alerts, tone: "quiet" }],
     ["invalid timestamp", { ...quiet, lastUpdated: "unknown" }],
+    ["missing deadline", { ...quiet, validUntil: undefined }],
+    ["unknown deadline", { ...quiet, validUntil: null }],
+    ["invalid deadline", { ...quiet, validUntil: "unverified" }],
+    ["expired source deadline", { ...quiet, validUntil: quiet.lastUpdated }],
     ["absent payload", null],
   ])("rejects %s without promoting it to all-clear", async (_label, payload) => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(payload)));
@@ -64,7 +68,7 @@ describe("PulseIndicator status transport", () => {
   });
   it("bounds a delayed body and ignores its late outcome, then clears stale on valid recovery", async () => {
     const body = deferred<unknown>();
-    const fetchMock = vi.fn().mockResolvedValueOnce(response(alerts)).mockResolvedValueOnce({ ok: true, json: () => body.promise }).mockImplementationOnce(async () => response({ ...quiet, lastUpdated: new Date().toISOString() }));
+    const fetchMock = vi.fn().mockResolvedValueOnce(response(alerts)).mockResolvedValueOnce({ ok: true, json: () => body.promise }).mockImplementationOnce(async () => response({ ...quiet, lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString() }));
     vi.stubGlobal("fetch", fetchMock);
     await act(async () => root.render(createElement(PulseIndicator)));
     await act(async () => vi.advanceTimersByTimeAsync(5 * 60 * 1000));
@@ -99,7 +103,7 @@ describe("PulseIndicator status transport", () => {
   });
   it("does no hidden work, aborts an old body and checks again when visible", async () => {
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
-    const body = deferred<unknown>(); const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: () => body.promise }).mockImplementationOnce(async () => response({ ...quiet, lastUpdated: new Date().toISOString() })); vi.stubGlobal("fetch", fetchMock);
+    const body = deferred<unknown>(); const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: () => body.promise }).mockImplementationOnce(async () => response({ ...quiet, lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString() })); vi.stubGlobal("fetch", fetchMock);
     await act(async () => root.render(createElement(PulseIndicator)));
     await act(async () => vi.advanceTimersByTimeAsync(10 * 60 * 1000)); expect(fetchMock).not.toHaveBeenCalled();
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
@@ -171,6 +175,19 @@ describe("PulseIndicator status transport", () => {
     expect(container.querySelector("a")?.getAttribute("aria-label")).toContain("Earlier report had 2 alerts; current alerts are unverified");
   });
 
+  it.each([quiet, alerts])("expires an accepted source deadline before the next scheduled poll", async (sample) => {
+    const payload = { ...sample, validUntil: new Date(Date.now() + 10_000).toISOString() };
+    const fetchMock = vi.fn().mockResolvedValue(response(payload)); vi.stubGlobal("fetch", fetchMock);
+    await act(async () => root.render(createElement(PulseIndicator)));
+    expect(container.querySelector("a")?.getAttribute("data-pulse-state")).toBe("ready");
+    await act(async () => vi.advanceTimersByTimeAsync(9_999));
+    expect(container.querySelector("a")?.getAttribute("data-pulse-state")).toBe("ready");
+    await act(async () => vi.advanceTimersByTimeAsync(1));
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toContain("Unable to verify");
+    if (sample.active) expect(container.querySelector("a")?.getAttribute("aria-label")).toContain("Earlier report had 2 alerts");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("preserves the existing bounded future clock tolerance", async () => {
     const payload = { ...quiet, lastUpdated: new Date(Date.now() + 5 * 60 * 1000).toISOString() };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(payload)));
@@ -186,7 +203,7 @@ describe("PulseIndicator status transport", () => {
     await act(async () => vi.advanceTimersByTimeAsync(5 * 60 * 1000));
     expect(container.querySelector("a")?.className.split(/\s+/)).toContain("inline-flex");
     expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Checking");
-    await act(async () => body.resolve({ ...quiet, lastUpdated: new Date().toISOString() }));
+    await act(async () => body.resolve({ ...quiet, lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString() }));
     expect(container.querySelector("a")?.className.split(/\s+/)).toContain("hidden");
     expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Clear");
   });

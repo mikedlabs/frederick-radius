@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type ComponentProps,
@@ -550,7 +551,7 @@ export default function CompassHub() {
   const [recentHrefs, setRecentHrefs] = useState<string[]>([]);
   const [pinNotice, setPinNotice] = useState("");
   const [hydrated, setHydrated] = useState(false);
-  const deckLiveKeys = useDeckLiveKeys();
+  const deckLiveKeys = useDeckLiveKeys(deckView !== null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -1128,11 +1129,10 @@ function RecentTools({
  *
  * Compass sits on top of eleven live feeds and used to state no live fact at
  * all — every row was a fixed registry sentence, which is why the page read
- * as a table of contents. This is deliberately ONE fetch, not the poll the
- * old DeckBoard ran: Compass is a navigation index a person passes through,
- * not a dashboard they leave open, and each upstream integration behind the
- * route carries its own revalidate window so the call is usually a cache
- * read. It is equally deliberately NOT awaited in the server component: the
+ * as a table of contents. One initial fetch can refresh stale readings when
+ * the person returns to the foreground or opens the deck. There is no
+ * background polling; upstream integrations retain their own cache windows.
+ * It is deliberately NOT awaited in the server component: the
  * route fans out to twelve integrations behind a 6s ceiling, and blocking a
  * navigation index on that would be a worse regression than the silence.
  *
@@ -1231,23 +1231,53 @@ export function liveLineForIntent(
   return null;
 }
 
-export function useDeckLiveKeys(): readonly DeckLiveKey[] {
+function deckKeyWithSnapshot(key: DeckLiveKey, readAt?: string): DeckLiveKey {
+  const providerEnd = key.validUntil === undefined ? Infinity : Date.parse(key.validUntil);
+  const end = Math.min(providerEnd, Date.parse(readAt ?? "") + COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS);
+  return { ...key, snapshotAt: readAt, validUntil: Number.isFinite(end) ? new Date(end).toISOString() : undefined };
+}
+
+export function useDeckLiveKeys(open = false): readonly DeckLiveKey[] {
   const [snapshot, setSnapshot] = useState<{ keys: DeckLiveKey[]; readAt?: string }>({ keys: [] });
   const [now, setNow] = useState(() => Date.now());
+  const refreshRef = useRef<(() => void) | null>(null);
   useEffect(() => {
-    const ctrl = new AbortController();
-    fetch("/api/deck", { signal: ctrl.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((data: { keys?: DeckLiveKey[]; readAt?: string }) => {
+    let alive = true;
+    let ctrl: AbortController | undefined;
+    let inFlight = false;
+    let lastAttempt = -Infinity;
+    let accepted: { keys: DeckLiveKey[]; readAt?: string } = { keys: [] };
+    const load = async () => {
+      if (!alive || inFlight) return;
+      inFlight = true;
+      lastAttempt = Date.now();
+      ctrl = new AbortController();
+      try {
+        const response = await fetch("/api/deck", { signal: ctrl.signal });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json() as { keys?: DeckLiveKey[]; readAt?: string };
+        if (!alive) return;
+        accepted = { keys: Array.isArray(data.keys) ? data.keys : [], readAt: data.readAt };
         setNow(Date.now());
-        setSnapshot({ keys: Array.isArray(data.keys) ? data.keys : [], readAt: data.readAt });
-      })
-      .catch(() => {
+        setSnapshot(accepted);
+      } catch {
         // The rows keep their registry sentences. A degraded deck costs the
-        // page its live garnish, never its function.
-      });
-    return () => ctrl.abort();
+        // page its live garnish, never its function or a fresh check time.
+      } finally { inFlight = false; }
+    };
+    const refreshIfNeeded = () => {
+      const clock = Date.now();
+      // Coalesce focus/visibility/open events and bound repeated failed checks.
+      if (document.visibilityState !== "visible" || clock - lastAttempt < 60_000) return;
+      if (accepted.keys.length === 0 || accepted.keys.some((key) => !currentDeckKey(deckKeyWithSnapshot(key, accepted.readAt), clock))) void load();
+    };
+    refreshRef.current = refreshIfNeeded;
+    void load();
+    window.addEventListener("focus", refreshIfNeeded);
+    document.addEventListener("visibilitychange", refreshIfNeeded);
+    return () => { alive = false; ctrl?.abort(); refreshRef.current = null; window.removeEventListener("focus", refreshIfNeeded); document.removeEventListener("visibilitychange", refreshIfNeeded); };
   }, []);
+  useEffect(() => { if (open) refreshRef.current?.(); }, [open]);
   useEffect(() => {
     const tick = () => setNow(Date.now());
     const interval = window.setInterval(tick, 30_000);
@@ -1257,10 +1287,7 @@ export function useDeckLiveKeys(): readonly DeckLiveKey[] {
     return () => { window.clearInterval(interval); if (expiry !== undefined) window.clearTimeout(expiry); document.removeEventListener("visibilitychange", tick); };
   }, [snapshot, now]);
   return snapshot.keys.map((key) => {
-    const assembled = Date.parse(snapshot.readAt ?? "");
-    const providerEnd = key.validUntil === undefined ? Infinity : Date.parse(key.validUntil);
-    const end = Math.min(providerEnd, assembled + COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS);
-    const timed = { ...key, snapshotAt: snapshot.readAt, validUntil: Number.isFinite(end) ? new Date(end).toISOString() : undefined };
+    const timed = deckKeyWithSnapshot(key, snapshot.readAt);
     return { ...timed, status: currentDeckKey(timed, now) ? "ok" : "unavailable" };
   });
 }

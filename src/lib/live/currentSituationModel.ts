@@ -166,6 +166,14 @@ function sourceIsFresh(source: SourceEnvelope<unknown>): boolean {
   return source.availability === "available" && source.freshness === "fresh";
 }
 
+/** Cached freshness can expire, but only a new source read may improve it.
+ * Reuse the envelope policy without changing its retrieval or capture time. */
+export function sourceFreshnessAt(source: SourceEnvelope<unknown>, now: number): SourceFreshness {
+  if (!Number.isFinite(now)) return "unknown";
+  if (source.freshness !== "fresh") return source.freshness;
+  return sourceEnvelope({ ...source, capturedAt: now }).freshness;
+}
+
 /**
  * Preserve the difference between a current source, a failed/stale source, and
  * an integration that is deliberately not connected. Presentation layers must

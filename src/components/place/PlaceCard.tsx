@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
+import PlaceCardPhoto, { PlaceCardPhotoCredit } from "./PlaceCardPhoto";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { usePlacePhoto } from "@/components/place/usePlacePhoto";
@@ -171,7 +173,8 @@ function Thumb({
     place.google_photo_url,
     lazyPhoto,
   );
-  if (photoUrl) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (photoUrl && failedSrc !== photoUrl) {
     // Narrow the proxy URL to the size actually painted. places-client.json
     // stores one URL per place at w=800, the size a hero needs, and proxy
     // responses render `unoptimized` because Next cannot resize an opaque
@@ -179,7 +182,12 @@ function Thumb({
     // 40px thumbnail was downloading the full 800px asset, dozens of times
     // per scroll across every list surface. PlaceMedallion has done this for
     // a while; the card thumbs were simply missed.
-    const src = proxyPhotoAtWidth(photoUrl, size);
+    let src = proxyPhotoAtWidth(photoUrl, size);
+    if (src.startsWith("/api/place-photo")) {
+      const url = new URL(src, "https://frederickradius.local");
+      url.searchParams.set("fallback", "signal");
+      src = `${url.pathname}?${url.searchParams.toString()}`;
+    }
     return (
       <div
         ref={anchorRef}
@@ -195,13 +203,18 @@ function Thumb({
           placeholder="blur"
           blurDataURL={PAPER_CREAM_BLUR}
           className="object-cover"
+          onLoad={(event) => {
+            if (event.currentTarget.naturalWidth <= 1 || event.currentTarget.naturalHeight <= 1) setFailedSrc(photoUrl);
+          }}
+          onError={() => setFailedSrc(photoUrl)}
         />
       </div>
     );
   }
+  const fallbackSize = Math.min(size, 46);
   return (
-    <div ref={anchorRef} className="shrink-0" style={{ height: size, width: size }}>
-      <CategoryMark category={category} color={color} size={size} />
+    <div ref={anchorRef} className="shrink-0" style={{ height: fallbackSize, width: fallbackSize }}>
+      <CategoryMark category={category} color={color} size={fallbackSize} />
     </div>
   );
 }
@@ -280,8 +293,9 @@ export default function PlaceCard({
           aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
+          <PlaceCardPhoto place={place} />
           <div className="flex items-start gap-3 p-4 pl-5">
-            <Thumb place={place} category={place.category} color={color} size={52} lazyPhoto={lazyPhoto} />
+            {!place.google_photo_url && <Thumb place={place} category={place.category} color={color} size={52} lazyPhoto={lazyPhoto} />}
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
                 <h3 className="min-w-0 flex-1 truncate font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -317,6 +331,7 @@ export default function PlaceCard({
             </div>
           </div>
         </button>
+        <PlaceCardPhotoCredit place={place} />
         <div className="absolute right-2.5 top-2.5 z-10">
           <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
         </div>
@@ -345,9 +360,10 @@ export default function PlaceCard({
           aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
+          <PlaceCardPhoto place={place} />
           <div className="space-y-2.5 p-4">
             <div className="flex items-start gap-3">
-              <Thumb place={place} category={place.category} color={color} size={48} lazyPhoto={lazyPhoto} />
+              {!place.google_photo_url && <Thumb place={place} category={place.category} color={color} size={48} lazyPhoto={lazyPhoto} />}
               <div className="min-w-0 flex-1">
                 {/* pr-9 clears the absolutely-positioned SaveButton (36px at
                     right-2.5) so the ml-auto distance never renders under it. */}
@@ -399,6 +415,7 @@ export default function PlaceCard({
             ) : null}
           </div>
         </button>
+        <PlaceCardPhotoCredit place={place} />
         <div className="absolute right-2.5 top-2.5 z-10">
           <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
         </div>
@@ -425,9 +442,10 @@ export default function PlaceCard({
           aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
+          <PlaceCardPhoto place={place} width={244} />
           <div className="space-y-2 p-3.5 pb-4">
             <div className="flex items-center gap-2.5">
-              <Thumb place={place} category={place.category} color={color} size={40} lazyPhoto={lazyPhoto} />
+              {!place.google_photo_url && <Thumb place={place} category={place.category} color={color} size={40} lazyPhoto={lazyPhoto} />}
               <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color }}>
                 {cat?.name ?? place.category}
               </span>
@@ -461,6 +479,7 @@ export default function PlaceCard({
           </div>
           <div aria-hidden className="h-[3px] w-full" style={{ background: color }} />
         </button>
+        <PlaceCardPhotoCredit place={place} />
         {showSource && (
           <div className="absolute right-2 top-2 z-10">
             <SourceBadge place={place} size="sm" />
@@ -484,10 +503,11 @@ export default function PlaceCard({
           aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
+          <PlaceCardPhoto place={place} width={180} />
           <div className="flex items-start gap-2.5 p-2.5">
-            <Thumb place={place} category={place.category} color={color} size={40} lazyPhoto={lazyPhoto} />
+            {!place.google_photo_url && <Thumb place={place} category={place.category} color={color} size={40} lazyPhoto={lazyPhoto} />}
             <div className="min-w-0 flex-1 space-y-0.5">
-              <h3 className="line-clamp-2 text-[14px] font-semibold leading-[1.2] tracking-tight" style={{ color: "var(--app-ink)" }}>
+              <h3 className="line-clamp-2 text-[15px] font-semibold leading-[1.2] tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {place.name}
               </h3>
               <p className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
@@ -507,6 +527,7 @@ export default function PlaceCard({
           </div>
           <div aria-hidden className="h-[2px] w-full" style={{ background: color }} />
         </button>
+        <PlaceCardPhotoCredit place={place} />
       </article>
     );
   }
@@ -551,7 +572,7 @@ export default function PlaceCard({
         className="absolute inset-0 z-0 rounded-[var(--app-radius-lg)] text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-inset"
       />
       <div className="pointer-events-none relative z-10 self-center">
-        <Thumb place={place} category={place.category} color={color} size={46} lazyPhoto={lazyPhoto} />
+        <Thumb place={place} category={place.category} color={color} size={compact ? 46 : 72} lazyPhoto={lazyPhoto} />
       </div>
       <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col justify-center">
         <div className="flex items-start gap-2">

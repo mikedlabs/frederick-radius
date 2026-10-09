@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligenceModel";
 import { MDOT_WZDX_SOURCE_URL } from "@/lib/integrations/mdot-wzdx";
 import type { CountyStatusSummary } from "@/lib/pulse/county-status";
@@ -62,7 +62,8 @@ function checkedRoadSnapshot() {
 /** Existing consumers retain their exact core contract while the source
  * provenance is additive and independently asserted at the HTTP boundary. */
 async function legacyStatus(response: Response, currentRoadCount = 0) {
-  const { checks, roadCheck, ...core }: CountyStatusSummary = await response.json();
+  const { checks, roadCheck, validUntil, ...core }: CountyStatusSummary = await response.json();
+  expect(validUntil).toBe("2026-07-28T16:05:00.000Z");
   expect(checks).toHaveLength(10);
   expect(checks).toContainEqual({ source: "NWS", state: "current", asOf: NOW, asOfBasis: "retrieval" });
   expect(checks).toContainEqual({ source: "Maryland WZDx", state: "current", asOf: NOW, asOfBasis: "retrieval" });
@@ -72,6 +73,8 @@ async function legacyStatus(response: Response, currentRoadCount = 0) {
 
 describe("GET /api/pulse/status", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(NOW));
     vi.resetAllMocks();
     mocks.getRoadIntelligenceSnapshot.mockResolvedValue(checkedRoadSnapshot());
     mocks.getOfficialCivicAlertsSnapshot.mockResolvedValue({
@@ -81,14 +84,16 @@ describe("GET /api/pulse/status", () => {
     });
   });
 
-  it("preserves the legacy status response and cache contract", async () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("preserves the legacy status fields without caching their current classification", async () => {
     mocks.getCurrentSituationSnapshot.mockResolvedValue(snapshot());
 
     const response = await GET();
 
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe(
-      "public, max-age=60, s-maxage=300",
+      "no-store",
     );
     expect(await legacyStatus(response)).toEqual({
       active: false,

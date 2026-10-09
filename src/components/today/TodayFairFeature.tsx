@@ -84,7 +84,7 @@ export default function TodayFairFeature({
           data-today-fair-plan={status ? "saved" : "new"}
           data-fair-feature-tone="briefing" className={styles.fairLink}>
           <Image src="/images/fair/fairgrounds-night-mike-d-480.webp"
-            alt="The Ferris wheel at The Great Frederick Fair, photographed by Mike D in 2024."
+            alt="The Ferris wheel at The Great Frederick Fair."
             width={76} height={76} sizes="76px" className={styles.fairPhoto} />
           <span className="min-w-0">
             <span className={styles.fairEyebrow}>{copy.eyebrow}</span>
@@ -103,7 +103,7 @@ export default function TodayFairFeature({
         <Link href={href} prefetch={false} data-today-fair-feature={phase} data-today-fair-plan={status ? "saved" : "new"}
           className="group grid items-stretch overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
           style={{ borderColor: "var(--app-border)" }}>
-          <Image src="/images/fair/fairgrounds-night-mike-d-960.webp" alt="The Ferris wheel at The Great Frederick Fair, photographed by Mike D in 2024." width={960} height={540} sizes="(min-width: 1024px) 420px, 100vw" className="aspect-[16/9] w-full object-cover object-[76%_center]" />
+          <Image src="/images/fair/fairgrounds-night-mike-d-960.webp" alt="The Ferris wheel at The Great Frederick Fair." width={960} height={540} sizes="(min-width: 1024px) 420px, 100vw" className="aspect-[16/9] w-full object-cover object-[76%_center]" />
           <span className="min-w-0 self-center p-4">
             <span className="block text-[11px] leading-normal" style={{ color: "var(--app-ink-2)" }}>{copy.eyebrow}</span>
             <span className="mt-1 block text-[26px] font-bold leading-tight tracking-[-0.025em]">{status ? headline : "The Fair opens September 18"}</span>

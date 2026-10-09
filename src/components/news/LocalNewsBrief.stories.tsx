@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, within } from "storybook/test";
+import PulseBoard from "@/components/pulse/PulseBoard";
+import { pulseNewsTile } from "./pulse-news-tile";
 import LocalNewsBriefView, { LocalNewsLoading } from "./LocalNewsBriefView";
 
 const meta = {
@@ -123,5 +125,51 @@ export const LoadingHeadlines: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("region", { name: "Local news" })).toHaveAttribute("aria-busy", "true");
     await expect(canvas.getByText("Local headlines are loading.")).toBeVisible();
+  },
+};
+
+
+export const UnsupportedCachedArticleLinks: Story = {
+  args: {
+    news: { status: "available", items: [{ ...meta.args.news.items[0], url: "data:text/html,unsupported" }] },
+    official: { status: "available", items: [{ ...meta.args.official.items[0], url: "//county.example/unsupported" }] },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(meta.args.news.items[0].title)).toBeVisible();
+    await expect(canvas.getByText("Published Oct 8, 2026, 10:15 AM EDT")).toBeVisible();
+    await expect(canvasElement.querySelector("a[target='_blank']")).toBeNull();
+    await userEvent.click(canvas.getByText("Official updates"));
+    await expect(canvas.getAllByText("Article link unavailable")).toHaveLength(2);
+    await expect(canvas.getByText(meta.args.official.items[0].title)).toBeVisible();
+  },
+};
+
+export const PartialPulseNews: Story = {
+  parameters: { nextjs: { appDirectory: true } },
+  render: (args) => {
+    const news = { ...args.news, status: "partial" as const };
+    const official = { ...args.official, status: "partial" as const };
+    const body = <LocalNewsBriefView news={news} official={official} headlineLimit={6} showHeading={false} />;
+    // Production AppMain and the Pulse workshop put this briefing in main,
+    // so its header is page content rather than a second document banner.
+    return <main><PulseBoard hero={{ allClear: true, line: "No major disruption is reported.",
+      sub: "Open the source details for context.", renderedAt: Date.parse("2026-10-09T20:00:00.000Z") }}
+      chips={[]} tiles={[pulseNewsTile(news, official, body)]} /></main>;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByText("Source status", { exact: true }));
+    const row = canvas.getByRole("button", { name: /^In the news: Partial data/ });
+    await expect(row).toBeEnabled();
+    await expect(row).toHaveTextContent("3 stories");
+    await expect(row).not.toHaveTextContent("Feed unavailable");
+    await userEvent.click(row);
+    const page = within(canvasElement.ownerDocument.body);
+    const drawer = await page.findByRole("dialog", { name: "In the news" });
+    await expect(within(drawer).getByText(meta.args.news.items[0].title)).toBeVisible();
+    await expect(within(drawer).getByText("Some local headline feeds are unavailable. Available stories are shown below.")).toBeVisible();
+    await userEvent.click(within(drawer).getByText("Official updates", { exact: true }));
+    await expect(within(drawer).getByText(meta.args.official.items[0].title)).toBeVisible();
   },
 };
