@@ -1,0 +1,49 @@
+{
+  "recordedCandidate": "e9faca91b8a9d1dd10cdcc06da14c49d7568fd22",
+  "status": "Eight published qualified follow-ups; final local/build/mobile and independent peer review complete. No additional untracked finding within reviewed coverage; not live.",
+  "issues": [
+    {
+      "title": "Serialize device Saved writes across tabs",
+      "url": "https://github.com/mikedlabs/frederick-radius/issues/1766",
+      "evidence": "Source-derived whole-array cross-tab race; no actual concurrent-tab collision reproduced."
+    },
+    {
+      "title": "Keep initial follow controls aligned with verified bootstrap",
+      "url": "https://github.com/mikedlabs/frederick-radius/issues/1767",
+      "evidence": "Inherited source trace plus controlled bootstrap story; production occurrence unverified."
+    },
+    {
+      "title": "Align primary Map fallback gutters with shared spacing",
+      "url": "https://github.com/mikedlabs/frederick-radius/issues/1768",
+      "evidence": "Source plus rendered provider-disabled fallback; successful provider map behavior not implied."
+    },
+    {
+      "title": "Complete effective mobile targets for Saved titles and footer",
+      "url": "https://github.com/mikedlabs/frederick-radius/issues/1769",
+      "evidence": "Actual light/dark five-point event-wallet title and footer link probes; place-wallet equivalent is source-derived only."
+    },
+    {
+      "title": "Keep Map fallback row actions clear of the search dock",
+      "url": "https://github.com/mikedlabs/frederick-radius/issues/1770",
+      "evidence": "Partial dock overlap at one scroll position; all sampled rows have a passing sample after ordinary scrolling, so unreachable content was not demonstrated."
+    },
+    {
+      "title": "Make event-detail facts and links readable in dark mode",
+      "url": "https://github.com/mikedlabs/frederick-radius/issues/1771",
+      "evidence": "Settled final dark visual and source-derived contrast for factual/category copy and See full page; not a rendered AA measurement."
+    },
+    {
+      "title": "Restore meaningful contrast checks in mobile accessibility verification",
+      "url": "https://github.com/mikedlabs/frederick-radius/issues/1772",
+      "evidence": "Actual contrast TypeError skips and undetermined gradient-background incompletes; placeholder ratios are not measured failures or passes."
+    },
+    {
+      "title": "Reduce empty space in collapsed Saved event cards",
+      "url": "https://github.com/mikedlabs/frederick-radius/issues/1773",
+      "evidence": "Settled final light/dark closed event card retains inherited 186px minimum after decoration is hidden; over 120px blank space, not loading, missing data, or a failed save."
+    }
+  ],
+  "replacementCandidate": "49aa28ca3135a561601e23b7e101e433475838fc",
+  "verifiedFinalCandidate": "49aa28ca3135a561601e23b7e101e433475838fc",
+  "canonicalPublishedManifestFileSha256": "b6ac77b0bbc9ba711fffd00fe60706819a212c0266a16e50d715821f0479026f"
+}
