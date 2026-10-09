@@ -9020,6 +9020,35 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
   min-height: 44px !important;
 }
 
+/* The browse map's attribution toggle is a quiet outline "i" in Ink 3, not
+   a black filled mark on an elevated card (map audit MAP-09). The 44px
+   button stays the hit area and the credits panel keeps its surface when
+   opened. The Mapbox wordmark is left exactly as Mapbox ships it. */
+.dock-host .mapboxgl-ctrl-attrib.mapboxgl-compact:not(.mapboxgl-compact-show) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.dock-host .mapboxgl-ctrl-attrib-button {
+  border: 0 !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  background-position: 50% 50%;
+  background-repeat: no-repeat;
+  box-shadow: none !important;
+}
+.dock-host .mapboxgl-ctrl-attrib-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 20px;
+  height: 20px;
+  background-color: var(--app-ink-3);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'%3E%3Ccircle cx='10' cy='10' r='8.2'/%3E%3Cpath d='M10 9.2v5'/%3E%3Ccircle cx='10' cy='6.1' r='0.5' fill='black'/%3E%3C/svg%3E") center / 20px 20px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'%3E%3Ccircle cx='10' cy='10' r='8.2'/%3E%3Cpath d='M10 9.2v5'/%3E%3Ccircle cx='10' cy='6.1' r='0.5' fill='black'/%3E%3C/svg%3E") center / 20px 20px no-repeat;
+  pointer-events: none;
+}
+
 .radius-hover-popup,
 .radius-hover-popup .mapboxgl-popup-tip {
   pointer-events: none;
@@ -9097,15 +9126,6 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
   .dock-host:has(.dock[data-search-keyboard="true"]) .mapboxgl-ctrl-bottom-left,
   .dock-host:has(.dock[data-search-keyboard="true"]) .mapboxgl-ctrl-bottom-right {
     top: calc(max(8px, env(safe-area-inset-top, 0px)) + 62px) !important;
-  }
-
-  .dock-host .mapboxgl-ctrl-attrib-button {
-    border: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
-    border-radius: 11px;
-    background-color: color-mix(in srgb, var(--app-bg-elevated-solid) 84%, transparent);
-    background-position: 50% 50%;
-    background-repeat: no-repeat;
-    box-shadow: 0 5px 16px rgba(35, 29, 22, 0.1);
   }
 
   .dock-host .mapboxgl-ctrl-attrib.mapboxgl-compact-show {

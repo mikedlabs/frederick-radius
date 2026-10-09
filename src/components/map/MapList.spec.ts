@@ -248,6 +248,31 @@ describe("map list decision telemetry", () => {
     expect(html).toContain('data-decision-id="alive-at-five-2026-08-20"');
   });
 
+  it("never prints an event distance measured from the map center", () => {
+    const event = {
+      slug: "alive-at-five-2026-08-20",
+      title: "Alive @ Five",
+      starts_at: "2026-08-20T21:00:00.000Z",
+      venue_name: "Carroll Creek",
+      lng: -77.41,
+      lat: 39.41,
+    } as EventPin;
+    const render = (userLoc: { lng: number; lat: number } | null) =>
+      renderToStaticMarkup(
+        createElement(MapList, {
+          places: [],
+          events: [event],
+          userLoc,
+          sortOrigin: { lng: -77.5, lat: 39.45 },
+          onPick: () => undefined,
+          onPickEvent: () => undefined,
+        }),
+      );
+
+    expect(render(null)).not.toContain("map-list-dist");
+    expect(render({ lng: -77.42, lat: 39.41 })).toContain("map-list-dist");
+  });
+
   it("never labels a row with anything but a public id", () => {
     const html = renderToStaticMarkup(
       createElement(MapList, {
