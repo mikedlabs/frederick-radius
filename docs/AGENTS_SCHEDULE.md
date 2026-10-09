@@ -56,6 +56,15 @@ manual run. All cron times are UTC; Frederick County
 is UTC−4 during daylight saving time and UTC−5 during standard time. Source
 Watch is manual-only while its unchanged-repeat proof is pending.
 
+Source Intelligence persists validated main-branch state checkpoints alongside
+its Actions cache. Missing established state stops paid runs; explicit first
+initialization is allowed only when history has no earlier provider reservations.
+Its manual `tavily-recover`
+choice reconstructs conservative Scout reservations from complete workflow
+history without a provider request or review issue; it never resets budgets,
+changes these schedules, or fabricates a Firecrawl comparison baseline. See
+`docs/SOURCE_INTELLIGENCE.md` for the recovery procedure.
+
 ---
 
 ## Vercel cron vs GitHub Actions — which runs what, and why
