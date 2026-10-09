@@ -101,7 +101,7 @@ describe("TonightExperience", () => {
     expect(html.indexOf("View the active alert")).toBeLessThan(html.indexOf("Start here"));
   });
 
-  it("keeps the credited Frederick photograph outside place links and out of other towns", () => {
+  it("keeps the owned Frederick photograph unlabelled, outside place links and out of other towns", () => {
     const townHtml = renderToStaticMarkup(createElement(TonightExperience, { data: data() }));
     const countyHtml = renderToStaticMarkup(createElement(TonightExperience, {
       data: data({ town: null, scope: "county", scopeLabel: "Frederick County", title: "Tonight in Frederick County" }),
@@ -109,16 +109,18 @@ describe("TonightExperience", () => {
 
     expect(townHtml).not.toContain("SUMMER%20CARROL%20CREEK");
     expect(townHtml).not.toContain("<figure");
-    expect(countyHtml).toContain("Carroll Creek, Frederick");
-    expect(countyHtml).toContain("Archive photograph by Mike D. · June 2023");
+    expect(countyHtml).toContain('alt="Carroll Creek in Frederick."');
+    expect(countyHtml).not.toContain("Archive photograph");
+    expect(countyHtml).not.toContain("Mike D");
+    expect(countyHtml).not.toContain("June 2023");
+    expect(countyHtml).not.toContain("<figcaption");
     const archivePhoto = AERIAL_MANIFEST.find((photo) =>
       photo.src === "/images/seasons/summer/SUMMER CARROL CREEK.jpg");
     expect(archivePhoto?.takenAt?.slice(0, 7)).toBe("2023-06");
-    expect(countyHtml).toContain("Carroll Creek in Frederick in June 2023");
     expect(countyHtml.indexOf("data-tonight-area-photo")).toBeLessThan(countyHtml.indexOf("</header>"));
     expect(countyHtml.indexOf("data-tonight-area-photo")).toBeLessThan(countyHtml.indexOf("data-tonight-lead"));
     expect(countyHtml).not.toContain("Pick a place for the evening.");
-    expect(countyHtml).toMatch(/<figure[^>]*>.*<figcaption>/);
+    expect(countyHtml).toMatch(/<figure[^>]*>.*<img/);
     expect(countyHtml).not.toMatch(/<a[^>]*>[^<]*<figure/);
   });
 

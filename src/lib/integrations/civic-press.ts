@@ -20,6 +20,7 @@
  * announcements remain in the local-updates drawer.
  */
 
+import { newsArticleUrl } from "@/lib/news-article-url";
 import { createSingleFlight } from "@/lib/single-flight";
 import { unstable_cache } from "next/cache";
 import { isPromotedDataBuild } from "@/lib/data-release-mode";
@@ -114,7 +115,7 @@ function parseFeed(
   while ((m = re.exec(xml)) !== null) {
     const block = m[1];
     const title = tagText("title", block);
-    const url = tagText("link", block);
+    const url = newsArticleUrl(tagText("link", block));
     const pubDate = tagText("pubDate", block);
     if (!title || !url) continue;
     const when = pubDate ? new Date(pubDate) : null;
@@ -225,7 +226,7 @@ const getCivicPressReleasesCached = unstable_cache(
       loadCivicPressReleases,
     ),
   [
-    "civic-press-adapter-v1",
+    "civic-press-adapter-v2",
     process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
   ],
   { revalidate: 900, tags: ["civic-press"] },

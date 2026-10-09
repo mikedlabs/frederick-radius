@@ -309,6 +309,7 @@ import { getOpenStatus, isOpenNow } from "@/lib/hours";
 import { groupMapEvents, type MapEventGroup } from "./mapContent";
 import { resolveMapLocationSeed } from "./mapLocationSeed";
 import type { LiveIncidentSignal } from "@/lib/live/incidentSnapshot";
+import { countRecentPublicReports } from "@/lib/live/incidentFreshness";
 import { buildMapSpotContext } from "./mapSpotContext";
 import { encodePolyline } from "./polyline";
 import {
@@ -4391,13 +4392,7 @@ export default function AppMap({
   );
   const recentIncidentCount = useMemo(
     () =>
-      orderedLiveIncidents.filter(
-        (incident) => {
-          const ageMs =
-            discoveryClockMs - Date.parse(incident.lastReportedAt);
-          return ageMs >= 0 && ageMs <= 60 * 60_000;
-        },
-      ).length,
+      countRecentPublicReports(orderedLiveIncidents, discoveryClockMs),
     [discoveryClockMs, orderedLiveIncidents],
   );
   const latestIncidentSummary = useMemo(() => {
@@ -4657,6 +4652,8 @@ export default function AppMap({
               userLoc={userLoc}
               sortOrigin={userLoc}
               failureMode
+              searchState={q.trim().length < 2 ? "ready" : searchUnavailableQuery === q.trim() ? "unavailable" : searchSettledQuery !== q.trim() ? "pending" : "ready"}
+              onRetrySearch={() => setSearchAttempt((attempt) => attempt + 1)}
               onPick={openPlaceSheet}
               onPickEvent={(event) => router.push(`/events/${event.slug}`)}
             />
@@ -4751,7 +4748,7 @@ export default function AppMap({
             on a healthy map nothing shows here now. */}
         {(osmLoading || osmError) && (
           <div
-            className={`absolute left-3 z-[var(--z-map-control)] inline-flex items-center gap-2 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur ${
+            className={`absolute left-3 z-[var(--z-map-control)] inline-flex items-center gap-2 rounded-full bg-[var(--app-bg-elevated-solid)] px-2.5 py-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur ${
               dock ? "top-[168px]" : "top-3"
             }`}
             style={{ color: "var(--app-ink-2)" }}
@@ -4784,14 +4781,14 @@ export default function AppMap({
               // Capped so a long venue name can't stretch the chip into the
               // top-right zoom controls; the name itself truncates within it.
               className="map-top-action inline-flex max-w-[calc(100%-7rem)] items-center gap-2 px-3.5 text-[12px] font-semibold"
-              style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.95)", color: "var(--app-ink-2)" }}
+              style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)", color: "var(--app-ink-2)" }}
             >
-              <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-cool)" }} aria-hidden />
+              <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-link)" }} aria-hidden />
               <span className="truncate">{routeInfo.name}</span>
               <span style={{ color: "var(--app-ink-3)" }}>
                 {routeInfo.dist} · {routeInfo.eta}
               </span>
-              <span style={{ color: "var(--app-cool)" }}>Directions ↗</span>
+              <span style={{ color: "var(--app-link)" }}>Directions ↗</span>
             </a>
           </div>
         )}
@@ -4802,7 +4799,7 @@ export default function AppMap({
         {visibleAerial && !dock && (
           <div
             className="absolute bottom-[116px] left-1/2 z-[var(--z-map-control)] flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-full border px-1.5 py-1.5 shadow-[var(--app-shadow-2)] backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.95)" }}
+            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)" }}
             role="group"
             aria-label="Aerial photos by season"
           >
@@ -4816,9 +4813,12 @@ export default function AppMap({
                   onClick={() => { setAerialSeason(s.key); haptic("light"); }}
                   aria-pressed={on}
                   className="tap-44-y inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold transition active:scale-[0.96]"
-                  style={{ background: on ? s.color : "transparent", color: on ? "#fff" : "var(--app-ink-2)" }}
+                  style={{
+                    background: on ? s.key === "all" ? "var(--app-media-ink)" : s.color : "transparent",
+                    color: on ? s.key === "spring" || s.key === "summer" ? "var(--app-media-ink)" : "var(--app-on-brand)" : "var(--app-ink-2)",
+                  }}
                 >
-                  <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: on ? "#fff" : s.color }} />
+                  <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: on ? "currentColor" : s.color }} />
                   {s.label}
                   {on && <span className="tabular-nums font-medium" style={{ opacity: 0.85 }}>{count}</span>}
                 </button>

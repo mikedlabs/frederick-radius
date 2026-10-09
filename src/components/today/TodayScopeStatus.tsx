@@ -174,7 +174,7 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
             disabled={location.status === "loading"}
             className="tap-44 inline-flex h-11 shrink-0 items-center rounded-full px-2.5 text-[13px] font-semibold transition active:scale-[0.98] disabled:opacity-55"
             style={{
-              color: "var(--app-brand-press)",
+              color: "var(--app-link)",
               background: "var(--app-brand-tint-6)",
             }}
           >

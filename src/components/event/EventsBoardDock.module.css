@@ -1,0 +1,35 @@
+/* Keep the existing filter sheet opaque and the selected scope readable. */
+.pane:global(.eb-pane) {
+  background: var(--app-bg-elevated-solid);
+  top: calc(100% - var(--events-toolbar-offset, 0px));
+}
+.scroll:global(.eb-pane-scroll) {
+  overscroll-behavior-y: contain;
+}
+.toolbar[data-filter-paused="true"] {
+  /* Retain its flow height so opening at the page bottom cannot clamp
+     scrollY. The opaque pane covers this paused row. */
+  visibility: hidden;
+}
+.copy:global(.eb-filter-copy) {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  line-height: 1.25;
+}
+.context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--spacing);
+  color: var(--app-ink-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+.query {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--app-ink-3);
+  font-size: 11px;
+}

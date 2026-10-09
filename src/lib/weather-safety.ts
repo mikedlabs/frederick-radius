@@ -25,13 +25,15 @@ export type OutdoorSafetyHold = {
 };
 
 export const AIRNOW_FREDERICK_URL = "https://www.airnow.gov/?city=Frederick&state=MD&country=USA";
+export const NWS_ALERTS_MAX_CHECK_AGE_MS = 15 * 60 * 1_000;
+export const NWS_ALERTS_FUTURE_TOLERANCE_MS = 2 * 60 * 1_000;
 
 /** A successful cached alert response is current only within the same window
  * used by direct outdoor-condition answers. Missing timestamps stay unknown. */
 export function isFreshNwsAlertsResult(result: NwsAlertsResult, now = new Date()): boolean {
   if (!result.available || !result.checkedAt) return false;
   const age = now.getTime() - Date.parse(result.checkedAt);
-  return Number.isFinite(age) && age >= -2 * 60 * 1_000 && age <= 15 * 60 * 1_000;
+  return Number.isFinite(age) && age >= -NWS_ALERTS_FUTURE_TOLERANCE_MS && age <= NWS_ALERTS_MAX_CHECK_AGE_MS;
 }
 
 /** Evaluate alert lifecycle at the caller's exact time, including cached rows. */

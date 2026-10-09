@@ -28,7 +28,7 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
 });
 
-test("keeps the credited area photo and real recommendation useful at phone and desktop sizes", async ({ page }, testInfo) => {
+test("keeps the owned area photo and real recommendation useful at phone and desktop sizes", async ({ page }, testInfo) => {
   await page.goto(origin + route);
   await expect(page.getByRole("heading", { name: "Dinner tonight", exact: true })).toBeVisible();
   const lead = page.locator("[data-tonight-lead]");
@@ -37,8 +37,11 @@ test("keeps the credited area photo and real recommendation useful at phone and 
   for (const [width, height] of [[320, 740], [375, 812], [390, 844], [430, 932], [1440, 1000]]) {
     await page.setViewportSize({ width, height });
     const photo = page.locator("[data-tonight-area-photo]");
-    await expect(photo).toContainText("Carroll Creek, Frederick");
-    await expect(photo).toContainText("Archive photograph by Mike D. · June 2023");
+    await expect(photo.locator("img")).toHaveAttribute("alt", "Carroll Creek in Frederick.");
+    await expect(photo.locator("figcaption")).toHaveCount(0);
+    await expect.poll(() => photo.locator("img").evaluate((image) =>
+      image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0 && image.naturalHeight > 0,
+    )).toBe(true);
     const box = (await photo.boundingBox())!;
     expect(box.y + box.height).toBeLessThan(height - 80);
     await expect.poll(() => page.evaluate(() =>

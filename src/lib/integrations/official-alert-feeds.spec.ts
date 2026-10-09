@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getOfficialCivicAlertsResult,
+  currentLocalCivicAlerts,
   isLocallyRelevantCivicAlert,
   OFFICIAL_CIVIC_ALERT_FEEDS,
   officialCivicAlertExpiresAt,
@@ -19,6 +20,15 @@ const EMPTY_RSS = `<?xml version="1.0"?>
 </channel></rss>`;
 
 describe("official CivicPlus alert parsing", () => {
+  it("rechecks a parsed current alert after its ceiling passes inside the shared cache window", () => {
+    const parsed = parseOfficialAlertFeed(`<rss><channel><item><title>Frederick emergency</title><link>https://www.cityoffrederickmd.gov/AlertCenter.aspx?AID=24</link><pubDate>2026-09-16T20:00:10.000Z</pubDate><description>Follow official instructions.</description></item></channel></rss>`, OFFICIAL_CIVIC_ALERT_FEEDS[0], "2026-09-30T20:00:00.000Z");
+    expect(parsed.alerts).toHaveLength(1);
+    expect(currentLocalCivicAlerts(parsed.alerts, Date.parse("2026-09-30T20:00:00.000Z"))).toHaveLength(1);
+    expect(currentLocalCivicAlerts(parsed.alerts, Date.parse("2026-09-30T20:00:10.000Z"))).toEqual([]);
+    expect(currentLocalCivicAlerts(parsed.alerts, Date.parse("2026-09-30T20:00:30.000Z"))).toEqual([]);
+    expect(parsed.alerts[0].provenance.retrievedAt).toBe("2026-09-30T20:00:00.000Z");
+    for (const expiresAt of [null, "", "invalid"]) expect(currentLocalCivicAlerts([{ ...parsed.alerts[0], expiresAt }], Date.parse("2026-09-30T20:00:00.000Z"))).toEqual([]);
+  });
   it("treats a valid empty current-alert channel as available", () => {
     const parsed = parseOfficialAlertFeed(
       EMPTY_RSS,

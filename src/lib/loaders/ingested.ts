@@ -262,6 +262,8 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
 /** ISR-cached (1h) — the cron refreshes the data daily, hourly is plenty. */
 export const getIngestedSeries = unstable_cache(
   async (limit = 4000) => loadUpcoming(limit),
+  // v11: shared normalization repairs sublocation/locality boundaries and
+  // title possessives in cached series copy.
   // v9: retain FCPL occurrence lifecycle from the existing raw source row.
   // v7: cleanTitle now strips trailing embedded weekday/date/time fragments
   // and de-shouts ALL-CAPS titles — the cached series titles change.
@@ -269,7 +271,7 @@ export const getIngestedSeries = unstable_cache(
   // shape change must invalidate the persisted cache (the #509 lesson). The
   // deploy SHA is a second key segment so a forgotten version bump still
   // auto-busts on deploy.
-  ["ingested-series-v10", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["ingested-series-v11", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 3600, tags: ["ingested-events"] }
 );
 

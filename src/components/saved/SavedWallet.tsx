@@ -9,36 +9,27 @@
  * mono fact chosen by value (walletFacts.lipFact). Tapping a lip raises the
  * card (accordion, one at a time); the place name and the explicit action
  * open its page.
- * A raised card keeps its brand-hued face (name, tier, the owner's field
- * note, a gold deal tag) and tears out a cream SPECIMEN-LABEL STUB below —
- * perforation and all — where the dense mono ledger (rating, price, today's
- * hours, town, kind, saved date) prints in ink on paper, plus the actions.
- * Field-guide plates carried their caption on the label, not on the plate.
- *
- * Cards wear the BUSINESS's own brand hue (place-hues.json, extracted from
- * its Google photo at build time) when we have one, else the category's
- * wallet ground — always as a DARKENED gradient so cream text clears AA.
- * Vermilion stays on its diet: only the live dot and the live card ring.
+ * Neutral card faces and hairlines keep place details readable in both
+ * themes. Only real live conditions receive a status accent.
  *
  * Pure presentation over already-hydrated, already-sorted PlaceCardData.
  * Raise state can be CONTROLLED by the parent (openSlug/onOpenSlug) so the
  * On-now running line above the deck can raise a card; uncontrolled use
  * keeps the old internal accordion.
  */
-import { useState, type CSSProperties } from "react";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import placeHues from "@/data/place-hues.json";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { googleMapsDirections } from "@/lib/integrations/deeplinks";
-import { useToggleFollow } from "@/hooks/useFollows";
+import { useFollowMutationState, useToggleFollow } from "@/hooks/useFollows";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
-import { BRAND } from "@/lib/brand";
 import { withBrowseReturnTo } from "@/lib/browse-return";
 import {
   distanceLabel,
@@ -66,52 +57,14 @@ function motifClass(category: string): string {
   return `sw-m-${MOTIF_BY_FAMILY[category] ?? "swirl"}`;
 }
 
-/**
- * Per-BUSINESS brand hue, extracted from the place's own Google photo at
- * build time (scripts/build-place-hues.ts) — a real wallet's cards wear
- * their issuer's brand, not their spending category's. Every value is
- * pre-clamped to the wallet's jewel-tone register and pre-verified AA for
- * cream text on the darkened gradient ground. `_doc` rides along in the
- * JSON; the string index keeps it out of the way.
- */
-const PLACE_HUES = placeHues as Record<string, string>;
-
-/**
- * Wallet card GROUND, per place category — a deliberately more saturated,
- * jewel-toned set than the app's quiet category inks (categories.ts), used
- * when a place has no extracted brand hue. Families stay recognizable
- * (food warm, outdoors green, arts purple, civic blue) but each member
- * gets its own shade; every value clears WCAG AA for cream text on the
- * darkened gradient ground (verified: worst case 4.86:1).
- */
-const WALLET_GROUND: Record<string, string> = {
-  // Food & drink — warm reds, ambers, a wine, a rose
-  restaurant: "#C23A22", pizza: "#D2481F", bakery: "#C77A1E", coffee: "#6F4A2F",
-  bar: "#8A2433", brewery: BRAND.colors.functionalAmber, winery: "#7A2D5A", distillery: "#A6602E",
-  "ice-cream": "#C85C86", market: "#3E8E41", agritourism: "#6B8E23",
-  // Outdoors — greens + a playful teal for the kids' surface
-  park: "#315A43", trail: "#1B4638", playground: "#2E8B8B", golf: "#2E7D5B",
-  // Arts & culture — a purple family, split
-  gallery: "#8E2C6F", music: "#A63F5C", museum: "#5B3A8F", theater: "#7A2E9F",
-  library: "#285C8A", family: "#D98324",
-  // Civic — a blue family, split; parking/services stay graphite
-  civic: "#285D73", government: "#3E6488", transit: "#2A7A9A", parking: "#55534E",
-  "public-safety": "#962633", worship: "#5B3A8F",
-  // Shops, services, wellness, stay
-  shopping: BRAND.colors.functionalAmber, antiques: "#8B5A2B", "book-store": "#6B4E8A",
-  services: "#4A4A48", wellness: "#A83A4A", yoga: "#B85C6E",
-  lodging: "#3E5A6E", pharmacy: "#2E7D6B",
-};
 
 function Card({
   place,
-  index,
   open,
   savedAt,
   onToggle,
 }: {
   place: PlaceCardData;
-  index: number;
   open: boolean;
   savedAt?: string;
   onToggle: () => void;
@@ -124,9 +77,12 @@ function Card({
   // stores update and the card leaves the deck without a reload. One tap, no
   // confirm: re-saving is a single tap on the place page, so the mistake
   // costs less than a dialog on every intended removal.
-  const toggleFollow = useToggleFollow(place.slug, "saved_wallet");
-  const hue =
-    PLACE_HUES[place.slug] ?? WALLET_GROUND[place.category] ?? cat?.color ?? "#285D73";
+  const failureDescriptionRef = useRef<string | null>(null);
+  const toggleFollow = useToggleFollow(place.slug, "saved_wallet", (description) => { failureDescriptionRef.current = description; });
+  const mutation = useFollowMutationState(place.slug);
+  const removingRef = useRef(false);
+  const [removing, setRemoving] = useState(false);
+  const busy = removing || mutation === "saving" || mutation === "removing";
   const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name ?? null;
   const kind = cat?.name ?? "Place";
   const fact = lipFact(place, town);
@@ -156,21 +112,7 @@ function Card({
   return (
     <div
       className={`sw-card${open ? " is-open" : ""}${live ? " sw-live-card" : ""}`}
-      style={
-        {
-          // The card wears its brand hue as a darkened gradient so cream text
-          // always clears AA — never the raw hue, never near-black (owner:
-          // "can the cards not be so dark"). The dark stop mixes toward Ink,
-          // the palette's own dark, at a 40% hue floor: the old literal
-          // #0c0a06 was darker than Ink itself, off-palette, and exactly the
-          // "so dark" the owner flagged. The calm comes from the deck
-          // starting fully CLOSED (no card raised until tapped), not from
-          // draining the color.
-          background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, var(--app-ink)), color-mix(in srgb, ${hue} 40%, var(--app-ink)))`,
-          // Stagger index for the deal-in entrance (see globals.css sw-deal).
-          "--sw-i": index,
-        } as CSSProperties
-      }
+      style={{ background: "var(--app-bg-elevated-solid)" }}
     >
       {/* Full-card artwork — a DISTINCT motif per category family (swirl / facet
           / emboss / topo / strata / grid). The motif and the watermark glyph
@@ -200,7 +142,7 @@ function Card({
               place={place}
               size={32}
               shape="circle"
-              surface="inverse"
+              surface="paper"
             />
             <span className="sw-name">{place.name}</span>
           </Link>
@@ -316,15 +258,29 @@ function Card({
           </a>
           <button
             type="button"
-            onClick={() => {
-              haptic("light");
-              void toggleFollow();
+            onClick={async () => {
+              if (removingRef.current) return;
+              removingRef.current = true;
+              setRemoving(true);
+              failureDescriptionRef.current = null;
+              try {
+                const stillSaved = await toggleFollow(false);
+                if (failureDescriptionRef.current !== null || stillSaved) throw new Error("Removal not confirmed");
+                haptic("light");
+              } catch {
+                toast.error("Could not remove from Saved", { description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again." });
+              } finally {
+                setRemoving(false);
+                removingRef.current = false;
+              }
             }}
+            disabled={busy}
+            aria-busy={busy}
             className="sw-act-quiet"
             style={{ marginLeft: "auto" }}
             aria-label={`Remove ${place.name} from saved`}
           >
-            Remove
+            {busy ? mutation === "saving" && !removing ? "Saving…" : "Removing…" : "Remove"}
           </button>
         </div>
       </div>
@@ -358,7 +314,7 @@ export default function SavedWallet({
   const openValid = places.some((p) => p.slug === current);
   return (
     <div className="sw-stack" role="list" aria-label="Saved places, as a card wallet">
-      {places.map((p, i) => {
+      {places.map((p) => {
         // Start fully CLOSED — no card raised until the user taps one (owner:
         // "cards should start closed"). A card only opens via an explicit tap
         // or the parent's controlled openSlug (the On-now line).
@@ -378,7 +334,6 @@ export default function SavedWallet({
           >
             <Card
               place={p}
-              index={i}
               open={open}
               savedAt={savedAt?.[p.slug]}
               onToggle={() => {

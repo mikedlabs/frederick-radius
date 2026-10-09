@@ -84,6 +84,17 @@ export function isLocallyRelevantCivicAlert(
   return FREDERICK_PLACE_RE.test(`${alert.title} ${alert.summary}`);
 }
 
+/** Recheck cached feed membership against its publication-safety ceiling.
+ * An expired or unreadable ceiling cannot earn a current alert; this does
+ * not claim the underlying notice has ended at the canonical source. */
+export function currentLocalCivicAlerts(alerts: readonly OfficialCivicAlert[], now: number): OfficialCivicAlert[] {
+  if (!Number.isFinite(now)) return [];
+  return alerts.filter((alert) => {
+    const expiry = Date.parse(alert.expiresAt ?? "");
+    return alert.active === true && alert.state === "active" && Number.isFinite(expiry) && expiry > now && isLocallyRelevantCivicAlert(alert);
+  });
+}
+
 export const OFFICIAL_CIVIC_ALERT_FEEDS: readonly FeedDefinition[] = [
   {
     id: "city-emergency",

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Activity } from "lucide-react";
 import { usePathname } from "next/navigation";
 import AppTransitionLink from "./AppTransitionLink";
+import { countyStatusLabel, countyStatusSnapshotDeadline, COUNTY_STATUS_FUTURE_TOLERANCE_MS, type CountyStatusSummary } from "@/lib/pulse/county-status";
 import { createAbortDeadline } from "@/lib/promise-deadline";
 
 /**
@@ -11,29 +12,19 @@ import { createAbortDeadline } from "@/lib/promise-deadline";
  * happening in Frederick County (NWS alerts, school alerts, traffic
  * incidents, power outages).
  *
- * Fetches /api/pulse/status on mount + every 5 minutes. The endpoint
- * is cached server-side so polling is cheap. Pulse remains a stable top-level
+ * Fetches /api/pulse/status on mount + every 5 minutes. The underlying source
+ * snapshots retain their cache windows; the summary rechecks source expiry. Pulse remains a stable top-level
  * destination while the indicator communicates active alerts, all-clear, or
  * unavailable data without making the navigation appear and disappear.
  *
  * Lives in TopBar between the LocationChip and Tools.
  */
-type PulseStatus = {
-  active: boolean;
-  count: number;
-  tone: "alert" | "caution" | "quiet";
-  ok: boolean;
-  /** Snapshot assembly time, not a claim that every publisher was checked. */
-  lastUpdated: string;
-};
+type PulseStatus = CountyStatusSummary;
 
 export const PULSE_STATUS_TIMEOUT_MS = 15_000;
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
-// /api/pulse/status caches 300s over a 60s currentSituation snapshot. This
-// limits the assembly age only; individual publisher checks remain upstream.
-const MAX_SNAPSHOT_AGE_MS = (300 + 60) * 1000;
 // Match the existing currentSituationModel and PulseFreshness clock tolerance.
-const FUTURE_CLOCK_TOLERANCE_MS = 5 * 60 * 1000;
+const FUTURE_CLOCK_TOLERANCE_MS = COUNTY_STATUS_FUTURE_TOLERANCE_MS;
 
 function validStatus(value: unknown): value is PulseStatus {
   if (!value || typeof value !== "object") return false;
@@ -45,14 +36,24 @@ function validStatus(value: unknown): value is PulseStatus {
     && status.active === (status.count > 0)
     && ["alert", "caution", "quiet"].includes(status.tone ?? "")
     && (status.active ? status.tone !== "quiet" : status.tone === "quiet")
+    && ((status.active && (status.level === "Urgent" || status.level === "Advisory")
+      && status.tone === (status.level === "Urgent" ? "alert" : "caution"))
+      || (!status.active && status.level === (status.ok ? "Clear" : "Unknown")))
     && typeof status.lastUpdated === "string"
-    && Number.isFinite(Date.parse(status.lastUpdated));
+    && Number.isFinite(Date.parse(status.lastUpdated))
+    && typeof status.validUntil === "string"
+    && Number.isFinite(Date.parse(status.validUntil));
 }
 
 const TONE_COLOR: Record<PulseStatus["tone"], string> = {
   alert: "var(--app-danger)",
   caution: "var(--app-warning)",
   quiet: "var(--app-positive)",
+};
+const TONE_FOREGROUND: Record<PulseStatus["tone"], string> = {
+  alert: "var(--app-danger-text)",
+  caution: "var(--state-closing)",
+  quiet: "var(--state-open)",
 };
 
 export default function PulseIndicator() {
@@ -101,8 +102,10 @@ export default function PulseIndicator() {
           if (!response.ok) throw new Error("Status check failed");
           const payload: unknown = await response.json();
           if (!validStatus(payload)) throw new Error("Invalid status report");
-          const age = Date.now() - Date.parse(payload.lastUpdated);
-          if (!Number.isFinite(age) || age < -FUTURE_CLOCK_TOLERANCE_MS || age >= MAX_SNAPSHOT_AGE_MS) {
+          const now = Date.now();
+          const age = now - Date.parse(payload.lastUpdated);
+          const validUntil = countyStatusSnapshotDeadline(payload);
+          if (!Number.isFinite(age) || age < -FUTURE_CLOCK_TOLERANCE_MS || validUntil === null || now >= validUntil) {
             throw new Error("Status snapshot time is unverified");
           }
           return payload;
@@ -111,10 +114,9 @@ export default function PulseIndicator() {
         if (!disposed && id === generation && !deadline.signal.aborted) {
           setStatus(payload);
           setPhase("ready");
-          // A cached report may be near expiry when it arrives. Do not leave
-          // its quiet claim current until the next poll; no extra fetch occurs.
-          const remaining = Math.max(0, Math.min(MAX_SNAPSHOT_AGE_MS,
-            Date.parse(payload.lastUpdated) + MAX_SNAPSHOT_AGE_MS - Date.now()));
+          // Stop calling a report current at its earliest source/alert expiry,
+          // even between the existing polls. This makes no provider request.
+          const remaining = Math.max(0, (countyStatusSnapshotDeadline(payload) ?? Date.now()) - Date.now());
           expiry = setTimeout(() => {
             if (!disposed && id === generation) setPhase("unavailable");
           }, remaining);
@@ -155,18 +157,18 @@ export default function PulseIndicator() {
   const current = pathname === "/pulse" || pathname.startsWith("/pulse/");
   const earlier = unverified && active;
   const alertCount = `${count} ${count === 1 ? "alert" : "alerts"}`;
+  const level = checking ? "Checking" : earlier || phase === "unavailable" ? "Unknown" : status?.level ?? "Unknown";
+  const stateLabel = level === "Unknown" ? "Unable to verify" : level;
+  const mobileLabel = level === "Unknown" ? "Unverified" : level;
   const statusLabel = earlier
-    ? `County status: ${checking ? "checking" : "unavailable"}. Earlier report had ${alertCount}; current alerts are unverified.`
+    ? `County status: ${stateLabel}. ${checking ? "Checking again." : "Current check unavailable."} Earlier report had ${alertCount}; current alerts are unverified.`
     : checking
       ? "County status: checking"
-      : phase === "unavailable"
-        ? "County status: unavailable"
+      : phase === "unavailable" || !status || level === "Unknown"
+        ? "County status: Unable to verify; current alerts are unverified"
         : active
-          ? `County status: ${alertCount} reported${status?.ok === false ? "; some sources unavailable" : ""}`
-          : unknown
-            ? "County status: unavailable"
-            : "County status: no active alerts";
-  const stateLabel = earlier ? "Earlier" : checking ? "Checking" : unknown ? "Unknown" : "";
+          ? `County status: ${countyStatusLabel(status.level)}; ${alertCount} reported${status.ok === false ? "; some sources unavailable" : ""}`
+          : `County status: ${countyStatusLabel(status.level)}; no active alerts`;
   const mobileVisible = current || active || unknown || checking;
   const currentAlerts = active && !unverified;
 
@@ -185,9 +187,9 @@ export default function PulseIndicator() {
       style={{
         borderColor: current ? "var(--app-brand)" : "var(--app-border)",
         color: current
-          ? "var(--app-brand-press)"
+          ? "var(--app-link)"
           : currentAlerts
-            ? TONE_COLOR[tone]
+            ? TONE_FOREGROUND[tone]
             : "var(--app-ink-2)",
         background: current ? "var(--app-brand-tint-6)" : undefined,
       }}
@@ -215,10 +217,10 @@ export default function PulseIndicator() {
           />
         )}
       </span>
-      {stateLabel && <span data-pulse-mobile-state className="text-[9px] font-semibold leading-none sm:hidden">{stateLabel}</span>}
+      {stateLabel && <span data-pulse-mobile-state className="text-[9px] font-semibold leading-none sm:hidden">{mobileLabel}</span>}
       <span className="hidden flex-col gap-0.5 sm:inline-flex">
         <span className="text-[14px] font-semibold leading-none">County status</span>
-        {stateLabel && <span className="text-[10px] leading-none">{earlier ? "Earlier report" : stateLabel}</span>}
+        {stateLabel && <span data-pulse-desktop-state className="text-[10px] leading-none">{status?.level === "Clear" && phase === "ready" ? countyStatusLabel(status.level) : stateLabel}</span>}
       </span>
     </AppTransitionLink>
   );

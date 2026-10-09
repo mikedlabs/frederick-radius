@@ -117,7 +117,7 @@ export function TodayEventsRecoveryView({
             href="/events"
             aria-label="Open the full events board"
             className="tap-44-y inline-flex min-h-11 shrink-0 items-center gap-1 text-[12px] font-semibold"
-            style={{ color: "var(--app-brand-press)" }}
+            style={{ color: "var(--app-link)" }}
           >
             Full board
             <ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />

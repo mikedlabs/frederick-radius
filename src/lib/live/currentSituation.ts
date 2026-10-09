@@ -40,6 +40,8 @@ import {
   type SourceAsOfBasis,
 } from "@/lib/live/currentSituationModel";
 import { fuseScannerWithChartIncidents } from "@/lib/live/incidentFusion";
+import { SCANNER_SOURCE_CHECK_MAX_AGE_MS } from "@/lib/live/incidentFreshness";
+import { NWS_ALERTS_FUTURE_TOLERANCE_MS, NWS_ALERTS_MAX_CHECK_AGE_MS } from "@/lib/weather-safety";
 
 const EMPTY_OUTAGES = { total_out: 0, total_served: 0, munis: [] };
 const LIVE_SOURCE_DEADLINE_MS = 1_700;
@@ -174,8 +176,10 @@ async function loadCurrentSituation(
       availability: nws.available ? "available" : "unavailable",
       requiredForQuiet: true,
       capturedAt,
-      staleAfterSeconds: 20 * 60,
-      ...(nws.available ? asOf(undefined, capturedAt, "provider") : {}),
+      staleAfterSeconds: NWS_ALERTS_MAX_CHECK_AGE_MS / 1_000,
+      futureToleranceMs: NWS_ALERTS_FUTURE_TOLERANCE_MS,
+      asOf: nws.checkedAt ?? null,
+      asOfBasis: nws.checkedAt ? "retrieval" : null,
     }),
     schools: sourceEnvelope({
       source: "fcps",
@@ -204,10 +208,11 @@ async function loadCurrentSituation(
       availability: scanner.available ? "available" : "unavailable",
       requiredForQuiet: false,
       capturedAt,
-      staleAfterSeconds: 3 * 60,
-      // The newest incident time says when activity happened, not whether a
-      // successful empty/quiet board read is current.
-      ...(scanner.available ? asOf(undefined, capturedAt, "retrieval") : {}),
+      staleAfterSeconds: SCANNER_SOURCE_CHECK_MAX_AGE_MS / 1_000,
+      // Report occurrence is separate from feed retrieval. Missing retrieval
+      // evidence cannot be refreshed merely by assembling this snapshot.
+      asOf: scanner.asOfBasis === "retrieval" ? scanner.asOf ?? null : null,
+      asOfBasis: scanner.asOfBasis === "retrieval" ? "retrieval" : null,
       itemCount: scanner.rawCount,
     }),
     power: sourceEnvelope({
@@ -257,7 +262,7 @@ async function loadCurrentSituation(
 const getCachedCurrentSituation = unstable_cache(
   () => loadCurrentSituation(),
   [
-    "current-situation-v1",
+    "current-situation-v2",
     process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
   ],
   { revalidate: 60, tags: ["current-situation"] },

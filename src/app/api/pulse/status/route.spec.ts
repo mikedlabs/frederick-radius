@@ -1,5 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { CurrentSituationSnapshot } from "@/lib/live/currentSituationModel";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { buildRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligenceModel";
+import { MDOT_WZDX_SOURCE_URL } from "@/lib/integrations/mdot-wzdx";
+import type { CountyStatusSummary } from "@/lib/pulse/county-status";
+import { buildCurrentSituationSnapshot, sourceEnvelope, type CurrentSituationSnapshot, type CurrentSituationSources } from "@/lib/live/currentSituationModel";
 
 const mocks = vi.hoisted(() => ({
   getCurrentSituationSnapshot: vi.fn(),
@@ -24,37 +27,56 @@ import { GET } from "./route";
 function snapshot(
   overrides: Partial<CurrentSituationSnapshot["summary"]> = {},
 ): CurrentSituationSnapshot {
-  return {
-    generatedAt: "2026-07-28T16:00:00.000Z",
-    summary: {
-      status: "quiet",
-      coverage: "complete",
-      tone: "quiet",
-      activeCount: 0,
-      activeByCategory: {
-        weather: 0,
-        schools: 0,
-        roads: 0,
-        power: 0,
-        fireRescue: 0,
-        air: 0,
-      },
-      degradedSources: [],
-      ...overrides,
-    },
-  } as CurrentSituationSnapshot;
+  const now = "2026-07-28T16:00:00.000Z";
+  const envelope = <T,>(source: Parameters<typeof sourceEnvelope<T>>[0]["source"], data: T) => sourceEnvelope({
+    source, data, availability: "available", requiredForQuiet: true,
+    capturedAt: now, asOf: now, asOfBasis: "retrieval", staleAfterSeconds: 300,
+  });
+  const sources: CurrentSituationSources = {
+    weather: envelope("nws", []),
+    schools: envelope("fcps", []),
+    traffic: envelope("mdot-chart", []),
+    scanner: envelope("frederick-scanner", []),
+    power: envelope("firstenergy", { total_out: 0, total_served: 100_000, munis: [] }),
+    fireRescue: envelope("pulsepoint", []),
+    air: envelope("airnow", []),
+  };
+  const current = buildCurrentSituationSnapshot({
+    sources,
+    roadFusion: { incidents: [], matchedChartIncidentIds: [], unmatchedChartIncidentIds: [] },
+    now,
+  });
+  return { ...current, summary: { ...current.summary, ...overrides } };
+}
+
+const NOW = "2026-07-28T16:00:00.000Z";
+function checkedRoadSnapshot() {
+  const feed = { available: true, data: [], asOf: NOW, checkedAt: NOW };
+  return buildRoadIntelligenceSnapshot({ now: new Date(NOW), sources: {
+    workZones: { ...feed, sourceUrl: MDOT_WZDX_SOURCE_URL },
+    speeds: { ...feed }, travelTimes: { ...feed }, messages: { ...feed },
+    weatherStations: { ...feed }, roadConditions: { ...feed }, snowEmergency: { ...feed },
+  } });
+}
+
+/** Existing consumers retain their exact core contract while the source
+ * provenance is additive and independently asserted at the HTTP boundary. */
+async function legacyStatus(response: Response, currentRoadCount = 0) {
+  const { checks, roadCheck, validUntil, ...core }: CountyStatusSummary = await response.json();
+  expect(validUntil).toBe("2026-07-28T16:05:00.000Z");
+  expect(checks).toHaveLength(10);
+  expect(checks).toContainEqual({ source: "NWS", state: "current", asOf: NOW, asOfBasis: "retrieval" });
+  expect(checks).toContainEqual({ source: "Maryland WZDx", state: "current", asOf: NOW, asOfBasis: "retrieval" });
+  expect(roadCheck).toEqual({ verified: true, checkedAt: NOW, currentCount: currentRoadCount, earlierCount: 0, unverifiedSources: [] });
+  return core;
 }
 
 describe("GET /api/pulse/status", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(NOW));
     vi.resetAllMocks();
-    mocks.getRoadIntelligenceSnapshot.mockResolvedValue({
-      summary: {
-        activeCount: 0,
-        coverage: "complete",
-      },
-      attention: [],
-    });
+    mocks.getRoadIntelligenceSnapshot.mockResolvedValue(checkedRoadSnapshot());
     mocks.getOfficialCivicAlertsSnapshot.mockResolvedValue({
       alerts: [],
       available: true,
@@ -62,19 +84,22 @@ describe("GET /api/pulse/status", () => {
     });
   });
 
-  it("preserves the legacy status response and cache contract", async () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("preserves the legacy status fields without caching their current classification", async () => {
     mocks.getCurrentSituationSnapshot.mockResolvedValue(snapshot());
 
     const response = await GET();
 
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe(
-      "public, max-age=60, s-maxage=300",
+      "no-store",
     );
-    await expect(response.json()).resolves.toEqual({
+    expect(await legacyStatus(response)).toEqual({
       active: false,
       count: 0,
       tone: "quiet",
+      level: "Clear",
       ok: true,
       lastUpdated: "2026-07-28T16:00:00.000Z",
     });
@@ -92,35 +117,36 @@ describe("GET /api/pulse/status", () => {
     );
 
     const response = await GET();
-    await expect(response.json()).resolves.toEqual({
+    expect(await legacyStatus(response)).toEqual({
       active: true,
       count: 2,
-      tone: "alert",
+      tone: "caution",
+      level: "Advisory",
       ok: false,
       lastUpdated: "2026-07-28T16:00:00.000Z",
     });
   });
 
-  it("counts an urgent road closure shown on Pulse", async () => {
+  it("keeps a warning-grade road closure advisory, matching Pulse", async () => {
     mocks.getCurrentSituationSnapshot.mockResolvedValue(snapshot());
-    mocks.getRoadIntelligenceSnapshot.mockResolvedValue({
-      summary: {
-        activeCount: 1,
-        coverage: "complete",
-      },
-      attention: [
-        {
-          severity: "warning",
-        },
-      ],
+    const road = checkedRoadSnapshot();
+    mocks.getRoadIntelligenceSnapshot.mockResolvedValue({ ...road,
+      summary: { ...road.summary, status: "active", activeCount: 1 },
+      attention: [{
+        id: "test-closure", kind: "work-zone-closure", priority: 55,
+        severity: "warning", title: "County route closure", detail: "All lanes closed.",
+        scope: "County route", sourceLabel: "Maryland WZDx", sourceUrl: MDOT_WZDX_SOURCE_URL,
+        observedAt: NOW,
+      }],
     });
 
     const response = await GET();
 
-    await expect(response.json()).resolves.toEqual({
+    expect(await legacyStatus(response, 1)).toEqual({
       active: true,
       count: 1,
-      tone: "alert",
+      tone: "caution",
+      level: "Advisory",
       ok: true,
       lastUpdated: "2026-07-28T16:00:00.000Z",
     });
@@ -142,10 +168,11 @@ describe("GET /api/pulse/status", () => {
 
     const response = await GET();
 
-    await expect(response.json()).resolves.toEqual({
+    expect(await legacyStatus(response)).toEqual({
       active: false,
       count: 0,
       tone: "quiet",
+      level: "Clear",
       ok: true,
       lastUpdated: "2026-07-28T16:00:00.000Z",
     });
