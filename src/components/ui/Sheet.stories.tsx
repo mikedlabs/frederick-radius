@@ -41,23 +41,40 @@ const meta = {
     const page = within(canvasElement.ownerDocument.body);
     const dialog = await page.findByRole("dialog", { name: "Weather details" });
     const close = within(dialog).getByRole("button", { name: "Close Weather details" });
-    // Test the painted target, not just an accessible button behind a handle.
-    await waitFor(() => {
-      const rect = close.getBoundingClientRect();
-      expect(rect.height).toBeGreaterThanOrEqual(44);
-      expect(rect.width).toBeGreaterThanOrEqual(44);
-      for (const [x, y] of [[0.5, 0.5], [0.15, 0.5], [0.85, 0.5], [0.5, 0.15], [0.5, 0.85]]) {
-        const hit = close.ownerDocument.elementFromPoint(rect.x + rect.width * x, rect.y + rect.height * y);
-        expect(hit === close || (hit !== null && close.contains(hit))).toBe(true);
-      }
-    });
+    // Wait for a painted, settled target on every opening, including reopen.
+    // A dialog role exists while its spring entrance is still moving.
+    const waitForCloseTarget = async (target: HTMLElement) => {
+      await waitFor(async () => {
+        const before = target.getBoundingClientRect();
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        const rect = target.getBoundingClientRect();
+        expect(Math.abs(rect.x - before.x)).toBeLessThanOrEqual(0.25);
+        expect(Math.abs(rect.y - before.y)).toBeLessThanOrEqual(0.25);
+        expect(rect.height).toBeGreaterThanOrEqual(44);
+        expect(rect.width).toBeGreaterThanOrEqual(44);
+        for (const [x, y] of [[0.5, 0.5], [0.15, 0.5], [0.85, 0.5], [0.5, 0.15], [0.5, 0.85]]) {
+          const hit = target.ownerDocument.elementFromPoint(rect.x + rect.width * x, rect.y + rect.height * y);
+          expect(hit === target || (hit !== null && target.contains(hit))).toBe(true);
+        }
+      });
+    };
+    await waitForCloseTarget(close);
     await userEvent.click(close);
-    await waitFor(() => expect(page.queryByRole("dialog", { name: "Weather details" })).toBeNull());
+    await waitFor(() => {
+      expect(page.queryByRole("dialog", { name: "Weather details" })).toBeNull();
+      expect(dialog).not.toBeInTheDocument();
+    });
     const trigger = page.getByRole("button", { name: "Open weather details" });
     await userEvent.click(trigger);
     const reopened = await page.findByRole("dialog", { name: "Weather details" });
-    await userEvent.click(within(reopened).getByRole("button", { name: "Close Weather details" }));
-    await waitFor(() => expect(trigger).toHaveFocus());
+    const reopenedClose = within(reopened).getByRole("button", { name: "Close Weather details" });
+    await waitForCloseTarget(reopenedClose);
+    await userEvent.click(reopenedClose);
+    await waitFor(() => {
+      expect(page.queryByRole("dialog", { name: "Weather details" })).toBeNull();
+      expect(reopened).not.toBeInTheDocument();
+      expect(trigger).toHaveFocus();
+    });
   },
 } satisfies Meta<typeof Sheet>;
 

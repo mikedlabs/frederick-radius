@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { inflateSync } from "node:zlib";
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
@@ -36,6 +37,28 @@ function request(overrides: Record<string, string> = {}, signal?: AbortSignal) {
     `https://frederickradius.app/api/place-photo?${params.toString()}`,
     { signal },
   );
+}
+
+async function expectTransparentPixel(response: Response) {
+  const bytes = Buffer.from(await response.arrayBuffer());
+  expect(response.headers.get("content-type")).toBe("image/png");
+  expect(response.headers.get("cache-control")).toBe("public, max-age=300, s-maxage=300");
+  expect(bytes.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  expect(bytes.toString("ascii", 12, 16)).toBe("IHDR");
+  expect(bytes.readUInt32BE(16)).toBe(1);
+  expect(bytes.readUInt32BE(20)).toBe(1);
+  expect([...bytes.subarray(24, 29)]).toEqual([8, 6, 0, 0, 0]);
+  const pixels: Buffer[] = [];
+  for (let offset = 8; offset < bytes.length;) {
+    const size = bytes.readUInt32BE(offset);
+    if (bytes.toString("ascii", offset + 4, offset + 8) === "IDAT") {
+      pixels.push(bytes.subarray(offset + 8, offset + 8 + size));
+    }
+    offset += 12 + size;
+  }
+  // One unfiltered RGBA pixel: all channels zero, including full transparency.
+  expect(inflateSync(Buffer.concat(pixels))).toEqual(Buffer.from([0, 0, 0, 0, 0]));
+  expect(bytes.length).toBeLessThan(100);
 }
 
 describe("GET /api/place-photo daily budget", () => {
@@ -227,11 +250,23 @@ describe("GET /api/place-photo daily budget", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it.each(["no-key", "daily-cap", "upstream-400"])("returns a transparent intrinsic pixel for the %s signal without losing its reason", async (reason) => {
+    if (reason === "no-key") mocks.photoUrl.mockReturnValue(null);
+    if (reason === "daily-cap") mocks.reserveDailyUsage.mockResolvedValue({ reserved: false, count: 1_500 });
+    if (reason === "upstream-400") mocks.fetch.mockResolvedValue(new Response(null, { status: 400 }));
+    const response = await GET(request({ fallback: "signal" }));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-photo-fallback")).toBe(reason);
+    await expectTransparentPixel(response);
+    expect(mocks.fetch).toHaveBeenCalledTimes(reason === "upstream-400" ? 1 : 0);
+    expect(mocks.reserveDailyUsage).toHaveBeenCalledTimes(reason === "no-key" ? 0 : 1);
+  });
+
   it("does no paid work for an already cancelled caller and keeps the signal fallback", async () => {
     const caller = new AbortController(); caller.abort();
     const response = await GET(request({ fallback: "signal" }, caller.signal));
     expect(response.headers.get("x-photo-fallback")).toBe("caller-aborted");
-    expect(await response.text()).toBe('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" viewBox="0 0 1 1"/>');
+    await expectTransparentPixel(response);
     expect(mocks.isOverPaidRequestBudget).not.toHaveBeenCalled();
     expect(mocks.reserveDailyUsage).not.toHaveBeenCalled();
     expect(mocks.fetch).not.toHaveBeenCalled();
@@ -457,7 +492,7 @@ describe("GET /api/place-photo daily budget", () => {
     mocks.fetch.mockResolvedValue(new Response(new ReadableStream({ cancel }), { status: 404 }));
     const response = await GET(request({ fallback: "signal" }));
     expect(response.headers.get("x-photo-fallback")).toBe("upstream-404");
-    expect(await response.text()).toContain('width="1" height="1"');
+    await expectTransparentPixel(response);
     expect(cancel).toHaveBeenCalledOnce();
     expect(mocks.photoUrl).toHaveBeenCalledExactlyOnceWith("places/test-place/photos/test-photo", 800);
     expect(mocks.fetch).toHaveBeenCalledOnce();
