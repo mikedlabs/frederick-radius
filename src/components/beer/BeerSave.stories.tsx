@@ -51,8 +51,31 @@ export const SavedPourRemoval: Story = {
     const canvas = within(canvasElement);
     const name = `Remove ${beer.name} from saved pours`;
     const remove = await canvas.findByRole("button", { name });
-    await userEvent.click(remove);
+    const original = JSON.parse(localStorage.getItem(KEY)!);
+    await expect(original).toEqual([{ type: "beer", id: beerKey(beer), saved_at: "2026-10-08T13:00:00Z" }]);
+    let release!: () => void;
+    let acquired!: () => void;
+    const entered = new Promise<void>((resolve) => { acquired = resolve; });
+    const untilReleased = new Promise<void>((resolve) => { release = resolve; });
+    // The real browser lock keeps the mutation pending without mocking Saved.
+    const held = navigator.locks.request(KEY, async () => { acquired(); await untilReleased; });
+    await entered;
+    try {
+      await userEvent.click(remove);
+      const pending = await canvas.findByRole("button", { name: `Removing ${beer.name} from saved pours` });
+      await expect(pending).toBeDisabled();
+      await expect(pending).toHaveAttribute("aria-busy", "true");
+      await expect(canvas.getByRole("region", { name: "Saved pours" })).toBeVisible();
+      await expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual(original);
+    } finally {
+      release();
+      await held;
+      // Wait for durable removal before fixture restoration, including failure cleanup.
+      await waitFor(() => expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual([]));
+    }
     await waitFor(() => expect(canvas.queryByRole("button", { name })).not.toBeInTheDocument());
+    await expect(canvas.queryByRole("button", { name: `Removing ${beer.name} from saved pours` })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("region", { name: "Saved pours" })).not.toBeInTheDocument();
     await expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual([]);
   },
 };
