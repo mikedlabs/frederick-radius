@@ -89,6 +89,21 @@ describe("cleanTitle trailing when-fragment strip", () => {
 });
 
 describe("deshoutTitle", () => {
+  it("keeps possessive and contraction suffixes lowercase at the title boundary", () => {
+    expect(cleanTitle("TOT SWAP - CHILDREN'S CONSIGNMENT SALE")).toBe(
+      "Tot Swap - Children's Consignment Sale",
+    );
+    expect(cleanTitle("Tot Swap - Children'S Consignment Sale")).toBe(
+      "Tot Swap - Children's Consignment Sale",
+    );
+    expect(cleanTitle("WE'RE READY FOR CHILDREN’S DAY")).toBe(
+      "We're Ready for Children’s Day",
+    );
+    expect(cleanTitle("O'NEILL'S LIVE MUSIC")).toBe("O'Neill's Live Music");
+    expect(cleanTitle("Rock 'N' Roll")).toBe("Rock 'N' Roll");
+    expect(cleanTitle("FCPS'S FAMILY DAY")).toBe("FCPS's Family Day");
+  });
+
   it("title-cases a wholly shouted title, lowering small words", () => {
     expect(deshoutTitle("NIGHT OF THE STARS")).toBe("Night of the Stars");
     expect(deshoutTitle("SUMMER CONCERT SERIES")).toBe("Summer Concert Series");
