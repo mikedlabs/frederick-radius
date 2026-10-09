@@ -252,12 +252,14 @@ describe("PlaceCard thumbnail", () => {
     await act(async () => root.render(<PlaceCard place={place()} />));
 
     expect(thumb()).toBe("photo");
+    // The card can also lead with a full-width photo; this checks the thumb.
     const src = new URL(
-      container.querySelector("img")!.getAttribute("src")!,
+      container.querySelector('[data-place-thumb="photo"] img')!.getAttribute("src")!,
       "https://frederickradius.local",
     );
     expect(src.searchParams.get("fallback")).toBe("signal");
-    expect(src.searchParams.get("w")).toBe("92");
+    // A 72px row thumb at 2x, not the 800px hero asset.
+    expect(src.searchParams.get("w")).toBe("144");
   });
 
   it("keeps a real photo once it loads", async () => {

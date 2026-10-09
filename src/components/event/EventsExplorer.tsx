@@ -1183,7 +1183,7 @@ export default function EventsExplorer({
                 type="button"
                 onClick={() => void ensureAllEvents(true)}
                 className="tap-44-y inline-flex min-h-11 shrink-0 items-center font-semibold underline"
-                style={{ color: "var(--app-cool)" }}
+                style={{ color: "var(--app-link)" }}
               >
                 Check again
               </button>

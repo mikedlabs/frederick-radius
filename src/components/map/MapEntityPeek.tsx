@@ -361,20 +361,10 @@ export function MapAerialPeek({
   };
   onClose: () => void;
 }) {
-  const date = photo.takenAt ? new Date(photo.takenAt) : null;
-  const dateLabel =
-    date && Number.isFinite(date.getTime())
-      ? new Intl.DateTimeFormat("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }).format(date)
-      : null;
-
   return (
     <MapResultSurface
       className="map-peek map-entity-peek map-aerial-peek"
-      ariaLabel={`Aerial photograph from ${photo.season}`}
+      ariaLabel="Aerial photograph"
       closeLabel="Close aerial photograph"
       onClose={onClose}
     >
@@ -382,7 +372,7 @@ export function MapAerialPeek({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={sizedImage(photo.src, 800)}
-          alt={`Frederick County from the air in ${photo.season}`}
+          alt="Frederick County from the air."
           width={640}
           height={360}
           decoding="async"
@@ -393,11 +383,7 @@ export function MapAerialPeek({
           <Camera className="h-6 w-6" strokeWidth={1.8} />
         </span>
         <span className="map-peek-text">
-          <span className="map-peek-cat">{photo.season}</span>
           <span className="map-peek-name font-serif">Frederick from this spot</span>
-          <span className="map-peek-detail">
-            {dateLabel ?? "Capture date unavailable"} · Radius photo archive
-          </span>
         </span>
       </div>
       <div className="map-peek-acts">

@@ -132,12 +132,12 @@ describe("momentBySlug", () => {
     );
   });
 
-  it("keeps the finished In The Streets photograph attributed and correctly sized", () => {
+  it("keeps the owned In The Streets photograph descriptive and correctly sized", () => {
     const streets = momentBySlug("in-the-street-2026");
     expect(streets?.spotlightImage).toEqual({
       src: "/images/moments/in-the-streets-2024-mike-d.jpg",
-      alt: "A packed Market Street during In The Streets in downtown Frederick, photographed in 2024.",
-      credit: "Photograph by Mike D · In The Streets 2024",
+      alt: "A crowd on Market Street during In The Streets in downtown Frederick.",
+      credit: "",
       width: 1920,
       height: 1078,
     });
@@ -186,7 +186,11 @@ describe("data integrity (a bad hand-edit fails here)", () => {
       if (m.spotlightImage) {
         expect(m.spotlightImage.src).toMatch(/^\/images\/moments\/.+\.(?:jpg|jpeg|webp)$/);
         expect(m.spotlightImage.alt.trim().length).toBeGreaterThan(0);
-        expect(m.spotlightImage.credit.trim().length).toBeGreaterThan(0);
+        if (m.spotlightImage.src === "/images/moments/in-the-streets-2024-mike-d.jpg") {
+          expect(m.spotlightImage.credit).toBe("");
+        } else {
+          expect(m.spotlightImage.credit.trim().length).toBeGreaterThan(0);
+        }
         expect(m.spotlightImage.width).toBeGreaterThan(0);
         expect(m.spotlightImage.height).toBeGreaterThan(0);
       }

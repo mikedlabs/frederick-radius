@@ -22,19 +22,35 @@ describe("Today decision hierarchy", () => {
     expect(eventClose).toBeGreaterThan(placeClose);
   });
 
-  it("puts Find and useful place and event answers before secondary weather", () => {
+  it("puts the single weather glance before Find and the place and event answers", () => {
     const weather = renderedPage.indexOf("<section data-today-weather");
     const lead = renderedPage.indexOf("{decisionLead}");
     const find = renderedPage.indexOf("<TodayAsk embedded");
     const events = renderedPage.indexOf("{whatsOn}");
 
     expect(weather).toBeGreaterThan(-1);
+    expect(renderedPage.match(/<section data-today-weather/g)).toHaveLength(1);
+    expect(renderedPage.match(/<TodayCard\s*\//g)).toHaveLength(1);
     expect(find).toBeGreaterThan(-1);
-    expect(find).toBeLessThan(weather);
+    expect(find).toBeGreaterThan(weather);
     expect(lead).toBeGreaterThan(find);
-    expect(lead).toBeLessThan(weather);
+    expect(lead).toBeGreaterThan(weather);
     expect(events).toBeGreaterThan(lead);
-    expect(events).toBeLessThan(weather);
+    expect(events).toBeGreaterThan(weather);
+  });
+
+  it("puts the first local answers before news and secondary exploration doors", () => {
+    const find = renderedPage.indexOf("<TodayAsk embedded showQuickNeeds={false}");
+    const lead = renderedPage.indexOf("{decisionLead}");
+    const events = renderedPage.indexOf("{whatsOn}");
+    const news = renderedPage.indexOf("<LocalNewsBrief");
+    const shortcuts = renderedPage.indexOf("<TodayQuickNeeds>");
+    expect(find).toBeGreaterThan(-1);
+    expect(lead).toBeGreaterThan(find);
+    expect(events).toBeGreaterThan(lead);
+    expect(news).toBeGreaterThan(events);
+    expect(shortcuts).toBeGreaterThan(news);
+    expect(renderedPage.match(/<TodayQuickNeeds>/g)).toHaveLength(1);
   });
 
   it("shows an honest live scope readout before weather on narrow screens", () => {
@@ -50,11 +66,13 @@ describe("Today decision hierarchy", () => {
     expect(weather).toBeGreaterThan(scope);
   });
 
-  it("keeps the archive photograph distinct from current facts and preserves Tonight below Find", () => {
+  it("uses the owned photograph without credit or date and preserves Tonight below Find", () => {
     const mastheadEnd = renderedPage.indexOf("</header>");
     const masthead = renderedPage.slice(0, mastheadEnd);
-    expect(masthead).toContain("Carroll Creek in Frederick in June 2023, photographed by Mike D.");
-    expect(masthead).toContain("Archive · Carroll Creek · June 2023 · Mike D");
+    expect(masthead).toContain('alt="Carroll Creek in Frederick."');
+    expect(masthead).not.toContain("<figcaption");
+    expect(masthead).not.toContain("June 2023");
+    expect(masthead).not.toContain("Mike D");
     expect(masthead).not.toContain("<TodayPlanTonightLink");
     expect(renderedPage.indexOf("<TodayPlanTonightLink")).toBeGreaterThan(
       renderedPage.indexOf("<TodayAsk embedded"),
@@ -78,7 +96,8 @@ describe("Today decision hierarchy", () => {
     expect(find).toBeGreaterThan(masthead);
     expect(fair).toBeGreaterThan(renderedPage.indexOf("{whatsOn}"));
     expect(renderedPage).toContain("<TodayPlanTonightLink />");
-    expect(weather).toBeGreaterThan(fair);
+    expect(weather).toBeLessThan(find);
+    expect(weather).toBeLessThan(fair);
     expect(renderedPage).toContain("fairPromotionPhase ? (");
     expect(renderedPage).toContain(": civicMoment ? (");
     expect(renderedPage.match(/<TodayFairFeature\b/g)).toHaveLength(1);

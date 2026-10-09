@@ -12,13 +12,14 @@ import {
 import { activeEventNotices } from "@/lib/events/notices";
 import { summarizeAirQualityAlert } from "@/lib/air-quality";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
+import { sourceFreshnessAt } from "@/lib/live/currentSituationModel";
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
 import {
   selectTodayRoadSignal,
   type RoadAttentionSignal,
 } from "@/lib/live/roadIntelligenceModel";
 import { getOfficialCivicAlertsSnapshot } from "@/lib/live/officialSignals";
-import { isLocallyRelevantCivicAlert, type OfficialCivicAlert } from "@/lib/integrations/official-alert-feeds";
+import { currentLocalCivicAlerts, type OfficialCivicAlert } from "@/lib/integrations/official-alert-feeds";
 import { withBrowseReturnTo } from "@/lib/browse-return";
 
 export type UnifiedAlert = {
@@ -240,8 +241,8 @@ function roadIntelligenceAlert(
  * in Today's first screen. Consequence-bearing language can still promote a
  * closing when the notice itself describes an emergency or hazard.
  */
-export function officialCivicAlerts(alerts: OfficialCivicAlert[]): UnifiedAlert[] {
-  return alerts.filter(isLocallyRelevantCivicAlert).map((alert) => {
+export function officialCivicAlerts(alerts: OfficialCivicAlert[], now = Date.now()): UnifiedAlert[] {
+  return currentLocalCivicAlerts(alerts, now).map((alert) => {
     const copy = `${alert.title} ${alert.summary}`;
     const consequenceBearing =
       /\b(?:emergency|evacuat|boil|unsafe|outbreak|do not|avoid|hazard|danger)\b/i.test(copy);
@@ -297,6 +298,7 @@ const STYLES = {
  * moment a real feed exists — absent until then, never faked.
  */
 export default async function CivicAlerts({ includeWeather = true, compact = false, returnTo }: { includeWeather?: boolean; compact?: boolean; returnTo?: string } = {}) {
+  const now = new Date();
   const [situation, roads, official, nps] = await Promise.all([
     getCurrentSituationSnapshot(),
     getRoadIntelligenceSnapshot(),
@@ -305,11 +307,10 @@ export default async function CivicAlerts({ includeWeather = true, compact = fal
   ]);
   const weatherIsFresh =
     situation.sources.weather.availability === "available" &&
-    situation.sources.weather.freshness === "fresh";
+    sourceFreshnessAt(situation.sources.weather, now.getTime()) === "fresh";
   const trafficIsFresh =
     situation.sources.traffic.availability === "available" &&
-    situation.sources.traffic.freshness === "fresh";
-  const now = new Date(situation.generatedAt);
+    sourceFreshnessAt(situation.sources.traffic, now.getTime()) === "fresh";
   const nws =
     includeWeather && weatherIsFresh ? situation.sources.weather.data : [];
   const chart = trafficIsFresh ? situation.sources.traffic.data : [];
@@ -317,8 +318,8 @@ export default async function CivicAlerts({ includeWeather = true, compact = fal
     nws,
     nps,
     [
-      ...officialCivicAlerts(official.alerts),
-      ...roadIntelligenceAlert(selectTodayRoadSignal(roads)),
+      ...officialCivicAlerts(official.alerts, now.getTime()),
+      ...roadIntelligenceAlert(selectTodayRoadSignal(roads, now.getTime())),
       ...trafficAlerts(now, chart),
     ],
     now,

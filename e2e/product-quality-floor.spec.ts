@@ -64,9 +64,15 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(mastheadBox).not.toBeNull();
     const leadingNoticeSpace = Math.max(0, mastheadBox!.y - 80);
     expect(findBox!.y + findBox!.height - leadingNoticeSpace).toBeLessThan(height - 80);
-    const weather = page.getByRole("link", { name: "Today in Frederick Open the full forecast.", exact: true });
+    const weather = page.locator('[data-today-weather] a[href*="/pulse"][href*="open=weather"]');
+    await expect(weather).toHaveCount(1);
+    await expect(weather).toBeVisible();
+    await expect(page.locator('[data-today-weather] [data-weather-state]'))
+      .toHaveAttribute("data-weather-state", /^(available|safety-only|unavailable)$/);
     const weatherBox = await weather.boundingBox();
-    expect(weatherBox!.y).toBeGreaterThan(findBox!.y + findBox!.height);
+    expect(weatherBox).not.toBeNull();
+    expect(weatherBox!.height).toBeGreaterThanOrEqual(44);
+    expect(weatherBox!.y + weatherBox!.height).toBeLessThanOrEqual(findBox!.y);
     const campaign = page.locator("[data-today-fair-feature]");
     if (await campaign.count()) {
       expect((await campaign.boundingBox())!.y).toBeGreaterThan(findBox!.y + findBox!.height);

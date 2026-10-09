@@ -38,7 +38,7 @@ describe("MomentHero", () => {
     expect(html.match(/data-moment-rule/g)).toHaveLength(1);
   });
 
-  it("puts the title on an owned photo over a bottom scrim, crediting it only after load", () => {
+  it("puts the title on an owned photo over a bottom scrim, with no credit for an owner photo", () => {
     const html = hero({
       title: streets.title,
       dateLine: null,
@@ -47,7 +47,7 @@ describe("MomentHero", () => {
     expect(html).toContain('data-moment-hero="owned"');
     expect(html).toContain("In The Streets</h1>");
     expect(html).toContain(streets.spotlightImage!.alt);
-    expect(html).not.toContain(streets.spotlightImage!.credit);
+    expect(html).not.toContain("data-moment-photo-credit");
     expect(html).not.toContain("radial-gradient");
   });
 

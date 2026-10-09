@@ -38,6 +38,11 @@ type Story = StoryObj<typeof meta>;
 
 export const PrimarySection: Story = {};
 
+export const PrimaryTabHeading: Story = {
+  decorators: [(Story) => <div data-app-primary-tab="/events"><Story /></div>],
+  args: { title: "This weekend", count: 8, href: "/events" },
+};
+
 export const SecondarySection: Story = {
   args: {
     title: "Pools",

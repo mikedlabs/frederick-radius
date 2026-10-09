@@ -9,6 +9,7 @@ import {
 } from "@/lib/live/incidentFusion";
 
 export const DEFAULT_LIVE_INCIDENT_LIMIT = 12;
+export { countRecentPublicReports, RECENT_PUBLIC_REPORT_MS, SCANNER_SOURCE_CHECK_MAX_AGE_MS } from "./incidentFreshness";
 
 /**
  * The public incident contract intentionally omits fusion diagnostics such as
@@ -43,6 +44,8 @@ export type LiveIncidentSnapshot = {
   chartAvailable: boolean;
   /** Additive source-health field for clients that can distinguish quiet/fail. */
   scannerAvailable?: boolean;
+  /** Source retrieval time, distinct from report occurrence and page assembly. */
+  scannerCheckedAt?: string | null;
   updatedAt: string;
 };
 

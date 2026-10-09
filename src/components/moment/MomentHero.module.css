@@ -36,8 +36,8 @@
   pointer-events: none;
   background: linear-gradient(
     to top,
-    color-mix(in srgb, var(--app-ink) 88%, transparent),
-    color-mix(in srgb, var(--app-ink) 46%, transparent) 55%,
+    color-mix(in srgb, var(--app-media-ink) 88%, transparent),
+    color-mix(in srgb, var(--app-media-ink) 46%, transparent) 55%,
     transparent
   );
 }

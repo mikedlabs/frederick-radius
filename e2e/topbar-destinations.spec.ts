@@ -15,7 +15,7 @@ for (const viewport of [
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ active: false, count: 0, tone: "quiet", ok: true, lastUpdated: new Date().toISOString() }),
+        body: JSON.stringify({ active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString() }),
       });
     });
     await page.goto("/compass", {
@@ -26,7 +26,7 @@ for (const viewport of [
     const header = page.locator("header").first();
     const pulse = header.locator("[data-pulse-indicator]");
     const compass = header.getByRole("link", { name: "Open tools" });
-    await expect(pulse).toHaveAttribute("aria-label", "County status: no active alerts");
+    await expect(pulse).toHaveAttribute("aria-label", "County status: Clear in checked feeds; no active alerts");
     await expect(pulse).toHaveAttribute("data-pulse-state", "ready");
 
     await expect(header.getByRole("link", { name: /tools/i })).toHaveCount(1);
@@ -83,21 +83,21 @@ for (const viewport of [
 }
 
 for (const status of [
-  { label: "active alerts", payload: { active: true, count: 2, tone: "alert", ok: true }, name: "County status: 2 alerts reported" },
-  { label: "unavailable checks", payload: { active: false, count: 0, tone: "quiet", ok: false }, name: "County status: unavailable" },
-  { label: "unverified reports", payload: { active: false, count: 0, tone: "quiet", ok: true, lastUpdated: "not-a-report-time" }, name: "County status: unavailable" },
+  { label: "active alerts", payload: { active: true, count: 2, tone: "alert", level: "Urgent", ok: true }, name: "County status: Urgent; 2 alerts reported" },
+  { label: "unavailable checks", payload: { active: false, count: 0, tone: "quiet", level: "Unknown", ok: false }, name: "County status: Unable to verify; current alerts are unverified" },
+  { label: "unverified reports", payload: { active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: "not-a-report-time" }, name: "County status: Unable to verify; current alerts are unverified" },
 ]) {
   test(`TopBar keeps ${status.label} visible on a phone`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.route("**/api/pulse/status", async (route) => {
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ lastUpdated: new Date().toISOString(), ...status.payload }) });
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString(), ...status.payload }) });
     });
     await page.goto("/today", { waitUntil: "domcontentloaded" });
     const header = page.locator("header").first();
     const statusLink = header.getByRole("link", { name: status.name, exact: true });
     await expect(statusLink).toBeVisible();
     await expect(statusLink).toHaveAttribute("href", "/pulse");
-    if (status.label !== "active alerts") await expect(statusLink.locator("[data-pulse-mobile-state]")).toHaveText("Unknown");
+    if (status.label !== "active alerts") await expect(statusLink.locator("[data-pulse-mobile-state]")).toHaveText("Unverified");
     const bounds = await statusLink.boundingBox();
     expect(bounds?.height).toBeGreaterThanOrEqual(44);
     expect(bounds?.width).toBeGreaterThanOrEqual(44);
@@ -113,7 +113,7 @@ test("TopBar keeps Checking visible until a valid quiet report arrives", async (
   await page.route("**/api/pulse/status", async (route) => {
     requested = true;
     await held;
-    await route.fulfill({ json: { active: false, count: 0, tone: "quiet", ok: true, lastUpdated: new Date().toISOString() } });
+    await route.fulfill({ json: { active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString() } });
   });
   try {
     await page.goto("/today", { waitUntil: "domcontentloaded" });
@@ -129,10 +129,10 @@ test("TopBar keeps Checking visible until a valid quiet report arrives", async (
     expect(bounds?.width).toBeGreaterThanOrEqual(44);
     expect(await header.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
     release();
-    await expect(status).toHaveAttribute("aria-label", "County status: no active alerts");
+    await expect(status).toHaveAttribute("aria-label", "County status: Clear in checked feeds; no active alerts");
     await expect(status).toHaveAttribute("data-pulse-state", "ready");
     await expect(status).toBeHidden();
-    await expect(status.locator("[data-pulse-mobile-state]")).toHaveCount(0);
+    await expect(status.locator("[data-pulse-mobile-state]")).toHaveText("Clear");
   } finally { release(); }
 });
 

@@ -52,6 +52,7 @@ export type SourceEnvelopeOptions<T> = {
   requiredForQuiet: boolean;
   capturedAt: string | number | Date;
   staleAfterSeconds: number;
+  futureToleranceMs?: number;
   asOf?: string | null;
   asOfBasis?: SourceAsOfBasis | null;
   itemCount?: number;
@@ -129,6 +130,7 @@ export function sourceEnvelope<T>({
   requiredForQuiet,
   capturedAt,
   staleAfterSeconds,
+  futureToleranceMs = MAX_FUTURE_SKEW_MS,
   asOf = null,
   asOfBasis = null,
   itemCount: explicitItemCount,
@@ -141,7 +143,7 @@ export function sourceEnvelope<T>({
   let freshness: SourceFreshness = "unknown";
   if (availability === "available" && Number.isFinite(asOfMs)) {
     const ageMs = captured.getTime() - asOfMs;
-    if (ageMs >= -MAX_FUTURE_SKEW_MS) {
+    if (ageMs >= -futureToleranceMs) {
       freshness = ageMs <= safeStaleAfter * 1_000 ? "fresh" : "stale";
     }
   }
@@ -164,6 +166,14 @@ function sourceIsFresh(source: SourceEnvelope<unknown>): boolean {
   return source.availability === "available" && source.freshness === "fresh";
 }
 
+/** Cached freshness can expire, but only a new source read may improve it.
+ * Reuse the envelope policy without changing its retrieval or capture time. */
+export function sourceFreshnessAt(source: SourceEnvelope<unknown>, now: number): SourceFreshness {
+  if (!Number.isFinite(now)) return "unknown";
+  if (source.freshness !== "fresh") return source.freshness;
+  return sourceEnvelope({ ...source, capturedAt: now }).freshness;
+}
+
 /**
  * Preserve the difference between a current source, a failed/stale source, and
  * an integration that is deliberately not connected. Presentation layers must
@@ -178,11 +188,14 @@ export function sourceDisplayState(
     : "unavailable";
 }
 
+/** Unknown expiry cannot establish that a published weather alert has ended. */
+export function isUnexpiredWeatherAlert(alert: Pick<NwsAlert, "ends_at">, nowMs: number): boolean {
+  const endsAt = Date.parse(alert.ends_at);
+  return !Number.isFinite(endsAt) || endsAt > nowMs;
+}
+
 function activeWeather(alerts: readonly NwsAlert[], nowMs: number): NwsAlert[] {
-  return alerts.filter((alert) => {
-    const endsAt = Date.parse(alert.ends_at);
-    return !Number.isFinite(endsAt) || endsAt > nowMs;
-  });
+  return alerts.filter((alert) => isUnexpiredWeatherAlert(alert, nowMs));
 }
 
 function currentSchoolNotices(alerts: readonly FcpsAlert[]): FcpsAlert[] {
@@ -312,13 +325,13 @@ export function buildCurrentSituationSnapshot({
     generatedAt,
     sources,
     roads: {
-      live: buildLiveIncidentSnapshotFromFusion(
+      live: { ...buildLiveIncidentSnapshotFromFusion(
         safeRoadFusion,
         trafficIsFresh,
         clock,
         scannerIsFresh,
         scannerIsFresh ? sources.scanner.itemCount : 0,
-      ),
+      ), scannerCheckedAt: sources.scanner.asOfBasis === "retrieval" ? sources.scanner.asOf : null },
       matchedOfficialIds,
       unmatchedOfficial: trafficIsFresh
         ? sources.traffic.data.filter((incident) => !matched.has(incident.id))

@@ -14,18 +14,18 @@ import styles from "./TodayAsk.module.css";
  * The global Find surface decides whether the request belongs in deterministic
  * search or the reasoning workspace. People never have to choose the tool.
  *
- * Four practical shortcuts stay visible. The full category index is available in
- * the attached disclosure, but it no longer occupies the page by default.
+ * The full category index and practical shortcuts can be composed below the
+ * first local answer without creating a second request doorway.
  */
 export default function TodayAsk({
   children,
   embedded = false,
+  showQuickNeeds = true,
 }: {
   children?: ReactNode;
   embedded?: boolean;
+  showQuickNeeds?: boolean;
 }) {
-  const scope = useSyncExternalStore(subscribeScopeChange, getScope, () => null);
-  const planHref = `/ask?q=${encodeURIComponent("Plan the next two hours")}${scope ? `&in=${scopeToParam(scope)}` : ""}`;
   return (
     <section
       id="find-radius"
@@ -76,6 +76,17 @@ export default function TodayAsk({
         />
       </Link>
 
+      {showQuickNeeds ? <TodayQuickNeeds>{children}</TodayQuickNeeds> : null}
+    </section>
+  );
+}
+
+/** Existing utility doors remain separate from the first local decision. */
+export function TodayQuickNeeds({ children }: { children?: ReactNode }) {
+  const scope = useSyncExternalStore(subscribeScopeChange, getScope, () => null);
+  const planHref = `/ask?q=${encodeURIComponent("Plan the next two hours")}${scope ? `&in=${scopeToParam(scope)}` : ""}`;
+  return (
+    <div data-today-quick-needs className={styles.find}>
       <div
         className={styles.shortcuts}
         aria-label="Quick needs"
@@ -113,6 +124,6 @@ export default function TodayAsk({
       {children ? (
         <BrowsePlacesDisclosure embedded>{children}</BrowsePlacesDisclosure>
       ) : null}
-    </section>
+    </div>
   );
 }

@@ -15,7 +15,8 @@ describe("isolated Fair photo document", () => {
     expect(response.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
     const html = await response.text();
     expect(html).toContain(FAIR_PHOTO_VIEWER_SCRIPT);
-    expect(html).toContain("during a previous fair");
+    expect(html).toContain('alt="The Great Frederick Fairgrounds at night."');
+    expect(html).not.toContain("Mike D");
     expect(html).not.toMatch(/plausible|supabase|__next|analytics/i);
   });
   it("keeps the application policy from intersecting the exact viewer route", () => {

@@ -81,11 +81,14 @@ export default function MomentHero({ title, dateLine, image }: MomentHeroProps) 
             </div>
             <Rule />
           </RadiusPhotoWhen>
-          <RadiusPhotoWhen is="ready">
-            <p className={`text-caption ${styles.credit}`} data-moment-photo-credit>
-              {image.credit}
-            </p>
-          </RadiusPhotoWhen>
+          {/* Owner photos carry no display credit (an empty string); a third-party one does. */}
+          {image.credit && (
+            <RadiusPhotoWhen is="ready">
+              <p className={`text-caption ${styles.credit}`} data-moment-photo-credit>
+                {image.credit}
+              </p>
+            </RadiusPhotoWhen>
+          )}
           <RadiusPhotoWhen is="missing">
             <TitleOnPaper title={title} dateLine={dateLine} />
             <Rule />

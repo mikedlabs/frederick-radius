@@ -14,7 +14,7 @@ import { isValidCoord } from "@/lib/geo";
 export const MDOT_WZDX_SOURCE_URL =
   "https://filter.ritis.org/wzdx_v4.1/mdot.geojson";
 
-const MAX_FEED_AGE_MS = 20 * 60 * 1_000;
+export const MDOT_WZDX_MAX_FEED_AGE_MS = 20 * 60 * 1_000;
 const MAX_EVENT_UPDATE_AGE_MS = 6 * 60 * 60 * 1_000;
 const FUTURE_SKEW_MS = 5 * 60 * 1_000;
 
@@ -52,6 +52,8 @@ export type MdotWorkZonesResult = {
   available: boolean;
   /** The publisher's update time, never the time Radius rendered the result. */
   asOf?: string;
+  /** HTTP check time, separate from the feed's publication timestamp. */
+  checkedAt?: string;
   sourceUrl: typeof MDOT_WZDX_SOURCE_URL;
 };
 
@@ -240,7 +242,7 @@ export function normalizeMdotWzdx(
     root?.type !== "FeatureCollection" ||
     feedInfo?.version !== "4.1" ||
     !feedUpdatedAt ||
-    !isFresh(feedUpdatedAt, now, MAX_FEED_AGE_MS) ||
+    !isFresh(feedUpdatedAt, now, MDOT_WZDX_MAX_FEED_AGE_MS) ||
     !Array.isArray(root.features)
   ) {
     return unavailable;
@@ -340,7 +342,8 @@ export async function getMdotWorkZonesFrederickResult(
       return { data: [], available: false, sourceUrl: MDOT_WZDX_SOURCE_URL };
     }
     const payload = await response.json().catch(() => null);
-    return normalizeMdotWzdx(payload);
+    const checked = response.headers.get("date");
+    return { ...normalizeMdotWzdx(payload), checkedAt: checked ? iso(checked) ?? undefined : undefined };
   } catch {
     return { data: [], available: false, sourceUrl: MDOT_WZDX_SOURCE_URL };
   } finally {

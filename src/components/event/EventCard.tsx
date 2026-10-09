@@ -20,6 +20,7 @@ import { ReasonChipRow } from "@/components/ui/ReasonChip";
 import { eventReasons } from "@/lib/event-reasons";
 import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
 import { statusLabel } from "@/lib/event-status";
 import DatePlate from "@/components/event/DatePlate";
 import { eventDecisionLocation, eventDecisionTime } from "@/lib/events/decision-facts";
@@ -142,6 +143,7 @@ export default function EventCard({
   // text on cream). Cancelled already uses --app-danger, which passes. This one
   // value feeds every status spot below (inline text + white pills). (audit a11y)
   const statusBg = isCancelled ? "var(--app-danger)" : "var(--app-warning-press)";
+  const statusForeground = isCancelled ? "var(--app-danger-text)" : "var(--state-closing)";
   const venueLabel = eventDecisionLocation(event);
   // Accent MUST be a hex literal — used in templates like `${accent}38`
   // to compose color-with-alpha. A CSS var() fallback would produce
@@ -155,7 +157,7 @@ export default function EventCard({
   // eyebrows) on cream/card: mix the vivid color toward ink so it clears 4.5:1
   // while staying recognizably the category's hue. The raw `accent` stays for
   // icon fills / tint grounds (3:1 domain). (audit a11y: category eyebrows)
-  const accentText = `color-mix(in srgb, ${accent} 55%, var(--app-ink))`;
+  const accentText = `var(--app-list-fact-color, color-mix(in srgb, ${accent} 55%, var(--app-ink)))`;
   const categoryLabel = cat?.name ?? (event.category ? event.category : "Event");
   const accessLabel = communicationAccessLabels(event)[0];
   const cardVisual = eventCardVisual(event);
@@ -184,8 +186,8 @@ export default function EventCard({
           aria-hidden
           className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px]"
           style={{
-            background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-sunken))`,
-            color: accent,
+            background: `color-mix(in srgb, var(--app-list-fact-color, ${accent}) 14%, var(--app-bg-sunken))`,
+            color: `var(--app-list-fact-color, ${accent})`,
           }}
         >
           <CategoryIcon slug={event.category} className="h-3.5 w-3.5" strokeWidth={2} />
@@ -210,7 +212,7 @@ export default function EventCard({
           style={{ color: "var(--app-ink-3)" }}
         >
           {statusText && (
-            <span className="font-semibold" style={{ color: statusBg }}>{statusText} · </span>
+            <span className="font-semibold" style={{ color: statusForeground }}>{statusText} · </span>
           )}
           {hideDate
             ? timingText
@@ -265,7 +267,7 @@ export default function EventCard({
         <span
           aria-hidden
           className={`h-2 w-2 shrink-0 rounded-full${confirmedLive ? " live-dot" : ""}`}
-          style={{ background: confirmedLive ? "var(--app-amber)" : accent }}
+          style={{ background: confirmedLive ? "var(--app-amber)" : `var(--app-list-fact-color, ${accent})` }}
           title={confirmedLive ? "Live now" : categoryLabel}
         />
 
@@ -300,19 +302,19 @@ export default function EventCard({
               {event.is_free && (
                 <>
                   {" · "}
-                  <span style={{ color: "var(--app-positive)" }}>Free</span>
+                  <span style={{ color: "var(--app-list-fact-color, var(--app-positive))" }}>Free</span>
                 </>
               )}
               {accessLabel && (
                 <>
                   {" · "}
-                  <span style={{ color: "var(--app-cool)" }}>{accessLabel}</span>
+                  <span style={{ color: "var(--app-list-fact-color, var(--app-cool))" }}>{accessLabel}</span>
                 </>
               )}
               {statusText && (
                 <>
                   {" · "}
-                  <span style={{ color: statusBg }}>{statusText}</span>
+                  <span style={{ color: statusForeground }}>{statusText}</span>
                 </>
               )}
             </span>
@@ -344,13 +346,13 @@ export default function EventCard({
     // top-left corner squares to meet it, and the old inline label + bottom
     // color band are gone — the tab IS the category now. The wrapper reserves
     // the tab's height so it never clips inside a rail (no parent change).
-    const tabBg = `color-mix(in srgb, ${accent} 68%, var(--app-ink))`;
+    const tabBg = `var(--app-list-header-bg, color-mix(in srgb, ${accent} 68%, var(--app-media-ink)))`;
     const reasons = eventReasons(event, cardNow ?? undefined);
     return (
       <div className="relative flex h-full flex-col pt-[14px]">
         <span
           className="absolute left-3 top-0 z-10 max-w-[75%] truncate rounded-t-[8px] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em]"
-          style={{ background: tabBg, boxShadow: "var(--app-edge)", color: "var(--app-on-brand)" }}
+          style={{ background: tabBg, boxShadow: "var(--app-edge)", color: "var(--app-list-header-ink, var(--app-on-brand))" }}
         >
           {confirmedLive ? "Live now" : categoryLabel}
         </span>
@@ -372,7 +374,7 @@ export default function EventCard({
           <span aria-hidden className="pointer-events-none absolute -bottom-4 -right-3" style={{ color: accent, opacity: 0.06 }}>
             <CategoryIcon slug={event.category} className="h-[88px] w-[88px] rotate-[8deg]" strokeWidth={0.9} />
           </span>
-          <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent={accent} size="sm" />
+          <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent={`var(--app-list-fact-color, ${accent})`} size="sm" />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             {statusText && (
               <span className="self-start rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
@@ -441,20 +443,16 @@ export default function EventCard({
     return (
       <article
         {...decisionAttributes}
-        className="tactile tactile-interactive group relative rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-3 transition-transform duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)] hover:scale-[1.01] active:scale-[0.98]"
+        className="event-card--glance tactile tactile-interactive group relative rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-3 transition-transform duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)] hover:scale-[1.01] active:scale-[0.98]"
         style={{
           borderColor: "var(--app-border)",
-          // Faint left-edge accent in the category color so a stack of cards
-          // reads as "different kinds of events" at a glance — COMPOSED WITH
-          // the pressed-paper depth (edge + top highlight + soft elevation),
-          // which a bare `inset 3px 0` used to clobber, leaving the card flat.
-          boxShadow: `inset 3px 0 0 ${accent}, var(--app-edge), var(--app-hi), var(--app-elev-1)`,
+          boxShadow: `var(--app-list-card-shadow, inset 3px 0 0 ${accent}, var(--app-edge), var(--app-hi), var(--app-elev-1))`,
         }}
       >
         {/* One photo state for the thumbnail inside the link and its credit
             outside it: a proxy failure removes both, and the credit waits
             for a real image to decode. */}
-        <PlacePhotoScope src={cardVisual?.src}>
+        <PlacePhotoScope src={cardVisual ? proxyPhotoAtWidth(cardVisual.src, 132) : undefined}>
         <Link
           href={`/events/${event.slug}`}
           data-decision-action="open"
@@ -490,7 +488,7 @@ export default function EventCard({
                 {confirmedLive && (
                   <span
                     className="inline-flex items-center gap-1 font-medium"
-                    style={{ color: "var(--app-amber-text)" }}
+                    style={{ color: "var(--app-live-text)" }}
                   >
                     <span
                       aria-hidden
@@ -506,7 +504,7 @@ export default function EventCard({
                   {timingText ? ` · ${timingText}` : ""}
                 </span>
                 {statusText && (
-                  <span className="font-medium" style={{ color: statusBg }}>
+                  <span className="font-medium" style={{ color: statusForeground }}>
                     · {statusText}
                   </span>
                 )}
@@ -529,14 +527,14 @@ export default function EventCard({
                 )}
                 
                 {(event.is_free || event.price_text) && (
-                  <span className="flex items-center gap-1 font-medium" style={{ color: event.is_free ? "var(--app-positive)" : "inherit" }}>
+                  <span className="flex items-center gap-1 font-medium" style={{ color: event.is_free ? "var(--app-list-fact-color, var(--app-positive))" : "inherit" }}>
                     <Ticket className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
                     {event.is_free ? "Free" : event.price_text}
                   </span>
                 )}
 
                 {accessLabel && (
-                  <span className="flex items-center gap-1 font-medium" style={{ color: "var(--app-cool)" }}>
+                  <span className="flex items-center gap-1 font-medium" style={{ color: "var(--app-list-fact-color, var(--app-cool))" }}>
                     <Accessibility className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
                     {accessLabel}
                   </span>
@@ -557,12 +555,12 @@ export default function EventCard({
                 links never become invalid nested anchors. */}
             {cardVisual ? (
               <PlacePhotoWhen is="visible">
-                <figure className="w-[72px] shrink-0 self-center" data-event-card-thumb>
-                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[10px]">
+                <figure className="w-[96px] shrink-0 self-stretch sm:w-[132px]" data-event-card-thumb>
+                  <div className="relative h-full min-h-[96px] w-full overflow-hidden rounded-[var(--app-radius-md)]">
                     <PlacePhotoScopeImage
                       alt=""
                       fill
-                      sizes="72px"
+                      sizes="(min-width: 640px) 132px, 96px"
                       placeholder="blur"
                       blurDataURL={PAPER_CREAM_BLUR}
                       className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
@@ -597,7 +595,7 @@ export default function EventCard({
       {...decisionAttributes}
       className="tactile tactile-interactive group relative flex items-stretch gap-3 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-3 transition-transform duration-[var(--app-dur-fast)] ease-[var(--app-ease-out)] hover:scale-[1.01] active:scale-[0.98]"
     >
-      <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent={accent} />
+      <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent={`var(--app-list-fact-color, ${accent})`} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           {statusText && (

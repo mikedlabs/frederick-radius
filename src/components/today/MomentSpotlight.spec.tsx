@@ -22,8 +22,8 @@ const IN_THE_STREETS: SpotlightMoment = {
   ],
   spotlightImage: {
     src: "/images/moments/in-the-streets-2024-mike-d.jpg",
-    alt: "A packed Market Street during In The Streets in downtown Frederick, photographed in 2024.",
-    credit: "Photograph by Mike D · In The Streets 2024",
+    alt: "A crowd on Market Street during In The Streets in downtown Frederick.",
+    credit: "",
     width: 1920,
     height: 1078,
   },
@@ -55,7 +55,8 @@ describe("MomentSpotlight", () => {
     expect(html).toContain("aspect-[16/9]");
     expect(html).not.toContain("sm:aspect-[21/8]");
     expect(html).toContain(IN_THE_STREETS.spotlightImage!.alt);
-    expect(html).toContain(IN_THE_STREETS.spotlightImage!.credit);
+    expect(html).not.toContain("<figcaption");
+    expect(html).not.toContain("Photograph by Mike D");
     expect(html).toContain("Today · 11 AM to 5 PM");
     expect(html).toContain("Market Street, downtown");
     expect(html).toContain("Free to attend");

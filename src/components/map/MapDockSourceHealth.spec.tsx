@@ -41,6 +41,25 @@ async function openLayers(input:MapDockProps){
  return host.querySelector('[role="status"].dock-source-health')!;
 }
 describe("retained MapDock source warning",()=>{
+ it("labels older mapped reports as history beside the source check, without a current incident count",async()=>{
+  const input=props(undefined);
+  input.roadsNowActive=true;input.showIncidents=true;
+  input.incidentHealth={status:"empty",count:0,earlierCount:1,source:"Frederick Scanner",timestamp:"2026-10-06T20:00:00Z",timestampBasis:"checked"};
+  await openLayers(input);
+  expect(host.textContent).toContain("No recent public travel reports are mapped.");
+  expect(host.textContent).toContain("1 earlier public report retained as history");
+  expect(host.textContent).toContain("The source was checked at");
+  expect(host.textContent).not.toContain("1 current travel incident");
+ });
+ it("does not invent retained history when a previously empty check is stale",async()=>{
+  const input=props(undefined);
+  input.roadsNowActive=true;input.showIncidents=true;
+  input.incidentHealth={status:"stale",count:0,earlierCount:0,source:"Frederick Scanner",timestamp:"2026-10-06T20:00:00Z",timestampBasis:"checked"};
+  await openLayers(input);
+  expect(host.textContent).toContain("Unable to verify current public incident reports.");
+  expect(host.textContent).not.toContain("Earlier public reports retained");
+  expect(host.textContent).not.toContain("retained as history");
+ });
  it("keeps unavailable-source and empty-layer warning alongside the retained snapshot age",async()=>{
    const input=props({parking:{status:"unavailable",unavailable:["Parking occupancy"],stale:true,asOf:"2026-10-06T20:00:00Z"}});
    const notice=await openLayers(input);

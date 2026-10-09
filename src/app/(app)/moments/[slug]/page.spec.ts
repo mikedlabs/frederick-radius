@@ -114,7 +114,7 @@ describe("generic moment template", () => {
 });
 
 describe("In The Streets moment route", () => {
-  it("uses the finished, attributed photograph in accessible social metadata", async () => {
+  it("uses the owned photograph with descriptive accessible social metadata", async () => {
     const metadata = await generateMetadata({
       params: Promise.resolve({ slug: IN_THE_STREET_SLUG }),
     });
@@ -123,7 +123,7 @@ describe("In The Streets moment route", () => {
       url: "/images/moments/in-the-streets-2024-mike-d.jpg",
       width: 1920,
       height: 1078,
-      alt: "A packed Market Street during In The Streets in downtown Frederick, photographed in 2024.",
+      alt: "A crowd on Market Street during In The Streets in downtown Frederick.",
     };
     expect(metadata.openGraph?.images).toEqual([
       expect.objectContaining(expectedImage),

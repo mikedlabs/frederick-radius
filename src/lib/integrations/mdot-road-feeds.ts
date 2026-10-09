@@ -29,6 +29,8 @@ export type ChartFeedResult<T> = {
   available: boolean;
   /** Latest provider observation, or HTTP response date for a valid empty feed. */
   asOf?: string;
+  /** HTTP response time; declaration/observation age remains separate. */
+  checkedAt?: string;
 };
 
 export type ChartSpeedSensor = {
@@ -529,6 +531,7 @@ async function result<T>(
     data,
     available: true,
     asOf: latest(data.map(observedAt)) ?? fetched.responseAsOf,
+    checkedAt: fetched.responseAsOf,
   };
 }
 

@@ -35,3 +35,19 @@ export const LongVenueAt320: Story = {
     variant: "glance",
   },
 };
+export const PrimaryTabRows: Story = {
+  decorators: [(Story) => <div data-app-primary-tab="/events"><Story /></div>],
+  args: { variant: "glance" },
+};
+export const PrimaryTabLiveLead: Story = {
+  decorators: [(Story) => <div data-app-primary-tab="/events"><Story /></div>],
+  args: { variant: "feature", live: true, nowISO: "2026-09-10T19:00:00-04:00" },
+};
+
+export const ApprovedVenuePhotograph: Story = {
+  decorators: [(Story) => <div data-app-primary-tab="/events"><Story /></div>],
+  args: {
+    variant: "glance",
+    event: { ...sample, title: "Demonstration concert at Baker Park", venue_name: "Baker Park", venue_place_slug: "baker-park-frederick", municipality: "frederick", municipality_name: "Frederick" },
+  },
+};

@@ -123,6 +123,38 @@ afterEach(async () => {
 });
 
 describe("Find continuity through the real lazy header and overlay", () => {
+  it.each(["header", "bridge", "shortcut"])("keeps an active non-inert modal in charge of the %s Find entry", async (entry) => {
+    const modal = document.createElement("div");
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    const owner = document.createElement("button");
+    owner.textContent = "Done";
+    modal.append(owner);
+    document.body.append(modal);
+    try {
+      owner.focus();
+      await act(async () => {
+        if (entry === "header") button("Ask or find across Frederick County").click();
+        if (entry === "bridge") window.dispatchEvent(new CustomEvent("fr:open-search"));
+        if (entry === "shortcut") owner.dispatchEvent(new KeyboardEvent("keydown", { key: "/", bubbles: true }));
+        await vi.dynamicImportSettled();
+      });
+      expect(container.querySelector("#radius-find-dialog")).toBeNull();
+      expect(document.activeElement).toBe(owner);
+    } finally { modal.remove(); }
+    await open();
+    expect(input()).toBeDefined();
+  });
+
+  it.each(["inert", "hidden", "aria-hidden"])("ignores an inactive %s modal when opening Find", async (attribute) => {
+    const modal = document.createElement("div");
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute(attribute, attribute === "aria-hidden" ? "true" : "");
+    document.body.append(modal);
+    try { await open(); } finally { modal.remove(); }
+  });
+
   it("restores the query after Escape and fetches new results instead of retaining the old answer", async () => {
     fetchMock.mockResolvedValueOnce(response("Earlier fixture result"))
       .mockResolvedValueOnce(response("Updated fixture result"));
@@ -201,8 +233,16 @@ describe("Find continuity through the real lazy header and overlay", () => {
   });
 
   it("repeats a recent phrase and then resumes it without persisting result data", async () => {
-    window.localStorage.setItem("fr:recent-search:v1", JSON.stringify(["coffee"]));
+    fetchMock.mockImplementation(async () => response("Fresh fixture result"));
     await open();
+    await type("coffee");
+    await settle();
+    await act(async () => {
+      input().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(navigation.leaveTo).toHaveBeenCalledOnce();
+    await open();
+    await act(async () => { button("Clear search").click(); });
     await act(async () => { button("coffee").click(); });
     await settle();
     expect(container.textContent).toContain("Fresh fixture result");
@@ -211,6 +251,80 @@ describe("Find continuity through the real lazy header and overlay", () => {
     expect(input().value).toBe("coffee");
     expect(window.sessionStorage.length).toBe(1);
     expect(window.sessionStorage.getItem(DRAFT_KEY)).toBe("coffee");
+  });
+
+  it.each(["throws", "silently refuses"])("explains a Clear write that %s while retaining the confirmed history", async (failure) => {
+    const key = "fr:recent-search:v2";
+    const raw = JSON.stringify({ source: "submitted-on-device", queries: ["coffee"] });
+    window.localStorage.setItem(key, raw);
+    await open();
+    expect(button("coffee")).toBeDefined();
+    const originalSet = Storage.prototype.setItem;
+    const writeSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, name: string, value: string) {
+      if (name === key) {
+        if (failure === "throws") throw new DOMException("Storage full", "QuotaExceededError");
+        return;
+      }
+      originalSet.call(this, name, value);
+    });
+    await act(async () => { button("Clear recent searches").click(); });
+    expect(container.textContent).toContain("Could not clear recent searches. Please try again.");
+    expect(container.textContent).not.toContain("No recent searches on this device.");
+    expect(button("coffee")).toBeDefined();
+    expect(window.localStorage.getItem(key)).toBe(raw);
+    await close();
+    await remount();
+    await open();
+    expect(button("coffee")).toBeDefined();
+    expect(window.localStorage.getItem(key)).toBe(raw);
+    writeSpy.mockRestore();
+    await type("new actual phrase");
+    await settle();
+    await act(async () => {
+      input().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(navigation.leaveTo).toHaveBeenCalledWith("/places/fixture");
+    await open();
+    await act(async () => { button("Clear search").click(); });
+    expect(button("coffee")).toBeDefined();
+    expect(button("new actual phrase")).toBeDefined();
+    expect(container.textContent).toContain("Could not clear recent searches. Please try again.");
+    await act(async () => { button("Clear recent searches").click(); });
+    expect(container.textContent).not.toContain("Could not clear recent searches. Please try again.");
+    expect(container.textContent).toContain("No recent searches on this device.");
+  });
+
+  it("shows unavailable recent history instead of claiming absence when storage cannot be read", async () => {
+    const key = "fr:recent-search:v2";
+    window.localStorage.setItem(key, JSON.stringify({ source: "submitted-on-device", queries: ["private previously submitted phrase"] }));
+    await open();
+    expect(button("private previously submitted phrase")).toBeDefined();
+    await close();
+    const originalRead = Storage.prototype.getItem;
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(function (this: Storage, name: string) {
+      if (name === key) throw new DOMException("Storage blocked", "SecurityError");
+      return originalRead.call(this, name);
+    });
+    await open();
+    expect(container.textContent).toContain("Recent searches are unavailable on this device.");
+    expect(container.textContent).not.toContain("No recent searches on this device.");
+    expect(container.textContent).not.toContain("private previously submitted phrase");
+    expect([...container.querySelectorAll("button")].some((node) => node.getAttribute("aria-label") === "Clear recent searches")).toBe(false);
+  });
+
+  it("still opens the submitted destination when optional history cannot be written", async () => {
+    const originalSet = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, name: string, value: string) {
+      if (name === "fr:recent-search:v2") throw new DOMException("Storage full", "QuotaExceededError");
+      originalSet.call(this, name, value);
+    });
+    await open();
+    await type("xqzvwmblorp");
+    await settle();
+    await act(async () => { input().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); });
+    expect(navigation.leaveTo).toHaveBeenCalledWith("/places/fixture");
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(window.localStorage.getItem("fr:recent-search:v2")).toBeNull();
   });
 
   it("refetches the same words using the current area cookie after scope changes", async () => {

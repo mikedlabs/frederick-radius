@@ -1,13 +1,15 @@
 "use client";
 
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ExternalLink, Star } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import { BreweryPhoto } from "@/components/beer/BreweryPhoto";
 import { FAMILY_BY_KEY, beerKey, type BeerWithBrewery } from "@/data/beers";
-import { useIsSaved, useToggleSave } from "@/hooks/useSaved";
+import { useIsSaved, useToggleSave, savedChangeDescription } from "@/hooks/useSaved";
 import type { BreweryPhotoAsset } from "@/lib/beer/brewery-media";
 import { haptic } from "@/lib/haptics";
+import { toast } from "sonner";
 
 /**
  * BeerSheet — a beer's detail in a bottom sheet, so tapping a pour opens its
@@ -46,6 +48,8 @@ function BeerSheetBody({
   const key = beerKey(beer);
   const saved = useIsSaved("beer", key);
   const toggle = useToggleSave("beer", key);
+  const busyRef = useRef(false);
+  const [busy, setBusy] = useState(false);
   const meta = [
     beer.style,
     beer.abv != null ? `${beer.abv.toFixed(1)}%` : null,
@@ -105,7 +109,19 @@ function BeerSheetBody({
       <div className="mt-4">
         <button
           type="button"
-          onClick={() => { toggle(); haptic("light"); }}
+          onClick={async () => {
+            if (busyRef.current) return;
+            busyRef.current = true;
+            setBusy(true);
+            try {
+              await toggle(!saved);
+              haptic("light");
+            } catch (error) {
+              toast.error(saved ? "Could not remove this pour" : "Could not save this pour", { description: savedChangeDescription(error) });
+            } finally { busyRef.current = false; setBusy(false); }
+          }}
+          disabled={busy}
+          aria-busy={busy || undefined}
           aria-pressed={saved}
           className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full text-[13px] font-semibold transition active:scale-[0.98]"
           style={
@@ -115,7 +131,7 @@ function BeerSheetBody({
           }
         >
           <Star className="h-4 w-4" strokeWidth={2.25} fill={saved ? "currentColor" : "none"} aria-hidden />
-          {saved ? "Saved" : "Save this pour"}
+          {busy ? saved ? "Removing…" : "Saving…" : saved ? "Saved" : "Save this pour"}
         </button>
         {beer.untappd && (
           <a

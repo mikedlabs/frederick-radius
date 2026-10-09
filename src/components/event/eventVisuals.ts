@@ -20,17 +20,17 @@ export type EventCardVisual = {
 const VENUE_VISUALS: Readonly<Record<string, EventCardVisual>> = {
   "carroll-creek-linear-park-frederick": {
     src: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
-    caption: "Venue · Carroll Creek Linear Park · Radius photo",
+    caption: "Venue · Carroll Creek Linear Park",
     key: "radius-carroll-creek-summer",
   },
   "baker-park-frederick": {
     src: "/images/seasons/fall/018.jpg",
-    caption: "Venue · Baker Park · Radius photo",
+    caption: "Venue · Baker Park",
     key: "radius-baker-park-bandshell",
   },
   "baker-park-bandshell": {
     src: "/images/seasons/fall/018.jpg",
-    caption: "Venue · Baker Park Bandshell · Radius photo",
+    caption: "Venue · Baker Park Bandshell",
     key: "radius-baker-park-bandshell",
   },
 };

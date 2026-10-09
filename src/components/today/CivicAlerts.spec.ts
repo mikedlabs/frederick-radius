@@ -167,12 +167,13 @@ function officialAlert(
 }
 
 describe("officialCivicAlerts", () => {
+  const now = Date.parse("2026-09-04T12:00:00.000Z");
   it("does not turn a generic statewide health notice into a Frederick Heads up", () => {
     expect(officialCivicAlerts([officialAlert({
       kind: "health-notice",
       title: "Measles Exposure Updated on Sep 17 2026 9:10AM",
       summary: "A Maryland resident visited several locations in Ocean City. Read the official notice.",
-    })])).toEqual([]);
+    })], now)).toEqual([]);
   });
 
   it("keeps a health notice that explicitly names a Frederick County location", () => {
@@ -180,17 +181,17 @@ describe("officialCivicAlerts", () => {
       kind: "health-notice",
       title: "Official health exposure notice",
       summary: "The notice identifies a location in Brunswick, Frederick County.",
-    })])[0]?.severity).toBe("advisory");
+    })], now)[0]?.severity).toBe("advisory");
   });
 
   it("keeps a routine office closing out of Today's high-signal interruption layer", () => {
-    expect(officialCivicAlerts([officialAlert()])[0]?.severity).toBe("info");
+    expect(officialCivicAlerts([officialAlert()], now)[0]?.severity).toBe("info");
   });
 
   it("still promotes a closing whose copy describes an emergency", () => {
     expect(officialCivicAlerts([officialAlert({
       summary: "Offices are closed during an emergency. Avoid the affected building.",
-    })])[0]?.severity).toBe("warning");
+    })], now)[0]?.severity).toBe("warning");
   });
 
   it("keeps an official city emergency prominent even with quiet copy", () => {
@@ -198,6 +199,6 @@ describe("officialCivicAlerts", () => {
       kind: "city-emergency",
       title: "City emergency notice",
       summary: "Follow the latest official instructions.",
-    })])[0]?.severity).toBe("warning");
+    })], now)[0]?.severity).toBe("warning");
   });
 });

@@ -15,10 +15,11 @@ import {
 describe("momentHeroImage", () => {
   it("prefers an owned photograph of the occasion", () => {
     const image = momentHeroImage(momentBySlug("in-the-street-2026")!);
+    // Owner photos carry no display credit (owner call in #1776).
     expect(image).toMatchObject({
       kind: "owned",
       src: "/images/moments/in-the-streets-2024-mike-d.jpg",
-      credit: "Photograph by Mike D · In The Streets 2024",
+      credit: "",
     });
   });
 

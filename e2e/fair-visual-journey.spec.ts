@@ -9,7 +9,7 @@ for (const width of [320, 390, 430, 1440]) {
     await page.goto(`${fair}#program`);
     const feature = page.locator("[data-fair-grandstand-spotlight]");
     await expect(feature).toBeVisible();
-    await expect(feature).toContainText("Mike D, 2024");
+    await expect(feature).not.toContainText("Mike D, 2024");
     await expect.poll(() => feature.locator("img").evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     await page.evaluate(() => document.fonts.ready);
     await mkdir("output/playwright/visual-journey", { recursive: true });
@@ -22,7 +22,7 @@ for (const width of [320, 390, 430, 1440]) {
     await expect(page.getByRole("heading", { name: "My Fair Day", exact: true })).toBeVisible();
     await expect(page.locator("[data-fair-journey]")).not.toHaveAttribute("open");
     await expect(page.getByRole("button", { name: "Open details for Daughtry", exact: true })).toBeVisible();
-    await expect(page.getByText("Fairgrounds atmosphere · Mike D, 2024", { exact: true })).toBeVisible();
+    await expect(page.getByText("Fairgrounds atmosphere", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `output/playwright/visual-journey/my-day-${width}.png` });
     await page.reload();
@@ -36,7 +36,7 @@ for (const width of [320, 390, 430, 1440]) {
 test("Today uses the owned collection without moving search behind the Fair campaign", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/today");
-  const photo = page.getByAltText("Carroll Creek in Frederick, photographed by Mike D.");
+  const photo = page.getByAltText("Carroll Creek in Frederick.");
   await expect(photo).toBeVisible();
   await expect.poll(() => photo.evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
