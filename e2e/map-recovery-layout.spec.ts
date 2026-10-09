@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import catalog from "../src/data/places-client.json";
 
 const returnTo = "/search?q=coffee&in=brunswick&kind=place";
@@ -59,6 +59,28 @@ async function installRecoveryBoundary(page: Page, photosAvailable = false) {
       await route.abort("blockedbyclient");
     }
   });
+}
+
+/** Border-box size alone misses a neighboring layer intercepting a target's
+ * edge. Sample the same full 44px footprint before and after compact resize. */
+async function assert44HitTarget(control: Locator) {
+  await expect(control).toBeVisible();
+  const measure = () => control.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const x = rect.x + rect.width / 2;
+    const y = rect.y + rect.height / 2;
+    const hits = [[x, y], [x - 21.5, y], [x + 21.5, y], [x, y - 21.5], [x, y + 21.5]]
+      .map(([px, py]) => {
+        const hit = document.elementFromPoint(px, py);
+        return px >= 0 && py >= 0 && px < innerWidth && py < innerHeight && hit !== null && element.contains(hit);
+      });
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, hits };
+  });
+  await expect.configure({ soft: true }).poll(async () => (await measure()).hits).toEqual([true, true, true, true, true]);
+  const target = await measure();
+  expect.soft(target.width).toBeGreaterThanOrEqual(44);
+  expect.soft(target.height).toBeGreaterThanOrEqual(44);
+  return target;
 }
 
 async function recoveryGeometry(page: Page) {
@@ -125,8 +147,10 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
       await testInfo.attach("initial-recovery-layout", { body: await page.screenshot({ fullPage: false }), contentType: "image/png" });
       expect.soft(initial.headingUnobscured).toBe(true);
       expect.soft(initial.horizontalOverflow).toBe(false);
-      expect.soft(await back.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
-      expect.soft(await search.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+      const initialTargets = { back: await assert44HitTarget(back), search: await assert44HitTarget(search) };
+      await testInfo.attach("initial-recovery-hit-targets", { body: JSON.stringify(initialTargets, null, 2), contentType: "application/json" });
+      // At 390x844 the return link remains its full-width, noncompact row.
+      expect.soft(initialTargets.back.width).toBeGreaterThan(44);
       if (viewport.width >= 1024) {
         expect.soft(initial.heading.y).toBeGreaterThanOrEqual(initial.dock.bottom);
       } else {
@@ -135,12 +159,18 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
 
       // A shorter phone makes the real fallback list scroll; the host observer
       // must preserve the final result above the measured closed dock after resize.
-      if (viewport.width < 1024) await page.setViewportSize({ width: viewport.width, height: 420 });
-      await list.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+      if (viewport.width < 1024) {
+        await page.setViewportSize({ width: viewport.width, height: 420 });
+        // WebKit can acknowledge resize before its visual viewport and host
+        // reflow. Wait for the compact control before measuring list clearance.
+        await expect.poll(() => page.evaluate(() => innerHeight)).toBe(420);
+        await expect.poll(() => back.evaluate((element) => element.getBoundingClientRect().width)).toBe(44);
+      }
       await expect.poll(async () => {
         const geometry = await recoveryGeometry(page);
         return Math.abs(geometry.measuredDockHeight - geometry.dock.height);
       }).toBeLessThan(1);
+      await list.evaluate((element) => { element.scrollTop = element.scrollHeight; });
       const final = await recoveryGeometry(page);
       await testInfo.attach("final-recovery-geometry", { body: JSON.stringify(final, null, 2), contentType: "application/json" });
       await testInfo.attach("final-recovery-layout", { body: await page.screenshot({ fullPage: false }), contentType: "image/png" });
@@ -148,9 +178,10 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 
       expect(final.horizontalOverflow).toBe(false);
       await expect(search).toHaveValue("coffee");
       await expect(back).toHaveAttribute("href", returnTo);
-      expect(await back.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
-      expect(await search.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+      const finalTargets = { back: await assert44HitTarget(back), search: await assert44HitTarget(search) };
+      await testInfo.attach("final-recovery-hit-targets", { body: JSON.stringify(finalTargets, null, 2), contentType: "application/json" });
       if (viewport.width < 1024) {
+        expect(finalTargets.back.width).toBe(44);
         expect(final.scrollHeight).toBeGreaterThan(final.clientHeight);
         expect(final.scrollTop).toBeGreaterThan(0);
         expect(final.bottomPadding).toBeGreaterThan(final.dock.height);

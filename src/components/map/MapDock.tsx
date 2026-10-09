@@ -1591,7 +1591,7 @@ export default function MapDock(props: MapDockProps) {
         ref={dockRef}
       >
         {searchReturnTo && !compactRecoveryDock && !pane && !searchPanelOpen && (
-          <a href={searchReturnTo} className="flex min-h-11 items-center gap-1.5 rounded-t-[var(--app-radius-md)] border-b px-3 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-link)", background: "var(--app-bg-elevated-solid)" }}>
+          <a href={searchReturnTo} className="relative z-10 flex min-h-11 items-center gap-1.5 rounded-t-[var(--app-radius-md)] border-b px-3 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-link)", background: "var(--app-bg-elevated-solid)" }}>
             <ChevronLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
             Back to search results
           </a>
@@ -1659,7 +1659,7 @@ export default function MapDock(props: MapDockProps) {
           {compactRecoveryDock && searchReturnTo && !pane && !searchPanelOpen && (
             <a
               href={searchReturnTo}
-              className="grid min-h-11 place-items-center rounded-l-[var(--app-radius-md)] border-r"
+              className="relative z-10 grid min-h-11 place-items-center rounded-l-[var(--app-radius-md)] border-r"
               style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
               title="Back to search results"
             >

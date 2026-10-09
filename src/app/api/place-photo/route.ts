@@ -35,6 +35,12 @@ const PHOTO_DEADLINE_MS = 8_000;
 // Leave response overhead below the host's 4.5 MB function response limit.
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
 const MAX_PHOTO_READS = 4_096;
+// A raster keeps its intrinsic 1px dimensions in WebKit when CSS fills a card.
+// SVG can report the painted card dimensions and evade the failure detector.
+const PHOTO_SIGNAL_PNG = new Uint8Array(Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=",
+  "base64",
+));
 
 const VALID_NAME = /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/;
 const VALID_SLUG = /^[a-z0-9-]+$/;
@@ -127,11 +133,11 @@ function placeholderResponse(
 ): Response {
   if (signal) {
     return new Response(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" viewBox="0 0 1 1"/>',
+      PHOTO_SIGNAL_PNG,
       {
         status: 200,
         headers: {
-          "Content-Type": "image/svg+xml",
+          "Content-Type": "image/png",
           "Cache-Control": "public, max-age=300, s-maxage=300",
           "X-Photo-Fallback": reason,
         },
