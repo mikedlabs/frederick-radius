@@ -1,0 +1,59 @@
+name: Visual floor
+
+# Visual-first ratchet (docs/VISUAL_FIRST.md, build step 2). After each
+# successful production promotion, load every surface in
+# scripts/visual-floor-baseline.json at 390 x 844 and fail when an enforced
+# surface no longer shows a real picture or map of at least 96 px in its first
+# viewport. It measures the public site, not a local build, because place
+# photos, flyers and town photos only exist with production data.
+#
+# This job reports; it never rolls back. The production canary owns recovery.
+# It is event-driven on purpose: scheduled runners are capped by
+# scripts/automation-ownership-audit.mjs.
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Origin to measure
+        required: false
+        default: https://frederickradius.app
+
+concurrency:
+  group: visual-floor
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  floor:
+    name: First viewport shows a picture or map
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.deployment_status.state == 'success' &&
+        github.event.deployment.environment == 'Production' &&
+        github.event.deployment.creator.login == 'vercel[bot]'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Measure against the ratchet on the trusted default branch.
+          ref: ${{ github.event_name == 'deployment_status' && 'main' || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium
+        timeout-minutes: 10
+        run: npx playwright install --with-deps chromium
+      - name: Measure the first viewport of each surface
+        env:
+          VISUAL_FLOOR_BASE_URL: ${{ inputs.base_url || 'https://frederickradius.app' }}
+        run: npm run check:visual-floor

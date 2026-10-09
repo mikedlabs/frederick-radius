@@ -63,6 +63,16 @@ export const PendingRecoverySearch: Story = {
     await expect(canvas.queryByText("No fallback results are available")).not.toBeInTheDocument();
   },
 };
+export const RecoverySearchShownInDock: Story = {
+  args: { places: [], failureMode: true, searchState: "unavailable", searchFeedbackInDock: true, onRetrySearch: fn() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // The dock's search panel carries the status and the one retry.
+    await expect(canvas.queryByRole("status")).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    await expect(canvas.queryByText("No fallback results are available")).not.toBeInTheDocument();
+  },
+};
 export const FailedRecoverySearch: Story = {
   args: { places: [], failureMode: true, searchState: "unavailable", onRetrySearch: fn() },
   play: async ({ canvasElement, args }) => {
