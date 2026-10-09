@@ -75,6 +75,9 @@ test.describe("Home Screen installation", () => {
     });
 
     test("keeps the Fair's direct setup action and adds a shareable help route inside its disclosure", async ({ page }) => {
+      // The keep-this-guide disclosure belongs to the Fair-week Home. The 2026
+      // run is over, so hold the browser clock in its planning window.
+      await page.clock.setFixedTime(new Date("2026-09-10T16:00:00Z"));
       await page.goto("/moments/great-frederick-fair-2026", { waitUntil: "domcontentloaded" });
       const guide = page.locator("[data-fair-keep-guide]");
       const setupLink = guide.getByRole("link", { name: "Home Screen setup and help" });

@@ -2,10 +2,15 @@ import { expect, test } from "@playwright/test";
 
 const VENDOR_HREF = "/moments/great-frederick-fair-2026?vendor=vendor-white-rabbit-rad-pies#fair-map";
 const VENDOR_TITLE = "White Rabbit x Rad Pies at the 2026 Fair";
+// The 2026 Fair ended on September 26, and the guide changes shape after the
+// run. Like the other Fair specs, these journeys open the Fair-week guide, so
+// the browser clock stays in the planning window they were written for.
+const FAIR_WEEK_CLOCK = new Date("2026-09-10T16:00:00Z");
 
 test.use({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
 
 test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(FAIR_WEEK_CLOCK);
   // This navigation regression must not spend on optional provider photos.
   await page.route("**/api/place-photo?*", (route) => route.fulfill({
     status: 200,

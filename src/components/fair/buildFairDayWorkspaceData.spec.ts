@@ -407,6 +407,67 @@ describe("buildFairDayWorkspaceData", () => {
     expect(data.initialDate).toBe("2026-09-22");
     expect(data.initialPlan.selectedDayId).toBe("day-2026-09-22");
     expect(data.eventPhase).toBe("fair-day");
+    expect(data.todayDate).toBe("2026-09-22");
+  });
+
+  it("keeps a mid-run day as today, unchanged by the post-fair flag", () => {
+    const data = buildFairDayWorkspaceData(
+      greatFrederickFair2026Pack,
+      greatFrederickFair2026PackPointer,
+      new Date("2026-09-20T16:00:00Z"),
+    );
+
+    expect(data.eventPhase).toBe("fair-day");
+    expect(data.eventPhaseLabel).toBe("Fair day");
+    expect(data.todayDate).toBe("2026-09-20");
+    expect(data.initialDate).toBe("2026-09-20");
+    expect(data.initialPlan.selectedDayId).toBe("day-2026-09-20");
+  });
+
+  it("counts no day as today after the Fair ends", () => {
+    const data = buildFairDayWorkspaceData(
+      greatFrederickFair2026Pack,
+      greatFrederickFair2026PackPointer,
+      new Date("2026-10-07T16:00:00Z"),
+    );
+
+    expect(data.eventPhase).toBe("post-fair");
+    expect(data.eventPhaseLabel).toBe("After the Fair");
+    expect(data.todayDate).toBeNull();
+    // The record still opens on the first published day, as a record.
+    expect(data.initialDate).toBe(data.dates[0]?.date);
+    expect(data.dates.some((day) => day.date === data.todayDate)).toBe(false);
+    expect(data.source.ageLabel).not.toMatch(/today/i);
+  });
+
+  it("ends the run at midnight Eastern after the last Fair day", () => {
+    const lastNight = buildFairDayWorkspaceData(
+      greatFrederickFair2026Pack,
+      greatFrederickFair2026PackPointer,
+      new Date("2026-09-27T03:59:59Z"),
+    );
+    const afterward = buildFairDayWorkspaceData(
+      greatFrederickFair2026Pack,
+      greatFrederickFair2026PackPointer,
+      new Date("2026-09-27T04:00:00Z"),
+    );
+
+    expect(lastNight.eventPhase).toBe("fair-day");
+    expect(lastNight.todayDate).toBe("2026-09-26");
+    expect(afterward.eventPhase).toBe("post-fair");
+    expect(afterward.todayDate).toBeNull();
+  });
+
+  it("counts no day as today before the Fair opens", () => {
+    const data = buildFairDayWorkspaceData(
+      greatFrederickFair2026Pack,
+      greatFrederickFair2026PackPointer,
+      REVIEW_TIME,
+    );
+
+    expect(data.eventPhase).toBe("pre-fair");
+    expect(data.todayDate).toBeNull();
+    expect(data.initialDate).toBe("2026-09-18");
   });
 
   it("marks a known offer deadline as passed at the server review time", () => {

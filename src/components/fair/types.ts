@@ -97,6 +97,8 @@ export type FairDayWorkspaceData = {
   reviewedAt: string;
   dates: FairDayDateOption[];
   initialDate: string;
+  /** The Fair day that is today at `reviewedAt`, or null before and after the run. */
+  todayDate: string | null;
   offers: FairDayOfferView[];
   partyOffers: FairPartyOffer[];
   practicalAnswers: FairPracticalAnswer[];

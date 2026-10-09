@@ -5,6 +5,10 @@ const VENDOR_ID = "vendor-white-rabbit-rad-pies";
 const VENDOR_NAME = "White Rabbit x Rad Pies";
 const PLAN_KEY = "fr:fair-plan:great-frederick-fair-2026:v1";
 const MAP_SEARCH_NAME = "Find a place, event, or vendor on the Fair grounds map";
+// The 2026 Fair ended on September 26 and its dock now drops My Day. These
+// journeys check the Fair-week guide, so the browser clock stays in the
+// planning window they were written for.
+const FAIR_WEEK_CLOCK = new Date("2026-09-10T16:00:00Z");
 
 async function openMap(page: Page) {
   await page.goto(`${FAIR_PATH}#fair-map`, { waitUntil: "domcontentloaded" });
@@ -34,6 +38,10 @@ test.describe("Fair vendor discovery and My Day", () => {
     locale: "en-US",
     timezoneId: "America/New_York",
     serviceWorkers: "block",
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(FAIR_WEEK_CLOCK);
   });
 
   test("finds a real vendor without inventing a pin, then saves and returns through My Day", async ({ page }) => {

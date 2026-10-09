@@ -89,6 +89,7 @@ import {
   withoutFairMapSelectionHistoryState,
 } from "@/lib/fair/map-selection-history";
 
+import FairAfterward, { type FairAfterwardMoment } from "./FairAfterward";
 import FairPartyPlanner from "./FairPartyPlanner";
 import FairPracticalAnswers from "./FairPracticalAnswers";
 import FairShareButton from "./FairShareButton";
@@ -160,6 +161,11 @@ const FAIR_PRIMARY_MODES: Array<{
     accent: "var(--app-brand)",
   },
 ];
+
+/** After the run the Fair's own dock keeps only the record and the grounds. */
+const FAIR_AFTERWARD_MODES = FAIR_PRIMARY_MODES.filter(
+  (mode) => mode.id === "now" || mode.id === "map",
+);
 
 const FAIR_MODE_IDS: FairMode[] = ["now", "find", "map", "my-day", "travel"];
 
@@ -257,6 +263,33 @@ export function fairModeFromHash(hash: string): FairMode | null {
 
 function updateTimestamp(): string {
   return new Date().toISOString();
+}
+
+/**
+ * Where the Fair calendar stands at `asOf`. The server's review time decides
+ * the first paint through the data's own flags. Once the device clock moves
+ * past it (the same clock that drives live labels and offer deadlines), the
+ * clock decides, so a cached page from the last night still ends on time.
+ */
+function fairCalendarAt(
+  data: Pick<
+    FairDayWorkspaceData,
+    "dates" | "eventPhase" | "reviewedAt" | "todayDate"
+  >,
+  asOf: string,
+): { over: boolean; today: string | null } {
+  if (asOf === data.reviewedAt) {
+    return { over: data.eventPhase === "post-fair", today: data.todayDate };
+  }
+  const localDate = fairProgramLocalDate(asOf);
+  const lastDate = data.dates[data.dates.length - 1]?.date ?? null;
+  return {
+    over: localDate !== null && lastDate !== null && localDate > lastDate,
+    today:
+      localDate !== null && data.dates.some((day) => day.date === localDate)
+        ? localDate
+        : null,
+  };
 }
 
 function fairDateShortLabel(date: string): string {
@@ -671,7 +704,7 @@ function FairPhotoMasthead({
                 ? "var(--app-ink-inverse)"
                 : "var(--app-brand-press)",
             }}
-            aria-label="Back to Fair Today"
+            aria-label="Back to the Fair guide"
           >
             <ArrowLeft className="h-[18px] w-[18px]" aria-hidden />
           </button>
@@ -1021,9 +1054,12 @@ function FairDayPicker({
 export default function FairDayWorkspace({
   data,
   serverHeroBackground,
+  afterwardMoment = null,
 }: {
   data: FairDayWorkspaceData;
   serverHeroBackground?: React.ReactNode;
+  /** Another live civic moment the finished Fair can hand visitors to. */
+  afterwardMoment?: FairAfterwardMoment | null;
 }) {
   const validDates = useMemo(
     () => new Set(data.dates.map((day) => day.date)),
@@ -1663,9 +1699,11 @@ export default function FairDayWorkspace({
     partyAsOf,
     selectedDate,
   );
+  const fairCalendar = fairCalendarAt(data, partyAsOf);
+  const fairIsOver = fairCalendar.over;
   const selectedDateIsLive =
-    fairProgramLocalDate(partyAsOf) === selectedDate &&
-    data.dates.some((day) => day.date === selectedDate);
+    fairCalendar.today !== null && fairCalendar.today === selectedDate;
+  const selectedDayName = fairDateWeekdayLabel(selectedDate);
   const gateGlance = fairGateGlance(
     selectedDay,
     partyAsOf,
@@ -1794,6 +1832,26 @@ export default function FairDayWorkspace({
       ? "Getting there"
       : (FAIR_PRIMARY_MODES.find((mode) => mode.id === activeMode)?.label ??
         "Fair Day");
+  const dockModes = fairIsOver ? FAIR_AFTERWARD_MODES : FAIR_PRIMARY_MODES;
+  const dockColumns = fairIsOver ? "grid-cols-2" : "grid-cols-4";
+  // After the run Home becomes a short record that hands visitors on. This is
+  // the one place the phase changes what Home renders.
+  const homeView: "fair-week" | "afterward" | null =
+    activeMode !== "now" ? null : fairIsOver ? "afterward" : "fair-week";
+  const aboutThisGuide = (
+    <details className="mt-5 border-t pt-2" style={{ borderColor: "var(--app-border)" }}>
+      <summary className="tap-44 flex min-h-11 cursor-pointer items-center justify-between gap-3 text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
+        About this independent guide
+        <ChevronDown className="h-4 w-4" aria-hidden />
+      </summary>
+      <p className="pb-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+        {data.disclosure} {data.source.label}. {data.source.ageLabel}.{" "}
+        <a href={data.source.sourceUrl} target="_blank" rel="noopener noreferrer" className="tap-44 inline-flex min-h-11 items-center font-semibold underline underline-offset-4" style={{ color: "var(--app-brand-press)" }}>
+          Official source
+        </a>
+      </p>
+    </details>
+  );
 
   return (
     <article
@@ -2044,7 +2102,7 @@ export default function FairDayWorkspace({
                 onClick={() => chooseMode("now")}
                 className="fair-hero-control tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full"
                 style={{ color: "var(--app-brand-press)" }}
-                aria-label="Back to Fair Today"
+                aria-label="Back to the Fair guide"
               >
                 <ArrowLeft className="h-[18px] w-[18px]" aria-hidden />
               </button>
@@ -2090,11 +2148,11 @@ export default function FairDayWorkspace({
 
         <div
           data-fair-primary-nav-shell
-          className={`relative z-20 mx-auto hidden max-w-[60rem] px-6 lg:block ${activeMode === "now" || activeMode === "travel" ? "-mt-5" : "mt-3"}`}
+          className={`relative z-20 mx-auto hidden ${fairIsOver ? "max-w-[34rem]" : "max-w-[60rem]"} px-6 lg:block ${activeMode === "now" || activeMode === "travel" ? "-mt-5" : "mt-3"}`}
         >
           <nav
             data-fair-primary-nav
-            className="relative grid grid-cols-4 gap-1.5 overflow-hidden rounded-[var(--app-radius-xl)] border p-1.5 pt-2.5 backdrop-blur-xl"
+            className={`relative grid ${dockColumns} gap-1.5 overflow-hidden rounded-[var(--app-radius-xl)] border p-1.5 pt-2.5 backdrop-blur-xl`}
             style={{
               borderColor: "var(--app-control-border)",
               background:
@@ -2111,7 +2169,7 @@ export default function FairDayWorkspace({
               }}
               aria-hidden
             />
-            {FAIR_PRIMARY_MODES.map((mode) => {
+            {dockModes.map((mode) => {
               const active =
                 activeMode === mode.id ||
                 (activeMode === "travel" && mode.id === "my-day");
@@ -2223,9 +2281,21 @@ export default function FairDayWorkspace({
               }`
         }
       >
-        {activeMode === "now" && <FairWeatherWidget />}
-        
-        {activeMode === "now" ? (
+        {homeView === "afterward" ? (
+          <section
+            id={MODE_PANEL_IDS.now}
+            aria-labelledby="fair-now-heading"
+            data-fair-mode-panel
+            data-fair-home="afterward"
+          >
+            <FairAfterward nextMoment={afterwardMoment} />
+            {aboutThisGuide}
+          </section>
+        ) : null}
+
+        {homeView === "fair-week" && <FairWeatherWidget />}
+
+        {homeView === "fair-week" ? (
           <section
             id={MODE_PANEL_IDS.now}
             aria-labelledby="fair-now-heading"
@@ -2306,7 +2376,9 @@ export default function FairDayWorkspace({
                           className="text-[10.5px] font-bold uppercase tracking-[0.11em]"
                           style={{ color: "var(--app-brand-press)" }}
                         >
-                          Today&apos;s Grandstand Event
+                          {selectedDateIsLive
+                            ? "Today's Grandstand Event"
+                            : `${selectedDayName}'s Grandstand Event`}
                         </p>
                         <h2
                           id="fair-headliner-heading"
@@ -2394,7 +2466,7 @@ export default function FairDayWorkspace({
                     id="fair-at-a-glance-heading"
                     className="text-[20px] font-bold leading-tight tracking-[-0.025em] sm:text-[24px]"
                   >
-                    {fairDateWeekdayLabel(selectedDate)} at a glance
+                    {selectedDayName} at a glance
                   </h2>
                   {plan.readyKeys.length > 0 || allSavedStops.length > 0 ? <p
                     data-fair-plan-summary
@@ -2442,7 +2514,7 @@ export default function FairDayWorkspace({
                   detail={gateGlance.detail}
                   icon={<Clock3 className="h-[17px] w-[17px]" />}
                   accent="var(--app-brand)"
-                  ariaLabel={`View ${fairDateWeekdayLabel(selectedDate)} program and gate schedule`}
+                  ariaLabel={`View ${selectedDayName} program and gate schedule`}
                   onClick={() => chooseMode("find")}
                 />
                 <FairGlanceTile
@@ -2513,7 +2585,11 @@ export default function FairDayWorkspace({
               >
                 <div className="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[var(--app-brand-press)]">
                   <Tag className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>Special Admission Today</span>
+                  <span>
+                    {selectedDateIsLive
+                      ? "Special Admission Today"
+                      : `Special Admission on ${selectedDayName}`}
+                  </span>
                 </div>
                 <div className="divide-y" style={{ borderColor: "color-mix(in srgb, var(--app-brand) 15%, var(--app-border))" }}>
                   {offersForSelectedDate.filter((offer) => offer.placement === "eligibility-promotion").map((offer) => (
@@ -2636,18 +2712,7 @@ export default function FairDayWorkspace({
               </div>
             </section>
 
-            <details className="mt-5 border-t pt-2" style={{ borderColor: "var(--app-border)" }}>
-              <summary className="tap-44 flex min-h-11 cursor-pointer items-center justify-between gap-3 text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
-                About this independent guide
-                <ChevronDown className="h-4 w-4" aria-hidden />
-              </summary>
-              <p className="pb-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-                {data.disclosure} {data.source.label}. {data.source.ageLabel}.{" "}
-                <a href={data.source.sourceUrl} target="_blank" rel="noopener noreferrer" className="tap-44 inline-flex min-h-11 items-center font-semibold underline underline-offset-4" style={{ color: "var(--app-brand-press)" }}>
-                  Official source
-                </a>
-              </p>
-            </details>
+            {aboutThisGuide}
           </section>
         ) : null}
 
@@ -3276,7 +3341,7 @@ export default function FairDayWorkspace({
       >
         <nav
           aria-label="Fair Day"
-          className="pointer-events-auto relative mx-auto grid max-w-screen-md grid-cols-4 gap-1 overflow-hidden rounded-[var(--app-radius-xl)] border p-1 pt-2 backdrop-blur-xl"
+          className={`pointer-events-auto relative mx-auto grid max-w-screen-md ${dockColumns} gap-1 overflow-hidden rounded-[var(--app-radius-xl)] border p-1 pt-2 backdrop-blur-xl`}
           style={{
             borderColor: "var(--app-control-border)",
             background:
@@ -3293,7 +3358,7 @@ export default function FairDayWorkspace({
             }}
             aria-hidden
           />
-          {FAIR_PRIMARY_MODES.map((mode) => {
+          {dockModes.map((mode) => {
             const active =
               activeMode === mode.id ||
               (activeMode === "travel" && mode.id === "my-day");
