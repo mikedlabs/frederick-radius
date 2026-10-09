@@ -117,6 +117,25 @@ describe("vercel-ignore-preview.sh", () => {
     expect(result.out).toContain("no app tree");
   });
 
+  it("fetches main from the repository Vercel names when the clone has no origin", () => {
+    // Vercel clones shallowly with no origin remote. Rewrite the GitHub URL
+    // the helper builds to the local bare repository, so no network is used.
+    const work = repo("claude/vercel-clone");
+    commit(work, ["src/components/Card.tsx"], "ui change");
+    commit(work, ["docs/README.md"], "docs follow-up");
+    const root = dirname(work);
+    git(work, "push", "-q", "origin", "claude/vercel-clone");
+    git(work, "remote", "remove", "origin");
+    git(work, "config", `url.file://${root}/.insteadOf`, "https://github.com/acme/");
+    const result = run(work, {
+      VERCEL_GIT_REPO_OWNER: "acme",
+      VERCEL_GIT_REPO_SLUG: "origin",
+      VERCEL_GIT_COMMIT_REF: "claude/vercel-clone",
+    });
+    expect(result.status).toBe(BUILD);
+    expect(result.out).toContain("(main)");
+  });
+
   it("falls back to the parent commit when main cannot be fetched", () => {
     const root = mkdtempSync(join(tmpdir(), "vercel-ignore-"));
     roots.push(root);

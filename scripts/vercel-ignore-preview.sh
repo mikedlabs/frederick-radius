@@ -25,12 +25,26 @@ UI_PATHS='^src/(app|components)/'
 
 # Compare against the point where the branch left main, so every commit on
 # the branch counts, including ones pushed before its pull request opened.
+# Vercel's clone has no origin remote and only shallow history, so fetch
+# main and this branch from the repository URL Vercel names (it is public).
+remote=""
+if git remote get-url origin >/dev/null 2>&1; then
+  remote=origin
+elif [ -n "${VERCEL_GIT_REPO_OWNER:-}" ] && [ -n "${VERCEL_GIT_REPO_SLUG:-}" ]; then
+  remote="https://github.com/${VERCEL_GIT_REPO_OWNER}/${VERCEL_GIT_REPO_SLUG}.git"
+fi
+refspecs=("+refs/heads/main:refs/preview-base/main")
+if [ -n "${VERCEL_GIT_COMMIT_REF:-}" ]; then
+  refspecs+=("+refs/heads/${VERCEL_GIT_COMMIT_REF}:refs/preview-base/head")
+fi
 base=""
 base_source=""
-if fetch_error=$(timeout 30 git fetch --quiet --no-tags --depth=200 origin main 2>&1); then
-  base=$(git merge-base FETCH_HEAD HEAD 2>/dev/null || true)
-  # A shallow clone can miss the fork point; the main tip still bounds the diff.
-  [ -n "$base" ] || base=$(git rev-parse --verify --quiet FETCH_HEAD || true)
+if [ -z "$remote" ]; then
+  echo "Could not fetch main: no origin remote and no repository named by Vercel."
+elif fetch_error=$(timeout 45 git fetch --quiet --no-tags --depth=200 "$remote" "${refspecs[@]}" 2>&1); then
+  base=$(git merge-base refs/preview-base/main HEAD 2>/dev/null || true)
+  # A shallow history can still miss the fork point; the main tip bounds the diff.
+  [ -n "$base" ] || base=$(git rev-parse --verify --quiet refs/preview-base/main || true)
   [ -z "$base" ] || base_source="main"
 else
   echo "Could not fetch main: ${fetch_error%%$'\n'*}"
