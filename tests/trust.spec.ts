@@ -43,6 +43,7 @@ describe("placeHoursTrust", () => {
     [{ state: "closed" }, "verified"],
     [{ state: "unverified" }, "likely"],
     [{ state: "unknown" }, "unconfirmed"],
+    [{ state: "unknown", reason: "stale" }, "unconfirmed"],
   ];
   it("maps every OpenStatus state to the right trust level", () => {
     for (const [status, level] of cases) {
@@ -52,6 +53,13 @@ describe("placeHoursTrust", () => {
   it("never claims verified hours without a confirmed source", () => {
     expect(placeHoursTrust({ state: "unverified" }).basis).toMatch(/not yet confirmed/i);
     expect(placeHoursTrust({ state: "unknown" }).basis).toMatch(/call ahead/i);
+  });
+  it("does not call a withheld stale schedule 'no posted hours'", () => {
+    const stale = placeHoursTrust({ state: "unknown", reason: "stale" });
+    expect(stale.basis).not.toMatch(/no posted hours/i);
+    expect(stale.basis).toMatch(/hours on file/i);
+    expect(stale.basis).toMatch(/call ahead/i);
+    expect(stale.basis).not.toMatch(/—/);
   });
 });
 
