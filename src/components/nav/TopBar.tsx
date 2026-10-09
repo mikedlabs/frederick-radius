@@ -54,6 +54,13 @@ export function topBarFindTarget(pathname: string): FindTarget {
   return pathname === "/map" ? "map" : "global";
 }
 
+/** Another active modal owns input until its existing dismissal completes. */
+function anotherModalOwnsInput(): boolean {
+  return Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'))
+    .some((dialog) => dialog.id !== "radius-find-dialog"
+      && !dialog.closest('[inert], [hidden], [aria-hidden="true"]'));
+}
+
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchInitialQuery, setSearchInitialQuery] = useState("");
@@ -163,6 +170,7 @@ export default function TopBar() {
     opener: HTMLElement | null,
     returnScrollY = window.scrollY,
   ) => {
+    if (anotherModalOwnsInput()) return;
     searchOpenerRef.current = opener;
     if (topBarFindTarget(pathname) === "map") {
       setSearchOpen(false);
@@ -210,6 +218,7 @@ export default function TopBar() {
   useEffect(() => {
     const open = () => {
       consumeFindRequest("global");
+      if (anotherModalOwnsInput()) return;
       searchReturnScrollYRef.current = window.scrollY;
       searchOpenerRef.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;

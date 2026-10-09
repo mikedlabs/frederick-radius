@@ -232,6 +232,7 @@ describe("CHART fetch boundary", () => {
       data: [],
       available: true,
       asOf: "2026-07-28T16:00:00.000Z",
+      checkedAt: "2026-07-28T16:00:00.000Z",
     });
     expect(fetchMock).toHaveBeenCalledWith(
       CHART_ROAD_SOURCES.weatherStations,

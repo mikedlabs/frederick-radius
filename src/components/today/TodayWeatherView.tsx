@@ -71,8 +71,9 @@ export default function TodayWeatherView({
         <>
           <div className={styles.reading}>
             {temperatureF !== null && (
-              <span className={styles.temperature} aria-label={`${temperatureF} degrees Fahrenheit forecast`}>
-                {temperatureF}°
+              <span className={styles.temperature}>
+                <span className="sr-only">{temperatureF} degrees Fahrenheit forecast</span>
+                <span aria-hidden="true">{temperatureF}°</span>
               </span>
             )}
             <div className={styles.details}>

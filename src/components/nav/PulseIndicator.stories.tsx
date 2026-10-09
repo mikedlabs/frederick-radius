@@ -38,11 +38,11 @@ const meta = { title: "Radius Chrome/County status recovery", component: StatusW
 export default meta;
 type Story = StoryObj<typeof meta>;
 const unavailable = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
-  const canvas = within(canvasElement); await expect(await canvas.findByRole("link", { name: "County status: Unknown; current alerts are unverified" })).toHaveAttribute("data-pulse-state", "unavailable");
+  const canvas = within(canvasElement); await expect(await canvas.findByRole("link", { name: "County status: Unable to verify; current alerts are unverified" })).toHaveAttribute("data-pulse-state", "unavailable");
 };
-export const UnknownAt320: Story = { globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } }, beforeEach: () => sampleStatus("error"), play: unavailable };
-export const UnknownAt390: Story = { globals: { viewport: { value: "radiusMobile", isRotated: false } }, beforeEach: () => sampleStatus("error"), play: unavailable };
-export const UnknownAt430: Story = { globals: { viewport: { value: "radiusMobileLarge", isRotated: false } }, beforeEach: () => sampleStatus("error"), play: unavailable };
+export const UnverifiedAt320: Story = { globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } }, beforeEach: () => sampleStatus("error"), play: unavailable };
+export const UnverifiedAt390: Story = { globals: { viewport: { value: "radiusMobile", isRotated: false } }, beforeEach: () => sampleStatus("error"), play: unavailable };
+export const UnverifiedAt430: Story = { globals: { viewport: { value: "radiusMobileLarge", isRotated: false } }, beforeEach: () => sampleStatus("error"), play: unavailable };
 export const EarlierAndRecoveryAt375: Story = {
   globals: { viewport: { value: "radiusMobileCompact", isRotated: false } }, beforeEach: () => sampleStatus("ready"),
   play: async ({ canvasElement }) => {
@@ -78,7 +78,7 @@ export const QuietWithPartialCoverage: Story = {
   globals: { viewport: { value: "radiusMobile", isRotated: false } },
   beforeEach: () => sampleStatus("partial"),
   play: async ({ canvasElement }) => {
-    const status = await within(canvasElement).findByRole("link", { name: "County status: Unknown; current alerts are unverified" });
-    await expect(status.querySelector("[data-pulse-mobile-state]")).toHaveTextContent("Unknown");
+    const status = await within(canvasElement).findByRole("link", { name: "County status: Unable to verify; current alerts are unverified" });
+    await expect(status.querySelector("[data-pulse-mobile-state]")).toHaveTextContent("Unverified");
   },
 };

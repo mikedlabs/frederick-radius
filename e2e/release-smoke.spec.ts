@@ -232,8 +232,8 @@ for (const viewport of VIEWPORTS) {
               const label = await countyStatus.getAttribute("aria-label");
               const visible = await countyStatus.isVisible();
               if (label === "County status: Clear in checked feeds; no active alerts") return !visible;
-              return (/^County status: (?:checking|Unknown; current alerts are unverified)$/.test(label ?? "")
-                || /^County status: (?:Checking|Unknown)\. (?:Checking again|Current check unavailable)\. Earlier report had \d+ alerts?; current alerts are unverified\.$/.test(label ?? "")
+              return (/^County status: (?:checking|Unable to verify; current alerts are unverified)$/.test(label ?? "")
+                || /^County status: (?:Checking|Unable to verify)\. (?:Checking again|Current check unavailable)\. Earlier report had \d+ alerts?; current alerts are unverified\.$/.test(label ?? "")
                 || /^County status: (?:Urgent|Advisory); \d+ alerts? reported(?:; some sources unavailable)?$/.test(label ?? "")) && visible;
             }).toBe(true);
           }

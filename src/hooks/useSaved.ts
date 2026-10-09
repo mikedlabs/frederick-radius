@@ -61,30 +61,6 @@ function parseSavedItems(raw: string | null): SavedRef[] {
   return parsed as SavedRef[];
 }
 
-/** Display reads may fail soft; a mutation must not overwrite unreadable data. */
-function readForMutation(): SavedRef[] {
-  if (typeof window === "undefined") throw new Error("Device storage is unavailable.");
-  return parseSavedItems(window.localStorage.getItem(KEY));
-}
-
-function write(items: SavedRef[]) {
-  if (typeof window === "undefined") return;
-  const next = JSON.stringify(items);
-  window.localStorage.setItem(KEY, next);
-  // A storage shim or browser policy can refuse a write without throwing.
-  // Publish only the exact value this device confirms it retained.
-  if (window.localStorage.getItem(KEY) !== next) {
-    throw new Error("This device could not confirm the saved change.");
-  }
-  // The user just saved something worth protecting — ask the browser to
-  // move this origin's storage from best-effort (evictable; iOS clears
-  // it after ~7 idle days) to persistent. Idempotent, promptless.
-  ensurePersistentStorage();
-  cachedRaw = next;
-  cachedSnapshot = items;
-  listeners.forEach((l) => l());
-}
-
 function onSavedStorage(event: StorageEvent) {
   if (event.key !== null && event.key !== KEY) return;
   if (event.storageArea !== null && event.storageArea !== window.localStorage) return;
@@ -132,40 +108,68 @@ export function useEventSavedState(id: string | null): boolean | null {
   return useSyncExternalStore(subscribe, snapshot, () => null);
 }
 
-/** Event detail and full-page controls share Saved's existing device list.
- * Apply the rendered save/remove intent rather than reversing a newer save.
- * A rejected, corrupt, or unconfirmed device write never earns success UI. */
-export function setEventSaved(id: string, saved: boolean): boolean {
+export class SavedCoordinationError extends Error {
+  constructor() {
+    super("This browser cannot safely coordinate Saved changes. Try a current browser.");
+  }
+}
+
+export function savedChangeDescription(error: unknown, fallback = "We could not confirm this change. Please try again."): string {
+  return error instanceof SavedCoordinationError
+    ? error.message
+    : fallback;
+}
+
+/** All writers of the existing device list share one origin-wide Web Lock.
+ * Read inside the lock, never from a rendered snapshot, and publish only after
+ * readback. Older app tabs and raw same-origin writers do not honor this lock.
+ * Without Web Locks a per-tab queue cannot protect the whole list, so changes
+ * fail closed while existing saves remain readable. */
+async function mutateSaved(type: SavedRef["type"], id: string, desired?: boolean, canCommit?: () => boolean, vibrateOnSave = true): Promise<boolean> {
+  if (typeof window === "undefined" || !navigator.locks?.request) {
+    throw new SavedCoordinationError();
+  }
   try {
-    const { raw, items } = readConfirmedSaved();
-    const exists = items.some((item) => item.type === "event" && item.id === id);
-    const nextItems = exists === saved ? items : saved
-      ? [...items, { type: "event" as const, id, saved_at: new Date().toISOString() }]
-      : items.filter((item) => !(item.type === "event" && item.id === id));
-    const next = JSON.stringify(nextItems);
-    if (exists !== saved) {
-      window.localStorage.setItem(KEY, next);
-      if (window.localStorage.getItem(KEY) !== next) {
-        // Publish what the device retained, never the requested write.
-        read();
-        throw new Error("Saved change could not be confirmed");
+    return await navigator.locks.request(KEY, () => {
+      if (canCommit && !canCommit()) throw new Error("The saved intent belongs to an earlier account state.");
+      const { raw, items } = readConfirmedSaved();
+      const exists = items.some((item) => item.type === type && item.id === id);
+      const saved = desired ?? !exists;
+      const nextItems = exists === saved ? items : saved
+        ? [...items, { type, id, saved_at: new Date().toISOString() }]
+        : items.filter((item) => !(item.type === type && item.id === id));
+      const next = JSON.stringify(nextItems);
+      if (exists !== saved) {
+        window.localStorage.setItem(KEY, next);
+        if (window.localStorage.getItem(KEY) !== next) {
+          throw new Error("Saved change could not be confirmed");
+        }
       }
-    }
-    cachedRaw = exists === saved ? raw : next;
-    cachedSnapshot = nextItems;
-    listeners.forEach((listener) => listener());
-    if (exists !== saved) {
-      ensurePersistentStorage();
-      if (saved) signalReturnBridgeValue("event");
-      else if (!nextItems.some((item) => item.type === "event")) cancelPendingReturnBridgeValue("event");
-    }
-    return saved;
+      cachedRaw = exists === saved ? raw : next;
+      cachedSnapshot = nextItems;
+      listeners.forEach((listener) => listener());
+      if (exists !== saved) {
+        ensurePersistentStorage();
+        if (type !== "beer") {
+          if (saved) signalReturnBridgeValue(type);
+          else if (!nextItems.some((item) => item.type === type)) cancelPendingReturnBridgeValue(type);
+        }
+        if (saved && vibrateOnSave && "vibrate" in navigator) {
+          try { navigator.vibrate(8); } catch {}
+        }
+      }
+      return saved;
+    });
   } catch (error) {
-    // A readback error also invalidates the old selected state. Event controls
-    // show unavailable rather than claiming that a removal did not commit.
+    // A failed readback leaves confirmation unavailable, never optimistic.
     listeners.forEach((listener) => listener());
     throw error;
   }
+}
+
+/** Apply the displayed save/remove intent instead of reversing a newer save. */
+export function setEventSaved(id: string, saved: boolean): Promise<boolean> {
+  return mutateSaved("event", id, saved, undefined, false);
 }
 
 export function useSetEventSaved(id: string) {
@@ -173,40 +177,12 @@ export function useSetEventSaved(id: string) {
 }
 
 export function useToggleSave(type: SavedRef["type"], id: string) {
-  return useCallback((desired?: boolean): boolean => {
-    const items = readForMutation();
-    const exists = items.some((s) => s.type === type && s.id === id);
-    const saved = desired ?? !exists;
-    if (saved === exists) return exists;
-    const next = saved
-      ? [...items, { type, id, saved_at: new Date().toISOString() }]
-      : items.filter((s) => !(s.type === type && s.id === id));
-    write(next);
-    if (!exists && type !== "beer") signalReturnBridgeValue(type);
-    if (
-      exists
-      && type !== "beer"
-      && !next.some((item) => item.type === type)
-    ) {
-      cancelPendingReturnBridgeValue(type);
-    }
-    if (!exists && typeof navigator !== "undefined" && "vibrate" in navigator) {
-      try { (navigator as Navigator & { vibrate?: (p: number) => void }).vibrate?.(8); } catch {}
-    }
-    return saved;
-  }, [type, id]);
+  return useCallback((desired?: boolean, canCommit?: () => boolean) => mutateSaved(type, id, desired, canCommit), [type, id]);
 }
 
-/** Imperative save (no hook), for event handlers like the deck's "love" swipe.
- *  No-ops if the ref is already saved. */
-export function addSaved(type: SavedRef["type"], id: string) {
-  const items = readForMutation();
-  if (items.some((s) => s.type === type && s.id === id)) return;
-  write([...items, { type, id, saved_at: new Date().toISOString() }]);
-  if (type !== "beer") signalReturnBridgeValue(type);
-  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-    try { (navigator as Navigator & { vibrate?: (p: number) => void }).vibrate?.(8); } catch {}
-  }
+/** Imperative, idempotent save; callers await device confirmation. */
+export function addSaved(type: SavedRef["type"], id: string): Promise<boolean> {
+  return mutateSaved(type, id, true);
 }
 
 export function useMounted(): boolean {

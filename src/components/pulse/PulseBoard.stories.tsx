@@ -1,4 +1,4 @@
-import { expect, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { RADIUS_STORY_NOW } from "../../../.storybook/preview";
 import PulseBoard, { type PulseHero, type PulseTile } from "./PulseBoard";
@@ -227,11 +227,59 @@ function sharedStatusStory(level: "Urgent" | "Advisory" | "Clear" | "Unknown", c
       lastUpdated: new Date().toISOString(),
     } }} />,
     play: async ({ canvasElement }) => {
-      const label = level === "Clear" ? "Clear in checked feeds" : level;
+      const label = level === "Clear" ? "Clear in checked feeds" : level === "Unknown" ? "Unable to verify" : level;
       await expect(within(canvasElement).getByText(label, { exact: true })).toBeVisible();
     },
   };
 }
 export const SharedAdvisoryWithPartialCoverage = sharedStatusStory("Advisory", 3, false);
 export const SharedClearInCheckedFeeds = sharedStatusStory("Clear", 0, true);
-export const SharedUnknownWithIncompleteChecks = sharedStatusStory("Unknown", 0, false);
+export const SharedUnverifiedWithIncompleteChecks = sharedStatusStory("Unknown", 0, false);
+
+export const EarlierRoadChecks: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  render: (args) => <PulseBoard {...args} hero={{ ...args.hero, allClear: false,
+    leadKey: "traffic", leadIsEarlier: true, line: "A snow emergency declaration was reported.",
+    sub: "Open the source details before relying on its guidance.",
+    countyStatus: { active: false, count: 0, tone: "quiet", ok: false, level: "Unknown", lastUpdated: new Date().toISOString(),
+      checks: [
+        { source: "MDOT snow emergency", state: "stale", asOf: "2026-10-08T13:00:00.000Z", asOfBasis: "retrieval" },
+        { source: "NWS", state: "current", asOf: "2026-10-09T11:30:00.000Z", asOfBasis: "provider" },
+        { source: "AirNow", state: "unavailable", asOf: null, asOfBasis: null },
+      ], roadCheck: { verified: false, currentCount: 0, checkedAt: "2026-10-08T13:00:00.000Z", earlierCount: 2, unverifiedSources: ["MDOT snow emergency"] },
+    },
+  }} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("Unable to verify", { exact: true })).toBeVisible();
+    await expect(canvas.getByText("Earlier road checks listed 2 updates. Current road conditions are unverified.")).toBeVisible();
+    const disclosure = canvas.getByText("Source checks", { exact: true });
+    await expect(disclosure).toBeVisible();
+    await userEvent.click(disclosure);
+    const sourceRow = canvas.getByText("MDOT snow emergency", { selector: "dt", exact: true }).parentElement!;
+    const sourceTime = within(sourceRow).getByText("Oct 8, 2026, 9:00 AM EDT", { selector: "time", exact: true });
+    await expect(sourceTime).toBeVisible();
+    await expect(sourceTime).toHaveAttribute("datetime", "2026-10-08T13:00:00.000Z");
+    await expect(sourceTime.closest("dd")).toHaveTextContent("Earlier source data · Last source check Oct 8, 2026, 9:00 AM EDT");
+    await expect(canvas.getByText(/Source time unavailable/)).toBeVisible();
+  },
+};
+
+export const CurrentRoadLeadWithPartialChecks: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  render: (args) => <PulseBoard {...args} hero={{ ...args.hero, allClear: false,
+    leadKey: "traffic", leadIsEarlier: false,
+    line: "MDOT reports a closure on a county route.",
+    sub: "Read the official route guidance before leaving.",
+    countyStatus: { active: true, count: 1, tone: "caution", ok: false, level: "Advisory", lastUpdated: new Date().toISOString(),
+      roadCheck: { verified: false, currentCount: 1, checkedAt: null, earlierCount: 1, unverifiedSources: ["MDOT snow emergency"] },
+    },
+  }} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: "MDOT reports a closure on a county route." })).toBeVisible();
+    await expect(canvas.getByText("Advisory", { exact: true })).toBeVisible();
+    await expect(canvas.getByText("Earlier road checks listed 1 update. Some road sources remain unverified.")).toBeVisible();
+    await expect(canvas.queryByText(/Earlier MDOT report:/)).toBeNull();
+  },
+};

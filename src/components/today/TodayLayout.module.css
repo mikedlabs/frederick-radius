@@ -2,12 +2,12 @@
   display: grid;
   align-items: stretch;
   gap: var(--app-space-4);
-  margin-block: var(--app-space-2) var(--app-space-6);
+  margin-block: var(--app-space-2) var(--app-space-4);
 }
 
 .masthead {
   display: grid;
-  gap: var(--app-space-3);
+  gap: var(--app-space-2);
   margin: 0;
   /* Keep the useful arrival stable while the page scrolls. */
   animation: none;
@@ -16,7 +16,7 @@
 .mastheadLead {
   position: relative;
   isolation: isolate;
-  min-height: 144px;
+  min-height: 80px;
   overflow: hidden;
   border-radius: var(--app-radius-lg);
   background: var(--app-media-ink);
@@ -24,12 +24,9 @@
 }
 
 .title {
-  position: relative;
-  z-index: 1;
-  width: 76%;
-  max-width: 22ch;
-  padding: var(--app-space-4) var(--app-space-4) calc(var(--app-space-4) * 2);
-  color: var(--app-on-brand);
+  margin: 0;
+  max-width: 24ch;
+  color: var(--app-ink);
   font-size: clamp(28px, 4vw, 36px);
   font-weight: 650;
   line-height: 1.08;
@@ -55,14 +52,6 @@
   position: absolute;
   z-index: -1;
   inset: 0;
-}
-
-.portrait::after {
-  position: absolute;
-  inset: 0;
-  content: "";
-  /* Neutral contrast only; the archive image keeps its natural color. */
-  background: linear-gradient(90deg, color-mix(in srgb, var(--app-media-ink) 96%, transparent), color-mix(in srgb, var(--app-media-ink) 88%, transparent) 38%, color-mix(in srgb, var(--app-media-ink) 8%, transparent));
 }
 
 .portrait img {
@@ -276,12 +265,7 @@
 
 @media (min-width: 640px) {
   .mastheadLead {
-    min-height: 160px;
-  }
-
-  .title {
-    width: 68%;
-    padding: var(--app-space-5) var(--app-space-6) calc(var(--app-space-4) * 2);
+    min-height: 88px;
   }
 
   .context {
@@ -321,11 +305,10 @@
 
 @media (max-width: 359px) {
   .mastheadLead {
-    min-height: 136px;
+    min-height: 72px;
   }
 
   .title {
-    padding: var(--app-space-3) var(--app-space-3) calc(var(--app-space-4) * 2);
     font-size: 26px;
   }
 
@@ -345,4 +328,11 @@
   .forecastLink {
     transition: none;
   }
+}
+
+.utilityHeading {
+  color: var(--app-ink);
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.3;
 }

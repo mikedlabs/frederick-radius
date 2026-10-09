@@ -1,8 +1,8 @@
 "use client";
 
 import { Bookmark, X } from "lucide-react";
-import { useMemo } from "react";
-import { useSavedList, useToggleSave, useMounted } from "@/hooks/useSaved";
+import { useMemo, useRef, useState } from "react";
+import { useSavedList, useToggleSave, useMounted, savedChangeDescription } from "@/hooks/useSaved";
 import { BEER_BY_KEY, FAMILY_BY_KEY, type BeerWithBrewery } from "@/data/beers";
 import { BreweryLogo } from "./BreweryLogo";
 import { toast } from "sonner";
@@ -65,6 +65,8 @@ export default function MyTaps({ heading = true }: { heading?: boolean }) {
 
 function TapRow({ beer, savedKey, index }: { beer: BeerWithBrewery; savedKey: string; index: number }) {
   const remove = useToggleSave("beer", savedKey);
+  const removingRef = useRef(false);
+  const [removing, setRemoving] = useState(false);
   const fam = FAMILY_BY_KEY[beer.family];
   return (
     <li
@@ -82,11 +84,17 @@ function TapRow({ beer, savedKey, index }: { beer: BeerWithBrewery; savedKey: st
         </span>
         <button
           type="button"
-          onClick={() => {
-            try { remove(false); }
-            catch { toast.error("Could not remove this pour", { description: "We could not confirm this change. Please try again." }); }
+          onClick={async () => {
+            if (removingRef.current) return;
+            removingRef.current = true;
+            setRemoving(true);
+            try { await remove(false); }
+            catch (error) { toast.error("Could not remove this pour", { description: savedChangeDescription(error) }); }
+            finally { removingRef.current = false; setRemoving(false); }
           }}
-          aria-label={`Remove ${beer.name} from saved pours`}
+          disabled={removing}
+          aria-busy={removing || undefined}
+          aria-label={`${removing ? "Removing" : "Remove"} ${beer.name} from saved pours`}
           className="grid h-11 w-11 shrink-0 place-items-center border border-white/24 bg-black/20 text-white/72 backdrop-blur-sm"
         >
           <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />

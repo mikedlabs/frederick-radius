@@ -544,7 +544,8 @@ export default function MapDock(props: MapDockProps) {
 
   // Size the one explicit control sheet against the map canvas. On a phone it
   // may use a little more than half the map while it is being operated; the
-  // closed state is one compact bar and touching the exposed map dismisses it.
+  // closed state is a compact bar with an optional return link. Recovery uses
+  // its measured height so that link cannot cover the heading or final result.
   useEffect(() => {
     const dockElement = dockRef.current;
     const host = dockElement?.closest<HTMLElement>(".dock-host");
@@ -552,6 +553,7 @@ export default function MapDock(props: MapDockProps) {
 
     const sizePane = () => {
       const mapHeight = host.getBoundingClientRect().height;
+      host.style.setProperty("--map-dock-height", `${dockElement.getBoundingClientRect().height}px`);
       const available = Math.max(148, mapHeight - 96);
       const minimum = mapHeight < 320 ? 148 : 280;
       // 0.62 left only ~196px of clean map at 375x812 — configuring the map
@@ -565,7 +567,11 @@ export default function MapDock(props: MapDockProps) {
     sizePane();
     const observer = new ResizeObserver(sizePane);
     observer.observe(host);
-    return () => observer.disconnect();
+    observer.observe(dockElement);
+    return () => {
+      observer.disconnect();
+      host.style.removeProperty("--map-dock-height");
+    };
   }, []);
 
   // Keep the thumb-positioned search stable through the initiating tap. Move
@@ -1579,7 +1585,7 @@ export default function MapDock(props: MapDockProps) {
         ref={dockRef}
       >
         {searchReturnTo && !pane && !searchPanelOpen && (
-          <a href={searchReturnTo} className="flex min-h-11 items-center gap-1.5 rounded-t-[var(--app-radius-md)] border-b px-3 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)", background: "var(--app-bg-elevated-solid)" }}>
+          <a href={searchReturnTo} className="flex min-h-11 items-center gap-1.5 rounded-t-[var(--app-radius-md)] border-b px-3 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-link)", background: "var(--app-bg-elevated-solid)" }}>
             <ChevronLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
             Back to search results
           </a>
@@ -2826,18 +2832,20 @@ export default function MapDock(props: MapDockProps) {
                         <p>
                           <strong>Roads now</strong> · {props.showIncidents
                             ? props.incidentHealth.status === "unavailable"
-                              ? "Current public incident reports are temporarily unavailable."
+                              ? "Unable to verify current public incident reports."
                               : props.incidentHealth.status === "stale"
-                                ? `Using the last good incident update${incidentUpdate ? ` from ${incidentUpdate}` : ""}.`
+                                ? `Earlier public reports retained${incidentUpdate ? ` from ${incidentUpdate}` : ""}; unable to verify current activity.`
                                 : props.incidentHealth.status === "disabled"
                                   ? "Checking current public incidents."
-                                  : props.incidentHealth.status === "empty"
-                                    ? "No safely mapped travel incidents are current."
-                                    : `${props.incidentHealth.count} current travel incident${props.incidentHealth.count === 1 ? "" : "s"} mapped.`
+                              : props.incidentHealth.status === "empty"
+                                    ? "No recent public travel reports are mapped."
+                                    : `${props.incidentHealth.count} recent public travel report${props.incidentHealth.count === 1 ? "" : "s"} mapped.`
                             : props.showTraffic
                               ? "Maryland road work and official travel context are on."
                               : "Official road reports are on."}
                         </p>
+                        {props.showIncidents && (props.incidentHealth.earlierCount ?? 0) > 0 && <p>{props.incidentHealth.earlierCount} earlier public report{props.incidentHealth.earlierCount === 1 ? "" : "s"} retained as history; current incident status is unverified.</p>}
+                        {props.showIncidents && incidentUpdate && <p>The {props.incidentHealth.timestampBasis === "checked" ? "source" : "snapshot"} was {props.incidentHealth.timestampBasis === "checked" ? "checked" : "updated"} at {incidentUpdate}.</p>}
                         <details className="mt-1.5 text-[11px] leading-relaxed">
                           <summary className="tap-44-y cursor-pointer font-semibold">Sources and limits</summary>
                           <p className="pb-1">

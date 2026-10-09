@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn, within } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import MapList from "./MapList";
 
 const meta = {
@@ -51,5 +51,25 @@ export const RecoveryGuttersAt390: Story = {
     const count = canvas.getByText("1 place available");
     await expect(Math.abs(heading.getBoundingClientRect().left - row.getBoundingClientRect().left)).toBeLessThanOrEqual(1);
     await expect(Math.abs(count.getBoundingClientRect().left - row.getBoundingClientRect().left)).toBeLessThanOrEqual(1);
+  },
+};
+
+export const PendingRecoverySearch: Story = {
+  args: { places: [], failureMode: true, searchState: "pending" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("status")).toHaveTextContent("Searching Radius");
+    await expect(canvas.queryByText("0 places available")).not.toBeInTheDocument();
+    await expect(canvas.queryByText("No fallback results are available")).not.toBeInTheDocument();
+  },
+};
+export const FailedRecoverySearch: Story = {
+  args: { places: [], failureMode: true, searchState: "unavailable", onRetrySearch: fn() },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("status")).toHaveTextContent("Search is temporarily unavailable");
+    await expect(canvas.queryByText("0 places available")).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: "Try again" }));
+    await expect(args.onRetrySearch).toHaveBeenCalledOnce();
   },
 };

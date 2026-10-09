@@ -39,7 +39,11 @@ function sources(alerts: NwsAlert[], partial: boolean): CurrentSituationSources 
 function alert(event: string): NwsAlert {
   return { event, headline: event, description: "Published sample alert.", severity: event.includes("Warning") ? "Severe" : "Moderate", ends_at: "2026-10-08T18:00:00.000Z" } as NwsAlert;
 }
-const road = { summary: { activeCount: 0, coverage: "complete" }, attention: [] } as unknown as RoadIntelligenceSnapshot;
+const road = {
+  generatedAt: NOW,
+  sources: Object.fromEntries(["workZones", "speeds", "travelTimes", "messages", "weatherStations", "roadConditions", "snowEmergency"].map((key) => [key, { available: true, data: [], asOf: NOW, checkedAt: NOW }])),
+  summary: { activeCount: 0, coverage: "complete" }, attention: [],
+} as unknown as RoadIntelligenceSnapshot;
 const civic = { alerts: [], available: true, degraded: false } as unknown as OfficialCivicAlertsResult;
 
 describe("County status API, visible pill and Pulse masthead", () => {
@@ -81,9 +85,9 @@ describe("County status API, visible pill and Pulse masthead", () => {
       hero: { countyStatus: pageSummary, allClear: false, degraded: true, tone: "danger", line: "Pulse detail keeps its own source and context.", sub: "This example does not establish the state of other feeds.", renderedAt: Date.now() },
       chips: [], tiles: [],
     }));
-    const expected = level === "Clear" ? "Clear in checked feeds" : level;
+    const expected = level === "Clear" ? "Clear in checked feeds" : level === "Unknown" ? "Unable to verify" : level;
     expect(board.querySelector("[data-pulse-status-level]")?.textContent).toBe(expected);
-    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe(level);
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe(level === "Unknown" ? "Unverified" : level);
     expect(container.querySelector("[data-pulse-desktop-state]")?.textContent).toBe(expected);
     expect(container.querySelector("a")?.getAttribute("aria-label")).toMatch(new RegExp(`^County status: ${expected}(?:;|\\.)`));
     expect(board.textContent).toContain("Other conditions keep their own source checks below.");
@@ -103,8 +107,8 @@ describe("County status API, visible pill and Pulse masthead", () => {
     await act(async () => vi.advanceTimersByTimeAsync(COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS - 1));
     expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Clear in checked feeds");
     await act(async () => vi.advanceTimersByTimeAsync(1));
-    expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Unknown");
-    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unknown");
+    expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Unable to verify");
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unverified");
     expect(fetchMock).toHaveBeenCalledTimes(2); // Existing five-minute poll only.
   });
 
@@ -116,7 +120,7 @@ describe("County status API, visible pill and Pulse masthead", () => {
     await act(async () => vi.advanceTimersByTimeAsync(20_000)); // Before the 30-second label tick.
     const stale = { ...summary, lastUpdated: new Date(Date.parse(NOW) - COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS + 10_000).toISOString() };
     await act(async () => root.render(renderBoard(stale)));
-    expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Unknown");
+    expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Unable to verify");
   });
 
   it("gives a newly supplied copy of the same cached timestamp a current clock before paint", async () => {
@@ -127,7 +131,7 @@ describe("County status API, visible pill and Pulse masthead", () => {
     expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Clear in checked feeds");
     vi.setSystemTime(Date.parse(NOW) + 20_000); // A clock change with no interval tick.
     await act(async () => root.render(renderBoard({ ...summary })));
-    expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Unknown");
+    expect(container.querySelector("[data-pulse-status-level]")?.textContent).toBe("Unable to verify");
   });
 
 });

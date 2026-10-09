@@ -26,7 +26,7 @@ vi.mock("@/hooks/useFollows", () => ({
   useFollowMutationState: () => "idle",
   useToggleFollow: (_slug: string, _source: string, failure?: (description: string) => void) => { mocks.failure = failure ?? null; return mocks.toggle; },
 }));
-vi.mock("@/hooks/useSaved", () => ({ useMounted: () => true, useSavedList: () => mocks.local, useIsSaved: () => mocks.saved, useToggleSave: () => mocks.toggleLocal, addSaved: (...args: unknown[]) => mocks.add(...args) }));
+vi.mock("@/hooks/useSaved", () => ({ savedChangeDescription: () => "We could not confirm this change. Please try again.", useMounted: () => true, useSavedList: () => mocks.local, useIsSaved: () => mocks.saved, useToggleSave: () => mocks.toggleLocal, addSaved: (...args: unknown[]) => mocks.add(...args) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace }), useSearchParams: () => mocks.query }));
 vi.mock("@/components/place/PlaceMedallion", () => ({ PlaceMedallion: () => <span /> }));
 vi.mock("@/components/place/PlacePhoto", () => ({ default: () => <span /> }));
@@ -131,4 +131,52 @@ describe("Existing save consumers report only confirmed changes", () => {
     expect(mocks.add).toHaveBeenCalledTimes(2);
     expect(mocks.toast.error).toHaveBeenCalledWith("Could not save the full flight", expect.any(Object));
   });
+  it("retains the event wallet and its busy removal until the asynchronous device change confirms", async () => {
+    let complete!: (saved: boolean) => void;
+    mocks.toggleLocal.mockReturnValue(new Promise<boolean>((resolve) => { complete = resolve; }));
+    await render(<SavedEventWallet events={[event]} now={new Date("2026-10-08T13:00:00Z")} startRaised />);
+    const remove = button("Remove Test event from saved");
+    await act(async () => remove.click());
+    expect(remove.disabled).toBe(true);
+    expect(remove.getAttribute("aria-busy")).toBe("true");
+    expect(mocks.toast.error).not.toHaveBeenCalled();
+    await act(async () => remove.click());
+    expect(mocks.toggleLocal).toHaveBeenCalledOnce();
+    await act(async () => complete(false));
+    expect(remove.disabled).toBe(false);
+    expect(mocks.toast.error).not.toHaveBeenCalled();
+  });
+
+  it("keeps a pour unselected while its asynchronous save is pending", async () => {
+    let complete!: (saved: boolean) => void;
+    mocks.toggleLocal.mockReturnValue(new Promise<boolean>((resolve) => { complete = resolve; }));
+    await render(<BeerSheet beer={beer} onClose={() => {}} />);
+    const save = button("Save this pour");
+    await act(async () => save.click());
+    expect(save.disabled).toBe(true);
+    expect(save.getAttribute("aria-pressed")).toBe("false");
+    expect(save.textContent).toContain("Saving");
+    await act(async () => save.click());
+    expect(mocks.toggleLocal).toHaveBeenCalledOnce();
+    await act(async () => { mocks.saved = true; complete(true); });
+    expect(button("Saved").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("does not finish a flight or start a duplicate flight before all writes confirm", async () => {
+    let complete!: (saved: boolean) => void;
+    mocks.add.mockReturnValueOnce(new Promise<boolean>((resolve) => { complete = resolve; })).mockResolvedValue(true);
+    await render(<BeerTasteFlight />);
+    const save = button("Save flight");
+    await act(async () => save.click());
+    expect(save.disabled).toBe(true);
+    expect(save.getAttribute("aria-busy")).toBe("true");
+    expect(save.textContent).toContain("Saving");
+    expect(mocks.add).toHaveBeenCalledOnce();
+    await act(async () => save.click());
+    expect(mocks.add).toHaveBeenCalledOnce();
+    await act(async () => complete(true));
+    expect(mocks.add.mock.calls.length).toBeGreaterThan(1);
+    expect(save.disabled).toBe(false);
+  });
+
 });

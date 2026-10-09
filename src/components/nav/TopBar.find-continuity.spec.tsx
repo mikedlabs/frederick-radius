@@ -123,6 +123,38 @@ afterEach(async () => {
 });
 
 describe("Find continuity through the real lazy header and overlay", () => {
+  it.each(["header", "bridge", "shortcut"])("keeps an active non-inert modal in charge of the %s Find entry", async (entry) => {
+    const modal = document.createElement("div");
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    const owner = document.createElement("button");
+    owner.textContent = "Done";
+    modal.append(owner);
+    document.body.append(modal);
+    try {
+      owner.focus();
+      await act(async () => {
+        if (entry === "header") button("Ask or find across Frederick County").click();
+        if (entry === "bridge") window.dispatchEvent(new CustomEvent("fr:open-search"));
+        if (entry === "shortcut") owner.dispatchEvent(new KeyboardEvent("keydown", { key: "/", bubbles: true }));
+        await vi.dynamicImportSettled();
+      });
+      expect(container.querySelector("#radius-find-dialog")).toBeNull();
+      expect(document.activeElement).toBe(owner);
+    } finally { modal.remove(); }
+    await open();
+    expect(input()).toBeDefined();
+  });
+
+  it.each(["inert", "hidden", "aria-hidden"])("ignores an inactive %s modal when opening Find", async (attribute) => {
+    const modal = document.createElement("div");
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute(attribute, attribute === "aria-hidden" ? "true" : "");
+    document.body.append(modal);
+    try { await open(); } finally { modal.remove(); }
+  });
+
   it("restores the query after Escape and fetches new results instead of retaining the old answer", async () => {
     fetchMock.mockResolvedValueOnce(response("Earlier fixture result"))
       .mockResolvedValueOnce(response("Updated fixture result"));

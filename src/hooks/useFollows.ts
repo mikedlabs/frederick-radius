@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { useSavedList, useToggleSave, useIsSaved } from "@/hooks/useSaved";
+import { useSavedList, useToggleSave, useIsSaved, savedChangeDescription } from "@/hooks/useSaved";
 import { track } from "@/lib/track";
 import { createAbortDeadline, withDeadlineOutcome } from "@/lib/promise-deadline";
 import { businessTopic } from "@/lib/push-topics";
@@ -781,11 +781,13 @@ export function useToggleFollow(slug: string, source?: string, onFailure?: (desc
       }
       if (auth === "anonymous" || auth === "unknown") {
         try {
-          const on = localToggle(followed);
+          // The lock may wait behind another tab. Recheck identity inside its
+          // critical section before writing an older anonymous intent.
+          const on = await localToggle(followed, () => authGeneration === generation);
           if (on !== startedFollowed) track("save_place", { on, source: source ?? "place_detail", synced: false });
           return on;
-        } catch {
-          onFailure?.("This device could not confirm the saved change. Please try again.");
+        } catch (error) {
+          onFailure?.(authGeneration !== generation ? UNCONFIRMED : savedChangeDescription(error, "This device could not confirm the saved change. Please try again."));
           return startedFollowed;
         }
       }

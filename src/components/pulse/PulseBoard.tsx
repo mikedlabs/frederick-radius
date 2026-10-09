@@ -41,6 +41,7 @@ import MapReturnLink from "@/components/place/MapReturnLink";
 import Sheet from "@/components/ui/Sheet";
 import PulseFreshness, {
   PulseStatusLabel,
+  formatPulseSourceTime,
 } from "@/components/pulse/PulseFreshness";
 import { countyStatusLabel, type CountyStatusSummary } from "@/lib/pulse/county-status";
 import { track } from "@/lib/track";
@@ -134,6 +135,8 @@ export type PulseHero = {
   renderedAt: number;
   /** The lead situation is fully explained in the hero, so it is not repeated below. */
   leadKey?: string;
+  /** The selected lead is retained from an earlier, unverified source check. */
+  leadIsEarlier?: boolean;
   leadMeta?: string;
   actionLabel?: string;
 };
@@ -172,15 +175,41 @@ export function pulseStatusWord({
   tone: PulseHeroChip["tone"];
 }): string {
   if (operational && !hasLead) return "Live update";
-  if (degraded && !hasLead) return "Unknown";
-  // Not "Checked": PulseFreshness prints "Checked Nm ago" in the same masthead
-  // row, and the same word twice in one line read as a stutter. This word's
-  // job is the county's state; the freshness stamp owns the checking.
+  if (degraded && !hasLead) return "Unable to verify";
+  // The state describes verified conditions. PulseFreshness labels page
+  // assembly separately, and individual sources retain their own check times.
   if (allClear) return "Clear in checked feeds";
   if (!hasLead) return "Local issue";
   if (tone === "danger") return "Urgent";
   if (tone === "warning") return "Advisory";
   return "Watch";
+}
+
+function PulseSourceChecks({ summary }: { summary: CountyStatusSummary }) {
+  if (!summary.checks?.length) return null;
+  const stateLabel = { current: "Verified for this snapshot", stale: "Earlier source data", unavailable: "Unable to verify", disabled: "Not connected" };
+  const timeLabel = { retrieval: "Last source check", provider: "Published", observation: "Observed" };
+  return (
+    <details data-pulse-source-checks className="mt-3 text-[12px]">
+      <summary className="min-h-11 cursor-pointer content-center font-semibold">Source checks</summary>
+      <p>Source times describe feed checks, publications or observations. They are separate from incident times.</p>
+      <dl className="mt-2 space-y-2">
+        {summary.checks.map((check, index) => {
+          const time = formatPulseSourceTime(check.asOf);
+          return (
+            <div key={`${check.source}:${index}`}>
+              <dt className="font-semibold">{check.source}</dt>
+              <dd>
+                {stateLabel[check.state]} · {time && check.asOfBasis ? (
+                  <>{timeLabel[check.asOfBasis]} <time dateTime={check.asOf ?? undefined}>{time}</time></>
+                ) : "Source time unavailable"}
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+    </details>
+  );
 }
 
 export type PulseTile = {
@@ -1037,6 +1066,10 @@ export default function PulseBoard({
     tone: heroTone,
   });
 
+  const earlierRoadLead = hero.leadKey === "traffic" && hero.leadIsEarlier === true;
+  const earlierRoadCount = hero.countyStatus?.roadCheck?.earlierCount ?? 0;
+  const currentRoadCount = hero.countyStatus?.roadCheck?.currentCount ?? 0;
+
   return (
     <PulseInteractionReady.Provider value={interactionReady}>
       <header data-pulse-briefing data-pulse-interaction-ready={String(interactionReady)} className={styles.briefing}>
@@ -1067,20 +1100,24 @@ export default function PulseBoard({
           </div>
           <div className={styles.freshness}><PulseFreshness renderedAt={hero.renderedAt} /></div>
         </div>
-        <h1 className={styles.headline}>{hero.line}</h1>
-        <p className={styles.summary}>{hero.sub}</p>
+        <h1 className={styles.headline}>{earlierRoadLead ? `Earlier MDOT report: ${hero.line}` : hero.line}</h1>
+        <p className={styles.summary}>{earlierRoadLead ? `Current road conditions are unverified. Earlier report guidance: ${hero.sub}` : hero.sub}</p>
         {hero.countyStatus && (
           <p className="mt-3 text-[12px]">
             County status summarizes available shared weather, school, road, outage, fire and rescue, air-quality, and civic checks.
-            {hero.countyStatus.ok ? " Other conditions keep their own source checks below." : " Some shared checks are unavailable. Other conditions keep their own source checks below."}
+            {hero.countyStatus.ok ? " Other conditions keep their own source checks below." : " Some shared checks could not be verified. Other conditions keep their own source checks below."}
           </p>
         )}
+        {earlierRoadCount > 0 && (
+          <p className="mt-3 text-[12px]">Earlier road checks listed {earlierRoadCount} {earlierRoadCount === 1 ? "update" : "updates"}. {currentRoadCount > 0 ? "Some road sources remain unverified." : "Current road conditions are unverified."}</p>
+        )}
+        {hero.countyStatus && <PulseSourceChecks summary={hero.countyStatus} />}
         {(hero.leadMeta || lead) && (
           <div className={styles.briefingAction}>
             {hero.leadMeta && (
               <p className={styles.leadMeta}>
                 <Clock aria-hidden className="h-4 w-4 shrink-0" />
-                {hero.leadMeta}
+                {earlierRoadLead ? `Earlier report details: ${hero.leadMeta}` : hero.leadMeta}
               </p>
             )}
             {lead && (

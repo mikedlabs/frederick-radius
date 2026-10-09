@@ -34,7 +34,7 @@ import { googleMapsDirections } from "@/lib/integrations/deeplinks";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
 import { savedDateLabel } from "@/components/saved/walletFacts";
-import { useToggleSave } from "@/hooks/useSaved";
+import { useToggleSave, savedChangeDescription } from "@/hooks/useSaved";
 import { eventLipFact, eventPriceLabel, eventWhenParts } from "@/components/saved/eventWalletFacts";
 import { statusLabel } from "@/lib/event-status";
 import { withBrowseReturnTo } from "@/lib/browse-return";
@@ -236,15 +236,15 @@ function Card({
           )}
           <button
             type="button"
-            onClick={() => {
+            onClick={async () => {
               if (removingRef.current) return;
               removingRef.current = true;
               setRemoving(true);
               try {
-                if (toggleSave(false)) throw new Error("Removal not confirmed");
+                if (await toggleSave(false)) throw new Error("Removal not confirmed");
                 haptic("light");
-              } catch {
-                toast.error("Could not remove from Saved", { description: "We could not confirm this change. Please try again." });
+              } catch (error) {
+                toast.error("Could not remove from Saved", { description: savedChangeDescription(error) });
               } finally {
                 setRemoving(false);
                 removingRef.current = false;

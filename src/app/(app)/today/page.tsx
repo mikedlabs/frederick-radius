@@ -43,7 +43,8 @@ import { leanFromForecast, wetWindowEnd } from "@/lib/today/weatherLean";
 import EventWalkTime from "@/components/today/EventWalkTime";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import PlaceSheetBoundary from "@/components/place/PlaceSheetBoundary";
-import TodayAsk from "@/components/today/TodayAsk";
+import TodayAsk, { TodayQuickNeeds } from "@/components/today/TodayAsk";
+import LocalNewsBrief, { LocalNewsLoading } from "@/components/news/LocalNewsBrief";
 import { todayFrame } from "@/lib/today/masthead";
 import { formatEasternDateline } from "@/lib/format/easternClock";
 import DaypartNeeds from "@/components/today/DaypartNeeds";
@@ -76,7 +77,7 @@ import {
  *
  *   1. Identity       → active alerts and the time-aware masthead
  *   2. Conditions     → one verified weather glance before browsing
-   3. Decide now     → one Find doorway before campaigns
+ *   3. Decide now     → one Find doorway before campaigns
  *                       + a location-aware place answer
  *   4. Follow the day → a short chronological civic and event program
  *   5. Plan the rest  → scheduled utilities, sports, light, and tomorrow
@@ -97,7 +98,6 @@ import {
  *   • PrimaryActionCard (Plan)   — overlapped MoreSheet's Plan tool
  *
  * What got cut in earlier passes (preserved here for archeology):
- *   • LocalNewsStrip   — news belongs on its own surface, not the briefing
  *   • HistoryPulse     — editorial filler; one rotating fact ≠ daily utility
  *   • FromAboveTile    — the photography book has its own home (kept the
  *                        FromAboveCta footer)
@@ -260,6 +260,8 @@ export default async function HomePage() {
         </div>
       )}
 
+      {/* The daily heading is separate from the evergreen archive scene.
+          Current conditions belong to the forecast, not the scenic photograph. */}
       {/* ── TITLE — a TIME-AWARE masthead (owner call, 2026-07-20: make /today
           "time-aware"). The page already reorders itself across the day (the
           evening gear below flips the lead to tonight at 17:00), but the title
@@ -275,10 +277,8 @@ export default async function HomePage() {
         const frame = todayFrame(easternStartHour(now.toISOString()));
         return (
           <header className={`scroll-masthead ${styles.masthead}`}>
+            <h1 className={styles.title}>{frame.title}</h1>
             <div className={styles.mastheadLead} data-today-photo-lead>
-              <h1 className={styles.title}>
-                {frame.title}
-              </h1>
               <figure className={styles.portrait}>
                 <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" priority fill sizes="(min-width: 960px) 520px, (min-width: 768px) 720px, calc(100vw - 32px)" alt="Carroll Creek in Frederick in June 2023, photographed by Mike D." />
                 <figcaption className={styles.photoCredit}>Archive · Carroll Creek · June 2023 · Mike D</figcaption>
@@ -315,12 +315,7 @@ export default async function HomePage() {
         {/* Find follows the conditions glance as the sole primary action.
             Seasonal campaigns and the event stream cannot bury either. */}
         <div className="today-arrival today-arrival--find">
-          <TodayAsk embedded>
-            <CravingStrip />
-          </TodayAsk>
-          <div className={styles.planLink}>
-            <Suspense fallback={null}><TodayPlanTonightLink /></Suspense>
-          </div>
+          <TodayAsk embedded showQuickNeeds={false} />
         </div>
 
       <div data-today-current-content className={styles.currentContent}>
@@ -347,6 +342,20 @@ export default async function HomePage() {
         {whatsOn}
       </PageChapter>
       </div>
+
+      {/* News follows the first local answers. Feed work stays bounded and
+          streams independently from weather and the durable event snapshot. */}
+      <Suspense fallback={<LocalNewsLoading />}>
+        <LocalNewsBrief />
+      </Suspense>
+
+      <section aria-labelledby="today-explore-heading">
+        <h2 id="today-explore-heading" className={styles.utilityHeading}>More ways to explore</h2>
+        <TodayQuickNeeds><CravingStrip /></TodayQuickNeeds>
+        <div className={styles.planLink}>
+          <Suspense fallback={null}><TodayPlanTonightLink /></Suspense>
+        </div>
+      </section>
 
       {/* Secondary context follows the useful place and event answers.
           Find and nearby choices remain ahead of the seasonal campaign.

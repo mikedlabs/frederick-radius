@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useIsSaved, useToggleSave, useMounted, useSavedList, useSetEventSaved, useEventSavedState } from "@/hooks/useSaved";
+import { useIsSaved, useToggleSave, useMounted, useSavedList, useSetEventSaved, useEventSavedState, savedChangeDescription } from "@/hooks/useSaved";
 import { useFollowMutationState, useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { Bookmark } from "lucide-react";
 import { haptic } from "@/lib/haptics";
@@ -78,9 +78,9 @@ export default function SaveButton({
       // A full followed-place list refuses an addition without throwing.
       if (failureDescriptionRef.current !== null || nextSaved === wasSaved) throw new Error("Save state did not change");
       return true;
-    } catch {
+    } catch (error) {
       toast.error(wasSaved ? "Could not remove from Saved" : "Could not save this item", {
-        description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again.",
+        description: failureDescriptionRef.current ?? savedChangeDescription(error),
       });
       return false;
     } finally {

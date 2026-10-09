@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { installSavedLocks } from "../../tests/helpers/saved-locks";
 import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -42,6 +43,7 @@ function Snapshot({ bootstrap }: { bootstrap?: FollowedSlugsBootstrap }) {
 
 let accountSequence = 0;
 describe("confirmed follow membership and shared mutation state", () => {
+  let locks: ReturnType<typeof installSavedLocks>;
   let root: Root;
   let container: HTMLDivElement;
   let bootstrap: FollowedSlugsBootstrap | undefined;
@@ -54,6 +56,7 @@ describe("confirmed follow membership and shared mutation state", () => {
   let authReads: number;
 
   beforeEach(() => {
+    locks = installSavedLocks();
     vi.clearAllMocks();
     mocks.synced.mockReturnValue(true);
     resetFollowsSyncFlag();
@@ -89,6 +92,7 @@ describe("confirmed follow membership and shared mutation state", () => {
     root = createRoot(container);
   });
   afterEach(async () => {
+    locks.restore();
     await act(async () => root.unmount());
     container.remove();
     resetFollowsSyncFlag();
@@ -314,4 +318,21 @@ describe("confirmed follow membership and shared mutation state", () => {
     expect(mocks.track).not.toHaveBeenCalled();
     expect(states()).toEqual(["idle", "idle", "idle"]);
   });
+  it("does not commit an anonymous intent after a new account arrives while waiting for the device lock", async () => {
+    bootstrap = { user: null, slugs: [] };
+    await render();
+    const release = locks.hold();
+    const operation = await begin(0, true);
+    expect(states()).toEqual(["saving", "saving", "idle"]);
+    expect(localStorage.getItem("fr:saved:v1")).toBeNull();
+    const changed: FollowedSlugsBootstrap = { user: { id: "new-locked-account", email: null }, slugs: ["new-account-stop"] };
+    await act(async () => root.render(<Snapshot bootstrap={changed} />));
+    await act(async () => { release(); expect(await operation.result).toBe(false); });
+    expect(localStorage.getItem("fr:saved:v1")).toBeNull();
+    expect(requests).toHaveLength(0);
+    expect(mocks.track).not.toHaveBeenCalled();
+    expect(mocks.signalBridge).not.toHaveBeenCalled();
+    expect(mocks.failure).toHaveBeenCalledOnce();
+  });
+
 });

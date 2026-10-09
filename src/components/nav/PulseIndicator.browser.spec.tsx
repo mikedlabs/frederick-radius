@@ -34,14 +34,14 @@ describe("PulseIndicator status transport", () => {
     expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Clear in checked feeds; no active alerts");
     await act(async () => vi.advanceTimersByTimeAsync(5 * 60 * 1000));
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toContain("Unknown");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toContain("Unable to verify");
   });
   it("keeps earlier alerts but labels them unverified after a failed check", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(response(alerts)).mockRejectedValueOnce(new Error("offline")));
     await act(async () => root.render(createElement(PulseIndicator)));
     await act(async () => vi.advanceTimersByTimeAsync(5 * 60 * 1000));
     expect(container.querySelector("a")?.getAttribute("aria-label")).toContain("Earlier report had 2 alerts; current alerts are unverified");
-    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unknown");
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unverified");
     expect(container.querySelector("[data-pulse-indicator]")?.getAttribute("data-pulse-state")).toBe("unavailable");
   });
   it.each([
@@ -58,8 +58,8 @@ describe("PulseIndicator status transport", () => {
   ])("rejects %s without promoting it to all-clear", async (_label, payload) => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(payload)));
     await act(async () => root.render(createElement(PulseIndicator)));
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unknown; current alerts are unverified");
-    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unknown");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unable to verify; current alerts are unverified");
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unverified");
     expect(container.querySelector("a")?.className.split(/\s+/)).toContain("inline-flex");
   });
   it("bounds a delayed body and ignores its late outcome, then clears stale on valid recovery", async () => {
@@ -85,7 +85,7 @@ describe("PulseIndicator status transport", () => {
     await act(async () => root.render(createElement(PulseIndicator)));
     await act(async () => vi.advanceTimersByTimeAsync(PULSE_STATUS_TIMEOUT_MS));
     await act(async () => body.reject(new Error("late body failure")));
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unknown; current alerts are unverified");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unable to verify; current alerts are unverified");
   });
   it("bounds ignored header abort and schedules one later retry instead of overlapping polls", async () => {
     const transport = deferred<Response>(); const fetchMock = vi.fn().mockReturnValue(transport.promise); vi.stubGlobal("fetch", fetchMock);
@@ -130,9 +130,9 @@ describe("PulseIndicator status transport", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(payload)));
     await act(async () => root.render(createElement(PulseIndicator)));
     const indicator = container.querySelector("[data-pulse-indicator]");
-    expect(indicator?.getAttribute("aria-label")).toBe(`County status: ${level === "Clear" ? "Clear in checked feeds" : level}${details}`);
-    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe(level);
-    expect(container.querySelector("[data-pulse-desktop-state]")?.textContent).toBe(level === "Clear" ? "Clear in checked feeds" : level);
+    expect(indicator?.getAttribute("aria-label")).toBe(`County status: ${level === "Clear" ? "Clear in checked feeds" : level === "Unknown" ? "Unable to verify" : level}${details}`);
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe(level === "Unknown" ? "Unverified" : level);
+    expect(container.querySelector("[data-pulse-desktop-state]")?.textContent).toBe(level === "Clear" ? "Clear in checked feeds" : level === "Unknown" ? "Unable to verify" : level);
   });
   it("cancels pending work and all polling on unmount", async () => {
     const body = deferred<unknown>(); const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => body.promise }); vi.stubGlobal("fetch", fetchMock);
@@ -151,8 +151,8 @@ describe("PulseIndicator status transport", () => {
     const payload = { ...quiet, lastUpdated: new Date(Date.now() + offset).toISOString() };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(payload)));
     await act(async () => root.render(createElement(PulseIndicator)));
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unknown; current alerts are unverified");
-    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unknown");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unable to verify; current alerts are unverified");
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unverified");
   });
   it("expires a still-displayed quiet snapshot at its age boundary without another provider request", async () => {
     const payload = { ...quiet, lastUpdated: new Date(Date.now() - 6 * 60 * 1000 + 1).toISOString() };
@@ -160,7 +160,7 @@ describe("PulseIndicator status transport", () => {
     await act(async () => root.render(createElement(PulseIndicator)));
     expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Clear in checked feeds; no active alerts");
     await act(async () => vi.advanceTimersByTimeAsync(1));
-    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unknown; current alerts are unverified");
+    expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unable to verify; current alerts are unverified");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
   it("keeps an expired positive snapshot labeled earlier rather than current", async () => {
@@ -182,7 +182,7 @@ describe("PulseIndicator status transport", () => {
     const body = deferred<unknown>();
     const fetchMock = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ ok: true, json: () => body.promise }); vi.stubGlobal("fetch", fetchMock);
     await act(async () => root.render(createElement(PulseIndicator)));
-    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unknown");
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unverified");
     await act(async () => vi.advanceTimersByTimeAsync(5 * 60 * 1000));
     expect(container.querySelector("a")?.className.split(/\s+/)).toContain("inline-flex");
     expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Checking");

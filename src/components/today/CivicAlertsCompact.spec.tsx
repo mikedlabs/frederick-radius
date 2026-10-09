@@ -35,6 +35,18 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("compact civic alert affected areas", () => {
+  it.each([false, true])("shows only a source-verified road interruption (verified=%s), independent of another failed feed", async (verified) => {
+    const checkedAt = verified ? "2026-09-30T20:00:00.000Z" : "2026-09-30T19:30:00.000Z";
+    providers.roads.mockResolvedValue({
+      generatedAt: checkedAt,
+      sources: { workZones: { available: true, data: [], checkedAt, asOf: checkedAt }, snowEmergency: { available: false, data: [] } },
+      attention: [{ id: "work-zone-closure", kind: "work-zone-closure", severity: "warning", title: "US 15 work-zone closure", detail: "All lanes closed", scope: "US 15", sourceLabel: "Maryland WZDx", observedAt: checkedAt }],
+    });
+    const html = renderToStaticMarkup(await CivicAlerts({ compact: true }));
+    if (verified) expect(html).toContain("US 15 work-zone closure");
+    else expect(html).not.toContain("US 15 work-zone closure");
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it("keeps the NWS area beside its source and preserves the Tonight return", async () => {
     const alert: NwsAlert = {
       id: "offline-nws", event: "Heat Warning", headline: "Take precautions tonight.",

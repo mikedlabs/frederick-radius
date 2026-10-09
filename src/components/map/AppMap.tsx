@@ -309,6 +309,7 @@ import { getOpenStatus, isOpenNow } from "@/lib/hours";
 import { groupMapEvents, type MapEventGroup } from "./mapContent";
 import { resolveMapLocationSeed } from "./mapLocationSeed";
 import type { LiveIncidentSignal } from "@/lib/live/incidentSnapshot";
+import { countRecentPublicReports } from "@/lib/live/incidentFreshness";
 import { buildMapSpotContext } from "./mapSpotContext";
 import { encodePolyline } from "./polyline";
 import {
@@ -4391,13 +4392,7 @@ export default function AppMap({
   );
   const recentIncidentCount = useMemo(
     () =>
-      orderedLiveIncidents.filter(
-        (incident) => {
-          const ageMs =
-            discoveryClockMs - Date.parse(incident.lastReportedAt);
-          return ageMs >= 0 && ageMs <= 60 * 60_000;
-        },
-      ).length,
+      countRecentPublicReports(orderedLiveIncidents, discoveryClockMs),
     [discoveryClockMs, orderedLiveIncidents],
   );
   const latestIncidentSummary = useMemo(() => {
@@ -4657,6 +4652,8 @@ export default function AppMap({
               userLoc={userLoc}
               sortOrigin={userLoc}
               failureMode
+              searchState={q.trim().length < 2 ? "ready" : searchUnavailableQuery === q.trim() ? "unavailable" : searchSettledQuery !== q.trim() ? "pending" : "ready"}
+              onRetrySearch={() => setSearchAttempt((attempt) => attempt + 1)}
               onPick={openPlaceSheet}
               onPickEvent={(event) => router.push(`/events/${event.slug}`)}
             />

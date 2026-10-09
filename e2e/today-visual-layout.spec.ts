@@ -12,6 +12,11 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await page.goto("/today", { waitUntil: "domcontentloaded" });
     const area = page.getByRole("combobox", { name: "Choose your area" });
     await expect(area).toBeEnabled();
+    // Measure the final card, not TodayCard's 110px Suspense placeholder.
+    const renderedWeather = page.locator("[data-today-weather] [data-weather-state]");
+    await expect(renderedWeather).toHaveCount(1);
+    await expect(renderedWeather).toHaveAttribute("data-weather-state", /^(available|safety-only|unavailable)$/);
+    await expect(renderedWeather).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
 
     const masthead = page.locator("main .scroll-masthead");
@@ -47,6 +52,8 @@ for (const width of [320, 375, 390, 430, 1366]) {
     // The owned photo is a readable editorial frame, with archival context
     // visible beside it. It never substitutes for current weather evidence.
     const photoBox = (await masthead.locator("figure").boundingBox())!;
+    const headingBox = (await masthead.locator("h1").boundingBox())!;
+    expect(headingBox.y + headingBox.height).toBeLessThanOrEqual(photoBox.y);
     expect(photoBox.width).toBeGreaterThanOrEqual(mastheadBox.width * 0.95);
     await expect(masthead.locator("figcaption")).toContainText("Archive");
 

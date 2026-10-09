@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { installSavedLocks } from "../../../tests/helpers/saved-locks";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,14 +24,17 @@ const EVENT = "donut-thursday-test";
 function SavedSnapshot() { return <output>{JSON.stringify(useSavedList())}</output>; }
 
 describe("Event detail save uses the Saved tab's device store", () => {
+  let locks: ReturnType<typeof installSavedLocks>;
   let root: Root;
   let container: HTMLDivElement;
   beforeEach(() => {
+    locks = installSavedLocks();
     vi.clearAllMocks();
     localStorage.clear();
     container = document.createElement("div"); document.body.append(container); root = createRoot(container);
   });
   afterEach(async () => {
+    locks.restore();
     await act(async () => root.unmount()); container.remove(); vi.restoreAllMocks(); localStorage.clear();
   });
   async function render(fullPage = false) {
@@ -169,4 +173,32 @@ describe("Event detail save uses the Saved tab's device store", () => {
     expect(saved()).toEqual([{ type: "event", id: EVENT, saved_at: expect.any(String) }]);
     expect(button().getAttribute("aria-pressed")).toBe("true"); expect(button(1).getAttribute("aria-pressed")).toBe("true");
   });
+  it("keeps a queued save unselected and prevents duplicate taps until device confirmation", async () => {
+    await render();
+    const release = locks.hold();
+    await click();
+    expect(button().disabled).toBe(true);
+    expect(button().getAttribute("aria-busy")).toBe("true");
+    expect(button().getAttribute("aria-pressed")).toBe("false");
+    expect(button().getAttribute("aria-label")).toBe("Saving Donut Thursday");
+    expect(saved()).toEqual([]);
+    expect(mocks.toast.success).not.toHaveBeenCalled();
+    await click();
+    expect(locks.names).toEqual([KEY]);
+    await act(async () => { release(); });
+    expect(button().getAttribute("aria-pressed")).toBe("true");
+    expect(button().disabled).toBe(false);
+    expect(mocks.toast.success).toHaveBeenCalledOnce();
+  });
+
+  it("reports unsupported coordination without changing readable event saves", async () => {
+    await render();
+    Object.defineProperty(navigator, "locks", { configurable: true, value: undefined });
+    await click();
+    expect(saved()).toEqual([]);
+    expect(mocks.toast.success).not.toHaveBeenCalled();
+    expect(mocks.toast.error).toHaveBeenCalledWith("Could not save this event", { description: "This browser cannot safely coordinate Saved changes. Try a current browser." });
+    expect(button().getAttribute("aria-pressed")).toBe("false");
+  });
+
 });

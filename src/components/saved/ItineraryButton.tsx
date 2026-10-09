@@ -1,6 +1,7 @@
 "use client";
 
-import { useEventSavedState, useMounted, useSetEventSaved } from "@/hooks/useSaved";
+import { useEventSavedState, useMounted, useSetEventSaved, savedChangeDescription } from "@/hooks/useSaved";
+import { useRef, useState } from "react";
 import { Bookmark } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,6 +17,8 @@ export default function ItineraryButton({
   className?: string;
 }) {
   const mounted = useMounted();
+  const busyRef = useRef(false);
+  const [busy, setBusy] = useState(false);
   const savedState = useEventSavedState(eventId);
   const isSaved = savedState === true;
   const setSaved = useSetEventSaved(eventId);
@@ -25,22 +28,29 @@ export default function ItineraryButton({
     <button
       type="button"
       data-save-ref={`event:${eventId}`}
-      disabled={!mounted || savedState === null}
-      onClick={(event) => {
+      disabled={!mounted || savedState === null || busy}
+      aria-busy={busy || undefined}
+      onClick={async (event) => {
         event.preventDefault();
         event.stopPropagation();
+        if (busyRef.current) return;
+        busyRef.current = true;
+        setBusy(true);
         try {
-          const saved = setSaved(!isSaved);
+          const saved = await setSaved(!isSaved);
           if (saved) toast.success(`Saved · ${eventName}`);
           else toast("Removed from Saved");
-        } catch {
+        } catch (error) {
           toast.error(isSaved ? "Could not remove from Saved" : "Could not save this event", {
-            description: "We could not confirm this change. Please try again.",
+            description: savedChangeDescription(error),
           });
+        } finally {
+          busyRef.current = false;
+          setBusy(false);
         }
       }}
       aria-pressed={savedState === null ? undefined : mounted && isSaved}
-      aria-label={savedState === null ? `Saved state unavailable for ${eventName}` : isSaved ? `Remove ${eventName} from Saved` : `Save ${eventName}`}
+      aria-label={busy ? `${isSaved ? "Removing" : "Saving"} ${eventName}` : savedState === null ? `Saved state unavailable for ${eventName}` : isSaved ? `Remove ${eventName} from Saved` : `Save ${eventName}`}
       title={savedState === null ? "Saved state unavailable" : isSaved ? "Saved" : "Save"}
       className={`tap-44 relative grid h-9 w-9 shrink-0 place-items-center rounded-full border transition-colors ${className}`}
       style={{

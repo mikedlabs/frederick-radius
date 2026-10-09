@@ -3,7 +3,8 @@
 import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { addSaved, useSavedList, useToggleSave } from "./useSaved";
+import { installSavedLocks } from "../../tests/helpers/saved-locks";
+import { addSaved, setEventSaved, useSavedList, useToggleSave } from "./useSaved";
 
 const effects = vi.hoisted(() => ({ persist: vi.fn(), signal: vi.fn(), cancel: vi.fn() }));
 vi.mock("@/lib/persistence", () => ({ ensurePersistentStorage: effects.persist }));
@@ -18,9 +19,11 @@ function Snapshot() {
 }
 
 describe("device save write confirmation", () => {
+  let locks: ReturnType<typeof installSavedLocks>;
   let root: Root;
   let container: HTMLDivElement;
   beforeEach(async () => {
+    locks = installSavedLocks();
     localStorage.clear();
     vi.clearAllMocks();
     container = document.createElement("div");
@@ -29,6 +32,7 @@ describe("device save write confirmation", () => {
     await act(async () => root.render(<Snapshot />));
   });
   afterEach(async () => {
+    locks.restore();
     vi.restoreAllMocks();
     await act(async () => root.unmount());
     container.remove();
@@ -37,7 +41,7 @@ describe("device save write confirmation", () => {
 
   it("does not publish or celebrate a storage write that silently refuses the save", async () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {});
-    await act(async () => { expect(() => toggle()).toThrow(); });
+    await act(async () => { await expect(toggle()).rejects.toThrow(); });
     expect(container.textContent).toBe("");
     expect(localStorage.getItem("fr:saved:v1")).toBeNull();
     expect(effects.signal).not.toHaveBeenCalled();
@@ -48,7 +52,7 @@ describe("device save write confirmation", () => {
     await act(async () => toggle());
     vi.clearAllMocks();
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {});
-    await act(async () => { expect(() => toggle()).toThrow(); });
+    await act(async () => { await expect(toggle()).rejects.toThrow(); });
     expect(container.textContent).toBe("test-event");
     expect(JSON.parse(localStorage.getItem("fr:saved:v1")!)).toHaveLength(1);
     expect(effects.cancel).not.toHaveBeenCalled();
@@ -56,14 +60,14 @@ describe("device save write confirmation", () => {
 
   it("does not publish an imperative save that is refused", async () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {});
-    await act(async () => { expect(() => addSaved("event", "imperative-event")).toThrow(); });
+    await act(async () => { await expect(addSaved("event", "imperative-event")).rejects.toThrow(); });
     expect(container.textContent).toBe("");
     expect(effects.signal).not.toHaveBeenCalled();
   });
 
   it("does not publish a write whose persisted value cannot be read back", async () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("Storage blocked"); });
-    await act(async () => { expect(() => toggle()).toThrow(); });
+    await act(async () => { await expect(toggle()).rejects.toThrow(); });
     expect(container.textContent).toBe("");
     expect(effects.signal).not.toHaveBeenCalled();
     expect(effects.persist).not.toHaveBeenCalled();
@@ -72,7 +76,7 @@ describe("device save write confirmation", () => {
   it.each(["{broken", "null", "{}"])("refuses to replace an unreadable saved value %s", async (raw) => {
     localStorage.setItem("fr:saved:v1", raw);
     const writes = vi.spyOn(Storage.prototype, "setItem");
-    await act(async () => { expect(() => toggle(true)).toThrow(); });
+    await act(async () => { await expect(toggle(true)).rejects.toThrow(); });
     expect(writes).not.toHaveBeenCalled();
     expect(localStorage.getItem("fr:saved:v1")).toBe(raw);
     expect(effects.signal).not.toHaveBeenCalled();
@@ -100,7 +104,7 @@ describe("device save write confirmation", () => {
     const writes = vi.spyOn(Storage.prototype, "setItem");
     await act(async () => {
       const attempt = writer === "toggle" ? () => toggle(true) : () => addSaved("event", "new-event");
-      expect(attempt).toThrow("The saved list could not be read.");
+      await expect(attempt()).rejects.toThrow("The saved list could not be read.");
     });
     expect(writes).not.toHaveBeenCalled();
     expect(localStorage.getItem("fr:saved:v1")).toBe(raw);
@@ -112,7 +116,7 @@ describe("device save write confirmation", () => {
   it("refuses to overwrite a saved list while its initial read is blocked", async () => {
     const writes = vi.spyOn(Storage.prototype, "setItem");
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("Storage blocked"); });
-    await act(async () => { expect(() => toggle(true)).toThrow(); });
+    await act(async () => { await expect(toggle(true)).rejects.toThrow(); });
     expect(writes).not.toHaveBeenCalled();
     expect(effects.signal).not.toHaveBeenCalled();
   });
@@ -123,7 +127,7 @@ describe("device save write confirmation", () => {
       .mockImplementationOnce(function (this: Storage, key: string) { return realRead.call(this, key); })
       .mockImplementation(() => { throw new Error("Readback blocked"); });
     const writes = vi.spyOn(Storage.prototype, "setItem");
-    await act(async () => { expect(() => toggle(true)).toThrow(); });
+    await act(async () => { await expect(toggle(true)).rejects.toThrow(); });
     expect(writes).toHaveBeenCalledTimes(1);
     expect(container.textContent).toBe("");
     expect(effects.signal).not.toHaveBeenCalled();
@@ -138,17 +142,48 @@ describe("device save write confirmation", () => {
     await act(async () => toggle(true));
     vi.clearAllMocks();
     const writes = vi.spyOn(Storage.prototype, "setItem");
-    await act(async () => { expect(toggle(true)).toBe(true); });
+    await act(async () => { expect(await toggle(true)).toBe(true); });
     expect(writes).not.toHaveBeenCalled();
     expect(effects.signal).not.toHaveBeenCalled();
-    await act(async () => { expect(toggle(false)).toBe(false); });
+    await act(async () => { expect(await toggle(false)).toBe(false); });
     expect(container.textContent).toBe("other-row");
     expect(JSON.parse(localStorage.getItem("fr:saved:v1")!)).toEqual([expect.objectContaining({ type: "radius", id: "other-row" })]);
     writes.mockClear();
     effects.cancel.mockClear();
-    await act(async () => { expect(toggle(false)).toBe(false); });
+    await act(async () => { expect(await toggle(false)).toBe(false); });
     expect(writes).not.toHaveBeenCalled();
     expect(effects.cancel).not.toHaveBeenCalled();
   });
 
+  it("queues event, radius and toggle writers behind the same origin lock before reading", async () => {
+    const release = locks.hold();
+    const event = setEventSaved("event-a", true);
+    const radius = addSaved("radius", "radius-b");
+    const toggled = toggle(true);
+    expect(localStorage.getItem("fr:saved:v1")).toBeNull();
+    expect(effects.signal).not.toHaveBeenCalled();
+    expect(locks.names).toEqual(["fr:saved:v1", "fr:saved:v1", "fr:saved:v1"]);
+    await act(async () => { release(); await Promise.all([event, radius, toggled]); });
+    expect(JSON.parse(localStorage.getItem("fr:saved:v1")!).map((item: { id: string }) => item.id)).toEqual(["event-a", "radius-b", "test-event"]);
+  });
+
+  it("preserves independent writers from separate loaded tab modules", async () => {
+    vi.resetModules();
+    const otherTab = await import("./useSaved");
+    const release = locks.hold();
+    const first = setEventSaved("tab-one", true);
+    const second = otherTab.addSaved("place", "tab-two");
+    expect(localStorage.getItem("fr:saved:v1")).toBeNull();
+    await act(async () => { release(); await Promise.all([first, second]); });
+    expect(JSON.parse(localStorage.getItem("fr:saved:v1")!).map((item: { id: string }) => item.id)).toEqual(["tab-one", "tab-two"]);
+  });
+
+  it("preserves old data and rejects changes when this browser cannot coordinate writes", async () => {
+    localStorage.setItem("fr:saved:v1", JSON.stringify([{ type: "event", id: "old", saved_at: "2026-10-08" }]));
+    const old = localStorage.getItem("fr:saved:v1");
+    Object.defineProperty(navigator, "locks", { configurable: true, value: undefined });
+    await expect(setEventSaved("new", true)).rejects.toThrow("coordinate");
+    expect(localStorage.getItem("fr:saved:v1")).toBe(old);
+    expect(effects.signal).not.toHaveBeenCalled();
+  });
 });

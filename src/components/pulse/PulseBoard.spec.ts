@@ -56,14 +56,14 @@ describe("Pulse status language", () => {
       degraded: true,
       hasLead: false,
       tone: "warning",
-    })).toBe("Unknown");
+    })).toBe("Unable to verify");
 
     expect(pulseStatusWord({
       allClear: true,
       degraded: true,
       hasLead: false,
       tone: "positive",
-    })).toBe("Unknown");
+    })).toBe("Unable to verify");
 
     expect(pulseStatusWord({
       allClear: false,
@@ -86,7 +86,7 @@ describe("Pulse status language", () => {
       degraded: true,
       hasLead: false,
       tone: "positive",
-    })).toBe("Unknown");
+    })).toBe("Unable to verify");
   });
 
   it("keeps verified quiet conditions separate from advisories", () => {

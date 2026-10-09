@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { buildRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligenceModel";
+import { MDOT_WZDX_SOURCE_URL } from "@/lib/integrations/mdot-wzdx";
+import type { CountyStatusSummary } from "@/lib/pulse/county-status";
 import { buildCurrentSituationSnapshot, sourceEnvelope, type CurrentSituationSnapshot, type CurrentSituationSources } from "@/lib/live/currentSituationModel";
 
 const mocks = vi.hoisted(() => ({
@@ -46,16 +49,31 @@ function snapshot(
   return { ...current, summary: { ...current.summary, ...overrides } };
 }
 
+const NOW = "2026-07-28T16:00:00.000Z";
+function checkedRoadSnapshot() {
+  const feed = { available: true, data: [], asOf: NOW, checkedAt: NOW };
+  return buildRoadIntelligenceSnapshot({ now: new Date(NOW), sources: {
+    workZones: { ...feed, sourceUrl: MDOT_WZDX_SOURCE_URL },
+    speeds: { ...feed }, travelTimes: { ...feed }, messages: { ...feed },
+    weatherStations: { ...feed }, roadConditions: { ...feed }, snowEmergency: { ...feed },
+  } });
+}
+
+/** Existing consumers retain their exact core contract while the source
+ * provenance is additive and independently asserted at the HTTP boundary. */
+async function legacyStatus(response: Response, currentRoadCount = 0) {
+  const { checks, roadCheck, ...core }: CountyStatusSummary = await response.json();
+  expect(checks).toHaveLength(10);
+  expect(checks).toContainEqual({ source: "NWS", state: "current", asOf: NOW, asOfBasis: "retrieval" });
+  expect(checks).toContainEqual({ source: "Maryland WZDx", state: "current", asOf: NOW, asOfBasis: "retrieval" });
+  expect(roadCheck).toEqual({ verified: true, checkedAt: NOW, currentCount: currentRoadCount, earlierCount: 0, unverifiedSources: [] });
+  return core;
+}
+
 describe("GET /api/pulse/status", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mocks.getRoadIntelligenceSnapshot.mockResolvedValue({
-      summary: {
-        activeCount: 0,
-        coverage: "complete",
-      },
-      attention: [],
-    });
+    mocks.getRoadIntelligenceSnapshot.mockResolvedValue(checkedRoadSnapshot());
     mocks.getOfficialCivicAlertsSnapshot.mockResolvedValue({
       alerts: [],
       available: true,
@@ -72,7 +90,7 @@ describe("GET /api/pulse/status", () => {
     expect(response.headers.get("cache-control")).toBe(
       "public, max-age=60, s-maxage=300",
     );
-    await expect(response.json()).resolves.toEqual({
+    expect(await legacyStatus(response)).toEqual({
       active: false,
       count: 0,
       tone: "quiet",
@@ -94,7 +112,7 @@ describe("GET /api/pulse/status", () => {
     );
 
     const response = await GET();
-    await expect(response.json()).resolves.toEqual({
+    expect(await legacyStatus(response)).toEqual({
       active: true,
       count: 2,
       tone: "caution",
@@ -106,21 +124,20 @@ describe("GET /api/pulse/status", () => {
 
   it("keeps a warning-grade road closure advisory, matching Pulse", async () => {
     mocks.getCurrentSituationSnapshot.mockResolvedValue(snapshot());
-    mocks.getRoadIntelligenceSnapshot.mockResolvedValue({
-      summary: {
-        activeCount: 1,
-        coverage: "complete",
-      },
-      attention: [
-        {
-          severity: "warning",
-        },
-      ],
+    const road = checkedRoadSnapshot();
+    mocks.getRoadIntelligenceSnapshot.mockResolvedValue({ ...road,
+      summary: { ...road.summary, status: "active", activeCount: 1 },
+      attention: [{
+        id: "test-closure", kind: "work-zone-closure", priority: 55,
+        severity: "warning", title: "County route closure", detail: "All lanes closed.",
+        scope: "County route", sourceLabel: "Maryland WZDx", sourceUrl: MDOT_WZDX_SOURCE_URL,
+        observedAt: NOW,
+      }],
     });
 
     const response = await GET();
 
-    await expect(response.json()).resolves.toEqual({
+    expect(await legacyStatus(response, 1)).toEqual({
       active: true,
       count: 1,
       tone: "caution",
@@ -146,7 +163,7 @@ describe("GET /api/pulse/status", () => {
 
     const response = await GET();
 
-    await expect(response.json()).resolves.toEqual({
+    expect(await legacyStatus(response)).toEqual({
       active: false,
       count: 0,
       tone: "quiet",

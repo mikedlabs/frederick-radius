@@ -6,10 +6,11 @@ import {
 } from "../src/lib/return-bridge";
 
 /**
- * Run against the existing promoted-data server with its Node egress guard.
- * Browser routing cannot control TodayCard's server-side NWS/AirNow reads.
- * The real unavailable card must resolve; no healthy/partial forecast or page
- * markup is fabricated here. Async adapter states belong to component tests.
+ * The regular suite checks whichever real weather state resolves. Browser
+ * routing cannot control TodayCard's server-side NWS/AirNow reads.
+ * For strict unavailable coverage, use playwright.weather-guarded.config.ts
+ * after the normal promoted production build. That config starts its own
+ * runtime with the existing Node egress guard; no weather markup is fabricated.
  */
 const VIEWPORTS = [
   { width: 320, height: 844 },
@@ -93,19 +94,18 @@ for (const colorScheme of ["light", "dark"] as const) {
           hasTouch: viewport.width < 640,
         });
 
-        test("the real unavailable forecast leads Find and browsing above the fold", async ({ page }, testInfo) => {
+        test("resolved weather leads Find and browsing above the fold", async ({ page }, testInfo) => {
           test.setTimeout(60_000);
+          const providerMode = testInfo.config.metadata.weatherProviderMode ?? "actual";
+          expect(["actual", "guarded-unavailable"]).toContain(providerMode);
           const runtimeErrors: string[] = [];
           page.on("pageerror", (error) => runtimeErrors.push(error.message));
           const response = await page.goto("/today?in=county", { waitUntil: "domcontentloaded" });
           expect(response?.status()).toBe(200);
           await expect(page.locator("main h1")).toHaveCount(1);
           await expect(page.getByRole("combobox", { name: "Choose your area" })).toBeEnabled();
-          // An ordinary guarded day has no interruption above the masthead.
-          // Active alert placement is separately guarded by TodayHierarchy.
-          await expect(page.getByRole("region", { name: "Heads up", exact: true })).toHaveCount(0);
-
           const weather = page.locator("[data-today-weather]");
+          const renderedWeather = weather.locator("[data-weather-state]");
           const forecast = weather.locator('a[href*="open=weather"]');
           const find = page.locator('[data-surface-row="find"]');
           const places = page.locator('[data-today-current-content] > [aria-label="Places for your area"]');
@@ -114,9 +114,20 @@ for (const colorScheme of ["light", "dark"] as const) {
           await expect(forecast).toHaveCount(1);
           await expect(page.locator('a[href*="/pulse"][href*="open=weather"]')).toHaveCount(1);
           await expect(forecast.locator("a, button, input, select, textarea")).toHaveCount(0);
-          await expect(weather.locator('[data-weather-state="unavailable"]')).toBeVisible();
-          await expect(weather).toContainText("The NWS forecast is briefly unavailable.");
-          await expect(weather.locator('[aria-label="Today in Frederick"]')).toHaveCount(0);
+          await expect(renderedWeather).toHaveCount(1);
+          await expect(renderedWeather).toHaveAttribute("data-weather-state", /^(available|safety-only|unavailable)$/);
+          await expect(renderedWeather).toBeVisible();
+          const weatherState = await renderedWeather.getAttribute("data-weather-state");
+          if (providerMode === "guarded-unavailable") {
+            await test.step("guarded server resolves honest unavailable weather", async () => {
+              expect(weatherState).toBe("unavailable");
+              await expect(weather).toContainText("The NWS forecast is briefly unavailable.");
+              await expect(weather.locator('[aria-label="Today in Frederick"]')).toHaveCount(0);
+              // An ordinary guarded day has no interruption above the masthead.
+              // Active alert priority remains separately guarded by TodayHierarchy.
+              await expect(page.getByRole("region", { name: "Heads up", exact: true })).toHaveCount(0);
+            });
+          }
           await expect(find).toBeVisible();
           await expect(places).toBeAttached();
           await expect(events).toBeAttached();
@@ -167,7 +178,7 @@ for (const colorScheme of ["light", "dark"] as const) {
           expect(runtimeErrors).toEqual([]);
           await testInfo.attach("weather-priority-geometry", {
             contentType: "application/json",
-            body: JSON.stringify({ viewport, colorScheme, state: "unavailable", order, weatherBox, forecastBox,
+            body: JSON.stringify({ viewport, colorScheme, providerMode, state: weatherState, order, weatherBox, forecastBox,
               probe: "Center and four cardinal points at +/-21.5px; bounded samples, not exhaustive area proof." }),
           });
           const screenshotPath = testInfo.outputPath(`today-weather-${colorScheme}-${viewport.width}.png`);

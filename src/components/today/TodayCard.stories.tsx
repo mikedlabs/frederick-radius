@@ -32,7 +32,7 @@ export const HealthyForecast: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("Mostly sunny")).toBeVisible();
-    await expect(canvas.getByLabelText("72 degrees Fahrenheit forecast")).toBeVisible();
+    await expect(canvas.getByText("72 degrees Fahrenheit forecast")).toBeVisible();
     await expect(canvas.getByText("NWS forecast · Frederick")).toBeVisible();
     await expect(canvas.getByText("Oct 8, 2026, 7:35 AM EDT")).toHaveAttribute("datetime", "2026-10-08T11:35:00.000Z");
     await expect(canvas.getByText("High 76°")).toBeVisible();
@@ -72,7 +72,7 @@ export const ForecastUnavailable: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("region", { name: "Weather unavailable" })).toBeVisible();
     await expect(canvas.getByText("County status")).toBeVisible();
-    await expect(canvas.queryByLabelText("72 degrees Fahrenheit forecast")).not.toBeInTheDocument();
+    await expect(canvas.queryByText("72 degrees Fahrenheit forecast")).not.toBeInTheDocument();
   },
 };
 
@@ -86,7 +86,7 @@ export const ActiveWarningWithoutForecast: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("heading", { name: "Flash Flood Warning is active." })).toBeVisible();
     await expect(canvas.getByText("The NWS forecast is briefly unavailable.")).toBeVisible();
-    await expect(canvas.queryByLabelText("72 degrees Fahrenheit forecast")).not.toBeInTheDocument();
+    await expect(canvas.queryByText("72 degrees Fahrenheit forecast")).not.toBeInTheDocument();
   },
 };
 
@@ -106,7 +106,7 @@ export const NarrowLongCondition: Story = {
     temperatureF: 68, variant: "CloudLightning",
     safetyNote: "Weather-alert and air-quality checks are unavailable.",
   },
-  parameters: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("heading", { name: "Chance showers and thunderstorms" })).toBeVisible();

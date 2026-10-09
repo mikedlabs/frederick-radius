@@ -84,8 +84,8 @@ for (const viewport of [
 
 for (const status of [
   { label: "active alerts", payload: { active: true, count: 2, tone: "alert", level: "Urgent", ok: true }, name: "County status: Urgent; 2 alerts reported" },
-  { label: "unavailable checks", payload: { active: false, count: 0, tone: "quiet", level: "Unknown", ok: false }, name: "County status: Unknown; current alerts are unverified" },
-  { label: "unverified reports", payload: { active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: "not-a-report-time" }, name: "County status: Unknown; current alerts are unverified" },
+  { label: "unavailable checks", payload: { active: false, count: 0, tone: "quiet", level: "Unknown", ok: false }, name: "County status: Unable to verify; current alerts are unverified" },
+  { label: "unverified reports", payload: { active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: "not-a-report-time" }, name: "County status: Unable to verify; current alerts are unverified" },
 ]) {
   test(`TopBar keeps ${status.label} visible on a phone`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -97,7 +97,7 @@ for (const status of [
     const statusLink = header.getByRole("link", { name: status.name, exact: true });
     await expect(statusLink).toBeVisible();
     await expect(statusLink).toHaveAttribute("href", "/pulse");
-    if (status.label !== "active alerts") await expect(statusLink.locator("[data-pulse-mobile-state]")).toHaveText("Unknown");
+    if (status.label !== "active alerts") await expect(statusLink.locator("[data-pulse-mobile-state]")).toHaveText("Unverified");
     const bounds = await statusLink.boundingBox();
     expect(bounds?.height).toBeGreaterThanOrEqual(44);
     expect(bounds?.width).toBeGreaterThanOrEqual(44);

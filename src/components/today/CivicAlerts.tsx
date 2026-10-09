@@ -318,7 +318,7 @@ export default async function CivicAlerts({ includeWeather = true, compact = fal
     nps,
     [
       ...officialCivicAlerts(official.alerts),
-      ...roadIntelligenceAlert(selectTodayRoadSignal(roads)),
+      ...roadIntelligenceAlert(selectTodayRoadSignal(roads, now.getTime())),
       ...trafficAlerts(now, chart),
     ],
     now,

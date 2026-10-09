@@ -157,13 +157,15 @@ export default function PulseIndicator() {
   const current = pathname === "/pulse" || pathname.startsWith("/pulse/");
   const earlier = unverified && active;
   const alertCount = `${count} ${count === 1 ? "alert" : "alerts"}`;
-  const stateLabel = checking ? "Checking" : earlier ? "Unknown" : phase === "unavailable" ? "Unknown" : status?.level ?? "Unknown";
+  const level = checking ? "Checking" : earlier || phase === "unavailable" ? "Unknown" : status?.level ?? "Unknown";
+  const stateLabel = level === "Unknown" ? "Unable to verify" : level;
+  const mobileLabel = level === "Unknown" ? "Unverified" : level;
   const statusLabel = earlier
     ? `County status: ${stateLabel}. ${checking ? "Checking again." : "Current check unavailable."} Earlier report had ${alertCount}; current alerts are unverified.`
     : checking
       ? "County status: checking"
-      : phase === "unavailable" || !status || stateLabel === "Unknown"
-        ? "County status: Unknown; current alerts are unverified"
+      : phase === "unavailable" || !status || level === "Unknown"
+        ? "County status: Unable to verify; current alerts are unverified"
         : active
           ? `County status: ${countyStatusLabel(status.level)}; ${alertCount} reported${status.ok === false ? "; some sources unavailable" : ""}`
           : `County status: ${countyStatusLabel(status.level)}; no active alerts`;
@@ -215,7 +217,7 @@ export default function PulseIndicator() {
           />
         )}
       </span>
-      {stateLabel && <span data-pulse-mobile-state className="text-[9px] font-semibold leading-none sm:hidden">{stateLabel}</span>}
+      {stateLabel && <span data-pulse-mobile-state className="text-[9px] font-semibold leading-none sm:hidden">{mobileLabel}</span>}
       <span className="hidden flex-col gap-0.5 sm:inline-flex">
         <span className="text-[14px] font-semibold leading-none">County status</span>
         {stateLabel && <span data-pulse-desktop-state className="text-[10px] leading-none">{status?.level === "Clear" && phase === "ready" ? countyStatusLabel(status.level) : stateLabel}</span>}

@@ -6851,12 +6851,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    sit underneath the still-useful control. */
 @media (min-width: 1024px) {
   .dock-host[data-map-error] .map-error-fallback-head {
-    padding-top: 74px;
+    padding-top: calc(var(--map-dock-height, 0px) + var(--app-space-2) + var(--app-space-4));
   }
 }
 @media (max-width: 1023.98px) {
   .dock-host[data-map-error] .map-error-fallback .map-list {
-    padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--map-dock-height, 0px) + var(--app-space-4) + env(safe-area-inset-bottom, 0px));
   }
 }
 @media (max-width: 600px) {

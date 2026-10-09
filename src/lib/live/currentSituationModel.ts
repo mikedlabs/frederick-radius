@@ -52,6 +52,7 @@ export type SourceEnvelopeOptions<T> = {
   requiredForQuiet: boolean;
   capturedAt: string | number | Date;
   staleAfterSeconds: number;
+  futureToleranceMs?: number;
   asOf?: string | null;
   asOfBasis?: SourceAsOfBasis | null;
   itemCount?: number;
@@ -129,6 +130,7 @@ export function sourceEnvelope<T>({
   requiredForQuiet,
   capturedAt,
   staleAfterSeconds,
+  futureToleranceMs = MAX_FUTURE_SKEW_MS,
   asOf = null,
   asOfBasis = null,
   itemCount: explicitItemCount,
@@ -141,7 +143,7 @@ export function sourceEnvelope<T>({
   let freshness: SourceFreshness = "unknown";
   if (availability === "available" && Number.isFinite(asOfMs)) {
     const ageMs = captured.getTime() - asOfMs;
-    if (ageMs >= -MAX_FUTURE_SKEW_MS) {
+    if (ageMs >= -futureToleranceMs) {
       freshness = ageMs <= safeStaleAfter * 1_000 ? "fresh" : "stale";
     }
   }
@@ -315,13 +317,13 @@ export function buildCurrentSituationSnapshot({
     generatedAt,
     sources,
     roads: {
-      live: buildLiveIncidentSnapshotFromFusion(
+      live: { ...buildLiveIncidentSnapshotFromFusion(
         safeRoadFusion,
         trafficIsFresh,
         clock,
         scannerIsFresh,
         scannerIsFresh ? sources.scanner.itemCount : 0,
-      ),
+      ), scannerCheckedAt: sources.scanner.asOfBasis === "retrieval" ? sources.scanner.asOf : null },
       matchedOfficialIds,
       unmatchedOfficial: trafficIsFresh
         ? sources.traffic.data.filter((incident) => !matched.has(incident.id))

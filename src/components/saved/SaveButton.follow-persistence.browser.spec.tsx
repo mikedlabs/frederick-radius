@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { installSavedLocks } from "../../../tests/helpers/saved-locks";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -40,6 +41,7 @@ function Snapshot({ bootstrap }: { bootstrap: FollowedSlugsBootstrap }) {
 let accountSequence = 0;
 
 describe("SaveButton with the real follow persistence hook", () => {
+  let locks: ReturnType<typeof installSavedLocks>;
   let root: Root;
   let container: HTMLDivElement;
   let bootstrap: FollowedSlugsBootstrap;
@@ -53,6 +55,7 @@ describe("SaveButton with the real follow persistence hook", () => {
 
 
   beforeEach(() => {
+    locks = installSavedLocks();
     vi.clearAllMocks();
     mocks.hasSynced.mockReturnValue(true);
     mocks.markSynced.mockImplementation(() => mocks.hasSynced.mockReturnValue(true));
@@ -93,6 +96,7 @@ describe("SaveButton with the real follow persistence hook", () => {
     root = createRoot(container);
   });
   afterEach(async () => {
+    locks.restore();
     await act(async () => root.unmount());
     container.remove();
     resetFollowsSyncFlag();

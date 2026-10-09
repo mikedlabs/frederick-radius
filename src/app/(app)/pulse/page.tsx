@@ -31,7 +31,8 @@ import {
 } from "@/lib/integrations/pulsepoint";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
-import { getLocalHeadlines } from "@/lib/integrations/news";
+import { getLocalHeadlinesResult, type NewsHeadlinesResult } from "@/lib/integrations/news";
+import LocalNewsBriefView from "@/components/news/LocalNewsBriefView";
 import { getCivicPressReleasesResult, policeReleases, featuredPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
 import { getMarcBoard, getMarcAlerts, marcClockMinutes } from "@/lib/integrations/marcTrains";
 import { airQualityObservedAt, pickWorstAqi, type AqiObservation } from "@/lib/integrations/airnow";
@@ -62,6 +63,8 @@ import {
   leadTravelTime,
   selectRoadTravelSummary,
   travelMinutes,
+  roadSourceIsCurrent,
+  verifiedRoadAttention,
 } from "@/lib/live/roadIntelligenceModel";
 import { getOfficialSignalsSnapshot } from "@/lib/live/officialSignals";
 import { isLocallyRelevantCivicAlert } from "@/lib/integrations/official-alert-feeds";
@@ -300,7 +303,7 @@ export default async function PulsePage() {
     roadIntelligence,
     officialSignals,
     fixitResult,
-    news,
+    newsResult,
     pressResult,
     riversResult,
     airports,
@@ -326,8 +329,10 @@ export default async function PulsePage() {
       status: "unavailable",
       available: false,
     }),
-    // Local headlines from Google News RSS — always-on city signal.
-    withTimeout(getLocalHeadlines(), FEED_MS, []),
+    // Keep feed failure distinct from a successful empty headline result.
+    withTimeout<NewsHeadlinesResult>(getLocalHeadlinesResult(), FEED_MS, {
+      items: [], status: "unavailable",
+    }),
     // Official City + County press releases (CivicPlus News Flash RSS). The
     // police-lane items get the breaking strip up top + the blotter below.
     //
@@ -380,6 +385,7 @@ export default async function PulsePage() {
     withTimeout(getCampDavidTfr(), FEED_MS, null),
   ]);
 
+  const news = newsResult.items;
   const fixit = fixitResult.data;
   const fixitOpenCount = fixitResult.openCount;
   const fixitAcknowledgedCount = fixitResult.acknowledgedCount;
@@ -395,6 +401,7 @@ export default async function PulsePage() {
   const sourceIsCurrent = (
     source: { availability: string; freshness: string },
   ) => source.availability === "available" && source.freshness === "fresh";
+  const countyStatus = deriveCountyStatus(situation, roadIntelligence, officialSignals.civic);
   const trafficSource = situation.sources.traffic;
   const powerSource = situation.sources.power;
   const schoolsSource = situation.sources.schools;
@@ -418,7 +425,7 @@ export default async function PulsePage() {
     officialSignals.stormReports.available &&
     officialSignals.civic.available &&
     !officialSignals.civic.degraded;
-  const urgentDegraded = pulseUrgentFeedsDegraded({
+  const urgentDegraded = !countyStatus.ok || pulseUrgentFeedsDegraded({
     situationPartial: situation.summary.coverage === "partial",
     safetyUnavailable: safetyState === "unavailable",
     officialAlertsComplete: officialAlertsCheckComplete,
@@ -536,8 +543,16 @@ export default async function PulsePage() {
   // Planned road work / closures / emergency advisories (distinct from the
   // live MDOT traffic tile). Self-hides when the feeds carry none recent.
   const advisories = advisoryReleases(press).slice(0, 6);
-  const roadTravel = selectRoadTravelSummary(roadIntelligence);
-  const roadLead = roadIntelligence.attention[0] ?? null;
+  const roadNow = requestNow.getTime();
+  const roadReadings = selectRoadTravelSummary(roadIntelligence);
+  const roadTravel = {
+    ...roadReadings,
+    workZones: roadSourceIsCurrent(roadIntelligence, "workZones", roadNow) ? roadReadings.workZones : [],
+    travelTimes: roadSourceIsCurrent(roadIntelligence, "travelTimes", roadNow) ? roadReadings.travelTimes : [],
+  };
+  const currentRoadSignals = verifiedRoadAttention(roadIntelligence, roadNow);
+  const earlierRoadSignals = roadIntelligence.attention.filter((signal) => !currentRoadSignals.includes(signal));
+  const roadLead = currentRoadSignals[0] ?? null;
   const activeWorkZones = roadTravel.workZones.filter(
     (zone) => zone.status === "active",
   );
@@ -574,7 +589,7 @@ export default async function PulsePage() {
   const leadTravelCause = leadTravel ? travelCauses.get(leadTravel.id) ?? null : null;
   const roadTrafficActive = highTraffic.length > 0 || Boolean(roadLead);
   const roadCheckComplete =
-    trafficAvailable && roadIntelligence.summary.coverage === "complete";
+    trafficAvailable && countyStatus.roadCheck?.verified === true && roadIntelligence.summary.coverage === "complete";
 
   // A countywide water tile cannot use whichever gauge happens to render
   // first. Compare every fresh forecast-point reading against its official NWS
@@ -707,6 +722,7 @@ export default async function PulsePage() {
   let heroLeadKey: string | undefined;
   let heroLeadMeta: string | undefined;
   let heroActionLabel: string | undefined;
+  let heroLeadIsEarlier = false;
   let heroTone: PulseHero["tone"] = heroDegraded
     ? "warning"
     : allClear
@@ -845,6 +861,17 @@ export default async function PulsePage() {
     heroActionLabel = "See active calls";
   }
 
+  if (!leadCandidate && !hasOperational && earlierRoadSignals.length > 0) {
+    const earlier = earlierRoadSignals[0];
+    heroLeadKey = "traffic";
+    heroLeadIsEarlier = true;
+    heroTone = "cool";
+    heroLine = earlier.title;
+    heroSub = "Unable to verify current road conditions. This earlier report is retained for context; check the official source before relying on it.";
+    heroLeadMeta = [earlier.sourceLabel, earlier.observedAt ? `Reported ${timeAgo(earlier.observedAt)}` : "Report time unavailable"].join(" · ");
+    heroActionLabel = "Check the earlier road report";
+  }
+
   // On a calm day, use the first representative gauge. At action stage or
   // higher, the worst current official category takes the face immediately.
   const riverPeekSite = floodActive
@@ -890,52 +917,14 @@ export default async function PulsePage() {
   // These reference feeds used to stack as their own text-heavy sections below
   // the board; they now live INSIDE the dashboard as tap-to-open tiles, so the
   // whole page is one unified, visual grid. Built server-side like every tile.
-  const newsLead = news[0];
-  const newsBody = news.length > 0 ? (
-    <div className="space-y-1">
-      <a
-        href={newsLead.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block rounded-[var(--app-radius-md)] px-1 py-2 transition hover:bg-[var(--app-bg-sunken)]"
-      >
-        <h3 className="font-sans text-[17px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
-          {newsLead.title}
-        </h3>
-        <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>
-          {newsLead.source} · {timeAgo(newsLead.published_at)}
-        </p>
-      </a>
-      {news.length > 1 && (
-        <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
-          {news.slice(1, 6).map((h) => (
-            <li
-              key={h.url}
-              className="border-b last:border-b-0"
-              style={{ borderColor: "color-mix(in srgb, var(--app-border) 65%, transparent)" }}
-            >
-              <a
-                href={h.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-start justify-between gap-3 px-1 py-2.5 transition hover:bg-[var(--app-bg-sunken)]"
-              >
-                <span className="min-w-0">
-                  <span className="block text-[13.5px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
-                    {h.title}
-                  </span>
-                  <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>
-                    {h.source} · {timeAgo(h.published_at)}
-                  </span>
-                </span>
-                <ExternalLink aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  ) : emptyNote("No local headlines are available right now.");
+  const civicNews = press.filter((item) => item.lane === "civic");
+  const newsBody = (
+    <LocalNewsBriefView news={newsResult} headlineLimit={6} showHeading={false} official={{
+      items: civicNews,
+      status: !pressResult.available || pressResult.data.sourceHealth.unavailable.length === 2
+        ? "unavailable" : civicAvailable ? "available" : "partial",
+    }} />
+  );
 
   const policeBody = (
     <div className="space-y-3">
@@ -1384,7 +1373,7 @@ export default async function PulsePage() {
             ? `${travelMinutes(leadTravel.travelTimeSeconds)} min`
             : roadCheckComplete
               ? "No major impact"
-              : "Check incomplete",
+              : earlierRoadSignals.length > 0 ? `${earlierRoadSignals.length} earlier road ${earlierRoadSignals.length === 1 ? "report" : "reports"}` : "Unable to verify",
       accent: roadTrafficActive || !roadCheckComplete ? "var(--app-warning)" : "var(--app-cool)",
       active: roadTrafficActive,
       attention: situationActive.traffic,
@@ -1415,15 +1404,15 @@ export default async function PulsePage() {
                 }`
               : roadCheckComplete
                 ? "No major road impact appears in the checked feeds"
-                : "At least one official road feed could not be checked",
+                : "Unable to verify one or more official road feeds",
       body:
-        roadIntelligence.attention.length > 0 ||
+        currentRoadSignals.length > 0 || earlierRoadSignals.length > 0 ||
         supportingWorkZones.length > 0 ||
         traffic.length > 0 ||
         roadTravelTimes.length > 0
           ? (
             <>
-              {roadIntelligence.attention.slice(0, 5).map((signal) => (
+              {currentRoadSignals.slice(0, 5).map((signal) => (
                 <Row
                   key={signal.id}
                   tone={signal.severity === "emergency" ? "danger" : "warning"}
@@ -1435,6 +1424,9 @@ export default async function PulsePage() {
                     signal.sourceLabel,
                   ]}
                 />
+              ))}
+              {earlierRoadSignals.slice(0, 5).map((signal) => (
+                <Row key={`earlier-${signal.id}`} tone="muted" title={`Earlier report · ${signal.title}`} body={`${signal.detail} Current status is unverified.`} meta={[signal.sourceLabel, signal.observedAt ? `Reported ${timeAgo(signal.observedAt)}` : "Report time unavailable"]} />
               ))}
               {supportingWorkZones.slice(0, 6).map((zone) => (
                 <Row
@@ -1477,7 +1469,7 @@ export default async function PulsePage() {
               ]}
             />
               ))}
-              {roadIntelligence.attention.length === 0 &&
+              {currentRoadSignals.length === 0 && earlierRoadSignals.length === 0 &&
               supportingWorkZones.length === 0 &&
               traffic.length === 0
                 ? emptyNote(
@@ -2086,14 +2078,16 @@ export default async function PulsePage() {
       key: "news",
       label: "In the news",
       iconName: "Newspaper",
-      countLabel: news.length > 0 ? `${news.length} ${news.length === 1 ? "story" : "stories"}` : "No stories loaded",
+      countLabel: news.length > 0 ? `${news.length} ${news.length === 1 ? "story" : "stories"}`
+        : civicNews.length > 0 ? "Official updates"
+        : newsResult.status === "unavailable" ? "Unavailable" : "No headlines returned",
       accent: "var(--app-cool)",
       active: false,
       attention: false,
-      degraded: news.length === 0,
+      degraded: newsResult.status !== "available" || !civicAvailable,
       kind: "status",
-      sourceLabel: "Google News · Frederick County",
-      peek: news[0]?.title,
+      sourceLabel: "Google News · City & county newsrooms",
+      peek: news[0]?.title ?? civicNews[0]?.title,
       body: newsBody,
     },
     {
@@ -2186,7 +2180,7 @@ export default async function PulsePage() {
 
   // ── Hero + ticker for the board ──────────────────────────────────
   const hero: PulseHero = {
-    countyStatus: deriveCountyStatus(situation, roadIntelligence, officialSignals.civic),
+    countyStatus,
     allClear,
     operational: !leadCandidate && hasOperational,
     degraded: urgentDegraded,
@@ -2195,6 +2189,7 @@ export default async function PulsePage() {
     sub: heroSub,
     renderedAt: nowMs,
     leadKey: heroLeadKey,
+    leadIsEarlier: heroLeadIsEarlier,
     leadMeta: heroLeadMeta,
     actionLabel: heroActionLabel,
   };

@@ -66,3 +66,33 @@ export const UnavailableAt390: Story = {
     await expect(localStorage.getItem(KEY)).toBe("{unfinished");
   },
 };
+
+let releaseQueuedSave: () => Promise<void> = async () => {};
+async function holdSavedChange() {
+  const restore = sampleStorage();
+  let release!: () => void;
+  let entered!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const ready = new Promise<void>((resolve) => { entered = resolve; });
+  const lock = navigator.locks.request(KEY, async () => { entered(); await gate; });
+  await ready;
+  releaseQueuedSave = async () => { release(); await lock; await navigator.locks.request(KEY, () => {}); };
+  return async () => { await releaseQueuedSave(); restore(); };
+}
+export const QueuedSaveAt390: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  beforeEach: holdSavedChange,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const save = await canvas.findByRole("button", { name: "Save Sample Frederick event" });
+    await waitFor(() => expect(save).toBeEnabled());
+    await userEvent.click(save);
+    const pending = await canvas.findByRole("button", { name: "Saving Sample Frederick event" });
+    await expect(pending).toBeDisabled();
+    await expect(pending).toHaveAttribute("aria-busy", "true");
+    await expect(pending).toHaveAttribute("aria-pressed", "false");
+    await expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual([]);
+    await releaseQueuedSave();
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Remove Sample Frederick event from Saved" })).toHaveAttribute("aria-pressed", "true"));
+  },
+};

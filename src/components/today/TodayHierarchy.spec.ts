@@ -39,6 +39,20 @@ describe("Today decision hierarchy", () => {
     expect(events).toBeGreaterThan(weather);
   });
 
+  it("puts the first local answers before news and secondary exploration doors", () => {
+    const find = renderedPage.indexOf("<TodayAsk embedded showQuickNeeds={false}");
+    const lead = renderedPage.indexOf("{decisionLead}");
+    const events = renderedPage.indexOf("{whatsOn}");
+    const news = renderedPage.indexOf("<LocalNewsBrief");
+    const shortcuts = renderedPage.indexOf("<TodayQuickNeeds>");
+    expect(find).toBeGreaterThan(-1);
+    expect(lead).toBeGreaterThan(find);
+    expect(events).toBeGreaterThan(lead);
+    expect(news).toBeGreaterThan(events);
+    expect(shortcuts).toBeGreaterThan(news);
+    expect(renderedPage.match(/<TodayQuickNeeds>/g)).toHaveLength(1);
+  });
+
   it("shows an honest live scope readout before weather on narrow screens", () => {
     const title = renderedPage.indexOf("{frame.title}");
     // Matched loosely: the component now carries the dateline as a prop, and
