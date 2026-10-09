@@ -4,6 +4,7 @@ import RadiusPhoto, {
 } from "@/components/ui/RadiusPhoto";
 import type { MomentHeroImage, MomentPhotoCredit } from "./momentGuide";
 import styles from "./MomentHero.module.css";
+import MomentPhotoCreditLine from "./MomentPhotoCreditLine";
 
 /**
  * MomentHero opens a moment hub with the most honest picture it has, chosen
@@ -50,21 +51,9 @@ function Rule() {
 }
 
 function LicensedCredit({ credit }: { credit: MomentPhotoCredit }) {
-  const depicts = credit.depicts.replace(/[.\s]+$/, "");
   return (
     <figcaption className={`text-caption ${styles.credit} ${styles.gutter}`} data-moment-photo-credit>
-      {depicts}. Photo:{" "}
-      <a href={credit.sourceUrl} target="_blank" rel="noopener noreferrer">
-        {credit.author}
-      </a>
-      ,{" "}
-      {credit.licenseUrl ? (
-        <a href={credit.licenseUrl} target="_blank" rel="noopener noreferrer license">
-          {credit.license}
-        </a>
-      ) : (
-        credit.license
-      )}
+      <MomentPhotoCreditLine credit={credit} />
     </figcaption>
   );
 }

@@ -58,8 +58,8 @@ import {
   PlacePhotoWhen,
 } from "@/components/place/PlacePhotoState";
 import GettingThere from "@/components/event/GettingThere";
-import { momentForEventSlug } from "@/data/civic-moments";
-import { momentSectionId } from "@/components/moment/momentGuide";
+import { eventArrival } from "@/lib/events/eventArrival";
+import { sourceHost } from "@/components/moment/momentGuide";
 import VenueMiniMap from "@/components/event/VenueMiniMap";
 import { eventSaveCount } from "@/lib/loaders/eventSaves";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -282,13 +282,13 @@ export default async function EventPage({
     Boolean(venuePlace),
   );
   const pinGeom = venuePlace?.geom ?? event.geom;
-  // A moment whose venue has no car access (Colorfest closes Frederick Road)
-  // must not route drivers to the venue. Directions turns into a walking link
-  // and is never promoted; the guide's parking and shuttle section is offered.
-  const arrivalMoment = momentForEventSlug(event.slug);
-  const noCarAccess = Boolean(arrivalMoment?.venue?.arrivalSection);
-  const directionsUrl = hasPreciseLocation
-    ? `https://www.google.com/maps/dir/?api=1&destination=${pinGeom.lat},${pinGeom.lng}${noCarAccess ? "&travelmode=walking" : ""}`
+  // A venue with no car access (Colorfest closes Frederick Road) never gets a
+  // driving route. Both action rows offer the guide's parking and shuttle
+  // section in the Directions slot instead (eventArrival, shared with the
+  // event sheet and the map peek).
+  const arrival = eventArrival(event.slug);
+  const directionsUrl = hasPreciseLocation && !arrival
+    ? `https://www.google.com/maps/dir/?api=1&destination=${pinGeom.lat},${pinGeom.lng}`
     : null;
   const hasTrustworthyEnd = eventHasTrustworthyEnd(event);
   const timeCaution = eventTimeCaution(event);
@@ -776,10 +776,16 @@ export default async function EventPage({
           event.source_url ? { href: event.source_url, external: true, Icon: ExternalLink, label: "Official page" } :
           null;
         const hasThird = thirdAction !== null;
-        const dirPrimary = physicalAttendance && hasPreciseLocation && !hasThird && !noCarAccess;
+        const dirPrimary = physicalAttendance && hasPreciseLocation && !hasThird && !arrival;
+        // Without a ticket or RSVP to buy, getting there is the decision: the
+        // parking link leads instead of the venue page, whose Directions would
+        // drive to the closed road.
+        const parkingPrimary = physicalAttendance && Boolean(arrival) && !event.ticket_url && !event.rsvp_url;
+        const thirdPrimary = hasThird && !parkingPrimary;
+        const showDirectionsSlot = physicalAttendance && (arrival ? true : hasPreciseLocation);
         const gridCols =
           1 +
-          (physicalAttendance && hasPreciseLocation ? 1 : 0) +
+          (showDirectionsSlot ? 1 : 0) +
           (hasThird ? 1 : 0);
 
         const quietCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]";
@@ -810,7 +816,18 @@ export default async function EventPage({
                 Add to calendar
               </a>
             )}
-            {physicalAttendance && hasPreciseLocation && directionsUrl && (
+            {physicalAttendance && arrival ? (
+              <Link
+                href={arrival.href}
+                data-decision-action="open"
+                data-event-parking-action
+                className={parkingPrimary ? primaryCls : quietCls}
+                style={parkingPrimary ? primaryStyle : quietStyle}
+              >
+                <CarFront className="h-5 w-5" strokeWidth={1.75} style={parkingPrimary ? iconOnBrand : iconBrand} aria-hidden />
+                Parking and shuttle
+              </Link>
+            ) : physicalAttendance && hasPreciseLocation && directionsUrl && (
               <a
                 href={directionsUrl}
                 data-decision-action="directions"
@@ -835,15 +852,15 @@ export default async function EventPage({
                 }
                 target="_blank"
                 rel="noopener noreferrer"
-                className={primaryCls}
-                style={primaryStyle}
+                className={thirdPrimary ? primaryCls : quietCls}
+                style={thirdPrimary ? primaryStyle : quietStyle}
               >
-                <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={iconOnBrand} aria-hidden />
+                <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={thirdPrimary ? iconOnBrand : iconBrand} aria-hidden />
                 {thirdAction.label}
               </a>
             ) : (
-              <Link href={thirdAction.href} data-decision-action="open" className={primaryCls} style={primaryStyle}>
-                <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={iconOnBrand} aria-hidden />
+              <Link href={thirdAction.href} data-decision-action="open" className={thirdPrimary ? primaryCls : quietCls} style={thirdPrimary ? primaryStyle : quietStyle}>
+                <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={thirdPrimary ? iconOnBrand : iconBrand} aria-hidden />
                 {thirdAction.label}
               </Link>
             ))}
@@ -888,18 +905,24 @@ export default async function EventPage({
         />
       )}
 
-      {noCarAccess && arrivalMoment?.venue?.note && eventStatus === "scheduled" && !hasEnded && (
+      {arrival?.note && physicalAttendance && eventStatus === "scheduled" && !hasEnded && (
         <section
           aria-label="Parking and shuttle"
-          data-event-arrival={arrivalMoment.slug}
+          data-event-arrival={arrival.href}
           className="flex items-start gap-3 border-t py-4"
           style={{ borderColor: "var(--app-border)" }}
         >
           <CarFront className="mt-0.5 h-5 w-5 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
           <div className="min-w-0">
-            <p className="text-body" style={{ color: "var(--app-ink)" }}>{arrivalMoment.venue.note}</p>
+            <p className="text-body" style={{ color: "var(--app-ink)" }}>{arrival.note.text}</p>
+            <p className="mt-1 text-sm" style={{ color: "var(--app-ink-2)" }}>
+              Source:{" "}
+              <a href={arrival.note.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                {sourceHost(arrival.note.sourceUrl)}
+              </a>
+            </p>
             <Link
-              href={`/moments/${arrivalMoment.slug}#${momentSectionId(arrivalMoment.venue.arrivalSection ?? "")}`}
+              href={arrival.href}
               className="mt-1 inline-flex min-h-11 items-center gap-1 font-semibold underline underline-offset-2"
               style={{ color: "var(--app-brand-press)" }}
             >
@@ -921,7 +944,7 @@ export default async function EventPage({
               parkingDecision={parkingDecision}
             />
           )}
-          <VenueMiniMap geom={pinGeom} name={event.venue_name} />
+          <VenueMiniMap geom={pinGeom} name={event.venue_name} address={event.address} />
         </div>
       )}
 
@@ -1208,7 +1231,15 @@ export default async function EventPage({
                 decisionAction="website"
               />
             )}
-            {physicalAttendance && hasPreciseLocation && directionsUrl && (
+            {physicalAttendance && arrival ? (
+              <MobileBarLink
+                href={arrival.href}
+                icon={CarFront}
+                label="Parking"
+                ariaLabel={`Parking and shuttle for ${event.title}`}
+                decisionAction="open"
+              />
+            ) : physicalAttendance && hasPreciseLocation && directionsUrl && (
               <MobileBarLink
                 href={directionsUrl}
                 icon={Navigation}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   Building2,
   CalendarDays,
+  CarFront,
   Camera,
   CornerUpRight,
   ExternalLink,
@@ -14,6 +15,7 @@ import {
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import RestroomMark from "@/components/icons/RestroomMark";
 import { directionsHref } from "@/lib/map/directionsHref";
+import { eventArrival } from "@/lib/events/eventArrival";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { sizedImage } from "@/lib/format/img";
 import type {
@@ -62,7 +64,10 @@ export function MapEventPeek({
   parking?: ParkingPin[];
 }) {
   const color = event.category_color || "var(--app-brand)";
-  const plan = parking.length > 0 
+  // A venue with no car access gets its guide's parking and shuttle section,
+  // never a driving route or a garage line (eventArrival).
+  const arrival = eventArrival(event.slug);
+  const plan = parking.length > 0 && !arrival
     ? garagePlanFor(
         { lat: event.lat, lng: event.lng }, 
         parking.map(p => ({ slug: p.slug, name: p.name, geom: { lng: p.lng, lat: p.lat } }))
@@ -104,15 +109,22 @@ export function MapEventPeek({
         </span>
       </div>
       <div className="map-peek-acts">
-        <a
-          href={directionsHref(event.lat, event.lng)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="map-peek-act map-peek-act-go"
-        >
-          <CornerUpRight className="h-4 w-4" strokeWidth={2} aria-hidden />
-          Directions
-        </a>
+        {arrival ? (
+          <Link href={arrival.href} className="map-peek-act map-peek-act-go" data-event-parking-action>
+            <CarFront className="h-4 w-4" strokeWidth={2} aria-hidden />
+            Parking and shuttle
+          </Link>
+        ) : (
+          <a
+            href={directionsHref(event.lat, event.lng)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="map-peek-act map-peek-act-go"
+          >
+            <CornerUpRight className="h-4 w-4" strokeWidth={2} aria-hidden />
+            Directions
+          </a>
+        )}
         <Link href={`/events/${event.slug}`} className="map-peek-act">
           Event details
         </Link>

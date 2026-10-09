@@ -228,6 +228,14 @@ describe("data integrity (a bad hand-edit fails here)", () => {
         expect(m.venue.lat).toBeCloseTo(place!.geom.lat, 5);
         // An arrival caveat is a claim, so it names its source.
         if (m.venue.note) expect(m.venue.source_url).toMatch(/^https:\/\//);
+        // The guide's filled action and the event page link jump to this
+        // section, so it must be a real heading on the same guide.
+        if (m.venue.arrivalSection) {
+          expect(
+            m.sections.map((section) => section.heading),
+            `${m.slug} arrivalSection`,
+          ).toContain(m.venue.arrivalSection);
+        }
       }
       for (const day of m.days ?? []) {
         expect(day.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);

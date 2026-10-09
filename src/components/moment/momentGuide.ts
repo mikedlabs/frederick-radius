@@ -161,6 +161,19 @@ export function momentDays(days: readonly MomentDay[] | undefined): MomentDayPar
     .sort((a, b) => (a.date < b.date ? -1 : 1));
 }
 
+/**
+ * The day a card should show: the first one on or after `todayKey` (an
+ * Eastern YYYY-MM-DD), so Sunday's card never leads with Saturday. Without a
+ * key it is the first day; once every day has passed it is the last.
+ */
+export function nextMomentDay(
+  days: readonly MomentDayParts[],
+  todayKey?: string,
+): MomentDayParts | undefined {
+  if (!todayKey) return days[0];
+  return days.find((d) => d.date >= todayKey) ?? days[days.length - 1];
+}
+
 const DAY_MS = 86_400_000;
 
 function consecutive(days: readonly MomentDayParts[]): boolean {
@@ -229,9 +242,7 @@ export function sourcedMomentFacts(
 
 /** "colorfest.org" for a source link's visible text. */
 /** In-page anchor id for a guide section heading ("Getting there" -> "getting-there"). */
-export function momentSectionId(heading: string): string {
-  return heading.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
+export { momentSectionId } from "@/lib/events/momentSectionId";
 
 /**
  * Directions to a moment venue. A venue with no car access gets walking

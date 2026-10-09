@@ -5,6 +5,7 @@ import {
   momentDateLine,
   momentDayParts,
   momentDays,
+  nextMomentDay,
   momentHeroImage,
   momentPhotoCreditText,
   sourceHost,
@@ -83,6 +84,16 @@ describe("moment days", () => {
         (d) => d.date,
       ),
     ).toEqual(["2026-10-10", "2026-10-11"]);
+  });
+
+  it("shows the next remaining day, so Sunday's card never leads with Saturday", () => {
+    const days = momentDays([{ date: "2026-10-10" }, { date: "2026-10-11" }]);
+    expect(nextMomentDay(days)?.date).toBe("2026-10-10");
+    expect(nextMomentDay(days, "2026-10-09")?.date).toBe("2026-10-10");
+    expect(nextMomentDay(days, "2026-10-10")?.date).toBe("2026-10-10");
+    expect(nextMomentDay(days, "2026-10-11")?.date).toBe("2026-10-11");
+    expect(nextMomentDay(days, "2026-10-12")?.date).toBe("2026-10-11");
+    expect(nextMomentDay([], "2026-10-10")).toBeUndefined();
   });
 
   it("reads consecutive days as a range and separate days as a list", () => {

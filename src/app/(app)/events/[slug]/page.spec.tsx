@@ -88,7 +88,7 @@ describe("event detail operational recovery rendering", () => {
 });
 
 describe("event detail arrival for a venue with no car access", () => {
-  it("sends Colorfest drivers to parking and offers walking directions only", async () => {
+  it("sends Colorfest visitors to parking and never offers a route to the closed park", async () => {
     // The organizer closes Frederick Road and there is no parking at the park
     // during the show (colorfest.org/plan-your-visit, read Oct 8).
     vi.setSystemTime(new Date("2026-10-10T08:30:00-04:00"));
@@ -115,10 +115,12 @@ describe("event detail arrival for a venue with no car access", () => {
       if (typeof props["data-event-arrival"] === "string") arrival.push(props["data-event-arrival"]);
       if (typeof props.href === "string") hrefs.push(props.href);
     });
-    expect(arrival).toEqual(["catoctin-colorfest-2026"]);
-    expect(hrefs).toContain("/moments/catoctin-colorfest-2026#getting-there");
-    const directions = hrefs.filter((href) => href.startsWith("https://www.google.com/maps/dir/"));
-    expect(directions.length).toBeGreaterThan(0);
-    for (const href of directions) expect(href).toContain("travelmode=walking");
+    const guide = "/moments/catoctin-colorfest-2026#getting-there";
+    expect(arrival).toEqual([guide]);
+    // The desktop row, the mobile dock and the sourced note all lead to the
+    // guide's parking section; no surface offers a route to the closed park.
+    expect(hrefs.filter((href) => href === guide).length).toBeGreaterThanOrEqual(3);
+    expect(hrefs.some((href) => href.startsWith("https://www.google.com/maps/dir/"))).toBe(false);
+    expect(hrefs.some((href) => href.startsWith("https://colorfest.org/"))).toBe(true);
   });
 });

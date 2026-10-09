@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, type RefObject } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { ExternalLink, MapPin, Navigation, Ticket, CalendarCheck } from "lucide-react";
+import { CarFront, ExternalLink, MapPin, Navigation, Ticket, CalendarCheck } from "lucide-react";
 import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import ItineraryButton from "@/components/saved/ItineraryButton";
@@ -24,6 +24,7 @@ import { withBrowseReturnTo, browseReturnFromLocation } from "@/lib/browse-retur
 import { statusLabel } from "@/lib/event-status";
 import { formatDistance } from "@/lib/geo";
 import { directionsHref } from "@/lib/map/directionsHref";
+import { eventArrival } from "@/lib/events/eventArrival";
 import { haptic } from "@/lib/haptics";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { trackDecision, type DecisionAction } from "@/lib/decision/telemetry";
@@ -146,7 +147,10 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
   const preciseGeo =
     physicalAttendance &&
     eventHasPreciseLocation(event);
-  const parking = preciseGeo && canAttend ? nearestEventParking(event.geom) : null;
+  // A venue with no car access offers its guide's parking and shuttle section
+  // in place of Directions and a nearby garage (eventArrival).
+  const arrival = physicalAttendance ? eventArrival(event.slug) : null;
+  const parking = preciseGeo && canAttend && !arrival ? nearestEventParking(event.geom) : null;
   const approvedVisual = eventCardVisual(event);
   // A venue photo the proxy could not deliver comes back as the failure
   // signal; the sheet then opens on its photoless header with no credit.
@@ -386,7 +390,41 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 {ticketLabel}
               </a>
             )}
-            {preciseGeo && canAttend && (
+            {arrival && canAttend && (
+              <Link
+                href={arrival.href}
+                onClick={() => {
+                  haptic("light");
+                  trackDecision({
+                    stage: "action",
+                    surface: "events",
+                    entityKind: "event",
+                    entityId: event.slug,
+                    position: "sheet",
+                    action: "open",
+                  });
+                  onClose();
+                }}
+                data-event-parking-action
+                className={`tactile-interactive flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold ${
+                  ticketHref ? "border bg-[var(--app-bg-elevated)]" : "tactile-lift"
+                }`}
+                style={
+                  ticketHref
+                    ? { borderColor: "var(--app-border-strong)", color: "var(--app-ink)" }
+                    : { backgroundColor: "var(--app-brand-press)", color: "var(--app-on-brand)" }
+                }
+              >
+                <CarFront
+                  className="h-4 w-4"
+                  strokeWidth={2.25}
+                  style={{ color: ticketHref ? "var(--app-brand-press)" : "var(--app-on-brand)" }}
+                  aria-hidden
+                />
+                Parking and shuttle
+              </Link>
+            )}
+            {preciseGeo && canAttend && !arrival && (
               <a
                 href={directionsHref(event.geom.lat, event.geom.lng)}
                 onClick={() => {

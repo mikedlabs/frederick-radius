@@ -21,9 +21,10 @@ import DatePlate from "@/components/event/DatePlate";
 import {
   momentDays,
   momentHeroImage,
-  momentPhotoCreditText,
+  nextMomentDay,
   sourcedMomentFacts,
 } from "@/components/moment/momentGuide";
+import MomentPhotoCreditLine from "@/components/moment/MomentPhotoCreditLine";
 import RadiusPhoto, {
   RadiusPhotoScope,
   RadiusPhotoWhen,
@@ -74,7 +75,16 @@ export function momentSpotlightDecision(
   };
 }
 
-export default function MomentSpotlight({ moment, isDayOf }: { moment: SpotlightMoment; isDayOf?: boolean }) {
+export default function MomentSpotlight({
+  moment,
+  isDayOf,
+  todayKey,
+}: {
+  moment: SpotlightMoment;
+  isDayOf?: boolean;
+  /** Today's Eastern YYYY-MM-DD from the server, so the fallback plate shows the next remaining day. */
+  todayKey?: string;
+}) {
   const [dismissed, setDismissed] = useState(false);
   const key = `fr.moment-dismissed:${moment.slug}${isDayOf ? ":day-of" : ""}`;
 
@@ -101,22 +111,23 @@ export default function MomentSpotlight({ moment, isDayOf }: { moment: Spotlight
 
   const facts = sourcedMomentFacts(moment.spotlightFacts);
   const image = momentHeroImage(moment, 320);
-  const firstDay = momentDays(moment.days)[0];
-  const plate = firstDay ? (
+  const plateDay = nextMomentDay(momentDays(moment.days), todayKey);
+  const plate = plateDay ? (
     <DatePlate
-      month={firstDay.month}
-      day={firstDay.day}
-      weekday={firstDay.weekday}
+      month={plateDay.month}
+      day={plateDay.day}
+      weekday={plateDay.weekday}
       accent="var(--app-brand)"
       size="md"
     />
   ) : null;
+  // A licensed photo links its author and license (CC BY-SA asks for both).
   const credit =
-    image.kind === "licensed"
-      ? momentPhotoCreditText(image.credit)
-      : image.kind === "owned"
-        ? image.credit
-        : null;
+    image.kind === "licensed" ? (
+      <MomentPhotoCreditLine credit={image.credit} />
+    ) : image.kind === "owned" ? (
+      image.credit
+    ) : null;
 
   const card = (
     <section

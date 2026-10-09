@@ -102,3 +102,48 @@ describe("EventSheet hero photo", () => {
     expect(container.querySelector("header h2")?.textContent).toBe("Bluegrass Jam");
   });
 });
+
+describe("EventSheet for a venue with no car access", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(async () => {
+    // Saturday morning of Colorfest, before the show opens.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-10T08:00:00-04:00"));
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    const colorfest = {
+      ...event,
+      slug: "catoctin-colorfest-thurmont-2026",
+      title: "Catoctin Colorfest",
+      starts_at: "2026-10-10T13:00:00.000Z",
+      ends_at: "2026-10-11T21:00:00.000Z",
+      venue_name: "Thurmont Community Park",
+      venue_place_slug: "thurmont-community-park-thurmont",
+      address: "19 Frederick Rd, Thurmont, MD 21788",
+      geom: { lng: -77.4127594, lat: 39.6213 },
+      hero_image: undefined,
+      hero_image_attribution: undefined,
+    } as unknown as EventWithMeta;
+    await act(async () =>
+      root.render(<EventSheet event={colorfest} onClose={() => {}} historyLayerId="event-sheet-colorfest" />),
+    );
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.useRealTimers();
+  });
+
+  it("offers the guide's parking and shuttle section instead of a driving route", () => {
+    const parking = container.querySelector<HTMLAnchorElement>("[data-event-parking-action]");
+    expect(parking?.getAttribute("href")).toBe("/moments/catoctin-colorfest-2026#getting-there");
+    expect(parking?.textContent).toContain("Parking and shuttle");
+    const hrefs = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href") ?? "");
+    expect(hrefs.some((href) => href.includes("google.com/maps/dir"))).toBe(false);
+    expect(container.textContent).not.toContain("See garage");
+  });
+});

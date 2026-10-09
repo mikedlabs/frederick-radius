@@ -108,6 +108,19 @@ describe("MomentSpotlight", () => {
     expect(html).not.toContain("gradient");
   });
 
+  it("shows Sunday's plate on Sunday, not the day that already passed", () => {
+    const html = renderToStaticMarkup(
+      createElement(MomentSpotlight, {
+        moment: { ...COLORFEST, heroPhoto: undefined },
+        todayKey: "2026-10-11",
+      }),
+    );
+
+    expect(html).toContain(">11<");
+    expect(html).toContain(">Sun<");
+    expect(html).not.toContain(">Sat<");
+  });
+
   it("never states an unsourced fact in the compact lead", () => {
     const html = renderToStaticMarkup(
       createElement(MomentSpotlight, {
