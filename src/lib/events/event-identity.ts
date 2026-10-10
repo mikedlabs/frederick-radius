@@ -5,6 +5,9 @@ import { archiveJsonText } from "@/lib/events/archive-json";
 import { backfillMunicipalityName } from "@/lib/events/eventTown";
 import { classifyEventEndTrust } from "@/lib/eventWhenLabel";
 import { eventSeriesKey } from "@/lib/events/seriesKey";
+import { matchEventVenuePlaceId } from "@/lib/events/venueAliases";
+import { classifyEventScope } from "@/lib/events/eventScope";
+import { mergeAudienceHints } from "@/lib/events/audienceSignals";
 
 export type ArchivedEventIdentity = {
   id: string;
@@ -140,6 +143,22 @@ export function archivedEventFromSnapshot(
   if (event.is_recurring && event.title) {
     event.series_key = eventSeriesKey(event.title);
   }
+
+  const placeId = matchEventVenuePlaceId({
+    venue_name: event.venue_name,
+    venue_place_slug: event.venue_place_slug,
+    place_id: event.place_id,
+  });
+  if (placeId) {
+    event.place_id = placeId;
+  }
+
+  event.event_scope = classifyEventScope({
+    title: event.title,
+    source: event.source,
+  });
+
+  event.audience = mergeAudienceHints(event.audience, event.title);
 
   return event;
 }

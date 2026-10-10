@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { audienceFromText } from "./audienceSignals";
+import { audienceFromAgeRanges, audienceFromText } from "./audienceSignals";
 
 describe("audienceFromText", () => {
   it("tags little-kid programming from the publisher's own words", () => {
@@ -31,5 +31,34 @@ describe("audienceFromText", () => {
 
   it("never mistakes family law or unrelated words for kid programming", () => {
     expect(audienceFromText("Family law self-help clinic")).toEqual([]);
+  });
+
+  it("parses (ages 11-18)-style ranges into kids/teens/adults hints", () => {
+    expect(
+      audienceFromAgeRanges(
+        "Greetings Adventurers! Role Playing Games Club (Ages 11-18)",
+      ),
+    ).toEqual(["kids-6-12", "teens"]);
+    expect(audienceFromAgeRanges("Teen Time: Edible Slime (ages 13-18)")).toEqual([
+      "teens",
+    ]);
+    expect(audienceFromAgeRanges("Toddler Storytime (ages 2-3)")).toEqual([
+      "kids-0-5",
+    ]);
+    expect(audienceFromAgeRanges("Book Pumpkins (Ages 14 & Up)")).toEqual([
+      "teens",
+    ]);
+    expect(audienceFromAgeRanges("Stop the Bleed Training (Ages 13-adult)")).toEqual(
+      ["teens", "adults"],
+    );
+    expect(
+      audienceFromText("Greetings Adventurers! Role Playing Games Club (Ages 11-18)"),
+    ).toEqual(["kids-6-12", "teens"]);
+  });
+
+  it("does not infer free admission from a library title", () => {
+    const title = "Elementary Explorers: Art Exploration (ages 5-10)";
+    expect(audienceFromText(title)).toContain("kids-6-12");
+    expect(audienceFromText(title)).not.toContain("free");
   });
 });

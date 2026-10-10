@@ -202,5 +202,82 @@ describe("Event identity stewardship — census-driven hydrate", () => {
 
     expect(hydrated).not.toBeNull();
     expect(hydrated?.end_trust).toBe("ok");
+    expect(hydrated?.place_id).toBe("weinberg-center-for-the-arts-frederick");
+    expect(hydrated?.event_scope).toBe("public");
+  });
+
+  it("stamps campus/notice scope and library place_id from feed venue strings", () => {
+    const intramural = archivedEventFromSnapshot({
+      slug: "4v4-intramural-beach-volleyball",
+      title: "4v4 Intramural Beach Volleyball",
+      description: "",
+      starts_at: "2026-10-12T22:00:00.000Z",
+      ends_at: "2026-10-12T23:00:00.000Z",
+      timezone: "America/New_York",
+      venue_name: "Echo Field",
+      address: "Emmitsburg, MD",
+      geom: { lng: -77.35, lat: 39.68 },
+      municipality: "emmitsburg",
+      municipality_name: "Emmitsburg",
+      category: "sports",
+      audience: [],
+      is_free: false,
+      source: "mount-st-marys",
+      source_id: "intramural-1",
+      is_verified: false,
+      geo_confidence: "area",
+      category_name: "Sports",
+    });
+    expect(intramural?.event_scope).toBe("campus");
+    expect(intramural?.place_id).toBeUndefined();
+
+    const notice = archivedEventFromSnapshot({
+      slug: "noon-dismissal-for-students",
+      title: "Noon Dismissal for Students",
+      description: "",
+      starts_at: "2026-10-23T16:00:00.000Z",
+      ends_at: "2026-10-23T16:00:00.000Z",
+      timezone: "America/New_York",
+      venue_name: "Maryland School for the Deaf",
+      address: "Frederick, MD",
+      geom: { lng: -77.41, lat: 39.41 },
+      municipality: "frederick",
+      municipality_name: "Frederick City",
+      category: "civic",
+      audience: [],
+      is_free: false,
+      source: "msd",
+      source_id: "dismissal-1",
+      is_verified: false,
+      geo_confidence: "area",
+      category_name: "Civic",
+    });
+    expect(notice?.event_scope).toBe("notice");
+
+    const library = archivedEventFromSnapshot({
+      slug: "family-fun-connect-with-coipp-fcpl-20261011",
+      title: "Family Fun: Connect with Coipp (ages 11-18)",
+      description: "",
+      starts_at: "2026-10-11T18:00:00.000Z",
+      ends_at: "2026-10-11T19:00:00.000Z",
+      timezone: "America/New_York",
+      venue_name: "C. Burr Artz Public Library, Programming Room (CBA)",
+      address: "110 E Patrick St, Frederick, MD 21701",
+      geom: { lng: -77.4083, lat: 39.414 },
+      municipality: "frederick",
+      municipality_name: "Frederick City",
+      category: "family",
+      audience: [],
+      is_free: false,
+      source: "fcpl",
+      source_id: "coipp-1",
+      is_verified: false,
+      geo_confidence: "exact_address",
+      category_name: "Family",
+    });
+    expect(library?.place_id).toBe("c-burr-artz-public-library-frederick");
+    expect(library?.event_scope).toBe("public");
+    expect(library?.audience).toEqual(["kids-6-12", "teens"]);
+    expect(library?.is_free).toBe(false);
   });
 });

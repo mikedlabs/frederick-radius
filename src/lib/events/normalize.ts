@@ -93,12 +93,32 @@ const TRAILING_WHEN = new RegExp(
 // Real acronyms that read as words (contain vowels) and must stay shouted.
 // Vowel-less clusters (FCPS, DJ, FSK) are already exempt by the vowel test.
 const ACRONYM_KEEP = new Set([
-  "AYCE", "AARP", "BOGO", "IPA", "MARC", "NASA", "PFLAG", "TBA", "USA", "USO", "YMCA",
+  "AYCE", "AARP", "BOGO", "FSU", "IPA", "MARC", "NASA", "PFLAG", "TBA", "UMBC", "USA", "USMH", "USO", "YMCA",
 ]);
 const SMALL_WORD =
   /^(?:a|an|and|as|at|but|by|for|from|in|nor|of|on|or|the|to|vs|via|with)$/i;
 const capRuns = (w: string): string =>
-  w.replace(/[A-Za-z]+/g, (run) => run.charAt(0).toUpperCase() + run.slice(1).toLowerCase());
+  w.replace(/[A-Za-z]+/g, (run, offset: number) => {
+    // Possessive or contraction after an apostrophe stays lower ("Children's",
+    // "Mayta's"). A capital after ' is the ALL-CAPS de-shout artifact.
+    if (offset > 0 && /['\u2019]/.test(w.charAt(offset - 1))) {
+      return run.toLowerCase();
+    }
+    return run.charAt(0).toUpperCase() + run.slice(1).toLowerCase();
+  });
+
+/** Lower a leftover possessive 'S ("Children'S" → "Children's"). */
+function fixPossessiveS(s: string): string {
+  return s.replace(/(['\u2019])S\b/g, "$1s");
+}
+
+/** Restore known acronyms that title-case would otherwise calm (UMBC, USMH). */
+function restoreKeptAcronyms(s: string): string {
+  return s.replace(/[A-Za-z]+/g, (run) => {
+    const upper = run.toUpperCase();
+    return ACRONYM_KEEP.has(upper) ? upper : run;
+  });
+}
 
 /**
  * De-shout an ALL-CAPS title to sensible case at the data boundary, so feed
@@ -110,11 +130,11 @@ const capRuns = (w: string): string =>
  */
 export function deshoutTitle(raw: string): string {
   const letters = raw.replace(/[^A-Za-z]/g, "");
-  if (!letters) return raw;
+  if (!letters) return fixPossessiveS(raw);
   const upperRatio = (letters.match(/[A-Z]/g)?.length ?? 0) / letters.length;
   const wholeShout = letters.length >= 8 && upperRatio >= 0.9;
   let firstSeen = false;
-  return raw
+  const calmed = raw
     .split(/(\s+)/)
     .map((tok) => {
       if (!tok || /^\s+$/.test(tok)) return tok;
@@ -134,6 +154,7 @@ export function deshoutTitle(raw: string): string {
       return tok;
     })
     .join("");
+  return restoreKeptAcronyms(fixPossessiveS(calmed));
 }
 
 /**
@@ -595,54 +616,151 @@ function etHm(iso: string): string {
   }).format(new Date(iso));
 }
 
+const STREET_TOKEN: Record<string, string> = {
+  north: "n",
+  south: "s",
+  east: "e",
+  west: "w",
+  street: "st",
+  avenue: "ave",
+  road: "rd",
+  boulevard: "blvd",
+  drive: "dr",
+  lane: "ln",
+  court: "ct",
+  place: "pl",
+  highway: "hwy",
+  parkway: "pkwy",
+};
+
 /**
- * How well-documented a row is, for picking the survivor of a cross-source
- * merge: a stated venue beats none, and a real clock time beats the bare
- * noon/midnight a feed stamps when it doesn't actually know the time (the
- * audit's "Rebekah Foster Acoustic LIVE · 12:00 PM" row).
+ * Strip the FCPL "Branch Name, Room Name (CODE)" room/code tail, hyphen
+ * room/floor suffixes, and take the street line from an address.
+ * Live audit (2026-10-08): 'C. Burr Artz Public Library, Programming Room (CBA)'.
  */
-function documentation(e: EventWithMeta): number {
-  const venue = normLoose(e.venue_name ?? "") ? 2 : 0;
-  const hm = etHm(e.starts_at);
-  const realTime = !e.is_all_day && hm !== "12:00" && hm !== "00:00" ? 1 : 0;
-  return venue + realTime;
+export function stripVenueRoomSuffix(venue: string): string {
+  const raw = venue.trim();
+  if (!raw) return "";
+  if (/^\d/.test(raw)) {
+    return raw.split(",")[0]?.trim() ?? raw;
+  }
+  let v = raw;
+  v = v.replace(/,\s+[^,]+?\s+\([A-Za-z]{2,6}\)\s*$/i, "");
+  v = v.replace(
+    /,\s+(?:.+?\s+)?(?:room|lab|department|area|fireplace|deck|zone|library)\s*(?:\([^)]*\))?\s*$/i,
+    "",
+  );
+  v = v.replace(
+    /\s*[-–—]\s*(?:programming|community|meeting|children'?s)\s+room\s*$/i,
+    "",
+  );
+  v = v.replace(/\s*[-–—]\s*(?:room|floor|level)\s+[a-z0-9]+\s*$/i, "");
+  return v.trim();
+}
+
+export function isStreetVenue(venue: string | null | undefined): boolean {
+  const v = (venue ?? "").trim();
+  return /^\d/.test(v);
+}
+
+function applyStreetTokens(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((token) => STREET_TOKEN[token] ?? token)
+    .join(" ");
 }
 
 /**
- * Normalize library venue names to canonical stems for cross-source deduplication.
- * Census (2026-10-06): "C. Burr Artz … Programming Room" vs "C. Burr Artz
- * Library" vs street address. Strips room/floor suffixes and standardizes
- * FCPL branch names so events at the same library merge across sources.
+ * Canonical venue key for cross-source comparison and alias lookup.
+ * Treats Public Library and Branch Library as the same word, expands
+ * Avenue/Ave Street/St Road/Rd, and strips library room/code suffixes.
  */
-function normalizeLibraryVenue(venue: string): string {
-  let v = venue.toLowerCase().trim();
-
-  const roomSuffixes = [
-    /\s*[-–—]\s*(?:programming|community|meeting|children'?s)\s+room$/i,
-    /\s*[-–—]\s*(?:room|floor|level)\s+[a-z0-9]+$/i,
-  ];
-  for (const pattern of roomSuffixes) {
-    v = v.replace(pattern, "");
-  }
+export function normalizeVenueKey(venue: string | null | undefined): string {
+  const stripped = stripVenueRoomSuffix(venue ?? "");
+  if (!stripped) return "";
+  let v = stripped
+    .toLowerCase()
+    .replace(/\b(?:public|branch)\s+library\b/g, "library")
+    .trim();
+  v = applyStreetTokens(v);
 
   const libraryAliases: [RegExp, string][] = [
-    [/^c\.?\s*burr\s*artz(?:\s+(?:public\s+)?library)?$/i, "cburrartzlibrary"],
-    [/^brunswick(?:\s+(?:public\s+)?library)?$/i, "brunswicklibrary"],
-    [/^thurmont(?:\s+(?:regional\s+)?library)?$/i, "thurmontlibrary"],
-    [/^middletown(?:\s+(?:public\s+)?library)?$/i, "middletownlibrary"],
-    [/^walkersville(?:\s+(?:public\s+)?library)?$/i, "walkersvillelibrary"],
-    [/^emmitsburg(?:\s+(?:public\s+)?library)?$/i, "emmitsburglibrary"],
-    [/^urbana(?:\s+(?:regional\s+)?library)?$/i, "urbanalibrary"],
-    [/^myersville(?:\s+(?:public\s+)?library)?$/i, "myersvillelibrary"],
+    [/^c\.?\s*burr\s*artz(?:\s+library)?$/, "cburrartzlibrary"],
+    [/^brunswick(?:\s+library)?$/, "brunswicklibrary"],
+    [/^thurmont(?:\s+(?:regional\s+)?library)?$/, "thurmontlibrary"],
+    [/^middletown(?:\s+library)?$/, "middletownlibrary"],
+    [/^walkersville(?:\s+library)?$/, "walkersvillelibrary"],
+    [/^emmitsburg(?:\s+library)?$/, "emmitsburglibrary"],
+    [/^urbana(?:\s+(?:regional\s+)?library)?$/, "urbanalibrary"],
+    [/^myersville(?:\s+(?:community\s+)?library)?$/, "myersvillelibrary"],
   ];
-
+  const spaced = v.replace(/[^a-z0-9]+/g, " ").trim();
   for (const [pattern, canonical] of libraryAliases) {
-    if (pattern.test(v)) {
-      return canonical;
-    }
+    if (pattern.test(spaced)) return canonical;
   }
+  return spaced.replace(/[^a-z0-9]+/g, "");
+}
 
-  return normLoose(v);
+/**
+ * How well-documented a row is, for picking the survivor of a cross-source
+ * merge: a stated venue beats none, a named venue beats a bare street
+ * address, and a real clock time beats the bare noon/midnight a feed stamps
+ * when it doesn't actually know the time (the audit's "Rebekah Foster
+ * Acoustic LIVE · 12:00 PM" row).
+ */
+function documentation(e: EventWithMeta): number {
+  const raw = e.venue_name ?? "";
+  const venue = normLoose(raw) ? 2 : 0;
+  const named = venue && !isStreetVenue(raw) ? 1 : 0;
+  const hm = etHm(e.starts_at);
+  const realTime = !e.is_all_day && hm !== "12:00" && hm !== "00:00" ? 1 : 0;
+  return venue + named + realTime;
+}
+
+function titleWordList(title: string): string[] {
+  return seriesStem(title)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function isWordSubsequence(shorter: string[], longer: string[]): boolean {
+  if (shorter.length === 0 || shorter.length > longer.length) return false;
+  let i = 0;
+  for (const word of longer) {
+    if (word === shorter[i]) i += 1;
+    if (i === shorter.length) return true;
+  }
+  return false;
+}
+
+function townsCompatible(
+  a: Pick<EventWithMeta, "municipality">,
+  b: Pick<EventWithMeta, "municipality">,
+): boolean {
+  const ta = (a.municipality ?? "").trim().toLowerCase();
+  const tb = (b.municipality ?? "").trim().toLowerCase();
+  return !ta || !tb || ta === tb;
+}
+
+function venuesAgreeForMerge(
+  e: EventWithMeta,
+  other: EventWithMeta,
+  exactStart: boolean,
+): boolean {
+  const va = normalizeVenueKey(e.venue_name);
+  const vb = normalizeVenueKey(other.venue_name);
+  if (!va || !vb || va === vb) return true;
+  if (!exactStart || !townsCompatible(e, other)) return false;
+  // Live audit (2026-10-08): same title + same instant may still list a
+  // street address or an empty venue against the named hall.
+  return isStreetVenue(e.venue_name) || isStreetVenue(other.venue_name);
 }
 
 /**
@@ -661,9 +779,12 @@ function normalizeLibraryVenue(venue: string): string {
  * The better-documented row survives (stated venue, then non-default time);
  * on a tie the earlier row (the input arrives time-sorted) is kept.
  *
- * Census (2026-10-06): Library venue strings vary across sources ("C. Burr
- * Artz … Programming Room" vs library name vs street address). Now normalizes
- * known library names to canonical stems before comparison.
+ * Live audit (2026-10-08, 504 public rows Oct 8–18 ET): previous library
+ * normalization missed the comma+code room form and refused street-address
+ * twins, so zero real duplicates merged. Exact-start pairs now merge when
+ * titles align (including a word-subsequence for "Thriller Author Alma
+ * Katsu" vs "Alma Katsu") and towns match, even if one venue is a street
+ * or empty. The 5-word suffix floor is waived for exact-start matches.
  */
 export function dedupeCrossSourceShows(events: EventWithMeta[]): EventWithMeta[] {
   const kept: EventWithMeta[] = [];
@@ -673,30 +794,54 @@ export function dedupeCrossSourceShows(events: EventWithMeta[]): EventWithMeta[]
     const day = etYmd(e.starts_at);
     const idxs = byDay.get(day) ?? [];
     let merged = false;
-    if (stem.length >= CROSS_SOURCE_MIN_STEM && !e.is_recurring) {
+    if (!e.is_recurring) {
       for (const i of idxs) {
         const other = kept[i];
         if (other.is_recurring) continue;
         const otherStem = normLoose(seriesStem(other.title));
-        if (otherStem.length < CROSS_SOURCE_MIN_STEM) continue;
-        const va = normalizeLibraryVenue(e.venue_name ?? "");
-        const vb = normalizeLibraryVenue(other.venue_name ?? "");
-        if (va && vb && va !== vb) continue;
-        const prefixMatch = stem.startsWith(otherStem) || otherStem.startsWith(stem);
-        const titleWords = (title: string) =>
-          seriesStem(title).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-        const words = titleWords(e.title);
-        const otherWords = titleWords(other.title);
+        const exactStart =
+          !e.is_all_day &&
+          !other.is_all_day &&
+          Date.parse(e.starts_at) === Date.parse(other.starts_at);
+        const va = normalizeVenueKey(e.venue_name);
+        const vb = normalizeVenueKey(other.venue_name);
+        if (!venuesAgreeForMerge(e, other, exactStart)) continue;
+
+        const prefixMatch =
+          stem.length >= CROSS_SOURCE_MIN_STEM &&
+          otherStem.length >= CROSS_SOURCE_MIN_STEM &&
+          (stem.startsWith(otherStem) || otherStem.startsWith(stem));
+        const words = titleWordList(e.title);
+        const otherWords = titleWordList(other.title);
+        const wordLine = words.join(" ");
+        const otherLine = otherWords.join(" ");
         // A publisher may prepend a theme ("Bacon to School!") to a show.
-        // Suffix matching needs stronger evidence than the older prefix rule:
-        // the full substantial title, a stated identical venue, and exactly
-        // the same non-all-day start. Different performances must survive.
+        // Suffix matching needs stronger evidence than the older prefix rule
+        // unless both rows share the exact start instant (live audit 2026-10-08).
         const suffixMatch =
-          !!va && va === vb && !e.is_all_day && !other.is_all_day &&
-          Date.parse(e.starts_at) === Date.parse(other.starts_at) &&
-          Math.min(words.split(" ").length, otherWords.split(" ").length) >= 5 &&
-          (words.endsWith(` ${otherWords}`) || otherWords.endsWith(` ${words}`));
-        if (!prefixMatch && !suffixMatch) continue;
+          !!va &&
+          va === vb &&
+          exactStart &&
+          Math.min(words.length, otherWords.length) >= 5 &&
+          (wordLine.endsWith(` ${otherLine}`) || otherLine.endsWith(` ${wordLine}`));
+        const sameTitle =
+          stem.length >= CROSS_SOURCE_MIN_STEM &&
+          stem === otherStem &&
+          exactStart;
+        // Word-subsequence is for same-venue exact-start pairs whose extra
+        // words sit in the middle ("Thriller Author Alma Katsu"). It must
+        // not collapse a themed title onto an empty-venue twin.
+        const subsequenceMatch =
+          exactStart &&
+          !!va &&
+          va === vb &&
+          Math.min(words.length, otherWords.length) >= 5 &&
+          Math.min(stem.length, otherStem.length) >= CROSS_SOURCE_MIN_STEM &&
+          (isWordSubsequence(words, otherWords) ||
+            isWordSubsequence(otherWords, words));
+        if (!prefixMatch && !suffixMatch && !sameTitle && !subsequenceMatch) {
+          continue;
+        }
         if (documentation(e) > documentation(other)) kept[i] = e;
         merged = true;
         break;

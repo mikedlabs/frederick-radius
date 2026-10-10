@@ -27,6 +27,16 @@ export type Event = {
   is_recurring?: boolean;
   recurrence_text?: string;
   venue_place_slug?: string;
+  /**
+   * Catalog place slug from a confident feed-venue alias match
+   * (`matchEventVenuePlaceId`). Optional; unmatched venues stay unset.
+   */
+  place_id?: string;
+  /**
+   * Visibility lane stamped at archive hydrate. Today hides campus and
+   * notice; civic surfaces may still show them.
+   */
+  event_scope?: "public" | "campus" | "notice";
   venue_name: string;
   address: string;
   geom: LngLat;

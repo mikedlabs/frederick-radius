@@ -12,6 +12,7 @@ import {
   recurrenceKey,
   collapseRecurringEvents,
   dedupeCrossSourceShows,
+  normalizeVenueKey,
   titleIsJustVenue,
   isFacilityBooking,
   stripFacilityPrefix,
@@ -109,6 +110,25 @@ describe("deshoutTitle", () => {
   it("leaves an ordinary sensible-case title untouched", () => {
     expect(deshoutTitle("Alive @ Five at Carroll Creek")).toBe(
       "Alive @ Five at Carroll Creek",
+    );
+  });
+
+  it("does not capitalize the letter after an apostrophe", () => {
+    expect(deshoutTitle("CHILDREN'S STORYTIME")).toBe("Children's Storytime");
+    expect(deshoutTitle("MAYTA'S PERUVIAN CUISINE")).toBe("Mayta's Peruvian Cuisine");
+    expect(deshoutTitle("Children'S Storytime")).toBe("Children's Storytime");
+    expect(deshoutTitle("Mayta'S")).toBe("Mayta's");
+  });
+
+  it("keeps UMBC and USMH uppercase", () => {
+    expect(deshoutTitle("TOWSON / UMBC GUARANTEED ADMISSION WORKSHOP")).toBe(
+      "Towson / UMBC Guaranteed Admission Workshop",
+    );
+    expect(deshoutTitle("EXPLORE FSU PSYCHOLOGY PROGRAM AT USMH")).toBe(
+      "Explore FSU Psychology Program at USMH",
+    );
+    expect(deshoutTitle("Towson / Umbc Guaranteed Admission Workshop")).toBe(
+      "Towson / UMBC Guaranteed Admission Workshop",
     );
   });
 });
@@ -359,6 +379,29 @@ describe("seriesStem + series collapse", () => {
   });
 });
 
+describe("normalizeVenueKey", () => {
+  it("strips FCPL 'Branch, Room (CODE)' and equates Public/Branch library", () => {
+    expect(
+      normalizeVenueKey("C. Burr Artz Public Library, Programming Room (CBA)"),
+    ).toBe(normalizeVenueKey("C. Burr Artz Public Library"));
+    expect(normalizeVenueKey("Walkersville Branch Library")).toBe(
+      normalizeVenueKey("Walkersville Public Library"),
+    );
+  });
+
+  it("normalizes Avenue/Ave, Street/St, and Road/Rd", () => {
+    expect(normalizeVenueKey("2 S Glade Road")).toBe(
+      normalizeVenueKey("2 S Glade Rd"),
+    );
+    expect(normalizeVenueKey("300 South Seton Avenue")).toBe(
+      normalizeVenueKey("300 S Seton Ave"),
+    );
+    expect(normalizeVenueKey("20 West Patrick Street")).toBe(
+      normalizeVenueKey("20 W Patrick St"),
+    );
+  });
+});
+
 describe("dedupeCrossSourceShows", () => {
   const comedy = mkEvent({
     slug: "comedy-pigs",
@@ -486,7 +529,7 @@ describe("dedupeCrossSourceShows", () => {
     expect(merged).toHaveLength(1);
 
     const merged2 = dedupeCrossSourceShows([fromDFP, fromFCPL, fromAddress]);
-    expect(merged2).toHaveLength(2);
+    expect(merged2).toHaveLength(1);
   });
 });
 
