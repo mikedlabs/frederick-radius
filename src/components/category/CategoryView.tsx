@@ -10,6 +10,7 @@ import {
 } from "@/lib/category/browse";
 import {
   CategoryLiveBody,
+  CategoryLiveProvider,
   CategoryRenderedBody,
 } from "./CategoryLive";
 
@@ -51,6 +52,7 @@ export default function CategoryView({
   const municipalities = MUNICIPALITIES.map((m) => ({ slug: m.slug, name: m.name }));
 
   return (
+    <CategoryLiveProvider initial={model}>
     <div className="relative space-y-5 sm:space-y-6">
       <nav aria-label="Breadcrumb">
         <Link
@@ -85,5 +87,6 @@ export default function CategoryView({
         <CategoryRenderedBody model={model} />
       </CategoryLiveBody>
     </div>
+    </CategoryLiveProvider>
   );
 }

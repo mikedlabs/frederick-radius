@@ -72,6 +72,8 @@ describe("category browse client contract", () => {
     const contract = readFileSync("src/lib/category/browse-contract.ts", "utf8");
 
     expect(live).toContain("@/lib/category/browse-contract");
+    expect(live).toContain("CategoryLiveProvider");
+    expect(live).toContain("CategoryLiveCount");
     expect(live).not.toContain("@/lib/category/browse\"");
     expect(live).not.toContain("@/lib/loaders/places");
     expect(contract).not.toContain("rankPlaces");

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import PlaceCard from "@/components/place/PlaceCard";
 import PlaceList from "@/components/place/PlaceList";
 import SectionHeading from "@/components/ui/SectionHeading";
@@ -178,7 +185,9 @@ export function CategoryDirectory({
   );
 }
 
-export function CategoryLiveBody({
+const CategoryLiveContext = createContext<CategoryPageModel | null>(null);
+
+export function CategoryLiveProvider({
   initial,
   children,
 }: {
@@ -216,8 +225,32 @@ export function CategoryLiveBody({
     };
   }, [initial]);
 
-  if (model === initial) return children;
+  return (
+    <CategoryLiveContext.Provider value={model}>
+      {children}
+    </CategoryLiveContext.Provider>
+  );
+}
 
+export function CategoryLiveCount({ initial }: { initial: CategoryPageModel }) {
+  const model = useContext(CategoryLiveContext) ?? initial;
+  if (model.townScopeIsEmpty) return null;
+  return (
+    <p className="mt-2 text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+      {model.totalCount} place{model.totalCount === 1 ? "" : "s"}
+    </p>
+  );
+}
+
+export function CategoryLiveBody({
+  initial,
+  children,
+}: {
+  initial: CategoryPageModel;
+  children: ReactNode;
+}) {
+  const model = useContext(CategoryLiveContext) ?? initial;
+  if (model === initial) return children;
   return <CategoryRenderedBody model={model} />;
 }
 

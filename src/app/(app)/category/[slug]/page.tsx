@@ -17,6 +17,8 @@ import {
 } from "@/lib/category/browse";
 import {
   CategoryLiveBody,
+  CategoryLiveCount,
+  CategoryLiveProvider,
   CategoryRenderedBody,
 } from "@/components/category/CategoryLive";
 import CategoryView from "@/components/category/CategoryView";
@@ -117,6 +119,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         </Link>
       </nav>
 
+      <CategoryLiveProvider initial={model}>
       <header className="border-b pb-5" style={{ borderColor: "var(--app-border)" }}>
         <p className="eyebrow" style={{ color: `color-mix(in srgb, ${c.color} 72%, var(--app-ink))` }}>
           Frederick County guide
@@ -127,11 +130,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         <p className="mt-2 max-w-[58ch] text-[14px] leading-relaxed sm:text-[15px]" style={{ color: "var(--app-ink-2)" }}>
           {c.blurb}
         </p>
-        {!model.townScopeIsEmpty && (
-          <p className="mt-2 text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-            {model.totalCount} place{model.totalCount === 1 ? "" : "s"}
-          </p>
-        )}
+        <CategoryLiveCount initial={model} />
       </header>
       <ScopeBar
         current={model.rankingMuni}
@@ -142,6 +141,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       <CategoryLiveBody initial={model}>
         <CategoryRenderedBody model={model} />
       </CategoryLiveBody>
+      </CategoryLiveProvider>
     </div>
   );
 }
