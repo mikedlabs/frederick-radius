@@ -33,6 +33,10 @@ import {
   publicEventSourceCircuits,
 } from "@/lib/integrations/event-source-circuit";
 import { isEventWithinReadWindow } from "@/lib/events/visible";
+import { sourceFetchUserAgent } from "@/lib/http/source-user-agent";
+
+const ICAL_LIVE_USER_AGENT =
+  "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)";
 
 // Phase 1.6: drop venue open-status entries that are not events.
 // Default ON by owner directive (2026-05-16: "ship everything"). The
@@ -1111,7 +1115,7 @@ async function fetchRawIcalWork(
     const response = await fetch(feed.url, {
       signal: deadline.signal,
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+        "User-Agent": sourceFetchUserAgent(feed.url, ICAL_LIVE_USER_AGENT),
         Accept: "text/calendar, text/plain",
       },
       // Raw public calendars can exceed Vercel/Next's 2 MB Data Cache item
@@ -1289,7 +1293,7 @@ async function fetchRssFeed(
   try {
     const res = await fetch(feed.url, {
       signal: deadline.signal,
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)" },
+      headers: { "User-Agent": sourceFetchUserAgent(feed.url, ICAL_LIVE_USER_AGENT) },
       // Cache the parsed event set at the source-page/unified boundary below.
       // A second fetch-level SWR cache can return a stale body while its hidden
       // refresh outlives the route; a connection failure then rejects Next's
@@ -1487,7 +1491,7 @@ async function fetchTribeFeed(
     const res = await fetch(url, {
       signal: deadline.signal,
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+        "User-Agent": sourceFetchUserAgent(feed.url, ICAL_LIVE_USER_AGENT),
         Accept: "application/json",
       },
       cache: "no-store",
@@ -1845,8 +1849,7 @@ async function fetchWixHtmlFeed(
     const response = await fetch(feed.url, {
       signal: deadline.signal,
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+        "User-Agent": sourceFetchUserAgent(feed.url, ICAL_LIVE_USER_AGENT),
         Accept: "text/html,application/xhtml+xml",
       },
       cache: "no-store",
@@ -1924,7 +1927,7 @@ async function fetchJsonArrayFeed(
     const res = await fetch(url, {
       signal: deadline.signal,
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+        "User-Agent": sourceFetchUserAgent(url, ICAL_LIVE_USER_AGENT),
         Accept: "application/json",
       },
       cache: "no-store",
@@ -2246,7 +2249,7 @@ async function fetchVibemapFeed(
     const pageUrl = (page: number) =>
       `${feed.url}${sep}per_page=100&page=${page}&_fields=${VIBEMAP_FIELDS}`;
     const headers = {
-      "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+      "User-Agent": sourceFetchUserAgent(feed.url, ICAL_LIVE_USER_AGENT),
       Accept: "application/json",
     };
     const first = await fetch(pageUrl(1), {

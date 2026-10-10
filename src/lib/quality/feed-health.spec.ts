@@ -181,6 +181,42 @@ describe("scheduled feed-health probes", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
+  it("sends a browser-shaped User-Agent to Visit Frederick", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async (_url, init) => {
+      const headers = new Headers(init?.headers);
+      expect(headers.get("user-agent")).toBe(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36 FrederickRadius/1.0 (+https://frederickradius.app)",
+      );
+      return new Response("<rss></rss>", {
+        status: 200,
+        headers: { "content-type": "application/rss+xml" },
+      });
+    });
+    const visit = HIGH_VALUE_SOURCE_ENDPOINTS.find(
+      (endpoint) => endpoint.sourceId === "visit_frederick",
+    )!;
+
+    await probeFeedEndpoint(visit, { fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the health User-Agent for hosts that do not require a browser UA", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async (_url, init) => {
+      const headers = new Headers(init?.headers);
+      expect(headers.get("user-agent")).toBe("frederick-radius-feed-health/1.0");
+      return new Response('{"id":1}', {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    const dfp = HIGH_VALUE_SOURCE_ENDPOINTS.find(
+      (endpoint) => endpoint.sourceId === "dfp_events",
+    )!;
+
+    await probeFeedEndpoint(dfp, { fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
   it("uses a header for a configured NPS key without putting it in results", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async (_url, init) => {
       const headers = new Headers(init?.headers);

@@ -83,8 +83,8 @@ export const LIVE_MUSIC_VENUES: LiveMusicVenue[] = [
   { slug: "rockwell-brewery-frederick",           squarespace: "https://www.rockwellbrewery.com/events", scheduleNote: "Busy live-music calendar at the Riverside taproom" },
 
   // ── Wineries / farm breweries (weekend live music, seasonal) ──
-  { slug: "linganore-winecellars-mount-airy",   scheduleNote: "Wine & music festivals (Mission Tix)" },
-  { slug: "orchid-cellar-meadery-middletown",   scheduleNote: "orchidcellar.com/events" },
+  { slug: "linganore-winecellars-mount-airy",   scheduleNote: "linganorewines.com/events · tribe REST + iCal, fetch-verified Oct 2026" },
+  { slug: "orchid-cellar-meadery-middletown",   squarespace: "https://orchidcellar.com/events", scheduleNote: "Meadery events on a Squarespace calendar" },
   { slug: "catoctin-breeze-vineyard-thurmont",  scheduleNote: "catoctinbreeze.com/events · weekend music" },
   { slug: "springfield-manor-thurmont",         scheduleNote: "Sat & Sun 2–5pm" },
   { slug: "milkhouse-brewery-mt-airy",          scheduleNote: "Sat 5–8pm, Sun 3–6pm; Facebook" },
