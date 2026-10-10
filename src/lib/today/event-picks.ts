@@ -136,14 +136,14 @@ export function isOnlineEvent(event: EventWithMeta): boolean {
   return false;
 }
 
-/** Has this event already wrapped up? Live/wrapped labels need end_trust
- * "ok". A present-but-not-ok value never claims wrapped. Missing degrades
- * to the existing trustworthy-end helper. */
 function eventDayKey(iso: string): string | null {
   const date = eventInstant(iso);
   return date ? easternDayKey(date) : null;
 }
 
+/** Has this event already wrapped up? Live/wrapped labels need end_trust
+ * "ok". A present-but-not-ok value never claims wrapped. Missing degrades
+ * to the existing trustworthy-end helper. */
 export function isWrappedEvent(event: EventWithMeta, now: Date): boolean {
   const trust = eventEndTrust(event);
   if (trust === "untrusted") return false;
