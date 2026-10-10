@@ -53,8 +53,8 @@ export async function generateMetadata(
  * /category/[slug] — single-category surface.
  *
  * The first HTML response is the county-wide directory: a short first page
- * of places, no cookies(), so the route can ISR at the edge. A saved town
- * or home lens is applied after hydration through the cacheable
+ * of places, with no request cookie read, so the route can ISR at the edge.
+ * A saved town or home lens is applied after hydration through the cacheable
  * /api/category/[slug]/places continuation.
  */
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
