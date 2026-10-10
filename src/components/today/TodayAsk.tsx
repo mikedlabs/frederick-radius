@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Clock3, MapPin, Search, Route, Building2 } from "lucide-react";
+import { Clock3, MapPin, Search, Route, Building2 } from "lucide-react";
 import { requestFind } from "@/lib/findBridge";
 import { haptic } from "@/lib/haptics";
 import BrowsePlacesDisclosure from "./BrowsePlacesDisclosure";
@@ -63,17 +63,12 @@ export default function TodayAsk({
         </span>
         <span className="min-w-0 flex-1">
           <span className={styles.prompt}>
-            What do you need?
+            Search places and events
           </span>
           <span className={styles.hint}>
-            Find a place, an event, or help with your plans.
+            Look up a listing.
           </span>
         </span>
-        <ArrowRight
-          className={`h-4 w-4 shrink-0 ${styles.launcherArrow}`}
-          strokeWidth={2.25}
-          aria-hidden
-        />
       </Link>
 
       {showQuickNeeds ? <TodayQuickNeeds>{children}</TodayQuickNeeds> : null}

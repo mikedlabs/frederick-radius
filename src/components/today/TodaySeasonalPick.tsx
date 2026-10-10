@@ -1,5 +1,5 @@
 /**
- * TodaySeasonalPick — one curated collection that fits the season or day.
+ * TodaySeasonalPick — one collection that fits the season or day.
  *
  * Simple, clear rule: pick by season first, then weather condition.
  * - Rainy/wet day → "Rainy Day Frederick"
@@ -7,12 +7,13 @@
  * - Winter (Dec-Feb) → "Rainy Day Frederick" (indoor)
  * - Spring/Summer (Mar-Aug) → "Where to ride" or "Frederick without a plan"
  *
- * Shows: collection title, blurb, link to full collection.
+ * Shows: collection title, blurb, link to the full collection list.
  * Photo optional; default to none per spec.
  */
 
 import Link from "next/link";
-import { ArrowRight, BookOpen } from "lucide-react";
+import { BookOpen } from "lucide-react";
+import { TodayListArrow } from "./TodayListLink";
 import { COLLECTION_BY_SLUG, type CollectionDef } from "@/data/collections";
 import { easternParts } from "@/lib/tz";
 import { Surface } from "@/components/ui/Surface";
@@ -100,9 +101,9 @@ export default function TodaySeasonalPick({
             >
               {collection.blurb}
             </p>
-            <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-brand-press)" }}>
+            <div className="today-list-link mt-2 inline-flex items-center gap-1 text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
               {collection.places.length} {collection.places.length === 1 ? "place" : "places"}
-              <ArrowRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+              <TodayListArrow />
             </div>
           </div>
         </div>

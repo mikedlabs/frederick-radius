@@ -23,7 +23,7 @@ import { getFcpsAlertsResult, currentFcpsOperationsNotices } from "@/lib/integra
 import { getMarcAlerts } from "@/lib/integrations/marcTrains";
 import { SIGNIFICANT_POWER_OUTAGE_CUSTOMERS } from "@/lib/pulse/signal-priority";
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
-import { ChevronRight } from "lucide-react";
+import TodayListLink from "./TodayListLink";
 
 type PulseChip = {
   id: string;
@@ -201,18 +201,12 @@ export default async function TodayConditionsLine() {
             </Link>
           ))}
           {overflow > 0 && (
-            <Link
+            <TodayListLink
               href="/pulse"
-              prefetch={false}
-              className="tap-44-y inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-snug transition-colors"
-              style={{
-                background: "var(--app-bg-sunken)",
-                color: "var(--app-ink-2)",
-              }}
+              className="rounded-full px-2.5 py-1 text-[11px]"
             >
               +{overflow} more
-              <ChevronRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-            </Link>
+            </TodayListLink>
           )}
         </div>
       )}

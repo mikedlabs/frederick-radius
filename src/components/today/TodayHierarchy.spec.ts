@@ -77,4 +77,11 @@ describe("Today page rework (2026-10-06)", () => {
     expect(todayPage).toContain("eventHiddenFromToday");
     expect(todayPage).not.toContain("eventScope");
   });
+
+  it("keeps Find below events and out of the chatbot register", () => {
+    expect(todayPage).not.toContain("What do you need?");
+    expect(todayPage).not.toContain("PageBloom");
+    expect(todayPage).not.toMatch(/newsletter|sign-?up|email prompt/i);
+    expect(todayPage).toContain("TodayListLink");
+  });
 });

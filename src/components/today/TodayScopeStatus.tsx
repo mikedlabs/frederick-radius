@@ -150,6 +150,7 @@ export default function TodayScopeStatus({
       </p>
       ) : null}
       {showPicker ? (
+      <>
       <label className="inline-flex min-h-11 max-w-full items-center gap-2 text-[13px] font-medium">
         <span className="sr-only">Choose your area</span>
         <select
@@ -195,6 +196,7 @@ export default function TodayScopeStatus({
           </button>
         )
       ) : null}
+      </>
       ) : null}
     </div>
   );

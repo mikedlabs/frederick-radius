@@ -1,29 +1,29 @@
 /**
  * Compact / lead event card for Today's briefing.
  *
- * Lead (first pick): a real photograph when the source or linked place
- * provides one; otherwise a calm category-colored wash. Compact cards keep
- * the same facts in a denser row. Never uses stock or archive photography.
+ * The whole card is one tap to the event page. Lead (first pick): a real
+ * photograph when the source or linked place provides one; otherwise a calm
+ * category-colored wash. Compact cards keep the same facts in a denser row.
+ * Never uses stock or archive photography.
  */
 
 import type { CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { eventDateBlock } from "@/lib/events/format";
-import { eventTown } from "@/lib/events/eventTown";
 import { eventEndTrust, eventWithIsoInstants } from "@/lib/today/event-fields";
 import {
   todayCategoryTextColor,
+  todayEventCategory,
   todayEventSourceLabel,
+  todayEventWhere,
   todayEventWhy,
 } from "@/lib/today/event-copy";
 import { todayEventVisual } from "@/lib/today/event-visual";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import EventVisualCredit from "@/components/event/EventVisualCredit";
-import SaveButton from "@/components/saved/SaveButton";
 import { Surface } from "@/components/ui/Surface";
 import { isEventLiveNow } from "@/lib/eventWhenLabel";
 import styles from "./TodayEventPick.module.css";
@@ -43,18 +43,14 @@ export default function TodayEventPick({
 }: TodayEventPickProps) {
   const timed = eventWithIsoInstants(event);
   const time = eventDateBlock(timed).time;
-  const town = eventTown(event);
-  const venue = event.venue_name?.trim();
-  const cat = CATEGORY_BY_SLUG[event.category ?? ""];
-  const accent = cat?.color ?? "#7A7975";
+  const cat = todayEventCategory(event);
+  const accent = cat.color;
   const accentText = todayCategoryTextColor(accent);
-  const categoryLabel = cat?.name ?? "Event";
+  const categoryLabel = cat.name;
   const visual = todayEventVisual(event);
   const why = reason ?? todayEventWhy(event, now);
   const sourceLabel = todayEventSourceLabel(event);
-  const where = [venue, town && town.toLowerCase() !== venue?.toLowerCase() ? town : null]
-    .filter(Boolean)
-    .join(" · ");
+  const where = todayEventWhere(event);
   const trust = eventEndTrust(event);
   const live = trust !== "untrusted" && Boolean(now) && isEventLiveNow(timed, now!);
   const isLead = variant === "lead";
@@ -74,7 +70,7 @@ export default function TodayEventPick({
   ) : (
     <span className={styles.fallback} aria-hidden>
       <CategoryIcon
-        slug={event.category ?? ""}
+        slug={cat.slug}
         className={styles.fallbackMark}
         strokeWidth={1.6}
       />
@@ -88,6 +84,7 @@ export default function TodayEventPick({
       padding="none"
       data-today-event-pick={variant}
       data-today-event-visual={visual ? "photo" : "category"}
+      data-today-category={cat.slug}
       className={`${styles.card} ${isLead ? styles.lead : styles.compact}`}
       style={{
         "--accent": accent,
@@ -95,7 +92,6 @@ export default function TodayEventPick({
         boxShadow: `inset 3px 0 0 ${accent}, var(--app-edge)`,
       } as CSSProperties}
     >
-      <div className={styles.frame}>
       <Link
         href={`/events/${event.slug}`}
         prefetch={false}
@@ -138,10 +134,6 @@ export default function TodayEventPick({
           </div>
         )}
       </Link>
-      <span className={styles.save}>
-        <SaveButton refType="event" refId={event.slug} label={`Save ${event.title}`} />
-      </span>
-      </div>
       {visual ? (
         <EventVisualCredit
           visual={visual}
@@ -169,7 +161,7 @@ function CardCopy({
   live: boolean;
   time: string;
   title: string;
-  where: string;
+  where: { kind: "place" | "address"; text: string } | null;
   why: string | null;
   sourceLabel: string | null;
   lead?: boolean;
@@ -188,7 +180,14 @@ function CardCopy({
       <h3 className={`${lead ? styles.titleLead : styles.title} line-clamp-2`}>
         {title}
       </h3>
-      {where ? <p className={styles.where}>{where}</p> : null}
+      {where ? (
+        <p
+          className={where.kind === "address" ? styles.address : styles.where}
+          data-today-venue={where.kind}
+        >
+          {where.text}
+        </p>
+      ) : null}
       {why ? <p className={styles.why}>{why}</p> : null}
       {sourceLabel ? <p className={styles.source}>{sourceLabel}</p> : null}
     </>

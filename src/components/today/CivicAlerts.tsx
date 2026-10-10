@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { AlertCircle, AlertTriangle, ArrowRight, CalendarX, Clock, Info } from "lucide-react";
+import { AlertCircle, AlertTriangle, CalendarX, Clock, Info } from "lucide-react";
+import TodayListLink, { TodayListArrow } from "./TodayListLink";
 import type { NwsAlert } from "@/lib/integrations/nws-alerts";
 import { getNpsAlerts, type NpsAlert } from "@/lib/integrations/nps";
 import {
@@ -40,6 +40,20 @@ export type UnifiedAlert = {
    *  deep links (e.g. a traffic row → /pulse?open=traffic) stay in-app. */
   external?: boolean;
 };
+
+/** Name the destination host so an external alert never looks like an in-app door. */
+export function todayAlertDestinationLabel(
+  alert: Pick<UnifiedAlert, "source" | "url" | "external">,
+): string {
+  if (alert.url) {
+    try {
+      return new URL(alert.url).hostname.replace(/^www\./, "");
+    } catch {
+      // Fall through to the feed name.
+    }
+  }
+  return alert.source.toLowerCase();
+}
 
 export function dedupeUnifiedAlerts(
   alerts: readonly UnifiedAlert[],
@@ -350,15 +364,25 @@ export default async function CivicAlerts({ includeWeather = true, compact = fal
             style={{ background: "var(--app-bg-sunken)", borderLeft: `3px solid ${s.bg}`, color: "var(--app-ink)" }}>
             <Icon className="h-4 w-4 shrink-0" aria-hidden />
             <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold">Heads up: {top.title}</span><span className="block text-[11px]" style={{ color: "var(--app-ink-2)" }}>{top.tail} · {top.source}{top.scope ? ` · ${top.scope}` : ""}</span></span>
-            <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+            {top.external ? (
+              <span className="shrink-0 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
+                Opens {todayAlertDestinationLabel(top)}
+              </span>
+            ) : (
+              <TodayListArrow />
+            )}
           </a>
         )}
         {notices.map((notice) => (
           <a key={notice.slug} href={withBrowseReturnTo(`/events/${notice.slug}`, returnTo)} className="flex min-h-11 items-center gap-2 px-3 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
-            <CalendarX className="h-4 w-4 shrink-0" aria-hidden />{notice.headline}<ArrowRight className="ml-auto h-4 w-4 shrink-0" aria-hidden />
+            <CalendarX className="h-4 w-4 shrink-0" aria-hidden />{notice.headline}
           </a>
         ))}
-        {more > 0 && <a href={withBrowseReturnTo("/pulse?open=alerts", returnTo)} className="flex min-h-11 items-center px-3 text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>{more} more active {more === 1 ? "alert" : "alerts"}</a>}
+        {more > 0 && (
+          <TodayListLink href={withBrowseReturnTo("/pulse?open=alerts", returnTo)} className="px-3">
+            {more} more active {more === 1 ? "alert" : "alerts"}
+          </TodayListLink>
+        )}
       </section>
     );
   }
@@ -417,9 +441,9 @@ export default async function CivicAlerts({ includeWeather = true, compact = fal
         </a>
       ))}
       {more > 0 && (
-        <Link href="/pulse" prefetch={false} className="flex min-h-11 items-center px-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
-          +{more} more active {more === 1 ? "alert" : "alerts"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
-        </Link>
+        <TodayListLink href="/pulse" className="px-1 text-[11px]">
+          +{more} more active {more === 1 ? "alert" : "alerts"}
+        </TodayListLink>
       )}
     </section>
   );

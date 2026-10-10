@@ -7,7 +7,7 @@
  * 3. Tonight: events starting at or after 5 PM
  * 4. Coming up this week: 2-3 anchor events from next 7 days
  * 5. Tools: area picker, Find, Open now / essentials (below the briefing)
- * 6. One curated seasonal pick: collection that fits the season/day
+ * 6. One seasonal collection that fits the season/day
  * 7. Places: one "Good for this morning/afternoon/evening" block, posted hours
  *
  * Rules:
@@ -22,7 +22,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import TodayListLink from "@/components/today/TodayListLink";
 import { easternDayKey } from "@/lib/tz";
 import { loadTodayEventSnapshot } from "@/lib/loaders/todayEventSnapshot";
 import { eventDecisionVerification } from "@/lib/events/decision-verification";
@@ -49,7 +49,6 @@ import TodayScopeStatus from "@/components/today/TodayScopeStatus";
 import { formatEasternDateline } from "@/lib/format/easternClock";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import PlaceSheetBoundary from "@/components/place/PlaceSheetBoundary";
-import PageBloom from "@/components/ui/PageBloom";
 import Skeleton from "@/components/ui/Skeleton";
 import { Surface } from "@/components/ui/Surface";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
@@ -80,7 +79,7 @@ export async function generateMetadata(): Promise<Metadata> {
           url: `/api/og?type=almanac&day=${day}`,
           width: 1200,
           height: 630,
-          alt: `The Frederick County almanac for ${day}`,
+          alt: `Today in Frederick County for ${day}`,
         },
       ],
     },
@@ -104,8 +103,6 @@ export default async function TodayPage() {
   return (
     <EventSheetBoundary fetchMissing className="relative">
       <PlaceSheetBoundary fetchMissing>
-        <PageBloom motif />
-
         {/* Stale-shell guard */}
         <FreshnessGuard renderedAtIso={now.toISOString()} />
 
@@ -275,22 +272,12 @@ async function EventsSections({
             >
               Events today
             </h2>
-            <Link
-              href="/events"
-              prefetch={false}
-              className="tap-44-y flex items-center gap-1 text-[12px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
-            >
+            <TodayListLink href="/events" ariaLabel="Open the full events calendar">
               <span className="tabular-nums">{publicEvents.filter((e) => {
                 const start = eventInstant(e.starts_at);
                 return start ? easternDayKey(start) === easternDayKey(now) : false;
               }).length} total</span>
-              <ChevronRight
-                className="h-3 w-3"
-                strokeWidth={2.5}
-                aria-hidden
-              />
-            </Link>
+            </TodayListLink>
           </div>
           <div className="space-y-3">
             {bestThree.map((event, index) => (
@@ -330,19 +317,9 @@ async function EventsSections({
             ))}
           </div>
           {tonight.length > 5 && (
-            <Link
-              href="/events"
-              prefetch={false}
-              className="tap-44-y mt-2 flex items-center gap-1 px-1 text-[12px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
-            >
+            <TodayListLink href="/events" className="mt-2 px-1">
               +{tonight.length - 5} more tonight
-              <ChevronRight
-                className="h-3 w-3"
-                strokeWidth={2.5}
-                aria-hidden
-              />
-            </Link>
+            </TodayListLink>
           )}
         </section>
       )}

@@ -11,20 +11,20 @@
   display: flex;
   align-items: center;
   gap: var(--app-space-3);
-  min-height: 80px;
-  padding: var(--app-space-4);
-  border: 1px solid var(--app-brand-press);
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-control-border);
   border-radius: var(--app-radius-md);
-  color: var(--app-on-brand);
-  background: var(--app-brand-press);
+  color: var(--app-ink);
+  background: var(--app-bg-elevated);
   box-shadow: none;
   outline-offset: 4px;
-  transition: background-color var(--app-dur-fast) var(--app-ease-out), box-shadow var(--app-dur-fast) var(--app-ease-out);
+  transition: background-color var(--app-dur-fast) var(--app-ease-out), border-color var(--app-dur-fast) var(--app-ease-out);
 }
 
 .launcher:hover {
-  background: color-mix(in srgb, var(--app-brand-press) 90%, var(--app-media-ink));
-  box-shadow: none;
+  background: var(--app-bg-sunken);
+  border-color: var(--app-brand);
 }
 
 .launcher:focus-visible {
@@ -33,31 +33,27 @@
 
 .searchIcon {
   display: grid;
-  width: 32px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
   place-items: center;
-  color: var(--app-on-brand);
-}
-
-.launcherArrow {
-  color: var(--app-on-brand);
+  color: var(--app-ink-2);
 }
 
 .prompt {
   display: block;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 650;
-  line-height: 1.2;
-  letter-spacing: -0.025em;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
 }
 
 .hint {
   display: block;
-  margin-top: 4px;
-  color: var(--app-on-brand);
-  font-size: 15px;
-  line-height: 1.4;
+  margin-top: 2px;
+  color: var(--app-ink-3);
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .shortcuts {
@@ -113,12 +109,12 @@
 
 @media (min-width: 640px) {
   .launcher {
-    min-height: 80px;
-    padding-inline: var(--app-space-5);
+    min-height: 52px;
+    padding-inline: var(--app-space-4);
   }
 
   .prompt {
-    font-size: 22px;
+    font-size: 16px;
   }
 
   .shortcuts {
@@ -136,16 +132,16 @@
 
 @media (max-width: 359px) {
   .launcher {
-    padding: var(--app-space-3);
+    padding: 10px;
     gap: var(--app-space-2);
   }
 
   .prompt {
-    font-size: 19px;
+    font-size: 15px;
   }
 
   .hint {
-    font-size: 14px;
+    font-size: 12px;
   }
 
   .shortcut {
