@@ -59,4 +59,22 @@ describe("Today page rework (2026-10-06)", () => {
     expect(todayPage).toContain("<Suspense");
     expect(todayPage).toContain("fallback=");
   });
+
+  it("keeps find tools below the event sections", () => {
+    const eventsPos = todayPage.indexOf("<EventsSections");
+    const toolsPos = todayPage.indexOf('aria-label="Find a place or service"');
+    const askPos = todayPage.indexOf("<TodayAsk");
+    expect(eventsPos).toBeGreaterThan(-1);
+    expect(toolsPos).toBeGreaterThan(eventsPos);
+    expect(askPos).toBeGreaterThan(toolsPos);
+  });
+
+  it("renders the first today pick as a lead card", () => {
+    expect(todayPage).toContain('variant={index === 0 ? "lead" : "compact"}');
+  });
+
+  it("filters campus and notice through one local Today-scope helper", () => {
+    expect(todayPage).toContain("eventHiddenFromToday");
+    expect(todayPage).not.toContain("eventScope");
+  });
 });

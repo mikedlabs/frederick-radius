@@ -12,17 +12,26 @@
 
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { eventTown } from "@/lib/events/eventTown";
+import { featuredEventSlugs } from "@/lib/events/featured";
 import { eventHasTrustworthyEnd } from "@/lib/eventWhenLabel";
 import { easternDayKey } from "@/lib/tz";
+import {
+  eventEndTrust,
+  eventHiddenFromToday,
+  eventInstant,
+  eventSeriesKey,
+} from "@/lib/today/event-fields";
 
 /** Eastern wall-clock hour (0-23) of an ISO instant. */
 function easternStartHour(iso: string): number {
+  const date = eventInstant(iso);
+  if (!date) return Number.NaN;
   return Number(
     new Intl.DateTimeFormat("en-US", {
       timeZone: "America/New_York",
       hour: "numeric",
       hourCycle: "h23",
-    }).format(new Date(iso)),
+    }).format(date),
   );
 }
 
@@ -127,21 +136,23 @@ export function isOnlineEvent(event: EventWithMeta): boolean {
   return false;
 }
 
-/** Has this event already wrapped up? Use end_trust if available, otherwise
- * fall back to eventHasTrustworthyEnd helper. */
+/** Has this event already wrapped up? Live/wrapped labels need end_trust
+ * "ok". A present-but-not-ok value never claims wrapped. Missing degrades
+ * to the existing trustworthy-end helper. */
+function eventDayKey(iso: string): string | null {
+  const date = eventInstant(iso);
+  return date ? easternDayKey(date) : null;
+}
+
 export function isWrappedEvent(event: EventWithMeta, now: Date): boolean {
-  // Prefer end_trust field if present (from separate data-layer agent)
-  // Use type guard since it's not in the base type yet
-  const endTrust = "end_trust" in event ? (event as EventWithMeta & { end_trust?: boolean }).end_trust : undefined;
-  if (typeof endTrust === "boolean") {
-    if (!endTrust) return false;
-    const end = event.ends_at ? new Date(event.ends_at) : null;
+  const trust = eventEndTrust(event);
+  if (trust === "untrusted") return false;
+  if (trust === "ok") {
+    const end = event.ends_at ? eventInstant(event.ends_at) : null;
     return end ? end.getTime() < now.getTime() : false;
   }
-  
-  // Fallback: use existing helper
   if (!eventHasTrustworthyEnd(event)) return false;
-  const end = event.ends_at ? new Date(event.ends_at) : null;
+  const end = event.ends_at ? eventInstant(event.ends_at) : null;
   return end ? end.getTime() < now.getTime() : false;
 }
 
@@ -190,16 +201,18 @@ export function pickBestThree(
   // Filter to today's events only
   const today = easternDayKey(now);
   let todayEvents = events.filter(
-    (e) => easternDayKey(new Date(e.starts_at)) === today,
+    (e) => eventDayKey(e.starts_at) === today,
   );
 
   // Dedupe cross-source duplicates
   todayEvents = dedupeCrossSource(todayEvents);
 
-  // Exclude FCC events (bad timing until fixed) and senior routine programs
+  // Exclude FCC events (bad timing until fixed), senior routines, and
+  // campus/notice listings when that optional scope is present.
   todayEvents = todayEvents.filter((e) => {
     if (e.source?.toLowerCase() === "fcc") return false;
     if (isSeniorRoutineProgram(e)) return false;
+    if (eventHiddenFromToday(e)) return false;
     return true;
   });
 
@@ -219,16 +232,15 @@ export function pickBestThree(
   // Combine: live first, then demoted
   const ordered = [...live, ...demoted];
 
-  // Dedupe by series fingerprint (prefer series_key if present, fall back to heuristic)
+  // Dedupe by series fingerprint (prefer series_key if present)
   const seen = new Set<string>();
   const unique = ordered.filter((event) => {
-    const key = "series_key" in event 
-      ? (event as EventWithMeta & { series_key?: string }).series_key ?? seriesFingerprint(event)
-      : seriesFingerprint(event);
+    const key = eventSeriesKey(event, seriesFingerprint(event));
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+  const featured = featuredEventSlugs(now);
 
   // Pick one daytime, one evening, one free/family
   const picks: EventWithMeta[] = [];
@@ -260,6 +272,10 @@ export function pickBestThree(
     return null;
   };
 
+  // Featured listings (Colorfest this week) lead when they fall on today.
+  const featuredPick = findPick((event) => featured.has(event.slug));
+  if (featuredPick) picks.push(featuredPick);
+
   // 1. Daytime pick
   const daytime = findPick(isDaytimeEvent);
   if (daytime) picks.push(daytime);
@@ -290,16 +306,17 @@ export function pickTonightEvents(
   const today = easternDayKey(now);
   let tonightCandidates = events.filter(
     (e) =>
-      easternDayKey(new Date(e.starts_at)) === today && isTonightEvent(e),
+      eventDayKey(e.starts_at) === today && isTonightEvent(e),
   );
 
   // Dedupe cross-source duplicates
   tonightCandidates = dedupeCrossSource(tonightCandidates);
 
-  // Exclude FCC events and senior routine programs
+  // Exclude FCC events, senior routine programs, and campus/notice listings
   tonightCandidates = tonightCandidates.filter((e) => {
     if (e.source?.toLowerCase() === "fcc") return false;
     if (isSeniorRoutineProgram(e)) return false;
+    if (eventHiddenFromToday(e)) return false;
     return true;
   });
 
@@ -321,9 +338,7 @@ export function pickTonightEvents(
   // Dedupe by series (prefer series_key if present)
   const seen = new Set<string>();
   return ordered.filter((event) => {
-    const key = "series_key" in event 
-      ? (event as EventWithMeta & { series_key?: string }).series_key ?? seriesFingerprint(event)
-      : seriesFingerprint(event);
+    const key = eventSeriesKey(event, seriesFingerprint(event));
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -341,34 +356,43 @@ export function pickThisWeekAnchors(
   const sevenDaysOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   let thisWeek = events.filter((e) => {
-    const eventDay = easternDayKey(new Date(e.starts_at));
+    const start = eventInstant(e.starts_at);
+    if (!start) return false;
+    const eventDay = easternDayKey(start);
     if (eventDay === today) return false; // Skip today's events
-    return new Date(e.starts_at).getTime() <= sevenDaysOut.getTime();
+    return start.getTime() <= sevenDaysOut.getTime();
   });
 
   // Dedupe cross-source duplicates
   thisWeek = dedupeCrossSource(thisWeek);
 
-  // Exclude FCC events (bad timing)
-  thisWeek = thisWeek.filter((e) => e.source?.toLowerCase() !== "fcc");
+  // Exclude FCC events (bad timing) and campus/notice listings
+  thisWeek = thisWeek.filter((e) => {
+    if (e.source?.toLowerCase() === "fcc") return false;
+    return !eventHiddenFromToday(e);
+  });
 
-  // Look for anchor signals: multi-day, big venues, festivals
+  const featured = featuredEventSlugs(now);
+
+  // Look for anchor signals: featured slugs, multi-day, big venues, festivals
   const anchors = thisWeek.filter((e) => {
     const title = e.title.toLowerCase();
     const venue = (e.venue_name ?? "").toLowerCase();
-    
-    // Check end_trust if available, otherwise use helper
-    const endTrust = "end_trust" in e ? (e as EventWithMeta & { end_trust?: boolean }).end_trust : undefined;
+
+    if (featured.has(e.slug)) return true;
+
+    const trust = eventEndTrust(e);
     const hasGoodEnd =
-      typeof endTrust === "boolean"
-        ? endTrust && e.ends_at
-        : eventHasTrustworthyEnd(e) && e.ends_at;
-    
+      trust === "ok"
+        ? Boolean(e.ends_at)
+        : trust === "untrusted"
+          ? false
+          : eventHasTrustworthyEnd(e) && Boolean(e.ends_at);
+
     // Multi-day events
     if (
       hasGoodEnd &&
-      easternDayKey(new Date(e.starts_at)) !==
-        easternDayKey(new Date(e.ends_at!))
+      eventDayKey(e.starts_at) !== eventDayKey(e.ends_at!)
     ) {
       return true;
     }
@@ -376,8 +400,10 @@ export function pickThisWeekAnchors(
     // Big venues
     if (/weinberg|weinburg/i.test(venue)) return true;
 
-    // Festival/fair keywords
-    if (/\b(festival|fair|celebration|market)\b/i.test(title)) return true;
+    // Festival/fair keywords, including Colorfest which is not "festival"
+    if (/\b(festival|fair|celebration|market|colorfest)\b/i.test(title)) {
+      return true;
+    }
 
     return false;
   });
@@ -385,13 +411,13 @@ export function pickThisWeekAnchors(
   // Dedupe by series (prefer series_key if present)
   const seen = new Set<string>();
   const unique = anchors.filter((event) => {
-    const key = "series_key" in event 
-      ? (event as EventWithMeta & { series_key?: string }).series_key ?? seriesFingerprint(event)
-      : seriesFingerprint(event);
+    const key = eventSeriesKey(event, seriesFingerprint(event));
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+
+  unique.sort((a, b) => Number(featured.has(b.slug)) - Number(featured.has(a.slug)));
 
   // Return up to 3
   return unique.slice(0, 3);

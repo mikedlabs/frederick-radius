@@ -1,0 +1,196 @@
+.card {
+  position: relative;
+  overflow: hidden;
+  animation: today-card-in var(--app-dur-med) var(--app-ease-out) both;
+}
+
+.frame {
+  position: relative;
+}
+
+.hit {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.card:hover .title,
+.card:hover .titleLead {
+  text-decoration: underline;
+}
+
+.lead {
+  box-shadow: var(--app-elev-1), var(--app-edge);
+}
+
+.compact {
+  box-shadow: var(--app-edge);
+}
+
+.media {
+  position: relative;
+  overflow: hidden;
+  background: var(--fallback);
+}
+
+.lead .media {
+  aspect-ratio: 16 / 9;
+  max-height: 168px;
+}
+
+.thumb {
+  position: relative;
+  width: 72px;
+  flex-shrink: 0;
+  align-self: stretch;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--fallback);
+}
+
+.thumbMedia {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 72px;
+}
+
+.photo {
+  object-fit: cover;
+}
+
+.fallback {
+  display: grid;
+  height: 100%;
+  min-height: inherit;
+  place-items: center;
+  color: var(--accent);
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--accent) 22%, var(--app-bg-sunken)) 0%,
+      color-mix(in srgb, var(--accent) 8%, var(--app-bg)) 100%
+    );
+}
+
+.fallbackMark {
+  width: 36px;
+  height: 36px;
+  opacity: 0.88;
+}
+
+.lead .fallbackMark {
+  width: 48px;
+  height: 48px;
+}
+
+.body {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 12px 10px;
+}
+
+.compactRow {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  padding: 10px 10px 10px 12px;
+}
+
+.kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.category {
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.time {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--app-ink-2);
+}
+
+.title,
+.titleLead {
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--app-ink);
+}
+
+.title {
+  font-size: 16px;
+  letter-spacing: -0.02em;
+}
+
+.titleLead {
+  font-size: 18px;
+  letter-spacing: -0.025em;
+}
+
+.where,
+.why,
+.source {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.where {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--app-ink-2);
+}
+
+.why {
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--app-ink-2);
+}
+
+.source {
+  margin-top: 4px;
+  padding-right: 40px;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--app-ink-3);
+}
+
+.save {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 1;
+}
+
+.credit {
+  padding: 0 12px 8px;
+}
+
+@keyframes today-card-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+}

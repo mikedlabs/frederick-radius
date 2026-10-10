@@ -1,94 +1,196 @@
 /**
- * TodayEventPick — compact event card for Today's best-three and Tonight picks.
+ * Compact / lead event card for Today's briefing.
  *
- * Shows: time, title, place, town, optional one-line reason, source label.
- * Styled to fit 2-3 on a phone screen without scrolling past the conditions line.
+ * Lead (first pick): a real photograph when the source or linked place
+ * provides one; otherwise a calm category-colored wash. Compact cards keep
+ * the same facts in a denser row. Never uses stock or archive photography.
  */
 
+import type { CSSProperties } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import type { EventWithMeta } from "@/lib/loaders/events";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { eventDateBlock } from "@/lib/events/format";
 import { eventTown } from "@/lib/events/eventTown";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { eventEndTrust, eventWithIsoInstants } from "@/lib/today/event-fields";
+import {
+  todayCategoryTextColor,
+  todayEventSourceLabel,
+  todayEventWhy,
+} from "@/lib/today/event-copy";
+import { todayEventVisual } from "@/lib/today/event-visual";
+import type { EventWithMeta } from "@/lib/loaders/events";
+import CategoryIcon from "@/components/place/CategoryIcon";
+import EventVisualCredit from "@/components/event/EventVisualCredit";
+import SaveButton from "@/components/saved/SaveButton";
+import { Surface } from "@/components/ui/Surface";
+import { isEventLiveNow } from "@/lib/eventWhenLabel";
+import styles from "./TodayEventPick.module.css";
 
 type TodayEventPickProps = {
   event: EventWithMeta;
   reason?: string | null;
+  variant?: "lead" | "compact";
+  now?: Date;
 };
 
-export default function TodayEventPick({ event, reason }: TodayEventPickProps) {
-  const time = eventDateBlock(event).time;
+export default function TodayEventPick({
+  event,
+  reason,
+  variant = "compact",
+  now,
+}: TodayEventPickProps) {
+  const timed = eventWithIsoInstants(event);
+  const time = eventDateBlock(timed).time;
   const town = eventTown(event);
   const venue = event.venue_name?.trim();
-  const accent = CATEGORY_BY_SLUG[event.category ?? ""]?.color ?? "#7A7975";
+  const cat = CATEGORY_BY_SLUG[event.category ?? ""];
+  const accent = cat?.color ?? "#7A7975";
+  const accentText = todayCategoryTextColor(accent);
+  const categoryLabel = cat?.name ?? "Event";
+  const visual = todayEventVisual(event);
+  const why = reason ?? todayEventWhy(event, now);
+  const sourceLabel = todayEventSourceLabel(event);
+  const where = [venue, town && town.toLowerCase() !== venue?.toLowerCase() ? town : null]
+    .filter(Boolean)
+    .join(" · ");
+  const trust = eventEndTrust(event);
+  const live = trust !== "untrusted" && Boolean(now) && isEventLiveNow(timed, now!);
+  const isLead = variant === "lead";
 
-  // Source label (existing trust logic)
-  const sourceLabel = event.is_verified
-    ? "Verified"
-    : event.source
-      ? event.source
-      : null;
+  const media = visual ? (
+    <Image
+      src={visual.src}
+      alt=""
+      fill
+      unoptimized={visual.src.startsWith("/api/place-photo")}
+      sizes={isLead ? "(max-width: 640px) 100vw, 640px" : "72px"}
+      placeholder="blur"
+      blurDataURL={PAPER_CREAM_BLUR}
+      className={styles.photo}
+      priority={isLead}
+    />
+  ) : (
+    <span className={styles.fallback} aria-hidden>
+      <CategoryIcon
+        slug={event.category ?? ""}
+        className={styles.fallbackMark}
+        strokeWidth={1.6}
+      />
+    </span>
+  );
 
   return (
-    <Link
-      href={`/events/${event.slug}`}
-      prefetch={false}
-      className="tap-44-y group block rounded-[var(--app-radius-md)] p-3 transition-colors"
+    <Surface
+      as="article"
+      variant="raised"
+      padding="none"
+      data-today-event-pick={variant}
+      data-today-event-visual={visual ? "photo" : "category"}
+      className={`${styles.card} ${isLead ? styles.lead : styles.compact}`}
       style={{
-        background: "var(--app-bg-sunken)",
-        border: "1px solid var(--app-border)",
-      }}
+        "--accent": accent,
+        "--fallback": `color-mix(in srgb, ${accent} 16%, var(--app-bg-sunken))`,
+        boxShadow: `inset 3px 0 0 ${accent}, var(--app-edge)`,
+      } as CSSProperties}
     >
-      <div className="flex items-start gap-2">
-        <span
-          className="shrink-0 pt-0.5 font-mono text-[11px] font-semibold tabular-nums leading-snug"
-          style={{ color: "var(--app-ink-3)" }}
-        >
+      <div className={styles.frame}>
+      <Link
+        href={`/events/${event.slug}`}
+        prefetch={false}
+        className={styles.hit}
+      >
+        {isLead ? (
+          <>
+            <div className={styles.media}>{media}</div>
+            <div className={styles.body}>
+              <CardCopy
+                accentText={accentText}
+                categoryLabel={categoryLabel}
+                live={live}
+                time={time}
+                title={event.title}
+                where={where}
+                why={why}
+                sourceLabel={sourceLabel}
+                lead
+              />
+            </div>
+          </>
+        ) : (
+          <div className={styles.compactRow}>
+            <div className={styles.thumb}>
+              <div className={styles.thumbMedia}>{media}</div>
+            </div>
+            <div className="min-w-0 flex-1">
+              <CardCopy
+                accentText={accentText}
+                categoryLabel={categoryLabel}
+                live={live}
+                time={time}
+                title={event.title}
+                where={where}
+                why={why}
+                sourceLabel={sourceLabel}
+              />
+            </div>
+          </div>
+        )}
+      </Link>
+      <span className={styles.save}>
+        <SaveButton refType="event" refId={event.slug} label={`Save ${event.title}`} />
+      </span>
+      </div>
+      {visual ? (
+        <EventVisualCredit
+          visual={visual}
+          compact
+          className={styles.credit}
+        />
+      ) : null}
+    </Surface>
+  );
+}
+
+function CardCopy({
+  accentText,
+  categoryLabel,
+  live,
+  time,
+  title,
+  where,
+  why,
+  sourceLabel,
+  lead = false,
+}: {
+  accentText: string;
+  categoryLabel: string;
+  live: boolean;
+  time: string;
+  title: string;
+  where: string;
+  why: string | null;
+  sourceLabel: string | null;
+  lead?: boolean;
+}) {
+  return (
+    <>
+      <div className={styles.kicker}>
+        <span className={styles.category} style={{ color: accentText }}>
+          {categoryLabel}
+        </span>
+        <span className={styles.time}>
+          {live ? "Happening now · " : null}
           {time}
         </span>
-        <div className="min-w-0 flex-1">
-          <h3
-            className="line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight transition-colors group-hover:underline"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {event.title}
-          </h3>
-          {(venue || town) && (
-            <p
-              className="mt-0.5 truncate text-[11.5px] leading-snug"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {venue ?? town}
-              {venue && town && town.toLowerCase() !== venue.toLowerCase() && (
-                <> · {town}</>
-              )}
-            </p>
-          )}
-          {reason && (
-            <p
-              className="mt-1 line-clamp-1 text-[12px] leading-snug"
-              style={{ color: "var(--app-ink-2)" }}
-            >
-              {reason}
-            </p>
-          )}
-        </div>
-        <span
-          aria-hidden
-          className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
-          style={{ background: accent }}
-        />
       </div>
-      {sourceLabel && (
-        <div className="mt-1.5 flex items-center gap-1">
-          <span
-            className="text-[9.5px] font-semibold uppercase tracking-[0.08em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            {sourceLabel}
-          </span>
-        </div>
-      )}
-    </Link>
+      <h3 className={`${lead ? styles.titleLead : styles.title} line-clamp-2`}>
+        {title}
+      </h3>
+      {where ? <p className={styles.where}>{where}</p> : null}
+      {why ? <p className={styles.why}>{why}</p> : null}
+      {sourceLabel ? <p className={styles.source}>{sourceLabel}</p> : null}
+    </>
   );
 }

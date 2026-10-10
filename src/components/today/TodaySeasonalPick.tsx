@@ -15,6 +15,7 @@ import Link from "next/link";
 import { ArrowRight, BookOpen } from "lucide-react";
 import { COLLECTION_BY_SLUG, type CollectionDef } from "@/data/collections";
 import { easternParts } from "@/lib/tz";
+import { Surface } from "@/components/ui/Surface";
 
 /** Pick a seasonal collection based on date and optional weather lean. */
 export function pickSeasonalCollection(
@@ -56,13 +57,14 @@ export default function TodaySeasonalPick({
 }) {
   return (
     <section aria-label="Today's pick" className="mt-6">
+      <Surface
+        variant="raised"
+        padding="none"
+        className="relative overflow-hidden"
+      >
       <Link
         href={`/collections/${collection.slug}`}
-        className="tactile tactile-interactive group relative block overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 transition"
-        style={{
-          borderColor: "var(--app-border)",
-          boxShadow: "var(--app-elev-1)",
-        }}
+        className="tactile tactile-interactive group relative block p-4"
       >
         {/* Color accent strip */}
         <div
@@ -105,6 +107,7 @@ export default function TodaySeasonalPick({
           </div>
         </div>
       </Link>
+      </Surface>
     </section>
   );
 }

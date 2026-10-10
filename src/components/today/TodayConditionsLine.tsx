@@ -140,36 +140,48 @@ export default async function TodayConditionsLine() {
   const shown = chips.slice(0, 2);
   const overflow = chips.length - shown.length;
 
+  const weatherState = tempNow != null ? "available" : "unavailable";
+
   // Render
   return (
     <section
       aria-label="Current conditions"
-      className="space-y-2 border-b pb-3"
+      className="space-y-1.5 border-b pb-2.5"
       style={{ borderColor: "var(--app-border)" }}
+      data-today-conditions
+      data-today-weather
     >
-      {/* Main conditions row */}
-      <div className="flex items-baseline gap-2 text-[14px] leading-snug">
-        {tempNow != null && (
-          <span
-            className="font-sans text-[28px] font-light tabular-nums"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {tempNow}&deg;
+      {/* Quiet utility line: weather is supporting detail, not the headline. */}
+      <Link
+        href="/pulse?open=weather"
+        prefetch={false}
+        aria-label="Today in Frederick. Open the full forecast."
+        className="tap-44 flex min-h-11 items-baseline gap-2 text-[13px] leading-snug"
+      >
+        <span data-weather-state={weatherState} className="contents">
+          {tempNow != null ? (
+            <span
+              className="font-sans text-[22px] font-light tabular-nums"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              {tempNow}&deg;
+            </span>
+          ) : (
+            <span style={{ color: "var(--app-ink-3)" }}>
+              The NWS forecast is briefly unavailable.
+            </span>
+          )}
+          {condition && (
+            <span style={{ color: "var(--app-ink-2)" }}>
+              {condition}
+            </span>
+          )}
+          <span className="ml-auto flex gap-2 text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            {high != null && <span>High {high}°</span>}
+            {sunset && <span>Sunset {sunset}</span>}
           </span>
-        )}
-        {condition && (
-          <span
-            className="font-medium"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            {condition}
-          </span>
-        )}
-        <span className="ml-auto flex gap-2 text-[12.5px] tabular-nums"  style={{ color: "var(--app-ink-3)" }}>
-          {high != null && <span>High {high}°</span>}
-          {sunset && <span>Sunset {sunset}</span>}
         </span>
-      </div>
+      </Link>
 
       {/* Pulse chips (only when unusual) */}
       {shown.length > 0 && (

@@ -1,13 +1,14 @@
 /**
  * /today — Frederick County's dense morning read.
  *
- * NEW ORDER (2026-10-06 rework):
+ * NEW ORDER (2026-10-06 rework + visual layer):
  * 1. Conditions line: current weather + high + sunset, plus at most 2 unusual Pulse chips
  * 2. Today's best three events: daytime, evening, free/family spread across towns
  * 3. Tonight: events starting at or after 5 PM
  * 4. Coming up this week: 2-3 anchor events from next 7 days
- * 5. One curated seasonal pick: collection that fits the season/day
- * 6. Places: one "Good for this morning/afternoon/evening" block, posted hours
+ * 5. Tools: area picker, Find, Open now / essentials (below the briefing)
+ * 6. One curated seasonal pick: collection that fits the season/day
+ * 7. Places: one "Good for this morning/afternoon/evening" block, posted hours
  *
  * Rules:
  * - No duplicate places blocks
@@ -50,14 +51,18 @@ import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import PlaceSheetBoundary from "@/components/place/PlaceSheetBoundary";
 import PageBloom from "@/components/ui/PageBloom";
 import Skeleton from "@/components/ui/Skeleton";
+import { Surface } from "@/components/ui/Surface";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import FromYourSaved from "@/components/today/FromYourSaved";
 import TodayLocalGuides, {
   TodayFoodTruckGuide,
 } from "@/components/today/TodayLocalGuides";
+import TodayAsk from "@/components/today/TodayAsk";
+import CravingStrip from "@/components/now/CravingStrip";
 import { getStoredFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { nextPublishedFoodTruckStop } from "@/lib/food-trucks/today-summary";
+import { eventHiddenFromToday, eventInstant } from "@/lib/today/event-fields";
 
 export async function generateMetadata(): Promise<Metadata> {
   const day = easternDayKey(new Date());
@@ -111,16 +116,19 @@ export default async function TodayPage() {
           </div>
         </Suspense>
 
-        {/* Page header: title + scope status */}
-        <header className="mb-4 space-y-2">
+        {/* Compact identity. Event titles carry the visual primary. */}
+        <header className="mb-3">
           <h1
-            className="font-sans text-[clamp(2rem,8vw,3rem)] font-semibold leading-none tracking-[-0.035em]"
-            style={{ color: "var(--app-ink)" }}
+            className="font-sans text-[15px] font-semibold tracking-tight"
+            style={{ color: "var(--app-ink-2)" }}
           >
             Today in Frederick
           </h1>
           <Suspense fallback={null}>
-            <TodayScopeStatus dateline={formatEasternDateline(now)} />
+            <TodayScopeStatus
+              dateline={formatEasternDateline(now)}
+              controls="status"
+            />
           </Suspense>
         </header>
 
@@ -137,35 +145,48 @@ export default async function TodayPage() {
           <TodayConditionsLine />
         </Suspense>
 
-        {/* 2-4. Events sections */}
+        {/* 2-4. Events first so a phone fold shows conditions + a card. */}
         <Suspense fallback={<EventsSectionsFallback />}>
           <EventsSections eventsPromise={eventsPromise} now={now} />
         </Suspense>
+
+        {/* Tools sit below the briefing, not above the night's picks. */}
+        <section
+          aria-label="Find a place or service"
+          data-surface-row="find"
+          className="mt-8 space-y-3"
+        >
+          <h2
+            className="font-sans text-[15px] font-semibold tracking-tight"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            Find a place
+          </h2>
+          <Suspense fallback={null}>
+            <TodayScopeStatus controls="picker" />
+          </Suspense>
+          <TodayAsk>
+            <CravingStrip />
+          </TodayAsk>
+        </section>
 
         {/* 5. Seasonal collection pick */}
         <Suspense fallback={null}>
           <SeasonalSection now={now} forecastPromise={forecastForLean} />
         </Suspense>
 
-        {/* 6. Places section (once only, with posted hours wording) */}
-        <section aria-label="Places for your area" className="mt-6">
-          <h2
-            className="mb-3 font-sans text-[18px] font-semibold tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            Good for this hour
-          </h2>
-          <Suspense
-            fallback={
-              <Skeleton.Block
-                height={180}
-                round="var(--app-radius-md)"
-              />
-            }
-          >
-            <PlacesSection now={now} forecastPromise={forecastForLean} />
-          </Suspense>
-        </section>
+        {/* 6. Places once. The block hides itself when it has nothing to show. */}
+        <Suspense
+          fallback={
+            <Skeleton.Block
+              height={180}
+              round="var(--app-radius-md)"
+              className="mt-6"
+            />
+          }
+        >
+          <PlacesSection now={now} forecastPromise={forecastForLean} />
+        </Suspense>
 
         {/* Secondary context: local guides, saved places */}
         <CollapsibleSection
@@ -217,6 +238,7 @@ async function EventsSections({
   // Filter to verified, non-utility, non-routine events for picks
   const pickCandidates = publicEvents.filter(
     (e) =>
+      !eventHiddenFromToday(e) &&
       !isUtilityEvent(e) &&
       !isRoutineProgram(e) &&
       eventDecisionVerification(e, now).sourceVerified,
@@ -229,7 +251,7 @@ async function EventsSections({
   // Graceful degradation: if archive is degraded and we have no picks, hide sections
   if (sourceHealth.degraded && bestThree.length === 0 && tonight.length === 0) {
     return (
-      <div className="mt-6 rounded-[var(--app-radius-md)] border p-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
+      <Surface variant="sunken" padding="md" className="mt-6">
         <p className="text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
           Today&apos;s event picks are briefly unavailable. The full{" "}
           <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
@@ -237,18 +259,18 @@ async function EventsSections({
           </Link>{" "}
           remains available.
         </p>
-      </div>
+      </Surface>
     );
   }
 
   return (
-    <div className="mt-6 space-y-6">
+    <div className="mt-4 space-y-7">
       {/* Today's best three */}
       {bestThree.length > 0 && (
         <section aria-label="Today's picks">
           <div className="mb-3 flex items-baseline justify-between">
             <h2
-              className="font-sans text-[18px] font-semibold tracking-tight"
+              className="font-sans text-[16px] font-semibold tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
               Events today
@@ -259,7 +281,10 @@ async function EventsSections({
               className="tap-44-y flex items-center gap-1 text-[12px] font-semibold"
               style={{ color: "var(--app-brand-press)" }}
             >
-              <span className="tabular-nums">{publicEvents.filter((e) => easternDayKey(new Date(e.starts_at)) === easternDayKey(now)).length} total</span>
+              <span className="tabular-nums">{publicEvents.filter((e) => {
+                const start = eventInstant(e.starts_at);
+                return start ? easternDayKey(start) === easternDayKey(now) : false;
+              }).length} total</span>
               <ChevronRight
                 className="h-3 w-3"
                 strokeWidth={2.5}
@@ -267,9 +292,14 @@ async function EventsSections({
               />
             </Link>
           </div>
-          <div className="space-y-2">
-            {bestThree.map((event) => (
-              <TodayEventPick key={event.slug} event={event} />
+          <div className="space-y-3">
+            {bestThree.map((event, index) => (
+              <TodayEventPick
+                key={event.slug}
+                event={event}
+                variant={index === 0 ? "lead" : "compact"}
+                now={now}
+              />
             ))}
           </div>
           {sourceHealth.degraded && (
@@ -284,14 +314,19 @@ async function EventsSections({
       {tonight.length > 0 && (
         <section aria-label="Tonight">
           <h2
-            className="mb-3 font-sans text-[18px] font-semibold tracking-tight"
+            className="mb-3 font-sans text-[16px] font-semibold tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
             Tonight
           </h2>
-          <div className="space-y-2">
-            {tonight.slice(0, 5).map((event) => (
-              <TodayEventPick key={event.slug} event={event} />
+          <div className="space-y-3">
+            {tonight.slice(0, 5).map((event, index) => (
+              <TodayEventPick
+                key={event.slug}
+                event={event}
+                variant={bestThree.length === 0 && index === 0 ? "lead" : "compact"}
+                now={now}
+              />
             ))}
           </div>
           {tonight.length > 5 && (
@@ -316,14 +351,14 @@ async function EventsSections({
       {thisWeek.length > 0 && (
         <section aria-label="Coming up this week">
           <h2
-            className="mb-3 font-sans text-[18px] font-semibold tracking-tight"
+            className="mb-3 font-sans text-[15px] font-semibold tracking-tight"
             style={{ color: "var(--app-ink-2)" }}
           >
             Coming up this week
           </h2>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {thisWeek.map((event) => (
-              <TodayEventPick key={event.slug} event={event} />
+              <TodayEventPick key={event.slug} event={event} now={now} />
             ))}
           </div>
         </section>

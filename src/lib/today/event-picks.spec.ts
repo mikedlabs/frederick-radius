@@ -12,6 +12,7 @@ import {
   isDaytimeEvent,
   pickBestThree,
   pickTonightEvents,
+  pickThisWeekAnchors,
 } from "./event-picks";
 
 function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
@@ -207,6 +208,41 @@ describe("pickBestThree", () => {
     const picks = pickBestThree(events, now);
     expect(picks.map((p) => p.slug)).not.toContain("routine");
   });
+
+  it("excludes campus and notice listings when event_scope is present", () => {
+    const campus = Object.assign(
+      event({ slug: "campus", starts_at: "2026-10-06T15:00:00Z" }),
+      { event_scope: "campus" as const },
+    );
+    const notice = Object.assign(
+      event({ slug: "notice", starts_at: "2026-10-06T16:00:00Z" }),
+      { event_scope: "notice" as const },
+    );
+    const events = [
+      event({ slug: "good", starts_at: "2026-10-06T14:00:00Z" }),
+      campus,
+      notice,
+    ];
+    const now = new Date("2026-10-06T13:00:00Z");
+    const picks = pickBestThree(events, now);
+    expect(picks.map((p) => p.slug)).toEqual(["good"]);
+  });
+
+  it("reads FCPL space-separated start times without dropping the pick", () => {
+    const events = [
+      event({
+        slug: "storytime",
+        title: "Saturday Storytime",
+        starts_at: "2026-10-06 14:00:00+00",
+        ends_at: "2026-10-06 15:00:00+00",
+        is_free: true,
+      }),
+    ];
+    const now = new Date("2026-10-06T13:00:00Z");
+    expect(pickBestThree(events, now).map((item) => item.slug)).toEqual([
+      "storytime",
+    ]);
+  });
 });
 
 describe("pickTonightEvents", () => {
@@ -232,5 +268,30 @@ describe("pickTonightEvents", () => {
     const now = new Date("2026-10-06T13:00:00Z");
     const tonight = pickTonightEvents(events, now);
     expect(tonight).toHaveLength(1);
+  });
+});
+
+describe("pickThisWeekAnchors", () => {
+  it("keeps Colorfest as a this-week anchor even without the word festival", () => {
+    const events = [
+      event({
+        slug: "catoctin-colorfest-thurmont-2026",
+        title: "Catoctin Colorfest",
+        starts_at: "2026-10-10T13:00:00Z",
+        ends_at: "2026-10-11T21:00:00Z",
+        municipality: "thurmont",
+        municipality_name: "Thurmont",
+      }),
+      event({
+        slug: "quiet-talk",
+        title: "Quiet talk",
+        starts_at: "2026-10-08T18:00:00Z",
+      }),
+    ];
+    const now = new Date("2026-10-09T13:00:00Z");
+    const anchors = pickThisWeekAnchors(events, now);
+    expect(anchors.map((item) => item.slug)).toEqual([
+      "catoctin-colorfest-thurmont-2026",
+    ]);
   });
 });

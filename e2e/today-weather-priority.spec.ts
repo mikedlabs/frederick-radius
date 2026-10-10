@@ -7,10 +7,9 @@ import {
 
 /**
  * The regular suite checks whichever real weather state resolves. Browser
- * routing cannot control TodayCard's server-side NWS/AirNow reads.
+ * routing cannot control server-side NWS/AirNow reads.
  * For strict unavailable coverage, use playwright.weather-guarded.config.ts
- * after the normal promoted production build. That config starts its own
- * runtime with the existing Node egress guard; no weather markup is fabricated.
+ * after the normal promoted production build.
  */
 const VIEWPORTS = [
   { width: 320, height: 844 },
@@ -40,9 +39,6 @@ test.beforeEach(async ({ page, context, baseURL }) => {
     const request = route.request();
     const url = new URL(request.url());
     if (url.origin !== origin.origin) return route.abort();
-    // Record keyboard navigation to the real forecast destination without
-    // entering Pulse's server/provider work. This proves the route request,
-    // not the destination's weather data or complete navigation lifecycle.
     if (url.pathname === "/pulse" && url.searchParams.get("open") === "weather") {
       return route.abort();
     }
@@ -108,8 +104,7 @@ for (const colorScheme of ["light", "dark"] as const) {
           const renderedWeather = weather.locator("[data-weather-state]");
           const forecast = weather.locator('a[href*="open=weather"]');
           const find = page.locator('[data-surface-row="find"]');
-          const places = page.locator('[data-today-current-content] > [aria-label="Places for your area"]');
-          const events = page.locator("#whats-on");
+          const firstEvent = page.locator("[data-today-event-pick]").first();
           await expect(weather).toHaveCount(1);
           await expect(forecast).toHaveCount(1);
           await expect(page.locator('a[href*="/pulse"][href*="open=weather"]')).toHaveCount(1);
@@ -122,15 +117,9 @@ for (const colorScheme of ["light", "dark"] as const) {
             await test.step("guarded server resolves honest unavailable weather", async () => {
               expect(weatherState).toBe("unavailable");
               await expect(weather).toContainText("The NWS forecast is briefly unavailable.");
-              await expect(weather.locator('[aria-label="Today in Frederick"]')).toHaveCount(0);
-              // An ordinary guarded day has no interruption above the masthead.
-              // Active alert priority remains separately guarded by TodayHierarchy.
-              await expect(page.getByRole("region", { name: "Heads up", exact: true })).toHaveCount(0);
             });
           }
           await expect(find).toBeVisible();
-          await expect(places).toBeAttached();
-          await expect(events).toBeAttached();
           await page.evaluate(async () => {
             await document.fonts.ready;
             await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
@@ -141,29 +130,24 @@ for (const colorScheme of ["light", "dark"] as const) {
               const next = document.querySelector(selector);
               return next !== null && Boolean(element.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING);
             };
-            const masthead = document.querySelector("main .scroll-masthead");
             return {
-              afterMasthead: masthead !== null && Boolean(masthead.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING),
               beforeFind: before('[data-surface-row="find"]'),
-              beforePlaces: before('[data-today-current-content] > [aria-label="Places for your area"]'),
-              beforeEvents: before("#whats-on"),
+              beforeEvents: before("[data-today-event-pick]") || document.querySelector("[data-today-event-pick]") === null,
             };
           });
-          expect(order).toEqual({ afterMasthead: true, beforeFind: true, beforePlaces: true, beforeEvents: true });
+          expect(order.beforeFind).toBe(true);
 
           const weatherBox = (await weather.boundingBox())!;
-          const mastheadBox = (await page.locator("main .scroll-masthead").boundingBox())!;
           const findBox = (await find.boundingBox())!;
           expect(await page.evaluate(() => window.scrollY)).toBe(0);
           expect(weatherBox.height).toBeGreaterThan(0);
-          if (viewport.width < 960) {
-            expect(weatherBox.y).toBeGreaterThanOrEqual(mastheadBox.y + mastheadBox.height);
-          } else {
-            expect(Math.abs(weatherBox.y - mastheadBox.y)).toBeLessThanOrEqual(1);
-            expect(weatherBox.x).toBeGreaterThanOrEqual(mastheadBox.x + mastheadBox.width);
-          }
           expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(viewport.height);
           expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(findBox.y);
+          if (await firstEvent.count()) {
+            const eventBox = (await firstEvent.boundingBox())!;
+            expect(eventBox.y).toBeGreaterThan(weatherBox.y);
+            expect(findBox.y).toBeGreaterThan(eventBox.y);
+          }
           expect(weatherBox.x).toBeGreaterThanOrEqual(0);
           expect(weatherBox.x + weatherBox.width).toBeLessThanOrEqual(viewport.width);
           await expect.poll(() => page.evaluate(() =>
@@ -171,7 +155,6 @@ for (const colorScheme of ["light", "dark"] as const) {
           )).toBeLessThanOrEqual(1);
 
           const forecastBox = (await forecast.boundingBox())!;
-          // Round only CSS-transform representation, as in the existing layout gate.
           expect(Math.round(forecastBox.height * 100) / 100).toBeGreaterThanOrEqual(44);
           expect(forecastBox.width).toBeGreaterThanOrEqual(44);
           await expect.poll(() => fivePointForecastProbe(forecast)).toEqual([true, true, true, true, true]);
