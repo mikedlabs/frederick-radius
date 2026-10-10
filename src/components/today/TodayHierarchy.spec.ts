@@ -101,6 +101,12 @@ describe("Today decision hierarchy", () => {
     expect(renderedPage).toContain("fairPromotionPhase ? (");
     expect(renderedPage).toContain(": civicMoment ? (");
     expect(renderedPage.match(/<TodayFairFeature\b/g)).toHaveLength(1);
+    expect(todayPage).toContain(
+      'const TodayFairFeature = dynamic(\n  () => import("@/components/today/TodayFairFeature"),\n);',
+    );
+    expect(todayPage).not.toMatch(
+      /import TodayFairFeature from ["']@\/components\/today\/TodayFairFeature["']/,
+    );
   });
 
   it("puts In The Streets ahead of the ordinary briefing on its actual day", () => {

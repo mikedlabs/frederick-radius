@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
 import TodayPlanTonightLink from "@/components/today/TodayPlanTonightLink";
@@ -10,7 +11,9 @@ import KeysScore from "@/components/today/KeysScore";
 import LocalSportsScoreboard from "@/components/today/LocalSportsScoreboard";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MomentSpotlight from "@/components/today/MomentSpotlight";
-import TodayFairFeature from "@/components/today/TodayFairFeature";
+const TodayFairFeature = dynamic(
+  () => import("@/components/today/TodayFairFeature"),
+);
 import Image from "next/image";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
@@ -34,6 +37,8 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { splitTonightFeature, withoutTodayFeature } from "@/lib/today/tonight";
 import PoolsToday from "@/components/today/PoolsToday";
 import TodayLocalGuides, { TodayFoodTruckGuide } from "@/components/today/TodayLocalGuides";
+import { BREWERIES } from "@/data/beers";
+import { FOOD_TRUCKS } from "@/data/food-trucks";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import TomorrowPreview from "@/components/today/TomorrowPreview";
 import WeatherSafeGoldenHour from "@/components/today/WeatherSafeGoldenHour";
@@ -415,8 +420,10 @@ export default async function HomePage() {
       >
         <div className="space-y-5">
           <TodayLocalGuides
+            breweryCount={BREWERIES.length}
+            foodTruckCount={FOOD_TRUCKS.length}
             foodTruckGuide={
-              <Suspense fallback={<TodayFoodTruckGuide />}>
+              <Suspense fallback={<TodayFoodTruckGuide foodTruckCount={FOOD_TRUCKS.length} />}>
                 <TodayFoodTruckGuideWithSchedule now={now} />
               </Suspense>
             }
@@ -527,6 +534,7 @@ async function TodayFoodTruckGuideWithSchedule({ now }: { now: Date }) {
     <TodayFoodTruckGuide
       nextFoodTruckStop={nextStop}
       asOf={now.toISOString()}
+      foodTruckCount={FOOD_TRUCKS.length}
     />
   );
 }

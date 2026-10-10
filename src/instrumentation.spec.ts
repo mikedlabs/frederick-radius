@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@sentry/nextjs", () => ({
@@ -13,6 +14,15 @@ afterEach(() => {
 });
 
 describe("instrumentation startup", () => {
+  it("keeps Sentry client tracing out of the shared /today and /events chunk", () => {
+    const source = readFileSync("src/instrumentation-client.ts", "utf8");
+    const nextConfig = readFileSync("next.config.ts", "utf8");
+    expect(source).toContain("tracesSampleRate: 0");
+    expect(source).toContain("export function onRouterTransitionStart() {}");
+    expect(source).not.toContain("captureRouterTransitionStart");
+    expect(nextConfig).toContain("excludeTracing: true");
+  });
+
   it("does not issue a cache-warm HTTP request on a Node cold start", () => {
     vi.stubEnv("NEXT_RUNTIME", "nodejs");
     vi.stubEnv("VERCEL_ENV", "production");

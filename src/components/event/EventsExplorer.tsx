@@ -1,14 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import dynamic from "next/dynamic";
 import { featuredEventSlugs } from "@/lib/events/featured";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, ChevronDown, LocateFixed, X } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
-import EventAgenda from "@/components/event/EventAgenda";
-import EventsMap from "@/components/event/EventsMap";
+
+const EventAgenda = dynamic(() => import("@/components/event/EventAgenda"));
+const EventsMap = dynamic(() => import("@/components/event/EventsMap"), {
+  ssr: false,
+  loading: () => (
+    <div
+      className="h-[460px] w-full animate-pulse rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-sunken)]"
+      style={{ borderColor: "var(--app-border)" }}
+    />
+  ),
+});
 import EventsBoardDock, { type ViewKey, type EventSortKey } from "@/components/event/EventsBoardDock";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
@@ -1339,21 +1348,12 @@ export default function EventsExplorer({
         // — a bare `grid` leaves an auto track that a card with a wide
         // min-content (one long unbroken token) stretches past the page edge
         // (397px track in a 358px column, Jul-9 mobile audit).
-        <motion.ul layout className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-          <AnimatePresence>
+        <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
             {filtered.slice(0, 100).map((e) => (
-              <motion.li
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                key={`${e.slug}-${e.starts_at}`}
-              >
+              <li key={`${e.slug}-${e.starts_at}`}>
                 <EventCard event={e} nowISO={nowISO} />
-              </motion.li>
+              </li>
             ))}
-          </AnimatePresence>
           {filtered.length > 100 && (
             <li
               className="col-span-full pt-2 text-center text-[11px]"
@@ -1362,7 +1362,7 @@ export default function EventsExplorer({
               Showing the first 100. Use filters or the calendar view to narrow further.
             </li>
           )}
-        </motion.ul>
+        </ul>
       ) : (
         // Grouped by human time horizon — "what's on now / today / this
         // weekend / later" — so the page is navigable at a glance, not
@@ -1538,24 +1538,9 @@ function CompactEventList({
   nowISO: string;
 }) {
   if (events.length === 0) return null;
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.05 }
-    }
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 15, scale: 0.98 },
-    show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring" as const, bounce: 0, duration: 0.4 } }
-  };
 
   return (
-    <motion.ol
-      variants={container}
-      initial="hidden"
-      animate="show"
+    <ol
       className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
       style={{
         borderColor: "var(--app-border)",
@@ -1563,16 +1548,16 @@ function CompactEventList({
       }}
     >
       {events.map((event) => (
-        <motion.li variants={item} key={`${event.slug}-${event.starts_at}`}>
+        <li key={`${event.slug}-${event.starts_at}`}>
           <EventCard
             event={event}
             variant="compact"
             live={live.has(event.slug)}
             nowISO={nowISO}
           />
-        </motion.li>
+        </li>
       ))}
-    </motion.ol>
+    </ol>
   );
 }
 
@@ -1590,11 +1575,7 @@ function PromotedEvent({
   nowISO: string;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: "spring", bounce: 0.1, duration: 0.5 }}
-    >
+    <div>
       <EventCard
         event={event}
         variant="feature"
@@ -1603,6 +1584,6 @@ function PromotedEvent({
         priorityImage={priorityImage}
         visual={visual ?? undefined}
       />
-    </motion.div>
+    </div>
   );
 }

@@ -12,11 +12,12 @@ const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 if (dsn) {
   Sentry.init({
     dsn,
-    tracesSampleRate: 0.1,
+    tracesSampleRate: 0,
     sendDefaultPii: false,
     enableLogs: false,
   });
 }
 
-// Required by the Sentry Next.js SDK to instrument client navigations.
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+// Tracing is off on purpose: the Sentry client SDK was the shared 400KB+
+// chunk on /today and /events. Keep unhandled-error capture only.
+export function onRouterTransitionStart() {}

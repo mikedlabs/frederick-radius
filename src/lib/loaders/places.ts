@@ -1237,6 +1237,40 @@ export function slimForList(p: PlaceCardData): PlaceCardData {
 }
 
 /**
+ * Category directories only paint a card. Drop review prose, raw hours,
+ * amenity dumps, and contact fields so the first page of a hub like
+ * /category/food stays in the HTML without embedding the rest of the
+ * catalog. The hero photo URL stays so the first screen still has images.
+ */
+export function slimForCategoryList(p: PlaceCardData): PlaceCardData {
+  const listPlace = slimForList(p);
+  const {
+    description: _description,
+    review_snippet: _reviewSnippet,
+    review_author: _reviewAuthor,
+    review_author_uri: _reviewAuthorUri,
+    review_author_photo_uri: _reviewAuthorPhoto,
+    review_google_maps_uri: _reviewMaps,
+    hours: _hours,
+    amenities: _amenities,
+    website: _website,
+    phone: _phone,
+    ...rest
+  } = listPlace;
+  void _description;
+  void _reviewSnippet;
+  void _reviewAuthor;
+  void _reviewAuthorUri;
+  void _reviewAuthorPhoto;
+  void _reviewMaps;
+  void _hours;
+  void _amenities;
+  void _website;
+  void _phone;
+  return rest as PlaceCardData;
+}
+
+/**
  * The nearby decision surface needs enough data to rank and open an immediate
  * answer card, but not review prose, raw hours, or detail-only link metadata for
  * every eligible place in the county. PlaceSheet fills missing live details for
