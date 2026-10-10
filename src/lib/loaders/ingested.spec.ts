@@ -200,6 +200,56 @@ describe("multi-day all-day ingested visibility", () => {
     });
   });
 
+  it("surfaces a CivicEngage Radius slug and still quarantines leftover calendar labels", async () => {
+    const sql = vi.fn(async () => [
+      {
+        source_uid: "seniors-1",
+        source_domain: "www.frederickcountymd.gov",
+        source_url:
+          "https://www.frederickcountymd.gov/calendar.aspx?EID=19001",
+        title: "Seniors in the Park",
+        description: "A weekly gathering for older adults.",
+        starts_at_utc: "2026-07-12T15:00:00.000Z",
+        ends_at_utc: "2026-07-12T16:00:00.000Z",
+        all_day: false,
+        venue_name: "1440 Taney Avenue",
+        address: "1440 Taney Avenue, Frederick, MD 21702",
+        lat: null,
+        lng: null,
+        municipality: "Frederick County",
+        category: "community",
+        hero_image: null,
+        hero_image_alt: null,
+      },
+      {
+        source_uid: "legacy-1",
+        source_domain: "www.frederickcountymd.gov",
+        source_url:
+          "https://www.frederickcountymd.gov/calendar.aspx?EID=19002",
+        title: "Ambulance Co. Bingo",
+        description: "A fire-company fundraiser.",
+        starts_at_utc: "2026-07-12T23:00:00.000Z",
+        ends_at_utc: "2026-07-13T01:00:00.000Z",
+        all_day: false,
+        venue_name: "12 East A Street",
+        address: "12 East A Street, Brunswick, MD 21716",
+        lat: null,
+        lng: null,
+        municipality: "Frederick County",
+        category: "Workforce Services",
+        hero_image: null,
+        hero_image_alt: null,
+      },
+    ]);
+    mocks.getSql.mockReturnValue(sql);
+
+    const series = await getIngestedSeries();
+    const seniors = series.find((s) => s.title === "Seniors in the Park");
+    const bingo = series.find((s) => s.title === "Ambulance Co. Bingo");
+    expect(seniors?.category).toBe("community");
+    expect(bingo?.category).toBeNull();
+  });
+
   it("does not resolve a syndicated social profile as an event detail", async () => {
     const title =
       "RCCG- NCCC (@rccg.nccc) • Instagram photos and videos";
