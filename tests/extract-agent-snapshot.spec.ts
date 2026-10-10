@@ -104,12 +104,13 @@ describe("fetchPageSnapshot", () => {
   });
 
   it("sends a browser-shaped User-Agent to Celebrate Frederick and Visit Frederick", async () => {
-    const fetchMock = vi.fn(async (input: string | URL | Request) => ({
-      ok: true,
-      status: 200,
-      url: String(input),
-      text: async () => "<html><body><h1>Events</h1></body></html>",
-    }));
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      void input;
+      return new Response("<html><body><h1>Events</h1></body></html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      });
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     await fetchPageSnapshot("https://www.celebratefrederick.com/events/?ical=1");

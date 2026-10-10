@@ -34,6 +34,12 @@ import {
 } from "@/lib/integrations/event-source-circuit";
 import { isEventWithinReadWindow } from "@/lib/events/visible";
 import { sourceFetchUserAgent } from "@/lib/http/source-user-agent";
+import {
+  applyCivicEngageCatIds,
+  fetchCivicEngageCatIdIndex,
+  type CivicEngageCatIdIndex,
+} from "@/lib/ingest/civicengage-identity";
+import civicengageSources from "@/../config/civicengage_sources.json" with { type: "json" };
 
 const ICAL_LIVE_USER_AGENT =
   "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)";
@@ -145,6 +151,12 @@ export type LiveEvent = {
   last_verified_at: string;
   /** Publisher-owned record modification time when the source exposes one. */
   publisher_updated_at?: string;
+  /**
+   * CivicEngage catID recovered by matching the All-calendar RSS EID
+   * against the per-catID iCal feeds. Absent when the EID is unknown
+   * or lives in more than one configured calendar.
+   */
+  civicengage_catid?: number;
 };
 
 type Feed = {
@@ -678,6 +690,47 @@ export function feedCategory(feed: FeedSpec, title: string, description: string)
     inferCategory(title, description, feed.default_category),
     feed.default_category,
   );
+}
+
+const CIVICENGAGE_RSS_DOMAINS: Partial<Record<LiveEvent["source"], string>> = {
+  county: "www.frederickcountymd.gov",
+  "city-frederick": "www.cityoffrederickmd.gov",
+};
+
+function civicEngageSourceCatIds(domain: string): number[] {
+  const source = (
+    civicengageSources as Array<{
+      domain: string;
+      enabled: boolean;
+      catids: number[];
+    }>
+  ).find((row) => row.enabled && row.domain === domain);
+  return source?.catids ?? [];
+}
+
+const loadCivicEngageRssIndexCached = unstable_cache(
+  async (domain: string, catids: number[]) =>
+    fetchCivicEngageCatIdIndex(domain, catids, {
+      userAgent: ICAL_LIVE_USER_AGENT,
+      deadlineMs: 12_000,
+    }),
+  ["civicengage-catid-index-v1", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  { revalidate: 3600, tags: ["events", "county-events"] },
+);
+
+async function loadCivicEngageRssIndex(
+  domain: string,
+): Promise<CivicEngageCatIdIndex | null> {
+  // Tests mock a single RSS fetch. Do not open the per-catID iCal fanout
+  // from that path; identity matching is covered by civicengage-identity.
+  if (process.env.NODE_ENV === "test") return null;
+  const catids = civicEngageSourceCatIds(domain);
+  if (catids.length === 0) return null;
+  try {
+    return await loadCivicEngageRssIndexCached(domain, catids);
+  } catch {
+    return null;
+  }
 }
 
 type EventVenue = { venue: string; address: string };
@@ -1290,6 +1343,10 @@ async function fetchRssFeed(
       ? COUNTY_PUBLIC_FEED_TIMEOUT_MS
       : FEED_FETCH_TIMEOUT_MS);
   const deadline = createAbortDeadline(timeoutMs, parentSignal);
+  const indexDomain = CIVICENGAGE_RSS_DOMAINS[feed.source];
+  const indexPromise = indexDomain
+    ? loadCivicEngageRssIndex(indexDomain)
+    : Promise.resolve(null);
   try {
     const res = await fetch(feed.url, {
       signal: deadline.signal,
@@ -1393,9 +1450,12 @@ async function fetchRssFeed(
       if (validated) events.push(validated);
     }
 
-    console.log(`[ical-live] ${feed.source}: parsed ${events.length} RSS events in window`);
-    recordSnapshot(feed.source, events);
-    return { events, ok: true };
+    const index = await indexPromise;
+    const tagged = index ? applyCivicEngageCatIds(events, index) : events;
+
+    console.log(`[ical-live] ${feed.source}: parsed ${tagged.length} RSS events in window`);
+    recordSnapshot(feed.source, tagged);
+    return { events: tagged, ok: true };
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
     reportFeedUnavailable(
