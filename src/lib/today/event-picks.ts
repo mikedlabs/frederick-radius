@@ -17,6 +17,7 @@ import { eventHasTrustworthyEnd } from "@/lib/eventWhenLabel";
 import { easternDayKey } from "@/lib/tz";
 import {
   eventEndTrust,
+  eventFreeStatus,
   eventHiddenFromToday,
   eventInstant,
   eventSeriesKey,
@@ -156,9 +157,9 @@ export function isWrappedEvent(event: EventWithMeta, now: Date): boolean {
   return end ? end.getTime() < now.getTime() : false;
 }
 
-/** Is this event free? Only treat is_free:true as free (false means unknown). */
+/** Proven-free for the third slot. Reads `eventFreeStatus`, not raw is_free. */
 export function isFreeEvent(event: EventWithMeta): boolean {
-  return event.is_free === true;
+  return eventFreeStatus(event) === "proven";
 }
 
 /** Is this event family-friendly? Check audience field (kids-*) first,
@@ -190,7 +191,7 @@ export function isDaytimeEvent(event: EventWithMeta): boolean {
 /** Pick the best three events for Today: one daytime, one evening, one free/family.
  * Spread across towns when possible. Cap at one per series. Demote online/wrapped.
  * 
- * Third slot rule (2026-10-06): Pick a proven-free event (is_free:true) if one exists,
+ * Third slot rule (2026-10-06): Pick a proven-free event if one exists,
  * otherwise a family event (kids-* audience), otherwise show only two picks (never pad).
  * 
  * Excludes: source:fcc (bad timing), senior routine programs. */

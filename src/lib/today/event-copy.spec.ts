@@ -45,6 +45,21 @@ describe("todayEventWhy", () => {
       todayEventWhy(event({ is_free: false, description: "" }), beforeTheWeek),
     ).toBe("Live music");
   });
+
+  it("labels an FCPL program Free even when is_free is still false", () => {
+    expect(
+      todayEventWhy(
+        event({
+          is_free: false,
+          source: "fcpl",
+          title: "Story time",
+          description: "",
+          category: "library",
+        }),
+        beforeTheWeek,
+      ),
+    ).toBe("Free");
+  });
 });
 
 describe("todayEventSourceLabel", () => {

@@ -44,6 +44,49 @@ export function eventHiddenFromToday(event: object): boolean {
   return scope === "campus" || scope === "notice";
 }
 
+export type TodayFreeStatus = "proven" | "paid" | "unknown";
+
+/**
+ * Named-fee language that overrides the FCPL no-cost default. Word-bounded
+ * so "coffee" / "feedback" do not count. Copied from #1740's contract.
+ */
+const FCPL_NAMED_FEE_RE =
+  /\$\s*\d|\b(?:registration\s+)?fees?\b|\bcost\s*:|\btickets?\b/i;
+
+/**
+ * Free classification for Today labels and the free pick slot.
+ *
+ * #1740 exports `eventFreeStatus()` from `src/lib/events/eventFlags.ts`.
+ * Do not import it until that PR merges. After it lands, keep this wrapper
+ * and swap the body to call that helper. Until then this copy includes
+ * FCPL free-by-default so library programs show as Free.
+ */
+export function eventFreeStatus(event: object): TodayFreeStatus {
+  if (readUnknown(event, "is_free") === true) return "proven";
+
+  if (readUnknown(event, "source") === "fcpl") {
+    const title = readUnknown(event, "title");
+    const description = readUnknown(event, "description");
+    const namedFee = FCPL_NAMED_FEE_RE.test(
+      [typeof title === "string" ? title : "", typeof description === "string" ? description : ""].join(
+        " ",
+      ),
+    );
+    if (!namedFee) return "proven";
+  }
+
+  const priceText = readUnknown(event, "price_text");
+  const info = readUnknown(event, "info");
+  const admission =
+    info && typeof info === "object" && !Array.isArray(info)
+      ? (info as { admission?: unknown }).admission
+      : undefined;
+  const hasEvidence =
+    (typeof priceText === "string" && Boolean(priceText.trim())) ||
+    (typeof admission === "string" && Boolean(admission.trim()));
+  return hasEvidence ? "paid" : "unknown";
+}
+
 /**
  * Live and wrapped labels are honest only when end_trust is "ok".
  * Boolean true is accepted for the in-flight rework that used a flag.

@@ -32,6 +32,22 @@ function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
 const now = new Date("2026-07-26T16:00:00.000Z");
 
 describe("TonightHeadline", () => {
+  it("labels an FCPL program Free even when is_free is still false", () => {
+    const html = renderToStaticMarkup(
+      createElement(TonightHeadline, {
+        event: event({
+          source: "fcpl",
+          is_free: false,
+          title: "Story time",
+          venue_name: "C. Burr Artz Public Library",
+        }),
+        now,
+      }),
+    );
+
+    expect(html).toContain("Free");
+  });
+
   it("prints the same town label the program rows print for city events", () => {
     const html = renderToStaticMarkup(
       createElement(TonightHeadline, {

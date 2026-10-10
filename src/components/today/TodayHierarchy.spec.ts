@@ -78,6 +78,22 @@ describe("Today page rework (2026-10-06)", () => {
     expect(todayPage).not.toContain("eventScope");
   });
 
+  it("routes Free labels through one local helper, not raw is_free", () => {
+    const pick = readFileSync("src/components/today/TodayEventPick.tsx", "utf8");
+    const headline = readFileSync("src/components/today/TonightHeadline.tsx", "utf8");
+    const copy = readFileSync("src/lib/today/event-copy.ts", "utf8");
+    const picks = readFileSync("src/lib/today/event-picks.ts", "utf8");
+    const recovery = readFileSync("src/lib/today-events.ts", "utf8");
+    expect(copy).toContain("eventFreeStatus");
+    expect(picks).toContain("eventFreeStatus");
+    expect(headline).toContain("eventFreeStatus");
+    expect(recovery).toContain("eventFreeStatus");
+    expect(pick).not.toMatch(/\.is_free\b/);
+    expect(headline).not.toMatch(/\.is_free\b/);
+    expect(picks).not.toMatch(/event\.is_free\b/);
+    expect(recovery).not.toMatch(/event\.is_free\b/);
+  });
+
   it("keeps Find below events and out of the chatbot register", () => {
     expect(todayPage).not.toContain("What do you need?");
     expect(todayPage).not.toContain("PageBloom");

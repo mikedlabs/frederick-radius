@@ -16,6 +16,7 @@ import { easternDayKey } from "@/lib/tz";
 import { eventTown } from "@/lib/events/eventTown";
 import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
 import EventWalkTime from "@/components/today/EventWalkTime";
+import { eventFreeStatus } from "@/lib/today/event-fields";
 
 /**
  * TonightHeadline — the ONE headline of /today, rendered only when the day
@@ -136,7 +137,7 @@ export default function TonightHeadline({
                 {live ? "On now" : date.time || `${date.weekday} ${date.month} ${date.day}`}
               </span>
               {where && <span style={{ color: "var(--app-ink-3)" }}> · {where}</span>}
-              {event.is_free && <span style={{ color: "var(--app-cool)" }}> · Free</span>}
+              {eventFreeStatus(event) === "proven" && <span style={{ color: "var(--app-cool)" }}> · Free</span>}
             </p>
             {eventHasPreciseDisplayLocation(event) ? (
               <EventWalkTime dest={event.geom} />

@@ -117,10 +117,13 @@ describe("isOnlineEvent", () => {
 });
 
 describe("isFreeEvent", () => {
-  it("only treats is_free:true as free", () => {
+  it("treats proven-free rows, including FCPL programs, as free", () => {
     expect(isFreeEvent(event({ is_free: true }))).toBe(true);
     expect(isFreeEvent(event({ is_free: false }))).toBe(false);
     expect(isFreeEvent(event({}))).toBe(false);
+    expect(isFreeEvent(event({ is_free: false, source: "fcpl", title: "Story time" }))).toBe(
+      true,
+    );
   });
 });
 

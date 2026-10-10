@@ -108,10 +108,12 @@ describe("TodayEventPick", () => {
           is_free: false,
           description: "",
         }),
+        now: new Date("2026-10-01T16:00:00.000Z"),
       }),
     );
     expect(html).toContain("Libraries");
     expect(html).toContain('data-today-category="library"');
+    expect(html).toContain("Free");
   });
 
   it("shows a bare street as an address, not a place name", () => {

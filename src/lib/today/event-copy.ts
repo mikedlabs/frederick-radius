@@ -3,6 +3,7 @@ import { eventSourceLabel } from "@/lib/events/source-label";
 import { eventTown } from "@/lib/events/eventTown";
 import { CATEGORY_BY_SLUG, type Category } from "@/data/categories";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { eventFreeStatus } from "@/lib/today/event-fields";
 
 const COMMUNITY = CATEGORY_BY_SLUG.community;
 const LIBRARY = CATEGORY_BY_SLUG.library;
@@ -73,7 +74,10 @@ export function todayEventWhy(
   event: EventWithMeta,
   now?: Date,
 ): string | null {
-  const reason = eventReasons(event, now)[0]?.label?.trim();
+  const reason = eventReasons(
+    { ...event, is_free: eventFreeStatus(event) === "proven" },
+    now,
+  )[0]?.label?.trim();
   if (reason) return reason;
 
   const description = event.description?.replace(/\s+/g, " ").trim();

@@ -93,6 +93,12 @@ describe("Today event shortlist", () => {
     expect(isStrongTodayEvent(official, now)).toBe(true);
     expect(official.is_verified).toBe(false);
     expect(isStrongTodayEvent(aggregator, now)).toBe(false);
+    expect(
+      selectTodayEvents(
+        [event({ slug: "library-concert", title: "Library Concert", source: "fcpl", is_verified: false, is_free: false })],
+        now,
+      )[0]?.free,
+    ).toBe(true);
   });
 
   it("hides an empty degraded section but keeps trustworthy empty-day copy", () => {

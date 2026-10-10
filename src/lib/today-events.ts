@@ -2,6 +2,7 @@ import type { Event } from "@/data/events";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { isEventEnded, isEventLiveNow, isEventToday } from "@/lib/eventWhenLabel";
 import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
+import { eventFreeStatus } from "@/lib/today/event-fields";
 import { eventTrust } from "@/lib/trust";
 
 export type TodayEventMoment = "Now" | "Later" | "Tonight" | "Today";
@@ -135,6 +136,6 @@ export function selectTodayEvents(pool: readonly Event[], now = new Date(), limi
     time: event.is_all_day ? "All day" : clock(event.starts_at),
     moment,
     image: event.hero_image ?? null,
-    free: event.is_free,
+    free: eventFreeStatus(event) === "proven",
   }));
 }

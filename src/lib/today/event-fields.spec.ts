@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   eventEndTrust,
+  eventFreeStatus,
   eventHiddenFromToday,
   eventInstant,
   eventPlaceId,
@@ -22,6 +23,33 @@ describe("optional #1740 event fields", () => {
     expect(eventHiddenFromToday({ event_scope: "public" })).toBe(false);
     expect(eventHiddenFromToday({ event_scope: "campus" })).toBe(true);
     expect(eventHiddenFromToday({ event_scope: "notice" })).toBe(true);
+  });
+
+  it("treats FCPL programs as proven free unless a named fee is present", () => {
+    expect(eventFreeStatus({ is_free: true })).toBe("proven");
+    expect(eventFreeStatus({ is_free: false })).toBe("unknown");
+    expect(eventFreeStatus({ is_free: false, price_text: "$8" })).toBe("paid");
+    expect(
+      eventFreeStatus({ is_free: false, info: { admission: "$5 at the door" } }),
+    ).toBe("paid");
+    expect(eventFreeStatus({ is_free: false, source: "fcpl", title: "Story time" })).toBe(
+      "proven",
+    );
+    expect(
+      eventFreeStatus({
+        is_free: false,
+        source: "dfp",
+        title: "Alive @ Five",
+      }),
+    ).toBe("unknown");
+    expect(
+      eventFreeStatus({
+        is_free: false,
+        source: "fcpl",
+        title: "Maker workshop",
+        description: "Registration fee required",
+      }),
+    ).toBe("unknown");
   });
 
   it("only trusts end_trust ok (or the boolean true used on the rework branch)", () => {
