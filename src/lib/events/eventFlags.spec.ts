@@ -53,6 +53,38 @@ describe("eventFreeStatus", () => {
       }),
     ).toBe("unknown");
   });
+
+  it("treats a plain FCPL program as proven free", () => {
+    expect(
+      eventFreeStatus({
+        is_free: false,
+        source: "fcpl",
+        title: "Family Storytime",
+        description: "Stories and songs in the community room.",
+      }),
+    ).toBe("proven");
+  });
+
+  it("does not treat an FCPL program with a named fee as proven", () => {
+    expect(
+      eventFreeStatus({
+        is_free: false,
+        source: "fcpl",
+        title: "Adult Craft Night",
+        description: "$10 materials fee",
+      }),
+    ).not.toBe("proven");
+  });
+
+  it("leaves a DFP event on the existing is_free / evidence path", () => {
+    expect(
+      eventFreeStatus({
+        is_free: false,
+        source: "dfp",
+        title: "Alive @ Five",
+      }),
+    ).toBe("unknown");
+  });
 });
 
 describe("eventIsFamilyFriendly", () => {

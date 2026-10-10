@@ -15,16 +15,35 @@ type EventFlagInput = {
   audience?: string[];
   attendance_mode?: "physical" | "online" | "mixed";
   online_url?: string;
+  source?: string;
+  title?: string;
+  description?: string;
 };
 
 /**
- * Free classification: true only when is_free===true.
- * Unknown when false without price_text/admission evidence.
+ * Named-fee language that overrides the FCPL no-cost default. Word-bounded
+ * so "coffee" / "feedback" do not count.
+ */
+const FCPL_NAMED_FEE_RE =
+  /\$\s*\d|\b(?:registration\s+)?fees?\b|\bcost\s*:|\btickets?\b/i;
+
+/**
+ * Free classification: true when is_free===true.
+ * FCPL programs are no-cost by official policy (FAQ; the feed has no price
+ * field), so source === "fcpl" is proven unless title/description names a
+ * real fee. Unknown when false without price_text/admission evidence.
  */
 export type FreeStatus = "proven" | "paid" | "unknown";
 
 export function eventFreeStatus(e: EventFlagInput): FreeStatus {
   if (e.is_free === true) return "proven";
+
+  if (e.source === "fcpl") {
+    const namedFee = FCPL_NAMED_FEE_RE.test(
+      [e.title, e.description].filter(Boolean).join(" "),
+    );
+    if (!namedFee) return "proven";
+  }
 
   const hasEvidence =
     Boolean(e.price_text?.trim()) ||
