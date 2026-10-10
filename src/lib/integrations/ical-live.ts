@@ -153,8 +153,9 @@ export type LiveEvent = {
   publisher_updated_at?: string;
   /**
    * CivicEngage catID recovered by matching the All-calendar RSS EID
-   * against the per-catID iCal feeds. Absent when the EID is unknown
-   * or lives in more than one configured calendar.
+   * against the per-catID iCal feeds. Absent when the EID is unknown.
+   * If several configured calendars publish the same EID, the first
+   * configured catID is kept so the live row still carries provenance.
    */
   civicengage_catid?: number;
 };
