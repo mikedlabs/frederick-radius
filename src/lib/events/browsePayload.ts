@@ -44,6 +44,8 @@ export function slimEventForBrowse(e: EventWithMeta): EventWithMeta {
     is_recurring: e.is_recurring,
     recurrence_text: e.recurrence_text,
     venue_place_slug: e.venue_place_slug,
+    place_id: e.place_id,
+    event_scope: e.event_scope,
     venue_name: e.venue_name,
     geom: e.geom,
     municipality: e.municipality,

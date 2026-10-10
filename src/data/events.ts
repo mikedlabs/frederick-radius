@@ -44,6 +44,11 @@ export type Event = {
   category: string;
   audience: string[];
   is_free: boolean;
+  /**
+   * Raw archive/publisher is_free before hydrate applies eventFreeStatus().
+   * Audit only; cards, filters, and browse read is_free.
+   */
+  is_free_source?: boolean;
   price_text?: string;
   ticket_url?: string;
   rsvp_url?: string;

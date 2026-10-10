@@ -60,6 +60,8 @@ describe("events browse payload", () => {
       event("slim", "2026-07-14T14:00:00.000Z", {
         hero_image: "/api/place-photo?name=credited",
         hero_image_attribution: heroImageAttribution,
+        place_id: "weinberg-center-for-the-arts-frederick",
+        event_scope: "public",
       }),
     );
 
@@ -70,6 +72,8 @@ describe("events browse payload", () => {
     expect(slim.geo_confidence).toBe("venue_match");
     expect(slim.municipality_name).toBe("Frederick");
     expect(slim.hero_image_attribution).toEqual(heroImageAttribution);
+    expect(slim.place_id).toBe("weinberg-center-for-the-arts-frederick");
+    expect(slim.event_scope).toBe("public");
   });
 
   it("keeps every current occurrence in the browse corpus and collapses only display rows", () => {

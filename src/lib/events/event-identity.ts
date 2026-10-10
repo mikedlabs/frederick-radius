@@ -9,6 +9,7 @@ import { matchEventVenuePlaceId } from "@/lib/events/venueAliases";
 import { classifyEventScope } from "@/lib/events/eventScope";
 import { mergeAudienceHints } from "@/lib/events/audienceSignals";
 import { normalizeEventTimestamp } from "@/lib/events/eventTimestamp";
+import { eventFreeStatus } from "@/lib/events/eventFlags";
 
 export type ArchivedEventIdentity = {
   id: string;
@@ -167,6 +168,20 @@ export function archivedEventFromSnapshot(
     event.series_key = eventSeriesKey(event.title);
   }
 
+  event.is_free_source = event.is_free;
+  if (
+    eventFreeStatus({
+      is_free: event.is_free,
+      price_text: event.price_text,
+      info: event.info,
+      source: event.source,
+      title: event.title,
+      description: event.description,
+    }) === "proven"
+  ) {
+    event.is_free = true;
+  }
+
   const placeId = matchEventVenuePlaceId({
     venue_name: event.venue_name,
     venue_place_slug: event.venue_place_slug,
@@ -174,6 +189,9 @@ export function archivedEventFromSnapshot(
   });
   if (placeId) {
     event.place_id = placeId;
+    if (!event.venue_place_slug?.trim()) {
+      event.venue_place_slug = placeId;
+    }
   }
 
   event.event_scope = classifyEventScope({

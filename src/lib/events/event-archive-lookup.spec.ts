@@ -36,6 +36,7 @@ function snapshot(slug = "current-event-2026-08-14"): EventWithMeta {
     // is a real timed end, not a missing/equal/sentinel/span claim.
     end_trust: "ok",
     event_scope: "public",
+    is_free_source: true,
   };
 }
 

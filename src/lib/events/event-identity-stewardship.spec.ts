@@ -203,6 +203,9 @@ describe("Event identity stewardship — census-driven hydrate", () => {
     expect(hydrated).not.toBeNull();
     expect(hydrated?.end_trust).toBe("ok");
     expect(hydrated?.place_id).toBe("weinberg-center-for-the-arts-frederick");
+    expect(hydrated?.venue_place_slug).toBe(
+      "weinberg-center-for-the-arts-frederick",
+    );
     expect(hydrated?.event_scope).toBe("public");
   });
 
@@ -276,9 +279,149 @@ describe("Event identity stewardship — census-driven hydrate", () => {
       category_name: "Family",
     });
     expect(library?.place_id).toBe("c-burr-artz-public-library-frederick");
+    expect(library?.venue_place_slug).toBe(
+      "c-burr-artz-public-library-frederick",
+    );
     expect(library?.event_scope).toBe("public");
     expect(library?.audience).toEqual(["kids-6-12", "teens"]);
-    expect(library?.is_free).toBe(false);
+    expect(library?.is_free).toBe(true);
+    expect(library?.is_free_source).toBe(false);
+  });
+
+  it("hydrates an FCPL program with no fee as is_free true", () => {
+    const hydrated = archivedEventFromSnapshot({
+      slug: "family-storytime-cba-fcpl-20261011",
+      title: "Family Storytime",
+      description: "Stories and songs in the community room.",
+      starts_at: "2026-10-11T14:30:00.000Z",
+      ends_at: "2026-10-11T15:00:00.000Z",
+      timezone: "America/New_York",
+      venue_name: "C. Burr Artz Public Library",
+      address: "110 E Patrick St, Frederick, MD 21701",
+      geom: { lng: -77.4083, lat: 39.414 },
+      municipality: "frederick",
+      municipality_name: "Frederick City",
+      category: "family",
+      audience: [],
+      is_free: false,
+      source: "fcpl",
+      source_id: "storytime-free",
+      is_verified: false,
+      geo_confidence: "exact_address",
+      category_name: "Family",
+    });
+
+    expect(hydrated?.is_free).toBe(true);
+    expect(hydrated?.is_free_source).toBe(false);
+  });
+
+  it("keeps an FCPL program with a $10 materials fee as is_free false", () => {
+    const hydrated = archivedEventFromSnapshot({
+      slug: "adult-craft-night-fcpl-20261011",
+      title: "Adult Craft Night",
+      description: "$10 materials fee",
+      starts_at: "2026-10-11T22:00:00.000Z",
+      ends_at: "2026-10-11T23:00:00.000Z",
+      timezone: "America/New_York",
+      venue_name: "C. Burr Artz Public Library",
+      address: "110 E Patrick St, Frederick, MD 21701",
+      geom: { lng: -77.4083, lat: 39.414 },
+      municipality: "frederick",
+      municipality_name: "Frederick City",
+      category: "arts",
+      audience: [],
+      is_free: false,
+      source: "fcpl",
+      source_id: "craft-fee",
+      is_verified: false,
+      geo_confidence: "exact_address",
+      category_name: "Arts",
+    });
+
+    expect(hydrated?.is_free).toBe(false);
+    expect(hydrated?.is_free_source).toBe(false);
+  });
+
+  it("does not set is_free true when free status is unknown", () => {
+    const hydrated = archivedEventFromSnapshot({
+      slug: "bingo-night-brunswick-unknown-fee",
+      title: "Bingo Night",
+      description: "Weekly bingo",
+      starts_at: "2026-10-06T23:00:00.000Z",
+      ends_at: "2026-10-07T01:00:00.000Z",
+      timezone: "America/New_York",
+      venue_name: "Brunswick Community Center",
+      address: "100 W Potomac St, Brunswick, MD 21716",
+      geom: { lng: -77.6296, lat: 39.3088 },
+      municipality: "brunswick",
+      municipality_name: "Brunswick",
+      category: "community",
+      audience: [],
+      is_free: false,
+      source: "manual",
+      source_id: "bingo-unknown",
+      is_verified: true,
+      geo_confidence: "exact_address",
+      category_name: "Community",
+    });
+
+    expect(hydrated?.is_free).toBe(false);
+    expect(hydrated?.is_free_source).toBe(false);
+  });
+
+  it("fills empty venue_place_slug from a confident alias match and never overwrites", () => {
+    const filled = archivedEventFromSnapshot({
+      slug: "weinberg-fill-slug",
+      title: "Evening Concert",
+      description: "",
+      starts_at: "2026-10-06T20:00:00.000Z",
+      ends_at: "2026-10-06T22:00:00.000Z",
+      timezone: "America/New_York",
+      venue_name: "Weinberg Center",
+      address: "20 W Patrick St, Frederick, MD 21701",
+      geom: { lng: -77.4124, lat: 39.4145 },
+      municipality: "frederick",
+      municipality_name: "Frederick City",
+      category: "music",
+      audience: [],
+      is_free: false,
+      price_text: "$25",
+      source: "weinberg",
+      source_id: "fill-slug",
+      is_verified: true,
+      geo_confidence: "exact_address",
+      category_name: "Music",
+    });
+    expect(filled?.place_id).toBe("weinberg-center-for-the-arts-frederick");
+    expect(filled?.venue_place_slug).toBe(
+      "weinberg-center-for-the-arts-frederick",
+    );
+
+    const kept = archivedEventFromSnapshot({
+      slug: "weinberg-keep-slug",
+      title: "Evening Concert",
+      description: "",
+      starts_at: "2026-10-06T20:00:00.000Z",
+      ends_at: "2026-10-06T22:00:00.000Z",
+      timezone: "America/New_York",
+      venue_place_slug: "carroll-creek-outdoor-amphitheater",
+      venue_name: "Weinberg Center",
+      address: "20 W Patrick St, Frederick, MD 21701",
+      geom: { lng: -77.4124, lat: 39.4145 },
+      municipality: "frederick",
+      municipality_name: "Frederick City",
+      category: "music",
+      audience: [],
+      is_free: false,
+      price_text: "$25",
+      source: "weinberg",
+      source_id: "keep-slug",
+      is_verified: true,
+      geo_confidence: "exact_address",
+      category_name: "Music",
+    });
+    expect(kept?.venue_place_slug).toBe("carroll-creek-outdoor-amphitheater");
+    expect(kept?.place_id).toBe("carroll-creek-outdoor-amphitheater");
   });
 
   it("rewrites Postgres text timestamps to ISO UTC at hydrate", () => {
