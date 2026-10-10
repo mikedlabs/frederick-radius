@@ -614,7 +614,7 @@ function OpeningSoonPick({
         borderColor:
           "color-mix(in srgb, var(--app-amber) 42%, var(--app-border))",
         background:
-          "linear-gradient(112deg, color-mix(in srgb, var(--app-amber) 11%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 64%)",
+          "color-mix(in srgb, var(--app-amber) 11%, var(--app-bg-elevated-solid))",
         boxShadow: "var(--app-edge), var(--app-hi)",
       }}
     >

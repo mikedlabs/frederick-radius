@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
-import { Beer, CalendarDays, ChevronRight, Radio, Truck, type LucideIcon } from "lucide-react";
+import { Beer, CalendarDays, Radio, Truck, type LucideIcon } from "lucide-react";
+import { TodayListArrow } from "./TodayListLink";
 import { BREWERIES } from "@/data/beers";
 import { FOOD_TRUCKS } from "@/data/food-trucks";
 import {
@@ -116,11 +117,7 @@ function GuideRow({
           {detail}
         </span>
       </span>
-      <ChevronRight
-        aria-hidden
-        className="h-4 w-4 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5 group-hover:opacity-70"
-        strokeWidth={2.25}
-      />
+      <TodayListArrow />
     </Link>
   );
 }

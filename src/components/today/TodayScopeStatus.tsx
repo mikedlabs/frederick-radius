@@ -56,7 +56,14 @@ const subscribe = (onStoreChange: () => void) =>
  * in the masthead was still smaller than the section headings below it. One
  * quiet line under the title now holds both supporting facts.
  */
-export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
+export default function TodayScopeStatus({
+  dateline,
+  controls = "all",
+}: {
+  dateline?: string;
+  /** status = quiet readout; picker = area controls; all = both. */
+  controls?: "status" | "picker" | "all";
+}) {
   const ready = useSyncExternalStore(subscribeReady, () => true, () => false);
   const storedScope = useSyncExternalStore(subscribe, getScope, () => null);
   const searchParams = useSearchParams();
@@ -112,8 +119,12 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
     requestLocation();
   };
 
+  const showStatus = controls !== "picker";
+  const showPicker = controls !== "status";
+
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+    <div className={`${showStatus ? "mt-2" : ""} flex flex-wrap items-center gap-x-3 gap-y-2`}>
+      {showStatus ? (
       <p
         role="status"
         aria-live="polite"
@@ -137,6 +148,9 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
         />
         {todayScopeStatusText(scope, hasDeviceLocation)}
       </p>
+      ) : null}
+      {showPicker ? (
+      <>
       <label className="inline-flex min-h-11 max-w-full items-center gap-2 text-[13px] font-medium">
         <span className="sr-only">Choose your area</span>
         <select
@@ -181,6 +195,8 @@ export default function TodayScopeStatus({ dateline }: { dateline?: string }) {
             {location.status === "loading" ? "Finding you…" : "Use my location"}
           </button>
         )
+      ) : null}
+      </>
       ) : null}
     </div>
   );
