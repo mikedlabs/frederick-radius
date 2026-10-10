@@ -806,14 +806,12 @@ export default function CompassHub({
         />
       ) : (
         <>
-          {contextualItem && contextualSuggestion ? (
-            <ContextualToolSuggestion
-              item={contextualItem}
-              reason={contextualSuggestion.reason}
-              eyebrow={contextualSuggestion.eyebrow}
-              intentProps={intentProps}
-            />
-          ) : null}
+          <CompassSuggestionSlot
+            item={contextualItem}
+            suggestion={contextualSuggestion}
+            ready={deckLiveReady}
+            intentProps={intentProps}
+          />
 
           <CompassIntentBoard
             intents={COMPASS_INTENT_DEFINITIONS}
@@ -1008,6 +1006,52 @@ function PinnedTools({
   );
 }
 
+/** Same occupied height as ContextualToolSuggestion, including a wrapping reason. */
+export const COMPASS_SUGGESTION_SLOT_CLASS =
+  "flex min-h-[98px] items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5";
+
+function CompassSuggestionSlot({
+  item,
+  suggestion,
+  ready,
+  intentProps,
+}: {
+  item: DirectoryItem | null;
+  suggestion: CompassLiveSuggestion | null;
+  ready: boolean;
+  intentProps: (item: DirectoryItem) => LinkIntentProps;
+}) {
+  if (item && suggestion) {
+    return (
+      <ContextualToolSuggestion
+        item={item}
+        reason={suggestion.reason}
+        eyebrow={suggestion.eyebrow}
+        intentProps={intentProps}
+      />
+    );
+  }
+  if (ready) return null;
+  return (
+    <div
+      aria-hidden
+      data-compass-suggestion-slot="pending"
+      className={COMPASS_SUGGESTION_SLOT_CLASS}
+      style={{
+        borderColor: "color-mix(in srgb, var(--app-brand) 24%, var(--app-border))",
+        background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated-solid))",
+      }}
+    >
+      <Skeleton.Block width={36} height={36} round="9999px" />
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <Skeleton.Block width={88} height={11} />
+        <Skeleton.Block width="55%" height={14} />
+        <Skeleton.Block width="80%" height={12} />
+      </div>
+    </div>
+  );
+}
+
 function ContextualToolSuggestion({
   item,
   reason,
@@ -1020,13 +1064,16 @@ function ContextualToolSuggestion({
   intentProps: (item: DirectoryItem) => LinkIntentProps;
 }) {
   return (
-    <section aria-labelledby="compass-suggestion-heading">
+    <section
+      aria-labelledby="compass-suggestion-heading"
+      data-compass-suggestion-slot="ready"
+    >
       <Link
         href={item.href}
         prefetch={false}
         {...externalLinkProps(item)}
         {...intentProps(item)}
-        className="tactile-interactive group flex min-h-[64px] items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+        className={`tactile-interactive group ${COMPASS_SUGGESTION_SLOT_CLASS} outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]`}
         style={{
           borderColor: "color-mix(in srgb, var(--app-brand) 24%, var(--app-border))",
           background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated-solid))",

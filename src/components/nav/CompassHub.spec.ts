@@ -11,6 +11,7 @@ import {
   ALL_COMPASS_TOOLS_ID,
   COMPASS_INTENT_DEFINITIONS,
   COMPASS_LIVE_FACT_SLOT_CLASS,
+  COMPASS_SUGGESTION_SLOT_CLASS,
   buildToolDeckDirectory,
   buildToolDeckGroups,
   compassShortcutGridClass,
@@ -65,7 +66,9 @@ describe("Compass search control", () => {
   it("reserves a live-fact slot on direction cards before counts arrive", () => {
     const source = readFileSync("src/components/nav/CompassHub.tsx", "utf8");
     expect(COMPASS_LIVE_FACT_SLOT_CLASS).toContain("h-4");
+    expect(COMPASS_SUGGESTION_SLOT_CLASS).toContain("min-h-[98px]");
     expect(source).toContain("data-compass-live-slot");
+    expect(source).toContain("data-compass-suggestion-slot");
     expect(source).toContain('intent.id in INTENT_LIVE_KEYS');
     expect(source).toContain("<Skeleton.Block");
   });

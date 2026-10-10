@@ -3,31 +3,31 @@ import { expect, test, type Page } from "@playwright/test";
 const VIEWPORT = { width: 390, height: 844 } as const;
 
 const LIVE_DECK = {
-  readAt: "2026-10-10T16:00:00.000Z",
+  readAt: new Date(Date.now() + 60_000).toISOString(),
   keys: [
     {
       id: "events",
       status: "ok",
       source: "Unified events",
-      checkedAt: "2026-10-10T16:00:00.000Z",
-      validUntil: "2026-10-10T16:10:00.000Z",
-      faces: [{ value: "6", label: "this weekend" }],
+      checkedAt: new Date().toISOString(),
+      validUntil: new Date(Date.now() + 600_000).toISOString(),
+      faces: [{ value: "4", label: "on today" }],
     },
     {
-      id: "traffic",
+      id: "buses",
       status: "ok",
-      source: "MDOT CHART",
-      checkedAt: "2026-10-10T16:00:00.000Z",
-      validUntil: "2026-10-10T16:10:00.000Z",
-      faces: [{ value: "12 min", label: "I-70 to the county line" }],
+      source: "TransIT",
+      checkedAt: new Date().toISOString(),
+      validUntil: new Date(Date.now() + 600_000).toISOString(),
+      faces: [{ value: "10", label: "buses moving" }],
     },
     {
       id: "weather",
       status: "ok",
       source: "NWS",
-      checkedAt: "2026-10-10T16:00:00.000Z",
-      validUntil: "2026-10-10T16:10:00.000Z",
-      faces: [{ value: "78°", label: "partly sunny" }],
+      checkedAt: new Date().toISOString(),
+      validUntil: new Date(Date.now() + 600_000).toISOString(),
+      faces: [{ value: "1", label: "active alert" }],
     },
   ],
 };
@@ -96,13 +96,21 @@ test("Compass keeps Choose a direction still when live counts arrive", async ({
   const browse = page.locator('section[aria-labelledby="compass-browse-heading"]');
   await expect(browse.getByRole("heading", { name: "Choose a direction" })).toBeVisible();
   await expect(browse).toHaveAttribute("aria-busy", "true");
-  const heightBefore = await browse.evaluate((node) => node.getBoundingClientRect().height);
+  const boxBefore = await browse.evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    return { height: box.height, top: box.top };
+  });
 
   await expect(browse).not.toHaveAttribute("aria-busy", { timeout: 10_000 });
-  await expect(browse.getByText("6 this weekend")).toBeVisible();
-  await expect(browse.getByText("12 min · I-70 to the county line")).toBeVisible();
-  const heightAfter = await browse.evaluate((node) => node.getBoundingClientRect().height);
-  expect(heightAfter).toBe(heightBefore);
+  await expect(page.getByRole("link", { name: /Weather alert/ })).toBeVisible();
+  await expect(browse.getByText("4 on today")).toBeVisible();
+  await expect(browse.getByText("10 buses moving")).toBeVisible();
+  const boxAfter = await browse.evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    return { height: box.height, top: box.top };
+  });
+  expect(boxAfter.top).toBe(boxBefore.top);
+  expect(boxAfter.height).toBe(boxBefore.height);
 
   const layoutShift = await page.evaluate(() => {
     const tracked = window as typeof window & {
