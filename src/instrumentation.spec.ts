@@ -17,9 +17,11 @@ describe("instrumentation startup", () => {
   it("keeps Sentry client tracing out of the shared /today and /events chunk", () => {
     const source = readFileSync("src/instrumentation-client.ts", "utf8");
     const nextConfig = readFileSync("next.config.ts", "utf8");
+    expect(source).toContain('void import("@sentry/nextjs")');
     expect(source).toContain("tracesSampleRate: 0");
     expect(source).toContain("export function onRouterTransitionStart() {}");
     expect(source).not.toContain("captureRouterTransitionStart");
+    expect(source).not.toMatch(/^import \* as Sentry from "@sentry\/nextjs"/m);
     expect(nextConfig).toContain("excludeTracing: true");
   });
 
