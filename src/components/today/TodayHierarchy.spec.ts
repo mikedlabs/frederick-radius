@@ -101,6 +101,12 @@ describe("Today decision hierarchy", () => {
     expect(renderedPage).toContain("fairPromotionPhase ? (");
     expect(renderedPage).toContain(": civicMoment ? (");
     expect(renderedPage.match(/<TodayFairFeature\b/g)).toHaveLength(1);
+    expect(todayPage).toContain(
+      'const TodayFairFeature = dynamic(\n  () => import("@/components/today/TodayFairFeature"),\n);',
+    );
+    expect(todayPage).not.toMatch(
+      /import TodayFairFeature from ["']@\/components\/today\/TodayFairFeature["']/,
+    );
   });
 
   it("puts In The Streets ahead of the ordinary briefing on its actual day", () => {
@@ -208,7 +214,9 @@ describe("Today decision hierarchy", () => {
     expect(disclosureStart).toBeGreaterThan(-1);
     expect(disclosureEnd).toBeGreaterThan(disclosureStart);
     expect(disclosure).toContain("<TodayLocalGuides");
-    expect(disclosure).toContain("fallback={<TodayFoodTruckGuide />}");
+    expect(disclosure).toContain(
+      "fallback={<TodayFoodTruckGuide foodTruckCount={FOOD_TRUCKS.length} />}",
+    );
     expect(disclosure).toContain("<TodayFoodTruckGuideWithSchedule");
     expect(disclosure).toContain("<FromYourSaved");
     expect(disclosure).toContain("<WeekendPreview");

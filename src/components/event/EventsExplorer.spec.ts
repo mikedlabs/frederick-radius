@@ -86,6 +86,13 @@ describe("EventsExplorer deferred browse reconciliation", () => {
     });
   });
 
+  it("does not pull framer-motion or the map canvas into the first events paint", () => {
+    const source = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
+    expect(source).not.toContain("framer-motion");
+    expect(source).toContain('dynamic(() => import("@/components/event/EventAgenda"))');
+    expect(source).toContain('dynamic(() => import("@/components/event/EventsMap")');
+  });
+
   it("keeps empty Agenda and Map views in the same filter-recovery path as the list", () => {
     const source = readFileSync("src/components/event/EventsExplorer.tsx", "utf8");
     expect(source).toContain('view === "calendar" && filtered.length > 0');

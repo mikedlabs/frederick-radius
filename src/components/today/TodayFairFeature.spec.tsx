@@ -3,7 +3,7 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   createFairPlan,
@@ -113,7 +113,9 @@ describe("TodayFairFeature", () => {
       root.render(createElement(TodayFairFeature, { phase: "planning", briefing }));
     });
 
-    expect(container.textContent).toContain("Your Fair day is taking shape.");
+    await vi.waitFor(() => {
+      expect(container.textContent).toContain("Your Fair day is taking shape.");
+    });
     if (!briefing) {
       expect(container.textContent).toContain("plan for 4 people has 1 saved stop");
     }

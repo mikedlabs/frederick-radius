@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { LayoutGrid, List } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import PlaceCard from "./PlaceCard";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import FilterChip from "@/components/ui/FilterChip";
@@ -46,6 +45,10 @@ export default function PlaceList({
   emptyMessage,
   facetTags,
   pageSize = 24,
+  totalCount,
+  onLoadMore,
+  loadingMore = false,
+  onFacetsChange,
 }: {
   places: PlaceCardData[];
   initialLayout?: "grid" | "list";
@@ -57,6 +60,13 @@ export default function PlaceList({
   /** Initial and incremental result count. Large categories stay bounded so
    * one expand action cannot mount every photo in the set. */
   pageSize?: number;
+  /** Complete match count when `places` is only the loaded page. */
+  totalCount?: number;
+  /** Fetch the next page instead of revealing already-embedded rows. */
+  onLoadMore?: () => void | Promise<void>;
+  loadingMore?: boolean;
+  /** When set, facet chips ask the parent to reload a filtered page. */
+  onFacetsChange?: (facets: string[]) => void | Promise<void>;
 }) {
   const [layout, setLayout] = useState<"grid" | "list">(initialLayout);
   const [sort, setSort] = useState<PlaceSortKey>("score");
@@ -100,15 +110,22 @@ export default function PlaceList({
   }, [places, sort]);
 
   // Facet filtering: AND across selected tags (dog-friendly + outdoor = both).
+  // A parent-driven continuation already applied the same filter server-side.
   const filteredPlaces = useMemo(() => {
-    if (activeFacets.size === 0) return sortedPlaces;
+    if (onFacetsChange || activeFacets.size === 0) return sortedPlaces;
     return sortedPlaces.filter((p) => {
       const t = new Set(p.tags ?? []);
       for (const f of activeFacets) if (!t.has(f)) return false;
       return true;
     });
-  }, [sortedPlaces, activeFacets]);
-  const visiblePlaces = filteredPlaces.slice(0, visibleCount);
+  }, [activeFacets, onFacetsChange, sortedPlaces]);
+  const visiblePlaces = onLoadMore
+    ? filteredPlaces
+    : filteredPlaces.slice(0, visibleCount);
+  const completeCount = totalCount ?? filteredPlaces.length;
+  const remaining = onLoadMore
+    ? Math.max(0, completeCount - places.length)
+    : Math.max(0, filteredPlaces.length - visibleCount);
 
   // Filter out the "distance" option when no place has a distance_m
   // value — otherwise the dropdown would offer a sort that produces
@@ -162,12 +179,11 @@ export default function PlaceList({
   }
 
   function toggleFacet(slug: string) {
-    setActiveFacets((prev) => {
-      const next = new Set(prev);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
-    });
+    const next = new Set(activeFacets);
+    if (next.has(slug)) next.delete(slug);
+    else next.add(slug);
+    setActiveFacets(next);
+    void onFacetsChange?.([...next]);
   }
 
   return (
@@ -186,8 +202,8 @@ export default function PlaceList({
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-          {filteredPlaces.length} {filteredPlaces.length === 1 ? "place" : "places"}
-          {activeFacets.size > 0 ? ` of ${places.length}` : ""}
+          {completeCount} {completeCount === 1 ? "place" : "places"}
+          {activeFacets.size > 0 ? ` of ${totalCount ?? places.length}` : ""}
         </p>
         <div className="ml-auto flex items-center gap-2">
           <SortDropdown
@@ -260,51 +276,40 @@ export default function PlaceList({
           No places match those filters. Tap a filter again to widen the list.
         </p>
       ) : layout === "grid" ? (
-        <motion.div layout className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
-          <AnimatePresence>
-            {visiblePlaces.map((p) => (
-              <motion.div
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                key={p.slug}
-              >
-                <PlaceCard place={p} variant="grid" />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </motion.div>
+        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
+          {visiblePlaces.map((p) => (
+            <div key={p.slug}>
+              <PlaceCard place={p} variant="grid" />
+            </div>
+          ))}
+        </div>
       ) : (
-        <motion.ul layout className="space-y-2" aria-busy={!mounted ? "true" : undefined}>
-          <AnimatePresence>
-            {visiblePlaces.map((p) => (
-              <motion.li
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                key={p.slug}
-              >
-                {/* compact=true drops the second metadata row (status +
-                    rating + price) so the row reads tighter — list mode
-                    is for scanning, not full-card detail. */}
-                <PlaceCard place={p} variant="row" compact />
-              </motion.li>
-            ))}
-          </AnimatePresence>
-        </motion.ul>
+        <ul className="space-y-2" aria-busy={!mounted || loadingMore ? "true" : undefined}>
+          {visiblePlaces.map((p) => (
+            <li key={p.slug}>
+              {/* compact=true drops the second metadata row (status +
+                  rating + price) so the row reads tighter — list mode
+                  is for scanning, not full-card detail. */}
+              <PlaceCard place={p} variant="row" compact />
+            </li>
+          ))}
+        </ul>
       )}
-      {visibleCount < filteredPlaces.length && (
+      {remaining > 0 && (
         <button
           type="button"
-          onClick={() => setVisibleCount((count) => count + safePageSize)}
-          className="tap-44 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-sm)] border px-4 text-[12px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+          disabled={loadingMore}
+          onClick={() => {
+            if (onLoadMore) {
+              void onLoadMore();
+              return;
+            }
+            setVisibleCount((count) => count + safePageSize);
+          }}
+          className="tap-44 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-sm)] border px-4 text-[12px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] disabled:opacity-60"
           style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
         >
-          Show {Math.min(safePageSize, filteredPlaces.length - visibleCount)} more
+          Show {Math.min(safePageSize, remaining)} more
         </button>
       )}
     </div>

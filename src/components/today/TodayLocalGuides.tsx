@@ -4,8 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { Beer, CalendarDays, ChevronRight, Radio, Truck, type LucideIcon } from "lucide-react";
-import { BREWERIES } from "@/data/beers";
-import { FOOD_TRUCKS } from "@/data/food-trucks";
 import {
   todayFoodTruckStopDetail,
   type TodayFoodTruckStopSummary,
@@ -62,6 +60,7 @@ export function foodTruckGuideCopy(
   liveTruckCount: number,
   nextStop: TodayFoodTruckStopSummary | null,
   asOf?: string,
+  rosterCount = 0,
 ): { href: string; detail: string; state: "live" | "scheduled" | "roster" } {
   if (liveTruckCount > 0) {
     return {
@@ -79,7 +78,9 @@ export function foodTruckGuideCopy(
   }
   return {
     href: "/food-trucks",
-    detail: `See published stops and browse ${FOOD_TRUCKS.length} local vendors.`,
+    detail: rosterCount > 0
+      ? `See published stops and browse ${rosterCount} local vendors.`
+      : "See published stops and browse local vendors.",
     state: "roster",
   };
 }
@@ -131,11 +132,13 @@ function GuideRow({
 export type TodayFoodTruckGuideProps = {
   nextFoodTruckStop?: TodayFoodTruckStopSummary | null;
   asOf?: string;
+  foodTruckCount?: number;
 };
 
 export function TodayFoodTruckGuide({
   nextFoodTruckStop = null,
   asOf,
+  foodTruckCount = 0,
 }: TodayFoodTruckGuideProps = {}) {
   const [liveTruckCount, setLiveTruckCount] = useState(0);
 
@@ -161,7 +164,12 @@ export function TodayFoodTruckGuide({
     };
   }, []);
 
-  const foodTruck = foodTruckGuideCopy(liveTruckCount, nextFoodTruckStop, asOf);
+  const foodTruck = foodTruckGuideCopy(
+    liveTruckCount,
+    nextFoodTruckStop,
+    asOf,
+    foodTruckCount,
+  );
   return (
     <GuideRow
       href={foodTruck.href}
@@ -188,8 +196,12 @@ export function TodayFoodTruckGuide({
  */
 export default function TodayLocalGuides({
   foodTruckGuide,
+  breweryCount = 0,
+  foodTruckCount = 0,
 }: {
   foodTruckGuide?: ReactNode;
+  breweryCount?: number;
+  foodTruckCount?: number;
 } = {}) {
   return (
     <section className="mt-6" aria-label="Local guides">
@@ -197,11 +209,15 @@ export default function TodayLocalGuides({
         className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
         style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-edge), var(--app-hi)" }}
       >
-        {foodTruckGuide ?? <TodayFoodTruckGuide />}
+        {foodTruckGuide ?? <TodayFoodTruckGuide foodTruckCount={foodTruckCount} />}
         <GuideRow
           href="/beer"
           title="Frederick beer"
-          detail={`Browse ${BREWERIES.length} breweries and current taproom listings.`}
+          detail={
+            breweryCount > 0
+              ? `Browse ${breweryCount} breweries and current taproom listings.`
+              : "Browse local breweries and current taproom listings."
+          }
           marks={BREWERY_PREVIEW}
           Icon={Beer}
           divided

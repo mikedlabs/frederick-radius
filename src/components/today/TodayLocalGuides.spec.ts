@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -34,6 +35,13 @@ describe("foodTruckGuideCopy", () => {
 });
 
 describe("TodayLocalGuides hierarchy", () => {
+  it("does not import the beer or food-truck catalogs into the client island", () => {
+    const source = readFileSync("src/components/today/TodayLocalGuides.tsx", "utf8");
+    expect(source).not.toContain("@/data/beers");
+    expect(source).not.toContain("@/data/food-trucks");
+    expect(source).toContain("breweryCount");
+  });
+
   it("uses the parent Around town chapter as its only visible heading", () => {
     const html = renderToStaticMarkup(createElement(TodayLocalGuides));
 

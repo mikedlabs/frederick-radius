@@ -5,7 +5,7 @@ import Image from "next/image";
 import { ArrowRight, FerrisWheel } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { readFairPlan, type FairPlan } from "@/lib/fair/plan";
+import type { FairPlan } from "@/lib/fair/plan";
 import { buildFairPlanStatus } from "@/lib/fair/plan-status";
 import styles from "./TodayLayout.module.css";
 import {
@@ -46,19 +46,28 @@ export default function TodayFairFeature({
   const [savedPlan, setSavedPlan] = useState<FairPlan | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     const refreshPlan = () => {
-      try {
-        setSavedPlan(readFairPlan(window.localStorage));
-      } catch {
-        // Some privacy modes throw while the storage property itself is read,
-        // before readFairPlan can guard its getItem call.
-        setSavedPlan(null);
-      }
+      void import("@/lib/fair/plan")
+        .then(({ readFairPlan }) => {
+          if (cancelled) return;
+          try {
+            setSavedPlan(readFairPlan(window.localStorage));
+          } catch {
+            // Some privacy modes throw while the storage property itself is read,
+            // before readFairPlan can guard its getItem call.
+            setSavedPlan(null);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setSavedPlan(null);
+        });
     };
     refreshPlan();
     window.addEventListener("storage", refreshPlan);
     window.addEventListener("pageshow", refreshPlan);
     return () => {
+      cancelled = true;
       window.removeEventListener("storage", refreshPlan);
       window.removeEventListener("pageshow", refreshPlan);
     };
