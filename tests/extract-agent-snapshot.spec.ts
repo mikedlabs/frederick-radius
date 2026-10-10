@@ -104,7 +104,7 @@ describe("fetchPageSnapshot", () => {
   });
 
   it("sends a browser-shaped User-Agent to Celebrate Frederick and Visit Frederick", async () => {
-    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => ({
+    const fetchMock = vi.fn(async (_input: string | URL | Request, _init?: RequestInit) => ({
       ok: true,
       status: 200,
       url: String(_input),
