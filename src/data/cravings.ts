@@ -48,7 +48,6 @@ export type Craving = {
     | "FerrisWheel"
     | "Wine"
     | "BedDouble"
-    | "Heart"
     | "Sparkles"
     | "Flag"
     | "Tractor"
@@ -453,7 +452,7 @@ export const CRAVINGS: Craving[] = [
     // practice from the over-broad "wellness" category bucket.
     key: "wellness",
     label: "Wellness",
-    icon: "Heart",
+    icon: "Sparkles",
     color: "var(--app-brand-2)",
     match: (p) => WELLNESS.test(p.name) && !WELLNESS_CLINICAL.test(p.name),
     // Narrow the broad wellness answer to what people actually search for.

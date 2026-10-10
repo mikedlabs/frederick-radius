@@ -208,9 +208,10 @@ const ICONS: Record<string, LucideIcon> = {
  * fallback — the exact GLYPHS-first precedence CategoryIcon/craveTile use.
  */
 function renderIcon(name: string, sizeClass: string) {
-  const Glyph = GLYPHS[name];
+  const resolved = name === "Sparkles" ? "Heart" : name;
+  const Glyph = GLYPHS[resolved];
   if (Glyph) return <Glyph className={sizeClass} aria-hidden />;
-  const Icon = ICONS[name] ?? Utensils;
+  const Icon = ICONS[resolved] ?? Utensils;
   return <Icon className={sizeClass} strokeWidth={1.9} aria-hidden />;
 }
 
