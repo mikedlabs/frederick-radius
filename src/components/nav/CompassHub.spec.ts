@@ -10,6 +10,8 @@ import {
 import {
   ALL_COMPASS_TOOLS_ID,
   COMPASS_INTENT_DEFINITIONS,
+  COMPASS_LIVE_FACT_SLOT_CLASS,
+  COMPASS_SUGGESTION_SLOT_CLASS,
   buildToolDeckDirectory,
   buildToolDeckGroups,
   compassShortcutGridClass,
@@ -48,6 +50,27 @@ describe("Compass search control", () => {
     );
     expect(source).toContain("Browse the full tool index");
     expect(source).not.toContain("tools, organized by category");
+  });
+
+  it("keeps the page title out of the client hub so first paint does not wait on deck data", () => {
+    const hub = readFileSync("src/components/nav/CompassHub.tsx", "utf8");
+    const page = readFileSync("src/app/(app)/compass/page.tsx", "utf8");
+    const heading = readFileSync("src/components/nav/CompassHeading.tsx", "utf8");
+
+    expect(heading).toContain("What do you need?");
+    expect(heading).not.toMatch(/["']use client["']/);
+    expect(page).toContain("<CompassHeading");
+    expect(hub).not.toContain("What do you need?");
+  });
+
+  it("reserves a live-fact slot on direction cards before counts arrive", () => {
+    const source = readFileSync("src/components/nav/CompassHub.tsx", "utf8");
+    expect(COMPASS_LIVE_FACT_SLOT_CLASS).toContain("h-4");
+    expect(COMPASS_SUGGESTION_SLOT_CLASS).toContain("min-h-[98px]");
+    expect(source).toContain("data-compass-live-slot");
+    expect(source).toContain("data-compass-suggestion-slot");
+    expect(source).toContain('intent.id in INTENT_LIVE_KEYS');
+    expect(source).toContain("<Skeleton.Block");
   });
 });
 

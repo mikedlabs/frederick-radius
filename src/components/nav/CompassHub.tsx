@@ -9,7 +9,10 @@ import {
   useState,
   useSyncExternalStore,
   type ComponentProps,
+  type ReactNode,
 } from "react";
+import { CompassHeading } from "@/components/nav/CompassHeading";
+import Skeleton from "@/components/ui/Skeleton";
 import {
   ArrowLeft,
   ArrowRight,
@@ -519,7 +522,11 @@ function clearDeckUrl() {
   window.history.replaceState(nextState, "", url);
 }
 
-export default function CompassHub() {
+export default function CompassHub({
+  heading = <CompassHeading />,
+}: {
+  heading?: ReactNode;
+} = {}) {
   const router = useRouter();
   const homeSlug = useSyncExternalStore(
     subscribeHomeTown,
@@ -551,7 +558,9 @@ export default function CompassHub() {
   const [recentHrefs, setRecentHrefs] = useState<string[]>([]);
   const [pinNotice, setPinNotice] = useState("");
   const [hydrated, setHydrated] = useState(false);
-  const deckLiveKeys = useDeckLiveKeys(deckView !== null);
+  const { keys: deckLiveKeys, ready: deckLiveReady } = useDeckLiveKeys(
+    deckView !== null,
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -748,17 +757,7 @@ export default function CompassHub() {
         className="-mx-4 -mt-4 border-b px-4 pb-4 pt-4 sm:-mx-5 sm:-mt-6 sm:px-5 sm:pt-5 lg:mx-0 lg:mt-0"
         style={{ borderColor: "var(--app-border)" }}
       >
-        <div>
-          <p
-            className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
-            style={{ color: "var(--app-brand-press)" }}
-          >
-            Compass
-          </p>
-          <h1 className="font-editorial mt-1 text-[34px] leading-[0.98] tracking-[-0.03em] sm:text-[38px]">
-            What do you need?
-          </h1>
-        </div>
+        {heading}
 
         <label className="mt-4 block">
           <span className="sr-only">Search Radius tools and local guides</span>
@@ -807,19 +806,18 @@ export default function CompassHub() {
         />
       ) : (
         <>
-          {contextualItem && contextualSuggestion ? (
-            <ContextualToolSuggestion
-              item={contextualItem}
-              reason={contextualSuggestion.reason}
-              eyebrow={contextualSuggestion.eyebrow}
-              intentProps={intentProps}
-            />
-          ) : null}
+          <CompassSuggestionSlot
+            item={contextualItem}
+            suggestion={contextualSuggestion}
+            ready={deckLiveReady}
+            intentProps={intentProps}
+          />
 
           <CompassIntentBoard
             intents={COMPASS_INTENT_DEFINITIONS}
             groups={groups}
             liveKeys={deckLiveKeys}
+            liveReady={deckLiveReady}
             onOpen={openDeck}
           />
 
@@ -1008,6 +1006,52 @@ function PinnedTools({
   );
 }
 
+/** Same occupied height as ContextualToolSuggestion, including a wrapping reason. */
+export const COMPASS_SUGGESTION_SLOT_CLASS =
+  "flex min-h-[98px] items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5";
+
+function CompassSuggestionSlot({
+  item,
+  suggestion,
+  ready,
+  intentProps,
+}: {
+  item: DirectoryItem | null;
+  suggestion: CompassLiveSuggestion | null;
+  ready: boolean;
+  intentProps: (item: DirectoryItem) => LinkIntentProps;
+}) {
+  if (item && suggestion) {
+    return (
+      <ContextualToolSuggestion
+        item={item}
+        reason={suggestion.reason}
+        eyebrow={suggestion.eyebrow}
+        intentProps={intentProps}
+      />
+    );
+  }
+  if (ready) return null;
+  return (
+    <div
+      aria-hidden
+      data-compass-suggestion-slot="pending"
+      className={COMPASS_SUGGESTION_SLOT_CLASS}
+      style={{
+        borderColor: "color-mix(in srgb, var(--app-brand) 24%, var(--app-border))",
+        background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated-solid))",
+      }}
+    >
+      <Skeleton.Block width={36} height={36} round="9999px" />
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <Skeleton.Block width={88} height={11} />
+        <Skeleton.Block width="55%" height={14} />
+        <Skeleton.Block width="80%" height={12} />
+      </div>
+    </div>
+  );
+}
+
 function ContextualToolSuggestion({
   item,
   reason,
@@ -1020,13 +1064,16 @@ function ContextualToolSuggestion({
   intentProps: (item: DirectoryItem) => LinkIntentProps;
 }) {
   return (
-    <section aria-labelledby="compass-suggestion-heading">
+    <section
+      aria-labelledby="compass-suggestion-heading"
+      data-compass-suggestion-slot="ready"
+    >
       <Link
         href={item.href}
         prefetch={false}
         {...externalLinkProps(item)}
         {...intentProps(item)}
-        className="tactile-interactive group flex min-h-[64px] items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+        className={`tactile-interactive group ${COMPASS_SUGGESTION_SLOT_CLASS} outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]`}
         style={{
           borderColor: "color-mix(in srgb, var(--app-brand) 24%, var(--app-border))",
           background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated-solid))",
@@ -1237,8 +1284,12 @@ function deckKeyWithSnapshot(key: DeckLiveKey, readAt?: string): DeckLiveKey {
   return { ...key, snapshotAt: readAt, validUntil: Number.isFinite(end) ? new Date(end).toISOString() : undefined };
 }
 
-export function useDeckLiveKeys(open = false): readonly DeckLiveKey[] {
+export function useDeckLiveKeys(open = false): {
+  keys: readonly DeckLiveKey[];
+  ready: boolean;
+} {
   const [snapshot, setSnapshot] = useState<{ keys: DeckLiveKey[]; readAt?: string }>({ keys: [] });
+  const [ready, setReady] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const refreshRef = useRef<(() => void) | null>(null);
   useEffect(() => {
@@ -1263,7 +1314,10 @@ export function useDeckLiveKeys(open = false): readonly DeckLiveKey[] {
       } catch {
         // The rows keep their registry sentences. A degraded deck costs the
         // page its live garnish, never its function or a fresh check time.
-      } finally { inFlight = false; }
+      } finally {
+        inFlight = false;
+        if (alive) setReady(true);
+      }
     };
     const refreshIfNeeded = () => {
       const clock = Date.now();
@@ -1286,21 +1340,72 @@ export function useDeckLiveKeys(open = false): readonly DeckLiveKey[] {
     document.addEventListener("visibilitychange", tick);
     return () => { window.clearInterval(interval); if (expiry !== undefined) window.clearTimeout(expiry); document.removeEventListener("visibilitychange", tick); };
   }, [snapshot, now]);
-  return snapshot.keys.map((key) => {
-    const timed = deckKeyWithSnapshot(key, snapshot.readAt);
-    return { ...timed, status: currentDeckKey(timed, now) ? "ok" : "unavailable" };
-  });
+  return {
+    keys: snapshot.keys.map((key) => {
+      const timed = deckKeyWithSnapshot(key, snapshot.readAt);
+      return { ...timed, status: currentDeckKey(timed, now) ? "ok" : "unavailable" };
+    }),
+    ready,
+  };
+}
+
+/** One reserved line under each direction that can carry a live count. */
+export const COMPASS_LIVE_FACT_SLOT_CLASS = "mt-2 flex h-4 min-h-4 items-center";
+
+function CompassIntentLiveFact({
+  line,
+  ready,
+  reserved,
+  color,
+}: {
+  line: string | null;
+  ready: boolean;
+  reserved: boolean;
+  color: string;
+}) {
+  if (!reserved) return null;
+
+  return (
+    <span
+      className={COMPASS_LIVE_FACT_SLOT_CLASS}
+      data-compass-live-slot={line ? "ready" : ready ? "empty" : "pending"}
+    >
+      {line ? (
+        <span
+          className="inline-flex max-w-full items-center gap-1.5 truncate text-[11px] font-semibold tabular-nums"
+          style={{ color }}
+        >
+          <span
+            aria-hidden
+            className="h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{ background: color }}
+          />
+          {line}
+        </span>
+      ) : ready ? null : (
+        // Skeleton.Block uses .shimmer, which stays static when the
+        // visitor prefers reduced motion.
+        <Skeleton.Block
+          width="8.5rem"
+          height={16}
+          round="9999px"
+        />
+      )}
+    </span>
+  );
 }
 
 function CompassIntentBoard({
   intents,
   groups,
   liveKeys,
+  liveReady,
   onOpen,
 }: {
   intents: typeof COMPASS_INTENT_DEFINITIONS;
   groups: ToolDeckGroup[];
   liveKeys: readonly DeckLiveKey[];
+  liveReady: boolean;
   onOpen: (view: CompassDeckView) => void;
 }) {
   const liveLines = Object.fromEntries(
@@ -1320,7 +1425,11 @@ function CompassIntentBoard({
   };
 
   return (
-    <section aria-labelledby="compass-browse-heading" className="space-y-3">
+    <section
+      aria-labelledby="compass-browse-heading"
+      aria-busy={liveReady ? undefined : true}
+      className="space-y-3"
+    >
       <h2
         id="compass-browse-heading"
         className="text-[16px] font-semibold tracking-[-0.01em]"
@@ -1385,19 +1494,12 @@ function CompassIntentBoard({
                   >
                     {intent.description}
                   </span>
-                  {liveLine ? (
-                    <span
-                      className="mt-2 inline-flex max-w-full items-center gap-1.5 truncate text-[11px] font-semibold tabular-nums"
-                      style={{ color }}
-                    >
-                      <span
-                        aria-hidden
-                        className="h-1.5 w-1.5 shrink-0 rounded-full"
-                        style={{ background: color }}
-                      />
-                      {liveLine}
-                    </span>
-                  ) : null}
+                  <CompassIntentLiveFact
+                    line={liveLine ?? null}
+                    ready={liveReady}
+                    reserved={intent.id in INTENT_LIVE_KEYS}
+                    color={color}
+                  />
                 </span>
               </button>
             </li>
