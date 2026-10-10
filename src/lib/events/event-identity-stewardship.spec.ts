@@ -280,4 +280,40 @@ describe("Event identity stewardship — census-driven hydrate", () => {
     expect(library?.audience).toEqual(["kids-6-12", "teens"]);
     expect(library?.is_free).toBe(false);
   });
+
+  it("rewrites Postgres text timestamps to ISO UTC at hydrate", () => {
+    const row = {
+      slug: "family-fun-connect-with-coipp-fcpl-20261011",
+      title: "Family Fun: Connect with Coipp",
+      description: "",
+      starts_at: "2026-10-11 18:00:00+00",
+      ends_at: "2026-10-11 19:00:00+00",
+      timezone: "America/New_York",
+      venue_name: "C. Burr Artz Public Library, Programming Room (CBA)",
+      address: "110 E Patrick St, Frederick, MD 21701",
+      geom: { lng: -77.4083, lat: 39.414 },
+      municipality: "frederick",
+      municipality_name: "Frederick City",
+      category: "family",
+      audience: [],
+      is_free: false,
+      source: "fcpl",
+      source_id: "coipp-ts",
+      is_verified: false,
+      first_seen_at: "2026-10-01 12:00:00+00",
+      last_verified_at: "2026-10-01 12:00:00.456+00",
+      geo_confidence: "exact_address",
+      category_name: "Family",
+    };
+
+    const hydrated = archivedEventFromSnapshot(row);
+
+    expect(hydrated?.starts_at).toBe("2026-10-11T18:00:00.000Z");
+    expect(hydrated?.ends_at).toBe("2026-10-11T19:00:00.000Z");
+    expect(hydrated?.first_seen_at).toBe("2026-10-01T12:00:00.000Z");
+    expect(hydrated?.last_verified_at).toBe("2026-10-01T12:00:00.456Z");
+    expect(Date.parse(hydrated?.starts_at ?? "")).toBe(
+      Date.parse("2026-10-11T18:00:00.000Z"),
+    );
+  });
 });

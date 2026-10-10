@@ -8,6 +8,7 @@ import { eventSeriesKey } from "@/lib/events/seriesKey";
 import { matchEventVenuePlaceId } from "@/lib/events/venueAliases";
 import { classifyEventScope } from "@/lib/events/eventScope";
 import { mergeAudienceHints } from "@/lib/events/audienceSignals";
+import { normalizeEventTimestamp } from "@/lib/events/eventTimestamp";
 
 export type ArchivedEventIdentity = {
   id: string;
@@ -117,14 +118,36 @@ export function archivedEventFromSnapshot(
     typeof row.is_free !== "boolean" ||
     typeof row.is_verified !== "boolean" ||
     !finiteCoordinate(point.lng, -180, 180) ||
-    !finiteCoordinate(point.lat, -90, 90) ||
-    !Number.isFinite(Date.parse(String(row.starts_at))) ||
-    !Number.isFinite(Date.parse(String(row.ends_at)))
+    !finiteCoordinate(point.lat, -90, 90)
   ) {
     return null;
   }
 
-  const event = { ...(row as unknown as EventWithMeta), slug };
+  const startsAt = normalizeEventTimestamp(row.starts_at);
+  const endsAt = normalizeEventTimestamp(row.ends_at);
+  if (
+    typeof startsAt !== "string" ||
+    typeof endsAt !== "string" ||
+    !Number.isFinite(Date.parse(startsAt)) ||
+    !Number.isFinite(Date.parse(endsAt))
+  ) {
+    return null;
+  }
+
+  const event = {
+    ...(row as unknown as EventWithMeta),
+    slug,
+    starts_at: startsAt,
+    ends_at: endsAt,
+  };
+  const lastVerifiedAt = normalizeEventTimestamp(event.last_verified_at);
+  if (typeof lastVerifiedAt === "string") event.last_verified_at = lastVerifiedAt;
+  const firstSeenAt = normalizeEventTimestamp(event.first_seen_at);
+  if (typeof firstSeenAt === "string") event.first_seen_at = firstSeenAt;
+  const publisherUpdatedAt = normalizeEventTimestamp(event.publisher_updated_at);
+  if (typeof publisherUpdatedAt === "string") {
+    event.publisher_updated_at = publisherUpdatedAt;
+  }
 
   const municipalityName = backfillMunicipalityName(
     event.municipality,
