@@ -47,7 +47,7 @@ import {
 } from "@/lib/integrations/parking-live";
 import { qualifiedSearch, type QualifiedSearchContext, type SearchHit } from "@/lib/search";
 import { matchesSearchQualifiers, parseSearchQualifiers } from "@/lib/search/qualifiers";
-import { loadAskWeather } from "@/lib/ask/weather";
+import { loadAskWeather, askWeatherToolResult } from "@/lib/ask/weather";
 import { safeAskDescription } from "@/lib/ask/source-copy";
 import { placeDietaryEvidence, placeMatchesDietary } from "@/lib/ask/dietary";
 import { eventFitsAskIntent } from "@/lib/ask/event-filter";
@@ -593,31 +593,7 @@ export async function runRadiusAgent(
     execute: async ({ hours }) => {
       toolsUsed.add("weather");
       const weather = await loadAskWeather(context.origin ?? FREDERICK_CENTER, now);
-      if (!weather.forecast && weather.alerts.length === 0 && !weather.aqi) {
-        return { available: false, periods: [], alerts: [], airQuality: null };
-      }
-      return {
-        available: true,
-        asOf: weather.forecast?.asOf ?? null,
-        alerts: weather.alerts.map((alert) => ({
-          event: alert.event,
-          headline: alert.headline,
-          severity: alert.severity,
-          endsAt: alert.ends_at,
-          url: alert.url,
-        })),
-        airQuality: weather.aqi ? {
-          aqi: weather.aqi.aqi,
-          category: weather.aqi.category.name,
-          reportingArea: weather.aqi.reportingArea,
-        } : null,
-        periods: (weather.forecast?.hourly ?? []).slice(0, hours).map((period) => ({
-          start: period.startTime,
-          temperature: `${period.temperature}°${period.temperatureUnit}`,
-          forecast: period.shortForecast,
-          rainChance: period.probabilityOfPrecipitation ?? null,
-        })),
-      };
+      return askWeatherToolResult(weather, hours);
     },
   });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
@@ -19,8 +19,14 @@ export default function PullToRefresh() {
   const router = useRouter();
   const pathname = usePathname();
   const [pull, setPull] = useState(0);
-  const [refreshing, setRefreshing] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [refreshRequested, setRefreshRequested] = useState(false);
+  const refreshing = refreshRequested && isPending;
+  const requestInFlight = useRef(false);
+  const pendingRef = useRef(isPending);
+  useEffect(() => { pendingRef.current = isPending; }, [isPending]);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const reduceMotionRef = useRef(false);
   const [announcement, setAnnouncement] = useState("");
   const startY = useRef<number | null>(null);
   const triggered = useRef(false);
@@ -28,86 +34,103 @@ export default function PullToRefresh() {
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReduceMotion(media.matches);
+    const update = () => {
+      reduceMotionRef.current = media.matches;
+      setReduceMotion(media.matches);
+    };
     update();
     media.addEventListener?.("change", update);
     return () => media.removeEventListener?.("change", update);
   }, []);
 
   useEffect(() => {
-    // This gesture belongs to the daily dashboard only. Mounting its
-    // window-level listeners on Map and sheet-heavy workspaces made a map pan
-    // or drawer dismissal refresh the entire route.
-    if (typeof window === "undefined" || pathname !== "/today") return;
-    const onTouchStart = (e: TouchEvent) => {
-      if (window.scrollY > 0) return;
-      const target = e.target instanceof Element ? e.target : null;
-      if (target?.closest("input, textarea, select, button, [role='dialog'], [data-pull-refresh-ignore]")) {
-        return;
-      }
-      startY.current = e.touches[0].clientY;
-      triggered.current = false;
-    };
+    if (!refreshRequested || isPending || pathname !== "/today" || document.visibilityState === "hidden") return;
+    // App Router refresh may return the same server-cached data. Release the
+    // gesture guard when its transition settles; the request acknowledgement
+    // already shown cannot certify publisher freshness.
+    requestInFlight.current = false;
+  }, [refreshRequested, isPending, pathname]);
 
+  useEffect(() => {
+    const clearGesture = () => {
+      startY.current = null;
+      triggered.current = false;
+      pullRef.current = 0;
+      setPull(0);
+    };
+    const clearFeedback = () => {
+      clearGesture();
+      requestInFlight.current = false;
+      setRefreshRequested(false);
+      setAnnouncement("");
+    };
+    // The persistent layout must not carry a gesture or completion into
+    // another page, or dispatch hidden work when a tab resumes.
+    if (pathname !== "/today") {
+      clearFeedback();
+      return;
+    }
+    const onTouchStart = (e: TouchEvent) => {
+      clearGesture();
+      if (document.visibilityState === "hidden" || requestInFlight.current || pendingRef.current
+        || window.scrollY > 0 || e.touches.length !== 1) return;
+      const target = e.target instanceof Element ? e.target : null;
+      if (target?.closest("input, textarea, select, button, [role='dialog'], [data-pull-refresh-ignore]")) return;
+      startY.current = e.touches[0].clientY;
+    };
     const onTouchMove = (e: TouchEvent) => {
       if (startY.current === null) return;
-      if (window.scrollY > 0) {
-        startY.current = null;
-        pullRef.current = 0;
-        setPull(0);
+      if (document.visibilityState === "hidden" || window.scrollY > 0 || e.touches.length !== 1) {
+        clearGesture();
         return;
       }
       const dy = e.touches[0].clientY - startY.current;
-      if (dy <= 0) {
-        pullRef.current = 0;
-        setPull(0);
-        return;
-      }
-      // Rubber band — decay past threshold so it feels resistive
-      const decayed = Math.min(MAX_PULL, dy * 0.55);
+      const decayed = Math.max(0, Math.min(MAX_PULL, dy * 0.55));
       pullRef.current = decayed;
-      if (!reduceMotion) setPull(decayed);
+      if (!reduceMotionRef.current) setPull(decayed);
       if (decayed >= PULL_THRESHOLD && !triggered.current) {
         triggered.current = true;
         haptic("medium");
       }
     };
-
-    const onTouchEnd = async () => {
+    const onTouchEnd = () => {
       if (startY.current === null) return;
       const fired = pullRef.current >= PULL_THRESHOLD;
-      startY.current = null;
-      if (fired) {
-        setRefreshing(true);
-        setAnnouncement("Refreshing today.");
-        haptic("success");
-        // Soft in-place refresh: router.refresh() re-runs the server
-        // components and revalidates, so the pulse/weather update without a
-        // full white document reload (a full reload is the most website-like
-        // moment in the daily loop). Keep the spinner up briefly so the
-        // gesture reads as deliberate, then settle.
-        router.refresh();
-        await new Promise((r) => setTimeout(r, reduceMotion ? 120 : 650));
-        setRefreshing(false);
-        setAnnouncement("Today is up to date.");
-        pullRef.current = 0;
-        setPull(0);
-        triggered.current = false;
-      } else {
-        pullRef.current = 0;
-        setPull(0);
+      clearGesture();
+      if (!fired || document.visibilityState === "hidden" || requestInFlight.current || pendingRef.current) return;
+      requestInFlight.current = true;
+      setRefreshRequested(true);
+      setAnnouncement("Refresh requested. Source checks may still be pending.");
+      const failedRequest = () => {
+        requestInFlight.current = false;
+        setRefreshRequested(false);
+        setAnnouncement("Refresh could not be requested. Please try again.");
+      };
+      try {
+        startTransition(() => {
+          try { router.refresh(); } catch { failedRequest(); }
+        });
+      } catch {
+        failedRequest();
       }
     };
-
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") clearFeedback();
+    };
     window.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("touchmove", onTouchMove, { passive: true });
     window.addEventListener("touchend", onTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", clearGesture, { passive: true });
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
+      clearFeedback();
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", clearGesture);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [pathname, reduceMotion, router]);
+  }, [pathname, router, startTransition]);
 
   if (pathname !== "/today") return null;
 
@@ -120,6 +143,8 @@ export default function PullToRefresh() {
         {announcement}
       </span>
       <div
+        data-pull-refresh-indicator
+        data-refresh-pending={refreshing ? "true" : "false"}
         aria-hidden={!showSpinner}
         className="pointer-events-none fixed left-0 right-0 z-[var(--z-prompt)] flex justify-center"
         style={{
@@ -131,7 +156,7 @@ export default function PullToRefresh() {
           className="flex h-9 w-9 items-center justify-center rounded-full border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-2)]"
           style={{
             borderColor: "var(--app-border)",
-            transform: reduceMotion
+            transform: reduceMotion || refreshing
               ? "translateY(12px) scale(1)"
               : `translateY(${Math.min(pull * 0.6, 60)}px) scale(${0.6 + progress * 0.4})`,
             opacity: showSpinner ? 1 : 0,

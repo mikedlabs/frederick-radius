@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Bookmark, BookmarkCheck, Loader2, X } from "lucide-react";
-import { useIsFollowed, useToggleFollow, useFollowedSlugs } from "@/hooks/useFollows";
+import { useFollowMutationState, useIsFollowed, useToggleFollow, useFollowedSlugs } from "@/hooks/useFollows";
 import { useMounted } from "@/hooks/useSaved";
 import { haptic } from "@/lib/haptics";
 import {
@@ -36,7 +36,7 @@ import { trackDecision } from "@/lib/decision/telemetry";
  *   - Big tap target (44px) per iOS HIG.
  *
  * Auth flow:
- *   - Signed in: tap → optimistic DB write via useToggleFollow.
+ *   - Signed in: tap → confirmed DB write via useToggleFollow.
  *   - Signed out: tap → saves to THIS DEVICE immediately (same silent
  *     localStorage path as the sheet's icon SaveButton), and the toast
  *     carries a quiet "sign in to keep it across devices" line. This CTA
@@ -61,16 +61,16 @@ export default function MyRadiusButton({
   const mounted = useMounted();
   const isFollowed = useIsFollowed(slug);
   const { authed } = useFollowedSlugs();
-  const toggle = useToggleFollow(slug, "place_detail");
-  const [busy, setBusy] = useState(false);
+  const failureDescriptionRef = useRef<string | null>(null);
+  const toggle = useToggleFollow(slug, "place_detail", (description) => { failureDescriptionRef.current = description; });
+  const [localBusy, setBusy] = useState(false);
+  const [pendingSaved, setPendingSaved] = useState<boolean | null>(null);
+  const mutation = useFollowMutationState(slug);
+  const busy = localBusy || mutation === "saving" || mutation === "removing";
+  const saving = pendingSaved ?? mutation === "saving";
   const busyRef = useRef(false);
   const [hover, setHover] = useState(false);
-  const [optimisticFollowed, setOptimisticFollowed] = useState<boolean | null>(null);
-  const renderedFollowed = optimisticFollowed ?? isFollowed;
-  useEffect(() => {
-    if (optimisticFollowed === null || optimisticFollowed !== isFollowed) return;
-    setOptimisticFollowed(null);
-  }, [isFollowed, optimisticFollowed]);
+  const renderedFollowed = isFollowed;
 
   // Pre-mount: render a placeholder pill so SSR + hydration agree.
   if (!mounted) {
@@ -108,16 +108,16 @@ export default function MyRadiusButton({
       && returnState.valueKind === null
       && isInstallPromptSuppressedPath(window.location.pathname)
       && !modalOpen;
-    setOptimisticFollowed(!wasFollowed);
+    setPendingSaved(!wasFollowed);
     setBusy(true);
+    failureDescriptionRef.current = null;
     try {
       // One code path with the sheet's SaveButton: the toggle itself is
-      // auth-aware (localStorage when anonymous, optimistic DB write when
+      // auth-aware (localStorage when anonymous, confirmed DB write when
       // signed in). Anonymous saves
       // get a quiet sync upsell in the toast, never a login detour.
-      const nowFollowed = await toggle();
-      if (nowFollowed === wasFollowed) throw new Error("Save state did not change");
-      setOptimisticFollowed(nowFollowed);
+      const nowFollowed = await toggle(!wasFollowed);
+      if (failureDescriptionRef.current !== null || nowFollowed === wasFollowed) throw new Error("Save state did not change");
       haptic(nowFollowed ? "medium" : "light");
       if (nowFollowed) {
         trackDecision({
@@ -145,10 +145,10 @@ export default function MyRadiusButton({
       }
     } catch {
       toast.error(wasFollowed ? "Could not remove from Saved" : "Could not save this place", {
-        description: "Your saved list has not changed. Please try again.",
+        description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again.",
       });
     } finally {
-      setOptimisticFollowed(null);
+      setPendingSaved(null);
       setBusy(false);
       busyRef.current = false;
     }
@@ -158,14 +158,17 @@ export default function MyRadiusButton({
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
+    setPendingSaved(!wasFollowed);
+    failureDescriptionRef.current = null;
     try {
-      const nextFollowed = await toggle();
-      if (nextFollowed === wasFollowed) throw new Error("Save state did not change");
+      const nextFollowed = await toggle(!wasFollowed);
+      if (failureDescriptionRef.current !== null || nextFollowed === wasFollowed) throw new Error("Save state did not change");
     } catch {
       toast.error("Could not undo this change", {
-        description: "Your saved list has not changed. Please try again.",
+        description: failureDescriptionRef.current ?? "We could not confirm this change. Please try again.",
       });
     } finally {
+      setPendingSaved(null);
       setBusy(false);
       busyRef.current = false;
     }
@@ -183,7 +186,9 @@ export default function MyRadiusButton({
         onMouseLeave={() => setHover(false)}
         disabled={busy}
         aria-pressed={true}
-        aria-label={busy ? `Saving ${name}` : `Saved. Tap to remove ${name}`}
+        aria-busy={busy}
+        aria-label={busy ? `${saving ? "Saving" : "Removing"} ${name}` : `Saved. Tap to remove ${name}`}
+        title={mutation === "unconfirmed" ? "This change could not be confirmed." : undefined}
         className="tactile tactile-interactive inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
         style={{
           borderColor: showRemove ? "var(--app-danger)" : "var(--app-border)",
@@ -194,7 +199,7 @@ export default function MyRadiusButton({
         {busy ? (
           <>
             <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
-            Saving…
+            {saving ? "Saving…" : "Removing…"}
           </>
         ) : showRemove ? (
           <>
@@ -218,14 +223,16 @@ export default function MyRadiusButton({
       onClick={onClick}
       disabled={busy}
       aria-pressed={false}
-      aria-label={busy ? `Removing ${name}` : `Save ${name}`}
+      aria-busy={busy}
+      aria-label={busy ? `${saving ? "Saving" : "Removing"} ${name}` : `Save ${name}`}
+      title={mutation === "unconfirmed" ? "This change could not be confirmed." : undefined}
       className="tap-44-y tactile tactile-interactive tactile-glow-brand inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
       style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
     >
       {busy ? (
         <>
           <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
-          Removing…
+          {saving ? "Saving…" : "Removing…"}
         </>
       ) : (
         <>

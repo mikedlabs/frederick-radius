@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
 }));
 vi.mock("@/hooks/useSaved", () => ({ useMounted: () => true }));
-vi.mock("@/hooks/useFollows", () => ({ useIsFollowed: () => mocks.saved, useToggleFollow: () => mocks.toggle, useFollowedSlugs: () => ({ authed: false }) }));
+vi.mock("@/hooks/useFollows", () => ({ useFollowMutationState: () => "idle", useIsFollowed: () => mocks.saved, useToggleFollow: () => mocks.toggle, useFollowedSlugs: () => ({ authed: false }) }));
 vi.mock("@/lib/haptics", () => ({ haptic: vi.fn() }));
 vi.mock("@/lib/decision/telemetry", () => ({ trackDecision: vi.fn() }));
 vi.mock("@/lib/pwa-display", () => ({ isStandalone: () => false, isInstallPromptSuppressedPath: () => false }));
@@ -70,6 +70,9 @@ describe("place detail save failure recovery", () => {
     await act(async () => { button().click(); button().click(); });
     expect(mocks.toggle).toHaveBeenCalledTimes(1);
     expect(button().disabled).toBe(true);
+    expect(button().getAttribute("aria-pressed")).toBe("false");
+    expect(button().getAttribute("aria-label")).toBe("Saving Test stop");
+    expect(button().textContent).toContain("Saving");
     await act(async () => { mocks.saved = true; complete(true); });
     const options = mocks.toast.success.mock.calls[0][1];
     mocks.toggle.mockRejectedValueOnce(new Error("Storage unavailable"));
@@ -77,5 +80,19 @@ describe("place detail save failure recovery", () => {
     expect(mocks.toast.error).toHaveBeenCalledTimes(1);
     expect(button().getAttribute("aria-pressed")).toBe("true");
     expect(button().disabled).toBe(false);
+  });
+
+  it("keeps the confirmed Saved state and truthful direction during a pending removal", async () => {
+    mocks.saved = true;
+    let fail!: (error: Error) => void;
+    mocks.toggle.mockReturnValue(new Promise<boolean>((_resolve, reject) => { fail = reject; }));
+    render();
+    await act(async () => button().click());
+    expect(button().getAttribute("aria-pressed")).toBe("true");
+    expect(button().getAttribute("aria-label")).toBe("Removing Test stop");
+    expect(button().textContent).toContain("Removing");
+    await act(async () => fail(new Error("Unavailable")));
+    expect(button().getAttribute("aria-pressed")).toBe("true");
+    expect(mocks.toast.error).toHaveBeenCalledTimes(1);
   });
 });

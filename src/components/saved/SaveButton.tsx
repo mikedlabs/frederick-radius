@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useIsSaved, useToggleSave, useMounted, useSavedList } from "@/hooks/useSaved";
-import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
+import { useIsSaved, useToggleSave, useMounted, useSavedList, useSetEventSaved, useEventSavedState, savedChangeDescription } from "@/hooks/useSaved";
+import { useFollowMutationState, useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { Bookmark } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import {
@@ -39,62 +39,52 @@ export default function SaveButton({
   // out. Events + radii stay on the legacy useSaved hook by design
   // (Phase 1 brief framed sync as "follow PLACES"; broader sync later).
   const placeFollowed = useIsFollowed(refType === "place" ? refId : "");
-  const togglePlace = useToggleFollow(refId, "icon");
-  const legacyIsSaved = useIsSaved(refType, refId);
+  const failureDescriptionRef = useRef<string | null>(null);
+  const togglePlace = useToggleFollow(refId, "icon", (description) => { failureDescriptionRef.current = description; });
+  const legacyIsSaved = useIsSaved(refType, refId, refType !== "event");
   const legacyToggle = useToggleSave(refType, refId);
-  const isSaved = refType === "place" ? placeFollowed : legacyIsSaved;
-  // The auth-aware place toggle may need one lightweight session lookup before
-  // it knows whether to write locally or remotely. Reflect the tap in this
-  // button immediately rather than leaving the bookmark visually unchanged
-  // during that lookup; the shared store remains the durable source of truth.
-  const [optimisticSaved, setOptimisticSaved] = useState<boolean | null>(null);
-  const [busy, setBusy] = useState(false);
+  const setEventSaved = useSetEventSaved(refId);
+  const eventSavedState = useEventSavedState(refType === "event" ? refId : null);
+  const eventSaveUnavailable = refType === "event" && eventSavedState === null;
+  const isSaved = refType === "place" ? placeFollowed : refType === "event" ? eventSavedState === true : legacyIsSaved;
+  const [localBusy, setBusy] = useState(false);
+  const [pendingSaved, setPendingSaved] = useState<boolean | null>(null);
+  const mutation = useFollowMutationState(refType === "place" ? refId : "");
+  const busy = localBusy || mutation === "saving" || mutation === "removing";
+  const saving = pendingSaved ?? mutation === "saving";
   const busyRef = useRef(false);
-  const renderedSaved = optimisticSaved ?? isSaved;
+  const renderedSaved = isSaved;
   // Pre-toggle total. Used to detect the user's first save ever —
   // when totalBefore is 0 AND the user is about to save, the next
   // tap is the moment that promotes a stranger into someone who has
   // started keeping a list. Marked with editorial copy below.
   const totalBefore = useSavedList().length;
-  // Track a brief "celebration" window after a fresh save so we can
-  // overshoot-pop the icon and radiate a one-shot ring. The flag is
-  // reset by an animation-end timer; the actual saved-state is the
-  // source of truth. We use the "set state during render based on
-  // prop change" pattern so we never cascade setState from an effect.
+  // Celebrate only this control's confirmed save, never a pending intent.
   const [celebrate, setCelebrate] = useState(false);
-  const [prev, setPrev] = useState(isSaved);
-  if (isSaved !== prev) {
-    setPrev(isSaved);
-    if (!prev && isSaved) setCelebrate(true);
-  }
   useEffect(() => {
     if (!celebrate) return;
     const t = window.setTimeout(() => setCelebrate(false), 520);
     return () => window.clearTimeout(t);
   }, [celebrate]);
-  useEffect(() => {
-    if (optimisticSaved === null || optimisticSaved !== isSaved) return;
-    // Clear the one-tap visual bridge once the shared save store catches up.
-    setOptimisticSaved(null);
-  }, [isSaved, optimisticSaved]);
 
   async function toggle(wasSaved: boolean): Promise<boolean> {
     if (busyRef.current) return false;
     busyRef.current = true;
     setBusy(true);
-    setOptimisticSaved(!wasSaved);
+    setPendingSaved(!wasSaved);
+    failureDescriptionRef.current = null;
     try {
-      const nextSaved = await (refType === "place" ? togglePlace() : legacyToggle());
+      const nextSaved = await (refType === "place" ? togglePlace(!wasSaved) : refType === "event" ? setEventSaved(!wasSaved) : legacyToggle(!wasSaved));
       // A full followed-place list refuses an addition without throwing.
-      if (nextSaved === wasSaved) throw new Error("Save state did not change");
+      if (failureDescriptionRef.current !== null || nextSaved === wasSaved) throw new Error("Save state did not change");
       return true;
-    } catch {
+    } catch (error) {
       toast.error(wasSaved ? "Could not remove from Saved" : "Could not save this item", {
-        description: "Your saved list has not changed. Please try again.",
+        description: failureDescriptionRef.current ?? savedChangeDescription(error),
       });
       return false;
     } finally {
-      setOptimisticSaved(null);
+      setPendingSaved(null);
       setBusy(false);
       busyRef.current = false;
     }
@@ -138,8 +128,9 @@ export default function SaveButton({
           && returnState.valueKind === null
           && isInstallPromptSuppressedPath(window.location.pathname)
           && !modalOpen;
-        haptic(wasSaved ? "light" : "medium");
         if (!await toggle(wasSaved)) return;
+        if (!wasSaved) setCelebrate(true);
+        haptic(wasSaved ? "light" : "medium");
         if (refType === "event") track("save_event", { on: !wasSaved });
         if (!wasSaved && refType !== "radius") {
           const context = decisionContextFromPath(window.location.pathname);
@@ -180,23 +171,24 @@ export default function SaveButton({
           });
         }
       }}
-      disabled={busy}
+      disabled={busy || eventSaveUnavailable}
       aria-busy={busy}
-      aria-pressed={renderedSaved}
+      aria-pressed={eventSaveUnavailable ? undefined : renderedSaved}
       // `label` arrives as "Save {name}"; strip the verb so the aria reads
       // cleanly ("Save {name}" / "Remove {name} from Saved") instead of the
       // doubled "Add Save {name} to Saved".
       aria-label={
-        renderedSaved
+        eventSaveUnavailable ? `Saved state unavailable for ${label.replace(/^Save\s+/, "")}`
+          : busy ? `${saving ? "Saving" : "Removing"} ${label.replace(/^Save\s+/, "")}` : renderedSaved
           ? `Remove ${label.replace(/^Save\s+/, "")} from Saved`
           : `Save ${label.replace(/^Save\s+/, "")}`
       }
-      title={renderedSaved ? "Saved" : "Save"}
+      title={eventSaveUnavailable ? "Saved state unavailable" : mutation === "unconfirmed" ? "This change could not be confirmed." : renderedSaved ? "Saved" : "Save"}
       className={barLabel
         ? "tap-44 relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[11px] font-semibold leading-none transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
         : "tap-44 relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92]"}
       style={{
-        color: renderedSaved ? "var(--app-cool)" : "var(--app-ink-3)",
+        color: renderedSaved ? "var(--app-link)" : "var(--app-ink-3)",
         transitionTimingFunction: "var(--app-ease-spring)",
       }}
     >
@@ -208,7 +200,7 @@ export default function SaveButton({
         fill={renderedSaved ? "currentColor" : "none"}
         style={{ transitionTimingFunction: "var(--app-ease-spring)" }}
       />
-      {barLabel ? <span>{renderedSaved ? "Saved" : barLabel}</span> : null}
+      {barLabel ? <span>{eventSaveUnavailable ? "Unavailable" : busy ? saving ? "Saving…" : "Removing…" : renderedSaved ? "Saved" : barLabel}</span> : null}
       {celebrate && (
         <span
           aria-hidden

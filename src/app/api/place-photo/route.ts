@@ -3,8 +3,8 @@
  *
  * Google photo media URLs embed the API key, so we can never put them in
  * client HTML. This route takes a photo resource name, fetches the image
- * server-side with the key, and streams it back without storing the Google
- * content. Google Places photo names and photo bytes are not ours to mirror
+ * server-side with the key, and returns a bounded, temporary per-request body
+ * without storing the Google content. Google Places photo names and photo bytes are not ours to mirror
  * or retain, so every successful response is explicitly `no-store`.
  *
  *   /api/place-photo?name=places/XXX/photos/YYY&w=800
@@ -16,6 +16,7 @@ import { reserveDailyUsage } from "@/lib/usage-meter";
 import { NextRequest } from "next/server";
 import { photoUrl } from "@/lib/integrations/google-places";
 import { googlePhotoDailyCap } from "@/lib/google-photo-budget";
+import { createAbortDeadline } from "@/lib/promise-deadline";
 import {
   isOverPaidRequestBudget,
   isSameOriginRequest,
@@ -29,6 +30,17 @@ export const runtime = "nodejs";
 // A route-level revalidate value would put Google photo bytes in Next/Vercel's
 // data cache. Keep this route dynamic and make the upstream request explicit.
 export const dynamic = "force-dynamic";
+
+const PHOTO_DEADLINE_MS = 8_000;
+// Leave response overhead below the host's 4.5 MB function response limit.
+const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
+const MAX_PHOTO_READS = 4_096;
+// A raster keeps its intrinsic 1px dimensions in WebKit when CSS fills a card.
+// SVG can report the painted card dimensions and evade the failure detector.
+const PHOTO_SIGNAL_PNG = new Uint8Array(Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=",
+  "base64",
+));
 
 const VALID_NAME = /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/;
 const VALID_SLUG = /^[a-z0-9-]+$/;
@@ -121,11 +133,11 @@ function placeholderResponse(
 ): Response {
   if (signal) {
     return new Response(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" viewBox="0 0 1 1"/>',
+      PHOTO_SIGNAL_PNG,
       {
         status: 200,
         headers: {
-          "Content-Type": "image/svg+xml",
+          "Content-Type": "image/png",
           "Cache-Control": "public, max-age=300, s-maxage=300",
           "X-Photo-Fallback": reason,
         },
@@ -144,9 +156,9 @@ function placeholderResponse(
 }
 
 
-/** Success passthrough — shared by the first attempt and the healed retry. */
-function imageResponse(upstream: Response): Response {
-  return new Response(upstream.body, {
+/** Return the bounded transport bytes of this exact photo; never a healed retry. */
+function imageResponse(upstream: Response, bytes: Uint8Array<ArrayBuffer>): Response {
+  return new Response(bytes, {
     status: 200,
     headers: {
       "Content-Type": upstream.headers.get("content-type") || "image/jpeg",
@@ -157,6 +169,46 @@ function imageResponse(upstream: Response): Response {
       Pragma: "no-cache",
     },
   });
+}
+
+class PhotoBodyError extends Error {
+  constructor(readonly reason: "body-too-large" | "body-read-limit" | "body-empty" | "body-incomplete") {
+    super(reason);
+  }
+}
+
+/** Bounded request memory, including small chunks; no file, Blob, or cache writes. */
+async function readPhotoBytes(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  signal: AbortSignal,
+  expectedLength?: number,
+): Promise<Uint8Array<ArrayBuffer>> {
+  let bytes = new Uint8Array(64 * 1024);
+  let length = 0;
+  let reads = 0;
+  for (;;) {
+    signal.throwIfAborted();
+    const { done, value } = await reader.read();
+    signal.throwIfAborted();
+    if (done) {
+      if (length === 0) throw new PhotoBodyError("body-empty");
+      if (expectedLength !== undefined && length !== expectedLength) throw new PhotoBodyError("body-incomplete");
+      return bytes.slice(0, length);
+    }
+    // A finite read ceiling also stops pathological empty/tiny chunks from
+    // keeping the event loop in an endless sequence of resolved promises.
+    if (++reads > MAX_PHOTO_READS) throw new PhotoBodyError("body-read-limit");
+    if (value.byteLength > MAX_PHOTO_BYTES - length) throw new PhotoBodyError("body-too-large");
+    const nextLength = length + value.byteLength;
+    if (expectedLength !== undefined && nextLength > expectedLength) throw new PhotoBodyError("body-incomplete");
+    if (nextLength > bytes.length) {
+      const grown = new Uint8Array(Math.min(MAX_PHOTO_BYTES, Math.max(nextLength, bytes.length * 2)));
+      grown.set(bytes.subarray(0, length));
+      bytes = grown;
+    }
+    bytes.set(value, length);
+    length = nextLength;
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -192,66 +244,127 @@ export async function GET(req: NextRequest) {
     return new Response("Bad photo name", { status: 400 });
   }
 
-  // Per-IP rate limit: 120 photos/minute is generous (a full viewport of
-  // cards is ~6–12 photos, a few page loads is far under). Anyone past that
-  // threshold should not trigger another paid upstream request. Return the
-  // route's normal artwork fallback instead of a 429, though: a long browsing
-  // session or a shared NAT must never turn valid <img> elements into broken
-  // icons. No-op when KV is not configured (see isRateLimited docs).
-  // The helper still retains its unattributed bucket as defense in depth if
-  // this route's strict guard is ever loosened. Same-origin callers use the
-  // normal per-IP bucket and degrade to artwork instead of a broken image.
-  if (await isOverPaidRequestBudget(req, "place-photo", 120, 60, 15)) {
-    return placeholderResponse(name, w, "rate-limited", slug, signalFallback);
-  }
+  // One deadline covers allowance checks, upstream headers and the full body.
+  // A late reservation can conservatively consume a unit, but cannot start a
+  // paid request after this caller has stopped waiting. No refund or retry.
+  const deadline = createAbortDeadline(PHOTO_DEADLINE_MS, req.signal);
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  let readerCancelled = false;
+  const cancelBody = () => {
+    if (!reader || readerCancelled) return;
+    readerCancelled = true;
+    void reader.cancel().catch(() => {});
+  };
+  const stoppedReason = () => req.signal.aborted ? "caller-aborted" : "fetch-timeout";
+  let onStop!: () => void;
+  const stopped = new Promise<Response>((resolve) => {
+    onStop = () => {
+      cancelBody();
+      resolve(placeholderResponse(name, w, stoppedReason(), slug, signalFallback));
+    };
+    deadline.signal.addEventListener("abort", onStop, { once: true });
+    if (deadline.signal.aborted) onStop();
+  });
+  const work = (async () => {
+    deadline.signal.throwIfAborted();
+    // Per-IP rate limit: 120 photos/minute is generous (a full viewport of
+    // cards is ~6–12 photos, a few page loads is far under). Anyone past that
+    // threshold should not trigger another paid upstream request. Return the
+    // route's normal artwork fallback instead of a 429, though: a long browsing
+    // session or a shared NAT must never turn valid <img> elements into broken
+    // icons. No-op when KV is not configured (see isRateLimited docs).
+    // The helper still retains its unattributed bucket as defense in depth if
+    // this route's strict guard is ever loosened. Same-origin callers use the
+    // normal per-IP bucket and degrade to artwork instead of a broken image.
+    const rateLimited = await isOverPaidRequestBudget(req, "place-photo", 120, 60, 15);
+    deadline.signal.throwIfAborted();
+    if (rateLimited) {
+      return placeholderResponse(name, w, "rate-limited", slug, signalFallback);
+    }
 
-  const url = photoUrl(name, w);
-  if (!url) {
-    // Key not configured — degrade to a gradient placeholder so the
-    // page still renders coherently in dev / on misconfigured deploys.
-    return placeholderResponse(name, w, "no-key", slug, signalFallback);
-  }
+    const url = photoUrl(name, w);
+    if (!url) {
+      // Key not configured — degrade to a gradient placeholder so the
+      // page still renders coherently in dev / on misconfigured deploys.
+      return placeholderResponse(name, w, "no-key", slug, signalFallback);
+    }
 
-  // A reservation is both the aggregate daily gate and this attempt's usage
-  // record. Database uncertainty fails closed so a broken counter cannot turn
-  // into unbounded Google spend.
-  let reservation: Awaited<ReturnType<typeof reserveDailyUsage>> = null;
-  try {
-    reservation = await reserveDailyUsage(
-      "google_photo",
-      googlePhotoDailyCap(),
-    );
-  } catch {
-    // Keep the route safe if the helper's fail-closed contract ever regresses.
-  }
-  if (!reservation) {
-    return placeholderResponse(
-      name,
-      w,
-      "budget-unavailable",
-      slug,
-      signalFallback,
-    );
-  }
-  if (!reservation.reserved) {
-    return placeholderResponse(name, w, "daily-cap", slug, signalFallback);
-  }
-
-  try {
+    // A reservation is both the aggregate daily gate and this attempt's usage
+    // record. Database uncertainty fails closed so a broken counter cannot turn
+    // into unbounded Google spend.
+    let reservation: Awaited<ReturnType<typeof reserveDailyUsage>> = null;
+    try {
+      reservation = await reserveDailyUsage(
+        "google_photo",
+        googlePhotoDailyCap(),
+      );
+    } catch {
+      // Keep the route safe if the helper's fail-closed contract ever regresses.
+    }
+    deadline.signal.throwIfAborted();
+    if (!reservation) {
+      return placeholderResponse(
+        name,
+        w,
+        "budget-unavailable",
+        slug,
+        signalFallback,
+      );
+    }
+    if (!reservation.reserved) {
+      return placeholderResponse(name, w, "daily-cap", slug, signalFallback);
+    }
     const upstream = await fetch(url, {
       // Google redirects to the actual CDN object; follow it.
       redirect: "follow",
       cache: "no-store",
+      signal: deadline.signal,
     });
+    if (deadline.signal.aborted) {
+      // Fetch implementations that settle after cancellation still must not
+      // leak their late body or replace a response already sent as fallback.
+      void upstream.body?.cancel().catch(() => {});
+      deadline.signal.throwIfAborted();
+    }
     if (!upstream.ok || !upstream.body) {
-      // Do not substitute a different current Google photo here. The page's
-      // visible author/source credit belongs to this exact resource name; a
-      // silent replacement could put a new photo under the old author's name.
-      // The scheduled place refresh updates photo and attribution together.
+      void upstream.body?.cancel().catch(() => {});
+      // The visible credit belongs to this exact resource name. The scheduled
+      // place refresh updates photo identity and attribution together.
       return placeholderResponse(name, w, `upstream-${upstream.status}`, slug, signalFallback);
     }
-    return imageResponse(upstream);
-  } catch {
-    return placeholderResponse(name, w, "fetch-error", slug, signalFallback);
+    // Fetch can decode an encoded response while retaining its wire length.
+    // Only identity Content-Length describes the bytes this route receives.
+    const encoding = upstream.headers.get("content-encoding")?.trim().toLowerCase();
+    const lengthHeader = upstream.headers.get("content-length")?.trim();
+    const advertisedBytes = (!encoding || encoding === "identity") && lengthHeader && /^\d+$/.test(lengthHeader)
+      ? Number(lengthHeader) : undefined;
+    if (advertisedBytes !== undefined && (!Number.isSafeInteger(advertisedBytes) || advertisedBytes > MAX_PHOTO_BYTES)) {
+      void upstream.body.cancel().catch(() => {});
+      throw new PhotoBodyError("body-too-large");
+    }
+    reader = upstream.body.getReader();
+    try {
+      return imageResponse(upstream, await readPhotoBytes(reader, deadline.signal, advertisedBytes));
+    } catch (error) {
+      cancelBody();
+      throw error;
+    } finally {
+      reader.releaseLock();
+      reader = undefined;
+    }
+  })().catch((error: unknown) => placeholderResponse(
+    name,
+    w,
+    error instanceof PhotoBodyError ? error.reason : deadline.signal.aborted ? stoppedReason() : "fetch-error",
+    slug,
+    signalFallback,
+  ));
+  try {
+    // Racing as well as aborting keeps a stalled/late transport from holding
+    // the public response. The work catch consumes any late rejection.
+    return await Promise.race([work, stopped]);
+  } finally {
+    deadline.signal.removeEventListener("abort", onStop);
+    deadline.dispose();
   }
 }

@@ -75,7 +75,7 @@ type Asset = {
   width: number;
   height: number;
   make: (fontCss: string) => string;
-  png?: boolean;
+  png?: true | "handoff";
   pdf?: { width: string; height: string };
   role: string;
 };
@@ -1140,7 +1140,7 @@ async function main() {
       width: 1800,
       height: 2400,
       role: "Portrait poster using owned Frederick photography",
-      png: true,
+      png: "handoff",
       make: (fonts) => posterYouAreHere(fonts, summerPhotoUrl),
     },
     {
@@ -1148,7 +1148,7 @@ async function main() {
       width: 1800,
       height: 2400,
       role: "Portrait countywide launch poster using owned Frederick photography",
-      png: true,
+      png: "handoff",
       make: (fonts) => posterWholeCounty(fonts, fallPhotoUrl),
     },
     {
@@ -1250,7 +1250,10 @@ async function main() {
       assertUsesOnlyBrandColors(asset.file, source);
       await writeFile(destination, source);
       if (asset.png) {
-        const pngDestination = destination.replace(/\.svg$/, ".png");
+        const pngDestination = asset.png === "handoff"
+          ? path.join(ROOT, "output", "brand", asset.file.replace(/\.svg$/, ".png"))
+          : destination.replace(/\.svg$/, ".png");
+        await mkdir(path.dirname(pngDestination), { recursive: true });
         await page.setViewportSize({ width: asset.width, height: asset.height });
         await page.setContent(
           `<!doctype html><html><head><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}svg{display:block}</style></head><body>${source}</body></html>`,
@@ -1356,7 +1359,10 @@ async function main() {
       width,
       height,
       role,
-      exports: ["svg", ...(png ? ["png"] : []), ...(pdf ? ["pdf"] : [])],
+      exports: ["svg", ...(png === true ? ["png"] : []), ...(pdf ? ["pdf"] : [])],
+      ...(png === "handoff" ? {
+        localExports: { png: `output/brand/${file.replace(/\.svg$/, ".png")}` },
+      } : {}),
     })),
     platform: {
       iconVersion: PLATFORM_BRAND.iconVersion,

@@ -34,8 +34,7 @@ function read(): SavedRef[] {
     return cachedSnapshot;
   }
   try {
-    const parsed = JSON.parse(raw);
-    cachedSnapshot = Array.isArray(parsed) ? parsed : [];
+    cachedSnapshot = parseSavedItems(raw);
   } catch {
     cachedSnapshot = [];
   }
@@ -47,23 +46,33 @@ function readServer(): SavedRef[] {
   return SERVER_SNAPSHOT;
 }
 
-function write(items: SavedRef[]) {
-  if (typeof window === "undefined") return;
-  const next = JSON.stringify(items);
-  window.localStorage.setItem(KEY, next);
-  // The user just saved something worth protecting — ask the browser to
-  // move this origin's storage from best-effort (evictable; iOS clears
-  // it after ~7 idle days) to persistent. Idempotent, promptless.
-  ensurePersistentStorage();
-  cachedRaw = next;
-  cachedSnapshot = items;
-  listeners.forEach((l) => l());
+/** One row validator for strict event reads and every confirmed local mutation. */
+function parseSavedItems(raw: string | null): SavedRef[] {
+  if (raw === null) return [];
+  const parsed: unknown = JSON.parse(raw);
+  const valid = Array.isArray(parsed) && parsed.every((item: unknown) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return false;
+    const row = item as Record<string, unknown>;
+    return typeof row.type === "string" && ["place", "event", "radius", "beer"].includes(row.type)
+      && typeof row.id === "string" && row.id.trim().length > 0
+      && typeof row.saved_at === "string";
+  });
+  if (!valid) throw new Error("The saved list could not be read.");
+  return parsed as SavedRef[];
+}
+
+function onSavedStorage(event: StorageEvent) {
+  if (event.key !== null && event.key !== KEY) return;
+  if (event.storageArea !== null && event.storageArea !== window.localStorage) return;
+  listeners.forEach((listener) => listener());
 }
 
 const subscribe: (cb: Listener) => () => void = (cb) => {
+  if (listeners.size === 0) window.addEventListener("storage", onSavedStorage);
   listeners.add(cb);
   return () => {
     listeners.delete(cb);
+    if (listeners.size === 0) window.removeEventListener("storage", onSavedStorage);
   };
 };
 
@@ -71,44 +80,109 @@ export function useSavedList(): SavedRef[] {
   return useSyncExternalStore(subscribe, read, readServer);
 }
 
-export function useIsSaved(type: SavedRef["type"], id: string): boolean {
+export function useIsSaved(type: SavedRef["type"], id: string, enabled = true): boolean {
   const list = useSavedList();
-  return list.some((s) => s.type === type && s.id === id);
+  return enabled && list.some((s) => s.type === type && s.id === id);
+}
+
+let confirmedRaw: string | null | undefined;
+let confirmedItems: SavedRef[] = [];
+
+function readConfirmedSaved(): { raw: string | null; items: SavedRef[] } {
+  if (typeof window === "undefined") throw new Error("Device storage unavailable");
+  const raw = window.localStorage.getItem(KEY);
+  if (raw === confirmedRaw) return { raw, items: confirmedItems };
+  const parsed = parseSavedItems(raw);
+  confirmedRaw = raw;
+  confirmedItems = parsed as SavedRef[];
+  return { raw, items: confirmedItems };
+}
+
+/** Null means this device cannot currently confirm the event's saved state. */
+export function useEventSavedState(id: string | null): boolean | null {
+  const snapshot = useCallback(() => {
+    if (id === null) return false;
+    try { return readConfirmedSaved().items.some((item) => item.type === "event" && item.id === id); }
+    catch { return null; }
+  }, [id]);
+  return useSyncExternalStore(subscribe, snapshot, () => null);
+}
+
+export class SavedCoordinationError extends Error {
+  constructor() {
+    super("This browser cannot safely coordinate Saved changes. Try a current browser.");
+  }
+}
+
+export function savedChangeDescription(error: unknown, fallback = "We could not confirm this change. Please try again."): string {
+  return error instanceof SavedCoordinationError
+    ? error.message
+    : fallback;
+}
+
+/** All writers of the existing device list share one origin-wide Web Lock.
+ * Read inside the lock, never from a rendered snapshot, and publish only after
+ * readback. Older app tabs and raw same-origin writers do not honor this lock.
+ * Without Web Locks a per-tab queue cannot protect the whole list, so changes
+ * fail closed while existing saves remain readable. */
+async function mutateSaved(type: SavedRef["type"], id: string, desired?: boolean, canCommit?: () => boolean, vibrateOnSave = true): Promise<boolean> {
+  if (typeof window === "undefined" || !navigator.locks?.request) {
+    throw new SavedCoordinationError();
+  }
+  try {
+    return await navigator.locks.request(KEY, () => {
+      if (canCommit && !canCommit()) throw new Error("The saved intent belongs to an earlier account state.");
+      const { raw, items } = readConfirmedSaved();
+      const exists = items.some((item) => item.type === type && item.id === id);
+      const saved = desired ?? !exists;
+      const nextItems = exists === saved ? items : saved
+        ? [...items, { type, id, saved_at: new Date().toISOString() }]
+        : items.filter((item) => !(item.type === type && item.id === id));
+      const next = JSON.stringify(nextItems);
+      if (exists !== saved) {
+        window.localStorage.setItem(KEY, next);
+        if (window.localStorage.getItem(KEY) !== next) {
+          throw new Error("Saved change could not be confirmed");
+        }
+      }
+      cachedRaw = exists === saved ? raw : next;
+      cachedSnapshot = nextItems;
+      listeners.forEach((listener) => listener());
+      if (exists !== saved) {
+        ensurePersistentStorage();
+        if (type !== "beer") {
+          if (saved) signalReturnBridgeValue(type);
+          else if (!nextItems.some((item) => item.type === type)) cancelPendingReturnBridgeValue(type);
+        }
+        if (saved && vibrateOnSave && "vibrate" in navigator) {
+          try { navigator.vibrate(8); } catch {}
+        }
+      }
+      return saved;
+    });
+  } catch (error) {
+    // A failed readback leaves confirmation unavailable, never optimistic.
+    listeners.forEach((listener) => listener());
+    throw error;
+  }
+}
+
+/** Apply the displayed save/remove intent instead of reversing a newer save. */
+export function setEventSaved(id: string, saved: boolean): Promise<boolean> {
+  return mutateSaved("event", id, saved, undefined, false);
+}
+
+export function useSetEventSaved(id: string) {
+  return useCallback((saved: boolean) => setEventSaved(id, saved), [id]);
 }
 
 export function useToggleSave(type: SavedRef["type"], id: string) {
-  return useCallback(() => {
-    const items = read();
-    const exists = items.some((s) => s.type === type && s.id === id);
-    const next = exists
-      ? items.filter((s) => !(s.type === type && s.id === id))
-      : [...items, { type, id, saved_at: new Date().toISOString() }];
-    write(next);
-    if (!exists && type !== "beer") signalReturnBridgeValue(type);
-    if (
-      exists
-      && type !== "beer"
-      && !next.some((item) => item.type === type)
-    ) {
-      cancelPendingReturnBridgeValue(type);
-    }
-    if (!exists && typeof navigator !== "undefined" && "vibrate" in navigator) {
-      try { (navigator as Navigator & { vibrate?: (p: number) => void }).vibrate?.(8); } catch {}
-    }
-    return !exists;
-  }, [type, id]);
+  return useCallback((desired?: boolean, canCommit?: () => boolean) => mutateSaved(type, id, desired, canCommit), [type, id]);
 }
 
-/** Imperative save (no hook), for event handlers like the deck's "love" swipe.
- *  No-ops if the ref is already saved. */
-export function addSaved(type: SavedRef["type"], id: string) {
-  const items = read();
-  if (items.some((s) => s.type === type && s.id === id)) return;
-  write([...items, { type, id, saved_at: new Date().toISOString() }]);
-  if (type !== "beer") signalReturnBridgeValue(type);
-  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-    try { (navigator as Navigator & { vibrate?: (p: number) => void }).vibrate?.(8); } catch {}
-  }
+/** Imperative, idempotent save; callers await device confirmation. */
+export function addSaved(type: SavedRef["type"], id: string): Promise<boolean> {
+  return mutateSaved(type, id, true);
 }
 
 export function useMounted(): boolean {

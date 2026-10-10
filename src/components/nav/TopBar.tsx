@@ -28,6 +28,7 @@ import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 
 const SearchOverlay = lazy(() => import("@/components/search/SearchOverlay"));
 let searchLayerSequence = 0;
+const FIND_DRAFT_KEY = "fr:find-draft:v1";
 
 export function pageOwnsPrimarySearch(pathname: string): boolean {
   return pathname === "/today"
@@ -53,8 +54,18 @@ export function topBarFindTarget(pathname: string): FindTarget {
   return pathname === "/map" ? "map" : "global";
 }
 
+/** Another active modal owns input until its existing dismissal completes. */
+function anotherModalOwnsInput(): boolean {
+  return Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'))
+    .some((dialog) => dialog.id !== "radius-find-dialog"
+      && !dialog.closest('[inert], [hidden], [aria-hidden="true"]'));
+}
+
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchInitialQuery, setSearchInitialQuery] = useState("");
+  const searchDraftRef = useRef("");
+  const searchDraftNeedsStorageRef = useRef(false);
   const [findInteractionReady, setFindInteractionReady] = useState(false);
   const searchOpenerRef = useRef<HTMLElement | null>(null);
   const searchLayerIdRef = useRef("");
@@ -65,6 +76,35 @@ export default function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
   const closeSearch = useCallback(() => setSearchOpen(false), []);
+
+  // The overlay stays lazy and unmounts on close. Only its query survives in
+  // this tab, including the existing full navigation to a result. Never retain
+  // results, hours, source freshness, coordinates, or a previous area here.
+  const restoreSearchDraft = useCallback(() => {
+    // Back can revive this header from BFCache after another page in this
+    // tab edited or cleared Find. Read storage again unless our own latest
+    // edit failed to persist; a readable older value must not replace it.
+    if (!searchDraftNeedsStorageRef.current) {
+      try {
+        searchDraftRef.current = window.sessionStorage.getItem(FIND_DRAFT_KEY) ?? "";
+      } catch {
+        // Retain this header's latest words while reads are blocked.
+      }
+    }
+    setSearchInitialQuery(searchDraftRef.current);
+  }, []);
+  const rememberSearchDraft = useCallback((query: string) => {
+    // Update before dismissal or navigation can unmount the input. Memory is
+    // also the fallback when browser storage is unavailable or full.
+    searchDraftRef.current = query;
+    try {
+      if (query) window.sessionStorage.setItem(FIND_DRAFT_KEY, query);
+      else window.sessionStorage.removeItem(FIND_DRAFT_KEY);
+      searchDraftNeedsStorageRef.current = false;
+    } catch {
+      searchDraftNeedsStorageRef.current = true;
+    }
+  }, []);
 
   // The app bar is server-rendered before this client component hydrates. An
   // enabled button in that brief window looks actionable but has no click
@@ -130,6 +170,7 @@ export default function TopBar() {
     opener: HTMLElement | null,
     returnScrollY = window.scrollY,
   ) => {
+    if (anotherModalOwnsInput()) return;
     searchOpenerRef.current = opener;
     if (topBarFindTarget(pathname) === "map") {
       setSearchOpen(false);
@@ -139,10 +180,11 @@ export default function TopBar() {
     searchPathRef.current = pathname;
     searchReturnScrollYRef.current = returnScrollY;
     if (!searchOpen) {
+      restoreSearchDraft();
       searchLayerIdRef.current = `find:${Date.now()}:${++searchLayerSequence}`;
     }
     setSearchOpen(true);
-  }, [pathname, searchOpen]);
+  }, [pathname, restoreSearchDraft, searchOpen]);
 
   // Deep page = anything that isn't one of the 4 bottom-nav tabs (or its
   // sub-route) and isn't the root. On these the bottom nav lights NO
@@ -176,11 +218,13 @@ export default function TopBar() {
   useEffect(() => {
     const open = () => {
       consumeFindRequest("global");
+      if (anotherModalOwnsInput()) return;
       searchReturnScrollYRef.current = window.scrollY;
       searchOpenerRef.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
       searchPathRef.current = pathname;
       if (!searchOpen) {
+        restoreSearchDraft();
         searchLayerIdRef.current = `find:${Date.now()}:${++searchLayerSequence}`;
       }
       setSearchOpen(true);
@@ -188,7 +232,7 @@ export default function TopBar() {
     window.addEventListener("fr:open-search", open);
     if (consumeFindRequest("global")) window.requestAnimationFrame(open);
     return () => window.removeEventListener("fr:open-search", open);
-  }, [pathname, searchOpen]);
+  }, [pathname, restoreSearchDraft, searchOpen]);
 
   // Search belongs to the route that opened it. The persistent app layout must
   // not let a still-loading overlay appear over a different destination after
@@ -293,7 +337,7 @@ export default function TopBar() {
                   style={{
                     borderColor: "var(--app-brand-tint-22)",
                     background: "var(--app-brand-tint-6)",
-                    color: "var(--app-brand-press)",
+                    color: "var(--app-ink-3)",
                   }}
                 >
                   Beta
@@ -379,7 +423,7 @@ export default function TopBar() {
               className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 disabled:cursor-wait disabled:opacity-60 lg:hidden"
               style={{
                 borderColor: searchOpen ? "var(--app-brand)" : "var(--app-border)",
-                color: searchOpen ? "var(--app-brand-press)" : "var(--app-ink-2)",
+                color: searchOpen ? "var(--app-link)" : "var(--app-ink-2)",
                 background: searchOpen ? "var(--app-brand-tint-6)" : undefined,
               }}
             >
@@ -422,7 +466,7 @@ export default function TopBar() {
               className={`${styles.tool} relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 hover:bg-[var(--app-bg-sunken)] sm:px-3`}
               style={{
                 borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
-                color: pathname === "/compass" ? "var(--app-brand-press)" : "var(--app-ink-2)",
+                color: pathname === "/compass" ? "var(--app-link)" : "var(--app-ink-2)",
                 background: pathname === "/compass" ? "var(--app-brand-tint-6)" : undefined,
               }}
             >
@@ -461,6 +505,8 @@ export default function TopBar() {
         >
           <SearchOverlay
             open
+            initialQuery={searchInitialQuery}
+            onQueryChange={rememberSearchDraft}
             onClose={closeSearch}
             openerRef={searchOpenerRef}
             historyLayerId={searchLayerIdRef.current}
@@ -535,7 +581,7 @@ function SearchOverlayFallback({
         <Search
           className="h-5 w-5 shrink-0"
           strokeWidth={2}
-          style={{ color: "var(--app-brand-press)" }}
+          style={{ color: "var(--app-link)" }}
           aria-hidden
         />
         <span

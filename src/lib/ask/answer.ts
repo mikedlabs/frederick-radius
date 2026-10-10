@@ -2813,14 +2813,12 @@ export async function askFrederick(
   const asksAirQuality = wantsAirQuality(q);
   const explicitWeatherAnswer = wantsWeatherAnswer(q)
     ? asksAirQuality
-      ? askAirQualityLine(weatherSnapshot ?? { forecast: null, alerts: [], aqi: null })
+      ? askAirQualityLine(weatherSnapshot)
       : [
           weatherSafety,
           currentForecast
             ? `The National Weather Service forecast is ${currentForecast.temperature}°${currentForecast.temperatureUnit} with ${currentForecast.shortForecast.toLowerCase()}${currentForecast.probabilityOfPrecipitation != null ? ` and a ${currentForecast.probabilityOfPrecipitation}% chance of precipitation` : ""}.`
-            : weatherSafety
-              ? null
-              : "I couldn’t load the official forecast, active-alert feed, or a fresh AirNow observation right now.",
+            : "I couldn’t load the official forecast right now.",
         ].filter(Boolean).join(" ")
     : null;
   // A direct AQI question should cite the measured AirNow observation, not

@@ -242,6 +242,41 @@ describe("event archive batch", () => {
     }
   });
 
+  it.each(["cancelled", "postponed"] as const)(
+    "does not attach an unregistered %s identity to another source's slug", async (status) => {
+      let incoming: ReturnType<typeof prepareEventArchiveRows>["rows"] = [];
+      let attachedBySlug = false;
+      const queries: string[] = [];
+      const tx = async (strings: TemplateStringsArray, ...parameters: unknown[]) => {
+        const query = strings.join("$parameter");
+        queries.push(query);
+        if (query.includes("insert into event_archive_incoming")) {
+          incoming = JSON.parse(parameters[0] as string);
+        }
+        // Existing scheduled canonical and alias share this incoming slug,
+        // but no source+UID identity exists for the cancellation. Exercise
+        // BOTH emitted SQL fallback paths, not the simplified memory writer.
+        const slugFallback = query.includes("set canonical_event_id = alias.canonical_event_id") ||
+          query.includes("set canonical_event_id = canonical.id");
+        if (slugFallback && !/incoming\.event_status\s*=\s*'scheduled'/.test(query)) {
+          attachedBySlug = true;
+        }
+        if (query.includes("count(*) filter")) {
+          return [{ upserted: attachedBySlug ? incoming.length : 0,
+            ignored_lifecycle_only: attachedBySlug ? 0 : incoming.length }];
+        }
+        return [];
+      };
+      getSqlMock.mockReturnValue({ begin: async (work: (transaction: typeof tx) => Promise<unknown>) => work(tx) });
+      try {
+        const result = await syncEventArchiveBatch([{ ...event("unrelated-published-slug", "new-fcpl-id"), source: "fcpl", status }]);
+        expect(result).toMatchObject({ complete: true, recordsComplete: true, upserted: 0, ignoredLifecycleOnly: 1, failure: null });
+        expect(queries.filter((q) => q.includes("set canonical_event_id = alias.canonical_event_id") || q.includes("set canonical_event_id = canonical.id"))).toHaveLength(2);
+        expect(attachedBySlug).toBe(false);
+      } finally { getSqlMock.mockReset(); }
+    },
+  );
+
   it("reports a rejected tombstone cleanup without mislabeling it as a timeout", async () => {
     const databaseError = Object.assign(
       new Error("detail that must not leave the server"),
@@ -649,6 +684,17 @@ describe("event archive batch", () => {
       event_status: "postponed",
       snapshot: expect.objectContaining({ status: "postponed" }),
     });
+  });
+
+  it("reinstates the same registered FCPL occurrence after a cancellation", async () => {
+    const { records, sink } = lifecycleWriter();
+    const scheduled = { ...event("library-program-2026-08-01", "215322"), source: "fcpl" as const, status: "scheduled" as const };
+    await syncEventArchiveBatchWithWriter([scheduled], {}, sink);
+    await syncEventArchiveBatchWithWriter([{ ...scheduled, status: "cancelled" }], {}, sink);
+    const result = await syncEventArchiveBatchWithWriter([scheduled], {}, sink);
+    expect(result).toMatchObject({ complete: true, upserted: 1, ignoredLifecycleOnly: 0 });
+    expect(records.size).toBe(1);
+    expect(records.get("fcpl\u0000215322")?.event_status).toBe("scheduled");
   });
 
   it.each(["cancelled", "postponed"] as const)(

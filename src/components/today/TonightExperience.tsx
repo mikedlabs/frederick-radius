@@ -96,17 +96,13 @@ export default function TonightExperience({
             <div className={styles.photoFrame}>
               <Image
                 src="/images/seasons/summer/SUMMER CARROL CREEK.jpg"
-                alt="Carroll Creek in Frederick in June 2023, photographed by Mike D."
+                alt="Carroll Creek in Frederick."
                 fill
                 loading="eager"
                 sizes="(min-width: 768px) 240px, (max-width: 359px) 104px, 128px"
                 className={styles.photo}
               />
             </div>
-            <figcaption>
-              <span>Carroll Creek, Frederick</span>
-              <span>Archive photograph by Mike D. · June 2023</span>
-            </figcaption>
           </figure>
         ) : null}
         {data.scopeNote ? <p className={styles.introduction}>{data.scopeNote}</p> : null}

@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { usePathname } from "@storybook/nextjs-vite/navigation.mock";
 import { CloudSun, ExternalLink } from "lucide-react";
 import { useState } from "react";
+import { expect, waitFor, within } from "storybook/test";
 
 import Sheet from "./Sheet";
 import { Button } from "./Button";
@@ -24,6 +26,55 @@ const meta = {
     title: "Weather details",
     subtitle: "Component preview",
     children: null,
+  },
+  beforeEach: () => {
+    // The sheet dismisses on a real route change. Keep the preview router in
+    // the same document instead of pretending its iframe is the Today route.
+    const original = usePathname.getMockImplementation();
+    usePathname.mockReturnValue(window.location.pathname);
+    return () => {
+      if (original) usePathname.mockImplementation(original);
+      else usePathname.mockReset();
+    };
+  },
+  play: async ({ canvasElement, userEvent }) => {
+    const page = within(canvasElement.ownerDocument.body);
+    const dialog = await page.findByRole("dialog", { name: "Weather details" });
+    const close = within(dialog).getByRole("button", { name: "Close Weather details" });
+    // Wait for a painted, settled target on every opening, including reopen.
+    // A dialog role exists while its spring entrance is still moving.
+    const waitForCloseTarget = async (target: HTMLElement) => {
+      await waitFor(async () => {
+        const before = target.getBoundingClientRect();
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        const rect = target.getBoundingClientRect();
+        expect(Math.abs(rect.x - before.x)).toBeLessThanOrEqual(0.25);
+        expect(Math.abs(rect.y - before.y)).toBeLessThanOrEqual(0.25);
+        expect(rect.height).toBeGreaterThanOrEqual(44);
+        expect(rect.width).toBeGreaterThanOrEqual(44);
+        for (const [x, y] of [[0.5, 0.5], [0.15, 0.5], [0.85, 0.5], [0.5, 0.15], [0.5, 0.85]]) {
+          const hit = target.ownerDocument.elementFromPoint(rect.x + rect.width * x, rect.y + rect.height * y);
+          expect(hit === target || (hit !== null && target.contains(hit))).toBe(true);
+        }
+      });
+    };
+    await waitForCloseTarget(close);
+    await userEvent.click(close);
+    await waitFor(() => {
+      expect(page.queryByRole("dialog", { name: "Weather details" })).toBeNull();
+      expect(dialog).not.toBeInTheDocument();
+    });
+    const trigger = page.getByRole("button", { name: "Open weather details" });
+    await userEvent.click(trigger);
+    const reopened = await page.findByRole("dialog", { name: "Weather details" });
+    const reopenedClose = within(reopened).getByRole("button", { name: "Close Weather details" });
+    await waitForCloseTarget(reopenedClose);
+    await userEvent.click(reopenedClose);
+    await waitFor(() => {
+      expect(page.queryByRole("dialog", { name: "Weather details" })).toBeNull();
+      expect(reopened).not.toBeInTheDocument();
+      expect(trigger).toHaveFocus();
+    });
   },
 } satisfies Meta<typeof Sheet>;
 
@@ -87,6 +138,21 @@ export const MobileOpen: Story = {
   globals: {
     viewport: { value: "radiusMobileCompact", isRotated: false },
   },
+  render: () => <SheetFixture />,
+};
+
+export const MobileNarrow: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  render: () => <SheetFixture />,
+};
+
+export const Mobile390: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  render: () => <SheetFixture />,
+};
+
+export const MobileLarge: Story = {
+  globals: { viewport: { value: "radiusMobileLarge", isRotated: false } },
   render: () => <SheetFixture />,
 };
 

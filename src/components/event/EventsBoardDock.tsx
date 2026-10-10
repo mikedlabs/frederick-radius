@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import styles from "./EventsBoardDock.module.css";
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useTransition,
@@ -309,6 +311,10 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   const [pane, setPane] = useState<Pane | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const paneRef = useRef<HTMLDivElement>(null);
+  const scrimRef = useRef<HTMLDivElement>(null);
+  const filterTriggerRef = useRef<HTMLButtonElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const paneOpen = pane !== null;
   const whenRibbonRef = useRef<HTMLDivElement>(null);
   const mobileDisplayRef = useRef<HTMLDetailsElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
@@ -335,24 +341,63 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     };
   }, []);
 
-  // ── Focus into the pane when it opens; restore on close. ──
-  useEffect(() => {
-    if (!pane) return;
-    const el = paneRef.current;
-    const first = el?.querySelector<HTMLElement>(FOCUSABLE);
-    first?.focus();
-  }, [pane]);
+  // This existing top sheet owns input while open. Isolate sibling branches
+  // all the way to the document, retaining any previous inert ownership.
+  useLayoutEffect(() => {
+    if (!paneOpen) {
+      restoreRef.current?.focus({ preventScroll: true });
+      restoreRef.current = null;
+      return;
+    }
+    if (!paneRef.current) return;
+    const panel = paneRef.current;
+    const previousOffset = panel.style.getPropertyValue("--events-toolbar-offset");
+    panel.style.setProperty("--events-toolbar-offset", `${toolbarRef.current?.getBoundingClientRect().height ?? 0}px`);
+    const previousInert = new Map<HTMLElement, string | null>();
+    const isolateBackground = () => {
+      let branch: HTMLElement | null = paneRef.current;
+      if (!branch) return;
+      while (branch.parentElement) {
+        observer.observe(branch.parentElement, { childList: true });
+        for (const sibling of branch.parentElement.children) {
+          if (!(sibling instanceof HTMLElement) || sibling === branch || sibling === scrimRef.current) continue;
+          if (!previousInert.has(sibling)) previousInert.set(sibling, sibling.getAttribute("inert"));
+          sibling.setAttribute("inert", "");
+        }
+        branch = branch.parentElement;
+        if (branch === document.body) break;
+      }
+    };
+    // Filtering can replace a result/empty-state branch while the pane is
+    // open. Observe only ancestor child lists, not every change in the page.
+    const observer = new MutationObserver(isolateBackground);
+    isolateBackground();
+    // Lock the document scroll root. Setting body overflow would make body a
+    // new scroll container and break this pane's viewport-sticky dock.
+    const root = document.documentElement;
+    const previousOverflow = root.style.overflowY;
+    root.style.overflowY = "hidden";
+    paneRef.current.querySelector<HTMLElement>(FOCUSABLE)?.focus({ preventScroll: true });
+    return () => {
+      observer.disconnect();
+      if (previousOffset) panel.style.setProperty("--events-toolbar-offset", previousOffset);
+      else panel.style.removeProperty("--events-toolbar-offset");
+      for (const [element, value] of previousInert) {
+        if (value === null) element.removeAttribute("inert");
+        else element.setAttribute("inert", value);
+      }
+      root.style.overflowY = previousOverflow;
+    };
+  }, [paneOpen]);
 
-  const closePane = () => {
-    setPane(null);
-    restoreRef.current?.focus?.();
-  };
+  const closePane = () => setPane(null);
   const toggle = (p: Pane) => {
     haptic("light");
     if (pane === p) {
       closePane();
     } else {
-      restoreRef.current = document.activeElement as HTMLElement | null;
+      if (mobileDisplayRef.current) mobileDisplayRef.current.open = false;
+      restoreRef.current = filterTriggerRef.current ?? document.activeElement as HTMLElement | null;
       setPane(p);
     }
   };
@@ -600,6 +645,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
         <div className="eb-filterbar">
           <button
             type="button"
+            ref={filterTriggerRef}
             aria-expanded={pane !== null}
             aria-controls="eb-pane"
             aria-haspopup="dialog"
@@ -607,10 +653,18 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
             onClick={() => toggle(pane ?? firstActivePane)}
           >
             <SlidersHorizontal className="h-[16px] w-[16px] shrink-0" strokeWidth={2.2} aria-hidden />
-            <span className="eb-filter-copy">
+            <span className={`eb-filter-copy ${styles.copy}`} aria-hidden>
               <span className="eb-filter-label">Filters</span>
-              <span className="eb-filter-summary">{filterSummary}</span>
+              <span className={styles.context}>
+                <span data-event-filter-time>{when.text}</span>
+                <span aria-hidden>·</span>
+                <span data-event-filter-scope>{whereText}</span>
+              </span>
+              {whatActive && (
+                <span className={styles.query}>{q.trim() ? `“${q.trim()}”` : what.text}</span>
+              )}
             </span>
+            <span className="sr-only">Filters {filterSummary}</span>
             {activeFilterGroups > 0 && (
               <span className="eb-filter-count" aria-hidden>
                 {activeFilterGroups}
@@ -642,7 +696,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
             disclosure for view and order; desktop retains the same controls
             inline. Neither surface puts a control wall in front of the first
             event. */}
-        <div className="eb-subbar">
+        <div ref={toolbarRef} className={`eb-subbar ${styles.toolbar}`} data-filter-paused={paneOpen ? "true" : undefined} aria-hidden={paneOpen ? true : undefined}>
           <span className="eb-countline" aria-live="polite">
             {line}
           </span>
@@ -677,13 +731,14 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
       </div>
 
       {/* Scrim — dims the list; a tap closes the open pane. */}
-      <div className={`eb-scrim${pane ? " on" : ""}`} onClick={closePane} aria-hidden />
+      <div ref={scrimRef} className={`eb-scrim${pane ? " on" : ""}`} onClick={closePane} aria-hidden />
 
       {/* The top-sheet pane — drops DOWN over the scrim-dimmed list. */}
       <div
-        className="eb-pane"
+        className={`eb-pane ${styles.pane}`}
         id="eb-pane"
         role="dialog"
+        aria-modal={paneOpen ? true : undefined}
         aria-label="Event filters"
         aria-hidden={pane === null}
         // Collapsed via max-height:0 (not display:none), so without `inert` a
@@ -694,7 +749,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
         ref={paneRef}
         onKeyDown={onPaneKeyDown}
       >
-        <div className="eb-pane-scroll">
+        <div className={`eb-pane-scroll ${styles.scroll}`}>
           <div className="dock-pane-head">
             <span className="dock-pane-title font-serif">Filters</span>
             <button type="button" className="dock-done" onClick={closePane}>
@@ -909,7 +964,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
 
               <p className="dock-hint">
                 Planning an event of your own?{" "}
-                <Link href="/check-a-date" prefetch={false} style={{ color: "var(--app-brand-press)", fontWeight: 600 }}>
+                <Link href="/check-a-date" prefetch={false} style={{ color: "var(--app-link)", fontWeight: 600 }}>
                   Check a date
                 </Link>{" "}
                 to see what&rsquo;s already scheduled.

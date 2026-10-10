@@ -13,6 +13,7 @@ import {
   type CSSProperties,
 } from "react";
 import {
+  Activity,
   AlertTriangle,
   ArrowRight,
   Check,
@@ -40,7 +41,9 @@ import MapReturnLink from "@/components/place/MapReturnLink";
 import Sheet from "@/components/ui/Sheet";
 import PulseFreshness, {
   PulseStatusLabel,
+  formatPulseSourceTime,
 } from "@/components/pulse/PulseFreshness";
+import { countyStatusLabel, type CountyStatusSummary } from "@/lib/pulse/county-status";
 import { track } from "@/lib/track";
 import { Button } from "@/components/ui/Button";
 import styles from "./PulseBoard.module.css";
@@ -120,6 +123,8 @@ const TONE_WORD: Record<PulseHeroChip["tone"], string> = {
 };
 
 export type PulseHero = {
+  /** The shared checks also consumed by the header indicator. */
+  countyStatus?: CountyStatusSummary;
   allClear: boolean;
   /** A current service or access change exists, but no urgent condition leads. */
   operational?: boolean;
@@ -130,6 +135,8 @@ export type PulseHero = {
   renderedAt: number;
   /** The lead situation is fully explained in the hero, so it is not repeated below. */
   leadKey?: string;
+  /** The selected lead is retained from an earlier, unverified source check. */
+  leadIsEarlier?: boolean;
   leadMeta?: string;
   actionLabel?: string;
 };
@@ -168,15 +175,41 @@ export function pulseStatusWord({
   tone: PulseHeroChip["tone"];
 }): string {
   if (operational && !hasLead) return "Live update";
-  if (degraded && !hasLead) return "Partial data";
-  // Not "Checked": PulseFreshness prints "Checked Nm ago" in the same masthead
-  // row, and the same word twice in one line read as a stutter. This word's
-  // job is the county's state; the freshness stamp owns the checking.
-  if (allClear) return "All quiet";
+  if (degraded && !hasLead) return "Unable to verify";
+  // The state describes verified conditions. PulseFreshness labels page
+  // assembly separately, and individual sources retain their own check times.
+  if (allClear) return "Clear in checked feeds";
   if (!hasLead) return "Local issue";
   if (tone === "danger") return "Urgent";
   if (tone === "warning") return "Advisory";
   return "Watch";
+}
+
+function PulseSourceChecks({ summary }: { summary: CountyStatusSummary }) {
+  if (!summary.checks?.length) return null;
+  const stateLabel = { current: "Verified for this snapshot", stale: "Earlier source data", unavailable: "Unable to verify", disabled: "Not connected" };
+  const timeLabel = { retrieval: "Last source check", provider: "Published", observation: "Observed" };
+  return (
+    <details data-pulse-source-checks className="mt-3 text-[12px]">
+      <summary className="min-h-11 cursor-pointer content-center font-semibold">Source checks</summary>
+      <p>Source times describe feed checks, publications or observations. They are separate from incident times.</p>
+      <dl className="mt-2 space-y-2">
+        {summary.checks.map((check, index) => {
+          const time = formatPulseSourceTime(check.asOf);
+          return (
+            <div key={`${check.source}:${index}`}>
+              <dt className="font-semibold">{check.source}</dt>
+              <dd>
+                {stateLabel[check.state]} · {time && check.asOfBasis ? (
+                  <>{timeLabel[check.asOfBasis]} <time dateTime={check.asOf ?? undefined}>{time}</time></>
+                ) : "Source time unavailable"}
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+    </details>
+  );
 }
 
 export type PulseTile = {
@@ -352,6 +385,21 @@ type Snapshot = {
   active: Record<string, string>;
 };
 
+/** Only a valid, already-recorded local visit can support personal recency. */
+function previousPulseVisit(raw: string | null, now: number): Snapshot | null {
+  try {
+    const parsed: unknown = JSON.parse(raw ?? "null");
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const { at, active } = parsed as Partial<Snapshot>;
+    if (typeof at !== "number" || !Number.isFinite(at) || at <= 0 || at > now) return null;
+    if (!active || typeof active !== "object" || Array.isArray(active)) return null;
+    if (!Object.values(active).every((value) => typeof value === "string")) return null;
+    return { at, active };
+  } catch {
+    return null;
+  }
+}
+
 function iconFor(tile: PulseTile) {
   return ICONS[tile.iconName] ?? AlertTriangle;
 }
@@ -455,6 +503,10 @@ function HeroFacts({ chips, onOpen }: { chips: PulseHeroChip[]; onOpen: (key: st
 
 function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
   const [message, setMessage] = useState<string | null>(null);
+  // undefined means unread; null means this device has no valid prior visit.
+  // Hold the baseline for this mounted visit. A live refresh must never read
+  // our just-written current visit and invent a second personal "last look".
+  const priorVisit = useRef<Snapshot | null | undefined>(undefined);
 
   useEffect(() => {
     // Storage is external state. Read it after paint so hydration remains
@@ -465,14 +517,16 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
           .filter((tile) => tile.attention && !tile.degraded)
           .map((tile) => [tile.key, tile.countLabel]),
       );
-      let previous: Snapshot | null = null;
-      try {
-        previous = JSON.parse(window.localStorage.getItem(SNAPSHOT_KEY) ?? "null") as Snapshot | null;
-      } catch {
-        previous = null;
+      if (priorVisit.current === undefined) {
+        try {
+          priorVisit.current = previousPulseVisit(window.localStorage.getItem(SNAPSHOT_KEY), Date.now());
+        } catch {
+          priorVisit.current = null;
+        }
       }
-
-      if (previous?.at) {
+      const previous = priorVisit.current;
+      let nextMessage: string | null = null;
+      if (previous) {
         const added = Object.keys(current).filter((key) => previous?.active[key] !== current[key]);
         const cleared = pulseClearedKeys(previous.active, tiles);
         if (added.length > 0) {
@@ -481,16 +535,17 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
             .filter(Boolean)
             .slice(0, 2)
             .join(" and ");
-          setMessage(`${labels} ${added.length === 1 ? "has" : "have"} changed since ${timeSince(previous.at)}.`);
+          nextMessage = `${labels} ${added.length === 1 ? "has" : "have"} changed since ${timeSince(previous.at)}.`;
         } else if (cleared.length > 0) {
           const labels = cleared
             .map((key) => tiles.find((tile) => tile.key === key)?.label ?? key)
             .slice(0, 2)
             .join(" and ");
-          setMessage(`${labels} ${cleared.length === 1 ? "has" : "have"} cleared since ${timeSince(previous.at)}.`);
+          nextMessage = `${labels} ${cleared.length === 1 ? "has" : "have"} cleared since ${timeSince(previous.at)}.`;
         }
       }
 
+      setMessage(nextMessage);
       try {
         window.localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({ at: Date.now(), active: current } satisfies Snapshot));
       } catch {
@@ -980,7 +1035,10 @@ export default function PulseBoard({
 
   const degraded = hero.degraded ?? false;
   const heroTone = hero.tone ?? (hero.allClear ? "positive" : degraded ? "warning" : "danger");
-  const heroColor = CHIP_TONE[heroTone];
+  const statusTone = hero.countyStatus
+    ? hero.countyStatus.level === "Urgent" ? "danger" : hero.countyStatus.level === "Advisory" ? "warning" : hero.countyStatus.level === "Clear" ? "positive" : "cool"
+    : heroTone;
+  const heroColor = CHIP_TONE[statusTone];
   const attentionChips = pulseAttentionChips(chips, {
     allClear: hero.allClear,
     showAlertData: false,
@@ -1000,13 +1058,17 @@ export default function PulseBoard({
   const quietSignals = displayGroups.quiet;
   const attentionCount = attention.length + attentionChips.length;
   const hasAttention = attentionCount > 0;
-  const statusWord = pulseStatusWord({
+  const statusWord = hero.countyStatus ? countyStatusLabel(hero.countyStatus.level) : pulseStatusWord({
     allClear: hero.allClear,
     degraded,
     hasLead: Boolean(lead),
     operational: hero.operational,
     tone: heroTone,
   });
+
+  const earlierRoadLead = hero.leadKey === "traffic" && hero.leadIsEarlier === true;
+  const earlierRoadCount = hero.countyStatus?.roadCheck?.earlierCount ?? 0;
+  const currentRoadCount = hero.countyStatus?.roadCheck?.currentCount ?? 0;
 
   return (
     <PulseInteractionReady.Provider value={interactionReady}>
@@ -1015,7 +1077,9 @@ export default function PulseBoard({
         <div className={styles.briefingTop}>
           <div className={styles.status} style={{ "--pulse-tone": heroColor } as CSSProperties}>
             <span aria-hidden className={styles.statusIcon}>
-              {hero.allClear ? (
+              {hero.countyStatus ? (
+                <Activity className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-ink-2)" }} />
+              ) : hero.allClear && !degraded ? (
                 <Check className="h-5 w-5" strokeWidth={2.25} />
               ) : hero.operational && !lead ? (
                 <Clock className="h-5 w-5" strokeWidth={2} />
@@ -1028,21 +1092,32 @@ export default function PulseBoard({
               <PulseStatusLabel
                 renderedAt={hero.renderedAt}
                 status={statusWord}
-                canClaimCurrent={hero.allClear && !degraded}
+                countyStatus={hero.countyStatus}
+                canClaimCurrent={hero.countyStatus ? hero.countyStatus.level === "Clear" : hero.allClear && !degraded}
                 color={heroColor}
               />
             </span>
           </div>
           <div className={styles.freshness}><PulseFreshness renderedAt={hero.renderedAt} /></div>
         </div>
-        <h1 className={styles.headline}>{hero.line}</h1>
-        <p className={styles.summary}>{hero.sub}</p>
+        <h1 className={styles.headline}>{earlierRoadLead ? `Earlier MDOT report: ${hero.line}` : hero.line}</h1>
+        <p className={styles.summary}>{earlierRoadLead ? `Current road conditions are unverified. Earlier report guidance: ${hero.sub}` : hero.sub}</p>
+        {hero.countyStatus && (
+          <p className="mt-3 text-[12px]">
+            County status summarizes available shared weather, school, road, outage, fire and rescue, air-quality, and civic checks.
+            {hero.countyStatus.ok ? " Other conditions keep their own source checks below." : " Some shared checks could not be verified. Other conditions keep their own source checks below."}
+          </p>
+        )}
+        {earlierRoadCount > 0 && (
+          <p className="mt-3 text-[12px]">Earlier road checks listed {earlierRoadCount} {earlierRoadCount === 1 ? "update" : "updates"}. {currentRoadCount > 0 ? "Some road sources remain unverified." : "Current road conditions are unverified."}</p>
+        )}
+        {hero.countyStatus && <PulseSourceChecks summary={hero.countyStatus} />}
         {(hero.leadMeta || lead) && (
           <div className={styles.briefingAction}>
             {hero.leadMeta && (
               <p className={styles.leadMeta}>
                 <Clock aria-hidden className="h-4 w-4 shrink-0" />
-                {hero.leadMeta}
+                {earlierRoadLead ? `Earlier report details: ${hero.leadMeta}` : hero.leadMeta}
               </p>
             )}
             {lead && (

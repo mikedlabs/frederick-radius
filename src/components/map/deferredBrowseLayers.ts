@@ -38,6 +38,10 @@ export type MapLayerSourceHealth = {
   status: "current" | "partial" | "unavailable";
   /** Plain provider labels only. Never expose upstream error text. */
   unavailable: string[];
+  /** Time this map snapshot was assembled, not an upstream observation time. */
+  asOf?: string;
+  /** Client age can expire while useful features remain visible. */
+  stale?: boolean;
 };
 
 /**
@@ -191,7 +195,7 @@ function parseSourceHealth(
   for (const group of MAP_LAYER_GROUPS) {
     const raw = health[group];
     if (!raw || typeof raw !== "object") continue;
-    const candidate = raw as { status?: unknown; unavailable?: unknown };
+    const candidate = raw as { status?: unknown; unavailable?: unknown; asOf?: unknown; stale?: unknown };
     if (
       candidate.status !== "current" &&
       candidate.status !== "partial" &&
@@ -201,6 +205,9 @@ function parseSourceHealth(
     }
     parsed[group] = {
       status: candidate.status,
+      ...(typeof candidate.asOf === "string" && Number.isFinite(Date.parse(candidate.asOf))
+        ? { asOf: candidate.asOf } : {}),
+      ...(candidate.stale === true ? { stale: true } : {}),
       unavailable: Array.isArray(candidate.unavailable)
         ? candidate.unavailable
             .filter((label): label is string => typeof label === "string")
@@ -271,6 +278,23 @@ export function parseDeferredBrowseLayers(value: unknown): DeferredBrowseLayers 
   };
 }
 
+/** A first specialist miss can retain base points loaded by context. */
+export function retainedMapLayerSnapshotTime(
+  group: MapLayerGroup,
+  current: DeferredBrowseLayers,
+): string | undefined {
+  const health = current.sourceHealth[group];
+  const usesContext = (group === "parking" && current.parking.length > 0)
+    || (group === "amenities" && current.amenities.length > 0);
+  const contextTime = usesContext ? current.sourceHealth.context?.asOf : undefined;
+  // An unsuccessful first check owns no data snapshot. Context can arrive
+  // afterward; its points must keep their own age on the next failed check.
+  if (health?.status === "unavailable" && !health.stale && contextTime) {
+    return contextTime;
+  }
+  return health?.asOf ?? contextTime;
+}
+
 /** Merge only the fields owned by one endpoint group. */
 export function mergeDeferredBrowseLayerGroup(
   current: DeferredBrowseLayers,
@@ -278,8 +302,22 @@ export function mergeDeferredBrowseLayerGroup(
   group: MapLayerGroup,
 ): DeferredBrowseLayers {
   const incomingHealth = incoming.sourceHealth[group];
+  const priorHealth = current.sourceHealth[group];
+  // A checked empty specialist result is still authoritative. Remember it
+  // through a failed retry so older catalog context cannot resurrect points.
+  const retainedEmptyAuthority = !mapLayerGroupHasVisibleData(group, incoming) &&
+    (priorHealth?.status === "current" || priorHealth?.stale === true);
+  const retained = incomingHealth?.status !== "current" &&
+    (mapLayerGroupHasVisibleData(group, current) || retainedEmptyAuthority);
   const sourceHealth = incomingHealth
-    ? { ...current.sourceHealth, [group]: incoming.sourceHealth[group] }
+    ? {
+        ...current.sourceHealth,
+        [group]: retained ? {
+          ...incomingHealth,
+          asOf: retainedMapLayerSnapshotTime(group, current),
+          stale: true,
+        } : incomingHealth,
+      }
     : current.sourceHealth;
   const degraded = incomingHealth?.status === "partial";
   const unavailable = incomingHealth?.status === "unavailable";
@@ -339,8 +377,12 @@ export function mergeDeferredBrowseLayerGroup(
   if (group === "context") {
     return {
       ...current,
-      amenities: mergeArrays(current.amenities, incoming.amenities),
-      parking: mergeArrays(current.parking, incoming.parking),
+      amenities: current.sourceHealth.amenities &&
+        (current.sourceHealth.amenities.status === "current" || current.sourceHealth.amenities.stale || current.amenities.length > 0)
+        ? current.amenities : mergeArrays(current.amenities, incoming.amenities),
+      parking: current.sourceHealth.parking &&
+        (current.sourceHealth.parking.status === "current" || current.sourceHealth.parking.stale || current.parking.length > 0)
+        ? current.parking : mergeArrays(current.parking, incoming.parking),
       sourceHealth,
     };
   }

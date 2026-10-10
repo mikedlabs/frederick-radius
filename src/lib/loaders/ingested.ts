@@ -20,6 +20,9 @@ import {
   clampDescription,
 } from "@/lib/events/normalize";
 import { hasImplausibleStartTime } from "@/lib/events/visible";
+import { fcplStoredLifecycle, FCPL_SOURCE_DOMAIN } from "@/lib/ingest/fcpl";
+import { fcplObservedAt, type FcplObservationRow } from "@/lib/ingest/fcpl-observation-envelope";
+import type { EventStatus } from "@/lib/event-status";
 
 // Phase 1.6: drop venue open-status and routine recurring class/work
 // sessions. Default ON by owner directive (2026-05-16: "ship
@@ -32,11 +35,13 @@ const RELIABLE_CATEGORY_DOMAINS = new Set(["frederick.librarycalendar.com", "fcv
 
 export type IngestedOccurrence = {
   sourceUid: string;
+  /** Source state belongs to this date, never to all recurring siblings. */
+  status?: EventStatus;
   startsAtUtc: string;
   endsAtUtc: string | null;
   allDay: boolean;
   sourceUrl: string | null;
-  /** Last successful normalized-source refresh for archive provenance. */
+  /** Exact FCPL publisher check when present; legacy/other rows retain normalized-write dates. */
   verifiedAt: string | null;
 };
 
@@ -87,6 +92,18 @@ type Row = {
   hero_image: string | null;
   hero_image_alt: string | null;
   updated_at: string | Date | null;
+  raw_vevent?: string | null;
+  id?: string;
+  raw_event_id?: string;
+  tzid?: string;
+  raw_id?: string;
+  raw_dtstamp?: string | Date;
+  raw_fetched_at?: string | Date;
+  raw_source_uid?: string;
+  raw_source_domain?: string;
+  raw_source_url?: string | null;
+  verified_at?: string | null;
+  status?: EventStatus;
 };
 
 function verifiedTimestamp(value: Row["updated_at"]): string | null {
@@ -112,10 +129,17 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
   let rows: Row[];
   try {
     rows = (await sql<Row[]>`
-      select source_uid, source_domain, source_url, title, description, starts_at_utc, ends_at_utc,
-             all_day, venue_name, address, lat, lng, municipality, category,
-             hero_image, hero_image_alt, updated_at
-      from ingested_events
+      select e.id, e.raw_event_id, e.tzid, e.source_uid, e.source_domain, e.source_url, e.title, e.description,
+             e.starts_at_utc, e.ends_at_utc, e.all_day, e.venue_name, e.address,
+             e.lat, e.lng, e.municipality, e.category,
+             e.hero_image, e.hero_image_alt, e.updated_at, raw.raw_vevent,
+             raw.id as raw_id, raw.dtstamp as raw_dtstamp,
+             raw.fetched_at as raw_fetched_at, raw.source_uid as raw_source_uid,
+             raw.source_domain as raw_source_domain, raw.source_url as raw_source_url
+      from ingested_events e
+      left join raw_events raw
+        on raw.id = e.raw_event_id
+       and e.source_domain = ${FCPL_SOURCE_DOMAIN}
       where starts_at_utc >= ${since}
          or ends_at_utc >= ${since}
       order by starts_at_utc asc
@@ -125,8 +149,31 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
     return [];
   }
 
+  // Sanitize the venue at the SOURCE row so BOTH the series key and the
+  // displayed venue use clean values — a feed that dumped its description
+  // into the LOCATION field (the Bee City subcommittee) must leak into
+  // neither. cleanVenueName nulls a junk venue; the key then falls back to
+  // address/empty.
+  for (const r of rows) {
+    // Producer-first rollout: an exact receipt improves check-date semantics.
+    // Legacy/unattested rows retain their previous write date so cancellations
+    // still correct archived identities. This does not strictly hold old data.
+    r.verified_at = (r.source_domain === FCPL_SOURCE_DOMAIN
+      ? fcplObservedAt(r as FcplObservationRow) : null) ?? verifiedTimestamp(r.updated_at);
+    r.venue_name = cleanVenueName(r.venue_name);
+    // Capture status before cleaning/grouping. Removing the marker joins the
+    // cancelled date to its scheduled siblings without cancelling the series.
+    if (r.source_domain === FCPL_SOURCE_DOMAIN) {
+      const lifecycle = fcplStoredLifecycle(r.raw_vevent, r.title);
+      r.status = lifecycle.status;
+      r.title = lifecycle.title;
+    }
+  }
+
+  // Time plausibility is a discovery guard. A retained official cancellation
+  // must still correct its previously published identity, even at an odd hour.
   rows = rows.filter(
-    (row) =>
+    (row) => row.status === "cancelled" || row.status === "postponed" ||
       !hasImplausibleStartTime({
         title: row.title,
         starts_at: row.starts_at_utc,
@@ -135,15 +182,6 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
         is_all_day: row.all_day,
       }),
   );
-
-  // Sanitize the venue at the SOURCE row so BOTH the series key and the
-  // displayed venue use clean values — a feed that dumped its description
-  // into the LOCATION field (the Bee City subcommittee) must leak into
-  // neither. cleanVenueName nulls a junk venue; the key then falls back to
-  // address/empty.
-  for (const r of rows) {
-    r.venue_name = cleanVenueName(r.venue_name);
-  }
 
   const groups = new Map<string, Row[]>();
   for (const r of rows) {
@@ -193,11 +231,12 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
       heroImageAlt: head.hero_image_alt,
       occurrences: rs.map((r) => ({
         sourceUid: r.source_uid,
+        status: r.status ?? "scheduled",
         startsAtUtc: r.starts_at_utc,
         endsAtUtc: r.ends_at_utc,
         allDay: r.all_day,
         sourceUrl: r.source_url,
-        verifiedAt: verifiedTimestamp(r.updated_at),
+        verifiedAt: r.verified_at ?? null,
       })),
       count: rs.length,
       nextStart: head.starts_at_utc,
@@ -205,11 +244,16 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
     });
   }
   const visible = EVENT_NOISE_FILTER
-    ? series.filter(
-        (s) =>
-          !isVenueStatusNonEvent(s.title) &&
-          !(s.isRecurring && isRoutineRecurringClass(s.title)),
-      )
+    ? series.flatMap((s) => {
+        if (!isVenueStatusNonEvent(s.title) &&
+            !(s.isRecurring && isRoutineRecurringClass(s.title))) return [s];
+        // A previously published event still needs its archive corrected even
+        // when its series is now noise-filtered. Keep only lifecycle updates;
+        // this must not make the scheduled routine siblings discoverable.
+        const lifecycle = s.occurrences.filter((o) =>
+          o.status === "cancelled" || o.status === "postponed");
+        return lifecycle.length ? [{ ...s, occurrences: lifecycle }] : [];
+      })
     : series;
   visible.sort((a, b) => +new Date(a.nextStart) - +new Date(b.nextStart));
   return visible;
@@ -218,13 +262,16 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
 /** ISR-cached (1h) — the cron refreshes the data daily, hourly is plenty. */
 export const getIngestedSeries = unstable_cache(
   async (limit = 4000) => loadUpcoming(limit),
+  // v11: shared normalization repairs sublocation/locality boundaries and
+  // title possessives in cached series copy.
+  // v9: retain FCPL occurrence lifecycle from the existing raw source row.
   // v7: cleanTitle now strips trailing embedded weekday/date/time fragments
   // and de-shouts ALL-CAPS titles — the cached series titles change.
   // v6: splitPresenter paren/digit guards changed how titles normalize —
   // shape change must invalidate the persisted cache (the #509 lesson). The
   // deploy SHA is a second key segment so a forgotten version bump still
   // auto-busts on deploy.
-  ["ingested-series-v8", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["ingested-series-v11", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 3600, tags: ["ingested-events"] }
 );
 

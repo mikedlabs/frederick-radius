@@ -10,9 +10,11 @@ official service, and do not imply that a source or municipality endorses it.
 
 ## Ready-to-use visual assets
 
-- `public/brand/posters/you-are-here.svg` and `.png`: a practical poster for a
+- `public/brand/posters/you-are-here.svg` and
+  `output/brand/posters/you-are-here.png`: a practical poster for a
   shop window, event table, or social crop.
-- `public/brand/posters/whole-county.svg` and `.png`: the countywide launch
+- `public/brand/posters/whole-county.svg` and
+  `output/brand/posters/whole-county.png`: the countywide launch
   message.
 - `public/brand/posters/product-today.svg` and `.png`: a product poster built
   around the current Today interface.
@@ -40,7 +42,10 @@ official service, and do not imply that a source or municipality endorses it.
 - `public/brand/nfc/partner-front.svg` and `partner-back.svg`: blank partner or
   venue CR80 NFC card masters.
 
-The SVG is the editable master. Use the PNG for posting or a print proof. The
+The SVG is the editable master. Use the PNG for posting or a print proof.
+`npm run build:brand` writes the two photography poster PNGs to the ignored
+`output/brand/posters/` folder for local handoff. They are not public app assets.
+Other listed exports keep their existing public locations. The
 poster photographs and UI captures are embedded in the SVG, so the files do
 not depend on a Dropbox link. Do not add a QR code until its final URL has been
 tested from a printed proof on both iPhone and Android. Keep the plain URL

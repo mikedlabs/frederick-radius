@@ -1,0 +1,44 @@
+.photoCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  color: var(--app-ink);
+  background: var(--app-bg-elevated-solid);
+  box-shadow: var(--app-shadow-1);
+}
+
+.photoFace {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 118px;
+  overflow: hidden;
+  background: var(--app-bg-sunken);
+}
+
+.lead .photoFace {
+  height: 190px;
+}
+
+.photoRead {
+  display: block;
+  min-width: 0;
+  padding: var(--app-space-3);
+}
+
+.credit {
+  display: block;
+  margin-top: var(--app-space-2);
+  color: var(--app-ink-3);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+@media (min-width: 640px) {
+  .lead .photoFace {
+    height: 180px;
+  }
+}

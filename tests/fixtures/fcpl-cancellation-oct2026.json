@@ -1,0 +1,131 @@
+[
+  {
+    "title": "Hood Health Hubs",
+    "id": "215490",
+    "uuid": "c292c9ff-dee5-4dcd-a60f-97f58700d6cf",
+    "public": true,
+    "published": true,
+    "url": "https://frederick.librarycalendar.com/event/drop-health-program-215490",
+    "changed": "2026-08-21 15:49:11",
+    "start_date": "2026-10-06 10:00:00",
+    "end_date": "2026-10-06 13:00:00",
+    "timezone": "America/New_York",
+    "branch": {
+      "108": "Walkersville Branch Library"
+    },
+    "room": {
+      "180": "Study Room 3 (WAL)"
+    },
+    "program_type": {
+      "272": "Support Services",
+      "47": "Wellness"
+    },
+    "age_group": {
+      "61": "Adult"
+    },
+    "moderation_state": "published"
+  },
+  {
+    "title": "Cancelled - Hood Health Hubs",
+    "id": "215491",
+    "uuid": "37bce33a-f75a-4e69-9b97-ce8470921a44",
+    "public": true,
+    "published": true,
+    "url": "https://frederick.librarycalendar.com/event/drop-health-program-215491",
+    "changed": "2026-09-29 12:06:00",
+    "start_date": "2026-10-13 10:00:00",
+    "end_date": "2026-10-13 13:00:00",
+    "timezone": "America/New_York",
+    "branch": {
+      "108": "Walkersville Branch Library"
+    },
+    "room": {
+      "180": "Study Room 3 (WAL)"
+    },
+    "program_type": {
+      "272": "Support Services",
+      "47": "Wellness"
+    },
+    "age_group": {
+      "61": "Adult"
+    },
+    "moderation_state": "cancelled"
+  },
+  {
+    "title": "Hood Health Hubs",
+    "id": "215492",
+    "uuid": "37fc5143-0548-434f-8cc9-ccc3efa0d75c",
+    "public": true,
+    "published": true,
+    "url": "https://frederick.librarycalendar.com/event/drop-health-program-215492",
+    "changed": "2026-08-21 15:49:49",
+    "start_date": "2026-10-20 10:00:00",
+    "end_date": "2026-10-20 13:00:00",
+    "timezone": "America/New_York",
+    "branch": {
+      "108": "Walkersville Branch Library"
+    },
+    "room": {
+      "180": "Study Room 3 (WAL)"
+    },
+    "program_type": {
+      "272": "Support Services",
+      "47": "Wellness"
+    },
+    "age_group": {
+      "61": "Adult"
+    },
+    "moderation_state": "published"
+  },
+  {
+    "title": "Hood Health Hubs",
+    "id": "215493",
+    "uuid": "5537154e-1c9b-4035-b874-1729b3578a54",
+    "public": true,
+    "published": true,
+    "url": "https://frederick.librarycalendar.com/event/drop-health-program-215493",
+    "changed": "2026-08-21 15:50:07",
+    "start_date": "2026-10-27 10:00:00",
+    "end_date": "2026-10-27 13:00:00",
+    "timezone": "America/New_York",
+    "branch": {
+      "108": "Walkersville Branch Library"
+    },
+    "room": {
+      "180": "Study Room 3 (WAL)"
+    },
+    "program_type": {
+      "272": "Support Services",
+      "47": "Wellness"
+    },
+    "age_group": {
+      "61": "Adult"
+    },
+    "moderation_state": "published"
+  },
+  {
+    "title": "Cancelled : Introduction to Personal Color Analysis:  Discover the Power of Color",
+    "id": "215322",
+    "uuid": "11fd5366-3e3a-4e3d-a90b-617a4d86fca3",
+    "public": true,
+    "published": true,
+    "url": "https://frederick.librarycalendar.com/event/adult-program-room-hold-215322",
+    "changed": "2026-09-28 12:27:34",
+    "start_date": "2026-11-15 13:30:00",
+    "end_date": "2026-11-15 14:30:00",
+    "timezone": "America/New_York",
+    "branch": {
+      "108": "Walkersville Branch Library"
+    },
+    "room": {
+      "176": "Darrell L Batson Community Room"
+    },
+    "program_type": {
+      "94": "Education & Enjoyment"
+    },
+    "age_group": {
+      "61": "Adult"
+    },
+    "moderation_state": "cancelled"
+  }
+]

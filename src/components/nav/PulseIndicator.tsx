@@ -1,116 +1,202 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Activity } from "lucide-react";
 import { usePathname } from "next/navigation";
 import AppTransitionLink from "./AppTransitionLink";
+import { countyStatusLabel, countyStatusSnapshotDeadline, COUNTY_STATUS_FUTURE_TOLERANCE_MS, type CountyStatusSummary } from "@/lib/pulse/county-status";
+import { createAbortDeadline } from "@/lib/promise-deadline";
 
 /**
  * PulseIndicator — header dot that lights up when something is
  * happening in Frederick County (NWS alerts, school alerts, traffic
  * incidents, power outages).
  *
- * Fetches /api/pulse/status on mount + every 5 minutes. The endpoint
- * is cached server-side so polling is cheap. Pulse remains a stable top-level
+ * Fetches /api/pulse/status on mount + every 5 minutes. The underlying source
+ * snapshots retain their cache windows; the summary rechecks source expiry. Pulse remains a stable top-level
  * destination while the indicator communicates active alerts, all-clear, or
  * unavailable data without making the navigation appear and disappear.
  *
  * Lives in TopBar between the LocationChip and Tools.
  */
-type PulseStatus = {
-  active: boolean;
-  count: number;
-  tone: "alert" | "caution" | "quiet";
-  /** False when a source feed failed on this fetch, so a zero count is
-   *  "unknown", not "all clear" (audit FR-002). Older cached payloads may
-   *  omit it; treated as ok when absent. */
-  ok?: boolean;
-};
+type PulseStatus = CountyStatusSummary;
+
+export const PULSE_STATUS_TIMEOUT_MS = 15_000;
+const POLL_INTERVAL_MS = 5 * 60 * 1000;
+// Match the existing currentSituationModel and PulseFreshness clock tolerance.
+const FUTURE_CLOCK_TOLERANCE_MS = COUNTY_STATUS_FUTURE_TOLERANCE_MS;
+
+function validStatus(value: unknown): value is PulseStatus {
+  if (!value || typeof value !== "object") return false;
+  const status = value as Partial<PulseStatus>;
+  return typeof status.active === "boolean"
+    && typeof status.ok === "boolean"
+    && typeof status.count === "number"
+    && Number.isSafeInteger(status.count) && status.count >= 0
+    && status.active === (status.count > 0)
+    && ["alert", "caution", "quiet"].includes(status.tone ?? "")
+    && (status.active ? status.tone !== "quiet" : status.tone === "quiet")
+    && ((status.active && (status.level === "Urgent" || status.level === "Advisory")
+      && status.tone === (status.level === "Urgent" ? "alert" : "caution"))
+      || (!status.active && status.level === (status.ok ? "Clear" : "Unknown")))
+    && typeof status.lastUpdated === "string"
+    && Number.isFinite(Date.parse(status.lastUpdated))
+    && typeof status.validUntil === "string"
+    && Number.isFinite(Date.parse(status.validUntil));
+}
 
 const TONE_COLOR: Record<PulseStatus["tone"], string> = {
   alert: "var(--app-danger)",
   caution: "var(--app-warning)",
   quiet: "var(--app-positive)",
 };
+const TONE_FOREGROUND: Record<PulseStatus["tone"], string> = {
+  alert: "var(--app-danger-text)",
+  caution: "var(--state-closing)",
+  quiet: "var(--state-open)",
+};
 
 export default function PulseIndicator() {
   const pathname = usePathname();
   const [status, setStatus] = useState<PulseStatus | null>(null);
-  // True once a fetch has failed with no prior good status: we then render an
-  // explicit "unavailable", never a false "all clear" (audit FR-002). A later
-  // success clears it. A failure AFTER a success keeps the last-known status
-  // (stale beats blank), so this only guards the never-loaded case.
-  const [failed, setFailed] = useState(false);
+  const [phase, setPhase] = useState<"checking" | "ready" | "unavailable">("checking");
 
-  const everLoaded = useRef(false);
   useEffect(() => {
-    let cancelled = false;
+    let disposed = false;
+    let generation = 0;
+    let request: AbortController | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let expiry: ReturnType<typeof setTimeout> | undefined;
+    const visible = () => document.visibilityState !== "hidden";
+    const cancel = () => {
+      generation++;
+      if (timer) clearTimeout(timer);
+      if (expiry) clearTimeout(expiry);
+      timer = undefined;
+      expiry = undefined;
+      request?.abort();
+      request = null;
+    };
     const fetchStatus = async () => {
+      if (disposed || !visible() || request) return;
+      if (timer) clearTimeout(timer);
+      if (expiry) clearTimeout(expiry);
+      timer = undefined;
+      expiry = undefined;
+      const controller = new AbortController();
+      request = controller;
+      const id = ++generation;
+      const deadline = createAbortDeadline(PULSE_STATUS_TIMEOUT_MS, controller.signal);
+      let onAbort: (() => void) | undefined;
+      const cancelled = new Promise<never>((_resolve, reject) => {
+        onAbort = () => reject(new DOMException("Status check cancelled", "AbortError"));
+        deadline.signal.addEventListener("abort", onAbort, { once: true });
+        if (deadline.signal.aborted) onAbort();
+      });
+      setPhase("checking");
       try {
-        const res = await fetch("/api/pulse/status", { cache: "no-store" });
-        if (!res.ok) throw new Error(`status ${res.status}`);
-        const json = (await res.json()) as PulseStatus;
-        if (!cancelled) {
-          everLoaded.current = true;
-          setStatus(json);
-          setFailed(false);
+        // The deadline covers response headers AND body decoding. The race
+        // also consumes late outcomes from transports that ignore abort.
+        const read = async () => {
+          const response = await fetch("/api/pulse/status", { cache: "no-store", signal: deadline.signal });
+          if (!response.ok) throw new Error("Status check failed");
+          const payload: unknown = await response.json();
+          if (!validStatus(payload)) throw new Error("Invalid status report");
+          const now = Date.now();
+          const age = now - Date.parse(payload.lastUpdated);
+          const validUntil = countyStatusSnapshotDeadline(payload);
+          if (!Number.isFinite(age) || age < -FUTURE_CLOCK_TOLERANCE_MS || validUntil === null || now >= validUntil) {
+            throw new Error("Status snapshot time is unverified");
+          }
+          return payload;
+        };
+        const payload = await Promise.race([read(), cancelled]);
+        if (!disposed && id === generation && !deadline.signal.aborted) {
+          setStatus(payload);
+          setPhase("ready");
+          // Stop calling a report current at its earliest source/alert expiry,
+          // even between the existing polls. This makes no provider request.
+          const remaining = Math.max(0, (countyStatusSnapshotDeadline(payload) ?? Date.now()) - Date.now());
+          expiry = setTimeout(() => {
+            if (!disposed && id === generation) setPhase("unavailable");
+          }, remaining);
         }
       } catch {
-        // A failed poll never asserts "all clear": mark unavailable only when
-        // we've never had a good read (else we keep the last-known status).
-        if (!cancelled && !everLoaded.current) setFailed(true);
+        if (!disposed && id === generation && visible()) setPhase("unavailable");
+      } finally {
+        if (onAbort) deadline.signal.removeEventListener("abort", onAbort);
+        deadline.dispose();
+        if (request === controller) request = null;
+        if (!disposed && id === generation && visible()) {
+          timer = setTimeout(fetchStatus, POLL_INTERVAL_MS);
+        }
       }
     };
-    fetchStatus();
-    const interval = window.setInterval(fetchStatus, 5 * 60 * 1000);
+    const onVisibility = () => {
+      if (visible()) void fetchStatus();
+      else {
+        cancel();
+        setPhase("unavailable");
+      }
+    };
+    void fetchStatus();
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      cancelled = true;
-      window.clearInterval(interval);
+      disposed = true;
+      cancel();
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
 
   const active = status?.active ?? false;
   const tone = status?.tone ?? "quiet";
   const count = status?.count ?? 0;
-  const loading = status === null && !failed;
-  // "Unknown" whenever we cannot honestly claim all-clear: a first-load
-  // failure or a degraded fetch that found nothing. Initial loading remains a
-  // neutral checking state, not a false unavailable warning.
-  const unknown = !active && !loading && (failed || status?.ok === false);
+  const checking = phase === "checking";
+  const unverified = phase !== "ready";
+  const unknown = phase === "unavailable" || (phase === "ready" && status?.ok === false);
   const current = pathname === "/pulse" || pathname.startsWith("/pulse/");
-  const statusLabel = active
-    ? `County status: ${count} active ${count === 1 ? "alert" : "alerts"}`
-    : loading
+  const earlier = unverified && active;
+  const alertCount = `${count} ${count === 1 ? "alert" : "alerts"}`;
+  const level = checking ? "Checking" : earlier || phase === "unavailable" ? "Unknown" : status?.level ?? "Unknown";
+  const stateLabel = level === "Unknown" ? "Unable to verify" : level;
+  const mobileLabel = level === "Unknown" ? "Unverified" : level;
+  const statusLabel = earlier
+    ? `County status: ${stateLabel}. ${checking ? "Checking again." : "Current check unavailable."} Earlier report had ${alertCount}; current alerts are unverified.`
+    : checking
       ? "County status: checking"
-      : unknown
-        ? "County status: unavailable"
-        : "County status: no active alerts";
-  const mobileVisible = current || active || unknown;
+      : phase === "unavailable" || !status || level === "Unknown"
+        ? "County status: Unable to verify; current alerts are unverified"
+        : active
+          ? `County status: ${countyStatusLabel(status.level)}; ${alertCount} reported${status.ok === false ? "; some sources unavailable" : ""}`
+          : `County status: ${countyStatusLabel(status.level)}; no active alerts`;
+  const mobileVisible = current || active || unknown || checking;
+  const currentAlerts = active && !unverified;
 
   return (
     <AppTransitionLink
       data-pulse-indicator
+      data-pulse-state={phase}
       href="/pulse"
       prefetch={false}
       aria-label={statusLabel}
       aria-current={current ? "page" : undefined}
       title={statusLabel}
-      className={`relative h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] sm:inline-flex sm:px-2.5 ${
+      className={`relative h-11 min-w-11 shrink-0 items-center justify-center flex-col gap-0.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] sm:inline-flex sm:flex-row sm:gap-1.5 sm:px-2.5 ${
         mobileVisible ? "inline-flex" : "hidden"
       }`}
       style={{
         borderColor: current ? "var(--app-brand)" : "var(--app-border)",
         color: current
-          ? "var(--app-brand-press)"
-          : active
-            ? TONE_COLOR[tone]
+          ? "var(--app-link)"
+          : currentAlerts
+            ? TONE_FOREGROUND[tone]
             : "var(--app-ink-2)",
         background: current ? "var(--app-brand-tint-6)" : undefined,
       }}
     >
       <span className="relative grid h-4 w-4 shrink-0 place-items-center" aria-hidden>
         <Activity className="h-4 w-4" strokeWidth={1.75} />
-        {active && (
+        {currentAlerts && (
           <span
             className="absolute -right-1 -top-1 inline-flex h-2 w-2 items-center justify-center rounded-full"
             style={{
@@ -124,15 +210,17 @@ export default function PulseIndicator() {
         )}
         {/* Unavailable: a hollow ring, so "we don't know" never looks the same
             as the calm all-clear state (audit FR-002). */}
-        {!active && unknown && (
+        {(!currentAlerts && (unknown || earlier)) && (
           <span
             className="absolute -right-1 -top-1 inline-flex h-2 w-2 rounded-full"
             style={{ boxShadow: "0 0 0 2px var(--app-bg-elevated), inset 0 0 0 1.5px var(--app-ink-3)" }}
           />
         )}
       </span>
-      <span className="hidden text-[14px] font-semibold leading-none sm:inline">
-        County status
+      {stateLabel && <span data-pulse-mobile-state className="text-[9px] font-semibold leading-none sm:hidden">{mobileLabel}</span>}
+      <span className="hidden flex-col gap-0.5 sm:inline-flex">
+        <span className="text-[14px] font-semibold leading-none">County status</span>
+        {stateLabel && <span data-pulse-desktop-state className="text-[10px] leading-none">{status?.level === "Clear" && phase === "ready" ? countyStatusLabel(status.level) : stateLabel}</span>}
       </span>
     </AppTransitionLink>
   );

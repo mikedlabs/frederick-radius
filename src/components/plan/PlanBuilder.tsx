@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import {
   AlertCircle,
   CalendarDays,
@@ -41,11 +41,14 @@ import type {
   PlanSlotCategory,
 } from "@/lib/integrations/planner";
 import { useFollowedSlugs } from "@/hooks/useFollows";
+import EventImageAttribution from "@/components/event/EventImageAttribution";
+import { decodeSpec } from "@/lib/integrations/planner";
 import { updatedPlanHref } from "@/lib/plan-journey";
 import { isDestinationCategory, isRecommendable } from "@/lib/relevance";
 import { withBrowseReturnTo } from "@/lib/browse-return";
 import {
   addStop,
+  planFromToken,
   generatePlan,
   removeStop,
   setStop,
@@ -86,6 +89,8 @@ const OPEN_LABEL: Record<Plan["stops"][number]["open"], { text: string; color: s
   closed: { text: "Closed at this time", color: "var(--app-negative)" },
 };
 
+const subscribePlanReadiness = () => () => {};
+
 export default function PlanBuilder({
   initialPlan,
   initialInputs,
@@ -98,6 +103,8 @@ export default function PlanBuilder({
   fromPlace?: string;
 }) {
   const searchParams = useSearchParams();
+  // A visible server preview must not invite a tap before its handlers exist.
+  const eventControlsReady = useSyncExternalStore(subscribePlanReadiness, () => true, () => false);
   const [audience, setAudience] = useState<PlanInputs["audience"]>(initialInputs?.audience ?? "date");
   const [vibe, setVibe] = useState<PlanInputs["vibe"]>(initialInputs?.vibe ?? "easy");
   const [hours, setHours] = useState<PlanInputs["duration_hours"]>(initialInputs?.duration_hours ?? 3);
@@ -194,6 +201,9 @@ export default function PlanBuilder({
     setGeoMsg(null);
   };
 
+  const activeEventAnchor = plan ? decodeSpec(plan.share)?.i.event_anchor_slug : undefined;
+  const scheduledEventStop = plan?.stops.find((stop) => stop.event);
+
   const buildInputs = (): PlanInputs | null => {
     const startAt = startAtFor(startMode, customStart);
     if (!startAt) {
@@ -205,6 +215,7 @@ export default function PlanBuilder({
       vibe,
       duration_hours: hours,
       start_at: startAt,
+      ...(activeEventAnchor ? { event_anchor_slug: activeEventAnchor } : {}),
       ...(initialInputs?.anchor_slug && plan?.stops.some((stop) => stop.place?.slug === initialInputs.anchor_slug)
         ? { anchor_slug: initialInputs.anchor_slug }
         : {}),
@@ -227,6 +238,10 @@ export default function PlanBuilder({
         const result = await generatePlan(inputs);
         if (!result) throw new Error("No plan returned");
         setPlan(result);
+        if (inputs.event_anchor_slug) {
+          const resolved = decodeSpec(result.share)?.i;
+          if (resolved) { setHours(resolved.duration_hours); setCustomStart(toLocalInput(resolved.start_at)); setStartMode("custom"); }
+        }
         setPlanMunicipality(inputs.municipality);
         setPlanAreaLabel(areaLabel);
         setDrawerOpen(false);
@@ -295,7 +310,7 @@ export default function PlanBuilder({
 
   const chooseStop = (index: number, slug: string) => {
     if (!plan) return;
-    const oldSlug = plan.stops[index]?.place?.slug;
+    const oldSlug = plan.stops.find((stop, displayIndex) => (stop.spec_index ?? displayIndex) === index)?.place?.slug;
     if (oldSlug && pinned.has(oldSlug)) {
       setPinned((current) => {
         const next = new Set(current);
@@ -317,7 +332,7 @@ export default function PlanBuilder({
     });
   };
 
-  const inPlan = new Set((plan?.stops ?? []).flatMap((stop) => stop.place ? [stop.place.slug] : []));
+  const inPlan = new Set([...(plan?.stops ?? []).flatMap((stop) => stop.place ? [stop.place.slug] : []), ...(plan?.unscheduled ?? []).map((option) => option.place.slug)]);
   const planReturnTo = plan
     ? updatedPlanHref(new URL(`/plan?${searchParams}`, "https://frederick-radius.invalid"), plan.share)
     : undefined;
@@ -363,6 +378,7 @@ export default function PlanBuilder({
 
   const controls = (
     <PlannerFields
+      eventStart={activeEventAnchor ? scheduledEventStop?.at ?? initialInputs?.start_at ?? "" : undefined}
       area={area}
       onAreaChange={handleAreaChange}
       onUseLocation={requestMyLocation}
@@ -440,6 +456,12 @@ export default function PlanBuilder({
               </p>
             )}
 
+            {scheduledEventStop && (
+              <p className="mt-3 rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] p-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                The event keeps its published start and full duration. Any nearby stop comes after it. Hours that Radius cannot confirm stay outside the timed route.
+              </p>
+            )}
+
             {plan.summary && (
               <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 {plan.summary}
@@ -462,9 +484,8 @@ export default function PlanBuilder({
               </ul>
             )}
 
-            {plan.stops.length > 0 && (
-              <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-                <a
+            <div className={`mt-4 grid gap-2 ${plan.stops.length > 0 ? "grid-cols-[1fr_auto]" : "grid-cols-1"}`}>
+                {plan.stops.length > 0 && <a
                   href={routeUrlForPlan(plan)}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -473,7 +494,7 @@ export default function PlanBuilder({
                 >
                   <Navigation className="h-4 w-4" aria-hidden />
                   Open full route
-                </a>
+                </a>}
                 <button
                   type="button"
                   onClick={onShare}
@@ -484,17 +505,47 @@ export default function PlanBuilder({
                   <Share2 className="h-4 w-4" aria-hidden />
                 </button>
               </div>
-            )}
           </article>
+
+          {Boolean(plan.notices?.length) && (
+            <section data-event-plan-controls-ready={eventControlsReady ? "true" : "false"} aria-busy={!eventControlsReady || pending} className="space-y-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4" aria-label="Event updates" style={{ borderColor: "var(--app-border)" }}>
+              <h2 className="text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>Review your event</h2>
+              {plan.notices!.map((notice) => (
+                <div key={`${notice.spec_index}-${notice.code}`} className="space-y-2">
+                  <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{notice.message}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {notice.event_href && <Link href={withBrowseReturnTo(notice.event_href, planReturnTo)} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>Review event details</Link>}
+                    <button type="button" disabled={!eventControlsReady || pending} onClick={() => mutate(() => removeStop(plan.share, notice.spec_index), notice.spec_index, "The saved reference has been removed.")} className="inline-flex min-h-11 items-center rounded-full border px-3 text-[13px] font-semibold disabled:opacity-50" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>Remove saved reference</button>
+                  </div>
+                </div>
+              ))}
+              {plan.notices!.some((notice) => notice.code === "unavailable") && <button type="button" disabled={!eventControlsReady || pending} onClick={() => mutate(() => planFromToken(plan.share), null, "The event listing has been checked again.")} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-brand-press)" }}><RefreshCw className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} aria-hidden />Check event again</button>}
+            </section>
+          )}
+
+          {Boolean(plan.unscheduled?.length) && (
+            <section className="space-y-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4" aria-label="Unscheduled nearby option" style={{ borderColor: "var(--app-border)" }}>
+              <h2 className="text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>A nearby option</h2>
+              {plan.unscheduled!.map((option) => <article key={option.place.slug}>
+                <Link href={withBrowseReturnTo(`/places/${option.place.slug}`, planReturnTo)} className="text-[16px] font-semibold underline decoration-[var(--app-border-strong)] underline-offset-4" style={{ color: "var(--app-ink)" }}>{option.place.name}</Link>
+                <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--app-ink-3)" }}>Hours unconfirmed. Not included in the timed route.</p>
+                <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{option.why}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button type="button" disabled={!eventControlsReady || pending} onClick={() => openSwap(option.spec_index)} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-ink-2)" }}>Change nearby option</button>
+                  <button type="button" disabled={!eventControlsReady || pending} onClick={() => mutate(() => removeStop(plan.share, option.spec_index), option.spec_index, "The nearby option has been removed.")} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-ink-2)" }}>Remove nearby option</button>
+                </div>
+              </article>)}
+            </section>
+          )}
 
           {plan.stops.length === 0 ? (
             <div className="rounded-[var(--app-radius-lg)] border border-dashed p-6 text-center" style={{ borderColor: "var(--app-border)" }}>
               <AlertCircle className="mx-auto h-6 w-6" style={{ color: "var(--app-brand)" }} aria-hidden />
               <h3 className="mt-2 font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                Nothing reliable fits yet.
+                {plan.notices?.length ? "No event is scheduled in this plan yet." : "Nothing reliable fits yet."}
               </h3>
               <p className="mx-auto mt-1 max-w-sm text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-                Radius did not find enough places with confirmed hours for that area and time. Try an earlier start, a longer drive, or another kind of outing.
+                {plan.notices?.length ? "Review the update above or check the event again. Your shared link still keeps the choices you made." : "Radius did not find enough places with confirmed hours for that area and time. Try an earlier start, a longer drive, or another kind of outing."}
               </p>
               <button
                 type="button"
@@ -519,16 +570,16 @@ export default function PlanBuilder({
                     key={`${stop.order}-${stop.place?.slug ?? stop.event?.slug ?? index}`}
                     stop={stop}
                     returnTo={planReturnTo}
-                    index={index}
+                    index={stop.spec_index ?? index}
                     pending={pending}
                     busy={busy}
                     pinned={stop.place ? pinned.has(stop.place.slug) : false}
-                    onSwap={stop.place ? () => openSwap(index) : undefined}
+                    onSwap={stop.place ? () => openSwap(stop.spec_index ?? index) : undefined}
                     onPin={stop.place ? () => togglePin(stop.place!.slug) : undefined}
-                    onRemove={() => mutate(() => removeStop(plan.share, index), index, "The stop has been removed.")}
+                    onRemove={() => mutate(() => removeStop(plan.share, stop.spec_index ?? index), stop.spec_index ?? index, "The stop has been removed.")}
                   />
                 ))}
-                {savedCandidates.length > 0 && (
+                {savedCandidates.length > 0 && (!activeEventAnchor || inPlan.size === 0) && (
                   <li>
                     <button
                       type="button"
@@ -576,7 +627,11 @@ export default function PlanBuilder({
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         title="Adjust the plan"
-        subtitle="Change the area, time, company, or focus. Your current route stays until you rebuild it."
+        subtitle={activeEventAnchor
+          ? scheduledEventStop
+            ? "The event keeps its published time. Change your company, focus, or outing length. Your current route stays until you rebuild it."
+            : "Your event reference stays saved. Change your company, focus, or outing length, then review the event update before planning a visit."
+          : "Change the area, time, company, or focus. Your current route stays until you rebuild it."}
       >
         <div className="space-y-5 px-4 py-4">
           {controls}
@@ -709,6 +764,7 @@ export default function PlanBuilder({
 }
 
 function PlannerFields({
+  eventStart,
   area,
   onAreaChange,
   onUseLocation,
@@ -724,6 +780,7 @@ function PlannerFields({
   hours,
   onHoursChange,
 }: {
+  eventStart?: string;
   area: string;
   onAreaChange: (value: string) => void;
   onUseLocation: () => void;
@@ -776,7 +833,7 @@ function PlannerFields({
         } />
         {geoMsg && <p className="px-3 pb-3 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{geoMsg}</p>}
 
-        <PickerRow label="Start" Icon={CalendarDays} controlId="plan-start" action={
+        {eventStart !== undefined ? <PickerRow label="Event start" Icon={CalendarDays} action={<span className="text-right text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>{eventStart ? clock(eventStart) : "Confirm the event listing"}</span>} /> : <PickerRow label="Start" Icon={CalendarDays} controlId="plan-start" action={
           <select
             id="plan-start"
             value={startMode}
@@ -790,7 +847,8 @@ function PlannerFields({
             ))}
           </select>
         } />
-        {startMode === "custom" && (
+        }
+        {eventStart === undefined && startMode === "custom" && (
           <div className="px-3 pb-3">
             <input
               type="datetime-local"
@@ -927,7 +985,7 @@ function Stop({
   const name = stop.place?.name ?? stop.event?.title ?? "Stop";
   const where = stop.place ? placeLocationLabel(stop.place.address, stop.place.city) : stop.event?.venue_name;
   const geom = stop.place?.geom ?? stop.event?.geom;
-  const status = OPEN_LABEL[stop.open];
+  const status = stop.event ? { text: "Event time reserved", color: "var(--app-positive)" } : OPEN_LABEL[stop.open];
   const fallbackPlace = {
     slug: stop.place?.slug ?? stop.event?.slug ?? `plan-stop-${stop.order}`,
     name,
@@ -995,6 +1053,7 @@ function Stop({
           )}
         </div>
 
+        {stop.event?.hero_image_attribution && stop.photo_url && <EventImageAttribution attribution={stop.event.hero_image_attribution} compact className="mt-2" />}
         <p className="mt-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{stop.why}</p>
 
         {stop.tip && (

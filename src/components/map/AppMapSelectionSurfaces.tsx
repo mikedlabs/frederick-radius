@@ -33,6 +33,7 @@ import type { MapEventGroup } from "./mapContent";
 import type { ParkingPin } from "@/lib/map/parking";
 import MapPeek from "./MapPeek";
 import MapParkingPeek from "./MapParkingPeek";
+import type { MapLayerSourceHealth } from "./deferredBrowseLayers";
 import MapFoodTruckPeek from "./MapFoodTruckPeek";
 import {
   MapAerialPeek,
@@ -76,6 +77,7 @@ type Props = {
   spotContext: SpotContext | null;
   peekPlace: MapPinPlace | null;
   parkingPeek: ParkingPin | null;
+  parkingSourceHealth?: MapLayerSourceHealth;
   foodTruckPeek: FoodTruckMapPin | null;
   selectedTransitStop: SelectedStop | null;
   eventGroup: MapEventGroup | null;
@@ -111,6 +113,7 @@ export default function AppMapSelectionSurfaces({
   spotContext,
   peekPlace,
   parkingPeek,
+  parkingSourceHealth,
   foodTruckPeek,
   selectedTransitStop,
   eventGroup,
@@ -243,7 +246,12 @@ export default function AppMapSelectionSurfaces({
       {/* The parking garage peek — its own compact card (a garage isn't a
           saveable place): live spaces, hourly rate, and Directions. */}
       {parkingPeek && (
-        <MapParkingPeek pin={parkingPeek} userLoc={userLoc} onClose={clearMapSelection} />
+        <MapParkingPeek
+          pin={parking.find((pin) => pin.slug === parkingPeek.slug) ?? { ...parkingPeek, available: null, percentFull: null, isClosed: false, isFull: false, isFilling: false, updated: null }}
+          sourceHealth={parkingSourceHealth}
+          userLoc={userLoc}
+          onClose={clearMapSelection}
+        />
       )}
 
       {foodTruckPeek && !peekPlace && !parkingPeek && (

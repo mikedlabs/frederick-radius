@@ -14,6 +14,8 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import LazySheetFallback from "@/components/ui/LazySheetFallback";
+import { browseReturnFromLocation, withBrowseReturnTo } from "@/lib/browse-return";
+import { fetchEventSheetLookup } from "@/lib/event-sheet-lookup";
 import { navigateAfterHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 
 const EventSheet = lazy(() => import("./EventSheet"));
@@ -55,6 +57,22 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
   // Monotonic request id: a stale fetch resolving after a newer open
   // (or after close) must never repopulate the sheet.
   const reqRef = useRef(0);
+  const returnToRef = useRef<string | null>(null);
+  const lookupAbortRef = useRef<AbortController | null>(null);
+  const abortLookup = useCallback(() => {
+    lookupAbortRef.current?.abort();
+    lookupAbortRef.current = null;
+  }, []);
+  const captureOrigin = useCallback(() => {
+    const current = typeof window === "undefined" ? null : new URL(window.location.href);
+    openPathRef.current = current?.pathname ?? pathname;
+    returnToRef.current = current ? browseReturnFromLocation(current) : null;
+  }, [pathname]);
+
+  useEffect(() => () => {
+    reqRef.current++;
+    abortLookup();
+  }, [abortLookup]);
 
   const openEventSheet = useCallback((e: EventWithMeta) => {
     openerRef.current =
@@ -63,10 +81,11 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
         : null;
     historyLayerIdRef.current = `event-sheet:${Date.now()}:${++eventLayerSequence}`;
     reqRef.current++;
-    openPathRef.current = pathname;
+    abortLookup();
+    captureOrigin();
     setPendingSlug(null);
     setEvent(e);
-  }, [pathname]);
+  }, [abortLookup, captureOrigin]);
 
   const openEventSheetBySlug = useCallback(
     (slug: string) => {
@@ -75,45 +94,60 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
           ? document.activeElement
           : null;
       historyLayerIdRef.current = `event-sheet:${Date.now()}:${++eventLayerSequence}`;
-      openPathRef.current = pathname;
+      captureOrigin();
       const req = ++reqRef.current;
+      abortLookup();
+      const controller = new AbortController();
+      lookupAbortRef.current = controller;
+      const historyLayerId = historyLayerIdRef.current;
+      const returnTo = returnToRef.current;
       setEvent(null);
       setPendingSlug(slug);
-      // The attendance summary now includes canonical venue coordinates and
-      // owner notices. Version its URL so an installed app cannot reuse the
-      // older cached shape after updating its client bundle.
-      fetch(`/api/events/${encodeURIComponent(slug)}/summary?v=attendance-2`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => {
-          if (reqRef.current !== req) return; // superseded or closed
-          if (d?.event) {
-            setEvent(d.event as EventWithMeta);
-            setPendingSlug(null);
-          } else {
-            // The unified set doesn't know this slug (rotated out, or a
-            // page-only event) — honor the tap with the page it meant.
-            setPendingSlug(null);
-            navigateAfterHistoryLayer(historyLayerIdRef.current, () => {
-              router.push(`/events/${slug}`);
-            });
-          }
-        })
-        .catch(() => {
+      const goToCanonicalPage = () => {
+        if (reqRef.current !== req) return;
+        reqRef.current++;
+        abortLookup();
+        setEvent(null);
+        setPendingSlug(null);
+        navigateAfterHistoryLayer(historyLayerId, () => {
+          router.push(withBrowseReturnTo(`/events/${encodeURIComponent(slug)}`, returnTo));
+        });
+      };
+      fetchEventSheetLookup(slug, controller.signal)
+        .then((resolved) => {
           if (reqRef.current !== req) return;
+          if (!resolved) {
+            goToCanonicalPage();
+            return;
+          }
+          setEvent(resolved);
           setPendingSlug(null);
-          navigateAfterHistoryLayer(historyLayerIdRef.current, () => {
-            router.push(`/events/${slug}`);
-          });
+        })
+        .catch(goToCanonicalPage)
+        .finally(() => {
+          if (lookupAbortRef.current === controller) lookupAbortRef.current = null;
         });
     },
-    [pathname, router],
+    [abortLookup, captureOrigin, router],
   );
 
   const closeEventSheet = useCallback(() => {
     reqRef.current++;
+    abortLookup();
     setEvent(null);
     setPendingSlug(null);
-  }, []);
+  }, [abortLookup]);
+
+  const openFullEventPage = useCallback(() => {
+    const slug = pendingSlug ?? event?.slug;
+    if (!slug) return;
+    const historyLayerId = historyLayerIdRef.current;
+    const returnTo = returnToRef.current;
+    closeEventSheet();
+    navigateAfterHistoryLayer(historyLayerId, () => {
+      router.push(withBrowseReturnTo(`/events/${encodeURIComponent(slug)}`, returnTo));
+    });
+  }, [closeEventSheet, event, pendingSlug, router]);
 
   // The app layout persists across routes. Cancel both the sheet and any
   // in-flight summary request when navigation leaves the surface that opened
@@ -132,6 +166,7 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
             <LazySheetFallback
               label="Loading event details"
               onClose={closeEventSheet}
+              onOpenFullPage={openFullEventPage}
               returnFocusRef={openerRef}
               historyLayerId={historyLayerIdRef.current}
             />
@@ -141,6 +176,7 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
             event={event}
             pending={pendingSlug !== null}
             onClose={closeEventSheet}
+            onOpenFullPage={openFullEventPage}
             returnFocusRef={openerRef}
             historyLayerId={historyLayerIdRef.current}
           />

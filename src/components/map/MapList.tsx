@@ -35,11 +35,11 @@ import type { EventPin, MapPinPlace } from "./types";
 function openLine(p: MapPinPlace): { text: string; tone: string } | null {
   switch (p.open_status.state) {
     case "open":
-      return { text: "Open now", tone: "var(--app-positive)" };
+      return { text: "Open now", tone: "var(--state-open)" };
     case "closing-soon":
       // "Closing soon" everywhere else (PlaceStatus, RightNow, PlaceIndex).
       // The map list was the one surface saying "Closes soon".
-      return { text: "Closing soon", tone: "var(--app-warning-press, #8F5600)" };
+      return { text: "Closing soon", tone: "var(--state-closing)" };
     case "closed":
       return { text: "Closed", tone: "var(--app-ink-3)" };
     default:
@@ -141,6 +141,8 @@ export default function MapList({
   userLoc,
   sortOrigin,
   failureMode = false,
+  searchState = "ready",
+  onRetrySearch,
   onPick,
   onPickEvent,
 }: {
@@ -153,6 +155,9 @@ export default function MapList({
   /** The WebGL recovery surface is intentionally short and varied. It must
    * not turn a graphics failure into a 200-row directory. */
   failureMode?: boolean;
+  /** An unfinished request is not evidence of zero matches. */
+  searchState?: "pending" | "unavailable" | "ready";
+  onRetrySearch?: () => void;
   onPick: (place: MapPinPlace) => void;
   onPickEvent: (event: EventPin) => void;
 }) {
@@ -169,6 +174,7 @@ export default function MapList({
     [events, effectiveOrigin, failureMode],
   );
   const empty = rows.length === 0 && eventRows.length === 0;
+  const searchIncomplete = empty && searchState !== "ready";
 
   return (
     <div
@@ -176,7 +182,7 @@ export default function MapList({
       role="region"
       aria-label={failureMode ? "Available results without the map" : "Map results, as a list"}
     >
-      <div
+      {!searchIncomplete && <div
         className="mx-auto mb-1 flex max-w-[680px] items-baseline justify-between gap-3 px-2"
         aria-live="polite"
       >
@@ -194,10 +200,22 @@ export default function MapList({
               ? "Strongest matches"
               : "Nearest map center"}
         </span>
-      </div>
-      {empty ? (
+      </div>}
+      {searchIncomplete ? (
         <div className="map-list-empty">
-          <p className="font-serif map-list-empty-title">
+          <p role="status" className="font-sans map-list-empty-title">
+            {searchState === "pending" ? "Searching Radius…" : "Search is temporarily unavailable"}
+          </p>
+          <p className="map-list-empty-sub">
+            {searchState === "pending" ? "Results will appear when this search finishes." : "We kept your search. Try again to check for matching results."}
+          </p>
+          {searchState === "unavailable" && onRetrySearch && (
+            <button type="button" onClick={onRetrySearch} className="mt-2 inline-flex min-h-11 items-center text-[12px] font-semibold" style={{ color: "var(--app-link)" }}>Try again</button>
+          )}
+        </div>
+      ) : empty ? (
+        <div className="map-list-empty">
+          <p className="font-sans map-list-empty-title">
             {failureMode ? "No fallback results are available" : "Nothing matches yet"}
           </p>
           <p className="map-list-empty-sub">
@@ -240,7 +258,7 @@ export default function MapList({
                         <span className="map-list-main">
                           <span className="map-list-name">{event.title}</span>
                           <span className="map-list-sub">
-                            <span style={{ color: "var(--app-brand-press)", fontWeight: 650 }}>
+                            <span style={{ color: "var(--app-ink-2)", fontWeight: 650 }}>
                               {eventClock(event.starts_at)}
                             </span>
                             <span aria-hidden className="map-list-mid">·</span>

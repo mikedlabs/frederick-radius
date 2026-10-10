@@ -64,6 +64,7 @@ import {
   type MapLayerGroup,
   type MapLayerSourceHealth,
 } from "@/components/map/deferredBrowseLayers";
+import { mapLayerCacheControl } from "@/components/map/mapLayerFreshness";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 import { getRegisterSites } from "@/lib/integrations/historicSites";
 import appalachianTrail from "@/data/appalachian-trail.json";
@@ -623,6 +624,7 @@ export async function GET(request: Request) {
   const sourceHealth: Partial<
     Record<MapLayerGroup, MapLayerSourceHealth>
   > = {};
+  const assembledAt = new Date().toISOString();
   for (const group of groups) {
     const unavailable = [...(sourceFailures.get(group) ?? [])].sort();
     sourceHealth[group] = {
@@ -633,6 +635,7 @@ export async function GET(request: Request) {
             ? "partial"
             : "unavailable",
       unavailable,
+      asOf: assembledAt,
     };
   }
   payload.sourceHealth = sourceHealth;
@@ -645,7 +648,7 @@ export async function GET(request: Request) {
     headers: {
       "Cache-Control": degraded
         ? DEGRADED_SHARED_CACHE
-        : "public, s-maxage=300, stale-while-revalidate=900",
+        : mapLayerCacheControl(groups),
       "X-Radius-Map-Groups": [...groups].sort().join(","),
     },
   });

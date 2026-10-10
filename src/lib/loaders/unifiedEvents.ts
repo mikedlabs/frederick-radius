@@ -207,22 +207,62 @@ function isSaneFeedEvent(e: EventWithMeta): boolean {
   );
 }
 
-function mergeUnifiedEventCards(
+function isFcplLifecycle(event: EventWithMeta): boolean {
+  return event.source === "fcpl" &&
+    (event.status === "cancelled" || event.status === "postponed");
+}
+
+function fcplOccurrenceUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.hostname !== "frederick.librarycalendar.com" ||
+        !/^\/event\/[^/]+\/?$/.test(url.pathname)) return null;
+    return `${url.origin}${url.pathname.replace(/\/$/, "")}`;
+  } catch { return null; }
+}
+
+/** FCPL IDs identify one dated occurrence, not a recurring series. A curated
+ * mirror without that ID needs both the exact official URL and start time;
+ * title/venue similarity must never cancel a different date or program. */
+function sameFcplOccurrence(current: EventWithMeta, lifecycle: EventWithMeta): boolean {
+  const currentId = current.source_id?.trim();
+  const lifecycleId = lifecycle.source_id?.trim();
+  if (current.source === "fcpl" && currentId && lifecycleId &&
+      currentId === lifecycleId) return true;
+  const officialUrl = fcplOccurrenceUrl(lifecycle.source_url);
+  return officialUrl !== null && officialUrl === fcplOccurrenceUrl(current.source_url) &&
+    Date.parse(current.starts_at) === Date.parse(lifecycle.starts_at);
+}
+
+export function mergeUnifiedEventCards(
   curatedUpcoming: EventWithMeta[],
   liveCards: EventWithMeta[],
   venueCards: EventWithMeta[],
   ingestedCards: EventWithMeta[],
 ): EventWithMeta[] {
+  // Lifecycle records are archive inputs, not competing public cards. Keep
+  // every official FCPL identity outside sanity, slug, and content dedupe.
+  const lifecycle = ingestedCards.filter(isFcplLifecycle);
+  const hasCurrentCancellation = (event: EventWithMeta) =>
+    (!event.status || event.status === "scheduled") &&
+    lifecycle.some((row) => sameFcplOccurrence(event, row));
+  const currentCurated = curatedUpcoming.filter((event) => !hasCurrentCancellation(event));
+  const ingestedDiscovery = dedupeLiveAgainstCurated(
+    ingestedCards.filter((event) => !isFcplLifecycle(event)),
+    currentCurated,
+  );
+
   // One unified, deduplicated, time-sorted set. Curated rows lead, followed by
   // runtime feeds, reviewed venue snapshots, and finally database-ingested
   // rows, so the richer/first-party representation wins a slug collision.
   const bySlug = new Map<string, EventWithMeta>();
   for (const e of [
-    ...curatedUpcoming,
+    ...currentCurated,
     ...liveCards.filter(isSaneFeedEvent),
     ...venueCards.filter(isSaneFeedEvent),
-    ...ingestedCards.filter(isSaneFeedEvent),
-  ]) {
+    ...ingestedDiscovery.filter(isSaneFeedEvent),
+  ].filter((event) => !hasCurrentCancellation(event))) {
     if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
   }
 
@@ -237,7 +277,7 @@ function mergeUnifiedEventCards(
       : { ...e, venue_name: v, address, title: t };
   });
 
-  return dedupeCrossSourceShows(
+  const discovery = dedupeCrossSourceShows(
     dedupeKeysHomeGames(
       dedupeCuratedClusters(
         venueCleaned.sort(
@@ -245,6 +285,9 @@ function mergeUnifiedEventCards(
         ),
       ),
     ),
+  );
+  return [...discovery, ...lifecycle].sort(
+    (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
   );
 }
 
@@ -484,9 +527,10 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   // below collapses any overlap between them.
   const venueCards = [...venueEventsAsCards(now), ...venueEventsToCards(squarespaceRaw)];
 
-  // FCPL/FCVFRA ingested public draws, expanded series → cards, curated
-  // duplicates dropped by the same content matcher the live feeds use.
-  const ingestedCards = dedupeLiveAgainstCurated(ingestedSeriesToCards(ingestedSeries, now), currentCurated);
+  // Preserve lifecycle identities before the shared merge separates them
+  // from public-card dedupe. The archive worker consumes unified, not only
+  // its publicEvents subset.
+  const ingestedCards = ingestedSeriesToCards(ingestedSeries, now);
 
   const unified = await decorateUnifiedEvents(
     mergeUnifiedEventCards(
@@ -601,7 +645,12 @@ const cachedAssemble = unstable_cache(
   // v31: DFP rows retain WordPress's publisher modification timestamp and a
   // newer structured record can correct the matching curated occurrence.
   // v33: stage-credit classification and themed-title duplicate reconciliation.
-  ["unified-events-v33"],
+  // v34: FCPL occurrence cancellations survive series collapse for archive
+  // updates, while public discovery advances to the next scheduled sibling.
+  // v35: lifecycle bypasses all discovery-only filters and deduplication.
+  // v36: shared text normalization repairs facility/locality boundaries and
+  // possessive suffixes before cached event copy reaches any surface.
+  ["unified-events-v36"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.

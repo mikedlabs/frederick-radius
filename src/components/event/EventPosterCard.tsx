@@ -122,6 +122,7 @@ export default function EventPosterCard({
   const timingText = eventDecisionTime(event, cardNow ?? undefined);
   const statusBg =
     isCancelled ? "var(--app-danger)" : "var(--app-warning-press)";
+  const statusForeground = isCancelled ? "var(--app-danger-text)" : "var(--state-closing)";
   const reasons = eventReasons(event, cardNow ?? undefined).filter((reason) => reason.kind !== "free");
   const accessLabel = communicationAccessLabels(event)[0];
   const titleColor = onPhoto ? "#fff" : "var(--app-ink)";
@@ -146,15 +147,15 @@ export default function EventPosterCard({
         data-event-poster="category"
         data-event-fallback="date-category"
         className="group relative rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-4 sm:p-5"
-        style={{ borderColor: "var(--app-border)", borderTopColor: "var(--app-brand)", borderTopWidth: 3 }}
+        style={{ borderColor: "var(--app-border)", borderTopColor: "var(--app-heading-rule, var(--app-brand))", borderTopWidth: 3 }}
       >
         <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold">
           <span style={{ color: "var(--app-ink-3)" }}>{categoryLabel}</span>
-          {confirmedLive && <span style={{ color: "var(--app-amber-text)" }}>Happening now</span>}
-          {statusText && <span style={{ color: statusBg }}>{statusText}</span>}
+          {confirmedLive && <span style={{ color: "var(--app-live-text)" }}>Happening now</span>}
+          {statusText && <span style={{ color: statusForeground }}>{statusText}</span>}
         </div>
         <div className="flex items-start gap-3 sm:gap-4">
-          <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent={accent} />
+          <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent={`var(--app-list-fact-color, ${accent})`} />
           <div className="min-w-0 flex-1">
             <Link
               href={`/events/${event.slug}`}
@@ -171,7 +172,7 @@ export default function EventPosterCard({
             {reasons.length > 0 && !confirmedLive && <div className="mt-2"><ReasonChipRow reasons={reasons} /></div>}
             {(event.is_free || event.price_text || accessLabel || event.distance_m !== undefined) && (
               <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
-                {event.is_free ? <span style={{ color: "var(--app-positive)" }}>Free</span> : event.price_text ? <span>{event.price_text}</span> : null}
+                {event.is_free ? <span style={{ color: "var(--app-list-fact-color, var(--app-positive))" }}>Free</span> : event.price_text ? <span>{event.price_text}</span> : null}
                 {accessLabel && <span>{accessLabel}</span>}
                 {event.distance_m !== undefined && <span>{formatDistance(event.distance_m)} away</span>}
               </p>
@@ -255,11 +256,11 @@ export default function EventPosterCard({
         {confirmedLive && (
           <span
             className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em]"
-            style={{ background: "var(--app-amber)", color: "var(--app-ink)" }}
+            style={{ background: "var(--app-amber)", color: "var(--app-media-ink)" }}
           >
             <span
               className="live-dot h-1.5 w-1.5 rounded-full"
-              style={{ background: "var(--app-ink)" }}
+              style={{ background: "var(--app-media-ink)" }}
             />
             Live
           </span>
@@ -287,7 +288,7 @@ export default function EventPosterCard({
           href={`/events/${event.slug}`}
           data-decision-action="open"
           prefetch={false}
-          className={`flex min-h-11 items-end font-serif text-[21px] leading-[1.08] tracking-tight outline-none focus-visible:underline ${
+          className={`flex min-h-11 items-end font-sans text-[21px] leading-[1.08] tracking-tight outline-none focus-visible:underline ${
             isCancelled ? "line-through opacity-70" : ""
           }`}
           style={{ color: titleColor }}
@@ -326,7 +327,7 @@ export default function EventPosterCard({
                   background: onPhoto
                     ? "rgba(255,255,255,0.92)"
                     : "color-mix(in srgb, var(--app-positive) 14%, transparent)",
-                  color: "var(--app-positive)",
+                  color: onPhoto ? "var(--app-media-ink)" : "var(--app-list-fact-color, var(--app-positive))",
                 }}
               >
                 Free
@@ -339,7 +340,7 @@ export default function EventPosterCard({
                   background: onPhoto
                     ? "rgba(255,255,255,0.92)"
                     : "color-mix(in srgb, var(--app-cool) 14%, transparent)",
-                  color: "var(--app-cool)",
+                  color: onPhoto ? "var(--app-media-ink)" : "var(--app-list-fact-color, var(--app-cool))",
                 }}
               >
                 {accessLabel}

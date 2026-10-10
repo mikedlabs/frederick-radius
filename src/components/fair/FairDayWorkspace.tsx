@@ -1932,7 +1932,7 @@ export default function FairDayWorkspace({
                     src="/images/fair/fairgrounds-night-mike-d-960.jpg"
                     srcSet="/images/fair/fairgrounds-night-mike-d-960.jpg 960w, /images/fair/fairgrounds-night-mike-d-1920.jpg 1920w"
                     sizes="100vw"
-                    alt="Mike D's photograph of The Great Frederick Fair in 2024, with the illuminated Ferris wheel and midway seen from above."
+                    alt="The illuminated Ferris wheel and midway at The Great Frederick Fair, seen from above."
                     width="960"
                     height="540"
                     loading="eager"
@@ -3105,7 +3105,7 @@ export default function FairDayWorkspace({
                             {/* Owned Fairgrounds atmosphere, not documentation of this event. */}
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src="/images/fair/fairgrounds-midway-mike-d-960.jpg" width="960" height="540" alt="The Great Frederick Fair midway seen from above at dusk." loading="lazy" className="aspect-[16/9] w-full object-cover" />
-                            <figcaption className="mt-1 text-[10px] text-[var(--app-ink-3)]">Fairgrounds atmosphere · Mike D, 2024</figcaption>
+                            <figcaption className="mt-1 text-[10px] text-[var(--app-ink-3)]">Fairgrounds atmosphere</figcaption>
                           </figure>
                         ) : null}
                         {step.sourceState === "changed-or-removed" ? (

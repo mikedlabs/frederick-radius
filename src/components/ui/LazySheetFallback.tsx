@@ -12,6 +12,7 @@ import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 type Props = {
   label: string;
   onClose: () => void;
+  onOpenFullPage?: () => void;
   returnFocusRef: RefObject<HTMLElement | null>;
   historyLayerId?: string;
 };
@@ -27,6 +28,7 @@ type Props = {
 export default function LazySheetFallback({
   label,
   onClose,
+  onOpenFullPage,
   returnFocusRef,
   historyLayerId,
 }: Props) {
@@ -133,6 +135,11 @@ export default function LazySheetFallback({
             style={{ background: "var(--app-bg-sunken)" }}
           />
         </div>
+        {onOpenFullPage ? (
+          <button type="button" onClick={onOpenFullPage} className="mt-5 inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold" style={{ color: "var(--app-ink)", background: "var(--app-bg-sunken)" }}>
+            Open full page
+          </button>
+        ) : null}
       </div>
     </div>
   );

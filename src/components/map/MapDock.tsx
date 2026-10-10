@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -473,6 +474,7 @@ export default function MapDock(props: MapDockProps) {
   const [essentialsQuick, setEssentialsQuick] = useState(false);
   const [searchPanelOpen, setSearchPanelOpen] = useState(false);
   const [searchKeyboardOpen, setSearchKeyboardOpen] = useState(false);
+  const [compactRecoveryDock, setCompactRecoveryDock] = useState(false);
   const [searchSelection, setSearchSelection] = useState({
     query: props.q,
     index: -1,
@@ -544,14 +546,20 @@ export default function MapDock(props: MapDockProps) {
 
   // Size the one explicit control sheet against the map canvas. On a phone it
   // may use a little more than half the map while it is being operated; the
-  // closed state is one compact bar and touching the exposed map dismisses it.
-  useEffect(() => {
+  // closed state is a compact bar with an optional return link. Recovery uses
+  // its measured height so that link cannot cover the heading or final result.
+  useLayoutEffect(() => {
     const dockElement = dockRef.current;
     const host = dockElement?.closest<HTMLElement>(".dock-host");
     if (!dockElement || !host) return;
 
     const sizePane = () => {
-      const mapHeight = host.getBoundingClientRect().height;
+      const mapBounds = host.getBoundingClientRect();
+      const mapHeight = mapBounds.height;
+      // A two-row return/search dock leaves too little clear list space on a
+      // short phone canvas. Keep Back as a full touch target beside Search.
+      setCompactRecoveryDock(!mapAvailable && mapBounds.width < 1024 && mapHeight < 360);
+      host.style.setProperty("--map-dock-height", `${dockElement.getBoundingClientRect().height}px`);
       const available = Math.max(148, mapHeight - 96);
       const minimum = mapHeight < 320 ? 148 : 280;
       // 0.62 left only ~196px of clean map at 375x812 — configuring the map
@@ -565,8 +573,12 @@ export default function MapDock(props: MapDockProps) {
     sizePane();
     const observer = new ResizeObserver(sizePane);
     observer.observe(host);
-    return () => observer.disconnect();
-  }, []);
+    observer.observe(dockElement);
+    return () => {
+      observer.disconnect();
+      host.style.removeProperty("--map-dock-height");
+    };
+  }, [mapAvailable]);
 
   // Keep the thumb-positioned search stable through the initiating tap. Move
   // it to the top shelf only after the visual viewport confirms that a
@@ -1419,8 +1431,32 @@ export default function MapDock(props: MapDockProps) {
   const paneSourceGroups = sourceGroupsForPane(pane);
   const degradedPaneSourceGroups = paneSourceGroups.filter((group) => {
     const health = props.mapLayerSourceHealth?.[group];
-    return health && health.status !== "current";
+    return health && (health.status !== "current" || health.stale);
   });
+  const oldPaneSnapshots = degradedPaneSourceGroups
+    .map((group) => props.mapLayerSourceHealth?.[group])
+    .filter((health) => health?.stale);
+  const oldestSnapshotTime = Math.min(...oldPaneSnapshots.map((health) => Date.parse(health?.asOf ?? "")).filter(Number.isFinite));
+  const [snapshotClock, setSnapshotClock] = useState(() => Date.now());
+  useEffect(() => {
+    if (!Number.isFinite(oldestSnapshotTime)) return;
+    const update = () => {
+      if (document.visibilityState === "visible") setSnapshotClock(Date.now());
+    };
+    const first = window.setTimeout(update, 0);
+    const timer = window.setInterval(update, 60_000);
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, [oldestSnapshotTime]);
+  const snapshotAgeMinutes = Number.isFinite(oldestSnapshotTime)
+    ? Math.max(1, Math.floor((snapshotClock - oldestSnapshotTime) / 60_000)) : null;
+  const snapshotAgeCopy = snapshotAgeMinutes !== null
+    ? ` The last snapshot is ${snapshotAgeMinutes} ${snapshotAgeMinutes === 1 ? "minute" : "minutes"} old.`
+    : "";
   const paneSourceLabels = [
     ...new Set(
       degradedPaneSourceGroups.flatMap(
@@ -1428,6 +1464,9 @@ export default function MapDock(props: MapDockProps) {
       ),
     ),
   ];
+  const paneHasUnavailableSources = degradedPaneSourceGroups.some(
+    (group) => props.mapLayerSourceHealth?.[group]?.status === "unavailable",
+  );
   const paneSourcesUnavailable =
     degradedPaneSourceGroups.length > 0 &&
     degradedPaneSourceGroups.every(
@@ -1551,8 +1590,8 @@ export default function MapDock(props: MapDockProps) {
         data-search-keyboard={searchKeyboardOpen ? "true" : undefined}
         ref={dockRef}
       >
-        {searchReturnTo && !pane && !searchPanelOpen && (
-          <a href={searchReturnTo} className="flex min-h-11 items-center gap-1.5 rounded-t-[var(--app-radius-md)] border-b px-3 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)", background: "var(--app-bg-elevated-solid)" }}>
+        {searchReturnTo && !compactRecoveryDock && !pane && !searchPanelOpen && (
+          <a href={searchReturnTo} className="relative z-10 flex min-h-11 items-center gap-1.5 rounded-t-[var(--app-radius-md)] border-b px-3 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-link)", background: "var(--app-bg-elevated-solid)" }}>
             <ChevronLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
             Back to search results
           </a>
@@ -1612,9 +1651,22 @@ export default function MapDock(props: MapDockProps) {
           style={{
             gridTemplateColumns: mapAvailable
               ? `minmax(0, 1fr) ${props.q.trim() ? "52px" : "80px"}`
-              : "minmax(0, 1fr)",
+              : compactRecoveryDock && searchReturnTo && !pane && !searchPanelOpen
+                ? "44px minmax(0, 1fr)"
+                : "minmax(0, 1fr)",
           }}
         >
+          {compactRecoveryDock && searchReturnTo && !pane && !searchPanelOpen && (
+            <a
+              href={searchReturnTo}
+              className="relative z-10 grid min-h-11 place-items-center rounded-l-[var(--app-radius-md)] border-r"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
+              title="Back to search results"
+            >
+              <ChevronLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+              <span className="sr-only">Back to search results</span>
+            </a>
+          )}
           {/* Search, folded in as the top row — the map's ONE search. */}
           <div
             ref={searchWrapRef}
@@ -1641,7 +1693,7 @@ export default function MapDock(props: MapDockProps) {
               }
             }}
           >
-            <div className="dock-search" role="search">
+            <div className="dock-search" role="search" style={compactRecoveryDock ? { height: 44 } : undefined}>
               <SearchIcon aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.2} />
               <input
                 id="map-search-input"
@@ -2060,14 +2112,18 @@ export default function MapDock(props: MapDockProps) {
                 className="dock-source-health"
                 role="status"
                 aria-label={
-                  paneSourceLabels.length > 0
+                  oldPaneSnapshots.length > 0 && !paneHasUnavailableSources
+                    ? "Older map data"
+                    : paneSourceLabels.length > 0
                     ? `Unavailable map sources: ${paneSourceLabels.join(", ")}`
                     : "Some map sources are unavailable"
                 }
               >
                 <span>
-                  {paneSourcesUnavailable
-                    ? "These live map sources are unavailable. An empty layer does not mean there are no results."
+                  {paneHasUnavailableSources
+                    ? `${paneSourcesUnavailable ? "These" : "Some"} live map sources are unavailable. An empty layer does not mean there are no results.${oldPaneSnapshots.length > 0 ? ` Showing an older snapshot.${snapshotAgeCopy} Check again before relying on it.` : ""}`
+                    : oldPaneSnapshots.length > 0
+                    ? `The map could not be updated.${snapshotAgeCopy} Results may be out of date. Check again before relying on them.`
                     : "Some live map sources are unavailable. Available results are still shown."}
                 </span>
                 {props.retryMapLayerGroups && (
@@ -2795,18 +2851,22 @@ export default function MapDock(props: MapDockProps) {
                         <p>
                           <strong>Roads now</strong> · {props.showIncidents
                             ? props.incidentHealth.status === "unavailable"
-                              ? "Current public incident reports are temporarily unavailable."
+                              ? "Unable to verify current public incident reports."
                               : props.incidentHealth.status === "stale"
-                                ? `Using the last good incident update${incidentUpdate ? ` from ${incidentUpdate}` : ""}.`
+                                ? (props.incidentHealth.earlierCount ?? 0) > 0
+                                  ? `Earlier public reports retained${incidentUpdate ? ` from ${incidentUpdate}` : ""}; unable to verify current activity.`
+                                  : "Unable to verify current public incident reports."
                                 : props.incidentHealth.status === "disabled"
                                   ? "Checking current public incidents."
-                                  : props.incidentHealth.status === "empty"
-                                    ? "No safely mapped travel incidents are current."
-                                    : `${props.incidentHealth.count} current travel incident${props.incidentHealth.count === 1 ? "" : "s"} mapped.`
+                              : props.incidentHealth.status === "empty"
+                                    ? "No recent public travel reports are mapped."
+                                    : `${props.incidentHealth.count} recent public travel report${props.incidentHealth.count === 1 ? "" : "s"} mapped.`
                             : props.showTraffic
                               ? "Maryland road work and official travel context are on."
                               : "Official road reports are on."}
                         </p>
+                        {props.showIncidents && (props.incidentHealth.earlierCount ?? 0) > 0 && <p>{props.incidentHealth.earlierCount} earlier public report{props.incidentHealth.earlierCount === 1 ? "" : "s"} retained as history; current incident status is unverified.</p>}
+                        {props.showIncidents && incidentUpdate && <p>The {props.incidentHealth.timestampBasis === "checked" ? "source" : "snapshot"} was {props.incidentHealth.timestampBasis === "checked" ? "checked" : "updated"} at {incidentUpdate}.</p>}
                         <details className="mt-1.5 text-[11px] leading-relaxed">
                           <summary className="tap-44-y cursor-pointer font-semibold">Sources and limits</summary>
                           <p className="pb-1">

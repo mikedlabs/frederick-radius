@@ -294,6 +294,47 @@ describe("current outdoor conditions answer", () => {
     });
   });
 
+  it.each([
+    { name: "starts exactly now", starts_at: now.toISOString(), ends_at: "2026-08-13T22:30:00Z", active: true },
+    { name: "ends exactly now", starts_at: "2026-08-13T21:30:00Z", ends_at: now.toISOString(), active: false },
+    { name: "has not started", starts_at: "2026-08-13T22:01:00Z", ends_at: "2026-08-13T22:30:00Z", active: false },
+    { name: "has expired", starts_at: "2026-08-13T21:00:00Z", ends_at: "2026-08-13T21:59:00Z", active: false },
+    { name: "has unknown lifecycle timestamps", starts_at: "unknown", ends_at: "unknown", active: true },
+  ])("evaluates an alert that $name at the caller's time", ({ starts_at, ends_at, active }) => {
+    const result = currentOutdoorConditionsAskResult({
+      forecast,
+      alerts: freshAlerts([alert({ starts_at, ends_at })]),
+      airObservations: [goodAir],
+    }, { areaLabel: "downtown Frederick", now });
+
+    if (active) {
+      expect(result.answer).toMatch(/^Use caution/);
+      expect(result.actions?.[0]?.href).toBe("https://api.weather.gov/alerts/storm-1");
+    } else {
+      expect(result.answer).toContain("no active Frederick County alert");
+      expect(result.answer).not.toContain("Severe Thunderstorm Warning");
+      expect(result.actions?.some((action) => action.href === "https://api.weather.gov/alerts/storm-1")).toBe(false);
+    }
+  });
+
+  it("keeps an active Code Orange alert relevant to direct condition answers", () => {
+    const result = currentOutdoorConditionsAskResult({
+      forecast,
+      alerts: freshAlerts([alert({
+        event: "Air Quality Alert",
+        headline: "Code Orange air quality is forecast",
+        description: "Air may be unhealthy for sensitive groups.",
+        severity: "Moderate",
+      })]),
+      airObservations: [goodAir],
+    }, { areaLabel: "downtown Frederick", now });
+
+    expect(result.answer).toMatch(/^Use caution/);
+    expect(result.answer).toContain("Air Quality Alert");
+    expect(result.answer).not.toContain("no active Frederick County alert");
+    expect(result.actions?.[0]?.label).toBe("Open official alert");
+  });
+
   it("keeps an active dangerous alert first when other feeds are missing", () => {
     const result = currentOutdoorConditionsAskResult({
       forecast: null,

@@ -1,7 +1,14 @@
+.arrival {
+  display: grid;
+  align-items: stretch;
+  gap: var(--app-space-4);
+  margin-block: var(--app-space-2) var(--app-space-4);
+}
+
 .masthead {
   display: grid;
-  gap: 12px;
-  margin-block: 8px 16px;
+  gap: var(--app-space-2);
+  margin: 0;
   /* Keep the useful arrival stable while the page scrolls. */
   animation: none;
 }
@@ -9,21 +16,18 @@
 .mastheadLead {
   position: relative;
   isolation: isolate;
-  min-height: 160px;
+  min-height: 120px;
   overflow: hidden;
   border-radius: var(--app-radius-lg);
-  background: var(--app-ink);
+  background: var(--app-media-ink);
   box-shadow: var(--app-shadow-1);
 }
 
 .title {
-  position: relative;
-  z-index: 1;
-  width: 76%;
-  max-width: 22ch;
-  padding: 18px 16px 38px;
-  color: var(--app-on-brand);
-  font-size: clamp(28px, 5vw, 42px);
+  margin: 0;
+  max-width: 24ch;
+  color: var(--app-ink);
+  font-size: clamp(28px, 4vw, 36px);
   font-weight: 650;
   line-height: 1.08;
   letter-spacing: -0.035em;
@@ -50,14 +54,6 @@
   inset: 0;
 }
 
-.portrait::after {
-  position: absolute;
-  inset: 0;
-  content: "";
-  /* Neutral contrast only; the archive image keeps its natural color. */
-  background: linear-gradient(90deg, color-mix(in srgb, var(--app-ink) 96%, transparent), color-mix(in srgb, var(--app-ink) 88%, transparent) 38%, color-mix(in srgb, var(--app-ink) 8%, transparent));
-}
-
 .portrait img {
   object-fit: cover;
   object-position: 54% 52%;
@@ -71,29 +67,31 @@
   padding: 4px 6px;
   border-radius: var(--app-radius-sm);
   color: var(--app-on-brand);
-  background: var(--app-ink);
+  background: var(--app-media-ink);
   font-size: 11px;
   line-height: 1.25;
 }
 
 .briefing {
   display: grid;
-  gap: 20px;
+  gap: var(--app-space-6);
 }
 
 .context {
   display: grid;
-  gap: 16px;
+  gap: var(--app-space-4);
   min-width: 0;
 }
 
 .weather {
   min-width: 0;
-  padding: 14px 16px;
   color: var(--app-ink);
   border: 1px solid var(--app-border);
+  border-top: 3px solid var(--app-brand);
   border-radius: var(--app-radius-lg);
-  background: var(--app-bg-sunken);
+  overflow: hidden;
+  background: var(--app-bg-elevated-solid);
+  box-shadow: var(--app-shadow-1);
 }
 
 .contextHeading {
@@ -102,7 +100,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0 12px;
-  margin-bottom: 8px;
+  margin-bottom: var(--app-space-3);
   color: var(--app-ink-2);
   font-size: 13px;
   font-weight: 600;
@@ -112,10 +110,42 @@
   margin-top: 0;
 }
 
+.forecastLink {
+  display: block;
+  height: 100%;
+  min-height: 44px;
+  padding: var(--app-space-4);
+  color: inherit;
+  outline-offset: 4px;
+  transition: background-color var(--app-dur-fast) var(--app-ease-out);
+}
+
+.forecastLink:hover {
+  background: var(--app-bg-sunken);
+}
+
+.forecastLink:focus-visible {
+  outline: 2px solid var(--app-link);
+}
+
+.forecastLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing);
+  color: var(--app-link);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.planLink {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .currentContent {
   display: grid;
   align-items: stretch;
-  gap: 16px;
+  gap: var(--app-space-6);
 }
 
 .currentContent > * {
@@ -125,11 +155,9 @@
 .places,
 .events {
   margin: 0;
-  padding: 16px;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
-  background: var(--app-bg-elevated-solid);
-  box-shadow: var(--app-shadow-1);
+  padding: 0;
+  border-top: 1px solid var(--app-border);
+  padding-top: var(--app-space-4);
 }
 
 .places > section {
@@ -164,8 +192,8 @@
 }
 
 .eventRow {
-  min-height: 72px;
-  padding-block: 12px;
+  min-height: 96px;
+  padding-block: var(--app-space-3);
   border-radius: var(--app-radius-sm);
   transition: background-color var(--app-dur-fast) var(--app-ease-out);
 }
@@ -240,32 +268,18 @@
 }
 
 @media (min-width: 640px) {
-  .masthead {
-    margin-block: 12px 18px;
-  }
-
   .mastheadLead {
-    min-height: 176px;
-  }
-
-  .title {
-    width: 68%;
-    padding: 22px 24px 38px;
+    min-height: 180px;
   }
 
   .context {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 20px;
+    gap: var(--app-space-5);
     align-items: stretch;
   }
 
   .context > :only-child {
     grid-column: 1 / -1;
-  }
-
-  .weather > a {
-    display: block;
-    width: 100%;
   }
 
   .fairLink {
@@ -274,28 +288,36 @@
 
   .currentContent {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 20px;
+    gap: var(--app-space-6);
+  }
+}
+
+@media (min-width: 960px) {
+  .arrival {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: var(--app-space-6);
   }
 
-  .places,
-  .events {
-    padding: 20px;
+  .mastheadLead {
+    min-height: 244px;
+  }
+
+  .weather {
+    align-self: start;
+  }
+
+  .forecastLink {
+    padding: var(--app-space-5);
   }
 }
 
 @media (max-width: 359px) {
   .mastheadLead {
-    min-height: 144px;
+    min-height: 72px;
   }
 
   .title {
-    padding: 14px 12px 36px;
     font-size: 26px;
-  }
-
-  .places,
-  .events {
-    padding: 12px;
   }
 
   .fairLink {
@@ -310,7 +332,23 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .eventRow {
+  .eventRow,
+  .forecastLink {
     transition: none;
+  }
+}
+
+.utilityHeading {
+  color: var(--app-ink);
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+/* A real advisory keeps its place at the top without burying the weather or
+   Find controls. Quiet days keep the larger owned photographic scene. */
+@media (max-width: 639px) {
+  :global(main:has([aria-label="Heads up"])) .mastheadLead {
+    min-height: 80px;
   }
 }

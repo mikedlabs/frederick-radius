@@ -159,7 +159,6 @@ export default function FairGrandstandSpotlight({
           Open details
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </span> : null}
-        <span className="mt-2 text-[10px] text-[var(--app-on-brand)]">Fairgrounds photograph · Mike D, 2024</span>
       </span>
     </button>
   );

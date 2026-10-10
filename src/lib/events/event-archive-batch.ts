@@ -282,11 +282,15 @@ const postgresWriter: EventArchiveBatchWriter = {
         where identity.source = incoming.source
           and identity.source_uid = incoming.source_uid
       `;
+      // A lifecycle update must already own its source+UID identity. Slug
+      // collisions alone cannot authorize cancelling another source's record.
+      // Scheduled rows retain the existing alias/create/attach behavior.
       await tx`
         update event_archive_incoming as incoming
         set canonical_event_id = alias.canonical_event_id
         from public.event_slug_aliases as alias
         where incoming.canonical_event_id is null
+          and incoming.event_status = 'scheduled'
           and alias.slug = incoming.slug
       `;
       await tx`
@@ -324,6 +328,7 @@ const postgresWriter: EventArchiveBatchWriter = {
         set canonical_event_id = canonical.id
         from public.event_canonical_records as canonical
         where incoming.canonical_event_id is null
+          and incoming.event_status = 'scheduled'
           and canonical.canonical_slug = incoming.slug
       `;
 

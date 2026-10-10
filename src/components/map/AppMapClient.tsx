@@ -253,6 +253,7 @@ export default function AppMapClient({
   showSearchControls = true,
   mapLayerSourceHealth,
   onLayerDemand,
+  onActiveLayerGroupsChange,
   children,
 }: {
   /** Already decorated server-side (map/page → publicPlaces().map
@@ -357,6 +358,7 @@ export default function AppMapClient({
     Record<MapLayerGroup, MapLayerSourceHealth>
   >;
   onLayerDemand?: (groups: readonly MapLayerGroup[]) => void;
+  onActiveLayerGroupsChange?: (groups: readonly MapLayerGroup[]) => void;
   /** Overlay content for the map column. (Historically the intent-chip
    *  strip; the dock replaced it — the slot stays for future overlays.) */
   children?: ReactNode;
@@ -467,6 +469,7 @@ export default function AppMapClient({
             sceneContext={sceneContext}
             mapLayerSourceHealth={mapLayerSourceHealth}
             onLayerDemand={onLayerDemand}
+            onActiveLayerGroupsChange={onActiveLayerGroupsChange}
           />
         </MapChunkBoundary>
         )}

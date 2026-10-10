@@ -115,7 +115,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await expectReadableWithinViewport(briefing.getByText("County status", { exact: true }), width);
     await expectReadableWithinViewport(briefing.locator('[aria-live="polite"]'), width);
     await expectReadableWithinViewport(
-      briefing.getByText(/^(?:Page(?: last)? refreshed |As of )/), width,
+      briefing.getByText(/^Page assembled /), width,
     );
     await expectNoOverflow(page);
     await page.screenshot({ path: testInfo.outputPath(`pulse-${width}.png`), fullPage: true });

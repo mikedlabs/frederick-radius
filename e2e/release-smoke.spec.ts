@@ -226,15 +226,15 @@ for (const viewport of VIEWPORTS) {
           if (viewport.width >= 640) {
             await expect(countyStatus).toBeVisible();
           } else {
-            // A quiet/checking phone header leaves room for the primary task;
-            // active alerts and unavailable checks must remain visible.
+            // Only a valid quiet report can suppress the phone status control.
+            // Checking, unknown and reported alerts remain reachable.
             await expect.poll(async () => {
               const label = await countyStatus.getAttribute("aria-label");
               const visible = await countyStatus.isVisible();
-              if (/^County status: (checking|no active alerts)$/.test(label ?? "")) {
-                return !visible;
-              }
-              return /^County status: (unavailable|\d+ active alerts?)$/.test(label ?? "") && visible;
+              if (label === "County status: Clear in checked feeds; no active alerts") return !visible;
+              return (/^County status: (?:checking|Unable to verify; current alerts are unverified)$/.test(label ?? "")
+                || /^County status: (?:Checking|Unable to verify)\. (?:Checking again|Current check unavailable)\. Earlier report had \d+ alerts?; current alerts are unverified\.$/.test(label ?? "")
+                || /^County status: (?:Urgent|Advisory); \d+ alerts? reported(?:; some sources unavailable)?$/.test(label ?? "")) && visible;
             }).toBe(true);
           }
           await expect(

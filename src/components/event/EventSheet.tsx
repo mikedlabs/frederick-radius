@@ -49,6 +49,7 @@ type Props = {
   /** Open on a skeleton while the on-demand fetch is in flight. */
   pending?: boolean;
   onClose: () => void;
+  onOpenFullPage?: () => void;
   returnFocusRef?: RefObject<HTMLElement | null>;
   historyLayerId: string;
 };
@@ -57,6 +58,7 @@ export default function EventSheet({
   event,
   pending = false,
   onClose,
+  onOpenFullPage,
   returnFocusRef,
   historyLayerId,
 }: Props) {
@@ -72,7 +74,7 @@ export default function EventSheet({
         event ? (
           <EventSheetContent event={event} onClose={dismiss} />
         ) : (
-          <EventSheetSkeleton onClose={dismiss} />
+          <EventSheetSkeleton onClose={dismiss} onOpenFullPage={onOpenFullPage} />
         )
       }
     </BottomSheet>
@@ -80,12 +82,12 @@ export default function EventSheet({
 }
 
 /** Calm placeholder while the tapped event loads (on-demand path). */
-function EventSheetSkeleton({ onClose }: { onClose: () => void }) {
+function EventSheetSkeleton({ onClose, onOpenFullPage }: { onClose: () => void; onOpenFullPage?: () => void }) {
   return (
     <>
       <SheetHandle onClose={onClose} closeLabel="Close" />
       <div
-        className="px-5 pb-[88px] pt-4"
+        className={onOpenFullPage ? "px-5 pb-6 pt-4" : "px-5 pb-[88px] pt-4"}
         role="status"
         aria-label="Loading event"
       >
@@ -97,16 +99,19 @@ function EventSheetSkeleton({ onClose }: { onClose: () => void }) {
         <div className="mt-2 h-3 w-11/12 rounded-full" style={{ background: "var(--app-bg-sunken)" }} />
         <span className="sr-only">Loading…</span>
       </div>
+      {onOpenFullPage ? (
+        <div className="px-5 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]">
+          <button type="button" onClick={onOpenFullPage} className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold" style={{ color: "var(--app-ink)", background: "var(--app-bg-sunken)" }}>
+            Open full page <ExternalLink className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      ) : null}
     </>
   );
 }
 
 function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: () => void }) {
   const cat = CATEGORY_BY_SLUG[event.category];
-  // Hex literal fallback — the accent feeds color-mix()/alpha templates,
-  // where a var() would produce invalid CSS (same rule as EventCard).
-  const accent: string = cat?.color ?? "#7A7975";
-  const accentText = `color-mix(in srgb, ${accent} 55%, var(--app-ink))`;
   const categoryLabel = cat?.name ?? (event.category ? event.category : "Event");
   const date = eventDateBlock(event);
   const status = event.status ?? "scheduled";
@@ -165,12 +170,6 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
   return (
     <>
       <SheetHandle onClose={onClose} closeLabel="Close" />
-      {/* Dynamic tint background based on category accent */}
-      <div 
-        className="absolute inset-0 pointer-events-none transition-colors duration-1000 opacity-20"
-        style={{ background: `linear-gradient(to bottom, ${accent}, transparent 400px)` }}
-        aria-hidden
-      />
       {/* Event sheets are usually SHORT (they answer when/where/cost, not
        *  everything) so the sheet often ends flush at the viewport bottom —
        *  the footer needs enough padding to clear the floating BottomNav
@@ -178,8 +177,8 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
       <div ref={scrollRef} className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[88px]">
         {/* Hero — the venue's photo when the event carries one, with the
          *  category eyebrow + title overlaid (same cinematic pattern as
-         *  the place sheet). Photoless events get a category-tinted
-         *  plate so the sheet always opens with an identity. */}
+         *  the place sheet). Photoless events keep their category and
+         *  title on the neutral reading surface. */}
         {eventVisual ? (
           <div className="relative aspect-[16/9] w-full overflow-hidden">
             <motion.div 
@@ -213,14 +212,14 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
               <p
                 className="text-[11px] font-bold uppercase tracking-[0.14em]"
                 style={{
-                  color: `color-mix(in srgb, ${accent} 35%, white)`,
+                  color: "var(--app-on-brand)",
                   textShadow: "0 1px 2px rgba(0,0,0,0.55)",
                 }}
               >
                 {categoryLabel}
               </p>
               <h2
-                className={`mt-1 font-serif text-[24px] font-semibold leading-tight tracking-tight text-white ${isCancelled ? "line-through opacity-80" : ""}`}
+                className={`mt-1 font-sans text-[24px] font-semibold leading-tight tracking-tight text-white ${isCancelled ? "line-through opacity-80" : ""}`}
                 style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
               >
                 {event.title}
@@ -247,18 +246,18 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 aria-hidden
                 className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
                 style={{
-                  background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-sunken))`,
-                  color: accent,
+                  background: "var(--app-bg-sunken)",
+                  color: "var(--app-ink-3)",
                 }}
               >
                 <CategoryIcon slug={event.category} className="h-5 w-5" strokeWidth={2} />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: accentText }}>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
                   {categoryLabel}
                 </p>
                 <h2
-                  className={`font-serif text-[22px] font-semibold leading-tight tracking-tight ${isCancelled ? "line-through opacity-80" : ""}`}
+                  className={`font-sans text-[22px] font-semibold leading-tight tracking-tight ${isCancelled ? "line-through opacity-80" : ""}`}
                   style={{ color: "var(--app-ink)" }}
                 >
                   {event.title}
@@ -329,7 +328,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
           {/* Cost — free is a headline, a price is a fact, silence is
            *  honest when the source told us neither. */}
           {(event.is_free || event.price_text) && (
-            <p className="mt-2 text-[13px] font-semibold" style={{ color: event.is_free ? "var(--app-positive)" : "var(--app-ink-2)" }}>
+            <p className="mt-2 text-[13px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
               {event.is_free ? "Free" : event.price_text}
             </p>
           )}
@@ -408,7 +407,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                   style={{
                     color:
                       ticketHref && canAttend
-                        ? "var(--app-brand-press)"
+                        ? "var(--app-link)"
                         : "var(--app-on-brand)",
                   }}
                   aria-hidden
@@ -417,7 +416,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
               </a>
             )}
             {(!ticketHref || !canAttend) && sourceHref && (
-              <a href={sourceHref} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-4 text-[13px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}>
+              <a href={sourceHref} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-4 text-[13px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}>
                 <ExternalLink className="h-4 w-4" aria-hidden />
                 {canAttend ? "Check event details" : "See event source"}
               </a>
@@ -444,7 +443,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
             <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
               <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>Parking near the venue</p>
               <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{eventParkingSummary(parking)} The walking route and space availability may differ.</p>
-              <Link href={`/places/${parking.slug}`} onClick={onClose} className="tap-44 inline-flex items-center text-[13px] font-semibold underline" style={{ color: "var(--app-brand-press)" }}>See garage &amp; directions</Link>
+              <Link href={`/places/${parking.slug}`} onClick={onClose} className="tap-44 inline-flex items-center text-[13px] font-semibold underline" style={{ color: "var(--app-link)" }}>See garage &amp; directions</Link>
             </div>
           )}
 
@@ -465,7 +464,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 href={`/map?open=${encodeURIComponent(event.venue_place_slug)}&intent=eat-drink`}
                 onClick={() => { haptic("light"); onClose(); }}
                 className="tap-44 mt-2 inline-flex items-center gap-1 text-[12.5px] font-semibold"
-                style={{ color: "var(--app-brand-press)" }}
+                style={{ color: "var(--app-link)" }}
               >
                 Eat &amp; drink nearby
                 <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
@@ -491,7 +490,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 onClose();
               }}
               className="tap-44 inline-flex items-center gap-1 font-medium"
-              style={{ color: "var(--app-brand-press)" }}
+              style={{ color: "var(--app-link)" }}
             >
               See full page <ExternalLink className="h-3 w-3" aria-hidden />
             </Link>

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import {
   EMPTY_DEFERRED_BROWSE_LAYERS,
 } from "@/components/map/deferredBrowseLayers";
+import { useMapLayerRefresh } from "@/components/map/useMapLayerRefresh";
+import { formatMapTimestamp } from "@/components/map/mapContent";
 import { loadMapLayers } from "@/components/map/mapLayersClient";
 import RadiusBuilder, { type RadiusEventPin } from "./RadiusBuilder";
 
@@ -15,6 +17,7 @@ import RadiusBuilder, { type RadiusEventPin } from "./RadiusBuilder";
  */
 export default function DeferredRadiusBuilder() {
   const [layers, setLayers] = useState(EMPTY_DEFERRED_BROWSE_LAYERS);
+  useMapLayerRefresh(["amenities", "events"], setLayers);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -48,5 +51,25 @@ export default function DeferredRadiusBuilder() {
     category: event.category,
   }));
 
-  return <RadiusBuilder amenities={layers.amenities} events={events} />;
+  const degradedGroups = (["amenities", "events"] as const).filter((group) => {
+    const health = layers.sourceHealth[group];
+    return health && (health.status !== "current" || health.stale);
+  });
+  const olderSnapshots = degradedGroups.map((group) => layers.sourceHealth[group]).filter((health) => health?.stale);
+  const oldest = Math.min(...olderSnapshots.map((health) => Date.parse(health?.asOf ?? "")).filter(Number.isFinite));
+  const dated = Number.isFinite(oldest) ? formatMapTimestamp(oldest) : null;
+  const sourceNotice = degradedGroups.length > 0 ? (
+    <div role="status" aria-label="Current Radius data" className="rounded-[var(--app-radius-md)] border px-3 py-2 text-sm" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)", background: "var(--app-bg-elevated)" }}>
+      <p>
+        {olderSnapshots.length > 0
+          ? "The event or amenity snapshot could not be updated. Available results are still shown and may be out of date."
+          : "Some current event or amenity sources are unavailable. An empty result does not mean nothing is nearby."}
+        {dated ? ` Last snapshot: ${dated}.` : ""}
+      </p>
+      <button type="button" className="tap-44 font-semibold underline underline-offset-2" onClick={() => { void loadMapLayers(degradedGroups).then(setLayers); }}>
+        Check again
+      </button>
+    </div>
+  ) : undefined;
+  return <RadiusBuilder amenities={layers.amenities} events={events} sourceNotice={sourceNotice} />;
 }

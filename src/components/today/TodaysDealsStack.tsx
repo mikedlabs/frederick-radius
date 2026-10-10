@@ -51,7 +51,7 @@ export default function TodaysDealsStack({
         <div>
           <h3
             id="today-specials-heading"
-            className={`${embedded ? "text-[17px] font-sans font-semibold" : "text-[20px] font-serif"} leading-tight tracking-[-0.01em]`}
+            className={`${embedded ? "text-[17px] font-sans font-semibold" : "text-[20px] font-sans"} leading-tight tracking-[-0.01em]`}
             style={{ color: "var(--app-ink)" }}
           >
             Specials

@@ -11,6 +11,7 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
 } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Phone, Train, Activity } from "lucide-react";
 import type {
@@ -47,7 +48,7 @@ const QUICK_ICON: Record<IntentIcon, typeof Clock> = {
 // the overlay doesn't need clientPlaceBySlug / EVENT_BY_SLUG either.
 import TrustChip from "@/components/ui/TrustChip";
 import { TRUST_COLOR, type TrustSignal } from "@/lib/trust";
-import { useRecentSearches, usePushRecentSearch, useClearRecentSearches } from "@/hooks/useRecentSearches";
+import { useRecentSearches, usePushRecentSearch, useClearRecentSearches, useRecentSearchStatus, type RecentSearchStatus } from "@/hooks/useRecentSearches";
 import { frederickHour } from "@/lib/search-suggestions";
 
 const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
@@ -316,19 +317,24 @@ function settleFindReturnScroll(scrollY: number | null) {
 export default function SearchOverlay({
   open,
   onClose,
+  initialQuery = "",
+  onQueryChange,
   openerRef,
   historyLayerId,
   returnScrollY,
 }: {
   open: boolean;
   onClose: () => void;
+  /** Restore words only. Every mount gets current results and scope from the API. */
+  initialQuery?: string;
+  onQueryChange?: (query: string) => void;
   /** Explicit opener for touch browsers, which do not always move focus to
    * the button a person taps before mounting the dialog. */
   openerRef?: React.RefObject<HTMLElement | null>;
   historyLayerId: string;
   returnScrollY?: number | null;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchMeta, setSearchMeta] = useState<
     (QualifiedSearchIndexResult["meta"] & { liveEventsUnavailable?: boolean }) | null
@@ -336,7 +342,9 @@ export default function SearchOverlay({
   // Fetch lifecycle, so a network/API failure never masquerades as "nothing in
   // Frederick matches" (2026-07-12 audit): "loading" while a request is in
   // flight, "error" when it failed, "done" when it genuinely returned.
-  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
+    initialQuery.trim() ? "loading" : "idle",
+  );
   const [retryNonce, setRetryNonce] = useState(0);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [coords, setCoords] = useState<{ lng: number; lat: number } | null>(null);
@@ -351,6 +359,7 @@ export default function SearchOverlay({
   const returnScrollYRef = useRef<number | null>(returnScrollY ?? null);
   const leavingFindRef = useRef(false);
   const recent = useRecentSearches();
+  const recentStatus = useRecentSearchStatus();
   const pushRecent = usePushRecentSearch();
   const clearRecent = useClearRecentSearches();
   const closeFindLayer = useCallback(() => {
@@ -369,9 +378,13 @@ export default function SearchOverlay({
   const navigateFromSearch = useCallback(
     (href: string) => {
       leavingFindRef.current = true;
+      // Native navigation can freeze this document in BFCache immediately.
+      // Close before that boundary so Back cannot revive old query/results.
+      // Keep the layer entry for leaveTo's existing atomic replace contract.
+      flushSync(onClose);
       historyLayer.leaveTo(href);
     },
-    [historyLayer],
+    [historyLayer, onClose],
   );
   const openOfficialAnswer = useCallback((href: string) => {
     const safeHref = safeOfficialAnswerHref(href);
@@ -387,6 +400,7 @@ export default function SearchOverlay({
   }, []);
 
   const updateQuery = (next: string) => {
+    onQueryChange?.(next);
     setQuery(next);
     // Never leave a result from the previous query tappable during the
     // debounce window. The first visible row always belongs to what is in the
@@ -403,6 +417,7 @@ export default function SearchOverlay({
   // newer ones — without it, a slow "co" can land after a fast "coffee"
   // and replace the right answer with the wrong one.
   useEffect(() => {
+    if (!open) return;
     const q = query.trim();
     if (!q) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: clear the previous fetch's results when the user empties the input, so the overlay never shows stale answers
@@ -436,6 +451,9 @@ export default function SearchOverlay({
       })
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then((data: QualifiedSearchIndexResult) => {
+          // Some transports can finish body parsing after cancellation. A
+          // dismissed or superseded query must never publish those results.
+          if (ctrl.signal.aborted) return;
           setResults(data.results ?? []);
           setSearchMeta(data.meta ?? null);
           setStatus("done");
@@ -445,7 +463,7 @@ export default function SearchOverlay({
           // it. A REAL failure becomes an explicit "error" state so the empty
           // area reads "search unavailable", not "nothing matches" — a data
           // failure must never look like local absence.
-          if (err && err.name !== "AbortError") {
+          if (!ctrl.signal.aborted && err && err.name !== "AbortError") {
             setResults([]);
             setSearchMeta(null);
             setStatus("error");
@@ -456,7 +474,7 @@ export default function SearchOverlay({
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [query, coords, retryNonce]);
+  }, [open, query, coords, retryNonce]);
 
   // Report zero-result searches. The queries people type and get nothing
   // for are the app's real backlog, so the query text rides with the event
@@ -665,7 +683,7 @@ export default function SearchOverlay({
           style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
         >
           <div className="min-w-0">
-            <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-press)" }}>
+            <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
               Ask or find
             </p>
             <h2 id="radius-find-title" className="truncate font-serif text-[20px] font-semibold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
@@ -689,7 +707,7 @@ export default function SearchOverlay({
           className="search-field-shell mx-4 mb-3 flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] px-3 shadow-[var(--app-shadow-1)] transition focus-within:ring-2 focus-within:ring-[color-mix(in_srgb,var(--app-brand)_18%,transparent)] sm:mx-5 backdrop-blur-md"
           style={{ background: "color-mix(in srgb, var(--app-bg-elevated-solid) 70%, transparent)", boxShadow: "inset 0 1px 3px rgba(34,28,21,0.04), 0 2px 8px rgba(34,28,21,0.04)" }}
         >
-          <Search className="h-5 w-5 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+          <Search className="h-5 w-5 shrink-0" strokeWidth={2} style={{ color: "var(--app-link)" }} aria-hidden />
           <input
             ref={inputRef}
             type="text"
@@ -738,7 +756,7 @@ export default function SearchOverlay({
               The North Star front door, on real data. */}
           {hasAnswer && (
             <div className="px-3 py-2.5 pb-4 shadow-sm" style={{ background: "color-mix(in srgb, var(--app-brand) 4%, transparent)" }}>
-              <p className="eyebrow mb-2 px-1" style={{ color: "var(--app-brand-press)" }}>Direct answer</p>
+              <p className="eyebrow mb-2 px-1" style={{ color: "var(--app-ink-3)" }}>Direct answer</p>
               {visibleQuickAnswers.length > 0 && (
                 <ul className="mb-1.5 space-y-1.5">
                   {visibleQuickAnswers.map((qa) => {
@@ -755,7 +773,7 @@ export default function SearchOverlay({
                           className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5 transition active:scale-[0.99]"
                           style={{ borderColor: "var(--app-border)" }}
                         >
-                          <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-brand) 12%, transparent)", color: "var(--app-brand)" }}>
+                          <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-brand) 12%, transparent)", color: "var(--app-link)" }}>
                             <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
                           </span>
                           <span className="min-w-0 flex-1">
@@ -779,7 +797,7 @@ export default function SearchOverlay({
                       style={{ borderColor: "var(--app-border)" }}
                     >
                       <div className="flex items-start gap-2.5">
-                        <span aria-hidden className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-cool)" }}>
+                        <span aria-hidden className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-link)" }}>
                           <Building2 className="h-3.5 w-3.5" strokeWidth={2.25} />
                         </span>
                         <div className="min-w-0 flex-1">
@@ -837,7 +855,7 @@ export default function SearchOverlay({
                         className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5 transition active:scale-[0.99]"
                         style={{ borderColor: "var(--app-border)" }}
                       >
-                        <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-cool)" }}>
+                        <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-link)" }}>
                           <Building2 className="h-3.5 w-3.5" strokeWidth={2.25} />
                         </span>
                         <span className="min-w-0 flex-1">
@@ -876,6 +894,7 @@ export default function SearchOverlay({
           {!query.trim() ? (
             <EmptyHint
               recent={recent}
+              recentStatus={recentStatus}
               onPick={updateQuery}
               onClearRecent={clearRecent}
               onNavigate={navigateFromSearch}
@@ -898,7 +917,7 @@ export default function SearchOverlay({
                   className="tap-44 mt-3 inline-flex min-h-11 items-center justify-center rounded-[var(--app-radius-sm)] border px-4 text-[12px] font-semibold"
                   style={{
                     borderColor: "var(--app-brand-press)",
-                    color: "var(--app-brand-press)",
+                    color: "var(--app-link)",
                   }}
                 >
                   Try again
@@ -912,7 +931,7 @@ export default function SearchOverlay({
                     <a
                       href={`/search?q=${encodeURIComponent(query.trim())}`}
                       className="font-semibold underline"
-                      style={{ color: "var(--app-brand-press)" }}
+                      style={{ color: "var(--app-link)" }}
                     >
                       Open the full search page
                     </a>
@@ -946,7 +965,7 @@ export default function SearchOverlay({
                       Radius will check current places, events, conditions, and local services.
                     </span>
                   </span>
-                  <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+                  <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-link)" }} aria-hidden />
                 </button>
               </div>
             ) : hasAnswer ? null : (
@@ -1003,7 +1022,7 @@ export default function SearchOverlay({
                     className={idx === 0
                       ? "grid h-16 w-16 shrink-0 place-items-center rounded-[var(--app-radius-md)]"
                       : "mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"}
-                    style={{ background: `color-mix(in srgb, ${color} 12%, var(--app-bg-sunken))`, color }}
+                    style={{ background: `color-mix(in srgb, ${color} 12%, var(--app-bg-sunken))`, color: "var(--app-link)" }}
                   >
                     <Icon className={idx === 0 ? "h-6 w-6" : "h-4 w-4"} strokeWidth={1.9} />
                   </span>
@@ -1024,7 +1043,7 @@ export default function SearchOverlay({
                       <div className="flex items-start gap-3 p-3">
                         {art}
                         <div className="min-w-0 flex-1">
-                          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em]" style={{ color }}>
+                          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
                             Best match · {LABEL_BY_TYPE[r.type]}
                           </p>
                           <p className="mt-1 line-clamp-2 font-serif text-[19px] font-semibold leading-[1.05] tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
@@ -1059,7 +1078,7 @@ export default function SearchOverlay({
                               navigateFromSearch(mapHref);
                             }}
                             className="flex min-h-11 items-center justify-center gap-1.5 border-l px-3 text-[12px] font-semibold"
-                            style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+                            style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
                           >
                             <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
                             Map
@@ -1085,7 +1104,7 @@ export default function SearchOverlay({
                     >
                       {art}
                       <span className="min-w-0 flex-1">
-                        <span className="block font-mono text-[9px] font-semibold uppercase tracking-[0.11em]" style={{ color }}>
+                        <span className="block font-mono text-[9px] font-semibold uppercase tracking-[0.11em]" style={{ color: "var(--app-ink-3)" }}>
                           {LABEL_BY_TYPE[r.type]}
                         </span>
                         <span className="mt-0.5 block truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -1139,7 +1158,7 @@ export default function SearchOverlay({
                     No exact listing matched. Radius can still work from this request.
                   </span>
                 </span>
-                <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+                <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-link)" }} aria-hidden />
               </Link>
             </div>
           ) : null}
@@ -1209,11 +1228,13 @@ function KbdHint({ label, desc }: { label: string; desc: string }) {
 
 function EmptyHint({
   recent,
+  recentStatus,
   onPick,
   onClearRecent,
   onNavigate,
 }: {
   recent: string[];
+  recentStatus: RecentSearchStatus;
   onPick: (s: string) => void;
   onClearRecent: () => void;
   onNavigate: (href: string) => void;
@@ -1233,16 +1254,16 @@ function EmptyHint({
 
   return (
     <div className="px-4 py-5 sm:px-5">
-      {recent.length > 0 ? (
-        <div>
-          <div className="flex items-baseline justify-between">
-            <p
-              className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
-              Recent searches
-            </p>
+      <section aria-label="Recent searches on this device">
+        <div className="flex items-baseline justify-between">
+          <p
+            className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
+            Recent searches
+          </p>
+          {recentStatus.available && recent.length > 0 && (
             <button
               type="button"
               onClick={onClearRecent}
@@ -1252,25 +1273,40 @@ function EmptyHint({
             >
               Clear
             </button>
-          </div>
+          )}
+        </div>
+        {!recentStatus.available ? (
+          <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            Recent searches are unavailable on this device.
+          </p>
+        ) : recent.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-2">
             {recent.slice(0, 3).map((s) => (
-                <button
-                  key={`recent-${s}`}
-                  type="button"
-                  onClick={() => onPick(s)}
-                  className="tactile-interactive flex h-9 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[12.5px] font-medium shadow-[var(--app-shadow-1)] transition-transform hover:scale-[1.02] active:scale-95"
-                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-                >
-                  <Clock className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-                  <span className="truncate max-w-[140px]">{s}</span>
-                </button>
+              <button
+                key={`recent-${s}`}
+                type="button"
+                onClick={() => onPick(s)}
+                className="tactile-interactive flex h-9 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[12.5px] font-medium shadow-[var(--app-shadow-1)] transition-transform hover:scale-[1.02] active:scale-95"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+              >
+                <Clock className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+                <span className="truncate max-w-[140px]">{s}</span>
+              </button>
             ))}
           </div>
-        </div>
-      ) : null}
+        ) : (
+          <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            No recent searches on this device.
+          </p>
+        )}
+        {recentStatus.clearFailed && (
+          <p role="status" className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            Could not clear recent searches. Please try again.
+          </p>
+        )}
+      </section>
 
-      <div className={recent.length > 0 ? "mt-5" : undefined}>
+      <div className="mt-5">
         <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
           Useful now
         </p>
@@ -1287,7 +1323,7 @@ function EmptyHint({
               className="tactile tactile-interactive group relative flex flex-col gap-2 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)] transition-transform hover:-translate-y-0.5 hover:shadow-[var(--app-shadow-2)] active:scale-[0.98] active:translate-y-0"
               style={{ borderColor: "var(--app-border)" }}
             >
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--app-radius-md)]" style={{ color: "var(--app-brand-press)", background: "var(--app-brand-tint-6)" }}>
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--app-radius-md)]" style={{ color: "var(--app-link)", background: "var(--app-brand-tint-6)" }}>
                 <item.Icon className="h-4 w-4" strokeWidth={2.1} aria-hidden />
               </span>
               <span className="min-w-0 flex-1">

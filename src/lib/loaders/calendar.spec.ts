@@ -52,4 +52,24 @@ describe("calendar event loader", () => {
       }),
     ]);
   });
+
+  it.each(["cancelled", "postponed"])("omits a %s library date while keeping its scheduled siblings and honest count", async (status) => {
+    mocks.getCachedLiveEvents.mockResolvedValue({ events: [] });
+    mocks.getIngestedSeries.mockResolvedValue([{
+      title: "Hood Health Hubs",
+      municipality: "walkersville",
+      category: "wellness",
+      occurrences: [
+        { sourceUid: "215490", startsAtUtc: "2026-10-06T14:00:00Z", status: "scheduled" },
+        { sourceUid: "215491", startsAtUtc: "2026-10-13T14:00:00Z", status },
+        { sourceUid: "215492", startsAtUtc: "2026-10-20T14:00:00Z", status: "scheduled" },
+      ],
+    }]);
+    const result = await getMonthEvents(new Date(2026, 9, 1));
+    expect(result.total).toBe(2);
+    expect(result.byDay["2026-10-13"]).toBeUndefined();
+    expect(result.byDay["2026-10-06"][0].id).toBe("m:215490");
+    expect(result.byDay["2026-10-20"][0].id).toBe("m:215492");
+  });
+
 });

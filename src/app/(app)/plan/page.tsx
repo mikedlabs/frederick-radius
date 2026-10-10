@@ -1,3 +1,4 @@
+import { isResolvableEventSlug } from "@/lib/events/resolvable-event-slug";
 import type { Metadata } from "next";
 import PlanBuilder from "@/components/plan/PlanBuilder";
 import { decodeSpec, reconstructPlan } from "@/lib/integrations/planner";
@@ -10,6 +11,7 @@ import { parseScope, scopeTownSlug } from "@/lib/scope";
 import { isDestinationCategory, isRecommendable } from "@/lib/relevance";
 import type { PlanInputs } from "@/lib/integrations/planner";
 import { normalizeBrowseReturnTo } from "@/lib/browse-return";
+import { planAroundEvent, resolveSharedPlan } from "@/lib/plan/resolve-shared-plan";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/plan" },
@@ -26,15 +28,18 @@ export const metadata: Metadata = {
 export default async function PlanPage({
   searchParams,
 }: {
-  searchParams: Promise<{ p?: string; place?: string; in?: string; returnTo?: string }>;
+  searchParams: Promise<{ p?: string; place?: string; event?: string; in?: string; returnTo?: string }>;
 }) {
   // A shared plan arrives as ?p=<token>. It is rebuilt server-side
   // from canonical data so the link works without JS and is
   // crawlable. An invalid or stale token falls back to the normal
   // builder.
-  const { p, place: placeSlug, in: scopeParam, returnTo } = await searchParams;
+  const { p, place: placeSlug, event: eventSlug, in: scopeParam, returnTo } = await searchParams;
   const spec = p ? decodeSpec(p) : null;
-  const shared = spec ? reconstructPlan(spec) : null;
+  const shared = spec ? await resolveSharedPlan(spec) : null;
+  const eventSeed = !p && isResolvableEventSlug(eventSlug)
+    ? await planAroundEvent(eventSlug) : null;
+  const eventInputs = eventSeed ? decodeSpec(eventSeed.share)?.i : undefined;
   const place = !p && placeSlug ? clientPlaceBySlug(placeSlug) : null;
   const town = scopeTownSlug(parseScope(scopeParam));
   const seedInputs: PlanInputs = {
@@ -45,7 +50,7 @@ export default async function PlanPage({
   const seed = place && isDestinationCategory(place.category) && isRecommendable(place) && place.is_operational !== "closed_permanently"
     ? reconstructPlan({ v: 1, i: seedInputs, s: [{ p: place.slug }] })
     : null;
-  const initialPlan = shared ?? seed;
+  const initialPlan = shared ?? eventSeed ?? seed;
 
   return (
     <div className="relative mx-auto max-w-3xl">
@@ -71,6 +76,8 @@ export default async function PlanPage({
 
       {shared && spec ? (
         <PlanBuilder initialPlan={shared} initialInputs={spec.i} shared={!normalizeBrowseReturnTo(returnTo)} />
+      ) : eventSeed ? (
+        <PlanBuilder initialPlan={eventSeed} initialInputs={eventInputs} />
       ) : seed && place ? (
         <PlanBuilder initialPlan={seed} initialInputs={seedInputs} fromPlace={place.name} />
       ) : (

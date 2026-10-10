@@ -202,6 +202,15 @@ test.describe("critical surfaces under combined dependency failure", () => {
     const searchFailureText = mapAvailable
       ? "Map search didn’t finish."
       : "Search didn’t finish.";
+    // The fallback list has its own retry. Target the failed search panel
+    // by its exact status copy so this action retries the preserved query.
+    const searchRecovery = mapDock.locator(".dock-search-empty").filter({
+      has: page.getByText(searchFailureText, { exact: true }),
+    });
+    const retrySearch = searchRecovery.getByRole("button", {
+      name: "Try again",
+      exact: true,
+    });
     const confidentEmpty = page.getByText(
       /Nothing (?:on this map|in Radius) matches/,
     );
@@ -216,14 +225,15 @@ test.describe("critical surfaces under combined dependency failure", () => {
     await expect
       .poll(() => hits.hanging.includes("/api/search"))
       .toBe(true);
-    await expect(page.getByText(searchFailureText)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+    await expect(searchRecovery.getByText(searchFailureText, { exact: true })).toBeVisible();
+    await expect(retrySearch).toBeVisible();
+    await expect(mapSearch).toHaveValue("coffee nearby");
     await expect(confidentEmpty).toHaveCount(0);
     const searchAttempts = hits.hanging.filter(
       (path) => path === "/api/search",
     ).length;
-    await page.getByRole("button", { name: "Try again" }).click();
-    await expect(page.getByText("Searching Radius…")).toBeVisible();
+    await retrySearch.click();
+    await expect(mapDock.getByText("Searching Radius…", { exact: true })).toBeVisible();
     await expect(confidentEmpty).toHaveCount(0);
     await expect
       .poll(
@@ -231,7 +241,7 @@ test.describe("critical surfaces under combined dependency failure", () => {
           hits.hanging.filter((path) => path === "/api/search").length,
       )
       .toBeGreaterThan(searchAttempts);
-    await expect(page.getByText(searchFailureText)).toBeVisible();
+    await expect(searchRecovery.getByText(searchFailureText, { exact: true })).toBeVisible();
 
     await mapSearch.fill("zzzxqv map fallback");
     await expect(mapSearch).toHaveValue("zzzxqv map fallback");
@@ -241,7 +251,7 @@ test.describe("critical surfaces under combined dependency failure", () => {
           timeout: 15_000,
         })
         .toBe(true);
-      await expect(page.getByText(searchFailureText)).toBeVisible();
+      await expect(searchRecovery.getByText(searchFailureText, { exact: true })).toBeVisible();
       await expect(confidentEmpty).toHaveCount(0);
     } else {
       // A secret-free build deliberately serves the complete local catalog

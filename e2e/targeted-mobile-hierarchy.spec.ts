@@ -254,14 +254,14 @@ test.describe("compact page entrances", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ active: true, count: 2, tone: "alert", ok: true }),
+        body: JSON.stringify({ active: true, count: 2, tone: "alert", level: "Urgent", ok: true, lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString() }),
       });
     });
     await page.goto("/today", { waitUntil: "domcontentloaded" });
 
     const search = page.getByRole("button", { name: "Ask or find across Frederick County" });
     const scope = page.getByRole("button", { name: /Change town or location scope/ });
-    const alerts = page.getByRole("link", { name: /County status: 2 active alerts/ });
+    const alerts = page.getByRole("link", { name: "County status: Urgent; 2 alerts reported", exact: true });
     await expect(search).toBeVisible();
     await expect(scope).toBeVisible();
     await expect(alerts).toBeVisible();

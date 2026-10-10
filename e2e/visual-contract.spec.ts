@@ -181,11 +181,13 @@ for (const viewport of VIEWPORTS) {
         await page.clock.setFixedTime(VISUAL_NOW);
       }
       await prepareStableBrowser(page);
+      const assembledAt = testInfo.title !== "global Find opens as one focused task surface"
+        ? VISUAL_NOW.toISOString() : new Date().toISOString();
       await page.route("**/api/pulse/status", async (route) => {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
-          json: { active: false, count: 0, tone: "quiet", ok: true },
+          json: { active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: assembledAt, validUntil: new Date(Date.parse(assembledAt) + 360_000).toISOString() },
         });
       });
     });

@@ -100,7 +100,7 @@ export default function KeysCard({
 
         {/* The matchup — the headline. */}
         <h3
-          className={`mt-2 font-serif font-semibold leading-[1.1] tracking-tight ${compact ? "line-clamp-2 text-[18px]" : "text-[23px]"}`}
+          className={`mt-2 font-sans font-semibold leading-[1.1] tracking-tight ${compact ? "line-clamp-2 text-[18px]" : "text-[23px]"}`}
           style={{ color: INK }}
         >
           {heading}

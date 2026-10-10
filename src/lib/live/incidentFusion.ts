@@ -8,6 +8,7 @@ import {
   sanitizeLocation,
   type PublicIncidentKind,
 } from "@/lib/scanner/incidentFeed";
+import { RECENT_PUBLIC_REPORT_MS } from "./incidentFreshness";
 
 /**
  * Pure Frederick Scanner -> MDOT CHART incident fusion.
@@ -20,7 +21,7 @@ import {
 
 export const DEFAULT_INCIDENT_MATCH_DISTANCE_METERS = 500;
 export const DEFAULT_INCIDENT_MATCH_TIME_MS = 30 * 60_000;
-export const DEFAULT_SCANNER_FRESH_FOR_MS = 60 * 60_000;
+export const DEFAULT_SCANNER_FRESH_FOR_MS = RECENT_PUBLIC_REPORT_MS;
 export const DEFAULT_CHART_FRESH_FOR_MS = 2 * 60 * 60_000;
 
 export type IncidentFusionOptions = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowRight, Bike, Car, ChevronDown, ChevronUp, Compass, Footprints, Locate, Map as MapIcon, MapPin } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
 import SectionHeading from "@/components/ui/SectionHeading";
@@ -187,11 +187,13 @@ export type RadiusEventPin = {
 export default function RadiusBuilder({
   amenities = [],
   events = [],
+  sourceNotice,
 }: {
   amenities?: Amenity[];
   /** Upcoming events with coordinates; filtered to the chosen reach and
    *  shown as a compact "happening within reach" section. */
   events?: RadiusEventPin[];
+  sourceNotice?: ReactNode;
 }) {
   const searchParams = useSearchParams();
   // Places source: client-bundled, slim, already-decorated — but
@@ -1137,6 +1139,8 @@ export default function RadiusBuilder({
             )}
           </p>
         </div>
+
+        {sourceNotice}
 
         {/* Open status is the first decision after "what is reachable," not a
             filter buried below events and category catalogs. Keep it beside
