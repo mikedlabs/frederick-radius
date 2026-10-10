@@ -39,6 +39,16 @@ function easternClock(date: Date): {
 /**
  * Several public calendars use 11:59 PM as a placeholder for "no end time."
  * It is not evidence that a morning program is still running at night.
+ *
+ * Audit (2026-10-06): Daytime programs with shorter spans (Tops ~2 PM, Trivia
+ * ~2:30 PM ending 11:59 PM) were slipping through the 10h gate. Relaxed to 4h
+ * minimum: if it ends 23:58-23:59 ET same civil day and starts ≥4h earlier,
+ * treat as sentinel. A real evening event ending near midnight would start
+ * after 8 PM and wouldn't meet the 4h threshold.
+ *
+ * Source Ops handoff (2026-10-06): 12:59 AM next-day rollover (Kid Creator
+ * Fall Market style) is also a sentinel — a daytime event ending at 12:59 AM
+ * the next Eastern day. Owned by data-layer (#1740), not Source Ops (#1741).
  */
 export function eventHasEndOfDaySentinel(e: EventTiming): boolean {
   if (e.is_all_day || !e.ends_at) return false;
@@ -47,15 +57,22 @@ export function eventHasEndOfDaySentinel(e: EventTiming): boolean {
   if (
     !Number.isFinite(start.getTime()) ||
     !Number.isFinite(end.getTime()) ||
-    end.getTime() <= start.getTime() ||
-    easternDayKey(start) !== easternDayKey(end)
+    end.getTime() <= start.getTime()
   ) {
     return false;
   }
   const clock = easternClock(end);
-  const looksLikeEndOfDay = clock.hour === 23 && clock.minute >= 58;
-  const durationMs = end.getTime() - start.getTime();
-  return looksLikeEndOfDay && durationMs >= 10 * 60 * 60 * 1000;
+  const startDay = easternDayKey(start);
+  const endDay = easternDayKey(end);
+
+  if (startDay === endDay) {
+    const looksLikeEndOfDay = clock.hour === 23 && clock.minute >= 58;
+    const durationMs = end.getTime() - start.getTime();
+    return looksLikeEndOfDay && durationMs >= 4 * 60 * 60 * 1000;
+  }
+
+  const nextDayRollover = clock.hour === 0 && clock.minute === 59;
+  return nextDayRollover;
 }
 
 /** A real, usable end-time claim rather than a missing, zero, or sentinel end. */
@@ -102,6 +119,48 @@ export function startedEventTimingDisclosure(
     return null;
   }
   return `Started at ${EASTERN_TIME.format(start)} · end time unavailable`;
+}
+
+/**
+ * Classification of end-time trustworthiness for quarantine at archive hydrate.
+ *
+ * Census findings (2026-10-06, 477 rows):
+ * - 13 end-of-day sentinels (~11:59 PM ET, long daytime programs)
+ * - 6 ends_at == starts_at
+ * - Multi-week class ends on timed rows
+ *
+ * Quarantine non-ok endings: do not treat ends_at as trustworthy for
+ * live/wrapped logic. Preserve the original ends_at for audit if needed.
+ */
+export type EventEndTrust =
+  | "ok"
+  | "missing"
+  | "equal"
+  | "sentinel"
+  | "span";
+
+export function classifyEventEndTrust(e: EventTiming): EventEndTrust {
+  if (!e.ends_at) return "missing";
+
+  const start = new Date(e.starts_at);
+  const end = new Date(e.ends_at);
+
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
+    return "missing";
+  }
+
+  if (end.getTime() === start.getTime()) return "equal";
+
+  if (end.getTime() < start.getTime()) return "missing";
+
+  if (!e.is_all_day && eventHasEndOfDaySentinel(e)) return "sentinel";
+
+  const durationMs = end.getTime() - start.getTime();
+  const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+
+  if (!e.is_all_day && durationMs > oneWeekMs) return "span";
+
+  return "ok";
 }
 
 /**

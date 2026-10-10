@@ -616,6 +616,43 @@ function documentation(e: EventWithMeta): number {
 }
 
 /**
+ * Normalize library venue names to canonical stems for cross-source deduplication.
+ * Census (2026-10-06): "C. Burr Artz … Programming Room" vs "C. Burr Artz
+ * Library" vs street address. Strips room/floor suffixes and standardizes
+ * FCPL branch names so events at the same library merge across sources.
+ */
+function normalizeLibraryVenue(venue: string): string {
+  let v = venue.toLowerCase().trim();
+
+  const roomSuffixes = [
+    /\s*[-–—]\s*(?:programming|community|meeting|children'?s)\s+room$/i,
+    /\s*[-–—]\s*(?:room|floor|level)\s+[a-z0-9]+$/i,
+  ];
+  for (const pattern of roomSuffixes) {
+    v = v.replace(pattern, "");
+  }
+
+  const libraryAliases: [RegExp, string][] = [
+    [/^c\.?\s*burr\s*artz(?:\s+(?:public\s+)?library)?$/i, "cburrartzlibrary"],
+    [/^brunswick(?:\s+(?:public\s+)?library)?$/i, "brunswicklibrary"],
+    [/^thurmont(?:\s+(?:regional\s+)?library)?$/i, "thurmontlibrary"],
+    [/^middletown(?:\s+(?:public\s+)?library)?$/i, "middletownlibrary"],
+    [/^walkersville(?:\s+(?:public\s+)?library)?$/i, "walkersvillelibrary"],
+    [/^emmitsburg(?:\s+(?:public\s+)?library)?$/i, "emmitsburglibrary"],
+    [/^urbana(?:\s+(?:regional\s+)?library)?$/i, "urbanalibrary"],
+    [/^myersville(?:\s+(?:public\s+)?library)?$/i, "myersvillelibrary"],
+  ];
+
+  for (const [pattern, canonical] of libraryAliases) {
+    if (pattern.test(v)) {
+      return canonical;
+    }
+  }
+
+  return normLoose(v);
+}
+
+/**
  * Collapse same-day cross-source duplicates of one show. Two feeds title
  * the same gig differently ("REBEKAH FOSTER Acoustic LIVE on Stage!
  * Thursday 7/9/26 6:30PM" vs "Rebekah Foster Acoustic LIVE"), so the slug
@@ -630,6 +667,10 @@ function documentation(e: EventWithMeta): number {
  *   - neither row is a collapsed recurring series card.
  * The better-documented row survives (stated venue, then non-default time);
  * on a tie the earlier row (the input arrives time-sorted) is kept.
+ *
+ * Census (2026-10-06): Library venue strings vary across sources ("C. Burr
+ * Artz … Programming Room" vs library name vs street address). Now normalizes
+ * known library names to canonical stems before comparison.
  */
 export function dedupeCrossSourceShows(events: EventWithMeta[]): EventWithMeta[] {
   const kept: EventWithMeta[] = [];
@@ -645,8 +686,8 @@ export function dedupeCrossSourceShows(events: EventWithMeta[]): EventWithMeta[]
         if (other.is_recurring) continue;
         const otherStem = normLoose(seriesStem(other.title));
         if (otherStem.length < CROSS_SOURCE_MIN_STEM) continue;
-        const va = normLoose(e.venue_name ?? "");
-        const vb = normLoose(other.venue_name ?? "");
+        const va = normalizeLibraryVenue(e.venue_name ?? "");
+        const vb = normalizeLibraryVenue(other.venue_name ?? "");
         if (va && vb && va !== vb) continue;
         const prefixMatch = stem.startsWith(otherStem) || otherStem.startsWith(stem);
         const titleWords = (title: string) =>

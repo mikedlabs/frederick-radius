@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { isEventEnded, isEventLiveNow, MAX_LIVE_SESSION_MS } from "./eventWhenLabel";
+import {
+  isEventEnded,
+  isEventLiveNow,
+  MAX_LIVE_SESSION_MS,
+  classifyEventEndTrust,
+  eventHasEndOfDaySentinel,
+} from "./eventWhenLabel";
 
 // All fixtures are in Eastern Daylight Time (July, -04:00) so the day math is
 // unambiguous. The bug these guard: isEventEnded trusted an inflated feed end
@@ -74,5 +80,128 @@ describe("isEventLiveNow — evidence floor", () => {
   it("all-day events are never live-now", () => {
     const today = { starts_at: "2026-07-12T00:00:00-04:00", is_all_day: true };
     expect(isEventLiveNow(today, at("2026-07-12T12:00:00-04:00"))).toBe(false);
+  });
+});
+
+describe("classifyEventEndTrust — archive hydrate quarantine", () => {
+  it("classifies missing ends_at as 'missing'", () => {
+    expect(
+      classifyEventEndTrust({
+        starts_at: "2026-10-06T13:00:00-04:00",
+        ends_at: null,
+      }),
+    ).toBe("missing");
+
+    expect(
+      classifyEventEndTrust({
+        starts_at: "2026-10-06T13:00:00-04:00",
+      }),
+    ).toBe("missing");
+  });
+
+  it("classifies equal start and end as 'equal'", () => {
+    const bingo = {
+      starts_at: "2026-10-06T19:00:00-04:00",
+      ends_at: "2026-10-06T19:00:00-04:00",
+    };
+    expect(classifyEventEndTrust(bingo)).toBe("equal");
+  });
+
+  it("classifies end-of-day sentinels as 'sentinel'", () => {
+    const dailyExercise = {
+      starts_at: "2026-10-06T09:15:00-04:00",
+      ends_at: "2026-10-06T23:59:00-04:00",
+    };
+    expect(classifyEventEndTrust(dailyExercise)).toBe("sentinel");
+  });
+
+  it("classifies shorter-span end-of-day sentinels as 'sentinel' (4h gate)", () => {
+    const tops = {
+      starts_at: "2026-10-06T14:00:00-04:00",
+      ends_at: "2026-10-06T23:59:00-04:00",
+    };
+    expect(classifyEventEndTrust(tops)).toBe("sentinel");
+
+    const trivia = {
+      starts_at: "2026-10-06T14:30:00-04:00",
+      ends_at: "2026-10-06T23:59:00-04:00",
+    };
+    expect(classifyEventEndTrust(trivia)).toBe("sentinel");
+  });
+
+  it("does not classify near-midnight evening events as sentinels", () => {
+    const lateShow = {
+      starts_at: "2026-10-06T21:00:00-04:00",
+      ends_at: "2026-10-06T23:59:00-04:00",
+    };
+    expect(classifyEventEndTrust(lateShow)).toBe("ok");
+  });
+
+  it("classifies 12:59 AM next-day rollover as sentinel (Kid Creator Fall Market)", () => {
+    const kidCreator = {
+      starts_at: "2026-10-11T16:00:00.000Z",
+      ends_at: "2026-10-12T04:59:00.000Z",
+    };
+    expect(eventHasEndOfDaySentinel(kidCreator)).toBe(true);
+    expect(classifyEventEndTrust(kidCreator)).toBe("sentinel");
+  });
+
+  it("12:59 AM sentinel is not live mid-afternoon", () => {
+    const kidCreator = {
+      starts_at: "2026-10-11T16:00:00.000Z",
+      ends_at: "2026-10-12T04:59:00.000Z",
+    };
+    const midAfternoon = at("2026-10-11T18:00:00.000Z");
+    expect(isEventLiveNow(kidCreator, midAfternoon)).toBe(false);
+  });
+
+  it("classifies multi-week timed spans as 'span'", () => {
+    const multiWeekClass = {
+      starts_at: "2026-10-06T18:00:00-04:00",
+      ends_at: "2026-10-27T20:00:00-04:00",
+    };
+    expect(classifyEventEndTrust(multiWeekClass)).toBe("span");
+  });
+
+  it("classifies normal timed events as 'ok'", () => {
+    const normalEvent = {
+      starts_at: "2026-10-06T19:00:00-04:00",
+      ends_at: "2026-10-06T21:00:00-04:00",
+    };
+    expect(classifyEventEndTrust(normalEvent)).toBe("ok");
+  });
+
+  it("classifies all-day multi-day events as 'ok'", () => {
+    const festival = {
+      starts_at: "2026-10-06T00:00:00-04:00",
+      ends_at: "2026-10-08T23:59:59-04:00",
+      is_all_day: true,
+    };
+    expect(classifyEventEndTrust(festival)).toBe("ok");
+  });
+
+  it("classifies invalid date strings as 'missing'", () => {
+    expect(
+      classifyEventEndTrust({
+        starts_at: "invalid",
+        ends_at: "2026-10-06T21:00:00-04:00",
+      }),
+    ).toBe("missing");
+
+    expect(
+      classifyEventEndTrust({
+        starts_at: "2026-10-06T19:00:00-04:00",
+        ends_at: "invalid",
+      }),
+    ).toBe("missing");
+  });
+
+  it("classifies backwards time (end before start) as 'missing'", () => {
+    expect(
+      classifyEventEndTrust({
+        starts_at: "2026-10-06T21:00:00-04:00",
+        ends_at: "2026-10-06T19:00:00-04:00",
+      }),
+    ).toBe("missing");
   });
 });

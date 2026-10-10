@@ -480,6 +480,33 @@ describe("dedupeCrossSourceShows", () => {
     expect(out).toHaveLength(1);
     expect(out[0].slug).toBe("twin-a");
   });
+
+  it("merges library events with different venue strings (census 2026-10-06)", () => {
+    const fromDFP = mkEvent({
+      slug: "storytime-dfp",
+      title: "Family Storytime",
+      venue_name: "C. Burr Artz",
+      starts_at: "2026-10-06T14:30:00.000Z",
+    });
+    const fromFCPL = mkEvent({
+      slug: "storytime-fcpl",
+      title: "Family Storytime",
+      venue_name: "C. Burr Artz Public Library - Programming Room",
+      starts_at: "2026-10-06T14:30:00.000Z",
+    });
+    const fromAddress = mkEvent({
+      slug: "storytime-addr",
+      title: "Family Storytime",
+      venue_name: "110 E Patrick St, Frederick, MD",
+      starts_at: "2026-10-06T14:30:00.000Z",
+    });
+
+    const merged = dedupeCrossSourceShows([fromDFP, fromFCPL]);
+    expect(merged).toHaveLength(1);
+
+    const merged2 = dedupeCrossSourceShows([fromDFP, fromFCPL, fromAddress]);
+    expect(merged2).toHaveLength(2);
+  });
 });
 
 describe("cleanTitle — trailing genre-tag pipe suffix", () => {

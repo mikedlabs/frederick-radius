@@ -134,6 +134,10 @@ export type EventWithMeta = Omit<Event, "source_url" | "last_verified_at"> &
   geo_confidence: GeoConfidence;
   category_name: string;
   municipality_name: string;
+  /** End-time trust classification stamped at archive hydrate. */
+  end_trust?: "ok" | "missing" | "equal" | "sentinel" | "span";
+  /** Series grouping key for cross-town recurring events (e.g. storytimes). */
+  series_key?: string;
 };
 
 function decorate(e: Event, origin?: LngLat): EventWithMeta {

@@ -3,6 +3,9 @@ import { isResolvableEventSlug } from "@/lib/events/resolvable-event-slug";
 import { getSql } from "@/lib/db/client";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { archiveJsonText } from "@/lib/events/archive-json";
+import { backfillMunicipalityName } from "@/lib/events/eventTown";
+import { classifyEventEndTrust } from "@/lib/eventWhenLabel";
+import { eventSeriesKey } from "@/lib/events/seriesKey";
 
 export type ArchivedEventIdentity = {
   id: string;
@@ -118,7 +121,28 @@ export function archivedEventFromSnapshot(
   ) {
     return null;
   }
-  return { ...(row as unknown as EventWithMeta), slug };
+
+  const event = { ...(row as unknown as EventWithMeta), slug };
+
+  const municipalityName = backfillMunicipalityName(
+    event.municipality,
+    event.municipality_name,
+  );
+  if (municipalityName) {
+    event.municipality_name = municipalityName;
+  }
+
+  event.end_trust = classifyEventEndTrust({
+    starts_at: event.starts_at,
+    ends_at: event.ends_at,
+    is_all_day: event.is_all_day,
+  });
+
+  if (event.is_recurring && event.title) {
+    event.series_key = eventSeriesKey(event.title);
+  }
+
+  return event;
 }
 
 async function beforeDeadline<T>(
