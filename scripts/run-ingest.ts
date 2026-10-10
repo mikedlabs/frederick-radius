@@ -10,11 +10,15 @@ import { getSql, closeDb } from "@/lib/db/client";
 import { parseICal } from "@/lib/ingest/parser";
 import { upsertEvent, emptyStats } from "@/lib/ingest/upsert";
 import { geocodePending } from "@/lib/ingest/geocode";
+import {
+  assignCivicEngageCategories,
+  civicEngageICalUrl,
+} from "@/lib/ingest/civicengage-identity";
 import sources from "@/../config/civicengage_sources.json" with { type: "json" };
 
 type Source = { municipality: string; domain: string; enabled: boolean; catids: number[]; category_map: Record<string, string> };
 const UA = "FrederickRadius/1.0 (+https://frederickradius.app; civic event index)";
-const feedUrl = (d: string, c: number) => `https://${d}/Common/Modules/iCalendar/iCalendar.aspx?catID=${c}&feed=calendar`;
+const feedUrl = (d: string, c: number) => civicEngageICalUrl(d, c);
 
 async function fetchFeed(url: string): Promise<string | null> {
   const ctrl = new AbortController();
@@ -41,17 +45,18 @@ async function main() {
   for (const src of list) {
     try {
       const stats = emptyStats();
-      let parsed = 0;
+      const feedEvents: { catID: number; events: ReturnType<typeof parseICal> }[] = [];
       for (const catID of src.catids) {
         const ics = await fetchFeed(feedUrl(src.domain, catID));
         if (!ics) { process.stdout.write(`  ${src.municipality} catID ${catID}: feed unavailable\n`); continue; }
-        const events = parseICal(ics);
-        parsed += events.length;
-        for (const e of events) {
-          await upsertEvent(sql, { sourceDomain: src.domain, municipality: src.municipality, category: src.category_map[String(catID)] ?? null }, e, stats);
-        }
+        feedEvents.push({ catID, events: parseICal(ics) });
       }
-      console.log(`✓ ${src.municipality}: parsed ${parsed} · raw +${stats.rawInserted}/~${stats.rawUpdated}/=${stats.rawUnchanged} · norm ${stats.normUpserted} · unparseable-loc ${stats.unparseableLocations}`);
+      const { events, duplicates } = assignCivicEngageCategories(feedEvents);
+      const parsed = feedEvents.reduce((n, feed) => n + feed.events.length, 0);
+      for (const candidate of events) {
+        await upsertEvent(sql, { sourceDomain: src.domain, municipality: src.municipality, category: candidate.category }, candidate.event, stats);
+      }
+      console.log(`✓ ${src.municipality}: parsed ${parsed} · unique ${events.length} · dup ${duplicates} · raw +${stats.rawInserted}/~${stats.rawUpdated}/=${stats.rawUnchanged} · norm ${stats.normUpserted} · unparseable-loc ${stats.unparseableLocations}`);
     } catch (e) {
       console.log(`✗ ${src.municipality}: ${e instanceof Error ? e.message : "error"} (continuing)`);
     }

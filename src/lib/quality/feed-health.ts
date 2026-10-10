@@ -7,6 +7,8 @@
  * one slow publisher cannot turn a health check into another load incident.
  */
 
+import { sourceFetchUserAgent } from "@/lib/http/source-user-agent";
+
 export type FeedHealthEndpoint = {
   group: string;
   /** Source-ledger id when this probe maps to one manifest row. */
@@ -636,7 +638,10 @@ export async function probeFeedEndpoint(
     MAX_PREFIX_BYTES,
   );
   const headers = new Headers({
-    "user-agent": "frederick-radius-feed-health/1.0",
+    "user-agent": sourceFetchUserAgent(
+      endpoint.url,
+      "frederick-radius-feed-health/1.0",
+    ),
     ...(endpoint.accept ? { accept: endpoint.accept } : {}),
   });
   if (endpoint.authHeader && authValue) {

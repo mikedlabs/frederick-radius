@@ -102,6 +102,46 @@
         "https://www.thefrederickcenter.org/events"
       ],
       "note": "The county's LGBTQ+ community hub, 5 E 2nd St. WordPress page lists upcoming events as static server-rendered HTML (ICS Calendar Pro widget hides its feed behind wp-admin AJAX, so no machine feed). Events are TFC programming (Queer Craft Night, Queeraoke, drag bingo fundraisers); some fundraisers happen at partner venues like Steinhardt Brewing. Skip events whose location is disclosed only to registered participants (e.g. Pink Drinks at a private home) rather than pinning them to the center. Verified Jul 2026."
+    },
+    {
+      "slug": "linganore",
+      "name": "Linganore Winecellars",
+      "category": "winery",
+      "method": "fetch",
+      "urls": [
+        "https://www.linganorewines.com/events/"
+      ],
+      "note": "13601 Glissans Mill Rd, Mount Airy. WordPress + The Events Calendar. Live-verified Oct 10 2026: events page HTTP 200; tribe REST https://www.linganorewines.com/wp-json/tribe/events/v1/events returned 5 upcoming rows with images; ?ical=1 returned 17 VEVENTs with ATTACH images (Autumn Reggae Wine & Music Festival, food-truck weekends, Haunted Wine Run). Venue ingest has no tribe/ical method, so fetch the public events page. Keep off-site festival listings only when the page names Linganore as the venue."
+    },
+    {
+      "slug": "orchid-cellar",
+      "name": "Orchid Cellar Meadery & Winery",
+      "category": "winery",
+      "method": "fetch",
+      "urls": [
+        "https://orchidcellar.com/events"
+      ],
+      "note": "8512 Mountain Church Rd, Middletown. Squarespace events page. Live-verified Oct 10 2026: ?format=json returned HTTP 200 with items[] of 2 upcoming dated events (Grand Fondue Oct 24, 20th Anniversary Party Oct 10), both with images. The venue ingest feed method requires upcoming[] so this stays fetch; the same JSON is also wired through live-music-venues.ts squarespace for the runtime reader."
+    },
+    {
+      "slug": "olde-mother",
+      "name": "Olde Mother Brewing",
+      "category": "music",
+      "method": "fetch",
+      "urls": [
+        "https://oldemother.com/events/"
+      ],
+      "note": "1701 N Market St. WordPress events page, no public iCal or tribe REST (those URLs 404). Live-verified Oct 10 2026: HTTP 200 listing dated October shows (Emo Night, Trivia Night, F.A.M.E. Open Mic). Fetch the static HTML."
+    },
+    {
+      "slug": "tag-artists-gallery",
+      "name": "TAG / The Artists Gallery",
+      "category": "arts",
+      "method": "fetch",
+      "urls": [
+        "https://www.theartistsgalleryfrederick.com/oct2026exhibitions"
+      ],
+      "note": "501 N Market St. Artist-owned gallery, not a theater. Wix site, no machine feed (?format=json still returns HTML). Live-verified Oct 10 2026: exhibitions page HTTP 200 with dated October 2026 programming (Jolly Art Exhibition Oct 2–Nov 1, reception Oct 3 5–8pm, artist talk Oct 24 3:30pm). Refresh the URL when the monthly exhibition page changes."
     }
   ]
 }

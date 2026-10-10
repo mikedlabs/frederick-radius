@@ -33,6 +33,16 @@ import {
   publicEventSourceCircuits,
 } from "@/lib/integrations/event-source-circuit";
 import { isEventWithinReadWindow } from "@/lib/events/visible";
+import { sourceFetchUserAgent } from "@/lib/http/source-user-agent";
+import {
+  applyCivicEngageCatIds,
+  fetchCivicEngageCatIdIndex,
+  type CivicEngageCatIdIndex,
+} from "@/lib/ingest/civicengage-identity";
+import civicengageSources from "@/../config/civicengage_sources.json" with { type: "json" };
+
+const ICAL_LIVE_USER_AGENT =
+  "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)";
 
 // Phase 1.6: drop venue open-status entries that are not events.
 // Default ON by owner directive (2026-05-16: "ship everything"). The
@@ -141,6 +151,13 @@ export type LiveEvent = {
   last_verified_at: string;
   /** Publisher-owned record modification time when the source exposes one. */
   publisher_updated_at?: string;
+  /**
+   * CivicEngage catID recovered by matching the All-calendar RSS EID
+   * against the per-catID iCal feeds. Absent when the EID is unknown.
+   * If several configured calendars publish the same EID, the first
+   * configured catID is kept so the live row still carries provenance.
+   */
+  civicengage_catid?: number;
 };
 
 type Feed = {
@@ -676,6 +693,47 @@ export function feedCategory(feed: FeedSpec, title: string, description: string)
   );
 }
 
+const CIVICENGAGE_RSS_DOMAINS: Partial<Record<LiveEvent["source"], string>> = {
+  county: "www.frederickcountymd.gov",
+  "city-frederick": "www.cityoffrederickmd.gov",
+};
+
+function civicEngageSourceCatIds(domain: string): number[] {
+  const source = (
+    civicengageSources as Array<{
+      domain: string;
+      enabled: boolean;
+      catids: number[];
+    }>
+  ).find((row) => row.enabled && row.domain === domain);
+  return source?.catids ?? [];
+}
+
+const loadCivicEngageRssIndexCached = unstable_cache(
+  async (domain: string, catids: number[]) =>
+    fetchCivicEngageCatIdIndex(domain, catids, {
+      userAgent: ICAL_LIVE_USER_AGENT,
+      deadlineMs: 12_000,
+    }),
+  ["civicengage-catid-index-v1", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  { revalidate: 3600, tags: ["events", "county-events"] },
+);
+
+async function loadCivicEngageRssIndex(
+  domain: string,
+): Promise<CivicEngageCatIdIndex | null> {
+  // Tests mock a single RSS fetch. Do not open the per-catID iCal fanout
+  // from that path; identity matching is covered by civicengage-identity.
+  if (process.env.NODE_ENV === "test") return null;
+  const catids = civicEngageSourceCatIds(domain);
+  if (catids.length === 0) return null;
+  try {
+    return await loadCivicEngageRssIndexCached(domain, catids);
+  } catch {
+    return null;
+  }
+}
+
 type EventVenue = { venue: string; address: string };
 
 /**
@@ -1111,7 +1169,7 @@ async function fetchRawIcalWork(
     const response = await fetch(feed.url, {
       signal: deadline.signal,
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+        "User-Agent": sourceFetchUserAgent(feed.url, ICAL_LIVE_USER_AGENT),
         Accept: "text/calendar, text/plain",
       },
       // Raw public calendars can exceed Vercel/Next's 2 MB Data Cache item
@@ -1286,10 +1344,14 @@ async function fetchRssFeed(
       ? COUNTY_PUBLIC_FEED_TIMEOUT_MS
       : FEED_FETCH_TIMEOUT_MS);
   const deadline = createAbortDeadline(timeoutMs, parentSignal);
+  const indexDomain = CIVICENGAGE_RSS_DOMAINS[feed.source];
+  const indexPromise = indexDomain
+    ? loadCivicEngageRssIndex(indexDomain)
+    : Promise.resolve(null);
   try {
     const res = await fetch(feed.url, {
       signal: deadline.signal,
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)" },
+      headers: { "User-Agent": sourceFetchUserAgent(feed.url, ICAL_LIVE_USER_AGENT) },
       // Cache the parsed event set at the source-page/unified boundary below.
       // A second fetch-level SWR cache can return a stale body while its hidden
       // refresh outlives the route; a connection failure then rejects Next's
@@ -1389,9 +1451,12 @@ async function fetchRssFeed(
       if (validated) events.push(validated);
     }
 
-    console.log(`[ical-live] ${feed.source}: parsed ${events.length} RSS events in window`);
-    recordSnapshot(feed.source, events);
-    return { events, ok: true };
+    const index = await indexPromise;
+    const tagged = index ? applyCivicEngageCatIds(events, index) : events;
+
+    console.log(`[ical-live] ${feed.source}: parsed ${tagged.length} RSS events in window`);
+    recordSnapshot(feed.source, tagged);
+    return { events: tagged, ok: true };
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
     reportFeedUnavailable(
@@ -1487,7 +1552,7 @@ async function fetchTribeFeed(
     const res = await fetch(url, {
       signal: deadline.signal,
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+        "User-Agent": sourceFetchUserAgent(feed.url, ICAL_LIVE_USER_AGENT),
         Accept: "application/json",
       },
       cache: "no-store",
@@ -1845,8 +1910,7 @@ async function fetchWixHtmlFeed(
     const response = await fetch(feed.url, {
       signal: deadline.signal,
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+        "User-Agent": sourceFetchUserAgent(feed.url, ICAL_LIVE_USER_AGENT),
         Accept: "text/html,application/xhtml+xml",
       },
       cache: "no-store",
@@ -1924,7 +1988,7 @@ async function fetchJsonArrayFeed(
     const res = await fetch(url, {
       signal: deadline.signal,
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+        "User-Agent": sourceFetchUserAgent(url, ICAL_LIVE_USER_AGENT),
         Accept: "application/json",
       },
       cache: "no-store",
@@ -2246,7 +2310,7 @@ async function fetchVibemapFeed(
     const pageUrl = (page: number) =>
       `${feed.url}${sep}per_page=100&page=${page}&_fields=${VIBEMAP_FIELDS}`;
     const headers = {
-      "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+      "User-Agent": sourceFetchUserAgent(feed.url, ICAL_LIVE_USER_AGENT),
       Accept: "application/json",
     };
     const first = await fetch(pageUrl(1), {

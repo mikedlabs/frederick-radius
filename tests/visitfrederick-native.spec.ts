@@ -46,7 +46,8 @@ describe("Visit Frederick native background read", () => {
         cache: "no-store",
         redirect: "manual",
         headers: {
-          "User-Agent": "FrederickRadius/1.0 (+https://frederickradius.app)",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36 FrederickRadius/1.0 (+https://frederickradius.app)",
         },
       }),
     );

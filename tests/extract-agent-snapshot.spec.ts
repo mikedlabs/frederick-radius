@@ -103,6 +103,28 @@ describe("fetchPageSnapshot", () => {
     });
   });
 
+  it("sends a browser-shaped User-Agent to Celebrate Frederick and Visit Frederick", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      void input;
+      return new Response("<html><body><h1>Events</h1></body></html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchPageSnapshot("https://www.celebratefrederick.com/events/?ical=1");
+    await fetchPageSnapshot("https://www.visitfrederick.org/event/rss/");
+    await fetchPageSnapshot("https://example.com/events");
+
+    const ua = (call: number) =>
+      new Headers(fetchMock.mock.calls[call]?.[1]?.headers).get("User-Agent");
+    expect(ua(0)).toContain("Mozilla/5.0");
+    expect(ua(0)).toContain("FrederickRadius/1.0");
+    expect(ua(1)).toContain("Mozilla/5.0");
+    expect(ua(2)).toBe("FrederickRadius/1.0 (+civic data ingest)");
+  });
+
   it("uses Firecrawl only after a native fetch fails and the fallback is enabled", async () => {
     vi.stubEnv("FIRECRAWL_FETCH_FALLBACK", "1");
     vi.stubEnv("FIRECRAWL_API_KEY", "fc-test-secret");
