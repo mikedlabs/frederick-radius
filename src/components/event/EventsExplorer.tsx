@@ -159,7 +159,7 @@ const DAYPART_KEYS: Daypart[] = DAYPARTS.map((d) => d.key);
 // are imported from there so both surfaces speak one vocabulary.
 
 type Props = {
-  /** Bounded, server-rendered preview. The full collection loads on intent. */
+  /** Bounded server preview. Empty degraded snapshots may recover once. */
   events: EventWithMeta[];
   liveSlugs: string[];
   categories: { slug: string; name: string }[];
@@ -434,8 +434,8 @@ export default function EventsExplorer({
   weekendStartISO,
   weekendEndISO,
 }: Props) {
-  // The server renders this bounded preview. The full compact corpus is kept
-  // out of React Flight and fetched only after explicit browsing intent.
+  // Keep the full compact corpus out of React Flight. A useful preview waits
+  // for browsing intent; an empty degraded preview gets one bounded recovery.
   const [eventPool, setEventPool] = useState(events);
   const [currentLiveSlugs, setCurrentLiveSlugs] = useState(liveSlugs);
   const [dataComplete, setDataComplete] = useState(
@@ -446,6 +446,7 @@ export default function EventsExplorer({
   const requestRef = useRef<Promise<void> | null>(null);
   const eventPoolRef = useRef(events);
   const liveSlugsRef = useRef(liveSlugs);
+  const passiveRecoveryPendingRef = useRef(events.length === 0 && sourceHealth.degraded);
 
   // Server-safe defaults let this Client Component emit useful static HTML.
   // URL and device preferences are applied after hydration, then mirrored
@@ -625,6 +626,22 @@ export default function EventsExplorer({
     requestRef.current = request;
     return request;
   }, [dataComplete]);
+
+  // A bounded archive failure can leave fresh server HTML with no events even
+  // when the normal runtime read is healthy. Recover that initial gap once,
+  // after the browser's scope and filters have been restored. This shares the
+  // existing in-flight request with deep-link continuation and never bypasses
+  // the API cache; later checks stay deliberate user actions.
+  useEffect(() => {
+    if (!urlReady || !passiveRecoveryPendingRef.current) return;
+    let active = true;
+    queueMicrotask(() => {
+      if (!active || !passiveRecoveryPendingRef.current) return;
+      passiveRecoveryPendingRef.current = false;
+      void ensureAllEvents();
+    });
+    return () => { active = false; };
+  }, [ensureAllEvents, urlReady]);
 
   // Which horizon groups are expanded past their scannable peek.
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());

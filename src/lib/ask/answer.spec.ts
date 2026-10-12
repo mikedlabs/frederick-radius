@@ -29,6 +29,7 @@ import { freshHoursInstant } from "../../../tests/utils/freshHoursInstant";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { haversineMeters } from "@/lib/geo";
 import { buildWantAnswer } from "@/lib/want-answer";
+import * as municipalLoader from "@/lib/loaders/municipalCivic";
 
 const downtown = {
   origin: { lng: -77.4105, lat: 39.4143 },
@@ -710,6 +711,82 @@ describe("askFrederick structured answers", () => {
     expect(result.sources).toHaveLength(1);
   });
 
+  it("keeps Woodsboro office hours unknown instead of presenting its council schedule", async () => {
+    const result = await askFrederick("What are Woodsboro Town Hall's hours?", {
+      municipality: "woodsboro", contextLabel: "Woodsboro",
+    });
+    expect(result.answer).toContain("Office hours are unconfirmed.");
+    expect(result.sources[0]).toMatchObject({
+      name: "Woodsboro · Town Hall", phone: "301-898-3800", confidence: "medium",
+    });
+    expect(result.sources[0].status).toBeUndefined();
+    expect(result.sources[0].href).toMatch(/^https:\/\/woodsboro\.org\//);
+    expect(JSON.stringify(result)).not.toMatch(/second Tuesday|first Monday|office is closed/i);
+  });
+
+  it("keeps a parks-opening question on Thurmont's parks resource", async () => {
+    const result = await askFrederick("Are parks open in Thurmont?", {
+      municipality: "thurmont", contextLabel: "Thurmont",
+    });
+    expect(result.usedModel).toBe(false);
+    expect(result.answer).toContain("official Town of Thurmont resource for parks & recreation");
+    expect(result.sources[0]).toMatchObject({
+      name: "Town of Thurmont · Parks & recreation",
+      href: "https://www.thurmont.com/2145/Community", confidence: "high",
+    });
+    expect(result.answer).not.toMatch(/office hours|before visiting/i);
+    expect(result.sources[0].reason).not.toContain("Office hours");
+  });
+
+  it("keeps a closed-road report on Brunswick's Public Works contact", async () => {
+    const result = await askFrederick("Where can I report a closed road in Brunswick?", {
+      municipality: "brunswick", contextLabel: "Brunswick",
+    });
+    expect(result.usedModel).toBe(false);
+    expect(result.answer).toContain("official Brunswick resource for public works");
+    expect(result.sources[0]).toMatchObject({
+      name: "Brunswick · Public Works", href: "https://brunswickmd.gov/publicworks",
+      phone: "301-834-7500", confidence: "high",
+    });
+    expect(result.answer).not.toMatch(/office hours|before visiting/i);
+    expect(result.sources[0].reason).not.toContain("Office hours");
+  });
+
+  it.each([
+    "Who should I contact at Public Works about a closed road in Brunswick?",
+    "Why has Public Works closed a road in Brunswick?",
+    "When does Public Works close roads in Brunswick?",
+  ])("keeps a Public Works contact question about a closed road on its contact answer (%s)", async (query) => {
+    const result = await askFrederick(query, {
+      municipality: "brunswick", contextLabel: "Brunswick",
+    });
+    expect(result.answer).toContain("official Brunswick resource for public works");
+    expect(result.answer).not.toMatch(/office hours|before visiting/i);
+    expect(result.sources[0]).toMatchObject({
+      name: "Brunswick · Public Works", href: "https://brunswickmd.gov/publicworks",
+      phone: "301-834-7500", confidence: "high",
+    });
+  });
+
+  it.each([
+    "What are the Public Works office hours in Brunswick?",
+    "Is the Public Works office open in Brunswick?",
+    "When does the Brunswick Public Works office close?",
+    "When does the Public Works office open so I can report a closed road in Brunswick?",
+  ])("qualifies an explicit Public Works office-availability question (%s)", async (query) => {
+    const result = await askFrederick(query, { municipality: "brunswick", contextLabel: "Brunswick" });
+    expect(result.answer).toContain("Office hours are unconfirmed.");
+    expect(result.sources[0]).toMatchObject({ name: "Brunswick · Public Works", phone: "301-834-7500", confidence: "medium" });
+    expect(result.sources[0].status).toBeUndefined();
+  });
+
+  it.each(["Is Woodsboro Town Hall open?", "When does Woodsboro Town Hall close?"])("qualifies an explicit Town Hall opening question (%s)", async (query) => {
+    const result = await askFrederick(query, { municipality: "woodsboro", contextLabel: "Woodsboro" });
+    expect(result.answer).toContain("Office hours are unconfirmed.");
+    expect(result.sources[0]).toMatchObject({ name: "Woodsboro · Town Hall", phone: "301-898-3800", confidence: "medium" });
+    expect(result.sources[0].status).toBeUndefined();
+  });
+
   it("uses a town's municipal record instead of a county substitute", async () => {
     const result = await askFrederick("Who handles trash in Brunswick?", {
       municipality: "brunswick",
@@ -730,6 +807,38 @@ describe("askFrederick structured answers", () => {
     // the case where only the town's front door is known; keeping it here would
     // apologize for an answer that is now exact.
     expect(result.answer).toContain("official Brunswick resource for public works");
+  });
+
+  it.each([
+    ["2026-10-11T15:00:00.000Z", "current"],
+    ["2026-08-18T15:34:31.695Z", "stale"],
+    ["", "unknown"],
+    ["invalid", "unknown"],
+    ["2026-10-12T15:06:00.000Z", "unknown"],
+  ])("qualifies municipal office hours using the original check clock (%s)", async (fetchedAt, state) => {
+    const contact = { label: "Town Hall", phone: "301-898-3800", hours: "Monday-Friday 8AM-4PM" };
+    const rec = { slug: "woodsboro", name: "Woodsboro", townHall: contact, source: { url: "https://woodsboro.org/", fetchedAt } };
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-12T15:00:00.000Z"));
+    const lookup = vi.spyOn(municipalLoader, "findMunicipalCivic").mockReturnValue({ town: "Woodsboro", rec, contacts: [contact], matchedIntent: true });
+    try {
+      const result = await askFrederick("What are Woodsboro Town Hall's hours?", { municipality: "woodsboro", contextLabel: "Woodsboro" });
+      expect(result.sources[0].phone).toBe(contact.phone);
+      if (state === "current") {
+        expect(result.sources[0].status).toBe(`Posted office hours: ${contact.hours}`);
+        expect(result.answer).toContain("Hours last checked Oct 11, 2026.");
+      } else {
+        expect(result.sources[0].status).toBeUndefined();
+        expect(result.sources[0].confidence).toBe("medium");
+        expect(result.answer).toContain("Confirm with the town before visiting.");
+        expect(result.answer).not.toMatch(/office is (?:open|closed)/i);
+        if (state === "stale") expect(result.answer).toContain("Hours last checked Aug 18, 2026.");
+        else expect(result.answer).not.toContain(contact.hours);
+      }
+    } finally {
+      lookup.mockRestore();
+      vi.useRealTimers();
+    }
   });
 
   it("answers the countywide dining question with balanced north and west picks", async () => {
