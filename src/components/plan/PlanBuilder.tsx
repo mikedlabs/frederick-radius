@@ -47,7 +47,8 @@ import { rebuildPlanInputs, planConstraintLabels, planDistanceForArea } from "./
 import { checkPlanBeforeVisit } from "./visit-check-action";
 import type { PlanVisitCheck } from "@/lib/plan/visit-check";
 import styles from "./PlanBuilder.module.css";
-import { decodeSpec } from "@/lib/integrations/planner";
+import { decodeSpec } from "@/lib/plan/plan-token";
+import SaveOutingButton from "@/components/saved/SaveOutingButton";
 import { updatedPlanHref } from "@/lib/plan-journey";
 import { isDestinationCategory, isRecommendable } from "@/lib/relevance";
 import { withBrowseReturnTo } from "@/lib/browse-return";
@@ -546,16 +547,19 @@ export default function PlanBuilder({
               </ul>
             )}
 
-            <div className={`mt-4 grid gap-2 ${plan.stops.length > 0 ? "grid-cols-[1fr_auto]" : "grid-cols-1"}`}>
+            <div className={`mt-4 grid items-start gap-2 ${plan.stops.length > 0 ? "grid-cols-[1fr_auto_auto]" : "grid-cols-[1fr_auto]"}`}>
+                <SaveOutingButton key={plan.share} token={plan.share} title={plan.title} disabled={pending || !controlsReady} />
                 {plan.stops.length > 0 && <a
                   href={routeUrlForPlan(plan)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[14px] font-semibold text-white"
-                  style={{ background: "var(--app-brand-press)" }}
+                  className="inline-flex min-h-12 min-w-12 flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-md)] border px-2"
+                  style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
+                  aria-label="Open full route"
+                  title="Open full route"
                 >
                   <Navigation className="h-4 w-4" aria-hidden />
-                  Open full route
+                  <span className="text-[12px] font-semibold leading-tight">Route</span>
                 </a>}
                 <button
                   type="button"
@@ -1107,16 +1111,16 @@ function Stop({
       </span>
       <article className={styles.stopCard}>
         <div className={styles.stopBody} style={{ paddingBottom: 12 }}>
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-semibold">
+        <div className={`${styles.stopHeader} flex items-start gap-3`}>
+          <div className={`${styles.stopIdentity} min-w-0 flex-1`}>
+            <div className={`${styles.stopTiming} flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-semibold`}>
               <span className="tabular-nums" style={{ color: "var(--app-ink-2)" }}>{clock(stop.at)} · {stop.duration_min} min</span>
               <span className="inline-flex items-center gap-1" style={{ color: "var(--app-ink-2)" }}>
                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: status.color }} aria-hidden />
                 {status.text}
               </span>
             </div>
-            <Link href={href} className="group mt-1.5 block">
+            <Link href={href} className={`${styles.stopDestination} group mt-1.5 block`}>
               <h3 className="font-serif text-[19px] font-semibold leading-tight tracking-tight group-hover:underline" style={{ color: "var(--app-ink)" }}>
                 {name}
               </h3>
@@ -1128,7 +1132,7 @@ function Stop({
               )}
             </Link>
           </div>
-          <PlaceMedallion place={fallbackPlace} size={48} className="rounded-[var(--app-radius-sm)]" />
+          <PlaceMedallion place={fallbackPlace} size={48} className={`${styles.stopMedallion} rounded-[var(--app-radius-sm)]`} />
         </div>
         </div>
         <PlanStopPhoto stop={stop} />

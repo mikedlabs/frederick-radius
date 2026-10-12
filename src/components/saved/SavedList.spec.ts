@@ -56,7 +56,7 @@ describe("SavedList empty state", () => {
     const html = renderToStaticMarkup(createElement(EmptyState));
 
     expect(html).toContain(
-      "Save a place, event, bus trip, or stop to keep it here for later.",
+      "Save an outing, place, event, bus trip, or stop to keep it here for later.",
     );
     expect(html).toContain('data-saved-empty-state="true"');
     expect(html).toContain("font-sans");

@@ -292,9 +292,10 @@ describe("explicit confirmed-hours planning preference", () => {
     await act(async () => button("Build my plan").click());
     expect(mocks.generate).toHaveBeenCalledWith(expect.objectContaining({ require_verified_hours: false }));
     const warning = [...host.querySelectorAll("p")].find((paragraph) => paragraph.textContent?.trim() === draftResult);
-    const route = [...host.querySelectorAll("a")].find((anchor) => anchor.textContent?.trim() === "Open full route");
+    const route = host.querySelector<HTMLAnchorElement>('a[aria-label="Open full route"]');
     expect(warning).toBeDefined();
-    expect(route).toBeDefined();
+    expect(route).not.toBeNull();
+    expect(route!.textContent).toContain("Route");
     expect(warning!.compareDocumentPosition(route!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(decodeSpec(new URL(window.location.href).searchParams.get("p")!)?.i.require_verified_hours).toBe(false);
   });
