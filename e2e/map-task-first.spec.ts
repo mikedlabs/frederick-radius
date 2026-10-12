@@ -95,7 +95,7 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
   await conditions.getByRole("button", { name: "Done" }).click();
 
   await browse.click();
-  await expect(chooser.getByRole("button", { name: /^Nearby/ })).toBeVisible();
+  await expect(chooser.getByRole("button", { name: /^Coffee/ })).toBeVisible();
   await expect(
     chooser.getByRole("button", { name: /^Happening/ }),
   ).toBeVisible();
@@ -113,18 +113,13 @@ test("task-first map stays clear and makes the useful actions obvious", async ({
     fullPage: true,
   });
 
-  await chooser.getByRole("button", { name: /^Nearby/ }).click();
+  await chooser.getByRole("button", { name: /^Coffee/ }).click();
   await expect(chooser).toBeHidden();
-  await expect
-    .poll(() => page.evaluate(() => window.sessionStorage.getItem("fr_geo_v1")), {
-      timeout: 10_000,
-    })
-    .not.toBeNull();
-  await expect
-    .poll(() => {
-      return new URL(page.url()).searchParams.get("in");
-    }, { timeout: 5_000 })
-    .toBe("nearme");
+  await expect(page.locator("[data-map-list-peek]")).toBeVisible();
+  await expect(page.locator("[data-map-list-place]")).toHaveCount(5);
+  await expect.poll(() => new URL(page.url()).searchParams.get("intent")).toBe("coffee");
+  expect(new URL(page.url()).searchParams.get("in")).not.toBe("nearme");
+  await expect(page.locator("[data-map-place-slug]")).toHaveCount(0);
   await page.screenshot({
     path: "output/playwright/map-polish-find-390x844.png",
     fullPage: true,

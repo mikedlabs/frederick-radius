@@ -116,10 +116,11 @@ export function reconcileMapSearchResults(
   server: readonly SearchResult[],
   query: string,
   limit = 6,
+  authoritative = false,
 ): SearchResult[] {
   const confident = confidentLocalMapPlaceResult(immediate, query);
   const liveLocalById = new Map(immediate.map((result) => [result.id, result]));
-  const ordered = confident
+  const ordered = authoritative ? [...server] : confident
     ? [
         confident,
         ...server,
@@ -144,12 +145,12 @@ export function reconcileMapSearchResults(
             lng: liveLocal.lng ?? candidate.lng,
           }
         : candidate;
-    if (confident && result.type === "place" && result.id !== confident.id) {
+    if (!authoritative && confident && result.type === "place" && result.id !== confident.id) {
       const confidence = mapPlaceNameConfidence(result.title, query);
       if (CONFIDENCE_RANK[confidence] < CONFIDENCE_RANK.phrase) continue;
     }
     const nameKey = `${result.type}:${normalizePlaceName(result.title)}`;
-    if (seenIds.has(result.id) || seenNames.has(nameKey)) continue;
+    if (seenIds.has(result.id) || (!authoritative && seenNames.has(nameKey))) continue;
     seenIds.add(result.id);
     seenNames.add(nameKey);
     merged.push(result);

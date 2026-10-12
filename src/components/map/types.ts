@@ -150,6 +150,8 @@ export type CemeteryPin = {
  * image attribution.
  */
 export type EventPin = {
+  /** Canonical source town, never inferred from the camera or centroid. */
+  municipality?: string;
   slug: string;
   title: string;
   starts_at: string;

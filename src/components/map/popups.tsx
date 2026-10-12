@@ -16,6 +16,7 @@ import { ticketStubDate, stubEyebrow } from "@/lib/ui/ticketStub";
 import { directionsHref } from "@/lib/map/directionsHref";
 import type { EventPin, SelectedOsm, SelectedPlace } from "./types";
 import { formatMapTimestamp } from "./mapContent";
+import { withMapReturnTo } from "@/lib/map-return";
 import { mapPopupSource } from "./mapPopupSource";
 
 /** Semantic color for a ledger cell's tone — open reads positive-green,
@@ -55,7 +56,7 @@ const clamp = (lines: number): CSSProperties => ({
  * place card — solving the old problem where places and events looked
  * identical in a popup.
  */
-export function EventPopup({ e }: { e: EventPin }) {
+export function EventPopup({ e, mapReturnTo }: { e: EventPin; mapReturnTo?: string | null }) {
   const s = ticketStubDate(e.starts_at);
   const color = e.category_color || "var(--app-brand)";
   return (
@@ -107,7 +108,7 @@ export function EventPopup({ e }: { e: EventPin }) {
           </p>
         )}
         <Link
-          href={`/events/${e.slug}`}
+          href={withMapReturnTo(`/events/${e.slug}`, mapReturnTo)}
           style={{ display: "inline-block", fontSize: 12, fontWeight: 700, color }}
         >
           See event <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />

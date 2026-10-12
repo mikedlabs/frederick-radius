@@ -43,7 +43,7 @@ function openLine(p: MapPinPlace): { text: string; tone: string } | null {
     case "closed":
       return { text: "Closed", tone: "var(--app-ink-3)" };
     default:
-      return null;
+      return { text: "Hours not confirmed", tone: "var(--app-ink-3)" };
   }
 }
 
@@ -142,6 +142,12 @@ export default function MapList({
   sortOrigin,
   failureMode = false,
   searchState = "ready",
+  showSearchFeedback = true,
+  preserveOrder = false,
+  title,
+  note,
+  emptyMessage,
+  suppressCounts = false,
   onRetrySearch,
   onPick,
   onPickEvent,
@@ -157,6 +163,12 @@ export default function MapList({
   failureMode?: boolean;
   /** An unfinished request is not evidence of zero matches. */
   searchState?: "pending" | "unavailable" | "ready";
+  showSearchFeedback?: boolean;
+  preserveOrder?: boolean;
+  title?: string;
+  note?: string | null;
+  emptyMessage?: { title: string; copy: string };
+  suppressCounts?: boolean;
   onRetrySearch?: () => void;
   onPick: (place: MapPinPlace) => void;
   onPickEvent: (event: EventPin) => void;
@@ -164,14 +176,14 @@ export default function MapList({
   const effectiveOrigin = userLoc ?? sortOrigin ?? null;
   const rows = useMemo(
     () =>
-      failureMode
+      preserveOrder ? places.slice(0, 20) : failureMode
         ? rankMapFallbackPlaces(places, effectiveOrigin)
         : rankMapListPlaces(places, effectiveOrigin),
-    [places, effectiveOrigin, failureMode],
+    [places, effectiveOrigin, failureMode, preserveOrder],
   );
   const eventRows = useMemo(
-    () => rankMapListEvents(events, effectiveOrigin, failureMode ? 6 : 40),
-    [events, effectiveOrigin, failureMode],
+    () => preserveOrder ? events.slice(0, 20) : rankMapListEvents(events, effectiveOrigin, failureMode ? 6 : 40),
+    [events, effectiveOrigin, failureMode, preserveOrder],
   );
   const empty = rows.length === 0 && eventRows.length === 0;
   const searchIncomplete = empty && searchState !== "ready";
@@ -182,7 +194,10 @@ export default function MapList({
       role="region"
       aria-label={failureMode ? "Available results without the map" : "Map results, as a list"}
     >
-      {!searchIncomplete && <div
+      {title && <h2 className="mb-1 px-2 text-[16px] font-semibold text-[var(--app-ink)]">{title}</h2>}
+      {note && <p className="mb-2 px-2 text-[12px] leading-snug text-[var(--app-ink-3)]">{note}</p>}
+      {searchState === "unavailable" && !empty && showSearchFeedback && <div className="mb-2 px-2 text-[13px] text-[var(--app-ink-2)]" role="status"><p>Unable to verify the full search. Available local matches are still shown.</p>{onRetrySearch && <button type="button" onClick={onRetrySearch} className="min-h-11 font-semibold text-[var(--app-link)]">Try again</button>}</div>}
+      {!searchIncomplete && !suppressCounts && <div
         className="mx-auto mb-1 flex max-w-[680px] items-baseline justify-between gap-3 px-2"
         aria-live="polite"
       >
@@ -201,7 +216,7 @@ export default function MapList({
               : "Nearest map center"}
         </span>
       </div>}
-      {searchIncomplete ? (
+      {searchIncomplete ? showSearchFeedback ? (
         <div className="map-list-empty">
           <p role="status" className="font-sans map-list-empty-title">
             {searchState === "pending" ? "Searching Radius…" : "Search is temporarily unavailable"}
@@ -213,15 +228,15 @@ export default function MapList({
             <button type="button" onClick={onRetrySearch} className="mt-2 inline-flex min-h-11 items-center text-[12px] font-semibold" style={{ color: "var(--app-link)" }}>Try again</button>
           )}
         </div>
-      ) : empty ? (
+      ) : null : empty ? (
         <div className="map-list-empty">
           <p className="font-sans map-list-empty-title">
-            {failureMode ? "No fallback results are available" : "Nothing matches yet"}
+            {emptyMessage?.title ?? (failureMode ? "No fallback results are available" : "Nothing matches yet")}
           </p>
           <p className="map-list-empty-sub">
-            {failureMode
+            {emptyMessage?.copy ?? (failureMode
               ? "Reload the map or use the page navigation to keep browsing."
-              : "Loosen a filter in the dock, or switch back to the map to browse the whole county."}
+              : "Loosen a filter in the dock, or switch back to the map to browse the whole county.")}
           </p>
         </div>
       ) : (

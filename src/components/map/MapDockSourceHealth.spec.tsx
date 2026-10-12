@@ -81,3 +81,32 @@ describe("retained MapDock source warning",()=>{
    expect(notice.textContent).toContain("2 minutes old");
  });
 });
+
+
+describe("deliberate map search selection", () => {
+  const matches = ["first", "second"].map((id) => ({ type: "place" as const, id: `place:${id}`, title: id, subtitle: "Hours not confirmed", href: `/places/${id}` }));
+  async function readySearch() {
+    const input = props(undefined);
+    input.q = "coffee";
+    input.searchMatches = matches;
+    input.submitSearch = vi.fn();
+    input.pickSearch = vi.fn();
+    await act(async () => root.render(createElement(MapDock, input)));
+    const field = host.querySelector("input[role=combobox]") as HTMLInputElement;
+    await act(async () => field.dispatchEvent(new FocusEvent("focusin", { bubbles: true })));
+    return { input, field };
+  }
+  it("Enter presents ranked choices without silently selecting the first place", async () => {
+    const { input, field } = await readySearch();
+    await act(async () => field.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+    expect(input.submitSearch).toHaveBeenCalledWith("coffee");
+    expect(input.pickSearch).not.toHaveBeenCalled();
+  });
+  it("an explicitly highlighted visible choice remains selectable with the keyboard", async () => {
+    const { input, field } = await readySearch();
+    await act(async () => field.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })));
+    await act(async () => field.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+    expect(input.pickSearch).toHaveBeenCalledWith(matches[0]);
+    expect(input.submitSearch).not.toHaveBeenCalled();
+  });
+});

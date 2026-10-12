@@ -125,6 +125,21 @@ async function gotoReadySurface(
     `/map should expose its interactive dock within ${MAP_INTERACTIVE_BUDGET_MS}ms`,
   ).toBeVisible({ timeout: remainingBudget });
 
+  // The dock mounts before the renderer settles. Collecting controls during
+  // that transition can inspect the live chooser just as a genuine renderer
+  // outage replaces it with the list recovery actions. Require either the
+  // loaded renderer or its explicit fallback within the same total deadline.
+  await expect.poll(
+    () => page.locator(".dock-host").evaluate((host) =>
+      host.getAttribute("data-map-loaded") === "true" ||
+      host.querySelector("[data-map-dock]")?.getAttribute("data-map-available") === "false",
+    ),
+    {
+      message: "/map should settle into a loaded renderer or usable list fallback",
+      timeout: Math.max(1, MAP_INTERACTIVE_BUDGET_MS - (Date.now() - navigationStartedAt)),
+    },
+  ).toBe(true);
+
   expect(
     Date.now() - navigationStartedAt,
     `/map exceeded its ${MAP_INTERACTIVE_BUDGET_MS}ms interaction-readiness budget`,

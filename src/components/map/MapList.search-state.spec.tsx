@@ -38,10 +38,10 @@ describe("map recovery search truth", () => {
   });
   it("feeds the actual query settlement and failure markers into the recovery list", () => {
     const source = readFileSync("src/components/map/AppMap.tsx", "utf8");
-    const recovery = source.slice(source.indexOf('places={mapFallbackResults'), source.indexOf('onPick={openPlaceSheet}', source.indexOf('places={mapFallbackResults')));
+    const recovery = source.slice(source.indexOf('<MapList\n'), source.indexOf('/>\n          </section>', source.indexOf('<MapList\n')));
     expect(recovery).toContain('searchUnavailableQuery === q.trim() ? "unavailable"');
     expect(recovery).toContain('searchSettledQuery !== q.trim() ? "pending"');
-    expect(recovery).toContain('onRetrySearch={() => setSearchAttempt');
+    expect(recovery).toContain('setSearchAttempt((attempt) => attempt + 1)');
   });
 
 });
