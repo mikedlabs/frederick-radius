@@ -224,6 +224,50 @@ describe("explicit confirmed-hours planning preference", () => {
     vi.restoreAllMocks();
   });
 
+  it("keeps native editor fields and Build unavailable until their handlers are hydrated", async () => {
+    act(() => root.unmount());
+    const preview = <PlanBuilder />;
+    host.innerHTML = renderToString(preview);
+    const start = host.querySelector<HTMLSelectElement>('#plan-start')!;
+    expect(host.querySelector('[data-plan-controls-ready]')?.getAttribute('data-plan-controls-ready')).toBe('false');
+    expect([...host.querySelectorAll('select, input, button')].every((control) => control.matches(':disabled'))).toBe(true);
+    expect(start.value).toBe('now');
+    button('Build my plan').click();
+    expect(mocks.generate).not.toHaveBeenCalled();
+
+    await act(async () => { root = hydrateRoot(host, preview); });
+    expect(start.matches(':disabled')).toBe(false);
+    expect(button('Build my plan').disabled).toBe(false);
+    await act(async () => {
+      start.value = 'custom';
+      start.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(host.querySelector('input[aria-label="Custom start date and time in Frederick"]')).not.toBeNull();
+  });
+
+  it("gates every server-rendered outing action while leaving real destination links available", async () => {
+    act(() => root.unmount());
+    const inputs = ordinaryInputs();
+    const preview = <PlanBuilder initialInputs={inputs} initialPlan={ordinaryPlan(inputs)} />;
+    host.innerHTML = renderToString(preview);
+    const actions = [...host.querySelectorAll<HTMLButtonElement>('button')];
+    expect(actions.length).toBeGreaterThan(6);
+    expect(actions.every((control) => control.disabled)).toBe(true);
+    expect(host.querySelector('a[href*="google.com/maps"]')).not.toBeNull();
+    expect(host.querySelector('a[href^="/places/"]')).not.toBeNull();
+    actions.forEach((control) => control.click());
+    expect(mocks.remove).not.toHaveBeenCalled();
+    expect(mocks.visit).not.toHaveBeenCalled();
+
+    await act(async () => { root = hydrateRoot(host, preview); });
+    const pin = button('Pin');
+    expect(pin.disabled).toBe(false);
+    await act(async () => pin.click());
+    expect(button('Pinned').getAttribute('aria-pressed')).toBe('true');
+    expect(host.querySelector('button[aria-label="Share this plan"]')?.hasAttribute('disabled')).toBe(false);
+    expect(button('Show stops on map').disabled).toBe(false);
+  });
+
   it("starts as an explicit draft and puts the hours warning before route directions", async () => {
     render();
     await openFineTune();

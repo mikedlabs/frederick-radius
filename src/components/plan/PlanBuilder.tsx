@@ -110,7 +110,7 @@ export default function PlanBuilder({
 }) {
   const searchParams = useSearchParams();
   // A visible server preview must not invite a tap before its handlers exist.
-  const eventControlsReady = useSyncExternalStore(subscribePlanReadiness, () => true, () => false);
+  const controlsReady = useSyncExternalStore(subscribePlanReadiness, () => true, () => false);
   const [audience, setAudience] = useState<PlanInputs["audience"]>(initialInputs?.audience ?? "date");
   const [vibe, setVibe] = useState<PlanInputs["vibe"]>(initialInputs?.vibe ?? "easy");
   const [hours, setHours] = useState<PlanInputs["duration_hours"]>(initialInputs?.duration_hours ?? 3);
@@ -432,7 +432,7 @@ export default function PlanBuilder({
   const checkExpired = Boolean(visitCheck?.validUntil && Date.parse(visitCheck.validUntil) <= checkClock);
 
   const controls = (
-    <fieldset disabled={pending}>
+    <fieldset disabled={pending || !controlsReady} aria-busy={!controlsReady || pending} className="disabled:opacity-65">
     <PlannerFields
       eventStart={activeEventAnchor ? scheduledEventStop?.at ?? initialInputs?.start_at ?? "" : undefined}
       area={area}
@@ -456,7 +456,7 @@ export default function PlanBuilder({
   );
 
   return (
-    <div className={styles.builder}>
+    <div className={styles.builder} data-plan-controls-ready={controlsReady ? "true" : "false"}>
       {!plan && (
         <div className={styles.startLayout}>
         <PlanScene />
@@ -469,7 +469,7 @@ export default function PlanBuilder({
           <button
             type="button"
             onClick={onBuild}
-            disabled={pending}
+            disabled={pending || !controlsReady}
             className={`${styles.buildAction} mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[15px] font-semibold text-white transition sm:mt-6 active:scale-[0.99] disabled:opacity-65`}
             style={{ background: "var(--app-brand-press)", boxShadow: "var(--app-brand-glow)" }}
           >
@@ -499,7 +499,7 @@ export default function PlanBuilder({
               <button
                 type="button"
                 onClick={() => setDrawerOpen(true)}
-                disabled={pending || !eventControlsReady}
+                disabled={pending || !controlsReady}
                 className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
               >
@@ -560,6 +560,7 @@ export default function PlanBuilder({
                 <button
                   type="button"
                   onClick={onShare}
+                  disabled={!controlsReady}
                   className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-[var(--app-radius-md)] border px-3"
                   style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
                   aria-label="Share this plan"
@@ -572,18 +573,18 @@ export default function PlanBuilder({
 
 
           {Boolean(plan.notices?.length) && (
-            <section data-event-plan-controls-ready={eventControlsReady ? "true" : "false"} aria-busy={!eventControlsReady || pending} className="space-y-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4" aria-label="Plan updates" style={{ borderColor: "var(--app-border)" }}>
+            <section data-event-plan-controls-ready={controlsReady ? "true" : "false"} aria-busy={!controlsReady || pending} className="space-y-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4" aria-label="Plan updates" style={{ borderColor: "var(--app-border)" }}>
               <h2 className="text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>Review your saved choices</h2>
               {plan.notices!.map((notice) => (
                 <div key={`${notice.spec_index}-${notice.code}`} className="space-y-2">
                   <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{notice.message}</p>
                   <div className="flex flex-wrap gap-2">
                     {notice.event_href && <Link href={withBrowseReturnTo(notice.event_href, planReturnTo)} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>Review event details</Link>}
-                    <button type="button" disabled={!eventControlsReady || pending} onClick={() => mutate(() => removeStop(plan.share, notice.spec_index), notice.spec_index, "The saved reference has been removed.")} className="inline-flex min-h-11 items-center rounded-full border px-3 text-[13px] font-semibold disabled:opacity-50" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>Remove saved reference</button>
+                    <button type="button" disabled={!controlsReady || pending} onClick={() => mutate(() => removeStop(plan.share, notice.spec_index), notice.spec_index, "The saved reference has been removed.")} className="inline-flex min-h-11 items-center rounded-full border px-3 text-[13px] font-semibold disabled:opacity-50" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>Remove saved reference</button>
                   </div>
                 </div>
               ))}
-              {plan.notices!.some((notice) => notice.code === "unavailable") && <button type="button" disabled={!eventControlsReady || pending} onClick={() => mutate(() => planFromToken(plan.share), null, "Your saved choices have been checked again.")} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-brand-press)" }}><RefreshCw className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} aria-hidden />Check saved choices again</button>}
+              {plan.notices!.some((notice) => notice.code === "unavailable") && <button type="button" disabled={!controlsReady || pending} onClick={() => mutate(() => planFromToken(plan.share), null, "Your saved choices have been checked again.")} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-brand-press)" }}><RefreshCw className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} aria-hidden />Check saved choices again</button>}
             </section>
           )}
 
@@ -595,8 +596,8 @@ export default function PlanBuilder({
                 <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--app-ink-3)" }}>This choice is outside the timed route.</p>
                 <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{option.why}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <button type="button" disabled={!eventControlsReady || pending} onClick={() => openSwap(option.spec_index)} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-ink-2)" }}>Change this choice</button>
-                  <button type="button" disabled={!eventControlsReady || pending} onClick={() => mutate(() => removeStop(plan.share, option.spec_index), option.spec_index, "The nearby option has been removed.")} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-ink-2)" }}>Remove this choice</button>
+                  <button type="button" disabled={!controlsReady || pending} onClick={() => openSwap(option.spec_index)} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-ink-2)" }}>Change this choice</button>
+                  <button type="button" disabled={!controlsReady || pending} onClick={() => mutate(() => removeStop(plan.share, option.spec_index), option.spec_index, "The nearby option has been removed.")} className="inline-flex min-h-11 items-center rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-ink-2)" }}>Remove this choice</button>
                 </div>
               </article>)}
             </section>
@@ -618,7 +619,7 @@ export default function PlanBuilder({
               <button
                 type="button"
                 onClick={() => setDrawerOpen(true)}
-                disabled={pending || !eventControlsReady}
+                disabled={pending || !controlsReady}
                 className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
               >
@@ -635,7 +636,7 @@ export default function PlanBuilder({
                     stop={stop}
                     returnTo={planReturnTo}
                     index={stop.spec_index ?? index}
-                    pending={pending}
+                    pending={pending || !controlsReady}
                     busy={busy}
                     pinned={stop.place ? pinned.has(stop.place.slug) : false}
                     onSwap={stop.place ? () => openSwap(stop.spec_index ?? index) : undefined}
@@ -648,7 +649,7 @@ export default function PlanBuilder({
                     <button
                       type="button"
                       onClick={() => setAddOpen(true)}
-                      disabled={pending}
+                      disabled={pending || !controlsReady}
                       className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] border border-dashed px-3 text-[13px] font-semibold disabled:opacity-50"
                       style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
                     >
@@ -664,7 +665,7 @@ export default function PlanBuilder({
           <section className={styles.visitCheck} aria-label="Check before you go">
             <div className={styles.visitHeader}>
               <div><h2>Check before you go</h2><p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>Review saved times, posted hours, and the forecast for this outing.</p></div>
-              <button type="button" onClick={checkBeforeVisit} disabled={pending || !eventControlsReady} className="inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold disabled:opacity-50" style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}><RefreshCw className="h-4 w-4" aria-hidden />{pending ? "Checking…" : "Check this plan"}</button>
+              <button type="button" onClick={checkBeforeVisit} disabled={pending || !controlsReady} className="inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold disabled:opacity-50" style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}><RefreshCw className="h-4 w-4" aria-hidden />{pending ? "Checking…" : "Check this plan"}</button>
             </div>
             {visitCheck && <div aria-live="polite">
               <p className="mt-4 text-[14px] font-semibold">{checkExpired ? "This check is out of date. Check the plan again before setting out." : visitCheck.message}</p>
@@ -676,14 +677,14 @@ export default function PlanBuilder({
             </div>}
           </section>
 
-          <PlanStopsMap plan={plan} returnTo={planReturnTo} />
+          <PlanStopsMap plan={plan} returnTo={planReturnTo} disabled={!controlsReady} />
 
           <div className={`grid gap-2 ${plan.stops.length > 0 ? "grid-cols-2" : "grid-cols-1"}`}>
             {plan.stops.length > 0 && (
               <button
                 type="button"
                 onClick={() => setDrawerOpen(true)}
-                disabled={pending || !eventControlsReady}
+                disabled={pending || !controlsReady}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[13px] font-semibold"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
               >
@@ -694,7 +695,7 @@ export default function PlanBuilder({
             <button
               type="button"
               onClick={startOver}
-              disabled={pending || !eventControlsReady}
+              disabled={pending || !controlsReady}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[13px] font-semibold"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
             >
@@ -721,7 +722,7 @@ export default function PlanBuilder({
           <button
             type="button"
             onClick={onBuild}
-            disabled={pending}
+            disabled={pending || !controlsReady}
             className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[15px] font-semibold text-white disabled:opacity-65"
             style={{ background: "var(--app-brand-press)" }}
           >
@@ -747,7 +748,7 @@ export default function PlanBuilder({
                     key={category.category}
                     type="button"
                     onClick={() => pickSwapCategory(category.category)}
-                    disabled={pending}
+                    disabled={pending || !controlsReady}
                     aria-pressed={swapCat === category.category}
                     className="inline-flex min-h-11 shrink-0 items-center rounded-full border px-3 text-[12px] font-semibold"
                     style={{
@@ -780,7 +781,7 @@ export default function PlanBuilder({
                     <button
                       type="button"
                       onClick={() => swapIdx !== null && chooseStop(swapIdx, alternative.slug)}
-                      disabled={pending}
+                      disabled={pending || !controlsReady}
                       className="flex min-h-16 w-full items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-left disabled:opacity-50"
                       style={{ borderColor: "var(--app-border)" }}
                     >
@@ -825,7 +826,7 @@ export default function PlanBuilder({
                   <button
                     type="button"
                     onClick={() => addFromSaved(place.slug)}
-                    disabled={pending}
+                    disabled={pending || !controlsReady}
                     className="flex min-h-16 w-full items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-left disabled:opacity-50"
                     style={{ borderColor: "var(--app-border)" }}
                   >

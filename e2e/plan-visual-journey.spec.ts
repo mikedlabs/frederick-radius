@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Route } from "@playwright/test";
 
 async function expectFirstStopClearOfNavigation(page: Page) {
   const heading = page.getByRole("list", { name: "Plan stops, in order", exact: true }).getByRole("heading").first();
@@ -266,6 +266,133 @@ for (const outcome of ["loaded", "unavailable"] as const) {
     } finally {
       releaseMetadata();
       releaseImage();
+    }
+  });
+}
+
+
+// Hold actual client chunks so the browser receives the real static preview.
+// The test changes transport timing only on loopback; catalog and actions stay real.
+for (const view of ["editor", "saved outing"] as const) {
+  test(`Controlled local hydration protects the planner ${view} before handlers attach`, async ({ page, baseURL }, info) => {
+    const hostname = new URL(baseURL!).hostname;
+    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+      throw new Error("The controlled hydration transport runs only on loopback.");
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(() => {
+      const runtime = window as Window & { planNativeTransitions?: number; planNativeTransitionAvailable?: boolean };
+      runtime.planNativeTransitions = 0;
+      runtime.planNativeTransitionAvailable = typeof document.startViewTransition === "function";
+      const original = document.startViewTransition?.bind(document);
+      if (original) document.startViewTransition = (...args: Parameters<Document["startViewTransition"]>) => {
+        runtime.planNativeTransitions!++;
+        return original(...args);
+      };
+    });
+    const held = new Set<Route>();
+    const heldUrls: string[] = [];
+    let released = false;
+    let actionRequests = 0;
+    const runtimeErrors: string[] = [];
+    page.on("pageerror", (error) => runtimeErrors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error" && /hydration|server rendered|Minified React error/i.test(message.text())) runtimeErrors.push(message.text());
+    });
+    page.on("request", (request) => {
+      if (request.method() === "POST" && new URL(request.url()).pathname === "/plan") actionRequests++;
+    });
+    await page.route("**/_next/static/chunks/*.js", (route) => {
+      if (released) return route.continue();
+      held.add(route);
+      heldUrls.push(route.request().url());
+    });
+    const release = async () => {
+      released = true;
+      const pending = [...held];
+      held.clear();
+      await Promise.all(pending.map((route) => route.continue()));
+    };
+    try {
+      await page.goto(view === "editor" ? "/plan" : "/plan?place=beans-in-the-belfry-brunswick&in=brunswick", { waitUntil: "commit" });
+      const planner = page.locator("[data-plan-controls-ready]");
+      await expect(planner).toHaveAttribute("data-plan-controls-ready", "false");
+      await expect.poll(() => held.size).toBeGreaterThan(0);
+      expect(await planner.locator("button, select, input").evaluateAll((controls) => controls.every((control) => control.matches(":disabled")))).toBe(true);
+      if (view === "editor") {
+        const start = planner.getByRole("combobox", { name: "Start time", exact: true });
+        await expect(start).toBeDisabled();
+        await expect(start).toHaveValue("now");
+        const rect = await start.boundingBox();
+        expect(rect).not.toBeNull();
+        await page.mouse.click(rect!.x + rect!.width / 2, rect!.y + rect!.height / 2);
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("Enter");
+        await expect(start).toHaveValue("now");
+        await expect(planner.getByLabel("Custom start date and time in Frederick", { exact: true })).toHaveCount(0);
+        const build = planner.getByRole("button", { name: "Build my plan", exact: true });
+        await build.scrollIntoViewIfNeeded();
+        const buildRect = await build.boundingBox();
+        expect(buildRect).not.toBeNull();
+        await page.mouse.click(buildRect!.x + buildRect!.width / 2, buildRect!.y + buildRect!.height / 2);
+        expect(actionRequests).toBe(0);
+
+        await release();
+        await expect(start).toBeEnabled();
+        await planner.getByRole("combobox", { name: "Planning area", exact: true }).selectOption("brunswick");
+        await start.selectOption("custom");
+        const custom = planner.getByLabel("Custom start date and time in Frederick", { exact: true });
+        await expect(custom).toBeVisible();
+        await custom.fill("2099-10-12T12:00");
+        // Hold the real CSS entrance phase to prove controls remain usable
+        // during motion. This loopback timing fixture does not change data.
+        const pausedMotion = await page.addStyleTag({ content: "[data-plan-stop] { animation-play-state: paused !important; }" });
+        await build.click();
+        await expect(planner.getByRole("list", { name: "Plan stops, in order", exact: true })).toBeVisible();
+        const token = new URL(page.url()).searchParams.get("p");
+        expect(token).not.toBeNull();
+        const spec = JSON.parse(Buffer.from(token!, "base64url").toString("utf8")) as { i: { start_at: string; municipality: string; require_verified_hours: boolean } };
+        expect(spec.i).toMatchObject({ start_at: "2099-10-12T16:00:00.000Z", municipality: "brunswick", require_verified_hours: false });
+        expect(actionRequests).toBe(1);
+        const native = await page.evaluate(() => {
+          const runtime = window as Window & { planNativeTransitions?: number; planNativeTransitionAvailable?: boolean };
+          return { available: runtime.planNativeTransitionAvailable, captures: runtime.planNativeTransitions };
+        });
+        expect(native).toEqual({ available: true, captures: 0 });
+        const firstStop = planner.locator("[data-plan-stop]").first();
+        expect(await firstStop.evaluate((element) => element.getAnimations().some((animation) => animation.playState === "paused"))).toBe(true);
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await expectFirstStopClearOfNavigation(page);
+        const pin = firstStop.getByRole("button", { name: "Pin", exact: true });
+        await pin.click();
+        await expect(firstStop.getByRole("button", { name: "Pinned", exact: true })).toHaveAttribute("aria-pressed", "true");
+        expect(actionRequests).toBe(1);
+        await pausedMotion.evaluate((element) => element.parentNode?.removeChild(element));
+      } else {
+        const before = new URL(page.url()).searchParams.get("p");
+        const pin = planner.getByRole("button", { name: "Pinned", exact: true });
+        await expect(pin).toBeDisabled();
+        await expect(planner.getByRole("button", { name: "Share this plan", exact: true })).toBeDisabled();
+        await expect(planner.getByRole("button", { name: "Show stops on map", exact: true })).toBeDisabled();
+        await pin.scrollIntoViewIfNeeded();
+        const rect = await pin.boundingBox();
+        expect(rect).not.toBeNull();
+        await page.mouse.click(rect!.x + rect!.width / 2, rect!.y + rect!.height / 2);
+        expect(actionRequests).toBe(0);
+        await expect(planner.getByRole("link", { name: "Open full route", exact: true })).toHaveAttribute("href", /google.com\/maps/);
+        await release();
+        await expect(pin).toBeEnabled();
+        await pin.click();
+        await expect(planner.getByRole("button", { name: "Pin", exact: true })).toHaveAttribute("aria-pressed", "false");
+        expect(new URL(page.url()).searchParams.get("p")).toBe(before);
+        expect(actionRequests).toBe(0);
+      }
+      await expect(planner).toHaveAttribute("data-plan-controls-ready", "true");
+      expect(runtimeErrors).toEqual([]);
+      await info.attach("planner-hydration-evidence", { contentType: "application/json", body: Buffer.from(JSON.stringify({ view, heldClientChunks: heldUrls.length, actionRequests, runtimeErrors }, null, 2)) });
+    } finally {
+      released = true;
+      await Promise.allSettled([...held].map((route) => route.continue()));
     }
   });
 }

@@ -54,7 +54,7 @@ class StopsMapBoundary extends Component<{ children: ReactNode }, { failed: bool
   }
 }
 
-export default function PlanStopsMap({ plan, returnTo }: { plan: Plan; returnTo?: string }) {
+export default function PlanStopsMap({ plan, returnTo, disabled = false }: { plan: Plan; returnTo?: string; disabled?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const viewId = useId();
   const stops = locatedStops(plan);
@@ -94,8 +94,9 @@ export default function PlanStopsMap({ plan, returnTo }: { plan: Plan; returnTo?
         type="button"
         aria-expanded={expanded}
         aria-controls={viewId}
+        disabled={disabled}
         onClick={() => setExpanded((current) => !current)}
-        className="flex min-h-12 w-full items-center gap-2 px-4 py-3 text-left text-[14px] font-semibold text-[var(--app-ink)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--app-brand)]"
+        className="disabled:opacity-50 flex min-h-12 w-full items-center gap-2 px-4 py-3 text-left text-[14px] font-semibold text-[var(--app-ink)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--app-brand)]"
       >
         <MapPin className="h-4 w-4 text-[var(--app-brand)]" aria-hidden />
         <span className="flex-1">{expanded ? "Hide stops map" : "Show stops on map"}</span>
