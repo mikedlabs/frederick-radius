@@ -162,6 +162,15 @@ describe("public data snapshot", () => {
       checkedAt: "2026-08-11T12:00:00.000Z",
       operatorMessage: null,
     });
+    // The paid writer policy is independent of already-published fresh
+    // schedules: a hold must not turn their real coverage count into zero.
+    expect(publicHoursProductHealth(snapshot, false)).toMatchObject({
+      status: "policy_hold",
+      current: 1,
+      expected: 2,
+      coveragePct: 50,
+      operatorMessage: expect.stringContaining("Approved first-party schedules can still be published"),
+    });
   });
 
   it("reports an intentional policy hold without disguising zero coverage", () => {
@@ -181,7 +190,7 @@ describe("public data snapshot", () => {
       targetPct: 60,
       checkedAt: "2026-08-11T12:00:00.000Z",
       operatorMessage: expect.stringContaining(
-        "Current-hours coverage remains unavailable",
+        "Approved first-party schedules can still be published",
       ),
     });
   });

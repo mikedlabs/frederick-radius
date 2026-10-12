@@ -131,7 +131,8 @@ describe("places-client data health", () => {
     const bad: string[] = [];
     for (const p of PLACES) {
       if (OVERNIGHT_OK.has(p.slug) || !p.hours) continue;
-      for (const [day, ivs] of Object.entries(p.hours)) {
+      for (const day of ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]) {
+        const ivs = p.hours[day];
         for (const iv of ivs ?? []) {
           if (!iv?.open || !iv?.close) continue;
           const o = toMin(iv.open);

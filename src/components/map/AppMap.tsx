@@ -305,7 +305,7 @@ import TimeScrubber from "./TimeScrubber";
 import { ArrowRight, ChevronRight, Landmark, Shrink, Truck, X } from "lucide-react";
 import { withinScrubWindow } from "@/lib/map/scrubTime";
 import { easternDayKey } from "@/lib/tz";
-import { getOpenStatus, isOpenNow } from "@/lib/hours";
+import { getOpenStatus, shouldDimForHours } from "@/lib/hours";
 import { groupMapEvents, type MapEventGroup } from "./mapContent";
 import { resolveMapLocationSeed } from "./mapLocationSeed";
 import type { LiveIncidentSignal } from "@/lib/live/incidentSnapshot";
@@ -2973,8 +2973,7 @@ export default function AppMap({
         // stale (7-day window) every place lands in this fallback and the
         // loop dims nothing; TimeScrubber detects that zero-coverage state
         // and says so in the control rather than letting it read as a no-op.
-        const open = h?.hours ? isOpenNow(getOpenStatus(h.hours, { verified: h.verified }, at)) : true;
-        const dim = !open;
+        const dim = h?.hours ? shouldDimForHours(getOpenStatus(h.hours, { verified: h.verified }, at)) : false;
         if (scrubDimStateRef.current.get(p.slug) === dim) continue;
         m.setFeatureState({ source: "curated-places", id: p.slug }, { dim });
         scrubDimStateRef.current.set(p.slug, dim);

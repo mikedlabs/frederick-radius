@@ -89,6 +89,16 @@ jobs:
 
             const allowedByBranch = {
               'bot/marc-schedule-refresh': ['src/data/marc-schedule.json'],
+              'bot/official-library-hours': [
+                'docs/coverage-scorecard.md',
+                'docs/hours-refresh-review.md',
+                'src/data/data-release.json',
+                'src/data/event-venue-photo-credits.json',
+                'src/data/place-refresh-identities.json',
+                'src/data/places-client-hours.json',
+                'src/data/places-client.json',
+                'src/data/places-official-hours.json',
+              ],
               'bot/data-steward': [
                 'docs/coverage-scorecard.md',
                 'docs/hours-refresh-review.md',
@@ -400,6 +410,7 @@ jobs:
             const allowedBranches = new Set([
               'bot/marc-schedule-refresh',
               'bot/data-steward',
+              'bot/official-library-hours',
               'bot/transit-steward',
               'bot/curated-place-enrichment',
               'bot/business-info-refresh',

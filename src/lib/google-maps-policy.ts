@@ -10,7 +10,7 @@
 export const GOOGLE_MAPS_WRITTEN_APPROVAL_VALUE =
   "written-google-authorization-confirmed";
 export const GOOGLE_HOURS_POLICY_HOLD_MESSAGE =
-  "Paid Google hours refresh is intentionally disabled. Current-hours coverage remains unavailable until an approved replacement source is promoted.";
+  "Paid Google hours refresh is intentionally disabled. Approved first-party schedules can still be published; every current-hours claim requires fresh source evidence.";
 
 export function googleMapsWrittenApprovalConfirmed(): boolean {
   return (

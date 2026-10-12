@@ -8,6 +8,8 @@
  * into a <script type="application/ld+json"> themselves.
  */
 
+import { hoursForDate } from "@/lib/hours";
+import { easternDayKey, easternWallToUtcISO } from "@/lib/tz";
 import type { DayOfWeek, Hours } from "@/data/places";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://frederickradius.app";
@@ -39,15 +41,39 @@ export function absoluteSiteUrl(value: string | null | undefined): string | unde
  */
 export function openingHoursJsonLd(hours: Hours | undefined) {
   if (!hours) return undefined;
+  const official = hours._official;
+  // A calendar-day schema cannot express a mid-day evidence expiry. End on
+  // the previous complete day rather than promise the whole expiry date.
+  const lastCompleteDay = official ? new Date(Date.parse(`${easternDayKey(new Date(official.expires_at))}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10) : undefined;
+  const validThrough = official && lastCompleteDay ? [official.coverage_through, lastCompleteDay].sort()[0] : undefined;
   const rows = (Object.keys(SCHEMA_DAY) as DayOfWeek[]).flatMap((day) =>
     (hours[day] ?? []).map((window) => ({
       "@type": "OpeningHoursSpecification",
       dayOfWeek: SCHEMA_DAY[day],
       opens: window.open,
       closes: window.close,
+      ...(official ? { validFrom: official.coverage_from, validThrough } : {}),
     })),
   );
   return rows.length > 0 ? rows : undefined;
+}
+
+/** Date-specific closure facts override normal weekday schema hours. */
+export function specialOpeningHoursJsonLd(hours: Hours | undefined) {
+  const evidence = hours?._official;
+  if (!hours || !evidence) return undefined;
+  const expiryDay = easternDayKey(new Date(evidence.expires_at));
+  const rows = evidence.exceptions.flatMap((exception) => {
+    if (exception.date < evidence.coverage_from || exception.date >= expiryDay || exception.date > evidence.coverage_through) return [];
+    const [year, month, day] = exception.date.split("-").map(Number);
+    const windows = hoursForDate(hours, new Date(easternWallToUtcISO(year, month, day, 12, 0)));
+    if (!windows) return [];
+    return (windows.length ? windows : [{ open: "00:00", close: "00:00" }]).map((window) => ({
+      "@type": "OpeningHoursSpecification", validFrom: exception.date, validThrough: exception.date,
+      opens: window.open, closes: window.close,
+    }));
+  });
+  return rows.length ? rows : undefined;
 }
 
 /**

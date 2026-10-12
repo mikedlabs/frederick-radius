@@ -1,3 +1,4 @@
+import { isScheduleEvidenceCurrent } from "@/lib/hours";
 import CLIENT_HOURS_RAW from "@/data/places-client-hours.json" with { type: "json" };
 import type { Hours } from "@/data/places";
 import { isHoursFresh } from "@/lib/hours-freshness";
@@ -28,6 +29,8 @@ export function clientPlaceHours(
     (place) =>
       (!place.hours_policy_strict ||
         isHoursFresh(place.hours_updated_at, now)) &&
-      mayPublishVisitabilityHours(place.slug, place.hours, now),
+      mayPublishVisitabilityHours(place.slug, place.hours, now) &&
+      (!place.hours._official || place.hours._official.slug === place.slug) &&
+      isScheduleEvidenceCurrent(place.hours, now),
   );
 }

@@ -2442,6 +2442,31 @@ sources:
       so the workflow parses, time-budgets, upserts, records ingest health,
       and revalidates the shared event cache.
 
+  - id: fcpl_branch_hours
+    name: Frederick County Public Libraries — Official Branch Hours
+    owner: Frederick County Public Libraries
+    url: https://www.fcpl.org/branches-hours
+    endpoint_type: html
+    format: html
+    refresh_cadence: daily
+    snapshot_cadence: daily
+    license: county government public information
+    contact: Frederick County Public Libraries
+    status: active
+    collection: workflow
+    evidence_aliases: [fcpl_branch_hours, https://www.fcpl.org/branches-hours, https://www.fcpl.org/holiday-closings]
+    last_validated: 2026-10-12
+    last_success: null
+    schema_file: src/lib/official-hours.ts
+    transform_file: scripts/lib/fcpl-official-hours.ts
+    notes: |
+      Bounded free first-party pilot for nine exact catalog identities. The
+      existing data-steward workflow reads the branches and holiday pages as
+      one atomic unit, then publishes a review PR through the existing isolated
+      publisher. No Google, database, model, browser, or NAS dependency. Seven-day
+      expiry uses the oldest actual observation. Missing/ambiguous closure
+      evidence fails the refresh without extending the last good timestamp.
+
   - id: fc_parks_rec
     name: Frederick County Parks & Recreation — Programs
     owner: Frederick County Parks & Recreation

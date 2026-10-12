@@ -111,16 +111,17 @@ export function hasReviewRequiredExtendedWindow(
   hours: Hours | undefined,
 ): boolean {
   if (!hours) return false;
-  return Object.values(hours).some((windows) =>
-    windows?.some((window) => {
+  return DAYS.some((day) => {
+    const windows = hours[day];
+    return windows?.some((window) => {
       const open = timeToMinutes(window.open);
       const close = timeToMinutes(window.close);
       if (open == null || close == null) return true;
       let duration = close - open;
       if (duration <= 0) duration += 24 * 60;
       return duration >= MAX_UNREVIEWED_VISITABILITY_WINDOW_MINUTES;
-    }),
-  );
+    });
+  });
 }
 
 export function is24hVisitabilityReviewCurrent(

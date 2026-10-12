@@ -17,6 +17,8 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import OpenClosedDot from "./OpenClosedDot";
 import GoogleHours from "./GoogleHours";
+import HoursBlock from "./HoursBlock";
+import { getOpenStatus } from "@/lib/hours";
 import SaveButton from "@/components/saved/SaveButton";
 import ShareButton from "./ShareButton";
 import SourceBadge from "./SourceBadge";
@@ -106,6 +108,15 @@ function PlaceSheetContent({
   mapReturnTo?: string | null;
   onClose: () => void;
 }) {
+  const [hoursTime, setHoursTime] = useState(() => new Date());
+  useEffect(() => {
+    if (!place.hours?._official) return;
+    const timer = window.setInterval(() => setHoursTime(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, [place.hours]);
+  const currentHoursStatus = place.hours?._official
+    ? getOpenStatus(place.hours, { verified: place.hours_verified }, hoursTime)
+    : place.open_status;
   const cat = CATEGORY_BY_SLUG[place.category];
   const muni = MUNICIPALITY_BY_SLUG[place.municipality];
   const color = cat?.color ?? "var(--app-brand)";
@@ -281,7 +292,7 @@ function PlaceSheetContent({
       placeGoogleMapsUri: googleMapsUri,
     };
   });
-  const hoursLines = place.google_hours?.length
+  const hoursLines = place.hours_source === "first_party" ? [] : place.google_hours?.length
     ? place.google_hours
     : (extra?.hours ?? []);
   const effectivePlace = {
@@ -468,7 +479,7 @@ function PlaceSheetContent({
            *  data row. Kept compact so the next block (the trust pill
            *  cluster) reads as a single thought. */}
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs" style={{ color: "var(--app-ink-2)" }}>
-            <OpenClosedDot status={place.open_status} />
+            <OpenClosedDot status={currentHoursStatus} />
             {place.google_rating !== undefined && (
               <span className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--app-ink-2)" }}>
                 <span style={{ color: "var(--app-accent-press)" }}>★</span>
@@ -496,8 +507,8 @@ function PlaceSheetContent({
            *  The previous layout stacked three tiny rows on top of
            *  each other; this reads as one trust statement. */}
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <TrustChip signal={placeHoursTrust(place.open_status)} />
-            {place.google_verified && (
+            <TrustChip signal={placeHoursTrust(currentHoursStatus)} />
+            {place.google_verified && place.hours_source !== "first_party" && (
               <>
                 <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
                 <span className="inline-flex items-center gap-1 text-[10px] font-medium" style={{ color: "var(--app-positive)" }}>
@@ -736,7 +747,12 @@ function PlaceSheetContent({
           </div>
         )}
 
-        {/* Hours from Google */}
+        {place.hours?._official && (
+          <div className="mt-4">
+            <HoursBlock hours={place.hours} verified={place.hours_verified} provenance="Hours from Frederick County Public Libraries." />
+          </div>
+        )}
+        {/* Provider text is never a fallback for an expired first-party schedule. */}
         {hoursLines.length > 0 && (
           <div className="mt-4">
             <GoogleHours lines={hoursLines} />

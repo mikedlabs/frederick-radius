@@ -49,6 +49,7 @@ import {
   breadcrumbJsonLd,
   jsonLdScript,
   openingHoursJsonLd,
+  specialOpeningHoursJsonLd,
 } from "@/lib/seo/jsonld";
 import LiveGooglePlaceContext from "@/components/place/GooglePlaceContext";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
@@ -113,6 +114,7 @@ function confirmedAgo(iso: string | undefined): string | null {
 
 const HOURS_SOURCE_LABEL: Record<string, string> = {
   google_places: "Google",
+  first_party: "Frederick County Public Libraries",
   osm: "OpenStreetMap",
   manual_override: "the Frederick Radius team",
 };
@@ -268,6 +270,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
     image: absoluteSiteUrl(`/api/og?type=place&slug=${place.slug}`),
     priceRange: place.price_band ? "$".repeat(place.price_band) : undefined,
     openingHoursSpecification: openingHoursJsonLd(place.hours),
+    specialOpeningHoursSpecification: specialOpeningHoursJsonLd(place.hours),
   };
 
   return (

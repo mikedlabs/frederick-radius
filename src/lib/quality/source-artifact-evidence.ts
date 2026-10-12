@@ -1,3 +1,5 @@
+import OFFICIAL_HOURS_RAW from "@/data/places-official-hours.json" with { type: "json" };
+import { validateOfficialHoursArtifact } from "@/lib/official-hours";
 import BUSINESS_INFO_RAW from "@/data/business-info.json" with { type: "json" };
 import MUNICIPAL_CIVIC_RAW from "@/data/municipal-civic.json" with { type: "json" };
 import TRANSIT_RAW from "@/data/transit.json" with { type: "json" };
@@ -97,7 +99,13 @@ export function bundledSourceArtifactEvidence(): SourceEvidence[] {
     ? transit.routes.length
     : 0;
 
+  let officialHours: ArtifactEvidenceInput[] = [];
+  try {
+    validateOfficialHoursArtifact(OFFICIAL_HOURS_RAW);
+    officialHours = [{ sourceKey: "fcpl_branch_hours", timestamps: [OFFICIAL_HOURS_RAW.weekly.observed_at, OFFICIAL_HOURS_RAW.closures.observed_at], recordCount: OFFICIAL_HOURS_RAW.places.length, timestampCoverage: "artifact" }];
+  } catch { /* Missing/invalid evidence cannot report a successful publication. */ }
   return buildSourceArtifactEvidence([
+    ...officialHours,
     {
       sourceKey: "business_info_extraction",
       timestamps: Object.values(businessInfo).map(

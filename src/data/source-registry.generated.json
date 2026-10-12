@@ -1016,6 +1016,28 @@
     "publicationApplicability": "required"
   },
   {
+    "id": "fcpl_branch_hours",
+    "name": "Frederick County Public Libraries — Official Branch Hours",
+    "owner": "Frederick County Public Libraries",
+    "url": "https://www.fcpl.org/branches-hours",
+    "license": "county government public information",
+    "status": "active",
+    "collection": "workflow",
+    "refreshCadence": "daily",
+    "snapshotCadence": "daily",
+    "changeCadence": null,
+    "manifestLastSuccess": null,
+    "schemaFile": "src/lib/official-hours.ts",
+    "transformFile": "scripts/lib/fcpl-official-hours.ts",
+    "evidenceAliases": [
+      "fcpl_branch_hours",
+      "https://www.fcpl.org/branches-hours",
+      "https://www.fcpl.org/holiday-closings"
+    ],
+    "rowsRequired": false,
+    "publicationApplicability": "required"
+  },
+  {
     "id": "fc_parks_assets",
     "name": "Frederick County Public Park Assets",
     "owner": "Frederick County Government",

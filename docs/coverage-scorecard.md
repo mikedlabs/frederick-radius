@@ -7,24 +7,24 @@ currently allowed to support an open-now claim. Regenerate with
 `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-09-09 — 1570 places._
+_Generated 2026-10-12 — 1571 places._
 
 | Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Frederick | 854 | 680 (80%) | 0 (0%) | 710 (83%) | 710 (83%) | 50 | 296 |
-| Thurmont | 110 | 75 (68%) | 0 (0%) | 100 (91%) | 99 (90%) | 3 | 30 |
-| Brunswick | 97 | 65 (67%) | 0 (0%) | 84 (87%) | 77 (79%) | 2 | 24 |
-| Walkersville | 86 | 66 (77%) | 0 (0%) | 81 (94%) | 78 (91%) | 2 | 29 |
-| Middletown | 85 | 52 (61%) | 0 (0%) | 72 (85%) | 74 (87%) | 4 | 27 |
+| Frederick | 854 | 680 (80%) | 1 (0%) | 710 (83%) | 710 (83%) | 50 | 296 |
+| Thurmont | 110 | 75 (68%) | 1 (1%) | 100 (91%) | 99 (90%) | 3 | 30 |
+| Brunswick | 97 | 65 (67%) | 2 (2%) | 84 (87%) | 77 (79%) | 2 | 24 |
+| Walkersville | 86 | 66 (77%) | 1 (1%) | 81 (94%) | 78 (91%) | 2 | 29 |
+| Middletown | 85 | 52 (61%) | 1 (1%) | 72 (85%) | 74 (87%) | 4 | 27 |
 | New Market | 75 | 51 (68%) | 0 (0%) | 62 (83%) | 59 (79%) | 4 | 13 |
 | Mount Airy | 63 | 48 (76%) | 0 (0%) | 58 (92%) | 58 (92%) | 5 | 27 |
-| Emmitsburg | 57 | 39 (68%) | 0 (0%) | 52 (91%) | 51 (89%) | 2 | 18 |
-| Myersville | 46 | 33 (72%) | 0 (0%) | 40 (87%) | 40 (87%) | 2 | 9 |
+| Emmitsburg | 57 | 39 (68%) | 1 (2%) | 52 (91%) | 51 (89%) | 2 | 18 |
+| Myersville | 46 | 33 (72%) | 1 (2%) | 40 (87%) | 40 (87%) | 2 | 9 |
 | Woodsboro | 36 | 20 (56%) | 0 (0%) | 30 (83%) | 26 (72%) | 1 | 10 |
+| Urbana | 30 | 21 (70%) | 1 (3%) | 24 (80%) | 25 (83%) | 2 | 10 |
 | Burkittsville | 30 | 15 (50%) | 0 (0%) | 28 (93%) | 30 (100%) | 2 | 8 |
-| Urbana | 29 | 20 (69%) | 0 (0%) | 23 (79%) | 25 (86%) | 2 | 9 |
 | Rosemont | 2 | 0 (0%) | 0 (0%) | 1 (50%) | 1 (50%) | 0 | 1 |
-| **Total** | **1570** | 1164 (74%) | 0 (0%) | 1341 (85%) | 1328 (85%) | **79** | **501** |
+| **Total** | **1571** | 1165 (74%) | 9 (1%) | 1342 (85%) | 1328 (85%) | **79** | **502** |
 
 ## Coverage by category
 
@@ -34,7 +34,7 @@ hours, imagery, decision-useful copy, or direct actions are still thin.
 
 | Category | Places | Fresh hours | Publishable photo | Useful copy | Direct action |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Restaurants | 176 | 0 (0%) | 160 (90.9%) | 41 (23.3%) | 169 (96%) |
+| Restaurants | 177 | 0 (0%) | 161 (91%) | 42 (23.7%) | 170 (96%) |
 | Shopping | 176 | 0 (0%) | 161 (91.5%) | 2 (1.1%) | 169 (96%) |
 | Churches & worship | 162 | 0 (0%) | 129 (79.6%) | 1 (0.6%) | 149 (92%) |
 | Parks | 137 | 0 (0%) | 119 (86.9%) | 16 (11.7%) | 99 (72.3%) |
@@ -50,7 +50,7 @@ hours, imagery, decision-useful copy, or direct actions are still thin.
 | Ice cream & treats | 28 | 0 (0%) | 25 (89.3%) | 3 (10.7%) | 26 (92.9%) |
 | Salon & barber | 28 | 0 (0%) | 22 (78.6%) | 0 (0%) | 27 (96.4%) |
 | Galleries | 27 | 0 (0%) | 23 (85.2%) | 1 (3.7%) | 26 (96.3%) |
-| Bars | 24 | 0 (0%) | 23 (95.8%) | 2 (8.3%) | 23 (95.8%) |
+| Bars | 23 | 0 (0%) | 22 (95.7%) | 2 (8.7%) | 22 (95.7%) |
 | Live music | 23 | 0 (0%) | 20 (87%) | 1 (4.3%) | 21 (91.3%) |
 | Farms & pick-your-own | 22 | 0 (0%) | 19 (86.4%) | 1 (4.5%) | 21 (95.5%) |
 | Trails | 22 | 0 (0%) | 17 (77.3%) | 4 (18.2%) | 11 (50%) |
@@ -58,9 +58,8 @@ hours, imagery, decision-useful copy, or direct actions are still thin.
 | Museums | 18 | 0 (0%) | 14 (77.8%) | 4 (22.2%) | 16 (88.9%) |
 | Pizza | 18 | 0 (0%) | 18 (100%) | 3 (16.7%) | 16 (88.9%) |
 | Auto care | 16 | 0 (0%) | 9 (56.3%) | 7 (43.8%) | 16 (100%) |
-| Breweries | 16 | 0 (0%) | 12 (75%) | 6 (37.5%) | 16 (100%) |
+| Breweries | 16 | 0 (0%) | 12 (75%) | 5 (31.3%) | 16 (100%) |
 | Antiques | 15 | 0 (0%) | 13 (86.7%) | 0 (0%) | 13 (86.7%) |
-| Libraries | 14 | 0 (0%) | 12 (85.7%) | 1 (7.1%) | 13 (92.9%) |
 | Wineries | 14 | 0 (0%) | 14 (100%) | 11 (78.6%) | 14 (100%) |
 | Playgrounds | 13 | 0 (0%) | 8 (61.5%) | 0 (0%) | 5 (38.5%) |
 | Book stores | 12 | 0 (0%) | 11 (91.7%) | 1 (8.3%) | 12 (100%) |
@@ -75,6 +74,7 @@ hours, imagery, decision-useful copy, or direct actions are still thin.
 | Community | 2 | 0 (0%) | 0 (0%) | 2 (100%) | 2 (100%) |
 | Tours & rides | 2 | 0 (0%) | 1 (50%) | 2 (100%) | 2 (100%) |
 | Transit | 1 | 0 (0%) | 0 (0%) | 0 (0%) | 0 (0%) |
+| Libraries | 15 | 9 (60%) | 12 (80%) | 2 (13.3%) | 14 (93.3%) |
 
 ## Hours refresh artifact
 
@@ -84,7 +84,7 @@ artifact current.
 
 | Check | Count |
 | --- | ---: |
-| Public Google-backed places expected in the 6-day cycle | 1482 |
+| Public Google-backed places expected in the 6-day cycle | 1483 |
 | Snapshot rows | 1522 |
 | Rows matched to the public set | 1480 |
 | Rows carrying a schedule | 1159 |
@@ -100,7 +100,7 @@ Oldest refresh: 2026-08-13T08:01:03.490Z. Newest refresh: 2026-08-22T08:01:01.24
 
 | Cycle day | Expected places | Refreshed within policy | Fresh schedules | Minimum met |
 | ---: | ---: | ---: | ---: | --- |
-| 0 | 273 | 0 | 0 | no |
+| 0 | 274 | 0 | 0 | no |
 | 1 | 208 | 0 | 0 | no |
 | 2 | 273 | 0 | 0 | no |
 | 3 | 260 | 0 | 0 | no |
