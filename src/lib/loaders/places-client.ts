@@ -1,7 +1,7 @@
 import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { haversineMeters, type LngLat } from "@/lib/geo";
-import { getOpenStatus } from "@/lib/hours";
+import { getOpenStatus, withheldHoursStatus } from "@/lib/hours";
 import { isHoursFresh } from "@/lib/hours-freshness";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 import { publishablePlaceWebsite } from "@/lib/place-website-policy";
@@ -72,7 +72,8 @@ const BY_SLUG: Record<string, PlaceCardData> = (() => {
 /**
  * Recompute open-now at call time from the shipped structured `hours`, so
  * the client never renders a stale build-time "Open until 9". Places with
- * no hours resolve to { state: "unknown" } exactly as before. Cheap: the
+ * no hours resolve to { state: "unknown" }, and places whose hours cannot be
+ * asserted carry the "stale" reason. Cheap: the
  * slim set now carries the COMPACT { mon: [{ open, close }] } schedule (a
  * few hundred bytes), not the heavy google_hours strings that were
  * dropped to keep this bundle small.
@@ -89,11 +90,14 @@ function withLiveStatus(p: ClientPlaceData): PlaceCardData {
     ...p,
     hours: mayAssertHours ? p.hours : undefined,
     hours_verified: mayAssertHours,
-    open_status: getOpenStatus(
-      mayAssertHours ? p.hours : undefined,
-      { verified: mayAssertHours },
-      now,
-    ),
+    // A schedule Radius holds but may not assert reads "Hours not
+    // confirmed", the same as the server's decoratePlace, so the map peek,
+    // place sheet and search do not claim the business never posted hours.
+    // The slim set drops the schedule itself, so its check date is the
+    // evidence that one is on file.
+    open_status: mayAssertHours
+      ? getOpenStatus(p.hours, { verified: true }, now)
+      : withheldHoursStatus(Boolean(p.hours || p.hours_updated_at)),
   };
 }
 

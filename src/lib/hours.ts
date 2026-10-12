@@ -48,7 +48,27 @@ export type OpenStatus =
   | { state: "closing-soon"; closesAt: string }
   | { state: "closed"; opensAt?: string; opensDay?: DayOfWeek; opensToday?: boolean }
   | { state: "unverified" }
-  | { state: "unknown" };
+  | {
+      state: "unknown";
+      /**
+       * "stale": Radius holds a schedule for this place but may not assert it
+       * (older than the freshness window, never verified, or held by the
+       * visitability review). The state stays "unknown" so no surface can
+       * turn the old schedule into an open, closed, or likely-open claim; the
+       * reason only keeps the wording true ("Hours not confirmed" rather than
+       * "Hours not posted"). Absent when Radius has no schedule at all.
+       */
+      reason?: "stale";
+    };
+
+/**
+ * The status for a place whose hours may not be asserted right now. The
+ * loader boundary calls this instead of hand-building the object so the
+ * "schedule on file" and "no schedule" cases cannot drift apart.
+ */
+export function withheldHoursStatus(hasScheduleOnFile: boolean): OpenStatus {
+  return hasScheduleOnFile ? { state: "unknown", reason: "stale" } : { state: "unknown" };
+}
 
 /**
  * An all-day / "open 24 hours" window: midnight to midnight, however the source
@@ -181,6 +201,10 @@ export function formatHoursLine(status: OpenStatus): string {
   }
   if (status.state === "closed") return "Closed";
   if (status.state === "unverified") return "Hours not confirmed";
+  // A schedule is on file but withheld (past the freshness window or never
+  // verified). "Hours not posted" would claim the business never published
+  // hours, which is false.
+  if (status.reason === "stale") return "Hours not confirmed";
   return "Hours not posted";
 }
 

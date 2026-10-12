@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { formatTime, formatWindows, isAllDayWindow, getOpenStatus, formatHoursLine, isClosedNow } from "./hours";
+import {
+  formatTime,
+  formatWindows,
+  isAllDayWindow,
+  getOpenStatus,
+  formatHoursLine,
+  isClosedNow,
+  isOpenNow,
+  withheldHoursStatus,
+} from "./hours";
 import type { Hours } from "@/data/places";
 
 describe("formatTime", () => {
@@ -75,5 +84,23 @@ describe("all-day windows", () => {
     const status = getOpenStatus(allDay, { verified: true }, new Date());
     expect(status.state).toBe("open");
     expect(formatHoursLine(status)).toBe("Open 24 hours");
+  });
+});
+
+describe("withheld hours wording", () => {
+  it("says 'Hours not confirmed' when a schedule is on file but withheld", () => {
+    const status = withheldHoursStatus(true);
+    expect(status).toEqual({ state: "unknown", reason: "stale" });
+    expect(formatHoursLine(status)).toBe("Hours not confirmed");
+  });
+
+  it("keeps 'Hours not posted' when Radius holds no schedule at all", () => {
+    const status = withheldHoursStatus(false);
+    expect(status).toEqual({ state: "unknown" });
+    expect(formatHoursLine(status)).toBe("Hours not posted");
+  });
+
+  it("never reads a withheld schedule as open", () => {
+    expect(isOpenNow(withheldHoursStatus(true))).toBe(false);
   });
 });
