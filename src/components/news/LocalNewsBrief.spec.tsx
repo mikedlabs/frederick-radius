@@ -9,7 +9,10 @@ import LocalNewsBriefView from "./LocalNewsBriefView";
 
 const providers = vi.hoisted(() => ({ news: vi.fn(), press: vi.fn() }));
 vi.mock("@/lib/integrations/news", () => ({ getLocalHeadlinesResult: providers.news }));
-vi.mock("@/lib/integrations/civic-press", () => ({ getCivicPressReleasesResult: providers.press }));
+vi.mock("@/lib/integrations/civic-press", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/integrations/civic-press")>(),
+  getCivicPressReleasesResult: providers.press,
+}));
 
 const HEADLINES: NewsHeadline[] = Array.from({ length: 4 }, (_, i) => ({
   title: `Local publisher headline ${i + 1}`,
@@ -52,7 +55,7 @@ describe("compact local news composition", () => {
     expect(links.every((link) => link.getAttribute("rel") === "noopener noreferrer")).toBe(true);
     expect(doc.body.textContent).not.toContain(HEADLINES[3].title);
     expect(doc.body.textContent).not.toContain(PRESS[2].title);
-    expect(doc.querySelector("details")?.hasAttribute("open")).toBe(false);
+    expect(doc.querySelector("details")?.hasAttribute("open")).toBe(true);
     expect(fetch).not.toHaveBeenCalled();
   });
 

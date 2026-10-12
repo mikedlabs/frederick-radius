@@ -1,5 +1,5 @@
 import { getLocalHeadlinesResult, type NewsHeadlinesResult } from "@/lib/integrations/news";
-import { getCivicPressReleasesResult, type CivicPressResult } from "@/lib/integrations/civic-press";
+import { getCivicPressReleasesResult, officialCivicNews, type CivicPressResult } from "@/lib/integrations/civic-press";
 import { withDeadlineFallback } from "@/lib/promise-deadline";
 import LocalNewsBriefView from "./LocalNewsBriefView";
 
@@ -18,10 +18,6 @@ export default async function LocalNewsBrief() {
     }),
   ]);
   return (
-    <LocalNewsBriefView news={news} official={{
-      items: press.items.filter((item) => item.lane === "civic"),
-      status: press.sourceHealth.unavailable.length === 2 ? "unavailable"
-        : press.sourceHealth.degraded ? "partial" : "available",
-    }} />
+    <LocalNewsBriefView news={news} official={officialCivicNews(press)} />
   );
 }

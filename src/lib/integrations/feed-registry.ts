@@ -204,6 +204,7 @@ export const KEYLESS_FEEDS: FeedDef[] = [
       "Current 15-minute lightning-density context under the map's existing Weather view",
   },
   { name: "SeeClickFix", sourceIds: ["seeclickfix"], powers: "311 reported issues" },
+  { name: "Official City and County newsrooms", sourceIds: ["city_official_news", "county_official_news", "city_official_releases"], powers: "Attributed civic headlines plus separate police and advisory releases" },
   { name: "Local news RSS", sourceIds: ["google_news_rss"], powers: "Headlines (Patch, FNP, MD Matters)" },
   { name: "MD Farmers Markets", sourceIds: ["md_farmers_markets"], powers: "Seasonal market listings" },
   { name: "FredScanner", sourceIds: ["fredscanner"], powers: "Live public 911 dispatch incidents (public page; a Slack bot token is an optional realtime upgrade)" },
