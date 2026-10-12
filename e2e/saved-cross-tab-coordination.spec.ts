@@ -75,7 +75,9 @@ function fixtureEvent(slug: string, index: number): EventWithMeta {
 
 async function openEvent(page: Page, catalog: Catalog, exclude?: string) {
   await page.goto("/events?in=county", { waitUntil: "domcontentloaded" });
-  await expect(page.locator("[data-events-interaction-ready]")).toHaveAttribute("data-events-interaction-ready", "true");
+  const board = page.locator("[data-events-interaction-ready]");
+  await expect(board).toHaveAttribute("data-events-interaction-ready", "true");
+  await expect(board).toHaveAttribute("aria-busy", "false");
   const links = page.locator('main [data-decision-entity="event"] a[data-decision-action="open"]').filter({ visible: true });
   async function refreshFixtures() {
     await page.getByText("Why these results are partial", { exact: true }).click();
@@ -84,7 +86,27 @@ async function openEvent(page: Page, catalog: Catalog, exclude?: string) {
     await refreshed;
     for (const row of catalog.rows.values()) await expect(page.locator(`main [data-decision-entity="event"] a[data-decision-action="open"][href="/events/${row.slug}"]`).filter({ visible: true }).first()).toBeVisible();
   }
-  await refreshFixtures();
+  const fixtureLinks = [...catalog.fixtures].map((slug) => page.locator(
+    `main [data-decision-entity="event"] a[data-decision-action="open"][href="/events/${slug}"]`,
+  ).filter({ visible: true }).first());
+  const fixturesVisible = (await Promise.all(fixtureLinks.map((link) => link.isVisible()))).every(Boolean);
+  if (!fixturesVisible) {
+    if (await page.getByText("Why these results are partial", { exact: true }).isVisible()) {
+      await refreshFixtures();
+    } else {
+      // A healthy compact preview requests its complete set through real
+      // browsing intent. Keep this setup independent of a partial warning.
+      await page.getByRole("button", { name: /^Filters/ }).click();
+      const filters = page.getByRole("dialog", { name: "Event filters" });
+      await expect(filters).toBeVisible();
+      await filters.getByRole("tab", { name: "What", exact: true }).click();
+      await filters.getByRole("textbox", { name: "Filter the events shown" }).fill("Save coordination fixture");
+      await filters.getByRole("button", { name: "Done", exact: true }).click();
+      await expect(filters).toBeHidden();
+    }
+  }
+  expect(fixtureLinks).toHaveLength(2);
+  for (const link of fixtureLinks) await expect(link).toBeVisible();
   await expect(links.first()).toBeVisible();
   const hrefs = [...new Set(await links.evaluateAll((elements) => elements.map((element) => element.getAttribute("href")!)))];
   const candidates = hrefs.map((href) => ({ href, slug: new URL(href, page.url()).pathname.replace("/events/", "") }))

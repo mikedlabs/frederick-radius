@@ -7,6 +7,7 @@ import { matchCivicAction } from "@/data/civic-actions";
 import { departmentJurisdictionLabel, isDepartmentRequest, matchDepartment } from "@/data/department-contacts";
 import { findTownCivicResource } from "@/data/town-websites";
 import { findMunicipalCivic } from "@/lib/loaders/municipalCivic";
+import { municipalOfficeHours } from "@/lib/municipal-civic-contact";
 import {
   parseAskIntent,
   parseFixedAppointmentAnchor,
@@ -3006,10 +3007,38 @@ export async function askFrederick(
   if (civic?.id === "parks-rec-centers" && parkingBlock && !asksParksRec) civic = null;
   if (dept && /parks/i.test(dept.name) && parkingBlock && !asksParksRec) dept = null;
 
+  // Bind hours or an opening predicate to the office itself. An office name
+  // elsewhere in a question about a closed road is only contact context.
+  const selectedOffice = useMunicipal?.contacts[0]?.label ?? useTownResource?.label ?? "";
+  const officeSubject = "\\b(?:town hall|city hall|municipal government|public works(?: office)?|police station|clerk(?:['’]s)? office|office)\\b";
+  const officeTown = (useMunicipal?.town ?? useTownResource?.town.name ?? "")
+    .replace(/^(?:city|town|village) of /i, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const officeHoursPhrase = new RegExp(`${officeSubject}(?:['’]s)?\\s+(?:(?:opening|business)\\s+)?hours\\b|\\bhours\\s+(?:for|of|at)\\s+(?:the\\s+)?(?:${officeTown}\\s+)?${officeSubject}`, "i");
+  const officeQuestionSubject = `(?:the\\s+)?(?:${officeTown}\\s+)?${officeSubject}(?:\\s+in\\s+${officeTown})?`;
+  const openingPredicateEnd = "(?=\\s*(?:[?!.]|$)|\\s+(?:now|today|tomorrow|on|at|in|so|before|after)\\b)";
+  const officeOpeningPredicate = new RegExp([
+    `\\b(?:is|are)\\s+${officeQuestionSubject}\\s+(?:(?:currently|normally|usually|still)\\s+)?(?:open|closed)\\b`,
+    `\\b(?:when|what time)\\s+(?:does|do|will)\\s+${officeQuestionSubject}\\s+(?:open|close)\\b${openingPredicateEnd}`,
+  ].join("|"), "i");
+  const officeHoursRequested = /\b(?:office|town hall|city hall|municipal government|public works|permits|utilities|police|clerk)\b/i.test(selectedOffice)
+    && (officeHoursPhrase.test(q) || officeOpeningPredicate.test(q));
+  let municipalHoursAnswer: string | undefined;
+  let municipalHoursUnconfirmed = false;
   if (useMunicipal) {
     const contact = useMunicipal.contacts[0];
     if (contact) {
       const matchingTownLink = townResource?.town.slug === useMunicipal.rec.slug ? townResource.url : null;
+      const hours = municipalOfficeHours(contact, useMunicipal.rec.source.fetchedAt, now);
+      const checkedLine = hours.checkedDate ? `Hours last checked ${hours.checkedDate}.` : "";
+      const hoursQualification = hours.state === "stale"
+        ? `Previously posted hours: ${hours.hours}. ${checkedLine} Confirm with the town before visiting.`
+        : "Office hours are unconfirmed. Confirm with the town before visiting.";
+      if (officeHoursRequested) {
+        municipalHoursUnconfirmed = hours.state !== "current";
+        municipalHoursAnswer = hours.state === "current"
+          ? `The town lists these office hours: ${hours.hours}. ${checkedLine} Confirm with the town before visiting.`
+          : hoursQualification;
+      }
       sources.push({
         slug: `municipal-${useMunicipal.rec.slug}-${contact.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
         name: `${useMunicipal.town} · ${contact.label}`,
@@ -3017,14 +3046,20 @@ export async function askFrederick(
         city: useMunicipal.rec.slug,
         href: contact.website || matchingTownLink || useMunicipal.rec.source.url,
         eyebrow: `${useMunicipal.town} · Official`,
-        reason: contact.schedule || contact.hours || contact.phone || "Verified municipal contact",
-        detail: contact.address || contact.about || undefined,
+        reason: officeHoursRequested ? municipalHoursAnswer : contact.schedule || (hours.state === "current" ? `Posted office hours: ${hours.hours}` : undefined) || contact.phone || "Official municipal contact",
+        detail: [contact.address || contact.about, !officeHoursRequested && contact.hours ? (hours.state === "current" ? checkedLine : hoursQualification) : undefined].filter(Boolean).join(" ") || undefined,
         phone: contact.phone || undefined,
-        status: contact.hours || undefined,
-        confidence: "high",
+        status: hours.state === "current" ? `Posted office hours: ${hours.hours}` : undefined,
+        confidence: municipalHoursUnconfirmed ? "medium" : "high",
       });
     }
   } else if (useTownResource) {
+    // This editorial link directory has no hours-check clock. A verified
+    // government URL alone cannot turn its undated hours into current status.
+    if (officeHoursRequested) {
+      municipalHoursUnconfirmed = true;
+      municipalHoursAnswer = "Office hours are unconfirmed. Confirm with the town before visiting.";
+    }
     sources.push({
       slug: `municipal-${useTownResource.town.slug}-${useTownResource.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
       name: `${useTownResource.town.name} · ${useTownResource.label}`,
@@ -3032,11 +3067,10 @@ export async function askFrederick(
       city: useTownResource.town.slug,
       href: useTownResource.url,
       eyebrow: `${useTownResource.town.name} · Official`,
-      reason: useTownResource.town.contact?.phone || "Verified municipal resource",
+      reason: municipalHoursAnswer || useTownResource.town.contact?.phone || "Official municipal resource",
       detail: useTownResource.town.contact?.address,
       phone: useTownResource.town.contact?.phone,
-      status: useTownResource.town.contact?.hours,
-      confidence: "high",
+      confidence: municipalHoursUnconfirmed ? "medium" : "high",
     });
   }
 
@@ -3328,9 +3362,9 @@ export async function askFrederick(
         civic: civic?.label,
         department: dept?.name,
         municipal: useMunicipal
-          ? { town: useMunicipal.town, label: useMunicipal.contacts[0]?.label, exact: useMunicipal.matchedIntent }
+          ? { town: useMunicipal.town, label: useMunicipal.contacts[0]?.label, exact: useMunicipal.matchedIntent, hoursAnswer: municipalHoursAnswer }
           : useTownResource
-            ? { town: useTownResource.town.name, label: useTownResource.label, exact: true }
+            ? { town: useTownResource.town.name, label: useTownResource.label, exact: true, hoursAnswer: municipalHoursAnswer }
             : undefined,
         count: responseSources.length,
         category: asksDateNightPlaces
@@ -3480,7 +3514,7 @@ function deterministicAnswer({
 }: {
   civic?: string;
   department?: string;
-  municipal?: { town: string; label?: string; exact: boolean };
+  municipal?: { town: string; label?: string; exact: boolean; hoursAnswer?: string };
   count: number;
   category?: string | null;
   openNow?: boolean;
@@ -3496,6 +3530,7 @@ function deterministicAnswer({
   requestedTime?: string | null;
   sources?: AskSource[];
 }): string {
+  if (municipal?.hoursAnswer) return municipal.hoursAnswer;
   if (municipal?.exact) return `Here is the official ${municipal.town} resource${municipal.label ? ` for ${municipal.label.toLowerCase()}` : ""}.`;
   if (municipal) return `Radius does not have a verified department-specific answer for ${municipal.town} yet, so here is the official municipal contact instead of guessing.`;
   if (civic) return `Use this official Frederick resource for ${civic.toLowerCase()}.`;
