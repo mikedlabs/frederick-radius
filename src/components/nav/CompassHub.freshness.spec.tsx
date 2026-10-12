@@ -7,7 +7,7 @@ const NOW = "2026-10-09T16:00:00.000Z";
 let root: Root;
 let host: HTMLDivElement;
 function Probe({ open = false }: { open?: boolean }) {
-  const keys = useDeckLiveKeys(open);
+  const { keys } = useDeckLiveKeys(open);
   return createElement("div", null, liveLineForIntent("get-around", keys), createElement("output", null, liveSuggestionForDeck(keys, 8)?.label ?? "No current interruption"));
 }
 beforeEach(() => {
