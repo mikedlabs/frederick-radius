@@ -4,6 +4,8 @@ import {
   historyStateWithAskReturn,
   readAskReturnSnapshot,
   writeAskReturnSnapshot,
+  takeAskUpdateDraft,
+  writeAskUpdateDraft,
   type AskReturnSnapshot,
 } from "./return-state";
 
@@ -121,5 +123,65 @@ describe("Ask return-state restoration", () => {
         2_000,
       ),
     ).toBeNull();
+  });
+});
+
+
+describe("Ask words retained for an accepted app update", () => {
+  const key = "fr:ask:update-draft:v1";
+
+  it("keeps one bounded words-only record and consumes it once", () => {
+    const storage = memoryStorage();
+    expect(writeAskUpdateDraft(storage, "x".repeat(400), "  prior question  ", 1_000)).toBe(true);
+    expect(JSON.parse(storage.getItem(key)!)).toEqual({
+      version: 1, savedAt: 1_000, draft: "x".repeat(300), question: "prior question",
+    });
+    expect(takeAskUpdateDraft(storage, "prior question", 2_000)).toBe("x".repeat(300));
+    expect(storage.getItem(key)).toBeNull();
+    expect(takeAskUpdateDraft(storage, "prior question", 2_000)).toBeNull();
+  });
+
+  it("preserves an explicitly cleared draft", () => {
+    const storage = memoryStorage();
+    writeAskUpdateDraft(storage, "", "prior question", 1_000);
+    expect(takeAskUpdateDraft(storage, "prior question", 2_000)).toBe("");
+  });
+
+  it("does not move words into another question", () => {
+    const storage = memoryStorage();
+    writeAskUpdateDraft(storage, "edited words", "prior question", 1_000);
+    expect(takeAskUpdateDraft(storage, "different question", 2_000)).toBeNull();
+    expect(storage.getItem(key)).toBeNull();
+  });
+
+  it.each([
+    "not json",
+    "null",
+    JSON.stringify({ version: 2, savedAt: 1_000, question: "", draft: "ignored" }),
+    JSON.stringify({ version: 1, savedAt: 1_000, question: "", draft: "x".repeat(301) }),
+    JSON.stringify({ version: 1, savedAt: 1_000, question: "", draft: 42 }),
+    JSON.stringify({ version: 1, savedAt: 100_000, question: "", draft: "future" }),
+  ])("discards malformed or future update data: %s", (raw) => {
+    const storage = memoryStorage();
+    storage.setItem(key, raw);
+    expect(takeAskUpdateDraft(storage, "", 2_000)).toBeNull();
+    expect(storage.getItem(key)).toBeNull();
+  });
+
+  it("discards stale words after the bounded return window", () => {
+    const storage = memoryStorage();
+    writeAskUpdateDraft(storage, "old words", "prior question", 1_000);
+    expect(takeAskUpdateDraft(storage, "prior question", 1_000 + ASK_RETURN_TTL_MS + 1)).toBeNull();
+    expect(storage.getItem(key)).toBeNull();
+  });
+
+  it("fails quietly when storage writes or reads are blocked", () => {
+    const blocked = {
+      getItem: () => { throw new Error("blocked read"); },
+      setItem: () => { throw new Error("blocked write"); },
+      removeItem: () => { throw new Error("blocked removal"); },
+    };
+    expect(writeAskUpdateDraft(blocked, "words", "", 1_000)).toBe(false);
+    expect(takeAskUpdateDraft(blocked, "", 2_000)).toBeNull();
   });
 });

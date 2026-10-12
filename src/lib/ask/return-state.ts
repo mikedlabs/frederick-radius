@@ -146,3 +146,55 @@ export function readAskReturnSnapshot<TResult>(
 
   return parsed as AskReturnSnapshot<TResult>;
 }
+
+const ASK_UPDATE_DRAFT_KEY = "fr:ask:update-draft:v1";
+const ASK_UPDATE_DRAFT_LIMIT = 300;
+
+/** One tab-local handoff for an accepted app update. Never stores an answer,
+ * location, or history entry, and is consumed by the next matching workspace. */
+export function writeAskUpdateDraft(
+  storage: StorageLike,
+  draft: string,
+  question: string,
+  now = Date.now(),
+): boolean {
+  try {
+    storage.setItem(ASK_UPDATE_DRAFT_KEY, JSON.stringify({
+      version: 1,
+      savedAt: now,
+      draft: draft.slice(0, ASK_UPDATE_DRAFT_LIMIT),
+      question: question.trim().slice(0, ASK_UPDATE_DRAFT_LIMIT),
+    }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function takeAskUpdateDraft(
+  storage: StorageLike,
+  expectedQuestion: string,
+  now = Date.now(),
+): string | null {
+  try {
+    const raw = storage.getItem(ASK_UPDATE_DRAFT_KEY);
+    if (!raw) return null;
+    storage.removeItem(ASK_UPDATE_DRAFT_KEY);
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return null;
+    if (
+      parsed.version !== 1 ||
+      typeof parsed.savedAt !== "number" ||
+      !Number.isFinite(parsed.savedAt) ||
+      parsed.savedAt > now + 60_000 ||
+      now - parsed.savedAt > ASK_RETURN_TTL_MS ||
+      typeof parsed.draft !== "string" ||
+      parsed.draft.length > ASK_UPDATE_DRAFT_LIMIT ||
+      typeof parsed.question !== "string" ||
+      parsed.question !== expectedQuestion.trim().slice(0, ASK_UPDATE_DRAFT_LIMIT)
+    ) return null;
+    return parsed.draft;
+  } catch {
+    return null;
+  }
+}

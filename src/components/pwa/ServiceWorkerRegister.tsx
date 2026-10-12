@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
+import { APP_UPDATE_ACCEPTED_EVENT } from "@/lib/pwa-display";
 
 export const UPDATE_PROMPT_DURATION_MS = 10_000;
 export const UPDATE_PROMPT_SNOOZE_MS = 30 * 60 * 1_000;
@@ -141,6 +142,11 @@ export default function ServiceWorkerRegister() {
     let toastId: string | number | undefined;
     let updateAccepted = false;
     let reloaded = false;
+    let documentOutdated = false;
+    let documentRefreshPending = false;
+    let disposed = false;
+    let unwireRegistration = () => {};
+    const stateListeners = new Map<ServiceWorker, () => void>();
     let registration: ServiceWorkerRegistration | null = null;
 
     const snoozedAt = (): number | null => {
@@ -187,15 +193,46 @@ export default function ServiceWorkerRegister() {
       }
     };
 
-    /**
-     * Show the "Update available" toast for a specific waiting worker.
-     * Remains long enough to act on without permanently occupying app chrome.
-     * Another update dismisses the old notice before offering the new one.
-     */
+    const reloadAcceptedUpdate = () => {
+      if (disposed || !shouldReloadForAcceptedUpdate(updateAccepted, reloaded)) return;
+      reloaded = true;
+      // Mounted Ask workspaces synchronously retain only their editable words.
+      window.dispatchEvent(new Event(APP_UPDATE_ACCEPTED_EVENT));
+      window.location.reload();
+    };
+
+    const showUpdatePrompt = (onRefresh: () => void, replacePresented = false) => {
+      if (disposed || document.visibilityState !== "visible") return false;
+      if (!shouldOfferUpdatePrompt(snoozedAt(), replacePresented ? null : presentedAt())) return false;
+      markUpdatePromptPresented();
+      if (toastId !== undefined) toast.dismiss(toastId);
+      toastId = toast("A new version is ready", {
+        ...updatePromptPresentation(
+          window.location.pathname,
+          window.matchMedia("(max-width: 639px)").matches,
+        ),
+        description: "Refresh to see the latest.",
+        action: { label: "Refresh", onClick: onRefresh },
+        cancel: { label: "Later", onClick: snoozeUpdatePrompt },
+      });
+      return true;
+    };
+
+    // Another tab can activate the worker while this document is still running
+    // the earlier client build. Refresh still needs this visitor's consent.
+    const promptForDocumentRefresh = () => {
+      if (!documentOutdated) return;
+      const offered = showUpdatePrompt(() => {
+        updateAccepted = true;
+        reloadAcceptedUpdate();
+      }, documentRefreshPending);
+      // A hidden tab cannot spend this replacement notice. Ignore the older
+      // waiting notice once on visible return, while still respecting Later.
+      if (offered) documentRefreshPending = false;
+    };
+
     const promptForUpdate = (waiting: ServiceWorker, olderController: ServiceWorker | null) => {
-      // A real update is a distinct installed worker waiting to replace the
-      // same registration's controller that already owned this page. Ignore
-      // first installs and callbacks for workers that have already moved on.
+      // Ignore first installs and callbacks for workers that have already moved on.
       if (
         !olderController ||
         olderController === waiting ||
@@ -203,38 +240,25 @@ export default function ServiceWorkerRegister() {
         registration?.active !== olderController ||
         registration.waiting !== waiting ||
         waiting.state !== "installed"
-      ) {
-        return;
-      }
-      if (!shouldOfferUpdatePrompt(snoozedAt(), presentedAt())) return;
-      // Both an already-waiting registration and updatefound can describe the
-      // same worker. Persist this before creating the toast so route changes
-      // or a second registrar cannot surface duplicate notices.
-      markUpdatePromptPresented();
-      if (toastId !== undefined) {
-        toast.dismiss(toastId);
-      }
-      toastId = toast("A new version is ready", {
-        ...updatePromptPresentation(
-          window.location.pathname,
-          window.matchMedia("(max-width: 639px)").matches,
-        ),
-        description: "Refresh to see the latest.",
-        action: {
-          label: "Refresh",
-          onClick: () => {
-            updateAccepted = true;
-            waiting.postMessage({ type: "SKIP_WAITING" });
-          },
-        },
-        // Keep both choices explicit for keyboard and screen-reader users.
-        // "Later" dismisses this waiting worker across route changes, then
-        // offers it again after the short session-scoped snooze expires.
-        cancel: {
-          label: "Later",
-          onClick: snoozeUpdatePrompt,
-        },
+      ) return;
+      showUpdatePrompt(() => {
+        if (disposed) return;
+        // This notice may still be visible after another tab accepted it.
+        // Never send SKIP_WAITING to an already-active or superseded worker.
+        if (documentOutdated) {
+          updateAccepted = true;
+          reloadAcceptedUpdate();
+        } else if (registration?.waiting === waiting && waiting.state === "installed") {
+          updateAccepted = true;
+          waiting.postMessage({ type: "SKIP_WAITING" });
+        }
       });
+    };
+
+    const offerAvailableUpdate = () => {
+      if (disposed) return;
+      if (documentOutdated) promptForDocumentRefresh();
+      else if (registration?.waiting) promptForUpdate(registration.waiting, previousController);
     };
 
     /**
@@ -255,20 +279,28 @@ export default function ServiceWorkerRegister() {
     };
 
     const wire = (reg: ServiceWorkerRegistration) => {
+      if (disposed) return;
+      unwireRegistration();
       registration = reg;
       if (reg.waiting) {
         promptForUpdate(reg.waiting, initialController);
       }
-      reg.addEventListener("updatefound", () => {
+      const onUpdateFound = () => {
         const installing = reg.installing;
         if (!installing) return;
         const controllerAtStart = previousController;
-        installing.addEventListener("statechange", () => {
-          if (installing.state === "installed") {
-            promptForUpdate(installing, controllerAtStart);
+        const onStateChange = () => {
+          if (installing.state === "installed") promptForUpdate(installing, controllerAtStart);
+          if (installing.state === "installed" || installing.state === "redundant") {
+            installing.removeEventListener("statechange", onStateChange);
+            stateListeners.delete(installing);
           }
-        });
-      });
+        };
+        stateListeners.set(installing, onStateChange);
+        installing.addEventListener("statechange", onStateChange);
+      };
+      reg.addEventListener("updatefound", onUpdateFound);
+      unwireRegistration = () => reg.removeEventListener("updatefound", onUpdateFound);
       rememberSettledController();
     };
 
@@ -302,7 +334,10 @@ export default function ServiceWorkerRegister() {
     // a failed update check just means we try again next time.
     const checkForUpdate = () => {
       if (document.visibilityState === "visible") {
-        registration?.update().catch(() => {});
+        // An existing waiting worker does not emit updatefound again. Reoffer
+        // it after the snooze, including when the earlier notice timed out.
+        offerAvailableUpdate();
+        registration?.update().then(offerAvailableUpdate).catch(() => {});
       }
     };
     document.addEventListener("visibilitychange", checkForUpdate);
@@ -313,10 +348,14 @@ export default function ServiceWorkerRegister() {
     // there can erase the visitor's first action. An accepted update still
     // reloads once so the new build takes over immediately.
     const onControllerChange = () => {
+      const controller = navigator.serviceWorker.controller;
+      if (previousController && controller && controller !== previousController) {
+        documentOutdated = true;
+        documentRefreshPending = true;
+      }
       rememberSettledController();
-      if (!shouldReloadForAcceptedUpdate(updateAccepted, reloaded)) return;
-      reloaded = true;
-      window.location.reload();
+      if (updateAccepted) reloadAcceptedUpdate();
+      else if (documentOutdated) promptForDocumentRefresh();
     };
     navigator.serviceWorker.addEventListener(
       "controllerchange",
@@ -324,6 +363,10 @@ export default function ServiceWorkerRegister() {
     );
 
     return () => {
+      disposed = true;
+      unwireRegistration();
+      for (const [worker, listener] of stateListeners) worker.removeEventListener("statechange", listener);
+      stateListeners.clear();
       window.removeEventListener("load", onLoad);
       document.removeEventListener("visibilitychange", checkForUpdate);
       window.removeEventListener("focus", checkForUpdate);

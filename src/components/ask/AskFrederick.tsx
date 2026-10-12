@@ -59,6 +59,7 @@ import {
 import type { TodayPrompt } from "@/lib/today-prompts";
 import { track } from "@/lib/track";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { APP_UPDATE_ACCEPTED_EVENT } from "@/lib/pwa-display";
 import {
   askResponsePresentation,
   askResponseSectionOrder,
@@ -71,6 +72,8 @@ import {
   readAskReturnId,
   readAskReturnSnapshot,
   writeAskReturnSnapshot,
+  takeAskUpdateDraft,
+  writeAskUpdateDraft,
   type AskReturnSnapshot,
 } from "@/lib/ask/return-state";
 
@@ -1475,6 +1478,22 @@ export default function AskFrederick({
   }, [geolocation.state]);
 
   useEffect(() => {
+    const retainUpdateDraft = () => {
+      try {
+        writeAskUpdateDraft(
+          window.sessionStorage,
+          q,
+          new URLSearchParams(window.location.search).get("q") ?? "",
+        );
+      } catch {
+        // Strict privacy modes may block tab storage. The update remains usable.
+      }
+    };
+    window.addEventListener(APP_UPDATE_ACCEPTED_EVENT, retainUpdateDraft);
+    return () => window.removeEventListener(APP_UPDATE_ACCEPTED_EVENT, retainUpdateDraft);
+  }, [q]);
+
+  useEffect(() => {
     // Next may restore a cached server component when the visitor returns
     // from a source. Read the real browser URL first so a replaced `?q=` is
     // not overwritten by the older server-prop snapshot.
@@ -1483,6 +1502,13 @@ export default function AskFrederick({
         ? ""
         : new URLSearchParams(window.location.search).get("q") ?? "";
     const text = (browserQuery || initialQuery).trim().slice(0, MAX_QUERY_LENGTH);
+    let updateDraft: string | null = null;
+    try {
+      updateDraft = takeAskUpdateDraft(window.sessionStorage, text);
+    } catch {
+      // No retained draft when browser storage is unavailable.
+    }
+    if (updateDraft !== null) setQ(updateDraft);
     // Next's router cache can retain this client instance while restoring a
     // fresh server snapshot on Back. In that case the remembered URL already
     // matches, but the answer state is empty. Let `ask` rehydrate the answer
@@ -1517,7 +1543,7 @@ export default function AskFrederick({
       lastQueryRef.current = restored.permalinkQuery || text;
       visibleResultRef.current = restored.result;
       setLoading(false);
-      setQ(restored.draft);
+      setQ(updateDraft ?? restored.draft);
       setSubmittedQuery(restored.submittedQuery);
       setPermalinkQuery(restored.permalinkQuery);
       setRequestFailure(restored.requestFailure);
@@ -1536,6 +1562,9 @@ export default function AskFrederick({
     }
 
     void askRef.current(text, { selfContained: true, scope: urlScope ?? undefined });
+    // Rehydrate the submitted question's answer without replacing newer words
+    // the visitor was editing when they accepted the application update.
+    if (updateDraft !== null) setQ(updateDraft);
   }, [initialQuery, initialScope]);
 
   async function ask(query: string, options: AskOptions = {}): Promise<void> {
