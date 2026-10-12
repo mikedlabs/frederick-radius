@@ -5,6 +5,10 @@ import path from "node:path";
 import { findErrorBoundaryMarker } from "./error-boundary-markers";
 
 const FAIR_PATH = "/moments/great-frederick-fair-2026#fair-map";
+// The 2026 Fair ended on September 26 and its dock now drops Program. These
+// journeys check the Fair-week guide, so the browser clock stays in the
+// planning window they were written for.
+const FAIR_WEEK_CLOCK = new Date("2026-09-10T16:00:00Z");
 const AXE_PATH = path.join(process.cwd(), "node_modules/axe-core/axe.min.js");
 const FAIR_MAP_LENSES = [
   { id: "arrival", count: 16 },
@@ -523,6 +527,10 @@ test.describe("Fairgrounds map accessibility", () => {
     locale: "en-US",
     timezoneId: "America/New_York",
     serviceWorkers: "block",
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(FAIR_WEEK_CLOCK);
   });
 
   test("keeps the Fair guide usable when WebGL2 is unavailable", async ({

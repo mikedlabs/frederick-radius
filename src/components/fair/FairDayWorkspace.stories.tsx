@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, waitFor, within } from "storybook/test";
 
 import { addFairPlanItem, createFairPlan } from "@/lib/fair/plan";
 import type { FairPartyOffer } from "@/lib/fair/party-plan";
@@ -222,6 +223,7 @@ export const fairDayStoryData: FairDayWorkspaceData = {
     gateClosesAt: `${date}T22:00:00-04:00`,
   })),
   initialDate: "2026-09-18",
+  todayDate: null,
   offers: [
     {
       id: "offer-adult-admission-online",
@@ -363,10 +365,26 @@ export const fairDayStoryData: FairDayWorkspaceData = {
   },
 };
 
+/**
+ * The workspace refines its phase from the device clock after mount, so each
+ * story pins that clock to its own data's review time. Without this, every
+ * story would turn into the post-fair record once the real date passes the
+ * 2026 run.
+ */
+function pinStoryClock(isoTimestamp: string) {
+  const realNow = Date.now;
+  const fixed = Date.parse(isoTimestamp);
+  Date.now = () => fixed;
+  return () => {
+    Date.now = realNow;
+  };
+}
+
 const meta = {
   title: "Fair/FairDayWorkspace",
   component: FairDayWorkspace,
   tags: ["autodocs"],
+  beforeEach: ({ args }) => pinStoryClock(args.data.reviewedAt),
   parameters: {
     layout: "fullscreen",
     docs: {
@@ -408,6 +426,61 @@ export const SavedDay: Story = {
   play: async ({ canvasElement }) => {
     Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("nav button"))
       .find((button) => button.offsetParent !== null && button.textContent?.trim().startsWith("My Day"))?.click();
+  },
+};
+
+export const PostFair: Story = {
+  name: "Post-fair / the 2026 record hands visitors to this weekend",
+  globals: {
+    viewport: { value: "radiusMobile", isRotated: false },
+  },
+  args: {
+    data: {
+      ...fairDayStoryData,
+      eventPhase: "post-fair",
+      eventPhaseLabel: "After the Fair",
+      reviewedAt: "2026-10-07T16:00:00.000Z",
+      todayDate: null,
+    },
+    afterwardMoment: {
+      title: "Catoctin Colorfest",
+      slug: "catoctin-colorfest-2026",
+    },
+  },
+  beforeEach: () => {
+    // Stories share one preview URL, and the workspace opens the mode its
+    // hash names. Program's play leaves #program behind, so start on Home.
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${window.location.search}#now`,
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() =>
+      expect(
+        canvasElement.querySelector("[data-fair-mode-content]"),
+      ).not.toHaveAttribute("hidden"),
+    );
+    // The Home panel fades in from opacity 0, so wait for the record itself.
+    await waitFor(() =>
+      expect(
+        canvas.getByText("The 2026 Great Frederick Fair ran September 18 to 26."),
+      ).toBeVisible(),
+    );
+    await expect(
+      canvas.getByRole("link", { name: "See what's on this weekend" }),
+    ).toHaveAttribute("href", "/events?lens=weekend");
+    await expect(
+      canvas.getByRole("link", { name: "Open the Catoctin Colorfest guide" }),
+    ).toHaveAttribute("href", "/moments/catoctin-colorfest-2026");
+    await expect(canvas.queryByText("Review tickets")).toBeNull();
+    await expect(canvas.queryByText(/Grandstand Event/)).toBeNull();
+    const dockLabels = Array.from(
+      canvasElement.querySelectorAll("[data-mobile-action-bar] nav button"),
+    ).map((button) => button.getAttribute("aria-label"));
+    await expect(dockLabels).toEqual(["Home", "Map"]);
   },
 };
 

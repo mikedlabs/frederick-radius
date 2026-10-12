@@ -2,9 +2,14 @@ import { expect, test } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 
 const fair = "/moments/great-frederick-fair-2026";
+// The 2026 Fair ended on September 26 and its dock now drops My Day. This
+// journey checks the Fair-week guide, so the browser clock stays in the
+// planning window it was written for.
+const FAIR_WEEK_CLOCK = new Date("2026-09-10T16:00:00Z");
 
 for (const width of [320, 390, 430, 1440]) {
   test(`photo-led program and saved plan at ${width}px`, async ({ page }) => {
+    await page.clock.setFixedTime(FAIR_WEEK_CLOCK);
     await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
     await page.goto(`${fair}#program`);
     const feature = page.locator("[data-fair-grandstand-spotlight]");

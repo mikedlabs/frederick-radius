@@ -237,13 +237,13 @@ describe("FairDayWorkspace app journey", () => {
 
     await openMode("Program");
     const fairBack = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Back to Fair Today"]',
+      'button[aria-label="Back to the Fair guide"]',
     );
     expect(fairBack?.textContent?.trim()).toBe("");
 
     await openMode("Map");
     const mapBack = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Back to Fair Today"]',
+      'button[aria-label="Back to the Fair guide"]',
     );
     const mapHelp = container.querySelector<HTMLButtonElement>(
       'button[aria-label="Help & access"]',
@@ -505,8 +505,15 @@ describe("FairDayWorkspace app journey", () => {
         (item) => item.title === "Daughtry",
       );
       expect(Boolean(daughtry?.sourceReview)).toBe(reviewed);
+      // The second boundary is after the run, when the dock drops Program.
+      // Open the 2026 program the way an old shared link does.
+      window.history.replaceState(
+        {},
+        "",
+        "/moments/great-frederick-fair-2026#program",
+      );
       await renderFair(data);
-      await openFullProgram();
+      await act(async () => vi.advanceTimersByTimeAsync(20));
       const day = container.querySelector<HTMLSelectElement>(
         'select[aria-label="Fair day to explore"]',
       );

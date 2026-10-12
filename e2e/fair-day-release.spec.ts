@@ -7,6 +7,10 @@ const COUNTY_TRANSIT_URL =
   "https://www.frederickcountymd.gov/105/Transit-Services";
 const EVENTHUB_URL =
   "https://mobile.eventhub-floorplan.net/?Show_ID=18209";
+// The 2026 Fair ended on September 26 and its Home is now a record. These
+// journeys check the Fair-week guide, so the browser clock stays in the
+// planning window they were written for.
+const FAIR_WEEK_CLOCK = new Date("2026-09-10T16:00:00Z");
 
 test.describe("Fair Day production release journey", () => {
   test.use({
@@ -14,6 +18,10 @@ test.describe("Fair Day production release journey", () => {
     locale: "en-US",
     timezoneId: "America/New_York",
     serviceWorkers: "block",
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(FAIR_WEEK_CLOCK);
   });
 
   test("keeps the unrelated Today route out of the Fair cold load", async ({
