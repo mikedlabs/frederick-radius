@@ -2,7 +2,7 @@
  * Hours freshness policy (data brief, Phase 1, section 4.3).
  *
  * The decision record, item 8: open and closed states render only when
- * hours come from Google Places and the row was verified within the
+ * hours come from an accepted provider or reviewed first-party source and were checked within the
  * freshness window. Everything else renders the existing "Hours not
  * posted" pattern (the unverified state, which the card components
  * already translate into honest silence or "Likely open").

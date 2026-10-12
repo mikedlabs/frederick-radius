@@ -140,6 +140,7 @@ describe("bundled source artifact evidence", () => {
 
     expect(evidence.map((item) => item.sourceKey).sort()).toEqual([
       "business_info_extraction",
+      "fcpl_branch_hours",
       "municipal_civic_extraction",
       "transit_gtfs",
       "venue_event_extraction",

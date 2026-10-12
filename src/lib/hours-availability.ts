@@ -1,5 +1,5 @@
 import type { Hours } from "@/data/places";
-import type { OpenStatus } from "@/lib/hours";
+import { isScheduleEvidenceCurrent, type OpenStatus } from "@/lib/hours";
 import { mayAssertOpenState } from "@/lib/hours-freshness";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 
@@ -98,7 +98,8 @@ export function hasReliableHours(
         place.hours_updated_at,
         now,
       ) &&
-      mayPublishVisitabilityHours(place.slug, place.hours, now),
+      mayPublishVisitabilityHours(place.slug, place.hours, now) &&
+      isScheduleEvidenceCurrent(place.hours, now),
   );
 }
 

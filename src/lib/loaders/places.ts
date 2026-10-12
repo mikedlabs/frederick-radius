@@ -6,6 +6,9 @@
 // prebuild, coverage, audits) import this loader directly, and server-only's
 // default export throws outside a React Server context, which breaks the
 // build. server-only would need a script-side stub before it could return.
+import OFFICIAL_HOURS_RAW from "@/data/places-official-hours.json" with { type: "json" };
+import { officialHoursForPlace } from "@/lib/official-hours";
+import { isScheduleEvidenceCurrent } from "@/lib/hours";
 import { PLACES, type Place } from "@/data/places";
 import { CATEGORY_BY_SLUG, CATEGORIES } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -1132,12 +1135,16 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   const refreshedHours = !hoursPatchOutranksRefresh && refresh?.weekday_hours
     ? parseGoogleHours(refresh.weekday_hours)
     : undefined;
-  const hours = refreshedHours ?? enriched.hours;
-  const hoursVerified = refreshedHours ? true : (enriched.hours_verified ?? false);
-  const hoursVerifiedAt = refreshedHours ? refresh?.refreshed_at : hours_updated_at;
+  const official = officialHoursForPlace(enriched, OFFICIAL_HOURS_RAW, now);
+  // Enrolled first-party identities never fall back to a holiday-blind weekly
+  // provider schedule when their closure evidence is absent, invalid or stale.
+  const hours = official.enrolled ? official.hours : refreshedHours ?? enriched.hours;
+  const hoursVerified = official.enrolled ? Boolean(official.hours) : refreshedHours ? true : (enriched.hours_verified ?? false);
+  const hoursVerifiedAt = official.enrolled ? official.observedAt : refreshedHours ? refresh?.refreshed_at : hours_updated_at;
   const mayAssertHours =
     mayAssertOpenState(hoursVerified, hoursVerifiedAt, now) &&
-    mayPublishVisitabilityHours(p.slug, hours, now);
+    mayPublishVisitabilityHours(p.slug, hours, now) &&
+    (!hours || isScheduleEvidenceCurrent(hours, now));
   const manualStatus = activeManualPlaceStatusOverride(p.slug, now);
   const refreshedStatus = refreshedBusinessStatus(
     p.slug,
@@ -1166,10 +1173,10 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     // canonical boundary so an unreviewed 24/7 or stale schedule cannot leak
     // back onto a place page as seven raw "Open 24 hours" rows.
     google_hours:
-      mayAssertHours && !hoursPatchOutranksRefresh
+      mayAssertHours && !official.enrolled && !hoursPatchOutranksRefresh
         ? enriched.google_hours
         : undefined,
-    hours_source: refreshedHours ? ("google_places" as const) : hours_source,
+    hours_source: official.enrolled ? "first_party" : refreshedHours ? ("google_places" as const) : hours_source,
     hours_updated_at: hoursVerifiedAt,
     // The one decision point of the hours policy: open and closed states render
     // only from recently verified hours.

@@ -146,7 +146,8 @@
     "test:ux": "playwright test e2e/ux-audit.spec.ts e2e/safe-interaction-crawler.spec.ts --workers=2 --retries=1",
     "test:ux:crawler": "playwright test e2e/safe-interaction-crawler.spec.ts --workers=2 --retries=1",
     "eval:coverage": "tsx --tsconfig tsconfig.json scripts/eval-answer-coverage.ts",
-    "steward:holdback": "node scripts/steward-holdback.mjs"
+    "steward:holdback": "node scripts/steward-holdback.mjs",
+    "refresh:official-hours": "tsx --tsconfig tsconfig.json scripts/refresh-official-hours.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.112",

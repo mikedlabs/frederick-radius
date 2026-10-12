@@ -174,6 +174,7 @@ const slim = publicPlaces().map((p) => {
   void _cl;
   return {
     ...rest,
+    ...(d.hours_source === "first_party" ? { hours_source: d.hours_source } : {}),
     // The business-info workflow writes through a review PR. Once accepted,
     // its exact direct links join the client artifact here, so map sheets and
     // cards can act on them without importing the server-only source file.
