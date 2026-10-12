@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+/* eslint-disable @next/next/no-img-element -- Native fixture images expose the real failure signal. */
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,6 +12,7 @@ const state = vi.hoisted(() => ({
   requestIfGranted: vi.fn(),
   answer: vi.fn(),
 }));
+vi.mock("next/image", () => ({ default: ({ src, onLoad, onError }: { src: string; onLoad?: React.ReactEventHandler<HTMLImageElement>; onError?: React.ReactEventHandler<HTMLImageElement> }) => <img src={src} alt="" onLoad={onLoad} onError={onError} /> }));
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
@@ -57,6 +59,7 @@ afterEach(async () => {
   container.remove();
   document.cookie = "fr_scope=; path=/; max-age=0";
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 async function render() {
@@ -93,5 +96,36 @@ describe("Today hydrated scope agrees with its area control", () => {
     expect(state.answer.mock.calls.every((call) => call[2] === "county")).toBe(true);
     expect(container.querySelector('a[href="/nearby?c=coffee&in=county"]')).not.toBeNull();
     expect(container.textContent).not.toContain("Frederick City picks");
+  });
+});
+
+
+describe("Today place photo preserves the decision and exact source", () => {
+  it.each(["load", "error"])("keeps credits outside the place action and preserves the decision after image %s failure", async (failure) => {
+    const photoName = "places/local-id/photos/exact-photo";
+    const raw = `/api/place-photo?name=${encodeURIComponent(photoName)}&w=800`;
+    const source = "https://www.google.com/maps/contrib/123/photo/456";
+    state.answer.mockResolvedValue({ hero: { slug: "local-place", name: "Local place", photo: raw, where: "Brunswick", distance: "6 min walk", fact: "Hours not confirmed", confidence: "unconfirmed" }, also: [], soon: null, browseHref: "/nearby?c=coffee&in=brunswick", contextLabel: "Brunswick", contextSource: "town" });
+    const request = vi.fn(async () => new Response(JSON.stringify({ place: { slug: "local-place", google_photo_url: raw, google_photo_attribution: { photo_name: photoName, google_maps_uri: source, authors: [{ display_name: "Local photographer", uri: "https://www.google.com/maps/contrib/123" }] } } })));
+    vi.stubGlobal("fetch", request);
+    await render();
+    const photo = container.querySelector("img")!;
+    expect(photo).not.toBeNull();
+    expect(photo.getAttribute("src")).toContain("w=720");
+    expect(photo.getAttribute("src")).toContain("fallback=signal");
+    expect(container.querySelector('a[href="/places/local-place"] a')).toBeNull();
+    expect(container.querySelector(`a[href="${source}"]`)?.textContent).toBe("Google Maps");
+    expect(request).toHaveBeenCalledTimes(1);
+    Object.defineProperty(photo, "naturalWidth", { configurable: true, value: 1 });
+    Object.defineProperty(photo, "naturalHeight", { configurable: true, value: 1 });
+    await act(async () => photo.dispatchEvent(new Event(failure)));
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.textContent).not.toContain("Local photographer");
+    const placeLink = container.querySelector('a[href="/places/local-place"]');
+    expect(placeLink?.textContent).toContain("Local place");
+    expect(placeLink?.textContent).toContain("Hours not confirmed");
+    expect(placeLink?.textContent).toContain("Brunswick · 6 min walk");
+    expect(container.textContent).toContain("Places to try");
+    expect(request).toHaveBeenCalledTimes(1);
   });
 });

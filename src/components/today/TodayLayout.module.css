@@ -174,21 +174,9 @@
   padding-right: 0;
 }
 
-.places [data-today-decision-density="brief"] [data-today-place-lead] {
+.places [data-today-decision-density="brief"] [data-today-place-card="lead"] {
   width: 100%;
   min-height: 112px;
-}
-
-.places [data-today-pick-name] {
-  font-size: 18px;
-  line-height: 1.2;
-}
-
-.places [data-today-pick-context] {
-  flex-wrap: wrap;
-  white-space: normal;
-  font-size: 12px;
-  line-height: 1.4;
 }
 
 .eventRow {

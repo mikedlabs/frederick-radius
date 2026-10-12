@@ -11,9 +11,9 @@ describe("Today universal Find launcher", () => {
 
     expect(html).toContain('aria-label="Find a place, service, event, or answer"');
     expect(html).toContain('href="/search"');
-    expect(html).toContain("What do you need?");
+    expect(html).toContain("Find places and events");
     expect(html).toContain(
-      "Find a place, an event, or help with your plans.",
+      "Search a name, a need, or a question.",
     );
     expect(html).toContain('href="/open-now"');
     expect(html).toContain('href="/amenities"');
