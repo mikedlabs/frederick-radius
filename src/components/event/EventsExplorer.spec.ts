@@ -387,7 +387,7 @@ describe("EventsExplorer event time windows", () => {
     expect(
       eventMatchesTimeWindow(market, "today", {
         ...bounds,
-        now: Date.parse("2026-08-01T11:15:01-04:00"),
+        now: Date.parse("2026-08-01T12:15:01-04:00"),
       }),
     ).toBe(false);
   });

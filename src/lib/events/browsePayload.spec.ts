@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { buildHorizonBounds, groupByHorizon } from "@/lib/eventHorizon";
+import { compareForLead } from "@/lib/events/lead-rank";
 import {
   collapseLaterSeries,
   initialEventsForBrowse,
@@ -65,6 +66,10 @@ describe("events browse payload", () => {
 
     expect(slim.description).toHaveLength(160);
     expect("ticket_url" in slim).toBe(false);
+    expect(slim.has_tickets).toBe(true);
+    expect(
+      "has_tickets" in slimEventForBrowse(event("free", "2026-07-14T14:00:00.000Z", { ticket_url: undefined })),
+    ).toBe(false);
     expect(slim.source_url).toBe("https://example.com/source");
     expect(slim.source).toBe("seed");
     expect(slim.geo_confidence).toBe("venue_match");
@@ -175,5 +180,40 @@ describe("events browse payload", () => {
 
     expect(initial.map((item) => item.slug)).toContain("concert");
     expect(initial).toHaveLength(6);
+  });
+
+  it("ranks a one-off ticketed show over a weekly routine after slimming", () => {
+    // UI audit, Oct 2026: the ticketed-show signal in lead-rank never ran on
+    // the board because the slim row dropped ticket_url, so a weekly Game
+    // Night that starts sooner led a one-off ticketed show.
+    const gameNight = event("game-night", "2026-07-14T22:00:00.000Z", {
+      title: "Game Night",
+      category: "nightlife",
+      venue_name: "Olde Mother Brewing",
+      hero_image: "/api/place-photo?name=game-night",
+      is_recurring: true,
+      recurrence_text: "Every Tuesday",
+      ticket_url: undefined,
+    });
+    const lasAnez = event("las-anez", "2026-07-14T23:30:00.000Z", {
+      title: "Las Áñez",
+      category: "theater",
+      venue_name: "New Spire Arts",
+      hero_image: "/api/place-photo?name=las-anez",
+      ticket_url: "https://www.weinbergcenter.org",
+    });
+
+    const prepared = prepareEventsForBrowse([gameNight, lasAnez], BOUNDS);
+    // The client sorts these slim rows; it must agree with the full records.
+    expect([...prepared].sort((a, b) => compareForLead(a, b)).map((e) => e.slug)).toEqual([
+      "las-anez",
+      "game-night",
+    ]);
+    expect([gameNight, lasAnez].sort((a, b) => compareForLead(a, b)).map((e) => e.slug)).toEqual([
+      "las-anez",
+      "game-night",
+    ]);
+    // The server's bounded first paint picks the same lead.
+    expect(initialEventsForBrowse(prepared, BOUNDS, 1).map((e) => e.slug)).toEqual(["las-anez"]);
   });
 });
