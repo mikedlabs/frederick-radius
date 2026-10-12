@@ -35,6 +35,12 @@
 }
 @media (max-width: 400px) {
  .resultHeader .scene { min-height: 120px; }
+ /* Keep a stop's real name out of the decorative icon's narrow column. */
+ .stopHeader { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 0; }
+ .stopIdentity { display: contents; }
+ .stopTiming { grid-column: 1; grid-row: 1; }
+ .stopDestination { grid-column: 1 / -1; grid-row: 2; margin-top: 0; }
+ .stopMedallion { grid-column: 2; grid-row: 1; }
 }
 @media (max-width: 374px) {
  .scene { min-height: 200px; }

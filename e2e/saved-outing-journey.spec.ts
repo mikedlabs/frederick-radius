@@ -90,7 +90,10 @@ async function geometry(page: Page, checkHit = true) {
   const value = await heading.evaluate((element, navigation) => {
     const rect = element.getBoundingClientRect();
     const fixed = navigation!.getBoundingClientRect();
-    return { top: rect.top, bottom: rect.bottom, documentBottom: rect.bottom + scrollY, navTop: fixed.top, scrollY,
+    const body = element.closest("article")!.firstElementChild!;
+    const bodyStyle = getComputedStyle(body);
+    const contentWidth = body.clientWidth - parseFloat(bodyStyle.paddingLeft) - parseFloat(bodyStyle.paddingRight);
+    return { headingWidth: rect.width, contentWidth, top: rect.top, bottom: rect.bottom, documentBottom: rect.bottom + scrollY, navTop: fixed.top, scrollY,
       hit: element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)) };
   }, nav!);
   expect(value.top).toBeGreaterThanOrEqual(0);

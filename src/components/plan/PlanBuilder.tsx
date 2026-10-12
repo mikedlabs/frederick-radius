@@ -1111,16 +1111,16 @@ function Stop({
       </span>
       <article className={styles.stopCard}>
         <div className={styles.stopBody} style={{ paddingBottom: 12 }}>
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-semibold">
+        <div className={`${styles.stopHeader} flex items-start gap-3`}>
+          <div className={`${styles.stopIdentity} min-w-0 flex-1`}>
+            <div className={`${styles.stopTiming} flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-semibold`}>
               <span className="tabular-nums" style={{ color: "var(--app-ink-2)" }}>{clock(stop.at)} · {stop.duration_min} min</span>
               <span className="inline-flex items-center gap-1" style={{ color: "var(--app-ink-2)" }}>
                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: status.color }} aria-hidden />
                 {status.text}
               </span>
             </div>
-            <Link href={href} className="group mt-1.5 block">
+            <Link href={href} className={`${styles.stopDestination} group mt-1.5 block`}>
               <h3 className="font-serif text-[19px] font-semibold leading-tight tracking-tight group-hover:underline" style={{ color: "var(--app-ink)" }}>
                 {name}
               </h3>
@@ -1132,7 +1132,7 @@ function Stop({
               )}
             </Link>
           </div>
-          <PlaceMedallion place={fallbackPlace} size={48} className="rounded-[var(--app-radius-sm)]" />
+          <PlaceMedallion place={fallbackPlace} size={48} className={`${styles.stopMedallion} rounded-[var(--app-radius-sm)]`} />
         </div>
         </div>
         <PlanStopPhoto stop={stop} />
