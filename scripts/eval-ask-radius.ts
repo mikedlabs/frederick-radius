@@ -7,9 +7,13 @@ import { EVENTS } from "@/data/events";
 
 const failures: string[] = [];
 // Keep the committed seed-event checks anchored to a day with a real evening
-// program. A release gate must not start failing merely because wall-clock time
-// moved past the fixture calendar.
-const evaluationNow = new Date("2026-07-30T16:00:00.000Z");
+// program AND a real free weekend behind it, so the "tonight", "this weekend",
+// and "free events" cases all test a genuine seed row rather than an accident of
+// the fixture calendar. Thursday 2026-06-04 (noon Eastern) is Alive @ Five night,
+// and the weekend that follows carries free rows (Delaplaine First Friday, the
+// Festival of the Arts, the Sunday Bandshell). A release gate must not start
+// failing merely because wall-clock time moved past the fixture calendar.
+const evaluationNow = new Date("2026-06-04T16:00:00.000Z");
 for (const test of ASK_EVAL_CASES) {
   const intent = parseAskIntent(test.query);
   if (intent.kind !== test.intent) {
@@ -30,6 +34,15 @@ for (const test of ASK_EVAL_CASES) {
   }
   if (test.requireEvent && (!leadEvent || leadEvent.type !== "event")) {
     failures.push(`${test.name}: no event result in deterministic seed set`);
+  }
+  if (
+    test.requireFreeEvent &&
+    leadEvent?.type === "event" &&
+    leadEvent.event.is_free !== true
+  ) {
+    failures.push(
+      `${test.name}: lead event ${leadEvent.event.title} is not admission-free`,
+    );
   }
   if (
     test.requireSafeOpenIfPresent &&

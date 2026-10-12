@@ -6,6 +6,9 @@ export type AskEvalCase = {
   intent: AskIntentKind;
   requirePlace?: boolean;
   requireEvent?: boolean;
+  /** The lead event must be admission-free, not just present. Guards the
+   * "free events" promise against a paid row sneaking to the top. */
+  requireFreeEvent?: boolean;
   /** An honest empty result is acceptable when no current schedule can prove
    * a place open. Any returned place must carry a real open state. */
   requireSafeOpenIfPresent?: boolean;
@@ -35,7 +38,7 @@ export const ASK_EVAL_CASES: AskEvalCase[] = [
   { name: "live music", query: "live music tonight", intent: "event", requireEvent: true },
   { name: "events tonight", query: "what events are happening tonight", intent: "event", requireEvent: true },
   { name: "weekend events", query: "events this weekend", intent: "event", requireEvent: true },
-  { name: "free events", query: "free events this weekend", intent: "event", requireEvent: true },
+  { name: "free events", query: "free events this weekend", intent: "event", requireEvent: true, requireFreeEvent: true },
   { name: "report pothole", query: "how do I report a pothole", intent: "civic" },
   { name: "animal control", query: "phone number for animal control", intent: "civic" },
   { name: "permit", query: "where do I get a county permit", intent: "civic" },
