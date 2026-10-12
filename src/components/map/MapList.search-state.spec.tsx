@@ -36,12 +36,24 @@ describe("map recovery search truth", () => {
     expect(container.textContent).toContain("No fallback results are available");
     expect(container.textContent).not.toContain("Searching Radius");
   });
+  it("stays quiet while the dock's search panel already shows the status and its retry", async () => {
+    for (const state of ["pending", "unavailable"] as const) {
+      await act(async () => root.render(<MapList places={[]} events={[]} userLoc={null} failureMode searchState={state} searchFeedbackInDock onRetrySearch={retry} onPick={() => {}} onPickEvent={() => {}} />));
+      expect(container.querySelector("button")).toBeNull();
+      expect(container.querySelector('[role="status"]')).toBeNull();
+      expect(container.textContent).not.toContain("Searching Radius");
+      expect(container.textContent).not.toContain("No fallback results");
+      expect(container.textContent).not.toContain("0 places");
+    }
+  });
   it("feeds the actual query settlement and failure markers into the recovery list", () => {
     const source = readFileSync("src/components/map/AppMap.tsx", "utf8");
     const recovery = source.slice(source.indexOf('places={mapFallbackResults'), source.indexOf('onPick={openPlaceSheet}', source.indexOf('places={mapFallbackResults')));
     expect(recovery).toContain('searchUnavailableQuery === q.trim() ? "unavailable"');
     expect(recovery).toContain('searchSettledQuery !== q.trim() ? "pending"');
     expect(recovery).toContain('onRetrySearch={() => setSearchAttempt');
+    expect(recovery).toContain("searchFeedbackInDock={dockSearchPanelVisible}");
+    expect(source).toContain("onSearchPanelVisibleChange={setDockSearchPanelVisible}");
   });
 
 });
