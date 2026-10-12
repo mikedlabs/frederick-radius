@@ -50,6 +50,9 @@ export const REQUIRED_ACTIVE: Record<string, Collection> = {
   // runtime source from remaining falsely labelled scaffold/pending in the
   // ledger after its UI or API consumer ships.
   google_news_rss: "runtime",
+  city_official_news: "runtime",
+  county_official_news: "runtime",
+  city_official_releases: "runtime",
   reddit_frederick: "runtime",
   mta_marc_rt: "runtime",
   hood_athletics: "runtime",

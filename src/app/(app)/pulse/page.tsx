@@ -32,9 +32,9 @@ import {
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { getLocalHeadlinesResult, type NewsHeadlinesResult } from "@/lib/integrations/news";
-import LocalNewsBriefView, { type OfficialNewsResult } from "@/components/news/LocalNewsBriefView";
+import LocalNewsBriefView from "@/components/news/LocalNewsBriefView";
 import { pulseNewsTile } from "@/components/news/pulse-news-tile";
-import { getCivicPressReleasesResult, policeReleases, featuredPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
+import { getCivicPressReleasesResult, officialCivicNews, policeReleases, featuredPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
 import { getMarcBoard, getMarcAlerts, marcClockMinutes } from "@/lib/integrations/marcTrains";
 import { airQualityObservedAt, pickWorstAqi, type AqiObservation } from "@/lib/integrations/airnow";
 import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
@@ -916,14 +916,9 @@ export default async function PulsePage() {
   // These reference feeds used to stack as their own text-heavy sections below
   // the board; they now live INSIDE the dashboard as tap-to-open tiles, so the
   // whole page is one unified, visual grid. Built server-side like every tile.
-  const civicNews = press.filter((item) => item.lane === "civic");
-  const officialNews: OfficialNewsResult = {
-    items: civicNews,
-    status: !pressResult.available || pressResult.data.sourceHealth.unavailable.length === 2
-      ? "unavailable" : civicAvailable ? "available" : "partial",
-  };
+  const officialNews = officialCivicNews(pressResult.data);
   const newsBody = (
-    <LocalNewsBriefView news={newsResult} headlineLimit={6} showHeading={false} official={officialNews} />
+    <LocalNewsBriefView news={newsResult} headlineLimit={6} officialLimit={6} showHeading={false} official={officialNews} />
   );
 
   const policeBody = (
