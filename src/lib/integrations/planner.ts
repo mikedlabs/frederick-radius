@@ -304,40 +304,34 @@ function hashStr(s: string): number {
   return h >>> 0;
 }
 
+/** Match the generation gates when a saved choice is edited or reopened.
+ * Unknown access and prices stay eligible; recorded conflicts do not. */
+function placeConstraintReason(p: Place & { google_rating?: number }, input: PlanInputs, at: Date): string | null {
+  if (input.municipality && p.municipality !== input.municipality) return "This place is outside your selected town. Its choice is saved.";
+  if (!isRecommendable(p) || !isPublicPlanCandidate(p)) return "This place is not currently available for an outing. Its choice is saved.";
+  if (!(isDestinationCategory(p.category) || (input.vibe === "active" && p.category === "wellness")) || !fitsVibe(p.category, input.vibe)) return "This place does not fit your selected outing style. Its choice is saved.";
+  if (input.audience === "date" && input.anchor_slug !== p.slug) {
+    if (DATE_FILLER_CATEGORIES.has(p.category) || (slotFor(at) === "evening" && !DATE_EVENING_CATEGORIES.has(p.category)) || (p.google_rating != null && p.google_rating < DATE_MIN_GOOGLE_RATING)) return "This place does not fit the selected date outing. Its choice is saved.";
+  }
+  if (input.event_anchor_slug && input.audience === "family" && DRINKS.has(p.category)) return "This place does not fit the selected family outing. Its choice is saved.";
+  if (input.local_only && isChainName(p.name)) return "This place does not match your local-business preference. Its choice is saved.";
+  if (input.require_wheelchair_access && p.accessibility?.wheelchair === false) return "This place has a recorded wheelchair barrier. Its choice is saved.";
+  if (input.budget === "free" && !(p.tags ?? []).includes("free")) return "This place is not recorded as free. Its choice is saved.";
+  if (input.budget === "value" && p.price_band != null && p.price_band > 2) return "This place is above your selected price range. Its choice is saved.";
+  return null;
+}
+
+/** A schedule must still be fresh for the visit, not only when it was loaded. */
+function openStatusForPlan(place: Pick<Place, "hours" | "hours_verified" | "hours_updated_at">, at: Date) {
+  const fresh = isHoursFresh(place.hours_updated_at, at);
+  return getOpenStatus(fresh ? place.hours : undefined, { verified: fresh && place.hours_verified }, at);
+}
+
 function scoredCandidates(input: PlanInputs, origin: LngLat, now: Date): Scored[] {
   const slot = slotFor(now);
   const seed = input.seed ?? 0;
-  // Candidate gate (2026-06 audit, ranking-trust blocker): a plan stop
-  // is a recommendation, so only destination categories qualify. The
-  // "easy" vibe scores every category at least +1, which let a church
-  // community room with unknown hours clear score > 0 and seat a date
-  // night. One exception: the active vibe legitimately wants wellness.
-  const allowCategory = (cat: string) =>
-    isDestinationCategory(cat) || (input.vibe === "active" && cat === "wellness");
   return clientPlaces()
-    .filter((p) => {
-      if (input.municipality && p.municipality !== input.municipality) return false;
-      if (!isRecommendable(p) || !allowCategory(p.category) || !isPublicPlanCandidate(p)) return false;
-      // Audience constraints are gates, not ranking nudges. A generic shop or
-      // a place with a weak known rating should never become a date-plan stop
-      // simply because it is nearby and the planner still has a slot to fill.
-      // An explicit anchor remains the user's choice and is not silently
-      // discarded by these recommendation-only safeguards.
-      if (input.audience === "date" && input.anchor_slug !== p.slug) {
-        if (DATE_FILLER_CATEGORIES.has(p.category)) return false;
-        if (slot === "evening" && !DATE_EVENING_CATEGORIES.has(p.category)) return false;
-        if (p.google_rating != null && p.google_rating < DATE_MIN_GOOGLE_RATING) return false;
-      }
-      if (input.event_anchor_slug && input.audience === "family" && DRINKS.has(p.category)) return false;
-      if (input.local_only && isChainName(p.name)) return false;
-      if (
-        input.require_wheelchair_access &&
-        p.accessibility?.wheelchair === false
-      ) return false;
-      if (input.budget === "free" && !(p.tags ?? []).includes("free")) return false;
-      if (input.budget === "value" && p.price_band != null && p.price_band > 2) return false;
-      return true;
-    })
+    .filter((p) => placeConstraintReason(p, input, now) === null)
     .map((p) => {
       // Score hours at the requested PLAN start, not at page-render time.
       // A 7 AM request for "date night" must not promote a cafe because it is
@@ -345,7 +339,7 @@ function scoredCandidates(input: PlanInputs, origin: LngLat, now: Date): Scored[
       const d: PlaceCardData = {
         ...p,
         distance_m: haversineMeters(origin, p.geom),
-        open_status: getOpenStatus(p.hours, { verified: p.hours_verified }, now),
+        open_status: openStatusForPlan(p, now),
       };
       const distance = d.distance_m ?? haversineMeters(origin, p.geom);
       const base = categoryScore(p.category, input.vibe, slot);
@@ -465,27 +459,20 @@ function availableForStop(
  * must cover both arrival and the end of the visit.
  */
 export function planOpenStateForWindow(
-  place: Pick<Place, "hours" | "hours_verified">,
+  place: Pick<Place, "hours" | "hours_verified" | "hours_updated_at">,
   at: Date,
   durationMin: number,
 ): PlanStop["open"] {
-  const start = getOpenStatus(
-    place.hours,
-    { verified: place.hours_verified },
-    at,
-  ).state;
-  const nearEnd = new Date(
-    at.getTime() + Math.max(1, durationMin - 5) * 60_000,
-  );
-  const end = getOpenStatus(
-    place.hours,
-    { verified: place.hours_verified },
-    nearEnd,
-  ).state;
-  if (start === "open" && (end === "open" || end === "closing-soon")) {
+  const start = openStatusForPlan(place, at);
+  // A visit ending at closing time fits; one ending after closing does not.
+  const nearEnd = new Date(at.getTime() + Math.max(1, durationMin) * 60_000 - 1);
+  const end = openStatusForPlan(place, nearEnd);
+  if ((start.state === "open" || start.state === "closing-soon") &&
+      (end.state === "open" || end.state === "closing-soon") &&
+      start.closesAt === end.closesAt) {
     return "open";
   }
-  if (start === "closed" || end === "closed") return "closed";
+  if (start.state === "closed" || end.state === "closed") return "closed";
   return "unknown";
 }
 
@@ -528,7 +515,7 @@ function schedule(
       ...(o.spec_index !== undefined ? { spec_index: o.spec_index } : {}),
       at,
       duration_min: dur,
-      why: o.place ? whyFor({ ...o.place, open_status: getOpenStatus(o.place.hours, { verified: o.place.hours_verified }, new Date(at)) } as PlaceCardData) : o.why,
+      why: o.place ? whyFor({ ...o.place, open_status: openState === "unknown" ? { state: "unknown" } : openStatusForPlan(o.place, new Date(at)) } as PlaceCardData) : o.why,
       open: openState,
       place: o.place,
       event: o.event,
@@ -658,14 +645,26 @@ export function reconstructPlan(spec: PlanSpec, events: PlanEventEvidence = {}):
   const currentInput: PlanInputs = { ...spec.i, ...(currentAnchor ? {
     start_at: currentAnchor.starts_at, event_anchor_slug: currentAnchor.slug,
   } : {}) };
-  const { origin, now } = resolve(currentInput);
-  const resolvedInput: PlanInputs = { ...currentInput, start_at: now.toISOString() };
+  const resolved = resolve(currentInput);
+  const now = resolved.now;
+  const eventPlan = spec.s.some((ref) => "e" in ref);
+  // Private device coordinates are intentionally absent from share links.
+  // A saved public stop supplies route context without recovering a location.
+  const firstSavedPlace = !eventPlan && !currentInput.start_near && !currentInput.municipality
+    ? spec.s.flatMap((ref) => "p" in ref ? [clientPlaceBySlug(ref.p)] : []).find((place) => place && isRecommendable(place) && isPublicPlanCandidate(place))
+    : undefined;
+  const origin = firstSavedPlace?.geom ?? resolved.origin;
+  const resolvedInput: PlanInputs = {
+    ...currentInput, start_at: now.toISOString(),
+    require_verified_hours: currentInput.require_verified_hours ?? Boolean(currentInput.start_at),
+  };
   const ordered: Array<{ place?: Place; event?: Event; openState: PlanStop["open"]; why: string; photo_url?: string; spec_index: number }> = [];
   const notices: PlanNotice[] = [];
   const unscheduled: NonNullable<Plan["unscheduled"]> = [];
   const refs = [...spec.s];
-  const eventPlan = spec.s.some((ref) => "e" in ref);
   let cursor = now.getTime();
+  const maxStops = Math.min(stopCountFor(resolvedInput.duration_hours), resolvedInput.max_stops ?? Infinity);
+  const windowEnd = now.getTime() + resolvedInput.duration_hours * 60 * 60_000;
   let previous: LngLat | null = null;
   let nearbyPlaces = 0;
   for (const [spec_index, ref] of spec.s.entries()) {
@@ -696,25 +695,47 @@ export function reconstructPlan(spec: PlanSpec, events: PlanEventEvidence = {}):
       continue;
     }
     const p = clientPlaceBySlug(ref.p);
-    if (!p || !isPublicPlanCandidate(p) || !isRecommendable(p) || (spec.i.municipality && p.municipality !== spec.i.municipality)) continue;
+    if (!p || !isPublicPlanCandidate(p) || !isRecommendable(p)) {
+      notices.push({ spec_index, code: "unavailable", message: "This place is not currently available for an outing. Its choice is saved." });
+      continue;
+    }
     const travel = previous ? estimateTravel(previous, p.geom) : null;
     const arrival = new Date(cursor + (travel?.minutes ?? 0) * 60_000);
     const duration = durationFor(p.category);
-    const openState = eventPlan && !isHoursFresh(p.hours_updated_at, arrival)
-      ? "unknown" : planOpenStateForWindow(p, arrival, duration);
+    const openState = planOpenStateForWindow(p, arrival, duration);
+    if (!eventPlan) {
+      const reason = placeConstraintReason(p, resolvedInput, arrival)
+        ?? (haversineMeters(origin, p.geom) >= (resolvedInput.max_distance_m ?? 20_000)
+          ? "This place is outside the selected distance from the plan's public starting point. Its choice is saved." : null)
+        ?? (ordered.length >= maxStops ? "This choice exceeds your stop limit. Its choice is saved." : null)
+        ?? (arrival.getTime() + duration * 60_000 > windowEnd ? "This visit does not fit within your selected time window. Its choice is saved." : null)
+        ?? (openState === "closed" ? "The recorded hours do not cover this visit. Its choice is saved." : null)
+        ?? (resolvedInput.require_verified_hours && openState !== "open" ? "Current verified hours do not cover this visit. Confirm the hours or adjust your hours preference." : null);
+      if (reason) {
+        unscheduled.push({ place: p, spec_index, why: reason });
+        continue;
+      }
+    }
     if (eventPlan) {
       // A single nearby choice is enough for this first event workflow. It
       // must fit the same audience/category gates as the existing planner.
       const anchor = ordered.find((item) => item.event?.slug === currentAnchor?.slug)?.event;
       const familyCompatible = spec.i.audience !== "family" || !["bar", "brewery", "winery", "distillery"].includes(p.category);
-      const compatible = familyCompatible && scoredCandidates({ ...resolvedInput, require_verified_hours: false, max_distance_m: 1_600 }, anchor?.geom ?? origin, arrival).some((c) => c.d.slug === p.slug);
+      const nearbyRadius = Math.min(resolvedInput.max_distance_m ?? 1_600, 1_600);
+      const compatible = familyCompatible && scoredCandidates({ ...resolvedInput, require_verified_hours: false, max_distance_m: nearbyRadius }, anchor?.geom ?? origin, arrival).some((c) => c.d.slug === p.slug);
+      if (ordered.length >= maxStops) {
+        unscheduled.push({ place: p, spec_index, why: "This choice exceeds your stop limit. Its choice is saved." });
+        continue;
+      }
       if (nearbyPlaces >= 1 || !anchor || !compatible || arrival.getTime() + duration * 60_000 > now.getTime() + spec.i.duration_hours * 60 * 60_000) {
         notices.push({ spec_index, code: "does_not_fit", message: "This place does not fit the event's nearby outing window. Its place in your plan is saved." });
         continue;
       }
       nearbyPlaces += 1;
       if (openState === "unknown" || openState === "likely") {
-        unscheduled.push({ place: p, spec_index, why: "A nearby option after the event. Confirm its hours before adding it to your day." });
+        unscheduled.push({ place: p, spec_index, why: resolvedInput.require_verified_hours
+          ? "Current verified hours do not cover this visit. Confirm the hours or adjust your hours preference."
+          : "A nearby option after the event. Confirm its hours before adding it to your day." });
         continue;
       }
     }
@@ -725,12 +746,16 @@ export function reconstructPlan(spec: PlanSpec, events: PlanEventEvidence = {}):
     previous = p.geom;
   }
   const stops = schedule(ordered, now);
-  const safeSpec: PlanSpec = { ...spec, i: shareSafeInputs(resolvedInput), s: refs };
+  // Keep explicit preferences and unresolved identities unchanged. Runtime
+  // defaults must not rewrite an existing shared choice on a source retry.
+  const safeSpec: PlanSpec = { ...spec, i: shareSafeInputs(currentInput.start_at
+    ? currentInput
+    : { ...currentInput, start_at: now.toISOString(), require_verified_hours: resolvedInput.require_verified_hours }), s: refs };
   const anchor = stops.find((stop) => stop.event)?.event;
   return {
     title: anchor ? `An outing around ${anchor.title}` : titleFor(resolvedInput, now),
-    summary: stops.length === 0 && notices.length > 0
-      ? "Your choices are saved. Review the event update below before setting out."
+    summary: stops.length === 0 && (notices.length > 0 || unscheduled.length > 0)
+      ? "Your choices are saved. Review the updates below before setting out."
       : summaryFor(resolvedInput, stops),
     stops,
     ...(notices.length ? { notices } : {}),
@@ -750,8 +775,9 @@ export function eventPlanSpec(event: Event, input?: PlanInputs): PlanSpec {
     audience: "friends", vibe: "easy",
     ...input, duration_hours,
     start_at: event.starts_at, start_near: event.geom,
-    event_anchor_slug: event.slug, max_stops: 2,
-    max_distance_m: 1_600, require_verified_hours: false,
+    event_anchor_slug: event.slug, max_stops: Math.min(input?.max_stops ?? 2, 2),
+    max_distance_m: Math.min(input?.max_distance_m ?? 1_600, 1_600),
+    require_verified_hours: input?.require_verified_hours ?? false,
     ...(input?.municipality ? { municipality: input.municipality } : { municipality: event.municipality }),
   };
   const after = new Date(event.ends_at);
@@ -766,7 +792,7 @@ export function eventPlanSpec(event: Event, input?: PlanInputs): PlanSpec {
     const arrival = new Date(after.getTime() + estimateTravel(event.geom, d.geom).minutes * 60_000);
     return isHoursFresh(d.hours_updated_at, arrival) && planOpenStateForWindow(d, arrival, durationFor(d.category)) === "open";
   });
-  const nearby = confirmed ?? fits[0];
+  const nearby = i.max_stops! > 1 ? confirmed ?? fits[0] : undefined;
   return { v: 1, i: shareSafeInputs(i), s: [{ e: event.slug }, ...(nearby ? [{ p: nearby.d.slug }] : [])] };
 }
 

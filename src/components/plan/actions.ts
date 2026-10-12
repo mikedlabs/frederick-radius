@@ -4,6 +4,7 @@ import {
   buildPlan,
   reconstructPlan,
   decodeSpec,
+  encodeSpec,
   swapStopInSpec,
   slotAlternatives,
   slotCategories,
@@ -73,6 +74,36 @@ export async function generatePlan(input: PlanInputs): Promise<Plan | null> {
   return input.event_anchor_slug
     ? withWeather(await planAroundEvent(input.event_anchor_slug, input))
     : withWeather(buildPlan(input));
+}
+
+/** Rebuild the unpinned slots while retaining the selected references. A
+ * pinned choice that no longer fits is held for review rather than replaced. */
+export async function regeneratePinnedPlan(token: string, input: PlanInputs, pinnedSlugs: string[]): Promise<Plan | null> {
+  const original = decodeSpec(token);
+  if (!original || !Array.isArray(pinnedSlugs)) return null;
+  const selected = new Set(original.s.flatMap((ref) => "p" in ref ? [ref.p] : []));
+  const pins = pinnedSlugs.slice(0, 8).filter((slug) => typeof slug === "string" && selected.has(slug));
+  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+  if (input.max_distance_m !== undefined && (!Number.isFinite(input.max_distance_m) || input.max_distance_m <= 0)) return null;
+  if (input.max_stops !== undefined && (!Number.isInteger(input.max_stops) || input.max_stops < 1 || input.max_stops > 8)) return null;
+  if (input.seed !== undefined && !Number.isSafeInteger(input.seed)) return null;
+  if (input.budget !== undefined && input.budget !== "free" && input.budget !== "value") return null;
+  for (const key of ["local_only", "require_wheelchair_access", "parking_priority", "require_verified_hours"] as const) {
+    if (input[key] !== undefined && typeof input[key] !== "boolean") return null;
+  }
+  const near = input.start_near;
+  if (near && (!Number.isFinite(near.lng) || !Number.isFinite(near.lat) || Math.abs(near.lng) > 180 || Math.abs(near.lat) > 90)) return null;
+  // Validate public controls through the token parser. Current coordinates
+  // exist only inside this request and are stripped from every share token.
+  const checked = decodeSpec(encodeSpec({ ...original, i: input }));
+  if (!checked) return null;
+  const requestSpec = { ...checked, i: { ...checked.i, ...(near ? { start_near: near } : {}) } };
+  const context = await resolvePlanChoiceContext(requestSpec);
+  if (!context.eventAvailable) return withWeather(await resolveSharedPlan(requestSpec));
+  const previousSeed = checked.i.seed ?? 0;
+  const seed = Number.isSafeInteger(previousSeed + 1) ? previousSeed + 1 : 0;
+  const shuffled = reshuffleSpec(context.spec, pins, seed);
+  return withWeather(reconstructPlan({ ...shuffled, i: { ...requestSpec.i, seed } }, context.events));
 }
 
 /** Rebuild a plan from a shared token or an edited spec. */

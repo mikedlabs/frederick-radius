@@ -1,4 +1,4 @@
-import Image from "next/image";
+import NearbyThumbnail from "./NearbyThumbnail";
 import { getNearbyWikipedia } from "@/lib/integrations/wikiContext";
 
 /**
@@ -41,19 +41,9 @@ export default async function NearbyContext({
       <ul className="space-y-3">
         {items.map((p) => (
           <li key={p.pageId} className="flex items-start gap-3">
-            {/* The article's own lead image — requested from the API since the
-                start and dropped at render until Aug 2026. Decorative next to
-                the linked title, so empty alt; self-hides when absent. */}
-            {p.thumbnail ? (
-              <Image
-                src={p.thumbnail}
-                alt=""
-                width={56}
-                height={56}
-                className="mt-0.5 h-14 w-14 shrink-0 rounded-[var(--app-radius-sm)] object-cover"
-                style={{ boxShadow: "var(--app-edge)" }}
-              />
-            ) : null}
+            {/* The article's own decorative photo disappears on failure;
+                its title, source link, distance and extract remain useful. */}
+            {p.thumbnail ? <NearbyThumbnail src={p.thumbnail} /> : null}
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <div className="flex items-baseline justify-between gap-3">
                 <a

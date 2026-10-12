@@ -64,9 +64,13 @@ function installRuntimeGuards(
     allowBasemapNavigationAbort?: boolean;
     allowOptimizedImageNavigationAbort?: boolean;
     allowPlaceHydrationNavigationAbort?: boolean;
+    verifyNearbyThumbnailFallback?: boolean;
   } = {},
 ) {
   const issues: string[] = [];
+  const thumbnailRateLimits = new Map<string, string>();
+  const verifiedThumbnailResponses = new Set<string>();
+  const deferredResourceErrors: Array<{ source: string; text: string }> = [];
 
   page.on("pageerror", (error) => {
     issues.push(`pageerror: ${error.message}`);
@@ -87,11 +91,27 @@ function installRuntimeGuards(
       return;
     }
     if (!source && /Failed to load resource/i.test(text)) return;
+    if (options.verifyNearbyThumbnailFallback && /Failed to load resource/i.test(text)) {
+      deferredResourceErrors.push({ source: new URL(source, appOrigin).href, text });
+      return;
+    }
     issues.push(`console.error: ${text}`);
   });
 
   page.on("response", (response) => {
     const url = new URL(response.url());
+    if (options.verifyNearbyThumbnailFallback && response.status() === 429
+      && response.request().method() === "GET"
+      && response.request().resourceType() === "image"
+      && url.origin === appOrigin && url.pathname === "/_next/image") {
+      try {
+        const upstream = new URL(url.searchParams.get("url") ?? "");
+        if (upstream.protocol === "https:" && upstream.hostname === "thumb.wikimedia.org"
+          && upstream.pathname.startsWith("/wikipedia/commons/thumb/")) {
+          thumbnailRateLimits.set(url.href, url.searchParams.get("url")!);
+        }
+      } catch { /* An invalid or local image remains a runtime failure. */ }
+    }
     if (url.origin === appOrigin && response.status() >= 500) {
       const failure = `${response.status()} ${url.pathname}`;
       if (!EXPECTED_FAIL_SOFT_RESPONSES.has(failure)) issues.push(failure);
@@ -150,7 +170,37 @@ function installRuntimeGuards(
     }
   });
 
-  return issues;
+  return {
+    async assertHealthy(label: string) {
+      // A throttled external illustration is safe only after its actual
+      // component has removed the failed image. API/script/local image errors
+      // are never classified as handled by this response + DOM proof.
+      for (const [responseUrl, upstream] of thumbnailRateLimits) {
+        await expect.poll(() => page.locator("[data-nearby-thumbnail-failed]")
+          .evaluateAll((elements) => elements.map((element) => element.getAttribute("data-nearby-thumbnail-failed"))),
+        { message: `${upstream} must collapse to its real thumbnail fallback` }).toContain(upstream);
+        const marker = page.locator(`[data-nearby-thumbnail-failed=${JSON.stringify(upstream)}]`).first();
+        const article = marker.locator("..");
+        await expect(article.locator('a[href^="https://en.wikipedia.org/wiki/"]')).toBeVisible();
+        await expect(article.locator("img")).toHaveCount(0);
+        await expect(article.locator("p")).not.toBeEmpty();
+        verifiedThumbnailResponses.add(responseUrl);
+      }
+      await test.info().attach("nearby-thumbnail-runtime-evidence", {
+        contentType: "application/json",
+        body: Buffer.from(JSON.stringify({ verifiedFallbacks: [...verifiedThumbnailResponses].map((url) => thumbnailRateLimits.get(url)), applicationIssues: issues, observedResourceConsoleErrors: deferredResourceErrors }, null, 2)),
+      });
+      if (process.env.FR_EXPECT_NEARBY_THUMBNAILS === "1" && options.verifyNearbyThumbnailFallback) {
+        expect(thumbnailRateLimits.size, "Controlled browser proof must exercise actual thumbnail failures").toBeGreaterThan(0);
+      }
+      // Drain after every awaited DOM/evidence check so late unrelated
+      // resource failures cannot disappear during fallback verification.
+      for (const { source, text } of deferredResourceErrors) {
+        if (!verifiedThumbnailResponses.has(source)) issues.push(`console.error: ${text}`);
+      }
+      expect(issues, label).toEqual([]);
+    },
+  };
 }
 
 for (const viewport of VIEWPORTS) {
@@ -167,7 +217,28 @@ for (const viewport of VIEWPORTS) {
       }) => {
         test.setTimeout(120_000);
         const appOrigin = new URL(baseURL ?? "http://localhost:3010").origin;
-        const issues = installRuntimeGuards(page, appOrigin);
+        const guard = installRuntimeGuards(page, appOrigin, {
+          verifyNearbyThumbnailFallback: route === "/places/brewers-alley-frederick",
+        });
+
+        if (route === "/places/brewers-alley-frederick") {
+          // Optional landmark illustration availability must never decide an
+          // app release. Exercise the exact Wikimedia outage deterministically
+          // when this supporting context is present; do not substitute its
+          // article data, page, JavaScript, or other application responses.
+          await page.route("**/_next/image?**", async (imageRoute) => {
+            const url = new URL(imageRoute.request().url());
+            try {
+              const upstream = new URL(url.searchParams.get("url") ?? "");
+              if (imageRoute.request().resourceType() === "image"
+                && upstream.protocol === "https:" && upstream.hostname === "thumb.wikimedia.org"
+                && upstream.pathname.startsWith("/wikipedia/commons/thumb/")) {
+                return imageRoute.fulfill({ status: 429, contentType: "text/plain", body: "Controlled optional-thumbnail rate limit" });
+              }
+            } catch { /* Keep unrelated image and application responses real. */ }
+            return imageRoute.continue();
+          });
+        }
 
         const response = await page.goto(route, {
           waitUntil: "domcontentloaded",
@@ -260,7 +331,7 @@ for (const viewport of VIEWPORTS) {
           await expect(page.locator('form[aria-label="Ask Radius"]')).toBeVisible();
         }
 
-        expect(issues, `${route} browser runtime failures`).toEqual([]);
+        await guard.assertHealthy(`${route} browser runtime failures`);
       });
     }
   });
@@ -278,7 +349,7 @@ test.describe("Today hydration clock boundary", () => {
   }) => {
     test.setTimeout(120_000);
     const appOrigin = new URL(baseURL ?? "http://localhost:3010").origin;
-    const issues = installRuntimeGuards(page, appOrigin);
+    const guard = installRuntimeGuards(page, appOrigin);
 
     // ISR HTML and the browser never share an exact wall clock. Move the
     // browser ninety seconds ahead so any Today client component that reads
@@ -329,7 +400,7 @@ test.describe("Today hydration clock boundary", () => {
     await expect(readyCollapsibles.first()).toBeAttached();
     expect(await readyCollapsibles.count()).toBeGreaterThan(0);
 
-    expect(issues, "Today browser runtime failures across clock drift").toEqual([]);
+    await guard.assertHealthy("Today browser runtime failures across clock drift");
   });
 });
 
@@ -340,7 +411,7 @@ test("map search keeps its exact state through place details and Back", async ({
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 390, height: 844 });
   const appOrigin = new URL(baseURL ?? "http://localhost:3010").origin;
-  const issues = installRuntimeGuards(page, appOrigin, {
+  const guard = installRuntimeGuards(page, appOrigin, {
     allowBasemapNavigationAbort: true,
     allowOptimizedImageNavigationAbort: true,
     allowPlaceHydrationNavigationAbort: true,
@@ -410,5 +481,5 @@ test("map search keeps its exact state through place details and Back", async ({
       name: /Search (?:this map|Frederick Radius)/,
     }),
   ).toHaveValue("Gravel and Grind");
-  expect(issues, "map → place → map runtime failures").toEqual([]);
+  await guard.assertHealthy("map → place → map runtime failures");
 });
