@@ -10,7 +10,12 @@ runtime health. Recheck the project before changing configuration.
 - The project uses Next.js, Node.js `22.x`, and the `iad1` function region.
 - Fluid Compute is enabled. No activation or extra provisioning is needed.
 - `bash scripts/vercel-ignore-preview.sh` remains the configured ignored-build
-  command. It intentionally skips routine preview builds.
+  command. Production always builds. A preview builds only when the branch
+  changes `src/app` (which holds `globals.css`) or `src/components` against
+  the point where it left `main`, so UI pull requests get a preview link.
+  Data, docs, workflow and dependency branches still skip, and so does the
+  `data-snapshots` branch, which carries no app tree
+  (`tests/vercel-ignore-preview.spec.ts`).
 - `KV_REST_API_URL` and `KV_REST_API_TOKEN` are configured for Production,
   Preview, and Development. Redis provisioning is already complete. The audit
   checked their presence, not a live Redis write or rate-limit load test.
