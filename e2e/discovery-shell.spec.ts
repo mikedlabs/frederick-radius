@@ -278,10 +278,18 @@ test.describe("mobile discovery shell", () => {
     const finalContentsPane = page.getByRole("region", {
       name: "Choose what to see",
     });
+    // The first screen leads with need tiles. The header chip owns Near me,
+    // so the sheet no longer carries a Nearby row that changes scope.
+    await expect(
+      finalContentsPane.getByRole("button", { name: "Coffee", exact: true }),
+    ).toBeVisible();
+    await expect(
+      finalContentsPane.getByRole("button", { name: /^Nearby/ }),
+    ).toHaveCount(0);
     await finalContentsPane
-      .getByRole("button", { name: /^Nearby/ })
+      .getByRole("button", { name: /^All place categories/ })
       .click();
-    const placesPane = page.getByRole("region", { name: "Find nearby" });
+    const placesPane = page.getByRole("region", { name: "Place categories" });
     await expect(placesPane).toBeVisible();
     await expect(placesPane.getByText("All place categories")).toBeVisible();
     const withinReach = placesPane.getByRole("button", {

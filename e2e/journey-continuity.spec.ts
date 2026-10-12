@@ -63,12 +63,24 @@ test("expanded map search carries the exact map state through a place detail", a
     waitUntil: "domcontentloaded",
   });
 
+  // A submitted query answers on the map first, as a ranked list. Every
+  // Radius listing is the step after the map's own list is exhausted.
   const search = page.getByRole("combobox", { name: "Search this map" });
-  await search.fill("coffee");
-  await expect(page.getByRole("button", { name: "See all results" })).toBeVisible();
-  await page.getByRole("button", { name: "See all results" }).click();
+  await search.fill("cafe");
+  await expect(page.locator("[data-map-search-result]").first()).toBeVisible({
+    timeout: 10_000,
+  });
+  await search.press("Enter");
+  const list = page.locator("[data-map-list-peek]");
+  await expect(list).toBeVisible();
+  const more = list.getByRole("button", { name: /^Show \d+ more/ });
+  for (let step = 0; step < 4; step += 1) {
+    if (!(await more.isVisible())) break;
+    await more.click();
+  }
+  await list.getByRole("button", { name: "Search all of Radius" }).click();
 
-  await expect(page).toHaveURL(/\/search\?q=coffee&returnTo=/);
+  await expect(page).toHaveURL(/\/search\?q=cafe&returnTo=/);
   const back = page.getByRole("link", { name: "Back to the map" });
   const mapReturnHref = await back.getAttribute("href");
   expect(mapReturnHref).toBeTruthy();
@@ -78,17 +90,17 @@ test("expanded map search carries the exact map state through a place detail", a
   expect(mapReturnUrl.searchParams.get("c")).toBeTruthy();
   expect(mapReturnUrl.searchParams.get("show")).toBe("transit");
   expect(mapReturnUrl.searchParams.get("layers")).toBe("parks");
-  expect(mapReturnUrl.searchParams.get("q")).toBe("coffee");
+  expect(mapReturnUrl.searchParams.get("q")).toBe("cafe");
 
   const placeResult = page
-    .locator('section[aria-label*="results for coffee"] a[href^="/places/"]')
+    .locator('section[aria-label*="results for cafe"] a[href^="/places/"]')
     .first();
   await expect(placeResult).toBeVisible();
   const placeHref = await placeResult.getAttribute("href");
   const searchReturnHref = new URL(placeHref!, "https://frederick-radius.test").searchParams.get("returnTo")!;
   const searchReturnUrl = new URL(searchReturnHref, "https://frederick-radius.test");
   expect(searchReturnUrl.pathname).toBe("/search");
-  expect(searchReturnUrl.searchParams.get("q")).toBe("coffee");
+  expect(searchReturnUrl.searchParams.get("q")).toBe("cafe");
   expect(searchReturnUrl.searchParams.get("returnTo")).toBe(mapReturnHref);
   await placeResult.click();
 
@@ -103,7 +115,7 @@ test("expanded map search carries the exact map state through a place detail", a
   await detailBack.click();
 
   await expect(page).toHaveURL(new RegExp(searchReturnHref.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  await expect(page.getByRole("searchbox", { name: "Search Frederick County" })).toHaveValue("coffee");
+  await expect(page.getByRole("searchbox", { name: "Search Frederick County" })).toHaveValue("cafe");
   await page.getByRole("link", { name: "Back to the map" }).click();
 
   await expect
@@ -113,7 +125,7 @@ test("expanded map search carries the exact map state through a place detail", a
     }, { timeout: 20_000 })
     .toBe(mapReturnHref);
   await expect(page.getByRole("combobox", { name: "Search this map" })).toHaveValue(
-    "coffee",
+    "cafe",
   );
 });
 
