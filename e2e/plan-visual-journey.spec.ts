@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { expect, test, type Page, type Route } from "@playwright/test";
 
 async function expectFirstStopClearOfNavigation(page: Page) {
@@ -30,6 +31,104 @@ for (const width of [320, 390, 430, 1440]) {
     await page.screenshot({ path: `output/playwright/plan-builder-${width}.png`, fullPage: true });
   });
 }
+
+async function expectFirstStopFitsAtDocumentTop(page: Page) {
+  const heading = page.getByRole("list", { name: "Plan stops, in order", exact: true }).getByRole("heading").first();
+  const nav = await page.getByRole("navigation", { name: "Primary", exact: true }).elementHandle();
+  expect(nav).not.toBeNull();
+  const measured = await heading.evaluate((element, navigation) => {
+    const stop = element.getBoundingClientRect();
+    const fixed = navigation!.getBoundingClientRect();
+    const target = document.elementFromPoint(stop.x + stop.width / 2, stop.y + stop.height / 2);
+    return {
+      scrollY,
+      firstStop: { x: stop.x, y: stop.y, width: stop.width, height: stop.height, bottom: stop.bottom },
+      fixedNav: { y: fixed.y, bottom: fixed.bottom },
+      documentBottom: stop.bottom + scrollY,
+      hit: element.contains(target),
+    };
+  }, nav!);
+  expect(measured.firstStop.y).toBeGreaterThanOrEqual(0);
+  expect(measured.firstStop.bottom).toBeLessThanOrEqual(measured.fixedNav.y);
+  expect(measured.documentBottom).toBeLessThanOrEqual(measured.fixedNav.y);
+  expect(measured.hit).toBe(true);
+  return measured;
+}
+
+async function rebuildCurrentAnchoredPlan(page: Page) {
+  await page.goto("/plan?place=beans-in-the-belfry-brunswick&in=brunswick", { waitUntil: "domcontentloaded" });
+  const stops = page.getByRole("list", { name: "Plan stops, in order", exact: true });
+  await expect(stops.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Pinned", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Adjust", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "Adjust the plan", exact: true });
+  await editor.getByRole("combobox", { name: "Start time", exact: true }).selectOption("now");
+  const before = Date.now();
+  await editor.getByRole("button", { name: "Update this plan", exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await expect.poll(() => new URL(page.url()).searchParams.get("p")).toBeTruthy();
+  const token = new URL(page.url()).searchParams.get("p")!;
+  const spec = JSON.parse(Buffer.from(token, "base64url").toString("utf8")) as {
+    i: { start_at: string; require_verified_hours: boolean }; s: Array<{ p?: string }>;
+  };
+  expect(spec.s[0].p).toBe("beans-in-the-belfry-brunswick");
+  expect(spec.i.require_verified_hours).toBe(false);
+  expect(Date.parse(spec.i.start_at)).toBeGreaterThanOrEqual(before - 10_000);
+  expect(Date.parse(spec.i.start_at)).toBeLessThanOrEqual(Date.now() + 10_000);
+  return { stops, token };
+}
+
+for (const colorScheme of ["light", "dark"] as const) {
+  test(`anchored current-date result keeps its first stop above navigation at 320px in ${colorScheme}`, async ({ page }, info) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.emulateMedia({ colorScheme, reducedMotion: "no-preference" });
+    const { stops, token } = await rebuildCurrentAnchoredPlan(page);
+    const measurements = [];
+    for (const phase of ["built", "reloaded"] as const) {
+      if (phase === "reloaded") {
+        await page.reload({ waitUntil: "domcontentloaded" });
+        await expect(stops).toBeVisible();
+        expect(new URL(page.url()).searchParams.get("p")).toBe(token);
+      }
+      // Measure viewport and document coordinates in one frame. Native result
+      // focus may scroll, but the first stop must also fit at document top.
+      measurements.push({ phase, ...await expectFirstStopFitsAtDocumentTop(page) });
+      await expect(page.getByText("Beans in the Belfry is your first stop. Add saved places below or adjust the plan.", { exact: true })).toHaveCount(0);
+      await expect(stops.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Pinned", exact: true })).toHaveAttribute("aria-pressed", "true");
+      await expect(stops.getByRole("button", { name: "Change", exact: true })).toBeEnabled();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({ path: info.outputPath(`anchored-320-${colorScheme}-${phase}.png`) });
+    }
+    await info.attach("anchored-current-date-heading-geometry", { contentType: "application/json", body: Buffer.from(JSON.stringify(measurements)) });
+  });
+}
+
+test("desktop dark anchored current-date result passes WCAG AA after rebuild and reload", async ({ page }, info) => {
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await page.emulateMedia({ colorScheme: "dark", reducedMotion: "no-preference" });
+  const { stops, token } = await rebuildCurrentAnchoredPlan(page);
+  for (const phase of ["built", "reloaded"] as const) {
+    if (phase === "reloaded") {
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await expect(stops).toBeVisible();
+      expect(new URL(page.url()).searchParams.get("p")).toBe(token);
+    }
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe("dark");
+    const find = page.getByRole("button", { name: "Ask or find across Frederick County", exact: true });
+    await expect(find).toHaveAttribute("data-find-interaction-ready", "true");
+    await expect(find).toBeEnabled();
+    await expect.poll(() => find.evaluate((element) => getComputedStyle(element).opacity)).toBe("1");
+    await page.addScriptTag({ path: resolve("node_modules/axe-core/axe.min.js") });
+    const violations = await page.evaluate(async () => {
+      const axe = (window as unknown as { axe: { run: (context: Document, options: object) => Promise<{ violations: unknown[] }> } }).axe;
+      return (await axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] }, resultTypes: ["violations"] })).violations;
+    });
+    await info.attach(`desktop-dark-${phase}-axe`, { contentType: "application/json", body: Buffer.from(JSON.stringify(violations)) });
+    expect(violations, `Actual dark ${phase} document must meet WCAG A/AA`).toEqual([]);
+    await page.screenshot({ path: info.outputPath(`anchored-desktop-dark-${phase}.png`) });
+  }
+});
 
 test("a visual outing keeps choices through a pre-trip check and map fallback", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

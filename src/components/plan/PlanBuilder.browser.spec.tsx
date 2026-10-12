@@ -268,6 +268,21 @@ describe("explicit confirmed-hours planning preference", () => {
     expect(button('Show stops on map').disabled).toBe(false);
   });
 
+  it.each([true, false])("shows one overview description while keeping an anchored stop pinned (generated summary: %s)", async (hasSummary) => {
+    const inputs = ordinaryInputs({ anchor_slug: "dinner", require_verified_hours: false });
+    const plan = ordinaryPlan(inputs);
+    if (!hasSummary) plan.summary = "";
+    await act(async () => root.render(<PlanBuilder initialInputs={inputs} initialPlan={plan} fromPlace="Dinner" />));
+    const anchorIntro = "Dinner is your first stop. Add saved places below or adjust the plan.";
+    expect(host.textContent?.includes(anchorIntro)).toBe(!hasSummary);
+    if (hasSummary) expect(host.textContent).toContain(plan.summary);
+    expect(host.querySelector("h3")?.textContent).toBe("Dinner");
+    expect(button("Pinned").getAttribute("aria-pressed")).toBe("true");
+    expect(button("Change").disabled).toBe(false);
+    expect(button("Remove").disabled).toBe(false);
+    expect(host.textContent).toContain(draftResult);
+  });
+
   it("starts as an explicit draft and puts the hours warning before route directions", async () => {
     render();
     await openFineTune();

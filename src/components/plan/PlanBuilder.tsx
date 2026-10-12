@@ -491,7 +491,7 @@ export default function PlanBuilder({
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="eyebrow" style={{ color: "var(--app-brand)" }}>
+                <p className="eyebrow" style={{ color: "var(--app-link)" }}>
                   {shared ? "Shared plan · " : ""}{planDateLabel(plan)} · {planAreaLabel}
                 </p>
                 <h1 className="mt-1 font-semibold" style={{ color: "var(--app-ink)" }}>{plan.title}</h1>
@@ -508,7 +508,7 @@ export default function PlanBuilder({
               </button>
             </div>
 
-            {fromPlace && plan.stops.some((stop) => stop.place?.slug === initialInputs?.anchor_slug) && (
+            {fromPlace && !plan.summary && plan.stops.some((stop) => stop.place?.slug === initialInputs?.anchor_slug) && (
               <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 {fromPlace} is your first stop. Add saved places below or adjust the plan.
               </p>
@@ -665,7 +665,7 @@ export default function PlanBuilder({
           <section className={styles.visitCheck} aria-label="Check before you go">
             <div className={styles.visitHeader}>
               <div><h2>Check before you go</h2><p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>Review saved times, posted hours, and the forecast for this outing.</p></div>
-              <button type="button" onClick={checkBeforeVisit} disabled={pending || !controlsReady} className="inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold disabled:opacity-50" style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}><RefreshCw className="h-4 w-4" aria-hidden />{pending ? "Checking…" : "Check this plan"}</button>
+              <button type="button" onClick={checkBeforeVisit} disabled={pending || !controlsReady} className="inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold disabled:opacity-50" style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}><RefreshCw className="h-4 w-4" aria-hidden />{pending ? "Checking…" : "Check this plan"}</button>
             </div>
             {visitCheck && <div aria-live="polite">
               <p className="mt-4 text-[14px] font-semibold">{checkExpired ? "This check is out of date. Check the plan again before setting out." : visitCheck.message}</p>
@@ -1110,7 +1110,7 @@ function Stop({
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-semibold">
-              <span className="tabular-nums" style={{ color: "var(--app-cool)" }}>{clock(stop.at)} · {stop.duration_min} min</span>
+              <span className="tabular-nums" style={{ color: "var(--app-ink-2)" }}>{clock(stop.at)} · {stop.duration_min} min</span>
               <span className="inline-flex items-center gap-1" style={{ color: "var(--app-ink-2)" }}>
                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: status.color }} aria-hidden />
                 {status.text}
