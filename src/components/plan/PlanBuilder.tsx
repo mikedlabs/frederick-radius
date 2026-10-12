@@ -490,18 +490,18 @@ export default function PlanBuilder({
             className={styles.overview}
             style={{ borderColor: "var(--app-border)" }}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="eyebrow" style={{ color: "var(--app-link)" }}>
+            <div className={`${styles.overviewHeader} flex items-start justify-between gap-3`}>
+              <div className={`${styles.overviewIdentity} min-w-0`}>
+                <p className={`${styles.overviewContext} eyebrow`} style={{ color: "var(--app-link)" }}>
                   {shared ? "Shared plan · " : ""}{planDateLabel(plan)} · {planAreaLabel}
                 </p>
-                <h1 className="mt-1 font-semibold" style={{ color: "var(--app-ink)" }}>{plan.title}</h1>
+                <h1 className={`${styles.overviewTitle} mt-1 font-semibold`} style={{ color: "var(--app-ink)" }}>{plan.title}</h1>
               </div>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(true)}
                 disabled={pending || !controlsReady}
-                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
+                className={`${styles.overviewAdjust} inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold`}
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />

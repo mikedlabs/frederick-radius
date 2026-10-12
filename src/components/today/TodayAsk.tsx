@@ -63,10 +63,10 @@ export default function TodayAsk({
         </span>
         <span className="min-w-0 flex-1">
           <span className={styles.prompt}>
-            What do you need?
+            Find places and events
           </span>
           <span className={styles.hint}>
-            Find a place, an event, or help with your plans.
+            Search a name, a need, or a question.
           </span>
         </span>
         <ArrowRight

@@ -48,7 +48,8 @@
   display: block;
   font-size: 20px;
   font-weight: 650;
-  line-height: 1.2;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
   letter-spacing: -0.025em;
 }
 
@@ -58,6 +59,7 @@
   color: var(--app-on-brand);
   font-size: 15px;
   line-height: 1.4;
+  text-wrap: pretty;
 }
 
 .shortcuts {

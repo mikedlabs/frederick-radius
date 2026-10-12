@@ -39,10 +39,13 @@ async function settleFirstStop(page: Page) {
     })).toBe(true);
 }
 
-async function buildOuting(page: Page, audience: PlanSpec["i"]["audience"] = "date", touch = false) {
+type ChosenStart = { local: string; iso: string; dateStops: number };
+
+async function buildOuting(page: Page, audience: PlanSpec["i"]["audience"] = "date", touch = false, chosenStart?: ChosenStart) {
   await page.goto("/plan", { waitUntil: "domcontentloaded" });
   await page.getByRole("combobox", { name: "Planning area", exact: true }).selectOption("brunswick");
-  await page.getByRole("combobox", { name: "Start time", exact: true }).selectOption("now");
+  await page.getByRole("combobox", { name: "Start time", exact: true }).selectOption(chosenStart ? "custom" : "now");
+  if (chosenStart) await page.getByLabel("Custom start date and time in Frederick", { exact: true }).fill(chosenStart.local);
   await activate(page.getByText("Fine-tune the outing", { exact: true }), touch);
   await page.getByRole("combobox", { name: "Who is going", exact: true }).selectOption(audience);
   await page.getByRole("combobox", { name: "What matters most", exact: true }).selectOption("easy");
@@ -52,14 +55,17 @@ async function buildOuting(page: Page, audience: PlanSpec["i"]["audience"] = "da
   const started = Date.now();
   await activate(page.getByRole("button", { name: "Build my plan", exact: true }), touch);
   const stops = page.getByRole("list", { name: "Plan stops, in order", exact: true });
-  if (audience === "date") await expect(stops.getByRole("heading")).toHaveCount(3);
+  if (audience === "date") await expect(stops.getByRole("heading")).toHaveCount(chosenStart?.dateStops ?? 3);
   else await expect(stops.getByRole("heading").first()).toBeVisible();
   await expect.poll(() => new URL(page.url()).searchParams.get("p")).toBeTruthy();
   const token = new URL(page.url()).searchParams.get("p")!;
   const spec = JSON.parse(Buffer.from(token, "base64url").toString("utf8")) as PlanSpec;
   expect(spec.i).toMatchObject({ audience, vibe: "easy", duration_hours: 3, municipality: "brunswick", require_verified_hours: false });
-  expect(Date.parse(spec.i.start_at!)).toBeGreaterThanOrEqual(started - 10_000);
-  expect(Date.parse(spec.i.start_at!)).toBeLessThanOrEqual(Date.now() + 10_000);
+  if (chosenStart) expect(spec.i.start_at).toBe(chosenStart.iso);
+  else {
+    expect(Date.parse(spec.i.start_at!)).toBeGreaterThanOrEqual(started - 10_000);
+    expect(Date.parse(spec.i.start_at!)).toBeLessThanOrEqual(Date.now() + 10_000);
+  }
   const names = await stops.getByRole("heading").allTextContents();
   expect(names.length).toBeGreaterThan(0);
   expect(names.length).toBeLessThanOrEqual(8);
@@ -116,15 +122,38 @@ async function axeAA(page: Page, info: TestInfo, phase: string) {
   expect(violations).toEqual([]);
 }
 
-for (const [width, colorScheme, audience] of [[320, "light", "family"], [320, "dark", "date"], [390, "light", "visitor"], [1440, "dark", "solo"]] as const) {
-  test(`saved outing retains its actual dated choices through Saved reload and reopen at ${width}px ${colorScheme} for ${audience}`, async ({ context }, info) => {
+// Choose real custom times through the editor. A live "now" test alone changes
+// its heading at noon and can miss an extra line on the Saved return journey.
+const daypartStarts = {
+  morning: { local: "2026-10-12T09:00", iso: "2026-10-12T13:00:00.000Z", dateStops: 3, dateTitle: "A morning date", familyTitle: "A family morning" },
+  afternoon: { local: "2026-10-12T14:00", iso: "2026-10-12T18:00:00.000Z", dateStops: 3, dateTitle: "An afternoon date", familyTitle: "A family afternoon" },
+  // The real evening meal and museum consume 158 minutes; a third stop does not fit.
+  evening: { local: "2026-10-12T18:00", iso: "2026-10-12T22:00:00.000Z", dateStops: 2, dateTitle: "Date night", familyTitle: "A family evening" },
+} as const;
+type SavedJourneyCase = {
+  width: number;
+  colorScheme: "light" | "dark";
+  audience: PlanSpec["i"]["audience"];
+  daypart?: keyof typeof daypartStarts;
+};
+const savedJourneyCases: SavedJourneyCase[] = [
+  ...([[320, "light", "family"], [320, "dark", "date"], [390, "light", "visitor"], [1440, "dark", "solo"]] as const)
+    .map(([width, colorScheme, audience]) => ({ width, colorScheme, audience })),
+  ...(["family", "date"] as const).flatMap((audience) =>
+    (["morning", "afternoon", "evening"] as const).map((daypart) => ({ width: 320, colorScheme: audience === "date" ? "dark" as const : "light" as const, audience, daypart }))),
+];
+
+for (const { width, colorScheme, audience, daypart } of savedJourneyCases) {
+  test(`saved outing retains its actual dated choices through Saved reload and reopen at ${width}px ${colorScheme} for ${audience}${daypart ? ` with a fixed ${daypart} start` : ""}`, async ({ context }, info) => {
     test.setTimeout(90_000);
     const runtime = observe(context);
     const page = await context.newPage();
     await page.setViewportSize({ width, height: width >= 800 ? 960 : 844 });
     await page.emulateMedia({ colorScheme, reducedMotion: width >= 800 ? "reduce" : "no-preference" });
     const touch = Boolean(info.project.use.hasTouch);
-    const outing = await buildOuting(page, audience, touch);
+    const chosenStart = daypart ? daypartStarts[daypart] : undefined;
+    const outing = await buildOuting(page, audience, touch, chosenStart);
+    if (chosenStart) expect(outing.title).toBe(audience === "date" ? chosenStart.dateTitle : chosenStart.familyTitle);
     const before = width < 800 ? await geometry(page) : null;
     await expectTarget(page, "Save outing", "button");
     await expectTarget(page, "Open full route", "link");
@@ -173,6 +202,10 @@ for (const [width, colorScheme, audience] of [[320, "light", "family"], [320, "d
     await expect(stops.getByRole("heading")).toHaveText(outing.names);
     await settleFirstStop(page);
     const after = width < 800 ? await geometry(page) : null;
+    await expect(page.getByRole("link", { name: "Back to saved", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back to saved", exact: true })).toHaveAttribute("href", "/my-radius");
+    await expectTarget(page, "Adjust", "button");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(outing.title);
     await expect(page.getByRole("button", { name: "Remove outing from Saved", exact: true })).toHaveAttribute("aria-pressed", "true");
     expect(JSON.parse(Buffer.from(new URL(page.url()).searchParams.get("p")!, "base64url").toString("utf8"))).toEqual(outing.spec);
     await axeAA(page, info, "reopened");
@@ -186,6 +219,7 @@ for (const [width, colorScheme, audience] of [[320, "light", "family"], [320, "d
     await expect(editor.getByRole("combobox", { name: "What matters most", exact: true })).toHaveValue("easy");
     await expect(editor.getByRole("combobox", { name: "Time available", exact: true })).toHaveValue("3");
     await expect(editor.getByRole("combobox", { name: "Start time", exact: true })).toHaveValue("custom");
+    if (chosenStart) await expect(editor.getByLabel("Custom start date and time in Frederick", { exact: true })).toHaveValue(chosenStart.local);
     expect(runtime.askCalls()).toBe(0);
     expect(runtime.errors).toEqual([]);
     await info.attach("saved-outing-exact-return", { contentType: "application/json", body: Buffer.from(JSON.stringify({ ...outing, before, confirmedGeometry, after, runtimeErrors: runtime.errors, consoleErrors: runtime.consoleErrors, askCalls: runtime.askCalls(), touchActions: touch, photoHealth: "not tested" }, null, 2)) });

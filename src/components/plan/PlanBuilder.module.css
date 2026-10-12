@@ -35,6 +35,12 @@
 }
 @media (max-width: 400px) {
  .resultHeader .scene { min-height: 120px; }
+ /* Let every daypart title use the full width below its context and action. */
+ .overviewHeader { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 0; }
+ .overviewIdentity { display: contents; }
+ .overviewContext { grid-column: 1; grid-row: 1; }
+ .overviewTitle { grid-column: 1 / -1; grid-row: 2; }
+ .overviewAdjust { grid-column: 2; grid-row: 1; }
  /* Keep a stop's real name out of the decorative icon's narrow column. */
  .stopHeader { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 0; }
  .stopIdentity { display: contents; }

@@ -1,13 +1,37 @@
-.photoCard {
+.photoCard,
+.textCard,
+.openingCard {
   position: relative;
-  display: flex;
-  flex-direction: column;
+  min-width: 0;
   overflow: hidden;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
   color: var(--app-ink);
   background: var(--app-bg-elevated-solid);
   box-shadow: var(--app-shadow-1);
+  transition: border-color var(--app-dur-fast) var(--app-ease-out);
+}
+
+.photoCard:hover,
+.textCard:hover,
+.openingCard:hover {
+  border-color: var(--app-brand);
+}
+
+.pickLink:focus-visible {
+  outline: 2px solid var(--app-brand);
+  outline-offset: -3px;
+}
+
+.photoCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.pickLink {
+  display: block;
+  min-width: 0;
+  color: inherit;
 }
 
 .photoFace {
@@ -29,11 +53,111 @@
   padding: var(--app-space-3);
 }
 
+.pickName {
+  display: block;
+  color: var(--app-ink);
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.lead .pickName {
+  font-size: 21px;
+  letter-spacing: -0.02em;
+}
+
+.pickContext {
+  display: grid;
+  gap: var(--spacing);
+  margin-top: var(--app-space-2);
+  color: var(--app-ink-2);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.pickFact {
+  font-weight: 550;
+}
+
+.pickLocation {
+  color: var(--app-ink-2);
+}
+
+.rating {
+  display: block;
+  margin-top: var(--spacing);
+  color: var(--app-ink-2);
+  font-size: 14px;
+}
+
+.textCard .pickLink {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--app-space-3);
+  min-height: 100px;
+  padding: var(--app-space-3);
+}
+
+.textCard .photoRead {
+  flex: 1;
+  padding: 0;
+}
+
+.categoryIcon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: var(--app-radius-sm);
+  color: var(--app-ink-2);
+  background: var(--app-bg-sunken);
+}
+
+.openingCard {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100px;
+  margin-top: var(--app-space-2);
+  border-color: color-mix(in srgb, var(--app-amber) 42%, var(--app-border));
+}
+
+.openingCard .pickLink {
+  display: flex;
+}
+
+.openingRead {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--app-space-3);
+}
+
+.openingLabel {
+  display: block;
+  margin-bottom: var(--spacing);
+  color: var(--state-closing);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.sourceNote {
+  color: var(--app-ink-2);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
 .credit {
   display: block;
-  margin-top: var(--app-space-2);
-  color: var(--app-ink-3);
-  font-size: 11px;
+  padding: 0 var(--app-space-3) var(--app-space-2);
+  color: var(--app-ink-2);
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -41,4 +165,37 @@
   .lead .photoFace {
     height: 180px;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photoCard,
+  .textCard,
+  .openingCard {
+    transition: none;
+  }
+}
+
+/* Physical targets keep photo credits usable inside the clipped card edge. */
+.credit > span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--spacing);
+  line-height: 1.4;
+}
+
+.credit > span > span {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+}
+
+.credit a {
+  display: inline-flex;
+  align-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  outline-offset: -2px;
 }
