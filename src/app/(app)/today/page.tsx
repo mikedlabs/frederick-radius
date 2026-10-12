@@ -335,7 +335,7 @@ export default async function HomePage() {
         civicMoment.slug !== TODAY_FAIR_PROMOTION_SLUG &&
         !civicMomentLeadsToday ? (
           <div className="mb-4">
-            <MomentSpotlight moment={civicMoment} />
+            <MomentSpotlight moment={civicMoment} todayKey={easternDayKey(now)} />
           </div>
         ) : null}
         {whatsOn}
@@ -368,7 +368,7 @@ export default async function HomePage() {
         <TodayFairFeature phase={fairPromotionPhase} briefing />
       ) : civicMoment ? (
         <div>
-          <MomentSpotlight moment={civicMoment} />
+          <MomentSpotlight moment={civicMoment} todayKey={easternDayKey(now)} />
         </div>
       ) : null}
 

@@ -17,18 +17,20 @@ describe("PlaceMiniMap", () => {
     else process.env.MAPBOX_SERVER_TOKEN = originalToken;
   });
 
-  function renderLocator() {
+  function renderLocator(props: Partial<Parameters<typeof PlaceMiniMap>[0]> = {}) {
     return renderToStaticMarkup(
       createElement(PlaceMiniMap, {
         lng: -77.40837,
         lat: 39.41279,
         name: "Carroll Creek Linear Park",
+        address: "50 Carroll Creek Way",
         color: "#315A43",
+        ...props,
       }),
     );
   }
 
-  it("renders a polished local-only locator when Static Images are off", () => {
+  it("server-renders the owned-basemap placeholder when Static Images are off", () => {
     process.env.MAPBOX_STATIC_MAPS_ENABLED = "0";
     process.env.MAPBOX_STATIC_DAILY_REQUEST_CAP = "500";
     // Other map features may legitimately configure the shared server token;
@@ -37,24 +39,55 @@ describe("PlaceMiniMap", () => {
 
     const html = renderLocator();
 
-    expect(html).toContain('data-local-locator="true"');
-    expect(html).toContain("Radius locator");
-    expect(html).toContain("Position only");
-    expect(html).toContain("39.4128° N · 77.4084° W");
+    expect(html).toContain('data-owned-mini-map="placeholder"');
+    expect(html).toContain(
+      'aria-label="Location of Carroll Creek Linear Park, 50 Carroll Creek Way"',
+    );
+    expect(html).toContain("50 Carroll Creek Way");
+    expect(html).toContain("Open map");
+    expect(html).toContain('aria-label="Open the map centered on Carroll Creek Linear Park"');
     expect(html).toContain("/map?c=-77.40837,39.41279,15.5");
+    // A fixed-height box in every state, so the map arriving never shifts the page.
+    expect(html).toContain("h-44");
+    // MapLibre is never part of the server render; it mounts near the viewport.
+    expect(html).not.toContain("maplibregl");
+    expect(html).not.toContain("<canvas");
     expect(html).not.toContain("/api/static-map");
     expect(html).not.toContain("<img");
     expect(html).not.toContain('rel="prefetch"');
   });
 
-  it("keeps the local-only locator when the paid cap is zero", () => {
+  it("no longer draws the decorative grid, raw coordinates, or the retired red", () => {
+    process.env.MAPBOX_STATIC_MAPS_ENABLED = "0";
+
+    const html = renderLocator({ color: undefined });
+
+    expect(html).not.toContain("data-local-locator");
+    expect(html).not.toContain("linear-gradient");
+    expect(html).not.toContain("Position only");
+    expect(html).not.toContain("Radius locator");
+    expect(html).not.toContain("39.4128° N");
+    expect(html).not.toMatch(/e14328/i);
+    expect(html).toContain("fill-[color:var(--app-brand)]");
+  });
+
+  it("names the place alone when no address is known", () => {
+    process.env.MAPBOX_STATIC_MAPS_ENABLED = "0";
+
+    const html = renderLocator({ address: "  " });
+
+    expect(html).toContain('aria-label="Location of Carroll Creek Linear Park"');
+    expect(html).not.toContain("data-mini-map-address");
+  });
+
+  it("keeps the owned basemap when the paid cap is zero", () => {
     process.env.MAPBOX_STATIC_MAPS_ENABLED = "1";
     process.env.MAPBOX_STATIC_DAILY_REQUEST_CAP = "0";
     process.env.MAPBOX_SERVER_TOKEN = "pk.test-server-token";
 
     const html = renderLocator();
 
-    expect(html).toContain('data-local-locator="true"');
+    expect(html).toContain('data-owned-mini-map="placeholder"');
     expect(html).not.toContain("/api/static-map");
     expect(html).not.toContain("<img");
   });
@@ -67,6 +100,7 @@ describe("PlaceMiniMap", () => {
     const html = renderLocator();
     expect(html).toContain("size=320x150");
     expect(html).toContain("lng=-77.4084&amp;lat=39.4128");
+    expect(html).toContain("pin=315a43");
     expect(html).toContain("/map?c=-77.40837,39.41279,15.5");
     expect(html).toContain('width="640"');
     expect(html).toContain('height="300"');
@@ -74,6 +108,18 @@ describe("PlaceMiniMap", () => {
     expect(html).toContain('decoding="async"');
     expect(html).toContain("Map preview unavailable. Open the live map.");
     expect(html).toContain('aria-hidden="true"');
+    expect(html).not.toContain("data-owned-mini-map");
     expect(html).not.toContain('rel="prefetch"');
+  });
+
+  it("pins the static image in Brick when the category color is not a hex", () => {
+    process.env.MAPBOX_STATIC_MAPS_ENABLED = "1";
+    process.env.MAPBOX_STATIC_DAILY_REQUEST_CAP = "25";
+    process.env.MAPBOX_SERVER_TOKEN = "pk.test-server-token";
+
+    const html = renderLocator({ color: "var(--app-brand)" });
+
+    expect(html).toContain("pin=b5462b");
+    expect(html).not.toMatch(/e14328/i);
   });
 });

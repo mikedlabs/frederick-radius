@@ -25,7 +25,6 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import TrustChip from "@/components/ui/TrustChip";
 import FreshnessChip from "@/components/ui/FreshnessChip";
 import { placeHoursTrust, formatChecked } from "@/lib/trust";
-import { knownFor } from "@/lib/cuisine";
 import { classifyDescription } from "@/lib/copy-quality";
 import { formatDistance } from "@/lib/geo";
 import type { LngLat } from "@/lib/geo";
@@ -36,6 +35,11 @@ import {
   googlePhotoAttributionForUrl,
 } from "@/components/place/GoogleAttribution";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
+import {
+  isPlacePhotoFailureSignal,
+  placePhotoFailureSignalSrc,
+} from "@/components/place/PlaceHeroMedia";
+import { usePlacePhotoState } from "@/components/place/PlacePhotoState";
 import LiveGooglePlaceContext, { type LiveGooglePlaceData } from "@/components/place/GooglePlaceContext";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
 import { browseReturnFromLocation, normalizeBrowseReturnTo, withBrowseReturnTo } from "@/lib/browse-return";
@@ -47,6 +51,27 @@ import {
   trackDecision,
   type DecisionAction,
 } from "@/lib/decision/telemetry";
+
+const KNOWN_FOR_LIST = new Intl.ListFormat("en-US", {
+  style: "long",
+  type: "conjunction",
+});
+
+/**
+ * The sheet's "Known for" sentence, built only from the structured
+ * known_for list. It used to wrap the description blurb ("Known for Tin
+ * Corner serves...") and then print the same blurb again below.
+ */
+export function knownForLine(
+  items: readonly string[] | undefined,
+): string | null {
+  const list = (items ?? [])
+    .map((item) => item.trim().replace(/[\s.;,]+$/, ""))
+    .filter(Boolean)
+    .slice(0, 3);
+  if (list.length === 0) return null;
+  return `Known for ${KNOWN_FOR_LIST.format(list)}.`;
+}
 
 /**
  * Bottom-sheet detail view for a place. The presence/drag/focus/exit
@@ -137,7 +162,9 @@ function PlaceSheetContent({
   const [travelStatus, setTravelStatus] = useState<
     "idle" | "loading" | "unavailable"
   >("idle");
-  const [lightboxAt, setLightboxAt] = useState<number | null>(null);
+  // Selection follows a photo identity, not an index: a thumb that turns out
+  // to be the failure signal leaves allPhotos and would shift every index.
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [venueEvents, setVenueEvents] = useState<
     { slug: string; title: string; weekday: string; day: string; month: string; time: string }[]
   >([]);
@@ -256,10 +283,31 @@ function PlaceSheetContent({
   }, [place.slug]);
 
   // Static enrichment wins; on-demand fills the gap.
-  const photos = place.google_photos?.length
+  const loadedPhotos = place.google_photos?.length
     ? place.google_photos
     : (extra?.photos ?? []);
-  const heroUrl = place.google_photo_url ?? photos[0];
+  // A photo the proxy could not deliver (daily cap, rate limit, upstream
+  // error) answers with its transparent failure signal. Drop it everywhere:
+  // the hero falls back to the photoless header with no Expand control and
+  // no credit, and the strip and lightbox never offer a plate as a photo.
+  const [failedPhotos, setFailedPhotos] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const markPhotoFailed = (url: string) =>
+    setFailedPhotos((current) => {
+      if (current.has(url)) return current;
+      const next = new Set(current);
+      next.add(url);
+      return next;
+    });
+  const candidateHeroUrl = place.google_photo_url ?? loadedPhotos[0];
+  const heroPhoto = usePlacePhotoState(candidateHeroUrl);
+  const heroUrl = heroPhoto.status === "missing" ? undefined : candidateHeroUrl;
+  const deliverable = (url: string | undefined): url is string =>
+    !!url &&
+    !failedPhotos.has(url) &&
+    !(heroPhoto.status === "missing" && url === candidateHeroUrl);
+  const stripPhotos = loadedPhotos.slice(1, 8).filter(deliverable);
   const photoAttributions = place.google_photo_attributions ?? extra?.photo_attributions ?? [];
   const activePhotoContext =
     photoContext?.slug === place.slug ? photoContext : null;
@@ -271,8 +319,9 @@ function PlaceSheetContent({
     place.google_maps_uri ??
     activePhotoContext?.google_maps_uri ??
     extra?.google_maps_uri;
-  // Every unique photo (hero first), for the tap-to-enlarge lightbox.
-  const allPhotos = Array.from(new Set([heroUrl, ...photos].filter(Boolean))) as string[];
+  // Every unique deliverable photo (hero first), for the tap-to-enlarge lightbox.
+  const allPhotos = Array.from(new Set([heroUrl, ...loadedPhotos].filter(deliverable)));
+  const lightboxIndex = lightboxUrl ? allPhotos.indexOf(lightboxUrl) : -1;
   const lightboxAttributions = allPhotos.map((url) => {
     const attribution = googlePhotoAttributionForUrl(url, photoAttributions) ??
       (url === heroUrl ? heroAttribution : undefined);
@@ -322,28 +371,33 @@ function PlaceSheetContent({
          *  eyebrow + place name overlay the gradient so the first
          *  thing the eye reads is "Brewery · Olde Mother Brewing"
          *  on the actual place's photo, not a generic header below it.
-         *  When there is no photo, we fall back to a category-tinted
-         *  panel with the icon — still cinematic, still on-brand. */}
-        {heroUrl ? (
+         *  When there is no photo, or the proxy reports that it could not
+         *  deliver one, we fall back to a category-tinted panel with the
+         *  icon — still cinematic, still on-brand, never a fallback plate
+         *  wearing a photographer's credit. */}
+        {heroUrl && heroPhoto.src ? (
           <>
             <div
               className="relative aspect-[4/3] w-full cursor-zoom-in overflow-hidden"
               role="button"
               tabIndex={0}
               aria-label={`View ${place.name} photos`}
-              onClick={() => { haptic("light"); setLightboxAt(0); }}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); haptic("light"); setLightboxAt(0); } }}
+              data-place-sheet-hero="photo"
+              onClick={() => { haptic("light"); setLightboxUrl(candidateHeroUrl ?? null); }}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); haptic("light"); setLightboxUrl(candidateHeroUrl ?? null); } }}
             >
             <Image
-              src={heroUrl}
+              src={heroPhoto.src}
               alt={place.name}
               fill
-              unoptimized={heroUrl.startsWith("/api/place-photo")}
+              unoptimized={heroPhoto.src.startsWith("/api/place-photo")}
               priority
               sizes="(max-width: 720px) 100vw, 720px"
               placeholder="blur"
               blurDataURL={PAPER_CREAM_BLUR}
               className="object-cover"
+              onLoad={heroPhoto.onLoad}
+              onError={heroPhoto.onError}
             />
             <span
               aria-hidden
@@ -384,16 +438,19 @@ function PlaceSheetContent({
               <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
             </div>
             </div>
-            <div className="px-5 pt-1 text-right" style={{ color: "var(--app-ink-3)" }}>
-              <GooglePhotoAttributionLine
-                attribution={heroAttribution}
-                placeGoogleMapsUri={googleMapsUri}
-                touchTarget
-              />
-            </div>
+            {/* Credit only once a real photograph has decoded. */}
+            {heroPhoto.status === "ready" ? (
+              <div className="px-5 pt-1 text-right" style={{ color: "var(--app-ink-3)" }}>
+                <GooglePhotoAttributionLine
+                  attribution={heroAttribution}
+                  placeGoogleMapsUri={googleMapsUri}
+                  touchTarget
+                />
+              </div>
+            ) : null}
           </>
         ) : (
-          <div className="px-5 pt-2">
+          <div className="px-5 pt-2" data-place-sheet-hero="category">
             <div
               aria-hidden
               className="flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-[var(--app-radius-lg)]"
@@ -430,12 +487,12 @@ function PlaceSheetContent({
             </header>
           )}
 
-          {/* Address + source provenance + "known for" — three quiet
-           *  lines that establish what this place is before the data
-           *  rows below. SourceBadge gives provenance at a glance;
-           *  knownFor surfaces the curated descriptor when we have one
-           *  (cuisine, specialty), instead of leaving the eye to skim
-           *  the short_blurb cold. */}
+          {/* Address + source provenance + "known for" — quiet lines that
+           *  establish what this place is before the data rows below.
+           *  SourceBadge gives provenance at a glance; the "Known for"
+           *  line speaks only for the structured known_for list. The
+           *  description blurb renders once, further down, with its
+           *  credit (it used to print here too as "Known for <blurb>"). */}
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             {/* The precise postal city ("Frederick"), not the municipality's
                 editorial name ("Downtown Frederick") which overclaims for the
@@ -447,19 +504,15 @@ function PlaceSheetContent({
             <SourceBadge place={place} size="sm" />
           </div>
           {(() => {
-            const kf = knownFor(place);
-            if (!kf) return null;
-            // Blurbs usually already end in a sentence stop, so only add
-            // our own period when one's missing — otherwise the wrapped
-            // "Known for …." sentence doubles up ("…direct-trade beans..").
-            const text = kf.replace(/\s+$/, "");
-            const withStop = /[.!?]$/.test(text) ? text : `${text}.`;
+            const line = knownForLine(place.known_for);
+            if (!line) return null;
             return (
               <p
+                data-place-known-for
                 className="mt-1.5 text-[13px] italic leading-snug"
                 style={{ color: "var(--app-ink-2)" }}
               >
-                Known for {withStop}
+                {line}
               </p>
             );
           })()}
@@ -626,33 +679,43 @@ function PlaceSheetContent({
           </div>
         ) : null}
 
-        {/* Photo strip — more of what the place actually looks like */}
-        {photos.length > 1 && (
+        {/* Photo strip — more of what the place actually looks like. A
+            thumb whose request comes back as the proxy's failure signal
+            leaves the strip (and the lightbox) instead of showing a plate. */}
+        {stripPhotos.length > 0 && (
           <div className="shelf-rail -mx-1 mt-4 gap-2 px-1 pb-1">
-            {photos.slice(1, 8).map((u, i) => (
-              <div
-                key={i}
-                role="button"
-                tabIndex={0}
-                aria-label={`View ${place.name} photo ${i + 2}`}
-                onClick={() => { haptic("light"); setLightboxAt(allPhotos.indexOf(u)); }}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); haptic("light"); setLightboxAt(allPhotos.indexOf(u)); } }}
-                className="relative h-24 w-32 shrink-0 cursor-zoom-in overflow-hidden rounded-[var(--app-radius-md)] border"
-                style={{ borderColor: "var(--app-border)" }}
-              >
-                <Image
-                  src={u}
-                  alt=""
-                  fill
-                  unoptimized={u.startsWith("/api/place-photo")}
-                  loading="lazy"
-                  sizes="128px"
-                  placeholder="blur"
-                  blurDataURL={PAPER_CREAM_BLUR}
-                  className="object-cover"
-                />
-              </div>
-            ))}
+            {stripPhotos.map((u, i) => {
+              const thumbSrc = placePhotoFailureSignalSrc(u);
+              return (
+                <div
+                  key={u}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View ${place.name} photo ${i + 2}`}
+                  data-place-sheet-strip-photo
+                  onClick={() => { haptic("light"); setLightboxUrl(u); }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); haptic("light"); setLightboxUrl(u); } }}
+                  className="relative h-24 w-32 shrink-0 cursor-zoom-in overflow-hidden rounded-[var(--app-radius-md)] border"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                  <Image
+                    src={thumbSrc}
+                    alt=""
+                    fill
+                    unoptimized={thumbSrc.startsWith("/api/place-photo")}
+                    loading="lazy"
+                    sizes="128px"
+                    placeholder="blur"
+                    blurDataURL={PAPER_CREAM_BLUR}
+                    className="object-cover"
+                    onLoad={(event) => {
+                      if (isPlacePhotoFailureSignal(event.currentTarget)) markPhotoFailed(u);
+                    }}
+                    onError={() => markPhotoFailed(u)}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -810,13 +873,14 @@ function PlaceSheetContent({
         </div>
       </div>
 
-      {lightboxAt !== null && (
+      {lightboxIndex >= 0 && (
         <PhotoLightbox
+          key={`${lightboxUrl}:${allPhotos.length}`}
           photos={allPhotos}
           attributions={lightboxAttributions}
-          startIndex={lightboxAt}
+          startIndex={lightboxIndex}
           alt={place.name}
-          onClose={() => setLightboxAt(null)}
+          onClose={() => setLightboxUrl(null)}
         />
       )}
     </>

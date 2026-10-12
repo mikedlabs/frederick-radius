@@ -50,10 +50,53 @@ export type MomentFaq = {
 };
 
 /** Decision facts for a major shared occasion. They belong at the top of a
- * day-of guide, ahead of the fuller schedule. */
+ * day-of guide, ahead of the fuller schedule. The moment hub renders a fact
+ * only when it names the page it came from, so a tile can never state a fact
+ * that nobody published. */
 export type MomentSpotlightFact = {
   label: string;
   value: string;
+  /** The official page that states this fact. */
+  source_url?: string;
+};
+
+/**
+ * A licensed town photograph (an entry in TOWN_PHOTOS,
+ * src/lib/integrations/wikimedia.ts) shown at the top of a hub when the owner
+ * has no photograph of the occasion itself. It depicts the town, not the
+ * event, so the hub credits it with what it shows and never sets type on it.
+ */
+export type MomentHeroPhoto = {
+  /** A key of TOWN_PHOTOS. */
+  townSlug: string;
+  /** What the frame actually shows, used to open its credit line. */
+  depicts: string;
+};
+
+/** The one public place a moment happens, matched to the place catalog. */
+export type MomentVenue = {
+  name: string;
+  /** Catalog slug in src/data/places-client.json. */
+  placeSlug: string;
+  /** The catalog record's coordinates, so the hub map and the event agree. */
+  lng: number;
+  lat: number;
+  address?: string;
+  /** A sourced arrival caveat shown under Directions. */
+  note?: string;
+  /** The official page that states `note`. Required when `note` is set. */
+  source_url?: string;
+  /**
+   * Heading of the guide section a visitor needs before driving, set when the
+   * venue has no car access. The guide then leads with that section and
+   * offers walking directions, never driving directions to a closed road.
+   */
+  arrivalSection?: string;
+};
+
+/** One day the occasion itself runs (an Eastern YYYY-MM-DD civil date). */
+export type MomentDay = {
+  date: string;
 };
 
 /** An editorial photograph used only where it truthfully depicts the occasion.
@@ -82,6 +125,15 @@ export type CivicMoment = {
   spotlightSourceUrl?: string;
   /** A scoped directions link for a moment with a stable public location. */
   spotlightDirectionsUrl?: string;
+  /** A licensed town photograph for a hub without an owned photograph. */
+  heroPhoto?: MomentHeroPhoto;
+  /** Where the occasion happens, when it has one public venue. */
+  venue?: MomentVenue;
+  /** The days the occasion itself runs. `starts`/`ends` is the wider window
+   *  the spotlight shows, so it is not a substitute for these. */
+  days?: MomentDay[];
+  /** Event slugs in src/data/events.ts that this moment is the guide for. */
+  eventSlugs?: string[];
   /** Eastern window the moment is live (inclusive). */
   starts: string;
   ends: string;
@@ -618,6 +670,160 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
       },
     ],
   },
+  {
+    // Dates: thurmont.com/2236/Colorfest ("Colorfest will be held October
+    // 10th & 11th, 2026"). Hours, admission, parking, shuttle, road closure,
+    // accessibility and booth details: colorfest.org/plan-your-visit/, read
+    // directly on 2026-10-08. The thurmont.com page publishes only the dates
+    // and vendor permits, so nothing below cites it for anything else.
+    slug: "catoctin-colorfest-2026",
+    title: "Catoctin Colorfest",
+    subtitle: "Catoctin Colorfest is Thurmont's juried craft and art show, held in Community Park on the second weekend in October.",
+    spotlightLead: "Thurmont's juried craft and art show fills Community Park on Saturday and Sunday.",
+    spotlightFacts: [
+      {
+        label: "Dates",
+        value: "Sat Oct 10 and Sun Oct 11",
+        source_url: "https://www.thurmont.com/2236/Colorfest",
+      },
+      {
+        label: "Admission",
+        value: "Free",
+        source_url: "https://colorfest.org/plan-your-visit/",
+      },
+    ],
+    spotlightSourceUrl: "https://colorfest.org/plan-your-visit/",
+    heroPhoto: {
+      townSlug: "thurmont",
+      depicts: "Thurmont Town Square Park, the town center",
+    },
+    venue: {
+      name: "Thurmont Community Park",
+      placeSlug: "thurmont-community-park-thurmont",
+      lng: -77.4127594,
+      lat: 39.6213,
+      address: "19 Frederick Rd, Thurmont, MD 21788",
+      note: "The park has no parking or car access during the show, so park at a stop-and-park area and ride the free shuttle.",
+      source_url: "https://colorfest.org/plan-your-visit/",
+      arrivalSection: "Getting there",
+    },
+    days: [{ date: "2026-10-10" }, { date: "2026-10-11" }],
+    eventSlugs: ["catoctin-colorfest-thurmont-2026"],
+    starts: "2026-10-08",
+    ends: "2026-10-11",
+    // An arts show, so the limited arts accent rather than Brick.
+    accent: "var(--app-accent)",
+    icon: "Palette",
+    weatherSensitive: true,
+    intro:
+      "Catoctin Colorfest is a juried craft and art show in Thurmont that draws more than 100,000 visitors over the second weekend in October. More than 350 vendors set up at Community Park, and the weekend also brings the Town Crafts Show, food and live music.",
+    disclosure:
+      "Hours, parking and shuttle details come from the organizer's Plan Your Visit page as of October 8. Check that page again before you go, because the organizer can change them.",
+    sections: [
+      {
+        heading: "Hours and admission",
+        items: [
+          {
+            kind: "activity",
+            title: "The show in Community Park",
+            where: "Thurmont Community Park",
+            address: "19 Frederick Rd, Thurmont",
+            when: "Sat, Oct 10 and Sun, Oct 11 · 9 AM to 5 PM each day",
+            note: "Admission is free, and the show runs rain or shine. Food vendors start serving breakfast at 7 AM.",
+            source_url: "https://colorfest.org/plan-your-visit/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "tip",
+            title: "Vendors elsewhere in town",
+            where: "Around Thurmont",
+            note: "Catoctin Colorfest, Inc. runs only the juried show in Community Park. Vendors and events elsewhere in town that weekend are run by others.",
+            source_url: "https://colorfest.org/plan-your-visit/",
+            confidence: "confirmed",
+          },
+        ],
+      },
+      {
+        heading: "Getting there",
+        items: [
+          {
+            kind: "closure",
+            title: "Frederick Road is closed to cars",
+            where: "Thurmont, from the 806 exit to East Main Street",
+            when: "Sat and Sun · 8 AM to 5 PM",
+            note: "Only people on foot, shuttle buses and emergency vehicles can use it. There is no car access or parking at Community Park.",
+            source_url: "https://colorfest.org/plan-your-visit/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "tip",
+            title: "Park at a stop-and-park area",
+            where: "Around Thurmont",
+            note: "Four designated stop-and-park areas and several privately run paid lots handle parking, and the Route 550 exit is the main way in. Colorfest does not run any lots. Follow the posted signs, because illegally parked cars may be ticketed or towed.",
+            source_url: "https://colorfest.org/plan-your-visit/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "tip",
+            title: "Ride the free shuttle",
+            where: "Water Street and Main Street",
+            when: "Sat and Sun · 8 AM to 6 PM",
+            note: "Buses run continuously from every stop-and-park area and stop at five places in town. Every Colorfest area is a short walk from Stop 5.",
+            source_url: "https://colorfest.org/plan-your-visit/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "tip",
+            title: "Accessible parking and buses",
+            where: "Every stop-and-park area",
+            note: "Each stop-and-park area has accessible parking, and accessible buses run on the shuttle. ADA-compliant portable restrooms are set up throughout the park.",
+            source_url: "https://colorfest.org/plan-your-visit/",
+            confidence: "confirmed",
+          },
+        ],
+      },
+      {
+        heading: "At the park",
+        items: [
+          {
+            kind: "tip",
+            title: "Information booths",
+            where: "Front and rear of the park",
+            note: "Each booth keeps a lost and found and sells official shirts and sweatshirts. ATMs stand near the booths.",
+            source_url: "https://colorfest.org/plan-your-visit/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "activity",
+            title: "Demonstrations and live music",
+            where: "Thurmont Community Park",
+            when: "Both days",
+            note: "Demonstrations run during both days, and local performers play throughout the weekend.",
+            source_url: "https://colorfest.org/plan-your-visit/",
+            confidence: "confirmed",
+          },
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "When is Colorfest?",
+        a: "Colorfest is on Saturday, October 10 and Sunday, October 11, 2026. The show in Community Park runs from 9 AM to 5 PM each day, rain or shine.",
+      },
+      {
+        q: "Is admission free?",
+        a: "Admission to the show in Community Park is free. Some lots around town are privately run and charge for parking.",
+      },
+      {
+        q: "Where do I park?",
+        a: "There is no parking at Community Park during the show. Use one of the four stop-and-park areas around town or a private paid lot, then ride the free shuttle. The Route 550 exit is the main way in for parking.",
+      },
+      {
+        q: "Is there a shuttle?",
+        a: "A free shuttle runs from 8 AM to 6 PM each day from every stop-and-park area, and accessible buses are available.",
+      },
+    ],
+  },
 ];
 
 /** en-CA gives a lexicographically-sortable Eastern YYYY-MM-DD. */
@@ -643,6 +849,14 @@ export function momentBySlug(slug: string): CivicMoment | null {
   return CIVIC_MOMENTS.find((m) => m.slug === slug) ?? null;
 }
 
+/** The moment that is the guide for an event slug, or null. Callers decide
+ *  whether the moment's window still matters (an event page links to a guide
+ *  only while it has not ended). Pure. */
+export function momentForEventSlug(slug: string): CivicMoment | null {
+  if (!slug) return null;
+  return CIVIC_MOMENTS.find((m) => m.eventSlugs?.includes(slug)) ?? null;
+}
+
 /**
  * MOMENTS CALENDAR — the year's other connected occasions worth a hub, in the
  * order they land. Kept as a comment so the intent is documented without
@@ -654,6 +868,7 @@ export function momentBySlug(slug: string): CivicMoment | null {
  *   - Alive @ Five season (May–Sep) Thursday concerts — already an event series.
  *   - Great Frederick Fair (Sept)   POPULATED (great-frederick-fair-2026).
  *   - In the Street (Sept)          POPULATED (in-the-street-2026).
+ *   - Catoctin Colorfest (Oct)      POPULATED (catoctin-colorfest-2026).
  *   - Oktoberfest / harvest (Oct)   Schifferstadt Oktoberfest, orchards, foliage.
  *   - Halloween (late Oct)          Trick-or-treat times per town, downtown events.
  *   - Veterans Day (Nov 11)         Ceremonies + parades.
